@@ -345,7 +345,6 @@ export function CustomerStockTab({ customerId, customerName }: CustomerStockTabP
       )}
 
       <MobilePillTabs
-        variant="underline"
         tabs={[
           { value: 'materiais', label: 'Materiais' },
           { value: 'historico', label: 'Histórico de materiais' },

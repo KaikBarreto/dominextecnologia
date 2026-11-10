@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn, fuzzyIncludes, fuzzyIncludesPhone } from '@/lib/utils';
@@ -7,6 +7,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { MESSAGES, type Messages } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
+import { getQuoteCommercialTotal } from '@/lib/quote-commercial-total';
 import {
   FileText, Plus, Search, Pencil, Trash2, Eye, CheckCircle2, XCircle,
   ExternalLink, DollarSign, ArrowRight, Settings2, TrendingUp,
@@ -49,6 +50,7 @@ import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { FilterButton } from '@/components/ui/FilterButton';
+import { SearchField } from '@/components/ui/search-field-actions';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
@@ -107,6 +109,7 @@ const STATUS_ICONS: Record<string, typeof FileText> = {
 // (tempo relativo no locale do usuário). last_viewed_at vem em UTC; date-fns calcula
 // o delta contra o "agora" local, então o "há X" bate.
 type TQ = Messages['app']['crm']['quotes'];
+type QuoteCustomerWithMobile = NonNullable<Quote['customers']> & { celular?: string | null };
 
 function QuoteViewsIndicator({
   quote,
@@ -151,7 +154,51 @@ function QuoteViewsIndicator({
   );
 }
 
-function QuotesList() {
+interface QuotesListProps {
+  formOpen: boolean;
+  editQuote: Quote | null;
+  configOpen: boolean;
+  onOpenNewQuote: () => void;
+  onOpenEditQuote: (quote: Quote) => void;
+  onFormOpenChange: (open: boolean) => void;
+  onConfigOpenChange: (open: boolean) => void;
+}
+
+interface QuotesHeaderActionsProps {
+  configureLabel: string;
+  newQuoteLabel: string;
+  onConfigure: () => void;
+  onNewQuote: () => void;
+}
+
+export function QuotesHeaderActions({
+  configureLabel,
+  newQuoteLabel,
+  onConfigure,
+  onNewQuote,
+}: QuotesHeaderActionsProps) {
+  return (
+    <div className="flex items-center gap-2">
+      <Button variant="outline" size="sm" onClick={onConfigure}>
+        {configureLabel}
+      </Button>
+      <Button size="sm" onClick={onNewQuote}>
+        <Plus className="mr-2 h-4 w-4" />
+        {newQuoteLabel}
+      </Button>
+    </div>
+  );
+}
+
+function QuotesList({
+  formOpen,
+  editQuote,
+  configOpen,
+  onOpenNewQuote,
+  onOpenEditQuote,
+  onFormOpenChange,
+  onConfigOpenChange,
+}: QuotesListProps) {
   const isMobile = useIsMobile();
   const { locale, currency } = useAppLocaleContext();
   const tq = MESSAGES[locale].app.crm.quotes;
@@ -212,11 +259,8 @@ function QuotesList() {
   };
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
-  const [formOpen, setFormOpen] = useState(false);
-  const [editQuote, setEditQuote] = useState<Quote | null>(null);
   const [viewQuote, setViewQuote] = useState<Quote | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [configOpen, setConfigOpen] = useState(false);
   const [approvingQuote, setApprovingQuote] = useState<Quote | null>(null);
   const [chargeQuote, setChargeQuote] = useState<Quote | null>(null);
   const [distributingQuote, setDistributingQuote] = useState<Quote | null>(null);
@@ -285,17 +329,19 @@ function QuotesList() {
     let list = quotes;
     if (statusFilter.length > 0) list = list.filter((q) => statusFilter.includes(q.status));
     if (search) {
-      list = list.filter(
-        (q) =>
+      list = list.filter((q) => {
+        const customer = q.customers as QuoteCustomerWithMobile | undefined;
+        return (
           fuzzyIncludes(q.customers?.name, search) ||
           fuzzyIncludes(q.prospect_name, search) ||
           fuzzyIncludes(String(q.quote_number), search) ||
           // Idem OS: telefone só com 6+ dígitos, pra não competir com o nº do
           // orçamento.
-          fuzzyIncludesPhone((q.customers as any)?.phone, search) ||
-          fuzzyIncludesPhone((q.customers as any)?.celular, search) ||
-          fuzzyIncludesPhone((q as any).prospect_phone, search)
-      );
+          fuzzyIncludesPhone(customer?.phone, search) ||
+          fuzzyIncludesPhone(customer?.celular, search) ||
+          fuzzyIncludesPhone(q.prospect_phone, search)
+        );
+      });
     }
     return list;
   }, [quotes, statusFilter, search]);
@@ -305,8 +351,10 @@ function QuotesList() {
 
   // KPIs no padrão KPICard (mesmo visual da tela de Ordens de Serviço).
   // Valores monetários usam `formattedValue` formatado com moeda/locale da empresa.
-  const fmtBRL = (v: number) =>
-    formatMoney(Math.round(v), currency, locale);
+  const fmtBRL = useCallback(
+    (value: number) => formatMoney(Math.round(value), currency, locale),
+    [currency, locale],
+  );
 
   const kpiCards = useMemo(() => {
     const base: Array<{
@@ -347,7 +395,7 @@ function QuotesList() {
     ];
 
     return base;
-  }, [kpis]);
+  }, [fmtBRL, kpis, tq.kpiAvgTicket, tq.kpiConversion, tq.kpiOpen]);
 
   // Filtros ativos pro badge.
   const activeFilterCount = (search ? 1 : 0) + (statusFilter.length > 0 ? 1 : 0);
@@ -396,7 +444,7 @@ function QuotesList() {
         <Button
           variant="outline"
           className="w-full justify-start gap-2"
-          onClick={() => setConfigOpen(true)}
+          onClick={() => onConfigOpenChange(true)}
           type="button"
         >
           <Settings2 className="h-4 w-4" />
@@ -408,28 +456,28 @@ function QuotesList() {
 
   // Filtros desktop — busca inline + FilterButton (Onda UI-2).
   const desktopFilters = (
-    <div className="flex flex-col sm:flex-row gap-3">
-      <div className="relative flex-1">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
+    <div>
+      <SearchField
+        containerClassName="flex-1"
           placeholder={tq.searchPlaceholder}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-        />
-      </div>
-      <FilterButton
-        activeCount={statusFilter.length > 0 ? 1 : 0}
-        onClear={() => setStatusFilter([])}
-      >
-        <FilterCheckboxGroup
-          label={tq.filterStatus}
-          options={statusOptions}
-          selected={statusFilter}
-          onChange={setStatusFilter}
-          emptyLabel={tq.filterAll}
-        />
-      </FilterButton>
+        actions={
+          <FilterButton
+            activeCount={statusFilter.length > 0 ? 1 : 0}
+            onClear={() => setStatusFilter([])}
+            embedded
+          >
+            <FilterCheckboxGroup
+              label={tq.filterStatus}
+              options={statusOptions}
+              selected={statusFilter}
+              onChange={setStatusFilter}
+              emptyLabel={tq.filterAll}
+            />
+          </FilterButton>
+        }
+      />
     </div>
   );
 
@@ -530,7 +578,7 @@ function QuotesList() {
         label: tq.actionEdit,
         icon: <Pencil className="h-4 w-4" />,
         variant: 'edit',
-        onClick: () => { setEditQuote(q); setFormOpen(true); },
+        onClick: () => onOpenEditQuote(q),
       },
       {
         key: 'delete',
@@ -585,18 +633,6 @@ function QuotesList() {
         </>
       ) : (
         <>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-4">
-            <div className="flex gap-2 flex-wrap">
-              <Button variant="outline" size="sm" onClick={() => setConfigOpen(true)}>
-                {tq.configureProposal}
-              </Button>
-              <Button size="sm" onClick={() => { setEditQuote(null); setFormOpen(true); }}>
-                <Plus className="h-4 w-4 mr-2" />
-                {tq.newQuote}
-              </Button>
-            </div>
-          </div>
-
           {/* KPIs desktop — padrão KPICard (mesmo da tela de Ordens de Serviço) */}
           <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
             {isLoading
@@ -639,7 +675,7 @@ function QuotesList() {
                 action={
                   search || statusFilter.length > 0
                     ? undefined
-                    : { label: tq.emptyActionLabel, onClick: () => { setEditQuote(null); setFormOpen(true); } }
+                    : { label: tq.emptyActionLabel, onClick: onOpenNewQuote }
                 }
               />
             </CardContent>
@@ -651,7 +687,7 @@ function QuotesList() {
             {pagination.paginatedItems.map((q) => {
               const StatusIcon = STATUS_ICONS[q.status] ?? FileText;
               const statusHex = STATUS_HEX[q.status] ?? '#64748b';
-              const price = Number(q.final_price ?? q.total_value ?? 0);
+              const price = getQuoteCommercialTotal(q);
 
               return (
                 <MobileListItem
@@ -727,7 +763,7 @@ function QuotesList() {
                 <SortableTableHead sortKey="customers.name" sortConfig={sortConfig} onSort={handleSort}>{tq.colCustomer}</SortableTableHead>
                 <SortableTableHead sortKey="created_at" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell">{tq.colDate}</SortableTableHead>
                 <SortableTableHead sortKey="total_cost" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell">{tq.colCost}</SortableTableHead>
-                <SortableTableHead sortKey="final_price" sortConfig={sortConfig} onSort={handleSort}>{tq.colValue}</SortableTableHead>
+                <SortableTableHead sortKey="total_value" sortConfig={sortConfig} onSort={handleSort}>{tq.colValue}</SortableTableHead>
                 <TableHead className="hidden lg:table-cell">{tq.colMargin}</TableHead>
                 <SortableTableHead sortKey="status" sortConfig={sortConfig} onSort={handleSort}>{tq.colStatus}</SortableTableHead>
                 <TableHead className="text-right">{tq.colActions}</TableHead>
@@ -736,7 +772,7 @@ function QuotesList() {
             <TableBody>
               {pagination.paginatedItems.map((q) => {
                 const cost = Number(q.total_cost ?? 0);
-                const price = Number(q.final_price ?? q.total_value ?? 0);
+                const price = getQuoteCommercialTotal(q);
                 const margin = price > 0 && cost > 0 ? Math.round(((price - cost) / price) * 100) : null;
                 return (
                 <TableRow key={q.id}>
@@ -849,7 +885,7 @@ function QuotesList() {
                             label: tq.actionEdit,
                             icon: Pencil,
                             variant: 'edit',
-                            onClick: () => { setEditQuote(q); setFormOpen(true); },
+                            onClick: () => onOpenEditQuote(q),
                           },
                           {
                             label: tq.actionDelete,
@@ -884,14 +920,14 @@ function QuotesList() {
         <FABButton
           icon={<Plus className="h-5 w-5" />}
           label={tq.newQuoteShort}
-          onClick={() => { setEditQuote(null); setFormOpen(true); }}
+          onClick={onOpenNewQuote}
         />
       )}
 
       {/* Modals */}
       <QuoteFormDialog
         open={formOpen}
-        onOpenChange={(v) => { setFormOpen(v); if (!v) setEditQuote(null); }}
+        onOpenChange={onFormOpenChange}
         quote={editQuote}
       />
       {viewQuote && (
@@ -901,13 +937,13 @@ function QuotesList() {
           quote={viewQuote}
         />
       )}
-      <ProposalConfigDialog open={configOpen} onOpenChange={setConfigOpen} />
+      <ProposalConfigDialog open={configOpen} onOpenChange={onConfigOpenChange} />
 
       <ApproveQuoteModal
         open={!!approvingQuote}
         onOpenChange={(v) => { if (!v) setApprovingQuote(null); }}
         quoteNumber={approvingQuote?.quote_number ?? null}
-        amount={Number(approvingQuote?.final_price ?? approvingQuote?.total_value ?? 0)}
+        amount={getQuoteCommercialTotal(approvingQuote)}
         defaultMode={companySettings?.quote_approval_revenue_mode ?? 'a_receber'}
         defaultInstallments={approvingQuote?.receivable_installments ?? undefined}
         defaultFirstDueDate={approvingQuote?.receivable_first_due_date ?? null}
@@ -1001,7 +1037,7 @@ function QuotesList() {
           onOpenChange={(v) => { if (!v) setChargeQuote(null); }}
           presetCustomerId={chargeQuote.customer_id ?? undefined}
           lockCustomer
-          presetAmount={Number(chargeQuote.final_price ?? chargeQuote.total_value ?? 0) || undefined}
+          presetAmount={getQuoteCommercialTotal(chargeQuote) || undefined}
           presetDescription={`Orçamento Nº ${chargeQuote.quote_number}`}
           source={{ type: 'quote', id: chargeQuote.id }}
         />
@@ -1026,12 +1062,38 @@ function QuotesList() {
 
 export default function Quotes() {
   const [activeTab, setActiveTab] = useState('quotes');
+  const [formOpen, setFormOpen] = useState(false);
+  const [editQuote, setEditQuote] = useState<Quote | null>(null);
+  const [configOpen, setConfigOpen] = useState(false);
   const isMobile = useIsMobile();
   const { locale } = useAppLocaleContext();
   const tq = MESSAGES[locale].app.crm.quotes;
 
   const sidebarTabs = ALL_SIDEBAR_TAB_KEYS
     .map(t => ({ value: t.value, label: tq[t.labelKey], icon: t.icon }));
+
+  const openNewQuote = () => {
+    setEditQuote(null);
+    setFormOpen(true);
+  };
+
+  const openEditQuote = (quote: Quote) => {
+    setEditQuote(quote);
+    setFormOpen(true);
+  };
+
+  const handleFormOpenChange = (open: boolean) => {
+    setFormOpen(open);
+    if (!open) setEditQuote(null);
+  };
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    if (tab !== 'quotes') {
+      handleFormOpenChange(false);
+      setConfigOpen(false);
+    }
+  };
 
   return (
     <div className={cn('space-y-6', isMobile && 'pb-24')}>
@@ -1044,9 +1106,27 @@ export default function Quotes() {
       <SettingsSidebarLayout
         tabs={sidebarTabs}
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={handleTabChange}
+        actions={activeTab === 'quotes' ? (
+          <QuotesHeaderActions
+            configureLabel={tq.configureProposal}
+            newQuoteLabel={tq.newQuote}
+            onConfigure={() => setConfigOpen(true)}
+            onNewQuote={openNewQuote}
+          />
+        ) : undefined}
       >
-        {activeTab === 'quotes' && <QuotesList />}
+        {activeTab === 'quotes' && (
+          <QuotesList
+            formOpen={formOpen}
+            editQuote={editQuote}
+            configOpen={configOpen}
+            onOpenNewQuote={openNewQuote}
+            onOpenEditQuote={openEditQuote}
+            onFormOpenChange={handleFormOpenChange}
+            onConfigOpenChange={setConfigOpen}
+          />
+        )}
         {activeTab === 'service-costs' && <ServiceCostsTab />}
         {activeTab === 'global-costs' && <GlobalCostsTab />}
         {activeTab === 'pricing' && <PricingTab />}

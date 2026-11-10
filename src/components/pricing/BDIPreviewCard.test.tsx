@@ -19,22 +19,24 @@ vi.mock('@/hooks/usePricingSettings', () => ({
 
 import { BDIPreviewCard } from './BDIPreviewCard';
 
-(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 let container: HTMLDivElement;
 let root: Root;
 
-function mount() {
+function mount(props: React.ComponentProps<typeof BDIPreviewCard> = {}) {
   act(() => {
-    root.render(<BDIPreviewCard />);
+    root.render(<BDIPreviewCard {...props} />);
   });
 }
 
 const q = (sel: string) => container.querySelector(sel) as HTMLInputElement | null;
 
 function paste(input: HTMLInputElement, text: string) {
-  const pasteEvent = new Event('paste', { bubbles: true, cancelable: true }) as ClipboardEvent & { clipboardData: any };
-  pasteEvent.clipboardData = { getData: () => text };
+  const pasteEvent = new Event('paste', { bubbles: true, cancelable: true }) as ClipboardEvent;
+  Object.defineProperty(pasteEvent, 'clipboardData', {
+    value: { getData: () => text },
+  });
   act(() => {
     input.dispatchEvent(pasteEvent);
   });
@@ -65,5 +67,21 @@ describe('BDIPreviewCard — campo "Custo do serviço" (prova real de DOM)', () 
     const input = q('input[type="number"]');
     paste(input!, '1.234,56');
     expect(input!.value).toBe('1234.56');
+  });
+
+  it('usa as taxas locais do formulário na composição sem depender da persistência', () => {
+    mount({
+      previewSettings: {
+        taxRate: 8,
+        adminRate: 7,
+        profitRate: 5,
+        kmCost: 1,
+        cardDiscountRate: 6,
+        cardInstallments: 10,
+      },
+    });
+
+    expect(container.textContent).toContain('BDI = 1 − (8% + 7% + 5%)');
+    expect(container.textContent).toContain('BDI = 0.8000');
   });
 });

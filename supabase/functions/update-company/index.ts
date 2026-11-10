@@ -17,6 +17,27 @@ const INCLUDED_USERS = 5
 
 class ValidationError extends Error {}
 
+function normalizeSegments(value: unknown, fallback: unknown): string[] {
+  if (value !== undefined && !Array.isArray(value)) {
+    throw new ValidationError('Os segmentos informados são inválidos.')
+  }
+
+  const raw = Array.isArray(value) ? value : []
+  if (raw.some((item) => typeof item !== 'string')) {
+    throw new ValidationError('Os segmentos informados são inválidos.')
+  }
+  const normalized = raw
+    .filter((item): item is string => typeof item === 'string')
+    .map((item) => item.trim())
+    .filter(Boolean)
+
+  if (normalized.length === 0 && typeof fallback === 'string' && fallback.trim()) {
+    normalized.push(fallback.trim())
+  }
+
+  return [...new Set(normalized)]
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
 
@@ -31,11 +52,22 @@ Deno.serve(async (req) => {
     )
     const { data: auth, error: authError } = await supabase.auth.getUser(authHeader.slice(7))
     if (authError || !auth.user) return json({ error: 'Não autenticado.' }, 401)
-    const { data: isSuperAdmin } = await supabase.rpc('has_role', {
-      _user_id: auth.user.id,
-      _role: 'super_admin',
-    })
-    if (!isSuperAdmin) return json({ error: 'Apenas administradores podem editar empresas.' }, 403)
+    const [superAdminResult, companyPermissionResult] = await Promise.all([
+      supabase.rpc('has_role', {
+        _user_id: auth.user.id,
+        _role: 'super_admin',
+      }),
+      supabase.rpc('has_admin_permission', {
+        _user_id: auth.user.id,
+        _permission: 'admin_empresas',
+      }),
+    ])
+    if (superAdminResult.error || companyPermissionResult.error) {
+      throw new Error('Não foi possível validar sua permissão para editar empresas.')
+    }
+    if (!superAdminResult.data && !companyPermissionResult.data) {
+      return json({ error: 'Você não tem permissão para editar empresas.' }, 403)
+    }
 
     const body = await req.json()
     const companyId = typeof body.company_id === 'string' ? body.company_id : ''
@@ -96,6 +128,7 @@ Deno.serve(async (req) => {
     }
 
     const status = typeof body.subscription_status === 'string' ? body.subscription_status : 'testing'
+    const segments = normalizeSegments(body.segments, body.segment)
     const negotiatedPrice = Number(body.custom_price) > 0 ? Number(body.custom_price) : null
     const isPureTrial = status === 'testing' && body.plan_locked !== true && negotiatedPrice === null && !(Number(body.subscription_value) > 0)
     const canonicalOrigin = await canonicalizeCompanyOrigin(
@@ -129,7 +162,8 @@ Deno.serve(async (req) => {
       salesperson_id: body.salesperson_id || null,
       sdr_id: null,
       affiliate_id: affiliateId,
-      segment: body.segment || null,
+      segments,
+      segment: segments[0] || null,
       custom_price: negotiatedPrice,
       custom_price_permanent: negotiatedPrice ? body.custom_price_permanent !== false : true,
       custom_price_months: negotiatedPrice && body.custom_price_permanent === false

@@ -20,6 +20,8 @@ export const colorAdjust: React.CSSProperties = {
 };
 
 export interface ProposalData {
+  /** Número real; o travessão identifica uma proposta ainda sem numeração. */
+  numberLabel: string;
   companyName: string;
   /** customization?.logo_url vence o logo da empresa. */
   logoUrl?: string;
@@ -96,6 +98,7 @@ export function buildProposalData(
   const subjectLine = subjectRaw.toUpperCase();
 
   return {
+    numberLabel: quote.quote_number > 0 ? String(quote.quote_number) : '—',
     companyName,
     logoUrl,
     clientName,
@@ -115,6 +118,32 @@ export function buildProposalData(
 }
 
 export const sumTotal = (rows: QuoteItem[]) => rows.reduce((s, i) => s + (i.total_price || 0), 0);
+
+const COST_LABELS: Record<LocaleCode, { labor: string; inputs: string }> = {
+  'pt-br': { labor: 'Mão de obra / un.', inputs: 'Insumos / un.' },
+  en: { labor: 'Labor / unit', inputs: 'Supplies / unit' },
+  es: { labor: 'Mano de obra / un.', inputs: 'Insumos / un.' },
+  fr: { labor: "Main-d'œuvre / unité", inputs: 'Fournitures / unité' },
+};
+
+/** Composição que o operador autorizou exibir; custos privados nunca entram por padrão. */
+export function getProposalItemCostDetails(
+  quote: Pick<Quote, 'show_labor_cost_in_proposal' | 'show_inputs_cost_in_proposal'>,
+  item: QuoteItem,
+  money: (value: number) => string,
+  locale: LocaleCode,
+) {
+  if (item.item_type !== 'servico' && item.item_type !== 'mao_de_obra') return [];
+  const labels = COST_LABELS[locale];
+  const details: Array<{ label: string; value: string }> = [];
+  if (quote.show_labor_cost_in_proposal === true) {
+    details.push({ label: labels.labor, value: money(Number(item.unit_labor_cost ?? 0)) });
+  }
+  if (quote.show_inputs_cost_in_proposal === true) {
+    details.push({ label: labels.inputs, value: money(Number(item.unit_materials_cost ?? 0)) });
+  }
+  return details;
+}
 
 /**
  * Altura do logo (em px) escalada proporcionalmente por `logo_scale` (%).

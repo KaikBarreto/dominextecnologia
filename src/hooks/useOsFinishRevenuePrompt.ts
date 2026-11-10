@@ -3,6 +3,7 @@ import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useCanLaunchOsRevenue } from '@/hooks/useCanLaunchOsRevenue';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { fetchOsRevenueTotals } from '@/hooks/useOsRevenueSummary';
+import { fetchOsRevenueSuggestedAmount } from '@/hooks/useOsRevenueSuggestedAmount';
 import type { OsFinishRevenueDialogProps } from '@/components/financial/OsFinishRevenueDialog';
 
 /**
@@ -72,13 +73,22 @@ export function useOsFinishRevenuePrompt(): UseOsFinishRevenuePromptResult {
         if (!canLaunch) return;
         if (!planAllowsFinance) return;
 
-        const totals = await fetchOsRevenueTotals(ctx.serviceOrderId);
+        const [totals, freshSuggestedAmount] = await Promise.all([
+          fetchOsRevenueTotals(ctx.serviceOrderId),
+          fetchOsRevenueSuggestedAmount(ctx.serviceOrderId),
+        ]);
         // `null` = a consulta FALHOU. Na dúvida, não abre: melhor não perguntar
         // do que arriscar uma receita duplicada numa OS que já tinha uma.
         if (!totals) return;
         if (totals.count > 0) return;
 
-        setContext(ctx);
+        setContext({
+          ...ctx,
+          // A leitura recém-feita ganha do objeto potencialmente defasado da
+          // lista/tela. Se ela falhar, preserva o fallback que o chamador já
+          // tinha em memória e mantém o comportamento anterior.
+          suggestedAmount: freshSuggestedAmount ?? ctx.suggestedAmount ?? null,
+        });
         setOpen(true);
       } catch (err) {
         // Log silencioso. A OS já está fechada; nada aqui pode virar erro de UI.

@@ -537,6 +537,11 @@ const goalCards = [
     path: '/docs/guias/clientes', image: '/docs/images/customer-identity.jpg',
     alt: 'Escultura 3D em acrílico de cartões de cliente protegidos por uma chave',
   },
+  {
+    number: '04', title: 'Gerenciar cards do CRM', text: 'Crie, consulte e mova oportunidades com retry seguro.',
+    path: '/docs/guias/cards-crm', image: '/docs/images/api-reference-network.jpg',
+    alt: 'Rede modular conectando cards do CRM aos funis comerciais da Dominex',
+  },
 ];
 
 function ConceptVisual() {

@@ -1,5 +1,5 @@
 // =============================================================================
-// Handler de EMISSÃO de NFS-e (rotas: nfse-emit e a casca legada fisqal-emit-nfse).
+// Handler de EMISSÃO de NFS-e (rota: nfse-emit).
 // =============================================================================
 // AUTENTICADA: Authorization Bearer + módulo 'nfe' ativo + can_manage_system.
 //
@@ -46,7 +46,7 @@
 //     NÃO lê service_orders — emissão é independente da Ordem de Serviço.
 //   - COMPETÊNCIA: body → rascunho → hoje NO FUSO DA EMPRESA
 //     (`company_settings.timezone`). Nunca o dia UTC. Ver `hojeNoFuso`.
-//   - Valida (422 PT-BR) ANTES de falar com o provedor.
+//   - Valida (422 PT-BR) ANTES de falar com o motor fiscal.
 //   - cTribMun (código da prefeitura, 3 díg.): body → rascunho → herança
 //     inequívoca de `service_types.codigo_tributacao_municipal` pelo cTribNac.
 //     Body fora do formato = 422 PT-BR; rascunho/herança fora do formato =
@@ -56,8 +56,7 @@
 //     não bloqueia nova emissão: a linha é REAPROVEITADA (ver abaixo).
 //   - Recusa da administração tributária NÃO some: vira linha `rejeitada` com o
 //     motivo + evento com a resposta crua (ver `registrarTentativaFalha`).
-//   - Monta a DPS no vocabulário do LAYOUT NACIONAL e entrega ao provedor ativo
-//     (`getProvider(fiscal)`), que traduz para o seu próprio protocolo.
+//   - Monta a DPS no vocabulário do layout nacional e entrega ao motor próprio.
 //   - Grava nfse_emissions + nfse_events (sempre escopado por company_id).
 //
 // ⚠️ REGRAS FISCAIS QUE NÃO PODEM REGREDIR (correções de 2026-09-02):
@@ -77,10 +76,9 @@ import {
 } from "../fiscal-auth.ts";
 import {
   friendlyFiscalMessage,
-  getProvider,
+  getNfseEngine,
   NfseProviderError,
   NfseProviderUnconfiguredError,
-  NfseProviderUnsupportedError,
 } from "../nfse-provider.ts";
 import type {
   NfseProviderCtx,
@@ -108,15 +106,107 @@ import {
   withoutColumn,
 } from "./common.ts";
 import type { PessoaAvulsa } from "./common.ts";
+import {
+  normalizeFiscalEnvironment,
+  scopeNfseIdempotencyKey,
+} from "./environment.ts";
 
 const TAG = "[nfse-emit]";
+
+export interface NfseReadinessError {
+  error:
+    | "municipality_not_enabled"
+    | "certificate_missing"
+    | "certificate_expiry_unknown"
+    | "certificate_expired"
+    | "fiscal_environment_invalid";
+  message: string;
+}
+
+export const SIMPLES_NACIONAL_EMISSOR_NACIONAL_DESDE = "2026-11-01";
+
+/**
+ * Regra federal da Resolução CGSN 191/2026.
+ *
+ * A partir de 01/11/2026, ME/EPP optante do Simples emite pela Sefin Nacional
+ * mesmo quando o município mantém emissor próprio. A comparação é por dia
+ * civil ISO da competência, não pelo instante UTC da requisição.
+ */
+export function emissaoNacionalObrigatoriaSimples(
+  regimeTributario: unknown,
+  dataCompetencia: unknown,
+): boolean {
+  const competencia = clean(dataCompetencia);
+  return clean(regimeTributario).toLowerCase() === "simples_nacional" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(competencia) &&
+    competencia >= SIMPLES_NACIONAL_EMISSOR_NACIONAL_DESDE;
+}
+
+/** Gate único de cobertura e certificado, antes de consumir número ou transmitir. */
+export function validarProntidaoFiscal(
+  fiscal: Record<string, unknown>,
+  agoraMs = Date.now(),
+  dataCompetencia?: string,
+): NfseReadinessError | null {
+  const ambiente = normalizeFiscalEnvironment(fiscal.fiscal_ambiente);
+  if (!ambiente) {
+    return {
+      error: "fiscal_environment_invalid",
+      message:
+        "Selecione o ambiente fiscal nas configurações antes de emitir a nota.",
+    };
+  }
+  // A parametrizacao da producao restrita nao replica necessariamente a
+  // cobertura municipal real. Em homologacao, o proprio POST da DPS e a
+  // validacao definitiva — sem efeito fiscal. Em producao, a cobertura
+  // oficial continua obrigatoria e falha fechado.
+  const coberturaFederalSimples = emissaoNacionalObrigatoriaSimples(
+    fiscal.regime_tributario,
+    dataCompetencia,
+  );
+  if (
+    ambiente === "producao" && fiscal.pode_emitir !== true &&
+    !coberturaFederalSimples
+  ) {
+    return {
+      error: "municipality_not_enabled",
+      message:
+        "Confirme a liberação do município no Portal Nacional antes de emitir a nota fiscal.",
+    };
+  }
+  if (!clean(fiscal.certificado_ref)) {
+    return {
+      error: "certificate_missing",
+      message:
+        "Envie o certificado digital A1 da empresa antes de emitir notas fiscais.",
+    };
+  }
+
+  const validade = clean(fiscal.certificate_expires_at);
+  const validadeMs = validade ? Date.parse(validade) : Number.NaN;
+  if (!validade || !Number.isFinite(validadeMs)) {
+    return {
+      error: "certificate_expiry_unknown",
+      message:
+        "Não foi possível confirmar a validade do certificado digital. Envie o certificado novamente.",
+    };
+  }
+  if (validadeMs <= agoraMs) {
+    return {
+      error: "certificate_expired",
+      message:
+        "O certificado digital está expirado. Envie um certificado válido antes de emitir.",
+    };
+  }
+  return null;
+}
 
 /**
  * Colunas OPCIONAIS que podem não existir ainda em outro ambiente (janela de
  * deploy: edge nova + migration ainda não aplicada).
  *
  * Perder um campo opcional é infinitamente melhor que perder o REGISTRO de uma
- * nota que já pode ter sido enviada ao provedor. O `created_by` (autoria) entra
+ * nota que já pode ter sido enviada ao fisco. O `created_by` (autoria) entra
  * aqui pelo mesmo motivo do cTribMun.
  */
 const COLUNAS_TOLERANTES = [
@@ -132,6 +222,7 @@ const COLUNAS_TOLERANTES = [
   // nunca exigindo schema que ainda não existe).
   COL_ORIGEM,
   COL_NFSE_AUTO_JOB_ID,
+  "fiscal_ambiente",
 ];
 
 // ⚠️ Assimetria PROPOSITAL com `save-draft.ts`, onde as colunas do avulso NÃO
@@ -148,16 +239,23 @@ async function rodarTolerandoColunaAusente(
   run: (
     payload: Record<string, unknown>,
   ) => PromiseLike<
-    { data: Record<string, any> | null; error: { code?: string; message: string } | null }
+    {
+      data: Record<string, any> | null;
+      error: { code?: string; message: string } | null;
+    }
   >,
   payload: Record<string, unknown>,
-): Promise<{ row: Record<string, any> | null; err: { message: string } | null }> {
+): Promise<
+  { row: Record<string, any> | null; err: { message: string } | null }
+> {
   const pendentes = [...COLUNAS_TOLERANTES];
   let atual = payload;
   let { data, error } = await run(atual);
 
   while (error && pendentes.length > 0) {
-    const idx = pendentes.findIndex((coluna) => isUnknownColumnError(error, coluna));
+    const idx = pendentes.findIndex((coluna) =>
+      isUnknownColumnError(error, coluna)
+    );
     if (idx === -1) break;
     const [coluna] = pendentes.splice(idx, 1);
     atual = withoutColumn(atual, coluna);
@@ -175,6 +273,7 @@ async function rodarTolerandoColunaAusente(
  */
 const STATUS_DE_TENTATIVA_FALHA = new Set<string>([
   NFSE_STATUS.REJEITADA,
+  NFSE_STATUS.CONFIRMACAO_PENDENTE,
   NFSE_STATUS.FALHOU,
 ]);
 
@@ -218,25 +317,27 @@ const ERROS_SEM_TENTATIVA = new Set<string>([
   "certificado_ilegivel",
   "cnpj_ausente",
   "servico_indisponivel",
-  // provedor intermediado — pré-condição da conta, não do documento
-  "CERTIFICATE_INVALID",
-  "COMPANY_INACTIVE",
-  "COMPANY_PLAN_LIMIT",
-  "RATE_LIMITED",
+  "certificado_invalido",
+  "cobertura_indisponivel",
 ]);
 
 /** `true` quando o erro representa RECUSA DO DOCUMENTO (e não indisponibilidade). */
 export function ehRecusaDeDocumento(err: unknown): boolean {
   if (!(err instanceof NfseProviderError)) return false;
   if (ERROS_SEM_TENTATIVA.has(clean(err.codigo))) return false;
-  return err.status === 400 || err.status === 422;
+  // HTTP 422 sozinho não prova que a administração tributária recusou a nota. A
+  // tela só pode afirmar "rejeitada pela prefeitura" quando há código fiscal
+  // identificável no retorno oficial (E####) ou o contrato do motor
+  // resposta precisa trazer um código fiscal reconhecível.
+  const codigo = clean(err.codigo).toUpperCase();
+  return (codigo === "DOCUMENTO_REJEITADO" || /^E\d{3,}$/i.test(codigo)) &&
+    (err.status === 400 || err.status === 422);
 }
 
 /** `true` quando a tentativa merece virar linha em `nfse_emissions`. */
 export function deveRegistrarTentativa(err: unknown): boolean {
-  // Integração não configurada / capacidade inexistente: não houve tentativa.
+  // Integração não configurada: não houve tentativa.
   if (err instanceof NfseProviderUnconfiguredError) return false;
-  if (err instanceof NfseProviderUnsupportedError) return false;
   if (err instanceof NfseProviderError) {
     return !ERROS_SEM_TENTATIVA.has(clean(err.codigo));
   }
@@ -277,9 +378,14 @@ function hojeNoFuso(timeZone: string): string {
   };
   const agora = new Date();
   try {
-    return new Intl.DateTimeFormat("en-CA", { timeZone, ...opcoes }).format(agora);
+    return new Intl.DateTimeFormat("en-CA", { timeZone, ...opcoes }).format(
+      agora,
+    );
   } catch {
-    return new Intl.DateTimeFormat("en-CA", { timeZone: DEFAULT_TIME_ZONE, ...opcoes })
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: DEFAULT_TIME_ZONE,
+      ...opcoes,
+    })
       .format(agora);
   }
 }
@@ -302,7 +408,9 @@ async function fusoDaEmpresa(
       .maybeSingle();
     if (error) return DEFAULT_TIME_ZONE;
     const tz = clean((data as Record<string, unknown> | null)?.timezone);
-    if (!tz || !/^[A-Za-z_]+\/[A-Za-z0-9_+\-/]+$/.test(tz)) return DEFAULT_TIME_ZONE;
+    if (!tz || !/^[A-Za-z_]+\/[A-Za-z0-9_+\-/]+$/.test(tz)) {
+      return DEFAULT_TIME_ZONE;
+    }
     // Confirma com o próprio Intl: nome plausível ainda pode não existir na base
     // de fusos do runtime (aí o formatador lança e derrubaria a emissão).
     try {
@@ -346,7 +454,8 @@ function deterministicKey(
   dataCompetencia: string,
 ): string {
   const cents = Math.round(valor * 100);
-  return `nfse_${companyId}_${identidadeTomador}_${cents}_${dataCompetencia}`.slice(0, 512);
+  return `nfse_${companyId}_${identidadeTomador}_${cents}_${dataCompetencia}`
+    .slice(0, 512);
 }
 
 /**
@@ -515,7 +624,9 @@ async function herdarCTribMunDoTipoDeServico(
     if (error || !Array.isArray(data)) return "";
     const distintos = new Set<string>();
     for (const row of data) {
-      const c = cleanCTribMun((row as Record<string, unknown>)?.codigo_tributacao_municipal);
+      const c = cleanCTribMun(
+        (row as Record<string, unknown>)?.codigo_tributacao_municipal,
+      );
       if (c) distintos.add(c);
     }
     return distintos.size === 1 ? [...distintos][0] : "";
@@ -614,7 +725,10 @@ export async function handleNfseEmit(req: Request): Promise<Response> {
     try {
       body = await req.json();
     } catch {
-      return jsonResponse({ error: "invalid_body", message: "Requisição inválida." }, 400);
+      return jsonResponse({
+        error: "invalid_body",
+        message: "Requisição inválida.",
+      }, 400);
     }
 
     return await emitirNfseAutorizada({
@@ -642,7 +756,7 @@ export async function handleNfseEmit(req: Request): Promise<Response> {
 }
 
 /**
- * NÚCLEO da emissão. Monta a DPS, valida, consome o número, fala com o provedor
+ * NÚCLEO da emissão. Monta a DPS, valida, consome o número, fala com o motor
  * e grava `nfse_emissions` + `nfse_events`.
  *
  * Não conhece `Request`, não conhece header, não conhece JWT e não conhece
@@ -670,9 +784,10 @@ export async function emitirNfseAutorizada(
   const contextoAuditoria = clean(input.contextoAuditoria) || "emitir_nfse";
   // Vazio no caminho manual: a nota standalone continua nascendo com
   // `financial_transaction_id = null`, byte a byte como sempre foi.
-  const vinculoParcela: Record<string, unknown> = clean(input.financialTransactionId)
-    ? { financial_transaction_id: clean(input.financialTransactionId) }
-    : {};
+  const vinculoParcela: Record<string, unknown> =
+    clean(input.financialTransactionId)
+      ? { financial_transaction_id: clean(input.financialTransactionId) }
+      : {};
 
   try {
     // ---- Emissão A PARTIR de um rascunho (opcional).
@@ -724,14 +839,17 @@ export async function emitirNfseAutorizada(
       // das duas colunas está preenchida; o `else if` aqui é cinto de segurança
       // para linhas gravadas antes da constraint.
       customerId = clean(draft?.customer_id);
-      if (!customerId) tomadorAvulso = normalizarPessoaAvulsa(draft?.tomador_avulso);
+      if (!customerId) {
+        tomadorAvulso = normalizarPessoaAvulsa(draft?.tomador_avulso);
+      }
     }
 
     if (!customerId && !tomadorAvulso) {
       return jsonResponse(
         {
           error: "missing_customer",
-          message: "Informe o tomador da nota: selecione um cliente ou digite os dados.",
+          message:
+            "Informe o tomador da nota: selecione um cliente ou digite os dados.",
         },
         400,
       );
@@ -740,7 +858,7 @@ export async function emitirNfseAutorizada(
     // ---- INTERMEDIÁRIO: aceito no rascunho, BLOQUEADO na emissão (2026-09-06).
     //
     // Achado: `nfse-emit` nunca leu `intermediario_customer_id`, o contrato do
-    // provedor (`NfseEmitirInput`) não tem o grupo, e o microserviço monta a DPS
+    // motor (`NfseEmitirInput`) não tem o grupo, e o microserviço monta a DPS
     // com `TcinfDps(prest, toma, serv, valores)` — sem `interm`. Ou seja: o
     // usuário escolhia o intermediário, a nota ia à prefeitura SEM ele e ninguém
     // era avisado. Documento fiscal diferente do que foi preenchido.
@@ -766,10 +884,15 @@ export async function emitirNfseAutorizada(
     }
 
     // valorServico: body sobrescreve; senão vem do rascunho.
-    const valorServico = Number(body?.valores?.valorServico ?? draft?.valor_servico ?? 0);
+    const valorServico = Number(
+      body?.valores?.valorServico ?? draft?.valor_servico ?? 0,
+    );
     if (!(valorServico > 0)) {
       return jsonResponse(
-        { error: "invalid_value", message: "Informe um valor de serviço maior que zero." },
+        {
+          error: "invalid_value",
+          message: "Informe um valor de serviço maior que zero.",
+        },
         400,
       );
     }
@@ -791,22 +914,87 @@ export async function emitirNfseAutorizada(
       dataCompetencia = hojeNoFuso(await fusoDaEmpresa(supabase, companyId));
     }
 
-    // ---- Idempotency-Key: body OU determinística estável (sem OS).
-    let idempotencyKey = clean(body?.idempotencyKey) ||
+    // ---- Config fiscal: uma única leitura define ambiente, cobertura,
+    // certificado e contexto do motor. O ambiente precisa existir antes da
+    // idempotência para homologação nunca bloquear produção.
+    const { data: fiscal } = await supabase
+      .from("company_fiscal_settings")
+      .select("*")
+      .eq("company_id", companyId)
+      .maybeSingle();
+    if (!fiscal) {
+      return jsonResponse(
+        {
+          error: "fiscal_not_configured",
+          message:
+            "A emissão fiscal ainda não foi configurada para esta empresa.",
+        },
+        422,
+      );
+    }
+    const fiscalEnvironment = normalizeFiscalEnvironment(
+      fiscal.fiscal_ambiente,
+    );
+    if (!fiscalEnvironment) {
+      return jsonResponse(
+        {
+          error: "fiscal_environment_invalid",
+          message:
+            "Selecione o ambiente fiscal nas configurações antes de emitir a nota.",
+        },
+        422,
+      );
+    }
+
+    // ---- Idempotency-Key: body OU determinística estável (sem OS). Até uma
+    // chave explícita recebe namespace do ambiente.
+    const rawIdempotencyKey = clean(body?.idempotencyKey) ||
       deterministicKey(
         companyId,
         identidadeDoTomador(customerId, tomadorAvulso),
         valorServico,
         dataCompetencia,
       );
+    let idempotencyKey = scopeNfseIdempotencyKey(
+      rawIdempotencyKey,
+      fiscalEnvironment,
+    );
 
     // ---- Idempotência local: se já existe emissão com essa chave, devolve a existente.
-    const { data: existing } = await supabase
+    let { data: existing } = await supabase
       .from("nfse_emissions")
       .select("*")
       .eq("company_id", companyId)
       .eq("idempotency_key", idempotencyKey)
       .maybeSingle();
+    // Compatibilidade com notas anteriores ao namespace por ambiente. Nunca
+    // reutilizamos uma chave legada sem ambiente comprovado: isso poderia
+    // confundir homologação com produção. Ambiente oposto não bloqueia a nova
+    // tentativa; ambiente igual preserva a idempotência histórica.
+    if (!existing && rawIdempotencyKey !== idempotencyKey) {
+      const { data: legacy } = await supabase
+        .from("nfse_emissions")
+        .select("*")
+        .eq("company_id", companyId)
+        .eq("idempotency_key", rawIdempotencyKey)
+        .maybeSingle();
+      if (legacy) {
+        const legacyEnvironment = normalizeFiscalEnvironment(
+          legacy.fiscal_ambiente,
+        );
+        if (!legacyEnvironment) {
+          return jsonResponse(
+            {
+              error: "fiscal_environment_unknown",
+              message:
+                "Já existe uma tentativa antiga com ambiente fiscal não confirmado. Fale com o suporte antes de emitir novamente.",
+            },
+            409,
+          );
+        }
+        if (legacyEnvironment === fiscalEnvironment) existing = legacy;
+      }
+    }
     // Tentativa anterior que FALHOU não bloqueia: a linha é reaproveitada pela
     // nova tentativa (UPDATE), em vez de virar 200 "já emitida" ou colidir com a
     // UNIQUE (company_id, idempotency_key) num INSERT.
@@ -857,12 +1045,15 @@ export async function emitirNfseAutorizada(
     }
 
     // ---- Gate de cota mensal por nível (tier). Roda DEPOIS da idempotência
-    // (reemissão de nota existente NÃO consome cota) e ANTES de chamar o provedor.
+    // (reemissão de nota existente NÃO consome cota) e ANTES de chamar o motor.
     // O `error: "nfse_quota_exceeded"` é contrato com o front — não mudar.
-    {
-      const { data: quota, error: quotaErr } = await supabase.rpc("nfse_can_emit", {
-        p_company_id: companyId,
-      });
+    if (fiscalEnvironment === "producao") {
+      const { data: quota, error: quotaErr } = await supabase.rpc(
+        "nfse_can_emit",
+        {
+          p_company_id: companyId,
+        },
+      );
       if (quotaErr) {
         console.error(`${TAG} nfse_can_emit error`, {
           company_id: logId(companyId),
@@ -899,11 +1090,9 @@ export async function emitirNfseAutorizada(
       }
     }
 
-    // ---- Carrega tomador (cliente) + config fiscal do prestador + CNPJ da empresa.
-    // `select("*")` em company_fiscal_settings: a linha inteira é o contexto do
-    // provedor (NfseProviderCtx.fiscal) e o select tolera colunas novas (ex.
-    // `provedor`) sem precisar de deploy sincronizado com a migration.
-    const [{ data: customer }, { data: fiscal }, { data: companyRow }] = await Promise.all([
+    // ---- Carrega tomador (cliente) + CNPJ da empresa. A configuração fiscal
+    // já foi carregada antes da idempotência e a mesma linha segue até o motor.
+    const [{ data: customer }, { data: companyRow }] = await Promise.all([
       // Tomador avulso não tem linha em `customers` — a consulta nem acontece.
       // (Escopada por company_id quando acontece: o tomador é do tenant.)
       customerId
@@ -916,15 +1105,11 @@ export async function emitirNfseAutorizada(
           .eq("company_id", companyId)
           .maybeSingle()
         : Promise.resolve({ data: null as Record<string, unknown> | null }),
-      supabase
-        .from("company_fiscal_settings")
-        .select("*")
-        .eq("company_id", companyId)
-        .maybeSingle(),
       // `email` entra no XML como `prest/email` — é o ÚNICO dado do prestador
       // além de CNPJ e regime que o layout nacional aceita quando ele é o
       // emitente (nome/endereço/IM são rejeitados: E0121/E0128/E0120).
-      supabase.from("companies").select("cnpj, email").eq("id", companyId).maybeSingle(),
+      supabase.from("companies").select("cnpj, email").eq("id", companyId)
+        .maybeSingle(),
     ]);
 
     if (customerId && !customer) {
@@ -937,41 +1122,33 @@ export async function emitirNfseAutorizada(
     // ---- Tomador avulso: cobrança de campo acontece AQUI, antes de qualquer
     // coisa irreversível (a RPC de numeração da DPS só roda mais abaixo).
     if (tomadorAvulso) {
-      const erroTomador = validarPessoaAvulsaParaEmissao(tomadorAvulso, "tomador");
+      const erroTomador = validarPessoaAvulsaParaEmissao(
+        tomadorAvulso,
+        "tomador",
+      );
       if (erroTomador) {
-        return jsonResponse({ error: "invalid_tomador", message: erroTomador }, 422);
+        return jsonResponse(
+          { error: "invalid_tomador", message: erroTomador },
+          422,
+        );
       }
     }
 
-    // ---- VALIDAÇÕES (422 PT-BR antes de falar com o provedor).
+    // ---- VALIDAÇÕES (422 PT-BR antes de falar com o motor fiscal).
     const missing: string[] = [];
-    if (!fiscal) {
+    const readinessError = validarProntidaoFiscal(
+      fiscal as Record<string, unknown>,
+      Date.now(),
+      dataCompetencia,
+    );
+    if (readinessError) {
       return jsonResponse(
-        {
-          error: "fiscal_not_configured",
-          message: "A emissão fiscal ainda não foi configurada para esta empresa.",
-        },
-        422,
-      );
-    }
-    if (fiscal.pode_emitir !== true) {
-      return jsonResponse(
-        {
-          error: "cannot_emit",
-          message:
-            "A empresa ainda não está habilitada a emitir notas fiscais. Conclua a configuração fiscal (certificado e cobertura do município).",
-        },
+        readinessError,
         422,
       );
     }
 
-    const provider = getProvider(fiscal as Record<string, unknown>);
-
-    // Registro prévio da empresa: exigência do provedor intermediado. O motor
-    // próprio (governo) não tem cadastro — a credencial é o certificado A1.
-    if (provider.registrarEmpresa && !clean(fiscal.fisqal_company_id)) {
-      missing.push("Empresa não registrada na emissão fiscal");
-    }
+    const engine = getNfseEngine();
 
     // Código de serviço: body → rascunho → padrão da empresa.
     const codigoServico = clean(body?.servico?.codigoServico) ||
@@ -1010,7 +1187,9 @@ export async function emitirNfseAutorizada(
     // vez de descartar. Roda depois da idempotência (nota já emitida continua
     // devolvendo 200) e ANTES da RPC de numeração — erro de formato não pode
     // queimar um número de DPS.
-    const cTribMunBody = validarCTribMunDoBody(body?.servico?.codigoTributacaoMunicipal);
+    const cTribMunBody = validarCTribMunDoBody(
+      body?.servico?.codigoTributacaoMunicipal,
+    );
     if (cTribMunBody.erro) {
       return jsonResponse(
         { error: "invalid_ctribmun", message: cTribMunBody.erro },
@@ -1022,7 +1201,9 @@ export async function emitirNfseAutorizada(
       return jsonResponse(
         {
           error: "missing_fields",
-          message: `Não foi possível emitir a nota. Faltando: ${missing.join(", ")}.`,
+          message: `Não foi possível emitir a nota. Faltando: ${
+            missing.join(", ")
+          }.`,
           missing_fields: missing,
         },
         422,
@@ -1036,7 +1217,7 @@ export async function emitirNfseAutorizada(
     //
     // ⚠️ Este bloco e o percentual abaixo foram SUBIDOS para cá (antes ficavam
     // depois da RPC de numeração) por um motivo só: o gate de dado logo abaixo
-    // precisa rodar ANTES de `fisqal_next_dps_number`. Gate que falha depois de
+    // precisa rodar ANTES de `nfse_next_dps_number`. Gate que falha depois de
     // consumir número de DPS fura a numeração sem necessidade.
     const opSimpNacOverride = clean(body?.opSimpNac);
     const opSimpNac = /^[1-3]$/.test(opSimpNacOverride)
@@ -1072,7 +1253,7 @@ export async function emitirNfseAutorizada(
     // O QUE ACONTECEU (piloto de 2026-10-16, homologação): a nota foi recusada
     // com `E1235 — the element 'trib' has incomplete content, expected
     // 'tribFed, totTrib'`. `totTrib` é obrigatório no schema do layout
-    // nacional, e o ÚNICO jeito de ele ir no XML é este percentual: o provedor
+    // nacional, e o ÚNICO jeito de ele ir no XML é este percentual: o motor
     // só monta o grupo quando `percentualTotalTributosSimplesNacional` vem
     // preenchido (`providers/sefin.ts`). Com a coluna NULL, o XML sai sem
     // `totTrib` e volta recusado com uma mensagem que o cliente não tem como
@@ -1161,7 +1342,7 @@ export async function emitirNfseAutorizada(
     const serieDps = clean(fiscal.serie_dps) || "1"; // obrigatório: nunca undefined
 
     const { data: numeroDpsRaw, error: numeroErr } = await supabase.rpc(
-      "fisqal_next_dps_number",
+      "nfse_next_dps_number",
       { p_company_id: companyId },
     );
     if (numeroErr || numeroDpsRaw == null) {
@@ -1172,7 +1353,8 @@ export async function emitirNfseAutorizada(
       return jsonResponse(
         {
           error: "dps_number_failed",
-          message: "Não foi possível gerar o número da nota. Tente novamente em instantes.",
+          message:
+            "Não foi possível gerar o número da nota. Tente novamente em instantes.",
         },
         500,
       );
@@ -1232,9 +1414,13 @@ export async function emitirNfseAutorizada(
     {
       const pis = parseNonNegative(body?.valores?.valorPis ?? draft?.valor_pis);
       if (pis != null && pis > 0) valores.valorPis = pis;
-      const cofins = parseNonNegative(body?.valores?.valorCofins ?? draft?.valor_cofins);
+      const cofins = parseNonNegative(
+        body?.valores?.valorCofins ?? draft?.valor_cofins,
+      );
       if (cofins != null && cofins > 0) valores.valorCofins = cofins;
-      const csll = parseNonNegative(body?.valores?.valorCsll ?? draft?.valor_csll);
+      const csll = parseNonNegative(
+        body?.valores?.valorCsll ?? draft?.valor_csll,
+      );
       if (csll != null && csll > 0) valores.valorCsll = csll;
     }
     // Percentual total de tributos (grupo `totTrib`): já resolvido acima, junto
@@ -1251,7 +1437,8 @@ export async function emitirNfseAutorizada(
 
     // ---- Município de incidência do ISSQN.
     // body → rascunho → município do emissor (fallback).
-    const municipioIncidencia = cleanIbge(body?.servico?.municipioIncidenciaIbge) ||
+    const municipioIncidencia =
+      cleanIbge(body?.servico?.municipioIncidenciaIbge) ||
       cleanIbge(draft?.municipio_incidencia_ibge) ||
       codigoMunicipioEmissor;
 
@@ -1301,6 +1488,9 @@ export async function emitirNfseAutorizada(
       customer_id: customerId ? clean(customer?.id) || customerId : null,
       [COL_TOMADOR_AVULSO]: tomadorAvulso,
       idempotency_key: idempotencyKey,
+      // Imutável depois da transmissão: operações futuras usam este ambiente,
+      // nunca o ambiente que a empresa estiver usando naquele momento.
+      fiscal_ambiente: fiscalEnvironment,
       valor_servico: valorServico,
       valor_iss: valorIssRegistrado,
       descricao_servico: discriminacao,
@@ -1359,11 +1549,13 @@ export async function emitirNfseAutorizada(
      *
      * O retry sem a coluna do cTribMun cobre a janela de deploy em que a edge
      * já subiu e a migration não: perder um campo OPCIONAL é muito melhor que
-     * perder o registro de uma nota que já foi enviada ao provedor.
+     * perder o registro de uma nota que já foi enviada ao fisco.
      */
     const persistirLinha = async (
       extra: Record<string, unknown>,
-    ): Promise<{ row: Record<string, any> | null; err: { message: string } | null }> => {
+    ): Promise<
+      { row: Record<string, any> | null; err: { message: string } | null }
+    > => {
       if (alvoId) {
         const payload: Record<string, unknown> = {
           ...camposComuns,
@@ -1408,21 +1600,23 @@ export async function emitirNfseAutorizada(
      * ⚠️ Isto existe por causa de um diagnóstico real: quando a emissão falha, o
      * usuário levava um toast e a nota SUMIA — sem rastro de que tentou nem do
      * motivo. Foi a resposta crua guardada em `nfse_events` que permitiu
-     * descobrir, em 2026-09-02, que o provedor antigo roteava o Rio de Janeiro
-     * para um endpoint morto. Sem linha, aquele diagnóstico seria impossível.
+     * descobrir a origem de uma falha de roteamento fiscal. Sem linha, aquele
+     * diagnóstico seria impossível.
      *
      * Não pode derrubar a resposta ao usuário: falha ao registrar vai para o log
      * e o erro original segue seu caminho.
      */
     const registrarTentativaFalha = async (err: unknown): Promise<void> => {
       const recusa = ehRecusaDeDocumento(err);
-      const statusFalha = recusa ? NFSE_STATUS.REJEITADA : NFSE_STATUS.FALHOU;
+      const statusFalha = recusa
+        ? NFSE_STATUS.REJEITADA
+        : NFSE_STATUS.CONFIRMACAO_PENDENTE;
       const codigo = err instanceof NfseProviderError ? clean(err.codigo) : "";
       // Mesma mensagem PT-BR que o usuário vê na tela — a linha não pode contar
       // uma história diferente do toast.
       const mensagem = err instanceof NfseProviderError
         ? friendlyFiscalMessage(err.codigo, err.message)
-        : "Falha inesperada ao emitir a nota fiscal.";
+        : "A emissão não foi confirmada pelo portal fiscal. O sistema vai conferir antes de permitir novo envio.";
 
       try {
         const { row, err: erroGravacao } = await persistirLinha({
@@ -1440,7 +1634,7 @@ export async function emitirNfseAutorizada(
           return;
         }
 
-        // A resposta CRUA do provedor é o ouro do diagnóstico. Fica no evento
+        // A resposta CRUA do motor é o ouro do diagnóstico. Fica no evento
         // (append-only), nunca na tela.
         await supabase.from("nfse_events").insert({
           nfse_emission_id: row.id,
@@ -1450,7 +1644,7 @@ export async function emitirNfseAutorizada(
           payload: {
             codigo: codigo || null,
             mensagem,
-            provedor: provider.nome,
+            motor: engine.nome,
             raw: err instanceof NfseProviderError ? (err.raw ?? null) : null,
           },
         });
@@ -1462,7 +1656,7 @@ export async function emitirNfseAutorizada(
       }
     };
 
-    // ---- Entrega ao provedor ativo.
+    // ---- Entrega ao motor próprio.
     //
     // ⚠️ `companyId` e `fiscal` saem da MESMA iteração e da MESMA leitura: o
     // `fiscal` acima foi lido com `.eq("company_id", companyId)`. É isso que
@@ -1477,7 +1671,7 @@ export async function emitirNfseAutorizada(
 
     let resultado: NfseResultado;
     try {
-      resultado = await provider.emitir(ctx, {
+      resultado = await engine.emitir(ctx, {
         idempotencyKey,
         dps: {
           idDps,
@@ -1496,8 +1690,7 @@ export async function emitirNfseAutorizada(
           inscricaoFederal: tomadorDocumento,
           razaoSocial: razaoSocialTomador,
           email: emailTomador || undefined,
-          // Endereço do CLIENTE (nunca do prestador). O provedor intermediado
-          // ignora; o motor próprio manda no XML quando disponível.
+          // Endereço do CLIENTE (nunca do prestador). Vai no XML quando disponível.
           endereco: enderecoTomador,
         },
         servico: {
@@ -1510,7 +1703,7 @@ export async function emitirNfseAutorizada(
         valores,
       });
     } catch (err) {
-      // Recusa da prefeitura / falha do provedor: a TENTATIVA não pode sumir.
+      // Recusa da prefeitura / falha do motor: a TENTATIVA não pode sumir.
       // O número de DPS já foi consumido e continua consumido — buraco na
       // numeração de DPS não é infração; perder o registro da tentativa é que
       // deixa o cliente (e nós) sem diagnóstico.
@@ -1521,29 +1714,52 @@ export async function emitirNfseAutorizada(
 
     const referencia = resultado.referencia ?? null;
     const requisicaoId = resultado.requisicaoId ?? null;
-    const status = resultado.status || NFSE_STATUS.PENDENTE;
+    const statusRecebido = resultado.status || NFSE_STATUS.PENDENTE;
+    const statusTerminal = new Set<string>([
+      NFSE_STATUS.AUTORIZADA,
+      NFSE_STATUS.REJEITADA,
+      NFSE_STATUS.CANCELADA,
+    ]).has(statusRecebido);
+    // O motor não pode promover para terminal sem indicar que recebeu a
+    // comprovação oficial. Isso protege inclusive integrações que mudem seu
+    // payload sem aviso.
+    const status = statusTerminal && resultado.confirmadoPeloFisco !== true
+      ? NFSE_STATUS.CONFIRMACAO_PENDENTE
+      : statusRecebido;
 
-    // ---- Provedor SÍNCRONO (motor próprio): a nota já volta autorizada, com
+    // ---- Motor síncrono: a nota já volta autorizada, com
     // número e chave. Gravar agora evita a janela em que a tela mostra
     // "autorizada" sem número até alguém consultar o status.
-    // Provedor assíncrono nunca entra aqui (ele devolve "pendente").
     const dadosAutorizacao: Record<string, unknown> = {};
     if (status === NFSE_STATUS.AUTORIZADA) {
       if (resultado.numero) dadosAutorizacao.numero_nfse = resultado.numero;
-      if (resultado.chaveAcesso) dadosAutorizacao.chave_acesso = resultado.chaveAcesso;
+      if (resultado.chaveAcesso) {
+        dadosAutorizacao.chave_acesso = resultado.chaveAcesso;
+      }
       if (resultado.protocolo) dadosAutorizacao.protocolo = resultado.protocolo;
-      dadosAutorizacao.emitida_em = resultado.emitidaEm || new Date().toISOString();
+      dadosAutorizacao.emitida_em = resultado.emitidaEm ||
+        new Date().toISOString();
     }
 
     // ---- Grava a emissão (company_id carimbado — RLS exige).
     const { row: emission, err: insertErr } = await persistirLinha({
       status,
-      fisqal_dps_id: referencia,
-      fisqal_fiscal_request_id: requisicaoId,
+      referencia_fiscal: referencia,
+      requisicao_fiscal_id: requisicaoId,
       // Retentativa que agora deu certo: o motivo da falha anterior sai da linha.
       error_message: null,
+      status_fiscal_confirmado: resultado.confirmadoPeloFisco === true,
+      status_fiscal_confirmado_em: resultado.confirmadoPeloFisco === true
+        ? new Date().toISOString()
+        : null,
+      status_fiscal_fonte: resultado.confirmadoPeloFisco === true
+        ? (resultado.evidenciaFiscal?.fonte ?? "consulta_fiscal")
+        : null,
+      status_fiscal_evidencia: resultado.confirmadoPeloFisco === true
+        ? (resultado.evidenciaFiscal ?? null)
+        : null,
       // Mantém o comportamento histórico: rascunho que vira emissão carimba a
-      // data; emissão standalone só carimba quando o provedor já autorizou.
+      // data; emissão standalone só carimba quando o fisco já autorizou.
       ...(emissionId ? { emitida_em: new Date().toISOString() } : {}),
       ...dadosAutorizacao,
     });
@@ -1582,7 +1798,7 @@ export async function emitirNfseAutorizada(
           error: "persist_failed",
           message:
             "A nota foi enviada para emissão, mas houve falha ao registrá-la. Consulte o status antes de tentar de novo.",
-          fisqal_dps_id: referencia,
+          referencia_fiscal: referencia,
         },
         500,
       );
@@ -1602,11 +1818,12 @@ export async function emitirNfseAutorizada(
         emission,
         already_emitted: false,
         message: "Nota fiscal enviada para emissão. Acompanhe o status.",
+        ...(resultado.orientacao ? { orientacao: resultado.orientacao } : {}),
       },
       202,
     );
   } catch (err) {
-    // Erro do provedor: mensagem amigável PT-BR (friendlyFiscalMessage).
+    // Erro do motor: mensagem amigável PT-BR (friendlyFiscalMessage).
     const providerResp = providerErrorResponse(err, { friendly: true });
     if (providerResp) return providerResp;
 

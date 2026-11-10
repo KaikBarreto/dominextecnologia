@@ -15,6 +15,7 @@ import {
   MessageSquareText,
   Megaphone,
   PlugZap,
+  Printer,
   RefreshCw,
   Settings2,
   ShieldCheck,
@@ -27,6 +28,7 @@ import { SettingsAsaasSimulator } from '@/components/settings/SettingsAsaasSimul
 import { WhatsappAutomationSettings } from '@/components/settings/whatsapp/WhatsappAutomationSettings';
 import { WhatsappProtectionSettings } from '@/components/settings/whatsapp/WhatsappProtectionSettings';
 import { SettingsPublicApiContent } from '@/components/settings/SettingsPublicApiContent';
+import { FiscalPrinterIntegrationSettings } from '@/components/settings/FiscalPrinterIntegrationSettings';
 import { WhatsappPairingSteps } from '@/components/settings/whatsapp/WhatsappPairingSteps';
 import { OptimisticProgress } from '@/components/settings/whatsapp/OptimisticProgress';
 import {
@@ -58,7 +60,7 @@ import {
   type WhatsappAutomationPreferences,
 } from '@/lib/whatsappAutomation';
 
-type IntegrationSubTab = 'whatsapp' | 'asaas' | 'api';
+type IntegrationSubTab = 'whatsapp' | 'asaas' | 'printer' | 'api';
 type AsaasSection = 'settings' | 'simulator';
 type WhatsappSection = 'automations' | 'inbox' | 'templates' | 'campaigns' | 'history' | 'connection';
 
@@ -139,7 +141,7 @@ export function SettingsIntegrationContent() {
   const t = MESSAGES[locale].app.settings.integrations;
   const [searchParams, setSearchParams] = useSearchParams();
   const integrationParam = searchParams.get('integration');
-  const activeSubTab: IntegrationSubTab = integrationParam === 'asaas' || integrationParam === 'api'
+  const activeSubTab: IntegrationSubTab = integrationParam === 'asaas' || integrationParam === 'printer' || integrationParam === 'api'
     ? integrationParam
     : 'whatsapp';
 
@@ -153,6 +155,7 @@ export function SettingsIntegrationContent() {
   const subTabs = [
     { value: 'whatsapp' as const, label: t.subTabs.whatsapp, icon: <WhatsAppIcon className="h-4 w-4 shrink-0" /> },
     { value: 'asaas' as const, label: t.subTabs.asaas, icon: <CreditCard className="h-4 w-4 shrink-0" /> },
+    { value: 'printer' as const, label: locale === 'pt-br' ? 'Impressora fiscal' : locale === 'es' ? 'Impresora fiscal' : locale === 'fr' ? 'Imprimante fiscale' : 'Fiscal printer', icon: <Printer className="h-4 w-4 shrink-0" /> },
     { value: 'api' as const, label: 'API Pública', icon: <Code2 className="h-4 w-4 shrink-0" /> },
   ];
 
@@ -167,6 +170,7 @@ export function SettingsIntegrationContent() {
 
       {activeSubTab === 'whatsapp' && <WhatsappContent />}
       {activeSubTab === 'asaas' && <AsaasContent />}
+      {activeSubTab === 'printer' && <FiscalPrinterIntegrationSettings />}
       {activeSubTab === 'api' && <SettingsPublicApiContent />}
     </div>
   );
@@ -184,6 +188,9 @@ export function AsaasContent() {
 
   return (
     <div className="space-y-4">
+      {/* 3º nível (dentro de Integrações > Cobranças): botão segmentado, NÃO
+          aba. Duas barras underline coladas viram a mesma coisa visualmente e
+          ninguém sabe qual manda — régua de profundidade do sistema. */}
       <MobilePillTabs
         tabs={sections}
         activeTab={activeSection}
@@ -313,6 +320,7 @@ function WhatsappContent() {
             locale={locale}
             preferences={preferences}
             readOnly={readOnly}
+            isSaving={update.isPending}
             onPreferencesChange={setPreferences}
           />
           <WhatsappAutomationSettings
@@ -375,12 +383,10 @@ export function WhatsappSectionNav({
     section === 'inbox' || section === 'campaigns'
     || (section !== 'connection' && !isConnected);
   return (
-    /* Underline é o padrão de navegação por abas do sistema (mesmo componente
-       das abas WhatsApp/Cobranças logo acima). Antes era uma grade de pills com
-       borda dentro de uma caixa com borda, que somava mais duas molduras numa
-       tela que já tinha molduras demais. */
+    /* Terceiro nível dentro de Configurações > Integrações > WhatsApp: controle
+       segmentado, não outra barra underline. Assim cada profundidade mantém uma
+       forma própria e duas barras iguais nunca ficam coladas. */
     <MobilePillTabs
-      variant="underline"
       tabs={sections.map((section) => {
         const Icon = SECTION_ICONS[section];
         return { value: section, label: labels[section], icon: <Icon className="h-4 w-4 shrink-0" /> };

@@ -10,6 +10,7 @@ export interface EquipmentFieldConfig {
   field_type: 'text' | 'number' | 'date' | 'select' | 'boolean';
   options?: string[];
   is_visible: boolean;
+  is_visible_in_portal: boolean;
   is_required: boolean;
   position: number;
   created_at: string;

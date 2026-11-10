@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTeams, type TeamWithMembers } from '@/hooks/useTeams';
-import { useTechnicians } from '@/hooks/useProfiles';
+import { useActiveCompanyProfiles } from '@/hooks/useProfiles';
 import { TeamFormDialog } from '@/components/teams/TeamFormDialog';
 import { SignedImg } from '@/components/ui/SignedImg';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -24,7 +24,7 @@ export function TeamsPanel() {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.os.teams;
   const { teamsWithMembers, isLoading, createTeam, updateTeam, deleteTeam } = useTeams();
-  const { data: profiles } = useTechnicians();
+  const { data: profiles } = useActiveCompanyProfiles();
   const [searchQuery, setSearchQuery] = useState('');
   const [formOpen, setFormOpen] = useState(false);
   const [editingTeam, setEditingTeam] = useState<TeamWithMembers | null>(null);

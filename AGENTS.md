@@ -44,7 +44,7 @@
 - CRM e comercial: leads, etapas, webhooks, propostas, contratos e conversao.
 - Clientes, equipamentos e PMOC: cadastro, anexos, contratos, visitas, documentos e certificados.
 - Financeiro e RH: contas, categorias, cobrancas, DRE, pagamentos, funcionarios, folha, ponto e DISC.
-- Fiscal/NFS-e: integracao Fisqal, certificados, emissao, status, quotas e codigos de servico.
+- Fiscal/NFS-e: motor proprio Dominex no Padrao Nacional, certificados, emissao, status, quotas e codigos de servico.
 - Estoque/compras: materiais, fornecedores, cotacoes, compras, NFe, contagem, kardex e transferencia.
 - Domiflix: catalogo, player, preferencias, avatar, secoes e experiencia de video.
 - Landing/growth/blog/i18n: site publico, SEO, conteudo, rotas localizadas e internacionalizacao.
@@ -56,7 +56,11 @@
 - RLS e seguranca; filtro client e UX. Sempre avaliar os dois.
 - White-label e multi-tenant nao podem vazar dados entre empresas/tenants.
 - Copy de UI, erro e email para usuario final deve ser PT-BR.
+- Codigos internos de backend, RPC, SQLSTATE, nomes de tabela, constraint ou detalhes tecnicos nunca devem aparecer em toast, email ou copy para usuario final; mapear o erro de dominio para uma orientacao clara em PT-BR antes do fallback generico e cobrir a familia de codigos com teste quando aplicavel.
 - Hook e a fronteira do Supabase: componente nao deve chamar `supabase.from(...)` direto sem motivo claro.
+- Intervalos escolhidos em calendario devem comparar por dia civil inclusivo; horario em `from`/`to` nao pode excluir o primeiro ou o ultimo dia selecionado.
+- Cache React Query derivado deve compartilhar a raiz da entidade ou ser invalidado na mutation canonica junto com todas as leituras afetadas; nao depender apenas do callback do componente chamador.
+- Conceito financeiro deve ter uma fonte canonica explicita e consistente entre UI, persistencia, relatorios, cobranca e conversoes; metricas auxiliares precisam de nome distinto.
 - Toda mudanca de schema exige nova migration e revisao dos tipos gerados quando aplicavel.
 - Toda mudanca na API Publica (rotas, schemas, scopes, autenticacao, rate limits, erros, idempotencia, disponibilidade ou ciclo de chaves) exige, na mesma entrega, revisar e atualizar quando necessario `docs/api/openapi.v1.yaml`, a experiencia `/docs` em `src/pages/docs/**`, os Markdown publicos em `public/docs/**`, `public/docs/llms.txt` e os testes de contrato/exemplos. Mesmo quando nao houver alteracao textual, registrar que a consistencia foi verificada. Exemplos devem usar somente dados ficticios e nunca conter segredos reais.
 - Edge function privilegiada deve validar `Authorization` e permissao/role antes de agir.
@@ -68,6 +72,25 @@
 - Nao bumpar versao nem alterar changelog de cliente sem fluxo de Release Manager.
 - Aplicacao de migration/deploy de edge function e trabalho tecnico, nao handoff manual para o CEO sem necessidade real.
 - Mudanca interna de agentes, skills, docs, Codex, Claude ou Conductor nao muda `APP_VERSION` e nao entra no changelog de cliente.
+
+## Padrao de UI para Listagens e Gestao
+
+- Quando a tarefa principal for selecionar uma entidade e trabalhar no seu contexto, preferir lista compacta + detalhe contextual, com empty state antes da selecao e transicao lista→detalhe no mobile.
+- A coluna de lista concentra busca, um unico botao `Filtros`, um unico botao `Ordenar` e paginacao; controles e o texto `Mostrando X de Y itens` devem refluir sem truncar.
+- Em clientes/fornecedores, usar somente lista + detalhes. Em funcionarios, preservar Lista/Grade, abrir em lista + detalhes por padrao e manter o toggle junto das acoes de criacao.
+- Subnavegacoes curtas de telas de gestao usam abas horizontais underline com rolagem no mobile; evitar sidebar local e cabecalhos que repetem o titulo da aba ativa.
+- Edicoes frequentes pertencem ao detalhe e devem acontecer inline quando couber; evitar modal ou rota adicional que apenas replique os mesmos campos.
+- Acoes secundarias como relatorio/exportacao usam botao neutro; criacao continua primaria. Badges semanticos usam cor saturada e texto branco, nunca fundo pastel com texto saturado.
+- Cabecalhos list-detail alinham ajuda, navegacao e acoes na mesma faixa quando houver espaco, evitando linhas vazias. Acoes frequentes da entidade aparecem antes dos dados secundarios.
+- Telas homologas nos produtos Dominex e EcoSistema compartilham estrutura, densidade e comportamento responsivo, preservando apenas campos e acoes proprios de cada produto.
+- Dashboards usam hierarquia, tipografia e respiro para agrupar informacao; evitar borda, fundo branco e sombra em toda secao. Reservar superficies fortes para o resumo ou a acao principal.
+- Valores monetarios operacionais nunca usam ellipsis: o container deve refluir, crescer ou adotar apresentacao compacta preservando o numero completo.
+- Graficos de pizza destacam a fatia em hover/foco e atenuam as demais; tooltip e legenda acompanham o destaque, permanecem legiveis e sem clipping, e a geometria final deve renderizar sem animacao inicial enganosa.
+- Fluxos longos em tela cheia reutilizam `src/components/ui/FullscreenWizard.tsx`: Sair com icone de saida no topo esquerdo (encerra o fluxo); Voltar fica reservado ao retorno de etapa no rodape, etapas no corpo, uma unica rolagem vertical, tipografia maior e acoes fixas no rodape com `FullscreenWizardAction` (52 px no celular, 56 px no desktop, texto negrito). Resumo contextual fica a direita no desktop e compacto no celular.
+- Titulos de criacao devem explicitar a acao com verbo no infinitivo + entidade, como `Criar orçamento` e `Adicionar serviço`; evitar o artigo quando nao acrescenta clareza e prejudica a leitura no celular. O acompanhamento de rascunho automatico fica no canto superior direito do cabecalho e informa salvando, destino real do salvamento ou falha. So anunciar salvo na conta depois da confirmacao do servidor; em falha de rede, identificar o backup local e oferecer nova tentativa.
+- O rascunho automatico de criacao de orcamento e pessoal por usuario e empresa, expira 30 dias desde a ultima edicao e nao cria um orcamento comercial nem altera o catalogo. Salvar rascunho na lista e uma acao explicita separada, sem essa expiracao; editar outro orcamento existente deve preservar o rascunho pessoal de criacao. A numeracao definitiva e reservada no servidor ao abrir a criacao e acompanha o rascunho entre dispositivos; nao prever MAX+1 no cliente nem reciclar numeros abandonados. A reserva nao cria orcamento na listagem.
+- Nesse padrao fullscreen, avisos secundarios como recuperacao de rascunho usam `FullscreenWizardNotice`/`DraftResumeNotice` no slot `floatingNotice`: centralizados horizontalmente acima da altura REAL do rodape, sem backdrop, sem capturar foco nem abrir modal sobre modal; animacao de entrada curta respeita movimento reduzido.
+- Cancelar, Sair, Voltar, Fechar e acoes destrutivas/negativas usam vermelho saturado com texto e icone brancos no hover; acoes primarias e estados selecionados usam os tokens `primary`/`primary-foreground`: preto com conteudo branco no tema claro, branco com conteudo escuro no tema escuro. Nao fixar `bg-zinc-950 text-white` em controles que precisam acompanhar o tema. Verde fica reservado ao destaque e identidade da entidade.
 
 ## Seguranca e Segredos
 

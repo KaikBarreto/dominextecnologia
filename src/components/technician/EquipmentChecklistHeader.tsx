@@ -32,8 +32,8 @@ const TONE: Record<EquipmentChecklistTone, {
     title: 'text-foreground',
     muted: 'text-muted-foreground',
     visitName: 'text-foreground',
-    visitIcon: 'text-primary',
-    subtitle: 'text-primary',
+    visitIcon: 'text-muted-foreground',
+    subtitle: 'text-muted-foreground',
   },
   document: {
     fallbackBg: 'bg-slate-100',

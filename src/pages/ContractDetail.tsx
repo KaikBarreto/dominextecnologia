@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { BrandedQRCode } from '@/components/BrandedQRCode';
 import { useBrandedQrConfig } from '@/hooks/useBrandedQrConfig';
-import { ChevronLeft, ScrollText, Calendar, CheckCircle, Clock, ExternalLink, SkipForward, Repeat, DollarSign, Plus, Loader2, Pencil, Trash2, MoreVertical, RefreshCw, MoreHorizontal, Check, Eye, EyeOff, Copy, ShieldCheck, Printer, Info, FileText, Wrench, ClipboardCheck, XCircle, CreditCard, AlertTriangle, Megaphone } from 'lucide-react';
+import { ChevronLeft, ScrollText, Calendar, CheckCircle, Clock, ExternalLink, SkipForward, Repeat, DollarSign, Plus, Loader2, Pencil, Trash2, MoreVertical, RefreshCw, MoreHorizontal, Check, Eye, EyeOff, Copy, ShieldCheck, Printer, Info, FileText, Wrench, ClipboardCheck, XCircle, CreditCard, AlertTriangle, Megaphone, Link2, Files } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useContractPublicToken, useRegeneratePmocToken, useResolveContractId } from '@/hooks/usePmocPortal';
 import { buildPmocPortalUrl } from '@/utils/pmocPortalApi';
@@ -52,7 +52,7 @@ import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useContractDetail, isActiveContractOS } from '@/hooks/useContractDetail';
 import { useContracts, getFrequencyLabel, type ContractServiceOrder } from '@/hooks/useContracts';
 import { useServiceOrderActivities, freqCodeShortLabel } from '@/hooks/useServiceOrderActivities';
-import { osStatusLabels, type OsStatus, type ServiceOrder } from '@/types/database';
+import { osStatusLabels, type OsStatus, type ServiceOrder, type ServiceOrderScheduleSlot } from '@/types/database';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { useFinancial } from '@/hooks/useFinancial';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
@@ -87,6 +87,10 @@ import {
 import { useTenantCharges } from '@/hooks/useTenantCharges';
 import { contractFrequencyToCycle } from '@/utils/contractBillingCycle';
 import { PortalCallsPanel } from '@/components/service-orders/PortalCallsPanel';
+import { ServiceOrderFormDialog, type ServiceOrderFormData } from '@/components/service-orders/ServiceOrderFormDialog';
+import { OsPmocDocumentsDialog } from '@/components/service-orders/OsPmocDocumentsDialog';
+import { canGenerateOsPmocDocuments } from '@/lib/osPmocDocuments';
+import { LinkExistingServiceOrderDialog } from '@/components/service-orders/LinkExistingServiceOrderDialog';
 import { buildPortalCallsPath, isPortalCall } from '@/lib/portalCalls';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -119,6 +123,12 @@ import {
   type ContractNfseAutoRule,
   type ContractNfseAutoTrigger,
 } from '@/lib/contract-nfse-auto';
+import {
+  classifyContractNfseAutoReadiness,
+  type NfseAutoReadinessSubscription,
+  type NfseAutoReadinessTransaction,
+} from '@/lib/nfse-auto-readiness';
+import { useNfseAutoReadiness } from '@/hooks/useNfseAutoJobs';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { TaxCodeCombobox } from '@/components/fiscal/TaxCodeCombobox';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
@@ -130,10 +140,22 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { formatMoney } from '@/lib/format';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { readPastedCents } from '@/lib/money-paste-mask';
+import { useServiceOrders } from '@/hooks/useServiceOrders';
+import { normalizeServiceOrderSchedulePlan } from '@/lib/serviceOrderSchedule';
 
 /** Parse a YYYY-MM-DD string as a local date (avoids UTC-offset shift) */
 function parseLocalDate(dateStr: string): Date {
   return parseISO(dateStr + 'T12:00:00');
+}
+
+function occurrenceScheduleDates(order: ContractServiceOrder): string[] {
+  return normalizeServiceOrderSchedulePlan({
+    scheduled_date: order.scheduled_date,
+    scheduled_time: order.scheduled_time ?? '08:00',
+    duration_minutes: order.duration_minutes ?? 120,
+    schedule_plan: order.schedule_plan ?? [],
+  } as Pick<ServiceOrder, 'scheduled_date' | 'scheduled_time' | 'duration_minutes' | 'schedule_plan'>)
+    .map(slot => slot.date);
 }
 
 /** Hoje em yyyy-mm-dd no fuso LOCAL (toISOString sozinho vira o dia no Brasil). */
@@ -189,6 +211,7 @@ const NFSE_AUTO_SAVE_DELAY_MS = 700;
 export default function ContractDetail() {
   const isMobile = useIsMobile();
   const { locale, currency, timezone } = useAppLocaleContext();
+  const nfseAutoReadinessQuery = useNfseAutoReadiness(timezone);
   const money = (value: number) => formatMoney(value, currency, locale);
   const tContracts = MESSAGES[locale].app.pmoc.contracts;
   const td = MESSAGES[locale].app.pmoc.contractDetail;
@@ -219,7 +242,13 @@ export default function ContractDetail() {
   const { id: routeParam } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { id, isResolving: isResolvingId } = useResolveContractId(routeParam);
-  const { contract, isLoading, cancelOccurrenceOs, stats, linkedTransactions, isLoadingTransactions } = useContractDetail(id);
+  const { contract, isLoading, cancelOccurrenceOs, linkExistingServiceOrder, stats, linkedTransactions, isLoadingTransactions } = useContractDetail(id);
+  const {
+    serviceOrders,
+    isLoading: isLoadingServiceOrders,
+    error: serviceOrdersError,
+    updateServiceOrder,
+  } = useServiceOrders();
   const { createTransactionsBatch } = useFinancial();
   const { activeCostCenters } = useCostCenters();
   const { accounts } = useFinancialAccounts();
@@ -229,6 +258,13 @@ export default function ContractDetail() {
   // Aba ativa do contrato. Chamados fica separado de Ocorrências: ocorrência é
   // visita prevista pelo contrato; chamado é solicitação reativa vinda do portal.
   const [pmocTab, setPmocTab] = useState<'overview' | 'equipamentos' | 'ocorrencias' | 'chamados' | 'historico' | 'financeiro' | 'documentos' | 'cronograma'>('overview');
+  const [planningOccurrenceId, setPlanningOccurrenceId] = useState<string | null>(null);
+  const [pmocDocumentsOsId, setPmocDocumentsOsId] = useState<string | null>(null);
+  const [showLinkExistingOrder, setShowLinkExistingOrder] = useState(false);
+  const planningOccurrence = useMemo<ServiceOrder | null>(
+    () => serviceOrders.find(order => order.id === planningOccurrenceId) ?? null,
+    [planningOccurrenceId, serviceOrders],
+  );
 
   const { deleteContract, applyFinancialLinksToContractParcels, renewContract, updateContractFinanceRule, updateContractNfseAutoRule } = useContracts();
   // Tipos de serviço — só pra resolver a HERANÇA dos dados fiscais exibida no
@@ -351,6 +387,10 @@ export default function ContractDetail() {
   const [billingCancelTarget, setBillingCancelTarget] = useState<TenantSubscription | null>(null);
 
   const { hasRole, hasPermission, isAdminOrGestor, hasPermissionRecord } = useAuth();
+  const canPlanOccurrences = isAdminOrGestor() || hasPermission('fn:edit_os');
+  const canLinkExistingOrder = isAdminOrGestor()
+    || hasRole('super_admin')
+    || hasPermission('fn:manage_contracts');
   // Excluir parcela/recebível é DELETE em financial_transactions → mesma
   // permissão da tela de Financeiro (`fn:delete_finance`).
   // Espelha `public.can_delete_finance` (RLS de DELETE em financial_transactions):
@@ -359,6 +399,8 @@ export default function ContractDetail() {
   // `hasPermission` (sem registro => libera por ter qualquer role) NÃO vale
   // aqui: mostraria o botão pra quem o banco recusa. UX; a trava é a RLS.
   const canDeleteFinance = isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:delete_finance'));
+  const canGeneratePmocDocuments = (order: Pick<ServiceOrder, 'status' | 'entry_type'>) =>
+    canGenerateOsPmocDocuments(order, companySettings?.segments, companySettings?.segment);
   const isPmoc = (contract as any)?.is_pmoc === true;
   const canRegenerateToken =
     hasRole('admin' as any) || hasRole('gestor' as any) || hasRole('super_admin' as any);
@@ -554,15 +596,20 @@ export default function ContractDetail() {
     return () => obs.disconnect();
   }, [isMobile]);
 
-  // Visitas do contrato = OSs reais ordenadas por scheduled_date asc.
+  // Visitas do contrato = OSs reais ordenadas pela referencia contratual.
   // "#N" é DERIVADO (index + 1) — não existe occurrence_number em service_orders.
   // Anexamos `occurrence_number` derivado a cada OS pra preservar a UI/sort/print
   // existentes sem reescrever a coluna "#".
   const sortedOccurrences = useMemo<(ContractServiceOrder & { occurrence_number: number })[]>(() => {
-    const orders = (contract?.service_orders || []).filter(order => order.origin !== 'portal').sort((a, b) => {
-      const da = a.scheduled_date ? parseISO(a.scheduled_date).getTime() : 0;
-      const db = b.scheduled_date ? parseISO(b.scheduled_date).getTime() : 0;
-      return da - db;
+    const orders = (contract?.service_orders || []).filter(order =>
+      order.origin === 'contract'
+      || (!!order.contract_reference_date && !!order.contract_visit_customized_at)
+    ).sort((a, b) => {
+      const referenceA = a.contract_reference_date ?? a.scheduled_date;
+      const referenceB = b.contract_reference_date ?? b.scheduled_date;
+      const da = referenceA ? parseISO(referenceA).getTime() : 0;
+      const db = referenceB ? parseISO(referenceB).getTime() : 0;
+      return da - db || (a.order_number - b.order_number);
     });
     return orders.map((o, i) => ({ ...o, occurrence_number: i + 1 }));
   }, [contract]);
@@ -921,6 +968,31 @@ export default function ContractDetail() {
       .map((t: any) => t.due_date as string);
     return dates.length > 0 ? dates.reduce((a, b) => (a > b ? a : b)) : null;
   }, [linkedTransactions]);
+  const nfseReadiness = useMemo(() => {
+    if (!contract) return null;
+    const centralizedReadiness = nfseAutoReadinessQuery.readiness.find(
+      (item) => item.contract.id === contract.id,
+    );
+    if (centralizedReadiness) return centralizedReadiness;
+    return classifyContractNfseAutoReadiness(
+      { id: contract.id, name: contract.name },
+      (linkedTransactions || []) as NfseAutoReadinessTransaction[],
+      contractSubscriptions.subscriptions.map((subscription) => ({
+        id: subscription.id,
+        source_id: subscription.source_id ?? null,
+        status: subscription.status,
+        next_due_date: subscription.next_due_date ?? null,
+        value: Number(subscription.value),
+      } satisfies NfseAutoReadinessSubscription)),
+      todayInTz(timezone),
+    );
+  }, [
+    contract,
+    linkedTransactions,
+    contractSubscriptions.subscriptions,
+    nfseAutoReadinessQuery.readiness,
+    timezone,
+  ]);
 
   const recIntervalMonths = FREQUENCY_MONTHS[recFrequency] ?? 0;
   // "Única" não repete, então não há o que renovar: o interruptor fica
@@ -1443,6 +1515,28 @@ export default function ContractDetail() {
 
   const statusCfg = STATUS_LABELS[contract.status] || STATUS_LABELS.active;
   const occurrences = sortedOccurrences;
+  const openOccurrencePlanning = (serviceOrderId: string) => {
+    if (!serviceOrders.some(order => order.id === serviceOrderId)) {
+      toast({
+        variant: 'destructive',
+        title: td.occurrences.loadErrorTitle,
+        description: td.occurrences.loadErrorDescription,
+      });
+      return;
+    }
+    setPlanningOccurrenceId(serviceOrderId);
+  };
+
+  const handleOccurrencePlanningSubmit = async (data: ServiceOrderFormData) => {
+    if (!planningOccurrenceId) return;
+    const schedulePlan: ServiceOrderScheduleSlot[] = data.schedule_plan.map(slot => ({
+      date: slot.date,
+      time: slot.time,
+      duration_minutes: slot.duration_minutes,
+    }));
+    await updateServiceOrder.mutateAsync({ ...data, schedule_plan: schedulePlan, id: planningOccurrenceId });
+    setPlanningOccurrenceId(null);
+  };
   const items = contract.contract_items || [];
 
   // "Contrato acabando": ativo e a ÚLTIMA visita (maior scheduled_date) está a
@@ -1623,11 +1717,10 @@ export default function ContractDetail() {
       <div ref={headerSentinelRef} aria-hidden="true" className="h-px -mt-3 lg:hidden" />
 
       {/*
-        Navegação PMOC: usa o componente canônico SettingsSidebarLayout
-        (mesmo de Settings, Quotes, ServiceOrders, Financeiro). Desktop:
-        rail vertical à esquerda com fundo primary sólido no ativo. Mobile:
-        MobilePillTabs achatado. Só envolve o conteúdo quando isPmoc=true;
-        contratos não-PMOC seguem direto pra "Visão Geral" sem nav.
+        Navegação do contrato: usa o componente canônico SettingsSidebarLayout
+        (mesmo de Settings, Quotes e ServiceOrders), com abas underline
+        horizontais e roláveis. Contratos comuns e PMOC compartilham a casca,
+        variando apenas as abas disponíveis.
       */}
       {(() => {
         // Abas PMOC: Chamados é separado de Ocorrências (visitas planejadas).
@@ -1910,23 +2003,53 @@ export default function ContractDetail() {
         // DETALHE da OS vinculada na MESMA aba. Status/atrasada derivam da OS real.
         const occurrencesContent = (
           <Card className="w-full min-w-0 max-w-full overflow-hidden border-0 bg-transparent shadow-none">
-            <CardHeader>
+            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
               <CardTitle className="min-w-0 text-base sm:text-lg break-words">{td.occurrences.cardTitle.replace('{count}', String(occurrences.length))}</CardTitle>
+              {canLinkExistingOrder && contract.status === 'active' && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-11 gap-2 rounded-xl"
+                  onClick={() => setShowLinkExistingOrder(true)}
+                  disabled={isLoadingServiceOrders || !!serviceOrdersError}
+                >
+                  {isLoadingServiceOrders ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+                  {td.occurrences.linkAction}
+                </Button>
+              )}
             </CardHeader>
             <CardContent className={cn(isMobile ? 'p-3 min-w-0' : 'p-0 min-w-0')}>
-              {isMobile ? (
+              {serviceOrdersError && canPlanOccurrences && (
+                <div className="mx-3 mb-3 flex items-start gap-3 rounded-lg border bg-background p-3" role="alert">
+                  <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold">{td.occurrences.planningUnavailableTitle}</p>
+                    <p className="text-xs text-muted-foreground">{td.occurrences.planningUnavailableDescription}</p>
+                  </div>
+                </div>
+              )}
+              {occurrences.length === 0 ? (
+                <EmptyState
+                  icon={<Calendar className="h-10 w-10" />}
+                  title={td.occurrences.emptyTitle}
+                  description={td.occurrences.emptyDescription}
+                  size="compact"
+                />
+              ) : isMobile ? (
                 <div className="space-y-2 min-w-0">
                   {occPagination.paginatedItems.map(os => {
                     // Status REAL da OS (fonte única). Label canônico + variante semântica.
                     const osStatus = os.status as OsStatus;
                     const statusLabel = osStatusLabels[osStatus] ?? os.status;
                     const statusVariant = OS_STATUS_VARIANT[osStatus] ?? 'outline';
-                    const occDate = os.scheduled_date ? parseLocalDate(os.scheduled_date) : null;
                     // "Atrasada" = OS ativa (não concluída/cancelada) com data já passada.
                     // Atrasada só a partir do DIA SEGUINTE: scheduled_date estritamente
                     // antes de hoje (fuso Brasil), comparando por dia (YYYY-MM-DD).
-                    const isLate = isActiveContractOS(os) && !!os.scheduled_date && os.scheduled_date < todaySP;
                     const isActive = isActiveContractOS(os);
+                    const showPlanOccurrence = canPlanOccurrences && ['agendada', 'pendente'].includes(os.status);
+                    const scheduleDates = occurrenceScheduleDates(os);
+                    const isLate = isActive && scheduleDates.length > 0 && scheduleDates.every(date => date < todaySP);
+                    const referenceDate = os.contract_reference_date ?? os.scheduled_date;
                     const goToOs = () => navigate(`/os-tecnico/${os.id}`);
                     return (
                       <div
@@ -1934,7 +2057,10 @@ export default function ContractDetail() {
                         role="button"
                         tabIndex={0}
                         onClick={goToOs}
-                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); goToOs(); } }}
+                        onKeyDown={(e) => {
+                          if (e.target !== e.currentTarget) return;
+                          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); goToOs(); }
+                        }}
                         className={cn(
                           'min-w-0 space-y-2 rounded-xl border p-3 transition-colors',
                           isLate && 'border-warning/50 bg-warning/5',
@@ -1943,19 +2069,39 @@ export default function ContractDetail() {
                       >
                         <div className="flex items-center justify-between gap-2">
                           <span className="font-mono text-xs text-muted-foreground">#{os.occurrence_number}</span>
-                          <div className="flex items-center gap-1.5 shrink-0">
+                          <div className="flex flex-wrap items-center justify-end gap-1.5">
                             {isLate && <Badge variant="warning" className="shrink-0">{td.occurrences.late}</Badge>}
+                            {os.contract_visit_customized_at && (
+                              <Badge variant="info" className="shrink-0">
+                                {os.origin === 'contract' ? td.occurrences.plannedBadge : td.occurrences.linkedBadge}
+                              </Badge>
+                            )}
                             <Badge variant={statusVariant} className="shrink-0">{statusLabel}</Badge>
                           </div>
                         </div>
-                        <div className="flex min-w-0 flex-col items-start gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
-                          <span className={cn('font-medium break-words', isLate && 'text-warning')}>
-                            {occDate ? (
-                              <>{format(occDate, 'dd/MM/yyyy')} <span className="font-normal text-muted-foreground">({format(occDate, 'EEE', { locale: ptBR })})</span></>
-                            ) : td.occurrences.noDate}
-                          </span>
+                        <div className="flex min-w-0 flex-col items-start gap-2 text-sm sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0 space-y-1">
+                            <p className="text-xs text-muted-foreground">{td.occurrences.referenceLabel}</p>
+                            <span className="font-medium break-words">
+                              {referenceDate ? format(parseLocalDate(referenceDate), 'dd/MM/yyyy') : td.occurrences.noDate}
+                            </span>
+                            <p className="pt-1 text-xs text-muted-foreground">{td.occurrences.scheduledLabel}</p>
+                            <div className="flex flex-wrap gap-1">
+                              {scheduleDates.length > 0 ? scheduleDates.map(date => (
+                                <Badge key={date} variant="outline" className={cn('font-normal', date < todaySP && isActive && 'border-warning text-warning')}>
+                                  {format(parseLocalDate(date), 'dd/MM')} · {format(parseLocalDate(date), 'EEE', { locale: ptBR })}
+                                </Badge>
+                              )) : <span>{td.occurrences.noDate}</span>}
+                            </div>
+                          </div>
                           <Badge variant="secondary" className="shrink-0 self-start text-xs">OS #{os.order_number}</Badge>
                         </div>
+                        {os.contract_visit_customized_at && os.description && (
+                          <div className="flex min-w-0 items-start gap-2 border-t pt-2 text-sm">
+                            <ClipboardCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                            <span className="min-w-0 break-words">{os.description}</span>
+                          </div>
+                        )}
                         {(() => {
                           const acts = activitiesByOrderId.get(os.id) ?? [];
                           if (acts.length === 0) return null;
@@ -1985,8 +2131,28 @@ export default function ContractDetail() {
                             </div>
                           );
                         })()}
-                        {isActive && (
-                          <div className="flex items-center justify-end gap-1">
+                        {(isActive || canGeneratePmocDocuments(os as unknown as ServiceOrder)) && (
+                          <div className="flex flex-wrap items-center justify-end gap-2">
+                            {canGeneratePmocDocuments(os as unknown as ServiceOrder) && (
+                              <Button
+                                variant="outline" size="sm" className="min-h-11 gap-2 rounded-xl"
+                                onClick={(e) => { e.stopPropagation(); setPmocDocumentsOsId(os.id); }}
+                              >
+                                <Files className="h-4 w-4" />
+                                Gerar documentos PMOC
+                              </Button>
+                            )}
+                            {showPlanOccurrence && (
+                              <Button
+                                variant="outline" size="sm" className="min-h-11 gap-2 rounded-xl"
+                                title={serviceOrdersError ? td.occurrences.planningUnavailableTitle : td.occurrences.planAction}
+                                disabled={isLoadingServiceOrders || !!serviceOrdersError}
+                                onClick={(e) => { e.stopPropagation(); openOccurrencePlanning(os.id); }}
+                              >
+                                {isLoadingServiceOrders ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />}
+                                {isLoadingServiceOrders ? td.occurrences.loadingAction : td.occurrences.planAction}
+                              </Button>
+                            )}
                             <Button
                               variant="destructive-ghost" size="icon" className="min-h-11 min-w-11 active:scale-90 transition-transform rounded-xl"
                               title={td.occurrences.skipTitle}
@@ -2009,12 +2175,12 @@ export default function ContractDetail() {
                     <TableHeader>
                       <TableRow>
                         <SortableTableHead sortKey="occurrence_number" sortConfig={occSortConfig} onSort={handleOccSort} className="w-12">{td.occurrences.colNum}</SortableTableHead>
-                        <SortableTableHead sortKey="scheduled_date" sortConfig={occSortConfig} onSort={handleOccSort}>{td.occurrences.colDate}</SortableTableHead>
-                        <SortableTableHead sortKey="" sortConfig={occSortConfig} onSort={() => {}}>{td.occurrences.colDay}</SortableTableHead>
+                        <SortableTableHead sortKey="occurrence_number" sortConfig={occSortConfig} onSort={handleOccSort}>{td.occurrences.colReference}</SortableTableHead>
+                        <SortableTableHead sortKey="scheduled_date" sortConfig={occSortConfig} onSort={handleOccSort}>{td.occurrences.colSchedule}</SortableTableHead>
                         <SortableTableHead sortKey="order_number" sortConfig={occSortConfig} onSort={handleOccSort}>{td.occurrences.colOs}</SortableTableHead>
                         <SortableTableHead sortKey="" sortConfig={occSortConfig} onSort={() => {}}>{td.occurrences.colServices}</SortableTableHead>
                         <SortableTableHead sortKey="status" sortConfig={occSortConfig} onSort={handleOccSort}>{td.occurrences.colStatus}</SortableTableHead>
-                        <SortableTableHead sortKey="" sortConfig={occSortConfig} onSort={() => {}} className="w-[100px]">{td.occurrences.colActions}</SortableTableHead>
+                        <SortableTableHead sortKey="" sortConfig={occSortConfig} onSort={() => {}} className="w-[260px]">{td.occurrences.colActions}</SortableTableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -2022,11 +2188,11 @@ export default function ContractDetail() {
                         const osStatus = os.status as OsStatus;
                         const statusLabel = osStatusLabels[osStatus] ?? os.status;
                         const statusVariant = OS_STATUS_VARIANT[osStatus] ?? 'outline';
-                        const occDate = os.scheduled_date ? parseLocalDate(os.scheduled_date) : null;
-                        // Atrasada só a partir do DIA SEGUINTE: scheduled_date estritamente
-                        // antes de hoje (fuso Brasil), comparando por dia (YYYY-MM-DD).
-                        const isLate = isActiveContractOS(os) && !!os.scheduled_date && os.scheduled_date < todaySP;
                         const isActive = isActiveContractOS(os);
+                        const showPlanOccurrence = canPlanOccurrences && ['agendada', 'pendente'].includes(os.status);
+                        const scheduleDates = occurrenceScheduleDates(os);
+                        const referenceDate = os.contract_reference_date ?? os.scheduled_date;
+                        const isLate = isActive && scheduleDates.length > 0 && scheduleDates.every(date => date < todaySP);
                         const goToOs = () => navigate(`/os-tecnico/${os.id}`);
 
                         return (
@@ -2035,18 +2201,27 @@ export default function ContractDetail() {
                             role="button"
                             tabIndex={0}
                             onClick={goToOs}
-                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); goToOs(); } }}
+                            onKeyDown={(e) => {
+                              if (e.target !== e.currentTarget) return;
+                              if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); goToOs(); }
+                            }}
                             className={cn(
                               isLate && 'bg-warning/5',
                               'cursor-pointer hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
                             )}
                           >
                             <TableCell className="font-mono text-xs text-muted-foreground">{os.occurrence_number}</TableCell>
-                            <TableCell className={cn(isLate && 'text-warning font-medium')}>
-                              {occDate ? format(occDate, 'dd/MM/yyyy') : '-'}
+                            <TableCell>
+                              {referenceDate ? format(parseLocalDate(referenceDate), 'dd/MM/yyyy') : '—'}
                             </TableCell>
-                            <TableCell className="text-muted-foreground text-sm">
-                              {occDate ? format(occDate, 'EEE', { locale: ptBR }) : td.occurrences.noDate}
+                            <TableCell className="min-w-[150px]">
+                              <div className="flex max-w-[240px] flex-wrap gap-1">
+                                {scheduleDates.length > 0 ? scheduleDates.map(date => (
+                                  <Badge key={date} variant="outline" className={cn('font-normal', isLate && 'border-warning text-warning')}>
+                                    {format(parseLocalDate(date), 'dd/MM')} · {format(parseLocalDate(date), 'EEE', { locale: ptBR })}
+                                  </Badge>
+                                )) : <span className="text-sm text-muted-foreground">{td.occurrences.noDate}</span>}
+                              </div>
                             </TableCell>
                             <TableCell>
                               <Badge variant="secondary">OS #{os.order_number}</Badge>
@@ -2054,38 +2229,70 @@ export default function ContractDetail() {
                             <TableCell className="max-w-[320px]">
                               {(() => {
                                 const acts = activitiesByOrderId.get(os.id) ?? [];
-                                if (acts.length === 0) return <span className="text-muted-foreground text-sm">—</span>;
+                                if (acts.length === 0 && !(os.contract_visit_customized_at && os.description)) {
+                                  return <span className="text-muted-foreground text-sm">—</span>;
+                                }
                                 const shown = acts.slice(0, 3);
                                 const extra = acts.length - shown.length;
                                 return (
-                                  <div className="flex flex-wrap items-center gap-1">
-                                    {shown.map((a) => {
-                                      const freq = freqCodeShortLabel(a.freq_code);
-                                      return (
-                                        <Badge key={a.id} variant="secondary" className="max-w-full gap-1 text-[11px] font-normal">
-                                          <span className="truncate">{a.description}</span>
-                                          {freq && <span className="shrink-0 text-primary">· {freq}</span>}
-                                        </Badge>
-                                      );
-                                    })}
-                                    {extra > 0 && (
-                                      <Badge variant="outline" className="text-[11px] font-normal">+{extra}</Badge>
+                                  <div className="space-y-1.5">
+                                    {os.contract_visit_customized_at && os.description && (
+                                      <p className="line-clamp-2 text-sm">{os.description}</p>
                                     )}
+                                    <div className="flex flex-wrap items-center gap-1">
+                                      {shown.map((a) => {
+                                        const freq = freqCodeShortLabel(a.freq_code);
+                                        return (
+                                          <Badge key={a.id} variant="secondary" className="max-w-full gap-1 text-[11px] font-normal">
+                                            <span className="truncate">{a.description}</span>
+                                            {freq && <span className="shrink-0 text-primary">· {freq}</span>}
+                                          </Badge>
+                                        );
+                                      })}
+                                      {extra > 0 && (
+                                        <Badge variant="outline" className="text-[11px] font-normal">+{extra}</Badge>
+                                      )}
+                                    </div>
                                   </div>
                                 );
                               })()}
                             </TableCell>
                             <TableCell>
-                              <div className="flex items-center gap-1.5">
+                              <div className="flex flex-wrap items-center gap-1.5">
                                 {isLate && <Badge variant="warning">{td.occurrences.late}</Badge>}
+                                {os.contract_visit_customized_at && (
+                                  <Badge variant="info">
+                                    {os.origin === 'contract' ? td.occurrences.plannedBadge : td.occurrences.linkedBadge}
+                                  </Badge>
+                                )}
                                 <Badge variant={statusVariant}>{statusLabel}</Badge>
                               </div>
                             </TableCell>
                             <TableCell>
-                              <div className="flex items-center gap-1">
+                              <div className="flex flex-wrap items-center justify-end gap-1">
+                                {showPlanOccurrence && (
+                                  <Button
+                                    variant="outline" size="sm" className="min-h-10 gap-1.5"
+                                    title={serviceOrdersError ? td.occurrences.planningUnavailableTitle : td.occurrences.planAction}
+                                    disabled={isLoadingServiceOrders || !!serviceOrdersError}
+                                    onClick={(e) => { e.stopPropagation(); openOccurrencePlanning(os.id); }}
+                                  >
+                                    {isLoadingServiceOrders ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Pencil className="h-3.5 w-3.5" />}
+                                    {isLoadingServiceOrders ? td.occurrences.loadingAction : td.occurrences.planAction}
+                                  </Button>
+                                )}
+                                {canGeneratePmocDocuments(os as unknown as ServiceOrder) && (
+                                  <Button
+                                    variant="outline" size="sm" className="min-h-10 gap-1.5"
+                                    onClick={(e) => { e.stopPropagation(); setPmocDocumentsOsId(os.id); }}
+                                  >
+                                    <Files className="h-3.5 w-3.5" />
+                                    Gerar documentos PMOC
+                                  </Button>
+                                )}
                                 {isActive && (
                                   <Button
-                                    variant="destructive-ghost" size="icon" className="h-7 w-7"
+                                    variant="destructive-ghost" size="icon" className="min-h-10 min-w-10"
                                     title={td.occurrences.skipTitle}
                                     onClick={(e) => { e.stopPropagation(); setCancelingOsId(os.id); }}
                                   >
@@ -2101,7 +2308,7 @@ export default function ContractDetail() {
                   </Table>
                 </div>
               )}
-              {!isMobile && <DataTablePagination page={occPagination.page} totalPages={occPagination.totalPages} totalItems={occPagination.totalItems} from={occPagination.from} to={occPagination.to} pageSize={occPagination.pageSize} onPageChange={occPagination.setPage} onPageSizeChange={occPagination.setPageSize} />}
+              {!isMobile && occurrences.length > 0 && <DataTablePagination page={occPagination.page} totalPages={occPagination.totalPages} totalItems={occPagination.totalItems} from={occPagination.from} to={occPagination.to} pageSize={occPagination.pageSize} onPageChange={occPagination.setPage} onPageSizeChange={occPagination.setPageSize} />}
             </CardContent>
           </Card>
         );
@@ -2204,6 +2411,14 @@ export default function ContractDetail() {
                       <div className="mt-0.5">{subStatusBadge(activeContractSubscription.status)}</div>
                     </div>
                   </div>
+                  <NoticeBanner variant="neutral">
+                    {tdBilling.activeSourceHint}
+                  </NoticeBanner>
+                  {financeIndeterminate && (
+                    <NoticeBanner variant="warning" title={tdBilling.duplicateSourceTitle}>
+                      {tdBilling.duplicateSourceDescription}
+                    </NoticeBanner>
+                  )}
                   <div className="border-t pt-3 flex justify-end">
                     <Button
                       variant="destructive-ghost"
@@ -2690,6 +2905,48 @@ export default function ContractDetail() {
                       aria-label={tNfseAuto.sectionLabel}
                     />
                   </div>
+
+                  {nfseEnabled && !isLoadingTransactions && !contractSubscriptions.isLoading && nfseReadiness?.state === 'ready_installment' && (
+                    <NoticeBanner variant="neutral" title={tNfseAuto.readyTitle}>
+                      {(nfseReadiness.source === 'asaas'
+                        ? tNfseAuto.readyAsaasDescription
+                        : tNfseAuto.readyInstallmentDescription)
+                        .replace('{date}', nfseReadiness.nextDate
+                          ? format(parseLocalDate(nfseReadiness.nextDate), 'dd/MM/yyyy')
+                          : '—')
+                        .replace('{amount}', nfseReadiness.amount != null
+                          ? money(nfseReadiness.amount)
+                          : '—')}
+                    </NoticeBanner>
+                  )}
+
+                  {nfseEnabled && !isLoadingTransactions && !contractSubscriptions.isLoading && nfseReadiness?.state === 'waiting_asaas_cycle' && (
+                    <NoticeBanner variant="info" title={tNfseAuto.waitingAsaasTitle}>
+                      {tNfseAuto.waitingAsaasDescription.replace(
+                        '{date}',
+                        nfseReadiness.nextDate
+                          ? format(parseLocalDate(nfseReadiness.nextDate), 'dd/MM/yyyy')
+                          : '—',
+                      )}
+                    </NoticeBanner>
+                  )}
+
+                  {nfseEnabled && !isLoadingTransactions && !contractSubscriptions.isLoading && nfseReadiness?.state === 'sync_error' && (
+                    <NoticeBanner variant="warning" title={tNfseAuto.syncErrorTitle}>
+                      {tNfseAuto.syncErrorDescription}
+                    </NoticeBanner>
+                  )}
+
+                  {nfseEnabled && !isLoadingTransactions && !contractSubscriptions.isLoading && nfseReadiness?.state === 'missing_source' && (
+                    <NoticeBanner
+                      variant="warning"
+                      title={tNfseAuto.missingSourceTitle}
+                      action={tNfseAuto.missingSourceAction}
+                      onClick={openBillingSetup}
+                    >
+                      {tNfseAuto.missingSourceDescription}
+                    </NoticeBanner>
+                  )}
 
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
@@ -3433,6 +3690,32 @@ export default function ContractDetail() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Planejamento individual da visita: usa a OS real como fonte única e,
+          neste contexto, qualquer mudança de data afeta somente esta visita. */}
+      <ServiceOrderFormDialog
+        open={!!planningOccurrence}
+        onOpenChange={(open) => { if (!open) setPlanningOccurrenceId(null); }}
+        serviceOrder={planningOccurrence}
+        onSubmit={handleOccurrencePlanningSubmit}
+        isLoading={updateServiceOrder.isPending}
+        contractDateChangeScope="single"
+        contractPlanningMode
+        editTitle={td.occurrences.planDialogTitle}
+        editDescription={td.occurrences.planDialogDescription}
+      />
+
+      <LinkExistingServiceOrderDialog
+        open={showLinkExistingOrder}
+        onOpenChange={setShowLinkExistingOrder}
+        contractId={contract.id}
+        customerId={contract.customer_id}
+        serviceOrders={serviceOrders}
+        occurrences={occurrences}
+        isLoadingOrders={isLoadingServiceOrders}
+        isSubmitting={linkExistingServiceOrder.isPending}
+        onSubmit={(input) => linkExistingServiceOrder.mutateAsync(input)}
+      />
+
       {/* Cancelar visita (botão "Pular") — agora cancela a OS daquela data. */}
       <AlertDialog open={!!cancelingOsId} onOpenChange={(open) => { if (!open) setCancelingOsId(null); }}>
         <AlertDialogContent>
@@ -3608,6 +3891,14 @@ export default function ContractDetail() {
       </ResponsiveModal>
 
       {/* Documento "Plano de Manutenção" — overlay de impressão (contrato comum). */}
+      {pmocDocumentsOsId && (
+        <OsPmocDocumentsDialog
+          open
+          onOpenChange={(open) => { if (!open) setPmocDocumentsOsId(null); }}
+          serviceOrderId={pmocDocumentsOsId}
+        />
+      )}
+
       {showMaintenancePlan && contract && (
         <ContractMaintenancePlanDocument
           contract={contract}

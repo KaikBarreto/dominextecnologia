@@ -35,9 +35,11 @@ export function buildOsRevenueDescription(
   return name ? `${t.descriptionFallback} · ${name}` : t.descriptionFallback;
 }
 
-/** Valor sugerido do contexto, só quando é um número finito e utilizável. */
+/** Valor sugerido do contexto, só quando é um número finito e não negativo. */
 export function resolveOsRevenueSuggestedAmount(ctx: OsRevenueContext): number | null {
-  return typeof ctx.suggestedAmount === 'number' && Number.isFinite(ctx.suggestedAmount)
+  return typeof ctx.suggestedAmount === 'number'
+    && Number.isFinite(ctx.suggestedAmount)
+    && ctx.suggestedAmount >= 0
     ? ctx.suggestedAmount
     : null;
 }

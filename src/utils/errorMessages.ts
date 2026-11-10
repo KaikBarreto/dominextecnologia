@@ -8,6 +8,41 @@ type ErrorLike = {
 };
 
 /**
+ * Códigos internos do motor de agenda nunca devem chegar à interface. Eles são
+ * úteis para o backend e para os testes, mas o usuário precisa saber o que
+ * aconteceu e como corrigir — sem `schedule_*` ou SQLSTATE no toast.
+ *
+ * Este mapa é consultado antes do mapa genérico de SQLSTATE porque vários
+ * erros usam 42501/22023, mas possuem orientação mais útil que “sem permissão”
+ * ou “valor inválido”.
+ */
+const SCHEDULE_ERROR_MESSAGES: Record<string, string> = {
+  public_api_schedule_conflict: 'Já existe outro atendimento nesse horário. Escolha outro horário ou responsável.',
+  schedule_conflict: 'Já existe outro atendimento nesse horário. Escolha outro horário ou responsável.',
+  schedule_auth_required: 'Sua sessão expirou. Entre novamente para continuar.',
+  schedule_tenant_not_entitled: 'O acesso da empresa não está ativo para esta operação. Verifique a assinatura ou fale com o suporte.',
+  schedule_create_permission_denied: 'Você não tem permissão para criar ordens de serviço.',
+  schedule_edit_permission_denied: 'Você não tem permissão para alterar o agendamento desta ordem de serviço.',
+  schedule_override_permission_denied: 'Você não tem permissão para autorizar conflitos de agenda.',
+  schedule_override_justification_required: 'Informe uma justificativa com pelo menos 10 caracteres para autorizar o conflito.',
+  schedule_customer_not_found: 'O cliente selecionado não está mais disponível. Atualize a seleção e tente novamente.',
+  schedule_equipment_not_found: 'Um dos equipamentos desta OS não está mais disponível. Atualize a seleção e tente novamente.',
+  schedule_form_template_not_found: 'Um dos checklists selecionados não está mais disponível. Atualize a seleção e tente novamente.',
+  schedule_service_type_not_found: 'Um dos tipos de serviço selecionados não está mais disponível. Atualize a seleção e tente novamente.',
+  schedule_lead_not_found: 'A oportunidade vinculada não está mais disponível. Atualize a página e tente novamente.',
+  schedule_resource_not_in_tenant: 'Um dos responsáveis desta OS não está mais ativo na empresa. Atualize a atribuição e tente novamente.',
+  schedule_team_without_active_members: 'A equipe selecionada não possui integrantes ativos. Escolha outra equipe ou adicione um integrante.',
+  schedule_service_order_not_found: 'Esta ordem de serviço não está mais disponível. Atualize a página e tente novamente.',
+  schedule_service_order_status_not_bookable: 'Esta ordem de serviço não pode ser agendada no status atual.',
+  schedule_company_timezone_invalid: 'O fuso horário da empresa está inválido. Ajuste-o nas configurações antes de agendar.',
+  schedule_invalid_duration: 'A duração do atendimento deve ficar entre 15 minutos e 24 horas.',
+  schedule_invalid_request: 'Os dados do agendamento estão incompletos ou inválidos. Revise responsável, data, horário e duração.',
+  schedule_invalid_plan: 'Uma das jornadas possui data, horário ou duração inválidos. Revise o período informado.',
+  schedule_invalid_order_payload: 'Alguns dados obrigatórios da ordem de serviço estão incompletos ou inválidos. Revise o formulário.',
+  schedule_invalid_equipment_items: 'Não foi possível validar os equipamentos e checklists desta OS. Atualize a seleção e tente novamente.',
+};
+
+/**
  * Mapeamento por código SQLSTATE / código PostgREST.
  *
  * Match por código é mais confiável que substring porque:
@@ -49,12 +84,6 @@ const SQLSTATE_MESSAGES: Record<string, string> = {
 };
 
 const DATABASE_ERROR_MAP: Array<{ test: (message: string) => boolean; text: string }> = [
-  // ── Agenda / responsáveis da OS ──
-  {
-    test: (m) => m.includes('schedule_resource_not_in_tenant'),
-    text: 'Um dos responsáveis desta OS não está mais ativo na empresa. Atualize a atribuição e tente novamente.',
-  },
-
   // ── FK: Service Types ──
   {
     test: (m) => m.includes('violates foreign key constraint') && m.includes('quote_items_service_type_id_fkey'),
@@ -309,12 +338,19 @@ export async function getInvokeErrorMessage(error: unknown): Promise<string | nu
 }
 
 /**
- * Violações de unicidade em que o SQLSTATE genérico ("Já existe um registro com
- * esses dados") não basta: o usuário precisa saber QUAL campo repetiu pra poder
- * consertar. Casadas pelo nome do índice, ANTES do mapa de SQLSTATE — senão o
- * `23505` resolveria primeiro e a mensagem específica nunca seria alcançada.
+ * Constraints em que o SQLSTATE genérico não orienta a ação correta. Inclui
+ * unicidade (qual campo repetiu) e referências (qual entidade ainda bloqueia a
+ * exclusão). Casadas pelo nome da constraint ANTES do mapa de SQLSTATE — senão
+ * `23505`/`23503` resolveriam primeiro e a mensagem específica se perderia.
  */
 const CONSTRAINT_MESSAGES: Array<{ constraint: string; text: string }> = [
+  {
+    // Precisa vir antes do SQLSTATE 23503 genérico. O prefixo da constraint
+    // varia conforme a tabela dona da referência (contrato, OS, PMOC...), mas
+    // todas preservam este sufixo estável.
+    constraint: '_equipment_id_fkey',
+    text: 'Este equipamento não pode ser excluído porque está vinculado a ordens de serviço, contratos ou planos PMOC.',
+  },
   {
     constraint: 'financial_categories_company_id_name_key',
     text: 'Já existe uma categoria com esse nome. Escolha outro nome.',
@@ -336,7 +372,28 @@ export function getErrorMessage(error: unknown, fallback = DEFAULT_MESSAGE) {
     if (named) return named.text;
   }
 
-  // 1) SQLSTATE / PostgREST code primeiro — mais confiável que substring.
+  // 1) Código de domínio da agenda: precisa vencer o SQLSTATE genérico para
+  // explicar a ação correta sem expor nomes internos em inglês.
+  if (error) {
+    const scheduleHaystack = error instanceof Error
+      ? error.message
+      : typeof error === 'string'
+        ? error
+        : typeof error === 'object'
+          ? [
+              (error as ErrorLike).message,
+              (error as ErrorLike).details,
+              (error as ErrorLike).hint,
+              (error as ErrorLike).code,
+            ].filter((value): value is string => typeof value === 'string').join(' | ')
+          : '';
+    const normalized = scheduleHaystack.toLowerCase();
+    const scheduleCode = Object.keys(SCHEDULE_ERROR_MESSAGES)
+      .find((code) => normalized.includes(code));
+    if (scheduleCode) return SCHEDULE_ERROR_MESSAGES[scheduleCode];
+  }
+
+  // 2) SQLSTATE / PostgREST code — mais confiável que substring genérica.
   //    Erros do Supabase tipicamente vêm como { code, message, details, hint }.
   if (error && typeof error === 'object') {
     const code = (error as ErrorLike).code;
@@ -345,7 +402,7 @@ export function getErrorMessage(error: unknown, fallback = DEFAULT_MESSAGE) {
     }
   }
 
-  // 2) Extrai texto cru pra substring match (cobertura legada).
+  // 3) Extrai texto cru pra substring match (cobertura legada).
   let raw = '';
 
   if (error instanceof Error) {
@@ -363,7 +420,7 @@ export function getErrorMessage(error: unknown, fallback = DEFAULT_MESSAGE) {
   const mapped = DATABASE_ERROR_MAP.find((item) => item.test(message));
   if (mapped) return mapped.text;
 
-  // 3) Se a mensagem crua parece técnica (inglês de banco), prefere fallback PT-BR.
+  // 4) Se a mensagem crua parece técnica (inglês de banco), prefere fallback PT-BR.
   //    Heurística simples: contém termos sentinela de erro técnico não mapeado.
   if (raw && looksTechnicalEnglish(raw)) {
     return fallback;

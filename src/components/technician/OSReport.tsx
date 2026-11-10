@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Download, Printer, User, Wrench, Clock, MapPin, Camera, FileSignature, Check, X, Minus, PenTool, Link2, Link as LinkIcon, Star, Menu, AlertTriangle, Video } from 'lucide-react';
+import { Download, Printer, User, Wrench, Clock, MapPin, Camera, FileSignature, Check, X, Minus, PenTool, Link2, Link as LinkIcon, Star, Menu, AlertTriangle, Video, Files } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,6 +34,10 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatDateTime } from '@/lib/format';
 import { formatOSNumberDigits } from '@/lib/osNumber';
+import { canShareServiceOrder } from '@/lib/serviceOrderAccess';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { buildServiceReportPdfFilename, canGenerateOsPmocDocuments } from '@/lib/osPmocDocuments';
+import { OsPmocDocumentsDialog } from '@/components/service-orders/OsPmocDocumentsDialog';
 
 interface OSPhoto {
   id: string;
@@ -171,6 +175,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
 
   const reportRef = useRef<HTMLDivElement>(null);
   const [generating, setGenerating] = useState(false);
+  const [pmocDocumentsOpen, setPmocDocumentsOpen] = useState(false);
   const [company, setCompany] = useState<CompanyData | null>(null);
   const [formResponses, setFormResponses] = useState<FormResponseData[]>([]);
   const [ratingData, setRatingData] = useState<any>(null);
@@ -206,6 +211,12 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
   const printRestoreRef = useRef<string | null>(null);
   const printRestoreSetRef = useRef<boolean>(false);
   const { toast } = useToast();
+  const { settings: companySettings } = useCompanySettings();
+  const canGeneratePmocDocs = !forceReadOnly && canGenerateOsPmocDocuments(
+    serviceOrder,
+    companySettings?.segments,
+    companySettings?.segment,
+  );
 
   // Chaves de grupo do checklist PMOC (equipmentName ?? '__geral__'), mesma
   // convenção da sidebar. Foto do equipamento por nome — vem de equipmentItems
@@ -807,9 +818,11 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
     serviceName: (serviceOrder as any).service_type?.name,
     osId: serviceOrder.id,
   };
-  const shareUrl = buildServiceOrderShareLink(shareLinkParams);
+  const canShare = canShareServiceOrder(serviceOrder);
+  const shareUrl = canShare ? buildServiceOrderShareLink(shareLinkParams) : null;
 
   const handleCopyLink = () => {
+    if (!canShare) return;
     // O PDF mantém a URL estável; só o link copiado ganha uma chave efêmera
     // para o WhatsApp não reutilizar a arte que armazenou antes da atualização.
     const url = buildServiceOrderShareLink({
@@ -848,9 +861,12 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
 
     try {
       const { generateReportPDF } = await import('@/utils/pdfPageRenderer');
-      const orderNum = formatOSNumberDigits(serviceOrder.order_number);
-      const companyName = company?.name ? ` | ${company.name}` : '';
-      await generateReportPDF(reportRef.current, `OS-${orderNum}${companyName}.pdf`);
+      await generateReportPDF(reportRef.current, buildServiceReportPdfFilename({
+        orderNumber: serviceOrder.order_number,
+        customerName: serviceOrder.customer?.name,
+        generatedAt: new Date(),
+        timeZone: timezone,
+      }));
     } catch (err) {
       console.error('PDF generation error:', err);
       toast({ variant: 'destructive', title: tR.toastPdfError, description: tR.toastPdfErrorDesc });
@@ -1532,16 +1548,18 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
             {/* Link do relatório online desta OS — clicável na tela (href) e no PDF
                 (o renderer lê [data-pdf-link] e sobrepõe uma anotação clicável à
                 imagem). Documento sempre claro/print → cores slate hardcoded. */}
-            <p className="mt-1">
-              <a
-                href={shareUrl}
-                data-pdf-link={shareUrl}
-                className="inline-flex items-center gap-1 text-slate-500 hover:text-slate-700 underline decoration-slate-300 break-all"
-              >
-                <LinkIcon className="h-3 w-3 shrink-0" />
-                {tR.viewReportOnline}
-              </a>
-            </p>
+            {shareUrl && (
+              <p className="mt-1">
+                <a
+                  href={shareUrl}
+                  data-pdf-link={shareUrl}
+                  className="inline-flex items-center gap-1 text-slate-500 hover:text-slate-700 underline decoration-slate-300 break-all"
+                >
+                  <LinkIcon className="h-3 w-3 shrink-0" />
+                  {tR.viewReportOnline}
+                </a>
+              </p>
+            )}
           </div>
 
         </div>
@@ -1562,10 +1580,18 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
             <Printer className="h-4 w-4 mr-2" />
             {tR.btnPrint}
           </Button>
-          <Button variant="outline" onClick={handleCopyLink}>
-            <Link2 className="h-4 w-4 mr-2" />
-            {tR.btnCopyLink}
-          </Button>
+          {canShare && (
+            <Button variant="outline" onClick={handleCopyLink}>
+              <Link2 className="h-4 w-4 mr-2" />
+              {tR.btnCopyLink}
+            </Button>
+          )}
+          {canGeneratePmocDocs && (
+            <Button variant="outline" onClick={() => setPmocDocumentsOpen(true)}>
+              <Files className="h-4 w-4 mr-2" />
+              Gerar documentos PMOC
+            </Button>
+          )}
         </div>
       )}
 
@@ -1603,14 +1629,22 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" align="end" className="mb-2 min-w-[12rem]">
-                <DropdownMenuItem onClick={handleCopyLink}>
-                  <Link2 className="h-4 w-4 mr-2" />
-                  {tR.btnCopyLink}
-                </DropdownMenuItem>
+                {canShare && (
+                  <DropdownMenuItem onClick={handleCopyLink}>
+                    <Link2 className="h-4 w-4 mr-2" />
+                    {tR.btnCopyLink}
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={handlePrint}>
                   <Printer className="h-4 w-4 mr-2" />
                   {tR.btnPrint}
                 </DropdownMenuItem>
+                {canGeneratePmocDocs && (
+                  <DropdownMenuItem onClick={() => setPmocDocumentsOpen(true)}>
+                    <Files className="h-4 w-4 mr-2" />
+                    Gerar documentos PMOC
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -1629,10 +1663,18 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
             <Printer className="h-4 w-4 mr-2" />
             {tR.btnPrint}
           </Button>
-          <Button variant="outline" onClick={handleCopyLink} className="flex-1">
-            <Link2 className="h-4 w-4 mr-2" />
-            {tR.btnCopyLink}
-          </Button>
+          {canShare && (
+            <Button variant="outline" onClick={handleCopyLink} className="flex-1">
+              <Link2 className="h-4 w-4 mr-2" />
+              {tR.btnCopyLink}
+            </Button>
+          )}
+          {canGeneratePmocDocs && (
+            <Button variant="outline" onClick={() => setPmocDocumentsOpen(true)} className="flex-1">
+              <Files className="h-4 w-4 mr-2" />
+              Gerar documentos PMOC
+            </Button>
+          )}
         </OsActionFooter>
       )}
 
@@ -1644,6 +1686,12 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
         </div>
       )}
     </div>
+
+      <OsPmocDocumentsDialog
+        open={pmocDocumentsOpen}
+        onOpenChange={setPmocDocumentsOpen}
+        serviceOrderId={serviceOrder.id}
+      />
 
       <ImagePreviewModal
         src={previewImage || ''}

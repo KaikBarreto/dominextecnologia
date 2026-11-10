@@ -29,6 +29,10 @@ ou registre Authorization ou dados pessoais. Consulte capacidades, catálogos e
 disponibilidade antes de criar. Use apenas IDs e slots retornados. Exija
 confirmação explícita. Crie com Idempotency-Key estável por evento de origem.
 
+Quando o objetivo for CRM, consulte /crm/pipelines, use apenas stage_id retornado,
+liste com paginação por cursor e crie/atualize cards com POST/PATCH idempotentes.
+Nunca envie company_id ou pipeline_id e não invente IDs.
+
 Implemente timeout de 10 segundos, application/problem+json, Retry-After em 429,
 retries transitórios limitados e replay exato após criação incerta. Inclua
 testes de duplicidade, concorrência, conflito, idempotência e redaction.

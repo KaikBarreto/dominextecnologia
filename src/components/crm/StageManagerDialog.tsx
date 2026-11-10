@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo } from 'react';
-import { Plus, GripVertical, Pencil, Trash2, Check, X, Trophy, XCircle, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus, GripVertical, Pencil, Trash2, Check, X, Trophy, XCircle, ChevronUp, ChevronDown, SlidersHorizontal } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +24,7 @@ import { useCrmStages, type CrmStage } from '@/hooks/useCrmStages';
 import { cn } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { CrmStageAutomationDialog } from '@/components/crm/CrmStageAutomationDialog';
 
 interface StageManagerDialogProps {
   /** Renderiza o CRUD dentro de uma tela de configurações, sem abrir outro modal. */
@@ -80,6 +81,7 @@ export function StageManagerDialog({
   };
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [configuringStage, setConfiguringStage] = useState<CrmStage | null>(null);
   const [newStage, setNewStage] = useState<{
     name: string;
     color: string;
@@ -313,6 +315,12 @@ export function StageManagerDialog({
           <RowActionsMenu
             actions={[
               {
+                label: 'Configurar regras e automações',
+                icon: SlidersHorizontal,
+                variant: 'edit',
+                onClick: () => setConfiguringStage(stage),
+              },
+              {
                 label: t.stages.editLabel,
                 icon: Pencil,
                 variant: 'edit',
@@ -451,6 +459,14 @@ export function StageManagerDialog({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {configuringStage && (
+        <CrmStageAutomationDialog
+          open
+          onOpenChange={(next) => { if (!next) setConfiguringStage(null); }}
+          stage={configuringStage}
+        />
+      )}
     </>
   );
 }

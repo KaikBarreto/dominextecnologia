@@ -4,9 +4,9 @@ import { supabase } from '@/integrations/supabase/client';
 /**
  * Lista versões de documentos PMOC vinculadas a um contrato (Onda C — v1.9.x).
  *
- * Tabela `pmoc_documents` é criada pela Database nesta onda — até a migration
- * ser aplicada em produção, este hook devolve `[]` defensivamente quando a
- * tabela não existir (erro 42P01) ou quando a coluna ainda não existir.
+ * Falhas de leitura são propagadas para a tela apresentar recuperação explícita;
+ * nunca são convertidas em lista vazia, pois isso confundiria erro com ausência
+ * real de documentos.
  *
  * Plano: docs/planos/2026-05-23-pmoc-onda-C-dossie-cronograma.md §4.1 / §5.3
  */
@@ -52,6 +52,37 @@ export interface PmocDocument {
   signature_status: PmocDocumentSignatureStatus;
 }
 
+const PMOC_DOCUMENT_FILE_LABELS: Record<PmocDocumentType, string> = {
+  dossie_pmoc: 'Dossiê PMOC',
+  cronograma_anual: 'Cronograma Anual PMOC',
+  termo_rt: 'Termo de Responsabilidade Técnica',
+  certificado: 'Certificado de Conformidade',
+  planilha: 'Planilha PMOC',
+};
+
+/**
+ * Nome de download legível e estável. O path privado continua técnico e
+ * imutável; este nome é aplicado apenas no Content-Disposition da signed URL.
+ */
+export function buildPmocDocumentDownloadName(
+  document: Pick<PmocDocument, 'doc_type' | 'version' | 'generated_at'>,
+  establishmentName?: string | null,
+): string {
+  const safePart = (value: string) => value
+    // eslint-disable-next-line no-control-regex -- nomes de arquivo não podem conter caracteres de controle.
+    .replace(/[<>:"/\\|?*\x00-\x1f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const generatedDate = /^\d{4}-\d{2}-\d{2}/.exec(document.generated_at)?.[0] ?? '';
+  const parts = [
+    PMOC_DOCUMENT_FILE_LABELS[document.doc_type],
+    establishmentName ? safePart(establishmentName) : '',
+    generatedDate,
+    `v${document.version}`,
+  ].filter(Boolean);
+  return `${parts.join(' - ')}.pdf`;
+}
+
 /**
  * Parser defensivo do `notes` pra extrair o status da assinatura.
  *
@@ -79,16 +110,7 @@ export function usePmocDocuments(contractId: string | null | undefined) {
         .order('doc_type', { ascending: true })
         .order('version', { ascending: false });
 
-      if (error) {
-        // 42P01 = tabela não existe (ambiente sem migration aplicada)
-        const code = (error as { code?: string }).code;
-        if (code === '42P01' || /relation .* does not exist/i.test(error.message)) {
-          return [];
-        }
-        // Para outros erros, logamos e retornamos vazio em vez de quebrar a UI.
-        console.warn('[usePmocDocuments] erro:', error.message);
-        return [];
-      }
+      if (error) throw error;
       // Enriquece cada doc com `signature_status` derivado do `notes`.
       return (data ?? []).map((d) => ({
         ...d,
@@ -121,5 +143,21 @@ export function usePmocDocuments(contractId: string | null | undefined) {
     isFetching: query.isFetching,
     refetch: query.refetch,
     error: query.error as Error | null,
+    getSignedDownloadUrl: async (
+      document: Pick<PmocDocument, 'contract_id' | 'doc_type' | 'version' | 'generated_at' | 'pdf_storage_path'>,
+      establishmentName?: string | null,
+    ) => {
+      if (!contractId || document.contract_id !== contractId) {
+        throw new Error('Documento não pertence ao contrato aberto.');
+      }
+      const fileName = buildPmocDocumentDownloadName(document, establishmentName);
+      const { data, error } = await supabase.storage
+        .from('pmoc-documents')
+        .createSignedUrl(document.pdf_storage_path, 60, { download: fileName });
+      if (error || !data?.signedUrl) {
+        throw error ?? new Error('Não foi possível preparar o download.');
+      }
+      return data.signedUrl;
+    },
   };
 }

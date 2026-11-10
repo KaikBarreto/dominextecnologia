@@ -7,8 +7,8 @@
 // de ação (`isManageable` já filtrava isso) — então a tela parecia sem CRUD
 // nenhum, mesmo com editar/cancelar/seleção em massa todos implementados.
 //
-// Fix: canceladas ficam ocultas por padrão (toggle "Mostrar canceladas"
-// revela o histórico). Assinatura sem nenhuma cobrança ganha exclusão segura
+// Fix: canceladas ficam ocultas por padrão (o botão único "Filtros" revela o
+// histórico). Assinatura sem nenhuma cobrança ganha exclusão segura
 // via edge; qualquer histórico financeiro mantém somente cancelar/arquivar.
 //
 // Driver mínimo com createRoot + act, mesmo padrão de ChargeDialog.test.tsx.
@@ -87,6 +87,9 @@ vi.mock('@/hooks/useTenantSubscriptions', () => ({
   useTenantSubscriptions: () => ({
     subscriptions: subsState.list,
     isLoading: false,
+    isFetching: false,
+    isError: false,
+    refetch: vi.fn(),
     manageSubscription: { mutateAsync: cancelMutateAsync, isPending: false },
     deleteSubscription: { mutateAsync: deleteMutateAsync, isPending: false },
     archiveSubscription: { mutate: archiveMutate, isPending: false },
@@ -125,6 +128,31 @@ function buttonByText(label: string) {
 }
 function buttonContaining(label: string) {
   return Array.from(document.querySelectorAll('button')).find((b) => b.textContent?.includes(label));
+}
+function menuItemByText(label: string) {
+  return qa('[role="menuitem"]').find((item) => item.textContent?.trim() === label);
+}
+function openFilters() {
+  const trigger = buttonContaining('Filtros');
+  expect(trigger).toBeTruthy();
+  act(() => {
+    trigger!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  });
+}
+function revealCancelled() {
+  openFilters();
+  const item = qa('[role="menuitemcheckbox"]').find((element) => element.textContent?.includes('Mostrar cancelada'));
+  expect(item).toBeTruthy();
+  click(item);
+}
+function openFirstActions() {
+  const trigger = Array.from(document.querySelectorAll('button')).find(
+    (button) => button.getAttribute('aria-label') === 'Ações da assinatura',
+  );
+  expect(trigger).toBeTruthy();
+  act(() => {
+    trigger!.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }));
+  });
 }
 // Desktop (table) e mobile (lista) renderizam os DOIS no jsdom ao mesmo tempo
 // (só um "hidden"/"sm:hidden" via classe CSS, sem layout real) — contagens
@@ -195,16 +223,18 @@ describe('FinanceAssinaturas — canceladas ficam ocultas por padrão (raiz do b
     expect(buttonByText('Cancelar')).toBeFalsy();
 
     // Mas o caminho pro histórico existe e é claro.
-    const revealBtn = buttonContaining('Mostrar cancelada');
-    expect(revealBtn).toBeTruthy();
-    expect(revealBtn!.textContent).toContain('2');
+    expect(buttonByText('Filtros')).toBeTruthy();
+    openFilters();
+    const revealItem = qa('[role="menuitemcheckbox"]').find((element) => element.textContent?.includes('Mostrar cancelada'));
+    expect(revealItem).toBeTruthy();
+    expect(revealItem!.textContent).toContain('2');
   });
 
   it('revelar canceladas: sem editar/cancelar (é terminal), mas COM "Arquivar" — senão a linha fica sem saída', () => {
     subsState.list = [cancelledSub('a')];
     mount();
 
-    click(buttonContaining('Mostrar cancelada'));
+    revealCancelled();
 
     expect(text()).toContain('Cliente a');
     // Terminal: não dá pra editar nem cancelar de novo.
@@ -212,17 +242,20 @@ describe('FinanceAssinaturas — canceladas ficam ocultas por padrão (raiz do b
     expect(buttonByText('Cancelar')).toBeFalsy();
     expect(qa('[role="checkbox"]').length).toBe(0);
     // Mas precisa ter COMO sumir com ela da lista.
-    expect(buttonContaining('Arquivar')).toBeTruthy();
+    openFirstActions();
+    expect(menuItemByText('Arquivar')).toBeTruthy();
 
     // E o toggle vira "ocultar".
-    expect(buttonContaining('Ocultar canceladas')).toBeTruthy();
+    openFilters();
+    expect(qa('[role="menuitemcheckbox"]').some((element) => element.textContent?.includes('Ocultar canceladas'))).toBe(true);
   });
 
   it('arquivar dispara a mutação com action archive', () => {
     subsState.list = [cancelledSub('a')];
     mount();
-    click(buttonContaining('Mostrar cancelada'));
-    click(buttonContaining('Arquivar'));
+    revealCancelled();
+    openFirstActions();
+    click(menuItemByText('Arquivar'));
 
     expect(archiveMutate).toHaveBeenCalledWith({ subscription_id: 'a', action: 'archive' });
   });
@@ -236,11 +269,12 @@ describe('FinanceAssinaturas — canceladas ficam ocultas por padrão (raiz do b
     subsState.list = [cancelledWithLivePixConsent('zumbi')];
     mount();
 
-    click(buttonContaining('Mostrar cancelada'));
+    revealCancelled();
 
     expect(text()).toContain('Cliente zumbi');
-    expect(buttonContaining('Cancelar de novo')).toBeTruthy();
-    expect(buttonContaining('Arquivar')).toBeFalsy();
+    openFirstActions();
+    expect(menuItemByText('Cancelar de novo')).toBeTruthy();
+    expect(menuItemByText('Arquivar')).toBeFalsy();
   });
 
   it('consentimento Pix JÁ morto volta a permitir arquivar', () => {
@@ -249,10 +283,11 @@ describe('FinanceAssinaturas — canceladas ficam ocultas por padrão (raiz do b
     ];
     mount();
 
-    click(buttonContaining('Mostrar cancelada'));
+    revealCancelled();
 
-    expect(buttonContaining('Arquivar')).toBeTruthy();
-    expect(buttonContaining('Cancelar de novo')).toBeFalsy();
+    openFirstActions();
+    expect(menuItemByText('Arquivar')).toBeTruthy();
+    expect(menuItemByText('Cancelar de novo')).toBeFalsy();
   });
 
   it('lista vazia de verdade (conta nova, zero assinaturas) usa o vazio genérico de sempre', () => {
@@ -260,7 +295,8 @@ describe('FinanceAssinaturas — canceladas ficam ocultas por padrão (raiz do b
     mount();
     expect(text()).toContain('Nenhuma assinatura');
     expect(text()).toContain('Crie a primeira assinatura recorrente');
-    expect(buttonContaining('Mostrar cancelada')).toBeFalsy();
+    openFilters();
+    expect(qa('[role="menuitemcheckbox"]').some((element) => element.textContent?.includes('Mostrar cancelada'))).toBe(false);
   });
 
   it('mix de ativa + cancelada: só a ativa aparece e tem ações por padrão', () => {
@@ -269,8 +305,9 @@ describe('FinanceAssinaturas — canceladas ficam ocultas por padrão (raiz do b
 
     expect(text()).toContain('Cliente live');
     expect(text()).not.toContain('Cliente dead');
-    expect(buttonByText('Editar')).toBeTruthy();
-    expect(buttonByText('Cancelar')).toBeTruthy();
+    openFirstActions();
+    expect(menuItemByText('Editar')).toBeTruthy();
+    expect(menuItemByText('Cancelar')).toBeTruthy();
   });
 });
 
@@ -296,7 +333,8 @@ describe('FinanceAssinaturas — cancelar individual exige confirmação', () =>
     subsState.list = [activeSub('live')];
     mount();
 
-    click(buttonByText('Cancelar'));
+    openFirstActions();
+    click(menuItemByText('Cancelar'));
     expect(cancelMutateAsync).not.toHaveBeenCalled();
     expect(text()).toContain('Cancelar assinatura');
 
@@ -315,7 +353,8 @@ describe('FinanceAssinaturas — exclusão sem histórico', () => {
     subsState.list = [{ ...activeSub('empty'), can_delete: true }];
     mount();
 
-    click(buttonByText('Excluir'));
+    openFirstActions();
+    click(menuItemByText('Excluir'));
     expect(deleteMutateAsync).not.toHaveBeenCalled();
     expect(text()).toContain('Excluir assinatura sem pagamentos');
 
@@ -326,7 +365,8 @@ describe('FinanceAssinaturas — exclusão sem histórico', () => {
   it('não oferece Excluir quando existe cobrança ou histórico', () => {
     subsState.list = [{ ...activeSub('history'), can_delete: false }];
     mount();
-    expect(buttonByText('Excluir')).toBeFalsy();
+    openFirstActions();
+    expect(menuItemByText('Excluir')).toBeFalsy();
   });
 });
 

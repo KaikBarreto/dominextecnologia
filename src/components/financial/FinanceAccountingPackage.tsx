@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import {
+  AlertCircle,
   BadgeCheck,
   BookOpenCheck,
   Building2,
@@ -8,8 +9,10 @@ import {
   Landmark,
   Loader2,
   ReceiptText,
+  RefreshCw,
 } from 'lucide-react';
 import type { DateRange } from '@/components/ui/DateRangeFilter';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
@@ -83,17 +86,45 @@ export function FinanceAccountingPackage({
   range,
   isLoading = false,
 }: FinanceAccountingPackageProps) {
-  const { settings, isLoading: isLoadingSettings } = useCompanySettings();
-  const { categories, isLoading: isLoadingCategories } = useFinancialCategories();
-  const { costCenters, isLoading: isLoadingCostCenters } = useCostCenters();
+  const {
+    settings,
+    isLoading: isLoadingSettings,
+    isError: isErrorSettings,
+    refetch: refetchSettings,
+  } = useCompanySettings();
+  const {
+    categories,
+    isLoading: isLoadingCategories,
+    isError: isErrorCategories,
+    refetch: refetchCategories,
+  } = useFinancialCategories();
+  const {
+    costCenters,
+    isLoading: isLoadingCostCenters,
+    isError: isErrorCostCenters,
+    refetch: refetchCostCenters,
+  } = useCostCenters();
   const {
     accounts,
     balances,
     isLoading: isLoadingAccounts,
     isLoadingBalances,
+    isError: isErrorAccounts,
+    isErrorBalances,
+    refetch: refetchAccounts,
   } = useFinancialAccounts();
-  const { bills, isLoading: isLoadingBills } = useAllCreditCardBills();
-  const { patrimony, isLoading: isLoadingPatrimony } = useOperationalPatrimony(transactions);
+  const {
+    bills,
+    isLoading: isLoadingBills,
+    isError: isErrorBills,
+    refetch: refetchBills,
+  } = useAllCreditCardBills();
+  const {
+    patrimony,
+    isLoading: isLoadingPatrimony,
+    isError: isErrorPatrimony,
+    refetch: refetchPatrimony,
+  } = useOperationalPatrimony(transactions);
   const { locale, currency, timezone } = useAppLocaleContext();
   const { toast } = useToast();
   const [isExporting, setIsExporting] = useState(false);
@@ -246,9 +277,11 @@ export function FinanceAccountingPackage({
 
   const isDataLoading = isLoading || isLoadingSettings || isLoadingCategories || isLoadingCostCenters
     || isLoadingAccounts || isLoadingBalances || isLoadingBills || isLoadingPatrimony;
+  const isDataError = isErrorSettings || isErrorCategories || isErrorCostCenters
+    || isErrorAccounts || isErrorBalances || isErrorBills || isErrorPatrimony;
 
   const handleExport = async () => {
-    if (isExporting || isDataLoading) return;
+    if (isExporting || isDataLoading || isDataError) return;
     setIsExporting(true);
     try {
       const dfcTotal = (group: DfcGroupKey) => dfcReport.groups.find((row) => row.key === group)?.total ?? 0;
@@ -331,6 +364,35 @@ export function FinanceAccountingPackage({
     { icon: Building2, title: 'Plano gerencial', text: 'Categorias, grupos DRE/DFC, subcategorias e centros de custo.' },
   ];
 
+  if (isDataError) {
+    return (
+      <Alert variant="destructive" role="alert">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Não foi possível preparar o pacote para Contabilidade</AlertTitle>
+        <AlertDescription className="space-y-3">
+          <p>A exportação foi bloqueada para impedir a geração de um arquivo parcial ou inconsistente.</p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="min-h-10 gap-2 border-destructive/40"
+            onClick={() => {
+              void refetchSettings();
+              void refetchCategories();
+              void refetchCostCenters();
+              refetchAccounts();
+              void refetchBills();
+              refetchPatrimony();
+            }}
+          >
+            <RefreshCw className="h-4 w-4" aria-hidden="true" />
+            Tentar novamente
+          </Button>
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
   return (
     <section className="space-y-5" aria-labelledby="accounting-package-title">
       <div className="overflow-hidden rounded-2xl bg-foreground text-background shadow-sm">
@@ -353,7 +415,7 @@ export function FinanceAccountingPackage({
             type="button"
             size="lg"
             variant="secondary"
-            disabled={isDataLoading || isExporting}
+            disabled={isDataLoading || isDataError || isExporting}
             onClick={() => void handleExport()}
             className="w-full shrink-0 gap-2 bg-background text-foreground hover:bg-background/90 lg:w-auto"
           >

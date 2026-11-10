@@ -382,6 +382,7 @@ export default function AdminSalespeople() {
           {isMobile ? (
             <MobilePillTabs
               variant="underline"
+              level="screen"
               tabs={[
                 { value: 'vendedores', label: 'Vendedores' },
                 { value: 'activity', label: 'Atividade Comercial' },

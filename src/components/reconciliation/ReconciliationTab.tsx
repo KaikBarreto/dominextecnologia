@@ -13,12 +13,15 @@ import { ReconciliationTable } from './ReconciliationTable';
 import { ReconciliationHelpModal } from './ReconciliationHelpModal';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
-import { ChevronDown, CheckCircle2, FileUp, HelpCircle, History, Play, RotateCcw, UploadCloud, X } from 'lucide-react';
+import { ArrowLeft, ChevronDown, CheckCircle2, FileUp, HelpCircle, History, Play, RotateCcw, UploadCloud, X } from 'lucide-react';
 
 export interface ReconciliationTabProps {
   /** Estado controlado pelo pai (`FinanceMovimentacoes`) — preserva entre trocas de aba. */
   state?: ReconciliationTabState;
   onStateChange?: (next: ReconciliationTabState) => void;
+  /** Retorna ao contexto que abriu a conciliação (visão geral ou conta). */
+  onBack?: () => void;
+  backLabel?: string;
 }
 
 /** `period_start`/`period_end` chegam YYYY-MM-DD. Nunca `new Date(...)`. */
@@ -30,7 +33,7 @@ function formatDateBR(iso: string | null): string {
 }
 
 /** Aba "Conciliação" de Movimentações: seletor de conta, retomar, importar, histórico. */
-export function ReconciliationTab({ state, onStateChange }: ReconciliationTabProps) {
+export function ReconciliationTab({ state, onStateChange, onBack, backLabel }: ReconciliationTabProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.finance.reconciliation.tab;
 
@@ -88,6 +91,12 @@ export function ReconciliationTab({ state, onStateChange }: ReconciliationTabPro
 
   return (
     <div className="space-y-4">
+      {onBack && (
+        <Button variant="ghost" size="sm" className="-ml-2 max-w-full gap-2" onClick={onBack}>
+          <ArrowLeft className="h-4 w-4 shrink-0" />
+          <span className="truncate">{backLabel ?? t.backButton}</span>
+        </Button>
+      )}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="w-full sm:max-w-xs">
           <SearchableSelect

@@ -12,6 +12,8 @@ import { safeTimeZone } from '@/lib/timezone';
 import type { ContractActivityExecutionRow } from '@/hooks/useContractPmocExecution';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
+import type { PartyLabel } from '@/hooks/usePartyLabels';
 
 /**
  * View PURA do "Histórico PMOC" — prova de cumprimento da Planilha PMOC
@@ -109,6 +111,7 @@ interface VisitGroup {
 
 interface PmocExecutionHistoryViewProps {
   rows: ContractActivityExecutionRow[];
+  equipmentLabels?: Record<string, Array<Pick<PartyLabel, 'id' | 'name' | 'color'>>>;
   /**
    * `false` esconde o cabeçalho "Histórico PMOC" (o portal já tem o seu próprio
    * título de aba/seção). Default `true` (aba autenticada do contrato).
@@ -124,6 +127,7 @@ interface PmocExecutionHistoryViewProps {
 export function PmocExecutionHistoryView({
   rows,
   showHeader = true,
+  equipmentLabels = {},
 }: PmocExecutionHistoryViewProps) {
   const t = useExecutionHistoryT();
   // Fuso da EMPRESA — na aba autenticada vem do company_settings; no portal
@@ -151,9 +155,18 @@ export function PmocExecutionHistoryView({
       if (!seen.has(key)) seen.set(key, r.equipment_name ?? t.noEquipment);
     }
     return Array.from(seen.entries())
-      .map(([value, label]) => ({ value, label }))
+      .map(([value, label]) => {
+        const labels = equipmentLabels[value] ?? [];
+        return {
+          value,
+          label,
+          suffix: <PartyLabelBadges labels={labels} mode="summary" />,
+          selectedSuffix: <PartyLabelBadges labels={labels} mode="compact" />,
+          keywords: labels.map((item) => item.name),
+        };
+      })
       .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
-  }, [rows, t.noEquipment]);
+  }, [rows, t.noEquipment, equipmentLabels]);
 
   // Agrupamento visita → equipamento → tarefa. As linhas já vêm ordenadas por
   // scheduled_date desc (mais recente primeiro); preservamos essa ordem.

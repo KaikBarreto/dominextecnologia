@@ -23,13 +23,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { EmployeePhotoAvatar } from '@/components/employees/EmployeePhotoAvatar';
 import { SettingsSidebarLayout, SettingsTab } from '@/components/SettingsSidebarLayout';
 import { EmployeeCard } from '@/components/employees/EmployeeCard';
-import { EmployeesListView } from '@/components/employees/EmployeesListView';
 import { EmployeesPjListView, ContractVigenciaStatusBadge } from '@/components/employees/EmployeesPjListView';
 import { useActiveEmployeeContractsMap } from '@/hooks/useEmployeeContracts';
 import { ViewModeToggle } from '@/components/ui/ViewModeToggle';
 import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
 import { useViewMode } from '@/hooks/useViewMode';
-import { getErrorMessage, getInvokeErrorMessage } from '@/utils/errorMessages';
+import { getErrorMessage } from '@/utils/errorMessages';
 import { EmployeeFormDialog } from '@/components/employees/EmployeeFormDialog';
 import { EmployeeMovementModal } from '@/components/employees/EmployeeMovementModal';
 import { EmployeePaymentModal, PaymentPayload } from '@/components/employees/EmployeePaymentModal';
@@ -40,6 +39,7 @@ import { ProcessesTab } from '@/components/employees/processes/ProcessesTab';
 import { AdminTimePanel } from '@/components/time-tracking/AdminTimePanel';
 import { TeamsPanel } from '@/components/teams/TeamsPanel';
 import { useEmployees, Employee } from '@/hooks/useEmployees';
+import { useEmployeeAccess, type EmployeeAccessRole } from '@/hooks/useEmployeeAccess';
 import { useEmployeeMovements } from '@/hooks/useEmployeeMovements';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { calculateEmployeeBalance, EmployeeMovement } from '@/utils/employeeCalculations';
@@ -57,6 +57,11 @@ import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import type { CompanySettings } from '@/hooks/useCompanySettings';
+import { ListDetailLayout, type ListDetailSortOption } from '@/components/ui/ListDetailLayout';
+import { EmployeeListDetail } from '@/components/employees/EmployeeListDetail';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useDataPagination } from '@/hooks/useDataPagination';
+import { DataTablePagination } from '@/components/ui/DataTablePagination';
 
 /** Endereço formatado da empresa (logradouro + ", " + número), como o receiptGenerator faz. */
 function formatCompanyAddress(s: CompanySettings | null | undefined): string | undefined {
@@ -167,6 +172,9 @@ export default function Employees() {
   const [viewMode, setViewMode] = useViewMode('employees-view-mode');
   const [formOpen, setFormOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  // Se o funcionário foi criado, mas a criação do acesso falhou, o retry deve
+  // atualizar o mesmo registro em vez de criar uma duplicata.
+  const [pendingCreatedEmployeeId, setPendingCreatedEmployeeId] = useState<string | null>(null);
   const [movementType, setMovementType] = useState<'vale' | 'bonus' | 'falta'>('vale');
   const [movementEmployee, setMovementEmployee] = useState<Employee | null>(null);
   // Uma chave por abertura do modal. Se a resposta da criação do vale se perder
@@ -177,6 +185,7 @@ export default function Employees() {
   const [extractEmployee, setExtractEmployee] = useState<Employee | null>(null);
   const [receiptConfirmData, setReceiptConfirmData] = useState<{ employee: Employee; movement: any } | null>(null);
   const [employeeToArchive, setEmployeeToArchive] = useState<Employee | null>(null);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
 
   // `timezone` é o fuso da EMPRESA (company_settings.timezone), não o do
   // aparelho. Toda data de folha e de vale que vira `paid_date` sai dele: sem
@@ -187,7 +196,8 @@ export default function Employees() {
   const t = MESSAGES[locale].app.employees;
 
   const isMobile = useIsMobile();
-  const { employees, isLoading, createEmployee, updateEmployee, archiveEmployee } = useEmployees();
+  const { employees, isLoading, isError, refetch, createEmployee, updateEmployee, archiveEmployee } = useEmployees();
+  const { createAccess } = useEmployeeAccess();
   const activeEmployees = useMemo(
     () => employees.filter((employee) => employee.is_active !== false),
     [employees],
@@ -393,7 +403,12 @@ export default function Employees() {
   }, [movementEmployee, movementType]);
 
   // Fetch ALL movements for balance calculation on cards
-  const { data: allMovements = [] } = useQuery({
+  const {
+    data: allMovements = [],
+    isLoading: isMovementsLoading,
+    isError: isMovementsError,
+    refetch: refetchAllMovements,
+  } = useQuery({
     queryKey: ['all-employee-movements'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -443,6 +458,36 @@ export default function Employees() {
     }
     return result;
   }, [activeEmployees, search, sort]);
+
+  const employeePagination = useDataPagination(filtered, 10, 'employees-list');
+  const selectedEmployee = useMemo(
+    () => activeEmployees.find((employee) => employee.id === selectedEmployeeId && employee.employment_regime !== 'pj') ?? null,
+    [activeEmployees, selectedEmployeeId],
+  );
+  const employeeCreatedAtById = useMemo(
+    () => new Map(activeEmployees.map((employee) => [employee.id, new Date(employee.created_at).getTime()])),
+    [activeEmployees],
+  );
+  const employeeListSortOptions = useMemo<ListDetailSortOption[]>(() => [
+    {
+      value: 'az',
+      label: t.toolbar.sortAz,
+      shortLabel: t.toolbar.sortAz,
+      compare: (a, b) => a.title.localeCompare(b.title, locale, { sensitivity: 'base' }),
+    },
+    {
+      value: 'newest',
+      label: t.toolbar.sortNewest,
+      shortLabel: t.toolbar.sortNewest,
+      compare: (a, b) => (employeeCreatedAtById.get(b.id) ?? 0) - (employeeCreatedAtById.get(a.id) ?? 0),
+    },
+    {
+      value: 'oldest',
+      label: t.toolbar.sortOldest,
+      shortLabel: t.toolbar.sortOldest,
+      compare: (a, b) => (employeeCreatedAtById.get(a.id) ?? 0) - (employeeCreatedAtById.get(b.id) ?? 0),
+    },
+  ], [employeeCreatedAtById, locale, t.toolbar.sortAz, t.toolbar.sortNewest, t.toolbar.sortOldest]);
 
   // Aba PJ/MEI: só regime 'pj'. Busca por nome ou CNPJ (fuzzyIncludes já
   // normaliza acento/ordem — mesma régua única de busca do resto do app).
@@ -516,125 +561,79 @@ export default function Employees() {
     }
   }, [createFaceEnrollmentLink, queryClient, toast, t]);
 
-  const handleCreateOrUpdate = async (data: Partial<Employee> & { _createAccess?: boolean; _password?: string }) => {
-    const { _createAccess, _password, ...employeeData } = data as any;
-    
-    if (editingEmployee) {
-      const editingId = editingEmployee.id;
-      const editingName = editingEmployee.name;
-      const editingPhone = editingEmployee.phone;
-      const editingPhotoUrl = editingEmployee.photo_url;
-      const previousLinkedUserId = editingEmployee.user_id;
-      const pontoWasEnabled = editingEmployee.ponto_enabled;
+  const handleCreateOrUpdate = async (data: Partial<Employee> & {
+    _createAccess?: boolean;
+    _password?: string;
+    _accessRole?: EmployeeAccessRole;
+    _accessPermissions?: string[];
+    _accessPresetId?: string | null;
+  }) => {
+    const {
+      _createAccess,
+      _password,
+      _accessRole = 'tecnico',
+      _accessPermissions = [],
+      _accessPresetId,
+      ...employeeData
+    } = data;
+    // Durante a criação de acesso, somente a edge privilegiada escreve user_id.
+    // Isso preserva um vínculo que tenha sido concluído no servidor caso a
+    // resposta de rede se perca e o usuário clique em salvar novamente.
+    const employeeWriteData = _createAccess
+      ? Object.fromEntries(Object.entries(employeeData).filter(([key]) => key !== 'user_id')) as Partial<Employee>
+      : employeeData;
 
-      updateEmployee.mutate({ id: editingId, ...employeeData }, {
-        onSuccess: () => {
-          setFormOpen(false);
-          setEditingEmployee(null);
+    const pontoWasEnabled = editingEmployee?.ponto_enabled ?? false;
+    let savedEmployee: Employee;
 
-          // Side-effects rodam em paralelo, sem bloquear o estado da mutation
-          (async () => {
-            if (employeeData.ponto_enabled) {
-              await ensurePontoLink(editingId, pontoWasEnabled);
-            }
-            const linkedUserId = employeeData.user_id || previousLinkedUserId;
-            if (linkedUserId && employeeData.photo_url) {
-              try {
-                await supabase.from('profiles').update({ avatar_url: employeeData.photo_url }).eq('user_id', linkedUserId);
-              } catch {
-                // Falha silenciosa: avatar pode dessincronizar, mas o salvamento principal foi
-              }
-            }
+    try {
+      if (editingEmployee) {
+        savedEmployee = await updateEmployee.mutateAsync({ id: editingEmployee.id, ...employeeWriteData }) as Employee;
+      } else if (pendingCreatedEmployeeId) {
+        savedEmployee = await updateEmployee.mutateAsync({ id: pendingCreatedEmployeeId, ...employeeWriteData }) as Employee;
+      } else {
+        savedEmployee = await createEmployee.mutateAsync(employeeWriteData) as Employee;
+        setPendingCreatedEmployeeId(savedEmployee.id);
+      }
 
-            if (_createAccess && employeeData.email && _password) {
-              try {
-                const response = await supabase.functions.invoke('create-user', {
-                  body: {
-                    email: employeeData.email,
-                    password: _password,
-                    full_name: employeeData.name || editingName,
-                    phone: employeeData.phone || editingPhone || undefined,
-                    avatar_url: employeeData.photo_url || editingPhotoUrl || undefined,
-                    role: 'tecnico',
-                    employee_id: editingId,
-                  },
-                });
+      if (_createAccess) {
+        if (!employeeData.email || !_password) throw new Error('Informe e-mail e senha temporária para criar o acesso.');
+        await createAccess.mutateAsync({
+          employeeId: savedEmployee.id,
+          email: employeeData.email,
+          password: _password,
+          fullName: employeeData.name || savedEmployee.name,
+          phone: employeeData.phone,
+          avatarUrl: employeeData.photo_url,
+          role: _accessRole,
+          permissions: _accessPermissions,
+          presetId: _accessPresetId,
+        });
+        toast({
+          title: t.toasts.accessCreated,
+          description: t.toasts.accessCreatedDesc.replace('{email}', employeeData.email).replace('{password}', _password),
+          duration: 15000,
+        });
+      }
 
-                // Re-lança o erro original (preserva error.context com o corpo real da edge)
-                if (response.error) throw response.error;
-                const fnData = response.data;
-                if (fnData?.error) throw new Error(fnData.error);
+      if (employeeData.ponto_enabled) await ensurePontoLink(savedEmployee.id, pontoWasEnabled);
 
-                if (fnData?.user?.id) {
-                  await supabase.from('employees').update({ user_id: fnData.user.id }).eq('id', editingId);
-                }
+      const linkedUserId = _createAccess ? null : (employeeData.user_id || editingEmployee?.user_id);
+      if (linkedUserId && employeeData.photo_url) {
+        await supabase.from('profiles').update({ avatar_url: employeeData.photo_url }).eq('user_id', linkedUserId);
+      }
 
-                toast({
-                  title: t.toasts.accessCreated,
-                  description: t.toasts.accessCreatedDesc.replace('{email}', employeeData.email).replace('{password}', _password),
-                  duration: 15000,
-                });
-              } catch (err: any) {
-                const realMsg = await getInvokeErrorMessage(err);
-                toast({
-                  variant: 'destructive',
-                  title: t.toasts.employeeUpdatedAccessError,
-                  description: getErrorMessage(realMsg || err),
-                });
-              }
-            }
-          })();
-        },
+      setPendingCreatedEmployeeId(null);
+      setFormOpen(false);
+      setEditingEmployee(null);
+    } catch (error) {
+      const message = getErrorMessage(error);
+      toast({
+        variant: 'destructive',
+        title: _createAccess ? 'Não foi possível concluir o acesso' : 'Não foi possível salvar o funcionário',
+        description: message,
       });
-    } else {
-      createEmployee.mutate(employeeData, {
-        onSuccess: async (newEmployee: any) => {
-          setFormOpen(false);
-
-          if (employeeData.ponto_enabled && newEmployee?.id) {
-            await ensurePontoLink(newEmployee.id, false);
-          }
-
-          if (_createAccess && employeeData.email && _password) {
-            try {
-              const response = await supabase.functions.invoke('create-user', {
-                body: {
-                  email: employeeData.email,
-                  password: _password,
-                  full_name: employeeData.name,
-                  phone: employeeData.phone || undefined,
-                  avatar_url: employeeData.photo_url || undefined,
-                  role: 'tecnico',
-                  employee_id: newEmployee?.id || undefined,
-                },
-              });
-              
-              // Re-lança o erro original (preserva error.context com o corpo real da edge)
-              if (response.error) throw response.error;
-              const fnData = response.data;
-              if (fnData?.error) throw new Error(fnData.error);
-
-              // Link user_id to employee
-              if (fnData?.user?.id && newEmployee?.id) {
-                await supabase.from('employees').update({ user_id: fnData.user.id }).eq('id', newEmployee.id);
-              }
-
-              toast({
-                title: t.toasts.accessCreated,
-                description: t.toasts.accessCreatedDesc.replace('{email}', employeeData.email).replace('{password}', _password),
-                duration: 15000,
-              });
-            } catch (err: any) {
-              const realMsg = await getInvokeErrorMessage(err);
-              toast({
-                variant: 'destructive',
-                title: t.toasts.employeeCreatedAccessError,
-                description: getErrorMessage(realMsg || err),
-              });
-            }
-          }
-        },
-      });
+      throw error;
     }
   };
 
@@ -1013,7 +1012,22 @@ export default function Employees() {
     return acc?.name || t.extract.fallbacks.bankAccount;
   };
 
-  const openNewEmployee = () => { setEditingEmployee(null); setFormOpen(true); };
+  const openNewEmployee = () => { setPendingCreatedEmployeeId(null); setEditingEmployee(null); setFormOpen(true); };
+  const copyEmployeePontoLink = useCallback(async (employee: Employee) => {
+    if (!employee.ponto_slug) return;
+    const link = `${window.location.origin}/ponto/${employee.ponto_slug}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      toast({ title: t.toasts.linkCopied, description: link });
+    } catch {
+      toast({ variant: 'destructive', title: t.toasts.linkCopyFailed, description: link });
+    }
+  }, [t, toast]);
+  const isEmployeeListLoading = isLoading || isMovementsLoading;
+  const isEmployeeListError = isError || isMovementsError;
+  const retryEmployeeList = useCallback(() => {
+    void Promise.all([refetch(), refetchAllMovements()]);
+  }, [refetch, refetchAllMovements]);
 
   return (
     <div className={cn('space-y-6 min-w-0 w-full max-w-full overflow-x-hidden', isMobile && 'pb-24')}>
@@ -1024,101 +1038,228 @@ export default function Employees() {
         actions={
           isMobile ? (
             <Badge variant="secondary" className="text-[10px]">{headerEmployeeCount}</Badge>
-          ) : <Badge variant="secondary">{headerEmployeeCount}</Badge>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary">{headerEmployeeCount}</Badge>
+              {activeTab === 'list' && (
+                <>
+                  <ViewModeToggle value={viewMode} onChange={setViewMode} showLabels />
+                  <Button onClick={openNewEmployee} className="gap-1.5">
+                    <Plus className="h-4 w-4" /> {t.toolbar.newEmployee}
+                  </Button>
+                </>
+              )}
+            </div>
+          )
         }
       />
 
-      <SettingsSidebarLayout tabs={tabs} activeTab={activeTab} onTabChange={handleTabChange}>
+      <SettingsSidebarLayout variant="underline" tabs={tabs} activeTab={activeTab} onTabChange={handleTabChange}>
         {activeTab === 'list' ? (
           <div className="space-y-4">
-            {isMobile ? (
-              <MobileListToolbar
-                searchValue={search}
-                onSearchChange={setSearch}
-                searchPlaceholder={t.toolbar.searchPlaceholderMobile}
-                trailing={<ViewModeToggle value={viewMode} onChange={setViewMode} />}
+            {!isMobile && viewMode === 'list' ? (
+              <ListDetailLayout
+                items={isEmployeeListLoading || isEmployeeListError ? [] : activeEmployees
+                  .filter((employee) => employee.employment_regime !== 'pj')
+                  .map((employee) => {
+                    const balance = balanceMap.get(employee.id) || calculateEmployeeBalance([], employee.salary);
+                    return {
+                      id: employee.id,
+                      title: employee.name,
+                      subtitle: [employee.position, employee.phone].filter(Boolean).join(' · ') || undefined,
+                      searchText: [employee.cpf, employee.email, employee.address, employee.matricula, employee.cbo].filter(Boolean).join(' '),
+                      leading: <EmployeePhotoAvatar name={employee.name} src={employee.photo_url} className="h-10 w-10" />,
+                      trailing: (
+                        <Badge
+                          variant={balance.currentBalance >= 0 ? 'success' : 'destructive'}
+                          className="px-1.5 py-0 text-[10px] tabular-nums"
+                        >
+                          {fmtCurrency(balance.currentBalance)}
+                        </Badge>
+                      ),
+                    };
+                  })}
+                listTitle={t.listDetail.listTitle}
+                storageKey="employees-list-detail"
+                sortOptions={employeeListSortOptions}
+                searchPlaceholder={t.toolbar.searchPlaceholder}
+                emptyLabel={t.empty.noResults}
+                selectedId={selectedEmployeeId ?? undefined}
+                onSelect={setSelectedEmployeeId}
               >
-                <Select value={sort} onValueChange={setSort}>
-                  <SelectTrigger className="h-10 w-[150px] shrink-0"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="az">{t.toolbar.sortAz}</SelectItem>
-                    <SelectItem value="newest">{t.toolbar.sortNewest}</SelectItem>
-                    <SelectItem value="oldest">{t.toolbar.sortOldest}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </MobileListToolbar>
-            ) : (
-            <div className="flex flex-col sm:flex-row gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder={t.toolbar.searchPlaceholder}
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              <Select value={sort} onValueChange={setSort}>
-                <SelectTrigger className="w-full sm:w-[160px]"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="az">{t.toolbar.sortAz}</SelectItem>
-                  <SelectItem value="newest">{t.toolbar.sortNewest}</SelectItem>
-                  <SelectItem value="oldest">{t.toolbar.sortOldest}</SelectItem>
-                </SelectContent>
-              </Select>
-              <ViewModeToggle value={viewMode} onChange={setViewMode} showLabels />
-              <Button onClick={openNewEmployee} className="gap-1.5">
-                <Plus className="h-4 w-4" /> {t.toolbar.newEmployee}
-              </Button>
-            </div>
-            )}
-
-            {/* Loading / vazio compartilhados entre os modos */}
-            {isLoading ? (
-              viewMode === 'grid' ? (
-                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3">
-                  {[1, 2, 3].map(i => <div key={i} className="h-48 rounded-lg bg-muted animate-pulse" />)}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {[1, 2, 3, 4].map(i => (
-                    <div key={i} className="h-[72px] rounded-lg bg-muted animate-pulse" />
-                  ))}
-                </div>
-              )
-            ) : filtered.length === 0 ? (
-              <EmptyState
-                icon={<Users className="h-12 w-12" />}
-                title={search ? t.empty.noResults : t.empty.noEmployees}
-                description={search ? t.empty.noResultsDescription : isMobile ? t.empty.noEmployeesDescriptionMobile : t.empty.noEmployeesDescriptionDesktop}
-              />
-            ) : viewMode === 'grid' ? (
-              // ---------------------------------------------------------------
-              // Visão CARDS: grid responsivo (1 col mobile / 2 col desktop /
-              // 3 col em telas largas). Reusa o EmployeeCard com todas as ações.
-              // ---------------------------------------------------------------
-              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3">
-                {filtered.map(emp => (
-                  <EmployeeCard
-                    key={emp.id}
-                    employee={emp}
-                    balance={balanceMap.get(emp.id) || calculateEmployeeBalance([], emp.salary)}
-                    onEdit={() => { setEditingEmployee(emp); setFormOpen(true); }}
-                    onArchive={() => archiveEmployee.mutate(emp.id)}
-                    onArchiveWithUser={emp.user_id ? () => handleArchiveWithUser(emp) : undefined}
-                    onMovement={(type) => { setMovementType(type); setMovementEmployee(emp); }}
-                    onPayment={() => setPaymentEmployee(emp)}
-                    onExtract={() => setExtractEmployee(emp)}
+                {isEmployeeListLoading ? (
+                  <div className="space-y-4">
+                    <Skeleton className="h-20 w-full" />
+                    <Skeleton className="h-52 w-full" />
+                  </div>
+                ) : isEmployeeListError ? (
+                  <EmptyState
+                    icon={<Users className="h-12 w-12 text-destructive" />}
+                    title={t.listDetail.loadError}
+                    description={MESSAGES[locale].app.common.genericError}
+                    action={{ label: t.listDetail.retry, onClick: retryEmployeeList }}
                   />
-                ))}
+                ) : selectedEmployee ? (
+                  <EmployeeListDetail
+                    employee={selectedEmployee}
+                    balance={balanceMap.get(selectedEmployee.id) || calculateEmployeeBalance([], selectedEmployee.salary)}
+                    onEdit={() => { setEditingEmployee(selectedEmployee); setFormOpen(true); }}
+                    onArchive={() => setEmployeeToArchive(selectedEmployee)}
+                    onMovement={(type) => { setMovementType(type); setMovementEmployee(selectedEmployee); }}
+                    onPayment={() => setPaymentEmployee(selectedEmployee)}
+                    onExtract={() => setExtractEmployee(selectedEmployee)}
+                    onCopyTimeclockLink={() => copyEmployeePontoLink(selectedEmployee)}
+                  />
+                ) : activeEmployees.every((employee) => employee.employment_regime === 'pj') ? (
+                  <EmptyState
+                    icon={<Users className="h-12 w-12" />}
+                    title={t.empty.noEmployees}
+                    description={t.empty.noEmployeesDescriptionDesktop}
+                  />
+                ) : (
+                  <EmptyState
+                    icon={<Users className="h-12 w-12" />}
+                    title={t.listDetail.selectPrompt}
+                    description={t.listDetail.selectPromptDescription}
+                  />
+                )}
+              </ListDetailLayout>
+            ) : !isMobile ? (
+              <div className="space-y-4">
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder={t.toolbar.searchPlaceholder}
+                      value={search}
+                      onChange={(event) => setSearch(event.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                  <Select value={sort} onValueChange={setSort}>
+                    <SelectTrigger className="w-full sm:w-[160px]"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="az">{t.toolbar.sortAz}</SelectItem>
+                      <SelectItem value="newest">{t.toolbar.sortNewest}</SelectItem>
+                      <SelectItem value="oldest">{t.toolbar.sortOldest}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {isEmployeeListLoading ? (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+                    {[1, 2, 3].map((item) => <Skeleton key={item} className="h-48 w-full" />)}
+                  </div>
+                ) : isEmployeeListError ? (
+                  <EmptyState
+                    icon={<Users className="h-12 w-12 text-destructive" />}
+                    title={t.listDetail.loadError}
+                    description={MESSAGES[locale].app.common.genericError}
+                    action={{ label: t.listDetail.retry, onClick: retryEmployeeList }}
+                  />
+                ) : filtered.length === 0 ? (
+                  <EmptyState
+                    icon={<Users className="h-12 w-12" />}
+                    title={search ? t.empty.noResults : t.empty.noEmployees}
+                    description={search ? t.empty.noResultsDescription : t.empty.noEmployeesDescriptionDesktop}
+                  />
+                ) : (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+                    {filtered.map((employee) => (
+                      <EmployeeCard
+                        key={employee.id}
+                        employee={employee}
+                        balance={balanceMap.get(employee.id) || calculateEmployeeBalance([], employee.salary)}
+                        onEdit={() => { setEditingEmployee(employee); setFormOpen(true); }}
+                        onArchive={() => archiveEmployee.mutate(employee.id)}
+                        onArchiveWithUser={employee.user_id ? () => handleArchiveWithUser(employee) : undefined}
+                        onMovement={(type) => { setMovementType(type); setMovementEmployee(employee); }}
+                        onPayment={() => setPaymentEmployee(employee)}
+                        onExtract={() => setExtractEmployee(employee)}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
-            ) : isMobile ? (
-              // -------------------------------------------------------------
-              // Visão LISTA (mobile): lista nativa via MobileListItem, ações
-              // no overflow ⋮ (ações secundárias vivem no menu, não inline).
-              // -------------------------------------------------------------
-              <div className="rounded-xl border bg-card overflow-hidden">
-                {filtered.map((emp) => {
+            ) : selectedEmployee ? (
+              <EmployeeListDetail
+                employee={selectedEmployee}
+                balance={balanceMap.get(selectedEmployee.id) || calculateEmployeeBalance([], selectedEmployee.salary)}
+                onBack={() => setSelectedEmployeeId(null)}
+                onEdit={() => { setEditingEmployee(selectedEmployee); setFormOpen(true); }}
+                onArchive={() => setEmployeeToArchive(selectedEmployee)}
+                onMovement={(type) => { setMovementType(type); setMovementEmployee(selectedEmployee); }}
+                onPayment={() => setPaymentEmployee(selectedEmployee)}
+                onExtract={() => setExtractEmployee(selectedEmployee)}
+                onCopyTimeclockLink={() => copyEmployeePontoLink(selectedEmployee)}
+              />
+            ) : (
+              <>
+                <MobileListToolbar
+                  searchValue={search}
+                  onSearchChange={setSearch}
+                  searchPlaceholder={t.toolbar.searchPlaceholderMobile}
+                  trailing={<ViewModeToggle value={viewMode} onChange={setViewMode} />}
+                >
+                  <Select value={sort} onValueChange={setSort}>
+                    <SelectTrigger className="h-10 w-[150px] shrink-0"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="az">{t.toolbar.sortAz}</SelectItem>
+                      <SelectItem value="newest">{t.toolbar.sortNewest}</SelectItem>
+                      <SelectItem value="oldest">{t.toolbar.sortOldest}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </MobileListToolbar>
+
+                {isEmployeeListLoading ? (
+                  <div className="space-y-2">
+                    {[1, 2, 3, 4].map((item) => <Skeleton key={item} className="h-[72px] w-full" />)}
+                  </div>
+                ) : isEmployeeListError ? (
+                  <EmptyState
+                    icon={<Users className="h-12 w-12 text-destructive" />}
+                    title={t.listDetail.loadError}
+                    description={MESSAGES[locale].app.common.genericError}
+                    action={{ label: t.listDetail.retry, onClick: retryEmployeeList }}
+                  />
+                ) : filtered.length === 0 ? (
+                  <EmptyState
+                    icon={<Users className="h-12 w-12" />}
+                    title={search ? t.empty.noResults : t.empty.noEmployees}
+                    description={search ? t.empty.noResultsDescription : t.empty.noEmployeesDescriptionMobile}
+                  />
+                ) : viewMode === 'grid' ? (
+                  <>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      {employeePagination.paginatedItems.map((employee) => (
+                        <EmployeeCard
+                          key={employee.id}
+                          employee={employee}
+                          balance={balanceMap.get(employee.id) || calculateEmployeeBalance([], employee.salary)}
+                          onEdit={() => { setEditingEmployee(employee); setFormOpen(true); }}
+                          onArchive={() => archiveEmployee.mutate(employee.id)}
+                          onArchiveWithUser={employee.user_id ? () => handleArchiveWithUser(employee) : undefined}
+                          onMovement={(type) => { setMovementType(type); setMovementEmployee(employee); }}
+                          onPayment={() => setPaymentEmployee(employee)}
+                          onExtract={() => setExtractEmployee(employee)}
+                        />
+                      ))}
+                    </div>
+                    <DataTablePagination
+                      page={employeePagination.page}
+                      totalPages={employeePagination.totalPages}
+                      totalItems={employeePagination.totalItems}
+                      from={employeePagination.from}
+                      to={employeePagination.to}
+                      pageSize={employeePagination.pageSize}
+                      onPageChange={employeePagination.setPage}
+                      onPageSizeChange={employeePagination.setPageSize}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <div className="overflow-hidden rounded-xl border bg-card">
+                      {employeePagination.paginatedItems.map((emp) => {
                     const balance = balanceMap.get(emp.id) || calculateEmployeeBalance([], emp.salary);
                     const balancePositive = balance.currentBalance >= 0;
 
@@ -1174,15 +1315,7 @@ export default function Employees() {
                         key: 'ponto-link',
                         label: t.actions.timeclockLink,
                         icon: <Clock className="h-4 w-4" />,
-                        onClick: async () => {
-                          const link = `${window.location.origin}/ponto/${emp.ponto_slug}`;
-                          try {
-                            await navigator.clipboard.writeText(link);
-                            toast({ title: t.toasts.linkCopied, description: link });
-                          } catch {
-                            toast({ variant: 'destructive', title: t.toasts.linkCopyFailed, description: link });
-                          }
-                        },
+                        onClick: () => copyEmployeePontoLink(emp),
                       });
                     }
 
@@ -1194,7 +1327,7 @@ export default function Employees() {
                     return (
                       <MobileListItem
                         key={emp.id}
-                        onClick={() => setExtractEmployee(emp)}
+                        onClick={() => setSelectedEmployeeId(emp.id)}
                         actions={itemActions}
                         leading={
                           <EmployeePhotoAvatar name={emp.name} src={emp.photo_url} className="h-10 w-10" />
@@ -1203,7 +1336,7 @@ export default function Employees() {
                         subtitle={subtitleParts.join(' • ')}
                         trailing={
                           <Badge
-                            variant={balancePositive ? 'default' : 'destructive'}
+                            variant={balancePositive ? 'success' : 'destructive'}
                             className="text-[10px] px-2 py-0.5 whitespace-nowrap"
                           >
                             {fmtCurrency(balance.currentBalance)}
@@ -1212,22 +1345,20 @@ export default function Employees() {
                       />
                     );
                   })}
-              </div>
-            ) : (
-              // -------------------------------------------------------------
-              // Visão LISTA (desktop): tabela limpa (1 borda externa + linhas
-              // por divisor), saldo como selo de status saturado, ações no
-              // RowActionsMenu (editar = warning, arquivar = destructive).
-              // -------------------------------------------------------------
-              <EmployeesListView
-                employees={filtered}
-                balanceMap={balanceMap}
-                onEdit={(emp) => { setEditingEmployee(emp); setFormOpen(true); }}
-                onArchive={(emp) => setEmployeeToArchive(emp)}
-                onMovement={(emp, type) => { setMovementType(type); setMovementEmployee(emp); }}
-                onPayment={(emp) => setPaymentEmployee(emp)}
-                onExtract={(emp) => setExtractEmployee(emp)}
-              />
+                    </div>
+                    <DataTablePagination
+                      page={employeePagination.page}
+                      totalPages={employeePagination.totalPages}
+                      totalItems={employeePagination.totalItems}
+                      from={employeePagination.from}
+                      to={employeePagination.to}
+                      pageSize={employeePagination.pageSize}
+                      onPageChange={employeePagination.setPage}
+                      onPageSizeChange={employeePagination.setPageSize}
+                    />
+                  </>
+                )}
+              </>
             )}
           </div>
         ) : activeTab === 'pj' ? (
@@ -1348,7 +1479,7 @@ export default function Employees() {
       </SettingsSidebarLayout>
 
       {/* FAB mobile-only — só nas tabs de lista (Funcionários e PJ/MEI). Desktop usa botão inline na toolbar. */}
-      {isMobile && (activeTab === 'list' || activeTab === 'pj') && (
+      {isMobile && (activeTab === 'pj' || (activeTab === 'list' && !selectedEmployee)) && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
           label={activeTab === 'pj' ? t.pjTab.fabLabel : t.toolbar.fabLabel}
@@ -1359,10 +1490,10 @@ export default function Employees() {
       {/* Dialogs */}
       <EmployeeFormDialog
         open={formOpen}
-        onOpenChange={o => { setFormOpen(o); if (!o) setEditingEmployee(null); }}
+        onOpenChange={o => { setFormOpen(o); if (!o) { setEditingEmployee(null); setPendingCreatedEmployeeId(null); } }}
         employee={editingEmployee}
         onSubmit={handleCreateOrUpdate}
-        isPending={createEmployee.isPending || updateEmployee.isPending}
+        isPending={createEmployee.isPending || updateEmployee.isPending || createAccess.isPending}
         onCreateForDisc={async (data) => {
           const newEmp = await createEmployee.mutateAsync(data as any);
           return { id: newEmp.id, name: newEmp.name };

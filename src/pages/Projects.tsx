@@ -35,6 +35,7 @@ import { EmptyState } from '@/components/mobile/EmptyState';
 import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
 import { FilterButton } from '@/components/ui/FilterButton';
+import { SearchField } from '@/components/ui/search-field-actions';
 import { FilterCheckboxGroup, type FilterCheckboxOption } from '@/components/mobile/FilterCheckboxGroup';
 import { FABButton } from '@/components/mobile/FABButton';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
@@ -273,19 +274,18 @@ export default function Projects() {
           </FilterSheet>
         </MobileListToolbar>
       ) : (
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
+        <div>
+          <SearchField
+            containerClassName="flex-1"
               placeholder={t.searchPlaceholder}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <FilterButton activeCount={activeFilterCount} onClear={() => setStatusFilter([])}>
-            {filterContent}
-          </FilterButton>
+            actions={
+              <FilterButton activeCount={activeFilterCount} onClear={() => setStatusFilter([])} embedded>
+                {filterContent}
+              </FilterButton>
+            }
+          />
         </div>
       )}
 

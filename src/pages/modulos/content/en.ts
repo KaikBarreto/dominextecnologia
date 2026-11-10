@@ -55,15 +55,15 @@ const en: ModuleContentMap = {
   // ────────────────────────────────────────────────────────────────────────
   'os-digital': {
     slug: 'digital-work-order-software',
-    metaTitle: 'Digital Work Order Software for Field Service Teams | Dominex',
+    metaTitle: 'Digital Work Orders, Scheduling and Team Tracking | Dominex',
     metaDescription:
-      'Digital work order software for field service teams: work orders on the technician\'s phone, checklists, before and after photos, customer signature, installable app, scheduling, and an automatic PDF report. Free 7-day trial, no credit card.',
+      'Digital work orders, scheduling and team tracking in one system: technician app, checklists, photos, signatures, live map and automatic PDF reports. Free 7-day trial, no credit card.',
     hero: {
-      eyebrow: 'Digital Work Orders',
-      h1: 'Digital work order software for field service teams',
-      h1Highlight: 'digital work order',
+      eyebrow: 'Work Orders, Scheduling & Tracking',
+      h1: 'Digital work orders, scheduling and tracking for field teams',
+      h1Highlight: 'Digital work orders, scheduling and tracking',
       subtitle:
-        'Say goodbye to paper work orders that go missing, arrive late, and show up with no photos. Dominex puts the work order on your technician\'s phone, with a checklist, photos, signature, and a report that is ready on the spot, out in the field.',
+        'Create the work order, organize the schedule, dispatch the job and follow the team on the map. The technician completes everything on the phone with checklists, photos, signatures and an instant report.',
     },
     metrics: [
       { value: '50k+', label: 'work orders per month on the platform' },
@@ -124,8 +124,8 @@ const en: ModuleContentMap = {
         },
       },
     ],
-    featuresHeading: 'Everything your work order needs, in one place',
-    featuresSubheading: 'From the request to the report, digital work orders cover every step',
+    featuresHeading: 'From scheduling to the report, everything is connected',
+    featuresSubheading: 'Organize service, follow the team and prove every step of the work order',
     features: [
       { icon: ClipboardList, title: 'Fast work order creation', desc: 'Open installation, maintenance, and repair orders in seconds, already linked to the customer and equipment.' },
       { icon: CheckSquare, title: 'Checklist by service', desc: 'Checklist templates by service type keep every visit on the right track.' },
@@ -154,8 +154,8 @@ const en: ModuleContentMap = {
       { q: 'How do I get started? Do I need a credit card?', a: 'Just create an account and use it free for 7 days, no credit card. You set up your company in minutes and start opening work orders in the app.' },
     ],
     finalCta: {
-      title: 'Move your work orders to digital',
-      subtitle: 'Free for 7 days, no credit card. Take work orders off paper and put your field team in control.',
+      title: 'Put your field operation in control',
+      subtitle: 'Free for 7 days, no credit card. Digitize work orders, organize the schedule and follow the team on the map.',
     },
   },
 
@@ -490,7 +490,7 @@ const en: ModuleContentMap = {
     metaDescription:
       'Time tracking and payroll for field teams: clock in with a selfie and geolocation, an overtime balance, payroll, advances, and employee management, all in one place. Free 7-day trial, no credit card.',
     hero: {
-      eyebrow: 'Time Tracking & Payroll (HR)',
+      eyebrow: 'Employees (HR)',
       h1: 'Time tracking and payroll for field teams',
       h1Highlight: 'Time tracking and payroll',
       subtitle:
@@ -591,7 +591,7 @@ const en: ModuleContentMap = {
   // ────────────────────────────────────────────────────────────────────────
   // 6. Electronic service invoicing
   // ────────────────────────────────────────────────────────────────────────
-  'emissao-de-nfse': {
+  'emissao-de-nota-fiscal': {
     slug: 'service-invoice-software',
     metaTitle: 'Electronic Service Invoicing Software for Service Companies | Dominex',
     metaDescription:
@@ -1228,6 +1228,68 @@ const en: ModuleContentMap = {
       title: 'Put the whole field on your team\'s phone',
       subtitle: 'Free for 7 days, no credit card. Work orders, technical tools, and the catalog in the Technician App, on your team\'s phone.',
     },
+  },
+};
+
+const legacySalesContent = en['orcamentos-e-contratos'];
+
+en['sistema-de-orcamentos'] = {
+  ...legacySalesContent,
+  slug: 'quote-management-software',
+  metaTitle: 'Quote and proposal software for service companies | Dominex',
+  metaDescription: 'Build professional quotes, send proposals by link and turn approval into a work order without retyping the scope.',
+  hero: {
+    eyebrow: 'Quotes and proposals',
+    h1: 'Professional quotes that turn into service work',
+    h1Highlight: 'Professional quotes',
+    subtitle: 'Price with confidence, present the proposal with your brand and collect approval by link. Then turn the approved scope into a work order.',
+  },
+  pains: [legacySalesContent.pains[0], legacySalesContent.pains[1], legacySalesContent.pains[3]],
+  deepDives: legacySalesContent.deepDives.slice(0, 2).map((item, index) => ({
+    ...item,
+    image: index === 0
+      ? { src: '/guia-tecnico/img/t9-aba-precificacao.jpg', alt: 'Real Dominex service pricing screen', fit: 'contain' as const }
+      : { src: '/guia-tecnico/img/t9-orcamento-publico.jpg', alt: 'Dominex public proposal opened for customer approval', fit: 'contain' as const },
+  })),
+  featuresHeading: 'Sell with margin and without rework',
+  featuresSubheading: 'Tools to price, present and close the service',
+  features: [0, 1, 2, 5, 6, 7].map((index) => legacySalesContent.features[index]),
+  testimonialsHeading: '',
+  testimonials: [],
+  faq: [0, 1, 4, 5, 6].map((index) => legacySalesContent.faq[index]),
+  finalCta: {
+    title: 'Turn quotes into sales and sales into service work',
+    subtitle: 'Free for 7 days, no credit card. Price, send and track every proposal in Dominex.',
+  },
+};
+
+en['gestao-de-contratos'] = {
+  ...legacySalesContent,
+  slug: 'contract-management-software',
+  metaTitle: 'Recurring contract management software | Dominex',
+  metaDescription: 'Organize maintenance contracts, recurring visits, documents, renewals and automatically generated work orders.',
+  hero: {
+    eyebrow: 'Contract management',
+    h1: 'Recurring contracts with every visit on schedule',
+    h1Highlight: 'Recurring contracts',
+    subtitle: 'Define the agreement, locations and service frequency. Dominex organizes upcoming visits and keeps documents, revenue and renewals connected to the contract.',
+  },
+  painsHeading: 'Recurring contracts cannot depend on memory',
+  painsSubheading: 'Turn each agreement into a clear operating routine',
+  pains: [legacySalesContent.pains[2]],
+  deepDives: legacySalesContent.deepDives.slice(2).map((item) => ({
+    ...item,
+    image: { src: '/guia-tecnico/img/t11-contrato-visao-geral.jpg', alt: 'Real overview of a recurring contract in Dominex', fit: 'contain' as const },
+  })),
+  featuresHeading: 'From signed agreement to completed visit',
+  featuresSubheading: 'Control the portfolio and automate recurring maintenance',
+  features: [3, 4, 6].map((index) => legacySalesContent.features[index]),
+  testimonialsHeading: '',
+  testimonials: [],
+  faq: [2, 3, 5, 6].map((index) => legacySalesContent.faq[index]),
+  finalCta: {
+    title: 'Make every contract a predictable operation',
+    subtitle: 'Free for 7 days, no credit card. Organize recurring visits, documents and renewals in Dominex.',
   },
 };
 

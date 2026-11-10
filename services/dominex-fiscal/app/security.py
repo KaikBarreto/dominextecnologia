@@ -1,93 +1,118 @@
-"""
-Autenticação edge → microserviço — DONO: 🖥️ Dev Infra (tarefa C2 do plano NFS-e).
+"""Autenticação e autorização dos clientes do motor fiscal.
 
-⚠️ ESCOPO DESTE ARQUIVO: só o portão de entrada (autenticação).
-   A custódia (KEK/DEK, .pfx, PEM) mora em `app/custodia.py` e `app/config.py`,
-   que são do motor (C4). **Não duplicar cripto aqui** — uma implementação só.
-
-Regras codificadas:
-  - 401 é resposta VAZIA (o handler em main.py tira o corpo). Quem não tem o
-    token não descobre nada: nem se o token estava ausente, nem se estava errado.
-  - Comparação em TEMPO CONSTANTE, sem curto-circuito entre os tokens aceitos.
-  - FAIL CLOSED: sem token configurado, o serviço recusa TUDO. Nunca fica aberto.
-  - JANELA DE ROTAÇÃO: aceita o token vigente E o anterior ao mesmo tempo, o que
-    permite trocar o segredo do Supabase sem janela de erro (RUNBOOK §3.2).
+O token legado continua sendo o cliente ``dominex`` com escopo total. Clientes
+novos são configurados no servidor e recebem escopos próprios; corpo e headers
+da requisição nunca escolhem permissões.
 """
 
 from __future__ import annotations
 
 import hmac
 import logging
-import os
+import threading
+import time
+from collections import deque
+from dataclasses import dataclass
+from typing import Callable
 
-from fastapi import Header, HTTPException
+from fastapi import Depends, Header, HTTPException, Request
 
-from .config import ConfiguracaoInvalida, get_config
+from .config import ClienteFiscal, ConfiguracaoInvalida, get_config
 
-log = logging.getLogger("dominex-fiscal.security")
+log = logging.getLogger("motor-fiscal.security")
+
+
+@dataclass(frozen=True)
+class PrincipalFiscal:
+    client_id: str
+    escopos: frozenset[str]
+
+    def permite(self, escopo: str) -> bool:
+        familia, _, _acao = escopo.partition(":")
+        return "*" in self.escopos or escopo in self.escopos or f"{familia}:*" in self.escopos
+
+
+_janelas: dict[str, deque[float]] = {}
+_janelas_lock = threading.Lock()
+
+
+def _limitar(cliente: ClienteFiscal) -> None:
+    agora = time.monotonic()
+    inicio = agora - 60.0
+    with _janelas_lock:
+        janela = _janelas.setdefault(cliente.id, deque())
+        while janela and janela[0] <= inicio:
+            janela.popleft()
+        if len(janela) >= cliente.limite_por_minuto:
+            raise HTTPException(status_code=429, headers={"Retry-After": "60"})
+        janela.append(agora)
+
+
+def clientes_configurados() -> tuple[ClienteFiscal, ...]:
+    try:
+        return get_config().clientes
+    except ConfiguracaoInvalida:
+        return ()
 
 
 def tokens_aceitos() -> list[str]:
-    """Token vigente (obrigatório) + token anterior (opcional, só na rotação).
-
-    O vigente vem do `get_config()` — mesma fonte que o resto do serviço, pra não
-    existir duas verdades. O anterior é opcional e vive só enquanto a rotação
-    estiver em andamento; depois volta a ficar vazio.
-    """
-    aceitos: list[str] = []
-    try:
-        aceitos.append(get_config().token)
-    except ConfiguracaoInvalida:
-        # Sem token válido não há o que aceitar. O 401 abaixo cobre.
-        pass
-
-    # ⚠️ O anterior chega por ARQUIVO (FISCAL_SERVICE_TOKEN_PREV_FILE, docker
-    # secret) — `get_config()` já resolve arquivo↔env. Ler só do env aqui fazia a
-    # janela de rotação não funcionar no compose de produção.
-    anterior = ""
-    try:
-        anterior = get_config().token_anterior
-    except ConfiguracaoInvalida:
-        anterior = ""
-    anterior = (anterior or os.environ.get("FISCAL_SERVICE_TOKEN_PREV", "")).strip()
-    if anterior and len(anterior) >= 32:
-        aceitos.append(anterior)
-    return aceitos
+    """Compatibilidade para diagnóstico existente; nunca devolvida pela API."""
+    return [token for cliente in clientes_configurados() for token in cliente.tokens]
 
 
 def token_configurado() -> bool:
     return bool(tokens_aceitos())
 
 
-async def exigir_token(authorization: str | None = Header(default=None)) -> None:
-    """Dependência do FastAPI: `dependencies=[Depends(exigir_token)]`.
-
-    Usada em TODA rota menos `/healthz`. Se você criar rota nova, ela nasce
-    protegida — a exceção é que tem que ser justificada, não o contrário.
-    """
-    aceitos = tokens_aceitos()
-    if not aceitos:
-        # Mal provisionado: recusar tudo é melhor do que ficar aberto.
-        log.error(
-            "FISCAL_SERVICE_TOKEN ausente/curto — recusando toda requisição (fail closed). "
-            "Ver RUNBOOK §1.4."
-        )
+async def exigir_token(
+    request: Request,
+    authorization: str | None = Header(default=None),
+) -> PrincipalFiscal:
+    clientes = clientes_configurados()
+    if not clientes:
+        log.error("nenhum cliente fiscal configurado — recusando toda requisição")
         raise HTTPException(status_code=401)
-
     if not authorization:
         raise HTTPException(status_code=401)
 
     esquema, _, apresentado = authorization.partition(" ")
-    if esquema.lower() != "bearer" or not apresentado.strip():
-        raise HTTPException(status_code=401)
-
     apresentado = apresentado.strip()
-    # Lista (não generator): avalia TODOS antes de decidir, pra não vazar por
-    # tempo qual dos tokens bateu.
-    acertos = [hmac.compare_digest(apresentado, valido) for valido in aceitos]
-    if not any(acertos):
+    if esquema.lower() != "bearer" or not apresentado:
         raise HTTPException(status_code=401)
 
-# ⚠️ O diagnóstico do tmpfs NÃO mora aqui: está em `diagnostico.checar_tmpfs()`,
-# junto com os demais autotestes, pra existir uma implementação só. Este arquivo
-# é só o portão de entrada.
+    # Avalia todos os tokens, mesmo depois de encontrar um, para não revelar
+    # por tempo qual cliente ou posição do anel correspondeu.
+    resultados: list[tuple[ClienteFiscal, bool]] = []
+    for cliente in clientes:
+        comparacoes = [hmac.compare_digest(apresentado, token) for token in cliente.tokens]
+        resultados.append((cliente, any(comparacoes)))
+    correspondentes = [cliente for cliente, acertou in resultados if acertou]
+    if len(correspondentes) != 1:
+        raise HTTPException(status_code=401)
+
+    cliente = correspondentes[0]
+    _limitar(cliente)
+    principal = PrincipalFiscal(cliente.id, cliente.escopos)
+    request.state.fiscal_principal = principal
+    return principal
+
+
+def exigir_escopo(*escopos: str) -> Callable:
+    normalizados = tuple(escopo.strip().lower() for escopo in escopos if escopo.strip())
+    if not normalizados:
+        raise ValueError("Ao menos um escopo fiscal é obrigatório.")
+
+    async def dependencia(
+        principal: PrincipalFiscal = Depends(exigir_token),
+    ) -> PrincipalFiscal:
+        if not all(principal.permite(escopo) for escopo in normalizados):
+            raise HTTPException(status_code=403)
+        return principal
+
+    return dependencia
+
+
+def limpar_rate_limit_para_testes() -> None:
+    """Evita estado global entre testes; não é rota nem contrato público."""
+    with _janelas_lock:
+        _janelas.clear()

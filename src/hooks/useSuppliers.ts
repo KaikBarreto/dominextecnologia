@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import type { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
+import type { Json, Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
 import { getErrorMessage } from '@/utils/errorMessages';
 
 export type Supplier = Tables<'suppliers'>;
@@ -18,6 +18,8 @@ export interface SupplierInput {
   email?: string | null;
   address?: string | null;
   notes?: string | null;
+  label_id?: string | null;
+  custom_fields?: Record<string, unknown>;
 }
 
 export function useSuppliers() {
@@ -44,6 +46,7 @@ export function useSuppliers() {
       if (!companyId) throw new Error('Usuário sem empresa associada. Contate o administrador.');
       const payload: SupplierInsert = {
         ...input,
+        custom_fields: input.custom_fields as Json | undefined,
         company_id: companyId,
         created_by: user?.id ?? null,
       };

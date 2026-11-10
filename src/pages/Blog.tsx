@@ -6,10 +6,9 @@ import { Search, Star, Newspaper, ArrowRight } from 'lucide-react';
 import { captureUtmParams } from '@/lib/whatsapp';
 import { useLocale } from '@/lib/i18n/useLocale';
 import LandingFooter from '@/components/landing/LandingFooter';
+import LandingNavbar from '@/components/landing/LandingNavbar';
 import WhatsAppFloatingButton from '@/components/landing/WhatsAppFloatingButton';
 import { BlogSidebar } from '@/components/blog/BlogSidebar';
-import BlogNavbar from '@/components/blog/BlogNavbar';
-import { useBlogTheme } from '@/components/blog/useBlogTheme';
 import WhatsAppCtaLink from '@/components/landing/WhatsAppCtaLink';
 import {
   BlogPostCard,
@@ -54,7 +53,6 @@ export interface BlogProps {
 export default function Blog({ initialPosts, initialCategories }: BlogProps = {}) {
   const [activeCategory, setActiveCategory] = useState(ALL_CATEGORIES);
   const [search, setSearch] = useState('');
-  const { theme, toggleTheme } = useBlogTheme();
   // Idioma da URL: sob /es/blog só posts es, sob /blog só pt-br. O SSG injeta os
   // posts JÁ filtrados pelo locale renderizado (item 3), então initialData bate.
   // `messages.blog` = chrome/layout localizado (o conteúdo dos posts é do banco).
@@ -146,16 +144,14 @@ export default function Blog({ initialPosts, initialCategories }: BlogProps = {}
       : (categoryColors ?? []).find((c) => c.name === catName)?.color;
 
   return (
-    // O tema do blog controla `.dark` no <html> (useBlogTheme), pra as variantes
-    // `dark:` resolverem de verdade mesmo com o `.dark` global do index.html.
-    // O container raiz nasce com bg claro OPACO (bg-neutral-50) pra não vazar o
-    // fundo escuro do body por baixo enquanto o tema é light.
+    // O Blog compartilha o mesmo header e a mesma preferência de tema do restante
+    // do site público. O fundo opaco impede o body de vazar durante a montagem.
     <div style={DOMINEX_BRAND_VARS}>
       <div className="relative min-h-screen bg-neutral-50 text-neutral-900 dark:bg-[hsl(0,0%,4%)] dark:text-white">
-        <BlogNavbar theme={theme} onToggleTheme={toggleTheme} />
+        <LandingNavbar />
 
         {/* Header */}
-        <section className="relative overflow-hidden pb-8 pt-12">
+        <section className="relative overflow-hidden pb-8 pt-28">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(160,100%,39%,0.07)_0%,transparent_70%)] dark:bg-[radial-gradient(ellipse_at_center,hsl(160,100%,39%,0.08)_0%,transparent_70%)]" />
           <div className="relative mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-[hsl(160,80%,55%)] px-4 py-1.5">

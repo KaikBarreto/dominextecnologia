@@ -29,6 +29,8 @@ import { useCompraOrdens, type CompraOrdemRow } from '@/hooks/useCompraOrdens';
 import { generateOrdemCompraPdf } from '@/utils/ordemCompraPdfGenerator';
 import { CotacaoDialog } from './CotacaoDialog';
 import { OrdemCompraReceiveDialog } from './OrdemCompraReceiveDialog';
+import { usePartyLabels } from '@/hooks/usePartyLabels';
+import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
 
 /** Sentinela pro Select de "fornecedor escolhido": Radix crasha com SelectItem value="". */
 const NO_SUPPLIER = '__none__';
@@ -37,9 +39,11 @@ interface CompraDetailViewProps {
   compra: CompraListRow;
   onBack: () => void;
   onEdit: (compra: CompraListRow) => void;
+  /** Dentro do list-detail, o voltar aparece só no mobile. */
+  embedded?: boolean;
 }
 
-export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewProps) {
+export function CompraDetailView({ compra, onBack, onEdit, embedded = false }: CompraDetailViewProps) {
   const { locale, currency, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory.purchaseDetail;
   const tCompras = MESSAGES[locale].app.inventory.compras;
@@ -47,6 +51,7 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
   const tOrdens = tCompras.ordens;
   const { money } = useLocaleFormatters();
   const { suppliers } = useSuppliers();
+  const { labelsFor } = usePartyLabels();
   const { settings: companySettings } = useCompanySettings();
   const { enabled: whiteLabelEnabled } = useWhiteLabel();
   const { loadCompra, setStatus, deleteCompra, setChosenCotacao } = useCompras();
@@ -151,8 +156,17 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
     const used = new Set(cotacoes.map((c) => c.supplier_id));
     return suppliers
       .filter((s) => !used.has(s.id))
-      .map((s) => ({ value: s.id, label: s.name }));
-  }, [suppliers, cotacoes]);
+      .map((s) => {
+        const labels = labelsFor('supplier', s.id);
+        return {
+          value: s.id,
+          label: s.name,
+          suffix: <PartyLabelBadges labels={labels} mode="summary" />,
+          selectedSuffix: <PartyLabelBadges labels={labels} mode="compact" />,
+          keywords: labels.map((label) => label.name),
+        };
+      });
+  }, [suppliers, cotacoes, labelsFor]);
 
   // Cotação mais barata (entre as que têm total > 0).
   const cheapestId = useMemo(() => {
@@ -216,14 +230,17 @@ export function CompraDetailView({ compra, onBack, onEdit }: CompraDetailViewPro
   ];
 
   return (
-    <div className="space-y-6">
+    <div className={cn('min-w-0', embedded ? 'space-y-5' : 'space-y-6')}>
       {/* Cabeçalho da compra */}
       <div className="space-y-2">
         {/* Breadcrumb discreto acima do título */}
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+          className={cn(
+            'inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground',
+            embedded && 'lg:hidden',
+          )}
         >
           <ArrowLeft className="h-3.5 w-3.5" /> {t.backLabel}
         </button>

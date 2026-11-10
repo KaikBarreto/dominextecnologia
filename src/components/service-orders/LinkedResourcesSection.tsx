@@ -1,22 +1,24 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Car, Wrench, HardHat, Gift, Package, ChevronDown, ChevronUp } from 'lucide-react';
+import { Car, Wrench, HardHat, Gift, Package, ChevronDown, ChevronUp, Pencil } from 'lucide-react';
 import { useServiceCostResources } from '@/hooks/useServiceCostResources';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import type { CostResource, CostResourceCategory } from '@/hooks/useCostResources';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
+import { ContextualCostResourceEditor } from './ContextualCostResourceEditor';
 
 interface LinkedResourcesSectionProps {
   serviceId: string | null;
   serviceHours: number;
   onTotalChange?: (total: number) => void;
+  resourcesState?: ReturnType<typeof useServiceCostResources>;
 }
 
 const categoryIcons: Record<CostResourceCategory, React.ComponentType<{ className?: string }>> = {
@@ -27,10 +29,18 @@ const categoryIcons: Record<CostResourceCategory, React.ComponentType<{ classNam
   other: Package,
 };
 
-export function LinkedResourcesSection({ serviceId, serviceHours, onTotalChange }: LinkedResourcesSectionProps) {
+export function LinkedResourcesSection({
+  serviceId,
+  serviceHours,
+  onTotalChange,
+  resourcesState,
+}: LinkedResourcesSectionProps) {
   const { locale, currency } = useAppLocaleContext();
   const t = MESSAGES[locale].app.crm.costModals;
   const fmt = (v: number) => formatMoney(v, currency, locale);
+  const fallbackResourcesState = useServiceCostResources(serviceId, serviceHours, {
+    enabled: !resourcesState,
+  });
   const {
     linkedResources,
     allResources,
@@ -43,13 +53,14 @@ export function LinkedResourcesSection({ serviceId, serviceHours, onTotalChange 
     addGift,
     removeGift,
     isResourceLinked,
-  } = useServiceCostResources(serviceId, serviceHours);
+  } = resourcesState ?? fallbackResourcesState;
 
   const [expandedCategories, setExpandedCategories] = useState<CostResourceCategory[]>(['vehicle', 'tool', 'epi']);
   const [overrideInputs, setOverrideInputs] = useState<Record<string, string>>({});
+  const [editingResource, setEditingResource] = useState<CostResource | null>(null);
 
   // Notify parent of total changes
-  useMemo(() => {
+  useEffect(() => {
     onTotalChange?.(totals.total);
   }, [totals.total, onTotalChange]);
 
@@ -103,7 +114,7 @@ export function LinkedResourcesSection({ serviceId, serviceHours, onTotalChange 
 
   const categoriesToShow: CostResourceCategory[] = ['vehicle', 'tool', 'epi', 'other'];
 
-  return (
+  return (<>
     <Card className="border-0 bg-background/80 shadow-sm">
       <CardContent className="p-4 space-y-4">
         <div>
@@ -163,22 +174,24 @@ export function LinkedResourcesSection({ serviceId, serviceHours, onTotalChange 
                       return (
                         <div
                           key={resource.id}
-                          className={`flex flex-col gap-2 rounded-xl p-3 transition-colors ${isLinked ? 'bg-primary/5 shadow-sm ring-1 ring-primary/20' : 'bg-muted/30 hover:bg-muted/45'}`}
+                          className={`flex flex-col gap-2 rounded-xl p-3 transition-colors ${isLinked ? 'bg-primary text-primary-foreground [&_.text-muted-foreground]:text-primary-foreground/70 [&_.text-foreground]:text-primary-foreground' : 'bg-muted/30 hover:bg-muted/45'}`}
                         >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex min-w-0 flex-1 items-start gap-2">
                               <Checkbox
                                 id={`resource-${resource.id}`}
                                 checked={isLinked}
+                                className={isLinked ? 'border-primary-foreground data-[state=checked]:border-primary-foreground data-[state=checked]:bg-primary-foreground data-[state=checked]:text-primary' : undefined}
                                 onCheckedChange={(checked) => handleToggleResource(resource.id, !!checked)}
                               />
-                              <Label htmlFor={`resource-${resource.id}`} className="cursor-pointer">
+                              <Label htmlFor={`resource-${resource.id}`} className="min-w-0 cursor-pointer break-words leading-relaxed">
                                 <span className="font-medium">{resource.name}</span>
                                 <span className="text-xs text-muted-foreground ml-2">
                                   {t.linkedPerHour.replace('{rate}', fmt(hourlyRate))}
                                 </span>
                               </Label>
                             </div>
+                            <Button type="button" variant="edit-ghost" size="icon" aria-label={`Editar cadastro do recurso ${resource.name}`} title="Editar cadastro do recurso" className={`-mt-1 h-11 w-11 shrink-0 ${isLinked ? 'text-primary-foreground' : ''}`} onClick={() => setEditingResource(resource)}><Pencil className="h-4 w-4" /></Button>
                           </div>
 
                           {isLinked && (
@@ -196,13 +209,13 @@ export function LinkedResourcesSection({ serviceId, serviceHours, onTotalChange 
                                   min={0}
                                   step="0.01"
                                   placeholder={t.linkedOverridePlaceholder}
-                                  className="w-24 h-7 text-xs"
+                                  className="w-24 h-7 border-primary-foreground/30 bg-primary-foreground/10 text-xs text-primary-foreground placeholder:text-primary-foreground/50"
                                   value={overrideInputs[resource.id] ?? (linked?.override_value ?? '')}
                                   onChange={(e) => setOverrideInputs(prev => ({ ...prev, [resource.id]: e.target.value }))}
                                   onBlur={() => handleOverrideBlur(resource.id)}
                                 />
                                 {hasOverride && (
-                                  <span className="text-xs font-medium text-primary">
+                                  <span className="text-xs font-medium text-primary-foreground">
                                     = {fmt(finalCost)}
                                   </span>
                                 )}
@@ -252,12 +265,13 @@ export function LinkedResourcesSection({ serviceId, serviceHours, onTotalChange 
                     return (
                       <div
                         key={resource.id}
-                        className={`flex items-center justify-between rounded-xl p-3 transition-colors ${isLinked ? 'bg-primary/5 shadow-sm ring-1 ring-primary/20' : 'bg-muted/30 hover:bg-muted/45'}`}
+                        className={`grid grid-cols-[minmax(0,1fr)_2.75rem] items-start gap-3 rounded-xl p-3 transition-colors ${isLinked ? 'bg-primary text-primary-foreground [&_.text-muted-foreground]:text-primary-foreground/70 [&_.text-foreground]:text-primary-foreground' : 'bg-muted/30 hover:bg-muted/45'}`}
                       >
-                        <div className="flex items-center gap-2">
+                        <div className="flex min-w-0 items-start gap-2">
                           <Checkbox
                             id={`gift-${resource.id}`}
                             checked={isLinked}
+                            className={isLinked ? 'border-primary-foreground data-[state=checked]:border-primary-foreground data-[state=checked]:bg-primary-foreground data-[state=checked]:text-primary' : undefined}
                             onCheckedChange={(checked) => {
                               if (checked) {
                                 addGift.mutate({
@@ -271,11 +285,12 @@ export function LinkedResourcesSection({ serviceId, serviceHours, onTotalChange 
                               }
                             }}
                           />
-                          <Label htmlFor={`gift-${resource.id}`} className="cursor-pointer">
+                          <Label htmlFor={`gift-${resource.id}`} className="min-w-0 cursor-pointer break-words leading-relaxed">
                             <span className="font-medium">{resource.name}</span>
                           </Label>
                         </div>
-                        <span className="text-sm font-medium text-foreground">
+                        <Button type="button" variant="edit-ghost" size="icon" aria-label={`Editar cadastro do recurso ${resource.name}`} title="Editar cadastro do recurso" className={`-mt-1 h-11 w-11 ${isLinked ? 'text-primary-foreground' : ''}`} onClick={() => setEditingResource(resource)}><Pencil className="h-4 w-4" /></Button>
+                        <span className="col-start-1 text-sm font-medium text-foreground">
                           {t.linkedPerExecution.replace('{amount}', fmt(resource.total_monthly_cost ?? 0))}
                         </span>
                       </div>
@@ -296,5 +311,6 @@ export function LinkedResourcesSection({ serviceId, serviceHours, onTotalChange 
         )}
       </CardContent>
     </Card>
-  );
+    {editingResource && <ContextualCostResourceEditor resource={editingResource} onClose={() => setEditingResource(null)} />}
+  </>);
 }

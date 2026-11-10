@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,17 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,6 +30,7 @@ import {
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { FABButton } from '@/components/mobile/FABButton';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useDataPagination } from '@/hooks/useDataPagination';
 import { ChargeDialog } from '@/components/financial/ChargeDialog';
 import { useChargeActions } from '@/components/financial/useChargeActions';
 import {
@@ -26,7 +38,7 @@ import {
   ChargeFinanceWarningBanner,
 } from '@/components/financial/ChargeActionDialogs';
 import { canManageCharge, canRefundCharge } from '@/lib/tenantChargeRules';
-import { buildCheckoutUrl } from '@/hooks/useTenantCharges';
+import { buildCheckoutUrl, type TenantCharge } from '@/hooks/useTenantCharges';
 import { useCustomers } from '@/hooks/useCustomers';
 import { classifyTenantChargeStatus } from '@/utils/tenantChargeStatus';
 import { formatBRL } from '@/utils/currency';
@@ -40,8 +52,13 @@ import {
   DollarSign,
   TrendingUp,
   AlertCircle,
+  ArrowDownUp,
+  ChevronLeft,
+  ChevronRight,
+  ListFilter,
   Pencil,
   Trash2,
+  MoreHorizontal,
 } from 'lucide-react';
 import { cn, fuzzyIncludesAny } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -57,6 +74,74 @@ function fmtDate(iso: string | null, locale: string): string {
 }
 
 type StatusFilter = 'all' | 'pending' | 'paid' | 'overdue' | 'refunded';
+type ChargeSort = 'due-asc' | 'due-desc' | 'value-desc' | 'customer-asc';
+
+const LIST_COPY = {
+  'pt-br': {
+    filters: 'Filtros',
+    sort: 'Ordenar',
+    dueAsc: 'Vencimento mais próximo',
+    dueDesc: 'Vencimento mais distante',
+    valueDesc: 'Maior valor',
+    customerAsc: 'Cliente (A-Z)',
+    page: 'Página',
+    of: 'de',
+    showing: (shown: number, total: number) => `Mostrando ${shown} de ${total} itens`,
+    loadError: 'Não foi possível carregar as cobranças',
+    loadErrorDescription: 'Confira sua conexão e tente novamente. Nenhuma cobrança foi alterada.',
+    retry: 'Tentar novamente',
+    retrying: 'Tentando novamente…',
+    actions: 'Ações da cobrança',
+  },
+  en: {
+    filters: 'Filters',
+    sort: 'Sort',
+    dueAsc: 'Nearest due date',
+    dueDesc: 'Farthest due date',
+    valueDesc: 'Highest amount',
+    customerAsc: 'Customer (A-Z)',
+    page: 'Page',
+    of: 'of',
+    showing: (shown: number, total: number) => `Showing ${shown} of ${total} items`,
+    loadError: 'Could not load charges',
+    loadErrorDescription: 'Check your connection and try again. No charge was changed.',
+    retry: 'Try again',
+    retrying: 'Trying again…',
+    actions: 'Charge actions',
+  },
+  es: {
+    filters: 'Filtros',
+    sort: 'Ordenar',
+    dueAsc: 'Vencimiento más próximo',
+    dueDesc: 'Vencimiento más lejano',
+    valueDesc: 'Mayor valor',
+    customerAsc: 'Cliente (A-Z)',
+    page: 'Página',
+    of: 'de',
+    showing: (shown: number, total: number) => `Mostrando ${shown} de ${total} elementos`,
+    loadError: 'No se pudieron cargar los cobros',
+    loadErrorDescription: 'Comprueba tu conexión e inténtalo de nuevo. No se modificó ningún cobro.',
+    retry: 'Intentar de nuevo',
+    retrying: 'Intentando de nuevo…',
+    actions: 'Acciones del cobro',
+  },
+  fr: {
+    filters: 'Filtres',
+    sort: 'Trier',
+    dueAsc: 'Échéance la plus proche',
+    dueDesc: 'Échéance la plus éloignée',
+    valueDesc: 'Montant le plus élevé',
+    customerAsc: 'Client (A-Z)',
+    page: 'Page',
+    of: 'sur',
+    showing: (shown: number, total: number) => `Affichage de ${shown} éléments sur ${total}`,
+    loadError: 'Impossible de charger les encaissements',
+    loadErrorDescription: 'Vérifiez votre connexion et réessayez. Aucun encaissement n’a été modifié.',
+    retry: 'Réessayer',
+    retrying: 'Nouvelle tentative…',
+    actions: 'Actions de l’encaissement',
+  },
+} as const;
 
 /** Badge saturado com cor por classificação de status (regra CEO). */
 function StatusBadge({ status, t }: { status: string; t: Record<string, string> }) {
@@ -94,13 +179,23 @@ export function FinanceCobrancas() {
         return next;
       }),
   });
-  const { charges, isLoading, refund, remove } = actions;
-  const { customers } = useCustomers();
+  const { charges, isLoading, isFetching, isError, refetch, refund, remove } = actions;
+  const {
+    customers,
+    isLoading: isLoadingCustomers,
+    isError: isCustomersError,
+    refetch: refetchCustomers,
+  } = useCustomers();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<ChargeSort>('due-asc');
   const [refundTargetId, setRefundTargetId] = useState<string | null>(null);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const listCopy = LIST_COPY[locale];
+  const paginationCopy = MESSAGES[locale].app.common.pagination;
+  const isDataLoading = isLoading || isLoadingCustomers;
 
   // ── Excluir em lote (a exclusão individual mora no useChargeActions) ────────
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -151,9 +246,9 @@ export function FinanceCobrancas() {
   // Dinheiro não trunca: a fonte degrada pelo maior valor do conjunto.
   const cardValueSizeClass = kpiValueSizeClass(cardTotals.map((card) => formatBRL(card.value)));
 
-  // Filtro por status + busca por nome de cliente
+  // Filtro por status + busca por nome de cliente + ordenação da listagem.
   const filtered = useMemo(() => {
-    return charges.filter((c) => {
+    const result = charges.filter((c) => {
       // Status
       if (statusFilter !== 'all') {
         const cls = classifyTenantChargeStatus(c.status);
@@ -166,7 +261,27 @@ export function FinanceCobrancas() {
       }
       return true;
     });
-  }, [charges, statusFilter, search, customerSearchMap]);
+
+    return result.sort((a, b) => {
+      if (sortBy === 'value-desc') return Number(b.value) - Number(a.value);
+      if (sortBy === 'customer-asc') {
+        const aName = a.customer_id ? (customerMap[a.customer_id] ?? '') : '';
+        const bName = b.customer_id ? (customerMap[b.customer_id] ?? '') : '';
+        return aName.localeCompare(bName, locale, { sensitivity: 'base' });
+      }
+      const aDate = a.due_date ?? (sortBy === 'due-asc' ? '9999-12-31' : '0000-01-01');
+      const bDate = b.due_date ?? (sortBy === 'due-asc' ? '9999-12-31' : '0000-01-01');
+      return sortBy === 'due-asc' ? aDate.localeCompare(bDate) : bDate.localeCompare(aDate);
+    });
+  }, [charges, statusFilter, search, customerSearchMap, customerMap, locale, sortBy]);
+
+  const pagination = useDataPagination(filtered, 25, 'finance-charges');
+  const setPage = pagination.setPage;
+  const shownOnPage = pagination.to === 0 ? 0 : pagination.to - pagination.from + 1;
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, setPage, sortBy, statusFilter]);
 
   // ── Seleção múltipla (exclusão em lote) ─────────────────────────────────────
   // Seleção é livre em qualquer linha (mesmo paga) — o filtro de quem pode
@@ -287,12 +402,94 @@ export function FinanceCobrancas() {
     return t.methods[key] ?? billing_type;
   };
 
+  const handleRetry = async () => {
+    setIsRetrying(true);
+    try {
+      await Promise.all([refetch(), refetchCustomers()]);
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+
+  const renderChargeActions = (charge: TenantCharge) => {
+    const isPaid = canRefundCharge(charge);
+    const canManage = canManageCharge(charge.status);
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-10 w-10 lg:h-8 lg:w-8"
+            aria-label={listCopy.actions}
+            title={listCopy.actions}
+          >
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-52">
+          <DropdownMenuItem onSelect={() => void handleCopyLink(charge)}>
+            <Copy className="mr-2 h-4 w-4" />
+            {t.actions.copyLink}
+          </DropdownMenuItem>
+          {canManage && (
+            <DropdownMenuItem onSelect={() => actions.openEditDialog(charge)}>
+              <Pencil className="mr-2 h-4 w-4" />
+              {t.actions.edit}
+            </DropdownMenuItem>
+          )}
+          {canManage && (
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onSelect={() => actions.requestDelete(charge)}
+              disabled={remove.isPending}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              {t.actions.delete}
+            </DropdownMenuItem>
+          )}
+          {isPaid && (
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onSelect={() => setRefundTargetId(charge.id)}
+              disabled={refund.isPending}
+            >
+              <RotateCcw className="mr-2 h-4 w-4" />
+              {t.actions.refund}
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  };
+
   return (
     <div className={cn('space-y-4', isMobile && 'pb-24')}>
       {/* ── Aviso persistente: cobrança alterada/excluída no gateway, mas o
           lançamento no Financeiro ficou para trás. NÃO some sozinho — só
           quando o usuário dispensa. */}
       <ChargeFinanceWarningBanner actions={actions} />
+
+      {(isError || isCustomersError) && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>{listCopy.loadError}</AlertTitle>
+          <AlertDescription className="space-y-3">
+            <p>{listCopy.loadErrorDescription}</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="min-h-11 border-destructive/40"
+              disabled={isFetching || isRetrying}
+              onClick={() => void handleRetry()}
+            >
+              {isFetching || isRetrying ? listCopy.retrying : listCopy.retry}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* ── Cards de totais ───────────────────────────────────────────────────
           MOBILE: faixa rolável (mesma régua de Contas a pagar/receber) — três
@@ -301,7 +498,7 @@ export function FinanceCobrancas() {
           conjunto, pra nenhum número ser cortado. `scroll-pl-3` existe porque o
           `snap-start` alinha pelo scrollport e ignora o `px-3`.
           DESKTOP (sm+) continua idêntico: grid de 3, ícone à direita. */}
-      <div className="relative -mx-3 sm:mx-0">
+      {!isError && !isCustomersError && !isDataLoading && <div className="relative -mx-3 sm:mx-0">
         <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-4 bg-gradient-to-r from-background to-transparent sm:hidden" />
         <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-gradient-to-l from-background to-transparent sm:hidden" />
         <div className="flex snap-x scroll-pl-3 gap-2 overflow-x-auto px-3 pb-1 scrollbar-none sm:grid sm:grid-cols-3 sm:gap-3 sm:scroll-pl-0 sm:px-0">
@@ -323,50 +520,81 @@ export function FinanceCobrancas() {
             </div>
           ))}
         </div>
-      </div>
+      </div>}
 
-      {/* ── Barra de ações + filtros ─────────────────────────────────────────── */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        {/* Busca */}
-        <div className="relative flex-1 sm:max-w-xs">
+      {/* ── Busca e controles de listagem ────────────────────────────────────── */}
+      {!isError && !isCustomersError && <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative min-w-0 flex-1 sm:max-w-md">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            className="pl-9"
+            className="h-10 pl-9"
             placeholder={t.filters.searchPlaceholder}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        {/* Botão nova cobrança */}
-        {!isMobile && (
-          <Button size="sm" onClick={() => setDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            {t.newButton}
-          </Button>
-        )}
-      </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-10" aria-label={listCopy.filters}>
+                <ListFilter className="mr-2 h-4 w-4" />
+                {listCopy.filters}
+                {statusFilter !== 'all' && (
+                  <span className="ml-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-xs font-semibold text-primary-foreground">
+                    1
+                  </span>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>{t.table.status}</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuRadioGroup
+                value={statusFilter}
+                onValueChange={(value) => setStatusFilter(value as StatusFilter)}
+              >
+                {statusFilters.map((filter) => (
+                  <DropdownMenuRadioItem key={filter.key} value={filter.key}>
+                    {filter.label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-      {/* Pills de filtro de status */}
-      <div className="flex flex-wrap gap-2">
-        {statusFilters.map((f) => (
-          <button
-            key={f.key}
-            type="button"
-            onClick={() => setStatusFilter(f.key)}
-            className={cn(
-              'rounded-full px-3 py-1 text-sm font-medium transition-colors',
-              statusFilter === f.key
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80',
-            )}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-10" aria-label={listCopy.sort}>
+                <ArrowDownUp className="mr-2 h-4 w-4" />
+                {listCopy.sort}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuLabel>{listCopy.sort}</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuRadioGroup
+                value={sortBy}
+                onValueChange={(value) => setSortBy(value as ChargeSort)}
+              >
+                <DropdownMenuRadioItem value="due-asc">{listCopy.dueAsc}</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="due-desc">{listCopy.dueDesc}</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="value-desc">{listCopy.valueDesc}</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="customer-asc">{listCopy.customerAsc}</DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {!isMobile && (
+            <Button size="sm" className="h-10" onClick={() => setDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              {t.newButton}
+            </Button>
+          )}
+        </div>
+      </div>}
 
       {/* ── Barra de seleção em lote — só aparece com algo selecionado ────────── */}
-      {selectedIds.size > 0 && (
+      {!isError && !isCustomersError && selectedIds.size > 0 && (
         <div className="flex flex-col gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
           <span className="text-sm text-muted-foreground">{t.selection.countLabel(selectedIds.size)}</span>
           <Button
@@ -382,7 +610,7 @@ export function FinanceCobrancas() {
       )}
 
       {/* ── Lista / Tabela ───────────────────────────────────────────────────── */}
-      {isLoading ? (
+      {!isError && !isCustomersError && (isDataLoading ? (
         <div className="space-y-2">
           <Skeleton className="h-12 w-full" />
           <Skeleton className="h-12 w-full" />
@@ -398,9 +626,10 @@ export function FinanceCobrancas() {
           />
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border">
-          {/* Tabela desktop */}
-          <table className="hidden w-full text-sm lg:table">
+        <div className="overflow-hidden rounded-xl border border-border">
+          <div className="overflow-x-auto">
+            {/* Tabela desktop */}
+            <table className="hidden w-full text-sm lg:table">
             <thead>
               <tr className="border-b border-border bg-muted/40 text-left">
                 <th className="w-10 px-4 py-3">
@@ -419,11 +648,7 @@ export function FinanceCobrancas() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filtered.map((charge) => {
-                // Estorno / editar / excluir: MESMAS travas da ficha do cliente
-                // (`@/lib/tenantChargeRules`).
-                const isPaid = canRefundCharge(charge);
-                const canManage = canManageCharge(charge.status);
+              {pagination.paginatedItems.map((charge) => {
                 const customerName = charge.customer_id ? (customerMap[charge.customer_id] ?? '—') : '—';
                 return (
                   <tr key={charge.id} className="bg-card transition-colors hover:bg-muted/20">
@@ -451,68 +676,17 @@ export function FinanceCobrancas() {
                       {methodLabel(charge.billing_type)}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 px-2"
-                          onClick={() => handleCopyLink(charge)}
-                          title={t.actions.copyLink}
-                        >
-                          <Copy className="h-4 w-4" />
-                          <span className="ml-1 hidden 2xl:inline">{t.actions.copyLink}</span>
-                        </Button>
-                        {canManage && (
-                          <>
-                            <Button
-                              variant="edit-ghost"
-                              size="sm"
-                              className="h-8 px-2"
-                              onClick={() => actions.openEditDialog(charge)}
-                              title={t.actions.edit}
-                            >
-                              <Pencil className="h-4 w-4" />
-                              <span className="ml-1 hidden 2xl:inline">{t.actions.edit}</span>
-                            </Button>
-                            <Button
-                              variant="destructive-ghost"
-                              size="sm"
-                              className="h-8 px-2"
-                              onClick={() => actions.requestDelete(charge)}
-                              disabled={remove.isPending}
-                              title={t.actions.delete}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              <span className="ml-1 hidden 2xl:inline">{t.actions.delete}</span>
-                            </Button>
-                          </>
-                        )}
-                        {isPaid && (
-                          <Button
-                            variant="destructive-ghost"
-                            size="sm"
-                            className="h-8 px-2"
-                            onClick={() => setRefundTargetId(charge.id)}
-                            disabled={refund.isPending}
-                            title={t.actions.refund}
-                          >
-                            <RotateCcw className="h-4 w-4" />
-                            <span className="ml-1 hidden 2xl:inline">{t.actions.refund}</span>
-                          </Button>
-                        )}
-                      </div>
+                      <div className="flex justify-end">{renderChargeActions(charge)}</div>
                     </td>
                   </tr>
                 );
               })}
             </tbody>
-          </table>
+            </table>
 
-          {/* Lista mobile — cards */}
-          <div className="divide-y divide-border lg:hidden">
-            {filtered.map((charge) => {
-              const isPaid = canRefundCharge(charge);
-              const canManage = canManageCharge(charge.status);
+            {/* Lista mobile — cards */}
+            <div className="divide-y divide-border lg:hidden">
+            {pagination.paginatedItems.map((charge) => {
               const customerName = charge.customer_id ? (customerMap[charge.customer_id] ?? '—') : '—';
               return (
                 <div key={charge.id} className="bg-card px-4 py-3">
@@ -539,60 +713,53 @@ export function FinanceCobrancas() {
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-2">
                       <StatusBadge status={charge.status} t={t.status} />
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2"
-                          onClick={() => handleCopyLink(charge)}
-                          title={t.actions.copyLink}
-                        >
-                          <Copy className="h-3.5 w-3.5" />
-                        </Button>
-                        {canManage && (
-                          <>
-                            <Button
-                              variant="edit-ghost"
-                              size="sm"
-                              className="h-7 px-2"
-                              onClick={() => actions.openEditDialog(charge)}
-                              title={t.actions.edit}
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                              variant="destructive-ghost"
-                              size="sm"
-                              className="h-7 px-2"
-                              onClick={() => actions.requestDelete(charge)}
-                              disabled={remove.isPending}
-                              title={t.actions.delete}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </>
-                        )}
-                        {isPaid && (
-                          <Button
-                            variant="destructive-ghost"
-                            size="sm"
-                            className="h-7 px-2"
-                            onClick={() => setRefundTargetId(charge.id)}
-                            disabled={refund.isPending}
-                            title={t.actions.refund}
-                          >
-                            <RotateCcw className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                      </div>
+                      {renderChargeActions(charge)}
                     </div>
                   </div>
                 </div>
               );
             })}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2 border-t border-border/60 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+            <span className="whitespace-normal text-xs text-muted-foreground">
+              {listCopy.showing(shownOnPage, pagination.totalItems)}
+            </span>
+            <div className="flex items-center justify-between gap-2 sm:justify-end">
+              <span className="text-xs text-muted-foreground">
+                {listCopy.page} {pagination.page} {listCopy.of} {pagination.totalPages}
+              </span>
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 sm:h-8 sm:w-8"
+                  disabled={!pagination.canGoPrev}
+                  aria-label={paginationCopy.previous}
+                  title={paginationCopy.previous}
+                  onClick={() => pagination.setPage(pagination.page - 1)}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 sm:h-8 sm:w-8"
+                  disabled={!pagination.canGoNext}
+                  aria-label={paginationCopy.next}
+                  title={paginationCopy.next}
+                  onClick={() => pagination.setPage(pagination.page + 1)}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
-      )}
+      ))}
 
       {/* ── Dialog nova cobrança (sem cliente pré-selecionado — seleção livre) ── */}
       <ChargeDialog

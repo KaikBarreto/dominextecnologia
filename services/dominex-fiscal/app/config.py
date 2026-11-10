@@ -4,6 +4,7 @@ Contrato com a infraestrutura (docker-compose.yml / RUNBOOK):
 
     FISCAL_SERVICE_TOKEN_FILE       arquivo com o token de serviço (docker secret)
     FISCAL_SERVICE_TOKEN_PREV_FILE  token anterior, aceito durante a rotação
+    FISCAL_CLIENTS_FILE             JSON com clientes, tokens e escopos
     KEK_FISCAL_FILE                 arquivo com a(s) KEK(s)
     FISCAL_TMPFS_DIR                tmpfs onde o PEM efêmero pode existir
     SEFIN_BASE                      base do governo "liberada" neste servidor
@@ -23,7 +24,9 @@ from __future__ import annotations
 
 import base64
 import binascii
+import json
 import os
+import re
 from dataclasses import dataclass, field
 from functools import lru_cache
 
@@ -43,7 +46,7 @@ SEFIN_BASE_HOMOLOGACAO = SEFIN_HOMOLOGACAO_PADRAO
 MARCA_HOMOLOGACAO = "producaorestrita"
 
 #: Identificação do emissor no XML (campo verAplic da DPS/evento).
-VER_APLIC = os.environ.get("FISCAL_VER_APLIC", "Dominex-1.0")
+VER_APLIC = os.environ.get("FISCAL_VER_APLIC", "MotorFiscal-1.1")
 
 
 class ConfiguracaoInvalida(RuntimeError):
@@ -79,6 +82,16 @@ class Kek:
 
 
 @dataclass(frozen=True)
+class ClienteFiscal:
+    """Credencial e limites de um produto consumidor do motor."""
+
+    id: str
+    tokens: tuple[str, ...] = field(repr=False)
+    escopos: frozenset[str]
+    limite_por_minuto: int = 600
+
+
+@dataclass(frozen=True)
 class Config:
     token: str = field(repr=False)
     keks: dict = field(repr=False)
@@ -91,6 +104,10 @@ class Config:
     #: True enquanto este servidor só está liberado para homologação.
     producao_bloqueada: bool = False
     token_anterior: str = field(repr=False, default="")
+    clientes: tuple[ClienteFiscal, ...] = field(repr=False, default=())
+    nfe_producao_habilitada: bool = False
+    nfce_producao_habilitada: bool = False
+    mdfe_producao_habilitada: bool = False
 
     @property
     def kek_atual(self) -> Kek:
@@ -163,6 +180,76 @@ def _carregar_keks() -> tuple:
     return keks, atual
 
 
+_CLIENTE_ID = re.compile(r"[a-z0-9][a-z0-9_-]{1,31}")
+_ESCOPO = re.compile(r"(?:[a-z0-9][a-z0-9_-]*:(?:[a-z0-9][a-z0-9_-]*|\*)|\*)")
+
+
+def _carregar_clientes(token_legado: str, token_anterior: str) -> tuple[ClienteFiscal, ...]:
+    """Lê clientes adicionais preservando o token histórico da Dominex.
+
+    ``FISCAL_CLIENTS_FILE`` é preferido em produção. A variante
+    ``FISCAL_CLIENTS_JSON`` existe para compatibilidade e teste local. Ausentes,
+    o runtime continua idêntico ao anterior.
+    """
+
+    clientes: list[ClienteFiscal] = [ClienteFiscal(
+        id="dominex",
+        tokens=tuple(valor for valor in (token_legado, token_anterior) if valor),
+        escopos=frozenset({"*"}),
+        limite_por_minuto=1200,
+    )]
+    bruto = _ler_segredo("FISCAL_CLIENTS_FILE", "FISCAL_CLIENTS_JSON")
+    if not bruto:
+        return tuple(clientes)
+    try:
+        dados = json.loads(bruto)
+    except (TypeError, ValueError):
+        raise ConfiguracaoInvalida(
+            "FISCAL_CLIENTS_JSON precisa ser um objeto JSON válido."
+        ) from None
+    if not isinstance(dados, dict):
+        raise ConfiguracaoInvalida("FISCAL_CLIENTS_JSON precisa ser um objeto por cliente.")
+
+    tokens_vistos = {valor for cliente in clientes for valor in cliente.tokens}
+    for client_id, configuracao in dados.items():
+        if not isinstance(client_id, str) or not _CLIENTE_ID.fullmatch(client_id):
+            raise ConfiguracaoInvalida("client_id fiscal inválido.")
+        if client_id == "dominex":
+            raise ConfiguracaoInvalida(
+                "O cliente dominex é reservado ao token legado durante a compatibilidade."
+            )
+        if not isinstance(configuracao, dict):
+            raise ConfiguracaoInvalida(f"Configuração do cliente {client_id} inválida.")
+        tokens = tuple(
+            valor.strip()
+            for valor in (
+                configuracao.get("token", ""),
+                configuracao.get("previousToken", ""),
+            )
+            if isinstance(valor, str) and valor.strip()
+        )
+        if not tokens or any(len(valor) < 32 for valor in tokens):
+            raise ConfiguracaoInvalida(f"Token do cliente {client_id} ausente ou curto.")
+        if any(valor in tokens_vistos for valor in tokens):
+            raise ConfiguracaoInvalida("Um token fiscal não pode pertencer a dois clientes.")
+        tokens_vistos.update(tokens)
+
+        escopos_brutos = configuracao.get("scopes")
+        if not isinstance(escopos_brutos, list) or not escopos_brutos:
+            raise ConfiguracaoInvalida(f"Escopos do cliente {client_id} ausentes.")
+        escopos = frozenset(str(item).strip().lower() for item in escopos_brutos)
+        if any(not _ESCOPO.fullmatch(escopo) for escopo in escopos):
+            raise ConfiguracaoInvalida(f"Escopo inválido no cliente {client_id}.")
+        try:
+            limite = int(configuracao.get("rateLimitPerMinute", 600))
+        except (TypeError, ValueError):
+            raise ConfiguracaoInvalida(f"Rate limit do cliente {client_id} inválido.") from None
+        if limite < 1 or limite > 10_000:
+            raise ConfiguracaoInvalida(f"Rate limit do cliente {client_id} fora do intervalo.")
+        clientes.append(ClienteFiscal(client_id, tokens, escopos, limite))
+    return tuple(clientes)
+
+
 @lru_cache(maxsize=1)
 def get_config() -> Config:
     token = _ler_segredo("FISCAL_SERVICE_TOKEN_FILE", "FISCAL_SERVICE_TOKEN")
@@ -173,6 +260,7 @@ def get_config() -> Config:
     token_anterior = _ler_segredo(
         "FISCAL_SERVICE_TOKEN_PREV_FILE", "FISCAL_SERVICE_TOKEN_PREV"
     )
+    clientes = _carregar_clientes(token, token_anterior)
 
     keks, atual = _carregar_keks()
 
@@ -227,6 +315,16 @@ def get_config() -> Config:
         base_producao=base_producao,
         base_homologacao=base_homologacao,
         producao_bloqueada=producao_bloqueada,
+        clientes=clientes,
+        nfe_producao_habilitada=os.environ.get(
+            "FISCAL_NFE_PRODUCAO_HABILITADA", "0"
+        ) == "1",
+        nfce_producao_habilitada=os.environ.get(
+            "FISCAL_NFCE_PRODUCAO_HABILITADA", "0"
+        ) == "1",
+        mdfe_producao_habilitada=os.environ.get(
+            "FISCAL_MDFE_PRODUCAO_HABILITADA", "0"
+        ) == "1",
     )
 
 

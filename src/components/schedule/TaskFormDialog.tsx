@@ -3,6 +3,7 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DatePicker } from '@/components/ui/DatePicker';
+import { ScheduleDatePicker } from '@/components/schedule/ScheduleDatePicker';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -350,9 +351,11 @@ export function TaskFormDialog({
                 <span className="text-muted-foreground font-normal"> {t.dateOptionalHint}</span>
               )}
             </Label>
-            <DatePicker
+            <ScheduleDatePicker
               value={scheduledDate}
               onValueChange={setScheduledDate}
+              excludeServiceOrderId={task?.id}
+              customerId={customerId || null}
               placeholder={MESSAGES[locale].app.common.datePicker.placeholder}
               // O gatilho é um `<button>`, então não existe `required` nativo:
               // quem barra o submit continua sendo o JS do handleSubmit e o

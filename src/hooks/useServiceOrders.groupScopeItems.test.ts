@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { groupScopeItems } from './useServiceOrders';
+import { getLegacyOverrideEquipmentItems, groupScopeItems } from './useServiceOrders';
 
 describe('groupScopeItems — agrupamento do escopo de OS pra RPC sync_service_order_scope', () => {
   it('colapsa todos os checklists avulsos em UM item com equipment_id null', () => {
@@ -59,5 +59,29 @@ describe('groupScopeItems — agrupamento do escopo de OS pra RPC sync_service_o
 
   it('array vazio devolve array vazio (limpar o escopo inteiro)', () => {
     expect(groupScopeItems([])).toEqual([]);
+  });
+});
+
+describe('getLegacyOverrideEquipmentItems — contrato legado da criação com override', () => {
+  it('omite checklist avulso e campos novos que a RPC antiga não aceita', () => {
+    expect(getLegacyOverrideEquipmentItems([
+      { form_template_id: 'tpl-avulso' },
+      {
+        equipment_id: 'equip-1',
+        form_template_id: 'tpl-a',
+        service_type_ids: ['cleaning'],
+      },
+      {
+        equipment_id: 'equip-2',
+        service_type_ids: ['install'],
+      },
+    ])).toEqual([
+      { equipment_id: 'equip-1', form_template_id: 'tpl-a' },
+      { equipment_id: 'equip-2', form_template_id: undefined },
+    ]);
+  });
+
+  it('aceita escopo ausente na criação', () => {
+    expect(getLegacyOverrideEquipmentItems()).toEqual([]);
   });
 });

@@ -36,6 +36,8 @@ import {
 } from '@/hooks/useNfse';
 import { NfseStatusBadge, isNfseTerminal } from './nfseStatus';
 import { avulsoNome } from './nfseRow';
+import { nfseOrientationDescription } from '@/utils/nfseEdge';
+import { resolveNfseDisplayStatus } from '@/lib/fiscal/nfseStatusTruth';
 
 /** Ação que pode ser auto-disparada ao abrir (vinda do menu da linha/card). */
 export type NfseDetailAction = 'refresh' | 'cancel' | 'pdf' | 'xml';
@@ -86,7 +88,8 @@ export function NfseDetailModal({ emission: emissionProp, open, onOpenChange, in
   );
 
   // Polling automático: só enquanto o modal está aberto e a nota é NÃO-terminal.
-  const terminal = emission ? isNfseTerminal(emission.status) : true;
+  const displayStatus = emission ? resolveNfseDisplayStatus(emission) : 'confirmacao_pendente';
+  const terminal = emission ? isNfseTerminal(displayStatus) : true;
   const { isPolling, timedOut } = useNfseStatusPolling(
     emission?.id ?? null,
     open && !!emission && !terminal,
@@ -107,7 +110,9 @@ export function NfseDetailModal({ emission: emissionProp, open, onOpenChange, in
     if (!emission) return;
     const res = await refreshStatus(emission.id);
     if (!res.ok) {
-      toast.error(res.message ?? t.detail.toasts.refreshError);
+      toast.error(res.message ?? t.detail.toasts.refreshError, {
+        description: nfseOrientationDescription(res.orientacao),
+      });
       return;
     }
     toast.success(res.message ?? t.detail.toasts.refreshSuccess);
@@ -149,7 +154,9 @@ export function NfseDetailModal({ emission: emissionProp, open, onOpenChange, in
     setConfirmCancelOpen(false);
     setCancelMotivo('');
     if (!res.ok) {
-      toast.error(res.message ?? t.detail.toasts.cancelError);
+      toast.error(res.message ?? t.detail.toasts.cancelError, {
+        description: nfseOrientationDescription(res.orientacao),
+      });
       return;
     }
     toast.success(res.message ?? t.detail.toasts.cancelSuccess);
@@ -200,7 +207,7 @@ export function NfseDetailModal({ emission: emissionProp, open, onOpenChange, in
           {/* Status + atualizar */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <NfseStatusBadge status={emission.status} />
+              <NfseStatusBadge status={displayStatus} />
               {isPolling && (
                 <span className="flex items-center gap-1 text-xs text-muted-foreground">
                   <Loader2 className="h-3 w-3 animate-spin" />

@@ -178,7 +178,7 @@
     {
       "id": "t8-relatorio-compras",
       "url": "/estoque",
-      "legenda": "Aba Relatório de estoque por material, com indicadores de compras, áreas futuras do PDV, filtros, visão por material ou grupo e tabela de média paga.",
+      "legenda": "Aba Relatório de estoque por material, com indicadores, filtros, tabela de média paga e análise da evolução dos preços de compra.",
       "passos": [
         {
           "esperar": 3000
@@ -195,7 +195,7 @@
         "largura": 1920,
         "altura": 1100
       },
-      "observacao": "Capturar depois da migration do relatório e com compras fictícias. A largura maior preserva as colunas de custo, saldo e PDV sem corte."
+      "observacao": "Capturar com compras fictícias e manter a análise de evolução dos preços visível. A largura maior preserva as colunas de custo, saldo e PDV sem corte."
     }
   ]
 }

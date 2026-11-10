@@ -228,6 +228,57 @@ def test_armadilha_6_a_lista_de_divergencias_e_o_ponto_unico():
     assert TAGS_REMOVIDAS["nPedRegEvento"], "toda divergência precisa de motivo escrito"
 
 
+def test_armadilha_8_finnfse_obrigatorio_so_na_homologacao():
+    """O XSD restrito exige finNFSe; produção rejeita a mesma tag com E1235."""
+    xml = montar(_pedido(ambiente=2))
+    inf_dps = _tags(xml, "//n:infDPS")[0]
+    nomes = [etree.QName(filho).localname for filho in inf_dps]
+
+    assert [e.text for e in _tags(xml, "//n:infDPS/n:finNFSe")] == ["0"]
+    assert nomes.index("finNFSe") == nomes.index("tpEmit") + 1
+    assert nomes.index("cLocEmi") == nomes.index("finNFSe") + 1
+
+
+def test_armadilha_8_finnfse_nao_sai_em_producao():
+    """Produção espera cLocEmi logo após tpEmit e rejeita finNFSe com E1235."""
+    xml = montar(_pedido(ambiente=1))
+    inf_dps = _tags(xml, "//n:infDPS")[0]
+    nomes = [etree.QName(filho).localname for filho in inf_dps]
+
+    assert _tags(xml, "//n:infDPS/n:finNFSe") == []
+    assert nomes.index("cLocEmi") == nomes.index("tpEmit") + 1
+
+
+def test_armadilha_8_insercao_de_finnfse_e_idempotente():
+    """Serializar novamente nunca pode duplicar o indicador de finalidade."""
+    from app.sefin.serializacao import _inserir_divergencias
+
+    root = _arvore(montar(_pedido()))
+    _inserir_divergencias(root, ambiente=2)
+
+    assert len(root.xpath("//n:infDPS/n:finNFSe", namespaces={"n": NS})) == 1
+
+
+def test_armadilha_9_cnbs_vai_antes_da_descricao_na_homologacao():
+    """O NBS permanece no XML, mas o XSD restrito mudou sua posição."""
+    xml = montar(_pedido(ambiente=2))
+    c_serv = _tags(xml, "//n:cServ")[0]
+    nomes = [etree.QName(filho).localname for filho in c_serv]
+
+    assert [e.text for e in _tags(xml, "//n:cServ/n:cNBS")] == ["120016000"]
+    assert nomes.index("cNBS") < nomes.index("xDescServ")
+
+
+def test_armadilha_9_cnbs_vai_depois_da_descricao_em_producao():
+    """Produção rejeita cNBS antes de xDescServ; mantém a ordem da nfelib."""
+    xml = montar(_pedido(ambiente=1))
+    c_serv = _tags(xml, "//n:cServ")[0]
+    nomes = [etree.QName(filho).localname for filho in c_serv]
+
+    assert [e.text for e in _tags(xml, "//n:cServ/n:cNBS")] == ["120016000"]
+    assert nomes.index("cNBS") > nomes.index("xDescServ")
+
+
 def test_serializador_e_o_unico_caminho_do_xml():
     """Qualquer XML que passe pelo serializador sai limpo das divergências."""
     from nfelib.nfse.bindings.v1_0 import ped_reg_evento_v1_00 as pre

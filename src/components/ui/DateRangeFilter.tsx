@@ -14,6 +14,7 @@ import { formatDate } from '@/lib/format';
 import type { LocaleCode } from '@/lib/i18n/locales';
 import { todayInTz } from '@/lib/timezone';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { filterItemsByCivilDateRange } from '@/lib/date-range';
 
 export type DatePreset =
   | 'all'
@@ -105,24 +106,13 @@ export function useDateRangeFilter(defaultPreset: DatePreset = 'this_month') {
    * paradas desde julho/agosto de 2026 sem ninguém ver. Quem lista pra
    * trabalhar liga a flag; quem gera relatório de período não.
    */
-  const filterByDate = <T extends Record<string, any>>(
+  const filterByDate = <T extends object>(
     items: T[],
     dateField: string,
     fallbackField?: string,
     opts?: { keepUndated?: boolean },
   ): T[] => {
-    if (!range.from && !range.to) return items;
-    return items.filter((item) => {
-      const raw = item[dateField] ?? (fallbackField ? item[fallbackField] : null);
-      if (!raw) return opts?.keepUndated === true;
-      const dateStr = String(raw);
-      // Parse date-only strings (YYYY-MM-DD) as local noon to avoid UTC shift
-      const d = dateStr.length === 10 ? new Date(dateStr + 'T12:00:00') : new Date(dateStr);
-      if (isNaN(d.getTime())) return false;
-      if (range.from && d < range.from) return false;
-      if (range.to && d > range.to) return false;
-      return true;
-    });
+    return filterItemsByCivilDateRange(items, range, dateField, fallbackField, opts);
   };
 
   return { preset, range, setPreset: handlePresetChange, setRange, filterByDate };

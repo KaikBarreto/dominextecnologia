@@ -6,6 +6,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { useEquipment } from '@/hooks/useEquipment';
+import { usePartyLabels } from '@/hooks/usePartyLabels';
+import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import type { Quote } from '@/hooks/useQuotes';
 import {
@@ -25,6 +27,7 @@ export function QuoteServiceDistributionDialog({
   open, quote, loading, onOpenChange, onConfirm,
 }: Props) {
   const { equipment: rawEquipment } = useEquipment(quote?.customer_id ?? undefined);
+  const { labelsFor: equipmentLabelsFor } = usePartyLabels('equipment');
   const { serviceTypes } = useServiceTypes();
   const [assignments, setAssignments] = useState<Record<string, string[]>>({});
   // Sem cliente, useEquipment retorna o catálogo inteiro da empresa para outras
@@ -140,7 +143,7 @@ export function QuoteServiceDistributionDialog({
                       <Checkbox checked={checked} onCheckedChange={() => toggle(serviceId, item.id)} />
                       <Wrench className="h-4 w-4 shrink-0 text-muted-foreground" />
                       <span className="min-w-0">
-                        <span className="block truncate text-sm font-medium">{item.name}</span>
+                        <span className="flex min-w-0 items-center gap-2 text-sm font-medium"><span className="truncate">{item.name}</span><PartyLabelBadges labels={equipmentLabelsFor('equipment', item.id)} mode="summary" /></span>
                         <span className="block truncate text-xs text-muted-foreground">
                           {[item.brand, item.model, item.identifier].filter(Boolean).join(' · ') || 'Sem detalhes'}
                         </span>

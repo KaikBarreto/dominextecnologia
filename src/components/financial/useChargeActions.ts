@@ -34,7 +34,17 @@ export function useChargeActions(options?: UseChargeActionsOptions) {
   const t = MESSAGES[locale].app.charges.central;
   const { toast } = useToast();
   const { onDeleted, ...chargesOptions } = options ?? {};
-  const { charges, isLoading, refund, update, remove } = useTenantCharges(chargesOptions);
+  const {
+    charges,
+    isLoading,
+    isFetching,
+    isError,
+    error,
+    refetch,
+    refund,
+    update,
+    remove,
+  } = useTenantCharges(chargesOptions);
 
   // ── Editar cobrança (valor, vencimento, descrição) ──────────────────────────
   const [editTarget, setEditTarget] = useState<TenantCharge | null>(null);
@@ -120,6 +130,10 @@ export function useChargeActions(options?: UseChargeActionsOptions) {
     // dados da listagem (repasse do useTenantCharges)
     charges,
     isLoading,
+    isFetching,
+    isError,
+    error,
+    refetch,
     refund,
     update,
     remove,

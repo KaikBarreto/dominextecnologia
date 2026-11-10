@@ -1,6 +1,6 @@
 // Fase 6: français GÉNÉRALISÉ (sans loi/impôt/organisme spécifique au Brésil).
-// Override partiel sur le pt-br (source). Marque "Dominex" conservée. Pas de tiret
-// cadratin (—) dans la copie : utiliser la virgule/point-virgule.
+// Override partiel sur le pt-br (source). Marque "Dominex" conservée.
+// Dans la copie, utiliser la virgule, le point ou le point-virgule.
 //
 // Institutionnels légaux (confidentialité/conditions) sont une TRADUCTION
 // AUTOMATIQUE de texte juridique, généralisée ; nécessitent une relecture
@@ -251,15 +251,16 @@ export const frOverrides: MessagesOverride = {
     segmentsMenuAria: 'Nos secteurs',
     segmentsMenuHeader: 'Nos secteurs',
     solutionTaglines: {
-      'os-digital': 'Ordres de travail dans l’app, avec photos, checklists et signature du client.',
+      'os-digital': 'Ordres dans l’app, planning organisé et équipe sur la carte en direct.',
       'sistema-pmoc': 'Plans de maintenance automatiques par équipement, dans les temps.',
       'sistema-crm': 'Pipeline de clients et devis jusqu’à la conclusion de la vente.',
       'controle-financeiro': 'Comptes à payer, à recevoir et trésorerie sous contrôle.',
       'ponto-e-folha': 'Pointage de l’équipe, acomptes et paie sans feuilles de calcul annexes.',
-      'emissao-de-nfse': 'Émettez vos factures de service directement depuis la plateforme.',
+      'emissao-de-nota-fiscal': 'Émettez NFS-e, NF-e et NFC-e reliées aux ventes et aux finances.',
       'portal-do-cliente': 'Votre client suit les ordres de travail, devis et historique en ligne.',
       'controle-de-estoque': 'Pièces et matériaux déduits automatiquement à chaque ordre de travail.',
-      'orcamentos-e-contratos': 'Un devis approuvé devient un contrat et des ordres de travail récurrents.',
+      'sistema-de-orcamentos': 'Tarification, propositions par lien et conversion en intervention.',
+      'gestao-de-contratos': 'Visites récurrentes, documents et renouvellements réunis.',
       'rastreamento-de-equipes': 'Équipe sur une carte en direct et tournée du jour organisée.',
       'area-do-tecnico': 'Calculatrices, tableaux de gaz et catalogue d’équipements dans votre poche.',
     },
@@ -278,15 +279,16 @@ export const frOverrides: MessagesOverride = {
   },
 
   moduleLabels: {
-    'os-digital': 'Ordres de travail numériques',
+    'os-digital': 'Ordres, Planning et Suivi',
     'sistema-pmoc': 'Plans de maintenance',
     'sistema-crm': 'CRM & Ventes',
     'controle-financeiro': 'Finances',
-    'ponto-e-folha': 'Pointage & Paie (RH)',
-    'emissao-de-nfse': 'Facturation de services',
+    'ponto-e-folha': 'Employés (RH)',
+    'emissao-de-nota-fiscal': 'Facturation fiscale',
     'portal-do-cliente': 'Portail client',
     'controle-de-estoque': 'Inventaire',
-    'orcamentos-e-contratos': 'Devis & Contrats',
+    'sistema-de-orcamentos': 'Devis',
+    'gestao-de-contratos': 'Contrats',
     'rastreamento-de-equipes': 'Suivi & Planification',
     'area-do-tecnico': 'Boîte à outils du technicien™',
   },
@@ -311,6 +313,7 @@ export const frOverrides: MessagesOverride = {
     institutional: 'Entreprise',
     linkAbout: 'À propos',
     linkBlog: 'Blog',
+    linkDevelopers: 'Développeurs / API',
     linkTerms: 'Conditions d’utilisation',
     linkPrivacy: 'Politique de confidentialité',
     copyright: 'Tous droits réservés. Conçu pour les équipes qui maîtrisent le terrain.',
@@ -338,6 +341,96 @@ export const frOverrides: MessagesOverride = {
     },
     nicheSearchPlaceholder: 'Rechercher un secteur...',
     nicheEmpty: 'Aucun secteur trouvé.',
+    moduleNav: {
+      overview: 'Vue d’ensemble',
+      workflow: 'Fonctionnement',
+      resources: 'Fonctionnalités',
+      faq: 'Questions',
+    },
+    motionMock: {
+      label: 'Vidéo explicative',
+      status: 'Motion en production',
+      placeholder: 'Espace réservé · vertical 9:16',
+      play: 'Lire la démonstration',
+      storyboard: 'Scénario visuel du module',
+      previewTitle: '{module} dans Dominex',
+      sectionEyebrow: 'Démonstration de la fonctionnalité',
+      sectionTitle: 'Découvrez {module} en situation réelle',
+      sectionReady:
+        'Découvrez le parcours complet dans une vidéo motion verticale, confortable à regarder sur mobile comme sur ordinateur.',
+      sectionPending:
+        'La vidéo motion verticale expliquera cette fonctionnalité en moins d’une minute, avec une lecture confortable sur mobile comme sur ordinateur.',
+      sectionFormat: 'Format vertical · 9:16 · avec sous-titres',
+      frameStatus: 'Vidéo motion en production',
+      framePlaceholder: 'Espace 9:16 réservé',
+      videoAria: 'Démonstration vidéo de {module}',
+      unsupported: 'Votre navigateur ne prend pas en charge la vidéo HTML5.',
+    },
+    featureCarousel: {
+      eyebrow: 'Fonctionnalités',
+      pageChooser: 'Sélectionner une page du carrousel',
+      goToPage: 'Aller à la page {page} sur {total}',
+      previous: 'Voir les fonctionnalités précédentes',
+      next: 'Voir les fonctionnalités suivantes',
+      status: 'Page {page} sur {total}. Fonctionnalités {from} à {to} sur {count}.',
+      empty: 'Les fonctionnalités de cette solution seront bientôt présentées ici.',
+    },
+    whatsappFloat: {
+      regionAria: 'Assistance via WhatsApp',
+      responseTime: 'Réponse sous 5 min',
+      buttonAria: 'Discutez avec nous sur WhatsApp',
+    },
+    areaTechnician: {
+      heroPrefix: 'Chaque intervention et chaque outil technique',
+      heroHighlight: 'dans la même app',
+      heroSubtitle:
+        'De l’ordre de travail au calcul technique, votre équipe réalise toute l’intervention sur mobile avec des outils adaptés à chaque secteur.',
+      exploreTools: 'Découvrir les outils',
+      videoEyebrow: 'Voir en action',
+      videoTitle: 'Toute l’intervention tient dans la main du technicien',
+      videoSubtitle:
+        'Découvrez comment l’équipe ouvre l’ordre de travail, consulte les informations et termine l’intervention dans une expérience conçue pour le mobile.',
+      videoBadges: ['Vidéo verticale 9:16', 'Contrôle du son', 'Sans lecture automatique'],
+      videoAria: 'Démonstration vidéo de la Boîte à outils du technicien',
+      videoUnsupported: 'Votre navigateur ne prend pas en charge la vidéo HTML5.',
+      toolsEyebrow: 'Outils par secteur',
+      toolsTitle: 'La même boîte à outils, adaptée au travail de chaque équipe',
+      toolsSubtitle:
+        'Choisissez un secteur pour découvrir ses outils, ce que chacun résout et ce qui est déjà disponible dans le produit.',
+      segmentPicker: 'Choisissez un secteur',
+      available: 'Disponible maintenant',
+      planned: 'En préparation',
+      toolSingular: 'outil',
+      toolPlural: 'outils',
+      toolListTitle: 'Ce que le technicien trouve ici',
+      plannedNote: 'Aperçu de l’ensemble d’outils prévu pour ce secteur.',
+      genericSegmentDescription: 'Des outils pensés pour le travail quotidien de {segment}.',
+      realPreviewAlt: 'Écran réel des outils pour {segment}',
+      plannedPreviewAlt: 'Aperçu de la sélection d’outils de la boîte à outils du technicien',
+      toolsCta: 'Je veux voir la boîte à outils dans mon entreprise',
+      flowEyebrow: 'De la demande à la livraison',
+      flowTitle: 'Le terrain travaille sans dépendre du bureau',
+      flowSubtitle:
+        'Des informations prêtes à l’emploi, des preuves organisées et une remise professionnelle devant le client.',
+      flowSteps: [
+        {
+          title: 'Reçoit l’ordre de travail complet',
+          description: 'Client, adresse, équipement, historique et checklist arrivent organisés sur le mobile.',
+          alt: 'Écran d’accueil réel de la boîte à outils avec les ordres de travail',
+        },
+        {
+          title: 'Résout sans improviser',
+          description: 'Les outils et références du secteur aident le technicien à décider et calculer sur place.',
+          alt: 'Écran réel des outils disponibles dans la boîte à outils du technicien',
+        },
+        {
+          title: 'Livre immédiatement',
+          description: 'Le client vérifie et signe sur le mobile, avec une intervention complète du début à la fin.',
+          alt: 'Écran réel du rapport partagé après la fin de l’ordre de travail',
+        },
+      ],
+      flowBadges: ['S’installe depuis le navigateur', 'Photos dans l’ordre de travail', 'Outils dans le même accès'],
+    },
   },
 
   home: {
@@ -352,9 +445,6 @@ export const frOverrides: MessagesOverride = {
       ctaSecondary: 'Découvrir les fonctionnalités',
       videoUnsupported: 'Votre navigateur ne prend pas en charge la vidéo HTML5.',
       videoLabel: 'Démo Dominex',
-    },
-    logos: {
-      eyebrow: 'Des entreprises maîtrisent déjà leurs opérations avec Dominex',
     },
     problemSolution: {
       problemsTitle: 'Votre opération est-elle bloquée sur l’improvisation ?',
@@ -380,19 +470,14 @@ export const frOverrides: MessagesOverride = {
       cta: 'Discuter sur WhatsApp',
       items: [
         {
-          title: 'Ordres de travail numériques',
+          title: 'Ordres, Planning et Suivi',
           description:
-            'Créez, assignez et suivez les ordres de travail avec photos, checklists, réponses vidéo, signature numérique et historique complet. Fini le papier et les reprises.',
+            'Créez et suivez les ordres avec photos, checklists et signatures. Organisez le planning, répartissez les interventions et suivez l’équipe sur la carte.',
         },
         {
           title: 'Application technicien sur le terrain',
           description:
             'Application mobile installable : le technicien reçoit l’ordre de travail, pointe son arrivée, prend des photos et recueille la signature du client, directement depuis le terrain.',
-        },
-        {
-          title: 'Planification et suivi des équipes',
-          description:
-            'Visualisez l’équipe sur une carte en direct, planifiez la tournée du jour et orientez les interventions vers le technicien le plus proche, sans conflit d’agenda.',
         },
         {
           title: 'Plans de maintenance automatiques',
@@ -410,14 +495,14 @@ export const frOverrides: MessagesOverride = {
             'Comptes à payer et à recevoir, trésorerie, cartes et catégories. Sachez ce qui entre, ce qui sort et ce qu’il vous reste vraiment.',
         },
         {
-          title: 'Pointage et paie (RH)',
+          title: 'Employés (RH)',
           description:
             'Pointage de l’équipe, acomptes, primes et paie. Bulletins prêts, sans feuille de calcul annexe.',
         },
         {
-          title: 'Émission de NFS-e (Facture de Service)',
+          title: 'Facturation fiscale',
           description:
-            'Émettez vos factures de service directement depuis la plateforme, par client, selon vos règles fiscales locales.',
+            'Émettez NFS-e, NF-e et NFC-e depuis la plateforme, reliées aux clients, aux ventes et aux finances.',
         },
         {
           title: 'Portail client',
@@ -430,9 +515,14 @@ export const frOverrides: MessagesOverride = {
             'Pièces et matériaux déduits automatiquement à chaque ordre de travail. Sachez ce qui est en stock avant de promettre un délai.',
         },
         {
-          title: 'Devis et contrats',
+          title: 'Devis',
           description:
-            'Un devis approuvé par lien devient un contrat et des ordres de travail récurrents. De « affaire conclue » à un travail planifié sans tout ressaisir.',
+            'Calculez les coûts et la marge, envoyez la proposition par lien et transformez l’approbation en intervention sans ressaisie.',
+        },
+        {
+          title: 'Contrats',
+          description:
+            'Organisez la durée, les sites et les documents. La récurrence planifie les prochaines visites et conserve tout l’historique.',
         },
         {
           title: 'Boîte à outils du technicien™',
@@ -692,7 +782,7 @@ export const frOverrides: MessagesOverride = {
   privacidade: {
     back: '← Retour',
     title: 'Politique de confidentialité',
-    version: 'Version 1.0 — dernière mise à jour : avril 2026',
+    version: 'Version 1.0. Dernière mise à jour : avril 2026',
     s1Title: '1. Identification du responsable du traitement',
     s1P1Strong: 'Dominex Tecnologia',
     s1P1: '{strong} est le responsable du traitement des données personnelles traitées sur cette plateforme, conformément à la législation applicable sur la protection des données.',
@@ -724,10 +814,10 @@ export const frOverrides: MessagesOverride = {
     ] as [string, string][],
     s4Title: '4. Partage avec des tiers (sous-traitants)',
     s4Items: [
-      { strong: 'Supabase Inc.', rest: '(États-Unis) — base de données, authentification et stockage de fichiers. Transfert international fondé sur des clauses contractuelles types.' },
-      { strong: 'OpenStreetMap/Nominatim', rest: '— géocodage d’adresses (relayé par le serveur, sans envoyer directement l’IP de l’utilisateur).' },
-      { strong: 'Service de recherche d’adresses', rest: '— recherche de code postal pour le remplissage automatique de l’adresse.' },
-      { strong: 'Passerelles de paiement', rest: '— traitement des paiements. Nous n’avons aucun accès aux données de carte.' },
+      { strong: 'Supabase Inc.', rest: '(États-Unis), base de données, authentification et stockage de fichiers. Transfert international fondé sur des clauses contractuelles types.' },
+      { strong: 'OpenStreetMap/Nominatim :', rest: 'géocodage d’adresses (relayé par le serveur, sans envoyer directement l’IP de l’utilisateur).' },
+      { strong: 'Service de recherche d’adresses :', rest: 'recherche de code postal pour le remplissage automatique de l’adresse.' },
+      { strong: 'Passerelles de paiement :', rest: 'traitement des paiements. Nous n’avons aucun accès aux données de carte.' },
     ],
     s4Note: 'Nous ne vendons, ne louons ni ne partageons de données personnelles avec des tiers à des fins publicitaires.',
     s5Title: '5. Conservation des données',
@@ -771,7 +861,7 @@ export const frOverrides: MessagesOverride = {
   termos: {
     back: '← Retour',
     title: 'Conditions d’utilisation',
-    version: 'Version 1.0 — dernière mise à jour : avril 2026',
+    version: 'Version 1.0. Dernière mise à jour : avril 2026',
     s1Title: '1. Acceptation des conditions',
     s1Pre: 'En vous inscrivant et en utilisant la plateforme Dominex, vous (« Utilisateur ») acceptez ces Conditions d’utilisation ainsi que notre ',
     s1Link: 'Politique de confidentialité',
@@ -821,7 +911,7 @@ export const frOverrides: MessagesOverride = {
     heroHighlight: 'maîtrisent le terrain',
     subtitle: 'Ordres de travail, maintenance préventive, gestion d’équipe et comment sortir votre activité du papier.',
     searchPlaceholder: 'Rechercher des articles...',
-    metaTitle: 'Blog — Dominex | Gestion pour les équipes terrain',
+    metaTitle: 'Blog | Dominex | Gestion pour les équipes terrain',
     metaDescription:
       'Articles pratiques sur les bons de travail, la gestion des équipes et comment maîtriser votre opération terrain. Contenu Dominex.',
     allCategories: 'Toutes',

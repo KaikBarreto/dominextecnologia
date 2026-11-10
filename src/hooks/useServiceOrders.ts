@@ -22,8 +22,9 @@ import {
   syncServiceOrderBudget,
   syncServiceOrderServiceTypes,
 } from '@/hooks/useServiceOrderBudget';
-import type { ServiceOrderBudgetItem } from '@/lib/serviceOrderBudget';
+import type { ServiceOrderBudgetItem, ServiceOrderBudgetPricing } from '@/lib/serviceOrderBudget';
 import { normalizeServiceOrderSchedulePlan } from '@/lib/serviceOrderSchedule';
+import { SERVICE_ORDER_OPTIONS_KEY } from '@/hooks/useServiceOrderOptions';
 
 export interface ServiceOrderEquipmentItem {
   equipment_id?: string;
@@ -85,6 +86,22 @@ export function groupScopeItems(items: RawScopeItem[]): GroupedScopeItem[] {
   }));
 }
 
+/**
+ * A RPC transacional de override nasceu antes de checklists avulsos e de
+ * serviços por equipamento. Ela aceita somente pares
+ * `equipment_id`/`form_template_id` e exige um equipamento em cada linha.
+ *
+ * O escopo completo continua sendo sincronizado logo após a criação pela RPC
+ * atual `sync_service_order_scope_with_services`; aqui enviamos apenas a parte
+ * compatível para que autorizar um conflito não transforme um checklist avulso
+ * em `schedule_equipment_not_found` nem rejeite `service_type_ids`.
+ */
+export function getLegacyOverrideEquipmentItems(items: RawScopeItem[] = []) {
+  return items.flatMap(({ equipment_id, form_template_id }) => (
+    equipment_id ? [{ equipment_id, form_template_id }] : []
+  ));
+}
+
 export interface ServiceOrderInput extends ScheduleBookingOverride {
   customer_id: string;
   equipment_id?: string;
@@ -96,6 +113,8 @@ export interface ServiceOrderInput extends ScheduleBookingOverride {
   service_type_ids?: string[];
   /** Itens comerciais previstos. Não representam consumo real de estoque. */
   budget_items?: ServiceOrderBudgetItem[];
+  /** Metodologia comercial da OS; sincronizada atomicamente com os itens. */
+  budget_pricing?: ServiceOrderBudgetPricing;
   status?: OsStatus;
   scheduled_date?: string;
   scheduled_time?: string;
@@ -133,6 +152,8 @@ export interface ServiceOrderInput extends ScheduleBookingOverride {
 
 export interface ServiceOrderUpdate extends Partial<ServiceOrderInput> {
   id: string;
+  contract_reference_date?: string | null;
+  contract_visit_customized_at?: string | null;
   diagnosis?: string;
   solution?: string;
   parts_used?: any[];
@@ -280,6 +301,7 @@ export function useServiceOrders() {
         assignee_team_ids,
         service_type_ids,
         budget_items,
+        budget_pricing,
         confirm_scope_response_deletion,
         ...restWithBooking
       } = input;
@@ -320,7 +342,7 @@ export function useServiceOrders() {
         const { data, error } = await supabase.rpc(createOverrideRpc as never, {
           p_order: orderPayload,
           p_override_justification: input.schedule_override_reason?.trim(),
-          p_equipment_items: equipment_items ?? [],
+          p_equipment_items: getLegacyOverrideEquipmentItems(equipment_items),
           p_assignee_user_ids: assignee_user_ids ?? [],
         } as never);
         if (error) throw normalizeScheduleBookingError(error);
@@ -337,7 +359,7 @@ export function useServiceOrders() {
           if (scopeError) throw scopeError;
         }
         if (createdId && budget_items !== undefined) {
-          await syncServiceOrderBudget(createdId, budget_items);
+          await syncServiceOrderBudget(createdId, budget_items, budget_pricing);
         }
         return data;
       }
@@ -384,13 +406,14 @@ export function useServiceOrders() {
         if (scopeError) throw scopeError;
       }
       if (budget_items !== undefined) {
-        await syncServiceOrderBudget(data.id, budget_items);
+        await syncServiceOrderBudget(data.id, budget_items, budget_pricing);
       }
 
       return data;
     },
     onSuccess: (created: any) => {
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+      queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_OPTIONS_KEY] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_BUDGET_KEY] });
       queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_SERVICE_TYPES_KEY] });
@@ -434,6 +457,7 @@ export function useServiceOrders() {
       equipment_items,
       service_type_ids,
       budget_items,
+      budget_pricing,
       confirm_scope_response_deletion,
       schedule_override,
       schedule_override_reason,
@@ -449,13 +473,56 @@ export function useServiceOrders() {
         'team_id',
       ].some(key => Object.prototype.hasOwnProperty.call(input, key)) || assignee_user_ids !== undefined;
 
-      if (touchesSchedule) {
+      const touchesContractPlanning = touchesSchedule
+        || [
+          'description',
+          'notes',
+          'equipment_id',
+          'service_type_id',
+          'form_template_id',
+          'require_tech_signature',
+          'require_client_signature',
+        ].some(key => Object.prototype.hasOwnProperty.call(input, key))
+        || equipment_items !== undefined
+        || service_type_ids !== undefined;
+
+      let currentOrder: {
+        scheduled_date: string | null;
+        scheduled_time: string | null;
+        duration_minutes: number;
+        schedule_plan: unknown;
+        technician_id: string | null;
+        team_id: string | null;
+        contract_id: string | null;
+        origin: string;
+        contract_reference_date: string | null;
+        contract_visit_customized_at: string | null;
+      } | null = null;
+
+      if (touchesContractPlanning) {
         const { data: current, error: currentError } = await supabase
           .from('service_orders')
-          .select('scheduled_date, scheduled_time, duration_minutes, schedule_plan, technician_id, team_id')
+          .select('scheduled_date, scheduled_time, duration_minutes, schedule_plan, technician_id, team_id, contract_id, origin, contract_reference_date, contract_visit_customized_at')
           .eq('id', id)
           .single();
         if (currentError) throw currentError;
+        currentOrder = current;
+
+        // Qualquer edição de planejamento feita pelo editor de OS transforma a
+        // visita automática em uma visita individual. A referência nasce da
+        // data original e não acompanha reagendamentos operacionais.
+        if (current.contract_id && current.origin === 'contract') {
+          input.contract_reference_date = input.contract_reference_date
+            ?? current.contract_reference_date
+            ?? current.scheduled_date;
+          input.contract_visit_customized_at = input.contract_visit_customized_at
+            ?? current.contract_visit_customized_at
+            ?? new Date().toISOString();
+        }
+      }
+
+      if (touchesSchedule) {
+        const current = currentOrder!;
 
         const scheduledDate = input.scheduled_date ?? current.scheduled_date;
         const scheduledTime = input.scheduled_time ?? current.scheduled_time;
@@ -651,13 +718,16 @@ export function useServiceOrders() {
       }
 
       if (budget_items !== undefined) {
-        await syncServiceOrderBudget(id, budget_items);
+        await syncServiceOrderBudget(id, budget_items, budget_pricing);
       }
 
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['contract-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['contracts'] });
+      queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_OPTIONS_KEY] });
       queryClient.invalidateQueries({ queryKey: ['paused-orders'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       queryClient.invalidateQueries({ queryKey: ['service-ratings'] });
@@ -731,6 +801,7 @@ export function useServiceOrders() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+      queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_OPTIONS_KEY] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       toast({ title: 'OS excluída com sucesso!' });
     },
@@ -755,6 +826,7 @@ export function useServiceOrders() {
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+      queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_OPTIONS_KEY] });
       queryClient.invalidateQueries({ queryKey: ['paused-orders'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       queryClient.invalidateQueries({ queryKey: ['service-ratings'] });
@@ -779,6 +851,7 @@ export function useServiceOrders() {
       bookServiceOrderSchedule({ ...input, timezone }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+      queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_OPTIONS_KEY] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       toast({ title: 'OS reagendada com sucesso!' });
     },

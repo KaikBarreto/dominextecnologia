@@ -37,11 +37,11 @@ from pydantic import BaseModel, Field
 
 from . import custodia, diagnostico, metricas as metricas_mod
 from .config import ConfiguracaoInvalida, get_config
-from .security import exigir_token
+from .security import exigir_escopo
 
 log = logging.getLogger("dominex-fiscal.infra")
 
-router = APIRouter(dependencies=[Depends(exigir_token)])
+router = APIRouter(dependencies=[Depends(exigir_escopo("infra:read"))])
 
 # =============================================================================
 # /readyz — a rota; a INTELIGÊNCIA está em app/diagnostico.py (do motor)
@@ -110,7 +110,10 @@ class RewrapRequest(BaseModel):
     model_config = {"populate_by_name": True}
 
 
-@router.get("/admin/kek/status", include_in_schema=False)
+@router.get(
+    "/admin/kek/status", include_in_schema=False,
+    dependencies=[Depends(exigir_escopo("infra:admin"))],
+)
 def kek_status() -> dict:
     cfg = get_config()
     return {"status": "ok", "atual": cfg.kek_atual_id, "ids": sorted(cfg.keks)}
@@ -138,7 +141,10 @@ def _reenvelopar(dek_envelopada_b64: str, empresa_id: str, cfg) -> str:
     return custodia._cifrar(atual.chave, dek, aad, kek_id=atual.id)
 
 
-@router.post("/admin/kek/rewrap", include_in_schema=False)
+@router.post(
+    "/admin/kek/rewrap", include_in_schema=False,
+    dependencies=[Depends(exigir_escopo("infra:admin"))],
+)
 def kek_rewrap(corpo: RewrapRequest) -> dict:
     """Re-envelopa DEKs sob a KEK atual. Chamado pela edge function de rotação.
 
@@ -173,7 +179,10 @@ def kek_rewrap(corpo: RewrapRequest) -> dict:
 # =============================================================================
 # /admin/smoke — gancho do teste de fumaça diário (C6)
 # =============================================================================
-@router.post("/admin/smoke", include_in_schema=False)
+@router.post(
+    "/admin/smoke", include_in_schema=False,
+    dependencies=[Depends(exigir_escopo("infra:admin"))],
+)
 def smoke() -> dict:
     """Emissão real em HOMOLOGAÇÃO, ponta a ponta.
 

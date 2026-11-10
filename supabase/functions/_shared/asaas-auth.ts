@@ -85,3 +85,32 @@ export async function authorizeAsaasCompany(
     isSuperAdmin: Boolean(isSuperAdmin),
   };
 }
+
+/**
+ * Variante para mutações de assinatura. Além de pertencer à empresa, o caller
+ * precisa administrar o tenant. A checagem fica no servidor porque esconder o
+ * botão na DomiFlix/Billing é apenas UX.
+ */
+export async function authorizeAsaasCompanyManager(
+  supabase: SupabaseClient,
+  authHeader: string | null,
+  companyId: string | null | undefined,
+): Promise<AsaasAuthResult> {
+  const base = await authorizeAsaasCompany(supabase, authHeader, companyId);
+  if (!base.ok || base.isSuperAdmin || !base.userId) return base;
+
+  const [{ data: isAdmin }, { data: isGestor }] = await Promise.all([
+    supabase.rpc("has_role", { _user_id: base.userId, _role: "admin" }),
+    supabase.rpc("has_role", { _user_id: base.userId, _role: "gestor" }),
+  ]);
+
+  if (!isAdmin && !isGestor) {
+    return {
+      ok: false,
+      status: 403,
+      message: "Somente um administrador da empresa pode alterar a assinatura.",
+    };
+  }
+
+  return base;
+}

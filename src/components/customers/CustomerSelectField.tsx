@@ -5,6 +5,9 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { QuickCustomerDialog } from '@/components/financial/QuickCustomerDialog';
 import { cn } from '@/lib/utils';
 import type { Customer } from '@/types/database';
+import { usePartyLabels } from '@/hooks/usePartyLabels';
+import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
+import { CustomerAvatar } from '@/components/customers/CustomerAvatar';
 
 export interface CustomerSelectFieldProps {
   value?: string;
@@ -41,11 +44,13 @@ export interface CustomerSelectFieldProps {
   /** Repassado ao combobox interno, pra `<Label htmlFor>` focar o campo certo. */
   id?: string;
   /** Tratamento visual compacto do resumo do PDV, com contexto dentro do campo. */
-  variant?: 'default' | 'summary';
+  variant?: 'default' | 'summary' | 'large';
   /** Rótulo contextual mostrado acima do nome no modo `summary`. */
   summaryLabel?: string;
   /** Rótulo acessível do quick-add externo no modo `summary`. */
   createLabel?: string;
+  /** Torna a ação de cadastro explícita em superfícies operacionais como o PDV. */
+  showCreateLabel?: boolean;
 }
 
 /**
@@ -76,23 +81,29 @@ export function CustomerSelectField({
   variant = 'default',
   summaryLabel,
   createLabel,
+  showCreateLabel = false,
 }: CustomerSelectFieldProps) {
   const [quickOpen, setQuickOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const { labelsFor } = usePartyLabels();
 
   const options = [
     ...(allowNone ? [{ value: noneValue, label: noneLabel }] : []),
-    ...customers.map((c) => ({
-      value: c.id,
-      label: c.name,
-      sublabel: c.document || c.email || c.phone || c.celular || undefined,
-      // O sublabel mostra só UM dado (o primeiro preenchido), mas a busca tem
-      // que enxergar todos — quem tem só o telefone do cliente na mão precisa
-      // achar ele aqui. Razão social entra junto pro mesmo motivo.
-      keywords: [c.company_name, c.nome_fantasia, c.document, c.email, c.phone, c.celular].filter(
-        (k): k is string => !!k,
-      ),
-    })),
+    ...customers.map((c) => {
+      const labels = labelsFor('customer', c.id);
+      return {
+        value: c.id,
+        label: c.name,
+        sublabel: c.document || c.email || c.phone || c.celular || undefined,
+        ...(variant === 'large' ? { icon: <CustomerAvatar name={c.name} photoUrl={c.photo_url} /> } : {}),
+        // O sublabel mostra só UM dado, mas a busca enxerga todos, inclusive a etiqueta.
+        keywords: [c.company_name, c.nome_fantasia, c.document, c.email, c.phone, c.celular, ...labels.map((label) => label.name)].filter(
+          (k): k is string => !!k,
+        ),
+        suffix: <PartyLabelBadges labels={labels} mode="summary" />,
+        selectedSuffix: <PartyLabelBadges labels={labels} mode="compact" />,
+      };
+    }),
   ];
 
   const handleCreateClick = (query = searchQuery) => {
@@ -140,20 +151,25 @@ export function CustomerSelectField({
       <Button
         type="button"
         variant="ghost"
-        size="icon"
+        size={showCreateLabel ? 'sm' : 'icon'}
         disabled={disabled}
         onClick={() => handleCreateClick()}
-        className="h-auto w-14 self-stretch shrink-0 rounded-none border-l border-background/15 bg-foreground text-background hover:bg-foreground/90 hover:text-background focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-background"
+        className={cn(
+          'h-auto self-stretch shrink-0 rounded-none border-l border-background/15 bg-foreground text-background hover:bg-foreground/90 hover:text-background focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-background',
+          showCreateLabel ? 'w-auto gap-1.5 px-3' : 'w-14',
+        )}
         aria-label={quickAddLabel}
         title={quickAddLabel}
       >
         <Plus className="h-4 w-4" />
+        {showCreateLabel && <span className="text-xs font-semibold">{quickAddLabel}</span>}
       </Button>
     </div>
   ) : (
       <div
         className={cn(
           'flex items-center h-10 rounded-md border border-input bg-background ring-offset-background focus-within:border-ring focus-within:ring-1 focus-within:ring-ring focus-within:ring-offset-0',
+          variant === 'large' && 'h-auto min-h-20 rounded-xl',
           className,
         )}
       >
@@ -167,7 +183,10 @@ export function CustomerSelectField({
           searchPlaceholder={searchPlaceholder}
           emptyMessage={emptyMessage}
           disabled={disabled}
-          className="flex-1 min-w-0 justify-between rounded-none rounded-l-md border-0 bg-transparent hover:bg-transparent text-foreground hover:text-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 px-3 h-10 font-normal"
+          className={cn(
+            'flex-1 min-w-0 justify-between rounded-none rounded-l-md border-0 bg-transparent hover:bg-transparent text-foreground hover:text-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 px-3 h-10 font-normal',
+            variant === 'large' && 'h-20 min-h-20 gap-3 rounded-l-xl px-4 text-left text-base font-semibold sm:text-lg [&>span]:gap-3',
+          )}
         />
         <Button
           type="button"
@@ -175,7 +194,10 @@ export function CustomerSelectField({
           size="icon"
           disabled={disabled}
           onClick={() => handleCreateClick()}
-          className="h-10 w-10 shrink-0 rounded-none rounded-r-md border-l border-input bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+          className={cn(
+            'h-10 w-10 shrink-0 rounded-none rounded-r-md border-l border-input bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground focus-visible:ring-0 focus-visible:ring-offset-0',
+            variant === 'large' && 'h-auto min-h-20 w-14 self-stretch rounded-r-xl bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground [&_svg]:size-5',
+          )}
           aria-label={quickAddLabel}
           title={quickAddLabel}
         >

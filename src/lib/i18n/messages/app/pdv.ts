@@ -29,6 +29,7 @@ export const pdv = {
       header: { cashOpen: 'Caixa aberto', cashClosed: 'Caixa fechado', operator: 'Operador: {name}' },
       orders: {
         number: 'Número', value: 'Valor', customer: 'Cliente', newOrder: 'Novo pedido',
+        productsShort: 'prod.',
         unnamedCustomer: 'Sem cliente', editBadge: 'Edição', deleteLabel: 'Excluir pedido',
         deleteTitle: 'Excluir este pedido?',
         deleteDescription: 'Somente este rascunho será apagado. Os outros pedidos continuarão intactos.',
@@ -60,7 +61,8 @@ export const pdv = {
       },
       cart: {
         title: 'Pedido atual',
-        itemsCount: '{count} itens',
+        itemsCount: '{count} produtos',
+        itemsCountOne: '1 produto',
         draftHint: 'venda ainda não finalizada',
         empty: 'Nenhum item no carrinho ainda',
         emptyHint: 'Toque em um produto ou escaneie o código de barras',
@@ -77,6 +79,8 @@ export const pdv = {
         customerEmpty: 'Nenhum cliente encontrado.',
         customerCreate: 'Cadastrar novo cliente',
         removeLine: 'Remover item',
+        removedLine: '{name} removido do pedido.',
+        undoRemove: 'Desfazer',
         clearCart: 'Limpar pedido',
         columnProduct: 'Produto',
         columnQuantity: 'Quantidade',
@@ -105,6 +109,15 @@ export const pdv = {
         finalize: 'Finalizar Venda',
         finalizeShortcut: 'F9',
       },
+      shortcuts: {
+        open: 'Atalhos', title: 'Atalhos do PDV',
+        description: 'Use o teclado para operar a venda sem interromper o atendimento.',
+        close: 'Fechar', search: 'Focar busca de produtos', customer: 'Selecionar cliente',
+        payment: 'Abrir pagamento', switchOrder: 'Pedido anterior ou próximo',
+        newOrder: 'Criar novo pedido', finalize: 'Finalizar venda',
+        results: 'Navegar e adicionar resultado', quantity: 'Alterar o último produto',
+        help: 'Abrir esta ajuda',
+      },
       // "OPÇÕES AVANÇADAS": retrodatar o lançamento (data do caixa) e anexar
       // foto ao pedido — molde copiado do `AdvancedOptionsPopover` da
       // EcoSistema (pedido do CEO 2026-10-19), adaptado pro `ResponsiveModal`
@@ -124,6 +137,10 @@ export const pdv = {
         photosHint: 'Comprimidas automaticamente antes de enviar.',
         dropPhotos: 'Arraste fotos aqui',
         selectMany: 'ou selecione várias de uma vez',
+        summaryNotes: 'Observação',
+        summaryDate: 'Data {date}',
+        summaryPhoto: '1 anexo',
+        summaryPhotos: '{count} anexos',
         selectedPhotos: 'Fotos selecionadas',
         ready: 'Pronto',
         processing: 'Processando {progress}%',
@@ -207,13 +224,13 @@ export const pdv = {
             'Este cliente não tem limite de crédito definido. A venda passa, mas sem teto.',
         },
       },
-      // Pós-venda. Fica visível na tela já limpa, pronta pro próximo cliente:
-      // balcão é fila, então nada de modal de sucesso pedindo clique.
+      // Pós-venda em TOAST (um só, sucesso + avisos juntos — ver `Pdv.tsx`).
+      // Balcão é fila: nada de modal de sucesso pedindo clique, e nada de
+      // faixa fixa roubando altura da grade de produtos.
       saleSuccess: {
         title: 'Venda nº {number} finalizada',
         total: 'Total {value}',
         change: 'Troco {value}',
-        dismiss: 'Fechar aviso',
         warnings: {
           local_nao_e_de_loja:
             'O local de estoque desta venda não está marcado como Loja. A baixa foi feita, mas vale ajustar em Configurações de Estoque.',
@@ -578,6 +595,7 @@ export const pdv = {
       header: { cashOpen: 'Register open', cashClosed: 'Register closed', operator: 'Operator: {name}' },
       orders: {
         number: 'Number', value: 'Amount', customer: 'Customer', newOrder: 'New order',
+        productsShort: 'prod.',
         unnamedCustomer: 'No customer', editBadge: 'Editing', deleteLabel: 'Delete order',
         deleteTitle: 'Delete this order?',
         deleteDescription: 'Only this draft will be deleted. Your other orders will remain unchanged.',
@@ -609,7 +627,8 @@ export const pdv = {
       },
       cart: {
         title: 'Current order',
-        itemsCount: '{count} items',
+        itemsCount: '{count} products',
+        itemsCountOne: '1 product',
         draftHint: 'sale not completed yet',
         empty: 'No items in the cart yet',
         emptyHint: 'Tap a product or scan the barcode',
@@ -626,6 +645,8 @@ export const pdv = {
         customerEmpty: 'No customer found.',
         customerCreate: 'Create new customer',
         removeLine: 'Remove item',
+        removedLine: '{name} removed from the order.',
+        undoRemove: 'Undo',
         clearCart: 'Clear order',
         columnProduct: 'Product',
         columnQuantity: 'Quantity',
@@ -654,6 +675,15 @@ export const pdv = {
         finalize: 'Complete Sale',
         finalizeShortcut: 'F9',
       },
+      shortcuts: {
+        open: 'Shortcuts', title: 'POS shortcuts',
+        description: 'Use the keyboard to run the sale without interrupting service.',
+        close: 'Close', search: 'Focus product search', customer: 'Select customer',
+        payment: 'Open payment', switchOrder: 'Previous or next order',
+        newOrder: 'Create new order', finalize: 'Complete sale',
+        results: 'Navigate and add result', quantity: 'Change the last product',
+        help: 'Open this help',
+      },
       advancedOptions: {
         trigger: 'Notes, date and attachments',
         title: 'Notes, date and attachments',
@@ -669,6 +699,10 @@ export const pdv = {
         photosHint: 'Automatically compressed before upload.',
         dropPhotos: 'Drop photos here',
         selectMany: 'or select several at once',
+        summaryNotes: 'Note',
+        summaryDate: 'Date {date}',
+        summaryPhoto: '1 attachment',
+        summaryPhotos: '{count} attachments',
         selectedPhotos: 'Selected photos',
         ready: 'Ready',
         processing: 'Processing {progress}%',
@@ -752,7 +786,6 @@ export const pdv = {
         title: 'Sale #{number} completed',
         total: 'Total {value}',
         change: 'Change {value}',
-        dismiss: 'Dismiss',
         warnings: {
           local_nao_e_de_loja:
             'The stock location of this sale is not marked as Store. Stock was deducted anyway, but it is worth fixing in Stock Settings.',
@@ -1114,6 +1147,7 @@ export const pdv = {
       header: { cashOpen: 'Caja abierta', cashClosed: 'Caja cerrada', operator: 'Operador: {name}' },
       orders: {
         number: 'Número', value: 'Importe', customer: 'Cliente', newOrder: 'Nuevo pedido',
+        productsShort: 'prod.',
         unnamedCustomer: 'Sin cliente', editBadge: 'Edición', deleteLabel: 'Eliminar pedido',
         deleteTitle: '¿Eliminar este pedido?',
         deleteDescription: 'Solo se eliminará este borrador. Los demás pedidos seguirán intactos.',
@@ -1145,7 +1179,8 @@ export const pdv = {
       },
       cart: {
         title: 'Pedido actual',
-        itemsCount: '{count} artículos',
+        itemsCount: '{count} productos',
+        itemsCountOne: '1 producto',
         draftHint: 'venta aún no finalizada',
         empty: 'Todavía no hay artículos en el carrito',
         emptyHint: 'Toque un producto o escanee el código de barras',
@@ -1162,6 +1197,8 @@ export const pdv = {
         customerEmpty: 'No se encontró ningún cliente.',
         customerCreate: 'Registrar nuevo cliente',
         removeLine: 'Quitar artículo',
+        removedLine: '{name} fue eliminado del pedido.',
+        undoRemove: 'Deshacer',
         clearCart: 'Limpiar pedido',
         columnProduct: 'Producto',
         columnQuantity: 'Cantidad',
@@ -1190,6 +1227,15 @@ export const pdv = {
         finalize: 'Finalizar Venta',
         finalizeShortcut: 'F9',
       },
+      shortcuts: {
+        open: 'Atajos', title: 'Atajos del PDV',
+        description: 'Use el teclado para operar la venta sin interrumpir la atención.',
+        close: 'Cerrar', search: 'Enfocar búsqueda de productos', customer: 'Seleccionar cliente',
+        payment: 'Abrir pago', switchOrder: 'Pedido anterior o siguiente',
+        newOrder: 'Crear nuevo pedido', finalize: 'Finalizar venta',
+        results: 'Navegar y agregar resultado', quantity: 'Cambiar el último producto',
+        help: 'Abrir esta ayuda',
+      },
       advancedOptions: {
         trigger: 'Observación, fecha y adjuntos',
         title: 'Observación, fecha y adjuntos',
@@ -1205,6 +1251,10 @@ export const pdv = {
         photosHint: 'Comprimidas automáticamente antes de enviar.',
         dropPhotos: 'Arrastre fotos aquí',
         selectMany: 'o seleccione varias a la vez',
+        summaryNotes: 'Observación',
+        summaryDate: 'Fecha {date}',
+        summaryPhoto: '1 adjunto',
+        summaryPhotos: '{count} adjuntos',
         selectedPhotos: 'Fotos seleccionadas',
         ready: 'Listo',
         processing: 'Procesando {progress}%',
@@ -1290,7 +1340,6 @@ export const pdv = {
         title: 'Venta n.º {number} finalizada',
         total: 'Total {value}',
         change: 'Vuelto {value}',
-        dismiss: 'Cerrar aviso',
         warnings: {
           local_nao_e_de_loja:
             'El depósito de esta venta no está marcado como Tienda. La baja se hizo igual, pero conviene ajustarlo en Configuración de Stock.',
@@ -1648,6 +1697,7 @@ export const pdv = {
       header: { cashOpen: 'Caisse ouverte', cashClosed: 'Caisse fermée', operator: 'Opérateur : {name}' },
       orders: {
         number: 'Numéro', value: 'Montant', customer: 'Client', newOrder: 'Nouvelle commande',
+        productsShort: 'prod.',
         unnamedCustomer: 'Sans client', editBadge: 'Modification', deleteLabel: 'Supprimer la commande',
         deleteTitle: 'Supprimer cette commande ?',
         deleteDescription: 'Seul ce brouillon sera supprimé. Les autres commandes resteront intactes.',
@@ -1679,7 +1729,8 @@ export const pdv = {
       },
       cart: {
         title: 'Commande actuelle',
-        itemsCount: '{count} articles',
+        itemsCount: '{count} produits',
+        itemsCountOne: '1 produit',
         draftHint: 'vente non finalisée',
         empty: 'Aucun article dans le panier pour le moment',
         emptyHint: 'Touchez un produit ou scannez le code-barres',
@@ -1696,6 +1747,8 @@ export const pdv = {
         customerEmpty: 'Aucun client trouvé.',
         customerCreate: 'Créer un nouveau client',
         removeLine: "Retirer l'article",
+        removedLine: '{name} a été retiré de la commande.',
+        undoRemove: 'Annuler',
         clearCart: 'Vider la commande',
         columnProduct: 'Produit',
         columnQuantity: 'Quantité',
@@ -1724,6 +1777,15 @@ export const pdv = {
         finalize: 'Finaliser la vente',
         finalizeShortcut: 'F9',
       },
+      shortcuts: {
+        open: 'Raccourcis', title: 'Raccourcis du PDV',
+        description: 'Utilisez le clavier pour gérer la vente sans interrompre le service.',
+        close: 'Fermer', search: 'Cibler la recherche de produits', customer: 'Sélectionner le client',
+        payment: 'Ouvrir le paiement', switchOrder: 'Commande précédente ou suivante',
+        newOrder: 'Créer une commande', finalize: 'Finaliser la vente',
+        results: 'Parcourir et ajouter le résultat', quantity: 'Modifier le dernier produit',
+        help: 'Ouvrir cette aide',
+      },
       advancedOptions: {
         trigger: 'Note, date et pièces jointes',
         title: 'Note, date et pièces jointes',
@@ -1739,6 +1801,10 @@ export const pdv = {
         photosHint: "Compressées automatiquement avant l'envoi.",
         dropPhotos: 'Déposez les photos ici',
         selectMany: 'ou sélectionnez-en plusieurs à la fois',
+        summaryNotes: 'Observation',
+        summaryDate: 'Date {date}',
+        summaryPhoto: '1 pièce jointe',
+        summaryPhotos: '{count} pièces jointes',
         selectedPhotos: 'Photos sélectionnées',
         ready: 'Prêt',
         processing: 'Traitement {progress} %',
@@ -1819,7 +1885,6 @@ export const pdv = {
         title: 'Vente nº {number} finalisée',
         total: 'Total {value}',
         change: 'Monnaie {value}',
-        dismiss: `Fermer l'avis`,
         warnings: {
           local_nao_e_de_loja: `L'emplacement de stock de cette vente n'est pas marqué comme Boutique. La sortie a bien été faite, mais il vaut mieux corriger dans les Réglages de Stock.`,
           cliente_sem_limite_definido: `Le client n'a pas de limite de crédit définie.`,

@@ -1,7 +1,8 @@
 """Transporte mTLS com a API Sefin Nacional.
 
-Autenticação = o certificado A1 do PRÓPRIO cliente. Não há token, não há
-credenciamento, não há cadastro prévio: sem certificado, tudo devolve 403.
+Autenticação de transporte = o certificado A1 do PRÓPRIO cliente. O CNPJ também
+precisa ter feito o primeiro acesso/credenciamento exigido pelo Painel do
+Contribuinte; certificado válido sozinho não garante permissão de emissão.
 
 ⚠️ O `POST /nfse` é SÍNCRONO (201 já com a chave de acesso e a NFS-e). Não há
 fila nem polling — e, por isso mesmo, **NÃO se faz retry automático de POST**:
@@ -11,12 +12,13 @@ Só GET é retentado.
 
 from __future__ import annotations
 
+from datetime import date
 import logging
 import time
 
 import requests
 
-from ..config import Config, base_sefin, get_config
+from ..config import Config, base_adn, base_sefin, get_config
 from ..custodia import ParDeChaves
 from ..errors import (
     AcessoNegadoNoGoverno,
@@ -24,6 +26,7 @@ from ..errors import (
     DocumentoRejeitado,
     ServicoFiscalIndisponivel,
 )
+from ..rejections import traduzir_rejeicao
 
 log = logging.getLogger("dominex-fiscal.sefin")
 
@@ -40,13 +43,22 @@ CERTIFICADO_RECUSADO = (
 )
 
 
+def _campo_sem_caixa(fonte: dict, nome: str):
+    """Lê JSON do governo sem depender da capitalização das chaves."""
+    alvo = nome.casefold()
+    for chave, valor in fonte.items():
+        if str(chave).casefold() == alvo:
+            return valor
+    return None
+
+
 def _mensagens(corpo: dict) -> list[dict]:
     if not isinstance(corpo, dict):
         return []
-    erros = corpo.get("erros")
+    erros = _campo_sem_caixa(corpo, "erros")
     if isinstance(erros, list):
         return [e for e in erros if isinstance(e, dict)]
-    erro = corpo.get("erro")
+    erro = _campo_sem_caixa(corpo, "erro")
     if isinstance(erro, dict):
         return [erro]
     return []
@@ -62,10 +74,14 @@ def _texto_da_rejeicao(mensagens: list[dict]) -> tuple[str, str]:
     if not mensagens:
         return "", "A administração tributária recusou a nota fiscal."
     primeira = mensagens[0]
-    codigo = str(primeira.get("codigo") or "").strip()
+    codigo = str(_campo_sem_caixa(primeira, "codigo") or "").strip()
     partes = [
-        str(primeira.get("descricao") or "").strip(),
-        str(primeira.get("complemento") or "").strip(),
+        str(
+            _campo_sem_caixa(primeira, "descricao")
+            or _campo_sem_caixa(primeira, "mensagem")
+            or ""
+        ).strip(),
+        str(_campo_sem_caixa(primeira, "complemento") or "").strip(),
     ]
     detalhe = " ".join(p for p in partes if p).strip()
     if not detalhe:
@@ -95,8 +111,14 @@ class SefinClient:
 
     # -- transporte -----------------------------------------------------------
 
-    def _chamar(self, metodo: str, caminho: str, **kwargs) -> requests.Response:
-        url = f"{self.base}{caminho}"
+    def _chamar_em_base(
+        self,
+        metodo: str,
+        base: str,
+        caminho: str,
+        **kwargs,
+    ) -> requests.Response:
+        url = f"{base.rstrip('/')}{caminho}"
         tentativas = TENTATIVAS_GET if metodo == "GET" else 1
         ultimo_erro: Exception | None = None
 
@@ -129,6 +151,9 @@ class SefinClient:
         raise ServicoFiscalIndisponivel(
             INDISPONIVEL, detalhe=type(ultimo_erro).__name__ if ultimo_erro else "timeout"
         )
+
+    def _chamar(self, metodo: str, caminho: str, **kwargs) -> requests.Response:
+        return self._chamar_em_base(metodo, self.base, caminho, **kwargs)
 
     @staticmethod
     def _corpo(resposta: requests.Response) -> dict:
@@ -165,9 +190,116 @@ class SefinClient:
             cod_erro,
             mensagens,
         )
-        raise DocumentoRejeitado(texto, codigo=cod_erro or "documento_rejeitado", detalhe=mensagens)
+        orientacao = traduzir_rejeicao(
+            "nfse_nacional",
+            cod_erro,
+            texto,
+            operacao=contexto,
+        )
+        raise DocumentoRejeitado(
+            texto,
+            codigo=cod_erro or "documento_rejeitado",
+            detalhe=mensagens,
+            orientacao=orientacao,
+        )
 
     # -- operações ------------------------------------------------------------
+
+    def consultar_convenio(
+        self,
+        municipio_ibge: str,
+        *,
+        op_simp_nac: str | None = None,
+        data_competencia: str | None = None,
+    ) -> dict:
+        """Confirma no ADN se o município aderiu ao Ambiente Nacional.
+
+        A API de parametrização exige o mesmo mTLS da emissão. Um HTTP 200 não
+        basta: somente ``aderenteAmbienteNacional == 1`` libera o tenant.
+        ``0`` confirma ausência; ``-1`` é estado não informado e falha fechado.
+        """
+        base = f"{base_adn(self.ambiente).rstrip('/')}/parametrizacao"
+        resposta = self._chamar_em_base(
+            "GET",
+            base,
+            f"/{municipio_ibge}/convenio",
+            headers={"Accept": "application/json"},
+        )
+
+        if resposta.status_code == 404:
+            return {
+                "municipioIbge": municipio_ibge,
+                "podeEmitir": False,
+                "fonte": "adn_parametrizacao",
+                "motivo": "municipio_sem_parametrizacao",
+            }
+
+        corpo = self._avaliar(resposta, contexto="parametrizacao_municipal")
+        parametros = corpo.get("parametrosConvenio")
+        ambiente_nacional = (
+            parametros.get("aderenteAmbienteNacional")
+            if isinstance(parametros, dict)
+            else None
+        )
+        emissor_nacional = (
+            parametros.get("aderenteEmissorNacional")
+            if isinstance(parametros, dict)
+            else None
+        )
+        habilitacao_rfb = (
+            parametros.get("situacaoEmissaoPadraoContribuintesRFB")
+            if isinstance(parametros, dict)
+            else None
+        )
+
+        # Resolução CGSN 191/2026: desde 01/11/2026, ME/EPP optante pelo
+        # Simples emite obrigatoriamente pela Sefin Nacional (Web ou API),
+        # mesmo quando o município mantém emissor próprio. O parâmetro
+        # municipal é genérico e pode continuar 0; regime + competência são a
+        # porta federal específica do contribuinte. O POST da DPS ainda valida
+        # o enquadramento nas bases RFB/Simples e é a autoridade definitiva.
+        try:
+            competencia = date.fromisoformat(str(data_competencia))
+        except (TypeError, ValueError):
+            competencia = None
+        simples_nacional_obrigatorio = op_simp_nac == "3" and (
+            competencia is not None and competencia >= date(2026, 11, 1)
+        )
+
+        # Município no ADN + uma das portas oficiais de emissão:
+        # adesão ao Emissor Nacional ou habilitação-padrão dos contribuintes
+        # RFB, além da obrigatoriedade federal específica de ME/EPP.
+        pode_emitir = ambiente_nacional == 1 and (
+            emissor_nacional == 1
+            or habilitacao_rfb == 1
+            or simples_nacional_obrigatorio
+        )
+        valores_conclusivos = all(
+            valor in (0, 1)
+            for valor in (ambiente_nacional, emissor_nacional, habilitacao_rfb)
+        )
+        if not pode_emitir and not valores_conclusivos:
+            raise ServicoFiscalIndisponivel(
+                "Não conseguimos confirmar a liberação do município agora. "
+                "Tente novamente em alguns minutos.",
+                codigo="cobertura_indisponivel",
+                detalhe="aderencia_nao_informada",
+            )
+
+        return {
+            "municipioIbge": municipio_ibge,
+            "podeEmitir": pode_emitir,
+            "fonte": "adn_parametrizacao",
+            "motivo": (
+                "emissor_nacional_habilitado"
+                if emissor_nacional == 1
+                else "contribuinte_rfb_habilitado"
+                if habilitacao_rfb == 1
+                else "simples_nacional_obrigatorio"
+                if simples_nacional_obrigatorio
+                else "emissor_nacional_nao_habilitado"
+            ),
+        }
 
     def emitir(self, dps_gzip_b64: str) -> dict:
         resposta = self._chamar("POST", "/nfse", json={"dpsXmlGZipB64": dps_gzip_b64})

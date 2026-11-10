@@ -22,6 +22,10 @@ export interface SearchableSelectOption {
   label: string;
   sublabel?: string;
   icon?: React.ReactNode;
+  /** Conteúdo exibido depois do nome na lista de opções. */
+  suffix?: React.ReactNode;
+  /** Variante opcional usada apenas no valor selecionado quando o campo é estreito. */
+  selectedSuffix?: React.ReactNode;
   /**
    * Termos EXTRA que a busca do cmdk também considera (além do label).
    * Ex.: SKU/código do material, pra o técnico achar digitando "4410".
@@ -210,7 +214,10 @@ export function SearchableSelect({
           {/* `block` é obrigatório: `truncate` em <span> inline não aplica a
               reticência (elemento inline ignora overflow) e o nome longo saía
               cortado no meio da palavra. O sublabel abaixo já era block. */}
-          <span className="block truncate">{option.label}</span>
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="min-w-0 flex-1 truncate">{option.label}</span>
+            {option.suffix}
+          </span>
           {option.sublabel && (
             <span className="block text-xs text-muted-foreground truncate">{option.sublabel}</span>
           )}
@@ -250,7 +257,8 @@ export function SearchableSelect({
               senão nome longo de material some cortado no meio da palavra. */}
           <span className="flex items-center gap-2 min-w-0 flex-1">
             {selected?.icon}
-            <span className="truncate">{selected ? selected.label : placeholder}</span>
+            <span className="min-w-0 flex-1 truncate">{selected ? selected.label : placeholder}</span>
+            {selected?.selectedSuffix ?? selected?.suffix}
           </span>
           <ChevronsUpDown className={cn('ml-2 h-4 w-4 shrink-0 self-center opacity-50', indicatorClassName)} />
         </Button>

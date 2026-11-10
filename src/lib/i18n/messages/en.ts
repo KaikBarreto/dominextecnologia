@@ -1,6 +1,6 @@
 // Fase 6: inglês GENERALIZADO (sem lei/imposto/órgão específico do Brasil).
-// Override parcial sobre o pt-br (fonte). Marca "Dominex" mantida. Sem travessão
-// (—) na copy: usar vírgula/ponto-e-vírgula.
+// Override parcial sobre o pt-br (fonte). Marca "Dominex" mantida.
+// Na copy, usar vírgula, ponto ou ponto e vírgula em vez de travessão.
 //
 // Institucionais legais (privacidade/termos) são TRADUÇÃO AUTOMÁTICA de texto
 // jurídico, generalizada; precisam de revisão profissional antes de virar
@@ -251,15 +251,16 @@ export const enOverrides: MessagesOverride = {
     segmentsMenuAria: 'Our industries',
     segmentsMenuHeader: 'Our industries',
     solutionTaglines: {
-      'os-digital': 'Work orders in the app, with photos, checklists and customer signature.',
+      'os-digital': 'Work orders in the app, organized scheduling and a live team map.',
       'sistema-pmoc': 'Automatic maintenance plans per equipment, on schedule.',
       'sistema-crm': 'Client pipeline and proposals all the way to closing the deal.',
       'controle-financeiro': 'Payables, receivables and cash flow under control.',
       'ponto-e-folha': 'Team time tracking, advances and payroll without side spreadsheets.',
-      'emissao-de-nfse': 'Issue service invoices straight from the platform.',
+      'emissao-de-nota-fiscal': 'Issue NFS-e, NF-e and NFC-e connected to sales and finance.',
       'portal-do-cliente': 'Your client follows work orders, quotes and history online.',
       'controle-de-estoque': 'Parts and materials deducted automatically on every work order.',
-      'orcamentos-e-contratos': 'An approved quote becomes a contract and recurring work orders.',
+      'sistema-de-orcamentos': 'Pricing, proposals by link and work order conversion.',
+      'gestao-de-contratos': 'Recurring visits, documents and renewals in one place.',
       'rastreamento-de-equipes': 'Team on a live map and the day route organized.',
       'area-do-tecnico': 'Calculators, gas tables and an equipment catalog in your pocket.',
     },
@@ -278,15 +279,16 @@ export const enOverrides: MessagesOverride = {
   },
 
   moduleLabels: {
-    'os-digital': 'Digital Work Orders',
+    'os-digital': 'Work Orders, Scheduling & Tracking',
     'sistema-pmoc': 'Maintenance Plans',
     'sistema-crm': 'CRM & Sales',
     'controle-financeiro': 'Finance',
-    'ponto-e-folha': 'Time & Payroll (HR)',
-    'emissao-de-nfse': 'Service Invoicing',
+    'ponto-e-folha': 'Employees (HR)',
+    'emissao-de-nota-fiscal': 'Tax Invoicing',
     'portal-do-cliente': 'Client Portal',
     'controle-de-estoque': 'Inventory',
-    'orcamentos-e-contratos': 'Quotes & Contracts',
+    'sistema-de-orcamentos': 'Quotes',
+    'gestao-de-contratos': 'Contracts',
     'rastreamento-de-equipes': 'Tracking & Scheduling',
     'area-do-tecnico': 'Technician Toolkit™',
   },
@@ -311,6 +313,7 @@ export const enOverrides: MessagesOverride = {
     institutional: 'Company',
     linkAbout: 'About us',
     linkBlog: 'Blog',
+    linkDevelopers: 'Developers / API',
     linkTerms: 'Terms of use',
     linkPrivacy: 'Privacy Policy',
     copyright: 'All rights reserved. Built for teams that master the field.',
@@ -338,6 +341,96 @@ export const enOverrides: MessagesOverride = {
     },
     nicheSearchPlaceholder: 'Search industry...',
     nicheEmpty: 'No industry found.',
+    moduleNav: {
+      overview: 'Overview',
+      workflow: 'How it works',
+      resources: 'Features',
+      faq: 'Questions',
+    },
+    motionMock: {
+      label: 'Explainer video',
+      status: 'Motion in production',
+      placeholder: 'Reserved space · vertical 9:16',
+      play: 'Play demo',
+      storyboard: 'Module visual storyboard',
+      previewTitle: '{module} in Dominex',
+      sectionEyebrow: 'Feature demonstration',
+      sectionTitle: 'See {module} in action',
+      sectionReady:
+        'See the full flow in a vertical motion video designed for comfortable viewing on mobile and desktop.',
+      sectionPending:
+        'The vertical motion video will explain this feature in under a minute, with comfortable viewing on mobile and desktop.',
+      sectionFormat: 'Vertical format · 9:16 · with captions',
+      frameStatus: 'Motion video in production',
+      framePlaceholder: 'Reserved 9:16 space',
+      videoAria: '{module} video demonstration',
+      unsupported: 'Your browser does not support HTML5 video.',
+    },
+    featureCarousel: {
+      eyebrow: 'Features',
+      pageChooser: 'Select carousel page',
+      goToPage: 'Go to page {page} of {total}',
+      previous: 'View previous features',
+      next: 'View next features',
+      status: 'Page {page} of {total}. Showing features {from} to {to} of {count}.',
+      empty: 'The features for this solution will be available here soon.',
+    },
+    whatsappFloat: {
+      regionAria: 'WhatsApp support',
+      responseTime: 'We reply within 5 min',
+      buttonAria: 'Chat with us on WhatsApp',
+    },
+    areaTechnician: {
+      heroPrefix: 'Every field job and technical tool',
+      heroHighlight: 'in one app',
+      heroSubtitle:
+        'From the work order to the technical calculation, your team handles the entire field job on their phone with tools tailored to each industry.',
+      exploreTools: 'Explore tools',
+      videoEyebrow: 'See it in action',
+      videoTitle: 'The entire service call fits in the technician’s hand',
+      videoSubtitle:
+        'See how the team opens the work order, checks information and completes the service in an experience built for mobile.',
+      videoBadges: ['Vertical 9:16 video', 'Sound controls', 'No autoplay'],
+      videoAria: 'Technician Toolkit video demonstration',
+      videoUnsupported: 'Your browser does not support HTML5 video.',
+      toolsEyebrow: 'Tools by industry',
+      toolsTitle: 'The same Technician Toolkit, adapted to every team’s work',
+      toolsSubtitle:
+        'Choose an industry to see its tools, what each one solves and what is already available in the product.',
+      segmentPicker: 'Choose an industry',
+      available: 'Available now',
+      planned: 'Planned',
+      toolSingular: 'tool',
+      toolPlural: 'tools',
+      toolListTitle: 'What the technician finds here',
+      plannedNote: 'Preview of the toolset planned for this industry.',
+      genericSegmentDescription: 'Tools designed for the day-to-day work of {segment}.',
+      realPreviewAlt: 'Real tool screen for {segment}',
+      plannedPreviewAlt: 'Preview of the tool selection in the Technician Toolkit',
+      toolsCta: 'Show me the Technician Toolkit for my company',
+      flowEyebrow: 'From dispatch to delivery',
+      flowTitle: 'The field team works without depending on the office',
+      flowSubtitle:
+        'Information ready to use, evidence kept in order and a professional handoff in front of the customer.',
+      flowSteps: [
+        {
+          title: 'Receives the complete work order',
+          description: 'Customer, address, equipment, history and checklist arrive organized on the phone.',
+          alt: 'Real Technician Toolkit home screen with work orders',
+        },
+        {
+          title: 'Solves it without improvising',
+          description: 'Industry tools and references help the technician decide and calculate on site.',
+          alt: 'Real screen showing the tools available in the Technician Toolkit',
+        },
+        {
+          title: 'Delivers it on the spot',
+          description: 'The customer reviews and signs on the phone, receiving a complete service from start to finish.',
+          alt: 'Real shared report screen after completing the work order',
+        },
+      ],
+      flowBadges: ['Installs from the browser', 'Photos inside the work order', 'Tools in the same access'],
+    },
   },
 
   home: {
@@ -352,9 +445,6 @@ export const enOverrides: MessagesOverride = {
       ctaSecondary: 'Explore features',
       videoUnsupported: 'Your browser does not support HTML5 video.',
       videoLabel: 'Dominex demo',
-    },
-    logos: {
-      eyebrow: 'Companies already mastering their operations with Dominex',
     },
     problemSolution: {
       problemsTitle: 'Is your operation stuck on improvisation?',
@@ -380,19 +470,14 @@ export const enOverrides: MessagesOverride = {
       cta: 'Chat on WhatsApp',
       items: [
         {
-          title: 'Digital work orders',
+          title: 'Work Orders, Scheduling & Tracking',
           description:
-            'Create, assign and track work orders with photos, checklists, video responses, digital signature and full history. No more paper and rework.',
+            'Create and track work orders with photos, checklists and signatures. Organize the schedule, dispatch jobs and see the team on a live map.',
         },
         {
           title: 'Technician app in the field',
           description:
             'Installable mobile app: the technician receives the work order, checks in, takes photos and collects the customer signature, right from the field.',
-        },
-        {
-          title: 'Scheduling and team tracking',
-          description:
-            'See the team on a live map, plan the day route and route service calls to the nearest technician, with no schedule conflicts.',
         },
         {
           title: 'Automatic maintenance plans',
@@ -410,14 +495,14 @@ export const enOverrides: MessagesOverride = {
             'Payables and receivables, cash flow, cards and categories. Know what comes in, what goes out and what you actually keep.',
         },
         {
-          title: 'Time and payroll (HR)',
+          title: 'Employees (HR)',
           description:
             'Team time tracking, advances, bonuses and payroll. Pay slips ready, with no side spreadsheet.',
         },
         {
-          title: 'NFS-e issuance (Service Invoice)',
+          title: 'Tax invoicing',
           description:
-            'Issue service invoices straight from the platform, per client, following your local tax rules.',
+            'Issue NFS-e, NF-e and NFC-e from the platform, connected to customers, sales and finance.',
         },
         {
           title: 'Client portal',
@@ -430,9 +515,14 @@ export const enOverrides: MessagesOverride = {
             'Parts and materials deducted automatically on every work order. Know what is on hand before you promise a deadline.',
         },
         {
-          title: 'Quotes and contracts',
+          title: 'Quotes',
           description:
-            'An approved quote by link becomes a contract and recurring work orders. From "deal closed" to a scheduled job without retyping everything.',
+            'Build pricing with costs and margin, send the proposal by link and turn approval into a work order without retyping.',
+        },
+        {
+          title: 'Contracts',
+          description:
+            'Organize terms, locations and documents. Recurrence schedules upcoming visits and keeps the contract history current.',
         },
         {
           title: 'Technician Toolkit™',
@@ -691,7 +781,7 @@ export const enOverrides: MessagesOverride = {
   privacidade: {
     back: '← Back',
     title: 'Privacy Policy',
-    version: 'Version 1.0 — last updated: April 2026',
+    version: 'Version 1.0. Last updated: April 2026',
     s1Title: '1. Data Controller Identification',
     s1P1Strong: 'Dominex Tecnologia',
     s1P1: '{strong} is the controller of the personal data processed on this platform, under applicable data protection law.',
@@ -723,10 +813,10 @@ export const enOverrides: MessagesOverride = {
     ] as [string, string][],
     s4Title: '4. Sharing with Third Parties (Sub-processors)',
     s4Items: [
-      { strong: 'Supabase Inc.', rest: '(USA) — database, authentication and file storage. International transfer based on standard contractual clauses.' },
-      { strong: 'OpenStreetMap/Nominatim', rest: '— address geocoding (proxied by the server, without directly sending the user IP).' },
-      { strong: 'Address lookup service', rest: '— postal code lookup for address auto-fill.' },
-      { strong: 'Payment gateways', rest: '— charge processing. We have no access to card data.' },
+      { strong: 'Supabase Inc.', rest: '(USA), database, authentication and file storage. International transfer based on standard contractual clauses.' },
+      { strong: 'OpenStreetMap/Nominatim:', rest: 'address geocoding (proxied by the server, without directly sending the user IP).' },
+      { strong: 'Address lookup service:', rest: 'postal code lookup for address auto-fill.' },
+      { strong: 'Payment gateways:', rest: 'charge processing. We have no access to card data.' },
     ],
     s4Note: 'We do not sell, rent or share personal data with third parties for advertising purposes.',
     s5Title: '5. Data Retention',
@@ -770,7 +860,7 @@ export const enOverrides: MessagesOverride = {
   termos: {
     back: '← Back',
     title: 'Terms of Use',
-    version: 'Version 1.0 — last updated: April 2026',
+    version: 'Version 1.0. Last updated: April 2026',
     s1Title: '1. Acceptance of Terms',
     s1Pre: 'By registering and using the Dominex platform, you ("User") agree to these Terms of Use and to our ',
     s1Link: 'Privacy Policy',
@@ -820,7 +910,7 @@ export const enOverrides: MessagesOverride = {
     heroHighlight: 'run the field',
     subtitle: 'Work orders, preventive maintenance, team management and how to take your operation off paper.',
     searchPlaceholder: 'Search articles...',
-    metaTitle: 'Blog — Dominex | Field Service Management',
+    metaTitle: 'Blog | Dominex | Field Service Management',
     metaDescription:
       'Practical articles on work orders, maintenance plans, team management and how to bring your field operation under control. Content by Dominex.',
     allCategories: 'All',

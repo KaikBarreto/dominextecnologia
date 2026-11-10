@@ -1,10 +1,8 @@
 // =============================================================================
 // _shared/nfse-handlers/common.ts — utilidades comuns aos handlers de NFS-e.
 // =============================================================================
-// Os handlers vivem em `_shared` (e não dentro da pasta da edge) porque cada um
-// é servido por DUAS rotas durante a janela de transição: o nome novo (`nfse-*`)
-// e o nome antigo (`fisqal-*`, casca mantida por 1 release para o cliente com
-// bundle em cache). Um handler único = zero risco de as duas rotas divergirem.
+// Os handlers vivem em `_shared` para concentrar regras de domínio, segurança e
+// persistência usadas pelas rotas `nfse-*`.
 // =============================================================================
 
 import { jsonResponse } from "../fiscal-auth.ts";
@@ -13,7 +11,6 @@ import {
   friendlyFiscalMessage,
   NfseProviderError,
   NfseProviderUnconfiguredError,
-  NfseProviderUnsupportedError,
 } from "../nfse-provider.ts";
 
 export function clean(v: unknown): string {
@@ -30,30 +27,32 @@ export function logId(companyId: string): string {
 }
 
 /**
- * Traduz erro NEUTRO do provedor em Response JSON PT-BR.
- * Retorna `null` quando o erro não é de provedor (o chamador segue no catch).
+ * Traduz erro do motor em Response JSON PT-BR.
+ * Retorna `null` quando o erro não é fiscal (o chamador segue no catch).
  *
- * ⚠️ Os códigos de erro do CORPO (`fisqal_unconfigured`, `fisqal_error`) são
- * CONTRATO com o frontend atual (`src/utils/fisqalEdge.ts`, `useNfse`) e NÃO
- * podem mudar aqui — a troca é coordenada no passo B5. A mensagem que o usuário
- * lê já é neutra (não cita fornecedor).
+ * Os códigos do corpo são neutros; detalhes técnicos ficam apenas no log/evento.
  */
 export function providerErrorResponse(
   err: unknown,
   opts: { friendly?: boolean } = {},
 ): Response | null {
   if (err instanceof NfseProviderUnconfiguredError) {
-    return jsonResponse({ error: "fisqal_unconfigured", message: err.message }, 503);
-  }
-  if (err instanceof NfseProviderUnsupportedError) {
-    return jsonResponse({ error: "provider_unsupported", message: err.message }, 501);
+    return jsonResponse(
+      { error: "nfse_unconfigured", message: err.message },
+      503,
+    );
   }
   if (err instanceof NfseProviderError) {
     const message = opts.friendly
       ? friendlyFiscalMessage(err.codigo, err.message)
       : err.message;
     return jsonResponse(
-      { error: "fisqal_error", message, code: err.codigo },
+      {
+        error: "nfse_error",
+        message,
+        code: err.codigo,
+        ...(err.orientacao ? { orientacao: err.orientacao } : {}),
+      },
       err.status >= 400 && err.status < 600 ? err.status : 502,
     );
   }
@@ -122,7 +121,7 @@ export function validarCTribMunDoBody(v: unknown): CTribMunDoBody {
  * Serve para a gravação sobreviver a uma janela de deploy em que a edge já subiu
  * e a migration da coluna nova ainda não foi aplicada. Perder um campo OPCIONAL é
  * infinitamente melhor que perder o registro inteiro da nota (que já pode ter
- * sido enviada ao provedor).
+ * sido enviada ao fisco).
  */
 export function isUnknownColumnError(
   err: { code?: string; message?: string } | null | undefined,
@@ -230,7 +229,9 @@ export interface PessoaAvulsa {
 }
 
 /** Remove chaves com valor vazio — jsonb da nota não guarda `""`. */
-function semVazios(obj: Record<string, string>): Record<string, string> | undefined {
+function semVazios(
+  obj: Record<string, string>,
+): Record<string, string> | undefined {
   const out: Record<string, string> = {};
   for (const [k, v] of Object.entries(obj)) {
     if (v) out[k] = v;
@@ -353,7 +354,9 @@ export function validarPessoaAvulsaParaEmissao(
  * `true` quando o endereço do avulso está COMPLETO o bastante para virar bloco
  * `end` no XML. Incompleto → o bloco inteiro é omitido (nunca pela metade).
  */
-export function enderecoAvulsoCompleto(end: EnderecoAvulso | undefined): boolean {
+export function enderecoAvulsoCompleto(
+  end: EnderecoAvulso | undefined,
+): boolean {
   if (!end) return false;
   return ENDERECO_OBRIGATORIO.every(([k]) => !!clean(end[k]));
 }

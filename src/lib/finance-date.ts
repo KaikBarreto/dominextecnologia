@@ -14,6 +14,8 @@
  * Solução: para qualquer transação de cartão (`credit_card_bill_date`
  * preenchido), preferimos a data da fatura ao filtrar/agrupar por período.
  */
+import { isDateInCivilRange } from '@/lib/date-range';
+
 
 type TxnLike = {
   credit_card_bill_date?: string | null;
@@ -97,10 +99,7 @@ export function isTransactionInDateRange(
   const raw = getEffectiveTransactionDate(txn, scope);
   if (!raw) return false;
   const d = parseDateForCompare(String(raw));
-  if (isNaN(d.getTime())) return false;
-  if (range.from && d < range.from) return false;
-  if (range.to && d > range.to) return false;
-  return true;
+  return isDateInCivilRange(d, range);
 }
 
 /**

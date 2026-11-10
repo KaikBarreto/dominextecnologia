@@ -45,7 +45,7 @@ export const DOMINEX_LEGAL = {
   cnpj: '66.730.202/0001-05',
   site: 'www.dominex.app',
   email: 'suporte@dominex.app',
-  foro: 'Comarca do Rio de Janeiro — RJ',
+  foro: 'Comarca do Rio de Janeiro/RJ',
 } as const;
 
 export const TERMS_VERSION = '1.1';
@@ -108,7 +108,7 @@ const TERMS_PT_BR: TermsSection[] = [
     items: [
       {
         subtitle: '1.1.',
-        text: 'O **Dominex** é uma plataforma digital (software como serviço — SaaS) de gestão para empresas de serviços, oferecendo recursos como ordens de serviço, gestão de equipes de campo, cadastro de clientes e equipamentos, controle financeiro, PMOC, ferramentas técnicas, agenda, contratos e demais funcionalidades disponíveis no sistema.',
+        text: 'A **Dominex** é uma plataforma digital de gestão para empresas de serviços, oferecida como software como serviço (SaaS). Reúne recursos como ordens de serviço, gestão de equipes de campo, cadastro de clientes e equipamentos, controle financeiro, PMOC, ferramentas técnicas, agenda, contratos e outras funcionalidades disponíveis no sistema.',
       },
       {
         subtitle: '1.2.',
@@ -239,7 +239,7 @@ const TERMS_PT_BR: TermsSection[] = [
     items: [
       {
         subtitle: '7.1.',
-        text: 'O tratamento de dados pessoais no Dominex observa a **Lei Geral de Proteção de Dados (Lei nº 13.709/2018 — LGPD)**.',
+        text: 'O tratamento de dados pessoais na Dominex observa a **Lei Geral de Proteção de Dados (Lei nº 13.709/2018, LGPD)**.',
       },
       {
         subtitle: '7.2.',
@@ -427,7 +427,7 @@ const TERMS_EN: TermsSection[] = [
     items: [
       {
         subtitle: '1.1.',
-        text: '**Dominex** is a digital service-management platform (software as a service — SaaS) for service companies, offering features such as work orders, field team management, customer and equipment registration, financial control, preventive maintenance plans, technical tools, scheduling, contracts and other functionalities available in the system.',
+        text: '**Dominex** is a digital management platform for service companies, offered as software as a service (SaaS). It includes work orders, field team management, customer and equipment registration, financial control, preventive maintenance plans, technical tools, scheduling, contracts and other features available in the system.',
       },
       {
         subtitle: '1.2.',
@@ -558,7 +558,7 @@ const TERMS_EN: TermsSection[] = [
     items: [
       {
         subtitle: '7.1.',
-        text: 'The processing of personal data in Dominex complies with the **Brazilian General Data Protection Law (Lei nº 13.709/2018 — LGPD)**.',
+        text: 'The processing of personal data in Dominex complies with the **Brazilian General Data Protection Law (Lei nº 13.709/2018, LGPD)**.',
       },
       {
         subtitle: '7.2.',
@@ -746,7 +746,7 @@ const TERMS_ES: TermsSection[] = [
     items: [
       {
         subtitle: '1.1.',
-        text: '**Dominex** es una plataforma digital de gestión para empresas de servicios (software como servicio — SaaS), que ofrece funciones como órdenes de trabajo, gestión de equipos de campo, registro de clientes y equipos, control financiero, planes de mantenimiento preventivo, herramientas técnicas, agenda, contratos y demás funcionalidades disponibles en el sistema.',
+        text: '**Dominex** es una plataforma digital de gestión para empresas de servicios, ofrecida como software como servicio (SaaS). Incluye órdenes de trabajo, gestión de equipos de campo, registro de clientes y equipos, control financiero, planes de mantenimiento preventivo, herramientas técnicas, agenda, contratos y otras funciones disponibles en el sistema.',
       },
       {
         subtitle: '1.2.',
@@ -877,7 +877,7 @@ const TERMS_ES: TermsSection[] = [
     items: [
       {
         subtitle: '7.1.',
-        text: 'El tratamiento de datos personales en Dominex cumple con la **Ley General de Protección de Datos de Brasil (Lei nº 13.709/2018 — LGPD)**.',
+        text: 'El tratamiento de datos personales en Dominex cumple con la **Ley General de Protección de Datos de Brasil (Lei nº 13.709/2018, LGPD)**.',
       },
       {
         subtitle: '7.2.',
@@ -1068,7 +1068,7 @@ const TERMS_FR: TermsSection[] = [
     items: [
       {
         subtitle: '1.1.',
-        text: "**Dominex** est une plateforme numérique de gestion pour les entreprises de services (logiciel en tant que service — SaaS), proposant des fonctionnalités telles que les bons de travail, la gestion des équipes sur le terrain, l'enregistrement des clients et des équipements, le contrôle financier, les plans de maintenance préventive, les outils techniques, l'agenda, les contrats et les autres fonctionnalités disponibles dans le système.",
+        text: "**Dominex** est une plateforme numérique de gestion pour les entreprises de services, proposée sous forme de logiciel en tant que service (SaaS). Elle réunit les bons de travail, la gestion des équipes sur le terrain, l'enregistrement des clients et des équipements, le contrôle financier, les plans de maintenance préventive, les outils techniques, l'agenda, les contrats et les autres fonctionnalités disponibles dans le système.",
       },
       {
         subtitle: '1.2.',
@@ -1199,7 +1199,7 @@ const TERMS_FR: TermsSection[] = [
     items: [
       {
         subtitle: '7.1.',
-        text: "Le traitement des données personnelles dans Dominex est conforme à la **Loi générale sur la protection des données du Brésil (Lei nº 13.709/2018 — LGPD)**.",
+        text: "Le traitement des données personnelles dans Dominex est conforme à la **Loi générale sur la protection des données du Brésil (Lei nº 13.709/2018, LGPD)**.",
       },
       {
         subtitle: '7.2.',

@@ -1,4 +1,4 @@
-import React, { memo, useState } from 'react';
+import React, { memo, useState, type ComponentType } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -38,6 +38,7 @@ import {
   ShoppingCart,
   History as HistoryIcon,
   BarChart3,
+  Megaphone,
 } from 'lucide-react';
 import { AreaTecnicoIcon, OperacionalIcon } from '@/components/icons/MenuIcons';
 import {
@@ -67,6 +68,7 @@ import { localizeAppPath } from '@/lib/i18n/appRouteSlugs';
 import { translateMenuLabel } from '@/components/layout/shellLabels';
 import { useCompanyModules, type ModuleCode } from '@/hooks/useCompanyModules';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
+import { useLogoInk } from '@/hooks/useLogoInk';
 import { HelpCenterDrawer } from '@/components/layout/HelpCenterDrawer';
 import { AccountSwitcherDropdown } from '@/components/account-switcher/AccountSwitcherDropdown';
 import { NotificationsBell } from '@/components/notifications/NotificationsBell';
@@ -76,11 +78,11 @@ import { cn } from '@/lib/utils';
 
 interface MenuItem {
   title: string;
-  icon: any;
+  icon: ComponentType<{ className?: string }>;
   path?: string;
   screenKey?: string;
   moduleKey?: ModuleCode;
-  children?: { title: string; icon: any; path: string; screenKey?: string; moduleKey?: ModuleCode }[];
+  children?: { title: string; icon: ComponentType<{ className?: string }>; path: string; screenKey?: string; moduleKey?: ModuleCode }[];
 }
 
 const tenantMenuItems: MenuItem[] = [
@@ -149,6 +151,7 @@ const adminMenuItems: (MenuItem & { masterOnly?: boolean })[] = [
   { title: 'Vendedores', icon: Briefcase, path: '/admin/vendedores', screenKey: 'admin_vendedores' },
   { title: 'Afiliados', icon: Handshake, path: '/admin/afiliados', screenKey: 'admin_afiliados' },
   { title: 'Financeiro', icon: DollarSign, path: '/admin/financeiro', screenKey: 'admin_financeiro' },
+  { title: 'Avisos e NPS', icon: Megaphone, path: '/admin/avisos', screenKey: 'admin_avisos', masterOnly: true },
   { title: 'Domiflix', icon: Clapperboard, path: '/admin/domiflix', masterOnly: true },
 ];
 
@@ -182,6 +185,9 @@ export const TopNavbar = memo(() => {
   const tMenu = (title: string) => translateMenuLabel(title, shellT);
   const L = (path: string) => localizeAppPath(path, locale);
   const { logoUrl, defaultLogoDark, defaultLogoWhite, isLoading: logoLoading } = useWhiteLabel();
+  // A barra de topo também é escura por padrão (Fase 2), nos dois temas. Logo
+  // de tinta escura precisa de placa clara atrás pra não sumir.
+  const logoInk = useLogoInk(logoUrl);
   const location = useLocation();
   const navigate = useNavigate();
   const [helpOpen, setHelpOpen] = useState(false);
@@ -251,12 +257,19 @@ export const TopNavbar = memo(() => {
             {logoLoading ? (
               <div className="h-7 w-28 rounded bg-muted animate-pulse shrink-0" />
             ) : logoUrl ? (
-              <img
-                src={logoUrl}
-                alt="Logo"
-                className="max-h-9 w-auto shrink-0 cursor-pointer object-contain"
-                onClick={() => navigate(logoTarget)}
-              />
+              <span
+                className={cn(
+                  'flex shrink-0 items-center',
+                  logoInk === 'dark' && 'rounded-lg bg-white px-2 py-1'
+                )}
+              >
+                <img
+                  src={logoUrl}
+                  alt="Logo"
+                  className="max-h-9 w-auto shrink-0 cursor-pointer object-contain"
+                  onClick={() => navigate(logoTarget)}
+                />
+              </span>
             ) : (
               <>
                 <img

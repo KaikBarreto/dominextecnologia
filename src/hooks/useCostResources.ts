@@ -57,6 +57,10 @@ export function useCostResources() {
   const queryClient = useQueryClient();
   const { profile } = useAuth();
   const companyId = profile?.company_id ?? null;
+  const invalidateResourceReads = () => Promise.all([
+    ['cost-resources'], ['cost-resources-active'], ['cost-resource-items'],
+    ['service-cost-resources'], ['service-gifts'], ['service-cost-breakdown'],
+  ].map(queryKey => queryClient.invalidateQueries({ queryKey })));
 
   // Fetch all resources with calculated rates
   const resourcesQuery = useQuery({
@@ -157,9 +161,9 @@ export function useCostResources() {
       return resource;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cost-resources'] });
       toast({ title: 'Recurso criado com sucesso!' });
     },
+    onSettled: invalidateResourceReads,
     onError: (error: any) => {
       toast({ variant: 'destructive', title: 'Erro ao criar recurso', description: getErrorMessage(error) });
     },
@@ -176,23 +180,26 @@ export function useCostResources() {
       photo_url?: string | null;
       items?: Array<{ id?: string; name: string; value: number; is_monthly: boolean; annual_value?: number }>;
     }) => {
+      if (!companyId) throw new Error('Empresa não encontrada');
       const { id, items, ...updates } = input;
 
       if (Object.keys(updates).length > 0) {
         const { error } = await supabase
           .from('cost_resources')
           .update(updates)
-          .eq('id', id);
+          .eq('id', id)
+          .eq('company_id', companyId);
 
         if (error) throw error;
       }
 
       if (items !== undefined) {
         // Delete existing items
-        await supabase
+        const { error: deleteError } = await supabase
           .from('cost_resource_items')
           .delete()
           .eq('resource_id', id);
+        if (deleteError) throw deleteError;
 
         // Insert new items
         if (items.length > 0) {
@@ -217,10 +224,11 @@ export function useCostResources() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cost-resources'] });
-      queryClient.invalidateQueries({ queryKey: ['cost-resource-items'] });
       toast({ title: 'Recurso atualizado!' });
     },
+    // A atualização do cadastro e dos itens usa chamadas separadas. Uma falha
+    // parcial também precisa atualizar as leituras já afetadas.
+    onSettled: invalidateResourceReads,
     onError: (error: any) => {
       toast({ variant: 'destructive', title: 'Erro ao atualizar', description: getErrorMessage(error) });
     },
@@ -237,9 +245,9 @@ export function useCostResources() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cost-resources'] });
       toast({ title: 'Recurso excluído!' });
     },
+    onSettled: invalidateResourceReads,
     onError: (error: any) => {
       toast({ variant: 'destructive', title: 'Erro ao excluir', description: getErrorMessage(error) });
     },

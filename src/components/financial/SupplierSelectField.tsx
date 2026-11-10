@@ -5,6 +5,8 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { SupplierFormDialog } from '@/components/inventory/SupplierFormDialog';
 import { cn } from '@/lib/utils';
 import type { Supplier } from '@/hooks/useSuppliers';
+import { usePartyLabels } from '@/hooks/usePartyLabels';
+import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
 
 export interface SupplierSelectFieldProps {
   value?: string;
@@ -44,12 +46,19 @@ export function SupplierSelectField({
   id,
 }: SupplierSelectFieldProps) {
   const [formOpen, setFormOpen] = useState(false);
+  const { labelsFor } = usePartyLabels();
 
-  const options = suppliers.map((s) => ({
-    value: s.id,
-    label: s.name,
-    sublabel: s.cpf_cnpj || s.email || s.phone || undefined,
-  }));
+  const options = suppliers.map((s) => {
+    const labels = labelsFor('supplier', s.id);
+    return {
+      value: s.id,
+      label: s.name,
+      sublabel: s.cpf_cnpj || s.email || s.phone || undefined,
+      keywords: [s.cpf_cnpj, s.email, s.phone, ...labels.map((label) => label.name)].filter((item): item is string => !!item),
+      suffix: <PartyLabelBadges labels={labels} mode="summary" />,
+      selectedSuffix: <PartyLabelBadges labels={labels} mode="compact" />,
+    };
+  });
 
   return (
     <>

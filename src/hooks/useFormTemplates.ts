@@ -48,7 +48,13 @@ export function useFormTemplates() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: templates = [], isLoading } = useQuery({
+  const {
+    data: templates = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ['form-templates'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -259,6 +265,9 @@ export function useFormTemplates() {
   return {
     templates,
     isLoading,
+    isError,
+    error,
+    refetch,
     createTemplate,
     updateTemplate,
     deleteTemplate,

@@ -452,6 +452,7 @@ export default function LiveMap() {
           <div className="space-y-2">
             <MobilePillTabs
               variant="underline"
+              level="screen"
               tabs={[
                 { value: 'mapa', label: tLiveMap.tabLive, icon: <MapIcon className="h-4 w-4" /> },
                 { value: 'historico', label: tLiveMap.tabHistory, icon: <Clock className="h-4 w-4" /> },
@@ -480,10 +481,10 @@ export default function LiveMap() {
         ) : (
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <TabsList variant="underline">
-              <TabsTrigger variant="underline" value="mapa" className="gap-1.5">
+              <TabsTrigger variant="underline" level="screen" value="mapa" className="gap-1.5">
                 <MapIcon className="h-4 w-4" /> {tLiveMap.tabLive}
               </TabsTrigger>
-              <TabsTrigger variant="underline" value="historico" className="gap-1.5">
+              <TabsTrigger variant="underline" level="screen" value="historico" className="gap-1.5">
                 <Clock className="h-4 w-4" /> {tLiveMap.tabHistory}
               </TabsTrigger>
             </TabsList>

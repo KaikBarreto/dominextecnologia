@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type SetStateAction } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ShoppingCart, Search, ShoppingBasket, CheckCircle2, X, ArrowLeft, Barcode } from 'lucide-react';
+import { ShoppingCart, Search, ShoppingBasket, ArrowLeft, Barcode, Keyboard } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
+import { ToastAction } from '@/components/ui/toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { EmptyState } from '@/components/mobile/EmptyState';
@@ -34,7 +35,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { fuzzyIncludesAny, cn } from '@/lib/utils';
-import { formatMoney, getCurrencySymbol, toBcp47 } from '@/lib/format';
+import { formatDate, formatMoney, formatNumber, getCurrencySymbol, toBcp47 } from '@/lib/format';
 import { typography } from '@/lib/typography';
 import { todayInTz } from '@/lib/timezone';
 import { useToast } from '@/hooks/use-toast';
@@ -68,14 +69,24 @@ import {
   computeTotal,
   computeSubtotal,
   type CartProduct,
+  type CartLine,
   type CartState,
 } from '@/lib/pdv/cart';
+import { inventoryQuantityStep } from '@/lib/inventoryUnits';
+import {
+  findPdvGridNeighbor,
+  isPdvEditableTarget,
+  nextPdvIndex,
+  type PdvGridDirection,
+  type PdvGridItemRect,
+} from '@/lib/pdv/keyboard';
 import { PdvProductCard, type PdvGridProduct } from '@/components/pdv/PdvProductCard';
 import { PdvCartPanel } from '@/components/pdv/PdvCartPanel';
 import { PdvSkeleton } from '@/components/pdv/PdvSkeleton';
 import { PdvPaymentDialog } from '@/components/pdv/PdvPaymentDialog';
 import { PdvAdvancedOptionsDialog, type PdvPendingAttachment } from '@/components/pdv/PdvAdvancedOptionsDialog';
 import { PdvOrderSwitcher } from '@/components/pdv/PdvOrderSwitcher';
+import { PdvShortcutHelpDialog } from '@/components/pdv/PdvShortcutHelpDialog';
 import { hasPdvSaleDraftContent, MAX_PDV_SALE_DRAFTS, type PdvSaleAttempt } from '@/lib/pdv/sale-drafts';
 import {
   clearPdvSaleEditDraft,
@@ -291,6 +302,7 @@ export default function Pdv() {
   }, [updateActiveDraft]);
 
   const [search, setSearch] = useState('');
+  const [activeProductIndex, setActiveProductIndex] = useState(0);
   const [activeCategory, setActiveCategory] = useState('all');
   const editSourceOrderId = new URLSearchParams(location.search).get('editar');
   const [saleEditDrafts, setSaleEditDrafts] = useState<Record<string, PdvSaleEditDraft>>({});
@@ -318,12 +330,7 @@ export default function Pdv() {
   const pendingAttachments = activeDraft ? attachmentsByDraft[activeDraft.id] ?? [] : [];
   const [attachmentBusy, setAttachmentBusy] = useState(false);
   const [advancedOptionsOpen, setAdvancedOptionsOpen] = useState(false);
-  const [saleSuccess, setSaleSuccess] = useState<{
-    number: number;
-    total: number;
-    change: number;
-    warnings: SaleWarningCode[];
-  } | null>(null);
+  const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
@@ -374,6 +381,8 @@ export default function Pdv() {
   }, [activeDraft, editSourceOrderId, location.state, navigate, profile?.company_id, saleEditDrafts, selectDraft, t.editDraft.missing, toast, user?.id]);
 
   const formatCurrency = (value: number) => formatMoney(value, currency, locale);
+  const formatQuantity = (value: number, unit: string) =>
+    `${formatNumber(value, locale, { maximumFractionDigits: 3 })} ${unit}`;
   const currencySymbol = useMemo(() => getCurrencySymbol(currency, locale), [currency, locale]);
   const currencyFractionDigits = useMemo(() => {
     try {
@@ -599,6 +608,74 @@ export default function Pdv() {
     });
   }, [categoryFiltered, groups, search]);
 
+  // Itens sem saldo não recebem foco de teclado: o botão está desabilitado e
+  // não existe ação útil para Enter. O primeiro produto disponível permanece
+  // ativo mesmo com a busca vazia, dando ao operador um ponto de partida
+  // previsível assim que abre o PDV ou limpa/pesquisa o catálogo.
+  const keyboardProducts = useMemo(
+    () => searchFiltered.filter((product) => product.availableQuantity > 0),
+    [searchFiltered],
+  );
+  const activeProductId = keyboardProducts[
+    Math.min(activeProductIndex, Math.max(0, keyboardProducts.length - 1))
+  ]?.inventoryId ?? null;
+
+  useEffect(() => {
+    setActiveProductIndex(0);
+  }, [search, activeCategory]);
+
+  useEffect(() => {
+    if (!activeProductId) return;
+    const activeButton = Array.from(
+      gridRef.current?.querySelectorAll<HTMLElement>('[data-pdv-product-id]') ?? [],
+    ).find((element) => element.dataset.pdvProductId === activeProductId);
+    activeButton?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [activeProductId]);
+
+  const moveProductFocus = useCallback((direction: PdvGridDirection) => {
+    if (!activeProductId || !gridRef.current) return;
+    const elements = Array.from(
+      gridRef.current.querySelectorAll<HTMLButtonElement>('[data-pdv-product-id]:not(:disabled)'),
+    );
+    const rects: PdvGridItemRect[] = elements.map((element) => {
+      const rect = element.getBoundingClientRect();
+      return {
+        id: element.dataset.pdvProductId ?? '',
+        left: rect.left,
+        top: rect.top,
+        right: rect.right,
+        bottom: rect.bottom,
+        width: rect.width,
+        height: rect.height,
+      };
+    }).filter((rect) => rect.id);
+    const nextId = findPdvGridNeighbor(rects, activeProductId, direction);
+    if (!nextId) return;
+    const nextIndex = keyboardProducts.findIndex((product) => product.inventoryId === nextId);
+    if (nextIndex < 0) return;
+    setActiveProductIndex(nextIndex);
+
+    // Quando a seta parte da busca, o foco entra de verdade na grade. Assim
+    // Enter/Espaço usam o comportamento nativo do botão e as próximas setas
+    // continuam navegando sem depender do campo de pesquisa.
+    window.requestAnimationFrame(() => {
+      elements.find((element) => element.dataset.pdvProductId === nextId)?.focus();
+    });
+  }, [activeProductId, keyboardProducts]);
+
+  function handleGridKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    const directionByKey: Partial<Record<string, PdvGridDirection>> = {
+      ArrowUp: 'up',
+      ArrowDown: 'down',
+      ArrowLeft: 'left',
+      ArrowRight: 'right',
+    };
+    const direction = directionByKey[event.key];
+    if (!direction) return;
+    event.preventDefault();
+    moveProductFocus(direction);
+  }
+
   const catalogSections = useMemo(() => {
     const byGroup = new Map<string | null, typeof searchFiltered>();
     for (const product of searchFiltered) {
@@ -677,9 +754,6 @@ export default function Pdv() {
   }
 
   function tryAdd(p: PdvGridProduct, quantity: number) {
-    // Item novo no carrinho = venda nova: o aviso da venda anterior sai da
-    // tela pra não confundir o troco de quem já foi embora com o desta.
-    setSaleSuccess(null);
     const result = addItem(cart, toProduct(p), quantity);
     // `=== false` (não `!result.ok`): sem strictNullChecks neste tsconfig, a
     // negação bare não estreita o discriminated union.
@@ -704,6 +778,7 @@ export default function Pdv() {
   function handleProductSelect(product: PdvGridProduct) {
     tryAdd(product, 1);
     setSearch('');
+    setActiveProductIndex(0);
     focusSearch();
   }
 
@@ -730,7 +805,10 @@ export default function Pdv() {
     focusSearch();
   }
 
-  useBarcodeScanner({ onScan: handleBarcodeScan, enabled: !confirmClearOpen });
+  useBarcodeScanner({
+    onScan: handleBarcodeScan,
+    enabled: !confirmClearOpen && !paymentOpen && !advancedOptionsOpen && !shortcutHelpOpen,
+  });
 
   function handleSearchEnter() {
     const { multiplier, term } = extractMultiplierPrefix(search);
@@ -739,17 +817,30 @@ export default function Pdv() {
     const matches = searchFiltered.length ? searchFiltered : [];
     const direct = sellableProducts.filter((p) => fuzzyIncludesAny([p.name, p.barcode], cleanTerm));
     const pool = direct.length ? direct : matches;
-    if (pool.length === 1) {
-      tryAdd(pool[0], multiplier);
+    if (pool.length > 0) {
+      const active = pool.find((product) => product.inventoryId === activeProductId)
+        ?? pool.find((product) => product.availableQuantity > 0)
+        ?? pool[0];
+      tryAdd(active, multiplier);
       setSearch('');
+      setActiveProductIndex(0);
       focusSearch();
-    } else if (pool.length > 1) {
-      // Vários resultados: foca a grade pro operador escolher visualmente.
-      gridRef.current?.focus();
     }
   }
 
   function handleSearchKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    const directionByKey: Partial<Record<string, PdvGridDirection>> = {
+      ArrowUp: 'up',
+      ArrowDown: 'down',
+      ArrowLeft: 'left',
+      ArrowRight: 'right',
+    };
+    const direction = directionByKey[e.key];
+    if (direction && keyboardProducts.length > 0) {
+      e.preventDefault();
+      moveProductFocus(direction);
+      return;
+    }
     if (e.key === 'Enter') {
       e.preventDefault();
       // Enter com a busca VAZIA e carrinho cheio abre o pagamento (régua de
@@ -766,6 +857,7 @@ export default function Pdv() {
       e.preventDefault();
       if (search) {
         setSearch('');
+        setActiveProductIndex(0);
       } else if (cart.lines.length > 0) {
         setConfirmClearOpen(true);
       }
@@ -776,11 +868,12 @@ export default function Pdv() {
     if ((e.key === '+' || e.key === '-') && search === '' && cart.lines.length > 0) {
       e.preventDefault();
       const lastLine = cart.lines[cart.lines.length - 1];
-      setCart(incrementLineQuantity(cart, lastLine.inventoryId, e.key === '+' ? 1 : -1));
+      const step = inventoryQuantityStep(lastLine.unit);
+      setCart(incrementLineQuantity(cart, lastLine.inventoryId, e.key === '+' ? step : -step));
     }
   }
 
-  const itemCount = cart.lines.reduce((sum, l) => sum + l.quantity, 0);
+  const itemCount = cart.lines.length;
   const total = computeTotal(cart);
   const canPay = cart.lines.length > 0 && total > 0;
 
@@ -838,7 +931,7 @@ export default function Pdv() {
       code: `#${draft.sequence}`,
       customer: customers.find((customer) => customer.id === draft.cart.customerId)?.name ?? '',
       total: computeTotal(draft.cart),
-      itemCount: draft.cart.lines.reduce((sum, line) => sum + line.quantity, 0),
+      itemCount: draft.cart.lines.length,
       hasContent: hasPdvSaleDraftContent(draft) || (attachmentsByDraft[draft.id]?.length ?? 0) > 0,
       editing: !!saleEditDrafts[draft.id],
     })),
@@ -887,7 +980,6 @@ export default function Pdv() {
       editDraft: saleEditDrafts[activeDraft.id] ?? null,
       attachments: [...(attachmentsByDraft[activeDraft.id] ?? [])],
     };
-    setSaleSuccess(null);
     setCartDrawerOpen(false);
     setPaymentOpen(true);
   }
@@ -1035,26 +1127,79 @@ export default function Pdv() {
     // Remove EXATAMENTE o rascunho finalizado. Outro pedido que esteja ativo
     // (por storage event/troca rápida) não é limpo nem recebe o cliente dele.
     deleteDraft(draftId);
-    setSaleSuccess({
-      number: Number(result.numero) || 0,
-      total: Number(result.total) || 0,
-      change: Math.round(change * 100) / 100,
-      warnings: extractSaleWarnings(result.avisos),
+
+    // Pós-venda em TOAST, não em faixa fixa na tela (pedido do CEO 2026-10-26:
+    // "esse verde e amarelo tinha que aparecer como toasts").
+    //
+    // É UM toast só, carregando sucesso + avisos juntos: o `TOAST_LIMIT` do app
+    // é 1 (`src/hooks/use-toast.ts`), então um segundo `toast()` disparado na
+    // sequência MATA o primeiro — o aviso da RPC comeria o número do pedido e
+    // o troco. Por isso o aviso entra como faixa saturada DENTRO do corpo
+    // (régua de aviso = `NoticeBanner`, nunca texto âmbar solto).
+    const saleNumber = Number(result.numero) || 0;
+    const saleTotal = Number(result.total) || 0;
+    const saleChange = Math.round(change * 100) / 100;
+    const saleWarnings = extractSaleWarnings(result.avisos);
+    toast({
+      title: t.saleSuccess.title.replace('{number}', String(saleNumber)),
+      // `ToastDescription` é um <div> (Radix), então <div>/NoticeBanner aqui
+      // dentro é aninhamento válido — não trocar por <span>.
+      description: (
+        <div className="space-y-1.5">
+          <div className="font-semibold tabular-nums text-foreground">
+            {t.saleSuccess.total.replace('{value}', formatCurrency(saleTotal))}
+            {saleChange > 0
+              ? ` · ${t.saleSuccess.change.replace('{value}', formatCurrency(saleChange))}`
+              : ''}
+          </div>
+          {saleWarnings.map((code) => (
+            <NoticeBanner key={code} variant="warning" className="px-2 py-1.5 text-xs">
+              {t.saleSuccess.warnings[code]}
+            </NoticeBanner>
+          ))}
+        </div>
+      ),
+      // Toast some sozinho, e isto é dinheiro: troco e aviso ficam MUITO mais
+      // tempo na tela que o padrão (5s) pra o operador conferir sem correr.
+      duration: saleChange > 0 || saleWarnings.length > 0 ? 15000 : 8000,
     });
     setTimeout(() => searchInputRef.current?.focus(), 0);
   }
 
-  // Atalhos de função — teclas não-imprimíveis, o leitor de código nunca as vê.
+  // Atalhos operacionais do balcão. Teclas imprimíveis nunca atravessam campos;
+  // overlays também suspendem a página (o F9 do pagamento pertence ao diálogo).
   useEffect(() => {
     function handleGlobalKeyDown(e: KeyboardEvent) {
+      if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (paymentOpen || confirmClearOpen || advancedOptionsOpen || shortcutHelpOpen) return;
+
       if (e.key === 'F2') {
         e.preventDefault();
         searchInputRef.current?.focus();
+      } else if (e.key === 'F3') {
+        e.preventDefault();
+        const customerTrigger = document.getElementById('pdv-customer');
+        customerTrigger?.focus();
+        customerTrigger?.click();
       } else if (e.key === 'F4' || e.key === 'F9') {
-        // Com o diálogo aberto o F9 é dele (finalizar), não daqui.
-        if (paymentOpen) return;
         e.preventDefault();
         openPayment();
+      } else if (e.key === 'F6' || e.key === 'F7') {
+        e.preventDefault();
+        const currentIndex = draftWorkspace.drafts.findIndex((draft) => draft.id === activeDraftId);
+        const nextIndex = nextPdvIndex(
+          currentIndex,
+          draftWorkspace.drafts.length,
+          e.key === 'F7' ? 1 : -1,
+        );
+        const nextDraft = draftWorkspace.drafts[nextIndex];
+        if (nextDraft) selectDraft(nextDraft.id);
+      } else if (e.key === 'F8') {
+        e.preventDefault();
+        if (!e.repeat) handleCreateDraft();
+      } else if (e.key === '?' && !isPdvEditableTarget(e.target)) {
+        e.preventDefault();
+        setShortcutHelpOpen(true);
       }
     }
     window.addEventListener('keydown', handleGlobalKeyDown);
@@ -1300,7 +1445,6 @@ export default function Pdv() {
   }, [
     isMobileCart,
     isLoadingPdv,
-    saleSuccess,
     categoryTabs.length,
     hiddenCategoryTabs.length,
     hasOpenCashSession,
@@ -1323,6 +1467,50 @@ export default function Pdv() {
     setConfirmClearOpen(false);
     focusSearch();
   }
+
+  function handleRemoveCartLine(inventoryId: string) {
+    if (!activeDraftId) return;
+    const draftId = activeDraftId;
+    const removedIndex = cart.lines.findIndex((line) => line.inventoryId === inventoryId);
+    const removedLine: CartLine | undefined = cart.lines[removedIndex];
+    if (!removedLine) return;
+
+    setCart((current) => removeItem(current, inventoryId));
+    toast({
+      title: t.cart.removedLine.replace('{name}', removedLine.name),
+      duration: 6000,
+      action: (
+        <ToastAction
+          altText={t.cart.undoRemove}
+          onClick={() => {
+            updateDraft(draftId, (draft) => {
+              if (draft.cart.lines.some((line) => line.inventoryId === inventoryId)) return draft;
+              const lines = [...draft.cart.lines];
+              lines.splice(Math.min(removedIndex, lines.length), 0, removedLine);
+              return { ...draft, cart: { ...draft.cart, lines }, attempt: null };
+            });
+          }}
+        >
+          {t.cart.undoRemove}
+        </ToastAction>
+      ),
+    });
+  }
+
+  const advancedOptionsSummary = [
+    orderNotes.trim() ? t.advancedOptions.summaryNotes : null,
+    transactionDate !== maxTransactionDate
+      ? t.advancedOptions.summaryDate.replace(
+          '{date}',
+          formatDate(transactionDate, locale, timezone),
+        )
+      : null,
+    pendingAttachments.length > 0
+      ? (pendingAttachments.length === 1
+          ? t.advancedOptions.summaryPhoto
+          : t.advancedOptions.summaryPhotos.replace('{count}', String(pendingAttachments.length)))
+      : null,
+  ].filter(Boolean).join(' · ');
 
   const orderSwitcherProps = {
     orders: orderSwitcherItems,
@@ -1355,7 +1543,7 @@ export default function Pdv() {
     onSetQuantity: (id: string, quantity: number) => setCart((prev) => setLineQuantity(prev, id, quantity)),
     onSetLineDiscount: (id: string, discountAmount: number) =>
       setCart((prev) => setLineDiscount(prev, id, discountAmount)),
-    onRemove: (id: string) => setCart((prev) => removeItem(prev, id)),
+    onRemove: handleRemoveCartLine,
     onCustomerChange: (id: string | null) => setCart((prev) => setCartCustomer(prev, id)),
     onRequestClearCart: () => setConfirmClearOpen(true),
     onRequestPayment: openPayment,
@@ -1366,7 +1554,8 @@ export default function Pdv() {
     // 1 resultado de busca.
     onConfirmQuantityEdit: focusSearch,
     onOpenAdvancedOptions: () => setAdvancedOptionsOpen(true),
-    advancedOptionsActive: transactionDate !== maxTransactionDate || pendingAttachments.length > 0,
+    advancedOptionsActive: advancedOptionsSummary.length > 0,
+    advancedOptionsSummary,
     additionFeedback:
       cartAdditionFeedback?.draftId === activeDraftId
         ? {
@@ -1377,6 +1566,7 @@ export default function Pdv() {
     texts: {
       title: t.cart.title,
       itemsCount: t.cart.itemsCount,
+      itemsCountOne: t.cart.itemsCountOne,
       draftHint: t.cart.draftHint,
       empty: t.cart.empty,
       emptyHint: t.cart.emptyHint,
@@ -1477,6 +1667,21 @@ export default function Pdv() {
       <PdvOrderSwitcher header {...orderSwitcherProps} />
     </div>
   );
+  const shortcutHelpButton = (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className="shrink-0 gap-1.5"
+      onClick={() => setShortcutHelpOpen(true)}
+      aria-label={t.shortcuts.open}
+      title={t.shortcuts.open}
+    >
+      <Keyboard className="h-4 w-4" />
+      <span className="hidden min-[1280px]:inline">{t.shortcuts.open}</span>
+      <kbd className="rounded border bg-muted px-1 text-[10px] text-muted-foreground">?</kbd>
+    </Button>
+  );
   const fullHeaderBlock = (
     <header className="flex items-center gap-4 border-b border-border pb-3">
       <div className="flex min-w-0 flex-1 items-center">
@@ -1505,6 +1710,7 @@ export default function Pdv() {
           </div>
         </div>
       </div>
+      {shortcutHelpButton}
       {desktopOrderSwitcher}
     </header>
   );
@@ -1514,6 +1720,7 @@ export default function Pdv() {
         <ArrowLeft className="h-4 w-4" />
       </Button>
       <h1 className={cn(typography.pageTitle, 'min-w-0 flex-1 truncate')}>{t.title}</h1>
+      {shortcutHelpButton}
       {desktopOrderSwitcher}
       <Avatar className="h-7 w-7 ring-1 ring-border">
         <AvatarImage src={profile?.avatar_url ?? undefined} alt={operatorName} className="object-cover" />
@@ -1551,44 +1758,6 @@ export default function Pdv() {
         >
           {t.editDraft.description}
         </NoticeBanner>
-      )}
-
-      {/* Pós-venda. Fica AQUI (acima da busca, fora do carrinho) de propósito:
-          no mobile o resumo vive dentro do drawer, que fecha ao finalizar, e o
-          operador perderia justamente o número do pedido e o TROCO. */}
-      {saleSuccess && (
-        <div className="space-y-2">
-          <NoticeBanner
-            variant="success"
-            icon={CheckCircle2}
-            title={t.saleSuccess.title.replace('{number}', String(saleSuccess.number))}
-            action={
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-success-foreground hover:bg-success-foreground/10"
-                onClick={() => setSaleSuccess(null)}
-                aria-label={t.saleSuccess.dismiss}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            }
-          >
-            <span className="font-semibold tabular-nums">
-              {t.saleSuccess.total.replace('{value}', formatCurrency(saleSuccess.total))}
-              {saleSuccess.change > 0
-                ? ` · ${t.saleSuccess.change.replace('{value}', formatCurrency(saleSuccess.change))}`
-                : ''}
-            </span>
-          </NoticeBanner>
-          {/* Aviso da RPC aparece, nunca é engolido. */}
-          {saleSuccess.warnings.map((code) => (
-            <NoticeBanner key={code} variant="warning">
-              {t.saleSuccess.warnings[code]}
-            </NoticeBanner>
-          ))}
-        </div>
       )}
 
       <div
@@ -1732,7 +1901,12 @@ export default function Pdv() {
                 cn('flex-1 overflow-y-auto pr-1', GRID_FLOOR_CLASS[cardCompact ? 'compact' : 'full']),
             )}
           >
-            <div ref={gridRef} tabIndex={-1} className="space-y-5 outline-none">
+            <div
+              ref={gridRef}
+              tabIndex={-1}
+              className="space-y-5 outline-none"
+              onKeyDown={handleGridKeyDown}
+            >
               {searchFiltered.length === 0 ? (
                 <div>
                   <EmptyState
@@ -1756,12 +1930,20 @@ export default function Pdv() {
                           key={product.inventoryId}
                           product={product}
                           formatCurrency={formatCurrency}
+                          formatQuantity={formatQuantity}
                           outOfStockLabel={t.stock.outOfStock}
                           availableLabel={t.stock.available}
                           noPhotoLabel={t.stock.noPhoto}
                           compact={cardCompact}
                           imageAspect="square"
                           imageBackdrop="cutout"
+                          keyboardActive={activeProductId === product.inventoryId}
+                          onKeyboardFocus={() => {
+                            const nextIndex = keyboardProducts.findIndex(
+                              (candidate) => candidate.inventoryId === product.inventoryId,
+                            );
+                            if (nextIndex >= 0) setActiveProductIndex(nextIndex);
+                          }}
                           onSelect={handleProductSelect}
                         />
                       ))}
@@ -1816,7 +1998,9 @@ export default function Pdv() {
                     de que o toque no produto bipou mesmo (sem precisar de toast
                     a cada item, que seria ruído em venda rápida de balcão). */}
                 <span key={itemCount} className="animate-in zoom-in-90 duration-200">
-                  {t.cart.itemsCount.replace('{count}', String(itemCount))}
+                  {itemCount === 1
+                    ? t.cart.itemsCountOne
+                    : t.cart.itemsCount.replace('{count}', String(itemCount))}
                 </span>
               </span>
               <span key={total} className="animate-in zoom-in-90 duration-200 text-lg font-extrabold tabular-nums">
@@ -1836,6 +2020,25 @@ export default function Pdv() {
           </Drawer>
         </>
       )}
+
+      <PdvShortcutHelpDialog
+        open={shortcutHelpOpen}
+        onOpenChange={setShortcutHelpOpen}
+        title={t.shortcuts.title}
+        description={t.shortcuts.description}
+        closeLabel={t.shortcuts.close}
+        shortcuts={[
+          { keys: ['F2'], label: t.shortcuts.search },
+          { keys: ['F3'], label: t.shortcuts.customer },
+          { keys: ['F4'], label: t.shortcuts.payment },
+          { keys: ['F6', 'F7'], label: t.shortcuts.switchOrder },
+          { keys: ['F8'], label: t.shortcuts.newOrder },
+          { keys: ['F9'], label: t.shortcuts.finalize },
+          { keys: ['↑', '↓', 'Enter'], label: t.shortcuts.results },
+          { keys: ['+', '−'], label: t.shortcuts.quantity },
+          { keys: ['?'], label: t.shortcuts.help },
+        ]}
+      />
 
       <PdvPaymentDialog
         open={paymentOpen}

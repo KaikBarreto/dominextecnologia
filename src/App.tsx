@@ -9,7 +9,8 @@ import { AppLocaleProvider } from "@/contexts/AppLocaleContext";
 import { useForcedLogout } from "@/hooks/useForcedLogout";
 import { useCompanyModules, type ModuleCode } from "@/hooks/useCompanyModules";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
-import { segmentHasTechTools } from "@/config/technicianArea";
+import { segmentsHaveTechTools } from "@/config/technicianArea";
+import { companyHasSegment, normalizeCompanySegments } from "@/utils/companySegments";
 import { ModuleGateModal, MODULE_INFO } from "@/components/ModuleGateModal";
 import { trackUsage } from "@/lib/trackUsage";
 import { podeAcessarDomiflixAdmin } from "@/lib/adminDomiflixAccess";
@@ -24,6 +25,7 @@ import { useMarketingViewport } from "@/hooks/useMarketingViewport";
 import { localizedSegmentModuleRoutes } from "@/utils/localizedMarketingRoutes";
 import { useToast } from "@/hooks/use-toast";
 import { SubscriptionGate } from "@/components/SubscriptionGate";
+import { OverlayCoordinatorProvider } from "@/contexts/OverlayCoordinatorContext";
 
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -70,6 +72,7 @@ class ErrorBoundary extends React.Component<
 }
 
 import { OfflineIndicator } from "@/components/pwa/OfflineIndicator";
+import { PwaRootEntry } from "@/components/pwa/PwaRootEntry";
 import { SwipeBackProvider } from "@/components/SwipeBack";
 import { StrayDropGuard } from "@/components/StrayDropGuard";
 import { TermsOfServiceWrapper } from "@/components/TermsOfServiceWrapper";
@@ -103,9 +106,12 @@ import PontoEFolha from "./pages/modulos/PontoEFolha";
 import EmissaoDeNfse from "./pages/modulos/EmissaoDeNfse";
 import PortalDoCliente from "./pages/modulos/PortalDoCliente";
 import ControleDeEstoque from "./pages/modulos/ControleDeEstoque";
-import OrcamentosEContratos from "./pages/modulos/OrcamentosEContratos";
-import RastreamentoDeEquipes from "./pages/modulos/RastreamentoDeEquipes";
+import Orcamentos from "./pages/modulos/Orcamentos";
+import ContratosModulo from "./pages/modulos/Contratos";
 import AreaDoTecnico from "./pages/modulos/AreaDoTecnico";
+import IntegracaoWhatsapp from "./pages/modulos/IntegracaoWhatsapp";
+import CobrancasAutomaticas from "./pages/modulos/CobrancasAutomaticas";
+import PdvELoja from "./pages/modulos/PdvELoja";
 // Páginas legais públicas — pequenas, mantidas EAGER (linkadas no rodapé da landing).
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfUse from "./pages/TermsOfUse";
@@ -163,6 +169,9 @@ const PdvSettings = React.lazy(() => import("./pages/PdvSettings"));
 const PdvUiReview = import.meta.env.DEV
   ? React.lazy(() => import("./pages/dev/PdvUiReview"))
   : null;
+const PmocContractDocsUiReview = import.meta.env.DEV
+  ? React.lazy(() => import("./pages/dev/PmocContractDocsUiReview"))
+  : null;
 const Finance = React.lazy(() => import("./pages/Finance"));
 const FiscalSettings = React.lazy(() => import("./pages/FiscalSettings"));
 const NotasFiscais = React.lazy(() => import("./pages/NotasFiscais"));
@@ -202,6 +211,11 @@ const PublicLeadCapture = React.lazy(() => import("./pages/PublicLeadCapture"));
 // Portal PMOC público (Onda B — v1.9.1). Lazy: rota pública sem auth,
 // só carrega quando o cliente final escaneia o QR Code.
 const PmocPublicPortal = React.lazy(() => import("./pages/public/PmocPublicPortal"));
+const PmocCertificateValidation = React.lazy(() => import("./pages/PmocCertificateValidation"));
+
+const FormulariosUiReview = import.meta.env.DEV
+  ? React.lazy(() => import("./pages/dev/FormulariosUiReview"))
+  : null;
 
 const AdminCompanies = React.lazy(() => import("./pages/admin/AdminCompanies"));
 const AdminCompanyDetail = React.lazy(() => import("./pages/admin/AdminCompanyDetail"));
@@ -233,6 +247,9 @@ const DomiflixTitle = React.lazy(() => import("./pages/DomiflixTitle"));
 const DomiflixWatch = React.lazy(() => import("./pages/DomiflixWatch"));
 const DomiflixMinhaLista = React.lazy(() => import("./pages/DomiflixMinhaLista"));
 const DomiflixAvatarPicker = React.lazy(() => import("./pages/DomiflixAvatarPicker"));
+const DomiflixIntroGate = React.lazy(() =>
+  import("@/components/domiflix/DomiflixIntroGate").then((m) => ({ default: m.DomiflixIntroGate }))
+);
 
 // Layout — só carrega quando entra numa rota autenticada (lazy).
 const AppLayout = React.lazy(() =>
@@ -384,7 +401,7 @@ function SegmentRoute({ segment, children }: { segment: string; children: React.
   const { settings, isLoading } = useCompanySettings();
 
   if (isLoading) return null;
-  if (settings?.segment !== segment) return <Navigate to="/" replace />;
+  if (!companyHasSegment(settings?.segments, segment, settings?.segment)) return <Navigate to="/" replace />;
 
   return <>{children}</>;
 }
@@ -397,7 +414,7 @@ function TechnicianAreaRoute({ children }: { children: React.ReactNode }) {
   const { settings, isLoading } = useCompanySettings();
 
   if (isLoading) return null;
-  if (!segmentHasTechTools(settings?.segment)) return <Navigate to="/" replace />;
+  if (!segmentsHaveTechTools(normalizeCompanySegments(settings?.segments, settings?.segment))) return <Navigate to="/" replace />;
 
   return <>{children}</>;
 }
@@ -562,8 +579,10 @@ const UsageTracker = () => {
     localizados (via slugRegistry) no bloco /:lang. */}
 const sharedMarketingRoutes = () => (
   <>
-    {/* Landing page — public, no redirect */}
-    <Route index element={<Landing />} />
+    {/* No navegador, `/` continua sendo a landing. Em modo instalado, alguns
+        Safari/iOS persistem a URL atual em vez do start_url do manifesto; nesse
+        caso a raiz funciona como entrada do sistema e segue para /dashboard. */}
+    <Route index element={<PwaRootEntry><Landing /></PwaRootEntry>} />
 
     {/* Páginas institucionais / legais públicas — linkadas no rodapé. */}
     <Route path="quem-somos" element={<QuemSomos />} />
@@ -601,12 +620,18 @@ const publicMarketingRoutes = () => (
     <Route path="sistema-crm" element={<CrmModulo />} />
     <Route path="controle-financeiro" element={<ControleFinanceiro />} />
     <Route path="ponto-e-folha" element={<PontoEFolha />} />
-    <Route path="emissao-de-nfse" element={<EmissaoDeNfse />} />
+    <Route path="emissao-de-nota-fiscal" element={<EmissaoDeNfse />} />
+    <Route path="emissao-de-nfse" element={<Navigate to="/emissao-de-nota-fiscal" replace />} />
     <Route path="portal-do-cliente" element={<PortalDoCliente />} />
     <Route path="controle-de-estoque" element={<ControleDeEstoque />} />
-    <Route path="orcamentos-e-contratos" element={<OrcamentosEContratos />} />
-    <Route path="rastreamento-de-equipes" element={<RastreamentoDeEquipes />} />
+    <Route path="sistema-de-orcamentos" element={<Orcamentos />} />
+    <Route path="gestao-de-contratos" element={<ContratosModulo />} />
+    <Route path="orcamentos-e-contratos" element={<Navigate to="/sistema-de-orcamentos" replace />} />
+    <Route path="rastreamento-de-equipes" element={<Navigate to="/os-digital" replace />} />
     <Route path="area-do-tecnico" element={<AreaDoTecnico />} />
+    <Route path="integracao-whatsapp" element={<IntegracaoWhatsapp />} />
+    <Route path="cobrancas-automaticas" element={<CobrancasAutomaticas />} />
+    <Route path="pdv-e-loja" element={<PdvELoja />} />
   </>
 );
 
@@ -673,6 +698,12 @@ const AppRoutes = () => (
   <Routes>
     {PdvUiReview && (
       <Route path="/__dev/pdv-ui-review/*" element={<PdvUiReview />} />
+    )}
+    {PmocContractDocsUiReview && (
+      <Route path="/__dev/pmoc-contract-docs-review" element={<PmocContractDocsUiReview />} />
+    )}
+    {FormulariosUiReview && (
+      <Route path="/__dev/formularios-ui-review" element={<FormulariosUiReview />} />
     )}
     {/* Rotas públicas de marketing SEM prefixo = pt-br (canônicas). O layout
         monta a auto-detecção client-side (só para humano) que, sem cookie e com
@@ -762,6 +793,8 @@ const AppRoutes = () => (
     <Route path="/contrato/unidade/:token" element={<PmocPublicPortal />} />
     {/* Alias legado: QR Codes físicos já impressos apontam pro caminho antigo */}
     <Route path="/pmoc/unidade/:token" element={<PmocPublicPortal />} />
+    {/* Validação pública impressa e clicável nos certificados PMOC. */}
+    <Route path="/c/:token" element={<PmocCertificateValidation />} />
 
     {/* Checkout - full screen, no layout */}
     <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
@@ -936,11 +969,11 @@ const AppRoutes = () => (
         bottom nav / footer) para imersão total no vídeo. */}
     <Route
       path="/domiflix/assistir/:titleSlug/:episodeNumber"
-      element={<SubscriptionProtectedRoute><DomiflixWatch /></SubscriptionProtectedRoute>}
+      element={<SubscriptionProtectedRoute><DomiflixIntroGate /><DomiflixWatch /></SubscriptionProtectedRoute>}
     />
     <Route
       path="/domiflix/assistir/:titleSlug/:episodeNumber/:startSeconds"
-      element={<SubscriptionProtectedRoute><DomiflixWatch /></SubscriptionProtectedRoute>}
+      element={<SubscriptionProtectedRoute><DomiflixIntroGate /><DomiflixWatch /></SubscriptionProtectedRoute>}
     />
 
     {/* Legacy OS share link: /:uuid -> /os-tecnico/:uuid?modo=cliente */}
@@ -986,9 +1019,11 @@ const App = () => (
             <AppLocaleProvider>
               <UsageTracker />
               <SwipeBackProvider>
-                <TermsOfServiceWrapper>
+                <OverlayCoordinatorProvider>
+                  <TermsOfServiceWrapper>
                   <AppRoutes />
-                </TermsOfServiceWrapper>
+                  </TermsOfServiceWrapper>
+                </OverlayCoordinatorProvider>
               </SwipeBackProvider>
             </AppLocaleProvider>
           </AuthProvider>

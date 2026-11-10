@@ -56,6 +56,10 @@ export interface LeadCaptureFormInput {
   require_consent?: boolean;
   consent_text?: string | null;
   max_submissions?: number | null;
+  /** 'lead' cria cliente (como sempre); 'generic' só coleta respostas. */
+  purpose?: 'lead' | 'generic';
+  show_in_customer_portal?: boolean;
+  success_message?: string | null;
 }
 
 export function useLeadCaptureForms() {

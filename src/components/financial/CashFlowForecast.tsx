@@ -18,6 +18,7 @@ import {
   ChevronRight,
   Wallet,
   Info,
+  RefreshCw,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -29,6 +30,7 @@ import { useLocaleFormatters } from '@/lib/format/hooks';
 import { useCashFlowForecast } from '@/hooks/useCashFlowForecast';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { UNASSIGNED_ACCOUNT_ID } from '@/lib/cash-flow-forecast';
@@ -68,7 +70,7 @@ export function CashFlowForecast() {
    */
   const [celula, setCelula] = useState<{ data: string; categoria: string | null } | null>(null);
 
-  const { forecast, isLoading } = useCashFlowForecast({ horizonDays });
+  const { forecast, isLoading, isError, refetch } = useCashFlowForecast({ horizonDays });
   const { categories } = useFinancialCategories();
 
   const categoriaPorNome = useMemo(
@@ -169,6 +171,22 @@ export function CashFlowForecast() {
         </div>
         <Skeleton className="h-80" />
       </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Alert variant="destructive" role="alert">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertTitle>Não foi possível carregar o fluxo de caixa previsto</AlertTitle>
+        <AlertDescription className="space-y-3">
+          <p>A projeção foi ocultada para não apresentar saldos ou vencimentos incompletos.</p>
+          <Button type="button" variant="outline" size="sm" onClick={refetch} className="min-h-10 gap-2 border-destructive/40">
+            <RefreshCw className="h-4 w-4" aria-hidden="true" />
+            Tentar novamente
+          </Button>
+        </AlertDescription>
+      </Alert>
     );
   }
 

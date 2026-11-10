@@ -9,6 +9,7 @@ import {
   isToggleOn,
   lineBaselineMm,
   parseHex,
+  ptToMm,
   resolveDocArt,
   resolveTheme,
 } from './resolve';
@@ -203,12 +204,19 @@ describe('cor', () => {
 describe('tema e toggles', () => {
   const template = DOC_ART_TEMPLATES[0];
 
-  it('config sobrescreve campo a campo, ignorando hex inválido', () => {
+  it('usa accent preto no claro, contraste no escuro e preserva personalização válida', () => {
     const theme = resolveTheme(template, {
       theme: { primary: '#ff0000', accent: 'vermelho' },
     });
     expect(theme.primary).toBe('#ff0000');
-    expect(theme.accent).toBe(template.defaultTheme.accent);
+    expect(theme.accent).toBe('#000000');
+
+    const noturno = getDocArtTemplate('noturno')!;
+    expect(resolveTheme(noturno).accent).toBe('#dbeafe');
+
+    const customized = resolveTheme(template, { theme: { accent: '#2563eb' } });
+    expect(customized.accent).toBe('#2563eb');
+    expect(resolveTheme(noturno, { theme: { accent: '#000000' } }).accent).toBe('#000000');
   });
 
   it('toggle ausente nasce ligado', () => {
@@ -216,19 +224,88 @@ describe('tema e toggles', () => {
     expect(isToggleOn('signature', { toggles: {} })).toBe(true);
     expect(isToggleOn('signature', { toggles: { signature: false } })).toBe(false);
   });
+
+  it('mantém a composição editorial central por padrão e alinha todo o conteúdo à esquerda ou direita', () => {
+    const artOf = (align?: 'left' | 'center' | 'right') => resolveDocArt(
+      template,
+      align ? { headerAlign: align } : undefined,
+      { substitute: (html) => html.replace(/<span[^>]*><\/span>/g, 'Dado variável') },
+    );
+    const textOf = (align: 'left' | 'center' | 'right' | undefined, slot: ResolvedTextShape['slot']) =>
+      artOf(align).shapes.find(
+        (shape): shape is ResolvedTextShape => shape.kind === 'text' && shape.slot === slot,
+      );
+    expect(textOf(undefined, 'titulo')?.align).toBe('center');
+    expect(textOf(undefined, 'corpo')?.align).toBe('left');
+    for (const align of ['left', 'right'] as const) {
+      for (const slot of [
+        'titulo', 'subtitulo', 'sobretitulo', 'corpo', 'lateral',
+        'assinaturaTitulo', 'assinaturaNome', 'assinaturaCargo',
+        'produtoTitulo', 'produto', 'destaque', 'rodape',
+      ] as const) {
+        expect(textOf(align, slot)?.align, `${align}/${slot}`).toBe(align);
+      }
+    }
+  });
+
+  it('dá aos títulos técnicos mais tamanho e peso que os respectivos dados', () => {
+    const art = resolveDocArt(template, undefined, {
+      substitute: (html) => html.replace(/<span[^>]*><\/span>/g, 'Dado variável'),
+    });
+    const shape = (slot: ResolvedTextShape['slot']) => art.shapes.find(
+      (entry): entry is ResolvedTextShape => entry.kind === 'text' && entry.slot === slot,
+    );
+    expect(shape('assinaturaTitulo')?.weight).toBe('bold');
+    expect(shape('assinaturaTitulo')?.outlineWidth).toBeGreaterThanOrEqual(0.4);
+    expect(shape('assinaturaTitulo')!.size).toBeGreaterThan(shape('assinaturaNome')!.size);
+    expect(shape('produtoTitulo')?.weight).toBe('bold');
+    expect(shape('produtoTitulo')?.outlineWidth).toBeGreaterThanOrEqual(0.4);
+    expect(shape('produtoTitulo')!.size).toBeGreaterThan(shape('produto')!.size);
+  });
+
+  it('mantém a validação vertical fixa na borda direita em qualquer alinhamento', () => {
+    const validationGroup = (align: 'left' | 'center' | 'right') => resolveDocArt(
+      template,
+      { headerAlign: align },
+      { substitute: (html) => html.replace(
+        /<span data-pmoc-var="([^"]+)"><\/span>/g,
+        (_match, key: string) => key === 'documento.url_validacao'
+          ? 'dominex.app/c/AbCdEfGhIjKlMnOp'
+          : 'PMOC-000001',
+      ) },
+    ).shapes.filter((shape) => shape.layoutRole === 'validationSeal');
+    const serialized = (align: 'left' | 'center' | 'right') => JSON.stringify(validationGroup(align));
+    expect(serialized('left')).toBe(serialized('center'));
+    expect(serialized('right')).toBe(serialized('center'));
+    const centered = validationGroup('center');
+    const strip = centered.find((shape) => shape.kind === 'rect');
+    expect(strip?.kind === 'rect' ? strip.x + strip.w : 0).toBeCloseTo(297, 5);
+    const label = centered.find(
+      (shape): shape is ResolvedTextShape => shape.kind === 'text' && shape.slot === 'validacao',
+    );
+    expect(label?.align).toBe('center');
+    expect(label?.rotate).toBe(-90);
+    expect(label?.paragraphs.flat().map((run) => run.text).join('')).toContain('PMOC-000001');
+    expect(label?.paragraphs.flat().map((run) => run.text).join('')).toContain('dominex.app/c/');
+    const validationRuns = label?.paragraphs.flat() ?? [];
+    expect(validationRuns.find((run) => run.text.includes('PMOC-000001'))?.bold).toBe(true);
+    expect(validationRuns.find((run) => run.text.includes('dominex.app/c/'))?.bold).toBe(false);
+    if (strip?.kind === 'rect' && label) {
+      expect(label.y - label.w / 2).toBeCloseTo(210 / 2, 5);
+      expect(label.x + ptToMm(label.size * 0.76)).toBeCloseTo(strip.x + strip.w / 2, 5);
+    }
+  });
 });
 
 describe('peso da caixa de texto', () => {
-  it('caixa em negrito marca TODOS os runs — medida e desenho usam a mesma fonte', () => {
-    // Regressão: medir em peso normal e desenhar em negrito deixa o texto mais
-    // largo que o medido e come o espaço entre as palavras.
+  it('preserva o peso regular da caixa para destacar apenas dados com strong', () => {
     const template = DOC_ART_TEMPLATES[0];
     const art = resolveDocArt(template, { slots: { assinaturaNome: 'Carlos Eduardo' } });
     const nome = art.shapes.find(
       (s): s is ResolvedTextShape => s.kind === 'text' && s.slot === 'assinaturaNome',
     );
-    expect(nome?.weight).toBe('bold');
-    expect(nome?.paragraphs[0].every((r) => r.bold)).toBe(true);
+    expect(nome?.weight).toBe('regular');
+    expect(nome?.paragraphs[0].every((r) => !r.bold)).toBe(true);
   });
 });
 
@@ -241,6 +318,21 @@ describe('getSlotHtml', () => {
 
   it('string vazia salva pelo gestor VENCE o default (é como se apaga um slot)', () => {
     expect(getSlotHtml(template, { slots: { titulo: '' } }, 'titulo')).toBe('');
+  });
+
+  it('não permite substituir o código de validação por configuração editorial', () => {
+    expect(getSlotHtml(template, {
+      slots: { validacao: 'Código inventado' },
+    }, 'validacao')).toBe(template.defaultSlots.validacao);
+  });
+
+  it('remove os títulos embutidos de configurações antigas sem duplicar os novos headings', () => {
+    expect(getSlotHtml(template, {
+      slots: { assinaturaNome: '<strong>RESPONSÁVEL TÉCNICO</strong><br><strong>Ana Lima</strong>' },
+    }, 'assinaturaNome')).toBe('<strong>Ana Lima</strong>');
+    expect(getSlotHtml(template, {
+      slots: { produto: '<strong>PRODUTO UTILIZADO</strong><br><strong>BacterClean</strong>' },
+    }, 'produto')).toBe('<strong>BacterClean</strong>');
   });
 });
 
@@ -301,7 +393,7 @@ describe('resolveDocArt', () => {
   });
 
   it('a página segue a orientação declarada pela arte', () => {
-    expect(resolveDocArt(getDocArtTemplate('portico')!).page).toEqual({ w: 210, h: 297 });
+    expect(resolveDocArt(getDocArtTemplate('portico')!).page).toEqual({ w: 297, h: 210 });
     expect(resolveDocArt(getDocArtTemplate('bloco')!).page).toEqual({ w: 297, h: 210 });
   });
 });
@@ -321,6 +413,90 @@ describe('registro de artes', () => {
         .map((s) => s.src);
       expect(refs, template.slug).not.toContain('seal');
       expect(template.toggles, template.slug).not.toContain('seal');
+    }
+  });
+
+  it('todas as artes exibem validação própria sem a linha decorativa antiga', () => {
+    for (const template of DOC_ART_TEMPLATES) {
+      const validation = template.shapes.filter(({ shape }) => shape.layoutRole === 'validationSeal');
+      expect(validation, `${template.slug}/validationSeal`).toHaveLength(2);
+      expect(
+        validation.some(({ shape }) => shape.kind === 'text' && shape.slot === 'validacao'),
+        `${template.slug}/validationText`,
+      ).toBe(true);
+      const page = resolveDocArt(template).page;
+      const strip = validation.find(({ shape }) => shape.kind === 'rect')?.shape;
+      expect(strip?.kind === 'rect' ? strip.x + strip.w : 0, `${template.slug}/flushRight`).toBeCloseTo(page.w, 5);
+      const validationText = validation.find(({ shape }) => shape.kind === 'text')?.shape;
+      expect(validationText?.kind === 'text' ? validationText.rotate : 0, `${template.slug}/rotation`).toBe(-90);
+      expect(
+        template.shapes.some(({ shape }) =>
+          shape.kind === 'line' && shape.y1 === 109 && shape.y2 === 109),
+        `${template.slug}/legacyDecorativeLine`,
+      ).toBe(false);
+    }
+  });
+
+  it('artes autorais usam fundo individual e essenciais ficam 100% vetoriais', () => {
+    for (const template of DOC_ART_TEMPLATES) {
+      const backgrounds = template.shapes.filter(
+        ({ shape }) => shape.kind === 'image' && shape.src === 'background',
+      );
+      expect(backgrounds, template.slug).toHaveLength(template.slug.startsWith('essencial-') ? 0 : 1);
+      expect(template.shapes.some(({ shape }) => shape.kind !== 'image'), template.slug).toBe(true);
+    }
+  });
+
+  it('mantém contrato mínimo de leitura e alinhamento nos certificados', () => {
+    for (const template of DOC_ART_TEMPLATES) {
+      const page = resolveDocArt(template).page;
+      const textShapes = template.shapes
+        .map(({ shape }) => shape)
+        .filter((shape) => shape.kind === 'text');
+      for (const shape of textShapes) {
+        expect(shape.size, `${template.slug}/${shape.slot}`).toBeGreaterThanOrEqual(7.4);
+        expect(shape.font, `${template.slug}/${shape.slot}`).toBe('sans');
+      }
+      const title = textShapes.find((shape) => shape.slot === 'titulo');
+      const logo = template.shapes
+        .map(({ shape }) => shape)
+        .find((shape) => shape.kind === 'image' && shape.src === 'logo');
+      expect(title, `${template.slug}/titulo`).toBeDefined();
+      if (title?.kind === 'text') {
+        expect(title.x + title.w / 2, `${template.slug}/titulo`).toBeCloseTo(page.w / 2, 5);
+        expect(title.size, `${template.slug}/titulo`).toBeGreaterThanOrEqual(24.5);
+        expect(title.weight, `${template.slug}/titulo`).toBe('bold');
+        if (logo?.kind === 'image') {
+          expect(logo.y + logo.h, `${template.slug}/logo-acima-do-titulo`).toBeLessThanOrEqual(title.y);
+        }
+      }
+      const subtitle = textShapes.find((shape) => shape.slot === 'subtitulo');
+      const body = textShapes.find((shape) => shape.slot === 'corpo');
+      const legalReference = textShapes.find((shape) => shape.slot === 'sobretitulo');
+      expect(subtitle?.size, `${template.slug}/subtitulo`).toBe(title?.size);
+      expect(subtitle?.weight, `${template.slug}/subtitulo`).toBe('bold');
+      expect(body?.size, `${template.slug}/corpo`).toBeGreaterThanOrEqual(12.2);
+      expect(legalReference?.size, `${template.slug}/referencia-legal`).toBeGreaterThanOrEqual(9.6);
+      const resolved = resolveDocArt(template, {}, {
+        substitute: (html) => html.replace(/<span[^>]*><\/span>/g, 'Dado variável'),
+      });
+      for (const slot of ['corpo', 'assinaturaNome', 'assinaturaCargo', 'produto', 'lateral', 'rodape'] as const) {
+        const shape = resolved.shapes.find(
+          (entry): entry is ResolvedTextShape => entry.kind === 'text' && entry.slot === slot,
+        );
+        expect(
+          shape?.paragraphs.flat().some((run) => run.bold),
+          `${template.slug}/${slot}/possui-destaque`,
+        ).toBe(true);
+      }
+      const readingSurface = template.shapes
+        .map(({ shape }) => shape)
+        .find((shape) => shape.kind === 'rect' && shape.y === 55 && shape.h === 119);
+      expect(readingSurface, `${template.slug}/sem-superficie-flutuante`).toBeUndefined();
+      const floatingCards = template.shapes
+        .map(({ shape }) => shape)
+        .filter((shape) => shape.kind === 'rect' && shape.y === 113 && shape.h === 37);
+      expect(floatingCards, `${template.slug}/sem-cartoes-flutuantes`).toHaveLength(0);
     }
   });
 

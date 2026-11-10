@@ -42,7 +42,7 @@ export function useServiceMaterials(serviceId?: string | null) {
     mutationFn: async (input: Omit<ServiceMaterialInsert, 'id' | 'company_id' | 'service_id' | 'created_at'>) => {
       if (!companyId || !serviceId) throw new Error('Serviço não selecionado.');
 
-      const { subtotal: _subtotal, ...rest } = input as any;
+      const { subtotal: _subtotal, ...rest } = input;
 
       const payload: ServiceMaterialInsert = {
         ...rest,
@@ -62,16 +62,18 @@ export function useServiceMaterials(serviceId?: string | null) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-materials'] });
-      toast({ title: 'Material adicionado!' });
+      queryClient.invalidateQueries({ queryKey: ['service-cost-breakdown'] });
+      toast({ title: 'Insumo adicionado!' });
     },
-    onError: (error: any) => {
-      toast({ variant: 'destructive', title: 'Erro ao adicionar material', description: getErrorMessage(error) });
+    onError: (error: unknown) => {
+      toast({ variant: 'destructive', title: 'Erro ao adicionar insumo', description: getErrorMessage(error) });
     },
   });
 
   const updateMaterial = useMutation({
     mutationFn: async ({ id, ...updates }: ServiceMaterialUpdate & { id: string }) => {
-      const { subtotal: _subtotal, ...rest } = updates as any;
+      const { subtotal: _subtotal, ...updatesWithoutSubtotal } = updates;
+      const rest: ServiceMaterialUpdate = { ...updatesWithoutSubtotal };
 
       // Recalcular subtotal quando quantity e/ou purchase_price mudarem.
       // O componente envia updates PARCIAIS (só quantity OU só purchase_price),
@@ -97,10 +99,11 @@ export function useServiceMaterials(serviceId?: string | null) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-materials'] });
-      toast({ title: 'Material atualizado!' });
+      queryClient.invalidateQueries({ queryKey: ['service-cost-breakdown'] });
+      toast({ title: 'Insumo atualizado!' });
     },
-    onError: (error: any) => {
-      toast({ variant: 'destructive', title: 'Erro ao atualizar material', description: getErrorMessage(error) });
+    onError: (error: unknown) => {
+      toast({ variant: 'destructive', title: 'Erro ao atualizar insumo', description: getErrorMessage(error) });
     },
   });
 
@@ -111,10 +114,11 @@ export function useServiceMaterials(serviceId?: string | null) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-materials'] });
-      toast({ title: 'Material removido!' });
+      queryClient.invalidateQueries({ queryKey: ['service-cost-breakdown'] });
+      toast({ title: 'Insumo removido!' });
     },
-    onError: (error: any) => {
-      toast({ variant: 'destructive', title: 'Erro ao remover material', description: getErrorMessage(error) });
+    onError: (error: unknown) => {
+      toast({ variant: 'destructive', title: 'Erro ao remover insumo', description: getErrorMessage(error) });
     },
   });
 

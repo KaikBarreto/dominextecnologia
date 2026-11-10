@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,6 +13,7 @@ import { LedgerMovementsList } from './LedgerMovementsList';
 import { EntryActionPanel } from './EntryActionPanel';
 import { ReconciliationBulkBar } from './ReconciliationBulkBar';
 import { ReconciliationBalanceFooter } from './ReconciliationBalanceFooter';
+import { isReconciliationContainerCompact } from '@/lib/reconciliation-layout';
 
 interface ReconciliationTableProps {
   importId: string;
@@ -29,7 +30,10 @@ interface ReconciliationTableProps {
 export function ReconciliationTable({ importId }: ReconciliationTableProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.finance.reconciliation;
-  const isCompact = useIsCompact();
+  const isViewportCompact = useIsCompact();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isContainerCompact, setIsContainerCompact] = useState(false);
+  const isCompact = isViewportCompact || isContainerCompact;
 
   const {
     state,
@@ -56,6 +60,28 @@ export function ReconciliationTable({ importId }: ReconciliationTableProps) {
     cardPayBill,
     searchCardPurchases,
   } = useBankReconciliation(importId);
+  const hasState = !!state;
+
+  // No primeiro render de loading o container final ainda não existe. Repetir
+  // a instalação quando os dados chegam garante que o ResizeObserver observe
+  // a largura útil real, inclusive com a sidebar expandida.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const update = (width: number) => {
+      setIsContainerCompact(isReconciliationContainerCompact(width));
+    };
+    update(container.getBoundingClientRect().width);
+
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width ?? container.getBoundingClientRect().width;
+      update(width);
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [isLoading, hasState]);
 
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -152,7 +178,7 @@ export function ReconciliationTable({ importId }: ReconciliationTableProps) {
   }
 
   return (
-    <div className="flex flex-col">
+    <div ref={containerRef} className="flex min-w-0 flex-col" data-layout={isCompact ? 'compact' : 'two-panel'}>
       {finalized && (
         <div className="mb-2 flex items-center gap-2 rounded-md border bg-card px-3 py-2 text-sm text-muted-foreground">
           <Lock className="h-4 w-4 shrink-0" />

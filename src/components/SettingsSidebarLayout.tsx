@@ -4,6 +4,10 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { MobilePillTabs } from "@/components/mobile/MobilePillTabs";
 import { hexToRgbTriplet, idealForeground } from "@/lib/colorContrast";
 
+type AccentStyle = React.CSSProperties & {
+  [variable: `--${string}`]: string | number | undefined;
+};
+
 export interface SettingsTab {
   value: string;
   label: string;
@@ -34,6 +38,8 @@ interface SettingsSidebarLayoutProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   children: React.ReactNode;
+  /** Ações da tela alinhadas à direita da navegação underline. Só no desktop. */
+  actions?: React.ReactNode;
   /** Conteúdo fixo no rodapé do sidebar (ex: botões "Nova Conta"/"Novo Cartão"). Só no desktop. */
   sidebarFooter?: React.ReactNode;
   /**
@@ -50,6 +56,13 @@ interface SettingsSidebarLayoutProps {
    * Só no desktop. Opt-in — sem a prop, o layout se comporta como antes.
    */
   placeholderGroups?: string[];
+  /**
+   * `underline` (padrão): barra horizontal no topo, com rolagem quando faltar
+   * espaço. É a subnavegação canônica das telas de gestão.
+   * `sidebar`: exceção explícita para navegação hierárquica que realmente
+   * dependa de grupos, cores por item ou rodapés dentro do menu.
+   */
+  variant?: 'sidebar' | 'underline';
 }
 
 export function SettingsSidebarLayout({
@@ -57,9 +70,11 @@ export function SettingsSidebarLayout({
   activeTab,
   onTabChange,
   children,
+  actions,
   sidebarFooter,
   groupFooters,
   placeholderGroups,
+  variant = 'underline',
 }: SettingsSidebarLayoutProps) {
   const isMobile = useIsMobile();
 
@@ -90,11 +105,39 @@ export function SettingsSidebarLayout({
       <div className="space-y-4">
         <MobilePillTabs
           variant="underline"
+          level={variant === 'underline' ? 'screen' : 'section'}
+          className={variant === 'underline' ? '[&_[aria-selected=true]]:font-bold' : undefined}
           tabs={tabs.map((t) => ({ value: t.value, label: t.label, icon: <t.icon className="h-4 w-4 shrink-0" />, sublabel: t.mobileSublabel ?? t.sublabel, accentColor: t.accentColor, useColorBackground: t.useColorBackground }))}
           activeTab={activeTab}
           onTabChange={onTabChange}
         />
         <div>{children}</div>
+      </div>
+    );
+  }
+
+  // Abas da TELA em barra horizontal: mesma navegação do resto do sistema.
+  if (variant === 'underline') {
+    return (
+      <div className="space-y-6">
+        <MobilePillTabs
+          variant="underline"
+          level="screen"
+          className="mx-0 [&_[aria-selected=true]]:font-bold"
+          tabs={tabs.map((tab) => {
+            const Icon = tab.icon;
+            return {
+              value: tab.value,
+              label: tab.label,
+              icon: <Icon className="h-4 w-4 shrink-0" />,
+              sublabel: isMobile ? tab.mobileSublabel ?? tab.sublabel : tab.sublabel,
+            };
+          })}
+          activeTab={activeTab}
+          onTabChange={onTabChange}
+          actions={actions}
+        />
+        <div className="min-w-0">{children}</div>
       </div>
     );
   }
@@ -125,23 +168,23 @@ export function SettingsSidebarLayout({
                   // - colorBg (saturado): ativo = bg cheio + branco; hover via classes.
                   // - sutil: ativo = bg translúcido + texto na cor; hover bem leve.
                   // - sem cor: primary de sempre.
-                  const accentStyle: React.CSSProperties = colorBg
-                    ? ({
-                        ['--tab-accent' as any]: `rgb(${rgb})`,
+                  const accentStyle: AccentStyle = colorBg
+                    ? {
+                        '--tab-accent': `rgb(${rgb})`,
                         // Texto contrastante calculado pela luminância da cor da
                         // conta (evita branco-no-branco quando a cor é clara).
-                        ['--tab-accent-fg' as any]: idealForeground(tab.accentColor),
+                        '--tab-accent-fg': idealForeground(tab.accentColor),
                         backgroundColor: isActive ? `rgb(${rgb})` : undefined,
                         color: isActive ? 'var(--tab-accent-fg)' : undefined,
-                      } as React.CSSProperties)
+                      }
                     : accented
-                    ? ({
-                        ['--tab-accent' as any]: `rgb(${rgb})`,
-                        ['--tab-accent-active-bg' as any]: `rgba(${rgb}, 0.16)`,
-                        ['--tab-accent-hover-bg' as any]: `rgba(${rgb}, 0.08)`,
+                    ? {
+                        '--tab-accent': `rgb(${rgb})`,
+                        '--tab-accent-active-bg': `rgba(${rgb}, 0.16)`,
+                        '--tab-accent-hover-bg': `rgba(${rgb}, 0.08)`,
                         backgroundColor: isActive ? `rgba(${rgb}, 0.16)` : undefined,
                         color: isActive ? `rgb(${rgb})` : undefined,
-                      } as React.CSSProperties)
+                      }
                     : {};
 
                   return (

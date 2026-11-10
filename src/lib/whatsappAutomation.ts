@@ -1,15 +1,27 @@
 export type WhatsappTemplateStyle = 'automatic' | 'objective' | 'cordial' | 'detailed';
 
-export type WhatsappOsEventKey = 'a_caminho' | 'em_andamento' | 'concluida';
+export type WhatsappOsEventKey = 'scheduled_reminder' | 'a_caminho' | 'em_andamento' | 'concluida';
 export type WhatsappBillingEventKey = 'created' | 'before_due' | 'due_today' | 'after_due';
+export type WhatsappOsReminderTiming = 'day_before' | 'same_day';
 
 export interface WhatsappAutomationRule {
   enabled: boolean;
   template: WhatsappTemplateStyle;
 }
 
+export interface WhatsappOsScheduledReminderRule extends WhatsappAutomationRule {
+  timing: WhatsappOsReminderTiming;
+}
+
+export interface WhatsappOsEventRules {
+  scheduled_reminder: WhatsappOsScheduledReminderRule;
+  a_caminho: WhatsappAutomationRule;
+  em_andamento: WhatsappAutomationRule;
+  concluida: WhatsappAutomationRule;
+}
+
 /**
- * Janela em que os avisos podem sair, no fuso de Brasília.
+ * Janela em que os avisos podem sair, no fuso configurado para a empresa.
  * `days` usa dia da semana ISO: 1 = segunda … 7 = domingo.
  */
 export interface WhatsappSendWindow {
@@ -26,9 +38,9 @@ export interface WhatsappSendWindow {
  *   Manutenção de ar-condicionado acontece fora do horário comercial, então
  *   travar um "técnico a caminho" das 22h até as 8h é pior que inútil.
  *   Nasce largo: 06:00 às 23:00, todos os dias. O tenant pode abrir 24 h.
- * - `reminders` (cobrança): gerado por cron, ninguém pediu pra receber. É aqui
- *   que a janela de verdade importa, porque aviso de madrugada é o que mais
- *   gera denúncia do cliente final, e denúncia é o que de fato derruba número.
+ * - `reminders` (cobranças e visitas agendadas): gerado por cron. É aqui que a
+ *   janela de verdade importa, porque aviso de madrugada é o que mais gera
+ *   denúncia do cliente final, e denúncia é o que de fato derruba número.
  *   Nasce restrito: 08:00 às 20:00, segunda a sábado.
  *
  * Não unifique de volta numa janela só.
@@ -58,7 +70,7 @@ export interface WhatsappAutomationPreferences {
   humanBehavior: WhatsappHumanBehavior;
   os: {
     includeLink: boolean;
-    events: Record<WhatsappOsEventKey, WhatsappAutomationRule>;
+    events: WhatsappOsEventRules;
   };
   billing: {
     includeAmount: boolean;
@@ -90,6 +102,7 @@ export const DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES: WhatsappAutomationPreferen
   os: {
     includeLink: true,
     events: {
+      scheduled_reminder: { enabled: false, template: 'automatic', timing: 'day_before' },
       a_caminho: { enabled: true, template: 'automatic' },
       em_andamento: { enabled: true, template: 'automatic' },
       concluida: { enabled: true, template: 'automatic' },
@@ -118,6 +131,8 @@ const TEMPLATE_STYLES: WhatsappTemplateStyle[] = [
   'detailed',
 ];
 
+const OS_REMINDER_TIMINGS: WhatsappOsReminderTiming[] = ['day_before', 'same_day'];
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -134,6 +149,15 @@ function readOffset(value: unknown, fallback: number): number {
 function readTemplate(value: unknown, fallback: WhatsappTemplateStyle): WhatsappTemplateStyle {
   return typeof value === 'string' && TEMPLATE_STYLES.includes(value as WhatsappTemplateStyle)
     ? (value as WhatsappTemplateStyle)
+    : fallback;
+}
+
+function readOsReminderTiming(
+  value: unknown,
+  fallback: WhatsappOsReminderTiming,
+): WhatsappOsReminderTiming {
+  return typeof value === 'string' && OS_REMINDER_TIMINGS.includes(value as WhatsappOsReminderTiming)
+    ? (value as WhatsappOsReminderTiming)
     : fallback;
 }
 
@@ -171,7 +195,7 @@ function normalizeSendWindow(value: unknown, fallback: WhatsappSendWindow): What
 
 /**
  * Shape antigo (`sendWindow` com `startHour`/`endHour`/`days` na raiz) vira a
- * janela de LEMBRETE, não a transacional: ele era o mais restritivo, é o que a
+ * janela de LEMBRETES, não a transacional: ele era o mais restritivo, é o que a
  * tela antiga oferecia, e o significado dele era "não incomode o cliente fora
  * disso" — que é o significado de lembrete. A transacional recebe o default
  * largo. Mesma regra do `public.whatsapp_send_window` no banco.
@@ -244,6 +268,13 @@ export function normalizeWhatsappAutomationPreferences(
     os: {
       includeLink: readBoolean(os.includeLink, defaults.os.includeLink),
       events: {
+        scheduled_reminder: {
+          ...normalizeRule(osEvents.scheduled_reminder, defaults.os.events.scheduled_reminder),
+          timing: readOsReminderTiming(
+            isRecord(osEvents.scheduled_reminder) ? osEvents.scheduled_reminder.timing : undefined,
+            defaults.os.events.scheduled_reminder.timing,
+          ),
+        },
         a_caminho: normalizeRule(osEvents.a_caminho, defaults.os.events.a_caminho),
         em_andamento: normalizeRule(osEvents.em_andamento, defaults.os.events.em_andamento),
         concluida: normalizeRule(osEvents.concluida, defaults.os.events.concluida),
@@ -298,6 +329,8 @@ interface PreviewFixture {
   osLink: string;
   amount: string;
   dueDate: string;
+  scheduledDate: string;
+  scheduledTime: string;
   paymentLink: string;
 }
 
@@ -310,6 +343,8 @@ export const WHATSAPP_PREVIEW_FIXTURE: PreviewFixture = {
   osLink: 'https://www.dominex.app/os/1048',
   amount: 'R$ 480,00',
   dueDate: '18/10/2026',
+  scheduledDate: '28/10/2026',
+  scheduledTime: '09:00',
   paymentLink: 'https://www.dominex.app/pagar/8F2K9Q',
 };
 
@@ -320,10 +355,25 @@ function resolveStyle(style: WhatsappTemplateStyle): Exclude<WhatsappTemplateSty
 function buildOsPreview(
   key: WhatsappOsEventKey,
   style: WhatsappTemplateStyle,
-  includeLink: boolean,
+  preferences: WhatsappAutomationPreferences['os'],
   fixture: PreviewFixture,
 ): string {
   const resolved = resolveStyle(style);
+  if (key === 'scheduled_reminder') {
+    const action = {
+      objective: `Lembrete: sua visita da OS ${fixture.osNumber} está agendada para ${fixture.scheduledDate}, às ${fixture.scheduledTime}.`,
+      cordial: `Passando para lembrar que sua visita da OS ${fixture.osNumber} está agendada para ${fixture.scheduledDate}, às ${fixture.scheduledTime}.`,
+      detailed: `Sua visita para ${fixture.service}, referente à OS ${fixture.osNumber}, está agendada para ${fixture.scheduledDate}, às ${fixture.scheduledTime}.`,
+    }[resolved];
+
+    return [
+      `Olá, ${fixture.customer}!`,
+      '',
+      action,
+      preferences.includeLink ? `*Acompanhe a OS:* ${fixture.osLink}` : '',
+    ].filter(Boolean).join('\n');
+  }
+
   const action = {
     a_caminho: {
       objective: `O técnico ${fixture.technician} está a caminho para atender a OS ${fixture.osNumber}.`,
@@ -342,7 +392,7 @@ function buildOsPreview(
     },
   }[key][resolved];
 
-  return [`Olá, ${fixture.customer}!`, '', action, includeLink ? `*Acompanhe a OS:* ${fixture.osLink}` : '']
+  return [`Olá, ${fixture.customer}!`, '', action, preferences.includeLink ? `*Acompanhe a OS:* ${fixture.osLink}` : '']
     .filter(Boolean)
     .join('\n');
 }
@@ -404,7 +454,7 @@ export function buildWhatsappMessagePreview(
 ): string {
   if (event.domain === 'os') {
     const rule = preferences.os.events[event.key];
-    return buildOsPreview(event.key, rule.template, preferences.os.includeLink, fixture);
+    return buildOsPreview(event.key, rule.template, preferences.os, fixture);
   }
 
   const rule = preferences.billing.events[event.key];

@@ -165,7 +165,18 @@ export function getCatalogForSegment(segment: string | null | undefined): Checkl
   return GENERICO_TEMPLATES;
 }
 
+/** Une os catálogos específicos dos segmentos contratados, sem duplicar modelos. */
+export function getCatalogForSegments(segments: readonly string[]): ChecklistTemplate[] {
+  const specific = segments.flatMap((segment) => CHECKLIST_CATALOG[segment] ?? []);
+  if (specific.length === 0) return GENERICO_TEMPLATES;
+  return Array.from(new Map(specific.map((template) => [template.id, template])).values());
+}
+
 /** Indica se o segmento tem integração com o catálogo PMOC da norma. */
 export function segmentHasPmocCatalog(segment: string | null | undefined): boolean {
   return segment === 'refrigeracao';
+}
+
+export function segmentsHavePmocCatalog(segments: readonly string[]): boolean {
+  return segments.some(segmentHasPmocCatalog);
 }

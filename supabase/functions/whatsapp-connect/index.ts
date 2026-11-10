@@ -18,7 +18,7 @@
 // O tenant NÃO vê proxy em lugar nenhum da resposta: IP é detalhe de infra da
 // Dominex, não benefício vendável (infra/whatsapp-evolution/README.md §5.4).
 //
-// Espelha o padrão asaas/fisqal: erro claro em PT-BR se a Evolution não estiver
+// Espelha o padrão das integrações: erro claro em PT-BR se a Evolution não estiver
 // configurada (EvolutionConfigError). NUNCA finge sucesso.
 // =============================================================================
 

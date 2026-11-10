@@ -261,6 +261,9 @@ export function useFinancialCategories() {
   return {
     categories: categoriesQuery.data ?? [],
     isLoading: categoriesQuery.isLoading,
+    isError: categoriesQuery.isError,
+    error: categoriesQuery.error ?? null,
+    refetch: categoriesQuery.refetch,
     createCategory,
     updateCategory,
     deleteCategory,

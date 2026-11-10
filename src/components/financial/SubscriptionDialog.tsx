@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
 import { formatMoney, toBcp47 } from '@/lib/format';
@@ -161,6 +161,7 @@ export function SubscriptionDialog({
   const [fineAmount, setFineAmount] = useState(0); // em reais, máscara de centavos
   const [finePercent, setFinePercent] = useState('');
   const [interestPercent, setInterestPercent] = useState('');
+  const accountDefaultsTouchedRef = useRef({ fine: false, interest: false });
   // Resumo do recebimento: fica no rodapé do modal, sempre visível. Só a linha
   // do líquido por cobrança aparece fechada; o detalhamento abre aqui.
   const [netExpanded, setNetExpanded] = useState(false);
@@ -201,9 +202,11 @@ export function SubscriptionDialog({
     return opts;
   }, [paymentAccount, t.billing_types, cardRecurringEnabled, pixAutoEnabled]);
 
-  // Inicializa os defaults ao abrir
+  // Inicializa os defaults uma vez por abertura. A atualização assíncrona da
+  // conta é tratada no efeito seguinte sem reidratar campos já editados.
   useEffect(() => {
     if (open) {
+      accountDefaultsTouchedRef.current = { fine: false, interest: false };
       // O default da CONTA é percentual (default_fine_percent), então abrir
       // sempre começa em %. A escolha de reais vale só para esta assinatura.
       setFineType('PERCENTAGE');
@@ -212,6 +215,13 @@ export function SubscriptionDialog({
       setInterestPercent(defaultInterestPercent != null ? String(defaultInterestPercent) : '');
       setNetExpanded(false);
     }
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!open) return;
+    const touched = accountDefaultsTouchedRef.current;
+    if (!touched.fine) setFinePercent(defaultFinePercent != null ? String(defaultFinePercent) : '');
+    if (!touched.interest) setInterestPercent(defaultInterestPercent != null ? String(defaultInterestPercent) : '');
   }, [open, defaultFinePercent, defaultInterestPercent]);
 
   // Sincroniza cliente pré-selecionado
@@ -237,6 +247,7 @@ export function SubscriptionDialog({
   }, [billingOptions, billingType]);
 
   const resetForm = () => {
+    accountDefaultsTouchedRef.current = { fine: false, interest: false };
     setCustomerId(presetCustomerId ?? '');
     setAmount(0);
     setCycle(presetCycle ?? 'MONTHLY');
@@ -283,12 +294,16 @@ export function SubscriptionDialog({
   // centavos pela direita; colar passa por readPastedCents). Em %, o campo
   // segue como texto decimal livre.
   const handleFineAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    accountDefaultsTouchedRef.current.fine = true;
     const raw = e.target.value.replace(/\D/g, '');
     setFineAmount(parseInt(raw || '0', 10) / 100);
   };
   const handleFineAmountPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     const cents = readPastedCents(e);
-    if (cents != null) setFineAmount(cents / 100);
+    if (cents != null) {
+      accountDefaultsTouchedRef.current.fine = true;
+      setFineAmount(cents / 100);
+    }
   };
   const fineAmountDisplay = fineAmount
     ? fineAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -1129,7 +1144,10 @@ export function SubscriptionDialog({
                               value={fineType}
                               // Arrow (e não `setFineType` direto): passar o setter
                               // cru faz o TS inferir T = string e perder a união.
-                              onValueChange={(v) => setFineType(v)}
+                              onValueChange={(v) => {
+                                accountDefaultsTouchedRef.current.fine = true;
+                                setFineType(v);
+                              }}
                               aria-label={t.advanced.fineTypeAria}
                             />
                           </div>
@@ -1154,7 +1172,10 @@ export function SubscriptionDialog({
                               inputMode="decimal"
                               placeholder="2"
                               value={finePercent}
-                              onChange={(e) => setFinePercent(e.target.value)}
+                              onChange={(e) => {
+                                accountDefaultsTouchedRef.current.fine = true;
+                                setFinePercent(e.target.value);
+                              }}
                             />
                           )}
                         </div>
@@ -1172,7 +1193,10 @@ export function SubscriptionDialog({
                             inputMode="decimal"
                             placeholder="1"
                             value={interestPercent}
-                            onChange={(e) => setInterestPercent(e.target.value)}
+                            onChange={(e) => {
+                              accountDefaultsTouchedRef.current.interest = true;
+                              setInterestPercent(e.target.value);
+                            }}
                           />
                         </div>
                       </div>

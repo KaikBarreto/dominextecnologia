@@ -18,8 +18,8 @@ function normalizeTab(raw: string | null): ContractSettingsTab {
 }
 
 /**
- * Configurações de Contrato — casca com navegação lateral (sidebar no desktop,
- * pills no mobile via SettingsSidebarLayout — mesmo padrão da tela de Orçamentos).
+ * Configurações de Contrato — casca com abas underline horizontais e roláveis,
+ * via SettingsSidebarLayout — mesmo padrão da tela de Orçamentos.
  *
  * Abas:
  *  1. Documentos (default) → template de documentos PMOC da empresa.

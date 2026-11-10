@@ -4,7 +4,7 @@ export type DocStep = {
 };
 
 export type DocEndpoint = {
-  method: 'GET' | 'POST';
+  method: 'GET' | 'POST' | 'PATCH';
   path: string;
   description: string;
   scope: string;
@@ -203,6 +203,21 @@ Inclua uma politica de no maximo 3 tentativas transitorias e testes com relogio 
 
 ${SECURITY_RULES}`;
 
+const CRM_CARDS_PROMPT = `Implemente uma integracao server-to-server para criar e gerenciar cards do CRM pela API Publica Dominex v1.
+
+Base URL: ${BASE_URL}. Chave somente em process.env.DOMINEX_API_KEY.
+
+1. Consulte GET /crm/pipelines e use apenas funis comerciais e etapas devolvidos pela API.
+2. Liste cards com GET /crm/cards usando limit, cursor e filtros quando necessario.
+3. Crie com POST /crm/cards, title, stage_id e uma Idempotency-Key estavel do registro de origem.
+4. Consulte por GET /crm/cards/{id} ou /crm/cards/by-external-id/{external_id}.
+5. Atualize ou mova com PATCH /crm/cards/{id}; mover significa enviar stage_id, nunca pipeline_id.
+6. Use uma nova Idempotency-Key por mutacao logica e preserve chave e JSON em retries.
+
+Modele paginacao com data e next_cursor. Trate 404 sem inferir outro tenant, 409 idempotency_conflict, 422 para etapa ou cliente invalido, 429 com Retry-After e 503 com retry limitado. Nunca envie company_id, pipeline_id, created_by, status financeiro ou IDs inventados. Inclua testes de replay, troca de payload com a mesma chave, etapa de outro tenant, movimento entre etapas, cursor e redacao de dados pessoais.
+
+${SECURITY_RULES}`;
+
 export const CREATE_ORDER_CODE_VARIANTS: DocCodeVariant[] = [
   {
     label: 'Node.js',
@@ -370,7 +385,7 @@ print_r($result);`,
   ];
 }
 
-function createPostCodeVariants(path: string, payload: Record<string, string>): DocCodeVariant[] {
+function createPostCodeVariants(path: string, payload: Record<string, unknown>): DocCodeVariant[] {
   const url = BASE_URL + path;
   const prettyPayload = JSON.stringify(payload, null, 2);
   const compactPayload = JSON.stringify(payload);
@@ -451,6 +466,15 @@ const STATUS_CODE_VARIANTS = createReadCodeVariants('/service-orders/by-external
 const CUSTOMER_CODE_VARIANTS = createPostCodeVariants('/customers/resolve', {
   external_id: 'crm-contact-42',
 });
+const CRM_CARD_CODE_VARIANTS = createPostCodeVariants('/crm/cards', {
+  external_id: 'erp-opportunity-1042',
+  title: 'Contrato de manutenção preventiva',
+  stage_id: '018f9c91-8c0c-7c15-a9c1-c6245482b101',
+  customer_id: '018f9c91-8c0c-7c15-a9c1-c6245482b202',
+  value: 18500,
+  probability: 60,
+  source: 'ERP parceiro',
+});
 
 export const DOC_NAV_GROUPS: DocNavGroup[] = [
   {
@@ -468,6 +492,7 @@ export const DOC_NAV_GROUPS: DocNavGroup[] = [
       { label: 'Criar uma OS', path: '/docs/guias/criar-os' },
       { label: 'Consultar disponibilidade', path: '/docs/guias/disponibilidade' },
       { label: 'Encontrar ou criar cliente', path: '/docs/guias/clientes' },
+      { label: 'Gerenciar cards do CRM', path: '/docs/guias/cards-crm' },
       { label: 'Acompanhar uma OS', path: '/docs/guias/acompanhar-os' },
       { label: 'Exemplo: WhatsApp', path: '/docs/guias/criar-os-whatsapp' },
     ],
@@ -827,6 +852,76 @@ Content-Type: application/json
     ],
   },
   {
+    path: '/docs/guias/cards-crm',
+    title: 'Gerenciar cards do CRM',
+    eyebrow: 'GUIA POR OBJETIVO',
+    description: 'Crie, consulte, atualize e mova oportunidades nos funis comerciais com idempotência.',
+    readingTime: '9 min',
+    keywords: ['crm', 'card', 'oportunidade', 'pipeline', 'funil', 'etapa'],
+    sections: [
+      {
+        id: 'discover', number: '01', title: 'Descubra funis e etapas',
+        lead: 'A API expõe somente funis comerciais do tenant. Use os IDs devolvidos; pipeline_id é derivado da etapa e não pode ser gravado diretamente.',
+        blocks: [
+          { type: 'endpoints', items: [
+            { method: 'GET', path: '/crm/pipelines', description: 'Lista funis comerciais e suas etapas ordenadas.', scope: 'crm_cards:read' },
+            { method: 'GET', path: '/crm/cards', description: 'Lista cards com cursor e filtros de funil, etapa ou atualização.', scope: 'crm_cards:read' },
+          ] },
+          { type: 'callout', tone: 'warning', title: 'Não invente IDs', text: 'stage_id e customer_id são revalidados no tenant da chave. Uma etapa de projeto, de outro tenant ou inexistente é rejeitada sem revelar dados.' },
+          { type: 'callout', tone: 'info', title: 'Cards legados sem etapa', text: 'A listagem pode devolver stage_id nulo em registros antigos. Novos cards exigem uma etapa; normalize o registro enviando um stage_id válido no PATCH.' },
+          { type: 'table', headers: ['Filtro', 'Regra'], rows: [
+            ['limit', 'De 1 a 100; use o next_cursor retornado para continuar.'],
+            ['pipeline_id', 'Restringe a um funil comercial.'],
+            ['stage_id', 'Restringe a uma etapa do funil comercial.'],
+            ['updated_since', 'Data/hora ISO 8601 com offset.'],
+          ] },
+        ],
+      },
+      {
+        id: 'mutate', number: '02', title: 'Crie e mova com retry seguro',
+        lead: 'POST e PATCH exigem Idempotency-Key. Cada mutação lógica recebe uma chave estável; um retry preserva a mesma chave e o mesmo JSON.',
+        blocks: [
+          { type: 'code', language: 'bash', label: 'cURL', variants: CRM_CARD_CODE_VARIANTS, collapsible: true, code: `curl --request POST '${BASE_URL}/crm/cards' \\
+  -H 'Authorization: Bearer dmx_live_PUBLIC_ID.SECRET' \\
+  -H 'Idempotency-Key: erp-opportunity-1042-create' \\
+  -H 'Content-Type: application/json' \\
+  --data '{
+    "external_id": "erp-opportunity-1042",
+    "title": "Contrato de manutenção preventiva",
+    "stage_id": "018f9c91-8c0c-7c15-a9c1-c6245482b101",
+    "customer_id": "018f9c91-8c0c-7c15-a9c1-c6245482b202",
+    "value": 18500,
+    "probability": 60,
+    "source": "ERP parceiro"
+  }'` },
+          { type: 'endpoints', items: [
+            { method: 'POST', path: '/crm/cards', description: 'Cria um card idempotente; title e stage_id são obrigatórios.', scope: 'crm_cards:write' },
+            { method: 'PATCH', path: '/crm/cards/{id}', description: 'Atualiza campos ou move o card ao enviar outro stage_id.', scope: 'crm_cards:write' },
+          ] },
+          { type: 'callout', tone: 'success', title: 'Histórico preservado', text: 'Ao mudar stage_id, a Dominex registra a mudança de etapa no histórico do card. A API não oferece exclusão física.' },
+        ],
+      },
+      {
+        id: 'read', number: '03', title: 'Concilie pelo identificador certo',
+        blocks: [
+          { type: 'endpoints', items: [
+            { method: 'GET', path: '/crm/cards/{id}', description: 'Consulta pelo UUID do card.', scope: 'crm_cards:read' },
+            { method: 'GET', path: '/crm/cards/by-external-id/{external_id}', description: 'Consulta pela referência persistida pela integração.', scope: 'crm_cards:read' },
+          ] },
+          { type: 'details', items: [
+            { title: 'Posso enviar pipeline_id?', detail: 'Não. O funil é derivado de stage_id para impedir combinações inconsistentes. Consulte /crm/pipelines e envie a etapa desejada.' },
+            { title: 'A listagem inclui frentes de projetos?', detail: 'Não. Esta API gerencia o CRM comercial; funis vinculados a projetos ficam fora da superfície pública.' },
+            { title: 'Como removo um card?', detail: 'A v1 não oferece DELETE. Preserve o histórico e mova a oportunidade para a etapa de perda apropriada quando aplicável.' },
+          ] },
+        ],
+      },
+      {
+        id: 'crm-ai', number: '04', title: 'Implemente a integração',
+        blocks: [{ type: 'prompt', title: 'Prompt: cards do CRM', description: 'Inclui descoberta, paginação, idempotência, movimento e isolamento multi-tenant.', prompt: CRM_CARDS_PROMPT, snippets: CRM_CARD_CODE_VARIANTS }],
+      },
+    ],
+  },
+  {
     path: '/docs/guias/acompanhar-os',
     title: 'Acompanhar uma OS',
     eyebrow: 'GUIA POR OBJETIVO',
@@ -881,7 +976,7 @@ Content-Type: application/json
     path: '/docs/api/referencia',
     title: 'Referência da API',
     eyebrow: 'CONTRATO V1',
-    description: 'Endpoints estáveis para catálogos, agenda, clientes e ordens de serviço.',
+    description: 'Endpoints estáveis para CRM, catálogos, agenda, clientes e ordens de serviço.',
     readingTime: '10 min',
     keywords: ['openapi', 'endpoint', 'scope', 'referência', 'api'],
     image: {
@@ -901,6 +996,12 @@ Content-Type: application/json
           { method: 'POST', path: '/service-orders', description: 'Criação atômica e idempotente.', scope: 'service_orders:create' },
           { method: 'GET', path: '/service-orders/{id}', description: 'Consulta por UUID.', scope: 'service_orders:read' },
           { method: 'GET', path: '/service-orders/by-external-id/{external_id}', description: 'Consulta por referência externa.', scope: 'service_orders:read' },
+          { method: 'GET', path: '/crm/pipelines', description: 'Funis comerciais e etapas disponíveis.', scope: 'crm_cards:read' },
+          { method: 'GET', path: '/crm/cards', description: 'Listagem paginada e filtrável de cards.', scope: 'crm_cards:read' },
+          { method: 'POST', path: '/crm/cards', description: 'Criação idempotente de card.', scope: 'crm_cards:write' },
+          { method: 'GET', path: '/crm/cards/{id}', description: 'Consulta de card por UUID.', scope: 'crm_cards:read' },
+          { method: 'PATCH', path: '/crm/cards/{id}', description: 'Atualização ou movimento idempotente.', scope: 'crm_cards:write' },
+          { method: 'GET', path: '/crm/cards/by-external-id/{external_id}', description: 'Consulta pela referência externa.', scope: 'crm_cards:read' },
         ] }],
       },
       {

@@ -141,7 +141,9 @@ export function setLineQuantity(cart: CartState, inventoryId: string, quantity: 
     lines: cart.lines.map((line) =>
       line.inventoryId === inventoryId
         ? (() => {
-            const nextQuantity = clamp(quantity, 1, line.availableQuantity);
+            // Quantidades de peso/volume podem ser fracionadas (ex.: 13,6 kg).
+            // `quantity <= 0` já foi tratado acima; não force piso inteiro aqui.
+            const nextQuantity = Math.min(quantity, line.availableQuantity);
             const lineGross = nextQuantity * line.unitPrice;
             return {
               ...line,
@@ -158,7 +160,9 @@ export function setLineQuantity(cart: CartState, inventoryId: string, quantity: 
 export function incrementLineQuantity(cart: CartState, inventoryId: string, delta: number): CartState {
   const line = cart.lines.find((l) => l.inventoryId === inventoryId);
   if (!line) return cart;
-  return setLineQuantity(cart, inventoryId, line.quantity + delta);
+  // Evita resíduos binários visíveis ao repetir passos fracionados (0,1 + 0,2).
+  const nextQuantity = Math.round((line.quantity + delta) * 1000) / 1000;
+  return setLineQuantity(cart, inventoryId, nextQuantity);
 }
 
 /** Desconto em R$. Clampa em >= 0 — teto (ex: % máximo por usuário) é Onda 4. */

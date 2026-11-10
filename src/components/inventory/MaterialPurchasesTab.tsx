@@ -1,37 +1,44 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  ShoppingCart, Search, Users, Pencil, Trash2, CheckCheck, XCircle, RotateCcw,
-  AlertTriangle, PackagePlus, ClipboardPlus,
+  AlertTriangle,
+  ChevronDown,
+  ClipboardList,
+  ClipboardPlus,
+  PackagePlus,
+  ShoppingCart,
+  Users,
 } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { EmptyState } from '@/components/mobile/EmptyState';
-import { NoticeBanner } from '@/components/ui/NoticeBanner';
-import { RowActionsMenu, type RowAction } from '@/components/ui/RowActionsMenu';
-import { FilterButton } from '@/components/ui/FilterButton';
-import { FilterSheet } from '@/components/mobile/FilterSheet';
-import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { fuzzyIncludes } from '@/lib/utils';
+import { FilterButton } from '@/components/ui/FilterButton';
+import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
+import {
+  ListDetailLayout,
+  type ListDetailItem,
+  type ListDetailSortOption,
+} from '@/components/ui/ListDetailLayout';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { useCanRegisterDirectMaterialPurchase } from '@/hooks/useCanRegisterDirectMaterialPurchase';
 import { useCompras, type CompraListRow, type CompraStatus } from '@/hooks/useCompras';
 import { useLowStock } from '@/hooks/useLowStock';
-import { useCanRegisterDirectMaterialPurchase } from '@/hooks/useCanRegisterDirectMaterialPurchase';
-import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
-import { safeTimeZone } from '@/lib/timezone';
-import { formatDate as formatLocalizedDate } from '@/lib/format';
+import { formatDate as formatLocalizedDate, formatMoney } from '@/lib/format';
 import type { LocaleCode } from '@/lib/i18n/locales';
 import { MESSAGES } from '@/lib/i18n/messages';
-import { SuppliersDialog } from './SuppliersDialog';
-import { CompraEditorDialog } from './CompraEditorDialog';
+import { safeTimeZone } from '@/lib/timezone';
 import { CompraDetailView } from './CompraDetailView';
+import { CompraEditorDialog } from './CompraEditorDialog';
 import { DirectMaterialPurchaseDialog } from './DirectMaterialPurchaseDialog';
+import { SuppliersDialog } from './SuppliersDialog';
 
 const STATUS_VARIANT: Record<string, 'info' | 'success' | 'destructive'> = {
   aberta: 'info',
@@ -39,382 +46,331 @@ const STATUS_VARIANT: Record<string, 'info' | 'success' | 'destructive'> = {
   cancelada: 'destructive',
 };
 
-// Ordem fixa para o filtro de status.
 const STATUS_FILTER_KEYS: CompraStatus[] = ['aberta', 'concluida', 'cancelada'];
+
+const PURCHASES_UI = {
+  'pt-br': {
+    subtitle: 'Acompanhe requisições, cotações, ordens e compras já realizadas.', newPurchase: 'Nova compra',
+    requestTitle: 'Criar requisição', requestDescription: 'Planejar materiais, comparar fornecedores e gerar ordens de compra.',
+    directTitle: 'Registrar compra direta', directDescription: 'Lançar uma compra já realizada no estoque e no Financeiro.',
+    listTitle: 'Compras e requisições', listDescription: 'Selecione um registro para acompanhar os materiais e a próxima ação.',
+    listEmpty: 'Nenhuma compra encontrada com os filtros atuais.', searchPlaceholder: 'Buscar por código, título ou fornecedor...',
+    selectTitle: 'Selecione uma compra', selectDescription: 'Os materiais, cotações, ordens e recebimentos aparecerão aqui.',
+    errorTitle: 'Não foi possível carregar as compras', errorDescription: 'Tente atualizar a página. Nenhuma informação foi alterada.',
+    requestType: 'Requisição', directType: 'Compra direta', material: 'material', materials: 'materiais', quotes: 'cotações', pendingValue: 'A definir',
+    sortRecent: 'Mais recentes', sortOldest: 'Mais antigas', sortHighest: 'Maior valor', sortLowest: 'Menor valor',
+  },
+  en: {
+    subtitle: 'Track requests, quotes, orders and completed purchases.', newPurchase: 'New purchase',
+    requestTitle: 'Create request', requestDescription: 'Plan materials, compare suppliers and create purchase orders.',
+    directTitle: 'Record direct purchase', directDescription: 'Post a completed purchase to inventory and Finance.',
+    listTitle: 'Purchases and requests', listDescription: 'Select a record to review materials and the next action.',
+    listEmpty: 'No purchases match the current filters.', searchPlaceholder: 'Search by code, title or supplier...',
+    selectTitle: 'Select a purchase', selectDescription: 'Materials, quotes, orders and receipts will appear here.',
+    errorTitle: 'Purchases could not be loaded', errorDescription: 'Refresh the page and try again. No information was changed.',
+    requestType: 'Request', directType: 'Direct purchase', material: 'material', materials: 'materials', quotes: 'quotes', pendingValue: 'To be defined',
+    sortRecent: 'Most recent', sortOldest: 'Oldest', sortHighest: 'Highest value', sortLowest: 'Lowest value',
+  },
+  es: {
+    subtitle: 'Acompaña solicitudes, cotizaciones, órdenes y compras realizadas.', newPurchase: 'Nueva compra',
+    requestTitle: 'Crear solicitud', requestDescription: 'Planificar materiales, comparar proveedores y generar órdenes de compra.',
+    directTitle: 'Registrar compra directa', directDescription: 'Registrar una compra realizada en inventario y Finanzas.',
+    listTitle: 'Compras y solicitudes', listDescription: 'Selecciona un registro para revisar materiales y la próxima acción.',
+    listEmpty: 'No hay compras con los filtros actuales.', searchPlaceholder: 'Buscar por código, título o proveedor...',
+    selectTitle: 'Selecciona una compra', selectDescription: 'Los materiales, cotizaciones, órdenes y recepciones aparecerán aquí.',
+    errorTitle: 'No se pudieron cargar las compras', errorDescription: 'Actualiza la página e inténtalo nuevamente. No se modificó información.',
+    requestType: 'Solicitud', directType: 'Compra directa', material: 'material', materials: 'materiales', quotes: 'cotizaciones', pendingValue: 'Por definir',
+    sortRecent: 'Más recientes', sortOldest: 'Más antiguas', sortHighest: 'Mayor valor', sortLowest: 'Menor valor',
+  },
+  fr: {
+    subtitle: 'Suivez les demandes, devis, commandes et achats effectués.', newPurchase: 'Nouvel achat',
+    requestTitle: 'Créer une demande', requestDescription: 'Planifier les matériaux, comparer les fournisseurs et créer des commandes.',
+    directTitle: 'Enregistrer un achat direct', directDescription: 'Enregistrer un achat effectué dans le stock et les Finances.',
+    listTitle: 'Achats et demandes', listDescription: 'Sélectionnez un dossier pour consulter les matériaux et la prochaine action.',
+    listEmpty: 'Aucun achat ne correspond aux filtres actuels.', searchPlaceholder: 'Rechercher par code, titre ou fournisseur...',
+    selectTitle: 'Sélectionnez un achat', selectDescription: 'Les matériaux, devis, commandes et réceptions apparaîtront ici.',
+    errorTitle: 'Impossible de charger les achats', errorDescription: 'Actualisez la page et réessayez. Aucune information n’a été modifiée.',
+    requestType: 'Demande', directType: 'Achat direct', material: 'matériau', materials: 'matériaux', quotes: 'devis', pendingValue: 'À définir',
+    sortRecent: 'Plus récents', sortOldest: 'Plus anciens', sortHighest: 'Valeur la plus élevée', sortLowest: 'Valeur la plus basse',
+  },
+} as const;
 
 function formatDate(iso: string, locale: LocaleCode, timezone: string | null | undefined): string {
   return formatLocalizedDate(iso, locale, safeTimeZone(timezone));
 }
 
+function purchaseValue(compra: CompraListRow): number | null {
+  if (compra.flow_type === 'compra_direta') return compra.direct_total;
+  return compra.accepted_total ?? compra.lowest_total;
+}
+
+function purchaseDate(compra: CompraListRow): string {
+  return compra.flow_type === 'compra_direta' && compra.purchase_date
+    ? compra.purchase_date
+    : compra.created_at;
+}
+
 export function MaterialPurchasesTab({ openNewOnMount = false }: { openNewOnMount?: boolean }) {
-  const isMobile = useIsMobile();
   const { locale, currency, timezone } = useAppLocaleContext();
+  const UI = PURCHASES_UI[locale];
   const t = MESSAGES[locale].app.inventory.purchases;
-  const tDirect = MESSAGES[locale].app.inventory.directPurchase;
-  const formatCurrency = (v: number) =>
-    new Intl.NumberFormat(locale === 'pt-br' ? 'pt-BR' : locale, { style: 'currency', currency: currency || 'BRL' }).format(v);
-  const { compras, isLoading, setStatus, deleteCompra } = useCompras();
+  const { compras, isLoading, error } = useCompras();
   const { lowStockRows } = useLowStock();
   const canRegisterDirectPurchase = useCanRegisterDirectMaterialPurchase();
 
-  const [search, setSearch] = useState('');
-  // Filtro de status multi-seleção. Vazio = mostra todas (régua do projeto).
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [suppliersOpen, setSuppliersOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(openNewOnMount);
   const [directPurchaseOpen, setDirectPurchaseOpen] = useState(false);
   const [editing, setEditing] = useState<CompraListRow | null>(null);
   const [selectedCompraId, setSelectedCompraId] = useState<string | null>(null);
-  const [toCancel, setToCancel] = useState<CompraListRow | null>(null);
-  const [toDelete, setToDelete] = useState<CompraListRow | null>(null);
+  const { preset, range, setPreset, setRange, filterByDate } = useDateRangeFilter('all');
 
-  // Compra selecionada para a tela de detalhe (sub-view dentro da própria aba).
-  // Resolvida da lista por id para refletir refetches (status, menor cotação etc.).
-  const selectedCompra = useMemo(
-    () => compras.find((c) => c.id === selectedCompraId) ?? null,
-    [compras, selectedCompraId],
-  );
-
-  // Se a compra selecionada sumiu (ex.: excluída), volta para a lista.
-  useEffect(() => {
-    if (selectedCompraId && !isLoading && !selectedCompra) setSelectedCompraId(null);
-  }, [selectedCompraId, isLoading, selectedCompra]);
-
-  // Mapeamento canônico (banco) → label traduzido.
   const statusLabelMap: Record<string, string> = {
     aberta: t.status.open,
     concluida: t.status.completed,
     cancelada: t.status.cancelled,
   };
 
-  const statusFilterOptions = STATUS_FILTER_KEYS.map((k) => ({
-    value: k,
-    label: statusLabelMap[k] ?? k,
-  }));
+  const visibleCompras = useMemo(
+    () => filterByDate(compras, 'purchase_date', 'created_at').filter(
+      (compra) => statusFilter.length === 0 || statusFilter.includes(compra.status),
+    ),
+    [compras, filterByDate, statusFilter],
+  );
+  const selectedCompra = useMemo(
+    () => compras.find((compra) => compra.id === selectedCompraId) ?? null,
+    [compras, selectedCompraId],
+  );
 
-  const filtered = useMemo(() => {
-    const term = search.trim();
-    return compras.filter((c) => {
-      // Status: vazio = todas; senão precisa estar na seleção.
-      const matchesStatus =
-        statusFilter.length === 0 || statusFilter.includes(c.status);
-      if (!matchesStatus) return false;
+  useEffect(() => {
+    if (selectedCompraId && !isLoading && !visibleCompras.some((compra) => compra.id === selectedCompraId)) {
+      setSelectedCompraId(null);
+    }
+  }, [isLoading, selectedCompraId, visibleCompras]);
 
-      if (!term) return true;
-      // Busca por código (#3 ou 3), título, status e observações.
-      const codeStr = `#${c.numero}`;
-      const matchesSearch =
-        fuzzyIncludes(codeStr, term) ||
-        fuzzyIncludes(String(c.numero), term) ||
-        fuzzyIncludes(c.title, term) ||
-        fuzzyIncludes(statusLabelMap[c.status] ?? '', term) ||
-        fuzzyIncludes(c.notes ?? '', term);
-      return matchesSearch;
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [compras, search, statusFilter, statusLabelMap.aberta]);
+  const openNew = () => {
+    setEditing(null);
+    setEditorOpen(true);
+  };
+  const openEdit = (compra: CompraListRow) => {
+    setEditing(compra);
+    setEditorOpen(true);
+  };
 
-  // Conteúdo do filtro de status (compartilhado por FilterButton/FilterSheet).
   const statusFilterContent = (
     <FilterCheckboxGroup
       label={t.filters.status}
-      options={statusFilterOptions}
+      options={STATUS_FILTER_KEYS.map((key) => ({ value: key, label: statusLabelMap[key] ?? key }))}
       selected={statusFilter}
       onChange={setStatusFilter}
       emptyLabel={t.filters.statusEmpty}
     />
   );
 
-  // Há algum filtro aplicado? (usado pro estado vazio amigável)
-  const hasActiveFilter = search.trim().length > 0 || statusFilter.length > 0;
+  const compraById = useMemo(
+    () => new Map(visibleCompras.map((compra) => [compra.id, compra])),
+    [visibleCompras],
+  );
 
-  const openNew = () => { setEditing(null); setEditorOpen(true); };
-  const openEdit = (c: CompraListRow) => { setEditing(c); setEditorOpen(true); };
+  const listItems = useMemo<ListDetailItem[]>(
+    () => visibleCompras.map((compra) => {
+      const isDirect = compra.flow_type === 'compra_direta';
+      const supplier = isDirect ? compra.direct_supplier_name : compra.accepted_supplier_name;
+      const materialsLabel = `${compra.material_count} ${compra.material_count === 1 ? UI.material : UI.materials}`;
+      const quotesLabel = !isDirect && compra.cotacao_count > 0
+        ? `${compra.cotacao_count} ${UI.quotes}`
+        : null;
+      const typeLabel = isDirect ? UI.directType : UI.requestType;
+      const value = purchaseValue(compra);
+      return {
+        id: compra.id,
+        title: `#${compra.numero} · ${compra.title}`,
+        subtitle: [typeLabel, supplier, materialsLabel, quotesLabel, formatDate(purchaseDate(compra), locale, timezone)]
+          .filter(Boolean)
+          .join(' · '),
+        searchText: [
+          compra.numero,
+          compra.title,
+          compra.notes,
+          supplier,
+          typeLabel,
+          statusLabelMap[compra.status],
+        ].filter(Boolean).join(' '),
+        leading: (
+          <span className={`flex h-9 w-9 items-center justify-center rounded-lg ${isDirect ? 'bg-success text-success-foreground' : 'bg-info text-info-foreground'}`}>
+            {isDirect ? <PackagePlus className="h-4 w-4" /> : <ClipboardList className="h-4 w-4" />}
+          </span>
+        ),
+        trailing: (
+          <span className="flex max-w-28 flex-col items-end gap-1 text-right">
+            <span className="whitespace-nowrap text-xs font-bold tabular-nums">
+              {value == null ? UI.pendingValue : formatMoney(value, currency, locale)}
+            </span>
+            <Badge variant={STATUS_VARIANT[compra.status] ?? 'info'} className="text-[9px]">
+              {statusLabelMap[compra.status] ?? compra.status}
+            </Badge>
+          </span>
+        ),
+      };
+    }),
+    // statusLabelMap é derivado exclusivamente de t, coberto pela troca de locale.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [currency, locale, timezone, visibleCompras],
+  );
 
-  // Sub-view de detalhe: ocupa o lugar da lista dentro da própria aba.
-  if (selectedCompra) {
-    return (
-      <>
-        <CompraDetailView
-          compra={selectedCompra}
-          onBack={() => setSelectedCompraId(null)}
-          onEdit={openEdit}
-        />
-        <CompraEditorDialog open={editorOpen} onOpenChange={setEditorOpen} compra={editing} />
-      </>
-    );
-  }
+  const sortOptions = useMemo<ListDetailSortOption[]>(() => {
+    const byDate = (a: ListDetailItem, b: ListDetailItem) =>
+      new Date(purchaseDate(compraById.get(a.id)!)).getTime()
+      - new Date(purchaseDate(compraById.get(b.id)!)).getTime();
+    const byValue = (a: ListDetailItem, b: ListDetailItem) =>
+      (purchaseValue(compraById.get(a.id)!) ?? 0) - (purchaseValue(compraById.get(b.id)!) ?? 0);
+    return [
+      { value: 'recent', label: UI.sortRecent, compare: (a, b) => byDate(b, a) },
+      { value: 'oldest', label: UI.sortOldest, compare: byDate },
+      { value: 'highest', label: UI.sortHighest, compare: (a, b) => byValue(b, a) },
+      { value: 'lowest', label: UI.sortLowest, compare: byValue },
+    ];
+  }, [UI, compraById]);
 
-  const rowActions = (c: CompraListRow): RowAction[] => [
-    { label: t.rowActions.edit, icon: Pencil, variant: 'edit', onClick: () => openEdit(c) },
-    {
-      label: t.rowActions.complete,
-      icon: CheckCheck,
-      onClick: () => setStatus.mutate({ id: c.id, status: 'concluida' }),
-      hidden: c.status !== 'aberta',
-    },
-    {
-      label: t.rowActions.reopen,
-      icon: RotateCcw,
-      onClick: () => setStatus.mutate({ id: c.id, status: 'aberta' }),
-      hidden: c.status === 'aberta',
-    },
-    {
-      label: t.rowActions.cancel,
-      icon: XCircle,
-      onClick: () => setToCancel(c),
-      hidden: c.status === 'cancelada',
-    },
-    { label: t.rowActions.delete, icon: Trash2, variant: 'delete', onClick: () => setToDelete(c) },
-  ];
+  const uniqueLowStockCount = useMemo(
+    () => new Set(lowStockRows.map((row) => row.inventory_id)).size,
+    [lowStockRows],
+  );
 
   return (
     <div className="space-y-4">
-      {/* Título da aba (só na lista; o detalhe usa o nome da requisição). Mesmo
-          estilo dos títulos das outras abas do Estoque. */}
-      <h2 className="text-lg sm:text-xl font-semibold text-foreground">
-        {t.title}
-      </h2>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h2 className="text-lg font-semibold text-foreground sm:text-xl">{t.title}</h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">{UI.subtitle}</p>
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <DateRangeFilter
+            value={range}
+            preset={preset}
+            onPresetChange={setPreset}
+            onRangeChange={setRange}
+          />
+          <Button variant="outline" className="gap-1.5" onClick={() => setSuppliersOpen(true)}>
+            <Users className="h-4 w-4" />
+            <span className="hidden sm:inline">{t.actions.suppliers}</span>
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="gap-1.5">
+                <ClipboardPlus className="h-4 w-4" />
+                {UI.newPurchase}
+                <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[min(22rem,calc(100vw-2rem))] p-1.5">
+              <DropdownMenuItem className="items-start gap-3 px-3 py-2.5" onSelect={openNew}>
+                <ClipboardList className="mt-0.5 h-4 w-4 shrink-0 text-info" />
+                <span>
+                  <span className="block font-semibold">{UI.requestTitle}</span>
+                  <span className="mt-0.5 block whitespace-normal text-xs text-muted-foreground">
+                    {UI.requestDescription}
+                  </span>
+                </span>
+              </DropdownMenuItem>
+              {canRegisterDirectPurchase && (
+                <DropdownMenuItem
+                  className="items-start gap-3 px-3 py-2.5"
+                  onSelect={() => setDirectPurchaseOpen(true)}
+                >
+                  <PackagePlus className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+                  <span>
+                    <span className="block font-semibold">{UI.directTitle}</span>
+                    <span className="mt-0.5 block whitespace-normal text-xs text-muted-foreground">
+                      {UI.directDescription}
+                    </span>
+                  </span>
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
 
-      {/* Alerta de materiais abaixo do mínimo */}
-      {lowStockRows.length > 0 && (
+      {uniqueLowStockCount > 0 && (
         <NoticeBanner
-          variant="destructive"
+          variant="warning"
           icon={AlertTriangle}
           onClick={openNew}
           action={t.lowStockAlert.action}
         >
-          {(() => {
-            // Conta materiais únicos (não pares material×local)
-            const uniqueCount = new Set(lowStockRows.map((r) => r.inventory_id)).size;
-            return uniqueCount === 1
-              ? t.lowStockAlert.singular.replace('{count}', String(uniqueCount))
-              : t.lowStockAlert.plural.replace('{count}', String(uniqueCount));
-          })()}
+          {uniqueLowStockCount === 1
+            ? t.lowStockAlert.singular.replace('{count}', String(uniqueLowStockCount))
+            : t.lowStockAlert.plural.replace('{count}', String(uniqueLowStockCount))}
         </NoticeBanner>
       )}
 
-      {/* Cabeçalho de ações */}
-      {isMobile ? (
-        <MobileListToolbar
-          searchValue={search}
-          onSearchChange={setSearch}
-          searchPlaceholder={t.search.placeholder}
-        >
-          <FilterSheet
-            triggerLabel={MESSAGES[locale].app.inventory.filters.button}
-            activeCount={statusFilter.length > 0 ? 1 : 0}
-            onClear={() => setStatusFilter([])}
-            triggerClassName="h-10"
-          >
-            {statusFilterContent}
-          </FilterSheet>
-          {/* Ação rara: fica só com o ícone pra os 3 controles caberem em 390px. */}
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-10 w-10 shrink-0"
-            onClick={() => setSuppliersOpen(true)}
-            title={t.actions.suppliers}
-            aria-label={t.actions.suppliers}
-          >
-            <Users className="h-4 w-4" />
-          </Button>
-          <Button size="sm" className="h-10 shrink-0 gap-1.5" onClick={openNew}>
-            <ClipboardPlus className="h-4 w-4" />
-            <span className="sr-only">{t.actions.newPurchase}</span>
-          </Button>
-          {canRegisterDirectPurchase && (
-            <Button
-              size="sm"
-              className="h-10 shrink-0 gap-1.5"
-              onClick={() => setDirectPurchaseOpen(true)}
-            >
-              <PackagePlus className="h-4 w-4" />
-              <span className="hidden min-[360px]:inline">{tDirect.actionShort}</span>
-            </Button>
-          )}
-        </MobileListToolbar>
+      {isLoading ? (
+        <div className="grid gap-5 lg:grid-cols-[minmax(20rem,24rem)_minmax(0,1fr)]">
+          <div className="space-y-2">
+            <Skeleton className="h-10 w-full" />
+            {[1, 2, 3, 4, 5].map((index) => <Skeleton key={index} className="h-16 w-full" />)}
+          </div>
+          <Skeleton className="hidden min-h-[28rem] w-full lg:block" />
+        </div>
+      ) : error ? (
+        <EmptyState
+          size="compact"
+          icon={<ShoppingCart className="h-10 w-10" />}
+          title={UI.errorTitle}
+          description={UI.errorDescription}
+        />
       ) : (
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          {/* Busca + filtro de status (desktop = FilterButton). */}
-          <div className="flex items-center gap-2 flex-1">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                className="pl-9"
-                placeholder={t.search.placeholder}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
+        <ListDetailLayout
+          items={listItems}
+          selectedId={selectedCompraId ?? undefined}
+          listTitle={UI.listTitle}
+          listDescription={UI.listDescription}
+          listFilters={(
             <FilterButton
               activeCount={statusFilter.length > 0 ? 1 : 0}
               onClear={() => setStatusFilter([])}
+              embedded
             >
               {statusFilterContent}
             </FilterButton>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" className="gap-1.5" onClick={() => setSuppliersOpen(true)}>
-              <Users className="h-4 w-4" /> {t.actions.suppliers}
-            </Button>
-            <Button variant="outline" className="gap-1.5" onClick={openNew}>
-              <ClipboardPlus className="h-4 w-4" /> {t.actions.newPurchase}
-            </Button>
-            {canRegisterDirectPurchase && (
-              <Button className="gap-1.5" onClick={() => setDirectPurchaseOpen(true)}>
-                <PackagePlus className="h-4 w-4" /> {tDirect.action}
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {isLoading ? (
-        <Card><CardContent className="py-10 text-center text-sm text-muted-foreground">{t.loading}</CardContent></Card>
-      ) : filtered.length === 0 ? (
-        <Card>
-          <CardContent className="p-0">
-            <EmptyState
-              size="compact"
-              icon={<ShoppingCart className="h-10 w-10" />}
-              title={hasActiveFilter ? t.empty.noneFoundTitle : t.empty.noneTitle}
-              description={
-                hasActiveFilter
-                  ? t.empty.noneFoundDescription
-                  : t.empty.noneDescription
-              }
-              action={hasActiveFilter ? undefined : { label: t.empty.newPurchase, onClick: openNew }}
+          )}
+          sortOptions={sortOptions}
+          pageSize={25}
+          storageKey="inventory-material-purchases"
+          searchPlaceholder={UI.searchPlaceholder}
+          emptyLabel={UI.listEmpty}
+          mobileDetailOpen={selectedCompraId != null}
+          onSelect={setSelectedCompraId}
+        >
+          {selectedCompra ? (
+            <CompraDetailView
+              compra={selectedCompra}
+              onBack={() => setSelectedCompraId(null)}
+              onEdit={openEdit}
+              embedded
             />
-          </CardContent>
-        </Card>
-      ) : (
-        // Apresentação responsiva fixa: 1 coluna no mobile (vira lista
-        // empilhada) e grade a partir do desktop (2 em lg, 3 em xl).
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((c) => {
-            const isDirect = c.flow_type === 'compra_direta';
-            const variant = STATUS_VARIANT[c.status] ?? STATUS_VARIANT.aberta;
-            const statusLabel = isDirect
-              ? tDirect.card.badge
-              : statusLabelMap[c.status] ?? c.status;
-            return (
-              <Card
-                key={c.id}
-                className="overflow-hidden transition-colors hover:border-primary/40 hover:bg-muted/40"
-              >
-                <CardContent className="flex items-start justify-between gap-3 p-3 sm:p-4">
-                  <button
-                    type="button"
-                    className="min-w-0 flex-1 space-y-1.5 text-left"
-                    onClick={() => setSelectedCompraId(c.id)}
-                  >
-                    {/* Código + título da compra em destaque + status */}
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="min-w-0 truncate text-base font-semibold leading-tight">
-                        <span className="mr-1.5 font-mono text-sm font-medium text-muted-foreground">#{c.numero}</span>
-                        {c.title}
-                      </span>
-                      <Badge variant={variant} className="text-[10px]">{statusLabel}</Badge>
-                    </div>
-
-                    {/* Linha secundária: data + nº de cotações + fornecedor aceito */}
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <p className="text-xs text-muted-foreground">
-                        {formatDate(isDirect && c.purchase_date ? c.purchase_date : c.created_at, locale, timezone)}
-                        {!isDirect && ` • ${c.cotacao_count === 1
-                          ? t.card.quotes.replace('{count}', String(c.cotacao_count))
-                          : t.card.quotesPlural.replace('{count}', String(c.cotacao_count))}`}
-                      </p>
-                      {(isDirect ? c.direct_supplier_name : c.accepted_supplier_name) && (
-                        <Badge variant="success" className="max-w-full truncate text-[10px]">
-                          {(isDirect ? tDirect.card.supplier : t.card.accepted).replace(
-                            '{name}',
-                            (isDirect ? c.direct_supplier_name : c.accepted_supplier_name) ?? '',
-                          )}
-                        </Badge>
-                      )}
-                    </div>
-
-                    {/* Menor cotação em destaque, quando houver */}
-                    {isDirect && c.direct_total != null ? (
-                      <p className="text-sm">
-                        <span className="text-muted-foreground">{tDirect.card.total.replace('{value}', '')}</span>
-                        <span className="font-semibold text-success">{formatCurrency(c.direct_total)}</span>
-                      </p>
-                    ) : c.lowest_total != null ? (
-                      <p className="text-sm">
-                        <span className="text-muted-foreground">{t.card.lowestQuote}</span>
-                        <span className="font-semibold text-success">{formatCurrency(c.lowest_total)}</span>
-                      </p>
-                    ) : null}
-                  </button>
-                  {!isDirect && <RowActionsMenu actions={rowActions(c)} />}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+          ) : (
+            <div className="flex min-h-[24rem] items-center justify-center">
+              <EmptyState
+                size="compact"
+                icon={<ShoppingCart className="h-10 w-10" />}
+                title={UI.selectTitle}
+                description={UI.selectDescription}
+                action={compras.length === 0 ? { label: UI.requestTitle, onClick: openNew } : undefined}
+              />
+            </div>
+          )}
+        </ListDetailLayout>
       )}
 
-      {/* Dialogs */}
       <SuppliersDialog open={suppliersOpen} onOpenChange={setSuppliersOpen} />
       <CompraEditorDialog open={editorOpen} onOpenChange={setEditorOpen} compra={editing} />
       <DirectMaterialPurchaseDialog
         open={directPurchaseOpen}
         onOpenChange={setDirectPurchaseOpen}
       />
-
-      {/* Cancelar compra */}
-      <AlertDialog open={!!toCancel} onOpenChange={(o) => !o && setToCancel(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t.cancelDialog.title}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t.cancelDialog.description}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t.cancelDialog.back}</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-white hover:bg-destructive/90"
-              onClick={async () => {
-                if (toCancel) await setStatus.mutateAsync({ id: toCancel.id, status: 'cancelada' });
-                setToCancel(null);
-              }}
-            >
-              {t.cancelDialog.confirm}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Excluir compra */}
-      <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t.deleteDialog.title}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {toDelete
-                ? t.deleteDialog.description.replace('{title}', toDelete.title)
-                : t.deleteDialog.descriptionNoTitle}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t.deleteDialog.back}</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-white hover:bg-destructive/90"
-              onClick={async () => {
-                if (toDelete) await deleteCompra.mutateAsync(toDelete.id);
-                setToDelete(null);
-              }}
-            >
-              {t.deleteDialog.confirm}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

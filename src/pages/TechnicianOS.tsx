@@ -64,6 +64,7 @@ import { reverseGeocodeShort } from '@/utils/reverseGeocode';
 type GeoLocation = { lat: number; lng: number; address?: string };
 import { useGeoTracking, recordLocationEvent } from '@/hooks/useTechnicianLocations';
 import { OSReport } from '@/components/technician/OSReport';
+import { REPORT_HEADER_DARK_GRADIENT } from '@/components/technician/ReportHeader';
 import { ContractInfoCard } from '@/components/technician/ContractInfoCard';
 import { OSRatingSurvey } from '@/components/technician/OSRatingSurvey';
 import { RateServiceAffordance } from '@/components/technician/RateServiceAffordance';
@@ -91,6 +92,7 @@ import { PublicAppLocaleProvider, useAppLocaleContext } from '@/contexts/AppLoca
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { buildServiceOrderShareLink } from '@/utils/shareLinks';
+import { canShareServiceOrder } from '@/lib/serviceOrderAccess';
 import { CustomerWhatsAppLink } from '@/components/CustomerWhatsAppLink';
 import { isUuid, extractShortCode, buildSlugSegment } from '@/utils/prettyLinks';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
@@ -103,7 +105,8 @@ import { SystemFooter } from '@/components/layout/SystemFooter';
 import TechnicianArea from '@/pages/TechnicianArea';
 import { AreaTecnicoIcon } from '@/components/icons/MenuIcons';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
-import { getSegment } from '@/utils/companySegments';
+import { getSegment, normalizeCompanySegments } from '@/utils/companySegments';
+import { segmentHasTechTools, segmentsHaveTechTools } from '@/config/technicianArea';
 import DarkVeilBackground from '@/components/ui/DarkVeilBackground';
 import { useStickyStuck } from '@/hooks/useStickyStuck';
 import { useSubscriptionBlock } from '@/hooks/useSubscriptionBlock';
@@ -127,7 +130,19 @@ interface OSPhoto {
   created_at: string;
 }
 
+const OS_ACTION_CHIP_CLASS =
+  'group flex h-12 items-center gap-2 rounded-full border border-border bg-card pl-3.5 pr-4 text-foreground shadow-lg shadow-black/20 transition-all hover:border-foreground hover:bg-foreground hover:text-background active:scale-95 active:bg-foreground active:text-background';
+const OS_ACTION_CHIP_ICON_CLASS =
+  'flex h-8 w-8 items-center justify-center rounded-full text-foreground group-hover:text-background group-active:text-background';
+const OS_ACTION_CHIP_LABEL_CLASS =
+  'whitespace-nowrap text-sm font-medium text-foreground group-hover:text-background group-active:text-background';
+const OS_NEUTRAL_PRIMARY_BUTTON_CLASS =
+  'bg-foreground text-background hover:bg-foreground/90';
+
 interface EquipmentItem {
+  id?: string;
+  equipment_position?: number;
+  checklist_position?: number;
   equipment_id: string | null;
   form_template_id: string | null;
   /**
@@ -296,7 +311,7 @@ function OsEquipmentAccordionItem({
           // Checklist sem equipamento real (geral da OS): em vez do quadrado de foto,
           // um ícone discreto de checklist; o TÍTULO já é o NOME do checklist.
           // Equipamento real mantém foto (ou fallback Wrench).
-          leadingIcon={!equipment ? <ClipboardCheck className="h-5 w-5 text-primary" /> : undefined}
+          leadingIcon={!equipment ? <ClipboardCheck className="h-5 w-5 text-foreground" /> : undefined}
           photo={equipment?.photo_url ?? null}
           name={headerName}
           category={equipment?.category ?? null}
@@ -372,7 +387,7 @@ function OsEquipmentAccordionItem({
                     onClick={() => toggleChecklist(itemKey)}
                     className="flex w-full items-center gap-2 p-2.5 text-left transition-colors hover:bg-muted/40"
                   >
-                    <ClipboardCheck className="h-4 w-4 text-primary shrink-0" />
+                    <ClipboardCheck className="h-4 w-4 text-foreground shrink-0" />
                     <div className="flex-1 min-w-0 space-y-1">
                       <p className="text-sm font-semibold text-foreground break-words">
                         {item.form_template?.name || 'Checklist'}
@@ -465,7 +480,14 @@ function TechnicianOSInner() {
   const { toast } = useToast();
   // Usuário LOGADO agora — carimbo legal da assinatura usa o nome de quem
   // assina de fato (no modo autenticado), não o técnico atribuído à OS.
-  const { user: currentUser, profile: currentUserProfile, isAdminOrGestor, hasPermission } = useAuth();
+  const {
+    user: currentUser,
+    profile: currentUserProfile,
+    isAdminOrGestor,
+    hasPermission,
+    permissions,
+    hasPermissionRecord,
+  } = useAuth();
   // Bloqueio por assinatura do TENANT DO USUÁRIO LOGADO (profile.company_id),
   // reusando a mesma decisão do SubscriptionGate. Só é APLICADO no modo técnico
   // autenticado (ver abaixo) — o hook em si não bloqueia anônimo (sem profile)
@@ -801,6 +823,10 @@ function TechnicianOSInner() {
   // gestor ou quem tem a função explícita. PMOC bloqueia (v1 só OS avulsa) e o
   // botão nem aparece offline (a edição de escopo exige internet no v1).
   const canEditarOsCampo = isAdminOrGestor() || hasPermission('fn:editar_os_campo');
+  const canEditScheduleInOs = isAdminOrGestor() || hasPermission('fn:edit_os');
+  const canOverrideScheduleConflict = hasPermissionRecord && (
+    permissions.includes('*') || permissions.includes('fn:override_schedule_conflict')
+  );
   const showEditScopeAction = canEditarOsCampo && !isPmocOrder;
 
   // "Consumir do estoque" no menu de mais-ações (v1.22.0).
@@ -819,6 +845,7 @@ function TechnicianOSInner() {
   const editScopeSeedItems = useMemo<EditOsScopeSeedItem[]>(
     () =>
       equipmentItems.map((it) => ({
+        id: it.id,
         equipment_id: it.equipment_id,
         form_template_id: it.form_template_id,
         equipment: it.equipment ? { id: it.equipment.id, name: it.equipment.name } : null,
@@ -910,25 +937,37 @@ function TechnicianOSInner() {
   // encolhe) via requestAnimationFrame. A chave pode pertencer a qualquer um dos
   // dois accordions (questionários `os-eq-...` ou visita PMOC `os-pmoc-...`).
   const scrollExecHeaderToTop = useCallback((key: string) => {
-    const run = () => {
+    const run = (behavior: ScrollBehavior) => {
       const el =
         document.getElementById(`os-eq-${key}`) ||
         document.getElementById(`os-pmoc-${key}`);
-      if (!el) return;
+      if (!el || el.dataset.state !== 'open') return;
       // Mede DEPOIS da expansão/colapso: o single-open anima os irmãos fechando
       // (accordion-up) e o aberto crescendo (accordion-down) por ~200ms; medir
       // antes disso fixa um alvo que ainda vai se mover e a rolagem para na
       // última pergunta. Medimos só quando o layout estabilizou.
       const top =
         el.getBoundingClientRect().top + window.scrollY - headerHeightRef.current;
-      window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+      window.scrollTo({ top: Math.max(0, top), behavior });
     };
     // Espera o fim da animação do Radix Accordion (0.2s). setTimeout 260ms cobre
     // a animação + reflow; dois rAFs garantem que o DOM já trocou de estado antes
     // de armar o timer.
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        window.setTimeout(run, 260);
+        window.setTimeout(() => run('smooth'), 260);
+        // Fotos e perguntas dinâmicas podem alterar a altura durante a abertura.
+        // Uma segunda medição só corrige se o mesmo accordion continuar aberto e
+        // ainda estiver fora do alinhamento esperado — evita parar no meio do
+        // checklist em aparelhos mais lentos/iOS.
+        window.setTimeout(() => {
+          const el =
+            document.getElementById(`os-eq-${key}`) ||
+            document.getElementById(`os-pmoc-${key}`);
+          if (!el || el.dataset.state !== 'open') return;
+          const expectedTop = headerHeightRef.current;
+          if (Math.abs(el.getBoundingClientRect().top - expectedTop) > 12) run('smooth');
+        }, 620);
       });
     });
   }, []);
@@ -963,7 +1002,7 @@ function TechnicianOSInner() {
   }, [checklistGroups]);
   // Copia o link público de acompanhamento e mostra toast (link gerado já copia no ato).
   const handleCopyTrackingLink = async () => {
-    if (!id) return;
+    if (!id || !canShareServiceOrder(serviceOrder)) return;
     try {
       const link = buildServiceOrderShareLink({
         shortCode: (serviceOrder as any)?.public_short_code,
@@ -987,13 +1026,14 @@ function TechnicianOSInner() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [routeFullscreen]);
-  // "Área do Técnico™" é exclusiva do segmento Refrigeração e Climatização.
-  // Enquanto settings carrega (undefined/null), showTools é false → atalho oculto.
+  // A Área do Técnico aparece quando qualquer segmento contratado tem ferramentas.
   const { settings } = useCompanySettings();
-  const showTools = settings?.segment === 'refrigeracao';
-  // Cor canônica do segmento da empresa (ex.: #06b6d4 p/ refrigeração).
+  const companySegments = normalizeCompanySegments(settings?.segments, settings?.segment);
+  const toolsSegment = companySegments.find(segmentHasTechTools) ?? companySegments[0];
+  const showTools = segmentsHaveTechTools(companySegments);
+  // Cor canônica do primeiro segmento com ferramentas.
   // Fallback para o verde Dominex se o segmento não estiver mapeado.
-  const segColor = getSegment(settings?.segment)?.color ?? '#00C597';
+  const segColor = getSegment(toolsSegment)?.color ?? '#00C597';
 
   // FAB é EXCLUSIVO de "Área do Técnico™" (função única, ícone de ferramenta
   // — não 3 pontinhos). Copiar link público mudou pro 3-pontinhos do rodapé.
@@ -1080,6 +1120,9 @@ function TechnicianOSInner() {
       const { data, error } = await db
         .from('service_order_equipment')
         .select(`
+          id,
+          equipment_position,
+          checklist_position,
           equipment_id,
           form_template_id,
           equipment:equipment(id, name, brand, model, location, photo_url, category:equipment_categories(id, name, color)),
@@ -1092,7 +1135,9 @@ function TechnicianOSInner() {
             )
           )
         `)
-        .eq('service_order_id', resolvedOsId);
+        .eq('service_order_id', resolvedOsId)
+        .order('equipment_position', { ascending: true })
+        .order('checklist_position', { ascending: true });
 
       if (error) throw error;
       const unwrap = <T,>(value: T | T[] | null): T | null => (
@@ -2102,6 +2147,7 @@ function TechnicianOSInner() {
   // Selo de conformidade PMOC (Lei Federal 13.589/2018). No modo cliente (anon)
   // o hook `useIsPmocOrder` não passa na RLS, então derivamos do payload público.
   const isPublicMode = forceReadOnly;
+  const canShareCurrentOrder = canShareServiceOrder(serviceOrder);
   const isPmocPublic = publicContract?.is_pmoc === true;
 
   // Pergunta de receita ao finalizar. Esta página troca a TELA INTEIRA assim que
@@ -3277,12 +3323,14 @@ function TechnicianOSInner() {
         </div>
 
         {/* Rodapé de ações fixo (desktop) — link público da OS. */}
-        <OsActionFooter>
-          <Button variant="outline" className="flex-1" onClick={handleCopyTrackingLink}>
-            {trackingLinkCopied ? <Check className="h-4 w-4 mr-2" /> : <Link2 className="h-4 w-4 mr-2" />}
-            {trackingLinkCopied ? tPublic.btnLinkCopied : tPublic.btnCopyLink}
-          </Button>
-        </OsActionFooter>
+        {canShareCurrentOrder && (
+          <OsActionFooter>
+            <Button variant="outline" className="flex-1" onClick={handleCopyTrackingLink}>
+              {trackingLinkCopied ? <Check className="h-4 w-4 mr-2" /> : <Link2 className="h-4 w-4 mr-2" />}
+              {trackingLinkCopied ? tPublic.btnLinkCopied : tPublic.btnCopyLink}
+            </Button>
+          </OsActionFooter>
+        )}
 
         {/* Photo preview modal */}
         <ImagePreviewModal
@@ -3558,21 +3606,20 @@ function TechnicianOSInner() {
   };
 
   // Bloco ÚNICO de contexto renderizado na LATERAL no desktop (acima dos
-  // equipamentos): Cliente → Técnico → Execução (Check-in/out) → Descrição do
-  // serviço, em UMA borda só, com seções separadas por divisor. No mobile estes
-  // dados seguem no fluxo central (os cards correspondentes são `lg:hidden`).
+  // equipamentos): Cliente → Técnico → Execução → Descrição → Observações.
+  // Agrupamento por ritmo vertical, sem empilhar cards ou bordas decorativas.
   const sidebarContextBlocks = (
-    <div className="rounded-lg border border-border bg-card divide-y divide-border">
+    <div className="space-y-5 px-1 py-1">
       {/* Cliente */}
-      <div className="p-3">
+      <section>
         <div className="flex items-center gap-2 mb-1.5">
-          <User className="h-4 w-4 text-primary shrink-0" />
-          <span className="text-xs uppercase tracking-wide text-muted-foreground">{tFlow.sidebarSectionClient}</span>
+          <User className="h-4 w-4 text-foreground shrink-0" />
+          <span className="text-xs font-medium text-muted-foreground">{tFlow.sidebarSectionClient}</span>
         </div>
         <p className="font-semibold text-sm break-words">{serviceOrder.customer?.name}</p>
         {(serviceOrder.customer?.phone || serviceOrder.customer?.celular) && (
           <div className="flex items-center gap-2 mt-1">
-            <a href={`tel:${serviceOrder.customer.phone || serviceOrder.customer.celular}`} className="flex items-center gap-1.5 text-xs text-primary min-w-0">
+            <a href={`tel:${serviceOrder.customer.phone || serviceOrder.customer.celular}`} className="flex min-w-0 items-center gap-1.5 text-xs text-foreground underline decoration-border underline-offset-2">
               <Phone className="h-3 w-3 shrink-0" />
               <span className="break-all">{serviceOrder.customer.phone || serviceOrder.customer.celular}</span>
             </a>
@@ -3591,7 +3638,7 @@ function TechnicianOSInner() {
         )}
         {/* Subseção CONTRATO dentro do bloco Cliente (mesma lógica do mobile) */}
         {serviceOrder?.contract?.name && (
-          <div className="mt-2.5 pt-2.5 border-t border-border">
+          <div className="mt-3">
             <ContractInfoCard
               name={serviceOrder.contract.name}
               isPmoc={isPmocOrder}
@@ -3600,14 +3647,14 @@ function TechnicianOSInner() {
             />
           </div>
         )}
-      </div>
+      </section>
 
       {/* Técnico */}
       {technicianProfile && (
-        <div className="p-3">
+        <section>
           <div className="flex items-center gap-2 mb-1.5">
-            <Wrench className="h-4 w-4 text-primary shrink-0" />
-            <span className="text-xs uppercase tracking-wide text-muted-foreground">{tFlow.sidebarSectionTechnician}</span>
+            <Wrench className="h-4 w-4 text-foreground shrink-0" />
+            <span className="text-xs font-medium text-muted-foreground">{tFlow.sidebarSectionTechnician}</span>
           </div>
           <div className="flex items-center gap-2.5">
             {technicianProfile.avatar_url ? (
@@ -3618,21 +3665,21 @@ function TechnicianOSInner() {
                 onClick={() => setPreviewPhoto(technicianProfile.avatar_url)}
               />
             ) : (
-              <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                <User className="h-4 w-4 text-primary" />
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted">
+                <User className="h-4 w-4 text-foreground" />
               </div>
             )}
             <p className="font-medium text-sm break-words min-w-0">{technicianProfile.full_name}</p>
           </div>
-        </div>
+        </section>
       )}
 
       {/* Execução (Check-in / Check-out) */}
       {(checkInTime || checkOutTime) && (
-        <div className="p-3 space-y-2">
+        <section className="space-y-2">
           <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-primary shrink-0" />
-            <span className="text-xs uppercase tracking-wide text-muted-foreground">{tFlow.sidebarSectionExecution}</span>
+            <Clock className="h-4 w-4 text-foreground shrink-0" />
+            <span className="text-xs font-medium text-muted-foreground">{tFlow.sidebarSectionExecution}</span>
           </div>
           {checkInTime && (
             <div>
@@ -3650,15 +3697,22 @@ function TechnicianOSInner() {
               </p>
             </div>
           )}
-        </div>
+        </section>
       )}
 
       {/* Descrição do serviço */}
       {serviceOrder.description && (
-        <div className="p-3">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1.5">{tFlow.sidebarSectionServiceDescription}</p>
-          <p className="text-sm break-words">{serviceOrder.description}</p>
-        </div>
+        <section>
+          <h3 className="text-sm font-semibold leading-snug text-foreground">{tFlow.sidebarSectionServiceDescription}</h3>
+          <p className="mt-1.5 text-sm leading-relaxed break-words">{serviceOrder.description}</p>
+        </section>
+      )}
+
+      {serviceOrder.notes && (
+        <section>
+          <h3 className="text-sm font-semibold leading-snug text-foreground">{tFlow.sectionNotesTitle}</h3>
+          <p className="mt-1.5 text-sm leading-relaxed break-words">{serviceOrder.notes}</p>
+        </section>
       )}
     </div>
   );
@@ -3666,25 +3720,22 @@ function TechnicianOSInner() {
   return (
     <div className="min-h-screen bg-background lg:flex lg:flex-col">
       {/* Header fixo no topo: o botão Voltar fica sempre acessível ao rolar.
-          Visual premium SEM trocar a marca: a base é `bg-primary` (cor de
-          white-label da empresa) e o texto usa `text-primary-foreground` (o
-          sistema já garante o contraste claro/escuro por empresa). Por cima,
-          um overlay de degradê NEUTRO (clareia leve no topo, escurece leve na
-          base) dá profundidade sem deslocar a matiz da marca — funciona tanto
-          em cor clara quanto escura. O elemento `headerRef` (medido pelo
+          O preenchimento usa a mesma superfície escura do rodapé e do relatório,
+          com texto/ícones brancos. Cor de destaque fica reservada aos badges e
+          ações semânticas. O elemento `headerRef` (medido pelo
           ResizeObserver pra `headerHeight`) continua sendo EXATAMENTE este
           container sticky externo — não mexer nisso preserva o offset dos
           cabeçalhos de equipamento que grudam abaixo. */}
       <div
         ref={headerRef}
-        className="relative sticky top-0 z-20 bg-primary text-primary-foreground shadow-lg rounded-b-2xl overflow-hidden"
-        style={{ paddingTop: 'env(safe-area-inset-top)' }}
+        className="relative sticky top-0 z-20 overflow-hidden rounded-b-2xl text-white shadow-lg"
+        style={{ background: REPORT_HEADER_DARK_GRADIENT, paddingTop: 'env(safe-area-inset-top)' }}
       >
-        {/* Overlay de profundidade (degradê neutro sobre a cor da marca) */}
+        {/* Luz sutil para preservar profundidade sem reintroduzir a cor da marca. */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0"
-          style={{ background: 'linear-gradient(160deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 38%, rgba(0,0,0,0.16) 100%)' }}
+          style={{ background: 'linear-gradient(160deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0) 42%, rgba(0,0,0,0.18) 100%)' }}
         />
         <div className="relative max-w-2xl mx-auto lg:max-w-screen-2xl lg:px-8 p-3 sm:p-4">
           {/* TODO o conteúdo do header fica centralizado no eixo da tela. O
@@ -3701,7 +3752,7 @@ function TechnicianOSInner() {
             <Button
               variant="ghost"
               size="sm"
-              className="text-primary-foreground hover:bg-primary-foreground/15 shrink-0 px-2 gap-1.5"
+              className="shrink-0 gap-1.5 px-2 text-white hover:bg-white/10 hover:text-white"
               onClick={() => navigate(-1)}
             >
               <ArrowLeft className="h-5 w-5" />
@@ -3718,30 +3769,30 @@ function TechnicianOSInner() {
           {/* Bloco centralizado: nome da empresa, número da OS, tipo de serviço
               e a linha de data/hora. O padding-top extra reserva espaço pra
               linha de topo (Voltar + status) não sobrepor o nome da empresa. */}
-          <div className="flex flex-col items-center text-center gap-1.5 pt-8 sm:pt-9">
-            <span className="text-sm sm:text-base font-semibold opacity-95 truncate max-w-full px-1">
+          <div className="flex flex-col items-center gap-1.5 pt-8 text-center sm:pt-9">
+            <span className="max-w-full truncate px-1 text-[13px] font-medium opacity-90 sm:text-sm">
               {company?.name || ''}
             </span>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight leading-none">
+            <h1 className="text-2xl font-extrabold leading-none tracking-tight sm:text-3xl">
               OS <span className="opacity-95">{formatOSNumber(serviceOrder.order_number)}</span>
             </h1>
-            <div className="flex items-center justify-center gap-1.5 text-xs sm:text-sm font-medium opacity-85 max-w-full min-w-0">
+            <div className="flex max-w-full min-w-0 items-center justify-center gap-1.5 text-[13px] font-medium opacity-85 sm:text-sm">
               <Wrench className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">{osTypeLabel}</span>
             </div>
             {activeServiceTypes.length > 0 && (
               <div className="mt-1 flex flex-col items-center gap-1" aria-label={tFlow.servicesLabel}>
-                <span className="text-[10px] font-semibold uppercase tracking-wider opacity-75">
+                <span className="text-[11px] font-medium opacity-75">
                   {tFlow.servicesLabel}
                 </span>
                 <div className="flex flex-wrap justify-center gap-1.5">
                   {activeServiceTypes.map(service => (
                     <span
                       key={service.id}
-                      className="inline-flex items-center gap-1 rounded-full bg-primary-foreground/15 px-2 py-0.5 text-[11px] font-semibold"
+                      className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-white"
                     >
                       <span
-                        className="h-1.5 w-1.5 rounded-full ring-1 ring-primary-foreground/50"
+                        className="h-1.5 w-1.5 rounded-full ring-1 ring-white/50"
                         style={{ backgroundColor: service.color || 'currentColor' }}
                       />
                       {service.name}
@@ -3777,7 +3828,7 @@ function TechnicianOSInner() {
         />
       <main
         className={cn(
-          'w-full max-w-2xl lg:max-w-3xl mx-auto p-3 sm:p-4 space-y-3 sm:space-y-4 lg:pb-24',
+          'mx-auto w-full max-w-2xl space-y-6 px-4 py-4 sm:px-5 sm:py-5 lg:max-w-3xl lg:pb-24',
           // Reserva espaço no MOBILE pro rodapé fixo (faixa preta) não cobrir o
           // conteúdo — só quando o rodapé existe (execução/pausada). No desktop
           // o lg:pb-24 prevalece (rodapé desktop é o OsActionFooter).
@@ -3905,10 +3956,10 @@ function TechnicianOSInner() {
 
         {/* Step 1: En Route or Check-in */}
         {(isPending || isACaminho) && (
-          <Card className="border-primary/30">
+          <Card>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
-                {isPending ? <Navigation className="h-4 w-4 text-primary" /> : <Play className="h-4 w-4 text-primary" />}
+                {isPending ? <Navigation className="h-4 w-4 text-foreground" /> : <Play className="h-4 w-4 text-foreground" />}
                 {isPending ? tFlow.cardEnRouteTitle : tFlow.cardCheckInTitle}
               </CardTitle>
             </CardHeader>
@@ -3929,7 +3980,12 @@ function TechnicianOSInner() {
                   {tFlow.arrivedHint}
                 </p>
               )}
-              <Button className="w-full lg:hidden" size="lg" onClick={handleCheckIn} variant={isPending ? 'outline' : 'default'}>
+              <Button
+                className={cn('w-full lg:hidden', !isPending && OS_NEUTRAL_PRIMARY_BUTTON_CLASS)}
+                size="lg"
+                onClick={handleCheckIn}
+                variant={isPending ? 'outline' : 'default'}
+              >
                 <Play className="h-4 w-4 mr-2" />
                 {tFlow.btnCheckIn}
               </Button>
@@ -3955,51 +4011,46 @@ function TechnicianOSInner() {
           </Card>
         )}
 
-        {/* Check-in timestamp — no desktop migra pra lateral (sidebarContextBlocks) */}
-        {isCheckedIn && (
-          <div className="space-y-2 lg:hidden">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+        {/* Contexto operacional em uma superfície contínua. A hierarquia vem de
+            espaçamento e tipografia; não de uma pilha de cards independentes. */}
+        <section className="space-y-5 py-1 lg:hidden" aria-label={tFlow.sectionClientTitle}>
+          {isCheckedIn && (
+            <div className="space-y-1.5 text-xs leading-relaxed text-muted-foreground sm:text-sm">
               <div className="flex items-center gap-2">
-                <Clock className="h-3.5 w-3.5 text-primary shrink-0" />
-                <span className="text-xs sm:text-sm">
+                <Clock className="h-3.5 w-3.5 shrink-0 text-foreground" />
+                <span>
                   {tFlow.checkInStamp} {format(new Date(checkInTime!), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                 </span>
               </div>
               {checkInLocation && (
-                <span className="text-xs opacity-70 sm:ml-auto flex items-center gap-0.5 min-w-0">
-                  <MapPin className="h-3 w-3 shrink-0" />
-                  <span className="truncate">
+                <div className="flex min-w-0 items-start gap-2">
+                  <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span className="break-words">
                     {checkInLocation.address ?? `${checkInLocation.lat.toFixed(4)}, ${checkInLocation.lng.toFixed(4)}`}
                   </span>
-                </span>
+                </div>
               )}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Client Info — no desktop migra pra lateral (sidebarContextBlocks) */}
-        <Card className="lg:hidden">
-          <CardContent className="p-3 sm:p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <User className="h-4 w-4 text-primary" />
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{tFlow.sectionClientTitle}</span>
-            </div>
-            <p className="font-semibold break-words">{serviceOrder.customer?.name}</p>
+          <section>
+            <p className="text-xs font-medium text-muted-foreground">{tFlow.sectionClientTitle}</p>
+            <p className="mt-1 text-base font-semibold leading-snug break-words">{serviceOrder.customer?.name}</p>
             {serviceOrder.customer?.document && (
-              <p className="text-xs text-muted-foreground mt-0.5">{serviceOrder.customer.document}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">{serviceOrder.customer.document}</p>
             )}
             {(serviceOrder.customer?.phone || serviceOrder.customer?.celular) && (
-              <div className="flex items-center gap-2 mt-1">
-                <a href={`tel:${serviceOrder.customer.phone || serviceOrder.customer.celular}`} className="flex items-center gap-1.5 text-sm text-primary min-w-0">
-                  <Phone className="h-3 w-3 shrink-0" />
+              <div className="mt-2 flex items-center gap-2">
+                <a href={`tel:${serviceOrder.customer.phone || serviceOrder.customer.celular}`} className="flex min-w-0 items-center gap-1.5 text-sm font-medium text-foreground underline decoration-border underline-offset-2">
+                  <Phone className="h-3.5 w-3.5 shrink-0" />
                   <span className="break-all">{serviceOrder.customer.phone || serviceOrder.customer.celular}</span>
                 </a>
                 <CustomerWhatsAppLink phone={serviceOrder.customer.phone || serviceOrder.customer.celular} />
               </div>
             )}
             {serviceOrder.customer?.address && (
-              <p className="text-sm text-muted-foreground flex items-start gap-1.5 mt-1">
-                <MapPin className="h-3 w-3 mt-0.5 shrink-0" />
+              <p className="mt-2 flex items-start gap-1.5 text-sm leading-relaxed text-muted-foreground">
+                <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 <span className="break-words">
                   {serviceOrder.customer.address}
                   {serviceOrder.customer.city && `, ${serviceOrder.customer.city}`}
@@ -4008,25 +4059,17 @@ function TechnicianOSInner() {
               </p>
             )}
             {isServiceAddress && destAddress && (
-              <div className="mt-2 rounded-md border border-primary/30 bg-primary/5 p-2.5">
-                <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary">
-                  <MapPinned className="h-3.5 w-3.5 shrink-0" />
-                  {tFlow.serviceAddressLabel}
-                </div>
-                <p className="text-sm text-foreground flex items-start gap-1.5 mt-1">
-                  <MapPin className="h-3 w-3 mt-0.5 shrink-0 text-primary" />
+              <div className="mt-4">
+                <p className="text-xs font-medium text-muted-foreground">{tFlow.serviceAddressLabel}</p>
+                <p className="mt-1 flex items-start gap-1.5 text-sm leading-relaxed text-foreground">
+                  <MapPinned className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                   <span className="break-words">{destAddress}</span>
                 </p>
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  {tFlow.serviceAddressNote}
-                </p>
+                <p className="mt-1 text-xs text-muted-foreground">{tFlow.serviceAddressNote}</p>
               </div>
             )}
-            {/* Subseção CONTRATO dentro do próprio card Cliente — só quando a OS
-                pertence a um contrato (ex.: PMOC). Sem moldura própria (bare):
-                divisor + nome do contrato + nota da Lei 13.589 quando PMOC. */}
             {serviceOrder?.contract?.name && (
-              <div className="mt-3 pt-3 border-t border-border">
+              <div className="mt-4">
                 <ContractInfoCard
                   name={serviceOrder.contract.name}
                   isPmoc={isPmocOrder}
@@ -4035,37 +4078,32 @@ function TechnicianOSInner() {
                 />
               </div>
             )}
-          </CardContent>
-        </Card>
+          </section>
 
-        {/* Descrição do Serviço — no desktop migra pra lateral (sidebarContextBlocks) */}
-        {serviceOrder.description && (
-          <Card className="lg:hidden">
-            <CardContent className="p-3 sm:p-4">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{tFlow.sectionDescriptionTitle}</p>
-              <p className="text-sm break-words">{serviceOrder.description}</p>
-            </CardContent>
-          </Card>
-        )}
-        {serviceOrder.notes && (
-          <Card>
-            <CardContent className="p-3 sm:p-4">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{tFlow.sectionNotesTitle}</p>
-              <p className="text-sm break-words">{serviceOrder.notes}</p>
-            </CardContent>
-          </Card>
-        )}
+          {serviceOrder.description && (
+            <section>
+              <h2 className="text-sm font-semibold leading-snug text-foreground">{tFlow.sectionDescriptionTitle}</h2>
+              <p className="mt-1.5 text-sm leading-relaxed break-words">{serviceOrder.description}</p>
+            </section>
+          )}
+
+          {serviceOrder.notes && (
+            <section>
+              <h2 className="text-sm font-semibold leading-snug text-foreground">{tFlow.sectionNotesTitle}</h2>
+              <p className="mt-1.5 text-sm leading-relaxed break-words">{serviceOrder.notes}</p>
+            </section>
+          )}
+        </section>
 
         {/* Checklists - Multi equipment from junction table (accordion) */}
         {isCheckedIn && questionnaireItems.length > 0 && (
-          <Card>
-            <CardHeader className="pb-2 px-3 sm:px-6">
-              <CardTitle className="flex items-center gap-2 text-xl sm:text-2xl font-semibold">
-                <ClipboardCheck className="h-5 w-5 text-primary shrink-0" />
+          <Card className="border-0 bg-transparent shadow-none">
+            <CardHeader className="px-0 pb-3 pt-1">
+              <CardTitle className="text-lg font-semibold sm:text-xl">
                 {tFlow.checklistsTitle}
               </CardTitle>
             </CardHeader>
-            <CardContent className="px-3 sm:px-6 pb-3">
+            <CardContent className="px-0 pb-0">
               {isPaused && (
                 <NoticeBanner variant="warning" icon={Lock} className="mb-3">
                   {tFlow.checklistPausedWarning}
@@ -4180,10 +4218,10 @@ function TechnicianOSInner() {
 
         {/* Fallback: single checklist from OS (legacy / no junction data) */}
         {isCheckedIn && questionnaireItems.length === 0 && serviceOrder.form_template_id && (
-          <Card>
-            <CardHeader className="pb-3 px-3 sm:px-6">
+          <Card className="border-0 bg-transparent shadow-none">
+            <CardHeader className="px-0 pb-3 pt-1">
               <CardTitle className="flex items-center gap-2 text-sm sm:text-base flex-wrap">
-                <ClipboardCheck className="h-4 w-4 text-primary shrink-0" />
+                <ClipboardCheck className="h-4 w-4 text-foreground shrink-0" />
                 <span className="break-words">
                   {serviceOrder.equipment ? (
                     <>
@@ -4201,7 +4239,7 @@ function TechnicianOSInner() {
                 )}
               </CardTitle>
             </CardHeader>
-            <CardContent className="px-3 sm:px-6">
+            <CardContent className="px-0 pb-0">
               {isPaused && (
                 <NoticeBanner variant="warning" icon={Lock} className="mb-3">
                   {tFlow.checklistPausedWarning}
@@ -4236,15 +4274,15 @@ function TechnicianOSInner() {
 
         {/* Signatures */}
         {isCheckedIn && ((serviceOrder as any)?.require_tech_signature || (serviceOrder as any)?.require_client_signature) && (
-          <Card>
-            <CardHeader className="pb-3">
+          <Card className="border-0 bg-transparent shadow-none">
+            <CardHeader className="px-0 pb-3 pt-1">
               {/* Seção de assinaturas é centralizada de propósito (título + pad) — decisão CEO. */}
               <CardTitle className="flex items-center justify-center text-center gap-2 text-base">
-                <PenTool className="h-4 w-4 text-primary" />
+                <PenTool className="h-4 w-4 text-foreground" />
                 {tFlow.signaturesTitle}
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 px-0 pb-0">
               {/* Assinaturas sempre centralizadas (título + pad), desktop e mobile. */}
               {(serviceOrder as any)?.require_tech_signature && (
                 <div className="w-full max-w-md mx-auto text-center [&_p]:text-center [&_button]:mx-auto">
@@ -4420,7 +4458,11 @@ function TechnicianOSInner() {
               {tFlow.btnEnRoute}
             </Button>
           )}
-          <Button className="flex-1" onClick={handleCheckIn} variant={isPending ? 'outline' : 'default'}>
+          <Button
+            className={cn('flex-1', !isPending && OS_NEUTRAL_PRIMARY_BUTTON_CLASS)}
+            onClick={handleCheckIn}
+            variant={isPending ? 'outline' : 'default'}
+          >
             <Play className="h-4 w-4 mr-2" />
             {tFlow.btnCheckIn}
           </Button>
@@ -4428,7 +4470,7 @@ function TechnicianOSInner() {
       )}
       {isPaused && (
         <OsActionFooter>
-          <Button className="flex-1" onClick={handleResumeOS}>
+          <Button className={cn('flex-1', OS_NEUTRAL_PRIMARY_BUTTON_CLASS)} onClick={handleResumeOS}>
             <Play className="h-4 w-4 mr-2" />
             {tFlow.btnResumeOS}
           </Button>
@@ -4478,14 +4520,15 @@ function TechnicianOSInner() {
                       onClick={() => { closeDesktopActions(); setEditScopeOpen(true); }}
                       title={!isOnline ? tFlow.editScope.offlineHint : undefined}
                       className={cn(
-                        'group flex h-12 items-center gap-2 rounded-full bg-card pl-3.5 pr-4 text-foreground shadow-lg shadow-black/20 transition-all active:scale-95 hover:bg-primary active:bg-primary disabled:opacity-50 disabled:pointer-events-none',
+                        OS_ACTION_CHIP_CLASS,
+                        'disabled:pointer-events-none disabled:opacity-50',
                         desktopActionsClosing ? 'animate-out fade-out slide-out-to-bottom-2' : 'animate-in fade-in slide-in-from-bottom-2',
                       )}
                     >
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
+                      <span className={OS_ACTION_CHIP_ICON_CLASS}>
                         <Pencil className="h-4 w-4" />
                       </span>
-                      <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">{tFlow.editScope.menuItem}</span>
+                      <span className={OS_ACTION_CHIP_LABEL_CLASS}>{tFlow.editScope.menuItem}</span>
                     </button>
                   )}
                   {showConsumeStockAction && (
@@ -4493,42 +4536,44 @@ function TechnicianOSInner() {
                       type="button"
                       onClick={() => { closeDesktopActions(); setConsumeStockOpen(true); }}
                       className={cn(
-                        'group flex h-12 items-center gap-2 rounded-full bg-card pl-3.5 pr-4 text-foreground shadow-lg shadow-black/20 transition-all active:scale-95 hover:bg-primary active:bg-primary',
+                        OS_ACTION_CHIP_CLASS,
                         desktopActionsClosing ? 'animate-out fade-out slide-out-to-bottom-2' : 'animate-in fade-in slide-in-from-bottom-2',
                       )}
                     >
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
+                      <span className={OS_ACTION_CHIP_ICON_CLASS}>
                         <Package className="h-4 w-4" />
                       </span>
-                      <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">{tStock.menuItem}</span>
+                      <span className={OS_ACTION_CHIP_LABEL_CLASS}>{tStock.menuItem}</span>
                     </button>
                   )}
                   <button
                     type="button"
                     onClick={() => { closeDesktopActions(); handlePauseOS(); }}
                     className={cn(
-                      'group flex h-12 items-center gap-2 rounded-full bg-card pl-3.5 pr-4 text-foreground shadow-lg shadow-black/20 transition-all active:scale-95 hover:bg-primary active:bg-primary',
+                      OS_ACTION_CHIP_CLASS,
                       desktopActionsClosing ? 'animate-out fade-out slide-out-to-bottom-2' : 'animate-in fade-in slide-in-from-bottom-2',
                     )}
                   >
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
+                    <span className={OS_ACTION_CHIP_ICON_CLASS}>
                       <Pause className="h-4 w-4" />
                     </span>
-                    <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">{tFlow.btnPauseOS}</span>
+                    <span className={OS_ACTION_CHIP_LABEL_CLASS}>{tFlow.btnPauseOS}</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => { closeDesktopActions(); handleCopyTrackingLink(); }}
-                    className={cn(
-                      'group flex h-12 items-center gap-2 rounded-full bg-card pl-3.5 pr-4 text-foreground shadow-lg shadow-black/20 transition-all active:scale-95 hover:bg-primary active:bg-primary',
-                      desktopActionsClosing ? 'animate-out fade-out slide-out-to-bottom-2' : 'animate-in fade-in slide-in-from-bottom-2',
-                    )}
-                  >
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
-                      <Link2 className="h-4 w-4" />
-                    </span>
-                    <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">{tFlow.btnCopyClientLink}</span>
-                  </button>
+                  {canShareCurrentOrder && (
+                    <button
+                      type="button"
+                      onClick={() => { closeDesktopActions(); handleCopyTrackingLink(); }}
+                      className={cn(
+                        OS_ACTION_CHIP_CLASS,
+                        desktopActionsClosing ? 'animate-out fade-out slide-out-to-bottom-2' : 'animate-in fade-in slide-in-from-bottom-2',
+                      )}
+                    >
+                      <span className={OS_ACTION_CHIP_ICON_CLASS}>
+                        <Link2 className="h-4 w-4" />
+                      </span>
+                      <span className={OS_ACTION_CHIP_LABEL_CLASS}>{tFlow.btnCopyClientLink}</span>
+                    </button>
+                  )}
                 </div>
               </>
             )}
@@ -4540,7 +4585,7 @@ function TechnicianOSInner() {
               aria-expanded={desktopActionsOpen}
               className={cn(
                 'relative z-50 shrink-0 transition-colors [&_svg]:size-6',
-                desktopActionsOpen && 'bg-muted text-primary hover:bg-muted',
+                desktopActionsOpen && 'bg-foreground text-background hover:bg-foreground/90',
               )}
             >
               <Menu className="h-6 w-6" />
@@ -4594,14 +4639,15 @@ function TechnicianOSInner() {
                 disabled={!isOnline}
                 onClick={() => { closeMobileActions(); setEditScopeOpen(true); }}
                 className={cn(
-                  'group flex h-12 items-center gap-2 rounded-full bg-card pl-3.5 pr-4 text-foreground shadow-lg shadow-black/20 transition-all active:scale-95 hover:bg-primary active:bg-primary disabled:opacity-50 disabled:pointer-events-none',
+                  OS_ACTION_CHIP_CLASS,
+                  'disabled:pointer-events-none disabled:opacity-50',
                   mobileActionsClosing ? 'animate-out fade-out slide-out-to-bottom-2' : 'animate-in fade-in slide-in-from-bottom-2',
                 )}
               >
-                <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
+                <span className={OS_ACTION_CHIP_ICON_CLASS}>
                   <Pencil className="h-4 w-4" />
                 </span>
-                <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">
+                <span className={OS_ACTION_CHIP_LABEL_CLASS}>
                   {!isOnline ? tFlow.editScope.offlineHint : tFlow.editScope.menuItem}
                 </span>
               </button>
@@ -4611,14 +4657,14 @@ function TechnicianOSInner() {
                 type="button"
                 onClick={() => { closeMobileActions(); setConsumeStockOpen(true); }}
                 className={cn(
-                  'group flex h-12 items-center gap-2 rounded-full bg-card pl-3.5 pr-4 text-foreground shadow-lg shadow-black/20 transition-all active:scale-95 hover:bg-primary active:bg-primary',
+                  OS_ACTION_CHIP_CLASS,
                   mobileActionsClosing ? 'animate-out fade-out slide-out-to-bottom-2' : 'animate-in fade-in slide-in-from-bottom-2',
                 )}
               >
-                <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
+                <span className={OS_ACTION_CHIP_ICON_CLASS}>
                   <Package className="h-4 w-4" />
                 </span>
-                <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">{tStock.menuItem}</span>
+                <span className={OS_ACTION_CHIP_LABEL_CLASS}>{tStock.menuItem}</span>
               </button>
             )}
             {!isPaused ? (
@@ -4626,14 +4672,14 @@ function TechnicianOSInner() {
                 type="button"
                 onClick={() => { closeMobileActions(); handlePauseOS(); }}
                 className={cn(
-                  'group flex h-12 items-center gap-2 rounded-full bg-card pl-3.5 pr-4 text-foreground shadow-lg shadow-black/20 transition-all active:scale-95 hover:bg-primary active:bg-primary',
+                  OS_ACTION_CHIP_CLASS,
                   mobileActionsClosing ? 'animate-out fade-out slide-out-to-bottom-2' : 'animate-in fade-in slide-in-from-bottom-2',
                 )}
               >
-                <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
+                <span className={OS_ACTION_CHIP_ICON_CLASS}>
                   <Pause className="h-4 w-4" />
                 </span>
-                <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">{tFlow.btnPauseOS}</span>
+                <span className={OS_ACTION_CHIP_LABEL_CLASS}>{tFlow.btnPauseOS}</span>
               </button>
             ) : (
               <button
@@ -4641,43 +4687,46 @@ function TechnicianOSInner() {
                 onClick={() => { closeMobileActions(); handleFinishOS(); }}
                 disabled={finishing}
                 className={cn(
-                  'group flex h-12 items-center gap-2 rounded-full bg-card pl-3.5 pr-4 text-foreground shadow-lg shadow-black/20 transition-all active:scale-95 hover:bg-primary active:bg-primary disabled:opacity-60',
+                  OS_ACTION_CHIP_CLASS,
+                  'disabled:opacity-60',
                   mobileActionsClosing ? 'animate-out fade-out slide-out-to-bottom-2' : 'animate-in fade-in slide-in-from-bottom-2',
                 )}
               >
-                <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
+                <span className={OS_ACTION_CHIP_ICON_CLASS}>
                   <BadgeCheck className="h-4 w-4" />
                 </span>
-                <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">{tFlow.btnFinalizeOS}</span>
+                <span className={OS_ACTION_CHIP_LABEL_CLASS}>{tFlow.btnFinalizeOS}</span>
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => { closeMobileActions(); handleCopyTrackingLink(); }}
-              className={cn(
-                'group flex h-12 items-center gap-2 rounded-full bg-card pl-3.5 pr-4 text-foreground shadow-lg shadow-black/20 transition-all active:scale-95 hover:bg-primary active:bg-primary',
-                mobileActionsClosing ? 'animate-out fade-out slide-out-to-bottom-2' : 'animate-in fade-in slide-in-from-bottom-2',
-              )}
-            >
-              <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
-                <Link2 className="h-4 w-4" />
-              </span>
-              <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">{tFlow.btnCopyOsLink}</span>
-            </button>
+            {canShareCurrentOrder && (
+              <button
+                type="button"
+                onClick={() => { closeMobileActions(); handleCopyTrackingLink(); }}
+                className={cn(
+                  OS_ACTION_CHIP_CLASS,
+                  mobileActionsClosing ? 'animate-out fade-out slide-out-to-bottom-2' : 'animate-in fade-in slide-in-from-bottom-2',
+                )}
+              >
+                <span className={OS_ACTION_CHIP_ICON_CLASS}>
+                  <Link2 className="h-4 w-4" />
+                </span>
+                <span className={OS_ACTION_CHIP_LABEL_CLASS}>{tFlow.btnCopyOsLink}</span>
+              </button>
+            )}
             {/* Sair do preenchimento — sempre disponível (equivale ao "Voltar"
                 do header). Garante que o menu nunca fique sem ação útil. */}
             <button
               type="button"
               onClick={() => { closeMobileActions(); navigate(-1); }}
               className={cn(
-                'group flex h-12 items-center gap-2 rounded-full bg-card pl-3.5 pr-4 text-foreground shadow-lg shadow-black/20 transition-all active:scale-95 hover:bg-primary active:bg-primary',
+                OS_ACTION_CHIP_CLASS,
                 mobileActionsClosing ? 'animate-out fade-out slide-out-to-bottom-2' : 'animate-in fade-in slide-in-from-bottom-2',
               )}
             >
-              <span className="flex h-8 w-8 items-center justify-center rounded-full text-primary group-hover:text-white group-active:text-white">
+              <span className={OS_ACTION_CHIP_ICON_CLASS}>
                 <LogOut className="h-4 w-4" />
               </span>
-              <span className="text-sm font-medium whitespace-nowrap text-primary group-hover:text-white group-active:text-white">{tFlow.btnExitFill}</span>
+              <span className={OS_ACTION_CHIP_LABEL_CLASS}>{tFlow.btnExitFill}</span>
             </button>
           </div>
         </>
@@ -4695,7 +4744,7 @@ function TechnicianOSInner() {
           <div className="relative flex items-center gap-2 px-3 py-2.5">
             {isPaused ? (
               <Button
-                className="flex-1 bg-success hover:bg-success/90 text-success-foreground"
+                className={cn('flex-1', OS_NEUTRAL_PRIMARY_BUTTON_CLASS)}
                 size="lg"
                 onClick={handleResumeOS}
               >
@@ -4742,7 +4791,7 @@ function TechnicianOSInner() {
               className={cn(
                 'relative z-50 shrink-0 h-11 w-11 transition-colors [&_svg]:size-6',
                 mobileActionsOpen
-                  ? 'bg-white/15 text-primary hover:bg-white/15'
+                  ? 'bg-white text-black hover:bg-white/90'
                   : 'text-white hover:bg-white/10',
               )}
             >
@@ -4769,9 +4818,22 @@ function TechnicianOSInner() {
           }
           seedItems={editScopeSeedItems}
           answeredKeys={editScopeAnsweredKeys}
-          onSaved={() => {
-            fetchEquipmentItems();
-            fetchFormResponses();
+          schedule={{
+            scheduled_date: serviceOrder?.scheduled_date,
+            scheduled_time: serviceOrder?.scheduled_time,
+            duration_minutes: serviceOrder?.duration_minutes,
+            schedule_plan: serviceOrder?.schedule_plan,
+            technician_id: serviceOrder?.technician_id,
+            team_id: serviceOrder?.team_id,
+          }}
+          canEditSchedule={canEditScheduleInOs}
+          canOverrideScheduleConflict={canOverrideScheduleConflict}
+          onSaved={async () => {
+            await Promise.all([
+              fetchServiceOrder(),
+              fetchEquipmentItems(),
+              fetchFormResponses(),
+            ]);
           }}
         />
       )}

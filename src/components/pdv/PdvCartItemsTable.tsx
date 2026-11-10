@@ -6,10 +6,12 @@ import { PdvScrollFadeContainer } from '@/components/pdv/PdvScrollFadeContainer'
 import { PdvProductImagePreview } from '@/components/pdv/PdvProductImagePreview';
 import type { CartState } from '@/lib/pdv/cart';
 import { cn } from '@/lib/utils';
+import { inventoryQuantityStep } from '@/lib/inventoryUnits';
 
 export interface PdvCartItemsTexts {
   title: string;
   itemsCount: string;
+  itemsCountOne?: string;
   empty: string;
   emptyHint: string;
   removeLine: string;
@@ -60,7 +62,7 @@ export function PdvCartItemsTable({
   texts,
   className,
 }: PdvCartItemsTableProps) {
-  const itemCount = cart.lines.reduce((sum, l) => sum + l.quantity, 0);
+  const itemCount = cart.lines.length;
 
   return (
     <div
@@ -75,7 +77,9 @@ export function PdvCartItemsTable({
           <span className="text-sm font-semibold">{texts.title}</span>
           {itemCount > 0 && (
             <span className="text-xs text-muted-foreground">
-              {texts.itemsCount.replace('{count}', String(itemCount))}
+              {(itemCount === 1 && texts.itemsCountOne)
+                ? texts.itemsCountOne
+                : texts.itemsCount.replace('{count}', String(itemCount))}
             </span>
           )}
         </div>
@@ -203,6 +207,7 @@ export function PdvCartItemsTable({
                           size="sm"
                           quantity={line.quantity}
                           availableQuantity={line.availableQuantity}
+                          step={inventoryQuantityStep(line.unit)}
                           onIncrement={(delta) => onIncrement(line.inventoryId, delta)}
                           onSetQuantity={(quantity) => onSetQuantity(line.inventoryId, quantity)}
                           onConfirmEdit={onConfirmQuantityEdit}
@@ -216,7 +221,7 @@ export function PdvCartItemsTable({
                       </div>
                     </td>
                     <td className="px-2 py-2 text-right tabular-nums text-muted-foreground">
-                      {formatCurrency(line.unitPrice)}
+                      {formatCurrency(line.unitPrice)}/{line.unit?.trim() || 'un'}
                     </td>
                     <td className="px-2 py-2 text-right font-bold tabular-nums">
                       {lineDiscount > 0 && (

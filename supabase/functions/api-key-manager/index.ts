@@ -28,6 +28,8 @@ const ALLOWED_SCOPES = new Set([
   "customers:resolve",
   "service_orders:create",
   "service_orders:read",
+  "crm_cards:read",
+  "crm_cards:write",
 ]);
 const DISTRIBUTION_MODES = new Set([
   "agent_selects",

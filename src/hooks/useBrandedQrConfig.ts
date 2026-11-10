@@ -20,6 +20,8 @@ export interface BrandedQrConfig {
   dotStyle: QRDotStyle;
   cornerStyle: QRCornerStyle;
   color: string;
+  /** Enquanto true, a marca final do tenant ainda não foi resolvida. */
+  isLoading: boolean;
 }
 
 const DOT_STYLES: QRDotStyle[] = ['square', 'rounded', 'dots', 'classy'];
@@ -34,13 +36,14 @@ function coerceCornerStyle(value?: string | null): QRCornerStyle {
 }
 
 export function useBrandedQrConfig(): BrandedQrConfig {
-  const { enabled, logoUrl } = useWhiteLabel();
-  const { settings } = useCompanySettings();
+  const { enabled, logoUrl, isLoading: whiteLabelLoading } = useWhiteLabel();
+  const { settings, isLoading: settingsLoading } = useCompanySettings();
+  const isLoading = whiteLabelLoading || settingsLoading;
 
   // Sem white-label: ícone Dominex + estilo padrão. O BrandedQRCode já força
   // contraste/nível H, então preto puro é sempre legível.
   if (!enabled) {
-    return { logoUrl: null, dotStyle: 'square', cornerStyle: 'square', color: '#000000' };
+    return { logoUrl: null, dotStyle: 'square', cornerStyle: 'square', color: '#000000', isLoading };
   }
 
   return {
@@ -50,5 +53,6 @@ export function useBrandedQrConfig(): BrandedQrConfig {
     // Cor vazia/NULL → preto. O BrandedQRCode ainda reforça contraste sobre o
     // branco (cor clara demais cai pro preto), então isto é só a preferência.
     color: settings?.white_label_qr_color || '#000000',
+    isLoading,
   };
 }

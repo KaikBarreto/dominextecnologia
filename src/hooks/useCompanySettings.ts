@@ -59,6 +59,8 @@ export interface CompanySettings {
   // Segmento da empresa (ex.: 'refrigeracao'). Gateia áreas exclusivas como
   // as Área do Técnico™ no app de campo.
   segment?: string | null;
+  /** Fonte múltipla; `segment` permanece como espelho do primeiro item. */
+  segments?: string[] | null;
   // ── Configuração Regional (i18n do app logado) ────────────────────────────
   // Idioma padrão da empresa (fallback do idioma pessoal do usuário), moeda de
   // operação (ISO 4217) e fuso horário (nome IANA). Defaults no banco:
@@ -228,6 +230,9 @@ export function useCompanySettings() {
   return {
     settings: settingsQuery.data?.settings ?? null,
     isLoading: settingsQuery.isLoading,
+    isError: settingsQuery.isError,
+    error: settingsQuery.error ?? null,
+    refetch: settingsQuery.refetch,
     // true quando a query terminou e o usuário pertence a um tenant com
     // empresa — mesmo sem linha em company_settings (o save cria via INSERT).
     // super_admin e usuário sem company ficam false (auto-save morto).

@@ -45,6 +45,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useEquipment } from '@/hooks/useEquipment';
+import { usePartyLabels } from '@/hooks/usePartyLabels';
+import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
 import { useEquipmentCategories } from '@/hooks/useEquipmentCategories';
 import { useCustomers } from '@/hooks/useCustomers';
 import {
@@ -196,6 +198,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
   const tForm = MESSAGES[locale].app.contracts.contractForm;
   const { updateContract } = useContracts();
   const { equipment, createEquipment } = useEquipment(contract.customer_id || undefined);
+  const { labelsFor: equipmentLabelsFor } = usePartyLabels('equipment');
   const { categories } = useEquipmentCategories();
   const { customers } = useCustomers();
   const activeEquipment = useMemo(() => equipment.filter((eq: any) => eq.status === 'active'), [equipment]);
@@ -912,6 +915,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
       if (memberPickerEnvKey === LOOSE_ENV_KEY) addEquipmentAsLoose(created.id);
       else addEquipmentToEnv(memberPickerEnvKey, created.id);
     }
+    return created;
   };
 
   // Quantas OSs futuras não-realizadas seriam refeitas (preview do diálogo).
@@ -1432,7 +1436,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                     </div>
                     <EquipmentAvatar photoUrl={eq.photo_url} name={eq.name} />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{eq.name}</p>
+                      <p className="flex min-w-0 items-center gap-2 text-sm font-medium"><span className="truncate">{eq.name}</span><PartyLabelBadges labels={equipmentLabelsFor('equipment', eq.id)} mode="summary" /></p>
                       {[eq.brand, eq.model].filter(Boolean).length > 0 && (
                         <p className="truncate text-xs text-muted-foreground">
                           {[eq.brand, eq.model].filter(Boolean).join(' - ')}

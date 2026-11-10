@@ -36,6 +36,7 @@ interface PdvOrderSwitcherTexts {
   deleteDescription: string;
   keepOrder: string;
   confirmDelete: string;
+  productsShort?: string;
 }
 
 interface PdvOrderSwitcherProps {
@@ -102,8 +103,11 @@ export function PdvOrderSwitcher({
           {texts.editBadge}
         </span>
       )}
-      <span className={cn(compact ? 'hidden' : 'w-7 shrink-0 text-center text-xs tabular-nums', activeRow ? 'text-background/70' : 'text-muted-foreground')}>
-        {order.itemCount}
+      <span
+        className={cn(compact ? 'hidden' : 'w-14 shrink-0 text-center text-xs tabular-nums', activeRow ? 'text-background/70' : 'text-muted-foreground')}
+        title={`${order.itemCount} ${texts.productsShort ?? ''}`.trim()}
+      >
+        {order.itemCount} {texts.productsShort}
       </span>
     </>
   );
@@ -127,7 +131,7 @@ export function PdvOrderSwitcher({
             <span className="min-w-0 flex-1 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
               {texts.customer}
             </span>
-            <span className={cn(embedded ? 'w-10' : 'w-7', 'shrink-0')} aria-hidden />
+            <span className={cn(embedded ? 'w-10' : 'w-14', 'shrink-0')} aria-hidden />
           </div>
         )}
 

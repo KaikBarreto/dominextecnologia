@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// i18n — strings de UI do SITE PÚBLICO (pt-br é a FONTE da verdade do shape).
+// i18n, strings de UI do SITE PÚBLICO (pt-br é a FONTE da verdade do shape).
 //
 // pt-br carrega o texto EXATO que hoje está cravado no JSX (nada reescrito aqui:
 // é só mover string pra chave). en traduz; es/fr caem no fallback pt-br por ora.
@@ -13,10 +13,10 @@
 //   • quemSomos  → página institucional /quem-somos
 //   • privacidade / termos → páginas legais (tradução automática; ver relatório)
 //
-// Conteúdo longo de segmento/módulo/blog NÃO vem por aqui — é dados por idioma
+// Conteúdo longo de segmento/módulo/blog NÃO vem por aqui, é dados por idioma
 // em content/<locale>.ts (outra frente).
 //
-// APP LOGADO: o namespace `app` NÃO vive mais inline aqui — ele é organizado por
+// APP LOGADO: o namespace `app` NÃO vive mais inline aqui, ele é organizado por
 // DOMÍNIO em `messages/app/*.ts` (cada arquivo com os 4 locales juntos) e agregado
 // por `appByLocale` (messages/app/index.ts). pt-br usa `appByLocale['pt-br']`;
 // en/es/fr recebem sua fatia em messages/index.ts (não sobrescrevem `app` inline).
@@ -33,7 +33,7 @@ export const ptBr = {
   // ── Navbar ──────────────────────────────────────────────────────────────
   nav: {
     platform: 'Plataforma',
-    solutions: 'Soluções',
+    solutions: 'Funcionalidades',
     segments: 'Segmentos',
     pricing: 'Preços',
     blog: 'Blog',
@@ -44,22 +44,26 @@ export const ptBr = {
     openMenuAria: 'Abrir menu',
     closeMenuAria: 'Fechar menu',
     solutionsMenuAria: 'Nossas soluções',
-    solutionsMenuHeader: 'Tudo o que a plataforma faz',
+    solutionsMenuHeader: 'Tudo o que a plataforma conecta',
     segmentsMenuAria: 'Nossos segmentos',
     segmentsMenuHeader: 'Nossos segmentos',
     // Taglines do mega-menu Soluções, chaveadas pelo slug do módulo.
     solutionTaglines: {
-      'os-digital': 'OS no app, com foto, checklist e assinatura do cliente.',
+      'os-digital': 'OS no app, agenda organizada e equipe no mapa ao vivo.',
       'sistema-pmoc': 'Relatório PMOC automático pela Lei 13.589/2018.',
       'sistema-crm': 'Funil de clientes e propostas até fechar o negócio.',
       'controle-financeiro': 'Contas a pagar, a receber e fluxo de caixa no controle.',
       'ponto-e-folha': 'Ponto da equipe, vales e folha sem planilha paralela.',
-      'emissao-de-nfse': 'Emita a nota fiscal de serviço direto pela plataforma.',
+      'emissao-de-nota-fiscal': 'NFS-e, NF-e e NFC-e ligadas a clientes, vendas e financeiro.',
       'portal-do-cliente': 'Seu cliente acompanha OS, orçamentos e histórico online.',
       'controle-de-estoque': 'Peças e materiais com baixa automática a cada OS.',
-      'orcamentos-e-contratos': 'Orçamento aprovado por link vira contrato e OS recorrente.',
+      'sistema-de-orcamentos': 'Precificação, proposta por link e conversão em OS.',
+      'gestao-de-contratos': 'Recorrências, documentos e visitas geradas no prazo.',
       'rastreamento-de-equipes': 'Equipe no mapa ao vivo e rota do dia organizada.',
       'area-do-tecnico': 'Calculadoras, gases e catálogo de equipamentos no bolso.',
+      'integracao-whatsapp': 'Avisos automáticos de OS e cobranças no número da empresa.',
+      'cobrancas-automaticas': 'Pix, boleto, cartão e recorrência ligados ao financeiro.',
+      'pdv-e-loja': 'Venda, caixa, fiado e estoque na mesma operação.',
     },
     // Taglines do mega-menu Segmentos, chaveadas pelo slug do segmento.
     segmentTaglines: {
@@ -78,17 +82,21 @@ export const ptBr = {
 
   // ── Nomes exibidos dos módulos no menu/rodapé, chaveados pelo slug ────────
   moduleLabels: {
-    'os-digital': 'Ordem de Serviço Digital',
+    'os-digital': 'OS Digital, Agenda e Rastreamento',
     'sistema-pmoc': 'PMOC',
     'sistema-crm': 'CRM & Vendas',
     'controle-financeiro': 'Financeiro',
-    'ponto-e-folha': 'Ponto & Folha (RH)',
-    'emissao-de-nfse': 'NFS-e',
+    'ponto-e-folha': 'Funcionários (RH)',
+    'emissao-de-nota-fiscal': 'Emissão de Nota Fiscal',
     'portal-do-cliente': 'Portal do Cliente',
     'controle-de-estoque': 'Estoque',
-    'orcamentos-e-contratos': 'Orçamentos & Contratos',
+    'sistema-de-orcamentos': 'Orçamentos',
+    'gestao-de-contratos': 'Contratos',
     'rastreamento-de-equipes': 'Rastreamento & Agenda',
     'area-do-tecnico': 'Área do Técnico™',
+    'integracao-whatsapp': 'WhatsApp integrado',
+    'cobrancas-automaticas': 'Cobranças',
+    'pdv-e-loja': 'PDV & Loja',
   },
 
   // ── Nomes exibidos dos segmentos no menu/rodapé/home, pelo slug ───────────
@@ -108,11 +116,12 @@ export const ptBr = {
   // ── Rodapé ────────────────────────────────────────────────────────────────
   footer: {
     tagline: 'Domine a execução do seu negócio.',
-    solutions: 'Soluções',
+    solutions: 'Funcionalidades',
     segments: 'Segmentos',
     institutional: 'Institucional',
     linkAbout: 'Quem somos',
     linkBlog: 'Blog',
+    linkDevelopers: 'Para desenvolvedores / API',
     linkTerms: 'Termos de uso',
     linkPrivacy: 'Política de Privacidade',
     copyright: 'Todos os direitos reservados. Feito para quem domina o campo.',
@@ -127,7 +136,7 @@ export const ptBr = {
     seeAllPlans: 'Ver todos os planos',
     faqHeading: 'Perguntas frequentes',
     problemLabel: 'O problema',
-    withDominex: 'Com o Dominex',
+    withDominex: 'Com a Dominex',
     // Planos (ponte). Valores comerciais são apresentados somente no atendimento.
     pricing: {
       heading: 'Planos para cada fase da sua operação',
@@ -137,15 +146,105 @@ export const ptBr = {
     // Só do SEGMENTO (no módulo essas seções vêm do data.*).
     segment: {
       painsHeading: 'As dores do dia a dia, resolvidas',
-      painsSubheading: 'Onde a operação trava no improviso, o Dominex entra no controle',
+      painsSubheading: 'Onde a operação trava no improviso, a Dominex entra no controle',
       featuresHeading: 'Tudo que sua operação precisa, em um só lugar',
       featuresSubheading:
-        'Do chamado ao relatório, o Dominex cobre cada etapa do serviço em campo',
-      testimonialsHeading: 'Quem usa o Dominex, não volta para o improviso',
+        'Do chamado ao relatório, a Dominex cobre cada etapa do serviço em campo',
+      testimonialsHeading: 'Quem usa a Dominex, não volta para o improviso',
     },
     // Seletor de nicho (Área do Técnico™).
     nicheSearchPlaceholder: 'Buscar nicho...',
     nicheEmpty: 'Nenhum nicho encontrado.',
+    moduleNav: {
+      overview: 'Visão geral',
+      workflow: 'Como funciona',
+      resources: 'Recursos',
+      faq: 'Dúvidas',
+    },
+    motionMock: {
+      label: 'Vídeo explicativo',
+      status: 'Motion em produção',
+      placeholder: 'Espaço reservado · vertical 9:16',
+      play: 'Reproduzir demonstração',
+      storyboard: 'Roteiro visual do módulo',
+      previewTitle: '{module} na Dominex',
+      sectionEyebrow: 'Demonstração da função',
+      sectionTitle: 'Veja {module} funcionando na prática',
+      sectionReady:
+        'Veja o fluxo desta função em um motion vertical, com leitura confortável no celular e presença no desktop.',
+      sectionPending:
+        'O vídeo motion vertical vai mostrar o fluxo desta função em menos de um minuto, com leitura confortável no celular e presença no desktop.',
+      sectionFormat: 'Formato vertical · 9:16 · com legendas',
+      frameStatus: 'Vídeo motion em produção',
+      framePlaceholder: 'Espaço reservado em 9:16',
+      videoAria: 'Demonstração em vídeo de {module}',
+      unsupported: 'Seu navegador não oferece suporte a vídeo HTML5.',
+    },
+    featureCarousel: {
+      eyebrow: 'Recursos',
+      pageChooser: 'Selecionar página do carrossel',
+      goToPage: 'Ir para a página {page} de {total}',
+      previous: 'Ver recursos anteriores',
+      next: 'Ver próximos recursos',
+      status: 'Página {page} de {total}. Exibindo recursos {from} a {to} de {count}.',
+      empty: 'Os recursos desta solução serão apresentados em breve.',
+    },
+    whatsappFloat: {
+      regionAria: 'Atendimento pelo WhatsApp',
+      responseTime: 'Respondemos em até 5 min',
+      buttonAria: 'Fale conosco no WhatsApp',
+    },
+    areaTechnician: {
+      heroPrefix: 'Cada serviço e ferramenta técnica',
+      heroHighlight: 'no mesmo app',
+      heroSubtitle:
+        'Da ordem de serviço ao cálculo técnico, sua equipe resolve o trabalho em campo pelo celular, com recursos pensados para cada segmento.',
+      exploreTools: 'Explorar ferramentas',
+      videoEyebrow: 'Veja funcionando',
+      videoTitle: 'O atendimento inteiro cabe na mão do técnico',
+      videoSubtitle:
+        'Veja como a equipe abre a OS, consulta informações e conclui o serviço em uma experiência feita para o celular.',
+      videoBadges: ['Vídeo vertical 9:16', 'Controle de som', 'Sem reprodução automática'],
+      videoAria: 'Demonstração em vídeo da Área do Técnico',
+      videoUnsupported: 'Seu navegador não oferece suporte a vídeo HTML5.',
+      toolsEyebrow: 'Ferramentas por segmento',
+      toolsTitle: 'A mesma Área do Técnico, adaptada ao trabalho de cada equipe',
+      toolsSubtitle:
+        'Escolha um segmento para conhecer as ferramentas, o que cada uma resolve e o que já está disponível no produto.',
+      segmentPicker: 'Escolha um segmento',
+      available: 'Disponível agora',
+      planned: 'Em planejamento',
+      toolSingular: 'ferramenta',
+      toolPlural: 'ferramentas',
+      toolListTitle: 'O que o técnico encontra aqui',
+      plannedNote: 'Prévia do conjunto planejado para este segmento.',
+      genericSegmentDescription: 'Ferramentas pensadas para o trabalho diário de {segment}.',
+      realPreviewAlt: 'Tela real das ferramentas para {segment}',
+      plannedPreviewAlt: 'Prévia da seleção de ferramentas na Área do Técnico',
+      toolsCta: 'Quero ver a Área do Técnico na minha empresa',
+      flowEyebrow: 'Do chamado à entrega',
+      flowTitle: 'O campo trabalha sem depender do escritório',
+      flowSubtitle:
+        'Informação pronta para executar, evidências organizadas e uma conclusão profissional na frente do cliente.',
+      flowSteps: [
+        {
+          title: 'Recebe a OS completa',
+          description: 'Cliente, endereço, equipamento, histórico e checklist chegam organizados no celular.',
+          alt: 'Tela inicial real da Área do Técnico com as ordens de serviço',
+        },
+        {
+          title: 'Resolve sem improviso',
+          description: 'Ferramentas e referências do segmento ajudam o técnico a decidir e calcular no local.',
+          alt: 'Tela real das ferramentas disponíveis na Área do Técnico',
+        },
+        {
+          title: 'Entrega na hora',
+          description: 'O cliente confere, assina no celular e recebe um atendimento com começo, meio e fim.',
+          alt: 'Tela real do relatório compartilhado ao concluir a ordem de serviço',
+        },
+      ],
+      flowBadges: ['Instala pelo navegador', 'Fotos dentro da OS', 'Ferramentas no mesmo acesso'],
+    },
   },
 
   // ── Home ────────────────────────────────────────────────────────────────
@@ -156,52 +255,44 @@ export const ptBr = {
       srHeadline:
         'Sistema de ordem de serviço, PMOC e gestão para refrigeração e equipes de campo. Domine a execução do seu negócio.',
       subtitle:
-        'Chega de planilha, WhatsApp e retrabalho. O Dominex centraliza suas OS, rastreia sua equipe e entrega dados reais para você crescer.',
+        'Chega de planilhas soltas, informação espalhada e retrabalho. A Dominex conecta atendimento, campo, WhatsApp, cobranças, financeiro, estoque e loja para sua empresa crescer com controle.',
       ctaPrimary: 'Falar no WhatsApp',
       ctaSecondary: 'Conhecer recursos',
       videoUnsupported: 'Seu navegador não suporta vídeo HTML5.',
-      videoLabel: 'Demonstração do Dominex',
-    },
-    logos: {
-      eyebrow: 'Empresas que já dominam suas operações com o Dominex',
+      videoLabel: 'Demonstração da Dominex',
     },
     problemSolution: {
       problemsTitle: 'Sua operação travada no improviso?',
-      solutionsTitle: 'Com o Dominex, você tem controle total',
+      solutionsTitle: 'Com a Dominex, você tem controle total',
       problems: [
         'OS em papel ou Excel perdido',
         'Técnico sem informação no campo',
-        'Cliente ligando "cadê meu técnico?"',
+        'Cliente sem aviso sobre técnico, serviço ou cobrança',
         'Relatórios feitos na mão, horas depois',
         'Sem visibilidade do que está acontecendo agora',
       ],
       solutions: [
         'OS digital criada em segundos',
         'App para o técnico com tudo que precisa',
-        'Rastreamento em tempo real no mapa',
+        'WhatsApp e rastreamento atualizando o cliente',
         'Relatórios automáticos ao finalizar',
         'Dashboard com KPIs ao vivo',
       ],
     },
     features: {
       heading: 'Tudo que sua operação precisa, em um só lugar',
-      subheading: 'Do chamado ao faturamento, o Dominex cobre cada etapa do serviço',
+      subheading: 'Do chamado ao faturamento, a Dominex cobre cada etapa do serviço',
       cta: 'Falar no WhatsApp',
       items: [
         {
-          title: 'Ordens de serviço digitais',
+          title: 'OS Digital, Agenda e Rastreamento',
           description:
-            'Crie, atribua e acompanhe OS com foto, checklist, resposta em vídeo, assinatura digital e histórico completo. Acabou o papel e o retrabalho.',
+            'Crie e acompanhe OS com fotos, checklist e assinatura. Organize a agenda, distribua os chamados e veja a equipe no mapa ao vivo.',
         },
         {
           title: 'App do técnico em campo',
           description:
             'Aplicativo instalável no celular: o técnico recebe a OS, faz check-in, tira fotos e coleta a assinatura do cliente, direto do campo.',
-        },
-        {
-          title: 'Agenda e rastreamento de equipes',
-          description:
-            'Veja a equipe no mapa ao vivo, organize a rota do dia e distribua chamados pelo técnico mais próximo, sem conflito de horário.',
         },
         {
           title: 'PMOC automático',
@@ -219,14 +310,14 @@ export const ptBr = {
             'Contas a pagar e a receber, fluxo de caixa, cartões e categorias. Saiba quanto entra, quanto sai e o que sobra de verdade.',
         },
         {
-          title: 'Ponto e folha (RH)',
+          title: 'Funcionários (RH)',
           description:
             'Controle de ponto da equipe, vales, bônus e folha de pagamento. Recibos prontos, sem planilha paralela.',
         },
         {
-          title: 'Emissão de NFS-e (Nota Fiscal de Serviço)',
+          title: 'Emissão de Nota Fiscal',
           description:
-            'Emita a nota fiscal de serviço direto pela plataforma, por cliente, com o código fiscal do seu município.',
+            'Emita NFS-e, NF-e e NFC-e direto pela plataforma, com clientes, vendas e financeiro no mesmo fluxo.',
         },
         {
           title: 'Portal do cliente',
@@ -239,19 +330,39 @@ export const ptBr = {
             'Peças e materiais com baixa automática a cada OS. Saiba o que tem em mãos antes de prometer prazo ao cliente.',
         },
         {
-          title: 'Orçamentos e contratos',
+          title: 'Orçamentos',
           description:
-            'Orçamento aprovado por link vira contrato e OS recorrente. Do "fechou" ao serviço agendado sem digitar tudo de novo.',
+            'Forme o preço com custos e BDI, envie a proposta por link e transforme a aprovação em OS sem digitar tudo de novo.',
+        },
+        {
+          title: 'Contratos',
+          description:
+            'Organize vigência, unidades e documentos. A recorrência gera as próximas visitas e mantém o histórico do contrato em dia.',
         },
         {
           title: 'Área do Técnico™',
           description:
-            'Calculadoras, tabelas de gases e catálogo de equipamentos no bolso do técnico — a caixa de ferramentas que faltava no celular dele.',
+            'Calculadoras, tabelas de gases e catálogo de equipamentos no bolso do técnico. É a caixa de ferramentas que faltava no celular dele.',
         },
         {
           title: 'Relatórios e indicadores',
           description:
             'Painel com OS por status, tempo médio de atendimento e avaliação dos clientes. Decisões baseadas em dados, não no achismo.',
+        },
+        {
+          title: 'WhatsApp integrado',
+          description:
+            'Conecte o número da empresa por QR Code e automatize avisos de técnico a caminho, serviço iniciado, OS concluída e etapas da cobrança.',
+        },
+        {
+          title: 'Cobranças com Pix, boleto e cartão',
+          description:
+            'Gere cobranças avulsas ou recorrentes, compartilhe o link de pagamento e mantenha o recebimento conciliado com o financeiro.',
+        },
+        {
+          title: 'PDV, caixa e loja',
+          description:
+            'Venda no balcão com código de barras, pagamento misto, fiado, baixa de estoque e controle do turno de caixa na mesma operação.',
         },
       ],
     },
@@ -294,7 +405,7 @@ export const ptBr = {
       },
     },
     testimonials: {
-      heading: 'Quem usa o Dominex, não volta para o improviso',
+      heading: 'Quem usa a Dominex, não volta para o improviso',
       items: [
         {
           quote:
@@ -373,7 +484,7 @@ export const ptBr = {
             'Tudo do Pro +',
             '15 usuários inclusos',
             'CRM / Funil de vendas',
-            'Emissão de NFS-e (Nota Fiscal de Serviço)',
+            'Emissão de Nota Fiscal',
             'White Label (sua marca)',
             'Suporte prioritário',
           ],
@@ -389,7 +500,7 @@ export const ptBr = {
       heading: 'Perguntas frequentes',
       items: [
         {
-          q: 'O Dominex serve para qual tipo de empresa?',
+          q: 'A Dominex serve para qual tipo de empresa?',
           a: 'Para empresas que prestam serviços técnicos em campo: refrigeração e climatização, PMOC, manutenção predial, elétrica, dedetização, telecom, segurança eletrônica, instalações, assistência técnica e qualquer operação que envolva equipes externas e ordens de serviço.',
         },
         {
@@ -398,7 +509,7 @@ export const ptBr = {
         },
         {
           q: 'Como funciona o teste grátis?',
-          a: 'São 7 dias com acesso completo ao plano escolhido, sem precisar de cartão de crédito. Você pode cancelar a qualquer momento e seus dados ficam preservados caso decida assinar depois.',
+          a: 'São 7 dias com acesso a todos os módulos, sem precisar de cartão de crédito. A DomiFlix destaca como trilha principal a base do sistema e as funções do plano escolhido; os demais módulos ficam livres para você conhecer antes de decidir.',
         },
         {
           q: 'Os dados das ordens de serviço ficam guardados para sempre?',
@@ -406,7 +517,7 @@ export const ptBr = {
         },
         {
           q: 'Consigo controlar PMOC e contratos recorrentes?',
-          a: 'Sim. O Dominex gera automaticamente as ordens de serviço dos contratos de manutenção (mensal, bimestral, trimestral etc.) e mantém o calendário PMOC organizado por equipamento e cliente.',
+          a: 'Sim. A Dominex gera automaticamente as ordens de serviço dos contratos de manutenção (mensal, bimestral, trimestral etc.) e mantém o calendário PMOC organizado por equipamento e cliente.',
         },
         {
           q: 'Posso personalizar formulários, checklists e relatórios?',
@@ -434,7 +545,7 @@ export const ptBr = {
         },
         {
           q: 'Meus dados estão seguros? E a LGPD?',
-          a: 'Utilizamos infraestrutura em nuvem (Supabase) com criptografia em trânsito e em repouso, backups automáticos e isolamento entre empresas (multi-tenant). Estamos em processo de adequação contínua à LGPD — você pode acessar nossa Política de Privacidade para detalhes sobre coleta, uso e seus direitos como titular.',
+          a: 'Utilizamos infraestrutura em nuvem (Supabase) com criptografia em trânsito e em repouso, backups automáticos e isolamento entre empresas (multi-tenant). Estamos em processo de adequação contínua à LGPD. Você pode acessar nossa Política de Privacidade para detalhes sobre coleta, uso e seus direitos como titular.',
         },
       ],
     },
@@ -459,17 +570,17 @@ export const ptBr = {
     missionTitle: 'Nossa missão',
     missionP1Strong: 'ordem de serviço, PMOC e gestão',
     missionP1:
-      'A Dominex é um sistema de {strong} feito para empresas de serviço e equipes de campo — refrigeração e climatização, elétrica, energia solar, CFTV, provedores de internet, elevadores, dedetização, limpeza e conservação, construção e muito mais.',
+      'A Dominex é um sistema de {strong} feito para empresas de serviço e equipes de campo: refrigeração e climatização, elétrica, energia solar, CFTV, provedores de internet, elevadores, dedetização, limpeza, construção e muito mais.',
     missionP2:
       'Acreditamos que o técnico não deveria perder tempo com ordem de serviço em papel, nem o gestor deveria ficar no escuro sobre o que acontece na rua. Por isso reunimos num lugar só o que antes vivia espalhado em caderno, grupo de WhatsApp e planilha: CRM, orçamento, contrato, ordem de serviço, PMOC, rastreamento de equipe, controle de estoque, financeiro e folha.',
     missionP3:
-      'Nosso compromisso é simples: deixar a operação organizada, rastreável e fácil de tocar — pra você focar no serviço bem feito, não na burocracia.',
+      'Nosso compromisso é simples: deixar a operação organizada, rastreável e fácil de tocar. Assim, você foca no serviço bem feito, não na burocracia.',
     valuesTitle: 'No que a gente acredita',
     valuesSubtitle: 'Os princípios que guiam cada decisão sobre o produto.',
     values: [
       {
         title: 'Tudo no celular do técnico',
-        body: 'Equipe em campo precisa de tudo na mão. O app é instalável no celular e o técnico abre a ordem de serviço, registra foto, checklist e assinatura direto no local do serviço — sem papel e sem voltar pro escritório.',
+        body: 'Equipe em campo precisa de tudo na mão. O app é instalável no celular e o técnico abre a ordem de serviço, registra foto, checklist e assinatura direto no local do serviço, sem papel e sem voltar pro escritório.',
       },
       {
         title: 'Feito pra quem domina o campo',
@@ -477,7 +588,7 @@ export const ptBr = {
       },
       {
         title: 'Rápido de começar',
-        body: 'Sem implantação interminável. Você cria a conta, cadastra sua equipe e já está emitindo ordem de serviço no mesmo dia — sem cartão pra testar.',
+        body: 'Sem implantação interminável. Você cria a conta, cadastra sua equipe e já está emitindo ordem de serviço no mesmo dia, sem cartão pra testar.',
       },
       {
         title: 'Seus dados são seus',
@@ -497,11 +608,11 @@ export const ptBr = {
       'São 7 dias grátis, sem cartão de crédito. Cadastre sua equipe e comece a emitir ordem de serviço hoje mesmo.',
   },
 
-  // ── Política de Privacidade (texto jurídico — validar antes de oficializar) ─
+  // ── Política de Privacidade (texto jurídico, validar antes de oficializar) ─
   privacidade: {
     back: '← Voltar',
     title: 'Política de Privacidade',
-    version: 'Versão 1.0 — última atualização: abril de 2026',
+    version: 'Versão 1.0. Última atualização: abril de 2026',
     s1Title: '1. Identificação do Controlador',
     s1P1Strong: 'Dominex Tecnologia',
     s1P1: '{strong} é a controladora dos dados pessoais tratados nesta plataforma, nos termos da Lei nº 13.709/2018 (LGPD).',
@@ -517,7 +628,7 @@ export const ptBr = {
       { strong: 'De geolocalização:', rest: 'coordenadas GPS dos técnicos durante atendimentos (a cada 30s)' },
       { strong: 'Biométricos/imagem:', rest: 'selfies para registro de ponto eletrônico e fotos de equipamentos' },
       { strong: 'De clientes da empresa-usuária:', rest: 'nome, CPF/CNPJ, e-mail, telefone, endereço, equipamentos' },
-      { strong: 'Financeiros:', rest: 'registros de transações (sem dados de cartão de crédito — processados por gateways externos)' },
+      { strong: 'Financeiros:', rest: 'registros de transações (sem dados de cartão de crédito, processados por gateways externos)' },
     ],
     s3Title: '3. Finalidades e Bases Legais (Art. 7º e 11 LGPD)',
     s3ColPurpose: 'Finalidade',
@@ -533,10 +644,10 @@ export const ptBr = {
     ] as [string, string][],
     s4Title: '4. Compartilhamento com Terceiros (Sub-processadores)',
     s4Items: [
-      { strong: 'Supabase Inc.', rest: '(EUA) — banco de dados, autenticação e armazenamento de arquivos. Transferência internacional baseada em cláusulas contratuais padrão (Art. 33 LGPD).' },
-      { strong: 'OpenStreetMap/Nominatim', rest: '— geocodificação de endereços (proxiado pelo servidor, sem envio direto do IP do usuário).' },
-      { strong: 'ViaCEP', rest: '— consulta de CEP para autopreenchimento de endereço.' },
-      { strong: 'Gateways de pagamento', rest: '(Stripe/Pagar.me/Mercado Pago) — processamento de cobranças. Não temos acesso a dados de cartão.' },
+      { strong: 'Supabase Inc.', rest: '(EUA), banco de dados, autenticação e armazenamento de arquivos. Transferência internacional baseada em cláusulas contratuais padrão (Art. 33 LGPD).' },
+      { strong: 'OpenStreetMap/Nominatim:', rest: 'geocodificação de endereços (proxiado pelo servidor, sem envio direto do IP do usuário).' },
+      { strong: 'ViaCEP:', rest: 'consulta de CEP para autopreenchimento de endereço.' },
+      { strong: 'Gateways de pagamento', rest: '(Stripe/Pagar.me/Mercado Pago), processamento de cobranças. Não temos acesso a dados de cartão.' },
     ],
     s4Note: 'Não vendemos, alugamos ou compartilhamos dados pessoais com terceiros para fins publicitários.',
     s5Title: '5. Retenção de Dados',
@@ -577,17 +688,17 @@ export const ptBr = {
     s10NotePost: '.',
   },
 
-  // ── Termos de Uso (texto jurídico — validar antes de oficializar) ──────────
+  // ── Termos de Uso (texto jurídico, validar antes de oficializar) ──────────
   termos: {
     back: '← Voltar',
     title: 'Termos de Uso',
-    version: 'Versão 1.0 — última atualização: abril de 2026',
+    version: 'Versão 1.0. Última atualização: abril de 2026',
     s1Title: '1. Aceitação dos Termos',
     s1Pre: 'Ao se cadastrar e utilizar a plataforma Dominex, você ("Usuário") concorda com estes Termos de Uso e com nossa ',
     s1Link: 'Política de Privacidade',
     s1Post: '. Caso não concorde, não utilize o serviço.',
     s2Title: '2. Descrição do Serviço',
-    s2P: 'O Dominex é uma plataforma SaaS (Software as a Service) para gestão de equipes de campo, ordens de serviço, clientes, equipamentos, financeiro e recursos humanos, destinada a empresas prestadoras de serviços técnicos.',
+    s2P: 'A Dominex é uma plataforma SaaS (Software as a Service) para gestão de equipes de campo, ordens de serviço, clientes, equipamentos, financeiro e recursos humanos, destinada a empresas prestadoras de serviços técnicos.',
     s3Title: '3. Cadastro e Conta',
     s3Items: [
       'O Usuário é responsável pela veracidade das informações fornecidas no cadastro.',
@@ -596,9 +707,9 @@ export const ptBr = {
       'Informe imediatamente qualquer acesso não autorizado à sua conta.',
     ],
     s4Title: '4. Período de Teste',
-    s4P: 'Oferecemos um período gratuito de 7 dias com acesso ao plano selecionado. Ao término do período, a conta é suspensa automaticamente caso não haja assinatura ativa. Os dados são mantidos por 90 dias adicionais para eventual reativação.',
+    s4P: 'Oferecemos um período gratuito de 7 dias com acesso aos módulos disponíveis para avaliação. O plano selecionado orienta a trilha principal de onboarding e a futura contratação. Ao término do período, a conta é suspensa automaticamente caso não haja assinatura ativa. Os dados são mantidos por 90 dias adicionais para eventual reativação.',
     s5Title: '5. Propriedade dos Dados',
-    s5Pre: 'Os dados inseridos na plataforma (clientes, ordens de serviço, funcionários, financeiro) são de propriedade da empresa-usuária. O Dominex os processa exclusivamente para prestar o serviço contratado, nos termos da ',
+    s5Pre: 'Os dados inseridos na plataforma (clientes, ordens de serviço, funcionários, financeiro) são de propriedade da empresa-usuária. A Dominex os processa exclusivamente para prestar o serviço contratado, nos termos da ',
     s5Link: 'Política de Privacidade',
     s5Post: '.',
     s6Title: '6. Uso Aceitável',
@@ -615,16 +726,16 @@ export const ptBr = {
     s8Title: '8. Suspensão e Cancelamento',
     s8P: 'Reservamo-nos o direito de suspender ou encerrar contas que violem estes Termos, após notificação ao Usuário. O cancelamento voluntário pode ser feito a qualquer momento nas configurações da conta.',
     s9Title: '9. Limitação de Responsabilidade',
-    s9P: 'O Dominex não se responsabiliza por danos indiretos, perda de dados por falha do Usuário em realizar backups próprios, ou interrupções causadas por força maior ou falhas de terceiros (provedores de internet, infraestrutura de nuvem).',
+    s9P: 'A Dominex não se responsabiliza por danos indiretos, perda de dados por falha do Usuário em realizar backups próprios, ou interrupções causadas por força maior ou falhas de terceiros (provedores de internet, infraestrutura de nuvem).',
     s10Title: '10. Alterações nos Termos',
     s10P: 'Podemos atualizar estes Termos periodicamente. Alterações significativas serão comunicadas com antecedência mínima de 30 dias por e-mail. O uso continuado do serviço após as alterações implica aceitação.',
     s11Title: '11. Foro e Lei Aplicável',
-    s11P: 'Estes Termos são regidos pelas leis brasileiras. Fica eleito o foro da Comarca de São Paulo — SP para dirimir quaisquer controvérsias.',
+    s11P: 'Estes Termos são regidos pelas leis brasileiras. Fica eleito o foro da Comarca de São Paulo/SP para dirimir quaisquer controvérsias.',
     s12Title: '12. Contato',
     s12Pre: 'Dúvidas sobre estes Termos: ',
   },
 
-  // ── Cadastro (/cadastro) — stepper de 5 etapas ─────────────────────────────
+  // ── Cadastro (/cadastro), stepper de 5 etapas ─────────────────────────────
   // Texto EXATO cravado hoje no Registration.tsx (só movido pra chave). Site
   // público: sem white-label, marca "Dominex". en/es/fr traduzem; ausências
   // caem no pt-br.
@@ -644,7 +755,7 @@ export const ptBr = {
       success: 'Sucesso',
     },
 
-    // Etapa 1 — Dados da empresa
+    // Etapa 1, Dados da empresa
     companyName: 'Nome da Empresa*',
     companyNamePlaceholder: 'Ex: Minha Empresa Ltda',
     country: 'País da empresa*',
@@ -679,15 +790,15 @@ export const ptBr = {
     state: 'UF',
     statePlaceholder: 'UF',
 
-    // Etapa 2 — Segmento
+    // Etapa 2, Segmento
     segmentTitle: 'Qual o segmento do seu negócio?',
     segmentSubtitle: 'Selecione pra personalizar sua experiência',
 
-    // Etapa 3 — Origem
+    // Etapa 3, Origem
     originTitle: 'Como você nos conheceu?',
     originSubtitle: 'Selecione de onde você veio',
 
-    // Etapa 4 — Acesso
+    // Etapa 4, Acesso
     accessEmailLabel: 'Email de acesso:',
     password: 'Senha*',
     passwordPlaceholder: 'Crie sua senha',
@@ -844,7 +955,7 @@ export const ptBr = {
 
       // Toasts
       toastCodeSentTitle: 'Código enviado',
-      toastCodeSentDesc: 'Verifique seu email — pode levar até 1 minuto.',
+      toastCodeSentDesc: 'Verifique seu email. O envio pode levar até 1 minuto.',
       toastErrorTitle: 'Erro',
       toastSendCodeFallback: 'Não foi possível enviar o código',
       toastInvalidCodeTitle: 'Código inválido',
@@ -885,7 +996,7 @@ export const ptBr = {
   // Só o "chrome" (badges, títulos de seção, busca, empty states, CTA da sidebar
   // e rótulos de card). O CONTEÚDO dos posts vem do banco, filtrado por locale,
   // e NÃO passa por aqui. Texto EXATO cravado hoje no JSX (só movido pra chave).
-  // Site público: marca "Dominex", sem white-label. Sem travessão (—).
+  // Site público: marca "Dominex", sem white-label e sem travessão na copy.
   blog: {
     // Cabeçalho da listagem
     badge: 'Blog da Dominex',
@@ -893,7 +1004,7 @@ export const ptBr = {
     heroHighlight: 'domina o campo',
     subtitle: 'Ordem de serviço, PMOC, gestão de equipe e como tirar a operação do papel.',
     searchPlaceholder: 'Buscar artigos...',
-    metaTitle: 'Blog — Dominex | Gestão para equipes de campo',
+    metaTitle: 'Blog | Dominex | Gestão para equipes de campo',
     metaDescription:
       'Artigos práticos sobre ordem de serviço, PMOC, gestão de equipe e como tirar a operação de campo do papel. Conteúdo da Dominex.',
     allCategories: 'Todos',

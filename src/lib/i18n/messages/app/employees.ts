@@ -328,6 +328,14 @@ export const employees = {
       newEmployee: 'Novo Funcionário',
       fabLabel: 'Funcionário',
     },
+    listDetail: {
+      listTitle: 'Lista de Funcionários',
+      movements: 'Movimentações',
+      selectPrompt: 'Selecione um funcionário',
+      selectPromptDescription: 'Escolha um funcionário na lista para abrir a ficha e as ações disponíveis.',
+      loadError: 'Não foi possível carregar os funcionários',
+      retry: 'Tentar novamente',
+    },
 
     // ── Empty states ────────────────────────────────────────────────────────
     empty: {
@@ -1464,6 +1472,14 @@ export const employees = {
       newEmployee: 'New Employee',
       fabLabel: 'Employee',
     },
+    listDetail: {
+      listTitle: 'Employee List',
+      movements: 'Transactions',
+      selectPrompt: 'Select an employee',
+      selectPromptDescription: 'Pick an employee from the list to open their profile and available actions.',
+      loadError: 'Employees could not be loaded',
+      retry: 'Try again',
+    },
     empty: {
       noResults: 'No employee found',
       noResultsDescription: 'Try a different search',
@@ -2560,6 +2576,14 @@ export const employees = {
       newEmployee: 'Nuevo Empleado',
       fabLabel: 'Empleado',
     },
+    listDetail: {
+      listTitle: 'Lista de Empleados',
+      movements: 'Movimientos',
+      selectPrompt: 'Selecciona un empleado',
+      selectPromptDescription: 'Elige un empleado de la lista para abrir su ficha y las acciones disponibles.',
+      loadError: 'No se pudieron cargar los empleados',
+      retry: 'Intentar de nuevo',
+    },
     empty: {
       noResults: 'Ningún empleado encontrado',
       noResultsDescription: 'Intenta una búsqueda diferente',
@@ -3655,6 +3679,14 @@ export const employees = {
       sortOldest: 'Plus ancien',
       newEmployee: 'Nouvel employé',
       fabLabel: 'Employé',
+    },
+    listDetail: {
+      listTitle: 'Liste des employés',
+      movements: 'Opérations',
+      selectPrompt: 'Sélectionnez un employé',
+      selectPromptDescription: 'Choisissez un employé dans la liste pour ouvrir sa fiche et les actions disponibles.',
+      loadError: 'Impossible de charger les employés',
+      retry: 'Réessayer',
     },
     empty: {
       noResults: 'Aucun employé trouvé',

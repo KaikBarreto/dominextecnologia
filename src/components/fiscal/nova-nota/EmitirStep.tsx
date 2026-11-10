@@ -3,6 +3,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney, formatDate } from '@/lib/format';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
+import { Button } from '@/components/ui/button';
 import type { NfseCustomer, NfseServicoState, NfseValoresState, NfseTaxResult } from './types';
 
 interface EmitirStepProps {
@@ -20,10 +21,11 @@ interface EmitirStepProps {
   servico: NfseServicoState;
   valores: NfseValoresState;
   taxes: NfseTaxResult;
-  /** Bloqueios de habilitação (registro + certificado). Vazio = ok. */
+  /** Bloqueios de habilitação (município + certificado). Vazio = ok. */
   habilitacaoErrors?: string[];
   /** Avisos não-bloqueantes (ex: sem inscrição municipal). */
   habilitacaoWarnings?: string[];
+  onFixHabilitacao?: () => void;
 }
 
 export function EmitirStep({
@@ -37,6 +39,7 @@ export function EmitirStep({
   taxes,
   habilitacaoErrors = [],
   habilitacaoWarnings = [],
+  onFixHabilitacao,
 }: EmitirStepProps) {
   const { locale, currency, timezone } = useAppLocaleContext();
   const s = MESSAGES[locale].app.nfse.stepper;
@@ -48,7 +51,7 @@ export function EmitirStep({
     : null;
 
   const dataFormatada = dataCompetencia
-    ? formatDate(dataCompetencia, locale as any, timezone)
+    ? formatDate(dataCompetencia, locale, timezone)
     : '—';
 
   // tpRetIssqn '1' = NÃO retido (ISS devido pelo prestador); '2'/'3' = retido.
@@ -64,6 +67,17 @@ export function EmitirStep({
             {habilitacaoErrors.map((msg, i) => (
               <p key={i}>{msg}</p>
             ))}
+            {onFixHabilitacao && (
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                className="h-auto p-0 text-destructive-foreground underline underline-offset-2"
+                onClick={onFixHabilitacao}
+              >
+                {s.emitir.habilitacaoAction}
+              </Button>
+            )}
           </div>
         </NoticeBanner>
       )}
@@ -145,7 +159,7 @@ export function EmitirStep({
           <Section icon={DollarSign} title={s.emitir.sections.valores}>
             <SummaryLine
               label={s.emitir.fields.valorServico}
-              value={formatMoney(valores.valorServico, currency, locale as any)}
+              value={formatMoney(valores.valorServico, currency, locale)}
             />
             <SummaryLine
               label={s.emitir.fields.aliquotaIss}
@@ -153,18 +167,18 @@ export function EmitirStep({
             />
             <SummaryLine
               label={s.emitir.fields.issValor}
-              value={`${formatMoney(taxes.issValor, currency, locale as any)} (${issRetidoLabel})`}
+              value={`${formatMoney(taxes.issValor, currency, locale)} (${issRetidoLabel})`}
             />
             {taxes.totalRetencoesFederais > 0 && (
               <SummaryLine
                 label={s.emitir.fields.retencoesFederais}
-                value={formatMoney(taxes.totalRetencoesFederais, currency, locale as any)}
+                value={formatMoney(taxes.totalRetencoesFederais, currency, locale)}
               />
             )}
             <div className="flex items-center justify-between py-2 mt-1 border-t border-border/60">
               <span className="font-bold text-foreground">{s.emitir.fields.valorLiquido}</span>
               <span className="font-bold text-primary tabular-nums text-base">
-                {formatMoney(taxes.valorLiquido, currency, locale as any)}
+                {formatMoney(taxes.valorLiquido, currency, locale)}
               </span>
             </div>
           </Section>

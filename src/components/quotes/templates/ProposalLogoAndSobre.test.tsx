@@ -108,6 +108,34 @@ describe('logo_scale — proporcional sobre a altura-base, idêntico nos 4 templ
   }
 });
 
+describe('assinatura da plataforma — respeita a marca própria em todos os modelos', () => {
+  for (const { name, Component } of TEMPLATES) {
+    it(`${name}: mantém a empresa emitente e oculta a Dominex ao ativar white-label`, () => {
+      const props: ProposalTemplateProps = {
+        quote: buildQuote(),
+        company: {
+          id: 'empresa-demo', name: 'Empresa de demonstração', white_label_enabled: false,
+          created_at: '2026-11-08T12:00:00Z', updated_at: '2026-11-08T12:00:00Z',
+        },
+        items: [item],
+      };
+      render(Component, props);
+      const signature = container.querySelector('[data-proposal-platform-brand]');
+      expect(signature?.querySelector('a')?.href).toBe('https://dominex.app/');
+      expect(signature?.querySelector('img')?.alt).toBe('Dominex');
+      expect(container.textContent).toContain('Empresa de demonstração');
+
+      render(Component, { ...props, company: { ...props.company!, white_label_enabled: true } });
+      expect(container.querySelector('[data-proposal-platform-brand]')).toBeNull();
+      expect(container.textContent).not.toContain('dominex.app');
+      expect(container.textContent).toContain('Empresa de demonstração');
+
+      render(Component, { ...props, company: null });
+      expect(container.querySelector('[data-proposal-platform-brand]')).toBeNull();
+    });
+  }
+});
+
 describe('seção "Sobre a empresa" — customText honrado nos 4 templates', () => {
   for (const { name, Component } of TEMPLATES) {
     it(`${name}: sem customText, mostra a frase automática de hoje`, () => {

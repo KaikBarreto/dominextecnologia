@@ -5,7 +5,7 @@ A API Pública Dominex é exclusiva para integrações entre servidores. A chave
 - Base: `https://api.dominex.app/v1`
 - Contrato: `https://api.dominex.app/v1/openapi.json`
 - Autenticação: `Authorization: Bearer dmx_live_<public_id>.<secret>`
-- Criação de OS: exige `Idempotency-Key`
+- Criação de OS e mutações de cards CRM: exigem `Idempotency-Key`
 - Datas: ISO 8601 com offset; o timezone canônico vem de `GET /capabilities`
 - Rate limit: 60 requisições/minuto, 30 consultas de disponibilidade/minuto e 10 mutações/minuto por chave
 - Tamanho máximo do corpo: 64 KiB
@@ -18,6 +18,10 @@ A API Pública Dominex é exclusiva para integrações entre servidores. A chave
 4. Resolva o cliente por identificador exato em `/customers/resolve`.
 5. Crie a OS com uma `Idempotency-Key` estável para a tentativa.
 6. Em timeout, repita a mesma chave e exatamente o mesmo JSON. Nunca gere outra chave para “tentar de novo”.
+
+Para CRM, consulte `/crm/pipelines`, liste com `/crm/cards` e use POST/PATCH com
+idempotência. O servidor deriva `pipeline_id` de `stage_id`, restringe a API a
+funis comerciais e não oferece exclusão física. Guia: `/docs/guias/cards-crm`.
 
 ## cURL
 
@@ -73,6 +77,7 @@ if (!response.ok) {
 - Em `429`, respeite `Retry-After` e não faça loop agressivo.
 - Em `500` ou `503`, preserve a mesma `Idempotency-Key` antes de repetir uma criação.
 - Não envie diagnóstico, solução, preço, assinatura, `company_id`, `created_by` ou status: esses campos são recusados.
+- Em cards, não envie `pipeline_id`; use uma etapa devolvida por `/crm/pipelines`.
 
 O arquivo [`openapi.v1.yaml`](./openapi.v1.yaml) é a fonte canônica do contrato.
 

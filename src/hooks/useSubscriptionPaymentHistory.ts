@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { isSubscriptionNfseProcessing } from '@/lib/subscriptionNfse';
 
 /**
  * Histórico de pagamentos da assinatura SaaS (Auctus) para o TENANT logado.
@@ -41,6 +42,13 @@ export interface SubscriptionPaymentHistoryItem {
   paidAt: string | null;
   dueDate: string | null;
   invoiceUrl: string | null;
+  nfseStatus: string | null;
+  nfseInvoiceId: string | null;
+  nfsePdfUrl: string | null;
+  nfseXmlUrl: string | null;
+  nfseNumber: string | null;
+  nfseError: string | null;
+  nfseRequestedAt: string | null;
 }
 
 interface UseSubscriptionPaymentHistoryOptions {
@@ -78,7 +86,7 @@ export function useSubscriptionPaymentHistory(
       const { data, error } = await supabase
         .from('subscription_payments')
         .select(
-          'id, amount, status, billing_type, billing_cycle, type, created_at, paid_at, due_date, invoice_url',
+          'id, amount, status, billing_type, billing_cycle, type, created_at, paid_at, due_date, invoice_url, nfse_status, nfse_invoice_id, nfse_pdf_url, nfse_xml_url, nfse_number, nfse_error, nfse_requested_at',
         )
         .eq('company_id', companyId)
         .order('created_at', { ascending: false });
@@ -97,7 +105,21 @@ export function useSubscriptionPaymentHistory(
         paidAt: p.paid_at,
         dueDate: p.due_date,
         invoiceUrl: p.invoice_url,
+        nfseStatus: p.nfse_status,
+        nfseInvoiceId: p.nfse_invoice_id,
+        nfsePdfUrl: p.nfse_pdf_url,
+        nfseXmlUrl: p.nfse_xml_url,
+        nfseNumber: p.nfse_number,
+        nfseError: p.nfse_error,
+        nfseRequestedAt: p.nfse_requested_at,
       }));
+    },
+    refetchInterval: (query) => {
+      const payments = query.state.data as SubscriptionPaymentHistoryItem[] | undefined;
+      return payments?.some((payment) =>
+        isSubscriptionNfseProcessing(payment.nfseStatus, payment.nfseRequestedAt))
+        ? 15_000
+        : false;
     },
   });
 }

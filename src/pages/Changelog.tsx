@@ -1,10 +1,7 @@
 import { useState, useMemo } from 'react';
-import { Search, History, Sparkles, Wrench, Bug, Shield } from 'lucide-react';
+import { Search, History, Sparkles, Wrench, Bug, Shield, ChevronDown, X } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, ChevronUp } from 'lucide-react';
 import { APP_VERSION } from '@/config/version';
 import { cn, fuzzyIncludesAny } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -25,22 +22,1280 @@ export interface ChangelogEntry {
   changes: Change[];
 }
 
-const CATEGORY_ICONS: Record<ChangeCategory, any> = {
+const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
   recurso: Sparkles,
   melhoria: Wrench,
   correcao: Bug,
   seguranca: Shield,
 };
 
-const CATEGORY_CLASSNAMES: Record<ChangeCategory, string> = {
-  recurso: 'bg-success text-white hover:bg-success',
-  melhoria: 'bg-info text-white hover:bg-info',
-  correcao: 'bg-destructive text-white hover:bg-destructive',
-  seguranca: 'bg-secondary text-secondary-foreground hover:bg-secondary',
-};
-
-
 export const changelog: ChangelogEntry[] = [
+  {
+    version: '1.39.15',
+    date: '10 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Monte formulários com as suas próprias perguntas',
+        category: 'recurso',
+        description: 'O formulário de cadastro de cliente virou um construtor completo, que abre em tela cheia e caminha em quatro passos. Além dos campos de cadastro, você cria as perguntas que quiser, em texto curto ou longo, número, sim ou não, escolha única, múltipla escolha, data, foto, assinatura e nota de 0 a 10, marcando quais são obrigatórias e arrastando para mudar a ordem, do mesmo jeito que no checklist.',
+      },
+      {
+        title: 'Formulário dentro do Portal do Cliente',
+        category: 'recurso',
+        description: 'Você escolhe se o formulário fica só no link público ou se também aparece no portal do seu cliente. Respondido pelo portal, o envio já chega ligado ao cadastro dele, sem você digitar nada. A seção Formulários aparece sozinha no portal assim que você publica o primeiro.',
+      },
+      {
+        title: 'Formulário que só coleta respostas',
+        category: 'recurso',
+        description: 'Agora o formulário pode ter duas finalidades: cadastrar um cliente novo, como já funcionava, ou apenas recolher respostas, útil para pesquisa de satisfação, atualização de dados e levantamento antes da visita. A finalidade fica marcada na lista, então você bate o olho e sabe para que serve cada um. Você também personaliza a mensagem de agradecimento.',
+      },
+      {
+        title: 'Respostas guardadas e fáceis de consultar',
+        category: 'melhoria',
+        description: 'Cada formulário tem a sua lista de respostas, com data, de onde veio o envio e o cliente ligado quando houver. Fotos e assinaturas abrem em tela cheia.',
+      },
+    ],
+  },
+  {
+    version: '1.39.14',
+    date: '9 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Logo da empresa não ganha mais fundo preto ao ser enviado',
+        category: 'correcao',
+        description: 'Ao enviar um logo com fundo transparente, o sistema trocava esse fundo por preto, e as partes escuras da marca ficavam escondidas dentro dele. Agora o arquivo é guardado como você envia, com a transparência preservada. Se o seu logo já estava assim, basta enviá-lo de novo em Configurações.',
+      },
+      {
+        title: 'Marca de traço escuro aparece inteira no menu',
+        category: 'melhoria',
+        description: 'Logo de cores escuras ganha um fundo claro atrás no menu, na barra de topo e na prévia das Configurações, para ficar legível tanto no tema claro quanto no escuro.',
+      },
+    ],
+  },
+  {
+    version: '1.39.13',
+    date: '9 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Checklist desativado não some mais da tela',
+        category: 'correcao',
+        description: 'A lista de checklists passou a ter duas abas, Ativos e Inativos. Ao desativar um checklist ele muda de aba em vez de desaparecer, continua podendo ser aberto e volta a ficar disponível para as ordens de serviço pelo botão Reativar.',
+      },
+    ],
+  },
+  {
+    version: '1.39.12',
+    date: '8 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Rodapés das propostas com mais presença',
+        description: 'Os quatro modelos de proposta passam a exibir logo e site da Dominex com mais destaque, adaptados aos fundos claros, escuros e ao celular. O endereço também pode ser aberto pelo PDF. Empresas com marca própria continuam sem a assinatura Dominex.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.39.11',
+    date: '8 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Acabamento dos certificados de conformidade',
+        description: 'A seção do contrato recebeu um ícone corporativo mais claro, e a assinatura “Gerado por Dominex” ganhou mais distância da borda para deixar o certificado visualmente mais equilibrado.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.39.10',
+    date: '7 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Documentos PMOC mais fáceis de gerenciar',
+        description: 'A aba do contrato agora organiza os tipos de documento em uma lista compacta com detalhes, configurações e histórico no mesmo lugar. No celular, a navegação alterna entre lista e detalhe sem apertar o conteúdo.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Downloads preservam a versão emitida',
+        description: 'Cada item do histórico baixa exatamente o PDF daquela emissão, com um nome claro que inclui o tipo de documento, o estabelecimento, a data e a versão.',
+        category: 'correcao',
+      },
+      {
+        title: 'Certificados com QR Code de validação',
+        description: 'O QR Code ficou maior no canto inferior direito e leva à validação pública do certificado. Os ícones de responsável técnico e empresa também foram alinhados e redesenhados para melhorar a leitura.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Portal e estados da tela mais claros',
+        description: 'O controle de documentos no portal ficou mais compacto, e a tela agora informa carregamento, falha e ausência de dados com ações adequadas para continuar.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.39.9',
+    date: '7 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Certificados PMOC com validação pública',
+        description: 'Cada certificado recebe uma numeração sequencial da empresa e um link curto e clicável para conferir sua autenticidade. O código fica discretamente na lateral do PDF sem ocupar a área principal do documento.',
+        category: 'recurso',
+      },
+      {
+        title: 'Certificado geral do contrato e estabelecimento',
+        description: 'A área de documentos do contrato agora usa os mesmos modelos profissionais do certificado da O.S., permite escolher a duração e deixa claro que a cobertura se refere ao contrato e ao estabelecimento como um todo.',
+        category: 'recurso',
+      },
+      {
+        title: 'Leitura e acabamento mais consistentes',
+        description: 'Títulos, dados variáveis, responsável técnico, empresa e produtos receberam hierarquia mais forte. Os blocos se distribuem com espaçamento equilibrado, ícones próprios e rodapé Dominex padronizado em fundos claros e escuros.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.39.8',
+    date: '7 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Certificados PMOC mais minimalistas e legíveis',
+        description: 'Todos os temas agora partem de uma base visual limpa, sem quadros flutuantes ou molduras pesadas. Nome do cliente, CNPJ, responsável técnico e produto ficam destacados com leitura consistente em fundos claros e escuros.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Modelos organizados por estilo',
+        description: 'Agora é mais fácil escolher entre modelos essenciais, institucionais, editoriais, clássicos e tecnológicos. Também há opções claras e escuras sem moldura para quem prefere um documento mais sóbrio.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Duração escolhida na emissão',
+        description: 'Ao gerar o certificado ou o relatório PMOC, escolha a duração entre 1 e 60 meses. A validade começa na conclusão da O.S. e nunca ultrapassa a validade do produto utilizado.',
+        category: 'recurso',
+      },
+      {
+        title: 'Arquivos identificados e anexados automaticamente',
+        description: 'Relatórios e certificados recebem a data de emissão no nome e ficam disponíveis automaticamente nos anexos do cliente e de todos os equipamentos atendidos, mantendo o PDF protegido e sem cópias duplicadas.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.39.7',
+    date: '7 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Veja o número do orçamento antes de salvar',
+        description: 'O número definitivo já aparece ao abrir a criação e acompanha a prévia e o orçamento salvo. Ao retomar o rascunho em outro dispositivo, a numeração é preservada. Números de preenchimentos abandonados ficam sem uso na sequência.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.39.6',
+    date: '7 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Confira a proposta em qualquer etapa',
+        description: 'A prévia acompanha os dados atuais e pode ser aberta pelo resumo lateral no computador ou pelo botão de olho no resumo do celular, sem sair da etapa nem salvar o orçamento. O atalho para revisão também está disponível no computador, e o cabeçalho informa que a numeração definitiva é gerada ao criar.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.39.5',
+    date: '7 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Documentos PMOC direto pela O.S. finalizada',
+        description: 'Empresas de refrigeração podem gerar o relatório de serviço e o certificado de conformidade pela própria Ordem de Serviço, mesmo quando ela não pertence a um contrato. A ação está disponível no Kanban, na lista, na agenda, nas ocorrências do contrato e no relatório do técnico.',
+        category: 'recurso',
+      },
+      {
+        title: 'Produto bactericida e responsável técnico preenchidos no documento',
+        description: 'O cadastro de materiais agora identifica produtos de PMOC e reúne fabricante, registro na Anvisa, lote, fabricação e validade. Na emissão, o sistema usa um produto vigente e permite configurar o responsável técnico sem abandonar o fluxo.',
+        category: 'recurso',
+      },
+      {
+        title: 'Certificados mais bonitos e personalizáveis',
+        description: 'Escolha o tema, ajuste cores e edite o título do certificado. Logos e rodapés se adaptam corretamente a fundos claros e escuros, e os arquivos baixados recebem nomes organizados com os dados da O.S.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Respostas da O.S. mais rápidas de preencher',
+        description: 'Perguntas de Sim ou Não, conformidade e seleção continuam visíveis e podem ser alteradas com um toque. Os botões de Sim e Não mostram claramente a escolha em verde ou vermelho no computador e no celular.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.39.4',
+    date: '7 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Novas aulas disponíveis na DomiFlix',
+        description: 'Assista às aulas de Integração com WhatsApp e Ferramentas de RH. A formação de RH apresenta o perfil comportamental DISC, o organograma e o fluxograma, com capas próprias e acesso pela trilha de tutoriais.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.39.3',
+    date: '7 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Continue seu orçamento em outro dispositivo',
+        description: 'O preenchimento é salvo automaticamente para seu usuário na empresa e pode ser retomado no computador ou celular. O prazo é de 30 dias desde a última edição, com indicação quando o salvamento fica apenas no navegador por falta de conexão.',
+        category: 'recurso',
+      },
+      {
+        title: 'Revisão que ajuda a evitar esquecimentos',
+        description: 'Antes de finalizar, confira avisos sobre itens sem preço, valores abaixo dos custos informados, validade vencida e primeiro vencimento ainda não definido. Você pode voltar ao ponto indicado ou continuar quando a condição for intencional.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Mais clareza ao personalizar custos',
+        description: 'A composição identifica os ajustes exclusivos do orçamento e a opção de atualizar o padrão do serviço. Recursos compartilhados deixam claro quando o cadastro será alterado, e a revisão lista os serviços que você escolheu atualizar.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Prévia mais fácil de conferir',
+        description: 'Abra a prévia no topo da revisão, confira o total e veja quais custos serão compartilhados com o cliente. A leitura se adapta ao celular e o modo documento permite ampliar a proposta.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Orçamento simples com menos toques no celular',
+        description: 'Escolha serviços diretamente na lista e siga para a revisão com os preços e condições atuais. Materiais e condições continuam disponíveis para ajuste, com ações que cabem também nas telas menores.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.39.2',
+    date: '7 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Saída dos formulários em tela cheia mais clara',
+        description: 'O botão Sair, com ícone de saída no canto superior esquerdo, encerra o formulário e preserva o rascunho automático. Voltar continua no rodapé para retornar à etapa anterior.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.39.1',
+    date: '7 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Edite recursos sem sair do orçamento ou do serviço',
+        description: 'Abra o cadastro de veículos, ferramentas, EPIs e brindes pela própria composição do serviço. A tela avisa quando a edição altera o cadastro da empresa, e os custos são atualizados após salvar. Busca, categorias e filtro de selecionados facilitam encontrar cada recurso.',
+        category: 'recurso',
+      },
+      {
+        title: 'Preenchimento do orçamento mais fácil de acompanhar',
+        description: 'O cliente aparece com foto e resumo dos dados, os botões de navegação ficaram maiores e as áreas vazias oferecem a ação de adicionar. O aviso para retomar um rascunho fica acima do rodapé. O cabeçalho acompanha o salvamento automático de serviços, custos e condições neste navegador.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Escolha materiais com fotos e confira a seleção',
+        description: 'A janela de materiais ganhou mais espaço, fotos dos produtos e um resumo do que será incluído. Quantidades e valores ficam mais fáceis de conferir no computador e no celular.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Preços e deslocamento reunidos no mesmo lugar',
+        description: 'A etapa Preço e condições concentra o deslocamento e a escolha entre calcular com BDI ou manter os preços dos itens. O resumo mostra o saldo sobre os custos informados, sem confundi-lo com lucro líquido.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Mais contraste nos temas claro e escuro',
+        description: 'Botões, seleções e indicadores acompanham o tema: preto com texto branco no claro e branco com texto escuro no escuro. Cancelar, Voltar e Fechar recebem destaque vermelho ao passar o cursor.',
+        category: 'correcao',
+      },
+      {
+        title: 'Certificados com novos visuais e melhor leitura',
+        description: 'Os onze modelos de certificado foram refinados, com melhor contraste do logotipo e prévia ampliada. Textos longos continuam em páginas adicionais para preservar todas as informações no documento.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.39.0',
+    date: '6 de novembro de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Novo orçamento em tela cheia e por etapas',
+        description: 'A criação do orçamento foi reorganizada em cliente, serviços e custos, materiais e deslocamento, preço e condições, revisão e envio. Títulos maiores, campos mais legíveis e resumo financeiro ajudam a conferir os valores no computador e no celular.',
+        category: 'recurso',
+      },
+      {
+        title: 'Composição completa de cada serviço no orçamento',
+        description: 'Abra um serviço e ajuste mão de obra, insumos, recursos e custos extras no próprio orçamento. A calculadora de mão de obra permite considerar funcionários, custos mensais e horas de trabalho.',
+        category: 'recurso',
+      },
+      {
+        title: 'Crie serviços na hora e escolha o que salvar',
+        description: 'Adicione um serviço existente ou crie um durante o orçamento. As alterações de custo ficam naquele orçamento, com a opção de salvar a composição como padrão do serviço para os próximos trabalhos.',
+        category: 'recurso',
+      },
+      {
+        title: 'Formação de preço mais fácil de entender',
+        description: 'O BDI fica sempre visível, com impostos, administração e lucro organizados por cor e uma composição visual do preço. Materiais cobrados à parte ficam separados dos insumos usados dentro de cada serviço.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Controle dos custos que aparecem na proposta',
+        description: 'Escolha se o cliente poderá ver os valores de mão de obra e insumos junto ao preço do serviço. Essas informações ficam ocultas por padrão. A prévia da proposta também se adapta à tela do celular.',
+        category: 'recurso',
+      },
+      {
+        title: 'Cadastro e edição de custos mais acessíveis',
+        description: 'Crie e edite serviços pela lista de custos e acesse a nova aba Custos e precificação no cadastro do serviço. Campos de valores exibem a moeda, o deslocamento aceita vírgula decimal e as janelas de cálculo mantêm o orçamento visível ao fundo.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.38.37',
+    date: '6 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Edição da O.S. mais completa durante o atendimento',
+        description: 'Agora é possível incluir um equipamento já cadastrado ou criar outro sem sair da O.S., reorganizar checklists entre equipamentos preservando as respostas e revisar datas e horários no mesmo fluxo.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Alterações da O.S. preservadas e saída protegida',
+        description: 'Depois de salvar, equipamentos, checklists e agenda são atualizados imediatamente ao reabrir. Se houver mudanças ainda não salvas, o sistema pede confirmação antes de fechar a edição.',
+        category: 'correcao',
+      },
+      {
+        title: 'Marcadores da agenda visíveis para toda a empresa',
+        description: 'Os pontos de visitas de contrato e Ordens de Serviço voltaram a aparecer corretamente no calendário para os usuários da empresa, mantendo o isolamento seguro entre contas.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.38.36',
+    date: '6 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Horas e custos preservados ao editar',
+        description: 'As horas mensais informadas no cálculo de funcionários e mão de obra agora permanecem salvas ao aplicar e reabrir. Alterações em recursos de custo também não são mais desfeitas enquanto os dados terminam de carregar.',
+        category: 'correcao',
+      },
+      {
+        title: 'Cobranças e assinaturas sem perda de alterações',
+        description: 'Ajustes de multa, juros, desconto, descrição e lançamento financeiro permanecem no formulário mesmo quando as configurações da conta são atualizadas em segundo plano.',
+        category: 'correcao',
+      },
+      {
+        title: 'Taxas do orçamento mantidas durante o preenchimento',
+        description: 'Alterações manuais nas taxas e condições do orçamento não são mais substituídas pelos padrões da empresa enquanto a tela está aberta.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.38.35',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Layout fiscal correto em cada ambiente',
+        description: 'A Dominex agora aplica automaticamente a diferença de layout entre homologação e produção do Portal Nacional, evitando a rejeição estrutural E1235 na emissão real.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.38.34',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Emissão nacional liberada para empresas do Simples',
+        description: 'A Dominex agora reconhece a obrigatoriedade federal válida desde 1º de novembro e permite que ME e EPP do Simples Nacional emitam NFS-e pelo Portal Nacional, mesmo quando a prefeitura mantém um emissor próprio.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.38.33',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Compatibilidade com o layout fiscal nacional atual',
+        description: 'A emissão de NFS-e agora inclui o indicador obrigatório de finalidade na posição exigida pelo Portal Nacional, evitando a rejeição estrutural E1235 durante o envio.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.38.32',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Motivo da rejeição fiscal mais claro',
+        description: 'Quando o Portal Nacional recusar uma NFS-e, a Dominex agora mostra o código oficial, o motivo e a orientação disponível para corrigir os dados antes de tentar novamente.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.38.31',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Teste fiscal liberado em homologação',
+        description: 'A produção restrita do governo nem sempre replica a cobertura real dos municípios. Em homologação, a Dominex agora envia a nota de teste para o Portal Nacional dar a resposta definitiva, sem efeito fiscal. Em produção, a confirmação municipal continua obrigatória.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.38.30',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Liberação municipal verificada automaticamente',
+        description: 'Ao abrir as Configurações Fiscais com o certificado A1 válido e o município já salvo, a Dominex confirma automaticamente a liberação para emissão. O botão permanece disponível apenas para tentar novamente quando necessário.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.38.29',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Todos os serviços disponíveis na Ordem de Serviço',
+        description: 'Listas maiores agora permitem rolar até o último serviço normalmente. A busca também encontra nomes mesmo quando o texto é digitado sem acento, como “visita tecnica”.',
+        category: 'correcao',
+      },
+      {
+        title: 'Nota fiscal da assinatura pelo histórico de pagamentos',
+        description: 'Depois que o pagamento for confirmado, administradores e gestores podem solicitar a NFS-e e acompanhar a liberação do PDF e do XML diretamente na tela de assinatura.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.38.28',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Calendário mais confiável ao agendar',
+        description: 'O calendário agora informa quando há vários atendimentos no mesmo dia, reconhece corretamente as O.S. vinculadas a contratos e avisa quando não consegue consultar a agenda.',
+        category: 'correcao',
+      },
+      {
+        title: 'Escolha de datas mais prática',
+        description: 'Ao adicionar outro dia ao atendimento, o calendário abre no mesmo mês da visita. Os avisos de carregamento e falha também ficaram mais claros no computador e no celular.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.38.27',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Jornadas prolongadas na Ordem de Serviço',
+        description: 'A duração de cada jornada da O.S. agora pode ser informada manualmente em atendimentos de 10, 12 ou até 24 horas, inclusive quando o registro é feito após a execução do serviço.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Cálculo e histórico das horas preservados',
+        description: 'O sistema continua calculando corretamente o término do atendimento, inclusive após a meia-noite, e mantém as horas registradas no histórico da O.S.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.38.26',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Agenda visível ao escolher uma data',
+        description: 'Ao agendar uma visita, O.S. ou tarefa, o calendário agora mostra pontos coloridos nos dias que já possuem atendimentos para o cliente selecionado. A legenda diferencia visitas de contrato e Ordens de Serviço avulsas.',
+        category: 'recurso',
+      },
+      {
+        title: 'Planejamento com menos conflitos',
+        description: 'Quando houver equipamento selecionado, o calendário também identifica atendimentos ligados a ele. Passe o mouse sobre o marcador para entender o que já está programado naquele dia.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.38.25',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cadastro e edição de empresas mais claros',
+        description: 'O formulário de empresas agora organiza cadastro, plano e acesso em áreas fáceis de navegar, com resumo permanente no computador e recolhível no celular.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Redefinição de acesso direto pela empresa',
+        description: 'Administradores autorizados podem escolher um usuário da empresa e gerar um link temporário para redefinição de senha, sem precisar alterar os demais dados do cadastro.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.38.24',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Vinculação de OS existente ao contrato',
+        description: 'Na aba Ocorrências, escolha uma Ordem de Serviço já cadastrada ou concluída e informe qual visita do cronograma ela representa. O número, o status, as datas reais e o histórico original da OS são preservados.',
+        category: 'recurso',
+      },
+      {
+        title: 'Cronograma protegido contra duplicidades',
+        description: 'A vinculação substitui somente uma visita automática ainda vazia. Visitas iniciadas, concluídas ou com histórico permanecem protegidas para evitar perda de informações.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
+    version: '1.38.23',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Planejamento individual das visitas do contrato',
+        description: 'Abra uma visita diretamente pelo contrato para ajustar equipe, horários, observações e datas. O mesmo atendimento também pode ser distribuído em vários dias, inclusive datas não consecutivas.',
+        category: 'recurso',
+      },
+      {
+        title: 'Cronograma contratual preservado nos reagendamentos',
+        description: 'A data prevista no contrato continua registrada mesmo quando a execução é reagendada. Assim, domingos, feriados e imprevistos podem ser ajustados sem mudar a periodicidade nem criar visitas duplicadas.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Histórico de visitas mais fácil de acompanhar',
+        description: 'O contrato agora separa a data prevista das datas realmente agendadas e identifica as visitas que receberam planejamento próprio.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.38.22',
+    date: '5 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Município confirmado diretamente no Portal Nacional',
+        description: 'A verificação da cidade agora usa o certificado A1 da própria empresa e consulta a habilitação oficial para emissão. Ao enviar o certificado, o sistema já tenta concluir essa etapa automaticamente.',
+        category: 'correcao',
+      },
+      {
+        title: 'Homologação e produção totalmente separadas',
+        description: 'Testes em homologação não bloqueiam nem se misturam com notas reais. Cada nota mantém o ambiente em que foi emitida durante consultas, cancelamentos e geração do PDF.',
+        category: 'seguranca',
+      },
+      {
+        title: 'Certificado A1 conferido com o CNPJ da empresa',
+        description: 'O sistema confirma se o certificado pertence ao mesmo CNPJ cadastrado antes de permitir seu uso na emissão fiscal.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
+    version: '1.38.21',
+    date: '4 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Emissão de NFS-e pelo Portal Nacional',
+        description: 'A configuração fiscal ficou mais simples: salve os dados da empresa, confirme o município e envie um certificado A1 válido. A emissão agora acontece diretamente pelo motor fiscal da Dominex, sem cadastro adicional em outro serviço.',
+        category: 'correcao',
+      },
+      {
+        title: 'Status fiscal mais claro e seguro',
+        description: 'A tela mostra exatamente o que falta para emitir e oferece atalhos para corrigir município ou certificado. Certificados vencidos ou sem validade confirmada não liberam a emissão.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.38.20',
+    date: '4 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Edição da OS mais flexível durante o atendimento',
+        description: 'Organize equipamentos e checklists na mesma tela, mova um checklist para o equipamento correto sem perder as respostas e ajuste a data e os horários sem sair do preenchimento da OS.',
+        category: 'recurso',
+      },
+      {
+        title: 'Preenchimento da OS mais claro no celular',
+        description: 'Cliente, contrato, descrição, observações e checklists agora têm uma hierarquia mais fácil de acompanhar, com menos bordas, nomes extensos legíveis e ações mais consistentes.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.38.19',
+    date: '3 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Precificação completa dentro da nova OS',
+        description: 'Monte a ordem de serviço como um orçamento comum ou use custo + BDI. Cada serviço e material mostra o custo da empresa, o valor pago pelo cliente e permite escolher entre preço cadastrado, cálculo automático ou valor manual.',
+        category: 'recurso',
+      },
+      {
+        title: 'PWA abre diretamente no sistema',
+        description: 'Ao abrir o Dominex instalado na tela inicial do celular, o aplicativo agora entra no sistema ou apresenta o login quando a sessão expirou, sem ficar preso no site institucional.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.38.18',
+    date: '3 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Quantidade de serviços na nova OS',
+        description: 'Ao selecionar um serviço, a OS agora mostra imediatamente a quantidade, o preço cadastrado e o total. Esses valores podem ser ajustados na própria linha, inclusive pelo celular.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.38.17',
+    date: '3 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Orçamentos com preço mais fácil de entender',
+        description: 'Escolha entre usar BDI automaticamente ou montar um orçamento comum com preços de venda e ajustes manuais. A tela separa o custo da empresa do valor pago pelo cliente e mostra o impacto de serviços, materiais, deslocamento e descontos.',
+        category: 'recurso',
+      },
+      {
+        title: 'Estoque consolidado e Curva ABC',
+        description: 'Consulte saldos por local, trabalhe com compras em lista e detalhes e identifique os materiais mais relevantes por consumo, vendas e capital parado.',
+        category: 'recurso',
+      },
+      {
+        title: 'PDV mais rápido no teclado e no carrinho',
+        description: 'Navegue entre produtos com as setas, use quantidades fracionadas e acompanhe itens, unidades, descontos e imagens em uma apresentação mais compacta.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Cadastros guiados de ordens de serviço e contratos',
+        description: 'Novas ordens de serviço e contratos agora usam etapas mais claras, resumo permanente e melhor adaptação ao computador e celular.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Acessos e rotinas administrativas mais seguros',
+        description: 'O vínculo entre funcionário e usuário ficou mais confiável, e as ações de contas, cartões e empresas ficaram mais fáceis de encontrar.',
+        category: 'seguranca',
+      },
+    ],
+  },
+  {
+    version: '1.38.16',
+    date: '2 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Impressora fiscal em Integrações',
+        description: 'A preparação da impressora térmica agora fica em Configurações > Integrações, separada das configurações do PDV. A janela do sistema funciona sem aplicativo; a impressão direta será liberada quando o Dominex Conector estiver disponível para baixar.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.38.15',
+    date: '2 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Status correto após baixa feita fora do Asaas',
+        description: 'Quando uma cobrança recorrente é recebida por outro meio e baixada no Asaas, o contrato agora deixa de aparecer como vencido e passa a mostrar o próximo vencimento correto. Se ainda houver outra cobrança atrasada, o aviso permanece.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.38.14',
+    date: '2 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Adicionar materiais sem piscar a tela',
+        description: 'Ao adicionar materiais dentro de um orçamento, a janela agora permanece estável e pronta para buscar, ajustar quantidades e confirmar os itens.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.38.13',
+    date: '1 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Avisos importantes dentro do sistema',
+        description: 'Comunicados da Dominex agora podem aparecer no topo do sistema, no período certo e somente para as empresas selecionadas.',
+        category: 'recurso',
+      },
+      {
+        title: 'Pesquisa de satisfação mais simples',
+        description: 'A nova pesquisa apresenta uma pergunta por vez, com respostas grandes e fáceis de entender no computador e no celular.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.38.12',
+    date: '1 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Janelas abrem sem piscar durante o carregamento',
+        description: 'Corrigimos a abertura de janelas e avisos que podiam aparecer e desaparecer rapidamente sobre telas como Orçamentos. A transição agora acontece de forma estável.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.38.11',
+    date: '31 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Histórico de novidades mais fácil de acompanhar',
+        description: 'As versões, datas e categorias agora aparecem em uma linha do tempo mais clara, com busca, filtros e leitura confortável no computador e no celular.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.38.10',
+    date: '31 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'DomiFlix com trilhas guiadas',
+        description: 'As aulas agora podem ser organizadas em trilhas e módulos com uma sequência clara, mostrando o progresso de cada aula, módulo e formação completa.',
+        category: 'recurso',
+      },
+      {
+        title: 'Aprendizado de acordo com o plano',
+        description: 'A trilha prioriza a base do sistema e os módulos contratados. Os demais conteúdos continuam disponíveis para conhecer, com identificação clara do que faz parte do plano.',
+        category: 'recurso',
+      },
+      {
+        title: 'Acompanhamento durante o primeiro mês',
+        description: 'Lembretes ajudam cada usuário a retomar somente as aulas que ainda faltam na sua trilha durante os primeiros 30 dias.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.38.9',
+    date: '31 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Várias etiquetas por cliente, fornecedor e equipamento',
+        description: 'Agora cada cadastro pode receber mais de uma etiqueta e as listagens podem ser filtradas por essas classificações. Nas seleções, a primeira etiqueta aparece ao lado do nome e o indicador +N revela as demais sem ocupar espaço excessivo.',
+        category: 'recurso',
+      },
+      {
+        title: 'Configurações completas de equipamentos',
+        description: 'Categorias, etiquetas e campos personalizados de equipamentos ficam reunidos em uma única área de Configurações, com as informações disponíveis nas fichas, listagens e seleções.',
+        category: 'recurso',
+      },
+      {
+        title: 'Informações controladas nos portais',
+        description: 'Etiquetas e campos de equipamentos podem ser liberados para os portais de forma explícita, mantendo classificações internas protegidas por padrão.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.38.8',
+    date: '31 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Etiquetas visuais para clientes e fornecedores',
+        description: 'Agora é possível criar etiquetas coloridas, aplicá-las aos cadastros e reconhecê-las nas listas, fichas e seleções. Onde há espaço, o nome aparece completo; em campos estreitos, uma bandeirola colorida mostra o nome ao passar o mouse.',
+        category: 'recurso',
+      },
+      {
+        title: 'Campos personalizados reunidos nas configurações',
+        description: 'Origens, etiquetas e campos adicionais de clientes e fornecedores agora ficam reunidos em Configurações. Os campos podem ser usados nos cadastros e fichas, com controle separado do que aparece no Portal do Cliente.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.38.7',
+    date: '30 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Edição de empresas para vendedores autorizados',
+        description: 'Vendedores com acesso à gestão de empresas agora conseguem salvar alterações normalmente, sem receber o bloqueio reservado a usuários sem permissão.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.38.6',
+    date: '30 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Mais espaço nas fichas de clientes e equipamentos',
+        description: 'As opções de editar e excluir agora ficam reunidas no botão Ações, deixando o nome do cliente ou equipamento mais fácil de visualizar.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.38.5',
+    date: '30 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cadastros de clientes mais consistentes',
+        description: 'A autorização para receber mensagens pelo WhatsApp agora é preservada durante o preenchimento do celular. CPF, CNPJ, telefone e CEP também aparecem formatados, e clientes vindos do formulário público são identificados com mais clareza.',
+        category: 'correcao',
+      },
+      {
+        title: 'Equipamentos mais fáceis de consultar e atualizar',
+        description: 'Campos obrigatórios apresentam mensagens no idioma do usuário, datas e respostas de sim ou não ficaram mais consistentes, e editar ou excluir um equipamento não exige mais recarregar a página.',
+        category: 'correcao',
+      },
+      {
+        title: 'Busca mais flexível nas listagens',
+        description: 'As buscas agora encontram resultados mesmo com diferenças de acentuação, ordem das palavras ou documentos digitados sem máscara.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.38.4',
+    date: '30 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'DRE com visões personalizadas e seguras',
+        description: 'O formato padrão continua igual. Quem precisar pode criar versões gerencial, contábil, EBITDA ou próprias usando os mesmos lançamentos e categorias. Itens sem classificação permanecem visíveis para conferência, e o modal de categoria agora mostra uma prévia simples do efeito no DRE.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.38.3',
+    date: '30 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Comparativo completo de altas e quedas',
+        description: 'A visão geral da evolução dos preços agora compara as maiores altas e quedas em um gráfico selecionável. As curvas ficaram mais suaves e cada material também ganhou uma visão do volume comprado no período.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.38.2',
+    date: '29 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Leitura contínua da evolução dos preços',
+        description: 'Os gráficos de preço agora conectam a evolução em uma área visual e mantêm marcadores nos períodos com compras, facilitando a leitura diária, semanal e mensal.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.38.1',
+    date: '29 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Fotos dos materiais na evolução de preços',
+        description: 'A lista da análise de preços agora mostra a foto cadastrada de cada material. Quando não houver imagem, aparece um ícone de estoque alinhado com as demais listas do sistema.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.38.0',
+    date: '29 de outubro de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Evolução dos preços de compra por material',
+        description: 'No relatório de compras do estoque, agora é possível acompanhar como o preço de cada material mudou no período, conferir médias, menores e maiores valores e identificar rapidamente as maiores altas e quedas.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.37.56',
+    date: '29 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cards do CRM disponíveis na API oficial',
+        description: 'Empresas podem conectar outros sistemas ao funil comercial para criar, consultar, atualizar e movimentar cards do CRM, com controle separado das permissões de leitura e edição.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.37.55',
+    date: '29 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Checklist personalizado por equipamento no contrato PMOC',
+        description: 'Ao criar ou editar um contrato PMOC, agora é possível escolher separadamente os checklists da norma e os modelos personalizados de cada equipamento, sem uma seleção apagar a outra.',
+        category: 'recurso',
+      },
+      {
+        title: 'Custos Globais com busca e ficha completa',
+        description: 'Os recursos de custo agora ficam em uma lista pesquisável e ordenável, com filtros por categoria e situação. Ao selecionar um item, a composição, as horas, os valores e as observações aparecem na mesma tela.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Equipes podem reunir colaboradores de diferentes áreas',
+        description: 'A criação de equipes agora permite selecionar qualquer colaborador ativo da empresa, sem limitar a escolha apenas aos técnicos e sem alterar o cargo ou as permissões de cada pessoa.',
+        category: 'correcao',
+      },
+      {
+        title: 'Fotos dos materiais aparecem na listagem do estoque',
+        description: 'As fotos cadastradas nos materiais agora são exibidas com segurança na lista do estoque, tanto no computador quanto no celular, com um ícone alternativo quando a imagem não estiver disponível.',
+        category: 'correcao',
+      },
+      {
+        title: 'Abas internas mais consistentes e fáceis de navegar',
+        description: 'Orçamentos, Funcionários, contratos e outras telas de gestão agora usam abas horizontais com destaque mais claro para a seção ativa e rolagem quando não houver espaço.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.37.54',
+    date: '27 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Valor da OS preenchido corretamente no faturamento',
+        description: 'Ao concluir ou faturar uma Ordem de Serviço, o formulário financeiro agora busca o valor atualizado de serviços e materiais, evitando que o lançamento comece zerado ou com um total antigo.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.37.53',
+    date: '27 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Configurações e acessos mais fáceis de navegar',
+        description: 'As áreas de Configurações e Usuários agora usam abas mais claras, lista com detalhes e um formulário maior para revisar dados e permissões com mais conforto.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.37.52',
+    date: '27 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ordem de serviço em destaque no acesso',
+        description: 'A prévia do celular na tela de entrada agora mostra o preenchimento de uma OS com cliente, serviço, local e equipamento, sem recortes vazios ou difíceis de reconhecer.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.37.51',
+    date: '27 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'NFS-e da assinatura no histórico de pagamentos',
+        description: 'Administradores e gestores podem solicitar a nota fiscal de uma assinatura já paga e, assim que ela for emitida, baixar o PDF e o XML no mesmo lugar. A tela também orienta quando falta completar algum dado da empresa.',
+        category: 'recurso',
+      },
+      {
+        title: 'Acesso mais claro e com o Dominex em contexto',
+        description: 'A tela de entrada agora apresenta o produto com telas reais no computador, mantém o formulário direto no celular e adapta logo, campos e contraste aos temas claro e escuro.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.37.50',
+    date: '27 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Gerenciamento de plano mais fácil de ler',
+        description: 'Planos e módulos agora aparecem com menos cores concorrentes, deixando preços, recursos incluídos e opções selecionadas mais fáceis de comparar.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.37.49',
+    date: '27 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Lembrete de visita agendada pelo WhatsApp',
+        description: 'Nas automações do WhatsApp, agora é possível avisar o cliente um dia antes ou no próprio dia da visita. A mensagem pode incluir o link de acompanhamento da OS e respeita o horário configurado para os lembretes.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.37.48',
+    date: '27 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Atendimentos emergenciais podem ser autorizados mesmo com conflito',
+        description: 'Ao justificar uma sobreposição de horário, a nova OS agora é criada corretamente mesmo quando possui checklist avulso ou serviços associados aos equipamentos.',
+        category: 'correcao',
+      },
+      {
+        title: 'Avisos da Agenda mais claros',
+        description: 'Erros de agendamento agora explicam em português o que precisa ser revisto, sem exibir códigos internos ou mensagens técnicas.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.37.47',
+    date: '26 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cadastro de cliente conclui a configuração do portal',
+        description: 'Ao criar um cliente pelo computador, o sistema agora mantém o identificador do novo cadastro e aplica as opções do portal sem exibir erro nem correr o risco de repetir o cliente ao tentar novamente.',
+        category: 'correcao',
+      },
+      {
+        title: 'Links de OS respeitam a separação de tarefas internas',
+        description: 'Tarefas da agenda não aparecem mais como Ordens de Serviço nem oferecem um link público que não poderia ser aberto pelo cliente. As OS continuam disponíveis normalmente para acompanhamento e relatório.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.37.46',
+    date: '25 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Comparativo do DRE mais fácil de configurar',
+        description: 'Agora dá para alterar o período principal na própria comparação, escolher atalhos como período anterior ou mesmo período do ano passado e conferir uma prévia antes de aplicar.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Planilha do DRE segue a mesma leitura da tela',
+        description: 'Na exportação para Excel, os períodos aparecem do mais antigo para o mais recente e a variação mostra com clareza o que aumentou ou diminuiu, inclusive nas despesas.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.37.45',
+    date: '25 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Dá para ver onde começa o catálogo PMOC',
+        description: 'No Catálogo de Checklists, as seções que vêm da norma PMOC agora têm uma faixa azul com o nome do catálogo, separando-as dos modelos de checklist sugeridos.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.37.44',
+    date: '25 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ver como o checklist fica na Ordem de Serviço',
+        description: 'Na ficha de cada checklist há um botão Ver que abre a prévia exatamente como o técnico vai ver em campo: as mesmas perguntas, os mesmos botões de Conforme, Não-conforme e N/A. Dá para responder para sentir como fica — nada é salvo e nenhuma Ordem de Serviço é criada.',
+        category: 'recurso',
+      },
+      {
+        title: 'Catálogo de Checklists mais fácil de navegar',
+        description: 'O catálogo deixou de ser uma pilha de blocos que abrem e fecham. Agora os modelos e as seções da norma ficam listados à esquerda e as perguntas do item escolhido aparecem à direita, com o botão de importar no topo.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.37.43',
+    date: '25 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'O aviso de versão nova parou de aparecer quebrado',
+        description: 'O quadro escuro que avisa sobre uma atualização vinha com uma faixa cinza e um sinal de confirmado grudados na quina, e espremido dentro de uma caixa branca maior. Agora ele aparece inteiro e limpo.',
+        category: 'correcao',
+      },
+      {
+        title: 'Serviços com mais espaço na tela',
+        description: 'Em Tipos de Serviços, Tipos de Tarefas e Checklists, os botões de ação subiram para a mesma linha das abas, à direita. A lista e a ficha começam mais acima e sobra uma linha inteira de espaço.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.37.42',
+    date: '24 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Menu dentro de menu ficou mais fácil de entender',
+        description: 'Quando uma tela tem navegação em camadas, cada camada agora tem um formato diferente: a principal em abas destacadas, a segunda em abas normais e a terceira em botões. Assim duas barras iguais nunca ficam coladas e dá para saber em que nível você está. Vale em Integrações, na ficha do cliente (Financeiro, Documentos e Estoque) e em qualquer tela com três níveis.',
+        category: 'melhoria',
+      },
+      {
+        title: 'As abas do sistema agora seguem um padrão só',
+        description: 'Em todas as telas, a navegação por abas usa a mesma linha embaixo da aba aberta, inclusive no CRM e nas janelas de PMOC e de avisos, que ainda tinham o botão cinza. As abas que trocam a tela inteira ficaram maiores e em negrito, e as abas de dentro de uma ficha continuam mais leves — assim dá para saber de bate-pronto o que é navegação principal e o que é detalhe. Seletores como Dia/Semana/Mês da Agenda e as categorias do PDV continuam no formato de botão, porque filtram o conteúdo em vez de trocar de aba.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Funcionários e Notas Fiscais com mais espaço',
+        description: 'As duas telas trocaram a coluna de atalhos à esquerda pelas abas no topo, como no resto do sistema. Sobra mais largura para a lista e para o conteúdo.',
+        category: 'melhoria',
+      },
+      {
+        title: 'DRE mais fácil de ler no computador',
+        description: 'Agora que o Demonstrativo de Resultado ocupa a largura toda da tela, os nomes das contas, os valores e os percentuais aparecem em letra maior. No celular nada muda.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Notas Fiscais sem o aviso "Como funciona?"',
+        description: 'O bloco explicativo no topo da tela de Notas Fiscais saiu, deixando a lista e os indicadores mais perto do começo da página.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.37.41',
+    date: '23 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Decisões financeiras mais claras',
+        description: 'A Visão Geral agora diferencia melhor fluxo realizado, projeção do caixa, agenda de vencimentos e concentração das despesas. O gráfico de despesas voltou ao formato de pizza, e saldos de muitas contas podem ser consultados sem transformar cada conta em uma caixa pesada.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Cobranças e assinaturas preparadas para crescer',
+        description: 'Busca, filtros, ordenação, contagem e paginação foram organizados em uma barra única. Assim, listas maiores continuam fáceis de consultar no computador e no celular.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Navegação financeira mais consistente',
+        description: 'Relatórios, cobranças e configurações agora usam abas horizontais com destaque por linha, liberando mais largura para gráficos e tabelas. A aba de análise também deixa claro quais períodos realmente controlam a comparação.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Saldos protegidos contra carga incompleta',
+        description: 'Se os dados financeiros ou bancários não puderem ser carregados, a tela agora avisa e permite tentar novamente em vez de apresentar zeros ou relatórios incompletos como se fossem valores reais.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.37.40',
+    date: '23 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Financeiro virou um dashboard de verdade',
+        description: 'A Visão Geral ganhou uma organização em blocos: saldo e nova movimentação ficam juntos, valores a receber e a pagar viraram atalhos, e contas, fluxo de caixa, despesas por categoria, evolução do resultado e últimos lançamentos agora formam uma leitura contínua e mais hierárquica.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Serviços, tarefas e checklists lado a lado',
+        description: 'Tipos de serviço, tipos de tarefa e checklists agora mantêm a lista à esquerda e o detalhe à direita, com busca, filtros, ordenação e paginação. Perguntas podem ser criadas e editadas no próprio detalhe, com uma prévia de como o checklist aparece na Ordem de Serviço.',
+        category: 'melhoria',
+      },
+      {
+        title: 'Funcionários mais fáceis de consultar',
+        description: 'A lista de funcionários passou a abrir o cadastro ao lado, mantendo busca e navegação sempre à vista. As movimentações ficaram mais próximas das ações principais, sem precisar percorrer a ficha inteira.',
+        category: 'melhoria',
+      },
+      {
+        title: 'QR Code de equipamento sem troca visual',
+        description: 'Ao abrir um equipamento, o QR Code já aparece com a identidade visual correta, sem piscar primeiro uma versão antiga.',
+        category: 'correcao',
+      },
+    ],
+  },
+  {
+    version: '1.37.39',
+    date: '23 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Todas as cobranças do parcelamento em um só lançamento',
+        description: 'Ao parcelar uma receita ou criar contas a receber recorrentes, agora você pode gerar todas as cobranças de uma vez. Cada cobrança fica ligada à parcela correta, com seu próprio valor e vencimento, sem duplicar a receita.',
+        category: 'recurso',
+      },
+    ],
+  },
+  {
+    version: '1.37.38',
+    date: '23 de outubro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Troca de permissões sem fechar o cadastro',
+        description: 'Ao cadastrar ou editar um usuário, as opções Acesso Total e Personalizado continuam visíveis. Agora é possível alternar entre elas sem fechar a janela e sem perder a seleção manual anterior.',
+        category: 'correcao',
+      },
+    ],
+  },
   {
     version: '1.37.37',
     date: '22 de outubro de 2026',
@@ -12138,14 +13393,14 @@ export default function Changelog() {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.settings.changelog;
 
-  const categoryConfig: Record<ChangeCategory, { label: string; icon: any; className: string }> = {
-    recurso: { label: t.categoryRecurso, icon: CATEGORY_ICONS.recurso, className: CATEGORY_CLASSNAMES.recurso },
-    melhoria: { label: t.categoryMelhoria, icon: CATEGORY_ICONS.melhoria, className: CATEGORY_CLASSNAMES.melhoria },
-    correcao: { label: t.categoryCorrecao, icon: CATEGORY_ICONS.correcao, className: CATEGORY_CLASSNAMES.correcao },
-    seguranca: { label: t.categorySeguranca, icon: CATEGORY_ICONS.seguranca, className: CATEGORY_CLASSNAMES.seguranca },
+  const categoryConfig: Record<ChangeCategory, { label: string; icon: LucideIcon; iconClass: string; textClass: string }> = {
+    recurso: { label: t.categoryRecurso, icon: CATEGORY_ICONS.recurso, iconClass: 'bg-success', textClass: 'text-success' },
+    melhoria: { label: t.categoryMelhoria, icon: CATEGORY_ICONS.melhoria, iconClass: 'bg-info', textClass: 'text-info' },
+    correcao: { label: t.categoryCorrecao, icon: CATEGORY_ICONS.correcao, iconClass: 'bg-destructive', textClass: 'text-destructive' },
+    seguranca: { label: t.categorySeguranca, icon: CATEGORY_ICONS.seguranca, iconClass: 'bg-secondary', textClass: 'text-secondary-foreground' },
   };
 
-  const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: any }[] = [
+  const filterConfig: { value: ChangeCategory | 'all'; label: string; icon: LucideIcon | null }[] = [
     { value: 'all', label: t.filterAll, icon: null },
     { value: 'recurso', label: t.filterRecurso, icon: Sparkles },
     { value: 'melhoria', label: t.filterMelhoria, icon: Wrench },
@@ -12155,7 +13410,7 @@ export default function Changelog() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<ChangeCategory | 'all'>('all');
-  const [expandedVersions, setExpandedVersions] = useState<Set<string>>(new Set(['1.2.10']));
+  const [expandedVersions, setExpandedVersions] = useState<Set<string>>(new Set([APP_VERSION]));
 
   const filteredChangelog = useMemo(() => {
     return changelog
@@ -12187,145 +13442,155 @@ export default function Changelog() {
     patch: 'Correção',
   };
 
+  const isFiltering = Boolean(searchTerm.trim() || activeFilter !== 'all');
+
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <div className="space-y-1">
-        <p className="text-xs text-muted-foreground uppercase tracking-widest">{t.pageTitle}</p>
-        <div className="flex items-center gap-2">
-          <History className="h-6 w-6" />
-          <h1 className="text-2xl font-bold">{t.pageTitle}</h1>
+    <div className="mx-auto w-full max-w-6xl space-y-8 py-2 sm:py-4">
+      <header className="flex flex-col gap-5 border-b border-border pb-8 sm:flex-row sm:items-end sm:justify-between">
+        <div className="max-w-2xl space-y-2">
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Novidades da Dominex</p>
+          <h1 className="text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">{t.pageTitle}</h1>
+          <p className="max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">Recursos, melhorias e correções explicados de forma direta para quem usa a plataforma.</p>
         </div>
-        <Badge className="bg-success text-white hover:bg-success">{t.currentVersionBadge}: {APP_VERSION}</Badge>
-      </div>
+        <div className="inline-flex w-fit shrink-0 items-center gap-2 rounded-full border border-border bg-background px-3 py-2 text-xs text-muted-foreground shadow-sm">
+          <History className="h-4 w-4 text-primary" aria-hidden="true" />
+          <span>{t.currentVersionBadge} <strong className="font-semibold text-foreground">v{APP_VERSION}</strong></span>
+        </div>
+      </header>
 
-      {/* Search & Filters */}
-      <Card>
-        <CardContent className="p-4 space-y-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder={t.searchPlaceholder}
-              className="pl-10"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {filterConfig.map((f) => {
-              const isActive = activeFilter === f.value;
-              return (
-                <button
-                  key={f.value}
-                  onClick={() => setActiveFilter(f.value)}
-                  className={cn(
-                    'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-colors',
-                    isActive
-                      ? f.value === 'all'
-                        ? 'bg-foreground text-background'
-                        : f.value === 'recurso'
-                        ? 'bg-success text-white'
-                        : f.value === 'melhoria'
-                        ? 'bg-info text-white'
-                        : f.value === 'correcao'
-                        ? 'bg-destructive text-white'
-                        : 'bg-secondary text-secondary-foreground'
-                      : 'bg-muted text-muted-foreground hover:bg-muted-foreground/20'
-                  )}
-                >
-                  {f.icon && <f.icon className="h-3 w-3" />}
-                  {f.label}
-                </button>
-              );
-            })}
-          </div>
-          {(searchTerm || activeFilter !== 'all') && (
-            <p className="text-xs text-muted-foreground">
-              {totalResults === 1
-                ? t.changesCount_one.replace('{count}', String(totalResults))
-                : t.changesCount_other.replace('{count}', String(totalResults))}
-            </p>
+      <section className="space-y-4 border-b border-border pb-6" aria-label="Buscar e filtrar atualizações">
+        <div className="relative max-w-2xl">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <Input
+            placeholder={t.searchPlaceholder}
+            className="h-11 rounded-lg border-border bg-background pl-10 pr-10 shadow-none"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          {searchTerm && (
+            <button type="button" onClick={() => setSearchTerm('')} aria-label="Limpar busca" className="absolute right-3 top-1/2 -translate-y-1/2 rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <X className="h-4 w-4" />
+            </button>
           )}
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Changelog Entries */}
-      <div className="space-y-4">
-        {filteredChangelog.map((entry) => {
-          const isExpanded = expandedVersions.has(entry.version);
-          const isCurrent = entry.version === APP_VERSION;
+        <div className="flex flex-wrap gap-2" aria-label="Filtrar por categoria">
+          {filterConfig.map((filter) => {
+            const isActive = activeFilter === filter.value;
+            return (
+              <button
+                key={filter.value}
+                type="button"
+                aria-pressed={isActive}
+                onClick={() => setActiveFilter(filter.value)}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  isActive ? 'border-foreground bg-foreground text-background' : 'border-border text-muted-foreground hover:bg-muted hover:text-foreground'
+                )}
+              >
+                {filter.icon && <filter.icon className="h-3.5 w-3.5" aria-hidden="true" />}
+                {filter.label}
+              </button>
+            );
+          })}
+        </div>
 
-          return (
-            <Card key={entry.version} className={cn(isCurrent && 'ring-2 ring-success/30')}>
-              <Collapsible open={isExpanded} onOpenChange={() => toggleVersion(entry.version)}>
-                <CollapsibleTrigger asChild>
-                  <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted rounded-t-lg transition-colors">
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <h2 className="text-lg font-bold text-foreground">Versão {entry.version}</h2>
-                      <Badge className="bg-success text-white hover:bg-success">{typeLabel[entry.type]}</Badge>
-                      {isCurrent && <Badge className="bg-primary text-primary-foreground hover:bg-primary">{t.currentVersionBadge}</Badge>}
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm text-muted-foreground hidden sm:inline">{entry.date}</span>
-                      {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                    </div>
+        <p className="text-xs text-muted-foreground" aria-live="polite">
+          {totalResults === 1
+            ? t.changesCount_one.replace('{count}', String(totalResults))
+            : t.changesCount_other.replace('{count}', String(totalResults))}
+          {' '}em {filteredChangelog.length} {filteredChangelog.length === 1 ? 'versão' : 'versões'}
+        </p>
+      </section>
+
+      {filteredChangelog.length === 0 ? (
+        <div className="flex min-h-56 flex-col items-center justify-center gap-2 border-y border-border py-12 text-center">
+          <Search className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
+          <h2 className="font-semibold text-foreground">{t.emptyTitle}</h2>
+          <p className="text-sm text-muted-foreground">{t.emptyDesc}</p>
+          <button type="button" onClick={() => { setSearchTerm(''); setActiveFilter('all'); }} className="mt-2 rounded-md border border-border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Limpar filtros</button>
+        </div>
+      ) : (
+        <ol className="divide-y divide-border border-y border-border">
+          {filteredChangelog.map((entry, entryIndex) => {
+            const isExpanded = isFiltering || expandedVersions.has(entry.version);
+            const isCurrent = entry.version === APP_VERSION;
+            const releaseId = `release-${entry.version.replace(/\./g, '-')}-${entryIndex}`;
+
+            return (
+              <li key={`${entry.version}-${entry.date}-${entryIndex}`} className="grid md:grid-cols-[10.5rem_minmax(0,1fr)]">
+                <div className="flex items-center justify-between gap-4 py-4 md:block md:py-6 md:pr-7">
+                  <div>
+                    <span className={cn('text-[0.65rem] font-semibold uppercase tracking-[0.16em]', isCurrent ? 'text-primary' : 'text-muted-foreground')}>
+                      {isCurrent ? t.currentVersionBadge : typeLabel[entry.type]}
+                    </span>
+                    <p className="mt-1 font-mono text-base font-semibold text-foreground">v{entry.version}</p>
                   </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className="px-4 pb-4">
-                    <p className="text-sm text-muted-foreground mb-4 sm:hidden">{entry.date}</p>
-                    <div className="space-y-4">
-                      {entry.changes.map((change, i) => {
+                  <time className="text-xs text-muted-foreground md:mt-2 md:block">{entry.date}</time>
+                </div>
+
+                <section className="border-t border-border md:border-l md:border-t-0">
+                  <button
+                    type="button"
+                    aria-expanded={isExpanded}
+                    aria-controls={releaseId}
+                    disabled={isFiltering}
+                    onClick={() => toggleVersion(entry.version)}
+                    className="flex w-full items-center justify-between gap-4 px-0 py-4 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-default md:px-7 md:py-6"
+                  >
+                    <span>
+                      <strong className="block text-sm font-semibold text-foreground">{isCurrent ? t.currentVersionBadge : typeLabel[entry.type]}</strong>
+                      <small className="mt-1 block text-xs text-muted-foreground">{entry.changes.length} {entry.changes.length === 1 ? 'mudança' : 'mudanças'}</small>
+                    </span>
+                    <ChevronDown className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', isExpanded && 'rotate-180')} aria-hidden="true" />
+                  </button>
+
+                  {isExpanded && (
+                    <div id={releaseId} className="divide-y divide-border border-t border-border md:ml-7">
+                      {entry.changes.map((change) => {
                         const config = categoryConfig[change.category];
+                        const Icon = config.icon;
                         return (
-                          <div key={i} className="space-y-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-semibold text-sm">{change.title}</span>
-                              <Badge className={config.className}>
-                                <config.icon className="h-3 w-3 mr-1" />
+                          <article key={`${entry.version}-${change.title}`} className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-3 py-5 md:gap-4 md:py-6">
+                            <span className={cn('flex h-9 w-9 items-center justify-center rounded-full text-white shadow-sm', config.iconClass)}>
+                              <Icon className="h-4 w-4" aria-hidden="true" />
+                            </span>
+                            <div className="min-w-0">
+                              <button type="button" onClick={() => setActiveFilter(change.category)} className={cn('text-[0.65rem] font-semibold uppercase tracking-[0.16em] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', config.textClass)}>
                                 {config.label}
-                              </Badge>
+                              </button>
+                              <h2 className="mt-1 text-base font-semibold leading-snug text-foreground">{change.title}</h2>
+                              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{change.description}</p>
                             </div>
-                            <p className="text-sm text-muted-foreground">{change.description}</p>
-                          </div>
+                          </article>
                         );
                       })}
                     </div>
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-            </Card>
-          );
-        })}
+                  )}
+                </section>
+              </li>
+            );
+          })}
+        </ol>
+      )}
 
-        {filteredChangelog.length === 0 && (
-          <div className="text-center py-12">
-            <History className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium">{t.emptyTitle}</h3>
-            <p className="text-muted-foreground">{t.emptyDesc}</p>
+      <aside className="border-y border-border py-6">
+        <h2 className="text-sm font-semibold text-foreground">Como funciona o versionamento?</h2>
+        <div className="mt-4 grid gap-5 text-sm sm:grid-cols-3 sm:divide-x sm:divide-border">
+          <div>
+            <strong className="text-foreground">Versão Principal (X.0.0)</strong>
+            <p className="mt-1 text-muted-foreground">Mudanças grandes no sistema, como redesign completo ou novas funcionalidades principais.</p>
           </div>
-        )}
-      </div>
-
-      {/* Versioning explanation */}
-      <Card>
-        <CardContent className="p-4 sm:p-6 space-y-4">
-          <h3 className="text-base font-bold text-foreground">Como funciona o versionamento?</h3>
-          <div className="space-y-4 divide-y divide-border">
-            <div className="space-y-0.5">
-              <p className="text-sm font-bold text-success">Versão Principal (X.0.0)</p>
-              <p className="text-sm text-muted-foreground">Mudanças grandes no sistema, como redesign completo ou novas funcionalidades principais.</p>
-            </div>
-            <div className="space-y-0.5 pt-4">
-              <p className="text-sm font-bold text-primary">Nova Versão (0.X.0)</p>
-              <p className="text-sm text-muted-foreground">Novas funcionalidades e melhorias importantes no sistema.</p>
-            </div>
-            <div className="space-y-0.5 pt-4">
-              <p className="text-sm font-bold text-warning">Atualização (0.0.X)</p>
-              <p className="text-sm text-muted-foreground">Correções de bugs e pequenas melhorias de usabilidade.</p>
-            </div>
+          <div className="sm:pl-5">
+            <strong className="text-foreground">Nova Versão (0.X.0)</strong>
+            <p className="mt-1 text-muted-foreground">Novas funcionalidades e melhorias importantes no sistema.</p>
           </div>
-        </CardContent>
-      </Card>
+          <div className="sm:pl-5">
+            <strong className="text-foreground">Atualização (0.0.X)</strong>
+            <p className="mt-1 text-muted-foreground">Correções de bugs e pequenas melhorias de usabilidade.</p>
+          </div>
+        </div>
+      </aside>
     </div>
   );
 }

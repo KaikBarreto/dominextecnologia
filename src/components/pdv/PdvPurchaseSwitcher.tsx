@@ -34,6 +34,8 @@ interface PdvPurchaseSwitcherTexts {
   deleteDescription: string;
   keepOrder: string;
   confirmDelete: string;
+  itemCount?: string;
+  itemCountOne?: string;
 }
 
 interface PdvPurchaseSwitcherProps {
@@ -88,8 +90,10 @@ export function PdvPurchaseSwitcher({
       <span className="min-w-0 flex-1 truncate text-sm">
         {order.supplier || texts.unnamedSupplier}
       </span>
-      <span className={cn(compact ? 'hidden' : 'hidden w-7 shrink-0 text-center text-xs tabular-nums sm:block', selected ? 'text-background/70' : 'text-muted-foreground')}>
-        {order.itemCount}
+      <span className={cn(compact ? 'hidden' : 'hidden w-20 shrink-0 text-center text-xs tabular-nums sm:block', selected ? 'text-background/70' : 'text-muted-foreground')}>
+        {order.itemCount === 1 && texts.itemCountOne
+          ? texts.itemCountOne
+          : (texts.itemCount ?? '{count} item(ns)').replace('{count}', String(order.itemCount))}
       </span>
     </>
   );
@@ -115,7 +119,7 @@ export function PdvPurchaseSwitcher({
             <span className={cn(embedded ? 'w-14' : 'w-20', 'text-center text-[11px] font-semibold uppercase tracking-widest text-muted-foreground')}>{texts.code}</span>
             <span className={cn(embedded ? 'w-20 sm:w-24' : 'w-24 sm:w-28', 'text-right text-[11px] font-semibold uppercase tracking-widest text-muted-foreground')}>{texts.value}</span>
             <span className="min-w-0 flex-1 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{texts.supplier}</span>
-            <span className={cn(embedded ? 'w-10' : 'w-7')} aria-hidden="true" />
+            <span className={cn(embedded ? 'w-10' : 'w-20')} aria-hidden="true" />
           </div>
         )}
         <div className={cn('flex overflow-hidden border border-foreground/15', embedded ? 'border-x-0 border-y-0 shadow-none' : 'rounded-lg shadow-sm')}>

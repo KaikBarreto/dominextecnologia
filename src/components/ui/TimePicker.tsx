@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Clock3 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { TimeWheel } from '@/components/ui/time-wheel';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -22,6 +23,28 @@ export interface TimePickerProps {
   ariaInvalid?: boolean;
 }
 
+const normalizeTime = (rawValue: string): string | null => {
+  const trimmed = rawValue.trim();
+  const withSeparator = trimmed.match(/^(\d{1,2}):(\d{2})$/);
+  const digits = trimmed.replace(/\D/g, '').slice(0, 4);
+  if (!withSeparator && digits.length !== 4) return null;
+  const hourDigits = withSeparator?.[1] ?? digits.slice(0, 2);
+  const minuteDigits = withSeparator?.[2] ?? digits.slice(2);
+  const hours = Number(hourDigits);
+  const minutes = Number(minuteDigits);
+  if (hours > 23 || minutes > 59) return null;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+};
+
+const formatTypedTime = (rawValue: string) => {
+  const digits = rawValue.replace(/\D/g, '').slice(0, 4);
+  if (digits.length <= 2) return digits;
+  if (digits.length === 3 && Number(digits.slice(0, 2)) > 23) {
+    return `${digits.slice(0, 1)}:${digits.slice(1)}`;
+  }
+  return `${digits.slice(0, 2)}:${digits.slice(2)}`;
+};
+
 /** Seletor de horário padrão do Dominex, independente do widget do navegador. */
 export function TimePicker({
   value,
@@ -39,6 +62,7 @@ export function TimePicker({
   const t = MESSAGES[locale].app.common.datePicker;
   const [open, setOpen] = React.useState(false);
   const [draftValue, setDraftValue] = React.useState(value);
+  const normalizedDraft = normalizeTime(draftValue);
 
   React.useEffect(() => {
     if (!open) setDraftValue(value);
@@ -75,7 +99,7 @@ export function TimePicker({
           )}
         >
           <Clock3 className="mr-2 h-4 w-4 shrink-0 opacity-70" />
-          <span>{value || placeholder}</span>
+          <span>{(open ? draftValue : value) || placeholder}</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-56 p-0" align="start" collisionPadding={12}>
@@ -83,8 +107,22 @@ export function TimePicker({
           <span className="mb-1.5 block text-center text-xs text-muted-foreground">
             {t.hour}
           </span>
-          <TimeWheel
+          <Input
             value={draftValue}
+            onChange={(event) => setDraftValue(formatTypedTime(event.target.value))}
+            onBlur={() => {
+              if (normalizedDraft) setDraftValue(normalizedDraft);
+            }}
+            inputMode="numeric"
+            autoComplete="off"
+            maxLength={5}
+            placeholder="HH:mm"
+            aria-label={ariaLabel ?? t.hour}
+            aria-invalid={draftValue.length > 0 && !normalizedDraft}
+            className="mb-3 h-10 text-center text-base font-semibold tabular-nums"
+          />
+          <TimeWheel
+            value={normalizedDraft ?? ''}
             onChange={setDraftValue}
             minuteStep={minuteStep}
             disabled={disabled}
@@ -101,8 +139,10 @@ export function TimePicker({
             type="button"
             variant="link"
             size="sm"
+            disabled={!normalizedDraft}
             onClick={() => {
-              onValueChange(draftValue);
+              if (!normalizedDraft) return;
+              onValueChange(normalizedDraft);
               setOpen(false);
             }}
           >

@@ -26,7 +26,7 @@ export interface ModuleContentDeepDive {
   icon: LucideIcon;
   title: string;
   body: string;
-  image?: { src: string; alt: string };
+  image?: { src: string; alt: string; fit?: 'cover' | 'contain'; position?: string };
 }
 
 export interface ModuleContentFeature {

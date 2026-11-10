@@ -1,6 +1,6 @@
 # Dominex Public API v1 Documentation
 
-> API REST server-to-server da Dominex para qualquer aplicação externa consultar serviços e disponibilidade, resolver clientes, criar ordens de serviço com idempotência e acompanhar o atendimento.
+> API REST server-to-server da Dominex para operar agenda e ordens de serviço e criar, consultar, atualizar e mover cards nos funis comerciais do CRM.
 
 ## Canonical sources
 
@@ -10,7 +10,7 @@
 - Human language: Portuguese (Brazil)
 - API field and endpoint language: English
 - API version: v1, independent from the Dominex application version
-- Last documentation review: 2026-10-17
+- Last documentation review: 2026-10-29
 - This file: https://www.dominex.app/docs/llms.txt
 
 Treat the OpenAPI document as the canonical machine-readable contract. Treat the most specific documentation page as the canonical explanation. If this file and the OpenAPI disagree about an accepted field, schema, enum, or response, follow the OpenAPI and report the inconsistency.
@@ -19,7 +19,11 @@ Treat the OpenAPI document as the canonical machine-readable contract. Treat the
 
 ### What is the Dominex Public API?
 
-The Dominex Public API is a multi-tenant REST API for trusted server-to-server integrations. It supports service catalog lookup, booking-resource lookup, availability search, exact customer resolution, atomic service-order creation, and service-order status lookup.
+The Dominex Public API is a multi-tenant REST API for trusted server-to-server integrations. It supports service catalog and availability lookup, exact customer resolution, atomic service-order creation, service-order status lookup, and commercial CRM card creation and management.
+
+### Can an integration manage CRM cards?
+
+Yes. Use `GET /crm/pipelines` to discover commercial pipelines and stages, then list, create, read, update, or move cards through `/crm/cards`. POST and PATCH require `Idempotency-Key`. Physical deletion and project pipelines are not exposed.
 
 ### Which applications can integrate with Dominex?
 
@@ -53,7 +57,7 @@ When generating or reviewing a Dominex Public API integration, follow every rule
 2. **ALWAYS** execute authenticated calls on a trusted server. Reject architectures that send the Dominex key to a browser, distributed mobile app, client-side automation, or user-controlled runtime.
 3. **ALWAYS** read the key from a server secret such as `process.env.DOMINEX_API_KEY`. Never hard-code, print, return, commit, serialize, or paste a real key into generated code or prompts.
 4. Send `Authorization: Bearer <Dominex API key>` and `Accept: application/json`. For JSON bodies, also send `Content-Type: application/json`.
-5. **ALWAYS** send a stable `Idempotency-Key` on `POST /service-orders`. Prefer an immutable upstream event or record ID from the source application. It must contain 8 to 200 characters matching `^[A-Za-z0-9][A-Za-z0-9._:-]{7,199}$`.
+5. **ALWAYS** send a stable `Idempotency-Key` on `POST /service-orders`, `POST /crm/cards`, and `PATCH /crm/cards/{id}`. Prefer an immutable upstream event or mutation ID. It must contain 8 to 200 characters matching `^[A-Za-z0-9][A-Za-z0-9._:-]{7,199}$`.
 6. After a timeout, `500`, or `503` during creation, retry only with the same `Idempotency-Key` and byte-equivalent semantic JSON. Do not generate a new key to mask uncertainty.
 7. On `429`, read `Retry-After`, wait at least that many seconds, add bounded jitter, and limit retries. Never create an aggressive retry loop.
 8. Parse error responses as `application/problem+json` with `type`, `title`, `status`, `code`, `detail`, and `request_id`.
@@ -68,7 +72,9 @@ When generating or reviewing a Dominex Public API integration, follow every rule
 17. The API fixes `origin=public_api`, `entry_type=os`, and `status=agendada`. Do not send `company_id`, `created_by`, financial values, signatures, diagnostics, solution, check-in/out, or arbitrary status fields.
 18. Treat `404` neutrally. Do not infer or reveal that an ID may belong to another tenant.
 19. Use a request timeout, recommended at 10 seconds, and verify response `Content-Type` before parsing.
-20. Add tests for duplicated upstream events, concurrent booking attempts, timeout after creation, `409 schedule_conflict`, `409 idempotency_conflict`, `429`, `503`, and redaction of secrets and personal data.
+20. For CRM, call `GET /crm/pipelines` and use only returned `stage_id` values. Never send `pipeline_id`; the server derives it from the stage.
+21. CRM card listing uses opaque cursor pagination. Do not parse or construct cursors.
+22. Add tests for duplicated upstream events, concurrent mutations, timeout after creation/update, `409 schedule_conflict`, `409 idempotency_conflict`, tenant-safe `404`, `429`, `503`, and redaction of secrets and personal data.
 
 ## Authentication and key lifecycle
 
@@ -90,6 +96,8 @@ When generating or reviewing a Dominex Public API integration, follow every rule
 - `customers:resolve`: resolve an existing customer by exact identifier
 - `service_orders:create`: create a customer when necessary and create a work order atomically
 - `service_orders:read`: read work orders created by the same integration
+- `crm_cards:read`: list commercial pipelines/stages and read CRM cards in the authenticated tenant
+- `crm_cards:write`: create, update, and move CRM cards in commercial pipelines
 
 Use the smallest set of scopes required by the integration.
 
@@ -175,6 +183,20 @@ The API validates company hours, notice, horizon, duration, and exceptions, then
 - Visibility: only work orders created by the same integration
 - Guide: https://www.dominex.app/docs/guias/acompanhar-os
 - Raw Markdown: https://www.dominex.app/docs/guias/acompanhar-os.md
+
+### CRM pipelines and cards
+
+- `GET /crm/pipelines`: commercial pipelines and ordered stages
+- `GET /crm/cards`: cursor-paginated cards; filters are `pipeline_id`, `stage_id`, and `updated_since`
+- Legacy cards may return `stage_id: null`; new cards require a valid stage and PATCH can normalize a legacy card
+- `POST /crm/cards`: idempotent creation; requires `title`, `stage_id`, and `Idempotency-Key`
+- `GET /crm/cards/{id}` and `GET /crm/cards/by-external-id/{external_id}`: read by UUID or integration reference
+- `PATCH /crm/cards/{id}`: idempotent field update or stage movement; requires `Idempotency-Key`
+- Scopes: `crm_cards:read` and `crm_cards:write`
+- `pipeline_id` is read-only and derived from `stage_id`
+- Project pipelines and physical deletion are outside this surface
+- Guide: https://www.dominex.app/docs/guias/cards-crm
+- Raw Markdown: https://www.dominex.app/docs/guias/cards-crm.md
 
 ## Recommended integration flow
 
@@ -284,7 +306,7 @@ Defaults apply only after company scheduling is configured. Read actual values f
 
 ## v1 boundaries
 
-The following are intentionally out of scope for v1: arbitrary customer updates, service-order status mutation, deletion, recurrence, equipment, checklists, photos, finance, fiscal functions, and outbound webhooks.
+The following are intentionally out of scope for v1: arbitrary customer updates, service-order status mutation, CRM card deletion, project-pipeline management, recurrence, equipment, checklists, photos, finance, fiscal functions, and outbound webhooks.
 
 Do not generate calls for undocumented endpoints. Do not use Supabase directly. Do not include `company_id` in a public API payload.
 
@@ -302,6 +324,7 @@ Do not generate calls for undocumented endpoints. Do not use Supabase directly. 
 - [Create a service order from any application](https://www.dominex.app/docs/guias/criar-os) — raw: https://www.dominex.app/docs/guias/criar-os.md
 - [Query availability](https://www.dominex.app/docs/guias/disponibilidade) — raw: https://www.dominex.app/docs/guias/disponibilidade.md
 - [Resolve or create a customer](https://www.dominex.app/docs/guias/clientes) — raw: https://www.dominex.app/docs/guias/clientes.md
+- [Manage CRM cards](https://www.dominex.app/docs/guias/cards-crm) — raw: https://www.dominex.app/docs/guias/cards-crm.md
 - [Track a service order](https://www.dominex.app/docs/guias/acompanhar-os) — raw: https://www.dominex.app/docs/guias/acompanhar-os.md
 - [Example: create a service order from WhatsApp](https://www.dominex.app/docs/guias/criar-os-whatsapp) — raw: https://www.dominex.app/docs/guias/criar-os-whatsapp.md
 
@@ -329,6 +352,8 @@ Implement a production-safe server-to-server integration with the Dominex Public
 Read https://www.dominex.app/docs/llms.txt and treat https://api.dominex.app/v1/openapi.json as the canonical contract. Keep DOMINEX_API_KEY exclusively in the server secret manager. Never expose or log Authorization or personal data.
 
 Before booking, call GET /capabilities, GET /service-types, and GET /availability. Use only returned IDs and slots. Resolve the customer exactly. Create the work order with POST /service-orders only after the source workflow's required validation or confirmation and use a stable Idempotency-Key derived from the immutable upstream event ID.
+
+For CRM card management, call GET /crm/pipelines, use only returned stage IDs, paginate GET /crm/cards with the opaque cursor, and require stable Idempotency-Key values for POST and PATCH. Never send company_id or pipeline_id.
 
 Implement typed application/problem+json errors, a 10-second timeout, bounded retries for transient failures, Retry-After handling for 429, and exact payload replay after uncertain creation. Add tests for duplicated events, concurrent schedule conflicts, idempotency conflicts, invalid/revoked keys, tenant-safe 404 responses, and secret/PII redaction.
 ```

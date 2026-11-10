@@ -6,7 +6,7 @@
 // teste expõe a API do hook via ref pra o teste dirigir saveDraft/flush e ler
 // showResumePrompt/draftData.
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as React from 'react';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -15,9 +15,9 @@ import { useFormDraft, type UseFormDraftReturn } from './useFormDraft';
 
 // Habilita o modo act do React 18 (senão os useEffect do hook não rodam de forma
 // síncrona dentro de act() e o teste daria falso-verde). Escopo: só este arquivo.
-(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-interface Draft extends Record<string, any> {
+interface Draft extends Record<string, unknown> {
   name: string;
   notes: string;
 }
@@ -27,10 +27,10 @@ const STORAGE_KEY = `form-draft:${KEY}`;
 
 // Componente de teste: instancia o hook e publica sua API num objeto externo,
 // que o teste usa pra dirigir as chamadas. Reflete o uso real (isOpen=true).
-function makeHarness() {
+function makeHarness(options: { debounceMs?: number; ignoreKeys?: string[] } = {}) {
   const api: { current: UseFormDraftReturn<Draft> | null } = { current: null };
-  const Harness: React.FC<{ isOpen: boolean }> = ({ isOpen }) => {
-    api.current = useFormDraft<Draft>({ key: KEY, isOpen, isEditing: false });
+  const Harness: React.FC<{ isOpen: boolean; formKey?: string; isEditing?: boolean }> = ({ isOpen, formKey = KEY, isEditing = false }) => {
+    api.current = useFormDraft<Draft>({ key: formKey, isOpen, isEditing, ...options });
     return null;
   };
   return { api, Harness };
@@ -49,6 +49,8 @@ beforeEach(() => {
 afterEach(() => {
   act(() => root.unmount());
   container.remove();
+  vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 describe('useFormDraft — persistência básica', () => {
@@ -252,5 +254,314 @@ describe('useFormDraft — remontar oferece retomar (drawer mobile)', () => {
     expect(h2.api.current!.showResumePrompt).toBe(false);
 
     void pending;
+  });
+});
+
+
+describe('useFormDraft — novo preenchimento com recuperação não bloqueante', () => {
+  it('persiste imediatamente a primeira edição que substitui um rascunho anterior', () => {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ name: 'Anterior', notes: '' }));
+    const { api, Harness } = makeHarness();
+    act(() => root.render(<Harness isOpen />));
+    expect(api.current!.showResumePrompt).toBe(true);
+    act(() => api.current!.startNewDraft({ name: 'Primeira edição', notes: '' }));
+    expect(api.current!.showResumePrompt).toBe(false);
+    expect(JSON.parse(sessionStorage.getItem(STORAGE_KEY)!)).toMatchObject({ name: 'Primeira edição' });
+    act(() => api.current!.saveDraft({ name: 'Nome completo', notes: '' }));
+    expect(JSON.parse(sessionStorage.getItem(STORAGE_KEY)!)).toMatchObject({ name: 'Nome completo' });
+  });
+
+  it('começar do zero ignora o estado vazio e continua salvando as próximas alterações', () => {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ name: 'Anterior', notes: '' }));
+    const { api, Harness } = makeHarness();
+    act(() => root.render(<Harness isOpen />));
+    act(() => api.current!.startNewDraft());
+    act(() => api.current!.saveDraft({ name: '', notes: '' }));
+    expect(sessionStorage.getItem(STORAGE_KEY)).toBeNull();
+    act(() => api.current!.saveDraft({ name: 'Novo contrato', notes: '' }));
+    expect(JSON.parse(sessionStorage.getItem(STORAGE_KEY)!)).toMatchObject({ name: 'Novo contrato' });
+  });
+});
+
+describe('useFormDraft — estado real do autosave', () => {
+  it('mantém o padrão síncrono e só marca salvo depois de gravar', () => {
+    const { api, Harness } = makeHarness();
+    act(() => root.render(<Harness isOpen />));
+    act(() => api.current!.saveDraft({ name: '', notes: '' }));
+    expect(api.current!.status).toBe('idle');
+    expect(api.current!.savedAt).toBeNull();
+    act(() => api.current!.saveDraft({ name: 'Cliente preenchido', notes: '' }));
+    expect(api.current!.status).toBe('saved');
+    expect(api.current!.savedAt).toEqual(expect.any(Number));
+    expect(JSON.parse(sessionStorage.getItem(STORAGE_KEY)!)).toMatchObject({ name: 'Cliente preenchido' });
+  });
+
+  it('agrupa mudanças e não adia o timer quando o mesmo snapshot é recebido de novo', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-11-07T02:00:00Z'));
+    const writes = vi.spyOn(Storage.prototype, 'setItem');
+    const { api, Harness } = makeHarness({ debounceMs: 500 });
+    act(() => root.render(<Harness isOpen />));
+    act(() => api.current!.saveDraft({ name: '', notes: '' }));
+    act(() => api.current!.saveDraft({ name: 'Clí', notes: '' }));
+    expect(api.current!.status).toBe('saving');
+    expect(api.current!.savedAt).toBeNull();
+    act(() => vi.advanceTimersByTime(200));
+    act(() => api.current!.saveDraft({ name: 'Clínica completa', notes: '' }));
+    act(() => vi.advanceTimersByTime(200));
+    act(() => api.current!.saveDraft({ name: 'Clínica completa', notes: '' }));
+    act(() => vi.advanceTimersByTime(299));
+    expect(writes).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(1));
+    expect(writes).toHaveBeenCalledTimes(1);
+    expect(api.current!.status).toBe('saved');
+    expect(api.current!.savedAt).toBe(Date.now());
+    expect(JSON.parse(sessionStorage.getItem(STORAGE_KEY)!)).toMatchObject({ name: 'Clínica completa' });
+    const savedAt = api.current!.savedAt;
+    act(() => vi.advanceTimersByTime(1000));
+    act(() => api.current!.saveDraft({ name: 'Clínica completa', notes: '' }));
+    expect(writes).toHaveBeenCalledTimes(1);
+    expect(api.current!.savedAt).toBe(savedAt);
+  });
+
+  it('flush cancela o debounce e grava sincronicamente os dados atuais', () => {
+    vi.useFakeTimers();
+    const writes = vi.spyOn(Storage.prototype, 'setItem');
+    const { api, Harness } = makeHarness({ debounceMs: 500 });
+    act(() => root.render(<Harness isOpen />));
+    act(() => api.current!.saveDraft({ name: '', notes: '' }));
+    act(() => api.current!.saveDraft({ name: 'Parcial', notes: '' }));
+    act(() => api.current!.flush({ name: 'Último valor antes de fechar', notes: 'Composição completa' }));
+    expect(api.current!.status).toBe('saved');
+    expect(JSON.parse(sessionStorage.getItem(STORAGE_KEY)!)).toMatchObject({ name: 'Último valor antes de fechar', notes: 'Composição completa' });
+    act(() => vi.runAllTimers());
+    expect(writes).toHaveBeenCalledTimes(1);
+  });
+
+  it('unmount persiste o snapshot pendente e cancela a escrita posterior', () => {
+    vi.useFakeTimers();
+    const writes = vi.spyOn(Storage.prototype, 'setItem');
+    const { api, Harness } = makeHarness({ debounceMs: 500 });
+    act(() => root.render(<Harness isOpen />));
+    act(() => api.current!.saveDraft({ name: '', notes: '' }));
+    act(() => api.current!.saveDraft({ name: 'Última edição no celular', notes: '' }));
+    act(() => root.render(null));
+    expect(JSON.parse(sessionStorage.getItem(STORAGE_KEY)!)).toMatchObject({ name: 'Última edição no celular' });
+    act(() => vi.runAllTimers());
+    expect(writes).toHaveBeenCalledTimes(1);
+  });
+
+  it('não grava um baseline intacto nem em flush sem dados nem em unmount', () => {
+    const writes = vi.spyOn(Storage.prototype, 'setItem');
+    const { api, Harness } = makeHarness({ debounceMs: 500 });
+    act(() => root.render(<Harness isOpen />));
+    act(() => api.current!.saveDraft({ name: 'Nome pré-preenchido', notes: '' }));
+    act(() => api.current!.flush());
+    act(() => root.render(null));
+    expect(writes).not.toHaveBeenCalled();
+    expect(sessionStorage.getItem(STORAGE_KEY)).toBeNull();
+  });
+
+  it.each(['clearDraft', 'discardDraft'] as const)('%s cancela os dados pendentes e não ressuscita no fechamento/reabertura', method => {
+    vi.useFakeTimers();
+    const writes = vi.spyOn(Storage.prototype, 'setItem');
+    const { api, Harness } = makeHarness({ debounceMs: 500 });
+    act(() => root.render(<Harness isOpen />));
+    act(() => api.current!.saveDraft({ name: '', notes: '' }));
+    act(() => api.current!.saveDraft({ name: 'Não ressuscitar', notes: '' }));
+    act(() => api.current![method]());
+    expect(api.current!.status).toBe('idle');
+    expect(api.current!.savedAt).toBeNull();
+    act(() => root.render(<Harness isOpen={false} />));
+    act(() => api.current!.flush({ name: 'Estado antigo do formulário', notes: '' }));
+    act(() => vi.runAllTimers());
+    act(() => root.render(<Harness isOpen />));
+    expect(api.current!.showResumePrompt).toBe(false);
+    expect(sessionStorage.getItem(STORAGE_KEY)).toBeNull();
+    expect(writes).not.toHaveBeenCalled();
+  });
+
+  it.each(['QuotaExceededError', 'SecurityError'])('não anuncia salvo quando setItem falha: %s', code => {
+    vi.useFakeTimers();
+    const { api, Harness } = makeHarness({ debounceMs: 500 });
+    act(() => root.render(<Harness isOpen />));
+    act(() => api.current!.saveDraft({ name: '', notes: '' }));
+    const write = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('Armazenamento indisponível', code); });
+    act(() => api.current!.saveDraft({ name: 'Ainda não gravado', notes: '' }));
+    expect(api.current!.status).toBe('saving');
+    act(() => vi.advanceTimersByTime(500));
+    expect(api.current!.status).toBe('error');
+    expect(api.current!.savedAt).toBeNull();
+    expect(sessionStorage.getItem(STORAGE_KEY)).toBeNull();
+    write.mockRestore();
+    act(() => api.current!.flush());
+    expect(api.current!.status).toBe('saved');
+    expect(api.current!.savedAt).toBe(Date.now());
+  });
+
+  it('ignora defaults assíncronos, mas preserva esses campos quando existe preenchimento real', () => {
+    vi.useFakeTimers();
+    const { api, Harness } = makeHarness({ debounceMs: 500, ignoreKeys: ['useBdi', 'templateId'] });
+    act(() => root.render(<Harness isOpen />));
+    act(() => api.current!.saveDraft({ name: '', notes: '', useBdi: true, templateId: '' }));
+    act(() => api.current!.saveDraft({ name: '', notes: '', useBdi: true, templateId: 'template-padrão' }));
+    act(() => vi.runAllTimers());
+    expect(api.current!.status).toBe('idle');
+    expect(sessionStorage.getItem(STORAGE_KEY)).toBeNull();
+    act(() => api.current!.saveDraft({ name: 'Cliente', notes: '', useBdi: true, templateId: 'template-padrão' }));
+    act(() => vi.advanceTimersByTime(500));
+    expect(JSON.parse(sessionStorage.getItem(STORAGE_KEY)!)).toMatchObject({ name: 'Cliente', useBdi: true, templateId: 'template-padrão' });
+  });
+
+  it('mantém saveDraft estável enquanto status muda e ignoreKeys recebe outro array', () => {
+    const options = { ignoreKeys: ['useBdi'] };
+    const { api, Harness } = makeHarness(options);
+    act(() => root.render(<Harness isOpen />));
+    const save = api.current!.saveDraft;
+    act(() => api.current!.saveDraft({ name: '', notes: '' }));
+    act(() => api.current!.saveDraft({ name: 'Novo', notes: '' }));
+    options.ignoreKeys = ['useBdi', 'templateId'];
+    act(() => root.render(<Harness isOpen />));
+    expect(api.current!.saveDraft).toBe(save);
+  });
+
+  it('um item com composição completa é meaningful e mantém todo o snapshot do orçamento', () => {
+    vi.useFakeTimers();
+    const { api, Harness } = makeHarness({ debounceMs: 500, ignoreKeys: ['useBdi'] });
+    act(() => root.render(<Harness isOpen />));
+    act(() => api.current!.saveDraft({ name: '', notes: '', items: [], useBdi: true }));
+    const item = { id: 'service-1', quantity: 2, cost_composition: { labor: { hours: 2.5, hourlyRate: 80 }, supplies: [{ name: 'Insumo', quantity: 1.5, cost: 30 }], resources: [] } };
+    act(() => api.current!.saveDraft({ name: '', notes: '', items: [item], useBdi: true }));
+    expect(api.current!.status).toBe('saving');
+    act(() => vi.advanceTimersByTime(500));
+    expect(JSON.parse(sessionStorage.getItem(STORAGE_KEY)!)).toEqual({ name: '', notes: '', items: [item], useBdi: true });
+    expect(api.current!.status).toBe('saved');
+  });
+
+  it('não toca o rascunho anterior enquanto a decisão de retomar está pendente', () => {
+    vi.useFakeTimers();
+    const old = JSON.stringify({ name: 'Anterior preservado', notes: '' });
+    sessionStorage.setItem(STORAGE_KEY, old);
+    const { api, Harness } = makeHarness({ debounceMs: 500 });
+    act(() => root.render(<Harness isOpen />));
+    expect(api.current!.status).toBe('idle');
+    act(() => api.current!.saveDraft({ name: 'Não substituir', notes: '' }));
+    act(() => api.current!.flush({ name: 'Não substituir', notes: '' }));
+    act(() => root.render(<Harness isOpen={false} />));
+    act(() => root.render(null));
+    act(() => vi.runAllTimers());
+    expect(sessionStorage.getItem(STORAGE_KEY)).toBe(old);
+  });
+
+  it('retomar grava o snapshot completo e só então anuncia salvo', () => {
+    vi.useFakeTimers();
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ name: 'Anterior', notes: '' }));
+    const { api, Harness } = makeHarness({ debounceMs: 500 });
+    act(() => root.render(<Harness isOpen />));
+    act(() => api.current!.acceptDraft());
+    act(() => api.current!.saveDraft({ name: 'Anterior', notes: '', items: [{ id: 'service-1', cost: 200 }] }));
+    expect(api.current!.status).toBe('saving');
+    act(() => vi.advanceTimersByTime(500));
+    expect(api.current!.status).toBe('saved');
+    expect(JSON.parse(sessionStorage.getItem(STORAGE_KEY)!)).toMatchObject({ items: [{ id: 'service-1', cost: 200 }] });
+  });
+
+  it('startNewDraft com dados persiste a primeira edição imediatamente mesmo com debounce', () => {
+    vi.useFakeTimers();
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ name: 'Anterior', notes: '' }));
+    const { api, Harness } = makeHarness({ debounceMs: 500 });
+    act(() => root.render(<Harness isOpen />));
+    act(() => api.current!.startNewDraft({ name: 'Primeira edição', notes: '' }));
+    expect(api.current!.status).toBe('saved');
+    expect(api.current!.savedAt).toBe(Date.now());
+    expect(JSON.parse(sessionStorage.getItem(STORAGE_KEY)!)).toMatchObject({ name: 'Primeira edição' });
+  });
+
+  it('limpar o preenchimento meaningful remove o rascunho anterior sem suspender o próximo autosave', () => {
+    const { api, Harness } = makeHarness({ ignoreKeys: ['useBdi'] });
+    act(() => root.render(<Harness isOpen />));
+    act(() => api.current!.saveDraft({ name: '', notes: '', useBdi: true }));
+    act(() => api.current!.saveDraft({ name: 'Não reabrir após limpar', notes: '', useBdi: true }));
+    expect(api.current!.status).toBe('saved');
+    act(() => api.current!.saveDraft({ name: '', notes: '', useBdi: true }));
+    expect(sessionStorage.getItem(STORAGE_KEY)).toBeNull();
+    expect(api.current!.status).toBe('idle');
+    expect(api.current!.savedAt).toBeNull();
+    act(() => api.current!.saveDraft({ name: 'Próximo preenchimento', notes: '', useBdi: true }));
+    expect(JSON.parse(sessionStorage.getItem(STORAGE_KEY)!)).toMatchObject({ name: 'Próximo preenchimento' });
+  });
+
+  it('o reset vazio após fechar não apaga o rascunho já persistido', () => {
+    const { api, Harness } = makeHarness();
+    act(() => root.render(<Harness isOpen />));
+    act(() => api.current!.saveDraft({ name: '', notes: '' }));
+    act(() => api.current!.saveDraft({ name: 'Preservar no fechamento', notes: '' }));
+    act(() => root.render(<Harness isOpen={false} />));
+    act(() => api.current!.flush({ name: '', notes: '' }));
+    act(() => root.render(null));
+    expect(JSON.parse(sessionStorage.getItem(STORAGE_KEY)!)).toMatchObject({ name: 'Preservar no fechamento' });
+  });
+
+  it('reabrir retorna idle e exige decidir sobre o rascunho, mesmo após um salvamento bem-sucedido', () => {
+    vi.useFakeTimers();
+    const { api, Harness } = makeHarness({ debounceMs: 500 });
+    act(() => root.render(<Harness isOpen />));
+    act(() => api.current!.saveDraft({ name: '', notes: '' }));
+    act(() => api.current!.saveDraft({ name: 'Cliente', notes: '' }));
+    act(() => vi.advanceTimersByTime(500));
+    expect(api.current!.status).toBe('saved');
+    act(() => root.render(<Harness isOpen={false} />));
+    act(() => root.render(<Harness isOpen />));
+    expect(api.current!.status).toBe('idle');
+    expect(api.current!.savedAt).toBeNull();
+    expect(api.current!.showResumePrompt).toBe(true);
+  });
+
+  it('trocar a chave cancela o timer antigo e bloqueia callbacks do contexto anterior', () => {
+    vi.useFakeTimers();
+    const oldB = JSON.stringify({ name: 'Rascunho da empresa B', notes: '' });
+    sessionStorage.setItem('form-draft:company-B:user-2', oldB);
+    const { api, Harness } = makeHarness({ debounceMs: 500 });
+    act(() => root.render(<Harness isOpen formKey="company-A:user-1" />));
+    act(() => api.current!.saveDraft({ name: '', notes: '' }));
+    act(() => api.current!.saveDraft({ name: 'Não vazar para B', notes: '' }));
+    const oldFlush = api.current!.flush;
+    act(() => root.render(<Harness isOpen formKey="company-B:user-2" />));
+    expect(api.current!.status).toBe('idle');
+    expect(api.current!.savedAt).toBeNull();
+    expect(api.current!.draftData).toMatchObject({ name: 'Rascunho da empresa B' });
+    act(() => oldFlush({ name: 'Snapshot antigo', notes: '' }));
+    act(() => vi.runAllTimers());
+    act(() => root.render(null));
+    expect(sessionStorage.getItem('form-draft:company-A:user-1')).toBeNull();
+    expect(sessionStorage.getItem('form-draft:company-B:user-2')).toBe(oldB);
+  });
+
+  it.each(['clearDraft', 'discardDraft', 'startNewDraft'] as const)('trata removeItem bloqueado em %s sem quebrar o formulário', method => {
+    const { api, Harness } = makeHarness();
+    act(() => root.render(<Harness isOpen />));
+    const remove = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => { throw new DOMException('Armazenamento bloqueado', 'SecurityError'); });
+    expect(() => act(() => api.current![method]())).not.toThrow();
+    expect(api.current!.status).toBe('error');
+    expect(api.current!.savedAt).toBeNull();
+    remove.mockRestore();
+  });
+
+  it('trata removeItem bloqueado ao abrir um registro sem dados meaningful', () => {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ name: '', notes: '' }));
+    vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => { throw new DOMException('Armazenamento bloqueado', 'SecurityError'); });
+    const { api, Harness } = makeHarness();
+    expect(() => act(() => root.render(<Harness isOpen />))).not.toThrow();
+    expect(api.current!.status).toBe('error');
+    expect(api.current!.savedAt).toBeNull();
+  });
+
+  it('não esconde uma falha de remoção ao começar novo com dados vazios', () => {
+    const { api, Harness } = makeHarness();
+    act(() => root.render(<Harness isOpen />));
+    vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => { throw new DOMException('Armazenamento bloqueado', 'SecurityError'); });
+    act(() => api.current!.startNewDraft({ name: '', notes: '' }));
+    expect(api.current!.status).toBe('error');
+    expect(api.current!.savedAt).toBeNull();
   });
 });

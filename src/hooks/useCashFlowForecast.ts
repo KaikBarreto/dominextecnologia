@@ -50,6 +50,9 @@ export interface UseCashFlowForecastOptions {
 export interface UseCashFlowForecastResult {
   forecast: CashFlowForecastResult | null;
   isLoading: boolean;
+  isError: boolean;
+  error: unknown;
+  refetch: () => void;
   /** Dias de dívida para trás configurados pela empresa. 0 = sem limite. */
   overdueWindowDays: number;
 }
@@ -60,9 +63,27 @@ export function useCashFlowForecast(
   const { profile } = useAuth();
   const companyId = profile?.company_id ?? null;
   const { timezone } = useAppLocaleContext();
-  const { accounts, isLoading: loadingAccounts } = useFinancialAccounts();
-  const { settings, isLoading: loadingSettings } = useCompanySettings();
-  const { bills, isLoading: loadingBills } = useAllCreditCardBills();
+  const {
+    accounts,
+    isLoading: loadingAccounts,
+    isError: accountsIsError,
+    error: accountsError,
+    refetch: refetchAccounts,
+  } = useFinancialAccounts();
+  const {
+    settings,
+    isLoading: loadingSettings,
+    isError: settingsIsError,
+    error: settingsError,
+    refetch: refetchSettings,
+  } = useCompanySettings();
+  const {
+    bills,
+    isLoading: loadingBills,
+    isError: billsIsError,
+    error: billsError,
+    refetch: refetchBills,
+  } = useAllCreditCardBills();
 
   const horizonDays = options.horizonDays ?? 15;
   const today = todayInTz(timezone);
@@ -126,9 +147,11 @@ export function useCashFlowForecast(
 
   const isLoading =
     loadingAccounts || loadingSettings || loadingBills || openQuery.isLoading || balancesQuery.isLoading;
+  const isError = accountsIsError || settingsIsError || billsIsError || openQuery.isError || balancesQuery.isError;
+  const error = accountsError ?? settingsError ?? billsError ?? openQuery.error ?? balancesQuery.error ?? null;
 
   const forecast = useMemo(() => {
-    if (isLoading) return null;
+    if (isLoading || isError) return null;
     if (!openQuery.data || !balancesQuery.data) return null;
 
     const forecastAccounts: ForecastAccount[] = accounts.map((a) => ({
@@ -168,6 +191,7 @@ export function useCashFlowForecast(
     return { ...result, warnings: [...sourceWarnings, ...result.warnings] };
   }, [
     isLoading,
+    isError,
     openQuery.data,
     balancesQuery.data,
     accounts,
@@ -178,5 +202,18 @@ export function useCashFlowForecast(
     horizonDays,
   ]);
 
-  return { forecast, isLoading, overdueWindowDays };
+  return {
+    forecast,
+    isLoading,
+    isError,
+    error,
+    refetch: () => {
+      refetchAccounts();
+      void refetchSettings();
+      void refetchBills();
+      void openQuery.refetch();
+      void balancesQuery.refetch();
+    },
+    overdueWindowDays,
+  };
 }

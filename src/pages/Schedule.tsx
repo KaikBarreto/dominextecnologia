@@ -23,6 +23,8 @@ import { useServiceOrders, ServiceOrderInput } from '@/hooks/useServiceOrders';
 import { useTaskSubmit } from '@/hooks/useTaskSubmit';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useCustomers } from '@/hooks/useCustomers';
+import { usePartyLabels } from '@/hooks/usePartyLabels';
+import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
 import { useTeams } from '@/hooks/useTeams';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -91,6 +93,7 @@ export default function Schedule() {
   const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, rescheduleServiceOrder, deleteServiceOrder, resetServiceOrder } = useServiceOrders();
   const { data: allProfiles = [] } = useProfiles();
   const { customers } = useCustomers();
+  const { labelsFor } = usePartyLabels();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const { teamsWithMembers } = useTeams();
@@ -949,14 +952,16 @@ export default function Schedule() {
               />
               <FilterCheckboxGroup
                 label={t.filters.customer}
-                options={customers.map((c) => ({
+                options={customers.map((c) => { const labels = labelsFor('customer', c.id); return {
                   value: c.id,
                   label: c.name,
-                  // Telefone/documento entram como termo de busca do filtro.
-                  keywords: [c.phone, c.celular, c.document, c.company_name].filter(
+                  suffix: <PartyLabelBadges labels={labels} mode="summary" />,
+                  selectedSuffix: <PartyLabelBadges labels={labels} mode="compact" />,
+                  // Telefone/documento e todas as etiquetas entram na busca.
+                  keywords: [c.phone, c.celular, c.document, c.company_name, ...labels.map((label) => label.name)].filter(
                     (k): k is string => !!k,
                   ),
-                }))}
+                }; })}
                 selected={customerFilter}
                 onChange={setCustomerFilter}
               />

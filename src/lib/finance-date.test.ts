@@ -147,3 +147,16 @@ describe('getEffectiveTransactionMonthRange', () => {
     });
   });
 });
+
+describe('isTransactionInDateRange — bordas civis inclusivas', () => {
+  it('inclui uma transação no último dia quando `to` chega à meia-noite', () => {
+    const txn = { transaction_date: '2026-02-28', is_paid: true };
+    const range = {
+      from: new Date(2026, 1, 1, 0, 0, 0),
+      to: new Date(2026, 1, 28, 0, 0, 0),
+    };
+
+    expect(isTransactionInDateRange(txn, range, 'caixa')).toBe(true);
+    expect(isTransactionInDateRange({ ...txn, transaction_date: '2026-03-01' }, range, 'caixa')).toBe(false);
+  });
+});

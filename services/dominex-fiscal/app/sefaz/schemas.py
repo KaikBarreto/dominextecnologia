@@ -91,6 +91,7 @@ class Aviso(BaseModel):
     codigo: str
     mensagem: str
     detalhe: Optional[Any] = None
+    orientacao: Optional[dict[str, Any]] = None
 
 
 class DistribuicaoResposta(BaseModel):

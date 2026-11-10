@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_CUSTOMER_PORTAL_PERMISSIONS,
+  DEFAULT_CUSTOMER_PORTAL_PUBLIC_SECTIONS,
   parsePortalSettings,
 } from './useCustomerPortalSettings';
 
@@ -17,6 +18,7 @@ describe('parsePortalSettings', () => {
       passwordEnabled: false,
       passwordConfigured: false,
       permissions: DEFAULT_CUSTOMER_PORTAL_PERMISSIONS,
+      publicSections: DEFAULT_CUSTOMER_PORTAL_PUBLIC_SECTIONS,
     });
   });
 
@@ -35,11 +37,29 @@ describe('parsePortalSettings', () => {
         documents: false,
         ticket_requests: false,
       },
+      public_sections: {
+        service_orders: true,
+        equipment: false,
+        contracts: true,
+        charges: false,
+        invoices: true,
+        documents: false,
+        ticket_requests: false,
+      },
     });
 
     expect(parsed?.passwordEnabled).toBe(true);
     expect(parsed?.permissions).toEqual({
       service_orders: false,
+      equipment: false,
+      contracts: true,
+      charges: false,
+      invoices: true,
+      documents: false,
+      ticket_requests: false,
+    });
+    expect(parsed?.publicSections).toEqual({
+      service_orders: true,
       equipment: false,
       contracts: true,
       charges: false,

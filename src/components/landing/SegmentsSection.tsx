@@ -43,19 +43,19 @@ export default function SegmentsSection() {
     (slug && (messages.segmentLabels as Record<string, string>)[slug]) || ptLabel;
 
   return (
-    <section id="segmentos" className="py-24 overflow-hidden">
+    <section id="segmentos" className="overflow-hidden bg-[#f4f6f2] py-24 dark:bg-[#050706]">
       <div ref={ref} className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 text-center scroll-reveal">
-        <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4 break-words">
+        <h2 className="mb-4 break-words text-3xl font-bold tracking-[-0.025em] text-[#101512] dark:text-white sm:text-4xl">
           {t.heading}
         </h2>
-        <p className="text-white/55 mb-12">{t.subheading}</p>
+        <p className="mb-12 text-[#657068] dark:text-white/55">{t.subheading}</p>
       </div>
 
       {/* Carrossel infinito (marquee). Full-bleed: ignora o max-w pra rolar de borda a borda. */}
       <div className="group relative overflow-hidden">
         {/* Fades laterais pra esconder as bordas de entrada/saída dos cards */}
-        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-12 bg-gradient-to-r from-[hsl(0,0%,4%)] to-transparent sm:w-24" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-gradient-to-l from-[hsl(0,0%,4%)] to-transparent sm:w-24" />
+        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-12 bg-gradient-to-r from-[#f4f6f2] to-transparent dark:from-[#050706] sm:w-24" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-gradient-to-l from-[#f4f6f2] to-transparent dark:from-[#050706] sm:w-24" />
 
         <ul
           className="flex w-max gap-4 animate-marquee-slow sm:gap-6 md:animate-marquee-mid group-hover:[animation-play-state:paused] motion-reduce:animate-none"
@@ -79,7 +79,7 @@ export default function SegmentsSection() {
                   // não entra no nome — sem mismatch.
                   aria-label={`${label}: ${t.ariaSuffix}`}
                   tabIndex={isClone ? -1 : undefined}
-                  className="group/card relative block aspect-[4/3] w-72 cursor-pointer overflow-hidden rounded-2xl border border-white/10 transition-colors hover:border-primary/40 focus-visible:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:w-80 lg:w-[26rem]"
+                  className="group/card relative block aspect-[4/3] w-72 cursor-pointer overflow-hidden rounded-2xl border border-[#d5ddd7] bg-white shadow-sm transition-colors hover:border-primary/60 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:border-white/10 dark:bg-white/[0.03] sm:w-80 lg:w-[26rem]"
                 >
                   {/* Imagem de fundo */}
                   <img

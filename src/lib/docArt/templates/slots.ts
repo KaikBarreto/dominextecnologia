@@ -25,24 +25,43 @@ function v(key: string): string {
  * desenho (ver `resolveText`), então todo slot aqui nasce preenchido.
  */
 export const CERTIFICADO_DEFAULT_SLOTS: Partial<Record<DocArtSlotKey, string>> = {
-  sobretitulo: 'Lei Federal nº 13.589, de 4 de janeiro de 2018',
+  sobretitulo: 'Lei Federal nº 13.589/2018 · Portaria GM/MS nº 3.523/1998',
 
-  titulo: 'Certificado',
+  titulo: 'CERTIFICADO DE CONFORMIDADE',
 
-  subtitulo: 'de Conformidade',
+  subtitulo: 'AMBIENTES CLIMATIZADOS',
 
   corpo: [
-    `<p>A empresa <strong>${v('empresa.razao_social')}</strong>, inscrita no CNPJ nº <strong>${v('empresa.cnpj')}</strong>, certifica que a unidade <strong>${v('cliente.nome')}</strong>, inscrita no CNPJ nº <strong>${v('cliente.documento')}</strong>, localizada em ${v('cliente.endereco')}, está sob plano formal de manutenção preventiva e operacional, sob supervisão técnica de <strong>${v('rt.nome')}</strong> (${v('rt.modalidade')}, CFT ${v('rt.cft_crea')}).</p>`,
-    `<p><strong>Periodicidade das manutenções:</strong> ${v('contrato.frequencia')}. <strong>Vigência:</strong> a partir de ${v('contrato.vigencia_inicio')}.</p>`,
+    `<p>Certificamos que os equipamentos de climatização da unidade <strong>${v('cliente.nome')}</strong>, inscrita no CNPJ/CPF nº <strong>${v('cliente.documento')}</strong>, foram submetidos ao processo de manutenção, limpeza e higienização, em conformidade com a Lei Federal nº 13.589/2018, a Portaria GM/MS nº 3.523/1998 e as normas aplicáveis.</p>`,
+    `<p>O atendimento foi executado sob responsabilidade técnica de <strong>${v('rt.nome')}</strong>, com os procedimentos e o produto identificados neste certificado e no relatório da execução.</p>`,
   ].join(''),
 
-  destaque: 'Plano de Manutenção, Operação e Controle',
+  destaque: 'Este certificado é válido mediante a apresentação do relatório de execução com a relação dos equipamentos atendidos.',
 
-  assinaturaNome: v('rt.nome'),
+  produtoTitulo: 'PRODUTOS UTILIZADOS',
 
-  assinaturaCargo: `${v('rt.modalidade')} · CFT ${v('rt.cft_crea')}`,
+  produto: '<strong>Dados do produto</strong> conforme o relatório de execução vinculado.',
 
-  rodape: `${v('empresa.nome')} · ${v('empresa.telefone')}`,
+  assinaturaTitulo: 'RESPONSÁVEL TÉCNICO',
 
-  lateral: `Emitido em ${v('documento.data_emissao')} · Válido até ${v('documento.data_vencimento')}`,
+  assinaturaNome: `<strong>${v('rt.nome')}</strong>`,
+
+  assinaturaCargo: `<strong>${v('rt.modalidade')}</strong><br>CFT/CREA <strong>${v('rt.cft_crea')}</strong> · Registro <strong>${v('rt.registro')}</strong>`,
+
+  rodape: `<strong>EMPRESA RESPONSÁVEL</strong><br><strong>${v('empresa.nome')}</strong> · CNPJ <strong>${v('empresa.cnpj')}</strong><br>${v('empresa.telefone')}`,
+
+  lateral: `Emitido em <strong>${v('documento.data_emissao')}</strong> · Válido até <strong>${v('documento.data_vencimento')}</strong>`,
+
+  validacao: `Nº <strong>${v('documento.codigo_validacao')}</strong> · VALIDE EM ${v('documento.url_validacao')}`,
+};
+
+/** Conteúdo-base do certificado emitido para o contrato/estabelecimento. */
+export const CERTIFICADO_CONTRACT_SLOTS: Partial<Record<DocArtSlotKey, string>> = {
+  corpo: [
+    `<p>Certificamos que os ambientes climatizados do estabelecimento <strong>${v('cliente.nome')}</strong>, inscrito no CNPJ/CPF nº <strong>${v('cliente.documento')}</strong>, estão abrangidos pelo Plano de Manutenção, Operação e Controle do contrato <strong>${v('contrato.nome')}</strong>, em conformidade com a Lei Federal nº 13.589/2018, a Portaria GM/MS nº 3.523/1998 e as normas aplicáveis.</p>`,
+    `<p>O plano é conduzido sob responsabilidade técnica de <strong>${v('rt.nome')}</strong>, conforme a periodicidade e os procedimentos previstos para o estabelecimento.</p>`,
+  ].join(''),
+  destaque: 'Este certificado comprova a cobertura do contrato e do estabelecimento durante sua vigência. As execuções de cada atendimento permanecem registradas nos respectivos relatórios de serviço.',
+  produtoTitulo: 'CONTRATO E ESTABELECIMENTO',
+  produto: `<strong>${v('contrato.nome')}</strong><br>Estabelecimento: <strong>${v('cliente.nome')}</strong><br>Validade: <strong>${v('documento.validade')}</strong>`,
 };

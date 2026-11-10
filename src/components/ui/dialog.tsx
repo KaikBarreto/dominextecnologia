@@ -19,7 +19,7 @@ import { useAppLocaleContext } from "@/contexts/AppLocaleContext";
  * fechamento nativo do Radix; no drawer usamos `onClick` direto.
  */
 const modalCloseButtonClass =
-  "inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground transition-colors hover:bg-destructive hover:text-white active:bg-destructive active:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none";
+  "inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground transition-colors hover:bg-red-600 hover:text-white active:bg-red-600 active:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none";
 
 const MODAL_CLOSE_LABEL = {
   'pt-br': 'Fechar',
@@ -184,8 +184,8 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
  */
 const DialogContent = React.forwardRef<
   HTMLDivElement,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => {
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & { hideCloseButton?: boolean }
+>(({ className, children, hideCloseButton = false, ...props }, ref) => {
   const mode = useDialogMode();
   const innerRef = React.useRef<HTMLDivElement>(null);
 
@@ -253,9 +253,11 @@ const DialogContent = React.forwardRef<
         {...props}
       >
         {children}
-        <DialogPrimitive.Close asChild>
-          <ModalCloseButton className="absolute right-4 top-4" />
-        </DialogPrimitive.Close>
+        {!hideCloseButton && (
+          <DialogPrimitive.Close asChild>
+            <ModalCloseButton className="absolute right-4 top-4" />
+          </DialogPrimitive.Close>
+        )}
       </DialogPrimitive.Content>
     </DialogPortal>
   );

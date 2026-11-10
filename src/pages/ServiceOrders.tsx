@@ -22,6 +22,7 @@ import {
   Megaphone,
   Receipt,
   RotateCcw,
+  FileText,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -67,6 +68,7 @@ import { KPICard } from '@/components/dashboard/KPICard';
 import { FilterSheet } from '@/components/mobile/FilterSheet';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { FilterButton } from '@/components/ui/FilterButton';
+import { SearchField } from '@/components/ui/search-field-actions';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
@@ -83,6 +85,10 @@ import { OsBilledBadge } from '@/components/service-orders/OsBilledBadge';
 import { PortalCallsPanel } from '@/components/service-orders/PortalCallsPanel';
 import { isOpenPortalCall } from '@/lib/portalCalls';
 import { ResetServiceOrderDialog } from '@/components/service-orders/ResetServiceOrderDialog';
+import { isServiceOrderEntry } from '@/lib/serviceOrderAccess';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { canGenerateOsPmocDocuments } from '@/lib/osPmocDocuments';
+import { OsPmocDocumentsDialog } from '@/components/service-orders/OsPmocDocumentsDialog';
 
 export default function ServiceOrders() {
   const isMobile = useIsMobile();
@@ -141,6 +147,7 @@ export default function ServiceOrders() {
   const [osToReset, setOsToReset] = useState<ServiceOrder | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewingOsId, setViewingOsId] = useState<string | null>(null);
+  const [pmocDocumentsOsId, setPmocDocumentsOsId] = useState<string | null>(null);
   const [statusConfigOpen, setStatusConfigOpen] = useState(false);
   // Default = kanban (preferência do CEO). Persiste a escolha do usuário em localStorage:
   // se ele alternar pra lista, fica em lista nas próximas visitas.
@@ -165,6 +172,7 @@ export default function ServiceOrders() {
   // O usuário salvava, via "criada com sucesso" e não achava mais.
   const { preset, range, setPreset, setRange, filterByDate } = useDateRangeFilter('all');
   const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, deleteServiceOrder, resetServiceOrder } = useServiceOrders();
+  const { settings: companySettings } = useCompanySettings();
   const { statuses } = useOsStatuses();
   // Receita ao finalizar a OS. `maybeOpen` decide sozinho se abre (toggle da
   // empresa + permissão + OS ainda sem receita) e nunca lança — não duplicar
@@ -181,6 +189,8 @@ export default function ServiceOrders() {
   const canEditOS = isAdminOrGestor() || hasPermission('fn:edit_os');
   const canDeleteOS = isAdminOrGestor() || hasPermission('fn:delete_os');
   const canResetOS = isAdminOrGestor() || hasPermission('fn:reopen_os');
+  const canGeneratePmocDocuments = (os: Pick<ServiceOrder, 'status' | 'entry_type'>) =>
+    canGenerateOsPmocDocuments(os, companySettings?.segments, companySettings?.segment);
 
   const getOsCode = (os: ServiceOrder) => {
     const prefix = (os as any).service_type?.number_prefix || 'OS';
@@ -194,6 +204,10 @@ export default function ServiceOrders() {
   const hasSearch = searchTerm.trim().length > 0;
 
   const filteredOrders = useMemo(() => {
+    // `service_orders` também armazena tarefas internas da agenda. A tela de OS
+    // nunca deve expor essas tarefas como ordens compartilháveis com o cliente.
+    const ordersOnly = serviceOrders.filter(isServiceOrderEntry);
+
     if (hasSearch) {
       // A exibição não leva mais zero à esquerda ("OS #123", não "OS
       // #000123"), mas quem digitar o formato antigo ("000123" — copiado de
@@ -208,7 +222,7 @@ export default function ServiceOrders() {
       const searchTermNoLeadingZeros = searchTerm.replace(/(^|\D)0+(?=\d)/g, '$1');
 
       // Filtros pausados: base é o universo completo de OS, só a busca restringe.
-      return serviceOrders.filter((os) => {
+      return ordersOnly.filter((os) => {
         const osCode = getOsCode(os);
         const orderNum = formatOSNumberDigits(os.order_number);
         return (
@@ -217,7 +231,6 @@ export default function ServiceOrders() {
           fuzzyIncludes(osCode, searchTermNoLeadingZeros) ||
           fuzzyIncludes(orderNum, searchTermNoLeadingZeros) ||
           fuzzyIncludes((os as any).service_type?.name, searchTerm) ||
-          fuzzyIncludes((os as any).task_title, searchTerm) ||
           fuzzyIncludes((os as any).equipment?.name, searchTerm) ||
           fuzzyIncludes(os.description, searchTerm) ||
           fuzzyIncludes(os.diagnosis, searchTerm) ||
@@ -249,7 +262,7 @@ export default function ServiceOrders() {
     // temporal da tela — combinado com o filtro de status.
     // `keepUndated`: OS sem data marcada NUNCA some da tela de trabalho — é assim
     // que o chamado do portal nasce, e ele mora na coluna fixa do portal no kanban.
-    const baseOrders = filterByDate(serviceOrders, 'scheduled_date', undefined, { keepUndated: true });
+    const baseOrders = filterByDate(ordersOnly, 'scheduled_date', undefined, { keepUndated: true });
     return baseOrders.filter((os) => {
       return statusFilter.length === 0 || statusFilter.includes(os.status);
     });
@@ -690,27 +703,26 @@ export default function ServiceOrders() {
             ) : (
               <>
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-2 flex-1">
-                    <div className="relative flex-1 sm:max-w-sm">
-                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
+                  <div className="flex-1 sm:max-w-sm">
+                    <SearchField
                         placeholder={t.search.placeholderFull}
-                        className="pl-10"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
+                        actions={
+                          <FilterButton
+                            activeCount={structuredActiveCount}
+                            onClear={clearStructuredFilters}
+                            embedded
+                          >
+                            <FilterCheckboxGroup
+                              label={t.filters.status}
+                              options={statusOptions.map((s) => ({ value: s.key, label: s.label, color: s.color }))}
+                              selected={statusFilter}
+                              onChange={setStatusFilter}
+                            />
+                          </FilterButton>
+                        }
                       />
-                    </div>
-                    <FilterButton
-                      activeCount={structuredActiveCount}
-                      onClear={clearStructuredFilters}
-                    >
-                      <FilterCheckboxGroup
-                        label={t.filters.status}
-                        options={statusOptions.map((s) => ({ value: s.key, label: s.label, color: s.color }))}
-                        selected={statusFilter}
-                        onChange={setStatusFilter}
-                      />
-                    </FilterButton>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button
@@ -817,6 +829,12 @@ export default function ServiceOrders() {
                               label: t.rowActions.billing,
                               icon: <Receipt className="h-4 w-4" />,
                               onClick: () => billing.open(os as any),
+                            }] : []),
+                            ...(canGeneratePmocDocuments(os) ? [{
+                              key: 'pmoc-documents',
+                              label: 'Gerar documentos PMOC',
+                              icon: <FileText className="h-4 w-4" />,
+                              onClick: () => setPmocDocumentsOsId(os.id),
                             }] : []),
                             ...(canDeleteOS ? [{
                               key: 'delete',
@@ -1027,6 +1045,12 @@ export default function ServiceOrders() {
                                               hidden: !billing.canBill,
                                             },
                                             {
+                                              label: 'Gerar documentos PMOC',
+                                              icon: FileText,
+                                              onClick: () => setPmocDocumentsOsId(os.id),
+                                              hidden: !canGeneratePmocDocuments(os),
+                                            },
+                                            {
                                               label: t.rowActions.delete,
                                               icon: Trash2,
                                               variant: 'delete',
@@ -1065,7 +1089,7 @@ export default function ServiceOrders() {
               <>
                 {!isMobile && (
                   <div className="flex items-center justify-between">
-                    <div className="flex items-baseline gap-2 min-w-0">
+                    <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
                       <h2 className="text-base font-bold uppercase tracking-widest text-foreground/70">
                         {t.sections.byStatus}
                       </h2>
@@ -1073,7 +1097,7 @@ export default function ServiceOrders() {
                           exibia o número do recorte — dava pra jurar que tinha
                           visto tudo. Só aparece quando há recorte de fato. */}
                       {filteredOrders.length !== serviceOrders.length && (
-                        <span className="text-xs text-muted-foreground tabular-nums truncate">
+                        <span className="text-xs text-muted-foreground tabular-nums">
                           {t.sections.showingOf
                             .replace('{n}', String(filteredOrders.length))
                             .replace('{total}', String(serviceOrders.length))}
@@ -1227,6 +1251,17 @@ export default function ServiceOrders() {
                                     title={getServiceOrderResetActionLabel(os.status)}
                                   >
                                     <RotateCcw className="h-3 w-3" />
+                                  </Button>
+                                )}
+                                {canGeneratePmocDocuments(os) && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 hover:bg-info hover:text-white"
+                                    onClick={(e) => { e.stopPropagation(); setPmocDocumentsOsId(os.id); }}
+                                    title="Gerar documentos PMOC"
+                                  >
+                                    <FileText className="h-3 w-3" />
                                   </Button>
                                 )}
                                 {canDeleteOS && (
@@ -1393,6 +1428,13 @@ export default function ServiceOrders() {
         isPending={resetServiceOrder.isPending}
         onConfirm={handleResetConfirm}
       />
+      {pmocDocumentsOsId && (
+        <OsPmocDocumentsDialog
+          open
+          onOpenChange={(open) => { if (!open) setPmocDocumentsOsId(null); }}
+          serviceOrderId={pmocDocumentsOsId}
+        />
+      )}
     </div>
   );
 }

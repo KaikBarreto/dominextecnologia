@@ -1,11 +1,17 @@
+import { useState } from 'react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
-import { PricingConfigForm } from '@/components/pricing/PricingConfigForm';
+import {
+  PricingConfigForm,
+  type PricingPreviewSettings,
+} from '@/components/pricing/PricingConfigForm';
 import { BDIPreviewCard } from '@/components/pricing/BDIPreviewCard';
 
 export function PricingTab() {
   const { locale } = useAppLocaleContext();
   const tp = MESSAGES[locale].app.crm.pricing;
+  const [previewSettings, setPreviewSettings] = useState<PricingPreviewSettings | null>(null);
+
   return (
     <div className="space-y-6">
       <div>
@@ -16,10 +22,10 @@ export function PricingTab() {
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-5 space-y-4">
-          <PricingConfigForm />
+          <PricingConfigForm onPreviewChange={setPreviewSettings} />
         </div>
         <div className="lg:col-span-7">
-          <BDIPreviewCard />
+          <BDIPreviewCard previewSettings={previewSettings} />
         </div>
       </div>
     </div>

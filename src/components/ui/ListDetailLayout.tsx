@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ArrowDownUp, ChevronLeft, ChevronRight, PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { ArrowDownUp, ChevronLeft, ChevronRight, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { cn, fuzzyIncludesAny } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { SearchField, SearchFieldAction } from '@/components/ui/search-field-actions';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Select,
   SelectContent,
@@ -18,6 +19,8 @@ import { formatNumber } from '@/lib/format';
 export interface ListDetailItem {
   id: string;
   title: string;
+  /** Destaque pontual para itens sintéticos/prioritários, como "Geral (Todos)". */
+  emphasized?: boolean;
   subtitle?: string;
   searchText?: string;
   imageUrl?: string | null;
@@ -25,6 +28,8 @@ export interface ListDetailItem {
   onImageClick?: () => void;
   leading?: ReactNode;
   trailing?: ReactNode;
+  /** Ação interativa renderizada como irmã do botão principal (evita botão aninhado). */
+  actions?: ReactNode;
 }
 
 export interface ListDetailSortOption {
@@ -39,6 +44,8 @@ export interface ListDetailSortOption {
 interface ListDetailLayoutProps {
   children: ReactNode;
   items: ListDetailItem[];
+  /** Itens fixos antes da lista paginada (ex.: "Geral (Todos)"). */
+  pinnedItems?: ListDetailItem[];
   selectedId?: string;
   listTitle: string;
   listDescription?: string;
@@ -48,6 +55,8 @@ interface ListDetailLayoutProps {
    * junto do que ele filtra em vez de solto acima do layout.
    */
   listFilters?: ReactNode;
+  /** Ação primária do cabeçalho da lista, como quick-create. */
+  listHeaderAction?: ReactNode;
   /**
    * Critérios de ordenação da coluna da esquerda. Sem isso, a lista oferece
    * Nome (A-Z) e Nome (Z-A). O primeiro da lista é o padrão.
@@ -62,8 +71,17 @@ interface ListDetailLayoutProps {
   collapseLabel?: string;
   expandLabel?: string;
   onSelect: (id: string) => void;
+  /**
+   * Opt-in para fluxos mobile lista → detalhe. `false` mostra a lista; `true`,
+   * o detalhe. Quando omitido, preserva o comportamento desktop-only legado.
+   */
+  mobileDetailOpen?: boolean;
   className?: string;
   detailClassName?: string;
+  /** Reutiliza apenas o painel de detalhe, sem montar a coluna de lista. */
+  hideList?: boolean;
+  /** Aparência da linha selecionada quando a tela usa um contraste próprio. */
+  selectedItemClassName?: string;
 }
 
 /** Lê/grava o estado da coluna (busca, ordenação) por tela, sem quebrar em SSR. */
@@ -86,9 +104,9 @@ function writeStored(storageKey: string | undefined, field: string, value: strin
 }
 
 /**
- * Estrutura master-detail exclusiva do desktop. Em tablet/mobile, somente o
- * detalhe é renderizado visualmente e o fluxo de navegação existente segue
- * intacto, sem comprimir lista e ficha na mesma largura.
+ * Estrutura master-detail no desktop. Por padrão, tablet/mobile preservam o
+ * detalhe já existente; telas que passam `mobileDetailOpen` ganham um fluxo
+ * explícito lista → detalhe, sem comprimir os dois painéis na mesma largura.
  *
  * A coluna da esquerda é uma lista de verdade: busca, filtros do chamador,
  * ordenação e paginação. Paginar não é só estética — a lista chega INTEIRA em
@@ -99,10 +117,12 @@ function writeStored(storageKey: string | undefined, field: string, value: strin
 export function ListDetailLayout({
   children,
   items,
+  pinnedItems = [],
   selectedId,
   listTitle,
   listDescription,
   listFilters,
+  listHeaderAction,
   sortOptions,
   pageSize = 25,
   storageKey,
@@ -111,8 +131,11 @@ export function ListDetailLayout({
   collapseLabel,
   expandLabel,
   onSelect,
+  mobileDetailOpen,
   className,
   detailClassName,
+  hideList = false,
+  selectedItemClassName,
 }: ListDetailLayoutProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.common.listDetail;
@@ -150,13 +173,10 @@ export function ListDetailLayout({
     resolvedSortOptions.find((option) => option.value === sortValue) ?? resolvedSortOptions[0];
 
   const visibleItems = useMemo(() => {
-    const normalizedSearch = search.trim().toLocaleLowerCase('pt-BR');
-    const filtered = !normalizedSearch
+    const filtered = !search.trim()
       ? items
       : items.filter((item) =>
-          `${item.title} ${item.subtitle ?? ''} ${item.searchText ?? ''}`
-            .toLocaleLowerCase('pt-BR')
-            .includes(normalizedSearch),
+          fuzzyIncludesAny([item.title, item.subtitle, item.searchText], search),
         );
     // slice() antes de sort(): sort ordena NO LUGAR e o array é do chamador.
     return filtered.slice().sort(activeSort.compare);
@@ -211,7 +231,7 @@ export function ListDetailLayout({
       const limite = Math.min(window.innerHeight, scroller.getBoundingClientRect().bottom);
       // Altura FIXA, não máxima: assim a coluna não muda de tamanho conforme o
       // resultado da busca e a paginação fica sempre colada embaixo.
-      el.style.height = `${Math.max(320, limite - Math.max(top, 16) - 16)}px`;
+      el.style.height = `${Math.max(180, limite - Math.max(top, 16) - 16)}px`;
     };
     update();
     document.addEventListener('scroll', update, true);
@@ -228,9 +248,80 @@ export function ListDetailLayout({
     };
   }, [collapsed]);
 
-  // Sem a palavra "Mostrando": a coluna tem ~19rem e divide a linha com o
-  // seletor de itens por página e as setas.
-  const showingText = `${formatNumber(pagination.from, locale)}-${formatNumber(pagination.to, locale)} / ${formatNumber(pagination.totalItems, locale)}`;
+  const showingText = tPagination.showing
+    .replace('{from}', formatNumber(pagination.from, locale))
+    .replace('{to}', formatNumber(pagination.to, locale))
+    .replace('{total}', formatNumber(pagination.totalItems, locale));
+
+  const renderListItem = (item: ListDetailItem) => {
+    const selected = item.id === selectedId;
+    return (
+      <div
+        key={item.id}
+        role="listitem"
+        aria-current={selected ? 'true' : undefined}
+        onClick={() => onSelect(item.id)}
+        className={cn(
+          'flex w-full cursor-pointer items-center gap-3 border-b border-border/60 px-3 py-3 text-left outline-none transition-colors last:border-b-0',
+          selected ? (selectedItemClassName ?? 'bg-muted') : 'hover:bg-muted/50',
+        )}
+      >
+        {item.imageUrl ? (
+          item.onImageClick ? (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                item.onImageClick?.();
+              }}
+              className="shrink-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+              aria-label={item.imageAlt ?? zoomPhotoLabel(item.title)}
+              title={item.imageAlt ?? zoomPhotoLabel(item.title)}
+            >
+              <img
+                src={item.imageUrl}
+                alt=""
+                className="h-10 w-10 rounded-lg border object-cover transition-opacity hover:opacity-80"
+              />
+            </button>
+          ) : (
+            <img
+              src={item.imageUrl}
+              alt=""
+              className="h-10 w-10 shrink-0 rounded-lg border object-cover"
+            />
+          )
+        ) : item.leading ? (
+          <div className="shrink-0">{item.leading}</div>
+        ) : null}
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onSelect(item.id);
+          }}
+          className="flex min-w-0 flex-1 items-center gap-2 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+        >
+          <span className="min-w-0 flex-1">
+            <span className={cn('block truncate text-sm', item.emphasized ? 'font-bold' : 'font-medium')}>
+              {item.title}
+            </span>
+            {item.subtitle && (
+              <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                {item.subtitle}
+              </span>
+            )}
+          </span>
+          {item.trailing && <span className="shrink-0">{item.trailing}</span>}
+        </button>
+        {item.actions && <div className="shrink-0">{item.actions}</div>}
+      </div>
+    );
+  };
+
+  if (hideList) {
+    return <div className={cn('min-w-0', detailClassName)}>{children}</div>;
+  }
 
   return (
     <div
@@ -259,13 +350,29 @@ export function ListDetailLayout({
       ) : (
         <aside
           ref={asideRef}
-          className="hidden overflow-hidden border-r border-border lg:sticky lg:top-4 lg:flex lg:h-[calc(100dvh-7rem)] lg:min-h-[24rem] lg:flex-col lg:pr-5"
+          className={cn(
+            'overflow-hidden flex-col',
+            mobileDetailOpen === false ? 'flex' : 'hidden lg:flex',
+            'lg:sticky lg:top-4 lg:h-[calc(100dvh-7rem)] lg:min-h-[24rem] lg:border-r lg:border-border lg:pr-5',
+          )}
           aria-label={listTitle}
         >
           <div className="border-b border-border/60 pb-3">
-            <div className="mb-3 flex items-start gap-2">
+            <div className="mb-2 flex items-start gap-2">
               <div className="min-w-0 flex-1">
-                <h2 className="truncate text-sm font-semibold">{listTitle}</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="min-w-0 truncate text-sm font-semibold">{listTitle}</h2>
+                  <span
+                    className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-semibold tabular-nums text-muted-foreground"
+                    aria-label={(pagination.totalItems === 1 ? t.records : t.recordsPlural).replace(
+                      '{count}',
+                      formatNumber(pagination.totalItems, locale),
+                    )}
+                  >
+                    {formatNumber(pagination.totalItems, locale)}
+                  </span>
+                  {listHeaderAction && <span className="ml-auto shrink-0">{listHeaderAction}</span>}
+                </div>
                 {listDescription && (
                   <p className="mt-0.5 text-xs text-muted-foreground">{listDescription}</p>
                 )}
@@ -274,7 +381,7 @@ export function ListDetailLayout({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 shrink-0"
+                className="hidden h-8 w-8 shrink-0 lg:inline-flex"
                 aria-label={collapseText}
                 title={collapseText}
                 onClick={() => setCollapsed(true)}
@@ -282,117 +389,65 @@ export function ListDetailLayout({
                 <PanelLeftClose className="h-4 w-4" />
               </Button>
             </div>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
+            <SearchField
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder={searchPlaceholder}
-                className="h-9 pl-9"
+                actions={
+                  <>
+                    {listFilters}
+              <Popover>
+                <PopoverTrigger asChild>
+                      <SearchFieldAction
+                        icon={ArrowDownUp}
+                        label={t.sortLabel}
+                        tooltip={`${t.sortLabel}: ${activeSort.label}`}
+                        aria-label={`${t.sortLabel}: ${activeSort.label}`}
+                      />
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-64 space-y-1 p-2">
+                  <p className="px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {t.sortLabel}
+                  </p>
+                  {resolvedSortOptions.map((option) => {
+                    const selected = option.value === activeSort.value;
+                    return (
+                      <Button
+                        key={option.value}
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSortValue(option.value)}
+                        className={cn(
+                          'w-full justify-between',
+                          selected && 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground',
+                        )}
+                        aria-pressed={selected}
+                      >
+                        <span className="truncate">{option.label}</span>
+                        {selected && <span className="text-xs font-semibold">{option.shortLabel}</span>}
+                      </Button>
+                    );
+                  })}
+                </PopoverContent>
+              </Popover>
+                  </>
+                }
               />
-            </div>
-            {listFilters && <div className="mt-2 min-w-0">{listFilters}</div>}
-          </div>
-
-          {/* Contagem + ordenação: linha discreta, sem caixa de seletor. O botão
-              alterna para o próximo critério (com dois, é um liga-desliga A-Z). */}
-          <div className="flex items-center justify-between gap-2 px-3 py-2.5">
-            <span className="min-w-0 truncate text-xs text-muted-foreground">
-              {(pagination.totalItems === 1 ? t.records : t.recordsPlural).replace(
-                '{count}',
-                formatNumber(pagination.totalItems, locale),
-              )}
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                const index = resolvedSortOptions.findIndex((option) => option.value === activeSort.value);
-                setSortValue(resolvedSortOptions[(index + 1) % resolvedSortOptions.length].value);
-              }}
-              title={`${t.sortLabel}: ${activeSort.label}`}
-              aria-label={`${t.sortLabel}: ${activeSort.label}`}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-1.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <ArrowDownUp className="h-3.5 w-3.5" aria-hidden="true" />
-              {activeSort.shortLabel ?? activeSort.label}
-            </button>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-            {pagination.paginatedItems.length === 0 ? (
+            {pinnedItems.length === 0 && pagination.paginatedItems.length === 0 ? (
               <p className="px-3 py-8 text-center text-sm text-muted-foreground">{emptyLabel}</p>
             ) : (
               <div role="list">
-                {pagination.paginatedItems.map((item) => {
-                  const selected = item.id === selectedId;
-                  return (
-                    <div
-                      key={item.id}
-                      role="listitem"
-                      aria-current={selected ? 'true' : undefined}
-                      onClick={() => onSelect(item.id)}
-                      className={cn(
-                        'flex w-full cursor-pointer items-center gap-3 border-b border-border/60 px-3 py-3 text-left outline-none transition-colors last:border-b-0',
-                        selected ? 'bg-muted' : 'hover:bg-muted/50',
-                      )}
-                    >
-                      {item.imageUrl ? (
-                        item.onImageClick ? (
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              item.onImageClick?.();
-                            }}
-                            className="shrink-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                            aria-label={item.imageAlt ?? zoomPhotoLabel(item.title)}
-                            title={item.imageAlt ?? zoomPhotoLabel(item.title)}
-                          >
-                            <img
-                              src={item.imageUrl}
-                              alt=""
-                              className="h-10 w-10 rounded-lg border object-cover transition-opacity hover:opacity-80"
-                            />
-                          </button>
-                        ) : (
-                          <img
-                            src={item.imageUrl}
-                            alt=""
-                            className="h-10 w-10 shrink-0 rounded-lg border object-cover"
-                          />
-                        )
-                      ) : item.leading ? (
-                        <div className="shrink-0">{item.leading}</div>
-                      ) : null}
-                      {/* Gatilho real da troca de item: fica no <button> pra
-                          responder a teclado (Tab + Enter), e o clique no resto
-                          da linha chega aqui pelo handler do container. */}
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          onSelect(item.id);
-                        }}
-                        className="flex min-w-0 flex-1 items-center gap-2 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                      >
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium">{item.title}</span>
-                        {item.subtitle && (
-                          <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                            {item.subtitle}
-                          </span>
-                        )}
-                      </span>
-                      {item.trailing && <span className="shrink-0">{item.trailing}</span>}
-                      </button>
-                    </div>
-                  );
-                })}
+                {pinnedItems.map(renderListItem)}
+                {pagination.paginatedItems.map(renderListItem)}
               </div>
             )}
           </div>
 
-          <div className="flex items-center justify-between gap-1 border-t border-border/60 py-2">
+          <div className="flex flex-wrap items-center justify-between gap-x-1 gap-y-1 border-t border-border/60 py-2">
             <Select
               value={String(pagination.pageSize)}
               onValueChange={(value) =>
@@ -409,7 +464,7 @@ export function ListDetailLayout({
                 <SelectItem value="all" className="text-xs">{tPagination.all}</SelectItem>
               </SelectContent>
             </Select>
-            <span className="min-w-0 truncate text-center text-xs text-muted-foreground">{showingText}</span>
+            <span className="min-w-[8rem] flex-1 whitespace-normal text-center text-xs leading-tight text-muted-foreground">{showingText}</span>
             <div className="flex shrink-0 items-center gap-0.5">
               <Button
                 type="button"
@@ -443,7 +498,15 @@ export function ListDetailLayout({
       {/* <div>, não <main>: o shell (AppLayout) já tem o único <main> do
           documento, e aninhar outro quebra o HTML e confunde quem procura
           "main" na página (leitor de tela, pipeline de print do guia). */}
-      <div className={cn('min-w-0 lg:pl-5', detailClassName)}>{children}</div>
+      <div
+        className={cn(
+          'min-w-0 lg:pl-5',
+          mobileDetailOpen === false && 'hidden lg:block',
+          detailClassName,
+        )}
+      >
+        {children}
+      </div>
     </div>
   );
 }

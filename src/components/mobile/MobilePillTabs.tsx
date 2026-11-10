@@ -31,6 +31,15 @@ interface MobilePillTabsProps {
   /** Navegacao usa linha inferior; seletores compactos mantem pills segmentadas. */
   variant?: 'segmented' | 'underline';
   /**
+   * Hierarquia da navegação (só muda o `underline`):
+   * - `screen`: abas da TELA (ex.: Clientes | Fornecedores). Maiores e em
+   *   negrito, porque mandam no que a página inteira mostra.
+   * - `section` (padrão): subabas e abas de uma ficha (ex.: Geral |
+   *   Equipamentos | Histórico do cliente). Mais leves, ficam abaixo na
+   *   hierarquia visual.
+   */
+  level?: 'screen' | 'section';
+  /**
    * Sufixo renderizado à direita do label de cada pill, dentro do container da
    * pill mas FORA do elemento clicável principal. Usar para ícones de ação
    * (ex: engrenagem de configuração) sem aninhar <button> dentro de <button>.
@@ -38,6 +47,12 @@ interface MobilePillTabsProps {
    * (ex: <span role="button" tabIndex={0}>).
    */
   renderSuffix?: (tab: PillTab, isActive: boolean) => ReactNode;
+  /**
+   * Conteúdo preso à DIREITA da barra (ex.: ações da tela). Fica na mesma
+   * linha das abas, aproveitando a faixa em vez de gastar outra linha.
+   * Só no `underline`: a pill segmentada é seletor compacto e não comporta.
+   */
+  actions?: ReactNode;
 }
 
 /**
@@ -53,7 +68,13 @@ interface MobilePillTabsProps {
  * - Fade direito aparece só quando há conteúdo além da borda direita.
  * - Ambos os fades usam mask-image (funciona sobre qualquer superfície: tela, modal, card).
  */
-export function MobilePillTabs({ tabs, activeTab, onTabChange, className, variant = 'segmented', renderSuffix }: MobilePillTabsProps) {
+export function MobilePillTabs({ tabs, activeTab, onTabChange, className, variant = 'segmented', level = 'section', renderSuffix, actions }: MobilePillTabsProps) {
+  // Tamanho/peso da aba por hierarquia. Só vale no underline: as pills
+  // segmentadas são seletores compactos e não entram nessa régua.
+  const alturaEPeso =
+    variant === 'underline' && level === 'screen'
+      ? 'h-11 text-[15px] font-semibold'
+      : 'h-9 text-sm font-medium';
   const scrollRef = useRef<HTMLDivElement>(null);
   const activeDivRef = useRef<HTMLDivElement>(null);
   const activeButtonRef = useRef<HTMLButtonElement>(null);
@@ -148,8 +169,10 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className, varian
     return {};
   })();
 
-  return (
-    <div className={cn('relative -mx-3', className)}>
+  const comAcoes = variant === 'underline' && !!actions;
+
+  const barra = (
+    <div className={cn('relative -mx-3', comAcoes ? 'min-w-0 flex-1' : className)}>
       <div
         ref={scrollRef}
         role="tablist"
@@ -203,7 +226,9 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className, varian
                 ref={isActive ? activeDivRef : undefined}
                 style={accentStyle}
                 className={cn(
-                  'snap-start shrink-0 inline-flex items-center text-sm font-medium transition-colors',
+                  'snap-start shrink-0 inline-flex items-center transition-colors',
+                  alturaEPeso,
+                  variant === 'underline' && level === 'screen' && isActive && 'font-bold',
                   variant === 'underline'
                     ? cn(
                         '-mb-px rounded-none border-b-2 bg-transparent shadow-none',
@@ -226,7 +251,7 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className, varian
                   onClick={() => onTabChange(tab.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onTabChange(tab.value); } }}
                   className={cn(
-                    'inline-flex items-center gap-1.5 h-9 cursor-pointer select-none active:scale-95',
+                    'inline-flex items-center gap-1.5 h-full cursor-pointer select-none active:scale-95',
                     variant === 'underline' ? 'pl-4 pr-2' : 'pl-3.5 pr-1.5',
                   )}
                 >
@@ -268,7 +293,9 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className, varian
               onClick={() => onTabChange(tab.value)}
               style={accentStyle}
               className={cn(
-                'snap-start shrink-0 inline-flex items-center gap-1.5 h-9 text-sm font-medium transition-colors active:scale-95',
+                'snap-start shrink-0 inline-flex items-center gap-1.5 transition-colors active:scale-95 focus:outline-none focus-visible:bg-muted/60',
+                alturaEPeso,
+                variant === 'underline' && level === 'screen' && isActive && 'font-bold',
                 variant === 'underline'
                   ? cn(
                       '-mb-px rounded-none border-b-2 bg-transparent px-4 shadow-none',
@@ -311,6 +338,17 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className, varian
           );
         })}
       </div>
+    </div>
+  );
+
+  if (!comAcoes) return barra;
+
+  // A linha inteira ganha a borda; a barra de abas perde a dela pra não
+  // desenhar duas linhas sobrepostas de comprimentos diferentes.
+  return (
+    <div className={cn('flex items-end gap-3 border-b border-border', className)}>
+      <div className="min-w-0 flex-1 [&>div>div]:border-b-0">{barra}</div>
+      <div className="shrink-0 pb-1.5">{actions}</div>
     </div>
   );
 }

@@ -13,9 +13,9 @@ export default function FaqSection() {
   const faqs = t.items;
 
   return (
-    <section className="py-24">
+    <section className="bg-white py-24 dark:bg-[#070908]">
       <div ref={ref} className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 scroll-reveal">
-        <h2 className="text-3xl sm:text-4xl font-bold text-white text-center mb-12">
+        <h2 className="mb-12 text-center text-3xl font-bold tracking-[-0.025em] text-[#101512] dark:text-white sm:text-4xl">
           {t.heading}
         </h2>
 
@@ -24,12 +24,12 @@ export default function FaqSection() {
             <AccordionItem
               key={i}
               value={`faq-${i}`}
-              className="rounded-xl border border-white/10 bg-white/[0.02] px-6 data-[state=open]:border-primary/20 h-fit"
+              className="h-fit rounded-xl border border-[#dfe5e0] bg-[#fbfcfa] px-6 data-[state=open]:border-primary/50 dark:border-white/10 dark:bg-white/[0.02] dark:data-[state=open]:border-primary/30"
             >
-              <AccordionTrigger className="text-sm text-white/80 hover:text-white hover:no-underline py-5 text-left">
+              <AccordionTrigger className="py-5 text-left text-sm font-medium text-[#252c28] hover:text-black hover:no-underline dark:text-white/80 dark:hover:text-white">
                 {faq.q}
               </AccordionTrigger>
-              <AccordionContent className="text-sm text-white/55 leading-relaxed pb-5">
+              <AccordionContent className="pb-5 text-sm leading-relaxed text-[#657068] dark:text-white/55">
                 {faq.a}
               </AccordionContent>
             </AccordionItem>

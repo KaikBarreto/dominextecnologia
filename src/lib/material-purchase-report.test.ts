@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { MaterialPurchaseReportRow } from '@/hooks/useMaterialPurchaseReport';
-import { buildPaymentBreakdown, groupMaterialPurchaseRows, sortMaterialPurchaseRows, summarizeMaterialPurchases, toMaterialDisplayRows } from './material-purchase-report';
+import {
+  buildMaterialPriceTrend,
+  buildPaymentBreakdown,
+  groupMaterialPurchaseRows,
+  rankMaterialPriceChanges,
+  sortMaterialPurchaseRows,
+  summarizeMaterialPrice,
+  summarizeMaterialPurchases,
+  toMaterialDisplayRows,
+} from './material-purchase-report';
 
 function material(overrides: Partial<MaterialPurchaseReportRow> = {}): MaterialPurchaseReportRow {
   return {
@@ -42,5 +51,100 @@ describe('material purchase report calculations', () => {
   it('keeps null averages after sorting and places them last', () => {
     const rows = toMaterialDisplayRows([material(), material({ inventory_id: 'material-2', material_name: 'Sem preço', average_paid: null })]);
     expect(sortMaterialPurchaseRows(rows, 'average_paid', 'asc').at(-1)?.average_paid).toBeNull();
+  });
+
+  it('builds a weighted daily price and preserves days without purchases as gaps', () => {
+    const history = [
+      { ...material().history[0], date: '2026-10-01', order_id: 'order-1', quantity: 2, unit_price: 100, total: 200 },
+      { ...material().history[0], date: '2026-10-01', order_id: 'order-2', quantity: 1, unit_price: 130, total: 130 },
+      { ...material().history[0], date: '2026-10-03', order_id: 'order-3', quantity: 1, unit_price: 110, total: 110 },
+    ];
+    const trend = buildMaterialPriceTrend(history, { startDate: '2026-10-01', endDate: '2026-10-03' });
+    expect(trend.granularity).toBe('day');
+    expect(trend.points).toHaveLength(3);
+    expect(trend.points[0]).toMatchObject({ averagePrice: 110, minPrice: 100, maxPrice: 130, purchasedQuantity: 3, purchaseCount: 2 });
+    expect(trend.points[1].averagePrice).toBeNull();
+    expect(trend.points[2].averagePrice).toBe(110);
+  });
+
+  it('clamps the visible weekly bucket labels to the inclusive selected range', () => {
+    const trend = buildMaterialPriceTrend(material().history, {
+      startDate: '2026-10-01',
+      endDate: '2026-10-31',
+    });
+    expect(trend.granularity).toBe('week');
+    expect(trend.points[0].startDate).toBe('2026-10-01');
+    expect(trend.points.at(-1)?.endDate).toBe('2026-10-31');
+  });
+
+  it('changes granularity with the selected civil-date range', () => {
+    const history = [material().history[0]];
+    expect(buildMaterialPriceTrend(history, { startDate: '2026-10-01', endDate: '2026-10-10' }).granularity).toBe('day');
+    expect(buildMaterialPriceTrend(history, { startDate: '2026-10-01', endDate: '2026-11-15' }).granularity).toBe('week');
+    expect(buildMaterialPriceTrend(history, { startDate: '2026-01-01', endDate: '2026-10-31' }).granularity).toBe('month');
+    expect(buildMaterialPriceTrend(history, { startDate: '2024-01-01', endDate: '2026-10-31' }).granularity).toBe('quarter');
+  });
+
+  it('summarizes the latest distinct purchase day and weighted period average', () => {
+    const history = [
+      { ...material().history[0], date: '2026-10-01', order_id: 'order-1', quantity: 2, unit_price: 100, total: 200 },
+      { ...material().history[0], date: '2026-10-10', order_id: 'order-2', quantity: 1, unit_price: 130, total: 130 },
+    ];
+    expect(summarizeMaterialPrice(history)).toMatchObject({
+      latestPrice: 130,
+      previousPrice: 100,
+      averagePrice: 110,
+      minPrice: 100,
+      maxPrice: 130,
+      variationPercentage: 30,
+      purchasedQuantity: 3,
+      purchaseCount: 2,
+    });
+  });
+
+  it('ranks price changes without combining materials or incompatible units', () => {
+    const rows = [
+      material({
+        inventory_id: 'copper', material_name: 'Cobre', unit: 'kg',
+        history: [
+          { ...material().history[0], date: '2026-10-01', unit_price: 100 },
+          { ...material().history[0], date: '2026-10-10', order_id: 'order-2', unit_price: 130 },
+        ],
+      }),
+      material({
+        inventory_id: 'filter', material_name: 'Filtro', unit: 'un',
+        history: [
+          { ...material().history[0], date: '2026-10-01', unit: 'un', unit_price: 50 },
+          { ...material().history[0], date: '2026-10-10', order_id: 'order-3', unit: 'un', unit_price: 40 },
+        ],
+      }),
+    ];
+    const ranking = rankMaterialPriceChanges(rows);
+    expect(ranking.map((item) => [item.inventoryId, item.variationPercentage])).toEqual([
+      ['copper', 30],
+      ['filter', -20],
+    ]);
+  });
+
+  it('ignores historical entries whose frozen unit differs from the current material unit', () => {
+    const history = [
+      { ...material().history[0], date: '2026-10-01', unit: 'm', unit_price: 20 },
+      { ...material().history[0], date: '2026-10-10', order_id: 'order-2', unit: 'kg', unit_price: 100 },
+    ];
+    expect(summarizeMaterialPrice(history, 'kg')).toMatchObject({
+      latestPrice: 100,
+      previousPrice: null,
+      variationPercentage: null,
+      purchaseCount: 1,
+    });
+    expect(buildMaterialPriceTrend(history, { unit: 'kg' }).points).toHaveLength(1);
+  });
+
+  it('does not produce an infinite variation when the previous price is zero', () => {
+    const history = [
+      { ...material().history[0], date: '2026-10-01', unit_price: 0 },
+      { ...material().history[0], date: '2026-10-10', order_id: 'order-2', unit_price: 100 },
+    ];
+    expect(summarizeMaterialPrice(history).variationPercentage).toBeNull();
   });
 });

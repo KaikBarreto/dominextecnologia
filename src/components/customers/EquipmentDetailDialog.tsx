@@ -27,6 +27,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import type { Equipment } from '@/types/database';
+import { usePartyLabels } from '@/hooks/usePartyLabels';
+import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
 
 interface Props {
   open: boolean;
@@ -102,6 +104,8 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
   const { fields: fieldConfigs } = useEquipmentFieldConfig();
   const { toast } = useToast();
   const { updateEquipment } = useEquipment();
+  const { labelsFor } = usePartyLabels('equipment');
+  const equipmentLabels = labelsFor('equipment', equipment?.id);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [deleteAttachmentId, setDeleteAttachmentId] = useState<string | null>(null);
 
@@ -368,6 +372,7 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
   return (
     <>
       <ResponsiveModal open={open} onOpenChange={onOpenChange} title={equipment.name}>
+        <PartyLabelBadges labels={equipmentLabels} mode="summary" className="mb-4" />
         {/* Tabs */}
         <div className="flex gap-1 border-b mb-4">
           {tabs.map((tab) => (
@@ -417,7 +422,7 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
                 <div className="p-4 flex flex-col items-center gap-4 sm:border-l">
                   {/* Mini-preview de etiqueta */}
                   <div className="flex flex-col items-center gap-2 rounded-xl border bg-muted/30 px-6 py-4 w-full">
-                    {portalTokenPending ? (
+                    {portalTokenPending || qrConfig.isLoading ? (
                       <div className="flex h-[120px] w-[120px] items-center justify-center rounded-lg bg-muted">
                         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                       </div>
@@ -465,7 +470,7 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
                     <Button
                       variant="outline"
                       className="h-11 w-full justify-center sm:h-9"
-                      disabled={!hasPortalLink}
+                      disabled={!hasPortalLink || qrConfig.isLoading}
                       onClick={handleDownloadQrPng}
                     >
                       <Download className="mr-2 h-4 w-4" />
@@ -474,7 +479,7 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
                     <Button
                       variant="outline"
                       className="h-11 w-full justify-center sm:h-9"
-                      disabled={!hasPortalLink}
+                      disabled={!hasPortalLink || qrConfig.isLoading}
                       onClick={() => window.open(qrValue, '_blank', 'noopener,noreferrer')}
                     >
                       <ExternalLink className="mr-2 h-4 w-4" />
@@ -483,7 +488,7 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
                     <Button
                       variant="outline"
                       className="h-11 w-full justify-center sm:h-9"
-                      disabled={!hasPortalLink}
+                      disabled={!hasPortalLink || qrConfig.isLoading}
                       onClick={() => { navigator.clipboard.writeText(qrValue); toast({ title: tfc.detailDialogLinkCopied }); }}
                     >
                       <Copy className="mr-2 h-4 w-4" />
@@ -623,9 +628,13 @@ export function EquipmentDetailDialog({ open, onOpenChange, equipment }: Props) 
                     <a href={att.file_url} target="_blank" rel="noopener noreferrer" className="flex-1 text-sm hover:underline truncate">
                       {att.file_name}
                     </a>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setDeleteAttachmentId(att.id)}>
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    {att.source === 'pmoc' ? (
+                      <Badge className="shrink-0 bg-primary text-[10px] text-primary-foreground">Gerado pela OS</Badge>
+                    ) : (
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setDeleteAttachmentId(att.id)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                   </div>
                 ))}
               </div>

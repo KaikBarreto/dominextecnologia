@@ -22,6 +22,7 @@ const DATE_FNS_LOCALES: Record<LocaleCode, Locale> = {
 import { ProposalRenderer } from './ProposalRenderer';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { getQuoteCommercialTotal } from '@/lib/quote-commercial-total';
 import { formatMoney } from '@/lib/format';
 import { buildProposalPdfFilename, generateProposalPDF, PROPOSAL_PDF_WIDTH_PX } from '@/utils/proposalPdf';
 import { useToast } from '@/hooks/use-toast';
@@ -64,7 +65,7 @@ export function QuoteViewDialog({ open, onOpenChange, quote }: QuoteViewDialogPr
 
   const handleWhatsApp = () => {
     const url = `${window.location.origin}/proposta/${quote.token}`;
-    const value = formatMoney(quote.total_value ?? 0, currency, locale);
+    const value = formatMoney(getQuoteCommercialTotal(quote), currency, locale);
     const msg = tq.whatsAppMsg
       .replace('{number}', String(quote.quote_number))
       .replace('{value}', value)
@@ -135,7 +136,7 @@ export function QuoteViewDialog({ open, onOpenChange, quote }: QuoteViewDialogPr
       onOpenChange={setChargeOpen}
       presetCustomerId={quote.customer_id}
       lockCustomer
-      presetAmount={Number(quote.final_price ?? quote.total_value ?? 0) || undefined}
+      presetAmount={getQuoteCommercialTotal(quote) || undefined}
       presetDescription={`Orçamento Nº ${quote.quote_number}`}
       source={{ type: 'quote', id: quote.id }}
     />

@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
-import { Loader2 } from 'lucide-react';
+import { Eye, Loader2, Minus, TrendingDown, TrendingUp } from 'lucide-react';
 import { CATEGORY_ICONS, getCategoryIcon, type CategoryIconKey } from './categoryIcons';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import type { FinancialCategory } from '@/hooks/useFinancialCategories';
@@ -19,6 +19,7 @@ import {
   legacyDreGroupForNature,
   resolveCategoryDreNature,
   type ConfigurableDreGroupLike,
+  type ConfigurableDreNature,
 } from '@/lib/dre-groups';
 
 /**
@@ -27,6 +28,99 @@ import {
  * o valor que vai pro banco continua sendo `null`.
  */
 const NO_PARENT = '__none__';
+
+const DRE_PREVIEW_COPY: Record<string, {
+  title: string;
+  unchanged: string;
+  before: string;
+  categoryPlaceholder: string;
+  informative: string;
+  value: string;
+  both: string;
+  effects: Record<ConfigurableDreNature, string>;
+}> = {
+  'pt-br': {
+    title: 'Prévia no DRE', unchanged: 'Sem alterar lançamentos', before: 'Resultado anterior',
+    categoryPlaceholder: 'Esta categoria', informative: 'fora do DRE', value: 'valor', both: 'Entradas somam à receita; saídas seguem o grupo escolhido.',
+    effects: {
+      revenue: 'Soma ao resultado como receita.',
+      deduction: 'Reduz a receita líquida.',
+      cost: 'Reduz o lucro bruto.',
+      operating_expense: 'Reduz o resultado operacional.',
+      non_operating: 'Entra depois do resultado operacional.',
+      excluded: 'Não aparece no DRE atual e não altera o resultado.',
+    },
+  },
+  en: {
+    title: 'P&L preview', unchanged: 'Does not change entries', before: 'Previous result',
+    categoryPlaceholder: 'This category', informative: 'outside P&L', value: 'amount', both: 'Income adds to revenue; expenses follow the selected group.',
+    effects: {
+      revenue: 'Adds to the result as revenue.', deduction: 'Reduces net revenue.',
+      cost: 'Reduces gross profit.', operating_expense: 'Reduces operating result.',
+      non_operating: 'Appears after operating result.', excluded: 'Does not appear in the current P&L or affect the result.',
+    },
+  },
+  es: {
+    title: 'Vista previa del DRE', unchanged: 'No modifica los movimientos', before: 'Resultado anterior',
+    categoryPlaceholder: 'Esta categoría', informative: 'fuera del DRE', value: 'valor', both: 'Los ingresos suman a los ingresos brutos; los gastos siguen el grupo elegido.',
+    effects: {
+      revenue: 'Suma al resultado como ingreso.', deduction: 'Reduce el ingreso neto.',
+      cost: 'Reduce la utilidad bruta.', operating_expense: 'Reduce el resultado operativo.',
+      non_operating: 'Aparece después del resultado operativo.', excluded: 'No aparece en el DRE actual ni altera el resultado.',
+    },
+  },
+  fr: {
+    title: 'Aperçu du compte de résultat', unchanged: 'Ne modifie pas les écritures', before: 'Résultat précédent',
+    categoryPlaceholder: 'Cette catégorie', informative: 'hors résultat', value: 'montant', both: 'Les entrées augmentent les produits ; les dépenses suivent le groupe choisi.',
+    effects: {
+      revenue: 'S’ajoute au résultat comme produit.', deduction: 'Réduit le produit net.',
+      cost: 'Réduit la marge brute.', operating_expense: 'Réduit le résultat opérationnel.',
+      non_operating: 'Apparaît après le résultat opérationnel.', excluded: 'N’apparaît pas dans le compte de résultat actuel et ne modifie pas le résultat.',
+    },
+  },
+};
+
+export function CategoryDrePlacementPreview({
+  categoryName,
+  groupName,
+  type,
+  nature,
+  locale,
+}: {
+  categoryName: string;
+  groupName: string;
+  type: string;
+  nature: ConfigurableDreNature;
+  locale: string;
+}) {
+  const copy = DRE_PREVIEW_COPY[locale] ?? DRE_PREVIEW_COPY['pt-br'];
+  const excluded = nature === 'excluded';
+  const income = type === 'entrada';
+  return (
+    <div className="overflow-hidden rounded-xl border bg-muted/20" data-testid="dre-placement-preview">
+      <div className="flex items-center justify-between gap-3 border-b bg-background/80 px-3 py-2.5">
+        <span className="flex items-center gap-2 text-xs font-medium"><Eye className="h-4 w-4 text-muted-foreground" />{copy.title}</span>
+        <span className="text-[11px] text-muted-foreground">{copy.unchanged}</span>
+      </div>
+      <div className="space-y-2 p-3">
+        <div className="flex justify-between text-xs text-muted-foreground"><span>{copy.before}</span><span>…</span></div>
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/20 bg-background px-3 py-2 shadow-sm">
+          <div className="min-w-0">
+            <p className="truncate text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{groupName}</p>
+            <p className="truncate text-sm font-medium">{categoryName.trim() || copy.categoryPlaceholder}</p>
+          </div>
+          <span className={excluded ? 'text-sm font-semibold text-muted-foreground' : income ? 'text-sm font-semibold text-emerald-600' : 'text-sm font-semibold text-destructive'}>
+            {excluded ? copy.informative : type === 'ambos' ? `± ${copy.value}` : income ? `+ ${copy.value}` : `− ${copy.value}`}
+          </span>
+        </div>
+        <p className="flex items-center gap-2 text-xs text-muted-foreground">
+          {excluded ? <Minus className="h-3.5 w-3.5" /> : income ? <TrendingUp className="h-3.5 w-3.5 text-emerald-600" /> : <TrendingDown className="h-3.5 w-3.5 text-destructive" />}
+          {excluded ? copy.effects.excluded : type === 'ambos' ? copy.both : income ? copy.effects.revenue : copy.effects[nature]}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 const baseSchema = z.object({
   name: z.string().min(1),
@@ -147,6 +241,8 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
   const selectedColor = form.watch('color');
   const selectedParentId = form.watch('parent_id');
   const selectedType = form.watch('type');
+  const selectedDreGroupId = form.watch('dre_group_id');
+  const selectedLegacyDreGroup = form.watch('dre_group');
   const selectableDreGroups = useMemo(
     () => dreGroups.filter((group) => {
       if (!group.is_active && group.id !== category?.dre_group_id) return false;
@@ -155,6 +251,16 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
     }),
     [dreGroups, selectedType, category?.dre_group_id],
   );
+  const selectedDreGroup = dreGroups.find((group) => group.id === selectedDreGroupId);
+  const selectedDreNature = selectedDreGroup?.nature ?? resolveCategoryDreNature(
+    { type: selectedType, dre_group: selectedLegacyDreGroup, dre_group_id: null },
+    dreGroups,
+  );
+  const selectedDreGroupName = selectedDreGroup?.name
+    ?? (selectedLegacyDreGroup === 'impostos' ? t.dreGroups.impostos
+      : selectedLegacyDreGroup === 'cmv' ? t.dreGroups.cmv
+        : selectedLegacyDreGroup === 'outros' ? t.dreGroups.outros
+          : t.dreGroups.opex);
 
   useEffect(() => {
     if (!open || dreGroups.length === 0) return;
@@ -261,6 +367,7 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
       open={open}
       onOpenChange={onOpenChange}
       title={category ? t.titleEdit : (initialParentId ? t.titleNewChild : t.titleNew)}
+      className="sm:max-w-[760px]"
       footer={
         <div className="flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t.cancelLabel}</Button>
@@ -323,9 +430,9 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
           {dreGroups.length > 0 ? (
             <FormField control={form.control} name="dre_group_id" render={({ field }) => (
               <FormItem>
-                <FormLabel>{t.dreGroupLabel}</FormLabel>
+                <FormLabel>{locale === 'pt-br' ? 'Onde aparece no DRE' : t.dreGroupLabel}</FormLabel>
                 <Select onValueChange={field.onChange} value={field.value} disabled={isSystem}>
-                  <FormControl><SelectTrigger><SelectValue placeholder="Selecione o grupo do DRE" /></SelectTrigger></FormControl>
+                  <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Selecione o grupo do DRE" /></SelectTrigger></FormControl>
                   <SelectContent>
                     {selectableDreGroups.map((group) => (
                       <SelectItem key={group.id} value={group.id}>{group.name}</SelectItem>
@@ -333,6 +440,13 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
                   </SelectContent>
                 </Select>
                 <FormDescription>{t.dreGroupHint}</FormDescription>
+                <CategoryDrePlacementPreview
+                  categoryName={form.watch('name')}
+                  groupName={selectedDreGroupName}
+                  type={selectedType}
+                  nature={selectedDreNature}
+                  locale={locale}
+                />
                 <FormMessage />
               </FormItem>
             )} />
@@ -350,6 +464,13 @@ export function CategoryFormDialog({ open, onOpenChange, category, onSubmit, isL
                   </SelectContent>
                 </Select>
                 <FormDescription>{t.dreGroupHint}</FormDescription>
+                <CategoryDrePlacementPreview
+                  categoryName={form.watch('name')}
+                  groupName={selectedDreGroupName}
+                  type={selectedType}
+                  nature={selectedDreNature}
+                  locale={locale}
+                />
                 <FormMessage />
               </FormItem>
             )} />

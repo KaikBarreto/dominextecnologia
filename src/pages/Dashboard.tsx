@@ -28,6 +28,7 @@ import { DashboardOSByType } from '@/components/dashboard/DashboardOSByType';
 import { DashboardLiveMap } from '@/components/dashboard/DashboardLiveMap';
 import { useLiveTechnicianLocations } from '@/hooks/useLiveTechnicianLocations';
 import { DateRangeFilter, useDateRangeFilter, type DateRange } from '@/components/ui/DateRangeFilter';
+import { isDateInCivilRange } from '@/lib/date-range';
 
 function getGreeting(t: (typeof MESSAGES)['pt-br']['app']['dashboard']['greeting']) {
   const h = new Date().getHours();
@@ -38,8 +39,12 @@ function getGreeting(t: (typeof MESSAGES)['pt-br']['app']['dashboard']['greeting
 
 function filterByRange<T extends Record<string, any>>(items: T[], field: string, start: Date, end: Date) {
   return items.filter(item => {
-    const d = new Date(item[field]);
-    return d >= start && d <= end;
+    const raw = String(item[field] ?? '');
+    // `YYYY-MM-DD` é um dia civil, não meia-noite UTC. Ancorar ao meio-dia
+    // evita o shift de fuso; o helper normaliza as bordas para incluir o dia
+    // final inteiro mesmo quando o calendário entrega `to` às 00:00.
+    const d = raw.length === 10 ? new Date(`${raw}T12:00:00`) : new Date(raw);
+    return isDateInCivilRange(d, { from: start, to: end });
   });
 }
 

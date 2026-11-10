@@ -14,8 +14,30 @@ import {
   StandardFonts,
   rgb,
 } from "https://esm.sh/pdf-lib@1.17.1";
-import { A4_W } from "./html-renderer.ts";
+import * as fontkitModule from "https://esm.sh/@pdf-lib/fontkit@1.1.1";
 import { getDominexLogoBytes } from "./dominex-logo.ts";
+import { tintPngForPdf } from "../doc-art/logoContrast.ts";
+import { SANS_BOLD } from "../doc-art/fonts/data.ts";
+
+const fontkit = (fontkitModule as unknown as { default?: typeof fontkitModule }).default ?? fontkitModule;
+const generatedByFontCache = new WeakMap<PDFDocument, Promise<PDFFont>>();
+
+function decodeBase64(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
+  return bytes;
+}
+
+function embedGeneratedByFont(pdf: PDFDocument): Promise<PDFFont> {
+  const cached = generatedByFontCache.get(pdf);
+  if (cached) return cached;
+  pdf.registerFontkit(fontkit);
+  const embedded = pdf.embedFont(decodeBase64(SANS_BOLD), { subset: true })
+    .catch(() => pdf.embedFont(StandardFonts.HelveticaBold));
+  generatedByFontCache.set(pdf, embedded);
+  return embedded;
+}
 
 const MUTED = rgb(0.45, 0.45, 0.45);
 
@@ -66,40 +88,41 @@ export function drawDominexFooterLine(
 ): void {
   if (!opts.enabled) return;
 
-  const logoTargetW = Math.max(36, Math.min(90, opts.logoWidth ?? 52));
-  const bottomMargin = Math.max(14, opts.bottomMargin ?? 24);
+  const { width } = page.getSize();
+  const logoTargetW = Math.max(42, Math.min(90, opts.logoWidth ?? 46));
+  const bottomMargin = Math.max(8, opts.bottomMargin ?? 12);
+  const label = "Gerado por";
+  const labelSize = 7.5;
+  const gap = 6;
+  const logoHeight = opts.logoImage ? opts.logoImage.height * (logoTargetW / opts.logoImage.width) : labelSize;
+  const brandWidth = opts.logoImage ? logoTargetW : opts.font.widthOfTextAtSize("Dominex", labelSize);
+  const totalWidth = opts.font.widthOfTextAtSize(label, labelSize) + gap + brandWidth;
+  const startX = (width - totalWidth) / 2;
 
-  // Empilhamento de baixo pra cima: URL → logo. Sem linha separadora (removida
-  // por ordem do CEO 2026-06: ficava colada/por cima do logo Dominex). Rodapé
-  // agora é só logo + "dominex.app", centralizados.
-  const urlSize = 8;
-  const urlText = "dominex.app";
-  const urlY = bottomMargin; // baseline do texto
-  const logoGap = 6; // respiro entre topo do texto e base do logo
-  const logoBaseY = urlY + urlSize + logoGap;
-
-  if (opts.logoImage) {
-    const img = opts.logoImage;
-    const ratio = logoTargetW / img.width;
-    const drawW = logoTargetW;
-    const drawH = img.height * ratio;
-    page.drawImage(img, {
-      x: (A4_W - drawW) / 2,
-      y: logoBaseY,
-      width: drawW,
-      height: drawH,
-    });
-  }
-
-  // Texto "dominex.app" embaixo do logo, centralizado.
-  const urlW = opts.font.widthOfTextAtSize(urlText, urlSize);
-  page.drawText(urlText, {
-    x: (A4_W - urlW) / 2,
-    y: urlY,
-    size: urlSize,
+  page.drawText(label, {
+    x: startX,
+    y: bottomMargin + Math.max(0, (logoHeight - labelSize) / 2),
+    size: labelSize,
     font: opts.font,
     color: MUTED,
   });
+
+  if (opts.logoImage) {
+    page.drawImage(opts.logoImage, {
+      x: startX + opts.font.widthOfTextAtSize(label, labelSize) + gap,
+      y: bottomMargin,
+      width: logoTargetW,
+      height: logoHeight,
+    });
+  } else {
+    page.drawText("Dominex", {
+      x: startX + opts.font.widthOfTextAtSize(label, labelSize) + gap,
+      y: bottomMargin,
+      size: labelSize,
+      font: opts.font,
+      color: MUTED,
+    });
+  }
 }
 
 export interface DrawDominexFooterOptions {
@@ -112,6 +135,8 @@ export interface DrawDominexFooterOptions {
    * Default ~30pt (mesma "respiração" do PDF da OS).
    */
   bottomMargin?: number;
+  /** Usa assinatura branca diretamente sobre documentos escuros. */
+  dark?: boolean;
 }
 
 /**
@@ -128,51 +153,75 @@ export async function drawDominexFooter(
 ): Promise<void> {
   if (!opts.enabled) return;
 
-  const logoTargetW = Math.max(40, Math.min(120, opts.logoWidth ?? 60));
-  const bottomMargin = Math.max(16, opts.bottomMargin ?? 30);
+  // Mantem todos os documentos PMOC no mesmo rodape institucional usado por
+  // certificados e relatorios. As opcoes antigas continuam aceitas para nao
+  // quebrar os chamadores existentes.
+  await drawGeneratedByDominexFooter(pdf, page, { dark: opts.dark });
+}
 
-  const helv = await pdf.embedFont(StandardFonts.Helvetica);
+/**
+ * Assinatura institucional "Gerado por" para documentos que a exigem.
+ *
+ * Diferente do rodape generico acima, este rodape nunca e ocultado por
+ * white-label. Certificados a chamam obrigatoriamente; outros documentos
+ * continuam respeitando `enabled` em `drawDominexFooter`, salvo chamada
+ * explicita (como o relatorio PMOC emitido por OS).
+ */
+export async function drawGeneratedByDominexFooter(
+  pdf: PDFDocument,
+  page: PDFPage,
+  opts: { dark?: boolean; prominent?: boolean } = {},
+): Promise<void> {
+  const { width } = page.getSize();
+  const font = await embedGeneratedByFont(pdf);
+  const label = "Gerado por";
+  // Assinatura visual unica para certificados e relatorios: legivel sem
+  // competir com o conteudo e sem a antiga borda que atravessava o logo.
+  const labelSize = opts.prominent ? 15.75 : 11.25;
+  const logoWidth = opts.prominent ? 123 : 69;
+  const gap = opts.prominent ? 13.5 : 9;
+  const bottom = opts.prominent ? 30 : 12;
+  const color = opts.dark ? rgb(1, 1, 1) : rgb(0, 0, 0);
 
-  // Embeda o logo. Falha silenciosa: se quebrar, escreve só o texto.
   try {
-    const logoBytes = getDominexLogoBytes();
-    const img = await pdf.embedPng(logoBytes);
-    const ratio = logoTargetW / img.width;
-    const drawW = logoTargetW;
-    const drawH = img.height * ratio;
-
-    const logoX = (A4_W - drawW) / 2;
-    const logoY = bottomMargin + 12; // 12pt de gap entre logo e texto URL
-
-    page.drawImage(img, {
-      x: logoX,
-      y: logoY,
-      width: drawW,
-      height: drawH,
+    const logoBytes = opts.dark
+      ? await tintPngForPdf(getDominexLogoBytes(), [255, 255, 255])
+      : getDominexLogoBytes();
+    const logo = await pdf.embedPng(logoBytes);
+    const logoHeight = logo.height * (logoWidth / logo.width);
+    const totalWidth = font.widthOfTextAtSize(label, labelSize) + gap + logoWidth;
+    const startX = (width - totalWidth) / 2;
+    page.drawText(label, {
+      x: startX,
+      y: bottom + Math.max(0, (logoHeight - labelSize) / 2),
+      size: labelSize,
+      font,
+      color,
     });
-
-    // Texto URL embaixo do logo, centralizado.
-    const urlText = "www.dominex.app";
-    const urlSize = 8;
-    const urlW = helv.widthOfTextAtSize(urlText, urlSize);
-    page.drawText(urlText, {
-      x: (A4_W - urlW) / 2,
-      y: bottomMargin,
-      size: urlSize,
-      font: helv,
-      color: MUTED,
+    page.drawImage(logo, {
+      x: startX + font.widthOfTextAtSize(label, labelSize) + gap,
+      y: bottom,
+      width: logoWidth,
+      height: logoHeight,
     });
   } catch {
-    // Fallback texto-only — escreve só "Powered by Dominex • www.dominex.app"
-    const fallback = "Powered by Dominex - www.dominex.app";
-    const size = 8;
-    const w = helv.widthOfTextAtSize(fallback, size);
+    const fallback = "Gerado por Dominex";
+    const fallbackWidth = font.widthOfTextAtSize(fallback, labelSize);
     page.drawText(fallback, {
-      x: (A4_W - w) / 2,
-      y: bottomMargin,
-      size,
-      font: helv,
-      color: MUTED,
+      x: (width - fallbackWidth) / 2,
+      y: bottom,
+      size: labelSize,
+      font,
+      color,
     });
   }
+}
+
+/** Regra obrigatoria aplicada por todos os renderizadores de certificado. */
+export async function drawCertificateGeneratedByFooter(
+  pdf: PDFDocument,
+  page: PDFPage,
+  opts: { dark?: boolean } = {},
+): Promise<void> {
+  await drawGeneratedByDominexFooter(pdf, page, { ...opts, prominent: true });
 }

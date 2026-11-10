@@ -24,6 +24,10 @@ import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { useUserCompany } from '@/hooks/useUserCompany';
 import { useFiscalSettings } from '@/hooks/useFiscalSettings';
 import { useNfse, useNfseListPolling, type NfseEmission } from '@/hooks/useNfse';
+import {
+  nfseNeedsOfficialRefresh,
+  resolveNfseDisplayStatus,
+} from '@/lib/fiscal/nfseStatusTruth';
 import { useNfseEmissionsPaged } from '@/hooks/useNfseEmissionsPaged';
 import { NfseQuotaBadge } from '@/components/fiscal/NfseQuotaBadge';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -37,7 +41,6 @@ import {
 } from '@/components/fiscal/NfseDetailModal';
 import { NfseVisaoGeral } from '@/components/fiscal/NfseVisaoGeral';
 import { NfseStatsCards, type NfseStats } from '@/components/fiscal/NfseStatsCards';
-import { NfseComoFunciona } from '@/components/fiscal/NfseComoFunciona';
 import { nfseRowToEmission, type NfseListRow } from '@/components/fiscal/nfseRow';
 import { NfseListTab } from '@/components/fiscal/NfseListTab';
 import { NotasRecebidasTab } from '@/components/fiscal/inboundNotes/NotasRecebidasTab';
@@ -69,17 +72,15 @@ export default function NotasFiscais() {
   const { emissions, isLoading, refetch: refetchEmissions } = useNfse();
   const { settings, readyToEmit, isLoading: settingsLoading } = useFiscalSettings();
 
-  // "Config fiscal completa" = município liberado + empresa registrada +
-  // certificado enviado (critério único em useFiscalSettings). `pode_emitir`
-  // sozinho só diz que o município é coberto e liberava o botão Emitir antes
-  // do certificado existir, o que dava erro na hora de emitir.
+  // "Config fiscal completa" = município no Padrão Nacional + A1 próprio válido
+  // (critério único em useFiscalSettings).
   const fiscalConfigured = readyToEmit;
-  // Mostrar as abas/listagem assim que HÁ atividade fiscal (empresa já registrada
-  // OU qualquer nota/rascunho), mesmo antes de `pode_emitir` — senão um rascunho
+  // Mostrar as abas/listagem assim que HÁ atividade fiscal (A1, cobertura
+  // OU qualquer nota/rascunho), mesmo antes da prontidão — senão um rascunho
   // salvo fica invisível até o onboarding concluir. A ação de EMITIR continua
   // travada por `fiscalConfigured` (canEmit).
   const hasFiscalActivity =
-    settings.pode_emitir || !!settings.provider_company_id || emissions.length > 0;
+    settings.pode_emitir || !!settings.certificado_ref || emissions.length > 0;
 
   const [searchParams, setSearchParams] = useSearchParams();
   // Abre na listagem (a informação que o usuário busca primeiro); "Relatório
@@ -180,12 +181,15 @@ export default function NotasFiscais() {
     });
   }, [fetchRecent, dateStart, dateEnd]);
 
-  // Notas NÃO-terminais → polling automático em lote enquanto a tela está
-  // aberta. A Visão Geral usa `emissions` do `useNfse`.
+  // Notas não-terminais e autorizações cuja confirmação envelheceu → consulta
+  // oficial automática enquanto a tela está aberta. Uma autorização já
+  // comprovada mantém o selo correto durante a atualização em segundo plano.
   const pendingIds = useMemo(
     () =>
       emissions
-        .filter((e) => !isNfseTerminal(e.status))
+        .filter((e) =>
+          !isNfseTerminal(resolveNfseDisplayStatus(e)) || nfseNeedsOfficialRefresh(e),
+        )
         .slice(0, 10)
         .map((e) => e.id),
     [emissions],
@@ -314,9 +318,6 @@ export default function NotasFiscais() {
         {isMobile && periodFilter}
       </div>
 
-      {/* Explicação em linguagem leiga — fechada por padrão */}
-      <NfseComoFunciona />
-
       {anyLoading ? (
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-7 w-7 animate-spin text-primary" />
@@ -340,6 +341,7 @@ export default function NotasFiscais() {
               A1, e quem explica isso é a própria aba (ela tem os avisos em
               cascata: sem certificado → sem opt-in → lista). */}
           <SettingsSidebarLayout
+            variant="underline"
             tabs={navTabs}
             activeTab={tab}
             onTabChange={(v) => setTab(v as 'visao-geral' | 'nfse' | 'recebidas' | 'automaticas')}

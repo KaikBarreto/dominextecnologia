@@ -8,32 +8,76 @@ import { supabase } from '@/integrations/supabase/client';
  * é o `Response` original — daí lemos o corpo pra extrair a mensagem PT-BR e o
  * código de erro.
  *
- * Casos especiais tratados aqui:
- *  - "integração ainda não ativada" (HTTP 503): esperado enquanto a chave da
- *    integração fiscal não estiver setada. A tela mostra um texto amigável.
- *  - "caminho de emissão indisponível" (HTTP 501 `provider_unsupported`):
- *    acontece quando a empresa está apontada para um motor de emissão que ainda
- *    não está no ar. Também vira texto amigável.
- *
- * ⚠️ Vocabulário duplo de códigos de erro: o servidor ainda emite os códigos
- * antigos (`fisqal_unconfigured` / `fisqal_error`) e passará a emitir os novos
- * (`nfse_unconfigured` / `nfse_error`). Aceitamos OS DOIS de propósito — o par
- * antigo só sai na etapa D3 do plano de motor próprio de NFS-e. Trocar só de um
- * lado quebraria a mensagem amigável em produção.
+ * Casos especiais tratados aqui: integração não configurada, serviço fiscal
+ * temporariamente indisponível (503) e operação ainda não oferecida (501).
  */
 
 /** Códigos que significam "a integração fiscal ainda não foi ativada". */
-const UNCONFIGURED_CODES = new Set(['nfse_unconfigured', 'fisqal_unconfigured']);
+const UNCONFIGURED_CODES = new Set(['nfse_unconfigured']);
 
-/** Códigos que significam "o provedor devolveu um erro" (vocabulário antigo + novo). */
-export const NFSE_PROVIDER_ERROR_CODES = new Set(['nfse_error', 'fisqal_error']);
-
-/** Código do motor de emissão ainda indisponível para a empresa (HTTP 501). */
-const PROVIDER_UNSUPPORTED_CODE = 'provider_unsupported';
+/** Operação ainda não disponível no motor fiscal próprio. */
+const OPERATION_UNSUPPORTED_CODE = 'operation_unsupported';
 
 const UNCONFIGURED_MESSAGE = 'Emissão de notas ainda não ativada. Tente novamente em breve.';
-const PROVIDER_UNSUPPORTED_MESSAGE =
-  'A emissão por este caminho ainda não está disponível. Fale com o suporte para liberar a emissão da sua empresa.';
+const OPERATION_UNAVAILABLE_MESSAGE =
+  'Esta operação fiscal ainda não está disponível. Fale com o suporte se precisar de ajuda.';
+
+/**
+ * Orientação segura devolvida pelo motor fiscal.
+ */
+export interface NfseFiscalOrientation {
+  mensagem: string | null;
+  planoAcao: string[];
+  codigoOficial: string | null;
+  podeTentarNovamente: boolean | null;
+  precisaContabilidade: boolean | null;
+}
+
+function readOrientation(body: Record<string, unknown> | null): NfseFiscalOrientation | null {
+  const erro = body?.erro;
+  const resposta = body?.resposta;
+  const raw = body?.orientacao ??
+    (erro && typeof erro === 'object' && !Array.isArray(erro)
+      ? (erro as Record<string, unknown>).orientacao
+      : null) ??
+    (resposta && typeof resposta === 'object' && !Array.isArray(resposta)
+      ? (resposta as Record<string, unknown>).orientacao
+      : null);
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const value = raw as Record<string, unknown>;
+  const planoAcao = Array.isArray(value.planoAcao)
+    ? value.planoAcao.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+    : [];
+  const mensagem = typeof value.mensagem === 'string' && value.mensagem.trim()
+    ? value.mensagem.trim()
+    : null;
+  const codigoOficial = typeof value.codigoOficial === 'string' && value.codigoOficial.trim()
+    ? value.codigoOficial.trim()
+    : null;
+  const podeTentarNovamente = typeof value.podeTentarNovamente === 'boolean'
+    ? value.podeTentarNovamente
+    : null;
+  const precisaContabilidade = typeof value.precisaContabilidade === 'boolean'
+    ? value.precisaContabilidade
+    : null;
+  return mensagem || planoAcao.length || codigoOficial || podeTentarNovamente != null || precisaContabilidade != null
+    ? { mensagem, planoAcao, codigoOficial, podeTentarNovamente, precisaContabilidade }
+    : null;
+}
+
+/** Texto curto para toast; detalhes permanecem disponíveis no objeto tipado. */
+export function nfseOrientationDescription(orientation: NfseFiscalOrientation | null): string | undefined {
+  if (!orientation) return undefined;
+  const parts = [
+    orientation.mensagem,
+    ...orientation.planoAcao,
+    orientation.codigoOficial ? `Código oficial: ${orientation.codigoOficial}.` : null,
+    orientation.podeTentarNovamente === true ? 'Você pode tentar novamente após seguir a orientação.' : null,
+    orientation.podeTentarNovamente === false ? 'Não tente emitir novamente antes de corrigir esta situação.' : null,
+    orientation.precisaContabilidade ? 'Revise com a contabilidade.' : null,
+  ].filter((item): item is string => !!item);
+  return parts.length ? parts.join(' ') : undefined;
+}
 
 export interface NfseEdgeResult<T = Record<string, unknown>> {
   ok: boolean;
@@ -42,10 +86,10 @@ export interface NfseEdgeResult<T = Record<string, unknown>> {
   errorCode: string | null;
   /** Mensagem PT-BR pronta pra exibir ao usuário. */
   message: string | null;
-  /** true quando a integração ainda não foi ativada (503). */
+  /** true somente quando o backend declara `nfse_unconfigured`. */
   unconfigured: boolean;
-  /** true quando o motor de emissão configurado ainda não está disponível (501). */
-  providerUnsupported: boolean;
+  /** true quando o serviço ou a operação fiscal está indisponível (503/501). */
+  unavailable: boolean;
   /**
    * Corpo completo do erro, preservado pra consumidores que precisam de campos
    * extras além de `error`/`message`. Ex: o bloqueio de cota de NFS-e (402
@@ -53,6 +97,8 @@ export interface NfseEdgeResult<T = Record<string, unknown>> {
    * a UI lê esses campos pra montar o modal de upgrade. `null` no caminho feliz.
    */
   errorBody: Record<string, unknown> | null;
+  /** Instrução clara do motor fiscal, quando a resposta a fornecer. */
+  orientacao: NfseFiscalOrientation | null;
 }
 
 async function readBody(resp: Response | undefined): Promise<Record<string, unknown> | null> {
@@ -80,21 +126,23 @@ export async function invokeNfse<T = Record<string, unknown>>(
     const parsed = await readBody(resp);
     const errorCode = (parsed?.error as string) ?? null;
     const message = (parsed?.message as string) ?? error.message ?? 'Falha na integração fiscal.';
-    const unconfigured = (!!errorCode && UNCONFIGURED_CODES.has(errorCode)) || resp?.status === 503;
-    const providerUnsupported =
-      errorCode === PROVIDER_UNSUPPORTED_CODE || (!unconfigured && resp?.status === 501);
+    const unconfigured = !!errorCode && UNCONFIGURED_CODES.has(errorCode);
+    const serviceUnavailable = resp?.status === 503;
+    const operationUnavailable =
+      errorCode === OPERATION_UNSUPPORTED_CODE || (!unconfigured && resp?.status === 501);
     return {
       ok: false,
       data: null,
       errorCode,
       message: unconfigured
         ? UNCONFIGURED_MESSAGE
-        : providerUnsupported
-          ? PROVIDER_UNSUPPORTED_MESSAGE
+        : operationUnavailable
+          ? OPERATION_UNAVAILABLE_MESSAGE
           : message,
       unconfigured,
-      providerUnsupported,
+      unavailable: unconfigured || operationUnavailable || serviceUnavailable,
       errorBody: parsed,
+      orientacao: readOrientation(parsed),
     };
   }
 
@@ -103,19 +151,20 @@ export async function invokeNfse<T = Record<string, unknown>>(
   if (payload.error) {
     const errorCode = payload.error as string;
     const unconfigured = UNCONFIGURED_CODES.has(errorCode);
-    const providerUnsupported = errorCode === PROVIDER_UNSUPPORTED_CODE;
+    const operationUnavailable = errorCode === OPERATION_UNSUPPORTED_CODE;
     return {
       ok: false,
       data: null,
       errorCode,
       message: unconfigured
         ? UNCONFIGURED_MESSAGE
-        : providerUnsupported
-          ? PROVIDER_UNSUPPORTED_MESSAGE
+        : operationUnavailable
+          ? OPERATION_UNAVAILABLE_MESSAGE
           : ((payload.message as string) ?? 'Falha na integração fiscal.'),
       unconfigured,
-      providerUnsupported,
+      unavailable: unconfigured || operationUnavailable,
       errorBody: payload,
+      orientacao: readOrientation(payload),
     };
   }
 
@@ -125,7 +174,8 @@ export async function invokeNfse<T = Record<string, unknown>>(
     errorCode: null,
     message: (payload.message as string) ?? null,
     unconfigured: false,
-    providerUnsupported: false,
+    unavailable: false,
     errorBody: null,
+    orientacao: readOrientation(payload),
   };
 }

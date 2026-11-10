@@ -22,7 +22,6 @@ import { GLOSSARIO } from '@/lib/glossario';
 import { GLOSSARIO_CICLO } from '@/lib/glossarioCiclo';
 import { GLOSSARIO_ELETRICA } from '@/lib/glossarioEletrica';
 import { GLOSSARIO_GASES } from '@/lib/glossarioGases';
-import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { getTechToolsForSegment, type TechToolId } from '@/config/technicianArea';
 import type { ToolNavPayload } from '@/pages/TechnicianArea';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -61,6 +60,7 @@ function buildGlossarioSecoes(
 }
 
 interface InicioProps {
+  segment: string | null;
   /**
    * Troca a aba ativa em TechnicianArea (estado interno, funciona standalone e
    * no overlay da OS). `payload` opcional faz deep-link no item escolhido.
@@ -68,15 +68,14 @@ interface InicioProps {
   onNavigate: (id: ToolNavId, payload?: ToolNavPayload) => void;
 }
 
-export function Inicio({ onNavigate }: InicioProps) {
+export function Inicio({ segment, onNavigate }: InicioProps) {
   const { locale } = useAppLocaleContext();
   const tTools = MESSAGES[locale].app.technicianTools;
   const t = tTools.home;
 
-  const { settings } = useCompanySettings();
-  // Cards = ferramentas do segmento da empresa (fonte única do config).
-  const atalhos = getTechToolsForSegment(settings?.segment);
-  const isRefrigeracao = settings?.segment === 'refrigeracao';
+  // Cards = ferramentas do segmento atualmente selecionado no hub.
+  const atalhos = getTechToolsForSegment(segment);
+  const isRefrigeracao = segment === 'refrigeracao';
   const [buscaGlossario, setBuscaGlossario] = useState('');
 
   const GLOSSARIO_SECOES = useMemo(

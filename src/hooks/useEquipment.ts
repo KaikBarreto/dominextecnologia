@@ -66,12 +66,19 @@ export function useEquipment(customerId?: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
     },
-    onError: (error: Error) => {
-      toast({
-        variant: 'destructive',
-        title: 'Erro ao atualizar equipamento',
-        description: getErrorMessage(error),
-      });
+  });
+
+  const deleteEquipment = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('equipment')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['equipment'] });
     },
   });
 
@@ -108,6 +115,7 @@ export function useEquipment(customerId?: string) {
     error: equipmentQuery.error,
     refetch: equipmentQuery.refetch,
     updateEquipment,
+    deleteEquipment,
     createEquipment,
   };
 }

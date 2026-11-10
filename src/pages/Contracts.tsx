@@ -57,6 +57,7 @@ import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListI
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { FilterCheckboxGroup, type FilterCheckboxOption } from '@/components/mobile/FilterCheckboxGroup';
 import { ContractsFilterButton } from '@/components/contracts/ContractsFilterButton';
+import { SearchField } from '@/components/ui/search-field-actions';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 
@@ -415,27 +416,28 @@ export default function Contracts() {
           {/* Desktop toolbar: busca + único botão "Filtros" (Sheet à direita).
               Substitui os 3 selects soltos da versão antiga — desentulha a tela
               e dá paridade com o mobile (FilterSheet). */}
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1 min-w-[220px]">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-              <Input
+          <div>
+            <SearchField
+                containerClassName="min-w-[220px] flex-1"
                 placeholder={t.searchPlaceholder}
-                className="pl-10 h-10"
+                className="h-10"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                actions={
+                  <ContractsFilterButton
+                    statusOptions={statusOptions}
+                    statusFilter={statusFilter}
+                    onStatusChange={setStatusFilter}
+                    healthFilter={healthFilter}
+                    onHealthChange={setHealthFilter}
+                    typeFilter={typeFilter}
+                    onTypeChange={setTypeFilter}
+                    activeCount={structuredFilterCount}
+                    onClear={clearStructuredFilters}
+                    embedded
+                  />
+                }
               />
-            </div>
-            <ContractsFilterButton
-              statusOptions={statusOptions}
-              statusFilter={statusFilter}
-              onStatusChange={setStatusFilter}
-              healthFilter={healthFilter}
-              onHealthChange={setHealthFilter}
-              typeFilter={typeFilter}
-              onTypeChange={setTypeFilter}
-              activeCount={structuredFilterCount}
-              onClear={clearStructuredFilters}
-            />
           </div>
         </>
       )}

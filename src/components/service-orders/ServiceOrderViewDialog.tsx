@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, User, Wrench, Calendar, Clock, MapPin, Camera, ClipboardCheck, FileSignature, Check, X, Minus, Navigation, Copy, ClipboardList, CheckCircle, RotateCcw, Pause, Play, Pencil, Trash2, Link2, ChevronDown, AlertTriangle, TrendingUp, Receipt } from 'lucide-react';
+import { Eye, User, Wrench, Calendar, Clock, MapPin, Camera, ClipboardCheck, FileSignature, FileText, Check, X, Minus, Navigation, Copy, ClipboardList, CheckCircle, RotateCcw, Pause, Play, Pencil, Trash2, Link2, ChevronDown, AlertTriangle, TrendingUp, Receipt } from 'lucide-react';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -37,6 +37,10 @@ import { OsBillingDialog } from './OsBillingDialog';
 import { useServiceOrderBudget, useServiceOrderServiceTypes } from '@/hooks/useServiceOrderBudget';
 import { ServiceOrderBudgetSection } from './ServiceOrderBudgetSection';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
+import { canShareServiceOrder } from '@/lib/serviceOrderAccess';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { canGenerateOsPmocDocuments } from '@/lib/osPmocDocuments';
+import { OsPmocDocumentsDialog } from './OsPmocDocumentsDialog';
 
 interface OSPhoto {
   id: string;
@@ -122,9 +126,11 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
   const [galleryIndex, setGalleryIndex] = useState(0);
+  const [pmocDocumentsOpen, setPmocDocumentsOpen] = useState(false);
   const { toast } = useToast();
   const isCompact = useIsCompact();
   const { isPmoc: isPmocOrder } = useIsPmocOrder(serviceOrderId);
+  const { settings: companySettings } = useCompanySettings();
   const budgetQuery = useServiceOrderBudget(open ? serviceOrderId : null);
   const serviceTypesQuery = useServiceOrderServiceTypes(open ? serviceOrderId : null);
   const { serviceTypes } = useServiceTypes();
@@ -702,7 +708,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
         if (onDelete) {
           actions.push({ key: 'delete', icon: Trash2, label: tv.actionDelete, tone: 'destructive', onClick: () => { onOpenChange(false); onDelete(); } });
         }
-        if (serviceOrder.customer_id) {
+        if (canShareServiceOrder(serviceOrder)) {
           actions.push({
             key: 'tracking-link',
             icon: linkCopied ? Check : Link2,
@@ -740,6 +746,17 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
             label: tv.actionBilling,
             tone: 'success',
             onClick: () => serviceOrder && billing.open(serviceOrder as any),
+          });
+        }
+        if (canGenerateOsPmocDocuments(serviceOrder, companySettings?.segments, companySettings?.segment)) {
+          actions.push({
+            key: 'pmoc-documents',
+            icon: FileText,
+            label: 'Gerar documentos PMOC',
+            onClick: () => {
+              onOpenChange(false);
+              setPmocDocumentsOpen(true);
+            },
           });
         }
         // Tema claro: fundo branco + ícone saturado + borda sutil colorida.
@@ -835,6 +852,13 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
       }}
     />
   );
+  const pmocDocumentsDialog = serviceOrderId ? (
+    <OsPmocDocumentsDialog
+      open={pmocDocumentsOpen}
+      onOpenChange={setPmocDocumentsOpen}
+      serviceOrderId={serviceOrderId}
+    />
+  ) : null;
 
   if (isCompact) {
     return (
@@ -848,6 +872,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
         </Drawer>
         {previewModal}
         {billingDialog}
+        {pmocDocumentsDialog}
       </>
     );
   }
@@ -872,6 +897,7 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
       </Dialog>
       {previewModal}
       {billingDialog}
+      {pmocDocumentsDialog}
     </>
   );
 }

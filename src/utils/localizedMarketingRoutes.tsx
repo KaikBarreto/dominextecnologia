@@ -16,9 +16,9 @@
 // a existir sozinha, sem tocar aqui.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { Route } from 'react-router-dom';
+import { Navigate, Route } from 'react-router-dom';
 import type { ReactElement } from 'react';
-import { PREFIXED_LOCALES, slugFor } from '@/lib/i18n';
+import { PREFIXED_LOCALES, slugFor, useLocale } from '@/lib/i18n';
 
 import SistemaParaRefrigeracao from '@/pages/segmentos/SistemaParaRefrigeracao';
 import SistemaParaEletricistas from '@/pages/segmentos/SistemaParaEletricistas';
@@ -39,9 +39,12 @@ import PontoEFolha from '@/pages/modulos/PontoEFolha';
 import EmissaoDeNfse from '@/pages/modulos/EmissaoDeNfse';
 import PortalDoCliente from '@/pages/modulos/PortalDoCliente';
 import ControleDeEstoque from '@/pages/modulos/ControleDeEstoque';
-import OrcamentosEContratos from '@/pages/modulos/OrcamentosEContratos';
-import RastreamentoDeEquipes from '@/pages/modulos/RastreamentoDeEquipes';
+import Orcamentos from '@/pages/modulos/Orcamentos';
+import Contratos from '@/pages/modulos/Contratos';
 import AreaDoTecnico from '@/pages/modulos/AreaDoTecnico';
+import IntegracaoWhatsapp from '@/pages/modulos/IntegracaoWhatsapp';
+import CobrancasAutomaticas from '@/pages/modulos/CobrancasAutomaticas';
+import PdvELoja from '@/pages/modulos/PdvELoja';
 
 /**
  * Mapa key canônica (slug pt-br) → elemento do wrapper. A key de segmento é o
@@ -65,13 +68,26 @@ const WRAPPER_BY_KEY: Record<string, ReactElement> = {
   'sistema-crm': <CrmModulo />,
   'controle-financeiro': <ControleFinanceiro />,
   'ponto-e-folha': <PontoEFolha />,
-  'emissao-de-nfse': <EmissaoDeNfse />,
+  'emissao-de-nota-fiscal': <EmissaoDeNfse />,
   'portal-do-cliente': <PortalDoCliente />,
   'controle-de-estoque': <ControleDeEstoque />,
-  'orcamentos-e-contratos': <OrcamentosEContratos />,
-  'rastreamento-de-equipes': <RastreamentoDeEquipes />,
+  'sistema-de-orcamentos': <Orcamentos />,
+  'gestao-de-contratos': <Contratos />,
   'area-do-tecnico': <AreaDoTecnico />,
+  'integracao-whatsapp': <IntegracaoWhatsapp />,
+  'cobrancas-automaticas': <CobrancasAutomaticas />,
+  'pdv-e-loja': <PdvELoja />,
 };
+
+function LegacyTrackingRedirect() {
+  const { locale } = useLocale();
+  return <Navigate to={`../${slugFor('os-digital', locale)}`} replace />;
+}
+
+function LegacyQuotesContractsRedirect() {
+  const { locale } = useLocale();
+  return <Navigate to={`../${slugFor('sistema-de-orcamentos', locale)}`} replace />;
+}
 
 /**
  * Gera as <Route> de segmento/módulo do bloco /:lang, com o slug de cada idioma
@@ -79,11 +95,46 @@ const WRAPPER_BY_KEY: Record<string, ReactElement> = {
  * são RELATIVOS ao /:lang (sem barra inicial), como o React Router espera.
  */
 export function localizedSegmentModuleRoutes(): ReactElement[] {
-  const routes: ReactElement[] = [];
+  const routes: ReactElement[] = [
+    <Route
+      key="legacy:emissao-de-nfse"
+      path="emissao-de-nfse"
+      element={<Navigate to="../emissao-de-nota-fiscal" replace />}
+    />,
+  ];
+  const legacyQuotesContractsSlugs = new Set<string>([
+    'orcamentos-e-contratos',
+    ...PREFIXED_LOCALES.map((locale) => slugFor('orcamentos-e-contratos', locale)),
+  ]);
+  for (const slug of legacyQuotesContractsSlugs) {
+    routes.push(
+      <Route
+        key={`legacy:orcamentos-e-contratos:${slug}`}
+        path={slug}
+        element={<LegacyQuotesContractsRedirect />}
+      />,
+    );
+  }
+  const legacyTrackingSlugs = new Set<string>([
+    'rastreamento-de-equipes',
+    ...PREFIXED_LOCALES.map((locale) => slugFor('rastreamento-de-equipes', locale)),
+  ]);
+  for (const slug of legacyTrackingSlugs) {
+    routes.push(
+      <Route
+        key={`legacy:rastreamento-de-equipes:${slug}`}
+        path={slug}
+        element={<LegacyTrackingRedirect />}
+      />,
+    );
+  }
   for (const key of Object.keys(WRAPPER_BY_KEY)) {
     const element = WRAPPER_BY_KEY[key];
     // Conjunto de slugs distintos entre os idiomas prefixados (hoje = { pt-br }).
-    const slugs = new Set<string>();
+    // Mantém também a key pt-br como rota de compatibilidade. A detecção
+    // automática de idioma pode preservar o slug atual ao adicionar /en, /es
+    // ou /fr antes de o seletor trocar para o slug traduzido.
+    const slugs = new Set<string>([key]);
     for (const loc of PREFIXED_LOCALES) slugs.add(slugFor(key, loc));
     for (const slug of slugs) {
       routes.push(<Route key={`${key}:${slug}`} path={slug} element={element} />);

@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useUserCompany } from '@/hooks/useUserCompany';
 import { isLiveChargeStatus } from '@/lib/contract-installment-charge';
 
+export const QUOTE_CHARGED_IDS_QUERY_KEY = ['quote-charged-ids'] as const;
+
 /**
  * IDs de orçamento que já têm cobrança gerada via Asaas
  * (`tenant_charges.source_type = 'quote'`).
@@ -38,7 +40,7 @@ export function useQuoteChargedIds() {
   const { companyId } = useUserCompany();
 
   const query = useQuery({
-    queryKey: ['quote-charged-ids', companyId],
+    queryKey: [...QUOTE_CHARGED_IDS_QUERY_KEY, companyId],
     enabled: !!companyId,
     staleTime: 30 * 1000,
     queryFn: async (): Promise<Set<string>> => {

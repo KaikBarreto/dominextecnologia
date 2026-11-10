@@ -10,10 +10,13 @@ import {
   formatValidUntil,
   hasDisplacement,
   resolveSectionText as resolveSectionTextShared,
+  getProposalItemCostDetails,
   scaledLogoHeightPx,
   sumTotal,
 } from './shared';
 import type { QuoteItem } from '@/hooks/useQuotes';
+import { ProposalLogo } from './ProposalLogo';
+import { ProposalPlatformFooter } from './ProposalPlatformFooter';
 
 /**
  * Clean — proposta comercial ENXUTA em documento BRANCO (não segue o tema do
@@ -26,7 +29,7 @@ import type { QuoteItem } from '@/hooks/useQuotes';
  * FORA (ProposalPublic.tsx) quando status==='enviado' — este template só deixa
  * um respiro no rodapé pra eles.
  *
- * White-label: a marca exibida é SEMPRE a do tenant (company/customization).
+ * White-label: identidade da empresa; assinatura da plataforma somente fora do white-label.
  */
 export function CleanTemplate(props: ProposalTemplateProps) {
   const { quote, company, customization } = props;
@@ -126,6 +129,13 @@ export function CleanTemplate(props: ProposalTemplateProps) {
                         {item.details}
                       </p>
                     )}
+                    {getProposalItemCostDetails(quote, item, money, locale).length > 0 && (
+                      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px]" style={{ color: '#64748b' }}>
+                        {getProposalItemCostDetails(quote, item, money, locale).map(detail => (
+                          <span key={detail.label}>{detail.label} <strong style={{ color: '#334155' }}>{detail.value}</strong></span>
+                        ))}
+                      </div>
+                    )}
                   </td>
                   <td className="px-3 py-3 text-right tabular-nums align-top whitespace-nowrap" style={{ color: '#334155', borderBottom: '1px solid #f1f5f9' }}>
                     {money(item.unit_price || 0)}
@@ -164,6 +174,13 @@ export function CleanTemplate(props: ProposalTemplateProps) {
                   {item.details}
                 </p>
               )}
+              {getProposalItemCostDetails(quote, item, money, locale).length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px]" style={{ color: '#64748b' }}>
+                  {getProposalItemCostDetails(quote, item, money, locale).map(detail => (
+                    <span key={detail.label}>{detail.label} <strong style={{ color: '#334155' }}>{detail.value}</strong></span>
+                  ))}
+                </div>
+              )}
               <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
                 <div>
                   <dt className="font-medium" style={{ color: '#64748b' }}>{t.cleanColUnitPrice}</dt>
@@ -197,6 +214,10 @@ export function CleanTemplate(props: ProposalTemplateProps) {
       <style>{`
         .clean-page { width: 100%; max-width: 794px; background: #ffffff; color: #0f172a; padding: 48px 52px; }
         .clean-header { flex-direction: column; gap: 24px; }
+        .clean-company { width: 100%; flex-wrap: wrap; }
+        .clean-company > div { flex: 1 1 12rem; overflow-wrap: anywhere; }
+        .clean-footer-brand > div { min-width: 0; overflow-wrap: anywhere; }
+        .clean-client { overflow-wrap: anywhere; }
         .clean-document-meta { width: 100%; text-align: center !important; }
         /* Tabela contida: em telas estreitas rola só a tabela, sem estourar a página. */
         .clean-table-wrap { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
@@ -227,12 +248,10 @@ export function CleanTemplate(props: ProposalTemplateProps) {
         <div className="clean-header flex items-start justify-between gap-6 flex-wrap">
           <div className="clean-company min-w-0 flex items-start gap-4">
             {d.logoUrl ? (
-              <img
+              <ProposalLogo
                 src={d.logoUrl}
                 alt={d.companyName}
-                className="w-auto object-contain shrink-0"
-                style={{ height: scaledLogoHeightPx(56, customization?.logo_scale) }}
-                crossOrigin="anonymous"
+                height={scaledLogoHeightPx(56, customization?.logo_scale)}
               />
             ) : null}
             <div className="min-w-0">
@@ -247,7 +266,7 @@ export function CleanTemplate(props: ProposalTemplateProps) {
           </div>
           <div className="clean-document-meta text-right shrink-0">
             <p className="text-[11px] font-bold uppercase tracking-[0.18em]" style={{ color: primary }}>{t.cleanDocTitle}</p>
-            <p className="text-sm font-semibold mt-1" style={{ color: '#0f172a' }}>#{quote.quote_number}</p>
+            <p className="text-sm font-semibold mt-1" style={{ color: '#0f172a' }}>{quote.quote_number > 0 ? `#${d.numberLabel}` : '—'}</p>
             {validUntil && (
               <span
                 className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-full text-[11px] font-semibold"
@@ -263,7 +282,7 @@ export function CleanTemplate(props: ProposalTemplateProps) {
         <div className="mt-6 h-px w-full" style={{ background: '#e5e7eb', ...colorAdjust }} />
 
         {/* ── Bloco Cliente ── */}
-        <div className="mt-6">
+        <div className="clean-client mt-6">
           <p className="text-[11px] font-bold uppercase tracking-[0.18em]" style={{ color: primary }}>{t.cleanClientLabel}</p>
           <p className="text-base font-bold mt-1.5" style={{ color: '#0f172a' }}>{d.clientName}</p>
           <div className="text-xs mt-1 leading-relaxed" style={{ color: '#64748b' }}>
@@ -393,14 +412,12 @@ export function CleanTemplate(props: ProposalTemplateProps) {
         {/* ── Rodapé: profissional/marca do tenant ── */}
         <div className="mt-10 pt-6 clean-block" style={{ borderTop: '1px solid #e5e7eb' }} data-pdf-keep>
           <p className="text-[11px] uppercase tracking-[0.18em] font-semibold" style={{ color: '#94a3b8' }}>{t.cleanFooterPrepared}</p>
-          <div className="mt-2 flex items-center gap-3 flex-wrap">
+          <div className="clean-footer-brand mt-2 flex items-center gap-3 flex-wrap">
             {d.logoUrl ? (
-              <img
+              <ProposalLogo
                 src={d.logoUrl}
                 alt={d.companyName}
-                className="w-auto object-contain"
-                style={{ height: scaledLogoHeightPx(32, customization?.logo_scale) }}
-                crossOrigin="anonymous"
+                height={scaledLogoHeightPx(32, customization?.logo_scale)}
               />
             ) : null}
             <div>
@@ -417,6 +434,7 @@ export function CleanTemplate(props: ProposalTemplateProps) {
               {t.cleanGeneratedAt.replace('{date}', generatedDate).replace('{time}', generatedTime)}
             </p>
           )}
+          <ProposalPlatformFooter company={company} />
         </div>
 
         {/* Respiro pra os botões Aprovar/Rejeitar injetados por fora (ProposalPublic). */}
@@ -428,7 +446,7 @@ export function CleanTemplate(props: ProposalTemplateProps) {
 
 function Row({ label, value, negative, primary }: { label: string; value: string; negative?: boolean; primary?: string }) {
   return (
-    <div className="flex items-center justify-between text-sm">
+    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm">
       <span style={{ color: '#64748b' }}>{label}</span>
       <span className="tabular-nums font-medium" style={{ color: negative ? (primary || '#0f172a') : '#334155' }}>{value}</span>
     </div>

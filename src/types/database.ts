@@ -76,6 +76,8 @@ export interface Customer {
   notes?: string;
   photo_url?: string;
   origin?: string;
+  label_id?: string | null;
+  custom_fields?: Record<string, unknown>;
   whatsapp_notifications_enabled?: boolean;
   whatsapp_opt_in_at?: string | null;
   whatsapp_opt_out_at?: string | null;
@@ -150,6 +152,17 @@ export interface ServiceOrder {
   labor_value?: number;
   parts_value?: number;
   total_value?: number;
+  /** Snapshot da metodologia comercial usada no orçamento desta OS. */
+  use_bdi?: boolean;
+  tax_rate?: number;
+  admin_indirect_rate?: number;
+  profit_rate?: number;
+  bdi?: number;
+  total_cost?: number;
+  km_cost?: number;
+  distance_km?: number;
+  displacement_cost?: number;
+  commercial_adjustment?: number;
   check_in_time?: string;
   check_in_location?: { lat: number; lng: number } | null;
   check_out_time?: string;
@@ -161,6 +174,10 @@ export interface ServiceOrder {
   client_signature?: string;
   notes?: string;
   contract_id?: string;
+  /** Data da visita no cronograma do contrato, preservada mesmo após reagendamento. */
+  contract_reference_date?: string | null;
+  /** Presente quando esta visita recebeu planejamento individual e não pode ser regenerada. */
+  contract_visit_customized_at?: string | null;
   /** Orçamento comercial que originou a OS, quando criada pela ação Gerar OS. */
   quote_id?: string | null;
   created_by?: string;
@@ -239,6 +256,7 @@ export interface FormQuestion {
   guidance?: string | null;
   require_camera?: boolean;
   require_camera_video?: boolean;
+  allow_multiple_photos?: boolean;
   answer_types?: string[];
   answer_mode?: 'exclusive' | 'combined';
   /** Onda D v1.9.x — campos sanitários PMOC.

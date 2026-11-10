@@ -5,7 +5,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { fuzzyIncludes } from '@/lib/utils';
 
@@ -22,6 +21,10 @@ interface ServiceTypesMultiSelectProps {
   onChange: (ids: string[]) => void;
   /** Serviços usados no orçamento: só podem sair depois que a linha for removida. */
   lockedIds?: string[];
+  /** A tela pode representar a seleção em outro componente, como linhas quantificadas. */
+  showSelectedList?: boolean;
+  /** No mobile, leva o usuário às quantidades assim que ele fecha a seleção. */
+  selectionTargetId?: string;
   onCreate?: () => void;
   disabled?: boolean;
 }
@@ -32,6 +35,8 @@ export function ServiceTypesMultiSelect({
   selectedIds,
   onChange,
   lockedIds = [],
+  showSelectedList = true,
+  selectionTargetId,
   onCreate,
   disabled,
 }: ServiceTypesMultiSelectProps) {
@@ -69,7 +74,17 @@ export function ServiceTypesMultiSelect({
           />
         </div>
       </div>
-      <ScrollArea className="max-h-[50vh]">
+      {/*
+       * `ScrollArea` precisa de altura explícita. Com apenas `max-height`, o
+       * viewport interno crescia com o conteúdo e o root cortava o fim da
+       * lista sem criar rolagem. Como os serviços são ordenados por nome, os
+       * últimos (ex.: "Visita Técnica") pareciam ter sido excluídos.
+       */}
+      <div
+        className="max-h-[50vh] overflow-y-auto overscroll-contain"
+        role="region"
+        aria-label="Tipos de serviço disponíveis"
+      >
         <div className="p-1">
           {filtered.length === 0 ? (
             <p className="py-5 text-center text-sm text-muted-foreground">
@@ -104,7 +119,7 @@ export function ServiceTypesMultiSelect({
             );
           })}
         </div>
-      </ScrollArea>
+      </div>
     </>
   );
 
@@ -113,6 +128,7 @@ export function ServiceTypesMultiSelect({
       type="button"
       variant="outline"
       role="combobox"
+      aria-label={selectedIds.length === 0 ? 'Adicionar serviços' : 'Gerenciar serviços'}
       disabled={disabled}
       onClick={isMobile ? () => setOpen(true) : undefined}
       className={`h-10 w-full justify-center gap-2 border-dashed font-medium text-primary ${onCreate ? 'rounded-r-none' : ''}`}
@@ -184,11 +200,23 @@ export function ServiceTypesMultiSelect({
   );
 
   if (isMobile) {
+    const handleMobileOpenChange = (nextOpen: boolean) => {
+      setOpen(nextOpen);
+      if (!nextOpen && selectedIds.length > 0 && selectionTargetId) {
+        requestAnimationFrame(() => {
+          document.getElementById(selectionTargetId)?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+          });
+        });
+      }
+    };
+
     return (
       <div className="space-y-2">
-        {selectedList}
+        {showSelectedList && selectedList}
         <div className="flex">{trigger}{createButton}</div>
-        <ResponsiveModal open={open} onOpenChange={setOpen} title="Tipos de serviço da OS">
+        <ResponsiveModal open={open} onOpenChange={handleMobileOpenChange} title="Tipos de serviço da OS">
           <div className="overflow-hidden rounded-lg border">{body}</div>
         </ResponsiveModal>
       </div>
@@ -197,7 +225,7 @@ export function ServiceTypesMultiSelect({
 
   return (
     <div className="space-y-2">
-      {selectedList}
+      {showSelectedList && selectedList}
       <div className="flex">
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>{trigger}</PopoverTrigger>

@@ -1298,8 +1298,35 @@ Deno.serve(async (req) => {
           .select("field_key, label, field_type, position, options")
           .eq("company_id", contract.company_id)
           .eq("is_visible", true)
+          .eq("is_visible_in_portal", true)
           .order("position", { ascending: true }),
       ]);
+
+      const allowedFieldKeys = new Set(
+        ((efcRows ?? []) as Array<Record<string, unknown>>)
+          .map((field) => typeof field.field_key === "string" ? field.field_key : null)
+          .filter((key): key is string => !!key),
+      );
+      const equipmentIds = ((eqRows ?? []) as PortalEquipmentRow[]).map((row) => row.id);
+      const labelsByEquipment = new Map<string, Array<{ id: string; name: string; color: string }>>();
+      if (equipmentIds.length > 0) {
+        const { data: assignmentRows } = await supabase
+          .from("equipment_label_assignments")
+          .select("equipment_id, position, party_labels!inner(id, name, color, show_in_portal, is_active)")
+          .eq("company_id", contract.company_id)
+          .in("equipment_id", equipmentIds)
+          .eq("party_labels.show_in_portal", true)
+          .eq("party_labels.is_active", true)
+          .order("position", { ascending: true });
+        for (const assignment of (assignmentRows ?? []) as Array<Record<string, unknown>>) {
+          const equipmentId = typeof assignment.equipment_id === "string" ? assignment.equipment_id : null;
+          const rawLabel = Array.isArray(assignment.party_labels) ? assignment.party_labels[0] : assignment.party_labels;
+          if (!equipmentId || !rawLabel || typeof rawLabel !== "object") continue;
+          const label = rawLabel as Record<string, unknown>;
+          if (typeof label.id !== "string" || typeof label.name !== "string" || typeof label.color !== "string") continue;
+          labelsByEquipment.set(equipmentId, [...(labelsByEquipment.get(equipmentId) ?? []), { id: label.id, name: label.name, color: label.color }]);
+        }
+      }
 
       equipmentList = ((eqRows ?? []) as PortalEquipmentRow[]).map((e) => {
         // O supabase-js pode devolver o join como objeto ou array de 1 elemento.
@@ -1309,6 +1336,9 @@ Deno.serve(async (req) => {
         const category = catRaw
           ? { name: catRaw.name ?? null, color: catRaw.color ?? null }
           : null;
+        const safeCustomFields = Object.fromEntries(
+          Object.entries(e.custom_fields ?? {}).filter(([key]) => allowedFieldKeys.has(key)),
+        );
         return {
           id: e.id,
           name: e.name ?? null,
@@ -1322,7 +1352,8 @@ Deno.serve(async (req) => {
           capacity: e.capacity ?? null,
           install_date: e.install_date ?? null,
           warranty_until: e.warranty_until ?? null,
-          custom_fields: e.custom_fields ?? {},
+          custom_fields: safeCustomFields,
+          labels: labelsByEquipment.get(e.id) ?? [],
           category,
           // 'notes' propositalmente omitido (observação interna).
         };

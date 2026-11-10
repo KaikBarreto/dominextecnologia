@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Info, XCircle } from 'lucide-react';
+import { AlertTriangle, Building2, CheckCircle2, Filter, Globe2, Info, XCircle } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,9 @@ import { DatePicker, toIsoDate } from '@/components/ui/DatePicker';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { AdminCompanyMultiSelect } from '@/components/admin/AdminCompanyMultiSelect';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useAdminAudienceCompanies } from '@/hooks/useAdminAudienceCompanies';
+import { filterAudienceCompanies, uniqueSorted, type AdminNpsAudienceFilters } from '@/lib/adminNps';
 import { cn } from '@/lib/utils';
 import type { AdminNotice, AdminNoticeInput } from '@/hooks/useAdminNotices';
 import type { NoticeVariant } from '@/lib/systemNotices';
@@ -27,6 +30,9 @@ const VARIANTS: { value: NoticeVariant; label: string; icon: typeof Info }[] = [
   { value: 'success', label: 'Boa notícia', icon: CheckCircle2 },
   { value: 'neutral', label: 'Neutro', icon: Info },
 ];
+
+type AudienceMode = 'all' | 'specific_companies' | 'filters';
+const ALL_FILTER_VALUE = '__all__';
 
 /** `yyyy-MM-dd` → início do dia LOCAL em ISO (o banco guarda timestamptz). */
 function startOfDayIso(date: string): string | null {
@@ -70,13 +76,15 @@ export function AdminNoticeFormDialog({
   const [variant, setVariant] = useState<NoticeVariant>('warning');
   const [actionLabel, setActionLabel] = useState('');
   const [actionUrl, setActionUrl] = useState('');
-  const [audience, setAudience] = useState<'all' | 'specific_companies'>('specific_companies');
+  const [audience, setAudience] = useState<AudienceMode>('specific_companies');
   const [targetIds, setTargetIds] = useState<string[]>([]);
+  const [audienceFilters, setAudienceFilters] = useState<AdminNpsAudienceFilters>({ status: '', plan: '', segment: '' });
   const [scope, setScope] = useState<'dashboard' | 'global'>('dashboard');
   const [dismissible, setDismissible] = useState<'yes' | 'no'>('yes');
   const [active, setActive] = useState<'yes' | 'no'>('yes');
   const [startsAt, setStartsAt] = useState('');
   const [endsAt, setEndsAt] = useState('');
+  const { data: companies = [], isLoading: companiesLoading } = useAdminAudienceCompanies();
 
   // Reseta o formulário a cada abertura (criar = em branco; editar = carregado).
   useEffect(() => {
@@ -89,6 +97,7 @@ export function AdminNoticeFormDialog({
     setActionUrl(notice?.action_url ?? '');
     setAudience(notice?.target_audience === 'all' ? 'all' : 'specific_companies');
     setTargetIds(notice?.target_ids ?? []);
+    setAudienceFilters({ status: '', plan: '', segment: '' });
     setScope(notice?.scope ?? 'dashboard');
     setDismissible(notice?.is_dismissible === false ? 'no' : 'yes');
     setActive(notice?.is_active === false ? 'no' : 'yes');
@@ -96,10 +105,23 @@ export function AdminNoticeFormDialog({
     setEndsAt(isoToDateField(notice?.ends_at ?? null));
   }, [open, notice]);
 
+  const filterOptions = useMemo(() => ({
+    statuses: uniqueSorted(companies.map((company) => company.subscription_status)),
+    plans: uniqueSorted(companies.map((company) => company.subscription_plan)),
+    segments: uniqueSorted(companies.flatMap((company) => company.segments?.length ? company.segments : [company.segment])),
+  }), [companies]);
+  const filteredCompanies = useMemo(
+    () => filterAudienceCompanies(companies, audienceFilters),
+    [companies, audienceFilters],
+  );
+  const resolvedTargetIds = audience === 'filters'
+    ? filteredCompanies.map((company) => company.id)
+    : targetIds;
+
   const erro = useMemo(() => {
     if (!title.trim()) return 'Dê um título ao aviso.';
     if (!message.trim()) return 'Escreva o corpo do aviso.';
-    if (audience === 'specific_companies' && targetIds.length === 0) {
+    if (audience !== 'all' && resolvedTargetIds.length === 0) {
       return 'Escolha ao menos uma empresa, senão ninguém vê o aviso.';
     }
     if (actionUrl.trim() && !/^https?:\/\//i.test(actionUrl.trim())) {
@@ -107,7 +129,7 @@ export function AdminNoticeFormDialog({
     }
     if (startsAt && endsAt && startsAt > endsAt) return 'A data de fim é anterior à de início.';
     return null;
-  }, [title, message, audience, targetIds, actionUrl, startsAt, endsAt]);
+  }, [title, message, audience, resolvedTargetIds.length, actionUrl, startsAt, endsAt]);
 
   const submit = () => {
     if (erro) return;
@@ -121,8 +143,8 @@ export function AdminNoticeFormDialog({
       is_active: active === 'yes',
       starts_at: startsAt ? startOfDayIso(startsAt) : null,
       ends_at: endsAt ? endOfDayIso(endsAt) : null,
-      target_audience: audience,
-      target_ids: audience === 'all' ? [] : targetIds,
+      target_audience: audience === 'all' ? 'all' : 'specific_companies',
+      target_ids: audience === 'all' ? [] : resolvedTargetIds,
       action_label: actionLabel.trim() || null,
       action_url: actionUrl.trim() || null,
     });
@@ -149,10 +171,10 @@ export function AdminNoticeFormDialog({
       }
     >
       <Tabs value={tab} onValueChange={setTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="conteudo">Conteúdo</TabsTrigger>
-          <TabsTrigger value="destino">Destino</TabsTrigger>
-          <TabsTrigger value="exibicao">Exibição</TabsTrigger>
+        <TabsList variant="underline">
+          <TabsTrigger variant="underline" value="conteudo">Conteúdo</TabsTrigger>
+          <TabsTrigger variant="underline" value="destino">Destino</TabsTrigger>
+          <TabsTrigger variant="underline" value="exibicao">Exibição</TabsTrigger>
         </TabsList>
 
         {/* ── Conteúdo ─────────────────────────────────────────────── */}
@@ -227,18 +249,33 @@ export function AdminNoticeFormDialog({
 
         {/* ── Destino ──────────────────────────────────────────────── */}
         <TabsContent value="destino" className="space-y-4 pt-4">
-          <div className="flex flex-col items-start gap-2">
+          <div className="space-y-2">
             <Label>Quem vê</Label>
-            <LabeledSwitch<'all' | 'specific_companies'>
-              value={audience}
-              onChange={setAudience}
-              off={{ value: 'specific_companies', label: 'Empresas escolhidas' }}
-              on={{ value: 'all', label: 'Base toda' }}
-              aria-label="Público do aviso"
-            />
+            <div className="grid gap-2 sm:grid-cols-3">
+              {([
+                { value: 'all' as const, label: 'Base toda', icon: Globe2 },
+                { value: 'specific_companies' as const, label: 'Empresas', icon: Building2 },
+                { value: 'filters' as const, label: 'Filtros', icon: Filter },
+              ]).map((option) => {
+                const Icon = option.icon;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setAudience(option.value)}
+                    className={cn(
+                      'flex min-h-11 items-center gap-2 rounded-md border px-3 py-2 text-left text-sm font-medium',
+                      audience === option.value ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted',
+                    )}
+                  >
+                    <Icon className="h-4 w-4" /> {option.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          {audience === 'specific_companies' ? (
+          {audience === 'specific_companies' && (
             <div className="space-y-2">
               <Label>Empresas</Label>
               <AdminCompanyMultiSelect value={targetIds} onChange={setTargetIds} />
@@ -246,7 +283,22 @@ export function AdminNoticeFormDialog({
                 Só os usuários dessas empresas enxergam o aviso. Nenhum outro cliente recebe.
               </p>
             </div>
-          ) : (
+          )}
+
+          {audience === 'filters' && (
+            <div className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <NoticeFilterSelect label="Status" value={audienceFilters.status} options={filterOptions.statuses} onChange={(status) => setAudienceFilters((current) => ({ ...current, status }))} />
+                <NoticeFilterSelect label="Plano" value={audienceFilters.plan} options={filterOptions.plans} onChange={(plan) => setAudienceFilters((current) => ({ ...current, plan }))} />
+                <NoticeFilterSelect label="Segmento" value={audienceFilters.segment} options={filterOptions.segments} onChange={(segment) => setAudienceFilters((current) => ({ ...current, segment }))} />
+              </div>
+              <NoticeBanner variant={resolvedTargetIds.length ? 'info' : 'warning'}>
+                {companiesLoading ? 'Calculando o público...' : `${resolvedTargetIds.length} ${resolvedTargetIds.length === 1 ? 'empresa verá' : 'empresas verão'} este aviso. O recorte será salvo ao publicar.`}
+              </NoticeBanner>
+            </div>
+          )}
+
+          {audience === 'all' && (
             <NoticeBanner variant="warning" title="Aviso para todos os clientes">
               Toda a base vai ver esta faixa. Confira o texto antes de publicar.
             </NoticeBanner>
@@ -336,5 +388,20 @@ export function AdminNoticeFormDialog({
         </TabsContent>
       </Tabs>
     </ResponsiveModal>
+  );
+}
+
+function NoticeFilterSelect({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (value: string) => void }) {
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      <Select value={value || ALL_FILTER_VALUE} onValueChange={(next) => onChange(next === ALL_FILTER_VALUE ? '' : next)}>
+        <SelectTrigger><SelectValue /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ALL_FILTER_VALUE}>Todos</SelectItem>
+          {options.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+        </SelectContent>
+      </Select>
+    </div>
   );
 }

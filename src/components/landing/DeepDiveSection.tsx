@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
+import { cn } from '@/lib/utils';
 
 /**
  * Seção "deep dive" reutilizável (zigzag de cards com foto + parallax leve).
@@ -15,7 +16,12 @@ export interface DeepDive {
   title: string;
   body: string;
   /** Foto semântica do tema. Sem ela, cai no fallback do ícone gigante. */
-  image?: { src: string; alt: string };
+  image?: {
+    src: string;
+    alt: string;
+    fit?: 'cover' | 'contain';
+    position?: string;
+  };
 }
 
 /**
@@ -123,26 +129,30 @@ function DeepDiveCard({
   accent,
   iconChipClassName,
   iconChipStyle,
+  tone,
 }: {
   dive: DeepDive;
   flip: boolean;
   accent: string;
   iconChipClassName: string;
   iconChipStyle?: CSSProperties;
+  tone: 'dark' | 'light';
 }) {
   const Icon = dive.icon;
   const reduced = usePrefersReducedMotion();
   const isDesktop = useIsDesktop();
-  const parallaxEnabled = Boolean(dive.image) && isDesktop && !reduced;
+  const parallaxEnabled = Boolean(dive.image) && dive.image?.fit !== 'contain' && isDesktop && !reduced;
 
   const frameRef = useRef<HTMLDivElement>(null);
   const offset = useParallaxOffset(frameRef, parallaxEnabled);
 
   return (
     <div
-      className={`grid lg:grid-cols-12 gap-8 items-center rounded-2xl border border-white/10 bg-white/[0.02] p-8 lg:p-12 ${
-        flip ? 'lg:[&>*:first-child]:order-2' : ''
-      }`}
+      className={`grid items-center gap-9 lg:grid-cols-12 lg:gap-14 ${
+        tone === 'light'
+          ? 'border-t border-[#d8ddd7] py-12 dark:border-white/10 lg:py-16'
+          : 'rounded-2xl border border-white/10 bg-white/[0.02] p-8 lg:p-12'
+      } ${flip ? 'lg:[&>*:first-child]:order-2' : ''}`}
     >
       <div className="min-w-0 lg:col-span-7">
         <div
@@ -151,14 +161,33 @@ function DeepDiveCard({
         >
           <Icon className="h-7 w-7" />
         </div>
-        <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4 leading-tight break-words">{dive.title}</h2>
-        <p className="text-white/55 text-base leading-relaxed break-words">{dive.body}</p>
+        <h2
+          className={cn(
+            'mb-4 text-2xl font-bold leading-tight break-words sm:text-3xl',
+            tone === 'light' ? 'text-[#101512] dark:text-white' : 'text-white',
+          )}
+        >
+          {dive.title}
+        </h2>
+        <p
+          className={cn(
+            'text-base leading-relaxed break-words',
+            tone === 'light' ? 'text-[#58615c] dark:text-white/55' : 'text-white/55',
+          )}
+        >
+          {dive.body}
+        </p>
       </div>
       <div className="lg:col-span-5">
         {dive.image ? (
           <div
             ref={frameRef}
-            className="relative aspect-[4/3] rounded-xl overflow-hidden border"
+            className={cn(
+              'relative aspect-[16/10] overflow-hidden border',
+              tone === 'light'
+                ? 'rounded-[1.25rem] border-[#d7ddd8] bg-white shadow-[0_24px_60px_-36px_rgba(16,36,27,0.35)] dark:border-white/10 dark:bg-[#101311]'
+                : 'rounded-xl',
+            )}
             style={{
               borderColor: `color-mix(in srgb, ${accent} 22%, hsl(0 0% 100% / 0.08))`,
             }}
@@ -174,10 +203,16 @@ function DeepDiveCard({
               height={900}
               loading="lazy"
               decoding="async"
-              className="absolute inset-x-0 -top-[7.5%] h-[115%] w-full object-cover"
+              className={cn(
+                'absolute w-full',
+                dive.image.fit === 'contain'
+                  ? 'inset-0 h-full object-contain'
+                  : 'inset-x-0 -top-[7.5%] h-[115%] object-cover',
+              )}
               style={{
                 transform: `translate3d(0, ${offset}px, 0)`,
                 willChange: parallaxEnabled ? 'transform' : undefined,
+                objectPosition: dive.image.position ?? 'center top',
               }}
             />
             {/* Overlay do acento pra integrar a foto à paleta. */}
@@ -190,15 +225,38 @@ function DeepDiveCard({
           </div>
         ) : (
           <div
-            className="aspect-[4/3] rounded-xl border border-white/10 flex items-center justify-center"
-            style={{
-              backgroundImage: `linear-gradient(to bottom right, color-mix(in srgb, ${accent} 7%, transparent), transparent)`,
-            }}
+            className="relative aspect-[16/10] overflow-hidden rounded-[1.25rem] bg-[#101512] shadow-[0_24px_60px_-36px_rgba(16,21,18,0.55)]"
           >
-            <Icon
-              className="h-20 w-20"
-              style={{ color: `color-mix(in srgb, ${accent} 30%, transparent)` }}
-            />
+            <div className="absolute inset-x-7 top-7 flex items-center justify-between">
+              <span className="text-[0.62rem] font-bold uppercase tracking-[0.2em] text-white/45">
+                Fluxo Dominex
+              </span>
+              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: accent }} />
+            </div>
+            <div className="absolute inset-x-7 bottom-7 top-[4.5rem] grid grid-cols-[0.7fr_1fr] gap-3">
+              <div className="flex items-center justify-center rounded-[1rem] border border-white/10 bg-white/[0.04]">
+                <span
+                  className="flex h-16 w-16 items-center justify-center rounded-[1.1rem] text-white shadow-lg"
+                  style={{ backgroundColor: accent }}
+                >
+                  <Icon className="h-8 w-8" />
+                </span>
+              </div>
+              <div className="grid gap-3">
+                {[0, 1, 2].map((item) => (
+                  <div
+                    key={item}
+                    className="flex items-center gap-3 rounded-[0.9rem] border border-white/10 bg-white/[0.04] px-4"
+                  >
+                    <span
+                      className="h-2.5 w-2.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: item === 0 ? accent : 'rgba(255,255,255,.22)' }}
+                    />
+                    <span className="h-1.5 rounded-full bg-white/20" style={{ width: `${82 - item * 13}%` }} />
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -217,11 +275,13 @@ export default function DeepDiveSection({
   accent,
   iconChipClassName,
   iconChipStyle,
+  tone = 'dark',
 }: {
   dives: DeepDive[];
   accent: string;
   iconChipClassName: string;
   iconChipStyle?: CSSProperties;
+  tone?: 'dark' | 'light';
 }) {
   const ref = useScrollReveal();
   return (
@@ -235,6 +295,7 @@ export default function DeepDiveSection({
             accent={accent}
             iconChipClassName={iconChipClassName}
             iconChipStyle={iconChipStyle}
+            tone={tone}
           />
         ))}
       </div>

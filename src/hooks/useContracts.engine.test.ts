@@ -7,6 +7,7 @@ import {
   buildPerMachineVisits,
   buildPerMachineVisitsCustom,
   buildContractVisits,
+  excludeCustomizedContractVisits,
   generateGroupedVisits,
   generateOccurrences,
   isMonthlyCadence,
@@ -21,6 +22,64 @@ import {
   type PlanActivityInput,
   type FreqCode,
 } from './useContracts';
+
+describe('visitas personalizadas do contrato', () => {
+  it('remove do novo cálculo a mesma referência contratual sem olhar a data operacional', () => {
+    const visits = [
+      { date: new Date('2026-01-10T12:00:00'), activities: [] },
+      { date: new Date('2026-02-10T12:00:00'), activities: [] },
+      { date: new Date('2026-03-10T12:00:00'), activities: [] },
+    ];
+
+    expect(excludeCustomizedContractVisits(visits, ['2026-02-10']).map(v => v.date.getMonth() + 1))
+      .toEqual([1, 3]);
+  });
+
+  it('mantém a série intacta quando não há referência protegida', () => {
+    const visits = [{ date: new Date('2026-01-10T12:00:00'), activities: [] }];
+    expect(excludeCustomizedContractVisits(visits, [null, undefined])).toEqual(visits);
+  });
+
+  it('ignora referências vazias e duplicadas sem alterar a ordem das demais visitas', () => {
+    const visits = [
+      { date: new Date('2026-01-10T12:00:00'), activities: [] },
+      { date: new Date('2026-02-10T12:00:00'), activities: [] },
+      { date: new Date('2026-03-10T12:00:00'), activities: [] },
+      { date: new Date('2026-04-10T12:00:00'), activities: [] },
+    ];
+
+    const result = excludeCustomizedContractVisits(visits, [
+      '',
+      null,
+      '2026-03-10',
+      '2026-03-10',
+      undefined,
+    ]);
+
+    expect(result.map(visit => visit.date.toISOString().slice(0, 10)))
+      .toEqual(['2026-01-10', '2026-02-10', '2026-04-10']);
+  });
+
+  it('protege todas as emissões da mesma competência para não recriar OS duplicada', () => {
+    const visits = [
+      { date: new Date('2026-01-10T12:00:00'), activities: [], emissions: [] },
+      { date: new Date('2026-01-10T12:00:00'), activities: [{ input: { description: 'Limpeza' }, planActivityId: null, sortOrder: 0 }] },
+      { date: new Date('2026-02-10T12:00:00'), activities: [] },
+    ];
+
+    const result = excludeCustomizedContractVisits(visits, ['2026-01-10']);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].date.toISOString().slice(0, 10)).toBe('2026-02-10');
+  });
+
+  it('compara pelo dia civil local, preservando a competência em fusos negativos', () => {
+    const visit = { date: new Date(2026, 0, 10, 0, 30), activities: [] };
+
+    expect(excludeCustomizedContractVisits([visit], ['2026-01-10'])).toEqual([]);
+    expect(excludeCustomizedContractVisits([visit], ['2026-01-09'])).toEqual([visit]);
+  });
+});
 
 // ──────────────────────────────────────────────────────────────────────────
 // Helpers de teste

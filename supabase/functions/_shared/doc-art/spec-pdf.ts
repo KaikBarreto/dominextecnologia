@@ -20,11 +20,16 @@ import {
   PDFDocument,
   PDFFont,
   PDFImage,
+  PDFName,
   PDFPage,
+  PDFString,
   degrees,
   rgb,
 } from "https://esm.sh/pdf-lib@1.17.1";
-import fontkit from "https://esm.sh/@pdf-lib/fontkit@1.1.1";
+import * as fontkitModule from "https://esm.sh/@pdf-lib/fontkit@1.1.1";
+
+// O CDN declara exports nomeados, mas entrega default em alguns targets Deno.
+const fontkit = (fontkitModule as unknown as { default?: typeof fontkitModule }).default ?? fontkitModule;
 
 import {
   DISPLAY_BOLD,
@@ -41,8 +46,11 @@ import type {
   ResolvedTextShape,
 } from "./types.ts";
 import { layoutParagraphs, type MeasureFn } from "./inline.ts";
+import { paginateDocArt } from "./layout.ts";
+import { flattenPngForPdf, logoPlateFromPng, normalizePngForPdf, UNKNOWN_LOGO_PLATE } from "./logoContrast.ts";
 import {
   alignOffsetMm,
+  idealForeground,
   lineBaselineMm,
   mmToPt,
   parseHex,
@@ -185,6 +193,8 @@ function toRgb(hex: string | undefined) {
 
 export interface DrawDocArtOptions extends ResolveOptions {
   images?: DocArtImageSources;
+  /** Capability pública desenhada no selo; também vira link clicável no PDF. */
+  validationUrl?: string;
 }
 
 /**
@@ -206,7 +216,6 @@ export async function drawDocArtPage(
 
   const pageW = mmToPt(art.page.w);
   const pageH = mmToPt(art.page.h);
-  const page = pdf.addPage([pageW, pageH]);
 
   pdf.registerFontkit(fontkit);
   const fonts = await embedFonts(pdf);
@@ -215,21 +224,75 @@ export async function drawDocArtPage(
     display: makeMeasure(fonts.display),
   };
 
-  const embedded = await embedImages(pdf, options.images);
+  const detectedLogoPlate = options.images?.logo?.format === 'png'
+    ? await logoPlateFromPng(options.images.logo.data)
+    : options.images?.logo?.format === 'jpg' ? null : UNKNOWN_LOGO_PLATE;
+  const darkPaper = idealForeground(art.theme.paper) === '#ffffff';
+  // Logo claro vai direto sobre papel escuro. Logo escuro ainda recebe uma
+  // superfície slate discreta; nunca uma placa branca gritante no tema dark.
+  const autoLogoPlate = darkPaper
+    ? detectedLogoPlate === '#111815' ? null : detectedLogoPlate === '#ffffff' ? '#253044' : detectedLogoPlate
+    : detectedLogoPlate;
+  const logoPlate = config?.logoPlate === 'none' ? null : autoLogoPlate;
+  // Sem plaqueta, preserve o canal alpha. Achatar no papel transformava um
+  // logo branco transparente em um retângulo escuro visível no PDF.
+  const flattenedLogoBackground = logoPlate
+    ? parseHex(logoPlate) ?? undefined
+    : undefined;
+  const embedded = await embedImages(pdf, options.images, flattenedLogoBackground);
 
   /** mm medido do topo → pt medido da base. */
   const toPdfY = (mm: number) => pageH - mmToPt(mm);
 
-  for (const shape of art.shapes) {
-    drawShape(page, shape, { fonts, measures, embedded, toPdfY, pageH });
+  let firstPage: PDFPage | undefined;
+  for (const sheet of paginateDocArt(art, measures)) {
+    const page = pdf.addPage([pageW, pageH]);
+    firstPage ??= page;
+    for (const shape of sheet.shapes) {
+      drawShape(page, shape, { fonts, measures, embedded, toPdfY, pageH, logoPlate });
+    }
+    const validationSeal = sheet.shapes.find(
+      (shape) => shape.kind === 'rect' && shape.layoutRole === 'validationSeal',
+    );
+    if (
+      validationSeal?.kind === 'rect'
+      && /^https:\/\/dominex\.app\/c\/[A-Za-z0-9_-]{16}$/.test(options.validationUrl ?? '')
+    ) {
+      addUriLink(pdf, page, validationSeal, options.validationUrl!);
+    }
   }
 
-  return page;
+  return firstPage!;
+}
+
+function addUriLink(
+  pdf: PDFDocument,
+  page: PDFPage,
+  rect: Extract<ResolvedShape, { kind: 'rect' }>,
+  url: string,
+): void {
+  const x = mmToPt(rect.x);
+  const y = page.getHeight() - mmToPt(rect.y + rect.h);
+  const annotation = pdf.context.obj({
+    Type: 'Annot',
+    Subtype: 'Link',
+    Rect: [x, y, x + mmToPt(rect.w), y + mmToPt(rect.h)],
+    Border: [0, 0, 0],
+    A: {
+      Type: 'Action',
+      S: 'URI',
+      URI: PDFString.of(url),
+    },
+  });
+  page.node.addAnnot(pdf.context.register(annotation));
+  // Evita que viewers desenhem uma borda própria sobre a faixa.
+  annotation.set(PDFName.of('F'), pdf.context.obj(4));
 }
 
 async function embedImages(
   pdf: PDFDocument,
   images: DocArtImageSources | undefined,
+  logoBackground?: readonly [number, number, number],
 ): Promise<Partial<Record<DocArtImageRef, PDFImage>>> {
   const out: Partial<Record<DocArtImageRef, PDFImage>> = {};
   if (!images) return out;
@@ -239,7 +302,11 @@ async function embedImages(
     if (!entry || !entry.data || entry.data.length === 0) continue;
     try {
       out[key] =
-        entry.format === "png" ? await pdf.embedPng(entry.data) : await pdf.embedJpg(entry.data);
+        entry.format === "png"
+          ? await pdf.embedPng(key === 'logo' && logoBackground
+            ? await flattenPngForPdf(entry.data, logoBackground)
+            : await normalizePngForPdf(entry.data))
+          : await pdf.embedJpg(entry.data);
     } catch (err) {
       // Logo corrompido não pode derrubar o certificado inteiro — o shape
       // simplesmente não aparece.
@@ -255,6 +322,7 @@ interface DrawCtx {
   embedded: Partial<Record<DocArtImageRef, PDFImage>>;
   toPdfY: (mm: number) => number;
   pageH: number;
+  logoPlate: string | null;
 }
 
 function drawShape(page: PDFPage, shape: ResolvedShape, ctx: DrawCtx): void {
@@ -311,7 +379,8 @@ function drawShape(page: PDFPage, shape: ResolvedShape, ctx: DrawCtx): void {
         scale: mmToPt(1),
         color: toRgb(shape.fill),
         borderColor: toRgb(shape.stroke),
-        borderWidth: shape.strokeWidth ? mmToPt(shape.strokeWidth) : undefined,
+        // O path inteiro já é escalado de mm para pt, inclusive a espessura.
+        borderWidth: shape.strokeWidth,
         opacity: shape.opacity,
         borderOpacity: shape.opacity,
       });
@@ -324,18 +393,29 @@ function drawShape(page: PDFPage, shape: ResolvedShape, ctx: DrawCtx): void {
 
       // A plaqueta é desenhada aqui dentro, DEPOIS do early return acima: é o
       // que garante que ela não apareça sozinha quando não há imagem.
-      if (shape.plate) {
+      const plate = shape.src === 'logo' ? ctx.logoPlate : shape.plate;
+      if (plate) {
         const pad = mmToPt(shape.platePadding ?? 3);
         page.drawRectangle({
           x: mmToPt(shape.x) - pad,
           y: ctx.toPdfY(shape.y + shape.h) - pad,
           width: mmToPt(shape.w) + pad * 2,
           height: mmToPt(shape.h) + pad * 2,
-          color: toRgb(shape.plate),
+          color: toRgb(plate),
         });
       }
 
       const box = { w: mmToPt(shape.w), h: mmToPt(shape.h) };
+      if (shape.fit === 'stretch') {
+        page.drawImage(image, {
+          x: mmToPt(shape.x),
+          y: ctx.toPdfY(shape.y + shape.h),
+          width: box.w,
+          height: box.h,
+          opacity: shape.opacity,
+        });
+        return;
+      }
       // `contain`: encaixa preservando proporção, igual ao `meet` do SVG.
       const scale = Math.min(box.w / image.width, box.h / image.height);
       const w = image.width * scale;
@@ -371,7 +451,7 @@ function drawText(page: PDFPage, shape: ResolvedTextShape, ctx: DrawCtx): void {
   const color = toRgb(shape.color) ?? rgb(0, 0, 0);
   const spacing = shape.letterSpacing ?? 0;
 
-  const lines = layoutParagraphs(shape.paragraphs, {
+  const lines = shape.lines ?? layoutParagraphs(shape.paragraphs, {
     maxWidth: mmToPt(shape.w),
     size: shape.size,
     letterSpacing: shape.letterSpacing,
@@ -431,15 +511,26 @@ function drawText(page: PDFPage, shape: ResolvedTextShape, ctx: DrawCtx): void {
       for (const chunk of chunks) {
         const at = place(cursorX, baselineY);
         try {
-          page.drawText(chunk, {
-            x: at.x,
-            y: at.y,
-            size: shape.size,
-            font,
-            color,
-            opacity: shape.opacity,
-            rotate: rotation ? degrees(rotation) : undefined,
-          });
+          const radius = (shape.outlineWidth ?? 0) / 2;
+          const offsets = radius > 0
+            ? [
+              [-radius, -radius], [0, -radius], [radius, -radius],
+              [-radius, 0], [radius, 0],
+              [-radius, radius], [0, radius], [radius, radius],
+              [0, 0],
+            ]
+            : [[0, 0]];
+          for (const [dx, dy] of offsets) {
+            page.drawText(chunk, {
+              x: at.x + dx,
+              y: at.y + dy,
+              size: shape.size,
+              font,
+              color,
+              opacity: shape.opacity,
+              rotate: rotation ? degrees(rotation) : undefined,
+            });
+          }
         } catch (err) {
           console.warn("[doc-art] trecho ignorado ao desenhar texto:", err);
         }

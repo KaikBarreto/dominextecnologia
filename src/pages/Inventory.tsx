@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { fuzzyIncludes, cn } from '@/lib/utils';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsMobile, useMediaBreakpoint } from '@/hooks/use-mobile';
 import {
   Package,
   Plus,
@@ -23,9 +23,9 @@ import {
   FileUp,
   ArrowRightLeft,
   Settings,
-  Star,
   ClipboardList,
   BarChart3,
+  ArrowLeft,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -74,6 +74,7 @@ import { FilterSheet } from '@/components/mobile/FilterSheet';
 import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { FilterButton } from '@/components/ui/FilterButton';
+import { SearchField } from '@/components/ui/search-field-actions';
 import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
@@ -86,16 +87,58 @@ import { generateInventoryExcel } from '@/utils/inventoryExcelGenerator';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
-import type { Stock } from '@/hooks/useStocks';
 import { useToast } from '@/hooks/use-toast';
-import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
+import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { InventoryKardexTab } from '@/components/inventory/InventoryKardexTab';
 import { MaterialPurchasesTab } from '@/components/inventory/MaterialPurchasesTab';
 import { NfeImportDialog } from '@/components/inventory/NfeImportDialog';
 import { InventoryCountsTab } from '@/components/inventory/InventoryCountsTab';
 import { StockPositionTab } from '@/components/inventory/StockPositionTab';
-import { MaterialPurchaseReportTab } from '@/components/inventory/MaterialPurchaseReportTab';
-import { formatMoney } from '@/lib/format';
+import { InventoryReportsTab } from '@/components/inventory/InventoryReportsTab';
+import { formatMoney, formatNumber } from '@/lib/format';
+import { InventoryItemThumbnail } from '@/components/inventory/InventoryItemThumbnail';
+import {
+  getGeneralLowStockLevelCount,
+  getGeneralStockQuantity,
+} from '@/lib/inventoryGeneralStock';
+import { StockLocationNavigator } from '@/components/inventory/StockLocationNavigator';
+
+/** Sentinela somente de UI; nunca é enviada ao banco como `stock_id`. */
+const GENERAL_STOCK_VIEW = '__general_stock__';
+const GENERAL_STOCK_UI = {
+  'pt-br': {
+    label: 'Estoque geral', selectTitle: 'Selecione um local de estoque',
+    selectDescription: 'A visão geral é somente consolidada. Escolha Loja, Galpão, Van ou outro local antes de movimentar quantidades.',
+    belowOne: 'local abaixo do mínimo', belowMany: 'locais abaixo do mínimo', perLocation: 'Por local',
+    locationsTitle: 'Locais de estoque', availableOne: '1 local disponível', availableMany: '{count} locais disponíveis',
+    consolidated: 'Visão consolidada', itemOne: '1 item', itemMany: '{count} itens',
+    lowOne: '1 baixo', lowMany: '{count} baixos', backToLocations: 'Voltar aos locais', configure: 'Configurar local',
+  },
+  en: {
+    label: 'Overall stock', selectTitle: 'Select an inventory location',
+    selectDescription: 'The overall view is consolidated and read-only. Select a store, warehouse, van or another location before changing quantities.',
+    belowOne: 'location below minimum', belowMany: 'locations below minimum', perLocation: 'By location',
+    locationsTitle: 'Inventory locations', availableOne: '1 location available', availableMany: '{count} locations available',
+    consolidated: 'Consolidated view', itemOne: '1 item', itemMany: '{count} items',
+    lowOne: '1 low', lowMany: '{count} low', backToLocations: 'Back to locations', configure: 'Configure location',
+  },
+  es: {
+    label: 'Stock general', selectTitle: 'Selecciona una ubicación de stock',
+    selectDescription: 'La vista general es consolidada y de solo lectura. Selecciona una tienda, depósito, vehículo u otra ubicación antes de cambiar cantidades.',
+    belowOne: 'ubicación bajo el mínimo', belowMany: 'ubicaciones bajo el mínimo', perLocation: 'Por ubicación',
+    locationsTitle: 'Ubicaciones de stock', availableOne: '1 ubicación disponible', availableMany: '{count} ubicaciones disponibles',
+    consolidated: 'Vista consolidada', itemOne: '1 artículo', itemMany: '{count} artículos',
+    lowOne: '1 bajo', lowMany: '{count} bajos', backToLocations: 'Volver a ubicaciones', configure: 'Configurar ubicación',
+  },
+  fr: {
+    label: 'Stock général', selectTitle: 'Sélectionnez un emplacement de stock',
+    selectDescription: `La vue générale est consolidée et en lecture seule. Sélectionnez un magasin, dépôt, véhicule ou autre emplacement avant de modifier les quantités.`,
+    belowOne: 'emplacement sous le minimum', belowMany: 'emplacements sous le minimum', perLocation: 'Par emplacement',
+    locationsTitle: 'Emplacements de stock', availableOne: '1 emplacement disponible', availableMany: '{count} emplacements disponibles',
+    consolidated: 'Vue consolidée', itemOne: '1 article', itemMany: '{count} articles',
+    lowOne: '1 bas', lowMany: '{count} bas', backToLocations: 'Retour aux emplacements', configure: `Configurer l'emplacement`,
+  },
+} as const;
 
 export default function Inventory() {
   const location = useLocation();
@@ -105,9 +148,20 @@ export default function Inventory() {
     openNewPurchase?: boolean;
   } | null;
   const isMobile = useIsMobile();
+  const isStockCompact = useMediaBreakpoint(1280);
   const { locale, currency, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory;
-  const { items, isLoading, stats, deleteItem, getQuantityForStock, getMinQuantityForStock, getPresenceForStock } = useInventory();
+  const generalStockUi = GENERAL_STOCK_UI[locale];
+  const {
+    items,
+    stockLevels,
+    isLoading,
+    stats,
+    deleteItem,
+    getQuantityForStock,
+    getMinQuantityForStock,
+    getPresenceForStock,
+  } = useInventory();
   const { accessibleIds, isLoading: isLoadingAccessible } = useAccessibleInventoryIds();
   const { stocks, defaultStock } = useStocks();
   const { groups } = useMaterialGroups();
@@ -115,18 +169,8 @@ export default function Inventory() {
   const { enabled: whiteLabelEnabled } = useWhiteLabel();
   const { toast } = useToast();
   const { hasModule } = useCompanyModules();
-  // Agrupamento Loja × Operacional das pílulas de local — só existe com o
-  // módulo PDV e Loja. Sem o módulo, `pdvEnabled` é false e a tela usa os
-  // mesmos blocos de markup de sempre (não os agrupados), byte a byte.
+  // Agrupamento Loja × Operacional dos locais — só existe com o módulo PDV.
   const pdvEnabled = hasModule('pdv');
-  const stockGroups: { key: string; label: string | null; stocks: Stock[] }[] = pdvEnabled
-    ? (
-        [
-          { key: 'pdv', label: t.stocks.groupStore, stocks: stocks.filter((s) => s.purpose === 'pdv') },
-          { key: 'operacional', label: t.stocks.groupOperational, stocks: stocks.filter((s) => s.purpose !== 'pdv') },
-        ].filter((g) => g.stocks.length > 0)
-      )
-    : [];
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
@@ -159,34 +203,52 @@ export default function Inventory() {
   const [inlineMovementItem, setInlineMovementItem] = useState<InventoryItem | null>(null);
   const [inlineMovementType, setInlineMovementType] = useState<InlineMovementType>('entrada');
 
-  // Estoque (depósito) ativo dentro da aba "Estoque Atual"
-  const [activeStockId, setActiveStockId] = useState<string | null>(null);
+  // A visão consolidada é o primeiro contexto da aba. Um local real só passa a
+  // ser ativo depois de escolha explícita — evita movimentar o depósito padrão
+  // enquanto a pessoa acredita estar agindo sobre o total geral.
+  const [activeStockId, setActiveStockId] = useState<string | null>(GENERAL_STOCK_VIEW);
+  const [stockDetailOpen, setStockDetailOpen] = useState(false);
 
   // Configurador de itens por local (engrenagem na pill)
   const [configuratorStockId, setConfiguratorStockId] = useState<string | null>(null);
   const [configuratorOpen, setConfiguratorOpen] = useState(false);
 
-  // Se o local ativo foi excluído, redefine para null (cai no defaultStock).
+  // Se o local ativo foi excluído, volta para a visão geral.
   useEffect(() => {
-    if (activeStockId && stocks.length > 0 && !stocks.some((s) => s.id === activeStockId)) {
-      setActiveStockId(null);
+    if (
+      activeStockId
+      && activeStockId !== GENERAL_STOCK_VIEW
+      && stocks.length > 0
+      && !stocks.some((s) => s.id === activeStockId)
+    ) {
+      setActiveStockId(GENERAL_STOCK_VIEW);
     }
   }, [stocks, activeStockId]);
 
-  // Inicializa com o estoque padrão quando ele carregar
-  const resolvedStockId = activeStockId ?? defaultStock?.id ?? null;
+  const isGeneralStockView = activeStockId === GENERAL_STOCK_VIEW;
+  const resolvedStockId = isGeneralStockView
+    ? null
+    : activeStockId ?? defaultStock?.id ?? null;
+
+  const getGeneralQuantity = (inventoryId: string) =>
+    getGeneralStockQuantity(stockLevels, inventoryId);
+  const getGeneralLowCount = (inventoryId: string) =>
+    getGeneralLowStockLevelCount(stockLevels, inventoryId);
 
   // Quantidade do item no estoque selecionado
   const getItemQty = (item: InventoryItem): number =>
-    resolvedStockId
+    isGeneralStockView
+      ? getGeneralQuantity(item.id)
+      : resolvedStockId
       ? getQuantityForStock(item.id, resolvedStockId)
-      : (item.quantity ?? 0);
+      : 0;
 
   // Mínimo do item no estoque selecionado
   const getItemMinQty = (item: InventoryItem): number | null =>
     resolvedStockId ? getMinQuantityForStock(item.id, resolvedStockId) : null;
 
   const isLowStockForActiveStock = (item: InventoryItem) => {
+    if (isGeneralStockView) return getGeneralLowCount(item.id) > 0;
     const qty = getItemQty(item);
     const min = getItemMinQty(item);
     return min !== null && qty < min;
@@ -220,7 +282,7 @@ export default function Inventory() {
   // ordenação pela coluna "Quantidade" bata com o que a coluna exibe.
   const filteredItemsWithEffectiveQty = filteredItems.map((item) => ({
     ...item,
-    quantity: resolvedStockId ? getQuantityForStock(item.id, resolvedStockId) : (item.quantity ?? 0),
+    quantity: getItemQty(item),
   }));
   const { sortedItems, sortConfig, handleSort } = useTableSort(filteredItemsWithEffectiveQty);
   const pagination = useDataPagination(sortedItems);
@@ -231,9 +293,22 @@ export default function Inventory() {
   ).sort();
 
   const formatCurrency = (value: number) => formatMoney(value, currency, locale);
+  const formatQuantity = (value: number, unit: string | null | undefined) =>
+    `${formatNumber(value, locale, { maximumFractionDigits: 4 })} ${unit?.trim() || t.unitFallback}`;
+
+  const requireSpecificStock = () => {
+    toast({
+      title: generalStockUi.selectTitle,
+      description: generalStockUi.selectDescription,
+    });
+  };
 
   const handleEdit = (item: InventoryItem, e?: React.MouseEvent) => {
     e?.stopPropagation();
+    if (isGeneralStockView) {
+      requireSpecificStock();
+      return;
+    }
     setEditingItem(item);
     setDialogOpen(true);
   };
@@ -262,6 +337,10 @@ export default function Inventory() {
 
   const handleInlineMovement = (item: InventoryItem, type: InlineMovementType, e?: React.MouseEvent) => {
     e?.stopPropagation();
+    if (isGeneralStockView) {
+      requireSpecificStock();
+      return;
+    }
     setInlineMovementItem(item);
     setInlineMovementType(type);
     setInlineMovementOpen(true);
@@ -281,108 +360,23 @@ export default function Inventory() {
   };
 
   const openNewItem = () => {
+    if (isGeneralStockView) {
+      requireSpecificStock();
+      return;
+    }
     setEditingItem(null);
     setDialogOpen(true);
   };
 
-  const openConfigurator = (stockId: string, e: React.MouseEvent | React.KeyboardEvent) => {
-    e.stopPropagation();
+  const openConfigurator = (stockId: string) => {
     setConfiguratorStockId(stockId);
     setConfiguratorOpen(true);
   };
 
-  // Pílula de local (mobile) — extraída pra ser chamada tanto pelo bloco "sem
-  // módulo PDV" (lista plana, markup intacto) quanto pelo bloco agrupado
-  // (Loja/Operacional). Mesmo JSX nos dois casos, nenhuma diferença visual.
-  const renderMobileStockPill = (s: Stock) => {
-    const isActive = resolvedStockId === s.id;
-    return (
-      <div
-        key={s.id}
-        className={cn(
-          'inline-flex shrink-0 items-center -mb-px border-b-2 text-sm font-medium transition-colors',
-          isActive
-            ? 'border-primary text-primary'
-            : 'border-transparent text-muted-foreground',
-        )}
-      >
-        <span
-          role="tab"
-          aria-selected={isActive}
-          tabIndex={0}
-          onClick={() => setActiveStockId(s.id)}
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveStockId(s.id); } }}
-          className="flex h-9 items-center gap-1.5 pl-3.5 pr-1.5 cursor-pointer select-none hover:text-foreground active:scale-95"
-        >
-          {s.name}
-          {s.is_default && (
-            <Star className="h-3 w-3 text-warning fill-warning shrink-0" />
-          )}
-        </span>
-        <span
-          role="button"
-          tabIndex={0}
-          aria-label={t.stockConfigurator.gearIconLabel}
-          onClick={(e) => openConfigurator(s.id, e)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              openConfigurator(s.id, e);
-            }
-          }}
-          className="flex items-center justify-center h-8 w-8 mr-0.5 rounded-sm cursor-pointer text-current opacity-70 hover:opacity-100 active:scale-90 transition-opacity"
-        >
-          <Settings className="h-3.5 w-3.5" />
-        </span>
-      </div>
-    );
+  const selectStockContext = (stockId: string) => {
+    setActiveStockId(stockId);
+    if (isStockCompact) setStockDetailOpen(true);
   };
-
-  // Mesma ideia, versão desktop.
-  const renderDesktopStockPill = (s: Stock) => (
-    // Container da pill — não é <button> para evitar button-in-button
-    // ao aninhar a engrenagem. A área de troca de aba é um <span role="tab">.
-    <div
-      key={s.id}
-      className={cn(
-        'inline-flex items-center border-b-2 -mb-px transition-colors',
-        resolvedStockId === s.id
-          ? 'border-primary text-primary'
-          : 'border-transparent text-muted-foreground',
-      )}
-    >
-      {/* Área clicável de troca de aba */}
-      <span
-        role="tab"
-        aria-selected={resolvedStockId === s.id}
-        tabIndex={0}
-        onClick={() => setActiveStockId(s.id)}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveStockId(s.id); } }}
-        className="flex items-center gap-1.5 pl-3 pr-1 py-2 text-sm font-medium cursor-pointer select-none hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
-      >
-        {s.name}
-        {s.is_default && (
-          <Star className="h-3 w-3 text-warning fill-warning" />
-        )}
-      </span>
-      {/* Engrenagem de configuração — irmã da área de aba, não filha */}
-      <span
-        role="button"
-        tabIndex={0}
-        aria-label={t.stockConfigurator.gearIconLabel}
-        onClick={(e) => openConfigurator(s.id, e)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            openConfigurator(s.id, e);
-          }
-        }}
-        className="flex items-center justify-center h-6 w-6 mr-1 rounded cursor-pointer opacity-40 hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-      >
-        <Settings className="h-3.5 w-3.5" />
-      </span>
-    </div>
-  );
 
   const openExport = (format: ExportFormat) => {
     setExportFormat(format);
@@ -392,9 +386,11 @@ export default function Inventory() {
   const handleExportConfirm = async (selected: InventoryItem[]) => {
     const activeStock = stocks.find((s) => s.id === resolvedStockId);
     const rows = selected.map((i) => {
-      const qty = resolvedStockId
+      const qty = isGeneralStockView
+        ? getGeneralQuantity(i.id)
+        : resolvedStockId
         ? getQuantityForStock(i.id, resolvedStockId)
-        : (i.quantity ?? null);
+        : 0;
       const min = resolvedStockId
         ? getMinQuantityForStock(i.id, resolvedStockId)
         : null;
@@ -412,7 +408,14 @@ export default function Inventory() {
     const title = t.export.reportTitle;
     try {
       if (exportFormat === 'excel') {
-        await generateInventoryExcel({ title, rows, locale, currency, stockName: activeStock?.name, timezone });
+        await generateInventoryExcel({
+          title,
+          rows,
+          locale,
+          currency,
+          stockName: isGeneralStockView ? generalStockUi.label : activeStock?.name,
+          timezone,
+        });
       } else {
         await generateInventoryReportPdf({
           company: companySettings,
@@ -421,7 +424,7 @@ export default function Inventory() {
           rows,
           locale,
           currency,
-          stockName: activeStock?.name,
+          stockName: isGeneralStockView ? generalStockUi.label : activeStock?.name,
           timezone,
         });
       }
@@ -465,25 +468,55 @@ export default function Inventory() {
     </DropdownMenu>
   );
 
-  // Cards de resumo calculados para o LOCAL ATIVO — nunca vazam dados de locais inacessíveis.
-  // Usa apenas materiais presentes no local selecionado e acessíveis pelo usuário.
-  const activeStockItems = resolvedStockId
-    ? items.filter(
-        (i) =>
-          getPresenceForStock(i.id, resolvedStockId) &&
-          (isLoadingAccessible ? true : accessibleIds.has(i.id)),
-      )
-    : [];
+  // Local específico: catálogo presente naquele local. Geral: catálogo que a
+  // RPC de acesso autorizou. As quantidades consolidadas abaixo vêm SOMENTE de
+  // `stockLevels`, já filtrado por RLS, nunca de `inventory.quantity`.
+  const accessibleInventoryItems = items.filter((i) => {
+    const accessible = isLoadingAccessible ? true : accessibleIds.has(i.id);
+    return accessible;
+  });
+  const activeStockItems = accessibleInventoryItems.filter((i) => {
+    return isGeneralStockView || !resolvedStockId
+      ? true
+      : getPresenceForStock(i.id, resolvedStockId);
+  });
   const activeStatTotalItems = activeStockItems.length;
   const activeStatTotalValue = activeStockItems.reduce((acc, i) => {
-    const qty = resolvedStockId ? getQuantityForStock(i.id, resolvedStockId) : 0;
+    const qty = getItemQty(i);
     return acc + qty * (i.cost_price ?? 0);
   }, 0);
-  const activeStatLowStock = activeStockItems.filter((i) => {
-    const min = resolvedStockId ? getMinQuantityForStock(i.id, resolvedStockId) : null;
-    const qty = resolvedStockId ? getQuantityForStock(i.id, resolvedStockId) : 0;
-    return min !== null && qty < min;
-  }).length;
+  const activeStatLowStock = activeStockItems.filter(isLowStockForActiveStock).length;
+  const generalLowStockCount = accessibleInventoryItems.filter((item) => getGeneralLowCount(item.id) > 0).length;
+  const stockNavigationItems = stocks.map((stock) => {
+    const stockItems = accessibleInventoryItems.filter((item) => getPresenceForStock(item.id, stock.id));
+    const lowStockCount = stockItems.filter((item) => {
+      const minimum = getMinQuantityForStock(item.id, stock.id);
+      return minimum !== null && getQuantityForStock(item.id, stock.id) < minimum;
+    }).length;
+    return {
+      id: stock.id,
+      name: stock.name,
+      groupLabel: pdvEnabled
+        ? stock.purpose === 'pdv' ? t.stocks.groupStore : t.stocks.groupOperational
+        : null,
+      purpose: stock.purpose,
+      isDefault: stock.is_default === true,
+      itemCount: stockItems.length,
+      lowStockCount,
+    };
+  });
+  const activeStock = stocks.find((stock) => stock.id === resolvedStockId) ?? null;
+
+  const pluralized = (count: number, singular: string, plural: string) =>
+    count === 1 ? singular : plural.replace('{count}', String(count));
+  const stockNavigatorLabels = {
+    title: generalStockUi.locationsTitle,
+    available: (count: number) => pluralized(count, generalStockUi.availableOne, generalStockUi.availableMany),
+    consolidated: generalStockUi.consolidated,
+    items: (count: number) => pluralized(count, generalStockUi.itemOne, generalStockUi.itemMany),
+    lowStock: (count: number) => pluralized(count, generalStockUi.lowOne, generalStockUi.lowMany),
+    configure: generalStockUi.configure,
+  };
 
   // O card de KPI mobile (StatCarousel) tem largura fixa (~112px) e imprime o
   // valor em fonte grande sem truncar — "R$ 12.345,67" estoura a pílula. No
@@ -584,11 +617,9 @@ export default function Inventory() {
   // Há filtros disponíveis (inclui low-stock toggle)
   const hasAnyFilter = true;
 
-  // No mobile o MobilePillTabs (SettingsSidebarLayout) rola horizontalmente
-  // com fade nas bordas — rótulo longo ("Histórico de Materiais (Kardex)")
-  // aparece cortado no meio da palavra antes de sumir no fade. Só no mobile
-  // trocamos pelo rótulo curto (ex.: "Histórico"); desktop mantém o completo.
-  const inventoryTabs: SettingsTab[] = [
+  // Navegação principal horizontal em todas as larguras. No mobile usamos
+  // rótulos curtos para preservar leitura sem comprimir as abas.
+  const inventoryTabs = [
     { value: 'estoque', label: t.tabs.current, icon: Boxes },
     { value: 'historico', label: isMobile ? t.tabs.kardexShort : t.tabs.kardex, icon: History },
     { value: 'compras', label: isMobile ? t.tabs.purchasesShort : t.tabs.purchases, icon: ShoppingCart },
@@ -628,17 +659,23 @@ export default function Inventory() {
   const LowStockIcon = ({ item }: { item: InventoryItem }) => {
     const qty = getItemQty(item);
     const min = getItemMinQty(item);
-    if (min === null || qty >= min) return null;
+    const lowLocations = isGeneralStockView ? getGeneralLowCount(item.id) : 0;
+    if (isGeneralStockView ? lowLocations === 0 : min === null || qty >= min) return null;
+    const tooltip = isGeneralStockView
+      ? `${lowLocations} ${lowLocations === 1 ? generalStockUi.belowOne : generalStockUi.belowMany}`
+      : t.lowStockTooltip
+        .replace('{qty}', formatQuantity(qty, item.unit))
+        .replace('{min}', formatQuantity(min ?? 0, item.unit));
     return (
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <span className="shrink-0 cursor-help" tabIndex={0} aria-label={t.lowStockTooltip.replace('{qty}', String(qty)).replace('{min}', String(min))}>
+            <span className="shrink-0 cursor-help" tabIndex={0} aria-label={tooltip}>
               <AlertTriangle className="h-4 w-4 text-destructive" />
             </span>
           </TooltipTrigger>
           <TooltipContent side="right">
-            {t.lowStockTooltip.replace('{qty}', String(qty)).replace('{min}', String(min))}
+            {tooltip}
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -664,84 +701,75 @@ export default function Inventory() {
         compactOnMobile
       />
 
-      <SettingsSidebarLayout
-        tabs={inventoryTabs}
+      <MobilePillTabs
+        variant="underline"
+        level="screen"
+        className="mx-0"
+        tabs={inventoryTabs.map((tab) => {
+          const Icon = tab.icon;
+          return {
+            value: tab.value,
+            label: tab.label,
+            icon: <Icon className="h-4 w-4" />,
+          };
+        })}
         activeTab={activeTab}
         onTabChange={setActiveTab}
-      >
-        {/* No mobile o pill ativo já indica a aba selecionada (MobilePillTabs do
-            SettingsSidebarLayout) — repetir o rótulo aqui em cima duplicava o
-            texto (e ficava atrás do header compacto). Só desktop mantém o
-            título de contexto ao lado do sidebar de abas. */}
-        {!isMobile && activeTab !== 'compras' && activeTab !== 'inventarios' && activeTab !== 'posicao' && (
-          <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4">
-            {inventoryTabs.find((tab) => tab.value === activeTab)?.label}
-          </h2>
-        )}
+      />
+
+      <div className="min-w-0">
 
         {/* ===================== ABA: ESTOQUE ATUAL ===================== */}
         {activeTab === 'estoque' && (
-          <div className="space-y-4">
-            {/* Stats */}
-            <StatCarousel items={statItems} loading={isLoading} variant="saturated" />
-
-            {/* Subabas dos depósitos (quando há mais de 1) */}
-            {stocks.length > 1 && (
-              <>
-                {isMobile ? (
-                  pdvEnabled ? (
-                    // Com o módulo PDV e Loja: agrupado em Loja / Operacional.
-                    <div className="space-y-2">
-                      {stockGroups.map((group) => (
-                        <div key={group.key} className="space-y-1">
-                          {group.label && (
-                            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground px-0.5">
-                              {group.label}
-                            </p>
-                          )}
-                          <div className="flex gap-1 overflow-x-auto border-b no-scrollbar" role="tablist">
-                            {group.stocks.map((s) => renderMobileStockPill(s))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    // Pílulas de local QUEBRAM LINHA no mobile (flex-wrap) em vez de
-                    // rolar horizontalmente: nomes de local variam bastante em
-                    // tamanho e, com a engrenagem junto, ficavam apertados demais
-                    // dentro do carrossel de MobilePillTabs. Mesmo padrão
-                    // tab+gear-como-irmãos do desktop (evita button-in-button).
-                    <div className="flex gap-1 overflow-x-auto border-b no-scrollbar" role="tablist">
-                      {stocks.map((s) => renderMobileStockPill(s))}
-                    </div>
-                  )
-                ) : (
-                  pdvEnabled ? (
-                    <div className="space-y-2">
-                      {stockGroups.map((group) => (
-                        <div key={group.key} className="space-y-1">
-                          {group.label && (
-                            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground px-0.5">
-                              {group.label}
-                            </p>
-                          )}
-                          <div className="flex gap-1 border-b">
-                            {group.stocks.map((s) => renderDesktopStockPill(s))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex gap-1 border-b">
-                      {stocks.map((s) => renderDesktopStockPill(s))}
-                    </div>
-                  )
+          <div
+            className={cn(
+              'grid min-w-0 items-start gap-4',
+              stocks.length > 0 && !isStockCompact && 'xl:grid-cols-[17rem_minmax(0,1fr)]',
+            )}
+          >
+            {stocks.length > 0 && (!isStockCompact || !stockDetailOpen) && (
+              <StockLocationNavigator
+                generalId={GENERAL_STOCK_VIEW}
+                generalLabel={generalStockUi.label}
+                generalItemCount={accessibleInventoryItems.length}
+                generalLowStockCount={generalLowStockCount}
+                items={stockNavigationItems}
+                selectedId={isGeneralStockView ? GENERAL_STOCK_VIEW : resolvedStockId ?? GENERAL_STOCK_VIEW}
+                labels={stockNavigatorLabels}
+                onSelect={selectStockContext}
+                onConfigure={openConfigurator}
+                className={cn(
+                  isStockCompact && 'mx-auto w-full max-w-2xl',
+                  !isStockCompact && 'sticky top-4',
                 )}
-              </>
+              />
             )}
 
-            {/* Barra de busca + filtros */}
-            {isMobile ? (
+            {(!isStockCompact || stockDetailOpen || stocks.length === 0) && (
+              <div className="min-w-0 space-y-4">
+                {isStockCompact && stocks.length > 0 && (
+                  <div className="flex min-w-0 items-center gap-2 border-b pb-3">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setStockDetailOpen(false)}
+                      className="h-9 shrink-0 gap-1.5 px-2"
+                    >
+                      <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                      {generalStockUi.backToLocations}
+                    </Button>
+                    <span className="min-w-0 border-l pl-3 text-sm font-semibold">
+                      {isGeneralStockView ? generalStockUi.label : activeStock?.name}
+                    </span>
+                  </div>
+                )}
+
+                <StatCarousel items={statItems} loading={isLoading} variant="saturated" />
+
+            {/* No mobile a busca continua em uma faixa própria para preservar
+                alvos de toque. No desktop ela divide o cabeçalho do detalhe. */}
+            {isMobile && (
               <MobileListToolbar
                 searchValue={searchQuery}
                 onSearchChange={setSearchQuery}
@@ -759,36 +787,6 @@ export default function Inventory() {
                   </FilterSheet>
                 )}
               </MobileListToolbar>
-            ) : (
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1 sm:max-w-sm">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder={t.search.placeholderFull}
-                    className="pl-10"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-                <div className="flex items-center gap-2 shrink-0 ml-auto">
-                  {hasAnyFilter && (
-                    <FilterButton
-                      activeCount={activeFilterCount}
-                      onClear={clearFilters}
-                    >
-                      {filterContent}
-                    </FilterButton>
-                  )}
-                  {exportDropdown()}
-                  <Button
-                    className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
-                    onClick={openNewItem}
-                  >
-                    <Plus className="h-4 w-4" />
-                    {t.actions.register}
-                  </Button>
-                </div>
-              </div>
             )}
 
             {/* Lista */}
@@ -820,7 +818,7 @@ export default function Inventory() {
                       {pagination.paginatedItems.map((item) => {
                         const qty = getItemQty(item);
                         const min = getItemMinQty(item);
-                        const belowMin = min !== null && qty < min;
+                        const belowMin = isLowStockForActiveStock(item);
                         const itemGroup = groups.find((g) => g.id === item.group_id);
 
                         const itemActions: ItemAction[] = [
@@ -830,26 +828,30 @@ export default function Inventory() {
                             icon: <Eye className="h-4 w-4" />,
                             onClick: () => handleEdit(item),
                           },
-                          {
-                            key: 'edit',
-                            label: t.rowActions.edit,
-                            icon: <Edit className="h-4 w-4" />,
-                            variant: 'edit' as const,
-                            onClick: () => handleEdit(item),
-                          },
-                          {
-                            key: 'entrada',
-                            label: t.rowActions.registerEntrada,
-                            icon: <TrendingUp className="h-4 w-4" />,
-                            onClick: () => handleInlineMovement(item, 'entrada'),
-                          },
-                          {
-                            key: 'saida',
-                            label: t.rowActions.registerSaida,
-                            icon: <TrendingDown className="h-4 w-4" />,
-                            onClick: () => handleInlineMovement(item, 'saida'),
-                          },
-                          ...(stocks.length > 1
+                          ...(!isGeneralStockView
+                            ? [
+                                {
+                                  key: 'edit',
+                                  label: t.rowActions.edit,
+                                  icon: <Edit className="h-4 w-4" />,
+                                  variant: 'edit' as const,
+                                  onClick: () => handleEdit(item),
+                                },
+                                {
+                                  key: 'entrada',
+                                  label: t.rowActions.registerEntrada,
+                                  icon: <TrendingUp className="h-4 w-4" />,
+                                  onClick: () => handleInlineMovement(item, 'entrada'),
+                                },
+                                {
+                                  key: 'saida',
+                                  label: t.rowActions.registerSaida,
+                                  icon: <TrendingDown className="h-4 w-4" />,
+                                  onClick: () => handleInlineMovement(item, 'saida'),
+                                },
+                              ]
+                            : []),
+                          ...(!isGeneralStockView && stocks.length > 1
                             ? [{
                                 key: 'transfer',
                                 label: t.rowActions.transfer,
@@ -869,9 +871,16 @@ export default function Inventory() {
                         const subtitleParts: string[] = [];
                         if (itemGroup) subtitleParts.push(itemGroup.name);
                         else if (item.category) subtitleParts.push(item.category);
-                        subtitleParts.push(`${qty} ${item.unit || t.unitFallback}`);
-                        if (min !== null) {
-                          subtitleParts.push(`${t.minShort} ${min}`);
+                        subtitleParts.push(formatQuantity(qty, item.unit));
+                        if (isGeneralStockView) {
+                          const lowLocations = getGeneralLowCount(item.id);
+                          if (lowLocations > 0) {
+                            subtitleParts.push(
+                              `${lowLocations} ${lowLocations === 1 ? generalStockUi.belowOne : generalStockUi.belowMany}`,
+                            );
+                          }
+                        } else if (min !== null) {
+                          subtitleParts.push(`${t.minShort} ${formatQuantity(min, item.unit)}`);
                         }
 
                         return (
@@ -880,16 +889,11 @@ export default function Inventory() {
                             onClick={() => handleEdit(item)}
                             actions={itemActions}
                             leading={
-                              <div
-                                className="h-10 w-10 rounded-full flex items-center justify-center"
-                                style={
-                                  itemGroup?.color
-                                    ? { backgroundColor: `${itemGroup.color}22`, color: itemGroup.color }
-                                    : undefined
-                                }
-                              >
-                                <Package className="h-5 w-5" style={!itemGroup?.color ? { color: 'hsl(var(--primary))' } : undefined} />
-                              </div>
+                              <InventoryItemThumbnail
+                                name={item.name}
+                                imageUrl={item.image_url}
+                                accentColor={itemGroup?.color}
+                              />
                             }
                             title={
                               <div className="flex items-center gap-2 min-w-0">
@@ -935,18 +939,42 @@ export default function Inventory() {
               </>
             ) : (
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 flex-wrap">
-                    <Package className="h-5 w-5 shrink-0" />
-                    <span>{t.cardTitle}</span>
-                    {resolvedStockId && stocks.find((s) => s.id === resolvedStockId) && (
-                      <span className="text-sm font-normal text-muted-foreground/70">
-                        {t.stockLocationSuffix.replace('{stock}', stocks.find((s) => s.id === resolvedStockId)!.name)}
+                <CardHeader className="space-y-0 border-b p-4">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <CardTitle className="flex min-w-[10rem] max-w-[13rem] flex-1 items-center gap-2 text-xl leading-tight">
+                      <Package className="h-5 w-5 shrink-0" />
+                      <span className="min-w-0 break-words">
+                        {isGeneralStockView ? generalStockUi.label : activeStock?.name ?? t.cardTitle}
                       </span>
-                    )}
-                  </CardTitle>
+                    </CardTitle>
+                    <SearchField
+                      containerClassName="min-w-[11rem] max-w-[18rem] flex-[1.4]"
+                      placeholder={t.search.placeholderShort}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      actions={hasAnyFilter ? (
+                        <FilterButton
+                          activeCount={activeFilterCount}
+                          onClear={clearFilters}
+                          embedded
+                        >
+                          {filterContent}
+                        </FilterButton>
+                      ) : undefined}
+                    />
+                    <div className="ml-auto flex shrink-0 items-center gap-2">
+                      {exportDropdown(true)}
+                      <Button
+                        className="h-10 gap-2 bg-primary px-3 text-primary-foreground hover:bg-primary/90"
+                        onClick={openNewItem}
+                      >
+                        <Plus className="h-4 w-4" />
+                        {t.actions.register}
+                      </Button>
+                    </div>
+                  </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-4">
                   {isLoading ? (
                     <div className="space-y-3">
                       {[1, 2, 3].map((i) => (
@@ -977,7 +1005,14 @@ export default function Inventory() {
                               <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>{t.table.name}</SortableTableHead>
                               <SortableTableHead sortKey="sku" sortConfig={sortConfig} onSort={handleSort}>{t.table.sku}</SortableTableHead>
                               <SortableTableHead sortKey="category" sortConfig={sortConfig} onSort={handleSort}>{t.table.category}</SortableTableHead>
-                              <SortableTableHead sortKey="quantity" sortConfig={sortConfig} onSort={handleSort} className="text-right">{t.table.quantity}</SortableTableHead>
+                              <SortableTableHead
+                                sortKey="quantity"
+                                sortConfig={sortConfig}
+                                onSort={handleSort}
+                                className="w-24 min-w-[6rem] whitespace-nowrap px-2 text-right"
+                              >
+                                {t.table.quantity}
+                              </SortableTableHead>
                               <TableHead className="text-right">{t.table.minQty}</TableHead>
                               <SortableTableHead sortKey="cost_price" sortConfig={sortConfig} onSort={handleSort} className="text-right">{t.table.costUnit}</SortableTableHead>
                               <TableHead className="w-[100px]">{t.table.actions}</TableHead>
@@ -987,14 +1022,22 @@ export default function Inventory() {
                             {pagination.paginatedItems.map((item) => {
                               const qty = getItemQty(item);
                               const min = getItemMinQty(item);
-                              const belowMin = min !== null && qty < min;
+                              const belowMin = isLowStockForActiveStock(item);
                               const itemGroup = groups.find((g) => g.id === item.group_id);
                               return (
                                 <TableRow key={item.id} className={belowMin ? 'bg-destructive/5' : undefined}>
                                   <TableCell className="font-medium">
-                                    <div className="flex items-center gap-2">
-                                      <LowStockIcon item={item} />
-                                      {item.name}
+                                    <div className="flex min-w-0 items-center gap-2.5">
+                                      <InventoryItemThumbnail
+                                        name={item.name}
+                                        imageUrl={item.image_url}
+                                        accentColor={itemGroup?.color}
+                                        className="h-9 w-9"
+                                      />
+                                      <div className="flex min-w-0 items-center gap-1.5">
+                                        <LowStockIcon item={item} />
+                                        <span className="min-w-0 break-words">{item.name}</span>
+                                      </div>
                                     </div>
                                   </TableCell>
                                   <TableCell className="text-muted-foreground">{item.sku || '-'}</TableCell>
@@ -1011,14 +1054,18 @@ export default function Inventory() {
                                       <Badge variant="secondary">{item.category}</Badge>
                                     ) : null}
                                   </TableCell>
-                                  <TableCell className="text-right">
+                                  <TableCell className="w-24 min-w-[6rem] whitespace-nowrap px-2 text-right tabular-nums">
                                     <span className={belowMin ? 'text-destructive font-semibold' : ''}>
-                                      {qty}
+                                      {formatNumber(qty, locale, { maximumFractionDigits: 4 })}
                                     </span>
-                                    {' '}{item.unit}
+                                    {' '}{item.unit || t.unitFallback}
                                   </TableCell>
                                   <TableCell className="text-right text-muted-foreground">
-                                    {min !== null ? min : '-'}
+                                    {isGeneralStockView
+                                      ? generalStockUi.perLocation
+                                      : min !== null
+                                        ? formatQuantity(min, item.unit)
+                                        : '-'}
                                   </TableCell>
                                   <TableCell className="text-right">
                                     {item.cost_price ? formatCurrency(item.cost_price) : '-'}
@@ -1026,10 +1073,14 @@ export default function Inventory() {
                                   <TableCell>
                                     <RowActionsMenu
                                       actions={[
-                                        { label: t.rowActions.edit, icon: Edit, variant: 'edit', onClick: () => handleEdit(item) },
-                                        { label: t.rowActions.registerEntrada, icon: TrendingUp, variant: 'default', onClick: () => handleInlineMovement(item, 'entrada') },
-                                        { label: t.rowActions.registerSaida, icon: TrendingDown, variant: 'default', onClick: () => handleInlineMovement(item, 'saida') },
-                                        ...(stocks.length > 1
+                                        ...(!isGeneralStockView
+                                          ? [
+                                              { label: t.rowActions.edit, icon: Edit, variant: 'edit' as const, onClick: () => handleEdit(item) },
+                                              { label: t.rowActions.registerEntrada, icon: TrendingUp, variant: 'default' as const, onClick: () => handleInlineMovement(item, 'entrada') },
+                                              { label: t.rowActions.registerSaida, icon: TrendingDown, variant: 'default' as const, onClick: () => handleInlineMovement(item, 'saida') },
+                                            ]
+                                          : []),
+                                        ...(!isGeneralStockView && stocks.length > 1
                                           ? [{ label: t.rowActions.transfer, icon: ArrowRightLeft, variant: 'default' as const, onClick: () => handleTransferClick(item) }]
                                           : []),
                                         { label: t.rowActions.delete, icon: Trash2, variant: 'delete', onClick: () => handleDeleteClick(item) },
@@ -1057,6 +1108,8 @@ export default function Inventory() {
                 </CardContent>
               </Card>
             )}
+              </div>
+            )}
           </div>
         )}
 
@@ -1074,12 +1127,12 @@ export default function Inventory() {
         {/* ===================== ABA: POSIÇÃO DE ESTOQUE ===================== */}
         {activeTab === 'posicao' && <StockPositionTab />}
 
-        {/* ===================== ABA: RELATÓRIO DE COMPRAS ===================== */}
-        {activeTab === 'relatorio' && <MaterialPurchaseReportTab />}
-      </SettingsSidebarLayout>
+        {/* ===================== ABA: RELATÓRIOS (COMPRAS + CURVA ABC) ===================== */}
+        {activeTab === 'relatorio' && <InventoryReportsTab />}
+      </div>
 
       {/* FAB mobile-only (só na aba de estoque) */}
-      {isMobile && activeTab === 'estoque' && (
+      {isMobile && activeTab === 'estoque' && (stocks.length === 0 || stockDetailOpen) && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
           label={t.actions.fabLabel}
@@ -1119,10 +1172,14 @@ export default function Inventory() {
         open={exportOpen}
         onOpenChange={setExportOpen}
         format={exportFormat}
-        items={items}
+        items={activeStockItems}
         onConfirm={handleExportConfirm}
-        activeStockId={resolvedStockId}
-        getQuantityForStock={getQuantityForStock}
+        activeStockId={isGeneralStockView ? GENERAL_STOCK_VIEW : resolvedStockId}
+        getQuantityForStock={(inventoryId, stockId) =>
+          stockId === GENERAL_STOCK_VIEW
+            ? getGeneralQuantity(inventoryId)
+            : getQuantityForStock(inventoryId, stockId)
+        }
       />
 
       {/* Movimentação inline (entrada/saída) */}

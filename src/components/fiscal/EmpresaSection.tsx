@@ -1,7 +1,5 @@
 import {
   MapPin,
-  CheckCircle2,
-  AlertCircle,
   AlertTriangle,
   Loader2,
   Save,
@@ -12,7 +10,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { CepLookup } from '@/components/CepLookup';
 import { StateCitySelector } from '@/components/StateCitySelector';
 import { CnpjDocumentInput, type CnpjData } from '@/components/customers/CnpjDocumentInput';
@@ -53,13 +50,13 @@ interface EmpresaSectionProps {
   onCnpjDataFound: (data: CnpjData) => void;
   onSave: () => void;
   saving: boolean;
-  isRegistered: boolean;
-  hasCertificate: boolean;
-  podeEmitir: boolean;
   checkingCoverage: boolean;
+  certificateReady: boolean;
   onCheckCoverage: () => void;
-  coverageError: { kind: 'not_covered' | 'error'; message: string } | null;
-  registerError: { kind: 'data' | 'platform'; message: string } | null;
+  coverageError: {
+    kind: 'not_covered' | 'homologation_unconfirmed' | 'error';
+    message: string;
+  } | null;
   onGoToCertificado: () => void;
 }
 
@@ -72,20 +69,16 @@ export function EmpresaSection({
   onCnpjDataFound,
   onSave,
   saving,
-  isRegistered,
-  hasCertificate,
-  podeEmitir,
   checkingCoverage,
+  certificateReady,
   onCheckCoverage,
   coverageError,
-  registerError,
   onGoToCertificado,
 }: EmpresaSectionProps) {
   return (
     <div className="space-y-4">
       {/* Identidade da empresa — razão social/nome e CNPJ vão pra
-          company_settings (espelham pra `companies`, de onde a edge de
-          registro lê). */}
+          company_settings (espelham pra `companies`, fonte do motor fiscal). */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2 sm:col-span-2">
           <Label>{t.settings.empresa.companyName}</Label>
@@ -112,10 +105,8 @@ export function EmpresaSection({
             placeholder={t.settings.empresa.cnpjPlaceholder}
           />
         </div>
-        {/* Inscrição Municipal: mesmo estado do campo da seção
-            Tributação. Fica aqui também porque o registro da empresa
-            (feito no botão desta seção) é recusado sem ela — sem o
-            espelho o usuário só descobria pelo erro. */}
+        {/* Inscrição Municipal: mesmo estado do campo da seção Tributação.
+            O espelho evita que o usuário só descubra a ausência na emissão. */}
         <div className="space-y-2">
           <Label>{t.settings.impostos.inscricaoMunicipal}</Label>
           <Input
@@ -199,48 +190,13 @@ export function EmpresaSection({
         />
       </div>
 
-      {/* Status do onboarding. */}
-      <div className="flex flex-col gap-2 rounded-lg border p-3">
-        <p className="text-sm font-medium">{t.settings.empresa.statusSection}</p>
-        <div className="flex items-center gap-2 text-xs">
-          {isRegistered ? (
-            <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
-          ) : (
-            <AlertCircle className="h-4 w-4 text-warning shrink-0" />
-          )}
-          <span className="text-muted-foreground">
-            {isRegistered
-              ? t.settings.empresa.statusCompanyRegistered
-              : t.settings.empresa.statusCompanyPending}
-          </span>
-        </div>
-        <div className="flex items-center gap-2 text-xs">
-          {hasCertificate ? (
-            <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
-          ) : (
-            <AlertCircle className="h-4 w-4 text-warning shrink-0" />
-          )}
-          <span className="text-muted-foreground">
-            {hasCertificate ? t.settings.empresa.statusCertSent : t.settings.empresa.statusCertPending}
-          </span>
-        </div>
-        {/* Cobertura do município — é o que libera o selo "Apto a emitir". */}
-        <div className="flex items-center gap-2 text-xs">
-          {podeEmitir ? (
-            <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
-          ) : (
-            <AlertCircle className="h-4 w-4 text-warning shrink-0" />
-          )}
-          <span className="text-muted-foreground">
-            {podeEmitir ? t.settings.empresa.statusCoverageOk : t.settings.empresa.statusCoveragePending}
-          </span>
-        </div>
+      <div className="flex flex-col items-start gap-2">
         <Button
           type="button"
           variant="outline"
           size="sm"
           onClick={onCheckCoverage}
-          disabled={checkingCoverage || !form.municipio_ibge.trim()}
+          disabled={checkingCoverage || !form.municipio_ibge.trim() || !certificateReady}
           className="w-full sm:w-auto sm:self-start"
         >
           {checkingCoverage ? (
@@ -253,41 +209,37 @@ export function EmpresaSection({
         {!form.municipio_ibge.trim() && (
           <p className="text-xs text-muted-foreground">{t.settings.empresa.coverageNeedsCity}</p>
         )}
+        {!!form.municipio_ibge.trim() && !certificateReady && (
+          <p className="text-xs text-muted-foreground">{t.settings.empresa.coverageNeedsCertificate}</p>
+        )}
       </div>
 
       {/* Resultado da checagem de cobertura — card branco (padrão de
           estado do sistema), some assim que a empresa fica apta. */}
-      {coverageError && !podeEmitir && (
-        <Alert className="bg-card border-border [&>svg]:text-destructive">
+      {coverageError && (
+        <Alert
+          className={
+            coverageError.kind === 'homologation_unconfirmed'
+              ? 'bg-card border-border [&>svg]:text-primary'
+              : 'bg-card border-border [&>svg]:text-destructive'
+          }
+        >
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription className="text-xs space-y-0.5">
-            <p className="font-bold text-destructive">
-              {coverageError.kind === 'not_covered'
-                ? t.settings.empresa.coverageNotCoveredTitle
-                : t.settings.empresa.coverageFailedTitle}
+            <p className={coverageError.kind === 'homologation_unconfirmed' ? 'font-bold text-primary' : 'font-bold text-destructive'}>
+              {coverageError.kind === 'homologation_unconfirmed'
+                ? t.settings.empresa.coverageHomologationTitle
+                : coverageError.kind === 'not_covered'
+                  ? t.settings.empresa.coverageNotCoveredTitle
+                  : t.settings.empresa.coverageFailedTitle}
             </p>
             <p>{coverageError.message}</p>
           </AlertDescription>
         </Alert>
       )}
 
-      {/* Alerta persistente de falha de registro — visível até a empresa
-          ser registrada com sucesso. Distingue causa (dado vs plataforma). */}
-      {registerError && !isRegistered && (
-        <NoticeBanner
-          variant={registerError.kind === 'data' ? 'warning' : 'destructive'}
-          icon={registerError.kind === 'data' ? AlertCircle : AlertTriangle}
-          title={t.settings.certificado.registerFailedTitle}
-        >
-          {(registerError.kind === 'data'
-            ? t.settings.certificado.registerFailedData
-            : t.settings.certificado.registerFailedPlatform
-          ).replace('{error}', registerError.message)}
-        </NoticeBanner>
-      )}
-
-      {/* Barra de ação fixa no rodapé — Salvar sempre presente e, quando já
-          registrada, o atalho pro próximo passo (Certificado) ao lado. Fica
+      {/* Barra de ação fixa no rodapé — Salvar e o atalho para o certificado
+          permanecem acessíveis. Fica
           sticky ACIMA da MobileBottomNav no mobile (96px + safe area) e perto
           do fim no desktop; é o ÚLTIMO elemento da seção de propósito, senão
           conteúdo abaixo dela ficaria escondido atrás (bug já visto no Eco). */}
@@ -300,16 +252,14 @@ export function EmpresaSection({
           )}
           {t.settings.empresa.saveBtn}
         </Button>
-        {isRegistered && (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onGoToCertificado}
-            className="w-full sm:w-auto"
-          >
-            {t.settings.empresa.nextBtn} <ArrowRight className="h-4 w-4 ml-2" />
-          </Button>
-        )}
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onGoToCertificado}
+          className="w-full sm:w-auto"
+        >
+          {t.settings.empresa.nextBtn} <ArrowRight className="h-4 w-4 ml-2" />
+        </Button>
       </div>
     </div>
   );

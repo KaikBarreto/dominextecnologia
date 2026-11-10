@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useResolvedRouteTitle } from '@/hooks/usePageTitle';
@@ -32,9 +32,11 @@ import { AdminNotificationBell } from '@/components/admin/AdminNotificationBell'
 import { AppLanguageSwitcher } from '@/components/i18n/AppLanguageSwitcher';
 import { HeaderClock } from '@/components/layout/HeaderClock';
 import { SystemNoticeBanners } from '@/components/notices/SystemNoticeBanners';
+import { PlatformNpsSurvey } from '@/components/nps/PlatformNpsSurvey';
 import { SubscriptionRenewalBanner } from '@/components/billing/SubscriptionRenewalBanner';
 import { TasksDrawer } from '@/components/tasks/TasksDrawer';
 import { DailyTasksPopup } from '@/components/tasks/DailyTasksPopup';
+import { DomiflixLearningReminder } from '@/components/domiflix/DomiflixLearningReminder';
 import {
   Tooltip,
   TooltipContent,
@@ -43,6 +45,8 @@ import {
 } from '@/components/ui/tooltip';
 import logoDark from '@/assets/logo-dark.png';
 import logoGreen from '@/assets/logo-horizontal-verde.png';
+
+const DomiflixIntroGate = lazy(() => import('@/components/domiflix/DomiflixIntroGate').then((module) => ({ default: module.DomiflixIntroGate })));
 
 const TABLET_MAX_WIDTH = 1280; // tablet vai até 1279px; ≥1280 é desktop.
 
@@ -120,6 +124,8 @@ export function AppLayout() {
 
   return (
     <>
+      {!isAdminUser && user && <Suspense fallback={<div className="fixed inset-0 z-[10000] bg-[#111]" />}><DomiflixIntroGate /></Suspense>}
+      {!isAdminUser && user && <PlatformNpsSurvey />}
       <VersionUpdateNotification />
       {/* Popup diário de tarefas (1x/dia, BRT). Só para usuários não-admin. */}
       {!isAdminUser && user && (
@@ -185,8 +191,9 @@ function SidebarShell() {
         <SidebarInset className="flex flex-col min-w-0 max-w-full overflow-hidden">
           <DesktopSidebarHeader />
           <SubscriptionRenewalBanner />
+          <DomiflixLearningReminder />
+          <SystemNoticeBanners scope="global" />
           <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 min-w-0 max-w-full">
-            <SystemNoticeBanners scope="global" />
             <RouteTransition>
               <Outlet />
             </RouteTransition>
@@ -264,16 +271,17 @@ function DesktopSidebarHeader() {
 // ============================================================
 function TopbarShell() {
   return (
-    <div className="flex min-h-screen w-full max-w-full flex-col min-w-0">
+    <div className="flex h-[100dvh] w-full max-w-full flex-col overflow-hidden min-w-0">
       <TopNavbar />
       <SubscriptionRenewalBanner />
-      <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 min-w-0 max-w-full">
-        <SystemNoticeBanners scope="global" />
+      <DomiflixLearningReminder />
+      <SystemNoticeBanners scope="global" />
+      <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 min-w-0 max-w-full">
         <RouteTransition>
           <Outlet />
         </RouteTransition>
       </main>
-      <footer className="border-t px-4 h-[52px] flex items-center justify-center">
+      <footer className="h-[52px] shrink-0 border-t px-4 flex items-center justify-center">
         <SystemFooter />
       </footer>
     </div>
@@ -307,6 +315,8 @@ function MobileTabletShell({ isAdminUser }: { isAdminUser: boolean }) {
   return (
     <div className="flex h-[100dvh] w-full max-w-full flex-col bg-background">
       <MobileTabletHeader isAdminUser={isAdminUser} scrolled={scrolled} />
+      <DomiflixLearningReminder />
+      <SystemNoticeBanners scope="global" />
       <MobilePullToRefresh
         onRefresh={handleRefresh}
         onScroll={(e) => {
@@ -319,7 +329,6 @@ function MobileTabletShell({ isAdminUser }: { isAdminUser: boolean }) {
         className="flex-1 overflow-x-hidden min-w-0 max-w-full bg-background"
       >
         <main className="p-4 pb-[calc(8rem+env(safe-area-inset-bottom))] bg-background">
-          <SystemNoticeBanners scope="global" />
           <RouteTransition>
             <Outlet />
           </RouteTransition>

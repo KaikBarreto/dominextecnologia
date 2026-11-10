@@ -80,6 +80,11 @@ import { formatMoney, formatDate, toBcp47 } from '@/lib/format';
 import { todayInTz } from '@/lib/timezone';
 import { isPaidDateAllowedInTz } from '@/lib/dre-regime';
 import { ModalFormSection } from './ModalFormSection';
+import { useCompanyModules } from '@/hooks/useCompanyModules';
+import { useTenantPaymentAccount } from '@/hooks/useTenantPaymentAccount';
+import { useTenantCharges, type TenantChargeBillingType } from '@/hooks/useTenantCharges';
+import { buildReceivableChargeRequests } from '@/lib/finance-installment-charges';
+import { getDocumentStatus } from '@/lib/documentValidation';
 
 
 // Billing months: 1 month back to 4 months ahead (covers all realistic card use cases)
@@ -829,6 +834,11 @@ export function TransactionFormDialog({
   // hora: o banco recusa (RLS pede `can_manage_system`) e o erro chegava sem
   // explicação. Mesmo critério do CostCenterSelect.
   const canManageFinanceSettings = useCanManageFinanceSettings();
+  const { hasModule } = useCompanyModules();
+  const paymentAccount = useTenantPaymentAccount();
+  // Query desabilitada: este formulário só usa a mutation depois que as contas
+  // a receber já existem. A listagem de cobranças continua dona da leitura.
+  const { create: createOnlineCharge } = useTenantCharges({ enabled: false });
   const isEditing = !!transaction;
   /**
    * Rascunho automático NÃO vale quando o formulário já nasce preenchido por um
@@ -844,6 +854,10 @@ export function TransactionFormDialog({
   const draft = useFormDraft<TransactionFormData>({ key: 'transaction-form', isOpen: open, isEditing: draftsDisabled });
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  // Opção local de tela: não é coluna de financial_transactions. Quando ligada,
+  // cada parcela criada recebe uma cobrança própria e vinculada no Asaas.
+  const [generateOnlineCharges, setGenerateOnlineCharges] = useState(false);
+  const [onlineBillingType, setOnlineBillingType] = useState<Exclude<TenantChargeBillingType, 'CREDIT_CARD'>>('BOLETO');
   // Guard de reentrância SÍNCRONO. O state `submitting` só atualiza no próximo
   // render — entre dois cliques rápidos (ou duplo-clique) o React ainda não
   // re-renderizou com o botão desabilitado, então um 2º submit entra antes.
@@ -966,6 +980,7 @@ export function TransactionFormDialog({
   useEffect(() => {
     if (open) {
       setPendingFiles([]);
+      setGenerateOnlineCharges(false);
       if (!draftsDisabled && draft.hasDraft && draft.draftData) {
         // Draft will be applied via DraftResumeDialog
       } else {
@@ -1002,6 +1017,62 @@ export function TransactionFormDialog({
       ? ((form.watch('card_receipt_mode') as CardReceiptMode | undefined) ?? null)
       : null,
   });
+
+  const chargeMethodOptions = useMemo(() => {
+    const options: Array<{
+      value: Exclude<TenantChargeBillingType, 'CREDIT_CARD'>;
+      label: string;
+    }> = [];
+    if (paymentAccount.allowPix && paymentAccount.allowBoleto) {
+      options.push({ value: 'UNDEFINED', label: tf.onlineCharges.methods.customerChooses });
+    }
+    if (paymentAccount.allowBoleto) {
+      options.push({ value: 'BOLETO', label: tf.onlineCharges.methods.boleto });
+    }
+    if (paymentAccount.allowPix) {
+      options.push({ value: 'PIX', label: tf.onlineCharges.methods.pix });
+    }
+    return options;
+  }, [paymentAccount.allowBoleto, paymentAccount.allowPix, tf.onlineCharges.methods]);
+
+  const canOfferInstallmentCharges =
+    !isEditing
+    && transactionType === 'entrada'
+    && !isPaid
+    && watchedInstallmentCount > 1
+    && !askCardReceiptMode
+    && canManageFinanceSettings
+    && hasModule('cobrancas')
+    && paymentAccount.isActive
+    && chargeMethodOptions.length > 0;
+
+  // Forma sugerida acompanha o que a pessoa escolheu no lançamento. Se não
+  // houver correspondência, usa "Cliente escolhe" (quando disponível) ou o
+  // primeiro meio liberado na conta Asaas.
+  useEffect(() => {
+    if (chargeMethodOptions.length === 0) return;
+    const preferred: Exclude<TenantChargeBillingType, 'CREDIT_CARD'> =
+      watchedPaymentMethod === 'boleto'
+        ? 'BOLETO'
+        : watchedPaymentMethod === 'pix'
+          ? 'PIX'
+          : chargeMethodOptions.some((option) => option.value === 'UNDEFINED')
+            ? 'UNDEFINED'
+            : chargeMethodOptions[0].value;
+    if (!generateOnlineCharges || !chargeMethodOptions.some((option) => option.value === onlineBillingType)) {
+      setOnlineBillingType(
+        chargeMethodOptions.some((option) => option.value === preferred)
+          ? preferred
+          : chargeMethodOptions[0].value,
+      );
+    }
+  }, [chargeMethodOptions, generateOnlineCharges, onlineBillingType, watchedPaymentMethod]);
+
+  useEffect(() => {
+    if (!canOfferInstallmentCharges && generateOnlineCharges) {
+      setGenerateOnlineCharges(false);
+    }
+  }, [canOfferInstallmentCharges, generateOnlineCharges]);
 
   // Saiu do crédito parcelado (trocou a forma de pagamento, voltou pra à vista,
   // virou despesa): a escolha anterior morre junto com o bloco. Sem isso, um
@@ -1111,6 +1182,51 @@ export function TransactionFormDialog({
     // Trava de reentrância: se já há um submit em andamento, ignora o 2º disparo.
     // Cobre duplo-clique e o retry do react-hook-form, evitando dois inserts.
     if (submitGuard.current) return;
+
+    // Valida ANTES de gravar as contas. Se deixássemos a edge descobrir cliente
+    // ou vencimento ausente depois, o financeiro seria salvo sem as cobranças e
+    // um segundo clique poderia duplicar o parcelamento inteiro.
+    let onlineChargePlan: ReturnType<typeof buildInstallmentPlan> | null = null;
+    if (generateOnlineCharges) {
+      if (!data.customer_id) {
+        form.setError('customer_id', { type: 'manual', message: tf.onlineCharges.customerRequired });
+        toast({ variant: 'destructive', title: tf.onlineCharges.customerRequired });
+        return;
+      }
+      const chargeCustomer = activeCustomers.find((customer) => customer.id === data.customer_id);
+      const documentStatus = getDocumentStatus(chargeCustomer?.document);
+      if (documentStatus !== 'ok') {
+        const message = documentStatus === 'missing'
+          ? tf.onlineCharges.documentMissing
+          : tf.onlineCharges.documentInvalid;
+        form.setError('customer_id', { type: 'manual', message });
+        toast({ variant: 'destructive', title: message });
+        return;
+      }
+      if (!data.due_date) {
+        form.setError('due_date', { type: 'manual', message: tf.onlineCharges.dueDateRequired });
+        toast({ variant: 'destructive', title: tf.onlineCharges.dueDateRequired });
+        return;
+      }
+      if (data.due_date < todayInTz(timezone)) {
+        form.setError('due_date', { type: 'manual', message: tf.onlineCharges.dueDatePast });
+        toast({ variant: 'destructive', title: tf.onlineCharges.dueDatePast });
+        return;
+      }
+      onlineChargePlan = buildInstallmentPlan(
+        data.due_date,
+        data.amount,
+        data.installment_count ?? 1,
+      );
+      if (onlineChargePlan.some((installment) => installment.amount < 5)) {
+        toast({
+          variant: 'destructive',
+          title: tf.onlineCharges.minimumTitle,
+          description: tf.onlineCharges.minimumDescription,
+        });
+        return;
+      }
+    }
     submitGuard.current = true;
 
     const { effectiveInstallmentCount } = resolveReceipt(data);
@@ -1181,6 +1297,53 @@ export function TransactionFormDialog({
       if (data.account_id) localStorage.setItem('fin_last_account_id', data.account_id);
 
       const result: any = await onSubmit(payload);
+
+      // As contas a receber já existem neste ponto. Criamos UMA cobrança por
+      // parcela usando a origem `receivable`, que apenas liga a cobrança à
+      // linha existente e nunca lança receita duplicada.
+      if (generateOnlineCharges && onlineChargePlan) {
+        const transactionIds: string[] = Array.isArray(result?.ids) ? result.ids : [];
+        let createdCount = 0;
+        try {
+          const requests = buildReceivableChargeRequests({
+            transactionIds,
+            plan: onlineChargePlan,
+            customerId: data.customer_id || '',
+            description: data.description,
+            billingType: onlineBillingType,
+          });
+
+          for (const request of requests) {
+            const chargeResult = await createOnlineCharge.mutateAsync(request);
+            createdCount += 1;
+            // A cobrança existe na Asaas, mas sem espelho/vínculo local não é
+            // seguro continuar o lote fingindo sucesso integral.
+            if (chargeResult.orphan) {
+              throw new Error(chargeResult.warning || tf.onlineCharges.linkFailed);
+            } else if (chargeResult.charge.financeWarning) {
+              throw new Error(chargeResult.charge.financeWarning);
+            }
+          }
+
+          toast({
+            title: tf.onlineCharges.successTitle,
+            description: tf.onlineCharges.successDescription.replace('{count}', String(createdCount)),
+          });
+        } catch (error) {
+          toast({
+            variant: 'destructive',
+            title: createdCount > 0
+              ? tf.onlineCharges.partialTitle
+              : tf.onlineCharges.failedTitle,
+            description: (createdCount > 0
+              ? tf.onlineCharges.partialDescription
+                  .replace('{created}', String(createdCount))
+                  .replace('{total}', String(onlineChargePlan.length))
+              : tf.onlineCharges.failedDescription)
+              + (error instanceof Error && error.message ? ` ${error.message}` : ''),
+          });
+        }
+      }
 
       // Após criar/editar, sobe os anexos pendentes (se houver).
       // Contrato esperado de `result`: { ids: string[]; primary?: object }
@@ -1344,7 +1507,10 @@ export function TransactionFormDialog({
   const customerField = (spanClass = 'lg:col-span-2') => (
     <FormField control={form.control} name="customer_id" render={({ field }) => (
       <FormItem className={spanClass}>
-        <FormLabel>{tf.customerLabel}</FormLabel>
+        <FormLabel>
+          {tf.customerLabel}
+          {generateOnlineCharges && ' *'}
+        </FormLabel>
         <CustomerSelectField
           customers={activeCustomers}
           value={field.value || ''}
@@ -1352,6 +1518,7 @@ export function TransactionFormDialog({
           placeholder={tf.customerPlaceholder}
           searchPlaceholder={tf.customerSearchPlaceholder}
           disabled={lockCustomer}
+          requireDocument={generateOnlineCharges}
         />
         <FormMessage />
       </FormItem>
@@ -1815,7 +1982,7 @@ export function TransactionFormDialog({
                   <FormItem className="p-3">
                     <FormLabel>
                       {fin.accounts.table.dueDate}
-                      {requireDueDateWhenUnpaid && ' *'}
+                      {(requireDueDateWhenUnpaid || generateOnlineCharges) && ' *'}
                     </FormLabel>
                     <FormControl>
                       <DatePicker
@@ -1824,11 +1991,11 @@ export function TransactionFormDialog({
                         min={dateInputMin}
                         max={dateInputMax}
                         placeholder={tf.datePlaceholder}
-                        clearable={!requireDueDateWhenUnpaid}
+                        clearable={!requireDueDateWhenUnpaid && !generateOnlineCharges}
                         clearLabel={MESSAGES[locale].app.common.clear}
                       />
                     </FormControl>
-                    {!requireDueDateWhenUnpaid && (
+                    {!requireDueDateWhenUnpaid && !generateOnlineCharges && (
                       <p className="text-xs text-muted-foreground">{tf.dueDateHint}</p>
                     )}
                     <FormMessage />
@@ -1972,6 +2139,49 @@ export function TransactionFormDialog({
                 </div>
               );
             })()}
+
+            {canOfferInstallmentCharges && (
+              <div className="rounded-lg border border-primary/25 bg-primary/5 p-3 space-y-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-1">
+                    <FormLabel htmlFor="generate-online-installment-charges" className="cursor-pointer">
+                      {tf.onlineCharges.label}
+                    </FormLabel>
+                    <p className="text-xs text-muted-foreground">
+                      {tf.onlineCharges.description.replace('{count}', String(watchedInstallmentCount))}
+                    </p>
+                  </div>
+                  <Switch
+                    id="generate-online-installment-charges"
+                    checked={generateOnlineCharges}
+                    onCheckedChange={setGenerateOnlineCharges}
+                    aria-label={tf.onlineCharges.label}
+                  />
+                </div>
+
+                {generateOnlineCharges && (
+                  <div className="space-y-2 border-t border-primary/15 pt-3">
+                    <FormLabel>{tf.onlineCharges.methodLabel}</FormLabel>
+                    <Select
+                      value={onlineBillingType}
+                      onValueChange={(value) => setOnlineBillingType(value as Exclude<TenantChargeBillingType, 'CREDIT_CARD'>)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {chargeMethodOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">{tf.onlineCharges.hint}</p>
+                  </div>
+                )}
+              </div>
+            )}
           </ModalFormSection>
 
         </form>

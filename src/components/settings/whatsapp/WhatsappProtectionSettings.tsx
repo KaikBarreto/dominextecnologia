@@ -1,6 +1,5 @@
-import { Clock, Receipt, ShieldCheck, Wrench } from 'lucide-react';
+import { CalendarClock, Clock, ShieldCheck, Wrench } from 'lucide-react';
 
-import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import {
@@ -22,6 +21,7 @@ interface WhatsappProtectionSettingsProps {
   locale: LocaleCode;
   preferences: WhatsappAutomationPreferences;
   readOnly?: boolean;
+  isSaving?: boolean;
   onPreferencesChange: (preferences: WhatsappAutomationPreferences) => void;
 }
 
@@ -36,11 +36,11 @@ const COPY = {
       'Técnico a caminho, serviço iniciado e serviço concluído. O cliente está esperando essa mensagem no momento em que ela acontece, então o horário aqui acompanha a operação da empresa, não o comercial.',
     remindersTitle: 'Lembretes de cobrança',
     remindersHint:
-      'Cobrança gerada, lembrete de vencimento e aviso de atraso. Ninguém pediu para receber isso, então evite madrugada e domingo: é o que mais gera reclamação.',
+      'Cobrança gerada, lembrete de vencimento e aviso de atraso. Evite madrugada e domingo: são horários que geram mais reclamações.',
     startLabel: 'Começa às',
     endLabel: 'Termina às',
     daysLabel: 'Dias da semana',
-    daysEmpty: 'Sem nenhum dia marcado, esses avisos nunca saem.',
+    daysRequired: 'Mantenha pelo menos um dia marcado para esta janela.',
     queueHint: 'Fora do horário, a mensagem fica na fila e sai na próxima abertura.',
     behaviorTitle: 'Comportamento humano',
     typingLabel: 'Mostrar "digitando" antes de enviar',
@@ -48,7 +48,7 @@ const COPY = {
     readLabel: 'Marcar a conversa como lida antes de responder',
     readHint:
       'Isso remove o aviso de mensagem não lida no celular da sua equipe. Deixe desligado se alguém acompanha as conversas pelo aparelho.',
-    timezoneNote: 'Horário de Brasília.',
+    timezoneNote: 'Fuso horário configurado para a empresa.',
     days: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'],
   },
   en: {
@@ -61,11 +61,11 @@ const COPY = {
       'Technician on the way, job started and job finished. The customer is waiting for this message as it happens, so these hours follow the company operation, not office hours.',
     remindersTitle: 'Billing reminders',
     remindersHint:
-      'Invoice created, due date reminder and overdue notice. Nobody asked to receive these, so avoid late nights and Sundays: that is what drives complaints.',
+      'Created charges, due date reminders and overdue notices. Avoid late nights and Sundays, when complaints are more likely.',
     startLabel: 'Starts at',
     endLabel: 'Ends at',
     daysLabel: 'Days of the week',
-    daysEmpty: 'With no day selected, these notifications never go out.',
+    daysRequired: 'Keep at least one day selected for this window.',
     queueHint: 'Outside these hours the message waits in the queue and goes out at the next opening.',
     behaviorTitle: 'Human behavior',
     typingLabel: 'Show "typing" before sending',
@@ -73,7 +73,7 @@ const COPY = {
     readLabel: 'Mark the chat as read before replying',
     readHint:
       'This clears the unread badge on your team phone. Leave it off if someone follows the chats on the device.',
-    timezoneNote: 'Brasília time.',
+    timezoneNote: 'Uses the company’s configured time zone.',
     days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
   },
   es: {
@@ -86,11 +86,11 @@ const COPY = {
       'Técnico en camino, servicio iniciado y servicio concluido. El cliente espera ese mensaje en el momento en que ocurre, así que el horario aquí sigue la operación de la empresa, no el comercial.',
     remindersTitle: 'Recordatorios de cobro',
     remindersHint:
-      'Cobro generado, recordatorio de vencimiento y aviso de atraso. Nadie pidió recibir esto, así que evita la madrugada y el domingo: es lo que más queja genera.',
+      'Cobros generados, recordatorios de vencimiento y avisos de atraso. Evita la madrugada y los domingos, cuando hay más riesgo de quejas.',
     startLabel: 'Comienza a las',
     endLabel: 'Termina a las',
     daysLabel: 'Días de la semana',
-    daysEmpty: 'Sin ningún día marcado, esos avisos nunca salen.',
+    daysRequired: 'Mantén al menos un día marcado para este horario.',
     queueHint: 'Fuera del horario, el mensaje queda en la cola y sale en la próxima apertura.',
     behaviorTitle: 'Comportamiento humano',
     typingLabel: 'Mostrar "escribiendo" antes de enviar',
@@ -98,7 +98,7 @@ const COPY = {
     readLabel: 'Marcar la conversación como leída antes de responder',
     readHint:
       'Esto quita el aviso de mensaje no leído en el celular de tu equipo. Déjalo apagado si alguien sigue las conversaciones en el aparato.',
-    timezoneNote: 'Hora de Brasilia.',
+    timezoneNote: 'Usa la zona horaria configurada para la empresa.',
     days: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
   },
   fr: {
@@ -111,11 +111,11 @@ const COPY = {
       'Technicien en route, service commencé et service terminé. Le client attend ce message au moment où il se produit, donc ces horaires suivent l`activité de l`entreprise, pas les heures de bureau.',
     remindersTitle: 'Rappels de facturation',
     remindersHint:
-      'Facture créée, rappel d`échéance et avis de retard. Personne n`a demandé à recevoir cela, donc évitez la nuit et le dimanche : c`est ce qui génère le plus de plaintes.',
+      'Factures créées, rappels d`échéance et avis de retard. Évitez la nuit et le dimanche, périodes plus propices aux plaintes.',
     startLabel: 'Commence à',
     endLabel: 'Termine à',
     daysLabel: 'Jours de la semaine',
-    daysEmpty: 'Sans aucun jour coché, ces avis ne partent jamais.',
+    daysRequired: 'Conservez au moins un jour sélectionné pour cette plage.',
     queueHint: 'En dehors de ces horaires, le message reste en file et part à la prochaine ouverture.',
     behaviorTitle: 'Comportement humain',
     typingLabel: 'Afficher « en train d`écrire » avant d`envoyer',
@@ -123,7 +123,7 @@ const COPY = {
     readLabel: 'Marquer la conversation comme lue avant de répondre',
     readHint:
       'Cela enlève le badge de message non lu sur le téléphone de votre équipe. Laissez désactivé si quelqu`un suit les conversations sur l`appareil.',
-    timezoneNote: 'Heure de Brasília.',
+    timezoneNote: 'Utilise le fuseau horaire configuré pour l`entreprise.',
     days: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
   },
 } satisfies Record<LocaleCode, Record<string, unknown>>;
@@ -141,6 +141,7 @@ export function WhatsappProtectionSettings({
   locale,
   preferences,
   readOnly,
+  isSaving,
   onPreferencesChange,
 }: WhatsappProtectionSettingsProps) {
   const copy = COPY[locale];
@@ -185,18 +186,18 @@ export function WhatsappProtectionSettings({
               hint={copy.transactionalHint}
               copy={copy}
               window={sendWindow.transactional}
-              readOnly={readOnly}
+              readOnly={readOnly || isSaving}
               onChange={(patch) => updateWindow('transactional', patch)}
             />
 
             <WindowEditor
-              icon={Receipt}
-              idPrefix="whatsapp-window-billing"
+              icon={CalendarClock}
+              idPrefix="whatsapp-window-reminders"
               title={copy.remindersTitle}
               hint={copy.remindersHint}
               copy={copy}
               window={sendWindow.reminders}
-              readOnly={readOnly}
+              readOnly={readOnly || isSaving}
               onChange={(patch) => updateWindow('reminders', patch)}
             />
           </div>
@@ -229,6 +230,7 @@ function WindowEditor({
   onChange: (patch: Partial<WhatsappSendWindow>) => void;
 }) {
   const toggleDay = (day: number) => {
+    if (value.days.includes(day) && value.days.length === 1) return;
     const next = value.days.includes(day)
       ? value.days.filter((current) => current !== day)
       : [...value.days, day].sort((a, b) => a - b);
@@ -308,7 +310,7 @@ function WindowEditor({
               <button
                 key={day}
                 type="button"
-                disabled={readOnly}
+                disabled={readOnly || (active && value.days.length === 1)}
                 aria-pressed={active}
                 aria-label={`${title}: ${copy.days[index]}`}
                 onClick={() => toggleDay(day)}
@@ -325,9 +327,7 @@ function WindowEditor({
             );
           })}
         </div>
-        {value.days.length === 0 && (
-          <NoticeBanner variant="warning">{copy.daysEmpty}</NoticeBanner>
-        )}
+        <p className="text-xs text-muted-foreground">{copy.daysRequired}</p>
       </div>
     </div>
   );

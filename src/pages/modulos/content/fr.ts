@@ -56,15 +56,15 @@ const fr: ModuleContentMap = {
   // ────────────────────────────────────────────────────────────────────────
   'os-digital': {
     slug: 'logiciel-ordres-de-travail',
-    metaTitle: 'Logiciel d\'ordres de travail pour les équipes de terrain | Dominex',
+    metaTitle: 'Ordres numériques, planning et suivi des équipes | Dominex',
     metaDescription:
-      'Logiciel d\'ordres de travail pour les équipes de terrain : l\'ordre de travail sur le téléphone du technicien, checklists, photos avant et après, signature du client, application installable, planification et rapport PDF automatique. Essai gratuit de 7 jours, sans carte bancaire.',
+      'Ordres numériques, planning et suivi des équipes dans un seul système : application technicien, checklists, photos, signatures, carte en direct et rapports PDF. Essai gratuit de 7 jours, sans carte bancaire.',
     hero: {
-      eyebrow: 'Ordres de travail numériques',
-      h1: 'Logiciel d\'ordres de travail pour les équipes de terrain',
-      h1Highlight: 'ordre de travail numérique',
+      eyebrow: 'Ordres, Planning et Suivi',
+      h1: 'Ordres numériques, planning et suivi pour les équipes de terrain',
+      h1Highlight: 'Ordres numériques, planning et suivi',
       subtitle:
-        'Fini les ordres de travail papier qui se perdent, arrivent en retard et n\'ont aucune photo. Dominex met l\'ordre de travail sur le téléphone de votre technicien, avec une checklist, des photos, une signature et un rapport prêt sur place, directement sur le terrain.',
+        'Créez l’ordre, organisez le planning, répartissez l’intervention et suivez l’équipe sur la carte. Le technicien réalise tout sur son téléphone avec checklist, photos, signature et rapport immédiat.',
     },
     metrics: [
       { value: '50k+', label: 'ordres de travail par mois sur la plateforme' },
@@ -125,8 +125,8 @@ const fr: ModuleContentMap = {
         },
       },
     ],
-    featuresHeading: 'Tout ce dont votre ordre de travail a besoin, au même endroit',
-    featuresSubheading: 'De la demande au rapport, les ordres de travail numériques couvrent chaque étape',
+    featuresHeading: 'Du planning au rapport, tout est connecté',
+    featuresSubheading: 'Organisez le service, suivez l’équipe et prouvez chaque étape de l’intervention',
     features: [
       { icon: ClipboardList, title: 'Création rapide d\'ordres de travail', desc: 'Ouvrez des ordres d\'installation, de maintenance et de réparation en quelques secondes, déjà liés au client et à l\'équipement.' },
       { icon: CheckSquare, title: 'Checklist par service', desc: 'Des modèles de checklist par type de service maintiennent chaque visite sur la bonne voie.' },
@@ -155,8 +155,8 @@ const fr: ModuleContentMap = {
       { q: 'Comment démarrer ? Ai-je besoin d\'une carte bancaire ?', a: 'Créez simplement un compte et utilisez-le gratuitement pendant 7 jours, sans carte bancaire. Vous configurez votre entreprise en quelques minutes et commencez à ouvrir des ordres de travail dans l\'application.' },
     ],
     finalCta: {
-      title: 'Passez vos ordres de travail au numérique',
-      subtitle: 'Gratuit pendant 7 jours, sans carte bancaire. Sortez les ordres de travail du papier et donnez le contrôle à votre équipe de terrain.',
+      title: 'Gardez le contrôle de vos opérations terrain',
+      subtitle: 'Gratuit pendant 7 jours, sans carte. Numérisez les ordres, organisez le planning et suivez l’équipe sur la carte.',
     },
   },
 
@@ -491,7 +491,7 @@ const fr: ModuleContentMap = {
     metaDescription:
       'Pointage et paie pour les équipes de terrain : pointage avec selfie et géolocalisation, solde d\'heures, paie, avances et gestion des salariés, le tout au même endroit. Essai gratuit de 7 jours, sans carte bancaire.',
     hero: {
-      eyebrow: 'Pointage et paie (RH)',
+      eyebrow: 'Employés (RH)',
       h1: 'Pointage et paie pour les équipes de terrain',
       h1Highlight: 'Pointage et paie',
       subtitle:
@@ -592,7 +592,7 @@ const fr: ModuleContentMap = {
   // ────────────────────────────────────────────────────────────────────────
   // 6. Facturation électronique de services
   // ────────────────────────────────────────────────────────────────────────
-  'emissao-de-nfse': {
+  'emissao-de-nota-fiscal': {
     slug: 'logiciel-facturation-services',
     metaTitle: 'Logiciel de facturation de services pour les entreprises de services | Dominex',
     metaDescription:
@@ -1229,6 +1229,68 @@ const fr: ModuleContentMap = {
       title: 'Mettez tout le terrain sur le téléphone de votre équipe',
       subtitle: 'Gratuit pendant 7 jours, sans carte bancaire. Ordres de travail, outils techniques et catalogue dans l\'application technicien, sur le téléphone de votre équipe.',
     },
+  },
+};
+
+const legacySalesContent = fr['orcamentos-e-contratos'];
+
+fr['sistema-de-orcamentos'] = {
+  ...legacySalesContent,
+  slug: 'logiciel-de-devis',
+  metaTitle: 'Logiciel de devis et propositions pour les services | Dominex',
+  metaDescription: 'Créez des devis professionnels, envoyez les propositions par lien et transformez l’approbation en ordre de travail.',
+  hero: {
+    eyebrow: 'Devis et propositions',
+    h1: 'Des devis professionnels qui deviennent des interventions',
+    h1Highlight: 'Des devis professionnels',
+    subtitle: 'Calculez le prix avec précision, présentez la proposition à votre image et obtenez l’approbation par lien. Transformez ensuite le périmètre approuvé en ordre de travail.',
+  },
+  pains: [legacySalesContent.pains[0], legacySalesContent.pains[1], legacySalesContent.pains[3]],
+  deepDives: legacySalesContent.deepDives.slice(0, 2).map((item, index) => ({
+    ...item,
+    image: index === 0
+      ? { src: '/guia-tecnico/img/t9-aba-precificacao.jpg', alt: 'Écran réel de tarification des services dans Dominex', fit: 'contain' as const }
+      : { src: '/guia-tecnico/img/t9-orcamento-publico.jpg', alt: 'Proposition publique Dominex ouverte pour approbation', fit: 'contain' as const },
+  })),
+  featuresHeading: 'Vendez avec une marge claire et sans ressaisie',
+  featuresSubheading: 'Les outils pour chiffrer, présenter et conclure le service',
+  features: [0, 1, 2, 5, 6, 7].map((index) => legacySalesContent.features[index]),
+  testimonialsHeading: '',
+  testimonials: [],
+  faq: [0, 1, 4, 5, 6].map((index) => legacySalesContent.faq[index]),
+  finalCta: {
+    title: 'Transformez les devis en ventes et les ventes en interventions',
+    subtitle: 'Gratuit pendant 7 jours, sans carte bancaire. Chiffrez, envoyez et suivez chaque proposition dans Dominex.',
+  },
+};
+
+fr['gestao-de-contratos'] = {
+  ...legacySalesContent,
+  slug: 'logiciel-de-gestion-des-contrats',
+  metaTitle: 'Logiciel de gestion des contrats récurrents | Dominex',
+  metaDescription: 'Organisez les contrats de maintenance, visites récurrentes, documents, renouvellements et ordres de travail automatiques.',
+  hero: {
+    eyebrow: 'Gestion des contrats',
+    h1: 'Des contrats récurrents avec chaque visite à jour',
+    h1Highlight: 'contrats récurrents',
+    subtitle: 'Définissez l’accord, les sites et la fréquence. Dominex organise les prochaines visites et relie documents, revenus et renouvellements au contrat.',
+  },
+  painsHeading: 'Un contrat récurrent ne peut pas dépendre de la mémoire',
+  painsSubheading: 'Transformez chaque accord en une routine opérationnelle claire',
+  pains: [legacySalesContent.pains[2]],
+  deepDives: legacySalesContent.deepDives.slice(2).map((item) => ({
+    ...item,
+    image: { src: '/guia-tecnico/img/t11-contrato-visao-geral.jpg', alt: 'Vue réelle d’un contrat récurrent dans Dominex', fit: 'contain' as const },
+  })),
+  featuresHeading: 'De l’accord signé à la visite terminée',
+  featuresSubheading: 'Contrôlez le portefeuille et automatisez la maintenance récurrente',
+  features: [3, 4, 6].map((index) => legacySalesContent.features[index]),
+  testimonialsHeading: '',
+  testimonials: [],
+  faq: [2, 3, 5, 6].map((index) => legacySalesContent.faq[index]),
+  finalCta: {
+    title: 'Faites de chaque contrat une opération prévisible',
+    subtitle: 'Gratuit pendant 7 jours, sans carte bancaire. Organisez les récurrences, documents et renouvellements dans Dominex.',
   },
 };
 

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Plus, Pencil, Trash2, Tag } from 'lucide-react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -19,9 +19,23 @@ import { EmptyState } from '@/components/mobile/EmptyState';
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  embedded?: boolean;
 }
 
-export function EquipmentCategoryManagerDialog({ open, onOpenChange }: Props) {
+interface ManagerShellProps extends Props {
+  title: string;
+  children: ReactNode;
+}
+
+function EmbeddedManagerShell({ children }: ManagerShellProps) {
+  return <>{children}</>;
+}
+
+function ModalManagerShell({ open, onOpenChange, title, children }: ManagerShellProps) {
+  return <ResponsiveModal open={open} onOpenChange={onOpenChange} title={title}>{children}</ResponsiveModal>;
+}
+
+export function EquipmentCategoryManagerDialog({ open, onOpenChange, embedded = false }: Props) {
   const isMobile = useIsMobile();
   const { locale } = useAppLocaleContext();
   const tcat = MESSAGES[locale].app.equipment.categories;
@@ -92,9 +106,11 @@ export function EquipmentCategoryManagerDialog({ open, onOpenChange }: Props) {
     </div>
   );
 
+  const ManagerShell = embedded ? EmbeddedManagerShell : ModalManagerShell;
+
   return (
     <>
-      <ResponsiveModal open={open} onOpenChange={onOpenChange} title={tcat.dialogTitle}>
+      <ManagerShell open={open} onOpenChange={onOpenChange} title={tcat.dialogTitle} embedded={embedded}>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
             {tcat.dialogDesc}
@@ -227,7 +243,7 @@ export function EquipmentCategoryManagerDialog({ open, onOpenChange }: Props) {
             </div>
           )}
         </div>
-      </ResponsiveModal>
+      </ManagerShell>
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>

@@ -11,7 +11,8 @@ import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { Badge } from '@/components/ui/badge';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
-import { Progress } from '@/components/ui/progress';
+import { FormWizardStepper } from '@/components/ui/FormWizardStepper';
+import { WizardMobileSummary, WizardReviewChecklist } from '@/components/ui/WizardReviewChecklist';
 import { AssigneeMultiSelect } from '@/components/schedule/AssigneeMultiSelect';
 import { useContracts, useContractPlanActivities, generateOccurrences, getFrequencyLabel, type PlanActivityInput, type FreqCode, activityPeriodMonths, generateGroupedVisits, isMonthlyCadence, REGENERABLE_OS_STATUSES } from '@/hooks/useContracts';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
@@ -22,6 +23,8 @@ import { useCustomers, CustomerInput } from '@/hooks/useCustomers';
 import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
 import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
 import { useEquipment } from '@/hooks/useEquipment';
+import { usePartyLabels } from '@/hooks/usePartyLabels';
+import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
 import { useEquipmentCategories } from '@/hooks/useEquipmentCategories';
 import { EquipmentFormDialog } from '@/components/customers/EquipmentFormDialog';
 import { useTechnicians, useProfiles } from '@/hooks/useProfiles';
@@ -49,9 +52,20 @@ import {
   reconstructMachineConfigs,
   buildPmocPlanFromMachines,
   buildPmocItemsWithScope,
+  pickExcludedQuestionsForSource,
+  replaceExcludedQuestionsForSource,
 } from '@/components/contracts/pmocMachineRoutine';
 import { PmocChecklistPicker } from '@/components/contracts/PmocChecklistPicker';
 import { CommonChecklistEditor, type ChecklistTemplateOption } from '@/components/contracts/CommonChecklistEditor';
+import { ContractPortalSectionsCard } from '@/components/contracts/ContractPortalSectionsCard';
+import { useCustomerPortalSettings } from '@/hooks/useCustomerPortalSettings';
+import {
+  parseContractPortalSections,
+  setContractPortalSectionState,
+  type ContractPortalSectionKey,
+  type ContractPortalSections,
+  type ContractPortalSectionState,
+} from '@/lib/contractPortalSections';
 import { usePmocNormTemplates, familyForScope, type PmocNormTemplate } from '@/hooks/usePmocNormTemplates';
 import { useUserCompany } from '@/hooks/useUserCompany';
 import { isEveryVisit } from '@/components/contracts/questionFrequency';
@@ -222,6 +236,7 @@ function newEnvRow(): EnvRow {
 export function ContractFormDialog({ open, onOpenChange, onCreated, editContract, defaultCustomerId }: ContractFormDialogProps) {
   const { locale, currency, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.contracts.contractForm;
+  const tPortal = MESSAGES[locale].app.pmoc.contractDetail.overview;
 
   const { createContract, updateContract, createContractInstallments } = useContracts();
   // Plano de serviços já persistido (só carrega em edição). Hook é a fronteira
@@ -276,6 +291,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // wizard pra navegar livremente (ida e volta) entre etapas já alcançadas, sem
   // pular uma etapa obrigatória ainda não preenchida (item 5 do lote PMOC).
   const [maxStepReached, setMaxStepReached] = useState(0);
+  const [navigationMessage, setNavigationMessage] = useState('');
+  const stepContentRef = useRef<HTMLDivElement>(null);
   // PMOC organiza a etapa 3 por ambientes; comum mantém a lista flat. (isPmoc é
   // declarado mais abaixo; STEPS é derivado num useMemo após isPmoc existir.)
   const [submitting, setSubmitting] = useState(false);
@@ -292,6 +309,14 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const [formTemplateId, setFormTemplateId] = useState('');
   const [notes, setNotes] = useState('');
   const [isActive, setIsActive] = useState(true);
+
+  // Configuração do Portal vive no próprio fluxo de edição do contrato. O
+  // formulário só envia estes campos junto do UPDATE canônico; criação mantém os
+  // defaults do banco e não expõe uma etapa sem token/contrato persistido.
+  const [portalIsPublic, setPortalIsPublic] = useState(true);
+  const [portalSections, setPortalSections] = useState<ContractPortalSections>({});
+  const { settings: ownerPortalSettings, isLoading: ownerPortalLoading } =
+    useCustomerPortalSettings(customerId || null, open && isEditing && !!customerId);
 
   // ── Etapa Financeiro (SÓ na criação) ──────────────────────────────────────
   // Trata de COMO e QUANDO receber. Nada aqui vai pra tabela `contracts` (ela
@@ -457,6 +482,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const initialIsPmocRef = useState<{ value: boolean }>({ value: false })[0];
 
   const { equipment, createEquipment } = useEquipment(customerId || undefined);
+  const { labelsFor: equipmentLabelsFor } = usePartyLabels('equipment');
   const { categories: equipmentCategories } = useEquipmentCategories();
   const activeEquipment = equipment.filter(eq => eq.status === 'active');
 
@@ -489,35 +515,40 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     [customers, customerId],
   );
 
-  // Wizard dinâmico: PMOC tem 6 etapas (info → unit → items → frequency → team →
-  // [finance] → review); comum tem 5 (info → items → frequency → team →
-  // [finance] → review). O conteúdo é renderizado pela KEY do step atual (nunca
-  // por índice numérico) pra não dar drift quando o PMOC liga/desliga.
-  // `finance` só entra na CRIAÇÃO — em edição o dono das parcelas é a aba
-  // Financeiro do contrato (que edita/exclui/aplica em massa). Repetir a etapa
-  // no editar geraria a série de novo a cada salvar.
-  // Arrays traduzidos — derivados do locale ativo via i18n.
-  const financeStep = useMemo(
-    () => (isEditing ? [] : [{ key: 'finance', label: t.steps.finance }]),
-    [isEditing, t],
+  // O fluxo usa as mesmas cinco decisões na criação, com Portal antes da revisão
+  // apenas na edição. Unidade/RT fica em Dados e a geração financeira em
+  // Operação e cobrança: ambas dependem do contexto dessas etapas e não
+  // justificam uma tela isolada.
+  const portalStep = useMemo(
+    () => (isEditing ? [{ key: 'portal', label: 'Portal' }] : []),
+    [isEditing],
   );
-  const STEPS_COMMON = useMemo(() => [
-    { key: 'info', label: t.steps.info },
-    { key: 'items', label: t.steps.items },
-    { key: 'frequency', label: t.steps.frequency },
-    { key: 'team', label: t.steps.team },
-    ...financeStep,
-    { key: 'review', label: t.steps.review },
-  ], [t, financeStep]);
-  const STEPS_PMOC = useMemo(() => [
-    { key: 'info', label: t.steps.info },
-    { key: 'unit', label: t.steps.unit },
-    { key: 'items', label: t.steps.items },
-    { key: 'frequency', label: t.steps.frequency },
-    { key: 'team', label: t.steps.team },
-    ...financeStep,
-    { key: 'review', label: t.steps.review },
-  ], [t, financeStep]);
+  const STEPS = useMemo(() => {
+    const labels = locale === 'pt-br'
+      ? {
+          info: 'Dados do contrato',
+          items: 'Escopo técnico',
+          frequency: 'Agenda',
+          team: 'Operação e cobrança',
+          review: 'Revisão',
+        }
+      : {
+          info: t.steps.info,
+          items: t.steps.items,
+          frequency: t.steps.frequency,
+          team: t.steps.team,
+          review: t.steps.review,
+        };
+
+    return [
+      { key: 'info', label: labels.info },
+      { key: 'items', label: labels.items },
+      { key: 'frequency', label: labels.frequency },
+      { key: 'team', label: labels.team },
+      ...portalStep,
+      { key: 'review', label: labels.review },
+    ];
+  }, [locale, portalStep, t]);
   const QUICK_MONTHS = useMemo(() => [
     { label: t.quickMonths.monthly, value: 1 },
     { label: t.quickMonths.bimonthly, value: 2 },
@@ -537,8 +568,46 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     ACTIVITY_FREQ_CODES.map(code => ({ code, label: t.activityFreq[code] })),
   [t]);
 
-  const STEPS = isPmoc ? STEPS_PMOC : STEPS_COMMON;
   const currentStepKey = STEPS[step]?.key ?? 'info';
+  const currentStepCopy = useMemo(() => {
+    const copy: Record<string, { title: string; description: string }> = {
+      info: {
+        title: 'Dados do contrato',
+        description: isPmoc
+          ? 'Defina cliente, modalidade, unidade atendida e responsável técnico.'
+          : 'Defina o cliente, o nome do contrato e a modalidade do atendimento.',
+      },
+      items: {
+        title: isPmoc ? 'Ambientes e equipamentos' : 'Equipamentos e escopo',
+        description: isPmoc
+          ? 'Organize os ambientes climatizados, os equipamentos e os checklists de cada item.'
+          : 'Selecione os equipamentos e serviços que fazem parte deste contrato.',
+      },
+      frequency: {
+        title: 'Agenda',
+        description: 'Defina a cadência, o início e o horizonte do atendimento recorrente.',
+      },
+      team: {
+        title: 'Operação e cobrança',
+        description: isEditing
+          ? 'Escolha os responsáveis e complete as definições operacionais.'
+          : 'Escolha os responsáveis e, se necessário, configure as parcelas do contrato.',
+      },
+      portal: {
+        title: 'Portal do cliente',
+        description: 'Controle o acesso e as informações que ficam disponíveis no portal.',
+      },
+      review: {
+        title: 'Revisão final',
+        description: 'Confira o escopo, a agenda e os responsáveis antes de salvar.',
+      },
+    };
+
+    return copy[currentStepKey] ?? {
+      title: STEPS[step]?.label ?? 'Contrato',
+      description: 'Revise as informações desta etapa antes de continuar.',
+    };
+  }, [STEPS, currentStepKey, isEditing, isPmoc, step]);
 
   // ── Etapa Financeiro: dados, máscara e preview ────────────────────────────
   // Hooks são a fronteira do Supabase (o componente nunca lê/escreve direto).
@@ -703,8 +772,9 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     name: string; customerId: string; serviceTypeId: string; formTemplateId: string;
     notes: string; isActive: boolean; isPmoc: boolean; responsibleTechnicianId: string;
     freqType: 'months' | 'days'; freqValue: number; startDate: string; horizonMonths: number;
-    // Etapa atual (restaura onde parou).
-    step: number;
+    // Etapa atual por chave. `step` continua no payload só para migrar
+    // rascunhos antigos, que eram acoplados à quantidade de etapas.
+    step: number; stepKey?: string;
     // Unidade & RT (Seção 1, só PMOC).
     unidadeNome: string; unidadeEndereco: string; unidadeNumero: string;
     unidadeComplemento: string; unidadeBairro: string; unidadeCidade: string;
@@ -733,7 +803,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     // usuário) são ignorados na detecção de "tem rascunho" — evita falso prompt
     // num form recém-aberto. step/arrays vazios também não contam.
     ignoreKeys: [
-      'isActive', 'freqType', 'freqValue', 'startDate', 'horizonMonths', 'step',
+      'isActive', 'freqType', 'freqValue', 'startDate', 'horizonMonths', 'step', 'stepKey',
       'unidadeNome', 'unidadeEndereco', 'unidadeNumero', 'unidadeComplemento',
       'unidadeBairro', 'unidadeCidade', 'unidadeUf', 'unidadeCep',
       // Etapa Financeiro: `finGenerate` nasce false e `finFrequency` nasce
@@ -748,6 +818,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const buildDraftSnapshot = (): ContractDraft => ({
     name, customerId, serviceTypeId, formTemplateId, notes, isActive, isPmoc,
     responsibleTechnicianId, freqType, freqValue, startDate, horizonMonths, step,
+    stepKey: currentStepKey,
     unidadeNome, unidadeEndereco, unidadeNumero, unidadeComplemento,
     unidadeBairro, unidadeCidade, unidadeUf, unidadeCep,
     environments, looseItems, machineConfigs, commonChecklists,
@@ -875,9 +946,19 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     }
     setCommonChecklists(restoredChecklists);
     setCommonChecklistsLoaded(true);
-    // Restaura a etapa onde parou (clampa pro range válido — depende de isPmoc).
-    const stepsLen = (d.isPmoc ? STEPS_PMOC : STEPS_COMMON).length;
-    setStep(Math.min(Math.max(d.step ?? 0, 0), stepsLen - 1));
+    // Restaura pela chave sem acoplar o rascunho à quantidade de etapas. Para
+    // snapshots antigos, converte as etapas removidas para o novo contexto.
+    const legacyKeys = d.isPmoc
+      ? ['info', 'unit', 'items', 'frequency', 'team', 'finance', 'review']
+      : ['info', 'items', 'frequency', 'team', 'finance', 'review'];
+    const requestedKey = d.stepKey || legacyKeys[Math.max(d.step ?? 0, 0)] || 'info';
+    const migratedKey = requestedKey === 'unit'
+      ? 'info'
+      : requestedKey === 'finance'
+        ? 'team'
+        : requestedKey;
+    const restoredStep = STEPS.findIndex((item) => item.key === migratedKey);
+    setStep(restoredStep >= 0 ? restoredStep : 0);
   };
 
   useEffect(() => {
@@ -894,6 +975,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       setRemovingEnvKey(null); setRemovingMember(null); setMovingLooseIdx(null);
       setLooseItems([]);
       setEnvironmentsLoaded(false);
+      setPortalIsPublic(true);
+      setPortalSections({});
       return;
     }
 
@@ -928,6 +1011,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       setFreqValue(editContract.frequency_value || 1);
       setStartDate(editContract.start_date || format(new Date(), 'yyyy-MM-dd'));
       setHorizonMonths(editContract.horizon_months || 12);
+      setPortalIsPublic(editContract.portal_is_public !== false);
+      setPortalSections(parseContractPortalSections(editContract.portal_sections));
       // Plano de atividades é repopulado por um efeito dedicado quando a query
       // useContractPlanActivities resolve (carrega async). Aqui só limpamos o
       // editor de "nova atividade".
@@ -1049,6 +1134,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       setFinFirstDueDate(''); setFinFrequency('mensal'); setFinCount('');
       setFinAccountId(''); setFinAccountLabel(''); setFinCategory(''); setFinCostCenterId(null);
       setFinPaymentMethod('');
+      setPortalIsPublic(true); setPortalSections({});
       initialIsPmocRef.value = false;
     }
   }, [open, editContract]);
@@ -1693,8 +1779,12 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           activities: acts,
           customized: false,
           normTemplateIds: nextNorm,
-          // Recomeça a 1ª OS limpa ao trocar de família (perguntas mudam).
-          firstOsExcludedQuestions: usesInlinePmocEditor ? [] : cur.firstOsExcludedQuestions,
+          // Recomeça apenas a fatia da NORMA ao trocar de família. A coluna é
+          // uma união norma + personalizados; zerar tudo apagava as escolhas
+          // dos checklists próprios da empresa.
+          firstOsExcludedQuestions: usesInlinePmocEditor
+            ? cur.firstOsExcludedQuestions.filter((id) => !normChecklistQuestionIds.has(id))
+            : cur.firstOsExcludedQuestions,
         },
       };
     });
@@ -1714,7 +1804,24 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     const cfg = machineConfigs[eqId];
     return {
       normTemplateIds: cfg?.normTemplateIds ?? [],
-      excluded: cfg?.firstOsExcludedQuestions ?? [],
+      excluded: pickExcludedQuestionsForSource(
+        cfg?.firstOsExcludedQuestions ?? [],
+        normChecklistQuestionIds,
+      ),
+    };
+  };
+
+  // Mesmo estado persistido do editor da norma, mas recortado para a fonte de
+  // checklists personalizados. Manter os editores separados deixa explícito o
+  // que vem da norma e o que foi criado pela empresa.
+  const getMachineCustomChecklist = (eqId: string) => {
+    const cfg = machineConfigs[eqId];
+    return {
+      templateIds: cfg?.customTemplateIds ?? [],
+      excluded: pickExcludedQuestionsForSource(
+        cfg?.firstOsExcludedQuestions ?? [],
+        customChecklistQuestionIds,
+      ),
     };
   };
 
@@ -1737,7 +1844,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       const prevIds = cur.normTemplateIds ?? [];
       // Quais ids são NOVOS nesta chamada (entraram agora).
       const prevSet = new Set(prevIds);
-      let nextIds = [...templateIds];
+      const nextIds = [...templateIds];
       for (const id of templateIds) {
         if (prevSet.has(id)) continue; // já estava — não é entrada nova
         const t = normTemplateById.get(id);
@@ -1764,7 +1871,47 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     setMachineConfigs(prev => {
       const cur = prev[eqId];
       if (!cur) return prev;
-      return { ...prev, [eqId]: { ...cur, firstOsExcludedQuestions: excluded } };
+      return {
+        ...prev,
+        [eqId]: {
+          ...cur,
+          firstOsExcludedQuestions: replaceExcludedQuestionsForSource(
+            cur.firstOsExcludedQuestions,
+            normChecklistQuestionIds,
+            excluded,
+          ),
+        },
+      };
+    });
+  };
+
+  const setMachineCustomChecklistTemplates = (eqId: string, templateIds: string[]) => {
+    setMachineConfigs(prev => {
+      const cur = prev[eqId];
+      if (!cur) return prev;
+      const same =
+        cur.customTemplateIds.length === templateIds.length &&
+        cur.customTemplateIds.every((id, index) => id === templateIds[index]);
+      if (same) return prev;
+      return { ...prev, [eqId]: { ...cur, customTemplateIds: templateIds, customized: true } };
+    });
+  };
+
+  const setMachineCustomChecklistExcluded = (eqId: string, excluded: string[]) => {
+    setMachineConfigs(prev => {
+      const cur = prev[eqId];
+      if (!cur) return prev;
+      return {
+        ...prev,
+        [eqId]: {
+          ...cur,
+          firstOsExcludedQuestions: replaceExcludedQuestionsForSource(
+            cur.firstOsExcludedQuestions,
+            customChecklistQuestionIds,
+            excluded,
+          ),
+        },
+      };
     });
   };
 
@@ -1848,6 +1995,19 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           })),
         })),
     [templates],
+  );
+
+  // A coluna `first_os_excluded_questions` é uma união. Estes conjuntos definem
+  // a propriedade de cada fatia para os dois editores inline e impedem que um
+  // deles pode as exclusões pertencentes ao outro.
+  const customChecklistQuestionIds = useMemo(
+    () => new Set(commonChecklistTemplates.flatMap((template) => template.questions.map((q) => q.id))),
+    [commonChecklistTemplates],
+  );
+
+  const normChecklistQuestionIds = useMemo(
+    () => new Set(pmocNormTemplates.flatMap((template) => template.questions.map((q) => q.id))),
+    [pmocNormTemplates],
   );
 
   // Mapa de perguntas-toda-visita por template — usado pra NUNCA gravar uma
@@ -2081,25 +2241,28 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     equipment_ids: e.equipment_ids,
   }));
 
+  const handlePortalSectionChange = (
+    key: ContractPortalSectionKey,
+    state: ContractPortalSectionState,
+  ) => {
+    // Chave ausente é semanticamente `free`; o helper mantém o JSON enxuto e
+    // preserva a compatibilidade dos contratos que nunca configuraram a matriz.
+    setPortalSections((current) => setContractPortalSectionState(current, key, state));
+  };
+
   const canNext = () => {
     switch (currentStepKey) {
       case 'info':
         // Bloqueio só pra nome + cliente. PMOC sem RT é permitido (warning no submit).
         return !!customerId && !!name;
-      case 'unit':
-        // Unidade & RT são opcionais (RT pode vir depois; unidade pré-preenche do cliente).
-        return true;
       case 'frequency':
         return freqValue > 0 && !!startDate;
       case 'team':
-        // Exige ao menos 1 responsável pela execução (técnico OU equipe).
-        return (selectedUserIds?.length ?? 0) > 0 || (selectedTeamIds?.length ?? 0) > 0;
-      case 'finance':
-        // Etapa 100% opcional: só trava quando o usuário LIGOU a geração e
-        // deixou um valor impossível (ano fora de faixa, acima do teto de
-        // parcelas). Desligada ou incompleta, avança normalmente.
-        if (!finGenerate) return true;
-        return !finCountExceedsMax && !finDueDateYearInvalid;
+        // Operação exige executor. Na criação, a mesma etapa também valida a
+        // cobrança opcional quando o usuário decidiu gerar parcelas.
+        if ((selectedUserIds?.length ?? 0) === 0 && (selectedTeamIds?.length ?? 0) === 0) return false;
+        if (!isEditing && finGenerate) return !finCountExceedsMax && !finDueDateYearInvalid;
+        return true;
       case 'items':
       case 'review':
       default:
@@ -2135,6 +2298,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       start_date: startDate,
       horizon_months: horizonMonths,
       billing_responsible_ids: billingUserIds,
+      portal_is_public: portalIsPublic,
+      portal_sections: portalSections,
       // Plano de serviços com frequência (Fase 1/2/3). PMOC = plano POR MÁQUINA
       // (cada atividade com equipment_ref + as locais); comum LEGADO = planActivities.
       // Comum SEM plano = undefined (não toca contract_plan_activities — preserva).
@@ -2456,8 +2621,98 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     }
   };
 
-  const progressPercent = ((step + 1) / STEPS.length) * 100;
+  const visibleMaxStepIndex = Math.max(
+    maxStepReached,
+    canNext() ? Math.min(step + 1, STEPS.length - 1) : maxStepReached,
+  );
   const clientName = customers.find(c => c.id === customerId)?.name || '-';
+  const contractReviewItems = [
+    {
+      key: 'identity',
+      label: 'Dados do contrato',
+      detail: name.trim() && customerId
+        ? `${name.trim()} para ${clientName}.`
+        : 'Informe o nome do contrato e selecione o cliente.',
+      complete: !!name.trim() && !!customerId,
+      stepIndex: STEPS.findIndex(item => item.key === 'info'),
+    },
+    ...(isPmoc ? [{
+      key: 'technical-responsible',
+      label: 'Unidade e responsável técnico',
+      detail: responsibleTechnicianId
+        ? 'Responsável técnico definido para a documentação PMOC.'
+        : 'O responsável técnico pode ser definido depois.',
+      complete: !!responsibleTechnicianId,
+      optional: true,
+      stepIndex: STEPS.findIndex(item => item.key === 'info'),
+    }] : []),
+    {
+      key: 'scope',
+      label: 'Escopo técnico',
+      detail: effectiveItems.length > 0
+        ? `${effectiveItems.length} equipamento(s) distribuído(s) em ${environments.length} ambiente(s).`
+        : 'O escopo pode ser completado depois, se o contrato ainda estiver em preparação.',
+      complete: effectiveItems.length > 0,
+      optional: true,
+      stepIndex: STEPS.findIndex(item => item.key === 'items'),
+    },
+    {
+      key: 'schedule',
+      label: 'Agenda',
+      detail: freqValue > 0 && startDate
+        ? `${visitCount} visita(s) previstas a partir de ${format(new Date(`${startDate}T12:00:00`), 'dd/MM/yyyy')}.`
+        : 'Defina a frequência e a data de início.',
+      complete: freqValue > 0 && !!startDate,
+      stepIndex: STEPS.findIndex(item => item.key === 'frequency'),
+    },
+    {
+      key: 'operation',
+      label: 'Operação e cobrança',
+      detail: hasExecutor
+        ? `${selectedUserIds.length} técnico(s) e ${selectedTeamIds.length} equipe(s) responsáveis.`
+        : 'Selecione ao menos um técnico ou uma equipe executora.',
+      complete: hasExecutor,
+      stepIndex: STEPS.findIndex(item => item.key === 'team'),
+    },
+  ];
+
+  const advanceContractWithValidation = () => {
+    if (canNext()) {
+      setNavigationMessage('');
+      setStep(current => Math.min(STEPS.length - 1, current + 1));
+      return;
+    }
+
+    let message = 'Revise os campos obrigatórios desta etapa para continuar.';
+    let selector = 'input, button, [role="combobox"]';
+    if (currentStepKey === 'info') {
+      if (!name.trim()) {
+        message = 'Informe o nome do contrato para continuar.';
+        selector = '[data-contract-validation="name"] input';
+      } else if (!customerId) {
+        message = 'Selecione o cliente do contrato para continuar.';
+        selector = '[data-contract-validation="customer"] button';
+      }
+    } else if (currentStepKey === 'frequency') {
+      message = !startDate
+        ? 'Defina a data de início do contrato para continuar.'
+        : 'Informe uma frequência maior que zero para continuar.';
+      selector = '[data-contract-validation="frequency"] input, [data-contract-validation="frequency"] button';
+    } else if (currentStepKey === 'team') {
+      if (!hasExecutor) {
+        message = 'Selecione ao menos um técnico ou uma equipe executora para continuar.';
+        selector = '[data-contract-validation="executors"] button';
+      } else {
+        message = 'Revise a configuração financeira antes de continuar.';
+        selector = '[data-contract-validation="finance"] input, [data-contract-validation="finance"] button';
+      }
+    }
+    setNavigationMessage(message);
+    requestAnimationFrame(() => {
+      (stepContentRef.current?.querySelector<HTMLElement>(selector)
+        ?? stepContentRef.current?.querySelector<HTMLElement>('input, button, [role="combobox"]'))?.focus();
+    });
+  };
 
   // Toggle PMOC — fica no TOPO da etapa Informações (logo após o Cliente). É onde
   // se decide se o contrato é PMOC. Os detalhes (RT, unidade, badge legal) migraram
@@ -2682,65 +2937,46 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // Conteúdo do wizard (stepper + etapas). Renderizado dentro do ResponsiveModal,
   // cujo footer recebe a navegação Voltar/Próximo/Criar separadamente.
   const wizardContent = (
-    <div className="flex flex-col">
-        {/* Stepper — indicador de etapas centralizado horizontalmente */}
-        <div className="space-y-3">
-          <Progress value={progressPercent} className="h-1.5 max-w-md mx-auto" />
-          <div className="flex items-center justify-center gap-1 flex-wrap">
-            {STEPS.map((s, i) => {
-              // Clicável quando já visitada (≤ maxStepReached) ou é a próxima e a
-              // atual está válida. As demais ficam travadas (não pula obrigatória).
-              const clickable = i <= maxStepReached || (i === step + 1 && canNext());
-              return (
-              <div key={s.key} className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => goToStep(i)}
-                  disabled={!clickable}
-                  aria-current={i === step ? 'step' : undefined}
-                  className={cn(
-                    'flex items-center justify-center h-7 w-7 rounded-full text-xs font-bold transition-colors shrink-0',
-                    i < step ? 'bg-primary text-primary-foreground' :
-                    i === step ? 'bg-primary text-primary-foreground ring-2 ring-primary/30' :
-                    'bg-muted text-muted-foreground',
-                    clickable ? 'cursor-pointer hover:opacity-90' : 'cursor-not-allowed opacity-70',
-                  )}
-                >
-                  {i < step ? <Check className="h-3.5 w-3.5" /> : i + 1}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => goToStep(i)}
-                  disabled={!clickable}
-                  className={cn(
-                    'text-xs hidden sm:inline truncate text-left',
-                    i === step ? 'font-medium text-foreground' : 'text-muted-foreground',
-                    clickable ? 'cursor-pointer hover:text-foreground' : 'cursor-not-allowed',
-                  )}
-                >
-                  {s.label}
-                </button>
-                {i < STEPS.length - 1 && <div className="w-4 sm:w-8 h-px bg-border mx-1" />}
-              </div>
-              );
-            })}
-          </div>
-        </div>
+    <div className="flex min-w-0 flex-col">
+        <FormWizardStepper
+          steps={STEPS}
+          currentIndex={step}
+          maxReachedIndex={visibleMaxStepIndex}
+          onStepChange={goToStep}
+          ariaLabel="Etapas do contrato"
+          className="border-b pb-3"
+        />
 
         {/* Content — animação direcional de troca de etapa (slide + fade).
             O scroll fica no container do ResponsiveModal; o StepTransition não
             força overflow/height. */}
-        <div className="flex-1 mt-4">
-          <StepTransition stepKey={currentStepKey} index={step} className="space-y-4">
+        <div className="mt-4 grid flex-1 gap-6 xl:grid-cols-[minmax(0,1fr)_248px] xl:gap-0 xl:divide-x">
+          <main ref={stepContentRef} className="min-w-0 xl:pr-6">
+            <header className="mb-4">
+              <p className="hidden text-[11px] font-semibold uppercase tracking-wide text-muted-foreground lg:block">
+                Etapa {step + 1} de {STEPS.length}
+              </p>
+              <h3 className="mt-1 text-lg font-semibold leading-tight text-foreground">
+                {currentStepCopy.title}
+              </h3>
+              <p className="mt-1 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+                {currentStepCopy.description}
+              </p>
+            </header>
+          <StepTransition
+            stepKey={currentStepKey}
+            index={step}
+            className="min-w-0 space-y-4"
+          >
           {/* STEP: Informações */}
           {currentStepKey === 'info' && (
             <div className="space-y-4">
-              <div className="space-y-2">
+              <div className="space-y-2" data-contract-validation="name">
                 <Label>{t.info.nameLabel}</Label>
                 <Input value={name} onChange={e => setName(e.target.value)} placeholder={t.info.namePlaceholder} />
                 <p className="text-xs text-muted-foreground">{t.info.nameHint}</p>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" data-contract-validation="customer">
                 <Label>{t.info.customerLabel}</Label>
                 <CustomerSelectField
                   customers={customers}
@@ -2752,22 +2988,17 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                 />
               </div>
 
-              {/* PMOC (Onda A v1.9.0) — toggle no TOPO da etapa, logo após o Cliente.
-                  Os detalhes (RT, unidade, badge legal) ficam na etapa "Unidade & RT".
-                  Equipe, cobrança, tipo de serviço, checklist, observações e status
-                  migraram pra etapa "Equipe & Cobrança". A Identificação fica enxuta.
-                  PMOC é exclusivo de refrigeração — fora desse segmento o toggle
-                  nem aparece (e toda a estrutura PMOC fica oculta). */}
+              {/* PMOC é exclusivo de refrigeração. Unidade e RT aparecem logo
+                  após a escolha da modalidade porque completam os dados-base do
+                  contrato, sem criar uma etapa opcional isolada. */}
               {canUsePmoc && pmocToggleSection}
+              {isPmoc && pmocUnitSection}
             </div>
           )}
 
-          {/* STEP: Unidade & RT (só PMOC) — RT, Identificação da Unidade e badge legal. */}
-          {currentStepKey === 'unit' && pmocUnitSection}
-
           {/* STEP: Frequência */}
           {currentStepKey === 'frequency' && (
-            <div className="space-y-4">
+            <div className="space-y-4" data-contract-validation="frequency">
               {/* COMUM com plano de serviços: o motor gera 1 visita/mês agrupando o
                   que vence — a cadência única fica irrelevante e é recolhida.
                   PMOC: mostra o MESMO seletor de cadência (P1a). Default Mensal, em
@@ -2781,19 +3012,24 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
               ) : (
                 <>
                   {isPmoc && (
-                    <NoticeBanner variant="info" icon={ShieldCheck} title={t.frequency.pmocCadenceAlertTitle}>
-                      <div className="space-y-1">
-                        <p>
+                    <div
+                      className="flex items-start gap-2.5 border-y py-2.5 text-sm"
+                      data-contract-guidance="pmoc-cadence"
+                    >
+                      <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-info" />
+                      <div className="min-w-0 space-y-0.5">
+                        <p className="font-medium text-foreground">{t.frequency.pmocCadenceAlertTitle}</p>
+                        <p className="text-xs leading-relaxed text-muted-foreground">
                           {t.frequency.pmocCadenceDesc}
                         </p>
                         {!isMonthlyCadence(freqType, freqValue) && (
-                          <p className="flex items-start gap-1.5 text-warning">
+                          <p className="flex items-start gap-1.5 pt-1 text-xs text-warning">
                             <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-px" />
                             <span>{t.frequency.pmocCadenceCustomWarning}</span>
                           </p>
                         )}
                       </div>
-                    </NoticeBanner>
+                    </div>
                   )}
                   <div className="space-y-2">
                     <Label>{t.frequency.freqTypeLabel}</Label>
@@ -3327,7 +3563,12 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                           </div>
 
                           {isPmoc && expanded && (
-                            <div className="space-y-2.5 bg-muted/30 px-3 pb-3 pt-1">
+                            <div className="space-y-3 border-t bg-muted/20 px-3 py-3">
+                              <section className="space-y-2 rounded-lg border bg-background p-3">
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="info" className="h-5 min-w-5 justify-center px-1.5">1</Badge>
+                                  <p className="text-xs font-semibold text-foreground">Escopo desta máquina</p>
+                                </div>
                               <div className="flex flex-col gap-1.5">
                                 <div className="flex items-center gap-1">
                                   <span className="text-[11px] font-medium text-muted-foreground">{t.items.scopeLabel}</span>
@@ -3368,32 +3609,67 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                                   aria-label={t.items.scopeAriaLabel}
                                 />
                               </div>
+                              </section>
 
-                              {/* PMOC NOVO (P2): editor INLINE por máquina — mesmo
-                                  CommonChecklistEditor do contrato comum, alimentado
-                                  pelos templates de NORMA. Default por escopo:
+                              {/* PMOC NOVO (P2): editores INLINE por máquina — o
+                                  primeiro recebe os templates da NORMA e o segundo
+                                  os checklists PERSONALIZADOS da empresa. Default:
                                   'ac'→Expansão Direta (Essencial); 'full'→Sistemas
                                   Centrais (Essencial). Sem select de fase: a "1ª OS"
                                   é por pergunta (checkbox do editor). A geração pelo
                                   caminho comum fica pra P3. */}
                               {usesInlinePmocEditor ? (
-                                <div className="pt-1">
+                                <div className="space-y-3">
                                   {pmocNormLoading ? (
                                     <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
                                       {t.items.normLoadingLabel}
                                     </span>
                                   ) : (
-                                    <CommonChecklistEditor
-                                      templates={pmocNormTemplates}
-                                      selectedTemplateIds={getMachineNorm(eqId).normTemplateIds}
-                                      onChangeTemplates={(ids) => setMachineNormTemplates(eqId, ids)}
-                                      excluded={getMachineNorm(eqId).excluded}
-                                      onChangeExcluded={(next) => setMachineNormExcluded(eqId, next)}
-                                      addOptionSections={normAddOptionSections}
-                                      groupLabel="Checklists da norma desta máquina"
-                                    />
+                                    <section className="space-y-2 rounded-lg border bg-background p-3">
+                                      <div className="flex items-center gap-2">
+                                        <Badge variant="info" className="h-5 min-w-5 justify-center px-1.5">2</Badge>
+                                        <div>
+                                          <p className="text-xs font-semibold text-foreground">Checklists da norma</p>
+                                          <p className="text-[11px] text-muted-foreground">Selecione o conjunto obrigatório para este equipamento.</p>
+                                        </div>
+                                      </div>
+                                      <CommonChecklistEditor
+                                        templates={pmocNormTemplates}
+                                        selectedTemplateIds={getMachineNorm(eqId).normTemplateIds}
+                                        onChangeTemplates={(ids) => setMachineNormTemplates(eqId, ids)}
+                                        excluded={getMachineNorm(eqId).excluded}
+                                        onChangeExcluded={(next) => setMachineNormExcluded(eqId, next)}
+                                        addOptionSections={normAddOptionSections}
+                                        groupLabel="Adicionar checklist da norma"
+                                      />
+                                    </section>
                                   )}
+
+                                  <section className="space-y-2 rounded-lg border bg-background p-3">
+                                    <div className="flex items-center gap-2">
+                                      <Badge variant="info" className="h-5 min-w-5 justify-center px-1.5">3</Badge>
+                                      <div>
+                                        <p className="text-xs font-semibold text-foreground">Checklists personalizados</p>
+                                        <p className="text-[11px] text-muted-foreground">Adicione rotinas próprias da empresa sem substituir a norma.</p>
+                                      </div>
+                                    </div>
+                                    {templatesLoading ? (
+                                      <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                        Carregando checklists personalizados...
+                                      </span>
+                                    ) : (
+                                      <CommonChecklistEditor
+                                        templates={commonChecklistTemplates}
+                                        selectedTemplateIds={getMachineCustomChecklist(eqId).templateIds}
+                                        onChangeTemplates={(ids) => setMachineCustomChecklistTemplates(eqId, ids)}
+                                        excluded={getMachineCustomChecklist(eqId).excluded}
+                                        onChangeExcluded={(next) => setMachineCustomChecklistExcluded(eqId, next)}
+                                        groupLabel="Adicionar checklist personalizado"
+                                      />
+                                    )}
+                                  </section>
                                 </div>
                               ) : (
                                 <>
@@ -3681,7 +3957,6 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                       icon={<ShieldCheck className="h-10 w-10" />}
                       title={t.items.noEnvEmptyTitle}
                       description={isPmoc ? t.items.noEnvEmptyDescPmoc : t.items.noEnvEmptyDescCommon}
-                      action={{ label: t.items.addEnvButton, onClick: addEnvironment }}
                     />
                     {/* Comum: também permite adicionar equipamento sem criar ambiente. */}
                     {!isPmoc && (
@@ -3762,13 +4037,30 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
             );
           })()}
 
-          {/* STEP: Equipe & Cobrança — técnicos executores, responsáveis pela
-              cobrança, tipo de serviço (só comum), checklist padrão (sem plano),
-              observações e status. Migrado da antiga etapa Identificação. */}
+          {/* O checklist padrão descreve o escopo do contrato. Ele fica junto
+              dos equipamentos quando não há plano de atividades próprio. */}
+          {currentStepKey === 'items' && !usePlanEngine && (
+            <div className="space-y-2 border-t pt-4">
+              <Label>{t.team.checklistLabel}</Label>
+              <Select value={formTemplateId || 'none'} onValueChange={v => setFormTemplateId(v === 'none' ? '' : v)}>
+                <SelectTrigger><SelectValue placeholder={t.team.checklistNone} /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">{t.team.checklistNone}</SelectItem>
+                  {templates.filter(tmpl => tmpl.is_active).map(tmpl => (
+                    <SelectItem key={tmpl.id} value={tmpl.id}>{tmpl.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">{t.team.checklistHint}</p>
+            </div>
+          )}
+
+          {/* STEP: Operação e cobrança — executores, responsáveis financeiros,
+              tipo de serviço, observações, status e parcelas opcionais. */}
           {currentStepKey === 'team' && (
             <div className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="sm:col-span-2">
+                <div className="sm:col-span-2" data-contract-validation="executors">
                   <AssigneeMultiSelect
                     technicians={(technicians ?? []).map(t => ({ user_id: t.user_id, full_name: t.full_name, avatar_url: t.avatar_url }))}
                     teams={teamsWithMembers}
@@ -3830,46 +4122,31 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                   </Select>
                   <p className="text-xs text-muted-foreground">{t.team.serviceTypePmocHint}</p>
                 </div>
-                {/* Checklist Padrão só faz sentido em contrato SEM plano de
-                    serviços. Com plano, o checklist vem das atividades por
-                    equipamento — exibir o select duplicaria o checklist na OS.
-                    (usePlanEngine = há atividades agendáveis no plano.) */}
-                {!usePlanEngine && (
-                  <div className="space-y-2">
-                    <Label>{t.team.checklistLabel}</Label>
-                    <Select value={formTemplateId || 'none'} onValueChange={v => setFormTemplateId(v === 'none' ? '' : v)}>
-                      <SelectTrigger><SelectValue placeholder={t.team.checklistNone} /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">{t.team.checklistNone}</SelectItem>
-                        {templates.filter(tmpl => tmpl.is_active).map(tmpl => (
-                          <SelectItem key={tmpl.id} value={tmpl.id}>{tmpl.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">{t.team.checklistHint}</p>
+                <div className="flex items-center gap-3 sm:self-center sm:pt-5">
+                  <Switch checked={isActive} onCheckedChange={setIsActive} />
+                  <div>
+                    <Label>{t.team.activeLabel}</Label>
+                    <p className="text-xs text-muted-foreground">{t.team.activeHint}</p>
                   </div>
-                )}
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>{t.team.notesLabel}</Label>
                 <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder={t.team.notesPlaceholder} rows={3} />
               </div>
-              <div className="flex items-center gap-3 pt-1">
-                <Switch checked={isActive} onCheckedChange={setIsActive} />
-                <div>
-                  <Label>{t.team.activeLabel}</Label>
-                  <p className="text-xs text-muted-foreground">{t.team.activeHint}</p>
-                </div>
-              </div>
             </div>
           )}
 
-          {/* STEP: Financeiro (só na CRIAÇÃO) — COMO e QUANDO receber.
-              Não repete nada das outras etapas: quem cobra (responsáveis) está
-              em Equipe & Cobrança, e o contrato não guarda valor em lugar
-              nenhum. Tudo opcional: com o switch desligado, nada é criado. */}
-          {currentStepKey === 'finance' && (
-            <div className="space-y-4">
+          {/* Cobrança opcional, integrada à mesma etapa em que se define quem
+              executa e quem responde financeiramente pelo contrato. */}
+          {currentStepKey === 'team' && !isEditing && (
+            <div className="space-y-4 border-t pt-5" data-contract-validation="finance">
+              <div>
+                <h4 className="text-sm font-semibold">Configuração financeira</h4>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Gere as parcelas junto com o contrato ou deixe a cobrança para depois.
+                </p>
+              </div>
               {/* On/off simples (não é escolha binária A/B) — mesmo padrão do
                   "Contrato ativo" na etapa Equipe & Cobrança. */}
               <div className="flex items-start gap-3 rounded-lg border bg-muted/20 p-3.5">
@@ -4104,13 +4381,57 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
             </div>
           )}
 
+          {/* STEP: Portal (somente edição). A configuração passa a fazer parte do
+              mesmo save do contrato, sem autosave paralelo nem chamada Supabase no
+              componente. Isso preserva o lock otimista e uma única ação de salvar. */}
+          {currentStepKey === 'portal' && isEditing && (
+            <div className="space-y-5">
+              <div className="flex flex-col gap-3 rounded-xl border bg-muted/15 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <h3 className="flex items-center gap-2 text-base font-semibold">
+                    <ShieldCheck className="h-4 w-4 shrink-0 text-info" />
+                    {tPortal.portalTitle}
+                  </h3>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    {tPortal.portalDesc}
+                  </p>
+                </div>
+                <div className="flex min-w-0 items-center justify-between gap-4 rounded-lg border bg-background px-3 py-2 sm:w-[20rem] sm:shrink-0">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold">{tPortal.portalPublicTitle}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {portalIsPublic
+                        ? tPortal.portalPublicOnDesc
+                        : tPortal.portalPublicOffDesc}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={portalIsPublic}
+                    onCheckedChange={setPortalIsPublic}
+                    aria-label={tPortal.portalPublicTitle}
+                    className="shrink-0"
+                  />
+                </div>
+              </div>
+
+              <ContractPortalSectionsCard
+                locale={locale}
+                sections={portalSections}
+                onChange={handlePortalSectionChange}
+                passwordConfigured={ownerPortalSettings?.passwordConfigured === true}
+                passwordStatusLoading={ownerPortalLoading}
+              />
+
+              <NoticeBanner variant="info" icon={Info} title="As alterações são salvas junto com o contrato">
+                Revise a visibilidade geral e o acesso de cada seção antes de concluir a edição.
+              </NoticeBanner>
+            </div>
+          )}
+
           {/* STEP: Revisão */}
           {currentStepKey === 'review' && (
-            <div className="space-y-4 rounded-lg border p-4">
-              <h3 className="font-semibold flex items-center gap-2">
-                <CalendarCheck className="h-5 w-5 text-primary" />
-                {t.review.title}
-              </h3>
+            <div className="space-y-4">
+              <WizardReviewChecklist items={contractReviewItems} onEdit={setStep} />
 
               {/* Narrativa dinâmica: explica em PT-BR claro tudo o que este
                   contrato vai fazer. Só mostra os blocos que se aplicam. */}
@@ -4143,15 +4464,34 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                 }
                 if (selectedTeamIds.length > 0) teamParts.push(`${selectedTeamIds.length} equipe(s)`);
 
-                const Block = ({ title, children }: { title: string; children: React.ReactNode }) => (
-                  <div className="space-y-1">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
-                    <p className="text-sm leading-relaxed text-foreground">{children}</p>
-                  </div>
-                );
+                const stepByReviewTitle = new Map<string, string>([
+                  [t.review.blockId, 'info'],
+                  [t.review.blockUnitRt, 'info'],
+                  [t.review.blockEnvEquip, 'items'],
+                  [t.review.blockMachinePlan, 'items'],
+                  [t.review.blockFirstVisit, 'items'],
+                  [t.review.blockChecklist, 'items'],
+                  [t.review.blockFrequency, 'frequency'],
+                  [t.review.blockTeam, 'team'],
+                  [t.review.blockFinance, 'team'],
+                ]);
+                const Block = ({ title, children }: { title: string; children: React.ReactNode }) => {
+                  const target = STEPS.findIndex(item => item.key === stepByReviewTitle.get(title));
+                  return (
+                    <section className="grid gap-2 py-4 sm:grid-cols-[10rem_minmax(0,1fr)_auto] sm:items-start">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
+                      <div className="text-sm leading-relaxed text-foreground">{children}</div>
+                      {target >= 0 && (
+                        <Button type="button" variant="ghost" size="sm" className="h-8 w-fit px-2 text-xs" onClick={() => setStep(target)}>
+                          Editar
+                        </Button>
+                      )}
+                    </section>
+                  );
+                };
 
                 return (
-                  <div className="space-y-3 rounded-lg border bg-muted/20 p-3.5">
+                  <div className="divide-y border-y">
                     <Block title={t.review.blockId}>
                       {t.review.contractIs}{isPmoc ? <> <strong>PMOC</strong></> : null}
                       {name?.trim() ? <> {t.review.contractNamed} <strong>{name.trim()}</strong></> : null}
@@ -4391,8 +4731,9 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                 );
               })()}
 
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-1">{t.review.technicalSheet}</p>
-              <div className="grid gap-3 text-sm">
+              <div className="hidden" aria-hidden="true">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-1">{t.review.technicalSheet}</p>
+                <div className="grid gap-3 text-sm">
                 <div className="flex justify-between"><span className="text-muted-foreground">{t.review.labelName}</span><span className="font-medium text-right">{name}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">{t.review.labelCustomer}</span><span className="font-medium">{clientName}</span></div>
                 <div className="flex justify-between">
@@ -4484,10 +4825,84 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                     </div>
                   </div>
                 )}
+                </div>
               </div>
             </div>
           )}
           </StepTransition>
+          </main>
+          <aside className="hidden xl:block xl:pl-6" aria-label="Resumo do contrato">
+            <div className="sticky top-0 space-y-4 rounded-xl border bg-muted/10 p-4">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Resumo do contrato
+                </p>
+                <p className="mt-1 break-words text-sm font-semibold">
+                  {name.trim() || 'Contrato sem nome'}
+                </p>
+                <p className="mt-0.5 break-words text-xs text-muted-foreground">
+                  {customers.find((customer) => customer.id === customerId)?.name || 'Cliente não selecionado'}
+                </p>
+              </div>
+              <div className="grid grid-cols-2 divide-x rounded-lg bg-muted/50 px-1 py-3">
+                <div className="px-2.5">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Equipamentos</p>
+                  <p className="mt-1 text-lg font-semibold">{effectiveItems.length}</p>
+                </div>
+                <div className="px-2.5">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Visitas</p>
+                  <p className="mt-1 text-lg font-semibold">{visitCount}</p>
+                </div>
+              </div>
+              <dl className="space-y-2 text-xs">
+                <div className="flex items-start justify-between gap-3">
+                  <dt className="text-muted-foreground">Modalidade</dt>
+                  <dd className="text-right font-medium">{isPmoc ? 'PMOC' : 'Contrato comum'}</dd>
+                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <dt className="text-muted-foreground">Frequência</dt>
+                  <dd className="text-right font-medium">{getFrequencyLabel(freqType, freqValue)}</dd>
+                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <dt className="text-muted-foreground">Status</dt>
+                  <dd><Badge variant={isActive ? 'success' : 'secondary'}>{isActive ? 'Ativo' : 'Pausado'}</Badge></dd>
+                </div>
+                {isPmoc && (
+                  <>
+                    <div className="flex items-start justify-between gap-3">
+                      <dt className="text-muted-foreground">Unidade</dt>
+                      <dd className="max-w-[9rem] break-words text-right font-medium">
+                        {unidadeNome.trim() || 'Não informada'}
+                      </dd>
+                    </div>
+                    <div className="flex items-start justify-between gap-3">
+                      <dt className="text-muted-foreground">Responsável técnico</dt>
+                      <dd className="max-w-[9rem] break-words text-right font-medium">
+                        {responsibleTechnicians.find((item) => item.id === responsibleTechnicianId)?.full_name || 'A definir'}
+                      </dd>
+                    </div>
+                  </>
+                )}
+                {!isEditing && (
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-muted-foreground">Cobrança</dt>
+                    <dd className="text-right font-medium">
+                      {finGenerate ? `${finPlan.length || 1} parcela(s)` : 'Configurar depois'}
+                    </dd>
+                  </div>
+                )}
+                {isEditing && (
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-muted-foreground">Portal</dt>
+                    <dd className="text-right font-medium">{portalIsPublic ? 'Público' : 'Interno'}</dd>
+                  </div>
+                )}
+              </dl>
+              <p className="border-t pt-3 text-[11px] leading-relaxed text-muted-foreground">
+                Etapa {step + 1} de {STEPS.length}: <span className="font-medium text-foreground">{STEPS[step]?.label}</span>
+              </p>
+            </div>
+          </aside>
         </div>
     </div>
   );
@@ -4495,21 +4910,46 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // Navegação do wizard — vai pro footer do ResponsiveModal (fixo abaixo do
   // conteúdo rolável, no desktop e no mobile).
   const wizardFooter = (
-    <div className="flex flex-row justify-between gap-2">
-      <Button variant="outline" onClick={() => step === 0 ? handleUserClose() : setStep(step - 1)} disabled={submitting}>
-        {step === 0 ? t.nav.cancel : <><ChevronLeft className="h-4 w-4 mr-1" /> {t.nav.back}</>}
-      </Button>
-      {step < STEPS.length - 1 ? (
-        <Button onClick={() => setStep(step + 1)} disabled={!canNext()}>
-          {t.nav.next} <ChevronRight className="h-4 w-4 ml-1" />
-        </Button>
-      ) : (
-        <Button onClick={handleSubmit} disabled={submitting || !canNext()} className="bg-primary text-primary-foreground hover:bg-primary/90">
-          {submitting ? (
-            <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {t.nav.saving}</>
-          ) : isEditing ? t.nav.saveChanges : `${t.nav.createContract} (${visitCount} ${t.nav.oss})`}
-        </Button>
+    <div className="flex flex-col gap-2">
+      <WizardMobileSummary
+        title="Resumo do contrato"
+        summary={`${effectiveItems.length} equipamento(s) · ${visitCount} visita(s)`}
+      >
+        <div className="space-y-3 text-xs">
+          <div>
+            <p className="font-semibold text-foreground">{name.trim() || 'Contrato sem nome'}</p>
+            <p className="mt-0.5 text-muted-foreground">{clientName === '-' ? 'Cliente não selecionado' : clientName}</p>
+          </div>
+          <div className="grid grid-cols-2 divide-x border-y py-2">
+            <div className="px-2"><span className="text-muted-foreground">Equipamentos</span><strong className="ml-2 tabular-nums">{effectiveItems.length}</strong></div>
+            <div className="px-2"><span className="text-muted-foreground">Visitas</span><strong className="ml-2 tabular-nums">{visitCount}</strong></div>
+          </div>
+          <p className="text-muted-foreground">{getFrequencyLabel(freqType, freqValue)} · {isPmoc ? 'PMOC' : 'Contrato comum'}</p>
+        </div>
+      </WizardMobileSummary>
+      {navigationMessage && !canNext() && (
+        <p className="text-right text-xs text-destructive" role="alert">{navigationMessage}</p>
       )}
+      <div className="flex flex-row justify-between gap-2">
+        <Button variant="outline" onClick={() => step === 0 ? handleUserClose() : setStep(step - 1)} disabled={submitting}>
+          {step === 0 ? t.nav.cancel : <><ChevronLeft className="h-4 w-4 mr-1" /> {t.nav.back}</>}
+        </Button>
+        {step < STEPS.length - 1 ? (
+          <Button
+            onClick={advanceContractWithValidation}
+            aria-disabled={!canNext()}
+            className="aria-disabled:opacity-50"
+          >
+            {t.nav.next} <ChevronRight className="h-4 w-4 ml-1" />
+          </Button>
+        ) : (
+          <Button onClick={handleSubmit} disabled={submitting || !canNext()} className="bg-primary text-primary-foreground hover:bg-primary/90">
+            {submitting ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {t.nav.saving}</>
+            ) : isEditing ? t.nav.saveChanges : `${t.nav.createContract} (${visitCount} ${t.nav.oss})`}
+          </Button>
+        )}
+      </div>
     </div>
   );
 
@@ -4522,7 +4962,10 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       open={open}
       onOpenChange={handleModalOpenChange}
       title={isEditing ? t.modalTitleEdit : t.modalTitleNew}
-      className="sm:max-w-[920px]"
+      description="Configure por etapas e revise antes de salvar."
+      density="compact"
+      className="sm:h-[90vh] sm:max-h-[90vh] sm:w-[96vw] sm:max-w-[1240px]"
+      drawerClassName="h-[90dvh]"
       footer={wizardFooter}
       lockBackdrop
     >
@@ -4593,6 +5036,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         }
         setShowQuickEquip(false);
         setMemberPickerEnvKey(null);
+        return created;
       }}
     />
 
@@ -4654,7 +5098,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                       </div>
                       <EquipmentAvatar photoUrl={eq.photo_url} name={eq.name} />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">{eq.name}</p>
+                        <p className="flex min-w-0 items-center gap-2 text-sm font-medium"><span className="truncate">{eq.name}</span><PartyLabelBadges labels={equipmentLabelsFor('equipment', eq.id)} mode="summary" /></p>
                         {[eq.brand, eq.model].filter(Boolean).length > 0 && (
                           <p className="truncate text-xs text-muted-foreground">{[eq.brand, eq.model].filter(Boolean).join(' - ')}</p>
                         )}

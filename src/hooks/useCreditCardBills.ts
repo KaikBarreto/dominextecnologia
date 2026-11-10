@@ -347,6 +347,9 @@ export function useAllCreditCardBills() {
       ]);
 
       if (billsResult.error) throw billsResult.error;
+      // O pacote contábil depende também dos lançamentos que compõem cada
+      // fatura. Falhar aberto aqui geraria uma planilha com faturas zeradas.
+      if (txnsResult.error) throw txnsResult.error;
 
       // Index por (account_id + reference_month) — o mesmo cartão pode ter
       // várias faturas (uma por mês). Sem agrupamento por conta, duas faturas
@@ -391,5 +394,8 @@ export function useAllCreditCardBills() {
   return {
     bills: billsQuery.data ?? [],
     isLoading: billsQuery.isLoading,
+    isError: billsQuery.isError,
+    error: billsQuery.error ?? null,
+    refetch: billsQuery.refetch,
   };
 }

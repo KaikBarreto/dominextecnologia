@@ -30,6 +30,7 @@ import { buildStorageFilePath } from '@/utils/storagePath';
 import { processImageFile } from '@/utils/imageConvert';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { validateInventoryPmocProduct } from '@/lib/inventoryPmocProduct';
 
 /** Bucket `inventory-photos`: privado, por empresa. Ver tenantStorage.ts. */
 const PHOTO_BUCKET = 'inventory-photos';
@@ -74,6 +75,8 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
 
   const [formData, setFormData] = useState<Partial<InventoryItemInsert>>({
     name: '', sku: '', category: '', group_id: null, description: '', quantity: 0, unit: 'un', cost_price: 0, sale_price: 0, supplier_id: null,
+    is_pmoc_product: false, pmoc_manufacturer: null, pmoc_anvisa_registration: null,
+    pmoc_batch_number: null, pmoc_manufactured_on: null, pmoc_expires_on: null,
   });
   const [isSkuGenerating, setIsSkuGenerating] = useState(false);
   // Quick-create de grupo de material (botão "+" ao lado do seletor).
@@ -181,7 +184,17 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
     let cancelled = false;
     const run = async () => {
       if (item) {
-        setFormData({ name: item.name, sku: item.sku || '', category: item.category || '', group_id: item.group_id || null, description: item.description || '', quantity: item.quantity || 0, unit: item.unit || 'un', cost_price: item.cost_price || 0, sale_price: item.sale_price || 0, supplier_id: item.supplier_id ?? null });
+        setFormData({
+          name: item.name, sku: item.sku || '', category: item.category || '', group_id: item.group_id || null,
+          description: item.description || '', quantity: item.quantity || 0, unit: item.unit || 'un',
+          cost_price: item.cost_price || 0, sale_price: item.sale_price || 0, supplier_id: item.supplier_id ?? null,
+          is_pmoc_product: item.is_pmoc_product,
+          pmoc_manufacturer: item.pmoc_manufacturer,
+          pmoc_anvisa_registration: item.pmoc_anvisa_registration,
+          pmoc_batch_number: item.pmoc_batch_number,
+          pmoc_manufactured_on: item.pmoc_manufactured_on,
+          pmoc_expires_on: item.pmoc_expires_on,
+        });
         setNumericText({
           quantity: toNumericText(item.quantity),
           cost_price: toNumericText(item.cost_price),
@@ -192,7 +205,12 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
         setIsSellable(item.is_sellable ?? true);
         return;
       }
-      setFormData({ name: '', sku: '', category: '', group_id: null, description: '', quantity: 0, unit: 'un', cost_price: 0, sale_price: 0, supplier_id: null });
+      setFormData({
+        name: '', sku: '', category: '', group_id: null, description: '', quantity: 0, unit: 'un',
+        cost_price: 0, sale_price: 0, supplier_id: null, is_pmoc_product: false,
+        pmoc_manufacturer: null, pmoc_anvisa_registration: null, pmoc_batch_number: null,
+        pmoc_manufactured_on: null, pmoc_expires_on: null,
+      });
       setNumericText({ quantity: '', cost_price: '', sale_price: '' });
       setPhotoUrl('');
       setBarcode('');
@@ -239,13 +257,30 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, stocksSectionReady]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     // Trava dura: nunca deixa salvar presença/mínimo em cima de um mapa não
     // hidratado (cobre também o Enter dentro do <form>, que dispara o submit
     // sem passar pelo botão Salvar fora dele).
     if (!stocksHydrated) return;
     let savedItemId: string | null = null;
+
+    const pmocValidationError = validateInventoryPmocProduct({
+      isPmocProduct: formData.is_pmoc_product === true,
+      manufacturer: formData.pmoc_manufacturer,
+      anvisaRegistration: formData.pmoc_anvisa_registration,
+      batchNumber: formData.pmoc_batch_number,
+      manufacturedOn: formData.pmoc_manufactured_on,
+      expiresOn: formData.pmoc_expires_on,
+    });
+    if (pmocValidationError) {
+      toast({
+        variant: 'destructive',
+        title: t.pmocValidation.title,
+        description: t.pmocValidation[pmocValidationError],
+      });
+      return;
+    }
 
     // Normaliza SKU e código de barras: vazio/só espaços → null, para não
     // colidir com os índices únicos parciais (company_id, sku) / (company_id, barcode).
@@ -254,6 +289,12 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
       sku: formData.sku?.trim() ? formData.sku.trim() : null,
       barcode: barcode.trim() ? barcode.trim() : null,
       image_url: photoUrl || null,
+      is_pmoc_product: formData.is_pmoc_product === true,
+      pmoc_manufacturer: formData.pmoc_manufacturer?.trim() || null,
+      pmoc_anvisa_registration: formData.pmoc_anvisa_registration?.trim() || null,
+      pmoc_batch_number: formData.pmoc_batch_number?.trim() || null,
+      pmoc_manufactured_on: formData.pmoc_manufactured_on || null,
+      pmoc_expires_on: formData.pmoc_expires_on || null,
       // is_sellable só é editável com o módulo PDV; sem o módulo, nunca
       // sobrescreve o default (true) da coluna com um estado que a tela nem mostrou.
       ...(pdvEnabled ? { is_sellable: isSellable } : {}),
@@ -336,8 +377,22 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
     onOpenChange(false);
   };
 
-  const handleChange = (field: keyof InventoryItemInsert, value: string | number | null) => {
+  const handleChange = (field: keyof InventoryItemInsert, value: string | number | boolean | null) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handlePmocProductChange = (enabled: boolean) => {
+    setFormData((prev) => ({
+      ...prev,
+      is_pmoc_product: enabled,
+      ...(enabled ? {} : {
+        pmoc_manufacturer: null,
+        pmoc_anvisa_registration: null,
+        pmoc_batch_number: null,
+        pmoc_manufactured_on: null,
+        pmoc_expires_on: null,
+      }),
+    }));
   };
 
   // Atualiza o texto exibido E o número salvo. O texto é a fonte do que aparece na tela
@@ -419,11 +474,11 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
       open={open}
       onOpenChange={onOpenChange}
       title={isEditing ? t.titleEdit : t.titleNew}
-      className="sm:max-w-[600px]"
+      className="sm:max-w-[680px]"
       footer={
         <div className="flex gap-2">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1" disabled={isPending}>{t.cancel}</Button>
-          <Button onClick={handleSubmit as any} disabled={isPending || !stocksHydrated} className="flex-1">
+          <Button onClick={handleSubmit} disabled={isPending || !stocksHydrated} className="flex-1">
             {isPending ? t.saving : t.save}
           </Button>
         </div>
@@ -436,13 +491,13 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
             <Input value={formData.name} onChange={(e) => handleChange('name', e.target.value)} placeholder={t.fields.namePlaceholder} required />
           </div>
           <div className="space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <Label>{t.fields.sku}</Label>
-              <Button type="button" variant="outline" size="sm" className="h-8 px-2" onClick={applyAutoSku} disabled={isEditing || isSkuGenerating}>
+            <Label>{t.fields.sku}</Label>
+            <div className="flex items-center gap-2">
+              <Input className="min-w-0 flex-1" value={formData.sku || ''} onChange={(e) => handleChange('sku', e.target.value)} placeholder={t.fields.skuPlaceholder} />
+              <Button type="button" variant="outline" size="sm" className="h-10 shrink-0 px-3" onClick={applyAutoSku} disabled={isEditing || isSkuGenerating}>
                 <Wand2 className="h-4 w-4 mr-1" />{isSkuGenerating ? t.fields.skuGenerating : t.fields.skuAuto}
               </Button>
             </div>
-            <Input value={formData.sku || ''} onChange={(e) => handleChange('sku', e.target.value)} placeholder={t.fields.skuPlaceholder} />
             <p className="text-xs text-muted-foreground">{t.fields.skuHint}</p>
           </div>
         </div>
@@ -616,6 +671,82 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
           <Label>{t.fields.description}</Label>
           <Textarea value={formData.description || ''} onChange={(e) => handleChange('description', e.target.value)} placeholder={t.fields.descriptionPlaceholder} rows={2} />
         </div>
+
+        <section className="space-y-4 rounded-xl border p-4 sm:p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-1">
+              <p className="text-sm font-semibold">{t.fields.isPmocProduct}</p>
+              <p className="text-xs text-muted-foreground">{t.fields.isPmocProductHint}</p>
+            </div>
+            <LabeledSwitch
+              value={formData.is_pmoc_product ? 'on' : 'off'}
+              onChange={(value) => handlePmocProductChange(value === 'on')}
+              off={{ value: 'off', label: t.fields.isPmocProductOff }}
+              on={{ value: 'on', label: t.fields.isPmocProductOn }}
+              aria-label={t.fields.isPmocProduct}
+            />
+          </div>
+
+          {formData.is_pmoc_product && (
+            <div className="space-y-4 border-t pt-4">
+              <div>
+                <p className="text-sm font-semibold">{t.fields.pmocSectionTitle}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t.fields.pmocSectionHint}</p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="inventory-pmoc-manufacturer">{t.fields.pmocManufacturer}</Label>
+                  <Input
+                    id="inventory-pmoc-manufacturer"
+                    value={formData.pmoc_manufacturer || ''}
+                    onChange={(event) => handleChange('pmoc_manufacturer', event.target.value)}
+                    placeholder={t.fields.pmocManufacturerPlaceholder}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="inventory-pmoc-anvisa">{t.fields.pmocAnvisaRegistration}</Label>
+                  <Input
+                    id="inventory-pmoc-anvisa"
+                    value={formData.pmoc_anvisa_registration || ''}
+                    onChange={(event) => handleChange('pmoc_anvisa_registration', event.target.value)}
+                    placeholder={t.fields.pmocAnvisaRegistrationPlaceholder}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="inventory-pmoc-batch">{t.fields.pmocBatchNumber}</Label>
+                  <Input
+                    id="inventory-pmoc-batch"
+                    value={formData.pmoc_batch_number || ''}
+                    onChange={(event) => handleChange('pmoc_batch_number', event.target.value)}
+                    placeholder={t.fields.pmocBatchNumberPlaceholder}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="inventory-pmoc-manufactured-on">{t.fields.pmocManufacturedOn}</Label>
+                  <Input
+                    id="inventory-pmoc-manufactured-on"
+                    type="date"
+                    value={formData.pmoc_manufactured_on || ''}
+                    onChange={(event) => handleChange('pmoc_manufactured_on', event.target.value || null)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="inventory-pmoc-expires-on">{t.fields.pmocExpiresOn}</Label>
+                  <Input
+                    id="inventory-pmoc-expires-on"
+                    type="date"
+                    value={formData.pmoc_expires_on || ''}
+                    onChange={(event) => handleChange('pmoc_expires_on', event.target.value || null)}
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">{t.fields.pmocExpiresOnHint}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">

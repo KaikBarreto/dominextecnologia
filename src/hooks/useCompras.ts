@@ -15,6 +15,8 @@ export type CompraStatus = 'aberta' | 'concluida' | 'cancelada';
  * Herda `numero` (código sequencial por empresa, exibido como "#N") de `Compra`.
  */
 export interface CompraListRow extends Compra {
+  /** Quantidade de materiais distintos incluídos na compra/requisição. */
+  material_count: number;
   cotacao_count: number;
   /** Menor total entre as cotações da compra; null se nenhuma cotação tem preço. */
   lowest_total: number | null;
@@ -123,6 +125,7 @@ export function useCompras() {
           .reduce((acc, p) => acc + (qtyByMaterial.get(p.compra_material_id) ?? 0) * p.unit_price, 0);
 
       return compras.map((c) => {
+        const material_count = mats.filter((material) => material.compra_id === c.id).length;
         const cCots = cots.filter((q) => q.compra_id === c.id);
         let lowest: number | null = null;
         for (const cot of cCots) {
@@ -152,6 +155,7 @@ export function useCompras() {
 
         return {
           ...c,
+          material_count,
           cotacao_count: cCots.length,
           lowest_total: lowest,
           accepted_supplier_name,

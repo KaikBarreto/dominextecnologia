@@ -35,7 +35,7 @@ export interface SubscriptionBlockResult {
   blocked: boolean;
   screen: ReactNode | null;
   status: SubscriptionAccessStatus;
-  retry: () => void;
+  retry: () => Promise<void>;
 }
 
 function utcCalendarDay(value: Date): number | null {
@@ -138,8 +138,8 @@ export function useSubscriptionBlock(): SubscriptionBlockResult {
     retry: 1,
   });
 
-  const retry = () => {
-    void refetch();
+  const retry = async () => {
+    await refetch();
   };
 
   if (loading || profileLoading) {

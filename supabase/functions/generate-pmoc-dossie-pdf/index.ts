@@ -965,7 +965,8 @@ Deno.serve(async (req) => {
     //    com títulos acentuados e remoção do selo "Conforme Lei 13.589/2018"
     //    das páginas embutidas do Certificado e do Cronograma.
     const hashInput = JSON.stringify({
-      v: "dossie_v19",
+      // O certificado embutido passou a ter o rodape institucional obrigatorio.
+      v: "dossie_v20_generated_by",
       tenant: {
         name: tenantName,
         cnpj,

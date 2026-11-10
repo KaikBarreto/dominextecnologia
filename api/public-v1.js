@@ -45,12 +45,12 @@ export default async function handler(req, res) {
   const requestId = crypto.randomUUID();
   const method = String(req.method ?? '').toUpperCase();
   if (method === 'OPTIONS') {
-    return problem(res, 405, 'method_not_allowed', 'Método não permitido', 'A API pública não aceita chamadas de navegador.', requestId, { Allow: 'GET, POST' });
+    return problem(res, 405, 'method_not_allowed', 'Método não permitido', 'A API pública não aceita chamadas de navegador.', requestId, { Allow: 'GET, POST, PATCH' });
   }
-  if (!['GET', 'POST'].includes(method)) {
-    return problem(res, 405, 'method_not_allowed', 'Método não permitido', 'Use um dos métodos documentados.', requestId, { Allow: 'GET, POST' });
+  if (!['GET', 'POST', 'PATCH'].includes(method)) {
+    return problem(res, 405, 'method_not_allowed', 'Método não permitido', 'Use um dos métodos documentados.', requestId, { Allow: 'GET, POST, PATCH' });
   }
-  if (method === 'POST' && !String(req.headers['content-type'] ?? '').toLowerCase().startsWith('application/json')) {
+  if (method !== 'GET' && !String(req.headers['content-type'] ?? '').toLowerCase().startsWith('application/json')) {
     return problem(res, 400, 'invalid_content_type', 'Conteúdo inválido', 'Use Content-Type: application/json.', requestId);
   }
 

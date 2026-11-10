@@ -15,12 +15,23 @@ CONTRATO HTTP (fixo — a edge function e o Caddy dependem dele):
     POST /v1/dfe/manifestar                  → 201  (evento do destinatário)
     POST /v1/dfe/nfse/distribuicao           → 200  (NFS-e tomada, ver app/adn/)
 
+    POST /v1/nfce/preparar                   → 200  (modelo 65 + QR Code v3)
+    POST /v1/nfce/status-servico             → 200  (autorizador NFC-e da UF)
+    POST /v1/nfce/consultar                  → 200  (situação oficial por chave)
+    POST /v1/nfce/autorizar                  → 200  (síncrona + recuperação)
+    POST /v1/nfce/cancelamento/preparar      → 200  (evento 110111 assinado)
+    POST /v1/nfce/cancelamento/transmitir    → 200  (idempotente + reconciliação)
+    POST /v1/nfce/danfce                     → 200  (PDF oficial de 80 mm)
+
     POST /v1/certificado/selar               → 200  (custódia, ver abaixo)
     POST /v1/nfse/{chaveAcesso}/consultar    → 200  (alias de GET, ver abaixo)
     POST /v1/nfse/{chaveAcesso}/danfse       → 200  (alias de GET, ver abaixo)
 
 Auth: `Authorization: Bearer $FISCAL_SERVICE_TOKEN` em tudo menos `/healthz`.
 Sem header ⇒ **401 sem pista** (nada de "token ausente" vs "token inválido").
+
+NFC-e usa escopos `nfce:read`/`nfce:write`, matriz própria por UF e produção
+fechada enquanto `FISCAL_NFCE_PRODUCAO_HABILITADA=0`.
 
 ⚠️ POR QUE EXISTEM OS ALIASES POST DAS DUAS ROTAS GET
    Toda rota autenticada precisa receber o bloco `certificado` no CORPO — a VPS
@@ -45,6 +56,9 @@ trilha de auditoria) é responsabilidade da edge function.
 from __future__ import annotations
 
 import logging
+import re
+import time
+import uuid
 
 from fastapi import APIRouter, Depends, FastAPI, Request, Response
 from fastapi.responses import JSONResponse
@@ -55,12 +69,13 @@ from .custodia import ErroDeCustodia
 from .errors import CertificadoInvalido, ErroFiscal
 from .schemas import (
     CancelarRequest,
+    CoberturaRequest,
     ConsultarRequest,
     DanfseRequest,
     EmitirRequest,
     SelarCertificadoRequest,
 )
-from .security import exigir_token
+from .security import PrincipalFiscal, exigir_escopo, exigir_token
 
 logging.basicConfig(
     level=logging.INFO,
@@ -69,18 +84,91 @@ logging.basicConfig(
 log = logging.getLogger("dominex-fiscal")
 
 app = FastAPI(
-    title="dominex-fiscal",
-    version="1.0.0",
+    title="motor-fiscal",
+    version="1.1.0",
     # Sem documentação pública: este serviço não é navegável por ninguém.
     docs_url=None,
     redoc_url=None,
     openapi_url=None,
 )
 
-protegido = [Depends(exigir_token)]
+nfse_leitura = [Depends(exigir_escopo("nfse:read"))]
+nfse_escrita = [Depends(exigir_escopo("nfse:write"))]
+custodia_escrita = [Depends(exigir_escopo("custody:write"))]
 
 #: Todas as rotas de negócio vivem aqui e são montadas com e sem o prefixo /v1.
 rotas = APIRouter()
+
+_REQUEST_ID = re.compile(r"[A-Za-z0-9._:-]{8,80}")
+
+
+@rotas.get("/capacidades")
+async def capacidades(
+    principal: PrincipalFiscal = Depends(exigir_token),
+) -> dict:
+    cfg = get_config()
+
+    def permitido(familia: str) -> bool:
+        return principal.permite(f"{familia}:read") or principal.permite(f"{familia}:write")
+
+    return {
+        "cliente": principal.client_id,
+        "familias": {
+            "nfse": {
+                "disponivel": permitido("nfse"),
+                "operacoes": ["emitir", "consultar", "cancelar", "danfse"],
+                "producaoHabilitada": not cfg.producao_bloqueada,
+            },
+            "nfe": {
+                "disponivel": permitido("nfe"),
+                "operacoes": ["preparar", "consultar", "autorizar", "cancelar", "cce", "inutilizar"],
+                "producaoHabilitada": cfg.nfe_producao_habilitada,
+            },
+            "nfce": {
+                "disponivel": permitido("nfce"),
+                "operacoes": [
+                    "preparar", "consultar", "autorizar", "cancelar", "danfce"
+                ],
+                "producaoHabilitada": cfg.nfce_producao_habilitada,
+            },
+            "mdfe": {
+                "disponivel": permitido("mdfe"),
+                "operacoes": ["preparar", "consultar", "autorizar", "cancelar", "encerrar"],
+                "producaoHabilitada": cfg.mdfe_producao_habilitada,
+            },
+            "dfe": {
+                "disponivel": permitido("dfe"),
+                "operacoes": ["distribuir_nfe", "manifestar", "distribuir_nfse"],
+                "producaoHabilitada": not cfg.producao_bloqueada,
+            },
+        },
+    }
+
+
+@app.middleware("http")
+async def _auditar_requisicao(request: Request, call_next):
+    apresentado = request.headers.get("x-request-id", "").strip()
+    request_id = apresentado if _REQUEST_ID.fullmatch(apresentado) else str(uuid.uuid4())
+    inicio = time.monotonic()
+    status_code = 500
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+        response.headers["X-Request-ID"] = request_id
+        return response
+    finally:
+        principal = getattr(request.state, "fiscal_principal", None)
+        rota = request.scope.get("route")
+        molde = getattr(rota, "path", "rota_desconhecida")
+        log.info(
+            "fiscal_request id=%s client=%s method=%s route=%s status=%s duration_ms=%s",
+            request_id,
+            getattr(principal, "client_id", "public"),
+            request.method,
+            molde,
+            status_code,
+            round((time.monotonic() - inicio) * 1000),
+        )
 
 
 @app.on_event("startup")
@@ -88,7 +176,8 @@ async def _validar_configuracao() -> None:
     """Falha no boot, não na primeira emissão. Sem KEK o serviço não sobe."""
     cfg = get_config()
     log.info(
-        "dominex-fiscal pronto (keks=%s, atual=#%s, tmpfs=%s)",
+        "motor-fiscal pronto (clientes=%s, keks=%s, atual=#%s, tmpfs=%s)",
+        len(cfg.clientes),
         len(cfg.keks),
         cfg.kek_atual_id,
         cfg.tmpfs_dir,
@@ -157,12 +246,12 @@ async def healthz() -> dict:
 # -----------------------------------------------------------------------------
 
 
-@rotas.post("/nfse/emitir", status_code=201, dependencies=protegido)
+@rotas.post("/nfse/emitir", status_code=201, dependencies=nfse_escrita)
 async def emitir(req: EmitirRequest) -> dict:
     return servico.emitir(req).model_dump(by_alias=True, exclude_none=True)
 
 
-@rotas.post("/nfse/{chave_acesso}/cancelar", status_code=201, dependencies=protegido)
+@rotas.post("/nfse/{chave_acesso}/cancelar", status_code=201, dependencies=nfse_escrita)
 async def cancelar(chave_acesso: str, req: CancelarRequest) -> dict:
     return servico.cancelar(chave_acesso, req).model_dump(by_alias=True, exclude_none=True)
 
@@ -170,7 +259,7 @@ async def cancelar(chave_acesso: str, req: CancelarRequest) -> dict:
 # ⚠️ Declarada ANTES de /nfse/{chave_acesso}: no FastAPI, rota literal e rota com
 # parâmetro competem pelo mesmo caminho e vence a PRIMEIRA declarada. Invertendo,
 # "autoteste" viraria uma chave de acesso e o canário responderia 422.
-@rotas.get("/nfse/autoteste", dependencies=protegido)
+@rotas.get("/nfse/autoteste", dependencies=nfse_leitura)
 async def autoteste() -> dict:
     """Canário da esteira de layout (risco R2 do plano).
 
@@ -185,12 +274,18 @@ async def autoteste() -> dict:
     return diagnostico.checar_assinatura()
 
 
-@rotas.get("/nfse/{chave_acesso}", dependencies=protegido)
+@rotas.post("/nfse/cobertura", dependencies=nfse_leitura)
+async def cobertura(req: CoberturaRequest) -> dict:
+    """Consulta o convênio municipal no ADN usando o A1 em mTLS."""
+    return servico.checar_cobertura(req)
+
+
+@rotas.get("/nfse/{chave_acesso}", dependencies=nfse_leitura)
 async def consultar_get(chave_acesso: str, req: ConsultarRequest) -> dict:
     return servico.consultar(chave_acesso, req).model_dump(by_alias=True, exclude_none=True)
 
 
-@rotas.post("/nfse/{chave_acesso}/consultar", dependencies=protegido)
+@rotas.post("/nfse/{chave_acesso}/consultar", dependencies=nfse_leitura)
 async def consultar_post(chave_acesso: str, req: ConsultarRequest) -> dict:
     """Alias de `GET /v1/nfse/{chave}` — ver nota no topo do arquivo."""
     return servico.consultar(chave_acesso, req).model_dump(by_alias=True, exclude_none=True)
@@ -209,13 +304,13 @@ def _resposta_pdf(chave: str, pdf: bytes, gerador: str) -> Response:
     )
 
 
-@rotas.get("/nfse/{chave_acesso}/danfse", dependencies=protegido)
+@rotas.get("/nfse/{chave_acesso}/danfse", dependencies=nfse_leitura)
 async def danfse_get(chave_acesso: str, req: DanfseRequest) -> Response:
     pdf, gerador = servico.danfse(chave_acesso, req)
     return _resposta_pdf(chave_acesso, pdf, gerador)
 
 
-@rotas.post("/nfse/{chave_acesso}/danfse", dependencies=protegido)
+@rotas.post("/nfse/{chave_acesso}/danfse", dependencies=nfse_leitura)
 async def danfse_post(chave_acesso: str, req: DanfseRequest) -> Response:
     """Alias de `GET /v1/nfse/{chave}/danfse` — ver nota no topo do arquivo."""
     pdf, gerador = servico.danfse(chave_acesso, req)
@@ -227,7 +322,7 @@ async def danfse_post(chave_acesso: str, req: DanfseRequest) -> Response:
 # -----------------------------------------------------------------------------
 
 
-@rotas.post("/certificado/selar", dependencies=protegido)
+@rotas.post("/certificado/selar", dependencies=custodia_escrita)
 async def selar_certificado(req: SelarCertificadoRequest) -> dict:
     """Cifra o .pfx e a senha com uma DEK nova e envelopa a DEK com a KEK.
 
@@ -260,6 +355,22 @@ from .adn.routes import rotas_adn  # noqa: E402
 rotas.include_router(rotas_adn)
 
 
+# NF-e modelo 55 — núcleo compartilhado, sem banco e sem regra de produto.
+from .nfe.routes import rotas_nfe  # noqa: E402
+
+rotas.include_router(rotas_nfe)
+
+from .mdfe.routes import rotas_mdfe  # noqa: E402
+
+rotas.include_router(rotas_mdfe)
+
+# NFC-e modelo 65: nesta fase somente DANFE oficial a partir do XML autorizado.
+# Emissão permanece fechada e a capacidade de produção continua false.
+from .nfce.routes import rotas_nfce  # noqa: E402
+
+rotas.include_router(rotas_nfce)
+
+
 # =============================================================================
 # INFRAESTRUTURA — 🖥️ Dev Infra (C1/C2/C6). NÃO REMOVER.
 # =============================================================================
@@ -281,8 +392,8 @@ async def _http_excecao(req: Request, exc: _HTTPExcecao) -> Response:
     Quem não tem o segredo não descobre nada — nem que o serviço é FastAPI.
     Os demais códigos seguem o comportamento padrão do FastAPI.
     """
-    if exc.status_code == 401:
-        return Response(status_code=401)
+    if exc.status_code in {401, 403}:
+        return Response(status_code=exc.status_code)
     return await _handler_padrao(req, exc)
 
 

@@ -22,7 +22,7 @@ import {
   SIGNATURE_BLOCK_HEIGHT,
 } from "./signature-embed.ts";
 import { PmocVariableContext, substituteVariables } from "./variables.ts";
-import { drawDominexFooter } from "./footer.ts";
+import { drawCertificateGeneratedByFooter } from "./footer.ts";
 
 /**
  * Template padrão do Certificado de Conformidade com spans `data-pmoc-var`
@@ -35,7 +35,7 @@ export function buildDefaultCertificadoHtml(): string {
 
 <p>&nbsp;</p>
 
-<p>A empresa <strong><span data-pmoc-var="empresa.razao_social"></span></strong>, inscrita no CNPJ nº <strong><span data-pmoc-var="empresa.cnpj"></span></strong>, certifica que a unidade <strong><span data-pmoc-var="cliente.nome"></span></strong>, inscrita no CNPJ nº <strong><span data-pmoc-var="cliente.documento"></span></strong>, localizada em <span data-pmoc-var="cliente.endereco"></span>, está sob plano formal de manutenção preventiva e operacional conforme estabelecido pela Lei Federal nº 13.589 de 4 de janeiro de 2018, sob supervisão técnica de <strong><span data-pmoc-var="rt.nome"></span></strong> (<span data-pmoc-var="rt.modalidade"></span> — CFT <span data-pmoc-var="rt.cft_crea"></span>).</p>
+<p>A empresa <strong><span data-pmoc-var="empresa.razao_social"></span></strong>, inscrita no CNPJ nº <strong><span data-pmoc-var="empresa.cnpj"></span></strong>, certifica que a unidade <strong><span data-pmoc-var="cliente.nome"></span></strong>, inscrita no CNPJ nº <strong><span data-pmoc-var="cliente.documento"></span></strong>, localizada em <span data-pmoc-var="cliente.endereco"></span>, está sob plano formal de manutenção preventiva e operacional conforme estabelecido pela Lei Federal nº 13.589/2018 e pela Portaria GM/MS nº 3.523/1998, sob supervisão técnica de <strong><span data-pmoc-var="rt.nome"></span></strong> (<span data-pmoc-var="rt.modalidade"></span> — CFT <span data-pmoc-var="rt.cft_crea"></span>).</p>
 
 <p>&nbsp;</p>
 
@@ -70,9 +70,23 @@ export async function drawCertificadoPage(
   customHtml: string | null,
   variableContext: PmocVariableContext | null = null,
 ): Promise<RenderCertificadoResult> {
-  const raw = customHtml && customHtml.trim().length > 0
+  const pagesBefore = pdf.getPageCount();
+  const configuredRaw = customHtml && customHtml.trim().length > 0
     ? customHtml
     : buildDefaultCertificadoHtml();
+  const validationCode = variableContext?.["documento.codigo_validacao"]?.trim();
+  const validationUrl = variableContext?.["documento.url_validacao"]?.trim();
+  const validationLines = [
+    validationCode && !configuredRaw.includes('data-pmoc-var="documento.codigo_validacao"')
+      ? '<strong>Código de validação:</strong> <span data-pmoc-var="documento.codigo_validacao"></span>.'
+      : "",
+    validationUrl && !configuredRaw.includes('data-pmoc-var="documento.url_validacao"')
+      ? '<strong>Valide em:</strong> <span data-pmoc-var="documento.url_validacao"></span>.'
+      : "",
+  ].filter(Boolean);
+  const raw = validationLines.length > 0
+    ? `${configuredRaw}<p>${validationLines.join("<br>")}</p>`
+    : configuredRaw;
 
   // ---- (Onda H) Substituir variáveis ANTES do sanitizer.
   //      Sanitizer remove o atributo data-pmoc-var de <span>; ordem inversa
@@ -89,9 +103,8 @@ export async function drawCertificadoPage(
   });
 
   // -- Onda E: bloco de assinatura do RT (acima do rodapé).
-  //    Reservamos espaço pro footer Dominex (~72pt) quando não é white-label.
-  const isWhiteLabel = ctx.empresa.white_label_enabled === true;
-  const FOOTER_RESERVED = isWhiteLabel ? 40 : 80;
+  //    O footer Dominex e obrigatorio inclusive em white-label.
+  const FOOTER_RESERVED = 80;
   const SPACE_NEEDED = SIGNATURE_BLOCK_HEIGHT + 20 + FOOTER_RESERVED;
 
   let sigPage = result.page;
@@ -121,12 +134,10 @@ export async function drawCertificadoPage(
 
   const finalPage = sigPage;
 
-  // -- Onda I (v1.9.x): rodapé Dominex centralizado (logo + URL).
-  //    SÓ aparece quando NÃO é white-label — substitui o antigo
-  //    "Powered by Dominex" texto-puro.
-  await drawDominexFooter(pdf, finalPage, {
-    enabled: !isWhiteLabel,
-  });
+  // Certificados preservam a origem Dominex inclusive em white-label.
+  for (const certificatePage of pdf.getPages().slice(pagesBefore)) {
+    await drawCertificateGeneratedByFooter(pdf, certificatePage);
+  }
 
   return {
     page: finalPage,

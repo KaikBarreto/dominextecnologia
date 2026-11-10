@@ -4,6 +4,7 @@ import { useContractPmocExecution } from '@/hooks/useContractPmocExecution';
 import { PmocExecutionHistoryView } from './PmocExecutionHistoryView';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { usePartyLabels } from '@/hooks/usePartyLabels';
 
 interface PmocExecutionHistoryTabProps {
   contractId: string;
@@ -20,6 +21,7 @@ interface PmocExecutionHistoryTabProps {
 export function PmocExecutionHistoryTab({ contractId, isPmoc }: PmocExecutionHistoryTabProps) {
   const { rows, isLoading, isError } = useContractPmocExecution(contractId, isPmoc);
   const { locale } = useAppLocaleContext();
+  const { labelsFor } = usePartyLabels('equipment');
   const t = MESSAGES[locale].app.pmoc.executionHistory;
 
   if (isLoading) {
@@ -41,5 +43,9 @@ export function PmocExecutionHistoryTab({ contractId, isPmoc }: PmocExecutionHis
     );
   }
 
-  return <PmocExecutionHistoryView rows={rows} />;
+  const equipmentLabels = Object.fromEntries(
+    rows.flatMap((row) => row.equipment_id ? [[row.equipment_id, labelsFor('equipment', row.equipment_id)] as const] : []),
+  );
+
+  return <PmocExecutionHistoryView rows={rows} equipmentLabels={equipmentLabels} />;
 }

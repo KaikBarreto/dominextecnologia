@@ -16,12 +16,15 @@ import { Switch } from '@/components/ui/switch';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getSegment } from '@/utils/companySegments';
+import { normalizeCompanySegments } from '@/utils/companySegments';
+import { SegmentBadges } from '@/components/SegmentBadge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { applyWhiteLabelTheme } from '@/hooks/useWhiteLabel';
 import { supabase } from '@/integrations/supabase/client';
 import { processImageFile } from '@/utils/imageConvert';
+import { cn } from '@/lib/utils';
+import { useLogoInk } from '@/hooks/useLogoInk';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { SettingsSidebarLayout, SettingsTab } from '@/components/SettingsSidebarLayout';
@@ -92,6 +95,7 @@ function settingsToJson(settings: any): string {
     report_status_bar_color: settings.report_status_bar_color || DEFAULT_HEADER_CONFIG.statusBarColor,
     report_header_logo_type: settings.report_header_logo_type || DEFAULT_HEADER_CONFIG.logoType,
     segment: settings.segment || null,
+    segments: normalizeCompanySegments(settings.segments, settings.segment),
   });
 }
 
@@ -176,7 +180,7 @@ export default function Settings() {
   const [companyCity, setCompanyCity] = useState('');
   const [companyState, setCompanyState] = useState('');
   const [companyZip, setCompanyZip] = useState('');
-  const [companySegment, setCompanySegment] = useState('');
+  const [companySegments, setCompanySegments] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [socialImageUploading, setSocialImageUploading] = useState(false);
   const [socialEditorOpen, setSocialEditorOpen] = useState(false);
@@ -247,7 +251,7 @@ export default function Settings() {
       setCompanyZip(settings.zip_code || '');
       setCompanyNeighborhood(settings.neighborhood || '');
       setCompanyComplement(settings.complement || '');
-      setCompanySegment((settings as any).segment || '');
+      setCompanySegments(normalizeCompanySegments(settings.segments, settings.segment));
       setWlEnabled(!!settings.white_label_enabled);
       setWlColor(settings.white_label_primary_color || '#00C597');
       setWlQrDotStyle((settings.white_label_qr_dot_style as QRDotStyle) || 'square');
@@ -312,8 +316,10 @@ export default function Settings() {
     report_header_logo_bg_color: reportLogoBgColor,
     report_status_bar_color: reportStatusBarColor,
     report_header_logo_type: reportLogoType,
-    segment: companySegment || null,
-  }), [companyName, companyDoc, companyPhone, companyEmail, companyAddress, companyNumber, companyNeighborhood, companyComplement, companyCity, companyState, companyZip, wlEnabled, wlColor, wlQrDotStyle, wlQrCornerStyle, wlQrColor, showNameInDocs, showCnpjInDocs, showAddressInDocs, showPhoneInDocs, showEmailInDocs, reportBgColor, reportTextColor, reportLogoSize, reportShowLogoBg, reportLogoBgColor, reportStatusBarColor, reportLogoType, companySegment]);
+    // `segment` continua como espelho do primeiro item para consumidores legados.
+    segment: companySegments[0] || null,
+    segments: companySegments,
+  }), [companyName, companyDoc, companyPhone, companyEmail, companyAddress, companyNumber, companyNeighborhood, companyComplement, companyCity, companyState, companyZip, wlEnabled, wlColor, wlQrDotStyle, wlQrCornerStyle, wlQrColor, showNameInDocs, showCnpjInDocs, showAddressInDocs, showPhoneInDocs, showEmailInDocs, reportBgColor, reportTextColor, reportLogoSize, reportShowLogoBg, reportLogoBgColor, reportStatusBarColor, reportLogoType, companySegments]);
 
   useEffect(() => {
     // O gate do auto-save abre quando dá pra salvar (canSave), não quando
@@ -386,6 +392,7 @@ export default function Settings() {
       ? settings.white_label_logo_url
       : settings?.logo_url || null;
   const socialPreviewSource = socialDraftUrl || settings?.os_social_image_url || currentBrandLogo;
+  const logoInk = useLogoInk(settings?.logo_url);
 
   useEffect(() => {
     if (!socialEditorOpen || !currentBrandLogo) {
@@ -783,7 +790,15 @@ export default function Settings() {
 
                     {settings?.logo_url ? (
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                        <div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-2xl bg-muted/40 p-3">
+                        <div
+                          className={cn(
+                            'flex h-28 w-28 shrink-0 items-center justify-center rounded-2xl p-3',
+                            // A prévia tem que mostrar o arquivo como ele é. Logo de
+                            // tinta escura sobre `bg-muted` sumia no tema escuro; aqui
+                            // o fundo acompanha a arte, igual ao menu.
+                            logoInk === 'dark' ? 'bg-white' : 'bg-muted/40'
+                          )}
+                        >
                           <img src={settings.logo_url} alt="Logo" className="max-h-full max-w-full object-contain" />
                         </div>
                         <div className="grid w-full gap-2 sm:w-auto">
@@ -865,21 +880,13 @@ export default function Settings() {
 
               <div className="space-y-2">
                 <Label>{t.company.registrationData.segment}</Label>
-                {/* Somente-leitura: o segmento define quais ferramentas/recursos
-                    aparecem e só pode ser alterado pela Dominex. O usuário vê
-                    qual é, mas não troca aqui. */}
-                {(() => {
-                  const seg = getSegment(companySegment);
-                  const Icon = seg?.icon;
-                  return (
-                    <div className="flex items-center gap-2 rounded-md border border-input bg-muted/40 px-3 py-2 text-sm">
-                      {Icon && <Icon className="h-4 w-4 shrink-0" style={{ color: seg!.color }} />}
-                      <span className={seg ? 'text-foreground' : 'text-muted-foreground'}>
-                        {seg ? seg.label : t.company.registrationData.segmentNotDefined}
-                      </span>
-                    </div>
-                  );
-                })()}
+                <div className="min-h-10 rounded-md border border-input bg-muted/40 px-3 py-2 text-sm">
+                  {companySegments.length > 0 ? (
+                    <SegmentBadges segments={companySegments} />
+                  ) : (
+                    <span className="text-muted-foreground">{t.company.registrationData.segmentNotDefined}</span>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">{t.company.registrationData.segmentHint}</p>
               </div>
               </section>
@@ -1944,6 +1951,7 @@ export default function Settings() {
           tabs={visibleTabs}
           activeTab={activeTab}
           onTabChange={setActiveTab}
+          variant="underline"
         >
           {renderContent()}
         </SettingsSidebarLayout>

@@ -25,7 +25,9 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useEquipment } from '@/hooks/useEquipment';
-import { useProfiles } from '@/hooks/useProfiles';
+import { usePartyLabels } from '@/hooks/usePartyLabels';
+import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
+import { useActiveCompanyProfiles } from '@/hooks/useProfiles';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { useFormTemplates } from '@/hooks/useFormTemplates';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
@@ -50,6 +52,8 @@ import { useToast } from '@/hooks/use-toast';
 import type { ServiceOrder, ServiceOrderScheduleSlot, OsStatus } from '@/types/database';
 import { cn } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
+import { fetchServiceCostBreakdown } from '@/hooks/useServiceCostBreakdown';
+import { usePricingSettings } from '@/hooks/usePricingSettings';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsPmocOrder } from '@/hooks/useIsPmocOrder';
@@ -69,8 +73,15 @@ import {
   useServiceOrderServiceTypes,
 } from '@/hooks/useServiceOrderBudget';
 import {
+  DEFAULT_SERVICE_ORDER_BUDGET_PRICING,
+  appendMissingServiceOrderBudgetItems,
+  calculateServiceOrderBdiFactor,
+  preserveServiceOrderBudgetPricesAsManual,
+  recalculateAutomaticServiceOrderBudgetItems,
+  serviceOrderBudgetPricingSignature,
   serviceOrderBudgetSignature,
   type ServiceOrderBudgetItem,
+  type ServiceOrderBudgetPricing,
 } from '@/lib/serviceOrderBudget';
 import { groupScopeItems } from '@/hooks/useServiceOrders';
 import {
@@ -81,6 +92,15 @@ import {
 } from '@/lib/serviceOrderServices';
 import { ServiceOrderSchedulePlanner } from '@/components/service-orders/ServiceOrderSchedulePlanner';
 import {
+  ServiceOrderFormStepper,
+  ServiceOrderFormSummary,
+  ServiceOrderReviewDetails,
+  type ServiceOrderFormSummaryData,
+  type ServiceOrderWizardStep,
+} from '@/components/service-orders/ServiceOrderFormShell';
+import { WizardMobileSummary, WizardReviewChecklist } from '@/components/ui/WizardReviewChecklist';
+import {
+  MAX_SERVICE_ORDER_SCHEDULE_DURATION_MINUTES,
   normalizeServiceOrderSchedulePlan,
   shiftSchedulePlanToStart,
 } from '@/lib/serviceOrderSchedule';
@@ -88,7 +108,7 @@ import {
 const scheduleSlotSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   time: z.string().regex(/^\d{2}:\d{2}(?::\d{2})?$/),
-  duration_minutes: z.coerce.number().int().min(15).max(480),
+  duration_minutes: z.coerce.number().int().min(15).max(MAX_SERVICE_ORDER_SCHEDULE_DURATION_MINUTES),
 });
 
 const serviceOrderSchema = z.object({
@@ -99,14 +119,14 @@ const serviceOrderSchema = z.object({
   service_type_id: z.string().optional(),
   scheduled_date: z.string().optional(),
   scheduled_time: z.string().optional(),
-  duration_minutes: z.coerce.number().int().min(15).max(480).default(120),
+  duration_minutes: z.coerce.number().int().min(15).max(MAX_SERVICE_ORDER_SCHEDULE_DURATION_MINUTES).default(120),
   schedule_plan: z.array(scheduleSlotSchema).min(1).max(31),
   description: z.string().optional(),
   notes: z.string().optional(),
   form_template_id: z.string().optional(),
 });
 
-type ServiceOrderFormData = z.infer<typeof serviceOrderSchema>;
+export type ServiceOrderFormData = z.infer<typeof serviceOrderSchema>;
 
 interface ServiceOrderFormDialogProps {
   open: boolean;
@@ -124,13 +144,13 @@ interface ServiceOrderFormDialogProps {
   defaultDescription?: string;
   /** Responsáveis pré-selecionados (ex: vendedor da oportunidade, ao criar OS a partir do CRM). Só criação. */
   defaultAssigneeUserIds?: string[];
+  /** No contrato, planejar uma visita nunca deve deslocar as demais. */
+  contractDateChangeScope?: 'ask' | 'single';
+  /** Contexto do contrato: trava o cliente e deixa o objetivo do modal explicito. */
+  contractPlanningMode?: boolean;
+  editTitle?: string;
+  editDescription?: string;
 }
-
-const STEPS = [
-  { key: 'client' as const },
-  { key: 'equipment' as const },
-  { key: 'details' as const },
-];
 
 /**
  * Assinatura estável do escopo (conjunto de pares equipamento×checklist) de uma
@@ -151,24 +171,33 @@ export const scopeSignature = (
 
 export function ServiceOrderFormDialog({
   open, onOpenChange, serviceOrder, onSubmit, isLoading, defaultDate, defaultTime, defaultCustomerId, defaultStatus,
-  defaultDescription, defaultAssigneeUserIds,
+  defaultDescription, defaultAssigneeUserIds, contractDateChangeScope = 'ask', contractPlanningMode = false,
+  editTitle, editDescription,
 }: ServiceOrderFormDialogProps) {
   const { locale, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.os.form;
   const { customers, createCustomer } = useCustomers();
-  const { data: technicians } = useProfiles();
+  // A lista de responsáveis deve vir do tenant ativo e carregar `avatar_url`.
+  // Além de respeitar a RLS, a chave de cache inclui a empresa e evita reaproveitar
+  // perfis da conta anterior depois de uma troca de tenant.
+  const { data: technicians } = useActiveCompanyProfiles();
   const { templates } = useFormTemplates();
   const { serviceTypes } = useServiceTypes();
   const { teams, teamsWithMembers } = useTeams();
   const { settings: npsSettings } = useNpsSettings();
   const isEditing = !!serviceOrder;
   const [step, setStep] = useState(0);
+  const [maxStepReached, setMaxStepReached] = useState(0);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | undefined>(serviceOrder?.customer_id ?? defaultCustomerId);
   const [selectedServiceTypeIds, setSelectedServiceTypeIds] = useState<string[]>(
     serviceOrder?.service_type_id ? [serviceOrder.service_type_id] : [],
   );
   const [budgetItems, setBudgetItems] = useState<ServiceOrderBudgetItem[]>([]);
+  const [budgetPricing, setBudgetPricing] = useState<ServiceOrderBudgetPricing>(DEFAULT_SERVICE_ORDER_BUDGET_PRICING);
+  const budgetPricingTouchedRef = useRef(false);
   const loadedBudgetSigRef = useRef<string | null>(null);
+  const loadedBudgetPricingSigRef = useRef<string | null>(null);
+  const loadedBudgetPricingValueRef = useRef<ServiceOrderBudgetPricing>(DEFAULT_SERVICE_ORDER_BUDGET_PRICING);
   const loadedServiceTypesSigRef = useRef<string | null>(null);
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
   const [quickCreateCustomerOpen, setQuickCreateCustomerOpen] = useState(false);
@@ -181,9 +210,11 @@ export function ServiceOrderFormDialog({
   // estados acima quando termina. Se o usuário salvar ANTES disso, os estados
   // ainda estão vazios — mandar `equipment_items: []` nesse momento apagaria o
   // escopo real da OS (equipamentos + checklists) e as respostas já preenchidas.
-  // `scopeLoaded` vira true no `finally` do load (inclusive quando a OS não tem
-  // nenhuma linha de escopo — "carregou e está vazio" é informação válida).
+  // `scopeLoaded` só vira true após as duas leituras concluírem sem erro
+  // (inclusive quando a OS não tem escopo — "carregou vazio" é válido).
   const [scopeLoaded, setScopeLoaded] = useState(false);
+  const [scopeLoading, setScopeLoading] = useState(false);
+  const [scopeLoadError, setScopeLoadError] = useState(false);
   // Assinatura do escopo COMO VEIO DO BANCO. O save só manda `equipment_items`
   // quando ela difere da assinatura montada na tela — ou seja, quando o usuário
   // mexeu de fato no escopo. Sem isso, editar só a data dispararia a RPC
@@ -220,6 +251,7 @@ export function ServiceOrderFormDialog({
   const [svcCity, setSvcCity] = useState('');
   const [svcState, setSvcState] = useState('');
   const { equipment: rawEquipment } = useEquipment(selectedCustomerId);
+  const { labelsFor: equipmentLabelsFor } = usePartyLabels('equipment');
   // BUG 1.23.x — sem customerId, useEquipment devolve TODOS os equipamentos da
   // empresa (comportamento correto pra outras telas, ex. página de Equipamentos,
   // onde não mexemos). Aqui, sem cliente selecionado (ex. modo "Cliente avulso",
@@ -241,7 +273,8 @@ export function ServiceOrderFormDialog({
     mode?: 'continue' | 'recurrence_all';
   } | null>(null);
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const { settings: pricingSettings } = usePricingSettings();
   const budgetQuery = useServiceOrderBudget(isEditing ? serviceOrder?.id : null);
   const serviceTypesQuery = useServiceOrderServiceTypes(isEditing ? serviceOrder?.id : null);
 
@@ -338,6 +371,10 @@ export function ServiceOrderFormDialog({
     _selectedCustomerId?: string;
     _selectedServiceTypeIds?: string[];
     _budgetItems?: ServiceOrderBudgetItem[];
+    _budgetPricing?: ServiceOrderBudgetPricing;
+    _requireTechSignature?: boolean;
+    _requireClientSignature?: boolean;
+    _generateNpsSurvey?: boolean;
   };
   const draft = useFormDraft<OSDraft>({ key: 'service-order-form', isOpen: open, isEditing });
 
@@ -373,12 +410,18 @@ export function ServiceOrderFormDialog({
         _selectedCustomerId: selectedCustomerId,
         _selectedServiceTypeIds: selectedServiceTypeIds,
         _budgetItems: budgetItems,
+        _budgetPricing: budgetPricing,
+        _requireTechSignature: requireTechSignature,
+        _requireClientSignature: requireClientSignature,
+        _generateNpsSurvey: generateNpsSurvey,
       });
     }
-  }, [watchedValues, selectedCustomerId, selectedServiceTypeIds, budgetItems, open, isEditing, draft.showResumePrompt]);
+  }, [watchedValues, selectedCustomerId, selectedServiceTypeIds, budgetItems, budgetPricing, requireTechSignature, requireClientSignature, generateNpsSurvey, open, isEditing, draft.showResumePrompt]);
 
   // Load existing equipment items when editing
   const loadExistingEquipmentItems = async (osId: string) => {
+    setScopeLoading(true);
+    setScopeLoadError(false);
     try {
       const [scopeResult, servicesResult] = await Promise.all([
         supabase
@@ -395,7 +438,10 @@ export function ServiceOrderFormDialog({
       // Leitura falhou: NÃO liberar `scopeLoaded`. Com a trava fechada o save
       // manda `equipment_items: undefined` (não encosta no escopo) em vez de
       // assumir "a OS não tem escopo" e apagar tudo.
-      if (error || servicesResult.error) return;
+      if (error || servicesResult.error) {
+        setScopeLoadError(true);
+        return;
+      }
       const serviceMap: Record<string, string[]> = {};
       (servicesResult.data ?? []).forEach((row: any) => {
         if (!serviceMap[row.equipment_id]) serviceMap[row.equipment_id] = [];
@@ -435,14 +481,40 @@ export function ServiceOrderFormDialog({
       setScopeLoaded(true);
     } catch {
       // Idem: exceção de rede mantém a trava fechada.
+      setScopeLoadError(true);
+    } finally {
+      setScopeLoading(false);
     }
   };
 
   useEffect(() => {
     if (open) {
+      const so = serviceOrder as any;
       setStep(0);
+      setMaxStepReached(0);
       setBudgetItems([]);
       loadedBudgetSigRef.current = null;
+      budgetPricingTouchedRef.current = false;
+      const initialTaxRate = Number(so?.tax_rate ?? DEFAULT_SERVICE_ORDER_BUDGET_PRICING.tax_rate);
+      const initialAdminRate = Number(so?.admin_indirect_rate ?? DEFAULT_SERVICE_ORDER_BUDGET_PRICING.admin_indirect_rate);
+      const initialProfitRate = Number(so?.profit_rate ?? DEFAULT_SERVICE_ORDER_BUDGET_PRICING.profit_rate);
+      const initialPricing: ServiceOrderBudgetPricing = {
+        use_bdi: Boolean(so?.use_bdi),
+        tax_rate: initialTaxRate,
+        admin_indirect_rate: initialAdminRate,
+        profit_rate: initialProfitRate,
+        bdi: Number(so?.bdi ?? calculateServiceOrderBdiFactor(initialTaxRate, initialAdminRate, initialProfitRate)),
+        total_cost: Number(so?.total_cost ?? 0),
+        km_cost: Number(so?.km_cost ?? 0),
+        distance_km: Number(so?.distance_km ?? 0),
+        displacement_cost: Number(so?.displacement_cost ?? 0),
+        commercial_adjustment: Number(so?.commercial_adjustment ?? 0),
+      };
+      setBudgetPricing(initialPricing);
+      loadedBudgetPricingValueRef.current = initialPricing;
+      loadedBudgetPricingSigRef.current = isEditing
+        ? serviceOrderBudgetPricingSignature(initialPricing, [])
+        : null;
       const fallbackServiceIds = serviceOrder?.service_type_id ? [serviceOrder.service_type_id] : [];
       setSelectedServiceTypeIds(fallbackServiceIds);
       loadedServiceTypesSigRef.current = null;
@@ -451,14 +523,16 @@ export function ServiceOrderFormDialog({
       setEquipmentServiceTypeMap({});
       setSelectedStandaloneTemplateIds([]);
       setScopeLoaded(false);
+      setScopeLoading(false);
+      setScopeLoadError(false);
       loadedScopeSigRef.current = null;
       setExpandedEquipmentIds([]);
-      setRequireClientSignature(false);
+      setRequireTechSignature(Boolean(so?.require_tech_signature));
+      setRequireClientSignature(Boolean(so?.require_client_signature));
       setCustomerMode('existing');
       setAdhocName(''); setAdhocPhone(''); setAdhocCep(''); setAdhocAddress('');
       setAdhocCity(''); setAdhocState(''); setAdhocNeighborhood('');
       // Endereço de serviço: edição reflete o estado salvo; criação começa vazio.
-      const so = serviceOrder as any;
       const hasSvc = !!(so?.service_address || so?.service_city || so?.service_zip_code);
       setUseServiceAddress(hasSvc);
       const formatCep = (raw?: string | null) => {
@@ -529,9 +603,25 @@ export function ServiceOrderFormDialog({
   }, [open, serviceOrder, computedDate, computedTime, computedSchedulePlan]);
 
   useEffect(() => {
+    if (!open || isEditing || !pricingSettings || budgetPricingTouchedRef.current) return;
+    const taxRate = Number(pricingSettings.tax_rate ?? DEFAULT_SERVICE_ORDER_BUDGET_PRICING.tax_rate);
+    const adminRate = Number(pricingSettings.admin_indirect_rate ?? DEFAULT_SERVICE_ORDER_BUDGET_PRICING.admin_indirect_rate);
+    const profitRate = Number(pricingSettings.default_profit_rate ?? DEFAULT_SERVICE_ORDER_BUDGET_PRICING.profit_rate);
+    setBudgetPricing(current => ({
+      ...current,
+      tax_rate: taxRate,
+      admin_indirect_rate: adminRate,
+      profit_rate: profitRate,
+      bdi: calculateServiceOrderBdiFactor(taxRate, adminRate, profitRate),
+      km_cost: Number(pricingSettings.km_cost ?? 0),
+    }));
+  }, [open, isEditing, pricingSettings]);
+
+  useEffect(() => {
     if (!open || !isEditing || !budgetQuery.data) return;
     setBudgetItems(budgetQuery.data);
     loadedBudgetSigRef.current = serviceOrderBudgetSignature(budgetQuery.data);
+    loadedBudgetPricingSigRef.current = serviceOrderBudgetPricingSignature(loadedBudgetPricingValueRef.current, budgetQuery.data);
   }, [open, isEditing, budgetQuery.data]);
 
   useEffect(() => {
@@ -607,6 +697,11 @@ export function ServiceOrderFormDialog({
   // o botão travado.
   const submittingRef = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitLocked = isLoading || isSubmitting;
+  const handleModalOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && submitLocked) return;
+    onOpenChange(nextOpen);
+  };
   const withSubmitLock = async (run: () => Promise<void>) => {
     if (submittingRef.current) return;
     submittingRef.current = true;
@@ -785,7 +880,7 @@ export function ServiceOrderFormDialog({
             });
             if (scopeError) throw scopeError;
           }
-          await syncServiceOrderBudget(row.id, budgetItems);
+          await syncServiceOrderBudget(row.id, budgetItems, budgetPricing);
         }));
       }
 
@@ -807,6 +902,7 @@ export function ServiceOrderFormDialog({
       service_type_id: data.service_type_id === 'none' ? undefined : (data.service_type_id || undefined),
       service_type_ids: selectedServiceTypeIds,
       budget_items: budgetItems,
+      budget_pricing: budgetPricing,
       scheduled_date: data.scheduled_date || undefined,
       scheduled_time: data.scheduled_time || undefined,
       equipment_id: effectiveEquipmentIds[0] || undefined,
@@ -865,11 +961,20 @@ export function ServiceOrderFormDialog({
         && JSON.stringify(selectedServiceTypeIds) !== loadedServiceTypesSigRef.current
           ? selectedServiceTypeIds
           : undefined,
-      budget_items:
+      budget_items: (
         loadedBudgetSigRef.current !== null
-        && serviceOrderBudgetSignature(budgetItems) !== loadedBudgetSigRef.current
-          ? budgetItems
-          : undefined,
+        && (
+          serviceOrderBudgetSignature(budgetItems) !== loadedBudgetSigRef.current
+          || serviceOrderBudgetPricingSignature(budgetPricing, budgetItems) !== loadedBudgetPricingSigRef.current
+        )
+      ) ? budgetItems : undefined,
+      budget_pricing: (
+        loadedBudgetSigRef.current !== null
+        && (
+          serviceOrderBudgetSignature(budgetItems) !== loadedBudgetSigRef.current
+          || serviceOrderBudgetPricingSignature(budgetPricing, budgetItems) !== loadedBudgetPricingSigRef.current
+        )
+      ) ? budgetPricing : undefined,
       scheduled_date: data.scheduled_date || undefined,
       scheduled_time: data.scheduled_time || undefined,
       form_template_id: equipmentTemplateMap[selectedEquipmentIds[0] || '']?.[0]
@@ -898,7 +1003,7 @@ export function ServiceOrderFormDialog({
     const isRecurrenceOS = !!(serviceOrder as any)?.recurrence_group_id;
     const dateChanged = data.scheduled_date !== serviceOrder?.scheduled_date;
 
-    if (isContractOS && dateChanged) {
+    if (isContractOS && dateChanged && contractDateChangeScope === 'ask') {
       setPendingEditData(data);
       setScopeRemovalConfirmed(confirmedRemoval);
       setContractDateDialogOpen(true);
@@ -968,6 +1073,7 @@ export function ServiceOrderFormDialog({
             .from('service_orders')
             .select('id, scheduled_date')
             .eq('contract_id', contractId)
+            .is('contract_visit_customized_at', null)
             .gt('scheduled_date', oldDate)
             .order('scheduled_date', { ascending: true });
 
@@ -1061,6 +1167,7 @@ export function ServiceOrderFormDialog({
               scheduled_time,
               service_type_ids,
               budget_items,
+              budget_pricing,
               equipment_items,
               ...editableFields
             } = cleanedData;
@@ -1094,7 +1201,7 @@ export function ServiceOrderFormDialog({
                 if (scopeError) throw scopeError;
               }
               if (budget_items !== undefined) {
-                await syncServiceOrderBudget(os.id, budget_items);
+                await syncServiceOrderBudget(os.id, budget_items, budget_pricing ?? budgetPricing);
               }
             }
           }
@@ -1147,12 +1254,12 @@ export function ServiceOrderFormDialog({
     );
   };
 
-  const STEPS_WITH_LABELS = useMemo(() => [
+  const STEPS_WITH_LABELS = useMemo<ServiceOrderWizardStep[]>(() => [
     { key: 'client' as const, label: t.stepClient },
-    { key: 'budget' as const, label: t.stepBudget },
     { key: 'equipment' as const, label: t.stepEquipment },
     { key: 'details' as const, label: t.stepDetails },
-  ], [t.stepClient, t.stepBudget, t.stepEquipment, t.stepDetails]);
+    { key: 'review' as const, label: t.stepReview },
+  ], [t.stepClient, t.stepEquipment, t.stepDetails, t.stepReview]);
 
   // A etapa "Equipamentos e Checklists" agora sempre aparece: além do CRUD de
   // equipamentos (condicional ao tipo de serviço), ela hospeda os "Checklists
@@ -1160,6 +1267,8 @@ export function ServiceOrderFormDialog({
   const activeSteps = useMemo(() => STEPS_WITH_LABELS, [STEPS_WITH_LABELS]);
 
   const currentStepKey = activeSteps[step]?.key || 'client';
+  const showDesktopSummary = currentStepKey !== 'review';
+  const [navigationMessage, setNavigationMessage] = useState('');
 
   const canGoNext = () => {
     if (currentStepKey === 'client') {
@@ -1169,11 +1278,121 @@ export function ServiceOrderFormDialog({
     return true;
   };
 
-  const goNext = () => { if (step < activeSteps.length - 1 && canGoNext()) setStep(step + 1); };
+  const goNext = () => {
+    if (step >= activeSteps.length - 1) return;
+    if (canGoNext()) {
+      setNavigationMessage('');
+      setStep(step + 1);
+      return;
+    }
+
+    const message = customerMode === 'adhoc'
+      ? t.validationAdhocName
+      : t.validationCustomer;
+    setNavigationMessage(message);
+    requestAnimationFrame(() => {
+      const target = document.querySelector<HTMLElement>(
+        customerMode === 'adhoc'
+          ? '[data-os-validation="adhoc-name"] input'
+          : '[data-os-validation="customer"] button',
+      );
+      target?.focus();
+    });
+  };
   const goBack = () => { if (step > 0) setStep(step - 1); };
   const isLastStep = step === activeSteps.length - 1;
 
-  const handleServiceTypesChange = (ids: string[]) => {
+  useEffect(() => {
+    setMaxStepReached(current => Math.max(current, step));
+  }, [step]);
+
+  const schedulePlan = watchedValues.schedule_plan ?? [];
+  const firstSchedule = schedulePlan[0];
+  const customerName = customerMode === 'adhoc'
+    ? adhocName.trim()
+    : customers.find(customer => customer.id === selectedCustomerId)?.name ?? '';
+  const selectedServiceNames = selectedServiceTypeIds
+    .map(id => serviceTypes.find(service => service.id === id)?.name)
+    .filter((name): name is string => !!name);
+  const selectedChecklistCount = selectedStandaloneTemplateIds.length
+    + selectedEquipmentIds.reduce(
+      (total, equipmentId) => total + (equipmentTemplateMap[equipmentId]?.length ?? 0),
+      0,
+    );
+  const assigneeNames = selectedAssigneeUserIds
+    .map(id => technicians?.find(profile => profile.user_id === id)?.full_name)
+    .filter((name): name is string => !!name);
+  const teamNames = selectedAssigneeTeamIds
+    .map(id => teamsWithMembers.find(team => team.id === id)?.name)
+    .filter((name): name is string => !!name);
+  const scheduleLabel = firstSchedule
+    ? `${formatDate(firstSchedule.date, locale, timezone)} às ${firstSchedule.time.slice(0, 5)}`
+    : '';
+  const formSummaryData: ServiceOrderFormSummaryData = {
+    customerName,
+    serviceNames: selectedServiceNames,
+    equipmentCount: selectedEquipmentIds.length,
+    checklistCount: selectedChecklistCount,
+    assigneeNames,
+    teamNames,
+    scheduleLabel,
+    scheduleCount: schedulePlan.length,
+    budgetItemCount: budgetItems.length,
+    recurrenceLabel: recurrenceEnabled
+      ? recurrencePreview?.text ?? recurrencePreview?.error ?? t.recurrenceLabel
+      : null,
+    description: watchedValues.description,
+    notes: watchedValues.notes,
+    requireTechSignature,
+    requireClientSignature,
+    generateNpsSurvey,
+  };
+  const serviceOrderReviewItems = [
+    {
+      key: 'customer',
+      label: t.reviewAttendance,
+      detail: customerName ? customerName : t.reviewCustomerMissing,
+      complete: !!customerName,
+      stepIndex: activeSteps.findIndex(item => item.key === 'client'),
+    },
+    {
+      key: 'services',
+      label: t.reviewServicesBudget,
+      detail: selectedServiceNames.length > 0 || budgetItems.length > 0
+        ? t.reviewServicesCounts
+          .replace('{services}', String(selectedServiceNames.length))
+          .replace('{items}', String(budgetItems.length))
+        : t.reviewServicesOptional,
+      complete: selectedServiceNames.length > 0 || budgetItems.length > 0,
+      optional: true,
+      stepIndex: activeSteps.findIndex(item => item.key === 'client'),
+    },
+    {
+      key: 'scope',
+      label: t.reviewScope,
+      detail: selectedEquipmentIds.length > 0 || selectedChecklistCount > 0
+        ? t.reviewScopeCounts
+          .replace('{equipment}', String(selectedEquipmentIds.length))
+          .replace('{checklists}', String(selectedChecklistCount))
+        : t.reviewScopeOptional,
+      complete: selectedEquipmentIds.length > 0 || selectedChecklistCount > 0,
+      optional: true,
+      stepIndex: activeSteps.findIndex(item => item.key === 'equipment'),
+    },
+    {
+      key: 'schedule',
+      label: t.reviewSchedule,
+      detail: schedulePlan.length > 0
+        ? t.reviewScheduleCount
+          .replace('{visits}', String(schedulePlan.length))
+          .replace('{date}', scheduleLabel)
+        : t.reviewScheduleMissing,
+      complete: schedulePlan.length > 0,
+      stepIndex: activeSteps.findIndex(item => item.key === 'details'),
+    },
+  ];
+
+  const handleServiceTypesChange = (ids: string[], addMissingBudgetItems = true) => {
     // Uma linha de serviço no orçamento também define o escopo operacional da
     // OS. Enquanto a linha existir, o tipo não pode desaparecer do seletor —
     // senão o valor seria faturado sem levar seus checklists/equipamentos.
@@ -1184,6 +1403,63 @@ export function ServiceOrderFormDialog({
     const addedIds = reconciledIds.filter(id => !selectedServiceTypeIds.includes(id));
     setSelectedServiceTypeIds(reconciledIds);
     form.setValue('service_type_id', reconciledIds[0] ?? '');
+
+    if (addMissingBudgetItems && addedIds.length > 0) {
+      const addedServices = addedIds.flatMap(id => {
+        const service = serviceTypes.find(item => item.id === id);
+        return service ? [{
+          id: service.id,
+          name: service.name,
+          default_price: service.default_price,
+        }] : [];
+      });
+      setBudgetItems(current => appendMissingServiceOrderBudgetItems(current, addedServices));
+
+      // A linha aparece imediatamente com o preço cadastrado. A composição de
+      // custo é enriquecida em segundo plano para o seletor não ficar esperando
+      // várias consultas; se o BDI já estiver ligado, o novo serviço passa a
+      // custo + BDI assim que a fonte canônica responder.
+      const companyId = profile?.company_id;
+      if (companyId) {
+        void Promise.all(addedServices.map(async service => ({
+          service,
+          breakdown: await fetchServiceCostBreakdown(queryClient, companyId, service.id),
+        }))).then(results => {
+          const factor = calculateServiceOrderBdiFactor(
+            budgetPricing.tax_rate,
+            budgetPricing.admin_indirect_rate,
+            budgetPricing.profit_rate,
+          );
+          setBudgetItems(current => current.map(item => {
+            const result = results.find(candidate => candidate.service.id === item.service_type_id);
+            if (!result) return item;
+            const { breakdown } = result;
+            const automatic = budgetPricing.use_bdi && breakdown.totalCost > 0;
+            const unitPrice = automatic
+              ? Math.round((breakdown.totalCost / factor) * 100) / 100
+              : Number(item.unit_price || 0);
+            return {
+              ...item,
+              unit_hourly_rate: breakdown.hourlyRate,
+              unit_hours: breakdown.hours,
+              unit_labor_cost: breakdown.laborCost,
+              unit_materials_cost: breakdown.materialsCost,
+              unit_extras_cost: breakdown.quoteExtrasCost,
+              unit_total_cost: breakdown.totalCost,
+              profit_rate: budgetPricing.profit_rate,
+              bdi: factor,
+              pricing_mode: automatic ? 'cost_bdi' : (item.pricing_mode ?? 'registered'),
+              price_override: automatic ? null : Number(item.unit_price || 0),
+              unit_price: unitPrice,
+              total_price: Math.round(Number(item.quantity || 0) * unitPrice * 100) / 100,
+            };
+          }));
+        }).catch(() => {
+          // O serviço e o preço cadastrado continuam válidos; custo indisponível
+          // apenas desabilita a modalidade automática naquela linha.
+        });
+      }
+    }
 
     // Serviço novo entra, por padrão, nos equipamentos já marcados. A partir daí
     // cada card pode ser refinado separadamente. Serviço removido da OS sai de
@@ -1257,13 +1533,31 @@ export function ServiceOrderFormDialog({
       selectedServiceTypeIds,
       items.map(item => item.service_type_id),
     );
-    if (merged.length !== selectedServiceTypeIds.length) handleServiceTypesChange(merged);
+    if (merged.length !== selectedServiceTypeIds.length) handleServiceTypesChange(merged, false);
+  };
+
+  const handleBudgetPricingChange = (next: ServiceOrderBudgetPricing) => {
+    budgetPricingTouchedRef.current = true;
+    const factor = calculateServiceOrderBdiFactor(
+      next.tax_rate,
+      next.admin_indirect_rate,
+      next.profit_rate,
+    );
+    const normalized = { ...next, bdi: factor };
+    setBudgetPricing(normalized);
+    if (budgetPricing.use_bdi && !next.use_bdi) {
+      setBudgetItems(current => preserveServiceOrderBudgetPricesAsManual(current));
+      return;
+    }
+    if (next.use_bdi) {
+      setBudgetItems(current => recalculateAutomaticServiceOrderBudgetItems(current, factor));
+    }
   };
 
   // Bloco reutilizado nos dois modos (criar/editar): endereço de serviço próprio
   // da OS. Alavanca ligada revela campos estruturados (mesmo padrão do avulso).
   const serviceAddressSection = (
-    <div className="rounded-lg bg-muted/30 p-3 space-y-3">
+    <div className="space-y-3 rounded-xl border p-4">
       <div className="flex items-center justify-between gap-3">
         <Label className="cursor-default flex items-center gap-1.5 text-sm">
           <MapPinned className="h-4 w-4 text-primary" />
@@ -1366,6 +1660,13 @@ export function ServiceOrderFormDialog({
       plan={(watchedValues.schedule_plan ?? []) as ServiceOrderScheduleSlot[]}
       onChange={handleSchedulePlanChange}
       locale={locale}
+      // No planejamento contratual, a visita aberta também é contexto útil:
+      // manter seu ponto laranja explica a legenda e a data já persistida.
+      // Na edição comum, continuamos excluindo a própria OS para não sugerir
+      // um conflito dela com ela mesma.
+      excludeServiceOrderId={contractPlanningMode ? undefined : serviceOrder?.id}
+      customerId={selectedCustomerId}
+      equipmentIds={selectedEquipmentIds}
       labels={{
         period: t.schedulePeriod,
         startDate: t.scheduleStartDate,
@@ -1373,6 +1674,9 @@ export function ServiceOrderFormDialog({
         dailyPlan: t.dailySchedule,
         dailyPlanHelp: t.dailyScheduleHelp,
         applyFirstToAll: t.applyScheduleToAll,
+        addDate: t.scheduleAddDate,
+        addDay: t.scheduleAddDay,
+        removeDay: t.scheduleRemoveDay,
         scheduledDaySingular: t.scheduledDaySingular,
         scheduledDayPlural: t.scheduledDayPlural,
         startTime: t.scheduleStartTime,
@@ -1383,7 +1687,7 @@ export function ServiceOrderFormDialog({
   );
 
   const scopeSummary = (
-    <section className="rounded-lg border bg-card p-3 space-y-3">
+    <section className="space-y-3">
       <div>
         <h3 className="text-sm font-semibold">{t.scopeSummaryTitle}</h3>
         <p className="text-xs text-muted-foreground">{t.scopeSummaryDescription}</p>
@@ -1435,23 +1739,98 @@ export function ServiceOrderFormDialog({
     </section>
   );
 
+  const completionPreferencesSection = (
+    <section className="space-y-3 border-t pt-4" aria-labelledby="os-completion-preferences-title">
+      <div>
+        <h3 id="os-completion-preferences-title" className="text-sm font-semibold">{t.completionTitle}</h3>
+        <p className="text-xs text-muted-foreground">{t.completionDescription}</p>
+      </div>
+      <div className="divide-y">
+        <div className="flex items-center justify-between gap-3 py-3 first:pt-0">
+          <Label className="cursor-default text-sm">{t.requireTechSignatureLabel}</Label>
+          <LabeledSwitch
+            value={requireTechSignature ? 'on' : 'off'}
+            onChange={(value) => setRequireTechSignature(value === 'on')}
+            off={{ value: 'off', label: t.switchNo }}
+            on={{ value: 'on', label: t.switchYes }}
+            aria-label={t.requireTechSignatureLabel}
+          />
+        </div>
+        <div className="flex items-center justify-between gap-3 py-3">
+          <Label className="cursor-default text-sm">{t.requireClientSignatureLabel}</Label>
+          <LabeledSwitch
+            value={requireClientSignature ? 'on' : 'off'}
+            onChange={(value) => setRequireClientSignature(value === 'on')}
+            off={{ value: 'off', label: t.switchNo }}
+            on={{ value: 'on', label: t.switchYes }}
+            aria-label={t.requireClientSignatureLabel}
+          />
+        </div>
+        <div className="flex items-center justify-between gap-3 py-3 last:pb-0">
+          <Label className="flex cursor-default items-center gap-1.5 text-sm">
+            <Star className="h-4 w-4 text-warning" />
+            {t.npsLabel}
+          </Label>
+          <LabeledSwitch
+            value={generateNpsSurvey ? 'on' : 'off'}
+            onChange={(value) => setGenerateNpsSurvey(value === 'on')}
+            off={{ value: 'off', label: t.switchNo }}
+            on={{ value: 'on', label: t.switchYes }}
+            aria-label={t.npsLabel}
+          />
+        </div>
+      </div>
+    </section>
+  );
+
   // Etapa 2 completa — "Equipamentos e Checklists". Reunimos o CRUD de
   // equipamentos (cada um expansível com os checklists dele dentro, espelhando a
   // UX do EditOsScopeDrawer) e, logo abaixo, a seção fixa de "Checklists avulsos"
   // (sempre disponível). Usada de forma idêntica em criar e editar.
   const equipmentAndChecklistsStep = (
-    <div className="space-y-5">
+    <div className="space-y-6">
+      {isEditing && scopeLoading && (
+        <div className="flex items-center gap-3 rounded-lg border bg-background p-3" role="status">
+          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">{t.scopeLoading}</p>
+        </div>
+      )}
+      {isEditing && scopeLoadError && (
+        <div className="flex flex-col gap-3 rounded-lg border bg-background p-3 sm:flex-row sm:items-center" role="alert">
+          <AlertTriangle className="h-5 w-5 shrink-0 text-destructive" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold">{t.scopeLoadErrorTitle}</p>
+            <p className="text-xs text-muted-foreground">{t.scopeLoadErrorDescription}</p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={scopeLoading || !serviceOrder?.id}
+            onClick={() => { if (serviceOrder?.id) void loadExistingEquipmentItems(serviceOrder.id); }}
+          >
+            {t.scopeLoadRetry}
+          </Button>
+        </div>
+      )}
+      <fieldset
+        disabled={isEditing && !scopeLoaded}
+        aria-disabled={isEditing && !scopeLoaded}
+        className={cn('contents', isEditing && !scopeLoaded && 'opacity-60')}
+      >
       {/* ── Equipamentos (condicional ao tipo de serviço exigir equipamento) ── */}
       {showEquipmentStep && (
-        <div className="space-y-3">
-          <Label className="text-sm font-medium flex items-center gap-1.5">
-            <Wrench className="h-4 w-4 text-muted-foreground" />
-            {t.equipmentSectionTitle}
-          </Label>
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-sm text-muted-foreground">
-              {equipment.length > 1 ? t.equipmentSelectMany : t.equipmentSelectOne}
-            </p>
+        <div className="space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 space-y-1">
+              <h2 className="flex items-center gap-2 text-base font-semibold">
+                <Wrench className="h-4 w-4 text-muted-foreground" />
+                {t.equipmentSectionTitle}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {equipment.length > 1 ? t.equipmentSelectMany : t.equipmentSelectOne}
+              </p>
+            </div>
             <div className="flex items-center">
               {equipment.length > 1 && (
                 <Button
@@ -1517,7 +1896,7 @@ export function ServiceOrderFormDialog({
             </p>
           )}
 
-          <div className="space-y-2 max-h-[340px] overflow-y-auto">
+          <div className="max-h-[340px] divide-y overflow-y-auto rounded-xl border">
             {equipment.map((eq) => {
               const checked = selectedEquipmentIds.includes(eq.id);
               const expanded = expandedEquipmentIds.includes(eq.id);
@@ -1540,8 +1919,8 @@ export function ServiceOrderFormDialog({
                 <div
                   key={eq.id}
                   className={cn(
-                    'rounded-lg transition-colors',
-                    checked ? 'border border-primary bg-primary/5' : 'bg-muted/30'
+                    'transition-colors',
+                    checked ? 'bg-muted/45' : 'bg-background hover:bg-muted/20'
                   )}
                 >
                   {/* Linha do equipamento — seleção + expandir */}
@@ -1565,7 +1944,7 @@ export function ServiceOrderFormDialog({
                       />
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">{eq.name}</p>
+                      <p className="flex min-w-0 items-center gap-2 text-sm font-medium"><span className="truncate">{eq.name}</span><PartyLabelBadges labels={equipmentLabelsFor('equipment', eq.id)} mode="summary" /></p>
                       <p className="text-xs text-muted-foreground">
                         {[eq.brand, eq.model].filter(Boolean).join(' - ') || t.equipmentNoDetails}
                       </p>
@@ -1766,8 +2145,7 @@ export function ServiceOrderFormDialog({
       )}
 
       {/* ── Checklists avulsos — seção fixa, sempre disponível ── */}
-      <div className="space-y-3">
-        {showEquipmentStep && <div className="border-t border-border/40" />}
+      <div className="space-y-3 border-t pt-5">
         <div className="space-y-1">
           <Label className="text-sm font-medium flex items-center gap-1.5">
             <ClipboardList className="h-4 w-4 text-muted-foreground" />
@@ -1832,6 +2210,7 @@ export function ServiceOrderFormDialog({
           />
         </div>
       </div>
+      </fieldset>
 
       <AlertDialog open={!!copySourceEquipmentId} onOpenChange={(value) => { if (!value) setCopySourceEquipmentId(null); }}>
         <AlertDialogContent>
@@ -1874,7 +2253,17 @@ export function ServiceOrderFormDialog({
   // Edit mode: same multi-step form as create
   if (serviceOrder) {
     const editFooter = (
-      <div className="flex justify-between w-full">
+      <div className="flex w-full flex-col gap-2">
+        <WizardMobileSummary
+          title={t.summaryTitle}
+          summary={`${customerName || t.summaryCustomerMissing} · ${t.summaryVisitCount.replace('{count}', String(schedulePlan.length))}`}
+        >
+          <ServiceOrderFormSummary data={formSummaryData} mode="mobile" />
+        </WizardMobileSummary>
+        {navigationMessage && !canGoNext() && (
+          <p className="text-right text-xs text-destructive" role="alert">{navigationMessage}</p>
+        )}
+        <div className="flex justify-between w-full">
         <div>
           {step > 0 && (
             <Button type="button" variant="outline" onClick={goBack}>
@@ -1884,7 +2273,7 @@ export function ServiceOrderFormDialog({
           )}
         </div>
         <div className="flex gap-2">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button type="button" variant="outline" disabled={submitLocked} onClick={() => handleModalOpenChange(false)}>
             {t.btnCancel}
           </Button>
           {isLastStep ? (
@@ -1893,52 +2282,64 @@ export function ServiceOrderFormDialog({
               {t.btnSave}
             </Button>
           ) : (
-            <Button type="button" onClick={(e) => { e.preventDefault(); goNext(); }} disabled={!canGoNext()}>
+            <Button
+              type="button"
+              onClick={(e) => { e.preventDefault(); goNext(); }}
+              aria-disabled={!canGoNext()}
+              className="aria-disabled:opacity-50"
+            >
               {t.btnNext}
               <ChevronRight className="ml-2 h-4 w-4" />
             </Button>
           )}
+        </div>
         </div>
       </div>
     );
 
     return (
       <>
-      <ResponsiveModal open={open} onOpenChange={onOpenChange} title={t.titleEdit} className="sm:max-w-[920px]" footer={editFooter}>
+      <ResponsiveModal
+        open={open}
+        onOpenChange={handleModalOpenChange}
+        title={editTitle ?? t.titleEdit}
+        description={editDescription ?? t.editDescription}
+        density="compact"
+        className="sm:h-[88vh] sm:max-h-[88vh] sm:w-[96vw] sm:max-w-[1180px]"
+        drawerClassName="h-[90dvh]"
+        footer={editFooter}
+      >
         {isPmocOrder && (
           <PmocComplianceBadge variant="ribbon" withTooltip className="mb-4" />
         )}
-        {/* Step indicators */}
-        <div className="flex flex-col items-center mb-6">
-          <div className="flex items-center justify-center gap-2">
-            {activeSteps.map((s, i) => (
-              <div key={s.key} className="flex items-center gap-2">
-                <div className={cn(
-                  'flex items-center justify-center h-8 w-8 rounded-full text-sm font-medium transition-colors',
-                  i < step ? 'bg-primary text-white' :
-                  i === step ? 'bg-primary text-white' :
-                  'bg-muted text-muted-foreground'
-                )}>
-                  {i < step ? <Check className="h-4 w-4" /> : i + 1}
-                </div>
-                <span className={cn('text-sm hidden sm:inline', i === step ? 'font-medium' : 'text-muted-foreground')}>
-                  {s.label}
-                </span>
-                {i < activeSteps.length - 1 && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-              </div>
-            ))}
-          </div>
-          <p className="text-sm font-medium text-foreground mt-2 sm:hidden">{activeSteps[step]?.label}</p>
+        <div className="sticky top-0 z-20 -mx-1 mb-4 bg-background/95 px-1 pb-2 pt-0.5 backdrop-blur supports-[backdrop-filter]:bg-background/90">
+          <ServiceOrderFormStepper
+            steps={activeSteps}
+            currentIndex={step}
+            maxReachedIndex={maxStepReached}
+            onStepChange={(target) => { if (target <= maxStepReached) setStep(target); }}
+          />
         </div>
 
+        <div className={cn(
+          'grid gap-8',
+          showDesktopSummary && 'xl:grid-cols-[minmax(0,1fr)_288px] xl:gap-0 xl:divide-x',
+        )}>
+        <div className={cn('order-2 min-w-0 xl:order-1', showDesktopSummary && 'xl:pr-8')}>
         <Form {...form}>
           <form id="os-edit-form" onSubmit={(e) => { e.preventDefault(); if (isLastStep) form.handleSubmit(handleEditSubmit)(); }} className="space-y-4">
             <StepTransition stepKey={currentStepKey} index={step} className="space-y-4">
-            {/* Step 1: Client & Service */}
+            {/* Step 1: Atendimento e orçamento */}
             {currentStepKey === 'client' && (
-              <div className="space-y-4">
+              <div className="space-y-5">
+                <div className="space-y-1 border-b pb-4">
+                  <h2 className="text-base font-semibold">{t.stepClient}</h2>
+                  <p className="text-sm text-muted-foreground">
+                    {t.clientStepDescription}
+                  </p>
+                </div>
                 <FormField control={form.control} name="customer_id" render={({ field }) => (
-                  <FormItem>
+                  <FormItem data-os-validation="customer">
                     <FormLabel>{t.labelCustomer}</FormLabel>
                     <FormControl>
                       <CustomerSelectField
@@ -1948,14 +2349,15 @@ export function ServiceOrderFormDialog({
                         placeholder={t.placeholderSelectCustomer}
                         searchPlaceholder={t.placeholderSearchCustomer}
                         requireDocument={false}
+                        disabled={contractPlanningMode}
                       />
                     </FormControl>
+                    {contractPlanningMode && (
+                      <p className="text-xs text-muted-foreground">{t.contractCustomerLocked}</p>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )} />
-
-                {/* Endereço de serviço (diferente do cliente) — alternativa ao endereço do cliente */}
-                {serviceAddressSection}
 
                 <FormField control={form.control} name="service_type_id" render={({ field }) => (
                   <FormItem>
@@ -1966,30 +2368,45 @@ export function ServiceOrderFormDialog({
                         selectedIds={selectedServiceTypeIds}
                         onChange={handleServiceTypesChange}
                         lockedIds={budgetItems.map(item => item.service_type_id).filter((id): id is string => !!id)}
+                        showSelectedList={false}
+                        selectionTargetId="os-service-budget"
                         onCreate={() => setQuickCreateServiceTypeOpen(true)}
                       />
                     </FormControl>
+                    <p className="text-xs text-muted-foreground">
+                      {t.serviceBudgetHint}
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )} />
-              </div>
-            )}
 
-            {currentStepKey === 'budget' && (
-              <ServiceOrderBudgetSection
-                items={budgetItems}
-                onChange={handleBudgetItemsChange}
-                loading={isEditing && budgetQuery.isLoading}
-              />
+                <section id="os-service-budget" className="scroll-mt-12 border-t pt-5">
+                  <ServiceOrderBudgetSection
+                    items={budgetItems}
+                    onChange={handleBudgetItemsChange}
+                    pricing={budgetPricing}
+                    onPricingChange={handleBudgetPricingChange}
+                    loading={isEditing && budgetQuery.isLoading}
+                  />
+                </section>
+
+                {/* Endereço de serviço (diferente do cliente) — alternativa ao endereço do cliente */}
+                {serviceAddressSection}
+              </div>
             )}
 
             {/* Step 2: Equipamentos e Checklists */}
             {currentStepKey === 'equipment' && equipmentAndChecklistsStep}
 
-            {/* Step 3: Agendamento e Detalhes */}
+            {/* Step 3: Equipe e agenda */}
             {currentStepKey === 'details' && (
-              <div className="space-y-4">
-                {scopeSummary}
+              <div className="space-y-5">
+                <div className="space-y-1 border-b pb-4">
+                  <h2 className="text-base font-semibold">{t.stepDetails}</h2>
+                  <p className="text-sm text-muted-foreground">
+                    {t.detailsStepDescription}
+                  </p>
+                </div>
                 {assigneeSection}
                 {schedulePlanningSection}
 
@@ -2013,26 +2430,40 @@ export function ServiceOrderFormDialog({
                     CRIAÇÃO e lá `isEditing` nunca é true, então não renderiza nada.
                     Some sozinho quando não há material lançado. */}
                 {serviceOrder?.id && <OsMaterialsSection serviceOrderId={serviceOrder.id} />}
+                {completionPreferencesSection}
+              </div>
+            )}
 
-                {/* Pesquisa de Satisfação (NPS) ao finalizar */}
-                <div className="flex items-center justify-between gap-3 border-t pt-3">
-                  <Label className="cursor-default flex items-center gap-1.5 text-sm">
-                    <Star className="h-4 w-4 text-warning" />
-                    {t.npsLabel}
-                  </Label>
-                  <LabeledSwitch
-                    value={generateNpsSurvey ? 'on' : 'off'}
-                    onChange={(v) => setGenerateNpsSurvey(v === 'on')}
-                    off={{ value: 'off', label: t.switchNo }}
-                    on={{ value: 'on', label: t.switchYes }}
-                    aria-label={t.npsLabel}
-                  />
-                </div>
+            {currentStepKey === 'review' && (
+              <div className="space-y-5">
+                <WizardReviewChecklist items={serviceOrderReviewItems} onEdit={setStep} />
+                <ServiceOrderReviewDetails data={formSummaryData} />
+                {budgetItems.length > 0 && (
+                  <section className="space-y-3 border-t pt-5" aria-label={t.pricingReviewAria}>
+                    <div>
+                      <h3 className="text-sm font-semibold">{t.pricingReviewTitle}</h3>
+                      <p className="text-xs text-muted-foreground">{t.pricingReviewEditDescription}</p>
+                    </div>
+                    <ServiceOrderBudgetSection items={budgetItems} pricing={budgetPricing} />
+                  </section>
+                )}
+                {(selectedEquipmentIds.length > 0 || selectedStandaloneTemplateIds.length > 0) && (
+                  <div className="border-t pt-5">{scopeSummary}</div>
+                )}
               </div>
             )}
             </StepTransition>
           </form>
         </Form>
+        </div>
+        {showDesktopSummary && (
+          <aside className="hidden min-w-0 xl:order-2 xl:block xl:pl-8">
+            <div className="xl:sticky xl:top-0">
+              <ServiceOrderFormSummary data={formSummaryData} />
+            </div>
+          </aside>
+        )}
+        </div>
       </ResponsiveModal>
 
       {/* Contract date propagation dialog */}
@@ -2117,7 +2548,17 @@ export function ServiceOrderFormDialog({
   }
 
   const createFooter = (
-    <div className="flex justify-between w-full">
+    <div className="flex w-full flex-col gap-2">
+      <WizardMobileSummary
+        title={t.summaryTitle}
+        summary={`${customerName || t.summaryCustomerMissing} · ${t.summaryVisitCount.replace('{count}', String(schedulePlan.length))}`}
+      >
+        <ServiceOrderFormSummary data={formSummaryData} mode="mobile" />
+      </WizardMobileSummary>
+      {navigationMessage && !canGoNext() && (
+        <p className="text-right text-xs text-destructive" role="alert">{navigationMessage}</p>
+      )}
+      <div className="flex justify-between w-full">
       <div>
         {step > 0 && (
           <Button type="button" variant="outline" onClick={goBack}>
@@ -2127,7 +2568,7 @@ export function ServiceOrderFormDialog({
         )}
       </div>
       <div className="flex gap-2">
-        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+        <Button type="button" variant="outline" disabled={submitLocked} onClick={() => handleModalOpenChange(false)}>
           {t.btnCancel}
         </Button>
         {isLastStep ? (
@@ -2136,22 +2577,46 @@ export function ServiceOrderFormDialog({
             {recurrenceEnabled ? t.btnCreateRecurring : t.btnCreate}
           </Button>
         ) : (
-          <Button type="button" onClick={(e) => { e.preventDefault(); goNext(); }} disabled={!canGoNext()}>
+          <Button
+            type="button"
+            onClick={(e) => { e.preventDefault(); goNext(); }}
+            aria-disabled={!canGoNext()}
+            className="aria-disabled:opacity-50"
+          >
             {t.btnNext}
             <ChevronRight className="ml-2 h-4 w-4" />
           </Button>
         )}
       </div>
+      </div>
     </div>
   );
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={t.titleCreate} className="sm:max-w-[920px]" footer={createFooter}>
+    <ResponsiveModal
+      open={open}
+      onOpenChange={handleModalOpenChange}
+      title={t.titleCreate}
+      description={t.createDescription}
+      density="compact"
+      className="sm:h-[88vh] sm:max-h-[88vh] sm:w-[96vw] sm:max-w-[1180px]"
+      drawerClassName="h-[90dvh]"
+      footer={createFooter}
+    >
       <DraftResumeDialog
         open={draft.showResumePrompt}
         onResume={() => {
           if (draft.draftData) {
-            const { _selectedCustomerId, _selectedServiceTypeIds, _budgetItems, ...formValues } = draft.draftData;
+            const {
+              _selectedCustomerId,
+              _selectedServiceTypeIds,
+              _budgetItems,
+              _budgetPricing,
+              _requireTechSignature,
+              _requireClientSignature,
+              _generateNpsSurvey,
+              ...formValues
+            } = draft.draftData;
             form.reset({
               ...formValues,
               schedule_plan: formValues.schedule_plan?.length ? formValues.schedule_plan : computedSchedulePlan,
@@ -2162,11 +2627,21 @@ export function ServiceOrderFormDialog({
               form.setValue('service_type_id', _selectedServiceTypeIds[0] ?? '');
             }
             if (_budgetItems) setBudgetItems(_budgetItems);
+            if (_budgetPricing) {
+              budgetPricingTouchedRef.current = true;
+              setBudgetPricing(_budgetPricing);
+            }
+            if (_requireTechSignature !== undefined) setRequireTechSignature(_requireTechSignature);
+            if (_requireClientSignature !== undefined) setRequireClientSignature(_requireClientSignature);
+            if (_generateNpsSurvey !== undefined) setGenerateNpsSurvey(_generateNpsSurvey);
           }
           draft.acceptDraft();
         }}
         onDiscard={() => {
           draft.discardDraft();
+          setRequireTechSignature(false);
+          setRequireClientSignature(false);
+          setGenerateNpsSurvey(npsSettings.generate_on_finish);
           form.reset({
             customer_id: '', equipment_id: '', technician_id: '',
             os_type: 'manutencao_corretiva', service_type_id: '',
@@ -2175,38 +2650,35 @@ export function ServiceOrderFormDialog({
           });
         }}
       />
-      {/* Step indicators */}
-      <div className="flex flex-col items-center mb-6">
-        <div className="flex items-center justify-center gap-2">
-          {activeSteps.map((s, i) => (
-            <div key={s.key} className="flex items-center gap-2">
-              <div className={cn(
-                'flex items-center justify-center h-8 w-8 rounded-full text-sm font-medium transition-colors',
-                i < step ? 'bg-primary text-white' :
-                i === step ? 'bg-primary text-white' :
-                'bg-muted text-muted-foreground'
-              )}>
-                {i < step ? <Check className="h-4 w-4" /> : i + 1}
-              </div>
-              <span className={cn('text-sm hidden sm:inline', i === step ? 'font-medium' : 'text-muted-foreground')}>
-                {s.label}
-              </span>
-              {i < activeSteps.length - 1 && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-            </div>
-          ))}
-        </div>
-        <p className="text-sm font-medium text-foreground mt-2 sm:hidden">{activeSteps[step]?.label}</p>
+      <div className="sticky top-0 z-20 -mx-1 mb-4 bg-background/95 px-1 pb-2 pt-0.5 backdrop-blur supports-[backdrop-filter]:bg-background/90">
+        <ServiceOrderFormStepper
+          steps={activeSteps}
+          currentIndex={step}
+          maxReachedIndex={maxStepReached}
+          onStepChange={(target) => { if (target <= maxStepReached) setStep(target); }}
+        />
       </div>
 
+      <div className={cn(
+        'grid gap-8',
+        showDesktopSummary && 'xl:grid-cols-[minmax(0,1fr)_288px] xl:gap-0 xl:divide-x',
+      )}>
+      <div className={cn('order-2 min-w-0 xl:order-1', showDesktopSummary && 'xl:pr-8')}>
       <Form {...form}>
         <form id="os-create-form" onSubmit={(e) => { e.preventDefault(); if (isLastStep) handleCreateSubmit(); }} className="space-y-4">
           <StepTransition stepKey={currentStepKey} index={step} className="space-y-4">
-          {/* Step 1: Client & Service */}
+          {/* Step 1: Atendimento e orçamento */}
           {currentStepKey === 'client' && (
-            <div className="space-y-4">
-              {/* Customer mode toggle — alavanca centralizada */}
-              <div className="flex justify-center">
+            <div className="space-y-5">
+              <div className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0 space-y-1">
+                  <h2 className="text-base font-semibold">{t.stepClient}</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Escolha o cliente, defina o serviço e monte os itens previstos para a OS.
+                  </p>
+                </div>
                 <LabeledSwitch
+                  className="shrink-0 [&_button]:whitespace-nowrap [&_button]:text-sm"
                   value={customerMode}
                   onChange={(v) => {
                     if (v === 'existing') {
@@ -2226,7 +2698,7 @@ export function ServiceOrderFormDialog({
 
               {customerMode === 'existing' ? (
                 <FormField control={form.control} name="customer_id" render={({ field }) => (
-                  <FormItem>
+                  <FormItem data-os-validation="customer">
                     <FormLabel>{t.labelCustomer}</FormLabel>
                     <FormControl>
                       <CustomerSelectField
@@ -2245,7 +2717,7 @@ export function ServiceOrderFormDialog({
                 <div className="space-y-3 rounded-lg bg-muted/30 p-3">
                   <p className="text-xs text-muted-foreground">{t.adhocNote}</p>
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="sm:col-span-2">
+                    <div className="sm:col-span-2" data-os-validation="adhoc-name">
                       <Label>{t.labelName}</Label>
                       <Input value={adhocName} onChange={e => setAdhocName(e.target.value)} placeholder={t.labelName.replace(' *', '')} />
                     </div>
@@ -2301,9 +2773,6 @@ export function ServiceOrderFormDialog({
                 </div>
               )}
 
-              {/* Endereço de serviço (diferente do cliente) — alternativa ao endereço do cliente */}
-              {serviceAddressSection}
-
               <FormField control={form.control} name="service_type_id" render={({ field }) => (
                 <FormItem>
                   <FormLabel>{t.labelServiceType}</FormLabel>
@@ -2313,29 +2782,44 @@ export function ServiceOrderFormDialog({
                       selectedIds={selectedServiceTypeIds}
                       onChange={handleServiceTypesChange}
                       lockedIds={budgetItems.map(item => item.service_type_id).filter((id): id is string => !!id)}
+                      showSelectedList={false}
+                      selectionTargetId="os-service-budget"
                       onCreate={() => setQuickCreateServiceTypeOpen(true)}
                     />
                   </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    {t.serviceBudgetHint}
+                  </p>
                   <FormMessage />
                 </FormItem>
               )} />
-            </div>
-          )}
 
-          {currentStepKey === 'budget' && (
-            <ServiceOrderBudgetSection
-              items={budgetItems}
-              onChange={handleBudgetItemsChange}
-            />
+              <section id="os-service-budget" className="scroll-mt-12 border-t pt-5">
+                <ServiceOrderBudgetSection
+                  items={budgetItems}
+                  onChange={handleBudgetItemsChange}
+                  pricing={budgetPricing}
+                  onPricingChange={handleBudgetPricingChange}
+                />
+              </section>
+
+              {/* Endereço de serviço (diferente do cliente) — alternativa ao endereço do cliente */}
+              {serviceAddressSection}
+            </div>
           )}
 
           {/* Step 2: Equipamentos e Checklists */}
           {currentStepKey === 'equipment' && equipmentAndChecklistsStep}
 
-          {/* Step 3: Agendamento e Detalhes */}
+          {/* Step 3: Equipe e agenda */}
           {currentStepKey === 'details' && (
-            <div className="space-y-4">
-              {scopeSummary}
+            <div className="space-y-5">
+              <div className="space-y-1 border-b pb-4">
+                <h2 className="text-base font-semibold">{t.stepDetails}</h2>
+                <p className="text-sm text-muted-foreground">
+                  {t.detailsStepDescription}
+                </p>
+              </div>
               {assigneeSection}
               {schedulePlanningSection}
 
@@ -2434,25 +2918,40 @@ export function ServiceOrderFormDialog({
                 )}
               </div>
 
-              {/* Pesquisa de Satisfação (NPS) ao finalizar */}
-              <div className="flex items-center justify-between gap-3 border-t pt-3">
-                <Label className="cursor-default flex items-center gap-1.5 text-sm">
-                  <Star className="h-4 w-4 text-warning" />
-                  {t.npsLabel}
-                </Label>
-                <LabeledSwitch
-                  value={generateNpsSurvey ? 'on' : 'off'}
-                  onChange={(v) => setGenerateNpsSurvey(v === 'on')}
-                  off={{ value: 'off', label: t.switchNo }}
-                  on={{ value: 'on', label: t.switchYes }}
-                  aria-label={t.npsLabel}
-                />
-              </div>
+              {completionPreferencesSection}
+            </div>
+          )}
+
+          {currentStepKey === 'review' && (
+            <div className="space-y-5">
+              <WizardReviewChecklist items={serviceOrderReviewItems} onEdit={setStep} />
+              <ServiceOrderReviewDetails data={formSummaryData} />
+              {budgetItems.length > 0 && (
+                <section className="space-y-3 border-t pt-5" aria-label={t.pricingReviewAria}>
+                  <div>
+                    <h3 className="text-sm font-semibold">{t.pricingReviewTitle}</h3>
+                    <p className="text-xs text-muted-foreground">{t.pricingReviewCreateDescription}</p>
+                  </div>
+                  <ServiceOrderBudgetSection items={budgetItems} pricing={budgetPricing} />
+                </section>
+              )}
+              {(selectedEquipmentIds.length > 0 || selectedStandaloneTemplateIds.length > 0) && (
+                <div className="border-t pt-5">{scopeSummary}</div>
+              )}
             </div>
           )}
           </StepTransition>
         </form>
       </Form>
+      </div>
+      {showDesktopSummary && (
+        <aside className="hidden min-w-0 xl:order-2 xl:block xl:pl-8">
+          <div className="xl:sticky xl:top-0">
+            <ServiceOrderFormSummary data={formSummaryData} />
+          </div>
+        </aside>
+      )}
+      </div>
 
       {/* Quick create equipment */}
       {selectedCustomerId && (
@@ -2467,7 +2966,9 @@ export function ServiceOrderFormDialog({
             const { data: created, error } = await supabase.from('equipment').insert({ ...data, company_id } as any).select().single();
             if (!error && created) {
               setSelectedEquipmentIds(prev => [...prev, (created as any).id]);
+              return created;
             }
+            return undefined;
           }}
           customers={[customers.find(c => c.id === selectedCustomerId)!].filter(Boolean)}
           isLoading={false}

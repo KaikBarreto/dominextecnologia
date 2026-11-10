@@ -1,7 +1,8 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef, useId } from 'react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyField } from '@/components/ui/CurrencyField';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -15,8 +16,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useEmployeeWorkHours } from '@/hooks/useEmployeeWorkHours';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
-import { formatMoney } from '@/lib/format';
+import { formatMoney, getCurrencySymbol } from '@/lib/format';
 import { readPastedCents } from '@/lib/money-paste-mask';
+import type { Json } from '@/integrations/supabase/types';
+import { OverlayNestingProvider } from '@/contexts/OverlayCoordinatorContext';
 
 interface Worker {
   id: string;
@@ -79,12 +82,12 @@ function EmployeeCombobox({
             value={value}
             onChange={e => onChange(e.target.value, null, 0, null)}
             placeholder={t.laborEmployeePlaceholder}
-            className="h-8 text-sm font-medium pr-8"
+            className="h-11 text-base font-medium pr-11"
           />
           <Button
             variant="ghost"
             size="icon"
-            className="absolute right-0 top-0 h-8 w-8"
+            className="absolute right-0 top-0 h-11 w-11"
             onClick={(e) => { e.preventDefault(); setOpen(!open); }}
           >
             <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground" />
@@ -132,11 +135,15 @@ function EmployeeCombobox({
 }
 
 export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalculatorModalProps) {
+  const laborOverlayId = useId();
   const { locale, currency } = useAppLocaleContext();
   const t = MESSAGES[locale].app.crm.costModals;
   const fmt = (v: number) => formatMoney(v, currency, locale);
+  const currencySymbol = getCurrencySymbol(currency, locale);
   const { monthlyHours: companyMonthlyHours } = useEmployeeWorkHours(null);
   const [monthlyHours, setMonthlyHours] = useState(176);
+  const monthlyHoursTouchedRef = useRef(false);
+  const wasOpenRef = useRef(false);
   const [defaultServiceHours, setDefaultServiceHours] = useState(2);
   const [workers, setWorkers] = useState<Worker[]>(() => [makeWorker(2)]);
   const [costCalcWorkerId, setCostCalcWorkerId] = useState<string | null>(null);
@@ -151,8 +158,15 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
     Object.fromEntries(workers.map((w) => [w.id, toNumericText(w.hours)]))
   );
 
-  // Sync company hours when available
-  useEffect(() => { setMonthlyHours(companyMonthlyHours); }, [companyMonthlyHours]);
+  // Usa a jornada da empresa como padrão ao iniciar cada cálculo. Se a query
+  // resolver enquanto o usuário já estiver editando, preserva a escolha manual
+  // durante a sessão em vez de sobrescrevê-la silenciosamente.
+  useEffect(() => {
+    const justOpened = open && !wasOpenRef.current;
+    if (justOpened) monthlyHoursTouchedRef.current = false;
+    if (open && !monthlyHoursTouchedRef.current) setMonthlyHours(companyMonthlyHours);
+    wasOpenRef.current = open;
+  }, [companyMonthlyHours, open]);
 
   const costCalcWorker = costCalcWorkerId ? workers.find(w => w.id === costCalcWorkerId) : null;
 
@@ -249,8 +263,8 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
 
   const footer = (
     <div className="flex gap-2 w-full">
-      <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>{t.laborCancel}</Button>
-      <Button className="flex-1" onClick={handleApply} disabled={calculations.totalCost <= 0}>
+      <Button variant="cancel" className="h-11 flex-1" onClick={() => onOpenChange(false)}>{t.laborCancel}</Button>
+      <Button className="h-11 flex-1 bg-primary font-semibold text-primary-foreground hover:bg-primary/90" onClick={handleApply} disabled={calculations.totalCost <= 0}>
         {t.laborApply.replace('{rate}', `${fmt(calculations.avgRate)}`)}
       </Button>
     </div>
@@ -259,10 +273,11 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
   return (
     <>
       <ResponsiveModal
+        overlayId={laborOverlayId}
         open={open}
         onOpenChange={onOpenChange}
         title={t.laborCalcTitle}
-        className="sm:max-w-lg"
+        className="sm:max-w-lg [&_input]:h-11 [&_input]:text-base [&_label]:text-sm [&_label]:font-semibold [&_label]:text-foreground"
         footer={footer}
       >
         <div className="space-y-4">
@@ -272,17 +287,20 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
           </div>
 
           {/* Global settings */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs">{t.laborMonthlyHoursLabel}</Label>
+              <Label className="block min-h-10 text-sm leading-5">{t.laborMonthlyHoursLabel}</Label>
               <NumericInput
                 value={String(monthlyHours ?? '')}
-                onValueChange={v => setMonthlyHours(Number(v) || 0)}
+                onValueChange={v => {
+                  monthlyHoursTouchedRef.current = true;
+                  setMonthlyHours(Number(v) || 0);
+                }}
               />
               <p className="text-[11px] text-muted-foreground">{t.laborMonthlyHoursHint}</p>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">{t.laborServiceHoursLabel}</Label>
+              <Label className="block min-h-10 text-sm leading-5">{t.laborServiceHoursLabel}</Label>
               <NumericInput
                 decimal
                 value={defaultServiceHoursText}
@@ -299,7 +317,7 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
                 <Users className="h-4 w-4" />
                 {t.laborEmployeesHeader.replace('{count}', String(workers.length))}
               </div>
-              <Button size="sm" variant="outline" onClick={addWorker}>
+              <Button size="sm" className="h-11 bg-primary font-semibold text-primary-foreground hover:bg-primary/90" onClick={addWorker}>
                 <Plus className="h-3.5 w-3.5 mr-1" />{t.laborAddEmployee}
               </Button>
             </div>
@@ -353,6 +371,7 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
                   {w.isFixedCost ? (
                     <div className="space-y-1">
                       <Label className="text-[11px]">{t.laborFixedCostLabel}</Label>
+                      <CurrencyField symbol={currencySymbol} className="max-w-48">
                       <Input
                         type="number" min={0} step="0.01"
                         value={w.fixedCost || ''}
@@ -361,26 +380,29 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
                         placeholder="Ex: 150"
                         className="h-8 text-sm"
                       />
+                      </CurrencyField>
                       <p className="text-[11px] text-muted-foreground">{t.laborFixedCostHint}</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <Label className="text-[11px]">{t.laborMonthlyCostLabel}</Label>
                         <div className="flex gap-1">
+                          <CurrencyField symbol={currencySymbol} className="min-w-0 flex-1">
                           <Input
                             type="number" min={0} step="0.01"
+                            aria-label={t.laborMonthlyCostLabel}
                             value={w.salary || ''}
                             onChange={e => updateWorker(w.id, { salary: Number(e.target.value) || 0 })}
                             onPaste={handleMoneyPaste(w.id, 'salary')}
-                            placeholder="Ex: 3500"
+                            placeholder="0,00"
                             className="h-8 text-sm"
                           />
+                          </CurrencyField>
                           <Button
                             type="button"
-                            variant="outline"
                             size="sm"
-                            className="h-8 px-2 shrink-0"
+                            className="h-11 shrink-0 bg-primary px-3 text-primary-foreground hover:bg-primary/90"
                             onClick={() => setCostCalcWorkerId(w.id)}
                             title={t.laborCalcMonthlyDetail}
                           >
@@ -456,6 +478,7 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
       </ResponsiveModal>
 
       {/* Sub-modal for monthly cost calculation */}
+      <OverlayNestingProvider id={laborOverlayId}>
       <MonthlyCostCalculatorModal
         open={!!costCalcWorkerId}
         onOpenChange={open => { if (!open) setCostCalcWorkerId(null); }}
@@ -470,7 +493,7 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
             if (worker?.employeeId) {
               supabase.from('employees').update({
                 monthly_cost: totalCost,
-                monthly_cost_breakdown: breakdown as any,
+                monthly_cost_breakdown: breakdown as unknown as Json,
               }).eq('id', worker.employeeId).then(({ error }) => {
                 if (error) console.error('Erro ao salvar custo mensal do funcionário:', error);
               });
@@ -478,6 +501,7 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
           }
         }}
       />
+      </OverlayNestingProvider>
     </>
   );
 }

@@ -2333,6 +2333,14 @@ Passando o mouse sobre um cartão, aparecem dois botões no canto superior direi
 
 Clicando no cartão, abre o resumo da OS. Nele estão o cliente, o equipamento, o check-in e check-out, as fotos, os detalhes do serviço, os valores e a conformidade PMOC quando houver, mais uma linha de botões redondos: Retomar, Pausar, Finalizar, Resetar OS (quando a OS já passou de Agendada), Editar, Excluir e um botão para copiar o link, além do botão grande embaixo que muda de nome conforme o estado: Preencher OS em OS aberta, Relatório de Serviço em OS concluída. Quando a empresa tem o recurso de consumo de estoque na OS ligado e o técnico lançou material nesse atendimento, o resumo também mostra o bloco Materiais utilizados, só leitura: cada linha traz o material, a quantidade, a unidade e o local de estoque, com o custo da linha e o Custo total ao final (item ainda não baixado do estoque mostra o aviso Ainda não baixado do estoque).
 
+#### Gerar documentos PMOC pela OS concluída
+
+Quando a empresa atua com refrigeração, toda OS concluída oferece a ação Gerar documentos PMOC no menu de três pontos. Ela aparece no cartão do kanban, na visão em lista, na Agenda, nas ocorrências do contrato, no resumo da OS e no relatório aberto pelo técnico logado. A OS pode ter vindo de um contrato ou ter sido criada avulsa.
+
+Na janela, escolha Relatório de serviço ou Certificado de conformidade. O sistema confere cliente, equipamentos atendidos, produto bactericida PMOC vigente e Responsável Técnico. Se o RT ainda não estiver pronto, administradores e gestores podem cadastrá-lo ali mesmo. No certificado também é possível escolher o modelo visual antes de gerar.
+
+ A ação só aparece em OS concluída e para empresas com o segmento de refrigeração. O relatório usa o que foi realmente registrado no atendimento; o certificado também exige os dados regulatórios do produto e do Responsável Técnico.
+
 #### O "+" no cabeçalho da coluna
 
 Cada coluna do kanban tem, ao lado da contagem, um botão de mais (+). Ele abre a janela Nova Ordem de Serviço já com o status daquela coluna. É o atalho para quem recebe um chamado que já entra "agendado" ou já entra "em andamento", sem ter que criar em pendente e arrastar depois.
@@ -2671,6 +2679,8 @@ Ao lado do telefone do cliente, tanto numa OS quanto numa Tarefa, fica um ícone
 Para quem tem permissão de faturar, o resumo de uma OS também traz o botão Faturar OS e, quando já existe cobrança ou receita lançada, o selo Faturada ou Cobrança enviada ao lado do nome, exatamente como nas outras telas que mostram OS (tabela, lista do celular e kanban). Não é preciso abrir a Ordem de Serviço só para faturar: a agenda já resolve.
 
 Quando a OS já teve material lançado nela, o resumo também mostra o bloco Materiais utilizados: cada linha traz o material, a quantidade, a unidade e o local de estoque de onde saiu, com o custo de cada linha e o Custo total ao final. Um material ainda não baixado do estoque aparece com o aviso Ainda não baixado do estoque. É a mesma informação que já aparecia na tela de Ordem de Serviço, agora também aqui, sem precisar sair da Agenda.
+
+Em empresa de refrigeração, o resumo de uma OS concluída também oferece Gerar documentos PMOC. Assim, o gestor pode emitir o relatório de serviço ou o certificado de conformidade sem sair da Agenda, inclusive quando a OS não veio de contrato.
 
  O bloco Materiais utilizados só aparece quando existe material lançado naquela OS. Sem lançamento nenhum, o bloco simplesmente não aparece. Ele também não existe no resumo de uma Tarefa, porque Tarefa é compromisso interno e não tem consumo de estoque.
 
@@ -3019,7 +3029,7 @@ O técnico não precisa navegar por menu nenhum: ele abre o link da OS, que cheg
 
 | Quem abre | O que aparece |
 | Técnico ou gestor logado, OS em aberto | A tela de execução, com os botões de ação. |
-| Técnico ou gestor logado, OS concluída | O relatório do serviço, com baixar PDF, imprimir e copiar link. |
+| Técnico ou gestor logado, OS concluída | O relatório do serviço, com baixar PDF, imprimir, copiar link e, em empresas de refrigeração, gerar os documentos PMOC. |
 | Qualquer pessoa sem login | O modo cliente, somente leitura. O sistema entra nesse modo sozinho, sem ninguém precisar escolher nada. |
 
  O mesmo endereço serve para os três. Sem sessão iniciada, ele vira modo cliente automaticamente. Por isso, quando o técnico reclama que "não aparecem os botões", a primeira pergunta é: ele está logado no celular? Deslogado, ele vê a OS como o cliente veria, e não consegue fazer check-in nem preencher.
@@ -3032,7 +3042,13 @@ O modo cliente pelo link público: o mesmo relatório que o técnico monta duran
 
 #### O que o técnico vê primeiro
 
-No topo, o número da OS e o status atual. Abaixo, os blocos Cliente (com nome, telefone e endereço), Descrição do Serviço e Observações. Se a OS tiver um endereço de serviço próprio, ele aparece em destaque com o rótulo Endereço deste serviço e a nota "O atendimento é neste local, diferente do endereço cadastrado do cliente."
+No topo, o número da OS e o status atual. Abaixo, o contexto do atendimento aparece em um bloco contínuo, sem empilhar um cartão para cada informação: horário do check-in, cliente, telefone, endereço, contrato, descrição do serviço e observações. Os rótulos auxiliares ficam menores; o nome do cliente e do contrato ganham peso; Descrição do serviço e Observações aparecem em negrito. Se a OS tiver um endereço de serviço próprio, ele aparece com o rótulo Endereço deste serviço e a nota "O atendimento é neste local, diferente do endereço cadastrado do cliente."
+
+Esse bloco usa o fundo natural da página, com espaçamento e tipografia para separar os assuntos. A foto do cliente não aparece ali: quando não existe uma imagem nessa área, o sistema usa o ícone padrão de usuário.
+
+[Print da tela: Tela móvel de preenchimento da OS com cabeçalho escuro, status Em andamento, check-in, cliente, telefone, endereço, contrato, descrição do serviço e observações em um bloco contínuo; abaixo, o título Checklists e o cabeçalho do equipamento; no rodapé, os botões Finalizar, Parcial e menu sobre fundo escuro opaco.]
+
+Preenchimento no celular: contexto do atendimento sem pilha de cartões, títulos com hierarquia clara e rodapé opaco com as ações principais.
 
 Antes do check-in, o cartão de ação se chama Ir para o Atendimento, com a orientação: "Informe ao cliente que você está a caminho ou faça o check-in ao chegar." e dois botões: A Caminho e Fazer Check-in.
 
@@ -3091,10 +3107,22 @@ Depois do check-in aparece o bloco Checklists. Ele é organizado por equipamento
 
 Cada bloco mostra o quanto já foi respondido e um selo: Concluído ou Pendente, mais o contador de N pendentes.
 
+#### Como a tela se organiza
+
+- O título geral Checklists não repete o ícone do checklist concreto que aparece logo abaixo.
+
+- Nomes extensos de checklist quebram linha em vez de serem cortados com reticências.
+
+- As perguntas comuns usam o próprio fundo da página. Bordas e fundos fortes ficam reservados para controles, avisos e estados que precisam de destaque.
+
+- Preto, branco e tons neutros são a base das ações operacionais. Verde indica sucesso ou conclusão; laranja identifica a finalização parcial; vermelho fica para erro ou exclusão.
+
+- No celular, o rodapé permanece fixo e opaco, com Finalizar, Parcial e o menu de mais ações.
+
 #### Como cada tipo de pergunta se comporta
 
 | Tipo | Como responder | Quando salva |
-| Sim/Não | Uma chave. Ligada mostra o selo verde Sim, desligada o selo vermelho Não. Sem responder, aparece Não respondido. | No toque. |
+| Sim/Não | Dois botões sempre visíveis. Sim fica verde quando escolhido e Não fica vermelho. É possível trocar a resposta diretamente, sem abrir um modo de edição. | No toque. |
 | Conformidade | Três botões: Conforme (verde), Não Conforme (vermelho) e N/A (laranja). Tocar de novo no mesmo botão limpa a resposta. | No toque. |
 | Texto | Caixa de texto de duas linhas. | Ao sair do campo, não a cada letra. |
 | Número | Teclado numérico, aceita decimal. | Ao sair do campo. |
@@ -3114,7 +3142,29 @@ Em OS de contrato, uma pergunta pode ter frequência: mensal, trimestral, semest
 
 #### Editar a OS em campo
 
-Quem tiver a permissão Editar OS em campo encontra, no menu de mais ações, a opção Editar OS. Ela abre um painel com duas abas, Equipamentos e Checklists avulsos, para acrescentar um equipamento que apareceu na hora ou anexar um checklist que faltava.
+Quem tiver a permissão Editar OS em campo encontra, no menu de mais ações, a opção Editar OS. Ela abre uma folha alta no celular, com duas áreas: Equipamentos e checklists e Data e horários.
+
+Na primeira área, equipamentos e checklists ficam na mesma estrutura. Cada equipamento pode ser expandido para mostrar os checklists ligados a ele. O bloco Checklists sem equipamento reúne os checklists que valem para a OS inteira ou ainda não foram vinculados a uma máquina.
+
+[Print da tela: Folha Editar OS no celular, com a aba Equipamentos selecionada, botão Adicionar equipamento, dois equipamentos expansíveis e os checklists dentro do primeiro equipamento; um checklist longo quebra em várias linhas e o rodapé mostra Salvar equipamentos e checklists.]
+
+A nova estrutura unificada: equipamento e seus checklists no mesmo lugar, com expansão, contagem, inclusão, remoção e ordenação.
+
+#### Arrastar um checklist sem perder as respostas
+
+Segure a alça do item e arraste para reorganizar. É possível mover um checklist de Checklists sem equipamento para um equipamento, de um equipamento para outro ou de volta para a área sem equipamento. Também dá para reordenar os equipamentos e os checklists dentro de cada um.
+
+As respostas acompanham o checklist. Se o técnico já respondeu parte dele e depois o checklist for ligado ao equipamento correto, o que foi preenchido continua salvo. O sistema muda o vínculo do mesmo checklist; não apaga para criar outro.
+
+Esse é o caso comum em que a OS foi criada antes do equipamento existir: o checklist entra sem equipamento, o equipamento é cadastrado depois e, dentro de Editar OS, o checklist é arrastado para a máquina correta.
+
+#### Remarcar a OS sem sair do preenchimento
+
+Em Data e horários, quem tiver permissão pode ajustar data inicial, data final, duração e os horários planejados de cada dia. Quando houver mais de um dia, o botão Repetir primeiro horário replica o primeiro período e ainda permite ajustar cada dia. Conflitos de agenda são verificados antes de salvar.
+
+[Print da tela: Folha Editar OS no celular com a aba Data e horários selecionada, campos Data inicial e Data final, seção Horário de cada dia, botão Repetir primeiro horário e cartão do primeiro dia com campos de início e fim.]
+
+Data e horários dentro da própria OS: remarcar o atendimento e organizar cada dia sem abandonar o preenchimento.
 
  A opção Editar OS fica desativada quando não há internet, com a dica Disponível apenas online. Ela é uma das poucas partes do app que avisa isso explicitamente.
 
@@ -3470,6 +3520,12 @@ O botão Cadastrar Material (no celular, o botão flutuante "Material") abre a j
 | Preço de Venda (R$) | Não | Quanto você cobra. Alimenta a Projeção venda. |
 | Locais deste material | Não | Bloco por local de estoque, com a explicação "Marque os locais onde este material está presente. Defina a quantidade mínima para cada local." Tem Marcar todos e Desmarcar todos. |
 
+#### Produto bactericida usado nos documentos PMOC
+
+Para empresas de refrigeração, o cadastro tem a opção Produto de PMOC. Ao ligá-la, aparecem os campos Fabricante, Registro na Anvisa, Lote, Data de fabricação e Validade. Preencha esses dados exatamente como constam na embalagem.
+
+Na geração de relatório ou certificado de uma OS, a Dominex procura um produto PMOC ativo e dentro da validade. Produto vencido, com fabricação futura, arquivado ou com dados regulatórios incompletos não é usado no documento.
+
 Categoria e Grupo não são a mesma coisa. Categoria é uma lista fechada, igual para todo mundo (Peças, Filtros, Gases, Ferramentas, Materiais, Equipamentos, Outros). Grupo é livre, criado pela sua empresa em Configurações do Estoque → Grupos de material. Muita gente usa grupo para separar por marca, por linha ou por finalidade.
 
 #### Estoque mínimo e o alerta de estoque baixo
@@ -3796,6 +3852,12 @@ A chave Por material / Por grupo troca a organização da tabela. Por material, 
 As colunas são Material ou Grupo, Última compra, Compras, Qtd. comprada, Valor comprado, Média paga, Saldo atual, Qtd. vendida, Valor vendido e Lucro projetado. As colunas disponíveis podem ser ordenadas. A paginação oferece 10, 25 ou 50 linhas e guarda a preferência.
 
 Abrindo uma linha aparece o Histórico de compras, com data, fornecedor, local, número da O.C., responsável, situação ou forma de pagamento, quantidade, valor unitário e total. Compra direta mostra o pagamento que foi lançado no Financeiro. O.C. tradicional sem lançamento financeiro aparece como Não vinculado, nunca como pendente por suposição.
+
+#### Evolução do preço de compra
+
+Abaixo do resumo, a área Evolução do preço de compra compara cada material apenas com o próprio histórico. A Visão geral destaca as maiores altas e quedas do período. Selecionando um material, aparecem o último preço, a média ponderada pela quantidade recebida, o menor e o maior preço, a variação e um gráfico por dia, semana, mês ou trimestre, conforme o tamanho do intervalo.
+
+ Períodos sem compra ficam vazios no gráfico e unidades diferentes não são misturadas. Compras recebidas pelo fluxo de compras e compras diretas registradas no PDV atualizam essa análise.
 
 Saldo atual é o saldo de agora, mesmo quando o período do relatório está no passado. Para saber o saldo que existia numa data antiga, use a aba Posição de Estoque. Em recebimentos parciais antigos, o histórico comercial pode usar a data consolidada da O.C., porque essas compras não guardavam um evento detalhado para cada parcela recebida.
 
@@ -5266,6 +5328,8 @@ Etapa Unidade & RT do assistente PMOC, com o seletor de Responsável Técnico e 
 
 É um seletor com os Responsáveis Técnicos ativos da empresa, mais um botão de mais (+) que abre o cadastro rápido sem sair do assistente. O texto de ajuda diz: "Engenheiro ou Técnico em Refrigeração com CFT/CREA que assina o Termo de Responsabilidade Técnica conforme Lei Federal 13.589/2018. Diferente do Técnico Executor (quem executa as OSs no campo)."
 
+O mesmo cadastro rápido também aparece ao gerar um certificado PMOC por uma OS concluída. Nesse caminho, não é necessário criar um contrato: o Responsável Técnico fica salvo para os próximos documentos da empresa.
+
 Responsável Técnico e Técnico Executor são pessoas diferentes e papéis diferentes. O RT é quem assina os documentos da norma, com registro no conselho profissional. O Técnico Executor é quem vai até o local fazer a manutenção. Podem ser a mesma pessoa na prática, mas no sistema são campos separados, em etapas diferentes do assistente.
 
 Salvar um contrato PMOC sem RT é permitido, mas o sistema avisa com Sem Responsável Técnico (RT) definido e a explicação "Recomendamos definir um RT antes de ativar PMOC. Você pode atribuir depois." Sem RT completo os documentos regulatórios não saem certos.
@@ -5532,7 +5596,7 @@ Aba Documentos das Configurações de Contrato: os modelos padrão do TRT e do C
 
 É onde ficam os Modelos padrão de documentos PMOC: "Modelos usados como ponto de partida ao criar um novo contrato PMOC. Editar aqui não altera contratos já existentes." Há um modelo para o Termo de Responsabilidade Técnica e outro para o Certificado de Conformidade, cada um com Editar texto e Restaurar texto padrão. O editor aceita negrito, listas, links e variáveis (que aparecem como etiquetas e são substituídas pelos dados de cada contrato no PDF).
 
-Só o card do Certificado de Conformidade tem o botão extra Modelo visual, que abre um assistente de 3 passos com várias artes prontas (temas claros e escuros) para o fundo do certificado, com pré-visualização ao vivo. O modelo escolhido aqui é o padrão herdado por todo contrato novo; cada contrato pode trocar o próprio modelo visual na sua aba Documentos. Certificado sem modelo escolhido sai com a arte simples de sempre.
+Só o card do Certificado de Conformidade tem o botão extra Modelo visual, que abre um assistente de 3 passos com várias artes prontas (temas claros e escuros) para o fundo do certificado, com pré-visualização ao vivo. É possível editar o título principal, os demais textos e a cor de destaque. No tema claro, o destaque padrão é preto; no escuro, textos e logos se ajustam ao fundo. O modelo escolhido aqui é usado também como padrão ao gerar certificado por uma OS concluída, e cada contrato pode trocar o próprio modelo na aba Documentos.
 
 Abaixo fica Validade dos documentos: "Quantos meses cada documento gerado fica válido. A data de vencimento é calculada a partir da data de geração." Os campos são Validade do TRT (meses) e Validade do Certificado (meses).
 
@@ -7141,7 +7205,7 @@ Bloco Como funciona?, com a explicação em linguagem simples e a legenda das si
 
 #### Por que configurar primeiro
 
-O sistema só libera a emissão quando três coisas estão prontas ao mesmo tempo: o município está habilitado para NFS-e no padrão nacional, a empresa está registrada para emissão, e o certificado digital A1 foi enviado. Faltando qualquer uma, a tela volta pro estado guiado com o card "Configure seus dados fiscais, configure seus dados fiscais para começar a emitir notas" e o botão Configurações fiscais. Não adianta tentar emitir antes: o passo 4 da emissão bloqueia e explica o que falta.
+O sistema só libera a emissão quando duas coisas estão prontas ao mesmo tempo: o município está habilitado no Padrão Nacional da NFS-e e existe um certificado digital A1 válido. A Dominex fala direto com o Portal Nacional pelo motor fiscal próprio, por isso não existe cadastro nem registro da empresa em um fornecedor externo. Faltando município ou certificado, a tela volta pro estado guiado com o botão Configurações fiscais, e o passo 4 da emissão explica o que falta.
 
 [Print da tela: Tela Notas Fiscais no estado inicial, com o selo verde 0/200 emitidas este mês, o bloco Como funciona fechado, o card Configure seus dados fiscais com botão Configurações fiscais e o botão flutuante Nova Nota no canto inferior direito]
 
@@ -7173,16 +7237,16 @@ A aba Notas Fiscais já se chamou NFS-e, e a Relatório fiscal já se chamou Vis
 
 A configuração fiscal é uma tela própria, no endereço /notas-fiscais/configuracoes. Ela já foi um modal que abria por cima de Notas Fiscais, mas isso mudou: hoje o botão Configurações fiscais no topo (ou o botão do estado guiado) navega pra essa tela, com um botão Voltar para retornar a Notas Fiscais. Não procure um item "Configurações fiscais" no menu lateral: ele não existe, você chega lá pelo botão de dentro de Notas Fiscais.
 
-A tela tem quatro seções numeradas na lateral no desktop (em pílulas, no celular): 1. Empresa, 2. Certificado A1, 3. Tributação e 4. Serviços. No cabeçalho aparece um selo com a situação atual: Apto a emitir ou Configuração incompleta, e um botão Voltar para retornar a Notas Fiscais.
+A tela tem quatro abas: Empresa, Certificado A1, Tributação e Serviços. No cabeçalho aparece um resumo com a situação atual: Apto a emitir ou Configuração incompleta, e um botão Voltar para retornar a Notas Fiscais.
 
-A ordem importa e o sistema força ela: primeiro a empresa é registrada, só depois o certificado é aceito. A dica na tela é literal: "Passo 1 de 2: preencha os dados e registre a empresa. Só depois libera o certificado." Tentando subir o certificado antes, aparece "Registre a empresa antes de subir o certificado. Volte ao passo 1. Empresa e registre a empresa primeiro."
+Preencha e salve os dados fiscais da empresa, confirme a cobertura do município e envie o certificado A1. Não existe uma etapa de registro externo: os dados ficam na Dominex e o certificado é guardado de forma criptografada para assinar somente as operações autorizadas pela empresa.
 
 #### Campos da seção Empresa
 
 | Campo | Observação |
 | Razão social / Nome | Como consta no CNPJ. |
 | CNPJ | Formato 00.000.000/0000-00. |
-| Inscrição Municipal | A tela avisa: "Exigida pela prefeitura para registrar a empresa e emitir notas. É o mesmo campo da aba Tributação." Preencher aqui ou lá dá no mesmo. |
+| Inscrição Municipal | É o cadastro municipal usado pela prefeitura na emissão. É o mesmo campo da aba Tributação; preencher aqui ou lá dá no mesmo. |
 | CEP | Chave do endereço. A dica é "Preenche endereço, cidade e o código do município automaticamente." |
 | Logradouro, Número, Complemento, Bairro, Cidade / UF | Endereço fiscal. Cidade e UF também podem ser escolhidas manualmente. |
 | Ambiente de emissão de NFS-e | Chave entre Homologação ("notas de teste, sem valor fiscal") e Produção ("as notas valem de verdade, têm efeito fiscal"). |
@@ -7191,11 +7255,9 @@ Não existe um campo "código do município (IBGE)" pra você digitar. Esse cód
 
 #### Verificar a cobertura do município
 
-O botão Verificar cobertura do município consulta se a prefeitura já emite NFS-e no padrão nacional. O bloco Status da emissão mostra o resultado em três linhas:
+O botão Verificar cobertura do município consulta se a prefeitura já emite NFS-e no Padrão Nacional. O bloco Status da emissão mostra os dois requisitos que realmente liberam a emissão:
 
 - Município: liberado para emitir notas ou Município: liberação ainda não confirmada
-
-- Empresa: registrada ou Empresa: não registrada
 
 - Certificado: enviado ou Certificado: pendente
 
@@ -7211,19 +7273,9 @@ Mensagens possíveis:
 
 Município sem cobertura bloqueia a emissão mesmo com todo o resto certo. Verifique a cobertura ANTES de comprar certificado ou prometer nota pro cliente. Se o município não estiver apto, o passo final da emissão mostra "Emissão bloqueada, o município ainda não está liberado para emitir NFS-e. Verifique nas Configurações Fiscais." Não há o que fazer do lado do sistema: depende da prefeitura aderir ao padrão nacional.
 
-[Print da tela: Tela Configurações fiscais na seção 1. Empresa, com o selo laranja Configuração incompleta, o aviso Passo 1 de 2, os campos Razão social / Nome, CNPJ, Inscrição Municipal, o bloco Endereço fiscal com CEP e demais campos, a chave Homologação/Produção, o botão Salvar dados da empresa e, na base, o bloco Status da emissão com os três itens Empresa, Certificado e Município, todos pendentes, e o botão Verificar cobertura do município]
+#### Salvar os dados fiscais
 
-Configurações fiscais, seção Empresa: dados cadastrais, chave de ambiente e o bloco Status da emissão.
-
-#### Salvar e registrar
-
-O botão é Salvar dados da empresa. Se salvar mas o registro para emissão falhar, o sistema é específico sobre a causa:
-
-- Erro de dado seu: "Não conseguimos registrar sua empresa na emissão fiscal. Motivo: [motivo]. Corrija os dados acima e salve novamente."
-
-- Erro do lado da plataforma: "Não foi possível registrar sua empresa na emissão fiscal no momento: [motivo]. Isso não é problema nos seus dados, já estamos verificando. Tente novamente em alguns minutos ou fale com o suporte."
-
-Deu certo, aparece "Dados da empresa salvos." e libera o botão Próximo: enviar certificado.
+O botão é Salvar dados da empresa. Ele grava os dados fiscais na Dominex, sem enviar cadastro para outro sistema. Deu certo, aparece "Dados da empresa salvos.". Se houver campo obrigatório incompleto ou falha ao salvar, a tela mantém os dados preenchidos e orienta a correção antes de tentar novamente.
 
 ### 3. Passo Certificado: subindo o A1 (.pfx), senha e o consentimento
 
@@ -7231,7 +7283,7 @@ O certificado digital A1 é o arquivo que assina as suas notas. Sem ele, o siste
 
 #### Passo a passo
 
-- Com a empresa já registrada, abra a seção 2. Certificado A1.
+- Depois de salvar os dados fiscais, abra a aba Certificado A1.
 
 - Clique em Selecionar arquivo (.pfx / .p12) e escolha o certificado.
 
@@ -7242,10 +7294,6 @@ O certificado digital A1 é o arquivo que assina as suas notas. Sem ele, o siste
 - Marque a autorização de guarda: "Autorizo o Dominex a guardar meu certificado digital de forma criptografada e a usá-lo somente para assinar as notas fiscais que a minha empresa mandar emitir." Ao lado há o link Ler a Seção 12 dos Termos de Uso.
 
 - Clique em Enviar certificado. A confirmação é "Certificado enviado com sucesso."
-
-[Print da tela: Tela Configurações fiscais na seção 2. Certificado A1, com o aviso 'Registre a empresa antes de subir o certificado', o campo Arquivo do certificado com o botão Selecionar arquivo (.pfx / .p12), o campo opcional Nome do certificado, o campo Senha do certificado com ícone de olho para mostrar, a caixa de Autorização para guardar o certificado com o link Ler a Seção 12 dos Termos de Uso, e o botão Enviar certificado]
-
-Configurações fiscais, seção Certificado A1: envio do arquivo, senha e a autorização de guarda.
 
 #### Mensagens de erro nesse passo
 
@@ -7383,7 +7431,7 @@ Cliente sem documento trava a nota: "Este cliente está sem CPF/CNPJ. Complete o
 
 - Retenção do ISS: três opções, Não retido, Retido pelo tomador e Retido pelo intermediário.
 
-- Retenções federais: PIS retido (R$), COFINS retido (R$) e CSLL retido (R$), em reais. A tela avisa: "INSS e IRRF não se aplicam neste provedor."
+- Retenções federais: PIS retido (R$), COFINS retido (R$) e CSLL retido (R$), em reais. A tela avisa: "INSS e IRRF ainda não estão disponíveis nesta emissão de NFS-e."
 
 - Percentual de tributos do Simples Nacional (%): aparece no Simples, explicado no capítulo seguinte.
 
@@ -7396,8 +7444,6 @@ A opção padrão de Retenção do ISS é "Não retido", e isso está certo. "N�
 Mostra a Pré-visualização da NFS-e com quatro blocos, Prestador, Tomador, Serviço e Valores, e o aviso "Número será atribuído após emissão". Se faltar habilitação, o bloco vermelho Emissão bloqueada diz exatamente o quê:
 
 - "Configure o certificado digital nas Configurações Fiscais."
-
-- "Conclua o cadastro da empresa nas Configurações Fiscais para liberar a emissão."
 
 - "O município ainda não está liberado para emitir NFS-e. Verifique nas Configurações Fiscais."
 
@@ -7539,7 +7585,7 @@ Depois de ligado, o botão Sincronizar busca notas novas a qualquer momento, mos
 | "Está tudo configurado e mesmo assim não emite" | Município sem cobertura do padrão nacional | Abra Configurações fiscais, seção Empresa, e clique em Verificar cobertura do município. Se voltar "Município ainda sem emissão de NFS-e", não há o que fazer do lado do sistema: depende de a prefeitura aderir ao padrão nacional. |
 | "A prefeitura recusou a nota e falou de alíquota" | Empresa do Simples com alíquota preenchida e ISS não retido | No Simples Nacional, com ISS não retido, a alíquota deve ficar em branco. A própria tela avisa: "Informar alíquota nesse caso faz a prefeitura recusar a nota." Apague a alíquota e reenvie a nota rejeitada. |
 | "A nota saiu dizendo que o cliente reteve o ISS, e ele não reteve" | Campo Retenção do ISS marcado errado | O padrão é "Não retido", que significa que quem recolhe é a sua empresa. Se alguém marcou "Retido pelo tomador" sem previsão em contrato, a nota precisa ser cancelada e emitida de novo com o campo certo. |
-| "Não consigo subir o certificado" | Empresa ainda não registrada, arquivo errado ou consentimento não marcado | A ordem é obrigatória: primeiro salvar e registrar a empresa, depois o certificado. O arquivo precisa ser .pfx ou .p12, a senha é a do certificado (não a do sistema) e a autorização de guarda precisa estar marcada. |
+| "Não consigo subir o certificado" | Arquivo errado, senha incorreta ou consentimento não marcado | O arquivo precisa ser .pfx ou .p12, a senha é a do próprio certificado (não a senha do sistema) e a autorização de guarda precisa estar marcada. Não existe registro da empresa em fornecedor externo. |
 | "Emitia normal e do nada parou" | Certificado vencido | Abra Configurações fiscais, seção Certificado A1. Vencido, aparece "Certificado vencido em DD/MM/AAAA. Envie um novo." Renove com a certificadora e suba o arquivo novo. |
 | "Não deixa emitir e fala de limite" | Cota mensal do nível atingida | O selo no topo mostra o consumo do mês. Batido o limite, é possível subir de nível pelo próprio modal, o que libera a cota na hora e conclui a nota que estava sendo emitida. Ou esperar virar o mês. |
 | "O cliente não recebe a nota, dá erro de dados" | Cliente sem CPF/CNPJ ou sem endereço completo | A nota exige cliente com documento e endereço. A mensagem é "Este cliente está sem CPF/CNPJ. Complete os dados fiscais antes de emitir." Complete a ficha do cliente na aba Fiscal e emita de novo. |

@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { OsPhotoField } from '@/components/technician/OsPhotoField';
@@ -19,6 +18,7 @@ import { computeVisibleQuestionIds } from '@/components/contracts/visitQuestionV
 import { frequencyLabel } from '@/components/contracts/questionFrequency';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { keepsAnswerControlsVisible } from './dynamicFormQuestionUx';
 
 interface FormResponse {
   question_id: string;
@@ -87,7 +87,7 @@ export interface ContractVisibilityContext {
  * assinatura/medição) NUNCA são auto-preenchidos. Devolve também o valor a gravar.
  */
 function autoFillValueFor(q: FormQuestion): string | null {
-  const answerTypes = (q as any).answer_types as string[] | null;
+  const answerTypes = q.answer_types;
   const effectiveTypes = answerTypes && answerTypes.length > 0 ? answerTypes : [q.question_type];
   if (effectiveTypes.length !== 1) return null;
   const type = effectiveTypes[0];
@@ -318,7 +318,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
 
       if (error) throw error;
       setQuestions((data as FormQuestion[]) || []);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching questions:', error);
     } finally {
       setLoading(false);
@@ -357,11 +357,11 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
           question_id: r.question_id,
           response_value: r.response_value,
           response_photo_url: r.response_photo_url,
-          response_video_url: (r as any).response_video_url ?? null,
+          response_video_url: r.response_video_url ?? null,
         };
       });
       setResponses(responsesMap);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching responses:', error);
     }
   };
@@ -405,7 +405,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
             response_video_url: videoUrl !== undefined ? videoUrl : responses[questionId]?.response_video_url,
             responded_at: respondedAt,
             responded_by: respondedBy,
-          } as any)
+          })
           .eq('id', existing.id);
         if (error) throw error;
       } else {
@@ -420,7 +420,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
             equipment_id: equipmentId || null,
             responded_at: respondedAt,
             responded_by: respondedBy,
-          } as any);
+          });
         if (error) throw error;
       }
 
@@ -433,7 +433,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
           response_video_url: videoUrl !== undefined ? videoUrl : prev[questionId]?.response_video_url || null,
         },
       }));
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         variant: 'destructive',
         title: t.toastSaveError,
@@ -496,7 +496,6 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
       const r = registerAutoFillRef.current;
       if (r) r(null);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (loading) {
@@ -536,27 +535,44 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
     switch (type) {
       case 'boolean':
         return (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Switch
-                checked={value === 'true'}
-                onCheckedChange={(checked) => saveResponse(question.id, checked ? 'true' : 'false')}
-                disabled={isSaving}
-              />
-              <span className="text-sm">
-                {value === 'true' ? (
-                  <Badge variant="success" className="gap-1">
-                    <Check className="h-3 w-3" /> {t.answerYes}
-                  </Badge>
-                ) : value === 'false' ? (
-                  <Badge variant="destructive" className="gap-1">
-                    <X className="h-3 w-3" /> {t.answerNo}
-                  </Badge>
-                ) : (
-                  <span className="text-muted-foreground">{t.noAnswer}</span>
-                )}
-              </span>
-            </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            {[
+              {
+                value: 'true',
+                label: t.answerYes,
+                Icon: Check,
+                activeClass: 'bg-emerald-600 border-emerald-600 text-white [&_svg]:!text-white',
+                idleClass: '[&_svg]:text-emerald-600 hover:bg-emerald-600 hover:border-emerald-600 hover:text-white hover:[&_svg]:!text-white focus-visible:bg-emerald-600 focus-visible:border-emerald-600 focus-visible:text-white focus-visible:[&_svg]:!text-white',
+              },
+              {
+                value: 'false',
+                label: t.answerNo,
+                Icon: X,
+                activeClass: 'bg-red-600 border-red-600 text-white [&_svg]:!text-white',
+                idleClass: '[&_svg]:text-red-600 hover:bg-red-600 hover:border-red-600 hover:text-white hover:[&_svg]:!text-white focus-visible:bg-red-600 focus-visible:border-red-600 focus-visible:text-white focus-visible:[&_svg]:!text-white',
+              },
+            ].map((option) => {
+              const active = value === option.value;
+              const OptionIcon = option.Icon;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  disabled={isSaving}
+                  onClick={() => saveResponse(question.id, active ? null : option.value)}
+                  className={cn(
+                    'flex min-w-0 items-center justify-center gap-1 rounded-md border bg-card px-2 py-2 text-xs font-semibold transition-colors',
+                    'disabled:cursor-not-allowed disabled:opacity-60',
+                    active
+                      ? option.activeClass
+                      : cn('border-border text-muted-foreground', option.idleClass),
+                  )}
+                >
+                  <OptionIcon className="h-3.5 w-3.5 shrink-0" />
+                  <span className="whitespace-nowrap">{option.label}</span>
+                </button>
+              );
+            })}
           </div>
         );
 
@@ -601,7 +617,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
           },
         ];
         return (
-          <div className="flex gap-1.5">
+          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-[1.3fr_1.3fr_auto]">
             {conformOptions.map((opt) => {
               const active = value === opt.value;
               const OptIcon = opt.Icon;
@@ -613,8 +629,8 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
                   disabled={isSaving}
                   onClick={() => saveResponse(question.id, active ? null : opt.value)}
                   className={cn(
-                    'flex items-center justify-center gap-1 rounded-md border py-2 text-xs font-semibold transition-colors min-w-0',
-                    isNa ? 'flex-none px-3' : 'flex-[1.3] px-2',
+                    'flex min-w-0 items-center justify-center gap-1 rounded-md border px-2 py-2 text-xs font-semibold transition-colors',
+                    isNa ? 'col-span-2 sm:col-span-1 sm:px-3' : '',
                     'disabled:opacity-60 disabled:cursor-not-allowed',
                     active
                       ? opt.activeClass
@@ -622,7 +638,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
                   )}
                 >
                   <OptIcon className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate">{opt.label}</span>
+                  <span className="whitespace-nowrap">{opt.label}</span>
                 </button>
               );
             })}
@@ -735,7 +751,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
         );
       }
 
-      case 'select':
+      case 'select': {
         const options = (question.options as string[]) || [];
         const selectedValues = value ? value.split('|||').filter(Boolean) : [];
         
@@ -762,6 +778,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
                   checked={selectedValues.includes(opt)}
                   onCheckedChange={() => toggleOption(opt)}
                   disabled={isSaving}
+                  className="border-foreground data-[state=checked]:bg-foreground data-[state=checked]:text-background"
                 />
                 {opt}
               </label>
@@ -773,10 +790,11 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
             )}
           </div>
         );
+      }
 
       case 'photo': {
-        const cameraOnly = !!(question as any).require_camera;
-        const allowMultiple = (question as any).allow_multiple_photos !== false;
+        const cameraOnly = !!question.require_camera;
+        const allowMultiple = question.allow_multiple_photos !== false;
 
         // Toda a máquina de foto (câmera/galeria, HEIC, salvar no aparelho,
         // carrossel, viewer, remover) vive em OsPhotoField. Aqui só ligamos o
@@ -801,7 +819,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
         // (gravar/parar/regravar, upload, remover) vive em OsVideoField. Aqui só
         // ligamos a URL única ao response_video_url desta pergunta/equipamento.
         // require_camera_video=true → galeria oculta, só gravação na hora.
-        const allowGallery = (question as any).require_camera_video !== true;
+        const allowGallery = question.require_camera_video !== true;
         return (
           <OsVideoField
             serviceOrderId={serviceOrderId}
@@ -840,9 +858,9 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
   };
 
   const renderQuestionInput = (question: FormQuestion) => {
-    const answerTypes = ((question as any).answer_types as string[] | null);
+    const answerTypes = question.answer_types;
     const effectiveTypes = answerTypes && answerTypes.length > 0 ? answerTypes : [question.question_type];
-    const answerMode = (question as any).answer_mode || 'exclusive';
+    const answerMode = question.answer_mode || 'exclusive';
 
     // Single type - just render it
     if (effectiveTypes.length === 1) {
@@ -947,14 +965,16 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
         const response = responses[question.id];
         const hasAnswer = !!(response?.response_value?.trim() || response?.response_photo_url || response?.response_video_url);
         const isEditing = editingQuestion === question.id;
-        const showReadOnly = hasAnswer && !isEditing && question.question_type !== 'photo';
+        const keepsControlsVisible = keepsAnswerControlsVisible(question as FormQuestion & { answer_types?: string[] | null });
+        const showReadOnly = hasAnswer && !isEditing && !keepsControlsVisible;
+        const canOpenCollapsedEditor = showReadOnly && !readOnly;
         
         return (
           <div
             key={question.id}
             className={cn(
-              'space-y-2 p-3 rounded-lg',
-              plainQuestionSurface ? 'bg-transparent' : 'bg-muted/30',
+              'space-y-2',
+              plainQuestionSurface ? 'py-3' : 'rounded-lg bg-muted/30 p-3',
             )}
           >
             {/* Cabeçalho como <div> (NÃO <label>): um <label> nativo envolvendo os
@@ -966,20 +986,20 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
             <div
               className={cn(
                 'flex items-start gap-2',
-                hasAnswer && !isEditing && !readOnly && 'cursor-pointer',
+                canOpenCollapsedEditor && 'cursor-pointer',
               )}
               onClick={
-                hasAnswer && !isEditing && !readOnly
+                canOpenCollapsedEditor
                   ? () => setEditingQuestion(question.id)
                   : undefined
               }
             >
               <span className="font-bold text-muted-foreground">{index + 1}.</span>
-              <span className="flex-1 text-sm font-medium leading-none">
+              <span className="flex-1 text-sm font-medium leading-snug">
                 {question.question}
                 {question.is_required && <span className="text-destructive ml-1">*</span>}
               </span>
-              {hasAnswer && !isEditing && !readOnly && (
+              {canOpenCollapsedEditor && (
                 <button
                   type="button"
                   className="p-1 rounded hover:bg-muted transition-colors shrink-0"
@@ -1002,7 +1022,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
                   }}
                   title={t.btnCloseEdit}
                 >
-                  <Check className="h-3.5 w-3.5 text-primary" />
+                  <Check className="h-3.5 w-3.5 text-foreground" />
                 </button>
               )}
             </div>

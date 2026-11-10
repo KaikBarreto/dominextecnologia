@@ -34,6 +34,7 @@ from datetime import datetime, timezone
 
 from ..custodia import Envelope
 from ..errors import DadosInvalidos, ErroFiscal, ServicoFiscalIndisponivel
+from ..rejections import corpo_orientacao, traduzir_rejeicao
 from . import documento as doc_mod
 from . import enderecos, schemas
 from .credencial import CredencialSefaz, abrir_credencial
@@ -181,7 +182,15 @@ def distribuir(req: schemas.DistribuicaoRequest) -> schemas.DistribuicaoResposta
             )
             parcial = True
             aviso = schemas.Aviso(
-                codigo=exc.codigo, mensagem=exc.mensagem, detalhe=exc.detalhe
+                codigo=exc.codigo,
+                mensagem=exc.mensagem,
+                detalhe=exc.detalhe,
+                orientacao=(
+                    exc.orientacao.corpo()
+                    if getattr(exc, "orientacao", None) is not None
+                    and hasattr(exc.orientacao, "corpo")
+                    else getattr(exc, "orientacao", None)
+                ),
             )
             break
 
@@ -202,12 +211,20 @@ def distribuir(req: schemas.DistribuicaoRequest) -> schemas.DistribuicaoResposta
                     codigo="cstat_inesperado",
                     mensagem="A SEFAZ interrompeu a busca de notas.",
                     detalhe={"cStat": resposta.c_stat, "xMotivo": resposta.x_motivo},
+                    orientacao=corpo_orientacao(
+                        "sefaz_dfe", resposta.c_stat, resposta.x_motivo,
+                        operacao="buscar notas recebidas",
+                    ),
                 )
                 break
             raise ServicoFiscalIndisponivel(
                 "A SEFAZ não conseguiu atender a busca de notas agora. "
                 "Tente novamente em alguns minutos.",
                 detalhe={"cStat": resposta.c_stat, "xMotivo": resposta.x_motivo},
+                orientacao=traduzir_rejeicao(
+                    "sefaz_dfe", resposta.c_stat, resposta.x_motivo,
+                    operacao="buscar notas recebidas",
+                ),
             )
 
         _coletar(resposta, acumulado)
@@ -374,9 +391,18 @@ def manifestar(req: schemas.ManifestacaoRequest) -> schemas.ManifestacaoResposta
                 "O sistema da SEFAZ está em manutenção no momento. "
                 "A manifestação será enviada automaticamente mais tarde.",
                 detalhe=detalhe,
+                orientacao=traduzir_rejeicao(
+                    "sefaz_nfe", resposta.evento_cstat, resposta.motivo,
+                    operacao="registrar a manifestação",
+                ),
             )
         raise ManifestacaoRejeitada(
-            f"A SEFAZ recusou a manifestação: {resposta.motivo}", detalhe=detalhe
+            "A SEFAZ recusou a manifestação.",
+            detalhe=detalhe,
+            orientacao=traduzir_rejeicao(
+                "sefaz_nfe", resposta.evento_cstat, resposta.motivo,
+                operacao="registrar a manifestação",
+            ),
         )
 
     return schemas.ManifestacaoResposta(

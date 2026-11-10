@@ -1,7 +1,7 @@
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Edit, Trash2, AlertTriangle, Loader2, Pencil, X, Check, XCircle, Package, Users, RefreshCw, Handshake } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, AlertTriangle, Loader2, Pencil, X, Check, XCircle, Package, Users, RefreshCw, Handshake, Settings2 } from 'lucide-react';
 import { SelfServiceBadge } from '@/components/admin/company-lead/SelfServiceBadge';
 import { LeadWhatsAppButton } from '@/components/admin/company-lead/LeadWhatsAppButton';
 import { Button } from '@/components/ui/button';
@@ -29,12 +29,14 @@ import { cn } from '@/lib/utils';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
 import { AdminNfseTierControl } from '@/components/admin/AdminNfseTierControl';
 import { AdminWhatsappTierControl } from '@/components/admin/AdminWhatsappTierControl';
-import { getSegment } from '@/utils/companySegments';
+import { normalizeCompanySegments } from '@/utils/companySegments';
+import { SegmentBadges } from '@/components/SegmentBadge';
 import { useSubscriptionModules } from '@/components/admin/ModuleGrid';
 import { useCompanyOrigins } from '@/hooks/useCompanyOrigins';
 import { OriginBadge } from '@/components/admin/OriginBadge';
 import { useAffiliate } from '@/hooks/useAffiliateData';
 import { getEffectiveSubscriptionValue } from '@/utils/subscriptionPricing';
+import { CompanyTutorialSuccessTab } from '@/components/admin/CompanyTutorialSuccessTab';
 
 export default function AdminCompanyDetail() {
   const { id } = useParams();
@@ -45,8 +47,9 @@ export default function AdminCompanyDetail() {
   const [searchParams, setSearchParams] = useSearchParams();
   // Aba 'pagamentos' foi absorvida pela 'info' (histórico inline) — link antigo cai em 'info'.
   const rawTab = searchParams.get('tab') || 'info';
-  const activeTab = ['info', 'plano', 'atividade'].includes(rawTab) ? rawTab : 'info';
+  const activeTab = ['info', 'plano', 'atividade', 'sucesso'].includes(rawTab) ? rawTab : 'info';
   const [showEdit, setShowEdit] = useState(false);
+  const [editInitialTab, setEditInitialTab] = useState<'basic' | 'commercial'>('basic');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [showCancelSubscriptionDialog, setShowCancelSubscriptionDialog] = useState(false);
@@ -107,7 +110,7 @@ export default function AdminCompanyDetail() {
   // affiliate_id. useAffiliate aceita uuid ou slug; aqui é sempre uuid (coluna
   // companies.affiliate_id).
   const { data: companyAffiliate } = useAffiliate(company?.affiliate_id ?? undefined);
-  const segmentData = getSegment(company?.segment);
+  const companySegments = normalizeCompanySegments(company?.segments, company?.segment);
 
   // ===== Recorrência automática (Asaas) =====
   // Presença de companies.asaas_subscription_id => há renovação automática ativa.
@@ -222,7 +225,15 @@ export default function AdminCompanyDetail() {
           <ArrowLeft className="h-4 w-4" /> {isMobile ? 'Voltar' : 'Voltar para Empresas'}
         </Button>
         <div className="flex items-center gap-1.5 sm:gap-2">
-          <Button variant="edit-ghost" size={isMobile ? 'sm' : 'default'} className="gap-1.5" onClick={() => setShowEdit(true)}>
+          <Button
+            variant="edit-ghost"
+            size={isMobile ? 'sm' : 'default'}
+            className="gap-1.5"
+            onClick={() => {
+              setEditInitialTab('basic');
+              setShowEdit(true);
+            }}
+          >
             <Edit className="h-4 w-4" /> {!isMobile && 'Editar'}
           </Button>
           {hasRecurrence && (
@@ -259,6 +270,7 @@ export default function AdminCompanyDetail() {
               { value: 'info', label: 'Informações' },
               { value: 'plano', label: 'Plano e Histórico' },
               { value: 'atividade', label: 'Atividade' },
+              { value: 'sucesso', label: 'Sucesso' },
             ]}
             activeTab={activeTab}
             onTabChange={(tab) => setSearchParams({ tab })}
@@ -268,6 +280,7 @@ export default function AdminCompanyDetail() {
             <TabsTrigger variant="underline" value="info">Informações</TabsTrigger>
             <TabsTrigger variant="underline" value="plano">Plano e Histórico</TabsTrigger>
             <TabsTrigger variant="underline" value="atividade">Atividade</TabsTrigger>
+            <TabsTrigger variant="underline" value="sucesso">Sucesso</TabsTrigger>
           </TabsList>
         )}
 
@@ -332,14 +345,9 @@ export default function AdminCompanyDetail() {
                   </div>
                 </div>
                 <div className="min-w-0">
-                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Segmento</span>
-                  {segmentData ? (
-                    <div className="flex items-center gap-2 mt-0.5 min-w-0">
-                      <Badge className="text-xs text-white border-0 gap-1 max-w-full" style={{ backgroundColor: segmentData.color }}>
-                        <segmentData.icon className="h-3 w-3 shrink-0" />
-                        <span className="truncate">{segmentData.label}</span>
-                      </Badge>
-                    </div>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Segmentos</span>
+                  {companySegments.length > 0 ? (
+                    <SegmentBadges segments={companySegments} className="mt-1" />
                   ) : (
                     <p className="font-medium">N/A</p>
                   )}
@@ -508,11 +516,24 @@ export default function AdminCompanyDetail() {
 
       {/* Módulos do Plano */}
       <Card className="mt-6">
-        <CardHeader className="pb-3">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 pb-3">
           <CardTitle className="flex items-center gap-2">
             <Package className="h-5 w-5 text-primary" />
             Módulos do Plano
           </CardTitle>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => {
+              setEditInitialTab('commercial');
+              setShowEdit(true);
+            }}
+          >
+            <Settings2 className="h-4 w-4" />
+            Gerenciar módulos
+          </Button>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Resumo: Plano + Usuários */}
@@ -588,6 +609,10 @@ export default function AdminCompanyDetail() {
 
         <TabsContent value="atividade" className="mt-4">
           <CompanyActivityTab companyId={id!} />
+        </TabsContent>
+
+        <TabsContent value="sucesso" className="mt-4">
+          <CompanyTutorialSuccessTab companyId={id!} />
         </TabsContent>
       </Tabs>
 
@@ -689,8 +714,11 @@ export default function AdminCompanyDetail() {
         open={showEdit}
         onOpenChange={setShowEdit}
         company={company}
+        initialTab={editInitialTab}
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ['admin-company', id] });
+          queryClient.invalidateQueries({ queryKey: ['admin-company-modules', id] });
+          queryClient.invalidateQueries({ queryKey: ['company-modules-info', id] });
           setShowEdit(false);
         }}
       />

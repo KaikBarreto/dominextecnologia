@@ -38,6 +38,52 @@ function mount() {
   });
 }
 
+function mountWithSavedHours(monthlyHours: number, defaultMonthlyHours: number) {
+  act(() => {
+    root.render(
+      <MonthlyCostCalculatorModal
+        open
+        onOpenChange={() => {}}
+        onApply={() => {}}
+        initialBreakdown={{
+          baseSalary: 3800,
+          adicionalTipo: 'nenhum',
+          periculosidadePercent: 30,
+          insalubridadeGrau: 40,
+          salarioMinimo: 1518,
+          horaExtra: 0,
+          regime: 'simples',
+          inssPatronalPercent: 28.8,
+          planoSaude: 0,
+          planoOdonto: 0,
+          seguroVida: 30,
+          transporte: 500,
+          refeicao: 770,
+          treinamentosAnual: 1200,
+          asoAnual: 300,
+          epiAnual: 1800,
+          celularAnual: 2660,
+          monthlyHours,
+        }}
+        defaultMonthlyHours={defaultMonthlyHours}
+      />
+    );
+  });
+}
+
+function renderWithDefaultHours(defaultMonthlyHours: number) {
+  act(() => {
+    root.render(
+      <MonthlyCostCalculatorModal
+        open
+        onOpenChange={() => {}}
+        onApply={() => {}}
+        defaultMonthlyHours={defaultMonthlyHours}
+      />
+    );
+  });
+}
+
 function paste(input: HTMLInputElement, text: string) {
   const pasteEvent = new Event('paste', { bubbles: true, cancelable: true }) as ClipboardEvent & { clipboardData: any };
   pasteEvent.clipboardData = { getData: () => text };
@@ -91,5 +137,34 @@ describe('MonthlyCostCalculatorModal — CurrencyField do salário base (prova r
     const input = getSalaryInput();
     paste(input, '1.234,56');
     expect(input.value).toBe('R$ 1.234,56');
+  });
+});
+
+describe('MonthlyCostCalculatorModal — horas mensais persistidas', () => {
+  it('mantém as horas salvas no breakdown ao reabrir, mesmo com outra jornada configurada', () => {
+    mountWithSavedHours(144, 220);
+
+    const input = document.querySelector('input[placeholder="176"]') as HTMLInputElement;
+    expect(input).toBeTruthy();
+    expect(input.value).toBe('144');
+  });
+
+  it('preserva as horas digitadas se a jornada padrão resolver depois', () => {
+    renderWithDefaultHours(176);
+    const input = document.querySelector('input[placeholder="176"]') as HTMLInputElement;
+
+    typeInto(input, '144');
+    renderWithDefaultHours(220);
+
+    expect(input.value).toBe('144');
+  });
+
+  it('atualiza a jornada padrão assíncrona quando o campo ainda não foi editado', () => {
+    renderWithDefaultHours(176);
+    const input = document.querySelector('input[placeholder="176"]') as HTMLInputElement;
+
+    renderWithDefaultHours(220);
+
+    expect(input.value).toBe('220');
   });
 });

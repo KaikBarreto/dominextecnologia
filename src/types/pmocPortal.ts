@@ -271,6 +271,7 @@ export interface PortalEquipment {
   install_date: string | null;
   warranty_until: string | null;
   category: { name: string; color: string } | null;
+  labels?: Array<{ id: string; name: string; color: string }>;
 }
 
 /**

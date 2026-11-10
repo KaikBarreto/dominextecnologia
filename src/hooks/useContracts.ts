@@ -17,6 +17,7 @@ import {
   type ActivitySpec,
   type VisitInput,
 } from '@/components/contracts/visitScheduleEngine';
+import type { ServiceOrderScheduleSlot } from '@/types/database';
 
 export interface Contract {
   id: string;
@@ -55,6 +56,10 @@ export interface Contract {
   // cliente final NÃO exibe os documentos PMOC (Dossiê, TRT, Certificado,
   // Cronograma). O gestor libera/oculta na aba Documentos do contrato.
   portal_documents_released: boolean;
+  /** Acesso geral ao Portal do Contrato. `false` exige usuário interno. */
+  portal_is_public: boolean;
+  /** Matriz de acesso por seção; chave ausente equivale a acesso sem senha. */
+  portal_sections: Record<string, 'free' | 'password' | 'hidden'>;
   // NFS-e automática por contrato (Onda 1 — migration 20261016140000).
   // `nfse_auto_enabled` nasce `false` em todo contrato (default de banco);
   // ligar é SEMPRE ação explícita de um humano na aba Financeiro. Overrides
@@ -98,6 +103,11 @@ export interface ContractServiceOrder {
   order_number: number;
   status: string;
   scheduled_date: string | null;
+  scheduled_time?: string | null;
+  duration_minutes?: number;
+  schedule_plan?: ServiceOrderScheduleSlot[] | null;
+  contract_reference_date?: string | null;
+  contract_visit_customized_at?: string | null;
   equipment_id?: string | null;
   contract_id?: string | null;
   origin?: string | null;
@@ -925,6 +935,27 @@ export interface BuiltVisit {
 }
 
 /**
+ * Remove do novo cálculo as datas que já possuem uma visita personalizada.
+ * A comparação usa a referência contratual, não a data operacional reagendada.
+ * Assim, mover a visita de janeiro para outro dia não faz a regeneração criar
+ * uma segunda OS para a competência de janeiro.
+ */
+export function excludeCustomizedContractVisits(
+  visits: BuiltVisit[],
+  protectedReferenceDates: Array<string | null | undefined>,
+): BuiltVisit[] {
+  const protectedDates = new Set(protectedReferenceDates.filter((date): date is string => !!date));
+  if (protectedDates.size === 0) return visits;
+
+  return visits.filter((visit) => {
+    const year = visit.date.getFullYear();
+    const month = String(visit.date.getMonth() + 1).padStart(2, '0');
+    const day = String(visit.date.getDate()).padStart(2, '0');
+    return !protectedDates.has(`${year}-${month}-${day}`);
+  });
+}
+
+/**
  * Motor compartilhado de geração de visitas. Bifurca em 3 caminhos:
  *  1) `machines` informado + há plano → MOTOR POR MÁQUINA (Fase 2): cada máquina
  *     com sua fase/escopo; a visita já vem com emissões resolvidas por equipamento.
@@ -1196,6 +1227,7 @@ export function buildVisitOrderPayload(
       form_template_id: args.formTemplateId || null,
       scheduled_date: dateStr,
       scheduled_time: '08:00',
+      contract_reference_date: dateStr,
       description,
       require_tech_signature: true,
       status: 'agendada' as const,
@@ -1668,22 +1700,19 @@ export interface RegenViaRpcArgs {
 }
 
 /**
- * Caminho novo com rede de segurança: flag desligada → fallback direto; flag
- * ligada → tenta a RPC; erro da RPC → loga e cai no fallback (o antigo). A
- * cliente nunca vê uma falha nova por causa da RPC.
+ * Flag desligada usa o caminho legado. Com a RPC habilitada, qualquer erro e
+ * propagado: repetir a mesma regeneracao no cliente depois de uma falha de
+ * validacao/seguranca poderia deixar OSs parciais, duplicadas ou apagar uma
+ * visita personalizada em corrida. A transacao server-side e a unica fonte
+ * segura quando o rollout esta ativo.
  */
 export async function regenerateViaRpcOrFallback(
   a: RegenViaRpcArgs,
 ): Promise<{ createdCount: number; deletedCount: number }> {
   if (!a.enabled) return a.fallback();
-  try {
-    const { data, error } = await a.rpc('regenerate_contract_visits', a.payload);
-    if (error) throw error;
-    return { createdCount: data?.created_count ?? 0, deletedCount: data?.deleted_count ?? 0 };
-  } catch (e) {
-    console.error('regenerate_contract_visits RPC falhou; usando fallback client-side:', e);
-    return a.fallback();
-  }
+  const { data, error } = await a.rpc('regenerate_contract_visits', a.payload);
+  if (error) throw error;
+  return { createdCount: data?.created_count ?? 0, deletedCount: data?.deleted_count ?? 0 };
 }
 
 /**
@@ -2418,6 +2447,7 @@ export function useContracts() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
       queryClient.invalidateQueries({ queryKey: ['contract-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['nfse-auto-readiness'] });
       queryClient.invalidateQueries({ queryKey: ['contract-transactions'] });
       queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
       queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
@@ -2454,6 +2484,7 @@ export function useContracts() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
       queryClient.invalidateQueries({ queryKey: ['contract-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['nfse-auto-readiness'] });
     },
   });
 
@@ -2485,6 +2516,7 @@ export function useContracts() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
       queryClient.invalidateQueries({ queryKey: ['contract-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['nfse-auto-readiness'] });
     },
   });
 
@@ -2603,6 +2635,10 @@ export function useContracts() {
       unidade_cidade?: string | null;
       unidade_uf?: string | null;
       unidade_cep?: string | null;
+      // Configuração do Portal do Contrato. A RLS da própria linha de contracts
+      // continua sendo a fronteira multi-tenant; não há escrita privilegiada.
+      portal_is_public?: boolean;
+      portal_sections?: Record<string, 'free' | 'password' | 'hidden'>;
     }) => {
       const { id, assignee_user_ids, plan_activities, items, environments, expectedUpdatedAt, ...rest } = input;
 
@@ -2966,11 +3002,16 @@ export function useContracts() {
 
       const { data: contractOss } = await supabase
         .from('service_orders')
-        .select('id, scheduled_date, status, public_short_code')
+        .select('id, scheduled_date, status, public_short_code, origin, contract_reference_date, contract_visit_customized_at')
         .eq('contract_id', id);
 
-      const hasFutureVisits = (contractOss || []).some(
-        o => (o.scheduled_date ?? '') >= todayStr,
+      const occurrenceOss = (contractOss || []).filter(o =>
+        o.origin === 'contract' || (!!o.contract_reference_date && !!o.contract_visit_customized_at)
+      );
+
+      const hasFutureVisits = occurrenceOss.some(
+        o => (o.scheduled_date ?? '') >= todayStr
+          || (!!o.contract_visit_customized_at && (o.contract_reference_date ?? '') >= todayStr),
       );
 
       // Gate único (pure helper): contrato ativo regenera quando o cronograma
@@ -2984,9 +3025,11 @@ export function useContracts() {
       // ⚠️ NÃO apaga aqui (P0 "gerar antes de apagar"). Os ids são capturados e
       // só serão removidos por regenerateFutureVisits DEPOIS de gerar+validar as
       // novas — evitando a janela em que o contrato ficaria sem visita futura.
-      const regenerableOss = (contractOss || []).filter(o =>
+      const regenerableOss = occurrenceOss.filter(o =>
+        o.origin === 'contract' &&
         REGENERABLE_OS_STATUSES.has(o.status ?? '') &&
-        (o.scheduled_date ?? '') >= todayStr
+        (o.scheduled_date ?? '') >= todayStr &&
+        !o.contract_visit_customized_at
       );
       const regenerableIds = regenerableOss
         .map(o => o.id)
@@ -3071,17 +3114,22 @@ export function useContracts() {
 
       // Gera só visitas do mês de hoje em diante (passado preservado). Motor por
       // máquina quando há máquinas + plano; senão agrupado/legado.
-      const visits = buildContractVisits(
-        {
-          startDate: new Date(effStart + 'T12:00:00'),
-          frequencyType: effFreqType,
-          frequencyValue: effFreqValue,
-          horizonMonths: effHorizon,
-          planActivities: effPlan,
-          planActivityIds: effPlanIds,
-          machines: machines.length > 0 ? machines : undefined,
-        },
-        todayStr,
+      const visits = excludeCustomizedContractVisits(
+        buildContractVisits(
+          {
+            startDate: new Date(effStart + 'T12:00:00'),
+            frequencyType: effFreqType,
+            frequencyValue: effFreqValue,
+            horizonMonths: effHorizon,
+            planActivities: effPlan,
+            planActivityIds: effPlanIds,
+            machines: machines.length > 0 ? machines : undefined,
+          },
+          todayStr,
+        ),
+        occurrenceOss
+          .filter(o => !!o.contract_visit_customized_at)
+          .map(o => o.contract_reference_date ?? o.scheduled_date),
       );
 
       const effTechnicianId = input.technician_id !== undefined ? input.technician_id : null;
@@ -3257,11 +3305,16 @@ export function useContracts() {
 
       const { data: contractOss } = await supabase
         .from('service_orders')
-        .select('id, scheduled_date, status, public_short_code')
+        .select('id, scheduled_date, status, public_short_code, origin, contract_reference_date, contract_visit_customized_at')
         .eq('contract_id', id);
 
-      const hasFutureVisits = (contractOss || []).some(
-        o => (o.scheduled_date ?? '') >= todayStr,
+      const occurrenceOss = (contractOss || []).filter(o =>
+        o.origin === 'contract' || (!!o.contract_reference_date && !!o.contract_visit_customized_at)
+      );
+
+      const hasFutureVisits = occurrenceOss.some(
+        o => (o.scheduled_date ?? '') >= todayStr
+          || (!!o.contract_visit_customized_at && (o.contract_reference_date ?? '') >= todayStr),
       );
 
       // Gate único: contrato ativo regenera quando os itens mudaram OU está sem
@@ -3272,9 +3325,11 @@ export function useContracts() {
 
       // ⚠️ Captura os ids regeneráveis mas NÃO apaga aqui (P0 "gerar antes de
       // apagar"): regenerateFutureVisits remove só após gerar+validar as novas.
-      const regenerableOss = (contractOss || []).filter(o =>
+      const regenerableOss = occurrenceOss.filter(o =>
+        o.origin === 'contract' &&
         REGENERABLE_OS_STATUSES.has(o.status ?? '') &&
-        (o.scheduled_date ?? '') >= todayStr
+        (o.scheduled_date ?? '') >= todayStr &&
+        !o.contract_visit_customized_at
       );
       const regenerableIds = regenerableOss
         .map(o => o.id)
@@ -3337,17 +3392,22 @@ export function useContracts() {
       }
       const machines = machinesFromItemRows(itemRows);
 
-      const visits = buildContractVisits(
-        {
-          startDate: new Date(current.start_date + 'T12:00:00'),
-          frequencyType: current.frequency_type as 'days' | 'months',
-          frequencyValue: current.frequency_value as number,
-          horizonMonths: current.horizon_months as number,
-          planActivities: effPlan,
-          planActivityIds: effPlanIds,
-          machines: machines.length > 0 ? machines : undefined,
-        },
-        todayStr,
+      const visits = excludeCustomizedContractVisits(
+        buildContractVisits(
+          {
+            startDate: new Date(current.start_date + 'T12:00:00'),
+            frequencyType: current.frequency_type as 'days' | 'months',
+            frequencyValue: current.frequency_value as number,
+            horizonMonths: current.horizon_months as number,
+            planActivities: effPlan,
+            planActivityIds: effPlanIds,
+            machines: machines.length > 0 ? machines : undefined,
+          },
+          todayStr,
+        ),
+        occurrenceOss
+          .filter(o => !!o.contract_visit_customized_at)
+          .map(o => o.contract_reference_date ?? o.scheduled_date),
       );
 
       const effTechnicianId = (current.technician_id as string | null) ?? null;
@@ -3473,14 +3533,16 @@ export function useContracts() {
         .eq('id', id);
       if (updErr) throw updErr;
 
-      // Maior scheduled_date entre as OSs do contrato = última visita existente.
-      // O corte do tail é ESTRITAMENTE depois dela (idempotência).
+      // A renovacao segue a referencia imutavel do contrato, nao a data
+      // operacional reagendada. Antecipar/adiar uma visita individual nao pode
+      // recriar nem pular competencias ao estender o horizonte.
       const { data: contractOss } = await supabase
         .from('service_orders')
-        .select('scheduled_date')
+        .select('scheduled_date, origin, contract_reference_date, contract_visit_customized_at')
         .eq('contract_id', id);
       const lastScheduled = (contractOss || [])
-        .map(o => o.scheduled_date as string | null)
+        .filter(o => o.origin === 'contract' || (!!o.contract_reference_date && !!o.contract_visit_customized_at))
+        .map(o => (o.contract_reference_date ?? o.scheduled_date) as string | null)
         .filter((d): d is string => !!d)
         .sort()
         .pop() ?? null;
@@ -3740,7 +3802,11 @@ export function useContracts() {
 
     // Unlink past OS from this contract so they remain as standalone records
     if (pastOsIds.length > 0) {
-      await supabase.from('service_orders').update({ contract_id: null } as any).in('id', pastOsIds);
+      await supabase.from('service_orders').update({
+        contract_id: null,
+        contract_reference_date: null,
+        contract_visit_customized_at: null,
+      } as any).in('id', pastOsIds);
     }
 
     const { error } = await supabase.from('contracts').delete().eq('id', id);

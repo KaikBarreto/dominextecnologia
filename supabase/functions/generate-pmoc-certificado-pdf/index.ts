@@ -23,11 +23,17 @@ import {
   safeTimeZone,
   frequencyLabelFrom,
 } from "../_shared/pmoc-templates/context.ts";
-import { PmocVariableContext } from "../_shared/pmoc-templates/variables.ts";
+import { type PmocVariableContext } from "../_shared/pmoc-templates/variables.ts";
 import {
   drawCertificadoArtPage,
   resolveEffectiveArt,
 } from "../_shared/doc-art/certificado-art.ts";
+import type { DocArtConfig } from "../_shared/doc-art/types.ts";
+import { CERTIFICADO_CONTRACT_SLOTS } from "../_shared/doc-art/templates/slots.ts";
+import {
+  finalizePmocCertificateValidation,
+  reservePmocCertificateValidation,
+} from "../_shared/pmoc-certificate-validation.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -36,6 +42,19 @@ const corsHeaders = {
 };
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+interface ContractRow {
+  id: string;
+  company_id: string;
+  name: string | null;
+  customer_id: string;
+  responsible_technician_id: string | null;
+  is_pmoc: boolean;
+  start_date: string | null;
+  frequency_type: string | null;
+  frequency_value: number | null;
+  created_at: string | null;
+}
 
 // =============================================================================
 // Erro padronizado (Onda G): code + message PT-BR + field + action.
@@ -200,7 +219,7 @@ Deno.serve(async (req) => {
     const isSuperAdmin = roles.has("super_admin");
 
     // ---- 4. Resolver contrato — 404 unificado pra cross-tenant
-    const { data: contract } = await supabase
+    const { data: rawContract } = await supabase
       .from("contracts")
       .select(
         [
@@ -219,6 +238,10 @@ Deno.serve(async (req) => {
       )
       .eq("id", contractId)
       .maybeSingle();
+    // O select é montado por join para manter a lista auditável; o parser de
+    // tipos do supabase-js não interpreta strings dinâmicas, então tipamos o
+    // resultado conforme as colunas explicitamente selecionadas acima.
+    const contract = rawContract as unknown as ContractRow | null;
 
     if (!contract) {
       return jsonResponse(
@@ -303,7 +326,7 @@ Deno.serve(async (req) => {
         : Promise.resolve({ data: null } as { data: null }),
       supabase
         .from("pmoc_contract_documents_custom")
-        .select("certificado_content, certificado_art_slug, certificado_art_config")
+        .select("certificado_content, certificado_art_slug, certificado_art_config, certificado_validity_months")
         .eq("contract_id", contract.id)
         .eq("company_id", contract.company_id) // filtro defensivo cross-tenant
         .maybeSingle(),
@@ -518,13 +541,16 @@ Deno.serve(async (req) => {
       companyTimeZone,
     );
 
-    // Validade do documento (Certificado): generated_at + N meses (config da
-    // empresa, default 12). `validUntilDateOnly` é gravado em
+    // Validade do documento (Certificado): override deste contrato, depois
+    // padrão da empresa, por fim 12 meses. `validUntilDateOnly` é gravado em
     // pmoc_documents.valid_until; os textos formatados alimentam `documento.*`.
     const generatedAt = new Date();
     const validityMonths =
+      ((customDocs as { certificado_validity_months?: number | null } | null)
+        ?.certificado_validity_months) ??
       ((docTemplates as { certificado_validity_months?: number | null } | null)
-        ?.certificado_validity_months) ?? 12;
+        ?.certificado_validity_months) ??
+      12;
     const { dateOnly: validUntilDateOnly, formatted: validUntilFormatted } =
       computeValidUntil(generatedAt, validityMonths, companyTimeZone);
     const validadeLabel = `${validityMonths} ${validityMonths === 1 ? "mês" : "meses"}`;
@@ -544,6 +570,20 @@ Deno.serve(async (req) => {
       companyArtRow?.certificado_art_slug ?? null,
       companyArtRow?.certificado_art_config ?? null,
     );
+
+    // O certificado desta edge cobre o CONTRATO/ESTABELECIMENTO como um todo,
+    // não uma OS específica. Os temas são os mesmos do certificado de OS, mas
+    // os slots padrão deixam explícitos o escopo e a vigência do contrato.
+    // Uma personalização feita diretamente neste contrato continua soberana.
+    const contractArtConfig: DocArtConfig | undefined = effectiveArt
+      ? {
+          ...effectiveArt.config,
+          slots: {
+            ...CERTIFICADO_CONTRACT_SLOTS,
+            ...effectiveArt.config?.slots,
+          },
+        }
+      : undefined;
 
     const variableContext: PmocVariableContext = {
       "empresa.nome": tenantName,
@@ -588,13 +628,17 @@ Deno.serve(async (req) => {
     // Arte (2026-10): bump pra cert_v5. O slug e a config entram no hash —
     // trocar de arte ou de cor tem que invalidar o PDF guardado, senão o
     // gestor salva e continua baixando o certificado antigo.
+    // Arte (2026-11): v6 inclui temas refinados, contraste do logo e paginação.
     const hashInput = JSON.stringify({
-      v: "cert_v5",
+      // O rodape institucional e obrigatorio inclusive em white-label. O bump
+      // impede que um certificado ja cacheado sem a marca Dominex seja servido.
+      v: effectiveArt ? "cert_v9_public_validation" : "cert_v8_public_validation",
       tenant: {
         name: tenantName,
         cnpj,
         city: cidade,
         logo: !!certLogoBytes,
+        logo_url: certLogoUrl,
         phone: companySettings?.phone ?? null,
         email: companySettings?.email ?? null,
         address: companySettings?.address ?? null,
@@ -617,7 +661,7 @@ Deno.serve(async (req) => {
       customer: ctx.customer,
       contract: ctx.contract,
       cert: customDocs?.certificado_content ?? null,
-      art: effectiveArt,
+      art: effectiveArt ? { ...effectiveArt, config: contractArtConfig } : null,
       art_brand: certUseWhiteLabel
         ? ((companySettings as unknown as Record<string, unknown>)
             ?.white_label_primary_color as string | null) ?? null
@@ -625,11 +669,19 @@ Deno.serve(async (req) => {
       vars: variableContext,
     });
     const contentHash = await sha256Hex(hashInput);
+    const validationIdentity = await reservePmocCertificateValidation(supabase, {
+      companyId: contract.company_id,
+      contentHash,
+      sourceKind: "contract",
+      sourceId: contract.id,
+    });
+    variableContext["documento.codigo_validacao"] = validationIdentity.validationCode;
+    variableContext["documento.url_validacao"] = validationIdentity.displayUrl;
 
     // ---- 9. Cache hit?
     const { data: existingDoc } = await supabase
       .from("pmoc_documents")
-      .select("id, version, pdf_storage_path, generated_at, notes")
+      .select("id, version, pdf_storage_path, generated_at, valid_until, notes")
       .eq("contract_id", contract.id)
       .eq("company_id", contract.company_id)
       .eq("doc_type", "certificado")
@@ -649,6 +701,17 @@ Deno.serve(async (req) => {
           path: existingDoc.pdf_storage_path,
         });
       } else {
+        await finalizePmocCertificateValidation(supabase, {
+          companyId: contract.company_id,
+          contentHash,
+          sourceKind: "contract",
+          documentId: existingDoc.id,
+          issuerName: tenantName,
+          holderName: ctx.customer.name,
+          sourceLabel: contract.name || "Contrato PMOC",
+          issuedAt: existingDoc.generated_at,
+          validUntil: existingDoc.valid_until,
+        });
         // Estimar signature_status do notes (gravado no INSERT)
         const sigStatus =
           existingDoc.notes && existingDoc.notes.startsWith("signature:")
@@ -672,6 +735,8 @@ Deno.serve(async (req) => {
             generated_at: existingDoc.generated_at,
             cached: true,
             signature_status: sigStatus,
+            validation_code: validationIdentity.validationCode,
+            validation_url: validationIdentity.validationUrl,
             warnings,
           },
           200,
@@ -692,7 +757,7 @@ Deno.serve(async (req) => {
     const certResult = effectiveArt
       ? await drawCertificadoArtPage(pdf, {
           slug: effectiveArt.slug,
-          config: effectiveArt.config,
+          config: contractArtConfig,
           variables: variableContext,
           logo:
             certLogoBytes && certLogoMime
@@ -710,6 +775,7 @@ Deno.serve(async (req) => {
             ? ((companySettings as unknown as Record<string, unknown>)
                 ?.white_label_primary_color as string | null) ?? null
             : null,
+          validationUrl: validationIdentity.validationUrl,
         })
       : await drawCertificadoPage(
           pdf,
@@ -763,7 +829,7 @@ Deno.serve(async (req) => {
 
     // ---- 13. INSERT em pmoc_documents — grava signature_status no notes pra
     //         que o cache hit subsequente saiba devolver sem precisar embedar.
-    const { error: insertErr } = await supabase.from("pmoc_documents").insert({
+    const { data: insertedDocument, error: insertErr } = await supabase.from("pmoc_documents").insert({
       company_id: contract.company_id,
       contract_id: contract.id,
       doc_type: "certificado",
@@ -774,7 +840,7 @@ Deno.serve(async (req) => {
       notes: `signature:${signatureStatus}`,
       // Data de vencimento = geração + validade configurada (regulatório).
       valid_until: validUntilDateOnly,
-    });
+    }).select("id").single();
 
     if (insertErr) {
       // Tenta limpar PDF órfão
@@ -791,6 +857,18 @@ Deno.serve(async (req) => {
         500,
       );
     }
+
+    await finalizePmocCertificateValidation(supabase, {
+      companyId: contract.company_id,
+      contentHash,
+      sourceKind: "contract",
+      documentId: insertedDocument.id,
+      issuerName: tenantName,
+      holderName: ctx.customer.name,
+      sourceLabel: contract.name || "Contrato PMOC",
+      issuedAt: generatedAt.toISOString(),
+      validUntil: validUntilDateOnly,
+    });
 
     // ---- Signed URL pra retorno
     const { data: signed, error: signedErr } = await supabase.storage
@@ -812,8 +890,8 @@ Deno.serve(async (req) => {
       version: nextVersion,
       content_hash: contentHash.slice(0, 8) + "...",
       pdf_size_bytes: pdfSize,
-      tags_removed: certResult.tagsRemoved,
-      attrs_removed: certResult.attrsRemoved,
+      tags_removed: "tagsRemoved" in certResult ? certResult.tagsRemoved : 0,
+      attrs_removed: "attrsRemoved" in certResult ? certResult.attrsRemoved : 0,
       signature_status: signatureStatus,
       warnings: warnings.length,
       duration_ms: Date.now() - t0,
@@ -826,6 +904,8 @@ Deno.serve(async (req) => {
         generated_at: new Date().toISOString(),
         cached: false,
         signature_status: signatureStatus,
+        validation_code: validationIdentity.validationCode,
+        validation_url: validationIdentity.validationUrl,
         warnings,
       },
       200,

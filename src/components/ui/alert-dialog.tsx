@@ -310,7 +310,7 @@ const AlertDialogCancel = React.forwardRef<
       <DrawerPrimitive.Close asChild>
         <button
           ref={ref as React.Ref<HTMLButtonElement>}
-          className={cn(buttonVariants({ variant: "outline" }), "w-full h-11", className)}
+          className={cn(buttonVariants({ variant: "cancel" }), "w-full h-11", className)}
           {...(props as unknown as React.ButtonHTMLAttributes<HTMLButtonElement>)}
         />
       </DrawerPrimitive.Close>
@@ -319,7 +319,7 @@ const AlertDialogCancel = React.forwardRef<
   return (
     <AlertDialogPrimitive.Cancel
       ref={ref}
-      className={cn(buttonVariants({ variant: "outline" }), "mt-2 sm:mt-0", className)}
+    className={cn(buttonVariants({ variant: "cancel" }), "mt-2 sm:mt-0", className)}
       {...props}
     />
   );

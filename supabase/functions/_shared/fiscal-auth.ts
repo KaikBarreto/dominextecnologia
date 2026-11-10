@@ -1,4 +1,4 @@
-// Gate de auth comum às edge functions de onboarding fiscal (Fisqal / NFS-e).
+// Gate de auth comum às edge functions fiscais (NFS-e).
 //
 // Contrato (todas as edges fiscais de gestão):
 //   1. Authorization: Bearer <jwt> obrigatório → auth.getUser() → userId. 401 se falhar.

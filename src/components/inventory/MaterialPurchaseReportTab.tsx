@@ -21,10 +21,15 @@ import { EmptyState } from '@/components/mobile/EmptyState';
 import { FilterCheckboxGroup } from '@/components/mobile/FilterCheckboxGroup';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { FilterButton } from '@/components/ui/FilterButton';
+import { SearchField } from '@/components/ui/search-field-actions';
+import { MaterialPriceAnalysis } from '@/components/inventory/MaterialPriceAnalysis';
 import { useMaterialPurchaseReport, type MaterialPurchaseReportRow } from '@/hooks/useMaterialPurchaseReport';
+import { useInventory } from '@/hooks/useInventory';
 import { useMaterialGroups } from '@/hooks/useMaterialGroups';
 import { useStocks } from '@/hooks/useStocks';
 import { useSuppliers } from '@/hooks/useSuppliers';
+import { usePartyLabels } from '@/hooks/usePartyLabels';
+import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
 import { useUsers } from '@/hooks/useUsers';
 import { usePersistedState } from '@/hooks/usePersistedState';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -119,7 +124,9 @@ export function MaterialPurchaseReportTab() {
   const t = MESSAGES[locale].app.inventory.purchaseReport;
   const { toast } = useToast();
   const { stocks } = useStocks();
+  const { items: inventoryItems } = useInventory();
   const { suppliers } = useSuppliers();
+  const { labelsFor } = usePartyLabels();
   const { groups } = useMaterialGroups();
   const { users } = useUsers();
   const { settings: companySettings } = useCompanySettings();
@@ -152,6 +159,10 @@ export function MaterialPurchaseReportTab() {
     createdByIds,
   });
   const rows = useMemo(() => report.data ?? [], [report.data]);
+  const materialImageUrls = useMemo(
+    () => new Map(inventoryItems.map((item) => [item.id, item.image_url])),
+    [inventoryItems],
+  );
 
   const applyPeriod = (preset: PeriodPreset) => {
     setPeriodPreset(preset);
@@ -263,7 +274,7 @@ export function MaterialPurchaseReportTab() {
   const filters = (
     <>
       <FilterCheckboxGroup label={t.filters.materials} options={materialOptions} selected={materialIds} onChange={setMaterialIds} emptyLabel={t.filters.allMaterials} />
-      <FilterCheckboxGroup label={t.filters.suppliers} options={suppliers.map((item) => ({ value: item.id, label: item.name }))} selected={supplierIds} onChange={setSupplierIds} emptyLabel={t.filters.allSuppliers} />
+      <FilterCheckboxGroup label={t.filters.suppliers} options={suppliers.map((item) => { const labels = labelsFor('supplier', item.id); return { value: item.id, label: item.name, suffix: <PartyLabelBadges labels={labels} mode="summary" />, keywords: labels.map((label) => label.name) }; })} selected={supplierIds} onChange={setSupplierIds} emptyLabel={t.filters.allSuppliers} />
       <FilterCheckboxGroup label={t.filters.stocks} options={stocks.map((item) => ({ value: item.id, label: item.name }))} selected={stockIds} onChange={setStockIds} emptyLabel={t.filters.allStocks} />
       <FilterCheckboxGroup label={t.filters.groups} options={groups.map((item) => ({ value: item.id, label: item.name, color: item.color }))} selected={groupIds} onChange={setGroupIds} emptyLabel={t.filters.allGroups} />
       <FilterCheckboxGroup label={t.filters.users} options={users.map((item) => ({ value: item.user_id, label: item.full_name }))} selected={createdByIds} onChange={setCreatedByIds} emptyLabel={t.filters.allUsers} />
@@ -385,10 +396,25 @@ export function MaterialPurchaseReportTab() {
       {pricedCoverage < 100 && <NoticeBanner variant="warning">{t.priceCoverageWarning.replace('{coverage}', `${number(pricedCoverage, { maximumFractionDigits: 1 })}%`)}</NoticeBanner>}
       {report.error && <NoticeBanner variant="destructive" action={t.retry} onClick={() => void report.refetch()}>{t.loadError}</NoticeBanner>}
 
+      {!report.error && (
+        <MaterialPriceAnalysis
+          rows={filteredMaterialRows}
+          imageUrlsByInventoryId={materialImageUrls}
+          startDate={startDate}
+          endDate={endDate}
+          isLoading={report.isLoading}
+        />
+      )}
+
       <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-        <div className="relative min-w-0 flex-1 lg:max-w-sm"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t.searchPlaceholder} className="pl-9" /></div>
+        <SearchField
+          containerClassName="min-w-0 flex-1 lg:max-w-sm"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder={t.searchPlaceholder}
+          actions={<FilterButton activeCount={activeFilterCount} onClear={clearFilters} embedded>{filters}</FilterButton>}
+        />
         <div className="flex flex-wrap items-center gap-2">
-          <FilterButton activeCount={activeFilterCount} onClear={clearFilters}>{filters}</FilterButton>
           <SegmentedControl value={viewMode} onValueChange={(value) => setViewMode(value as MaterialPurchaseReportView)} size="sm" aria-label={t.view.label} className="min-w-[210px]" options={[{ value: 'material', label: t.view.material }, { value: 'group', label: t.view.group }]} />
         </div>
       </div>

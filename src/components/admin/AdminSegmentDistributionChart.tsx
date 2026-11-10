@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { Briefcase } from 'lucide-react';
-import { getSegment } from '@/utils/companySegments';
+import { getSegment, normalizeCompanySegments } from '@/utils/companySegments';
 
 interface Props {
   companies: any[];
@@ -13,8 +13,10 @@ export function AdminSegmentDistributionChart({ companies }: Props) {
     const active = companies.filter(c => c.subscription_status === 'active' || c.subscription_status === 'testing');
     const counts: Record<string, number> = {};
     active.forEach((c) => {
-      const key = c.segment || 'outro';
-      counts[key] = (counts[key] || 0) + 1;
+      const segments = normalizeCompanySegments(c.segments, c.segment);
+      for (const key of segments.length ? segments : ['outro']) {
+        counts[key] = (counts[key] || 0) + 1;
+      }
     });
     return Object.entries(counts)
       .map(([value, count]) => {

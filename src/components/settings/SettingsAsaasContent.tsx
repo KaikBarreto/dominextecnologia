@@ -104,12 +104,20 @@ export function SettingsAsaasContent() {
   const [discountError, setDiscountError] = useState<string | null>(null);
   const [financeAccountError, setFinanceAccountError] = useState<string | null>(null);
 
+  // Cada bloco tem persistência própria. Um refetch provocado por salvar/trocar
+  // OUTRA seção não pode reidratar este formulário inteiro e apagar rascunhos.
+  const lateFeesDirtyRef = useRef(false);
+  const chargePrefsDirtyRef = useRef(false);
+  const discountDirtyRef = useRef(false);
+  const financeConfigDirtyRef = useRef(false);
+
   // Campos de multa/juros: string para permitir decimais ("2,5") sem forçar ponto.
   // Sincroniza com o valor do banco quando ele muda (ex: após salvar ou na carga inicial).
   const [fineInput, setFineInput] = useState(String(defaultFinePercent));
   const [interestInput, setInterestInput] = useState(String(defaultInterestPercent));
 
   useEffect(() => {
+    if (lateFeesDirtyRef.current) return;
     setFineInput(String(defaultFinePercent));
     setInterestInput(String(defaultInterestPercent));
   }, [defaultFinePercent, defaultInterestPercent]);
@@ -133,22 +141,33 @@ export function SettingsAsaasContent() {
   const [incomeCategoryInput, setIncomeCategoryInput] = useState(defaultIncomeCategory ?? '');
   const [feeCategoryInput, setFeeCategoryInput] = useState(defaultFeeCategory);
 
-  // Sincroniza estado local quando o banco carrega
+  // Sincroniza cada seção separadamente quando o banco carrega. As guardas
+  // preservam alterações ainda não salvas durante refetches de outras seções.
   useEffect(() => {
+    if (chargePrefsDirtyRef.current) return;
     setDueDaysInput(String(defaultDueDays));
     setDescriptionInput(defaultDescription ?? '');
     setPixEnabled(allowPix);
     setBoletoEnabled(allowBoleto);
     setCardEnabled(allowCard);
     setMaxInstallmentsInput(String(defaultMaxInstallments));
+  }, [
+    defaultDueDays, defaultDescription, allowPix, allowBoleto, allowCard,
+    defaultMaxInstallments,
+  ]);
+
+  useEffect(() => {
+    if (discountDirtyRef.current) return;
     setDiscountPercentInput(defaultDiscountPercent != null ? String(defaultDiscountPercent) : '');
     setDiscountDaysInput(defaultDiscountDays != null ? String(defaultDiscountDays) : '');
+  }, [defaultDiscountPercent, defaultDiscountDays]);
+
+  useEffect(() => {
+    if (financeConfigDirtyRef.current) return;
     setFinanceAccountId(defaultFinanceAccountId ?? '');
     setIncomeCategoryInput(defaultIncomeCategory ?? '');
     setFeeCategoryInput(defaultFeeCategory);
   }, [
-    defaultDueDays, defaultDescription, allowPix, allowBoleto, allowCard,
-    defaultMaxInstallments, defaultDiscountPercent, defaultDiscountDays,
     defaultFinanceAccountId, defaultIncomeCategory, defaultFeeCategory,
   ]);
 
@@ -186,6 +205,7 @@ export function SettingsAsaasContent() {
         allow_card: cardEnabled,
         default_max_installments: cardEnabled ? maxInstallments : 1,
       });
+      chargePrefsDirtyRef.current = false;
       toast({ title: t.activeState.chargePrefsToastOk });
     } catch {
       // toast de erro já é disparado pelo hook
@@ -212,6 +232,7 @@ export function SettingsAsaasContent() {
         default_discount_percent: discPct,
         default_discount_days: discDays,
       });
+      discountDirtyRef.current = false;
       toast({ title: t.activeState.discountToastOk });
     } catch {
       // toast de erro já é disparado pelo hook
@@ -249,6 +270,7 @@ export function SettingsAsaasContent() {
         default_income_category: incomeCategoryInput.trim() || null,
         default_fee_category: feeCategoryInput.trim() || feeCategoryDefault,
       });
+      financeConfigDirtyRef.current = false;
       toast({ title: t.activeState.financeConfigToastOk });
     } catch {
       // toast de erro já é disparado pelo hook
@@ -280,6 +302,7 @@ export function SettingsAsaasContent() {
     if (!fineValid || !interestValid) return;
     try {
       await setLateFees.mutateAsync({ finePercent: fineValue, interestPercent: interestValue });
+      lateFeesDirtyRef.current = false;
       toast({ title: t.activeState.lateFeesToastOk });
     } catch {
       toast({ variant: 'destructive', title: t.activeState.lateFeesToastError });
@@ -569,7 +592,10 @@ export function SettingsAsaasContent() {
                         type="text"
                         inputMode="decimal"
                         value={fineInput}
-                        onChange={(e) => setFineInput(e.target.value)}
+                        onChange={(e) => {
+                          lateFeesDirtyRef.current = true;
+                          setFineInput(e.target.value);
+                        }}
                         disabled={setLateFees.isPending}
                         className={cn(
                           'flex h-9 w-full rounded-md border bg-transparent px-3 pr-8 py-1 text-sm shadow-sm transition-colors',
@@ -594,7 +620,10 @@ export function SettingsAsaasContent() {
                         type="text"
                         inputMode="decimal"
                         value={interestInput}
-                        onChange={(e) => setInterestInput(e.target.value)}
+                        onChange={(e) => {
+                          lateFeesDirtyRef.current = true;
+                          setInterestInput(e.target.value);
+                        }}
                         disabled={setLateFees.isPending}
                         className={cn(
                           'flex h-9 w-full rounded-md border bg-transparent px-3 pr-8 py-1 text-sm shadow-sm transition-colors',
@@ -650,7 +679,10 @@ export function SettingsAsaasContent() {
                       type="text"
                       inputMode="numeric"
                       value={dueDaysInput}
-                      onChange={(e) => setDueDaysInput(e.target.value.replace(/\D/g, ''))}
+                      onChange={(e) => {
+                        chargePrefsDirtyRef.current = true;
+                        setDueDaysInput(e.target.value.replace(/\D/g, ''));
+                      }}
                       disabled={setChargePreferences.isPending}
                       className={cn(
                         'flex h-9 w-full rounded-md border bg-transparent px-3 pr-12 py-1 text-sm shadow-sm transition-colors',
@@ -675,7 +707,10 @@ export function SettingsAsaasContent() {
                     id="asaas-description"
                     rows={2}
                     value={descriptionInput}
-                    onChange={(e) => setDescriptionInput(e.target.value)}
+                    onChange={(e) => {
+                      chargePrefsDirtyRef.current = true;
+                      setDescriptionInput(e.target.value);
+                    }}
                     disabled={setChargePreferences.isPending}
                     placeholder={t.activeState.defaultDescriptionPlaceholder}
                     className={cn(
@@ -695,7 +730,10 @@ export function SettingsAsaasContent() {
                       <span className="text-sm">{t.activeState.methodPix}</span>
                       <Switch
                         checked={pixEnabled}
-                        onCheckedChange={setPixEnabled}
+                        onCheckedChange={(checked) => {
+                          chargePrefsDirtyRef.current = true;
+                          setPixEnabled(checked);
+                        }}
                         disabled={setChargePreferences.isPending}
                         aria-label={t.activeState.methodPix}
                         className="shrink-0"
@@ -705,7 +743,10 @@ export function SettingsAsaasContent() {
                       <span className="text-sm">{t.activeState.methodBoleto}</span>
                       <Switch
                         checked={boletoEnabled}
-                        onCheckedChange={setBoletoEnabled}
+                        onCheckedChange={(checked) => {
+                          chargePrefsDirtyRef.current = true;
+                          setBoletoEnabled(checked);
+                        }}
                         disabled={setChargePreferences.isPending}
                         aria-label={t.activeState.methodBoleto}
                         className="shrink-0"
@@ -715,7 +756,10 @@ export function SettingsAsaasContent() {
                       <span className="text-sm">{t.activeState.methodCard}</span>
                       <Switch
                         checked={cardEnabled}
-                        onCheckedChange={setCardEnabled}
+                        onCheckedChange={(checked) => {
+                          chargePrefsDirtyRef.current = true;
+                          setCardEnabled(checked);
+                        }}
                         disabled={setChargePreferences.isPending}
                         aria-label={t.activeState.methodCard}
                         className="shrink-0"
@@ -736,7 +780,10 @@ export function SettingsAsaasContent() {
                         type="text"
                         inputMode="numeric"
                         value={maxInstallmentsInput}
-                        onChange={(e) => setMaxInstallmentsInput(e.target.value.replace(/\D/g, ''))}
+                        onChange={(e) => {
+                          chargePrefsDirtyRef.current = true;
+                          setMaxInstallmentsInput(e.target.value.replace(/\D/g, ''));
+                        }}
                         disabled={setChargePreferences.isPending}
                         className={cn(
                           'flex h-9 w-full rounded-md border bg-transparent px-3 pr-16 py-1 text-sm shadow-sm transition-colors',
@@ -796,7 +843,10 @@ export function SettingsAsaasContent() {
                         type="text"
                         inputMode="decimal"
                         value={discountPercentInput}
-                        onChange={(e) => setDiscountPercentInput(e.target.value)}
+                        onChange={(e) => {
+                          discountDirtyRef.current = true;
+                          setDiscountPercentInput(e.target.value);
+                        }}
                         disabled={setChargePreferences.isPending}
                         placeholder={t.activeState.discountPercentPlaceholder}
                         className={cn(
@@ -821,7 +871,10 @@ export function SettingsAsaasContent() {
                         type="text"
                         inputMode="numeric"
                         value={discountDaysInput}
-                        onChange={(e) => setDiscountDaysInput(e.target.value.replace(/\D/g, ''))}
+                        onChange={(e) => {
+                          discountDirtyRef.current = true;
+                          setDiscountDaysInput(e.target.value.replace(/\D/g, ''));
+                        }}
                         disabled={setChargePreferences.isPending}
                         placeholder={t.activeState.discountDaysPlaceholder}
                         className={cn(
@@ -884,6 +937,7 @@ export function SettingsAsaasContent() {
                       <Select
                         value={financeAccountId || undefined}
                         onValueChange={(v) => {
+                          financeConfigDirtyRef.current = true;
                           setFinanceAccountId(v);
                           setFinanceAccountError(null);
                         }}
@@ -940,7 +994,10 @@ export function SettingsAsaasContent() {
                   {incomeCategories.length > 0 ? (
                     <Select
                       value={incomeCategoryInput || '__none__'}
-                      onValueChange={(v) => setIncomeCategoryInput(v === '__none__' ? '' : v)}
+                      onValueChange={(v) => {
+                        financeConfigDirtyRef.current = true;
+                        setIncomeCategoryInput(v === '__none__' ? '' : v);
+                      }}
                       disabled={setChargePreferences.isPending}
                     >
                       <SelectTrigger className="h-9 text-sm">
@@ -958,7 +1015,10 @@ export function SettingsAsaasContent() {
                   ) : (
                     <Input
                       value={incomeCategoryInput}
-                      onChange={(e) => setIncomeCategoryInput(e.target.value)}
+                      onChange={(e) => {
+                        financeConfigDirtyRef.current = true;
+                        setIncomeCategoryInput(e.target.value);
+                      }}
                       disabled={setChargePreferences.isPending}
                       placeholder={t.activeState.incomeCategoryNone}
                       className="h-9 text-sm"
@@ -974,7 +1034,10 @@ export function SettingsAsaasContent() {
                   <Input
                     id="asaas-fee-category"
                     value={feeCategoryInput}
-                    onChange={(e) => setFeeCategoryInput(e.target.value)}
+                    onChange={(e) => {
+                      financeConfigDirtyRef.current = true;
+                      setFeeCategoryInput(e.target.value);
+                    }}
                     disabled={setChargePreferences.isPending}
                     placeholder={feeCategoryDefault}
                     className="h-9 text-sm"

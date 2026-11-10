@@ -45,7 +45,7 @@ import {
 } from 'lucide-react';
 import { OperacionalIcon, AreaTecnicoIcon } from '@/components/icons/MenuIcons';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ComponentType } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -68,8 +68,10 @@ import { localizeAppPath } from '@/lib/i18n/appRouteSlugs';
 import { translateMenuLabel } from '@/components/layout/shellLabels';
 import { useCompanyModules, type ModuleCode } from '@/hooks/useCompanyModules';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
-import { segmentHasTechTools } from '@/config/technicianArea';
+import { segmentsHaveTechTools } from '@/config/technicianArea';
+import { companyHasSegment, normalizeCompanySegments } from '@/utils/companySegments';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
+import { useLogoInk } from '@/hooks/useLogoInk';
 import { useSidebar } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 import { HelpCenterDrawer } from '@/components/layout/HelpCenterDrawer';
@@ -82,14 +84,14 @@ import logoHorizontalVerde from '@/assets/logo-horizontal-verde.png';
 
 interface MenuItem {
   title: string;
-  icon: any;
+  icon: ComponentType<{ className?: string }>;
   path?: string;
   screenKey?: string;
   moduleKey?: ModuleCode;
   requiresSegment?: string;
   /** Gate dedicado: libera só se o segmento da empresa tem Área do Técnico™. */
   requiresTechTools?: boolean;
-  children?: { title: string; icon: any; path: string; screenKey?: string; moduleKey?: ModuleCode; requiresSegment?: string }[];
+  children?: { title: string; icon: ComponentType<{ className?: string }>; path: string; screenKey?: string; moduleKey?: ModuleCode; requiresSegment?: string }[];
 }
 
 // Estrutura preservada do AppSidebar antigo do Dominex — não inventar itens novos.
@@ -196,7 +198,7 @@ const adminMenuItems: (MenuItem & { masterOnly?: boolean })[] = [
   { title: 'Health Score', icon: HeartPulse, path: '/admin/health-score', screenKey: 'admin_health_score' },
   { title: 'Cobranças', icon: CreditCard, path: '/admin/cobrancas', screenKey: 'admin_cobrancas' },
   { title: 'Blog', icon: Newspaper, path: '/admin/blog', screenKey: 'admin_blog', masterOnly: true },
-  { title: 'Avisos', icon: Megaphone, path: '/admin/avisos', screenKey: 'admin_avisos', masterOnly: true },
+  { title: 'Avisos e NPS', icon: Megaphone, path: '/admin/avisos', screenKey: 'admin_avisos', masterOnly: true },
   // Estatísticas engloba o antigo "Banco de Dados" (/admin/monitoramento) como
   // aba, mais Sistema (uso da base) e Infra. masterOnly: vendedor-admin NÃO vê.
   // ⚠️ Este array é O menu do painel admin. `AdminSidebarNav.tsx` é código
@@ -246,6 +248,16 @@ export function SidebarMenuContent() {
   const { hasModule, hasScreen } = useCompanyModules();
   const { settings } = useCompanySettings();
   const { logoUrl, iconUrl, enabled: wlEnabled, defaultLogoDark, isLoading: logoLoading } = useWhiteLabel();
+  // Logo do tenant é UM arquivo só, desenhado tanto no menu escuro quanto no
+  // claro. Arte de tinta escura some no menu escuro (que é o padrão, nos dois
+  // temas do app), então ela ganha uma placa clara atrás. Arte clara segue
+  // direto no fundo escuro, sem placa.
+  const tenantLogoUrl = !isAdminUser ? logoUrl : null;
+  const tenantLogoInk = useLogoInk(tenantLogoUrl);
+  const needsLogoPlate = Boolean(tenantLogoUrl) && tenantLogoInk === 'dark';
+  const tenantIconUrl = !isAdminUser && wlEnabled ? iconUrl : null;
+  const tenantIconInk = useLogoInk(tenantIconUrl);
+  const needsIconPlate = Boolean(tenantIconUrl) && tenantIconInk === 'dark';
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -314,8 +326,8 @@ export function SidebarMenuContent() {
       if (item.screenKey && !hasScreenAccess(item.screenKey)) return false;
       if (item.screenKey && !hasScreen(item.screenKey)) return false;
       if (item.moduleKey && !hasModule(item.moduleKey)) return false;
-      if (item.requiresSegment && settings?.segment !== item.requiresSegment) return false;
-      if (item.requiresTechTools && !segmentHasTechTools(settings?.segment)) return false;
+      if (item.requiresSegment && !companyHasSegment(settings?.segments, item.requiresSegment, settings?.segment)) return false;
+      if (item.requiresTechTools && !segmentsHaveTechTools(normalizeCompanySegments(settings?.segments, settings?.segment))) return false;
       return true;
     });
   };
@@ -382,7 +394,11 @@ export function SidebarMenuContent() {
                 )}
               >
                 {!isAdminUser && wlEnabled ? (
-                  iconUrl ? <img src={iconUrl} alt="Icon" className="h-7 w-7 object-contain" /> : null
+                  iconUrl ? (
+                    <span className={cn(needsIconPlate && 'rounded-md bg-white p-1')}>
+                      <img src={iconUrl} alt="Icon" className="h-7 w-7 object-contain" />
+                    </span>
+                  ) : null
                 ) : (
                   <>
                     <img src={iconePreto} alt="Logo" className="nav-logo-light h-7 w-7 object-contain dark:hidden" />
@@ -396,8 +412,13 @@ export function SidebarMenuContent() {
                   collapsed ? 'opacity-0 pointer-events-none' : 'opacity-100'
                 )}
               >
-                <img src={isAdminUser ? defaultLogoDark : logoUrl || defaultLogoDark} alt="Logo" className="nav-logo-light max-h-11 w-auto max-w-full object-contain dark:hidden" />
-                <img src={isAdminUser ? logoHorizontalVerde : logoUrl || logoHorizontalVerde} alt="Logo" className="nav-logo-dark max-h-11 w-auto max-w-full object-contain hidden dark:block" />
+                {/* `min-w-0 max-w-full`: a placa vira o novo pai do `max-w-full`
+                    das imagens. Sem isso um logo largo passaria por cima da
+                    borda da sidebar em vez de encolher. */}
+                <div className={cn('flex min-w-0 max-w-full items-center justify-center', needsLogoPlate && 'rounded-lg bg-white px-2.5 py-1')}>
+                  <img src={isAdminUser ? defaultLogoDark : logoUrl || defaultLogoDark} alt="Logo" className="nav-logo-light max-h-11 w-auto max-w-full object-contain dark:hidden" />
+                  <img src={isAdminUser ? logoHorizontalVerde : logoUrl || logoHorizontalVerde} alt="Logo" className="nav-logo-dark max-h-11 w-auto max-w-full object-contain hidden dark:block" />
+                </div>
               </div>
             </>
           )}

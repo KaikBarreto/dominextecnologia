@@ -643,15 +643,15 @@ export default function AdminMonitoramento({ embedded = false }: AdminMonitorame
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabKey)}>
           <TabsList variant="underline">
-            <TabsTrigger variant="underline" value="overview" className="gap-1.5">
+            <TabsTrigger variant="underline" level="screen" value="overview" className="gap-1.5">
               <LayoutDashboard className="h-4 w-4" />
               Visão Geral
             </TabsTrigger>
-            <TabsTrigger variant="underline" value="history" className="gap-1.5">
+            <TabsTrigger variant="underline" level="screen" value="history" className="gap-1.5">
               <LineChart className="h-4 w-4" />
               Histórico &amp; Picos
             </TabsTrigger>
-            <TabsTrigger variant="underline" value="queries" className="gap-1.5">
+            <TabsTrigger variant="underline" level="screen" value="queries" className="gap-1.5">
               <ListOrdered className="h-4 w-4" />
               Queries
             </TabsTrigger>

@@ -52,6 +52,8 @@ interface PdvCartSummaryProps {
   onOpenAdvancedOptions: () => void;
   /** Data retroativa escolhida ou foto(s) pendente(s) — pinta o ponto no botão. */
   advancedOptionsActive: boolean;
+  /** Resumo explícito do que está preenchido (observação, data e anexos). */
+  advancedOptionsSummary?: string;
   texts: PdvCartSummaryTexts;
   className?: string;
 }
@@ -81,6 +83,7 @@ export function PdvCartSummary({
   onGoToCashPanel,
   onOpenAdvancedOptions,
   advancedOptionsActive,
+  advancedOptionsSummary,
   texts,
   className,
 }: PdvCartSummaryProps) {
@@ -113,6 +116,7 @@ export function PdvCartSummary({
         searchPlaceholder={texts.customerSearchPlaceholder}
         emptyMessage={texts.customerEmpty}
         defaultCustomerKind="loja"
+        showCreateLabel
         onValueChange={(id) => onCustomerChange(id === '_none' ? null : id)}
       />
 
@@ -204,10 +208,8 @@ export function PdvCartSummary({
         onClick={onOpenAdvancedOptions}
       >
         <SlidersHorizontal className="h-3.5 w-3.5" />
-        {texts.advancedOptionsTrigger}
-        {advancedOptionsActive && (
-          <span aria-hidden="true" className="h-2 w-2 rounded-full bg-primary" />
-        )}
+        <span>{advancedOptionsSummary || texts.advancedOptionsTrigger}</span>
+        {advancedOptionsActive && <span className="sr-only"> — preenchido</span>}
       </button>
     </div>
   );

@@ -71,6 +71,11 @@ const STATUS_META: Record<string, StatusMeta> = {
     badgeClass: 'bg-red-600 text-white hover:bg-red-600 border-transparent',
     iconClass: 'text-red-500',
   },
+  confirmacao_pendente: {
+    icon: AlertTriangle,
+    badgeClass: 'bg-orange-600 text-white hover:bg-orange-600 border-transparent',
+    iconClass: 'text-orange-600',
+  },
   // Cancelamento pedido e ainda em processamento na prefeitura — estado
   // transitório (âmbar, como `pendente`) que vira `cancelada` no fim.
   cancelamento_pendente: {
@@ -99,11 +104,11 @@ const TERMINAL_STATUSES = new Set<string>([
   'authorized',
   'rejeitada',
   'rejected',
-  'falhou',
-  'failed',
   'cancelada',
   'cancelled',
   'canceled',
+  'falhou',
+  'failed',
 ]);
 
 /**
@@ -128,6 +133,7 @@ export const NFSE_STATUS_FILTER_OPTIONS = [
   { value: 'rejeitada' },
   { value: 'cancelamento_pendente' },
   { value: 'cancelada' },
+  { value: 'confirmacao_pendente' },
   { value: 'falhou' },
 ] as const;
 
@@ -143,7 +149,7 @@ export function NfseStatusBadge({ status, className }: { status: NfseStatus; cla
       <Icon
         className={cn(
           'h-3 w-3',
-          (status === 'processando' || status === 'cancelamento_pendente') && 'animate-spin',
+          (status === 'processando' || status === 'cancelamento_pendente' || status === 'confirmacao_pendente') && 'animate-spin',
         )}
       />
       {label}

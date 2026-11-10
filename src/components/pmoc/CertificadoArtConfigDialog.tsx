@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import {
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -39,14 +42,16 @@ import { usePmocContractCustomDocs } from '@/hooks/usePmocContractCustomDocs';
 import { useResponsibleTechnicians } from '@/hooks/useResponsibleTechnicians';
 
 import { DocArtSvgRenderer, type DocArtImageUrls } from '@/lib/docArt/DocArtSvgRenderer';
-import { idealForeground } from '@/lib/docArt/resolve';
+import { idealForeground, resolveTheme } from '@/lib/docArt/resolve';
 import { DOC_ART_TEMPLATES, getDocArtTemplate } from '@/lib/docArt/templates';
+import { CERTIFICADO_CONTRACT_SLOTS } from '@/lib/docArt/templates/slots';
 import type {
   DocArtConfig,
   DocArtSlotKey,
   DocArtTemplate,
   DocArtTheme,
   DocArtToggleKey,
+  TextAlign,
 } from '@/lib/docArt/types';
 
 import { PmocRichTextEditor } from './PmocRichTextEditor';
@@ -101,9 +106,13 @@ function slotLabel(t: CertArtT, key: DocArtSlotKey): string {
     titulo: t.slotTitulo,
     subtitulo: t.slotSubtitulo,
     corpo: t.slotCorpo,
+    produtoTitulo: t.slotProdutoTitulo,
+    produto: t.slotProduto,
     destaque: t.slotDestaque,
     rodape: t.slotRodape,
     lateral: t.slotLateral,
+    validacao: t.slotValidacao,
+    assinaturaTitulo: t.slotAssinaturaTitulo,
     assinaturaNome: t.slotAssinaturaNome,
     assinaturaCargo: t.slotAssinaturaCargo,
   };
@@ -134,6 +143,20 @@ function modelDescription(t: CertArtT, template: DocArtTemplate): string {
   return `${orientation} · ${isDark ? t.modelToneDark : t.modelToneLight}`;
 }
 
+function certificateBackgroundUrl(slug: string): string | undefined {
+  if (slug.startsWith('essencial-')) return undefined;
+  return `/images/certificate-backgrounds/${slug}.jpg`;
+}
+
+type ModelGroupKey = 'essential' | 'institutional' | 'editorial' | 'classic' | 'technology';
+const MODEL_GROUPS: Array<{ key: ModelGroupKey; slugs: string[] }> = [
+  { key: 'essential', slugs: ['essencial-claro', 'essencial-escuro'] },
+  { key: 'institutional', slugs: ['aurora', 'portico', 'grade'] },
+  { key: 'editorial', slugs: ['onda', 'bloco', 'marca'] },
+  { key: 'classic', slugs: ['selo'] },
+  { key: 'technology', slugs: ['noturno', 'prisma', 'circuito', 'monolito'] },
+];
+
 /** Folha (proporção real da arte) usada tanto nos cards do seletor quanto na revisão. */
 function CertSheet({
   template,
@@ -143,6 +166,7 @@ function CertSheet({
   images,
   className,
   title,
+  compact = false,
 }: {
   template: DocArtTemplate;
   config?: DocArtConfig;
@@ -151,33 +175,49 @@ function CertSheet({
   images: DocArtImageUrls;
   className?: string;
   title?: string;
+  compact?: boolean;
 }) {
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageCount, setPageCount] = useState(1);
+  useEffect(() => setPageIndex(index => Math.min(index, pageCount - 1)), [pageCount]);
   return (
+    <div className="space-y-3">
     <div
       className={cn('w-full overflow-hidden rounded-lg border bg-white shadow-sm', className)}
-      style={{ aspectRatio: template.orientation === 'portrait' ? '210 / 297' : '297 / 210' }}
+      style={{ aspectRatio: compact ? '4 / 3' : template.orientation === 'portrait' ? '210 / 297' : '297 / 210' }}
     >
       <DocArtSvgRenderer
         template={template}
         config={config}
         substitute={substitute}
         brand={brand}
-        images={images}
+        images={{ ...images, background: certificateBackgroundUrl(template.slug) }}
         title={title}
+        className="h-full w-full"
+        pageIndex={compact ? 0 : pageIndex}
+        onPageCountChange={setPageCount}
       />
+    </div>
+    {!compact && pageCount > 1 && (
+      <div className="flex items-center justify-between gap-3 text-sm">
+        <Button type="button" variant="outline" size="sm" aria-label="Página anterior do certificado" disabled={pageIndex === 0} onClick={() => setPageIndex(index => index - 1)}><ChevronLeft className="h-4 w-4" /></Button>
+        <span className="font-medium">Página {pageIndex + 1} de {pageCount}</span>
+        <Button type="button" variant="outline" size="sm" aria-label="Próxima página do certificado" disabled={pageIndex + 1 === pageCount} onClick={() => setPageIndex(index => index + 1)}><ChevronRight className="h-4 w-4" /></Button>
+      </div>
+    )}
     </div>
   );
 }
 
 /** Card "Texto simples" — sem arte, só o ícone num fundo neutro. */
-function PlainSheet({ className }: { className?: string }) {
+function PlainSheet({ className, compact = false }: { className?: string; compact?: boolean }) {
   return (
     <div
       className={cn(
         'flex w-full items-center justify-center overflow-hidden rounded-lg border bg-muted/40',
         className,
       )}
-      style={{ aspectRatio: '210 / 297' }}
+      style={{ aspectRatio: compact ? '4 / 3' : '210 / 297' }}
     >
       <FileText className="h-8 w-8 text-muted-foreground/50" />
     </div>
@@ -225,7 +265,7 @@ export function CertificadoArtConfigDialog({
   /** Contrato sem override próprio → herda o que a empresa configurou. */
   const inherits = isContract && ownSlug === null;
 
-  const baselineSlug = isContract ? (inherits ? companySlug : ownSlug) : companySlug;
+  const baselineSlug = (isContract ? (inherits ? companySlug : ownSlug) : companySlug) ?? 'aurora';
   const baselineConfig = isContract ? (inherits ? companyConfig : ownConfig) : companyConfig;
 
   const isSaving = isContract ? isSavingContractArt : isSavingCompanyArt;
@@ -242,8 +282,11 @@ export function CertificadoArtConfigDialog({
 
   // ── Estado de edição (rascunho — só vira linha no banco ao Salvar) ──
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
+  const [modelGroup, setModelGroup] = useState<ModelGroupKey>('essential');
   const [theme, setTheme] = useState<Partial<DocArtTheme>>({});
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoPlate, setLogoPlate] = useState<'auto' | 'none'>('auto');
+  const [headerAlign, setHeaderAlign] = useState<TextAlign>('center');
   const [toggles, setToggles] = useState<Partial<Record<DocArtToggleKey, boolean>>>({});
   const [slots, setSlots] = useState<Partial<Record<DocArtSlotKey, string>>>({});
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -259,8 +302,11 @@ export function CertificadoArtConfigDialog({
     setStep(0);
     setMaxStepReached(STEPS.length - 1);
     setSelectedSlug(baselineSlug);
+    setModelGroup(MODEL_GROUPS.find((group) => group.slugs.includes(baselineSlug))?.key ?? 'essential');
     setTheme(baselineConfig?.theme ?? {});
     setLogoUrl(baselineConfig?.logoUrl ?? null);
+    setLogoPlate(baselineConfig?.logoPlate ?? 'auto');
+    setHeaderAlign(baselineConfig?.headerAlign ?? 'center');
     setToggles(baselineConfig?.toggles ?? {});
     setSlots(baselineConfig?.slots ?? {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -320,10 +366,23 @@ export function CertificadoArtConfigDialog({
     if (theme.accent) themeOverrides.accent = theme.accent;
     if (Object.keys(themeOverrides).length > 0) cfg.theme = themeOverrides;
     if (logoUrl) cfg.logoUrl = logoUrl;
+    if (logoPlate === 'none') cfg.logoPlate = 'none';
+    if (headerAlign !== 'center') cfg.headerAlign = headerAlign;
     if (Object.keys(toggles).length > 0) cfg.toggles = toggles;
     if (Object.keys(slots).length > 0) cfg.slots = slots;
     return cfg;
-  }, [theme, logoUrl, toggles, slots]);
+  }, [theme, logoUrl, logoPlate, headerAlign, toggles, slots]);
+
+  const previewConfig = useMemo<DocArtConfig>(() => {
+    if (!isContract) return draftConfig;
+    return {
+      ...draftConfig,
+      slots: {
+        ...CERTIFICADO_CONTRACT_SLOTS,
+        ...draftConfig.slots,
+      },
+    };
+  }, [draftConfig, isContract]);
 
   const setToggle = (key: DocArtToggleKey, value: boolean) =>
     setToggles((prev) => ({ ...prev, [key]: value }));
@@ -379,6 +438,8 @@ export function CertificadoArtConfigDialog({
     setSelectedSlug(companySlug);
     setTheme(companyConfig?.theme ?? {});
     setLogoUrl(companyConfig?.logoUrl ?? null);
+    setLogoPlate(companyConfig?.logoPlate ?? 'auto');
+    setHeaderAlign(companyConfig?.headerAlign ?? 'center');
     setToggles(companyConfig?.toggles ?? {});
     setSlots(companyConfig?.slots ?? {});
   };
@@ -400,23 +461,60 @@ export function CertificadoArtConfigDialog({
   const progressPercent = ((step + 1) / STEPS.length) * 100;
 
   // ── Cards do seletor de modelo ──
+  const groupLabel = (key: ModelGroupKey) => ({
+    essential: t.modelGroupEssential,
+    institutional: t.modelGroupInstitutional,
+    editorial: t.modelGroupEditorial,
+    classic: t.modelGroupClassic,
+    technology: t.modelGroupTechnology,
+  })[key];
+  const visibleTemplates = DOC_ART_TEMPLATES.filter((template) =>
+    MODEL_GROUPS.find((group) => group.key === modelGroup)?.slugs.includes(template.slug),
+  );
+
   const modelCards = (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      <button
+    <div className="space-y-4">
+      <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label={t.modelGroupsLabel}>
+        {MODEL_GROUPS.map((group) => (
+          <Button
+            key={group.key}
+            type="button"
+            role="tab"
+            aria-selected={modelGroup === group.key}
+            variant={modelGroup === group.key ? 'default' : 'outline'}
+            size="sm"
+            className="shrink-0"
+            onClick={() => setModelGroup(group.key)}
+          >
+            {groupLabel(group.key)}
+          </Button>
+        ))}
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-foreground">{groupLabel(modelGroup)}</p>
+          <p className="text-xs text-muted-foreground">{t.modelGroupHint}</p>
+        </div>
+        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+          {visibleTemplates.length + (modelGroup === 'essential' ? 1 : 0)} {t.modelOptionsCount}
+        </span>
+      </div>
+      <div className="grid grid-cols-2 items-start gap-4 lg:grid-cols-3 xl:grid-cols-4">
+      {modelGroup === 'essential' && <button
         type="button"
         onClick={() => setSelectedSlug(null)}
         className={cn(
           'flex flex-col gap-2 rounded-xl border-2 p-2.5 text-left transition-all',
           selectedSlug === null
-            ? 'border-primary bg-primary/5 shadow-sm'
+            ? 'border-primary bg-muted/30 shadow-sm'
             : 'border-border hover:border-muted-foreground/30',
         )}
       >
         <div className="relative">
-          <PlainSheet />
+          <PlainSheet compact />
           {selectedSlug === null && (
-            <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary">
-              <Check className="h-3 w-3 text-primary-foreground" />
+            <span className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
+              <Check className="h-3.5 w-3.5" />
             </span>
           )}
         </div>
@@ -424,9 +522,9 @@ export function CertificadoArtConfigDialog({
           <p className="text-sm font-semibold text-foreground">{t.modelPlainName}</p>
           <p className="text-xs text-muted-foreground">{t.modelPlainDesc}</p>
         </div>
-      </button>
+      </button>}
 
-      {DOC_ART_TEMPLATES.map((tpl) => {
+      {visibleTemplates.map((tpl) => {
         const selected = selectedSlug === tpl.slug;
         return (
           <button
@@ -435,14 +533,21 @@ export function CertificadoArtConfigDialog({
             onClick={() => setSelectedSlug(tpl.slug)}
             className={cn(
               'flex flex-col gap-2 rounded-xl border-2 p-2.5 text-left transition-all',
-              selected ? 'border-primary bg-primary/5 shadow-sm' : 'border-border hover:border-muted-foreground/30',
+              selected ? 'border-primary bg-muted/30 shadow-sm' : 'border-border hover:border-muted-foreground/30',
             )}
           >
             <div className="relative">
-              <CertSheet template={tpl} substitute={substitute} brand={brandTheme} images={baseImages} />
+              <CertSheet
+                template={tpl}
+                config={isContract ? { slots: CERTIFICADO_CONTRACT_SLOTS } : undefined}
+                substitute={substitute}
+                brand={brandTheme}
+                images={baseImages}
+                compact
+              />
               {selected && (
-                <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary">
-                  <Check className="h-3 w-3 text-primary-foreground" />
+                <span className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                  <Check className="h-3.5 w-3.5" />
                 </span>
               )}
             </div>
@@ -453,17 +558,18 @@ export function CertificadoArtConfigDialog({
           </button>
         );
       })}
+      </div>
     </div>
   );
 
   // ── Preview ao vivo grande (usado na Personalizar — lado a lado no desktop
   //    — e na Revisão — folha inteira, sozinha). ──
   const livePreview = (
-    <div className="mx-auto w-full" style={{ maxWidth: selectedTemplate?.orientation === 'landscape' ? 480 : 340 }}>
+    <div className="mx-auto w-full" style={{ maxWidth: selectedTemplate?.orientation === 'landscape' ? 720 : 440 }}>
       {selectedTemplate ? (
         <CertSheet
           template={selectedTemplate}
-          config={draftConfig}
+          config={previewConfig}
           substitute={substitute}
           brand={brandTheme}
           images={draftImages}
@@ -595,7 +701,10 @@ export function CertificadoArtConfigDialog({
                         <p className="text-xs text-muted-foreground mt-0.5">{t.logoSectionSubtitle}</p>
                       </div>
                       <div className="flex items-center gap-4">
-                        <div className="h-16 w-28 rounded-lg border border-border bg-muted/40 flex items-center justify-center overflow-hidden shrink-0">
+                        <div
+                          className="h-20 w-36 rounded-lg border border-border p-2 flex items-center justify-center overflow-hidden shrink-0"
+                          style={{ backgroundColor: logoPlate === 'auto' ? '#757575' : selectedTemplate.defaultTheme.paper }}
+                        >
                           {effectiveLogo ? (
                             <img src={effectiveLogo} alt={t.logoSectionTitle} className="max-h-full max-w-full object-contain" />
                           ) : (
@@ -626,6 +735,44 @@ export function CertificadoArtConfigDialog({
                           )}
                         </div>
                       </div>
+                      <div className="flex items-center justify-between gap-4 rounded-lg border border-border p-3">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{t.logoPlateLabel}</p>
+                          <p className="text-xs text-muted-foreground">{t.logoPlateDesc}</p>
+                        </div>
+                        <LabeledSwitch
+                          value={logoPlate === 'auto' ? 'sim' : 'nao'}
+                          onChange={(value) => setLogoPlate(value === 'sim' ? 'auto' : 'none')}
+                          off={{ value: 'nao', label: tCommon.no }}
+                          on={{ value: 'sim', label: tCommon.yes }}
+                          aria-label={t.logoPlateLabel}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{t.headerAlignmentTitle}</p>
+                          <p className="text-xs text-muted-foreground">{t.headerAlignmentDesc}</p>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2" role="group" aria-label={t.headerAlignmentTitle}>
+                          {([
+                            { value: 'left' as const, label: t.headerAlignmentLeft, icon: AlignLeft },
+                            { value: 'center' as const, label: t.headerAlignmentCenter, icon: AlignCenter },
+                            { value: 'right' as const, label: t.headerAlignmentRight, icon: AlignRight },
+                          ]).map(({ value, label, icon: Icon }) => (
+                            <Button
+                              key={value}
+                              type="button"
+                              variant={headerAlign === value ? 'default' : 'outline'}
+                              className="h-10 gap-2"
+                              aria-pressed={headerAlign === value}
+                              onClick={() => setHeaderAlign(value)}
+                            >
+                              <Icon className="h-4 w-4" />
+                              {label}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
 
                     <Separator />
@@ -644,7 +791,7 @@ export function CertificadoArtConfigDialog({
                         <div className="space-y-1.5">
                           <Label className="text-xs text-muted-foreground">{t.colorAccent}</Label>
                           <ColorPicker
-                            value={theme.accent ?? selectedTemplate.defaultTheme.accent}
+                            value={resolveTheme(selectedTemplate, { theme }, brandTheme).accent}
                             onChange={(c) => setTheme((prev) => ({ ...prev, accent: c }))}
                           />
                         </div>
@@ -678,9 +825,12 @@ export function CertificadoArtConfigDialog({
                         <p className="text-sm font-semibold text-foreground">{t.slotsSectionTitle}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">{t.slotsSectionSubtitle}</p>
                       </div>
-                      {selectedTemplate.slots.map((key) => {
+                      {selectedTemplate.slots.filter((key) => key !== 'validacao').map((key) => {
                         const overridden = slots[key] !== undefined;
-                        const value = slots[key] ?? selectedTemplate.defaultSlots[key] ?? '';
+                        const value = slots[key]
+                          ?? (isContract ? CERTIFICADO_CONTRACT_SLOTS[key] : undefined)
+                          ?? selectedTemplate.defaultSlots[key]
+                          ?? '';
                         return (
                           <div key={key} className="space-y-1.5">
                             <div className="flex items-center justify-between gap-2">
@@ -735,11 +885,11 @@ export function CertificadoArtConfigDialog({
               ) : (
                 <div
                   className="mx-auto w-full"
-                  style={{ maxWidth: selectedTemplate.orientation === 'landscape' ? 640 : 440 }}
+                  style={{ maxWidth: selectedTemplate.orientation === 'landscape' ? 900 : 520 }}
                 >
                   <CertSheet
                     template={selectedTemplate}
-                    config={draftConfig}
+                    config={previewConfig}
                     substitute={substitute}
                     brand={brandTheme}
                     images={draftImages}
@@ -758,7 +908,7 @@ export function CertificadoArtConfigDialog({
   const wizardFooter = (
     <div className="flex flex-row items-center justify-between gap-2">
       <Button
-        variant="outline"
+        variant="cancel"
         onClick={() => (step === 0 ? onOpenChange(false) : setStep(step - 1))}
         disabled={isSaving}
       >
@@ -778,7 +928,7 @@ export function CertificadoArtConfigDialog({
   );
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={t.configTitle} className="sm:max-w-4xl" footer={wizardFooter}>
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={t.configTitle} className="sm:max-w-6xl" footer={wizardFooter}>
       {wizardContent}
     </ResponsiveModal>
   );

@@ -6,6 +6,10 @@ import { getErrorMessage } from '@/utils/errorMessages';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { MESSAGES } from '@/lib/i18n/messages';
 import type { LocaleCode } from '@/lib/i18n/locales';
+import { getQuoteCommercialTotal } from '@/lib/quote-commercial-total';
+import type { QuoteCostComposition } from '@/components/quotes/QuoteServiceCostEditor';
+import type { Json } from '@/integrations/supabase/types';
+import { quoteNumberErrorMessage } from '@/lib/quote-number-errors';
 
 export interface QuoteItem {
   id?: string;
@@ -30,9 +34,13 @@ export interface QuoteItem {
   profit_rate?: number;
   bdi?: number;
   price_override?: number | null;
+  pricing_mode?: 'registered' | 'cost_bdi' | 'manual';
+  cost_composition?: QuoteCostComposition | null;
 }
 
 export interface QuoteInput {
+  /** Reserva privada; o número e a identidade são confirmados pelo servidor. */
+  number_reservation_id?: string;
   customer_id?: string;
   prospect_name?: string;
   prospect_phone?: string;
@@ -61,6 +69,7 @@ export interface QuoteInput {
   distance_km?: number;
   displacement_cost?: number;
   bdi?: number;
+  use_bdi?: boolean;
   total_cost?: number;
   total_price?: number;
   price_override?: number;
@@ -68,6 +77,8 @@ export interface QuoteInput {
   include_gifts?: boolean;
   card_discount_rate?: number;
   card_installments?: number;
+  show_labor_cost_in_proposal?: boolean;
+  show_inputs_cost_in_proposal?: boolean;
   items: QuoteItem[];
 }
 
@@ -110,12 +121,15 @@ export interface Quote {
   distance_km?: number | null;
   displacement_cost?: number | null;
   bdi?: number | null;
+  use_bdi?: boolean | null;
   total_cost?: number | null;
   total_price?: number | null;
   price_override?: number | null;
   include_gifts?: boolean | null;
   card_discount_rate?: number | null;
   card_installments?: number | null;
+  show_labor_cost_in_proposal?: boolean | null;
+  show_inputs_cost_in_proposal?: boolean | null;
   customers?: {
     name: string;
     email: string | null;
@@ -188,6 +202,8 @@ function buildItemPayload(item: QuoteItem, quoteId: string, idx: number) {
     profit_rate: item.profit_rate ?? 10,
     bdi: item.bdi ?? 0.68,
     price_override: item.price_override ?? null,
+    pricing_mode: item.pricing_mode ?? 'manual',
+    cost_composition: (item.cost_composition ?? null) as unknown as Json,
   }, ['inventory_id', 'service_type_id']);
 }
 
@@ -213,12 +229,36 @@ export function useQuotes() {
     mutationFn: async (input: QuoteInput) => {
       const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
       const company_id = await getCurrentUserCompanyId();
-      const { items, final_price, ...quoteData } = input as any;
+      const { items, final_price, number_reservation_id, ...quoteData } = input as any;
       const sanitizedQuoteData = normalizeOptionalForeignKeys(quoteData, [
         'customer_id',
         'assigned_to',
         'proposal_template_id',
       ]);
+
+      if (number_reservation_id) {
+        if (!user?.id) throw new Error('Entre novamente para criar o orçamento.');
+        const { data, error } = await supabase.rpc('create_reserved_quote', {
+          p_reservation_id: number_reservation_id,
+          p_company_id: company_id,
+          p_user_id: user.id,
+          p_quote: sanitizedQuoteData as Json,
+          p_items: items.map((item: QuoteItem, index: number) => {
+            const { quote_id: _quoteId, ...row } = buildItemPayload(item, '', index);
+            return row;
+          }) as Json,
+        });
+        if (error) {
+          if (error.code === 'QNR02' || error.code === 'QNR03') {
+            void queryClient.invalidateQueries({ queryKey: ['quote-number-reservation', company_id, user.id, number_reservation_id], exact: true });
+          }
+          throw new Error(quoteNumberErrorMessage(error));
+        }
+        if (!data || typeof data !== 'object' || Array.isArray(data) || typeof data.id !== 'string' || !Number.isSafeInteger(data.quote_number) || Number(data.quote_number) <= 0) {
+          throw new Error('Não foi possível confirmar o salvamento. Seus dados foram mantidos; tente novamente para conferir este orçamento.');
+        }
+        return data as unknown as Quote;
+      }
 
       const { data: quote, error } = await supabase
         .from('quotes')
@@ -248,7 +288,7 @@ export function useQuotes() {
   });
 
   const updateQuote = useMutation({
-    mutationFn: async ({ id, items, final_price, ...quoteData }: QuoteInput & { id: string } & { final_price?: any }) => {
+    mutationFn: async ({ id, items, final_price, number_reservation_id: _reservationId, ...quoteData }: QuoteInput & { id: string } & { final_price?: any }) => {
       const sanitizedQuoteData = normalizeOptionalForeignKeys(quoteData as any, [
         'customer_id',
         'assigned_to',
@@ -342,6 +382,9 @@ export function useQuotes() {
           km_cost: source.km_cost,
           distance_km: source.distance_km,
           bdi: source.bdi,
+          use_bdi: source.use_bdi ?? true,
+          show_labor_cost_in_proposal: source.show_labor_cost_in_proposal === true,
+          show_inputs_cost_in_proposal: source.show_inputs_cost_in_proposal === true,
         } as any)
         .select()
         .single();
@@ -397,12 +440,12 @@ export function useQuotes() {
     return q;
   });
 
-  const totalOpen = quotes.filter(q => q.status === 'enviado').reduce((s, q) => s + (q.total_value ?? 0), 0);
+  const totalOpen = quotes.filter(q => q.status === 'enviado').reduce((s, q) => s + getQuoteCommercialTotal(q), 0);
   const totalApproved = quotes.filter(q => q.status === 'aprovado').length;
   const totalSent = quotes.filter(q => ['enviado', 'aprovado', 'rejeitado'].includes(q.status)).length;
   const conversionRate = totalSent > 0 ? Math.round((totalApproved / totalSent) * 100) : 0;
   const avgTicket = totalApproved > 0
-    ? quotes.filter(q => q.status === 'aprovado').reduce((s, q) => s + (q.total_value ?? 0), 0) / totalApproved
+    ? quotes.filter(q => q.status === 'aprovado').reduce((s, q) => s + getQuoteCommercialTotal(q), 0) / totalApproved
     : 0;
 
   // BDI KPIs
@@ -411,8 +454,8 @@ export function useQuotes() {
     if (quotesWithCost.length === 0) return 0;
     const margins = quotesWithCost.map(q => {
       const cost = Number(q.total_cost ?? 0);
-      const price = Number(q.final_price ?? q.total_value ?? 0);
-      return cost > 0 ? ((price - cost) / price) * 100 : 0;
+      const price = getQuoteCommercialTotal(q);
+      return price > 0 && cost > 0 ? ((price - cost) / price) * 100 : 0;
     });
     return Math.round(margins.reduce((a, b) => a + b, 0) / margins.length);
   })();

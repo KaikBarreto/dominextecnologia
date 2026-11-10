@@ -1,6 +1,7 @@
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import {
   AlertCircle,
+  FileBarChart,
   Check,
   ChevronDown,
   ChevronRight,
@@ -60,12 +61,19 @@ import {
   type CategoryTreeRow,
   type DreConfigCategory,
 } from './dre-config-dnd';
+import { DreLayoutProfilesPanel } from '@/components/financial-report/DreLayoutProfilesPanel';
 
-interface DreGroupsManagerDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+interface DreGroupsManagerProps {
   /** Categorias do tenant atual, com aparência e hierarquia usadas na prévia. */
   categories: readonly DreConfigCategory[];
+  showHeading?: boolean;
+}
+
+interface DreGroupsManagerDialogProps extends Omit<DreGroupsManagerProps, 'showHeading'> {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  companyId?: string;
+  canManage?: boolean;
 }
 
 const NATURES: Array<{
@@ -114,11 +122,7 @@ type ConfirmAction = {
 };
 
 
-export function DreGroupsManagerDialog({
-  open,
-  onOpenChange,
-  categories,
-}: DreGroupsManagerDialogProps) {
+export function DreGroupsManager({ categories, showHeading = true }: DreGroupsManagerProps) {
   const {
     dreGroups,
     isLoading,
@@ -334,33 +338,17 @@ export function DreGroupsManagerDialog({
     });
   };
 
-  const resetCreate = () => {
-    setNewName('');
-    setNewNature('operating_expense');
-    setFormError(null);
-  };
-
-  const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen) {
-      resetCreate();
-      cancelEditing();
-      setConfirmAction(null);
-      setOperationError(null);
-      setCollapsedGroupIds(new Set());
-    }
-    onOpenChange(nextOpen);
-  };
-
   return (
     <>
-      <ResponsiveModal
-        open={open}
-        onOpenChange={handleOpenChange}
-        title="Configurar DRE"
-        description="Organize os grupos e mova categorias arrastando. Use o seletor como alternativa acessível."
-        className="sm:max-w-5xl"
-      >
-        <div className="space-y-4 pb-1">
+      <div className="space-y-4 pb-1">
+          {showHeading ? (
+            <header className="border-b border-border/60 pb-4">
+              <h2 className="text-lg font-semibold tracking-tight">Estrutura da DRE</h2>
+              <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
+                Crie grupos, organize a hierarquia e mova categorias sem sair desta tela. O seletor de cada categoria é a alternativa ao arraste.
+              </p>
+            </header>
+          ) : null}
           {operationError ? (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
@@ -370,7 +358,7 @@ export function DreGroupsManagerDialog({
           ) : null}
 
           {!isLoading && !error ? (
-            <div className="grid gap-3 rounded-lg border bg-muted/20 p-4 sm:grid-cols-[220px_1fr_auto] sm:items-end">
+            <div className="grid gap-3 bg-muted/30 p-4 sm:grid-cols-[220px_1fr_auto] sm:items-end">
               <NatureField value={newNature} onChange={setNewNature} id="new-dre-group-nature" compact />
               <div className="space-y-1.5">
                 <Label htmlFor="new-dre-group-name">Novo subgrupo</Label>
@@ -508,7 +496,7 @@ export function DreGroupsManagerDialog({
                                           <div className="flex flex-wrap items-center gap-2">
                                             <span className="text-xs font-medium tracking-wide text-muted-foreground">{groupCode}</span>
                                             <p className="truncate text-sm font-semibold">{group.name}</p>
-                                            {!group.is_active ? <Badge variant="secondary">Inativo</Badge> : null}
+                                            {!group.is_active ? <Badge className="bg-slate-600 text-white">Inativo</Badge> : null}
                                             {group.is_system ? (
                                               <Badge variant="outline" className="gap-1">
                                                 <ShieldCheck className="h-3 w-3" />
@@ -585,9 +573,7 @@ export function DreGroupsManagerDialog({
               </DndContext>
             </div>
           )}
-
-        </div>
-      </ResponsiveModal>
+      </div>
 
       <AlertDialog open={Boolean(confirmAction)} onOpenChange={(nextOpen) => !nextOpen && setConfirmAction(null)}>
         <AlertDialogContent>
@@ -618,6 +604,72 @@ export function DreGroupsManagerDialog({
         </AlertDialogContent>
       </AlertDialog>
     </>
+  );
+}
+
+/**
+ * Mantido para o atalho contextual da DRE. A aba de configurações usa o
+ * editor direto (`DreGroupsManager`) e não abre este modal intermediário.
+ */
+export function DreGroupsManagerDialog({
+  open,
+  onOpenChange,
+  categories,
+  companyId,
+  canManage = true,
+}: DreGroupsManagerDialogProps) {
+  const [showOtherViews, setShowOtherViews] = useState(false);
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) setShowOtherViews(false);
+    onOpenChange(nextOpen);
+  };
+
+  return (
+    <ResponsiveModal
+      open={open}
+      onOpenChange={handleOpenChange}
+      title={showOtherViews ? 'Outras visões do DRE' : 'Configurar DRE'}
+      description={showOtherViews
+        ? 'Crie formas diferentes de apresentar os mesmos lançamentos e categorias.'
+        : 'Organize os grupos e mova categorias arrastando. Use o seletor como alternativa acessível.'}
+      className="sm:max-w-5xl"
+    >
+      {open && showOtherViews ? (
+        <DreLayoutProfilesPanel
+          companyId={companyId}
+          canManage={canManage}
+          onBack={() => setShowOtherViews(false)}
+        />
+      ) : open ? (
+        <div className="space-y-5">
+          <DreGroupsManager categories={categories} showHeading={false} />
+          <div className="rounded-xl border bg-muted/20 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-background">
+                  <FileBarChart className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Precisa de outra forma de ver o DRE?</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Opcional: crie visões gerencial, contábil, EBITDA ou próprias sem mexer nos lançamentos.
+                  </p>
+                </div>
+              </div>
+              <div className="flex shrink-0 flex-wrap gap-2">
+                <Button asChild type="button" variant="ghost" size="sm">
+                  <a href="/docs/guias/dre-tres-visoes.pdf" target="_blank" rel="noreferrer">Ver exemplo em PDF</a>
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => setShowOtherViews(true)}>
+                  Outras visões
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </ResponsiveModal>
   );
 }
 
@@ -707,7 +759,7 @@ function DraggableCategoryRow({
       ref={setNodeRef}
       style={style}
       className={cn(
-        'flex items-center gap-2 py-2 text-xs transition-colors hover:bg-muted/40',
+        'flex flex-wrap items-center gap-2 py-2 text-xs transition-colors hover:bg-muted/40 md:flex-nowrap',
         depth === 1 ? 'pl-12 pr-2' : 'pl-8 pr-2',
       )}
       data-testid={`dre-category-${category.id}`}
@@ -748,7 +800,7 @@ function DraggableCategoryRow({
         disabled={disabled}
       >
         <SelectTrigger
-          className="hidden h-8 w-[205px] shrink-0 text-xs md:flex"
+          className="mt-1 h-8 w-full basis-full text-xs md:mt-0 md:w-[205px] md:basis-auto md:shrink-0"
           aria-label={`Mover ${category.name} para outro grupo DRE`}
         >
           <SelectValue placeholder="Escolher grupo" />

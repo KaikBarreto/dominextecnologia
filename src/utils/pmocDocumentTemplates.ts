@@ -107,7 +107,7 @@ export function buildDefaultCertificadoHtml(): string {
 
 <p>&nbsp;</p>
 
-<p>A empresa <strong>${v('empresa.razao_social')}</strong>, inscrita no CNPJ nº <strong>${v('empresa.cnpj')}</strong>, certifica que a unidade <strong>${v('cliente.nome')}</strong>, inscrita no CNPJ nº <strong>${v('cliente.documento')}</strong>, localizada em ${v('cliente.endereco')}, está sob plano formal de manutenção preventiva e operacional conforme estabelecido pela Lei Federal nº 13.589 de 4 de janeiro de 2018, sob supervisão técnica de <strong>${v('rt.nome')}</strong> (${v('rt.modalidade')} — CFT ${v('rt.cft_crea')}).</p>
+<p>A empresa <strong>${v('empresa.razao_social')}</strong>, inscrita no CNPJ nº <strong>${v('empresa.cnpj')}</strong>, certifica que a unidade <strong>${v('cliente.nome')}</strong>, inscrita no CNPJ nº <strong>${v('cliente.documento')}</strong>, localizada em ${v('cliente.endereco')}, está sob plano formal de manutenção preventiva e operacional conforme estabelecido pela Lei Federal nº 13.589/2018 e pela Portaria GM/MS nº 3.523/1998, sob supervisão técnica de <strong>${v('rt.nome')}</strong> (${v('rt.modalidade')} — CFT ${v('rt.cft_crea')}).</p>
 
 <p>&nbsp;</p>
 

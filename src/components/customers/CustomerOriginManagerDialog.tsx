@@ -17,7 +17,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
 }
 
-export function CustomerOriginManagerDialog({ open, onOpenChange }: Props) {
+export function CustomerOriginManagerContent() {
   const { locale } = useAppLocaleContext();
   const tor = MESSAGES[locale].app.equipment.origins;
   const tEq = MESSAGES[locale].app.equipment;
@@ -54,7 +54,6 @@ export function CustomerOriginManagerDialog({ open, onOpenChange }: Props) {
   };
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={tor.dialogTitle}>
       <div className="space-y-4">
         {/* Empty state com CTA de seed */}
         {!isLoading && origins.length === 0 && (
@@ -147,6 +146,15 @@ export function CustomerOriginManagerDialog({ open, onOpenChange }: Props) {
           </Button>
         </div>
       </div>
+  );
+}
+
+export function CustomerOriginManagerDialog({ open, onOpenChange }: Props) {
+  const { locale } = useAppLocaleContext();
+  const tor = MESSAGES[locale].app.equipment.origins;
+  return (
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={tor.dialogTitle}>
+      <CustomerOriginManagerContent />
     </ResponsiveModal>
   );
 }

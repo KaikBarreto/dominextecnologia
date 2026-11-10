@@ -22,6 +22,7 @@ import {
   ReceiptText,
   Lock,
   LogOut,
+  ClipboardCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -54,13 +55,25 @@ import {
 import { OSRatingSurvey } from '@/components/technician/OSRatingSurvey';
 import { supabaseAnon } from '@/integrations/supabase/anonClient';
 import { buildPmocPortalUrl } from '@/utils/pmocPortalApi';
-import { createCustomerPortalTicket } from '@/utils/customerPortalApi';
+import {
+  createCustomerPortalTicket,
+  fetchCustomerPortalForms,
+  type CustomerPortalForm,
+} from '@/utils/customerPortalApi';
+import { PortalFormsSection } from '@/components/portal/PortalFormsSection';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { PortalChargesSection } from '@/components/portal/PortalChargesSection';
 import { formatOSNumber } from '@/lib/osNumber';
 import { PortalDocumentsSection, type PortalDocumentItem } from '@/components/portal/PortalDocumentsSection';
 import { PortalUnlockCard } from '@/components/portal/PortalUnlockCard';
+import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
+
+interface PortalLabel {
+  id: string;
+  name: string;
+  color: string;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Interfaces e constantes
@@ -70,6 +83,8 @@ interface Customer {
   id: string;
   name: string;
   company_id: string;
+  custom_fields?: Record<string, unknown> | null;
+  labels?: PortalLabel[];
 }
 
 interface EquipmentAttachment {
@@ -97,6 +112,7 @@ interface Equipment {
   category?: { name: string; color: string } | null;
   attachments_public?: boolean;
   attachments?: EquipmentAttachment[];
+  labels?: PortalLabel[];
 }
 
 interface FieldConfig {
@@ -167,6 +183,7 @@ interface PortalPayload {
   equipment: Equipment[];
   service_orders: ServiceOrder[];
   equipment_field_config?: FieldConfig[];
+  customer_field_config?: FieldConfig[];
   contracts?: PortalContractSummary[];
   charges?: PortalCharge[];
   invoices?: PortalDocumentItem[];
@@ -268,6 +285,7 @@ export default function CustomerPortal() {
   const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [equipmentFieldConfig, setEquipmentFieldConfig] = useState<FieldConfig[]>([]);
+  const [customerFieldConfig, setCustomerFieldConfig] = useState<FieldConfig[]>([]);
   const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>([]);
   const [contracts, setContracts] = useState<PortalContractSummary[]>([]);
   const [charges, setCharges] = useState<PortalCharge[]>([]);
@@ -352,6 +370,7 @@ export default function CustomerPortal() {
       setCompanySettings(payload.company_settings ?? null);
       setEquipment(payload.equipment ?? []);
       setEquipmentFieldConfig(payload.equipment_field_config ?? []);
+      setCustomerFieldConfig(payload.customer_field_config ?? []);
       // TAREFA INTERNA NUNCA VAI PRO PORTAL. Tarefa é uma linha de
       // `service_orders` com `entry_type = 'tarefa'` (nota interna da equipe,
       // "lembrar de mandar orçamento"), e estava aparecendo pro cliente final
@@ -505,6 +524,7 @@ export default function CustomerPortal() {
         companySettings={companySettings}
         equipment={equipment}
         equipmentFieldConfig={equipmentFieldConfig}
+        customerFieldConfig={customerFieldConfig}
         serviceOrders={serviceOrders}
         contracts={contracts}
         charges={charges}
@@ -532,6 +552,7 @@ interface ContentProps {
   companySettings: CompanySettings | null;
   equipment: Equipment[];
   equipmentFieldConfig: FieldConfig[];
+  customerFieldConfig: FieldConfig[];
   serviceOrders: ServiceOrder[];
   contracts: PortalContractSummary[];
   charges: PortalCharge[];
@@ -572,6 +593,7 @@ function CustomerPortalContent({
   companySettings,
   equipment,
   equipmentFieldConfig,
+  customerFieldConfig,
   serviceOrders,
   contracts,
   charges,
@@ -609,6 +631,19 @@ function CustomerPortalContent({
       (lockedSet.has(key) ? <Lock className="h-4 w-4 shrink-0" /> : icon),
     [lockedSet],
   );
+
+  // ── Formulários publicados no portal ──
+  // Não há chave `forms` em `portal_settings.permissions`: o gate é o próprio
+  // servidor. Lista vazia (ou erro, ex.: portal com senha ainda sem sessão) =
+  // seção escondida. Recarrega quando a sessão muda (desbloqueio por senha).
+  const [portalForms, setPortalForms] = useState<CustomerPortalForm[]>([]);
+  useEffect(() => {
+    let alive = true;
+    fetchCustomerPortalForms(token, sessionToken || null)
+      .then((list) => { if (alive) setPortalForms(list); })
+      .catch(() => { if (alive) setPortalForms([]); });
+    return () => { alive = false; };
+  }, [token, sessionToken]);
 
   // ── Estado do modal de chamado ──
   const [showUnlockModal, setShowUnlockModal] = useState(false);
@@ -1055,7 +1090,7 @@ function CustomerPortalContent({
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <p className="break-words text-sm font-semibold">{selectedEq.name}</p>
+            <div className="flex min-w-0 flex-wrap items-center gap-2"><p className="break-words text-sm font-semibold">{selectedEq.name}</p><PartyLabelBadges labels={selectedEq.labels} mode="summary" /></div>
             {(selectedEq.brand || selectedEq.model) && (
               <p className="text-xs text-muted-foreground">
                 {[selectedEq.brand, selectedEq.model].filter(Boolean).join(' · ')}
@@ -1293,7 +1328,7 @@ function CustomerPortalContent({
                   )}
                   <div className="flex flex-1 min-w-0 items-center gap-3 px-4 py-3">
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{eq.name}</p>
+                      <div className="flex min-w-0 items-center gap-2"><p className="font-medium truncate">{eq.name}</p><PartyLabelBadges labels={eq.labels} mode="summary" /></div>
                       <p className="text-xs text-muted-foreground truncate">
                         {[eq.brand, eq.model].filter(Boolean).join(' - ')}
                       </p>
@@ -1386,7 +1421,11 @@ function CustomerPortalContent({
     ...(permissions.documents
       ? [{ value: 'documentos', label: t.sectionDocuments, icon: sectionIcon('documents', <Files className="h-4 w-4 shrink-0" />) }]
       : []),
-  ], [charges.length, contracts.length, lockedSet, permissions, sectionIcon, t]);
+    // Formulários: sem chave de permissão; aparece só se o servidor devolveu algum.
+    ...(portalForms.length > 0
+      ? [{ value: 'formularios', label: t.sectionForms, icon: <ClipboardCheck className="h-4 w-4 shrink-0" /> }]
+      : []),
+  ], [charges.length, contracts.length, lockedSet, permissions, portalForms.length, sectionIcon, t]);
 
   useEffect(() => {
     if (navSections.length > 0 && !navSections.some((section) => section.value === activeTab)) {
@@ -1397,6 +1436,10 @@ function CustomerPortalContent({
   // Aba aberta esta protegida? Entao o corpo dela e o card de desbloqueio.
   const activeTabKey = TAB_PERMISSION_KEY[activeTab];
   const activeIsLocked = !!activeTabKey && lockedSet.has(activeTabKey);
+  const customerCustomRows = customerFieldConfig
+    .filter((field) => customer.custom_fields?.[field.field_key] !== undefined && customer.custom_fields?.[field.field_key] !== null && customer.custom_fields?.[field.field_key] !== '')
+    .sort((a, b) => a.position - b.position)
+    .map((field) => ({ label: field.label, value: formatFieldValue(customer.custom_fields?.[field.field_key], field.field_type) }));
 
   // ── Render principal com PublicPortalShell ──
   return (
@@ -1436,6 +1479,17 @@ function CustomerPortalContent({
         : undefined}
       navLabel={t.sidebarNavLabel}
     >
+      {!!customer.labels?.length && <PartyLabelBadges labels={customer.labels} mode="full" className="mb-4" />}
+      {customerCustomRows.length > 0 && (
+        <Card>
+          <CardContent className="p-4 sm:p-5">
+            <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-foreground/70">Informações</h2>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {customerCustomRows.map((row) => <div key={row.label} className="min-w-0"><p className="text-xs text-muted-foreground">{row.label}</p><p className="break-words text-sm font-medium">{row.value}</p></div>)}
+            </div>
+          </CardContent>
+        </Card>
+      )}
       {/* Campo de busca de OS — no topo da aba */}
       {permissions.service_orders && activeTab === 'os' && !activeIsLocked && (
         <div className="mb-4">
@@ -1508,6 +1562,15 @@ function CustomerPortalContent({
           timezone={timezone}
         />
       )}
+      {activeTab === 'formularios' && portalForms.length > 0 && (
+        <PortalFormsSection
+          token={token}
+          sessionToken={sessionToken}
+          forms={portalForms}
+          lang={locale}
+          t={t}
+        />
+      )}
 
       {/* Desbloqueio do "Abrir chamado" quando a secao de chamados pede senha.
           Mesmo card da secao protegida: uma fonte so pra erro/lockout. */}
@@ -1562,7 +1625,13 @@ function CustomerPortalContent({
               <SearchableSelect
                 options={[
                   { value: 'none', label: t.ticketEquipmentNone },
-                  ...equipment.map((eq) => ({ value: eq.id, label: eq.name })),
+                  ...equipment.map((eq) => ({
+                    value: eq.id,
+                    label: eq.name,
+                    suffix: <PartyLabelBadges labels={eq.labels} mode="summary" />,
+                    selectedSuffix: <PartyLabelBadges labels={eq.labels} mode="compact" />,
+                    keywords: eq.labels?.map((label) => label.name),
+                  })),
                 ]}
                 value={ticketEquipmentId || 'none'}
                 onValueChange={(v) => setTicketEquipmentId(v === 'none' ? '' : v)}

@@ -96,6 +96,7 @@ import { getCorsHeaders, handleCors } from "../_shared/cors.ts";
 import { timingSafeEqual } from "../_shared/timing-safe.ts";
 import { emitirNfseAutorizada } from "../_shared/nfse-handlers/emit.ts";
 import type { EmitBody } from "../_shared/nfse-handlers/emit.ts";
+import { NFSE_STATUS } from "../_shared/nfse-status.ts";
 
 const TAG = "[nfse-auto-runner]";
 
@@ -118,7 +119,15 @@ const ORCAMENTO_MS = 100_000;
 const ORFAO_MINUTOS = 10;
 
 /** Status de nota VIVA: a parcela que tem uma destas não leva outra nota. */
-const STATUS_NOTA_VIVA = ["pending", "processando", "autorizada", "cancelada"];
+const STATUS_NOTA_VIVA = [
+  NFSE_STATUS.PENDENTE,
+  NFSE_STATUS.CONFIRMACAO_PENDENTE,
+  NFSE_STATUS.PROCESSANDO,
+  NFSE_STATUS.AUTORIZADA,
+  NFSE_STATUS.FALHOU,
+  NFSE_STATUS.CANCELAMENTO_PENDENTE,
+  NFSE_STATUS.CANCELADA,
+];
 
 /** Linha devolvida por `nfse_auto_claim` (nomes do RETURNS TABLE da RPC). */
 interface JobClaimado {

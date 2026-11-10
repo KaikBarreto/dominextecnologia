@@ -5,6 +5,7 @@ import {
   CheckSquare, Type, Hash, Camera, ListChecks,
   ChevronUp, ChevronDown, BookOpen, Lock, Check,
   Search, ArrowUpDown, ChevronLeft, ChevronRight,
+  Video, Minus, PenLine, ImagePlus, ClipboardCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +15,8 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -23,7 +26,6 @@ import { useFormTemplates, QUESTION_TYPES, type FormQuestionInsert } from '@/hoo
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import type { FormTemplate, FormQuestion } from '@/types/database';
 import { cn } from '@/lib/utils';
-import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { FABButton } from '@/components/mobile/FABButton';
 import { EmptyState } from '@/components/mobile/EmptyState';
@@ -36,14 +38,165 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { buildChecklistQuestionPage, type ChecklistQuestionSort } from '@/lib/checklistQuestionList';
 
+type QuestionDraft = Partial<FormQuestionInsert> & {
+  options?: string[];
+  require_camera?: boolean;
+  require_camera_video?: boolean;
+  allow_multiple_photos?: boolean;
+  answer_types?: string[];
+  answer_mode?: string;
+} & QuestionFrequencyPayload;
+
+function QuestionOsPreview({ draft, checklistName }: { draft: QuestionDraft; checklistName: string }) {
+  const answerTypes = draft.answer_types?.length
+    ? draft.answer_types
+    : [draft.question_type || 'boolean'];
+  const isCombined = answerTypes.length > 1 && draft.answer_mode === 'combined';
+  const questionText = draft.question?.trim() || 'Sua pergunta aparecerá aqui';
+
+  const renderAnswer = (type: string) => {
+    switch (type) {
+      case 'boolean':
+        return (
+          <div className="flex items-center gap-3">
+            <Switch disabled />
+            <span className="text-sm text-muted-foreground">Sem resposta</span>
+          </div>
+        );
+      case 'conformidade':
+        return (
+          <div className="grid grid-cols-[1fr_1.25fr_auto] gap-1.5">
+            <div className="flex h-9 items-center justify-center gap-1 rounded-md border px-2 text-xs text-muted-foreground">
+              <Check className="h-3.5 w-3.5 text-emerald-600" /> Conforme
+            </div>
+            <div className="flex h-9 items-center justify-center gap-1 rounded-md border px-2 text-xs text-muted-foreground">
+              <X className="h-3.5 w-3.5 text-red-600" /> Não conforme
+            </div>
+            <div className="flex h-9 items-center justify-center gap-1 rounded-md border px-3 text-xs text-muted-foreground">
+              <Minus className="h-3.5 w-3.5 text-orange-600" /> N/A
+            </div>
+          </div>
+        );
+      case 'text':
+        return <Textarea disabled rows={2} placeholder="Digite a resposta..." className="resize-none bg-background" />;
+      case 'number':
+        return <Input disabled inputMode="decimal" placeholder="Digite o valor medido" className="bg-background" />;
+      case 'photo':
+        return (
+          <div className="flex h-20 items-center justify-center gap-2 rounded-lg border border-dashed bg-background text-sm text-muted-foreground">
+            <ImagePlus className="h-4 w-4" />
+            {draft.require_camera ? 'Tirar foto agora' : 'Tirar ou anexar foto'}
+          </div>
+        );
+      case 'video':
+        return (
+          <div className="flex h-20 items-center justify-center gap-2 rounded-lg border border-dashed bg-background text-sm text-muted-foreground">
+            <Video className="h-4 w-4" />
+            {draft.require_camera_video ? 'Gravar vídeo agora' : 'Gravar ou anexar vídeo'}
+          </div>
+        );
+      case 'select': {
+        const options = draft.options?.length ? draft.options : ['Opção 1', 'Opção 2'];
+        return (
+          <div className="space-y-1.5">
+            {options.slice(0, 4).map((option, index) => (
+              <div key={`${option}-${index}`} className="flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm">
+                <Checkbox disabled />
+                <span className={cn(!draft.options?.length && 'text-muted-foreground')}>{option}</span>
+              </div>
+            ))}
+          </div>
+        );
+      }
+      case 'signature':
+        return (
+          <div className="flex h-24 flex-col items-center justify-center gap-2 rounded-lg border border-dashed bg-background text-sm text-muted-foreground">
+            <PenLine className="h-5 w-5" />
+            Área para assinatura
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <aside className="lg:sticky lg:top-0" aria-label="Prévia da pergunta na ordem de serviço">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Prévia na OS</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">Atualiza enquanto você configura</p>
+        </div>
+        <Badge variant="outline" className="shrink-0 gap-1 font-normal">
+          <ClipboardCheck className="h-3 w-3" /> Técnico
+        </Badge>
+      </div>
+
+      <div className="overflow-hidden rounded-xl border bg-background shadow-sm">
+        <div className="border-b bg-muted/40 px-4 py-3">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Checklist</p>
+          <p className="mt-0.5 truncate text-sm font-semibold">{checklistName}</p>
+        </div>
+        <div className="space-y-4 p-4">
+          <div className="flex items-start gap-2">
+            <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-foreground text-xs font-semibold text-background">1</span>
+            <div className="min-w-0 flex-1">
+              <p className={cn('text-sm font-semibold leading-snug', !draft.question?.trim() && 'text-muted-foreground')}>
+                {questionText}
+                {draft.is_required !== false && <span className="ml-1 text-destructive">*</span>}
+              </p>
+              {draft.description?.trim() && (
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{draft.description}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="ml-8 space-y-3">
+            {answerTypes.length > 1 && (
+              <div className="rounded-md bg-muted/50 px-2.5 py-2 text-xs text-muted-foreground">
+                {isCombined
+                  ? 'O técnico preencherá todas as formas de resposta abaixo.'
+                  : 'O técnico escolhe uma das formas de resposta abaixo.'}
+              </div>
+            )}
+            {answerTypes.map((type) => (
+              <div key={type} className="space-y-1.5">
+                {answerTypes.length > 1 && (
+                  <Badge variant="outline" className="text-[10px] font-normal">{getQTypeLabel(type)}</Badge>
+                )}
+                {renderAnswer(type)}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <p className="mt-2 text-center text-[11px] text-muted-foreground">Prévia ilustrativa; nenhuma resposta será salva aqui.</p>
+    </aside>
+  );
+}
+
 const getQTypeIcon = (type: string) => {
   const found = QUESTION_TYPES.find(t => t.value === type);
   return found?.icon || CheckSquare;
 };
 const getQTypeLabel = (type: string) => QUESTION_TYPES.find(t => t.value === type)?.label || type;
 
-export default function ChecklistDetail() {
-  const { id } = useParams<{ id: string }>();
+interface ChecklistDetailProps {
+  /** Quando informado, o editor é embutido em outra tela em vez de ler a rota. */
+  templateId?: string;
+  embedded?: boolean;
+  initialAction?: 'create-question';
+  onExit?: () => void;
+}
+
+export default function ChecklistDetail({
+  templateId,
+  embedded = false,
+  initialAction,
+  onExit,
+}: ChecklistDetailProps = {}) {
+  const { id: routeId } = useParams<{ id: string }>();
+  const id = templateId ?? routeId;
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const {
@@ -76,10 +229,10 @@ export default function ChecklistDetail() {
   const [catalogOpen, setCatalogOpen] = useState(false);
 
   // Question modal state (create or edit)
-  const [questionModalOpen, setQuestionModalOpen] = useState(false);
+  const [questionModalOpen, setQuestionModalOpen] = useState(initialAction === 'create-question');
   const [editingQuestion, setEditingQuestion] = useState<FormQuestion | null>(null);
-  const [qForm, setQForm] = useState<Partial<FormQuestionInsert> & { options?: string[]; require_camera?: boolean; answer_types?: string[]; answer_mode?: string } & QuestionFrequencyPayload>({
-    question: '', question_type: 'boolean', is_required: true, description: '', options: [], require_camera: false, answer_types: [], answer_mode: 'exclusive',
+  const [qForm, setQForm] = useState<QuestionDraft>({
+    question: '', question_type: 'boolean', is_required: true, description: '', options: [], require_camera: false, answer_types: ['boolean'], answer_mode: 'exclusive',
     freq_kind: null, freq_months: null, freq_days: null, freq_visits: null, start_kind: null, start_visit: null,
   });
   const [newOption, setNewOption] = useState('');
@@ -89,9 +242,14 @@ export default function ChecklistDetail() {
   const [questionSortDirection, setQuestionSortDirection] = useState<'asc' | 'desc'>('asc');
   const [questionPage, setQuestionPage] = useState(1);
 
+  const leaveEditor = () => {
+    if (embedded) onExit?.();
+    else navigate('/servicos?tab=checklists');
+  };
+
   const resetQuestionForm = () => {
     setQForm({
-      question: '', question_type: 'boolean', is_required: true, description: '', options: [], require_camera: false, answer_types: [], answer_mode: 'exclusive',
+      question: '', question_type: 'boolean', is_required: true, description: '', options: [], require_camera: false, answer_types: ['boolean'], answer_mode: 'exclusive',
       freq_kind: null, freq_months: null, freq_days: null, freq_visits: null, start_kind: null, start_visit: null,
     });
     setNewOption('');
@@ -138,7 +296,7 @@ export default function ChecklistDetail() {
   if (!template) {
     return (
       <div className="space-y-6">
-        <Button variant="ghost" onClick={() => navigate('/servicos?tab=checklists')}><ArrowLeft className="mr-2 h-4 w-4" /> {tC.btnCancel}</Button>
+        <Button variant="ghost" onClick={leaveEditor}><ArrowLeft className="mr-2 h-4 w-4" /> {tC.btnCancel}</Button>
         <p className="text-muted-foreground">{tC.notFound}</p>
       </div>
     );
@@ -290,7 +448,7 @@ export default function ChecklistDetail() {
   };
 
   const handleDeleteTemplate = () => {
-    deleteTemplate.mutate(template.id, { onSuccess: () => navigate('/servicos?tab=checklists') });
+    deleteTemplate.mutate(template.id, { onSuccess: leaveEditor });
   };
 
   const handleDeleteQuestion = () => {
@@ -331,18 +489,18 @@ export default function ChecklistDetail() {
   const canReorder = questionSort === 'position' && questionSortDirection === 'asc' && !normalizedSearch && questionTypeFilter === 'all';
   const selectedAnswerTypes = qForm.answer_types || [];
 
-  const changeQuestionSort = (sort: ChecklistQuestionSort) => {
-    if (questionSort === sort) setQuestionSortDirection((direction) => direction === 'asc' ? 'desc' : 'asc');
-    else { setQuestionSort(sort); setQuestionSortDirection('asc'); }
-    setQuestionPage(1);
-  };
-
   return (
-    <div className={cn("space-y-6", isMobile && "pb-24")}>
+    <div className={cn(embedded ? "space-y-5" : "space-y-6", isMobile && "pb-24")}>
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/servicos?tab=checklists')} className="self-start">
+      <div className="flex flex-col gap-3 border-b border-border/60 pb-4 sm:flex-row sm:items-start">
+        <Button
+          variant="ghost"
+          size={embedded ? 'sm' : 'icon'}
+          onClick={leaveEditor}
+          className={cn('self-start', embedded && '-ml-2 gap-2')}
+        >
           <ArrowLeft className="h-5 w-5" />
+          {embedded && <span>Voltar à prévia</span>}
         </Button>
         <div className="flex-1 min-w-0">
           {isEditingName ? (
@@ -378,7 +536,19 @@ export default function ChecklistDetail() {
           )}
           <p className="text-sm text-muted-foreground">{sortedQuestions.length === 1 ? tC.questionsCount.replace('{n}', '1') : tC.questionsCountPlural.replace('{n}', String(sortedQuestions.length))}</p>
         </div>
-        <div className="flex items-center gap-3 self-start sm:self-center">
+        <div className="flex flex-wrap items-center gap-2 self-start sm:justify-end">
+          {!isMobile && (
+            <>
+              <Button variant="outline" size="sm" onClick={() => setCatalogOpen(true)}>
+                <BookOpen className="mr-2 h-4 w-4" />
+                {tC.btnCatalog}
+              </Button>
+              <Button size="sm" onClick={openCreateModal}>
+                <Plus className="mr-2 h-4 w-4" />
+                {tC.btnNewQuestion}
+              </Button>
+            </>
+          )}
           <div className="flex items-center gap-2">
             <Switch
               checked={template.is_active}
@@ -403,21 +573,10 @@ export default function ChecklistDetail() {
         />
       </div>
 
-      {/* Questions header with button (botão inline só no desktop; mobile usa FAB) */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">{tC.detailQuestionsHeader}</h2>
-        {!isMobile && (
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => setCatalogOpen(true)}>
-              <BookOpen className="mr-2 h-4 w-4" />
-              {tC.btnCatalogFull}
-            </Button>
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={openCreateModal}>
-              <Plus className="mr-2 h-4 w-4" />
-              {tC.btnNewQuestion}
-            </Button>
-          </div>
-        )}
+      {/* Uma única hierarquia de ações: criar/importar fica no cabeçalho; aqui
+          permanecem apenas o título da coleção e, no mobile, o acesso ao catálogo. */}
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-sm font-semibold">{tC.detailQuestionsHeader}</h2>
         {isMobile && (
           <Button variant="outline" size="sm" onClick={() => setCatalogOpen(true)}>
             <BookOpen className="mr-1.5 h-4 w-4" />
@@ -426,10 +585,9 @@ export default function ChecklistDetail() {
         )}
       </div>
 
-      {/* Mobile: busca sozinha na 1ª linha e os dois filtros dividindo a 2ª
-          (régua da toolbar mobile). Desktop: tudo na mesma linha. */}
+      {/* Busca, tipo e ordem vivem em uma única barra contextual. */}
       {sortedQuestions.length > 0 && (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-[minmax(0,1fr)_180px_180px]">
+        <div className="grid grid-cols-2 gap-2 rounded-lg bg-muted/30 p-2 sm:grid-cols-[minmax(0,1fr)_170px_180px]">
           <div className="relative col-span-2 sm:col-span-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -446,12 +604,24 @@ export default function ChecklistDetail() {
               {QUESTION_TYPES.map((type) => <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Select value={questionSort} onValueChange={(value) => { setQuestionSort(value as typeof questionSort); setQuestionSortDirection('asc'); setQuestionPage(1); }}>
-            <SelectTrigger className="h-10 min-w-0"><SelectValue placeholder="Ordenar" /></SelectTrigger>
+          <Select
+            value={`${questionSort}-${questionSortDirection}`}
+            onValueChange={(value) => {
+              const separator = value.lastIndexOf('-');
+              setQuestionSort(value.slice(0, separator) as ChecklistQuestionSort);
+              setQuestionSortDirection(value.slice(separator + 1) as 'asc' | 'desc');
+              setQuestionPage(1);
+            }}
+          >
+            <SelectTrigger className="h-10 min-w-0">
+              <ArrowUpDown className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
+              <SelectValue placeholder="Ordenar" />
+            </SelectTrigger>
             <SelectContent>
-              <SelectItem value="position">Ordem do checklist</SelectItem>
-              <SelectItem value="question">Nome da pergunta</SelectItem>
-              <SelectItem value="type">Tipo de pergunta</SelectItem>
+              <SelectItem value="position-asc">Ordem do checklist</SelectItem>
+              <SelectItem value="question-asc">Pergunta A-Z</SelectItem>
+              <SelectItem value="question-desc">Pergunta Z-A</SelectItem>
+              <SelectItem value="type-asc">Tipo de pergunta</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -465,13 +635,7 @@ export default function ChecklistDetail() {
           description={isMobile ? tC.detailEmptyQuestionsDescMobile : tC.detailEmptyQuestionsDescDesktop}
         />
       ) : (
-        <div className="rounded-lg border bg-card divide-y overflow-hidden">
-          <div className="hidden grid-cols-[44px_minmax(0,1fr)_220px_150px_40px] items-center gap-2 bg-muted/40 px-3 py-2 text-xs font-semibold text-muted-foreground lg:grid">
-            <button type="button" className="text-left" onClick={() => changeQuestionSort('position')}>#</button>
-            <button type="button" className="flex items-center gap-1 text-left" onClick={() => changeQuestionSort('question')}>Pergunta <ArrowUpDown className="h-3 w-3" /></button>
-            <button type="button" className="flex items-center gap-1 text-left" onClick={() => changeQuestionSort('type')}>Tipo <ArrowUpDown className="h-3 w-3" /></button>
-            <span>{showFrequency ? 'Frequência' : ''}</span><span />
-          </div>
+        <div className="divide-y divide-border/60 border-y border-border/60">
           {pagedQuestions.length === 0 ? (
             <div className="px-4 py-12 text-center">
               <Search className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
@@ -487,7 +651,7 @@ export default function ChecklistDetail() {
               <div
                 key={question.id}
                 className={cn(
-                  "flex items-center gap-2 px-2 py-2.5 sm:px-3 lg:grid lg:grid-cols-[44px_minmax(0,1fr)_220px_150px_40px] hover:bg-muted/40 transition-colors group",
+                  "grid grid-cols-[36px_minmax(0,1fr)] items-center gap-x-2 gap-y-2 px-1 py-3 transition-colors hover:bg-muted/30 sm:px-2 lg:grid-cols-[40px_minmax(0,1fr)_minmax(150px,220px)_auto]",
                   draggedQuestionId === question.id && "opacity-50",
                   dragOverQuestionId === question.id && "bg-primary/5 ring-1 ring-inset ring-primary"
                 )}
@@ -544,60 +708,72 @@ export default function ChecklistDetail() {
                   )}
                 </div>
 
-                {/* Selos de tipo (compactos, à direita) */}
-                <div className="hidden sm:flex items-center gap-1 flex-wrap justify-end max-w-[40%] shrink-0 lg:max-w-none lg:justify-start">
-                  {effectiveTypes.map(t => {
-                    const Icon = getQTypeIcon(t);
+                {/* Metadados em um bloco único: tipo e frequência não disputam
+                    colunas diferentes nem empurram as ações para fora da view. */}
+                <div className="col-start-2 flex min-w-0 flex-wrap items-center gap-1 lg:col-start-auto">
+                  {effectiveTypes.map(type => {
+                    const Icon = getQTypeIcon(type);
                     return (
-                      <Badge key={t} variant="outline" className="text-[11px] font-normal gap-1 px-1.5 py-0 text-muted-foreground">
+                      <Badge key={type} variant="outline" className="gap-1 px-1.5 py-0 text-[11px] font-normal text-muted-foreground">
                         <Icon className="h-3 w-3" />
-                        {getQTypeLabel(t)}
+                        {getQTypeLabel(type)}
                       </Badge>
                     );
                   })}
                   {effectiveTypes.length > 1 && (
-                    <Badge variant="outline" className="text-[11px] font-normal px-1.5 py-0 text-muted-foreground">
+                    <Badge variant="outline" className="px-1.5 py-0 text-[11px] font-normal text-muted-foreground">
                       {(question as any).answer_mode === 'combined' ? tC.answerModeCumulative : tC.answerModeExclusive}
                     </Badge>
                   )}
                   {effectiveTypes.includes('photo') && (question as any).require_camera && (
-                    <Badge variant="outline" className="text-[11px] font-normal gap-1 px-1.5 py-0 text-muted-foreground">
+                    <Badge variant="outline" className="gap-1 px-1.5 py-0 text-[11px] font-normal text-muted-foreground">
                       <Camera className="h-3 w-3" />
                       {tC.badgeCamera}
                     </Badge>
                   )}
+                  {showFrequency && (
+                    <QuestionFrequencyBadge
+                      value={question as any}
+                      onChange={(payload) => handleSaveFrequency(question.id, payload)}
+                      disabled={updateQuestion.isPending}
+                    />
+                  )}
                 </div>
 
-                {/* Selo de tipo único no mobile (compacto) */}
-                <div className="flex sm:hidden items-center shrink-0">
-                  {(() => {
-                    const Icon = getQTypeIcon(effectiveTypes[0]);
-                    return (
-                      <Badge variant="outline" className="text-[11px] font-normal gap-1 px-1.5 py-0 text-muted-foreground">
-                        <Icon className="h-3 w-3" />
-                        {effectiveTypes.length > 1 ? tC.questionTypesCount.replace('{n}', String(effectiveTypes.length)) : getQTypeLabel(effectiveTypes[0])}
-                      </Badge>
-                    );
-                  })()}
-                </div>
-
-                {/* Selo de frequência por pergunta — só com módulo Contratos */}
-                {showFrequency && (
-                  <QuestionFrequencyBadge
-                    value={question as any}
-                    onChange={(payload) => handleSaveFrequency(question.id, payload)}
-                    disabled={updateQuestion.isPending}
-                  />
-                )}
-
-                <div className="shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                  <RowActionsMenu
-                    actions={[
-                      { label: tC.actionEdit, icon: Pencil, variant: 'edit', onClick: () => openEditModal(question) },
-                      { label: tC.actionDelete, icon: Trash2, variant: 'delete', onClick: () => setDeleteQuestionId(question.id) },
-                    ]}
-                  />
-                </div>
+                {/* Ícones sempre visíveis evitam repetir texto em todas as linhas;
+                    tooltip e aria-label mantêm a ação clara e acessível. */}
+                <TooltipProvider delayDuration={200}>
+                  <div className="col-start-2 flex shrink-0 items-center gap-0.5 lg:col-start-auto lg:justify-end">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          aria-label={`${tC.actionEdit}: ${question.question}`}
+                          onClick={() => openEditModal(question)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{tC.actionEdit}</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="destructive-ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          aria-label={`${tC.actionDelete}: ${question.question}`}
+                          onClick={() => setDeleteQuestionId(question.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{tC.actionDelete}</TooltipContent>
+                    </Tooltip>
+                  </div>
+                </TooltipProvider>
               </div>
             );
           })}
@@ -630,202 +806,238 @@ export default function ChecklistDetail() {
       />
 
       {/* Question modal (create or edit) */}
-      <ResponsiveModal open={questionModalOpen} onOpenChange={(o) => { setQuestionModalOpen(o); if (!o) resetQuestionForm(); }} title={editingQuestion ? tC.questionModalEdit : tC.questionModalCreate}>
-        <div className="space-y-4">
-          <div>
-            <Label>{tC.questionLabelText}</Label>
-            <Input
-              value={qForm.question || ''}
-              onChange={(e) => setQForm({ ...qForm, question: e.target.value })}
-              placeholder={tC.questionPlaceholderText}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label>{tC.questionLabelDesc}</Label>
-            <Textarea
-              value={qForm.description || ''}
-              onChange={(e) => setQForm({ ...qForm, description: e.target.value })}
-              placeholder={tC.questionPlaceholderDesc}
-              className="mt-1"
-              rows={2}
-            />
-            <p className="text-xs text-muted-foreground mt-1">{tC.questionDescNote}</p>
-          </div>
-
-          {/* Multi answer types — chips toggláveis (multi-seleção). Estado
-              selecionado saturado na cor + check, pra deixar claro que NÃO é
-              um radio: dá pra marcar vários. */}
-          <div className="space-y-2">
-            <Label>{tC.questionTypesLabel}</Label>
-            <p className="text-xs text-muted-foreground">{tC.questionTypesNote}</p>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {QUESTION_TYPES.map((t) => {
-                const QIcon = t.icon;
-                const isSelected = selectedAnswerTypes.includes(t.value);
-                return (
-                  <button
-                    key={t.value}
-                    type="button"
-                    role="checkbox"
-                    aria-checked={isSelected}
-                    onClick={() => handleToggleAnswerType(t.value)}
-                    className={cn(
-                      'relative flex items-center gap-2 rounded-lg border-2 px-3 py-2.5 text-sm font-medium text-left transition-colors',
-                      isSelected
-                        ? 'border-primary bg-primary text-primary-foreground'
-                        : 'border-border bg-background text-foreground hover:border-primary/40 hover:bg-muted/50'
-                    )}
-                  >
-                    <QIcon className="h-4 w-4 shrink-0" />
-                    <span className="truncate">{t.label}</span>
-                    {isSelected && (
-                      <span className="ml-auto flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary-foreground/20">
-                        <Check className="h-3 w-3" />
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+      <ResponsiveModal
+        open={questionModalOpen}
+        onOpenChange={(o) => { setQuestionModalOpen(o); if (!o) resetQuestionForm(); }}
+        title={editingQuestion ? tC.questionModalEdit : tC.questionModalCreate}
+        description="Configure a pergunta e confira, em tempo real, como o técnico verá na ordem de serviço."
+        className="sm:max-w-[1120px]"
+        footer={(
+          <div className="flex items-center justify-between gap-3">
+            <p className="hidden text-xs text-muted-foreground sm:block">
+              <span className="text-destructive">*</span> Campo obrigatório para salvar
+            </p>
+            <div className="ml-auto flex gap-2">
+              <Button variant="outline" onClick={() => { setQuestionModalOpen(false); resetQuestionForm(); }}>{tC.btnCancel}</Button>
+              <Button
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+                onClick={handleSaveQuestion}
+                disabled={!qForm.question?.trim() || selectedAnswerTypes.length === 0 || createQuestion.isPending || updateQuestion.isPending}
+              >
+                {editingQuestion ? tC.btnSave : tC.btnNewQuestion}
+              </Button>
             </div>
           </div>
-
-          {/* Answer mode toggle when 2+ types selected */}
-          {selectedAnswerTypes.length >= 2 && (
-            <div className="rounded-lg border p-3 space-y-2">
-              <Label className="text-sm font-medium">{tC.questionModeLabel}</Label>
-              <div className="flex items-center gap-3 p-2.5 rounded-lg border bg-muted/30">
-                <span className={cn(
-                  "text-sm font-medium transition-colors",
-                  (qForm as any).answer_mode !== 'combined' ? 'text-foreground' : 'text-muted-foreground'
-                )}>
-                  {tC.questionModeExclusive}
-                </span>
-                <Switch
-                  checked={(qForm as any).answer_mode === 'combined'}
-                  onCheckedChange={(checked) => setQForm({ ...qForm, answer_mode: checked ? 'combined' : 'exclusive' } as any)}
-                />
-                <span className={cn(
-                  "text-sm font-medium transition-colors",
-                  (qForm as any).answer_mode === 'combined' ? 'text-foreground' : 'text-muted-foreground'
-                )}>
-                  {tC.questionModeCombined}
-                </span>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {(qForm as any).answer_mode === 'combined'
-                  ? tC.questionModeDescCombined
-                  : tC.questionModeDescExclusive}
-              </p>
-            </div>
-          )}
-
-          {/* Camera-only toggle for photo type */}
-          {selectedAnswerTypes.includes('photo') && (
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={qForm.require_camera ?? false}
-                onCheckedChange={(checked) => setQForm({ ...qForm, require_camera: checked })}
-              />
-              <div>
-                <Label className="text-sm cursor-pointer">{tC.questionCameraLabel}</Label>
-                <p className="text-xs text-muted-foreground">{tC.questionCameraDesc}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Camera-only toggle for video type */}
-          {selectedAnswerTypes.includes('video') && (
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={(qForm as any).require_camera_video ?? false}
-                onCheckedChange={(checked) => setQForm({ ...qForm, require_camera_video: checked } as any)}
-              />
-              <div>
-                <Label className="text-sm cursor-pointer">{tC.questionVideoCameraLabel}</Label>
-                <p className="text-xs text-muted-foreground">{tC.questionVideoCameraDesc}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Allow multiple photos toggle for photo type */}
-          {selectedAnswerTypes.includes('photo') && (
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={(qForm as any).allow_multiple_photos !== false}
-                onCheckedChange={(checked) => setQForm({ ...qForm, allow_multiple_photos: checked } as any)}
-              />
-              <div>
-                <Label className="text-sm cursor-pointer">{tC.questionMultiPhotoLabel}</Label>
-                <p className="text-xs text-muted-foreground">{tC.questionMultiPhotoDesc}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Select options config */}
-          {selectedAnswerTypes.includes('select') && (
-            <div className="space-y-2">
-              <Label>{tC.questionSelectLabel}</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={newOption}
-                  onChange={(e) => setNewOption(e.target.value)}
-                  placeholder={tC.questionSelectPlaceholder}
-                  className="flex-1"
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddOption(); } }}
-                />
-                <Button type="button" variant="outline" size="icon" onClick={handleAddOption} disabled={!newOption.trim()}>
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-              {(qForm.options || []).length > 0 && (
-                <div className="space-y-1">
-                  {(qForm.options || []).map((opt, i) => (
-                    <EditableOption
-                      key={i}
-                      value={opt}
-                      onChange={(newVal) => setQForm(prev => ({ ...prev, options: (prev.options || []).map((o, idx) => idx === i ? newVal : o) }))}
-                      onRemove={() => handleRemoveOption(i)}
-                    />
-                  ))}
+        )}
+      >
+        <div className="grid min-w-0 gap-7 lg:grid-cols-[minmax(0,1.25fr)_minmax(21rem,0.85fr)]">
+          <div className="min-w-0 space-y-7">
+            <section className="space-y-4">
+              <div className="flex items-start gap-3">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-foreground text-xs font-semibold text-background">1</span>
+                <div>
+                  <h3 className="text-sm font-semibold">Escreva a pergunta</h3>
+                  <p className="text-xs text-muted-foreground">Seja direto e use a orientação para explicar como executar.</p>
                 </div>
-              )}
-            </div>
-          )}
+              </div>
+              <div className="space-y-4 pl-10">
+                <div>
+                  <Label htmlFor="checklist-question-text">{tC.questionLabelText}</Label>
+                  <Input
+                    id="checklist-question-text"
+                    value={qForm.question || ''}
+                    onChange={(e) => setQForm({ ...qForm, question: e.target.value })}
+                    placeholder="Ex.: Verificar a pressão do equipamento"
+                    className="mt-1.5"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="checklist-question-description">Orientação para o técnico <span className="font-normal text-muted-foreground">(opcional)</span></Label>
+                  <Textarea
+                    id="checklist-question-description"
+                    value={qForm.description || ''}
+                    onChange={(e) => setQForm({ ...qForm, description: e.target.value })}
+                    placeholder="Ex.: Com o equipamento ligado, aguarde 5 minutos antes de medir."
+                    className="mt-1.5 resize-none"
+                    rows={2}
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">Visível para o técnico durante o preenchimento; não aparece no relatório do cliente.</p>
+                </div>
+              </div>
+            </section>
 
-          <div className="flex items-center gap-2">
-            <Switch
-              checked={qForm.is_required ?? true}
-              onCheckedChange={(checked) => setQForm({ ...qForm, is_required: checked })}
-            />
-            <Label className="text-sm cursor-pointer">{tC.questionRequiredLabel}</Label>
+            <section className="space-y-4">
+              <div className="flex items-start gap-3">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-foreground text-xs font-semibold text-background">2</span>
+                <div>
+                  <h3 className="text-sm font-semibold">Escolha como responder</h3>
+                  <p className="text-xs text-muted-foreground">Você pode combinar mais de uma forma de resposta.</p>
+                </div>
+              </div>
+              <div className="space-y-4 pl-10">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {QUESTION_TYPES.map((t) => {
+                    const QIcon = t.icon;
+                    const isSelected = selectedAnswerTypes.includes(t.value);
+                    return (
+                      <button
+                        key={t.value}
+                        type="button"
+                        role="checkbox"
+                        aria-checked={isSelected}
+                        onClick={() => handleToggleAnswerType(t.value)}
+                        className={cn(
+                          'relative flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs font-medium transition-colors',
+                          isSelected
+                            ? 'border-primary bg-primary text-primary-foreground'
+                            : 'border-border bg-background text-foreground hover:border-primary/40 hover:bg-muted/50'
+                        )}
+                      >
+                        <QIcon className="h-4 w-4 shrink-0" />
+                        <span className="min-w-0 truncate">{t.label}</span>
+                        {isSelected && <Check className="ml-auto h-3.5 w-3.5 shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {selectedAnswerTypes.length >= 2 && (
+                  <div className="rounded-lg bg-muted/50 p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium">{tC.questionModeLabel}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {qForm.answer_mode === 'combined' ? tC.questionModeDescCombined : tC.questionModeDescExclusive}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 rounded-md border bg-background p-1">
+                        <button
+                          type="button"
+                          className={cn('rounded px-2.5 py-1.5 text-xs font-medium', qForm.answer_mode !== 'combined' && 'bg-foreground text-background')}
+                          onClick={() => setQForm({ ...qForm, answer_mode: 'exclusive' })}
+                        >
+                          {tC.questionModeExclusive}
+                        </button>
+                        <button
+                          type="button"
+                          className={cn('rounded px-2.5 py-1.5 text-xs font-medium', qForm.answer_mode === 'combined' && 'bg-foreground text-background')}
+                          onClick={() => setQForm({ ...qForm, answer_mode: 'combined' })}
+                        >
+                          {tC.questionModeCombined}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {selectedAnswerTypes.includes('select') && (
+                  <div className="space-y-2 rounded-lg bg-muted/40 p-3">
+                    <Label>{tC.questionSelectLabel}</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={newOption}
+                        onChange={(e) => setNewOption(e.target.value)}
+                        placeholder={tC.questionSelectPlaceholder}
+                        className="flex-1 bg-background"
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddOption(); } }}
+                      />
+                      <Button type="button" variant="outline" size="icon" onClick={handleAddOption} disabled={!newOption.trim()} aria-label="Adicionar opção">
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    {(qForm.options || []).length > 0 && (
+                      <div className="space-y-1">
+                        {(qForm.options || []).map((opt, i) => (
+                          <EditableOption
+                            key={i}
+                            value={opt}
+                            onChange={(newVal) => setQForm(prev => ({ ...prev, options: (prev.options || []).map((o, idx) => idx === i ? newVal : o) }))}
+                            onRemove={() => handleRemoveOption(i)}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section className="space-y-4">
+              <div className="flex items-start gap-3">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-foreground text-xs font-semibold text-background">3</span>
+                <div>
+                  <h3 className="text-sm font-semibold">Defina as regras</h3>
+                  <p className="text-xs text-muted-foreground">Ajustes de obrigatoriedade, captura e frequência.</p>
+                </div>
+              </div>
+              <div className="space-y-4 pl-10">
+                <div className="space-y-3 rounded-lg bg-muted/40 p-3">
+                  <div className="flex items-start gap-3">
+                    <Switch
+                      checked={qForm.is_required ?? true}
+                      onCheckedChange={(checked) => setQForm({ ...qForm, is_required: checked })}
+                    />
+                    <div>
+                      <Label className="cursor-pointer text-sm">{tC.questionRequiredLabel}</Label>
+                      <p className="text-xs text-muted-foreground">A OS só poderá avançar depois que o técnico responder.</p>
+                    </div>
+                  </div>
+
+                  {selectedAnswerTypes.includes('photo') && (
+                    <>
+                      <div className="flex items-start gap-3">
+                        <Switch
+                          checked={qForm.require_camera ?? false}
+                          onCheckedChange={(checked) => setQForm({ ...qForm, require_camera: checked })}
+                        />
+                        <div>
+                          <Label className="cursor-pointer text-sm">{tC.questionCameraLabel}</Label>
+                          <p className="text-xs text-muted-foreground">{tC.questionCameraDesc}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <Switch
+                          checked={qForm.allow_multiple_photos !== false}
+                          onCheckedChange={(checked) => setQForm({ ...qForm, allow_multiple_photos: checked })}
+                        />
+                        <div>
+                          <Label className="cursor-pointer text-sm">{tC.questionMultiPhotoLabel}</Label>
+                          <p className="text-xs text-muted-foreground">{tC.questionMultiPhotoDesc}</p>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {selectedAnswerTypes.includes('video') && (
+                    <div className="flex items-start gap-3">
+                      <Switch
+                        checked={qForm.require_camera_video ?? false}
+                        onCheckedChange={(checked) => setQForm({ ...qForm, require_camera_video: checked })}
+                      />
+                      <div>
+                        <Label className="cursor-pointer text-sm">{tC.questionVideoCameraLabel}</Label>
+                        <p className="text-xs text-muted-foreground">{tC.questionVideoCameraDesc}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {showFrequency && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">{tC.questionFreqLabel}</Label>
+                    <p className="text-xs text-muted-foreground">{tC.questionFreqDesc}</p>
+                    <FrequencyEditor
+                      variant="select"
+                      value={qForm}
+                      onApply={(payload) => setQForm(prev => ({ ...prev, ...payload }))}
+                    />
+                  </div>
+                )}
+              </div>
+            </section>
           </div>
 
-          {/* Frequência por pergunta — só com módulo Contratos. Reusa o MESMO
-              editor do selo inline (FrequencyEditor); aqui ele alimenta o
-              estado local do formulário e é persistido junto no salvar. */}
-          {showFrequency && (
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">{tC.questionFreqLabel}</Label>
-              <p className="text-xs text-muted-foreground">{tC.questionFreqDesc}</p>
-              <FrequencyEditor
-                variant="select"
-                value={qForm}
-                onApply={(payload) => setQForm(prev => ({ ...prev, ...payload }))}
-              />
-            </div>
-          )}
-
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => { setQuestionModalOpen(false); resetQuestionForm(); }}>{tC.btnCancel}</Button>
-            <Button
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={handleSaveQuestion}
-              disabled={!qForm.question?.trim() || selectedAnswerTypes.length === 0 || createQuestion.isPending || updateQuestion.isPending}
-            >
-              {editingQuestion ? tC.btnSave : tC.btnNewQuestion}
-            </Button>
-          </div>
+          <QuestionOsPreview draft={qForm} checklistName={template.name} />
         </div>
       </ResponsiveModal>
 

@@ -13,6 +13,8 @@ import type { DocArtTemplate } from '../types.ts';
 import { auroraTemplate } from './aurora.ts';
 import { blocoTemplate } from './bloco.ts';
 import { circuitoTemplate } from './circuito.ts';
+import { essencialClaroTemplate } from './essencial-claro.ts';
+import { essencialEscuroTemplate } from './essencial-escuro.ts';
 import { gradeTemplate } from './grade.ts';
 import { marcaTemplate } from './marca.ts';
 import { monolitoTemplate } from './monolito.ts';
@@ -24,6 +26,8 @@ import { seloTemplate } from './selo.ts';
 
 /** Ordem aqui = ordem no seletor de modelo: claros primeiro, escuros depois. */
 export const DOC_ART_TEMPLATES: DocArtTemplate[] = [
+  essencialClaroTemplate,
+  essencialEscuroTemplate,
   auroraTemplate,
   ondaTemplate,
   seloTemplate,
@@ -46,6 +50,8 @@ export {
   auroraTemplate,
   blocoTemplate,
   circuitoTemplate,
+  essencialClaroTemplate,
+  essencialEscuroTemplate,
   gradeTemplate,
   marcaTemplate,
   monolitoTemplate,

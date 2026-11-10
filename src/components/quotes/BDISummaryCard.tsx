@@ -5,15 +5,16 @@ import { Calculator, TrendingUp, DollarSign } from 'lucide-react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
+import { calculateCommercialPaymentOptions } from '@/lib/quote-commercial-total';
 
 interface BDISummaryData {
   bdiFactor: number;
   displacementCost: number;
   totalCost: number;
   finalPrice: number;
-  cashPrice: number;
-  installmentValue: number;
   weightedProfitRate: number;
+  commercialTotal: number;
+  cashDiscountRate: number;
   cardInstallments: number;
 }
 
@@ -28,11 +29,12 @@ export function BDISummaryCard({ data, className }: BDISummaryCardProps) {
 
   const fmt = (v: number) => formatMoney(v, currency, locale);
 
-  // Extract cash-discount percentage from the card data by back-calculating:
-  // cashPrice = finalPrice * (1 - pct/100) → pct = (1 - cashPrice/finalPrice) * 100
-  const cashPct = data.finalPrice > 0
-    ? ((1 - data.cashPrice / data.finalPrice) * 100).toFixed(0)
-    : '0';
+  const payment = calculateCommercialPaymentOptions(
+    data.commercialTotal,
+    data.cashDiscountRate,
+    data.cardInstallments,
+  );
+  const cashPct = payment.cashDiscountRate.toFixed(0);
 
   return (
     <Card className={`bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-slate-700 ${className ?? ''}`}>
@@ -75,7 +77,12 @@ export function BDISummaryCard({ data, className }: BDISummaryCardProps) {
 
           <div className="flex justify-between items-center pt-2 border-t border-slate-700">
             <span className="text-sm font-medium text-white">{t.finalPrice}</span>
-            <span className="text-sm font-bold text-emerald-400">{fmt(data.finalPrice)}</span>
+            <span className="text-sm font-medium text-white">{fmt(data.finalPrice)}</span>
+          </div>
+
+          <div className="flex justify-between items-center pt-2 border-t border-slate-700">
+            <span className="text-sm font-semibold text-white">{t.commercialTotal}</span>
+            <span className="text-base font-bold text-emerald-400">{fmt(data.commercialTotal)}</span>
           </div>
         </div>
 
@@ -91,14 +98,14 @@ export function BDISummaryCard({ data, className }: BDISummaryCardProps) {
             <span className="text-xs text-slate-400">
               {t.cashDiscount.replace('{pct}', cashPct)}
             </span>
-            <span className="text-xs font-medium text-emerald-300">{fmt(data.cashPrice)}</span>
+            <span className="text-xs font-medium text-emerald-300">{fmt(payment.cashPrice)}</span>
           </div>
 
           <div className="flex justify-between items-center">
             <span className="text-xs text-slate-400">
-              {t.cardInstallments.replace('{n}', String(data.cardInstallments))}
+              {t.cardInstallments.replace('{n}', String(payment.cardInstallments))}
             </span>
-            <span className="text-xs text-white">{fmt(data.installmentValue)}</span>
+            <span className="text-xs text-white">{fmt(payment.installmentValue)}</span>
           </div>
         </div>
 

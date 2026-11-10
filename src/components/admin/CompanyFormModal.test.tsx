@@ -49,6 +49,13 @@ vi.mock('@/hooks/use-toast', () => ({
 vi.mock('@/contexts/AuthContext', () => ({
   useAuth: () => ({ profile: { id: 'admin-1' } }),
 }));
+vi.mock('@/hooks/useAdminPermissions', () => ({
+  useAdminPermissions: () => ({ hasFunctionAccess: () => true }),
+}));
+vi.mock('@/hooks/useAdminCompanyAccess', () => ({
+  useAdminCompanyAccessUsers: () => ({ data: [], isLoading: false, isError: false }),
+  useGenerateAdminCompanyResetLink: () => MUTATION_RESULT,
+}));
 vi.mock('@/hooks/useNfseTiers', () => ({
   useNfseTiers: () => ({ tiers: EMPTY_ARRAY }),
 }));
@@ -107,6 +114,14 @@ function typeInto(input: HTMLInputElement, value: string) {
   });
 }
 
+function clickButton(text: string) {
+  const button = Array.from(document.querySelectorAll('button')).find((element) =>
+    element.textContent?.includes(text),
+  ) as HTMLButtonElement;
+  expect(button).toBeTruthy();
+  act(() => button.click());
+}
+
 beforeEach(() => {
   container = document.createElement('div');
   document.body.appendChild(container);
@@ -129,14 +144,14 @@ describe('CompanyFormModal — campo "Valor (R$)" com preço personalizado ligad
         custom_price_permanent: true,
       },
     });
-    clickTab('Comercial');
+    clickTab('Plano e cobrança');
     const input = q('#company-subscription-value-custom') as HTMLInputElement;
     expect(input.value).toBe('397,00');
   });
 
   it('não usa mais <input type="number"> (o bug do sócio nasceu daí)', () => {
     mount();
-    clickTab('Comercial');
+    clickTab('Plano e cobrança');
     const toggle = q('#use-custom-price') as HTMLButtonElement;
     act(() => { toggle.click(); });
     const input = q('#company-subscription-value-custom') as HTMLInputElement;
@@ -146,7 +161,7 @@ describe('CompanyFormModal — campo "Valor (R$)" com preço personalizado ligad
 
   it('colar "R$ 4.550" dá 4.550,00, não 4,55 e não 45,50', () => {
     mount();
-    clickTab('Comercial');
+    clickTab('Plano e cobrança');
     const toggle = q('#use-custom-price') as HTMLButtonElement;
     act(() => { toggle.click(); });
     const input = q('#company-subscription-value-custom') as HTMLInputElement;
@@ -164,7 +179,7 @@ describe('CompanyFormModal — campo "Valor (R$)" do plano personalizado sem pre
 
   it('digitar "455000" dá 4.550,00 (centavos, mesmo padrão dos outros campos de dinheiro)', () => {
     mount({ company });
-    clickTab('Comercial');
+    clickTab('Plano e cobrança');
     const input = q('#company-subscription-value-default') as HTMLInputElement;
     expect(input.disabled).toBe(false);
     typeInto(input, '455000');
@@ -173,7 +188,7 @@ describe('CompanyFormModal — campo "Valor (R$)" do plano personalizado sem pre
 
   it('colar "R$ 4.550" dá 4.550,00, não 4,55 e não 45,50', () => {
     mount({ company });
-    clickTab('Comercial');
+    clickTab('Plano e cobrança');
     const input = q('#company-subscription-value-default') as HTMLInputElement;
     paste(input, 'R$ 4.550');
     expect(input.value).toBe('4.550,00');
@@ -197,7 +212,7 @@ describe('CompanyFormModal — piso de usuários do plano', () => {
 
   it('digitar 3 usuários no Personalizado volta pro piso de 5 ao sair do campo', () => {
     mount({ company });
-    clickTab('Comercial');
+    clickTab('Plano e cobrança');
     const input = q('#company-max-users-default') as HTMLInputElement;
     expect(input).toBeTruthy();
     typeInto(input, '3');
@@ -208,7 +223,7 @@ describe('CompanyFormModal — piso de usuários do plano', () => {
 
   it('não mexe em valor acima do piso (usuário extra continua possível)', () => {
     mount({ company });
-    clickTab('Comercial');
+    clickTab('Plano e cobrança');
     const input = q('#company-max-users-default') as HTMLInputElement;
     typeInto(input, '12');
     blur(input);
@@ -217,7 +232,7 @@ describe('CompanyFormModal — piso de usuários do plano', () => {
 
   it('campo vazio cai no piso em vez de gravar 0', () => {
     mount({ company });
-    clickTab('Comercial');
+    clickTab('Plano e cobrança');
     const input = q('#company-max-users-default') as HTMLInputElement;
     typeInto(input, '');
     blur(input);
@@ -228,7 +243,89 @@ describe('CompanyFormModal — piso de usuários do plano', () => {
 describe('CompanyFormModal — campo "Vencimento"', () => {
   it('usa o DatePicker do sistema, sem input date nativo do navegador', () => {
     mount();
-    clickTab('Comercial');
+    clickTab('Plano e cobrança');
     expect(document.querySelector('input[type="date"]')).toBeNull();
+  });
+});
+
+describe('CompanyFormModal — atalho de plano e módulos', () => {
+  it('abre diretamente na etapa Comercial quando solicitado pela ficha da empresa', () => {
+    mount({
+      company: { subscription_plan: 'personalizado', subscription_value: 500, custom_price: 0 },
+      initialTab: 'commercial',
+    });
+
+    expect(q('#company-max-users-default')).toBeTruthy();
+    expect(document.body.textContent).toContain('Gerenciar plano e módulos');
+  });
+});
+
+describe('CompanyFormModal — acesso durante a edição', () => {
+  it('mantém a aba Acesso disponível e abre o gerador de link de redefinição', () => {
+    mount({
+      company: {
+        id: '00000000-0000-4000-8000-000000000001',
+        subscription_plan: 'personalizado',
+        subscription_value: 500,
+        custom_price: 0,
+      },
+      initialTab: 'access',
+    });
+
+    expect(document.body.textContent).toContain('Acesso');
+    expect(document.body.textContent).toContain('Gerar link de redefinição');
+    expect(document.body.textContent).toContain('O link expira em 60 minutos');
+  });
+});
+
+describe('CompanyFormModal — workspace e etapas de criação', () => {
+  it('mantém as três áreas nomeadas, resumo e ação de continuidade', () => {
+    mount();
+
+    const tabs = Array.from(document.querySelectorAll('[role="tab"]')).map((tab) => tab.textContent);
+    expect(tabs).toEqual(['Empresa', 'Plano e cobrança', 'Acesso']);
+    expect(document.body.textContent).toContain('Resumo da empresa');
+    expect(document.body.textContent).toContain('Etapa 1 de 3');
+    expect(document.body.textContent).toContain('Continuar');
+    expect(document.body.textContent).not.toContain('Criar empresa');
+    expect(Array.from(document.querySelectorAll('button')).find((button) => button.textContent?.includes('Continuar')))
+      .toHaveClass('bg-foreground', 'text-background');
+  });
+
+  it('avança pelas áreas e só apresenta a criação na etapa de acesso', () => {
+    mount();
+
+    const textInputs = Array.from(document.querySelectorAll('input')) as HTMLInputElement[];
+    const companyName = textInputs.find((input) => input.placeholder === 'Nome da empresa')!;
+    const companyEmail = textInputs.find((input) => input.placeholder === 'email@empresa.com')!;
+    typeInto(companyName, 'Empresa Exemplo');
+    typeInto(companyEmail, 'contato@exemplo.com');
+
+    clickButton('Continuar');
+    expect(q('#company-subscription-value-default')).toBeTruthy();
+    expect(document.body.textContent).toContain('Etapa 2 de 3');
+
+    clickButton('Continuar');
+    expect(document.body.textContent).toContain('Defina as credenciais de acesso');
+    expect(document.body.textContent).toContain('Criar empresa');
+  });
+
+  it('mantém edição não linear com uma única ação de salvar', () => {
+    mount({
+      company: {
+        id: '00000000-0000-4000-8000-000000000001',
+        name: 'Empresa Exemplo',
+        email: 'contato@exemplo.com',
+        subscription_plan: 'personalizado',
+        subscription_value: 500,
+        subscription_expires_at: '2026-12-31',
+        custom_price: 0,
+      },
+    });
+
+    expect(document.body.textContent).toContain('Salvar alterações');
+    expect(document.body.textContent).not.toContain('Etapa 1 de 3');
+    expect(Array.from(document.querySelectorAll('button')).find((button) => button.textContent?.includes('Salvar alterações')))
+      .toHaveClass('bg-foreground', 'text-background');
   });
 });

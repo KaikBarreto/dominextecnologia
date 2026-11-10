@@ -158,7 +158,6 @@ export function CustomerDocumentsTab({ customerId, canManage }: CustomerDocument
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <MobilePillTabs
-          variant="underline"
           className="mx-0 min-w-0 sm:w-auto"
           tabs={[
             { value: 'invoice', label: 'Notas fiscais', icon: <ReceiptText className="h-4 w-4" /> },
@@ -211,6 +210,9 @@ export function CustomerDocumentsTab({ customerId, canManage }: CustomerDocument
                     <Badge variant="outline" className="text-[10px]">
                       {TYPE_LABELS[document.document_type as CustomerDocumentType] ?? 'Outro'}
                     </Badge>
+                    {document.source === 'pmoc' && (
+                      <Badge className="bg-primary text-[10px] text-primary-foreground">Gerado pela OS</Badge>
+                    )}
                   </div>
                   <p className="mt-1 truncate text-xs text-muted-foreground">
                     {[document.document_number ? `Nº ${document.document_number}` : null, document.issue_date, formatBytes(document.size_bytes)]
@@ -221,7 +223,7 @@ export function CustomerDocumentsTab({ customerId, canManage }: CustomerDocument
                       {openingId === document.id ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1.5 h-3.5 w-3.5" />}
                       Abrir
                     </Button>
-                    {canManage && (
+                    {canManage && document.source === 'manual' && (
                       <>
                         <div className="flex items-center gap-2 rounded-md border px-2 py-1.5">
                           {document.is_visible_in_portal ? <Eye className="h-3.5 w-3.5 text-success" /> : <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />}

@@ -1,13 +1,12 @@
 import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { Check, ChevronsUpDown, Search, X } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { fuzzyIncludes } from '@/lib/utils';
 import { cn } from '@/lib/utils';
+import { useAdminAudienceCompanies } from '@/hooks/useAdminAudienceCompanies';
 
 interface AdminCompanyMultiSelectProps {
   value: string[];
@@ -25,18 +24,7 @@ export function AdminCompanyMultiSelect({ value, onChange }: AdminCompanyMultiSe
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
 
-  const { data: companies = [], isLoading } = useQuery({
-    queryKey: ['admin-companies-basic'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('companies')
-        .select('id, name, subscription_status')
-        .order('name');
-      if (error) throw error;
-      return (data || []) as { id: string; name: string; subscription_status: string | null }[];
-    },
-    staleTime: 1000 * 60 * 5,
-  });
+  const { data: companies = [], isLoading } = useAdminAudienceCompanies();
 
   const selected = useMemo(() => Array.from(new Set(value.filter(Boolean))), [value]);
   const byId = useMemo(() => new Map(companies.map((c) => [c.id, c])), [companies]);

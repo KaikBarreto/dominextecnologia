@@ -1,5 +1,6 @@
 import type { ProposalTemplateProps } from './types';
 import { getProposalSections } from './types';
+import { ProposalPlatformFooter } from './ProposalPlatformFooter';
 import { formatDateTime } from '@/lib/format';
 import { useLocaleFormatters } from '@/lib/format/hooks';
 import { MESSAGES } from '@/lib/i18n';
@@ -7,6 +8,7 @@ import {
   buildProposalData,
   colorAdjust,
   pageFolioStyle,
+  getProposalItemCostDetails,
   folioLabel,
   flagOn,
   formatValidUntil,
@@ -109,6 +111,11 @@ export function VanguardaTemplate(props: ProposalTemplateProps) {
                   <p className="text-xs text-white/50 mt-1 leading-snug whitespace-pre-wrap">{item.details}</p>
                 )}
                 <p className="text-xs text-white/40 mt-1">{item.quantity} un × {money(item.unit_price || 0)}</p>
+                {getProposalItemCostDetails(quote, item, money, locale).length > 0 && (
+                  <p className="mt-1 text-[10px] text-white/45">
+                    {getProposalItemCostDetails(quote, item, money, locale).map(detail => `${detail.label} ${detail.value}`).join(' · ')}
+                  </p>
+                )}
               </div>
             </div>
             <p className="font-extrabold text-base tabular-nums whitespace-nowrap text-white">
@@ -197,7 +204,7 @@ export function VanguardaTemplate(props: ProposalTemplateProps) {
             {d.subjectLine}
           </p>
           <div className="mt-5 inline-flex items-center gap-2 text-xs text-white/55">
-            <span>{t.quotationNumber} {quote.quote_number}</span>
+            <span>{t.quotationNumber} {d.numberLabel}</span>
             <span className="text-white/30">·</span>
             <span>{formatDateTime(quote.created_at, locale, timezone, { year: 'numeric', month: 'long', day: '2-digit', hour: undefined, minute: undefined })}</span>
           </div>
@@ -361,7 +368,7 @@ export function VanguardaTemplate(props: ProposalTemplateProps) {
       </section>
 
       {/* ====================== ENCERRAMENTO ====================== */}
-      <section className="vg-page flex flex-col items-center justify-center text-center">
+      <section className="vg-page flex flex-col items-center justify-center text-center" data-pdf-keep>
         <div className="h-1.5 w-20 rounded-full mb-8" style={{ background: brandGradient, ...colorAdjust }} />
         <h2 className="font-black tracking-tight text-white" style={{ fontSize: 'clamp(40px, 9vw, 60px)' }}>{t.thankYou}</h2>
         <p className="text-white/55 text-lg mt-4 max-w-md leading-relaxed">
@@ -387,8 +394,9 @@ export function VanguardaTemplate(props: ProposalTemplateProps) {
         </div>
 
         <p className="text-[11px] text-white/30 mt-10 tracking-wider">
-          {t.proposalFooter} {quote.quote_number} · {d.companyName}
+          {t.proposalFooter} {d.numberLabel} · {d.companyName}
         </p>
+        <ProposalPlatformFooter company={company} dark />
         <Folio page={closingPage} />
       </section>
     </div>

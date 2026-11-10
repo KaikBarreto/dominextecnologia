@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useVersionUpdate } from '@/hooks/useVersionUpdate';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,6 +13,7 @@ import { Sparkles, X, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { getVersionTopics } from '@/lib/versionTopics';
+import { OVERLAY_PRIORITY, useOverlaySlot } from '@/contexts/OverlayCoordinatorContext';
 
 export const VersionUpdateNotification = () => {
   const { showUpdateNotification, currentVersion, dismissNotification } = useVersionUpdate();
@@ -20,10 +21,15 @@ export const VersionUpdateNotification = () => {
   const isMobile = useIsMobile();
   const hasShownToast = useRef(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const isActiveOverlay = useOverlaySlot(isMobile && drawerOpen, {
+    id: 'version-update',
+    priority: OVERLAY_PRIORITY.marketing,
+  });
+  const visibleDrawerOpen = drawerOpen && isActiveOverlay;
 
   // Tópicos curtos do que mudou nesta versão (derivados do changelog) —
   // mostrados no toast/drawer pra o cliente saber do que se trata.
-  const topics = getVersionTopics(currentVersion);
+  const topics = useMemo(() => getVersionTopics(currentVersion), [currentVersion]);
   const MAX_TOPICS = 4;
 
   // Mobile: abre o drawer (bottom-sheet) quando uma nova versão é detectada.
@@ -86,7 +92,8 @@ export const VersionUpdateNotification = () => {
                 ))}
                 {topics.length > MAX_TOPICS && (
                   <li className="pl-3 text-xs text-zinc-500">
-                    +{topics.length - MAX_TOPICS} novidade(s)
+                    +{topics.length - MAX_TOPICS}{' '}
+                    {topics.length - MAX_TOPICS === 1 ? 'novidade' : 'novidades'}
                   </li>
                 )}
               </ul>
@@ -107,12 +114,16 @@ export const VersionUpdateNotification = () => {
       ), {
         duration: 10000,
         position: 'top-center',
-        // Remove o traço/barra de progresso do topo (toast-with-progress
-        // global do Sonner). Sobra só o card escuro limpo.
-        className: 'no-toast-progress',
+        // O card escuro É o toast: `toast-novidades` (em index.css) desfaz a
+        // caixa branca de 34rem, a borda, a sombra e o bloco de ícone que o
+        // <Toaster> global impõe a todo toast. Sem isso o Sonner desenhava a
+        // própria caixa em volta e o ícone padrão sobrava ao lado do card.
+        className: 'toast-novidades',
+        icon: null,
+        closeButton: false,
       });
     }
-  }, [isMobile, showUpdateNotification, currentVersion, dismissNotification, navigate]);
+  }, [isMobile, showUpdateNotification, currentVersion, dismissNotification, navigate, topics]);
 
   if (!isMobile) {
     return null;
@@ -121,6 +132,10 @@ export const VersionUpdateNotification = () => {
   // Quando o drawer fecha (botão, X, arrastar pra baixo, clique fora),
   // marca a notificação como vista pra não reaparecer.
   const handleOpenChange = (open: boolean) => {
+    // Um overlay prioritário (NPS, ação do usuário ou gate crítico) apenas
+    // SUSPENDE este drawer. Só uma interação no drawer ativo marca a versão
+    // como vista; caso contrário ele reaparece quando a fila liberar.
+    if (!open && !isActiveOverlay) return;
     setDrawerOpen(open);
     if (!open) {
       dismissNotification();
@@ -128,7 +143,7 @@ export const VersionUpdateNotification = () => {
   };
 
   return (
-    <Drawer open={drawerOpen} onOpenChange={handleOpenChange}>
+    <Drawer open={visibleDrawerOpen} onOpenChange={handleOpenChange}>
       <DrawerContent className="border-0 bg-zinc-900 text-zinc-100 [&>div:first-child]:bg-white/5">
         {/* Header escuro com gradiente sutil */}
         <div className="relative bg-gradient-to-br from-zinc-800 to-zinc-900 px-5 pb-5 pt-3">
@@ -175,7 +190,8 @@ export const VersionUpdateNotification = () => {
               ))}
               {topics.length > MAX_TOPICS && (
                 <li className="pl-4 text-xs text-zinc-500">
-                  +{topics.length - MAX_TOPICS} novidade(s)
+                  +{topics.length - MAX_TOPICS}{' '}
+                  {topics.length - MAX_TOPICS === 1 ? 'novidade' : 'novidades'}
                 </li>
               )}
             </ul>

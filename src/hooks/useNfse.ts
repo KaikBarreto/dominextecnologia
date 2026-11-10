@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useUserCompany } from '@/hooks/useUserCompany';
 import { invokeNfse, type NfseEdgeResult } from '@/utils/nfseEdge';
 import { isNfseTerminal } from '@/components/fiscal/nfseStatus';
+import { requestNfsePagedRefresh } from '@/lib/fiscal/nfseRefreshSignal';
 import type { Tables } from '@/integrations/supabase/types';
 
 /**
@@ -25,11 +26,21 @@ export type NfseStatus =
   | 'autorizada'
   | 'rejeitada'
   | 'cancelada'
+  | 'confirmacao_pendente'
   | 'falhou'
   | string;
 
-/** Linha de `nfse_emissions` com `status` estreitado pro union de exibição. */
-export type NfseEmission = Omit<Tables<'nfse_emissions'>, 'status'> & {
+type NfseEmissionSchema = Tables<'nfse_emissions'>;
+type RetiredProviderColumn = Extract<
+  keyof NfseEmissionSchema,
+  `${string}_dps_id` | `${string}_fiscal_request_id`
+>;
+
+/** Linha de `nfse_emissions` com `status` estreitado e aliases aposentados fora da UI. */
+export type NfseEmission = Omit<
+  NfseEmissionSchema,
+  'status' | RetiredProviderColumn
+> & {
   status: NfseStatus;
 };
 
@@ -49,13 +60,13 @@ export interface EmitNfseInput {
   idempotencyKey?: string;
 }
 
-// Ids internos do provedor ficam de fora: nenhuma tela os usa.
+// Referências internas do motor fiscal ficam de fora: nenhuma tela as usa.
 // `data_competencia` é OBRIGATÓRIA aqui: o recorte por período dos contadores
 // lê `data_competencia || created_at`. Sem a coluna no select, o fallback
 // disparava sempre e o período era medido pela data de CRIAÇÃO da nota, não
 // pela competência. Os totais estavam certos; o recorte é que não.
 const EMISSION_COLS =
-  'id, company_id, customer_id, financial_transaction_id, status, numero_nfse, chave_acesso, protocolo, pdf_url, xml_url, valor_servico, valor_iss, descricao_servico, idempotency_key, error_message, emitida_em, data_competencia, created_at, updated_at';
+  'id, company_id, customer_id, financial_transaction_id, status, status_fiscal_confirmado, status_fiscal_confirmado_em, status_fiscal_fonte, status_fiscal_evidencia, numero_nfse, chave_acesso, protocolo, pdf_url, xml_url, valor_servico, valor_iss, descricao_servico, idempotency_key, error_message, emitida_em, data_competencia, created_at, updated_at';
 
 export function useNfse() {
   const { companyId } = useUserCompany();
@@ -65,6 +76,10 @@ export function useNfse() {
   const emissionsQuery = useQuery({
     queryKey: listKey,
     enabled: !!companyId,
+    // Faz a validade temporal da prova ser reavaliada mesmo com a tela aberta.
+    // Esta leitura é só no banco; a consulta ao Fisco continua no polling
+    // controlado e limitado abaixo.
+    refetchInterval: 60_000,
     queryFn: async (): Promise<NfseEmission[]> => {
       const { data, error } = await supabase
         .from('nfse_emissions')
@@ -76,7 +91,10 @@ export function useNfse() {
     },
   });
 
-  const invalidateList = () => queryClient.invalidateQueries({ queryKey: listKey });
+  const invalidateList = useCallback(() => {
+    requestNfsePagedRefresh();
+    return queryClient.invalidateQueries({ queryKey: ['nfse-emissions', companyId] });
+  }, [queryClient, companyId]);
 
   /** Emite uma NFS-e standalone (por cliente). Retorna o resultado normalizado. */
   const emitMutation = useMutation({
@@ -102,7 +120,7 @@ export function useNfse() {
     onSettled: () => invalidateList(),
   });
 
-  /** Consulta/atualiza o status de uma emissão no provedor. */
+  /** Consulta/atualiza o status de uma emissão no motor fiscal. */
   const statusMutation = useMutation({
     mutationFn: async (emissionId: string): Promise<NfseEdgeResult> => {
       return invokeNfse('nfse-status', { emissionId });
@@ -162,7 +180,7 @@ export interface NfseStatusPolling {
  * consulta). Enquanto a emissão estiver em estado NÃO-terminal e `enabled`,
  * consulta `nfse-status` a cada ~4,5s, atualizando a lista do `useNfse`
  * a cada sucesso, até:
- *   - o status virar terminal (autorizada/rejeitada/falhou/cancelada) → para;
+ *   - o status virar terminal confirmado (autorizada/rejeitada/cancelada) → para;
  *   - estourar ~2,5 min (POLL_MAX_DURATION_MS) → para e sinaliza `timedOut`;
  *   - a edge responder 503 (integração não ativada) → para;
  *   - o componente desmontar / `enabled` virar false → limpa o intervalo.
@@ -223,15 +241,15 @@ export function useNfseStatusPolling(
       try {
         const res = await invokeNfse('nfse-status', { emissionId });
 
-        // 503 (integração não ativada) ou 501 (caminho de emissão indisponível):
-        // não adianta insistir — para.
-        if (res.unconfigured || res.providerUnsupported) {
+        // Serviço/operação fiscal indisponível: não adianta insistir — para.
+        if (res.unavailable) {
           stop();
           return;
         }
 
         // A cada consulta bem-sucedida, reflete na lista/detalhe.
         if (res.ok) {
+          requestNfsePagedRefresh();
           queryClient.invalidateQueries({ queryKey: ['nfse-emissions', companyId] });
         }
 
@@ -272,7 +290,8 @@ export function useNfseStatusPolling(
  * lista. Um único intervalo pro conjunto (não um por nota), pra não martelar.
  * Para quando todos os ids viram terminais, no unmount ou ao estourar o tempo.
  *
- * Recebe os ids já filtrados como NÃO-terminais pelo caller (deriva do dataset).
+ * Recebe os ids que exigem consulta oficial pelo caller: estados transitórios
+ * ou autorizações comprovadas cuja confirmação precisa ser renovada.
  */
 export function useNfseListPolling(pendingIds: string[]): void {
   const { companyId } = useUserCompany();
@@ -319,12 +338,13 @@ export function useNfseListPolling(pendingIds: string[]): void {
         const results = await Promise.all(
           ids.map((id) => invokeNfse('nfse-status', { emissionId: id })),
         );
-        // 503/501 em qualquer consulta = integração indisponível: não insiste.
-        if (results.some((r) => r.unconfigured || r.providerUnsupported)) {
+        // Indisponibilidade em qualquer consulta: não insiste.
+        if (results.some((r) => r.unavailable)) {
           clear();
           return;
         }
         if (results.some((r) => r.ok)) {
+          requestNfsePagedRefresh();
           queryClient.invalidateQueries({ queryKey: ['nfse-emissions', companyId] });
         }
       } catch {

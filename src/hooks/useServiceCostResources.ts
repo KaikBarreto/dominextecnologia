@@ -28,7 +28,11 @@ export interface LinkedResource extends ServiceCostResource {
   calculatedCost: number;
 }
 
-export function useServiceCostResources(serviceId: string | null, serviceHours: number = 1) {
+export function useServiceCostResources(
+  serviceId: string | null,
+  serviceHours: number = 1,
+  options: { enabled?: boolean } = {},
+) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { profile } = useAuth();
@@ -36,8 +40,8 @@ export function useServiceCostResources(serviceId: string | null, serviceHours: 
 
   // Fetch linked resources for this service
   const linkedQuery = useQuery({
-    queryKey: ['service-cost-resources', serviceId],
-    enabled: !!serviceId,
+    queryKey: ['service-cost-resources', companyId, serviceId],
+    enabled: options.enabled !== false && !!companyId && !!serviceId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('service_cost_resources')
@@ -58,7 +62,7 @@ export function useServiceCostResources(serviceId: string | null, serviceHours: 
   // companyId entra na queryKey pra o cache não vazar na troca de usuário.
   const allResourcesQuery = useQuery({
     queryKey: ['cost-resources-active', companyId],
-    enabled: !!companyId,
+    enabled: options.enabled !== false && !!companyId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('cost_resources_with_rate')
@@ -75,8 +79,8 @@ export function useServiceCostResources(serviceId: string | null, serviceHours: 
 
   // Fetch service gifts
   const giftsQuery = useQuery({
-    queryKey: ['service-gifts', serviceId],
-    enabled: !!serviceId,
+    queryKey: ['service-gifts', companyId, serviceId],
+    enabled: options.enabled !== false && !!companyId && !!serviceId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('service_gifts')
@@ -149,9 +153,10 @@ export function useServiceCostResources(serviceId: string | null, serviceHours: 
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['service-cost-resources', serviceId] });
+      queryClient.invalidateQueries({ queryKey: ['service-cost-resources', companyId, serviceId] });
+      queryClient.invalidateQueries({ queryKey: ['service-cost-breakdown'] });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({ variant: 'destructive', title: 'Erro ao vincular recurso', description: getErrorMessage(error) });
     },
   });
@@ -170,7 +175,8 @@ export function useServiceCostResources(serviceId: string | null, serviceHours: 
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['service-cost-resources', serviceId] });
+      queryClient.invalidateQueries({ queryKey: ['service-cost-resources', companyId, serviceId] });
+      queryClient.invalidateQueries({ queryKey: ['service-cost-breakdown'] });
     },
   });
 
@@ -188,7 +194,8 @@ export function useServiceCostResources(serviceId: string | null, serviceHours: 
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['service-cost-resources', serviceId] });
+      queryClient.invalidateQueries({ queryKey: ['service-cost-resources', companyId, serviceId] });
+      queryClient.invalidateQueries({ queryKey: ['service-cost-breakdown'] });
     },
   });
 
@@ -210,7 +217,8 @@ export function useServiceCostResources(serviceId: string | null, serviceHours: 
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['service-gifts', serviceId] });
+      queryClient.invalidateQueries({ queryKey: ['service-gifts', companyId, serviceId] });
+      queryClient.invalidateQueries({ queryKey: ['service-cost-breakdown'] });
     },
   });
 
@@ -225,7 +233,8 @@ export function useServiceCostResources(serviceId: string | null, serviceHours: 
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['service-gifts', serviceId] });
+      queryClient.invalidateQueries({ queryKey: ['service-gifts', companyId, serviceId] });
+      queryClient.invalidateQueries({ queryKey: ['service-cost-breakdown'] });
     },
   });
 
@@ -239,7 +248,8 @@ export function useServiceCostResources(serviceId: string | null, serviceHours: 
     allResources: allResourcesQuery.data ?? [],
     gifts: giftsQuery.data ?? [],
     totals,
-    isLoading: linkedQuery.isLoading || allResourcesQuery.isLoading,
+    isLoading: linkedQuery.isLoading || allResourcesQuery.isLoading || giftsQuery.isLoading,
+    error: linkedQuery.error || allResourcesQuery.error || giftsQuery.error,
     linkResource,
     unlinkResource,
     updateOverride,

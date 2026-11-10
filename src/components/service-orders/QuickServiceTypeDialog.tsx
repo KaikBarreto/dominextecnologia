@@ -23,6 +23,10 @@ interface QuickServiceTypeDialogProps {
    * serviço nasce incompleto e a próxima nota volta a exigir busca manual.
    */
   showFiscalFields?: boolean;
+  /** Permite adicionar um serviço avulso sem criar registro no catálogo. */
+  allowQuoteOnly?: boolean;
+  onCreatedLocal?: (service: { name: string; color: string; requires_equipment: boolean }) => void;
+  overlayParentId?: string | null;
 }
 
 const DEFAULT_COLOR = '#22c55e';
@@ -39,6 +43,9 @@ export function QuickServiceTypeDialog({
   onCreated,
   initialName = '',
   showFiscalFields = false,
+  allowQuoteOnly = false,
+  onCreatedLocal,
+  overlayParentId,
 }: QuickServiceTypeDialogProps) {
   const { createServiceType } = useServiceTypes();
   const { locale } = useAppLocaleContext();
@@ -47,6 +54,7 @@ export function QuickServiceTypeDialog({
   const [name, setName] = useState(initialName);
   const [color, setColor] = useState(DEFAULT_COLOR);
   const [requiresEquipment, setRequiresEquipment] = useState(true);
+  const [saveToCatalog, setSaveToCatalog] = useState(true);
   // Fiscal (opt-in) — todos opcionais.
   const [codigoServico, setCodigoServico] = useState('');
   const [itemLc116, setItemLc116] = useState('');
@@ -58,6 +66,7 @@ export function QuickServiceTypeDialog({
     setName('');
     setColor(DEFAULT_COLOR);
     setRequiresEquipment(true);
+    setSaveToCatalog(true);
     setCodigoServico('');
     setItemLc116('');
     setCodigoTribMun('');
@@ -85,6 +94,12 @@ export function QuickServiceTypeDialog({
     const trimmed = name.trim();
     // Botão já fica desabilitado nesses casos — guarda contra Enter no form.
     if (!trimmed || cTribMunInvalid) return;
+    if (allowQuoteOnly && !saveToCatalog) {
+      onCreatedLocal?.({ name: trimmed, color, requires_equipment: requiresEquipment });
+      reset();
+      onOpenChange(false);
+      return;
+    }
     const iss = issAliquota.trim().replace(',', '.');
     const created = await createServiceType.mutateAsync({
       name: trimmed,
@@ -112,6 +127,7 @@ export function QuickServiceTypeDialog({
       open={open}
       onOpenChange={handleOpenChange}
       title={t.modalTitleCreate}
+      overlayParentId={overlayParentId}
       footer={
         <div className="space-y-2 pt-2">
           {cTribMunInvalid && (
@@ -128,10 +144,10 @@ export function QuickServiceTypeDialog({
             <Button
               type="button"
               onClick={handleSubmit}
-              disabled={createServiceType.isPending || cTribMunInvalid || !name.trim()}
+              disabled={(saveToCatalog && createServiceType.isPending) || cTribMunInvalid || !name.trim()}
             >
-              {createServiceType.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {t.btnCreate}
+              {saveToCatalog && createServiceType.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {saveToCatalog ? t.btnCreate : 'Adicionar ao orçamento'}
             </Button>
           </div>
         </div>
@@ -142,7 +158,7 @@ export function QuickServiceTypeDialog({
           e.preventDefault();
           if (!createServiceType.isPending) handleSubmit();
         }}
-        className="space-y-4 py-2"
+        className="space-y-4 py-2 [&_label]:font-semibold [&_label]:text-foreground [&_input:not([type=color])]:min-h-11"
       >
         <div className="space-y-2">
           <Label htmlFor="quick-service-type-name">{t.labelName}</Label>
@@ -170,9 +186,21 @@ export function QuickServiceTypeDialog({
         </div>
 
         <div className="flex items-center gap-2">
-          <Switch checked={requiresEquipment} onCheckedChange={setRequiresEquipment} />
-          <Label>{t.labelEquipmentRequired}</Label>
+          <Switch id="quick-service-requires-equipment" checked={requiresEquipment} onCheckedChange={setRequiresEquipment} />
+          <Label htmlFor="quick-service-requires-equipment">{t.labelEquipmentRequired}</Label>
         </div>
+
+        {allowQuoteOnly && (
+          <div className="flex items-start justify-between gap-4 rounded-lg border bg-muted/20 p-3">
+            <div>
+              <Label htmlFor="quick-service-save-catalog">Salvar no catálogo de serviços</Label>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Desative para usar este serviço somente neste orçamento.
+              </p>
+            </div>
+            <Switch id="quick-service-save-catalog" checked={saveToCatalog} onCheckedChange={setSaveToCatalog} />
+          </div>
+        )}
 
         {/* ------------------------------------------------------------------
          * Fiscal (opt-in): mesmos campos da aba Fiscal do cadastro completo.

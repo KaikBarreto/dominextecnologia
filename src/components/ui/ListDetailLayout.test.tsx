@@ -27,12 +27,12 @@ describe('ListDetailLayout', () => {
     );
 
     expect(screen.getByText('Ficha do cliente')).toBeInTheDocument();
-    expect(screen.getByText('1-2 / 2')).toBeInTheDocument();
+    expect(screen.getByText('Mostrando 1-2 de 2')).toBeInTheDocument();
 
     fireEvent.change(screen.getByPlaceholderText('Buscar clientes...'), { target: { value: 'Olinda' } });
     expect(screen.queryByText('Cliente Alpha')).not.toBeInTheDocument();
     expect(screen.getByText('Cliente Beta')).toBeInTheDocument();
-    expect(screen.getByText('1-1 / 1')).toBeInTheDocument();
+    expect(screen.getByText('Mostrando 1-1 de 1')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Cliente Beta/ }));
     expect(onSelect).toHaveBeenCalledWith('2');
@@ -40,6 +40,42 @@ describe('ListDetailLayout', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Recolher lista' }));
     expect(screen.getByRole('button', { name: 'Expandir lista' })).toBeInTheDocument();
     expect(screen.getByText('Ficha do cliente')).toBeInTheDocument();
+  });
+
+  it('busca sem acento, com palavras fora de ordem e documento sem máscara', () => {
+    render(
+      <ListDetailLayout
+        items={[
+          {
+            id: '1',
+            title: 'Marcos Antônio Braga',
+            subtitle: '12.345.678/0001-90',
+          },
+          { id: '2', title: 'Beatriz Souza', subtitle: 'Recife' },
+        ]}
+        listTitle="Lista de clientes"
+        searchPlaceholder="Buscar clientes..."
+        emptyLabel="Nenhum cliente encontrado"
+        onSelect={vi.fn()}
+      >
+        <div>Ficha do cliente</div>
+      </ListDetailLayout>,
+    );
+
+    const search = screen.getByPlaceholderText('Buscar clientes...');
+
+    fireEvent.change(search, { target: { value: 'antonio' } });
+    expect(screen.getByText('Marcos Antônio Braga')).toBeInTheDocument();
+
+    fireEvent.change(search, { target: { value: 'marcos braga' } });
+    expect(screen.getByText('Marcos Antônio Braga')).toBeInTheDocument();
+
+    fireEvent.change(search, { target: { value: '12345678' } });
+    expect(screen.getByText('Marcos Antônio Braga')).toBeInTheDocument();
+
+    fireEvent.change(search, { target: { value: 'inexistente' } });
+    expect(screen.queryByText('Marcos Antônio Braga')).not.toBeInTheDocument();
+    expect(screen.getByText('Nenhum cliente encontrado')).toBeInTheDocument();
   });
 
   it('abre a foto sem selecionar outro registro', () => {
@@ -95,18 +131,18 @@ describe('ListDetailLayout', () => {
     // 120 cadastros em páginas de 25: a lista monta 25 linhas, não 120.
     expect(screen.getAllByRole('listitem')).toHaveLength(25);
     // O selecionado (índice 80) está na 4ª página, e a lista abre nela.
-    expect(screen.getByText('76-100 / 120')).toBeInTheDocument();
+    expect(screen.getByText('Mostrando 76-100 de 120')).toBeInTheDocument();
     expect(screen.getByText('Cliente 080')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Anterior' }));
-    expect(screen.getByText('51-75 / 120')).toBeInTheDocument();
+    expect(screen.getByText('Mostrando 51-75 de 120')).toBeInTheDocument();
     expect(screen.queryByText('Cliente 080')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Próxima' }));
-    expect(screen.getByText('76-100 / 120')).toBeInTheDocument();
+    expect(screen.getByText('Mostrando 76-100 de 120')).toBeInTheDocument();
   });
 
-  it('ordena pelo critério escolhido e volta para a primeira página', () => {
+  it('ordena pelo critério escolhido no menu compacto', async () => {
     const items = [
       { id: '1', title: 'Ana' },
       { id: '2', title: 'Bruno' },
@@ -127,17 +163,54 @@ describe('ListDetailLayout', () => {
 
     const primeiraLinha = () => within(screen.getAllByRole('listitem')[0]);
     expect(primeiraLinha().getByText('Ana')).toBeInTheDocument();
-    expect(screen.getByText('3 registros')).toBeInTheDocument();
+    expect(screen.getByLabelText('3 registros')).toHaveTextContent('3');
 
-    // Ordenação é um botão discreto que alterna o critério, não um seletor.
+    // Ordenação abre um menu compacto com os critérios disponíveis.
     const botao = screen.getByRole('button', { name: 'Ordenar: Nome (A-Z)' });
-    expect(botao).toHaveTextContent('A-Z');
+    expect(botao).toHaveTextContent('Ordenar');
 
     fireEvent.click(botao);
+    fireEvent.click(await screen.findByRole('button', { name: 'Nome (Z-A)' }));
     expect(primeiraLinha().getByText('Carla')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Ordenar: Nome (Z-A)' })).toHaveTextContent('Z-A');
+    expect(screen.getByRole('button', { name: 'Ordenar: Nome (Z-A)' })).toHaveTextContent('Ordenar');
+  });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ordenar: Nome (Z-A)' }));
-    expect(primeiraLinha().getByText('Ana')).toBeInTheDocument();
+  it('mantém item geral fixo e alterna lista e detalhe no fluxo mobile', () => {
+    const { rerender } = render(
+      <ListDetailLayout
+        pinnedItems={[{ id: 'all', title: 'Geral (Todos)', emphasized: true }]}
+        items={[{ id: '1', title: 'Filtro secador' }]}
+        selectedId="all"
+        listTitle="Materiais"
+        searchPlaceholder="Buscar material..."
+        emptyLabel="Nenhum material encontrado"
+        onSelect={vi.fn()}
+        mobileDetailOpen={false}
+      >
+        <div>Histórico selecionado</div>
+      </ListDetailLayout>,
+    );
+
+    expect(screen.getAllByRole('listitem')).toHaveLength(2);
+    expect(screen.getByText('Geral (Todos)')).toHaveClass('font-bold');
+    expect(screen.getByLabelText('1 registro')).toHaveTextContent('1');
+    expect(screen.getByText('Histórico selecionado').parentElement).toHaveClass('hidden');
+
+    rerender(
+      <ListDetailLayout
+        pinnedItems={[{ id: 'all', title: 'Geral (Todos)', emphasized: true }]}
+        items={[{ id: '1', title: 'Filtro secador' }]}
+        selectedId="1"
+        listTitle="Materiais"
+        searchPlaceholder="Buscar material..."
+        emptyLabel="Nenhum material encontrado"
+        onSelect={vi.fn()}
+        mobileDetailOpen
+      >
+        <div>Histórico selecionado</div>
+      </ListDetailLayout>,
+    );
+
+    expect(screen.getByText('Histórico selecionado').parentElement).not.toHaveClass('hidden');
   });
 });

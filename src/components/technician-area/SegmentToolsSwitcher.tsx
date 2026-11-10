@@ -18,8 +18,8 @@ import { MESSAGES } from '@/lib/i18n/messages';
 interface SegmentToolsSwitcherProps {
   /** Nicho atualmente selecionado (pode diferir do da empresa). */
   selected: string;
-  /** Segmento real da empresa — sempre aparece no topo e ganha o selo "Incluído". */
-  companySegment: string;
+  /** Segmentos contratados — aparecem primeiro e ganham o selo "Incluído". */
+  companySegments: string[];
   onSelect: (segment: string) => void;
 }
 
@@ -32,7 +32,7 @@ interface SegmentToolsSwitcherProps {
  */
 export function SegmentToolsSwitcher({
   selected,
-  companySegment,
+  companySegments,
   onSelect,
 }: SegmentToolsSwitcherProps) {
   const { locale } = useAppLocaleContext();
@@ -46,11 +46,14 @@ export function SegmentToolsSwitcher({
   const options = useMemo(() => {
     const list = getSiteSegments();
     return list.sort((a, b) => {
-      if (a.value === companySegment) return -1;
-      if (b.value === companySegment) return 1;
+      const aIndex = companySegments.indexOf(a.value);
+      const bIndex = companySegments.indexOf(b.value);
+      if (aIndex >= 0 && bIndex < 0) return -1;
+      if (bIndex >= 0 && aIndex < 0) return 1;
+      if (aIndex >= 0 && bIndex >= 0) return aIndex - bIndex;
       return 0;
     });
-  }, [companySegment]);
+  }, [companySegments]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -86,7 +89,7 @@ export function SegmentToolsSwitcher({
             <CommandGroup>
               {options.map((seg) => {
                 const isSelected = seg.value === selected;
-                const isCompany = seg.value === companySegment;
+                const isCompany = companySegments.includes(seg.value);
                 return (
                   <CommandItem
                     key={seg.value}

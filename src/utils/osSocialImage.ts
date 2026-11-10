@@ -1,3 +1,5 @@
+import { LOGO_INK_LUMINANCE_THRESHOLD, inkLuminance } from './logoInk';
+
 export const OS_SOCIAL_IMAGE_WIDTH = 1200;
 export const OS_SOCIAL_IMAGE_HEIGHT = 630;
 
@@ -153,26 +155,12 @@ function dominantBucket(colors: RGB[]): ColorBucket | null {
  * A transparência pesa na amostra; pixels quase transparentes são ignorados.
  */
 export function chooseSocialBackground(pixels: Uint8ClampedArray): typeof LIGHT_BACKGROUND | typeof DARK_BACKGROUND {
-  let weightedLuminance = 0;
-  let totalAlpha = 0;
-  for (let index = 0; index < pixels.length; index += 4) {
-    const alpha = pixels[index + 3] / 255;
-    if (alpha < 0.15) continue;
-    const red = pixels[index] / 255;
-    const green = pixels[index + 1] / 255;
-    const blue = pixels[index + 2] / 255;
-    const linearize = (channel: number) => channel <= 0.04045
-      ? channel / 12.92
-      : ((channel + 0.055) / 1.055) ** 2.4;
-    const luminance = 0.2126 * linearize(red) + 0.7152 * linearize(green) + 0.0722 * linearize(blue);
-    weightedLuminance += luminance * alpha;
-    totalAlpha += alpha;
-  }
+  const luminance = inkLuminance(pixels);
 
   // Logo sem pixels legíveis: fundo escuro neutro, que funciona bem com o
   // padrão mais comum de logos transparentes claros.
-  if (totalAlpha === 0) return DARK_BACKGROUND;
-  return weightedLuminance / totalAlpha > 0.38 ? DARK_BACKGROUND : LIGHT_BACKGROUND;
+  if (luminance === null) return DARK_BACKGROUND;
+  return luminance > LOGO_INK_LUMINANCE_THRESHOLD ? DARK_BACKGROUND : LIGHT_BACKGROUND;
 }
 
 /**

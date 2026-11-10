@@ -11,7 +11,9 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { BarChart3, Info, TrendingDown, TrendingUp, Users } from 'lucide-react';
+import { AlertCircle, BarChart3, Info, RefreshCw, TrendingDown, TrendingUp, Users } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -72,8 +74,18 @@ export function FinanceAnalysis({ transactions, isLoading = false }: FinanceAnal
   const [topN, setTopN] = useState<number>(5);
   const [ordem, setOrdem] = useState<'faturamento' | 'margem'>('faturamento');
 
-  const { categories, isLoading: isLoadingCategories } = useFinancialCategories();
-  const { settings, isLoading: isLoadingSettings } = useCompanySettings();
+  const {
+    categories,
+    isLoading: isLoadingCategories,
+    isError: isErrorCategories,
+    refetch: refetchCategories,
+  } = useFinancialCategories();
+  const {
+    settings,
+    isLoading: isLoadingSettings,
+    isError: isErrorSettings,
+    refetch: refetchSettings,
+  } = useCompanySettings();
   const { locale, currency, timezone } = useAppLocaleContext();
   const isMobile = useIsMobile();
 
@@ -137,6 +149,17 @@ export function FinanceAnalysis({ transactions, isLoading = false }: FinanceAnal
     return <FinanceAnalysisLoading />;
   }
 
+  if (isErrorCategories || isErrorSettings) {
+    return (
+      <FinanceAnalysisError
+        onRetry={() => {
+          void refetchCategories();
+          void refetchSettings();
+        }}
+      />
+    );
+  }
+
   return (
     <section className="space-y-5 sm:space-y-6" aria-labelledby="finance-analysis-title">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -144,6 +167,9 @@ export function FinanceAnalysis({ transactions, isLoading = false }: FinanceAnal
           <h2 id="finance-analysis-title" className="text-lg font-semibold">Análise</h2>
           <p className="text-sm text-muted-foreground">
             Compara períodos e mostra quem fatura mais e quem realmente sobra no fim.
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            A comparação usa os períodos escolhidos nesta análise.
           </p>
         </div>
         <div
@@ -216,8 +242,8 @@ export function FinanceAnalysis({ transactions, isLoading = false }: FinanceAnal
               <ResponsiveContainer width="100%" height={isMobile ? 240 : 300}>
                 <ComposedChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="label" tick={{ fontSize: isMobile ? 10 : 11 }} />
-                  <YAxis width={isMobile ? 50 : 72} tick={{ fontSize: isMobile ? 10 : 11 }} tickFormatter={compactMoney} />
+                  <XAxis dataKey="label" tick={{ fontSize: isMobile ? 11 : 12 }} />
+                  <YAxis width={isMobile ? 58 : 76} tick={{ fontSize: isMobile ? 11 : 12 }} tickFormatter={compactMoney} />
                   <Tooltip formatter={(value: number) => money(value)} />
                   <Legend wrapperStyle={isMobile ? { fontSize: 11 } : undefined} />
                   <Bar dataKey="Receitas" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
@@ -325,7 +351,7 @@ export function FinanceAnalysis({ transactions, isLoading = false }: FinanceAnal
                   <TableBody>
                     {clientes.map((cliente) => (
                       <TableRow key={cliente.customerId}>
-                        <TableCell className="max-w-[180px] truncate font-medium" title={cliente.name}>
+                        <TableCell className="min-w-[150px] max-w-[240px] whitespace-normal break-words font-medium leading-snug" title={cliente.name}>
                           {cliente.name}
                         </TableCell>
                         <TableCell className="whitespace-nowrap text-right tabular-nums">{money(cliente.revenue)}</TableCell>
@@ -357,10 +383,16 @@ export function FinanceAnalysis({ transactions, isLoading = false }: FinanceAnal
               </div>
 
               <ResponsiveContainer width="100%" height={Math.max(200, clientes.length * 42)}>
-                <BarChart data={clientes} layout="vertical" margin={{ left: isMobile ? 0 : 18, right: 12 }}>
+                <BarChart data={clientes} layout="vertical" margin={{ left: isMobile ? 0 : 12, right: 12 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
-                  <XAxis type="number" tickFormatter={compactMoney} tick={{ fontSize: isMobile ? 9 : 11 }} />
-                  <YAxis type="category" dataKey="name" width={isMobile ? 92 : 170} tick={{ fontSize: isMobile ? 9 : 11 }} />
+                  <XAxis type="number" tickFormatter={compactMoney} tick={{ fontSize: 12 }} />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    width={isMobile ? 116 : 190}
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(value: string) => abbreviateAxisLabel(value, isMobile ? 17 : 30)}
+                  />
                   <Tooltip formatter={(value: number) => money(value)} />
                   <Legend wrapperStyle={isMobile ? { fontSize: 11 } : undefined} />
                   <Bar dataKey="revenue" name="Faturamento" fill="hsl(var(--success))" radius={[0, 4, 4, 0]} />
@@ -391,6 +423,26 @@ export function FinanceAnalysis({ transactions, isLoading = false }: FinanceAnal
           : 'Competência considera a data em que a receita ou despesa aconteceu, mesmo sem baixa.'}
       </p>
     </section>
+  );
+}
+
+function abbreviateAxisLabel(value: string, maxLength: number): string {
+  return value.length > maxLength ? `${value.slice(0, maxLength - 1).trimEnd()}…` : value;
+}
+
+function FinanceAnalysisError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <Alert variant="destructive" role="alert">
+      <AlertCircle className="h-4 w-4" />
+      <AlertTitle>Não foi possível carregar a análise financeira</AlertTitle>
+      <AlertDescription className="space-y-3">
+        <p>Os dados parciais foram ocultados para não apresentar indicadores incorretos.</p>
+        <Button type="button" variant="outline" size="sm" onClick={onRetry} className="min-h-10 gap-2 border-destructive/40">
+          <RefreshCw className="h-4 w-4" aria-hidden="true" />
+          Tentar novamente
+        </Button>
+      </AlertDescription>
+    </Alert>
   );
 }
 

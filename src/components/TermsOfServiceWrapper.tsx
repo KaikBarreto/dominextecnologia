@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect, useState } from 'react';
+import { OVERLAY_PRIORITY, useOverlaySlot } from '@/contexts/OverlayCoordinatorContext';
 
 // O modal de Termos puxa o gerador de PDF (jspdf/html2canvas, ~400KB gzip). Esse
 // peso NÃO pode entrar no entry da landing: este wrapper é montado app-wide, mas
@@ -29,6 +30,10 @@ const TermsOfServiceModal = lazy(() =>
 export const TermsOfServiceWrapper = ({ children }: { children: React.ReactNode }) => {
   // Modal de leitura sob demanda (readOnly), controlado por evento global.
   const [showReadOnlyTerms, setShowReadOnlyTerms] = useState(false);
+  const isActiveOverlay = useOverlaySlot(showReadOnlyTerms, {
+    id: 'terms-of-service',
+    priority: OVERLAY_PRIORITY.userAction,
+  });
 
   // Listener global: qualquer parte do app abre os Termos em modo leitura.
   useEffect(() => {
@@ -46,7 +51,16 @@ export const TermsOfServiceWrapper = ({ children }: { children: React.ReactNode 
         <Suspense fallback={null}>
           {/* Modal de LEITURA sob demanda (readOnly): aberto via evento global
               'dominex:open-terms'. Independente do aceite — fecha normalmente. */}
-          <TermsOfServiceModal readOnly open onOpenChange={setShowReadOnlyTerms} />
+          <TermsOfServiceModal
+            readOnly
+            open={showReadOnlyTerms && isActiveOverlay}
+            onOpenChange={(open) => {
+              // Se um overlay de prioridade maior suspender os termos, preserve
+              // a intenção do usuário e retome quando a fila liberar.
+              if (!open && !isActiveOverlay) return;
+              setShowReadOnlyTerms(open);
+            }}
+          />
         </Suspense>
       )}
     </>

@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.37.37";
+export const APP_VERSION = "1.39.15";
 
 export const VERSION_NOTES =
-  "Clientes, fornecedores e equipamentos ganharam visual mais limpo no computador: lista mais larga, sem molduras, e a ficha com menos caixas. O mapa do endereço troca sem piscar e o cadastro de cliente ficou agrupado por assunto.";
+  "Agora dá para montar formulários com as perguntas que você quiser, enviar por link e publicar dentro do Portal do Cliente, com as respostas guardadas no sistema.";

@@ -71,10 +71,14 @@ export function ContractInfoCard({
       {...(tone === 'document' ? { 'data-pdf-section': true } : {})}
       className={cn(bare ? '' : cn('rounded-lg p-3 sm:p-4', t.card), className)}
     >
-      <h3 className={cn('text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5', t.title)}>
-        <FileSignature className="h-3.5 w-3.5" /> Contrato
+      <h3 className={cn(
+        'flex items-center',
+        bare ? 'mb-1 text-xs font-medium' : 'mb-2 gap-1.5 text-xs font-bold uppercase tracking-wider',
+        t.title,
+      )}>
+        {!bare && <FileSignature className="h-3.5 w-3.5" />} Contrato
       </h3>
-      <p className={cn('font-semibold', t.name)}>{name}</p>
+      <p className={cn(bare ? 'text-sm font-semibold' : 'font-semibold', t.name)}>{name}</p>
       {isPmoc && (
         <p className={cn('text-xs mt-1 flex items-center gap-1', t.legal)}>
           <ShieldCheck className={cn('h-3.5 w-3.5 shrink-0', t.legalIcon)} />

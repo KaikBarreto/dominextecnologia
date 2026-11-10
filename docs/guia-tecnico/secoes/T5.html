@@ -250,6 +250,14 @@
 
   <p>Clicando no cartão, abre o resumo da OS. Nele estão o cliente, o equipamento, o check-in e check-out, as fotos, os detalhes do serviço, os valores e a conformidade PMOC quando houver, mais uma linha de botões redondos: <span class="ui">Retomar</span>, <span class="ui">Pausar</span>, <span class="ui">Finalizar</span>, <span class="ui">Resetar OS</span> (quando a OS já passou de Agendada), <span class="ui">Editar</span>, <span class="ui">Excluir</span> e um botão para copiar o link, além do botão grande embaixo que muda de nome conforme o estado: <span class="ui">Preencher OS</span> em OS aberta, <span class="ui">Relatório de Serviço</span> em OS concluída. Quando a empresa tem o recurso de consumo de estoque na OS ligado e o técnico lançou material nesse atendimento, o resumo também mostra o bloco <span class="ui">Materiais utilizados</span>, só leitura: cada linha traz o material, a quantidade, a unidade e o local de estoque, com o custo da linha e o <span class="ui">Custo total</span> ao final (item ainda não baixado do estoque mostra o aviso <span class="ui">Ainda não baixado do estoque</span>).</p>
 
+  <h3>Gerar documentos PMOC pela OS concluída</h3>
+  <p>Quando a empresa atua com refrigeração, toda OS concluída oferece a ação <span class="ui">Gerar documentos PMOC</span> no menu de três pontos. Ela aparece no cartão do kanban, na visão em lista, na Agenda, nas ocorrências do contrato, no resumo da OS e no relatório aberto pelo técnico logado. A OS pode ter vindo de um contrato ou ter sido criada avulsa.</p>
+  <p>Na janela, escolha <span class="ui">Relatório de serviço</span> ou <span class="ui">Certificado de conformidade</span>. O sistema confere cliente, equipamentos atendidos, produto bactericida PMOC vigente e Responsável Técnico. Se o RT ainda não estiver pronto, administradores e gestores podem cadastrá-lo ali mesmo. No certificado também é possível escolher o modelo visual antes de gerar.</p>
+
+  <div class="regra">
+    A ação só aparece em <b>OS concluída</b> e para empresas com o segmento de refrigeração. O relatório usa o que foi realmente registrado no atendimento; o certificado também exige os dados regulatórios do produto e do Responsável Técnico.
+  </div>
+
   <h3>O "+" no cabeçalho da coluna</h3>
 
   <p>Cada coluna do kanban tem, ao lado da contagem, um botão de mais (+). Ele abre a janela <span class="ui">Nova Ordem de Serviço</span> já com o status daquela coluna. É o atalho para quem recebe um chamado que já entra "agendado" ou já entra "em andamento", sem ter que criar em pendente e arrastar depois.</p>

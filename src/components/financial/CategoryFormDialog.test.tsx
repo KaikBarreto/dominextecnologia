@@ -33,7 +33,7 @@ vi.mock('@/components/ui/ColorPicker', () => ({
   ),
 }));
 
-import { CategoryFormDialog } from './CategoryFormDialog';
+import { CategoryDrePlacementPreview, CategoryFormDialog } from './CategoryFormDialog';
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -103,5 +103,53 @@ describe('CategoryFormDialog — criação de subcategoria', () => {
       dre_group: 'opex',
       dfc_group: 'investimento',
     }));
+  });
+});
+
+describe('CategoryDrePlacementPreview — efeito antes de salvar', () => {
+  it.each([
+    ['entrada', 'revenue', '+ valor', 'Soma ao resultado como receita.'],
+    ['saida', 'operating_expense', '− valor', 'Reduz o resultado operacional.'],
+    ['saida', 'excluded', 'fora do DRE', 'Não aparece no DRE atual e não altera o resultado.'],
+    ['entrada', 'excluded', 'fora do DRE', 'Não aparece no DRE atual e não altera o resultado.'],
+    ['entrada', 'non_operating', '+ valor', 'Soma ao resultado como receita.'],
+    ['ambos', 'cost', '± valor', 'Entradas somam à receita; saídas seguem o grupo escolhido.'],
+  ] as const)('explica %s em %s sem alterar os lançamentos', async (type, nature, marker, effect) => {
+    await act(async () => {
+      root.render(
+        <CategoryDrePlacementPreview
+          categoryName="Frete especial"
+          groupName="Operação"
+          type={type}
+          nature={nature}
+          locale="pt-br"
+        />,
+      );
+    });
+
+    expect(document.body.textContent).toContain('Prévia no DRE');
+    expect(document.body.textContent).toContain('Sem alterar lançamentos');
+    expect(document.body.textContent).toContain('Operação');
+    expect(document.body.textContent).toContain('Frete especial');
+    expect(document.body.textContent).toContain(marker);
+    expect(document.body.textContent).toContain(effect);
+  });
+
+  it('não vaza rótulos em português quando o idioma é inglês', async () => {
+    await act(async () => {
+      root.render(
+        <CategoryDrePlacementPreview
+          categoryName=""
+          groupName="Outside P&L"
+          type="saida"
+          nature="excluded"
+          locale="en"
+        />,
+      );
+    });
+
+    expect(document.body.textContent).toContain('This category');
+    expect(document.body.textContent).toContain('outside P&L');
+    expect(document.body.textContent).not.toContain('Esta categoria');
   });
 });

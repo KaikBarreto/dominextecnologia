@@ -32,22 +32,35 @@ export function SystemNoticeBanners({ scope }: { scope: NoticeScope }) {
   if (isAdminUser) return null;
   if (notices.length === 0) return null;
 
+  const attachedToHeader = scope === 'global';
+
   return (
-    <div className="mb-4 space-y-2">
+    <div
+      className={
+        attachedToHeader
+          ? 'max-h-[40dvh] shrink-0 space-y-px overflow-y-auto overscroll-contain border-b border-border bg-background'
+          : 'mb-4 space-y-2'
+      }
+      data-system-notices={scope}
+    >
       {notices.map((notice) => (
         <NoticeBanner
           key={notice.id}
           variant={notice.variant}
           title={notice.title}
-          className="items-start"
+          className={
+            attachedToHeader
+              ? 'items-start rounded-none px-4 py-2.5 sm:items-center sm:px-6'
+              : 'items-start'
+          }
           action={
-            <span className="flex items-center gap-2">
+            <span className="flex max-w-[45vw] items-center justify-end gap-2 sm:max-w-none">
               {notice.action_url && (
                 <a
                   href={notice.action_url}
                   target="_blank"
                   rel="noreferrer noopener"
-                  className="underline underline-offset-2"
+                  className="break-words text-right underline underline-offset-2"
                 >
                   {notice.action_label || t.readMore}
                 </a>

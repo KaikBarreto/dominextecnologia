@@ -44,7 +44,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCors } from "../_shared/cors.ts";
 import { asaas, AsaasConfigError, AsaasApiError } from "../_shared/asaas-client.ts";
-import { authorizeAsaasCompany } from "../_shared/asaas-auth.ts";
+import { authorizeAsaasCompanyManager } from "../_shared/asaas-auth.ts";
 import { applyWrite, tryWrite, WriteWarnings } from "../_shared/db-write.ts";
 import {
   calculateUpgradeProration,
@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
       billing_cycle === "yearly" ? "yearly" : "monthly";
 
     // --- Auth: própria empresa OU super_admin ---
-    const auth = await authorizeAsaasCompany(
+    const auth = await authorizeAsaasCompanyManager(
       supabase,
       req.headers.get("Authorization"),
       company_id,

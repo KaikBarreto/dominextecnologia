@@ -5,11 +5,12 @@
 // (logo do tenant e assinatura do RT) e desenhar a página.
 //
 // O que ele NÃO faz: decidir se a arte está ligada. Isso é do chamador — e a
-// regra é simples e não pode regredir: **sem slug de arte, o Certificado sai
-// no layout de texto puro de sempre.**
+// regra atual: **sem slug de arte, o Certificado usa Conformidade**, modelo
+// institucional que preserva a leitura e a identidade do tenant.
 // =============================================================================
 
-import { PDFDocument } from "https://esm.sh/pdf-lib@1.17.1";
+import { PDFDocument, rgb } from "https://esm.sh/pdf-lib@1.17.1";
+import * as qrCodeModule from "https://esm.sh/qrcode@1.5.4";
 
 import {
   PmocVariableContext,
@@ -22,6 +23,20 @@ import {
   type DocArtImageSources,
 } from "./spec-pdf.ts";
 import type { DocArtConfig } from "./types.ts";
+import { drawCertificateGeneratedByFooter } from "../pmoc-templates/footer.ts";
+import { idealForeground, mmToPt, resolveTheme } from "./resolve.ts";
+
+type QrCodeApi = {
+  toDataURL: (value: string, options: {
+    errorCorrectionLevel: "M";
+    margin: number;
+    width: number;
+    color: { dark: string; light: string };
+  }) => Promise<string>;
+};
+const QRCode = (
+  (qrCodeModule as unknown as { default?: QrCodeApi }).default ?? qrCodeModule
+) as QrCodeApi;
 
 /**
  * Arte efetiva de um contrato: o que o contrato definiu, senão o padrão da
@@ -34,8 +49,7 @@ export function resolveEffectiveArt(
   companySlug: string | null | undefined,
   companyConfig: unknown,
 ): { slug: string; config: DocArtConfig | undefined } | null {
-  const slug = contractSlug ?? companySlug ?? null;
-  if (!slug) return null;
+  const slug = contractSlug ?? companySlug ?? "aurora";
   if (!getDocArtTemplate(slug)) {
     // Slug gravado por uma versão futura/removida: volta pro texto puro em vez
     // de cair num default qualquer.
@@ -83,11 +97,39 @@ export interface DrawCertificadoArtInput {
   signatureUrl: string | null;
   /** Cor da marca do tenant — vira o default do tema da arte. */
   brandPrimary?: string | null;
+  /** URL pública do registro canônico, também aplicada como link no selo. */
+  validationUrl?: string | null;
 }
 
 export interface DrawCertificadoArtResult {
   /** `true` quando o certificado saiu com linha em branco pra assinar à mão. */
   signaturePending: boolean;
+}
+
+function certificateBackgroundUrl(slug: string): string | null {
+  if (slug.startsWith("essencial-")) return null;
+  const baseUrl = (Deno.env.get("DOC_ART_BACKGROUND_BASE_URL") ?? "https://dominex.app")
+    .replace(/\/+$/, "");
+  return `${baseUrl}/images/certificate-backgrounds/${slug}.jpg`;
+}
+
+async function buildValidationQrPng(validationUrl: string | null | undefined): Promise<Uint8Array | null> {
+  if (!validationUrl || !/^https:\/\/dominex\.app\/c\/[A-Za-z0-9_-]{16}$/.test(validationUrl)) return null;
+  try {
+    const dataUrl = await QRCode.toDataURL(validationUrl, {
+      errorCorrectionLevel: "M",
+      margin: 1,
+      width: 256,
+      color: { dark: "#111111", light: "#FFFFFF" },
+    });
+    const encoded = dataUrl.split(",")[1];
+    if (!encoded) return null;
+    const binary = atob(encoded);
+    return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  } catch (error) {
+    console.warn("[doc-art] falha ao gerar QR de validação:", error);
+    return null;
+  }
 }
 
 /**
@@ -106,15 +148,48 @@ export async function drawCertificadoArtPage(
     ? ((await fetchImageBytes(input.config.logoUrl)) ?? input.logo)
     : input.logo;
 
-  const signature = await fetchImageBytes(input.signatureUrl);
+  const [signature, background, validationQrPng] = await Promise.all([
+    fetchImageBytes(input.signatureUrl),
+    fetchImageBytes(certificateBackgroundUrl(input.slug)),
+    buildValidationQrPng(input.validationUrl),
+  ]);
 
-  const images: DocArtImageSources = { logo, signature };
+  const images: DocArtImageSources = { logo, signature, background };
+  const brand = input.brandPrimary ? { primary: input.brandPrimary } : undefined;
+  const dark = idealForeground(resolveTheme(template, input.config, brand).paper) === '#ffffff';
 
+  const pagesBefore = pdf.getPageCount();
   await drawDocArtPage(pdf, template, input.config, {
     substitute: (html) => substituteVariables(html, input.variables),
-    brand: input.brandPrimary ? { primary: input.brandPrimary } : undefined,
+    brand,
     images,
+    validationUrl: input.validationUrl ?? undefined,
   });
+
+  // O motor pode paginar um tema. Toda pagina nova do certificado recebe a
+  // assinatura institucional, sem depender do toggle de rodape do tema.
+  const certificatePages = pdf.getPages().slice(pagesBefore);
+  const validationQr = validationQrPng ? await pdf.embedPng(validationQrPng) : null;
+  for (const page of certificatePages) {
+    await drawCertificateGeneratedByFooter(pdf, page, { dark });
+    if (validationQr) {
+      // Selo no canto inferior direito, maior e ainda fora da faixa vertical
+      // de validação. A quiet zone branca preserva leitura em temas escuros.
+      const size = mmToPt(18);
+      const plate = mmToPt(20);
+      const x = page.getWidth() - size - mmToPt(10);
+      const y = mmToPt(7);
+      page.drawRectangle({
+        x: x - mmToPt(1),
+        y: y - mmToPt(1),
+        width: plate,
+        height: plate,
+        color: rgb(1, 1, 1),
+        opacity: 0.9,
+      });
+      page.drawImage(validationQr, { x, y, width: size, height: size, opacity: 0.86 });
+    }
+  }
 
   return { signaturePending: signature === null };
 }

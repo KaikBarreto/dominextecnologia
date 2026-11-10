@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { MATERIAL_PURCHASE_REPORT_QUERY_KEY } from '@/hooks/useMaterialPurchaseReport';
 
 export interface DirectMaterialPurchaseItemInput {
   inventory_id: string;
@@ -71,6 +72,7 @@ export function useDirectMaterialPurchase() {
       queryClient.invalidateQueries({ queryKey: ['account-balances'] });
       queryClient.invalidateQueries({ queryKey: ['pdv-cofre-balance'] });
       queryClient.invalidateQueries({ queryKey: ['pdv-cash-session-detail'] });
+      queryClient.invalidateQueries({ queryKey: MATERIAL_PURCHASE_REPORT_QUERY_KEY });
       toast({ title: t.successTitle, description: t.successDescription });
     },
     onError: (error) => {

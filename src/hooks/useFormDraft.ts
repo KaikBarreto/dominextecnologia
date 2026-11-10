@@ -9,6 +9,22 @@ interface UseFormDraftOptions<T> {
   isEditing?: boolean;
   /** Keys to ignore when checking for meaningful data (e.g. default values) */
   ignoreKeys?: string[];
+  /** Coalesce mudanças antes de gravar; zero mantém a persistência síncrona dos formulários existentes. */
+  debounceMs?: number;
+}
+
+export type FormDraftSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+
+interface FormDraftView<T> {
+  contextKey: string;
+  showResumePrompt: boolean;
+  draftData: T | null;
+  status: FormDraftSaveStatus;
+  savedAt: number | null;
+}
+
+function createDraftView<T>(contextKey: string): FormDraftView<T> {
+  return { contextKey, showResumePrompt: false, draftData: null, status: 'idle', savedAt: null };
 }
 
 export interface UseFormDraftReturn<T> {
@@ -30,11 +46,16 @@ export interface UseFormDraftReturn<T> {
   clearDraft: () => void;
   acceptDraft: () => void;
   discardDraft: () => void;
+  /** Inicia outro preenchimento sem suspender o autosave; data preserva a primeira edição de um aviso não bloqueante. */
+  startNewDraft: (data?: T) => void;
   showResumePrompt: boolean;
+  status: FormDraftSaveStatus;
+  /** Momento da última escrita bem-sucedida nesta sessão/contexto. */
+  savedAt: number | null;
 }
 
 /** Default-like values that don't count as meaningful user input */
-function isMeaningfulValue(v: any): boolean {
+function isMeaningfulValue(v: unknown): boolean {
   if (v === '' || v === null || v === undefined || v === false) return false;
   if (typeof v === 'number' && v === 0) return false;
   if (Array.isArray(v) && v.length === 0) return false;
@@ -44,165 +65,275 @@ function isMeaningfulValue(v: any): boolean {
   return true;
 }
 
-export function useFormDraft<T extends Record<string, any>>({
+export function useFormDraft<T extends object>({
   key,
   isOpen,
   isEditing = false,
   ignoreKeys = [],
+  debounceMs = 0,
 }: UseFormDraftOptions<T>): UseFormDraftReturn<T> {
   const storageKey = `form-draft:${key}`;
-  const [showResumePrompt, setShowResumePrompt] = useState(false);
-  const [draftData, setDraftData] = useState<T | null>(null);
+  const [view, setView] = useState(() => createDraftView<T>(storageKey));
+  const contextKeyRef = useRef(storageKey);
+  const mountedRef = useRef(true);
   const suppressSaveRef = useRef(false);
+  const resumePendingRef = useRef(false);
   const initialSnapshotRef = useRef<string | null>(null);
-  // Último dado conhecido do formulário. Alimentado por `saveDraft` (enquanto o
-  // modal está aberto) e por `flush(data)` (no caminho de fechar). Serve pro
-  // flush do unmount persistir o valor mais recente mesmo quando o drawer mobile
-  // desmonta o conteúdo sem passar por um novo render com o estado atualizado.
+  const explicitNewDraftRef = useRef(false);
+  const hasActiveDraftRef = useRef(false);
   const lastDataRef = useRef<T | null>(null);
-  // `isEditing`/`ignoreKeys` em refs pra o cleanup de unmount (que roda uma única
-  // vez, deps []) e o flush enxergarem o valor corrente sem virarem dependência.
+  const lastPersistedRef = useRef<{ snapshot: string; savedAt: number } | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingRef = useRef<{ snapshot: string; data: T } | null>(null);
+  const generationRef = useRef(0);
   const isEditingRef = useRef(isEditing);
   isEditingRef.current = isEditing;
+  const isOpenRef = useRef(isOpen);
+  isOpenRef.current = isOpen;
   const ignoreKeysRef = useRef(ignoreKeys);
   ignoreKeysRef.current = ignoreKeys;
+  const debounceMsRef = useRef(debounceMs);
+  debounceMsRef.current = Math.max(0, debounceMs);
 
-  // Check for existing draft when modal opens (only for new records)
-  useEffect(() => {
-    if (isOpen && !isEditing) {
-      suppressSaveRef.current = false;
-      initialSnapshotRef.current = null;
-      // Sessão nova: zera o "último dado conhecido" (o baseline será registrado
-      // pelo 1º saveDraft do formulário recém-aberto).
-      lastDataRef.current = null;
-      try {
-        const raw = sessionStorage.getItem(storageKey);
-        if (raw) {
-          const parsed = JSON.parse(raw) as T;
-          const keysToCheck = Object.keys(parsed).filter(k => !ignoreKeys.includes(k));
-          const hasData = keysToCheck.some(k => isMeaningfulValue(parsed[k]));
-          if (hasData) {
-            setDraftData(parsed);
-            setShowResumePrompt(true);
-            return;
-          }
-        }
-      } catch {
-        // ignore
-      }
-      // No meaningful draft found — clear it
-      sessionStorage.removeItem(storageKey);
-      setDraftData(null);
-      setShowResumePrompt(false);
-    }
+  // Cancelamento síncrono na troca de escopo: um timer ou callback antigo nunca
+  // pode descarregar os dados da empresa/usuário anterior sob a chave nova.
+  if (contextKeyRef.current !== storageKey) {
+    if (timerRef.current !== null) clearTimeout(timerRef.current);
+    timerRef.current = null;
+    pendingRef.current = null;
+    generationRef.current += 1;
+    contextKeyRef.current = storageKey;
+    suppressSaveRef.current = false;
+    resumePendingRef.current = false;
+    initialSnapshotRef.current = null;
+    explicitNewDraftRef.current = false;
+    hasActiveDraftRef.current = false;
+    lastDataRef.current = null;
+    lastPersistedRef.current = null;
+  }
 
-    if (!isOpen) {
-      setShowResumePrompt(false);
-      suppressSaveRef.current = false;
-      initialSnapshotRef.current = null;
-    }
-  }, [isOpen, isEditing, storageKey]);
+  const updateView = useCallback((patch: Partial<Omit<FormDraftView<T>, 'contextKey'>>) => {
+    if (!mountedRef.current) return;
+    setView(previous => {
+      const current = previous.contextKey === contextKeyRef.current ? previous : createDraftView<T>(contextKeyRef.current);
+      if (current === previous && Object.entries(patch).every(([field, value]) => current[field as keyof typeof current] === value)) return previous;
+      return { ...current, ...patch };
+    });
+  }, []);
 
-  // Grava um snapshot sem passar pelo baseline. Usado pelo FLUSH (fechar/unmount):
-  // só persiste se o dado tem ALGUM campo com preenchimento REAL do usuário (mesma
-  // régua do `isMeaningfulValue` + `ignoreKeys` da detecção de rascunho na
-  // abertura). Assim o flush é robusto à ordem dos efeitos — não depende do
-  // baseline (que o efeito de `!isOpen` zera ao fechar) — e nunca grava o estado
-  // inicial vazio por cima de um rascunho bom.
+  const cancelPending = useCallback(() => {
+    if (timerRef.current !== null) clearTimeout(timerRef.current);
+    timerRef.current = null;
+    pendingRef.current = null;
+    generationRef.current += 1;
+  }, []);
+
+  const meaningful = (data: T) => Object.keys(data)
+    .some(field => !ignoreKeysRef.current.includes(field) && isMeaningfulValue(data[field as keyof T]));
+
+  const removeEmptyDraft = useCallback(() => {
+    cancelPending();
+    hasActiveDraftRef.current = false;
+    lastPersistedRef.current = null;
+    let status: FormDraftSaveStatus = 'idle';
+    try { sessionStorage.removeItem(contextKeyRef.current); } catch { status = 'error'; }
+    updateView({ draftData: null, showResumePrompt: false, status, savedAt: null });
+  }, [cancelPending, updateView]);
+
   const persistIfMeaningful = (data: T): void => {
-    if (isEditingRef.current || suppressSaveRef.current) return;
-    const keysToCheck = Object.keys(data).filter(k => !ignoreKeysRef.current.includes(k));
-    const hasData = keysToCheck.some(k => isMeaningfulValue(data[k]));
-    if (!hasData) return;
+    if (isEditingRef.current || suppressSaveRef.current || resumePendingRef.current) return;
     try {
-      sessionStorage.setItem(storageKey, JSON.stringify(data));
+      const snapshot = JSON.stringify(data);
+      if (!meaningful(data) || (!explicitNewDraftRef.current && snapshot === initialSnapshotRef.current)) {
+        updateView({ status: 'idle' });
+        return;
+      }
+      const previous = lastPersistedRef.current;
+      if (previous?.snapshot === snapshot && sessionStorage.getItem(contextKeyRef.current) === snapshot) {
+        updateView({ status: 'saved', savedAt: previous.savedAt });
+        return;
+      }
+      sessionStorage.setItem(contextKeyRef.current, snapshot);
+      const savedAt = Date.now();
+      hasActiveDraftRef.current = true;
+      lastPersistedRef.current = { snapshot, savedAt };
+      updateView({ status: 'saved', savedAt });
     } catch {
-      // storage full or unavailable
+      updateView({ status: 'error' });
     }
   };
-  // `persistIfMeaningful` é recriado a cada render (fecha sobre `storageKey`);
-  // guardado num ref pra o cleanup de unmount (deps []) chamar sempre a versão atual.
   const persistRef = useRef(persistIfMeaningful);
   persistRef.current = persistIfMeaningful;
 
   const saveDraft = useCallback((data: T) => {
-    if (isEditing || suppressSaveRef.current) return;
-
-    // Mantém o "último dado conhecido" fresco pro flush do fechar/unmount.
+    if (contextKeyRef.current !== storageKey || !isOpenRef.current || isEditingRef.current || suppressSaveRef.current || resumePendingRef.current) return;
     lastDataRef.current = data;
-
-    // Capture initial snapshot on first save call to compare later
-    const snapshot = JSON.stringify(data);
-    if (initialSnapshotRef.current === null) {
-      initialSnapshotRef.current = snapshot;
-      // Don't save the initial/default state
-      return;
-    }
-
-    // Only save if data has changed from the initial snapshot
-    if (snapshot === initialSnapshotRef.current) return;
-
     try {
-      sessionStorage.setItem(storageKey, snapshot);
+      const snapshot = JSON.stringify(data);
+      if (initialSnapshotRef.current === null) {
+        initialSnapshotRef.current = snapshot;
+        if (!explicitNewDraftRef.current) return;
+      }
+      if (!Object.keys(data).some(field => !ignoreKeysRef.current.includes(field) && isMeaningfulValue(data[field as keyof T]))) {
+        if (hasActiveDraftRef.current) removeEmptyDraft();
+        else { cancelPending(); updateView({ status: 'idle' }); }
+        return;
+      }
+      if (!explicitNewDraftRef.current && snapshot === initialSnapshotRef.current) {
+        cancelPending();
+        updateView({ status: 'idle' });
+        return;
+      }
+      if (pendingRef.current?.snapshot === snapshot) return;
+      if (lastPersistedRef.current?.snapshot === snapshot) {
+        cancelPending();
+        persistRef.current(data);
+        return;
+      }
+      cancelPending();
+      hasActiveDraftRef.current = true;
+      updateView({ status: 'saving' });
+      if (debounceMsRef.current === 0) {
+        persistRef.current(data);
+        return;
+      }
+      pendingRef.current = { snapshot, data };
+      const generation = generationRef.current;
+      timerRef.current = setTimeout(() => {
+        if (generation !== generationRef.current || contextKeyRef.current !== storageKey) return;
+        const pending = pendingRef.current;
+        timerRef.current = null;
+        pendingRef.current = null;
+        if (pending && isOpenRef.current) persistRef.current(pending.data);
+      }, debounceMsRef.current);
     } catch {
-      // storage full or unavailable
+      cancelPending();
+      updateView({ status: 'error' });
     }
-  }, [storageKey, isEditing]);
+  }, [storageKey, cancelPending, updateView, removeEmptyDraft]);
 
-  // Persiste sincronamente o último dado conhecido (respeitando a régua de
-  // preenchimento real). Chamar no caminho de FECHAR (com o snapshot atual) e/ou
-  // no unmount — garante que o último valor digitado sobreviva mesmo quando o
-  // efeito de save gated em `isOpen` já rodou com `isOpen=false` (race do drawer).
   const flush = useCallback((data?: T) => {
+    if (contextKeyRef.current !== storageKey) return;
+    cancelPending();
+    if (isEditingRef.current || suppressSaveRef.current || resumePendingRef.current) return;
     if (data !== undefined) lastDataRef.current = data;
     const latest = lastDataRef.current;
-    if (latest == null) return;
-    persistRef.current(latest);
-  }, []);
+    // Antes de fechar, data ainda representa o formulário visível. Depois do
+    // fechamento, um reset vazio não pode apagar o último rascunho válido.
+    if (data !== undefined && isOpenRef.current && hasActiveDraftRef.current && !Object.keys(data).some(field => !ignoreKeysRef.current.includes(field) && isMeaningfulValue(data[field as keyof T]))) {
+      removeEmptyDraft();
+      return;
+    }
+    if (latest != null) persistRef.current(latest);
+  }, [storageKey, cancelPending, removeEmptyDraft]);
 
-  // Rede de segurança do MOBILE: o drawer vaul desmonta o conteúdo ao fechar. Se
-  // um caminho de fechar não chamou `flush` (ex.: unmount abrupto), o cleanup
-  // persiste o último dado conhecido antes de sumir.
   useEffect(() => {
+    cancelPending();
+    if (!isOpen) {
+      // O baseline e a supressão ficam intactos até a próxima abertura, para um
+      // flush de fechamento não ressuscitar dados após limpar/descartar.
+      flush();
+      resumePendingRef.current = false;
+      updateView({ showResumePrompt: false });
+      return;
+    }
+    suppressSaveRef.current = false;
+    resumePendingRef.current = false;
+    initialSnapshotRef.current = null;
+    explicitNewDraftRef.current = false;
+    hasActiveDraftRef.current = false;
+    lastDataRef.current = null;
+    lastPersistedRef.current = null;
+    updateView({ ...createDraftView<T>(storageKey) });
+    if (isEditing) return;
+    try {
+      const raw = sessionStorage.getItem(storageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw) as T;
+        if (parsed && typeof parsed === 'object' && meaningful(parsed)) {
+          resumePendingRef.current = true;
+          updateView({ draftData: parsed, showResumePrompt: true });
+          return;
+        }
+        sessionStorage.removeItem(storageKey);
+      }
+    } catch {
+      updateView({ status: 'error' });
+    }
+    // Opções de meaningful são lidas por ref; status e novos arrays de ignoreKeys
+    // não podem reinicializar a sessão nem mudar a identidade de saveDraft.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, isEditing, storageKey, cancelPending, flush, updateView]);
+
+  useEffect(() => {
+    mountedRef.current = true;
     return () => {
+      mountedRef.current = false;
+      cancelPending();
       const latest = lastDataRef.current;
       if (latest != null) persistRef.current(latest);
     };
-    // Cleanup-only: roda só no unmount. `persistRef`/`lastDataRef` são refs estáveis.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [cancelPending]);
 
   const clearDraft = useCallback(() => {
-    sessionStorage.removeItem(storageKey);
-    setDraftData(null);
-    setShowResumePrompt(false);
+    if (contextKeyRef.current !== storageKey) return;
+    cancelPending();
     suppressSaveRef.current = true;
-    // Descarta o último dado conhecido pra o flush do unmount não ressuscitar o
-    // rascunho já limpo (ex.: após criar o contrato com sucesso).
+    resumePendingRef.current = false;
     lastDataRef.current = null;
-  }, [storageKey]);
+    lastPersistedRef.current = null;
+    hasActiveDraftRef.current = false;
+    let status: FormDraftSaveStatus = 'idle';
+    try { sessionStorage.removeItem(storageKey); } catch { status = 'error'; }
+    updateView({ draftData: null, showResumePrompt: false, status, savedAt: null });
+  }, [storageKey, cancelPending, updateView]);
 
   const acceptDraft = useCallback(() => {
-    setShowResumePrompt(false);
-  }, []);
+    if (contextKeyRef.current !== storageKey) return;
+    if (resumePendingRef.current) {
+      // A restauração já é uma escolha humana. O próximo snapshot completo
+      // deve ser escrito (incluindo novos campos), em vez de virar baseline.
+      explicitNewDraftRef.current = true;
+      hasActiveDraftRef.current = true;
+      initialSnapshotRef.current = null;
+    }
+    resumePendingRef.current = false;
+    updateView({ showResumePrompt: false });
+  }, [storageKey, updateView]);
 
-  const discardDraft = useCallback(() => {
-    sessionStorage.removeItem(storageKey);
-    setDraftData(null);
-    setShowResumePrompt(false);
-    // Prevent saving default values after discard until modal reopens
-    suppressSaveRef.current = true;
-    lastDataRef.current = null;
-  }, [storageKey]);
+  const startNewDraft = useCallback((data?: T) => {
+    if (contextKeyRef.current !== storageKey) return;
+    cancelPending();
+    suppressSaveRef.current = false;
+    resumePendingRef.current = false;
+    initialSnapshotRef.current = null;
+    // data é uma primeira edição humana, não um baseline/default do formulário.
+    explicitNewDraftRef.current = data !== undefined;
+    lastDataRef.current = data ?? null;
+    lastPersistedRef.current = null;
+    hasActiveDraftRef.current = data !== undefined;
+    let status: FormDraftSaveStatus = 'idle';
+    try {
+      sessionStorage.removeItem(storageKey);
+      if (data !== undefined) initialSnapshotRef.current = JSON.stringify(data);
+    } catch { status = 'error'; }
+    updateView({ draftData: null, showResumePrompt: false, status, savedAt: null });
+    if (data !== undefined && Object.keys(data).some(field => !ignoreKeysRef.current.includes(field) && isMeaningfulValue(data[field as keyof T]))) persistRef.current(data);
+  }, [storageKey, cancelPending, updateView]);
+
+  const currentView = view.contextKey === storageKey ? view : createDraftView<T>(storageKey);
 
   return {
-    hasDraft: !!draftData,
-    draftData,
+    hasDraft: !!currentView.draftData,
+    draftData: currentView.draftData,
     saveDraft,
     flush,
     clearDraft,
     acceptDraft,
-    discardDraft,
-    showResumePrompt,
+    discardDraft: clearDraft,
+    startNewDraft,
+    showResumePrompt: currentView.showResumePrompt,
+    status: currentView.status,
+    savedAt: currentView.savedAt,
   };
 }

@@ -1,8 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
+  DEFAULT_SERVICE_ORDER_BUDGET_PRICING,
   toServiceOrderBudgetPayload,
+  toServiceOrderBudgetPricingPayload,
   type ServiceOrderBudgetItem,
+  type ServiceOrderBudgetPricing,
 } from '@/lib/serviceOrderBudget';
 
 export const SERVICE_ORDER_BUDGET_KEY = 'service-order-budget';
@@ -24,10 +27,12 @@ export interface ServiceOrderEquipmentServiceType {
 export async function syncServiceOrderBudget(
   serviceOrderId: string,
   items: ServiceOrderBudgetItem[],
+  pricing?: ServiceOrderBudgetPricing,
 ) {
   const { data, error } = await supabase.rpc('sync_service_order_budget', {
     p_service_order_id: serviceOrderId,
     p_items: toServiceOrderBudgetPayload(items),
+    p_pricing: toServiceOrderBudgetPricingPayload(pricing ?? DEFAULT_SERVICE_ORDER_BUDGET_PRICING, items),
   });
   if (error) throw error;
   return data;

@@ -78,6 +78,7 @@ import type {
   PortalEquipmentFieldConfig,
 } from '@/types/pmocPortal';
 import type { OsStatus, OsType } from '@/types/database';
+import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
 import {
   getDocumentValidityStatus,
   getValidityLabel,
@@ -782,7 +783,11 @@ function PortalContent({
                 {t.historyPmocDesc}
               </p>
             </div>
-            <PmocExecutionHistoryView rows={executionRows} showHeader={false} />
+            <PmocExecutionHistoryView
+              rows={executionRows}
+              showHeader={false}
+              equipmentLabels={Object.fromEntries(equipment.map((item) => [item.id, item.labels ?? []]))}
+            />
           </div>
         )}
         {/* Cobranças: lista de cobranças do cliente (Onda E). */}
@@ -1385,7 +1390,7 @@ function EquipmentCard({
 
       {/* Texto */}
       <div className="min-w-0 flex-1">
-        <p className="break-words text-sm font-semibold leading-snug">{eq.name}</p>
+        <div className="flex min-w-0 flex-wrap items-center gap-2"><p className="break-words text-sm font-semibold leading-snug">{eq.name}</p><PartyLabelBadges labels={eq.labels} mode="summary" /></div>
         {(eq.brand || eq.model) && (
           <p className="mt-0.5 truncate text-xs text-muted-foreground">
             {[eq.brand, eq.model].filter(Boolean).join(' · ')}
@@ -1504,7 +1509,7 @@ function EquipmentDetail({
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <p className="break-words text-sm font-semibold leading-snug">{eq.name}</p>
+            <div className="flex min-w-0 flex-wrap items-center gap-2"><p className="break-words text-sm font-semibold leading-snug">{eq.name}</p><PartyLabelBadges labels={eq.labels} mode="summary" /></div>
             {(eq.brand || eq.model) && (
               <p className="mt-0.5 text-xs text-muted-foreground">
                 {[eq.brand, eq.model].filter(Boolean).join(' · ')}

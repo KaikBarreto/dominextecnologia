@@ -1,5 +1,5 @@
 // =============================================================================
-// Handler de CANCELAMENTO de NFS-e (rotas: nfse-cancel / fisqal-cancel-nfse).
+// Handler de CANCELAMENTO de NFS-e (rota: nfse-cancel).
 // =============================================================================
 // AUTENTICADA: Authorization Bearer + módulo 'nfe' ativo + can_manage_system.
 //
@@ -7,7 +7,7 @@
 //   - Carrega a emissão (escopo defensivo por company_id).
 //   - Idempotente: se já cancelada, devolve o estado atual (200).
 //   - Só cancela nota AUTORIZADA → senão 422 PT-BR.
-//   - Delega ao provedor ativo; atualiza status e insere nfse_events.
+//   - Delega ao motor próprio; atualiza status e insere nfse_events.
 // =============================================================================
 
 import {
@@ -15,10 +15,11 @@ import {
   corsHeaders,
   jsonResponse,
 } from "../fiscal-auth.ts";
-import { getProvider } from "../nfse-provider.ts";
+import { getNfseEngine } from "../nfse-provider.ts";
 import type { NfseProviderCtx } from "../nfse-provider.ts";
 import { NFSE_STATUS } from "../nfse-status.ts";
 import { clean, logId, providerErrorResponse } from "./common.ts";
+import { fiscalContextForEmission } from "./environment.ts";
 
 const TAG = "[nfse-cancel]";
 
@@ -48,13 +49,19 @@ export async function handleNfseCancel(req: Request): Promise<Response> {
     try {
       body = await req.json();
     } catch {
-      return jsonResponse({ error: "invalid_body", message: "Requisição inválida." }, 400);
+      return jsonResponse({
+        error: "invalid_body",
+        message: "Requisição inválida.",
+      }, 400);
     }
 
     const emissionId = clean(body?.emissionId);
     if (!emissionId) {
       return jsonResponse(
-        { error: "missing_emission", message: "Informe a emissão da nota fiscal." },
+        {
+          error: "missing_emission",
+          message: "Informe a emissão da nota fiscal.",
+        },
         400,
       );
     }
@@ -97,7 +104,7 @@ export async function handleNfseCancel(req: Request): Promise<Response> {
 
     const currentStatus = clean(emission.status).toLowerCase();
 
-    // ---- Idempotência: já cancelada → devolve o estado atual sem chamar o provedor.
+    // ---- Idempotência: já cancelada → devolve o estado atual sem chamar o motor.
     if (CANCELLED.has(currentStatus)) {
       return jsonResponse(
         { emission, status: NFSE_STATUS.CANCELADA, already_cancelled: true },
@@ -117,36 +124,68 @@ export async function handleNfseCancel(req: Request): Promise<Response> {
       );
     }
 
-    const referencia = clean(emission.fisqal_dps_id);
+    const referencia = clean(emission.chave_acesso) ||
+      clean(emission.referencia_fiscal);
     if (!referencia) {
       return jsonResponse(
         {
-          error: "no_fisqal_id",
-          message: "Esta nota ainda não possui identificador na emissão fiscal.",
+          error: "missing_fiscal_reference",
+          message:
+            "Esta nota ainda não possui identificador na emissão fiscal.",
         },
         409,
       );
     }
 
-    // ---- Provedor ativo.
+    // ---- Motor próprio.
     const { data: fiscal } = await supabase
       .from("company_fiscal_settings")
       .select("*")
       .eq("company_id", companyId)
       .maybeSingle();
+    const fiscalContext = fiscalContextForEmission(
+      (fiscal ?? {}) as Record<string, unknown>,
+      emission as Record<string, unknown>,
+    );
+    if (!fiscalContext) {
+      return jsonResponse(
+        {
+          error: "fiscal_environment_unknown",
+          message:
+            "Não foi possível confirmar o ambiente fiscal desta nota antiga. Fale com o suporte antes de cancelar.",
+        },
+        409,
+      );
+    }
     const ctx: NfseProviderCtx = {
       supabase,
       companyId,
-      fiscal: (fiscal ?? {}) as Record<string, unknown>,
+      fiscal: fiscalContext,
     };
-    const provider = getProvider(fiscal as Record<string, unknown> | null);
+    const engine = getNfseEngine();
 
-    const resultado = await provider.cancelar(ctx, referencia, motivo);
-    const newStatus = resultado.status;
+    const resultado = await engine.cancelar(ctx, referencia, motivo);
+    const statusRecebido = resultado.status;
+    const newStatus = statusRecebido === NFSE_STATUS.CANCELADA &&
+        resultado.confirmadoPeloFisco !== true
+      ? NFSE_STATUS.CONFIRMACAO_PENDENTE
+      : statusRecebido;
 
     const { data: updated, error: updErr } = await supabase
       .from("nfse_emissions")
-      .update({ status: newStatus })
+      .update({
+        status: newStatus,
+        status_fiscal_confirmado: resultado.confirmadoPeloFisco === true,
+        status_fiscal_confirmado_em: resultado.confirmadoPeloFisco === true
+          ? new Date().toISOString()
+          : null,
+        status_fiscal_fonte: resultado.confirmadoPeloFisco === true
+          ? (resultado.evidenciaFiscal?.fonte ?? "consulta_fiscal")
+          : null,
+        status_fiscal_evidencia: resultado.confirmadoPeloFisco === true
+          ? (resultado.evidenciaFiscal ?? null)
+          : null,
+      })
       .eq("id", emission.id)
       .eq("company_id", companyId)
       .select("*")
@@ -158,7 +197,10 @@ export async function handleNfseCancel(req: Request): Promise<Response> {
         message: updErr.message,
       });
       return jsonResponse(
-        { error: "persist_failed", message: "Falha ao atualizar o status da nota." },
+        {
+          error: "persist_failed",
+          message: "Falha ao atualizar o status da nota.",
+        },
         500,
       );
     }
@@ -172,7 +214,11 @@ export async function handleNfseCancel(req: Request): Promise<Response> {
       payload: { motivo: motivo || null, response: resultado.raw ?? null },
     });
 
-    return jsonResponse({ emission: updated, status: newStatus }, 200);
+    return jsonResponse({
+      emission: updated,
+      status: newStatus,
+      ...(resultado.orientacao ? { orientacao: resultado.orientacao } : {}),
+    }, 200);
   } catch (err) {
     const providerResp = providerErrorResponse(err);
     if (providerResp) return providerResp;
@@ -181,7 +227,10 @@ export async function handleNfseCancel(req: Request): Promise<Response> {
       message: (err as Error)?.message ?? String(err),
     });
     return jsonResponse(
-      { error: "internal_error", message: "Falha inesperada ao cancelar a nota." },
+      {
+        error: "internal_error",
+        message: "Falha inesperada ao cancelar a nota.",
+      },
       500,
     );
   }

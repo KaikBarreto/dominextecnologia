@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CustomerPortalSettings } from '@/hooks/useCustomerPortalSettings';
 import type { Customer } from '@/types/database';
 import { CustomerFormDialog } from './CustomerFormDialog';
+import { CustomersPageChrome } from './CustomersPageChrome';
 
 class ResizeObserverMock {
   observe() {}
@@ -14,6 +15,7 @@ vi.stubGlobal('ResizeObserver', ResizeObserverMock);
 
 const saveSettings = vi.fn();
 const toast = vi.fn();
+const createCustomer = vi.fn();
 let loadedSettings: CustomerPortalSettings | null = null;
 
 const DEFAULT_SETTINGS: CustomerPortalSettings = {
@@ -64,6 +66,43 @@ vi.mock('@/hooks/useCompanyModules', () => ({
   useCompanyModules: () => ({ hasModule: (code: string) => code !== 'pdv' }),
 }));
 
+vi.mock('@/hooks/useCustomers', () => ({
+  useCustomers: () => ({
+    createCustomer: {
+      mutateAsync: createCustomer,
+      isPending: false,
+    },
+  }),
+}));
+
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({
+    isAdminOrGestor: () => true,
+    hasPermission: () => true,
+  }),
+}));
+
+vi.mock('@/hooks/use-mobile', () => ({
+  useIsMobile: () => false,
+  useIsCompact: () => false,
+  useMediaBreakpoint: () => false,
+}));
+vi.mock('@/components/customers/CustomerOriginManagerDialog', () => ({
+  CustomerOriginManagerDialog: () => null,
+  CustomerOriginManagerContent: () => null,
+}));
+vi.mock('@/components/customers/CustomerSettingsDialog', () => ({ CustomerSettingsDialog: () => null }));
+vi.mock('@/hooks/usePartyLabels', () => ({
+  usePartyLabels: () => ({ labels: [], activeLabels: [], isLoading: false, labelIdsFor: () => [], setEntityLabels: { mutateAsync: vi.fn().mockResolvedValue(undefined) } }),
+}));
+vi.mock('@/hooks/usePartyFieldConfig', () => ({
+  usePartyFieldConfig: () => ({ fields: [] }),
+  missingRequiredPartyFields: () => [],
+}));
+vi.mock('@/components/customers/LeadCaptureManagerDialog', () => ({
+  LeadCaptureManagerDialog: () => null,
+}));
+
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast }) }));
 vi.mock('@/hooks/useFormDraft', () => ({
   useFormDraft: () => ({
@@ -103,11 +142,38 @@ function fillCustomerName(name = 'Cliente de teste') {
   });
 }
 
+function fillMobileDigitByDigit(digits: string) {
+  const input = screen.getByRole('textbox', { name: /celular/i });
+  for (let index = 1; index <= digits.length; index += 1) {
+    fireEvent.change(input, { target: { value: digits.slice(0, index) } });
+  }
+  return input;
+}
+
 describe('CustomerFormDialog — integração do Portal', () => {
   beforeEach(() => {
     loadedSettings = null;
     saveSettings.mockReset();
     toast.mockReset();
+    createCustomer.mockReset();
+  });
+
+  it('recebe do wrapper desktop o ID criado e salva as configurações do portal', async () => {
+    createCustomer.mockResolvedValue({ id: 'customer-created-on-desktop' });
+    saveSettings.mockResolvedValue({ ...DEFAULT_SETTINGS, token: 'portal-token' });
+
+    render(
+      <CustomersPageChrome activeTab="clientes" onTabChange={vi.fn()} />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /novo cliente/i }));
+    fillCustomerName('Cliente criado no desktop');
+    submitForm();
+
+    await waitFor(() => expect(saveSettings).toHaveBeenCalledWith(expect.objectContaining({
+      targetCustomerId: 'customer-created-on-desktop',
+    })));
+    expect(createCustomer).toHaveBeenCalledTimes(1);
   });
 
   it('não duplica o cliente quando salvar o portal falha e o usuário tenta novamente', async () => {
@@ -137,6 +203,45 @@ describe('CustomerFormDialog — integração do Portal', () => {
     await waitFor(() => expect(saveSettings).toHaveBeenCalledTimes(2));
     expect(onSubmit).toHaveBeenCalledTimes(1);
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it('preserva o opt-in de WhatsApp ao digitar o celular e respeita o opt-out manual', () => {
+    render(
+      <CustomerFormDialog open onOpenChange={vi.fn()} onSubmit={vi.fn()} />,
+    );
+
+    const mobileInput = fillMobileDigitByDigit('11933334444');
+    const optIn = screen.getByRole('switch', { name: 'Receber mensagens pelo WhatsApp' });
+
+    expect(optIn).not.toBeDisabled();
+    expect(optIn).toHaveAttribute('data-state', 'checked');
+
+    fireEvent.click(optIn);
+    expect(optIn).toHaveAttribute('data-state', 'unchecked');
+
+    fireEvent.change(mobileInput, { target: { value: '' } });
+    fillMobileDigitByDigit('11988887777');
+
+    expect(optIn).not.toBeDisabled();
+    expect(optIn).toHaveAttribute('data-state', 'unchecked');
+  });
+
+  it('força o opt-in para false no payload quando o celular continua inválido', async () => {
+    const onSubmit = vi.fn().mockResolvedValue({ id: 'customer-with-invalid-mobile' });
+    saveSettings.mockResolvedValue({ ...DEFAULT_SETTINGS, token: 'portal-token' });
+
+    render(
+      <CustomerFormDialog open onOpenChange={vi.fn()} onSubmit={onSubmit} />,
+    );
+
+    fillCustomerName();
+    fillMobileDigitByDigit('1199');
+    submitForm();
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
+      whatsapp_notifications_enabled: false,
+    }));
   });
 
   it('bloqueia cliente novo protegido até receber senha válida e confirmação', async () => {

@@ -15,6 +15,8 @@ import { forwardRef, useEffect, useMemo, useState } from 'react';
 import { loadDocArtFonts } from './fonts/load';
 import type { MeasureFn } from './inline';
 import { layoutParagraphs } from './inline';
+import { paginateDocArt } from './layout';
+import { logoPlateFromPng, UNKNOWN_LOGO_PLATE } from './logoContrast';
 import {
   alignOffsetMm,
   lineBaselineMm,
@@ -105,6 +107,8 @@ export interface DocArtSvgRendererProps {
   className?: string;
   /** `aria-label` da folha. Default descreve a arte. */
   title?: string;
+  pageIndex?: number;
+  onPageCountChange?: (count: number) => void;
 }
 
 /**
@@ -113,7 +117,7 @@ export interface DocArtSvgRendererProps {
  * qualquer tamanho sem perder fidelidade.
  */
 export const DocArtSvgRenderer = forwardRef<SVGSVGElement, DocArtSvgRendererProps>(
-  ({ template, config, substitute, brand, images, className, title }, ref) => {
+  ({ template, config, substitute, brand, images, className, title, pageIndex = 0, onPageCountChange }, ref) => {
     const art = useMemo(
       () => resolveDocArt(template, config, { substitute, brand }),
       [template, config, substitute, brand],
@@ -138,6 +142,23 @@ export const DocArtSvgRenderer = forwardRef<SVGSVGElement, DocArtSvgRendererProp
       // eslint-disable-next-line react-hooks/exhaustive-deps
       [fontsReady],
     );
+    const pages = useMemo(() => paginateDocArt(art, measures), [art, measures]);
+    const page = pages[Math.max(0, Math.min(pageIndex, pages.length - 1))];
+    useEffect(() => onPageCountChange?.(pages.length), [onPageCountChange, pages.length]);
+    const [logoPlate, setLogoPlate] = useState<string | null>(UNKNOWN_LOGO_PLATE);
+    useEffect(() => {
+      let alive = true;
+      setLogoPlate(UNKNOWN_LOGO_PLATE);
+      if (images?.logo) {
+        fetch(images.logo).then(async response => {
+          if (!response.ok) return UNKNOWN_LOGO_PLATE;
+          const bytes = new Uint8Array(await response.arrayBuffer());
+          if (bytes[0] === 137 && bytes[1] === 80) return logoPlateFromPng(bytes);
+          return bytes[0] === 255 && bytes[1] === 216 ? null : UNKNOWN_LOGO_PLATE;
+        }).then(plate => { if (alive) setLogoPlate(plate); }).catch(() => {});
+      }
+      return () => { alive = false; };
+    }, [images?.logo]);
 
     return (
       <svg
@@ -149,8 +170,8 @@ export const DocArtSvgRenderer = forwardRef<SVGSVGElement, DocArtSvgRendererProp
         aria-label={title ?? `Pré-visualização do certificado (modelo ${template.name})`}
         xmlns="http://www.w3.org/2000/svg"
       >
-        {art.shapes.map((shape, i) => (
-          <Shape key={i} shape={shape} images={images} measures={measures} />
+        {page.shapes.map((shape, i) => (
+          <Shape key={i} shape={shape} images={images} measures={measures} logoPlate={config?.logoPlate === 'none' ? null : logoPlate} />
         ))}
       </svg>
     );
@@ -167,9 +188,10 @@ interface ShapeProps {
   shape: ResolvedShape;
   images?: DocArtImageUrls;
   measures: Record<'sans' | 'display', MeasureFn>;
+  logoPlate: string | null;
 }
 
-function Shape({ shape, images, measures }: ShapeProps) {
+function Shape({ shape, images, measures, logoPlate }: ShapeProps) {
   switch (shape.kind) {
     case 'rect':
       return (
@@ -230,15 +252,16 @@ function Shape({ shape, images, measures }: ShapeProps) {
       const align = PRESERVE_X[shape.align ?? 'center'];
       const valign = PRESERVE_Y[shape.valign ?? 'middle'];
       const pad = shape.platePadding ?? 3;
+      const plate = shape.src === 'logo' ? logoPlate : shape.plate;
       return (
         <>
-          {shape.plate ? (
+          {plate ? (
             <rect
               x={shape.x - pad}
               y={shape.y - pad}
               width={shape.w + pad * 2}
               height={shape.h + pad * 2}
-              fill={shape.plate}
+              fill={plate}
             />
           ) : null}
           <image
@@ -247,7 +270,7 @@ function Shape({ shape, images, measures }: ShapeProps) {
           y={shape.y}
           width={shape.w}
           height={shape.h}
-            preserveAspectRatio={`${align}${valign} meet`}
+          preserveAspectRatio={shape.fit === 'stretch' ? 'none' : `${align}${valign} meet`}
             opacity={shape.opacity ?? 1}
           />
         </>
@@ -263,7 +286,7 @@ function Shape({ shape, images, measures }: ShapeProps) {
 }
 
 function TextBlock({ shape, measure }: { shape: ResolvedTextShape; measure: MeasureFn }) {
-  const lines = layoutParagraphs(shape.paragraphs, {
+  const lines = shape.lines ?? layoutParagraphs(shape.paragraphs, {
     // A caixa é em mm, a medição em pt — converte a largura disponível.
     maxWidth: shape.w * (72 / 25.4),
     size: shape.size,
@@ -293,6 +316,10 @@ function TextBlock({ shape, measure }: { shape: ResolvedTextShape; measure: Meas
         x={originX + ptToMm(piece.x)}
         y={y}
         fill={shape.color}
+        stroke={shape.outlineWidth ? shape.color : undefined}
+        strokeWidth={shape.outlineWidth ? ptToMm(shape.outlineWidth) : undefined}
+        strokeLinejoin={shape.outlineWidth ? 'round' : undefined}
+        paintOrder={shape.outlineWidth ? 'stroke fill' : undefined}
         fontFamily={FONT_STACK[shape.font]}
         fontSize={ptToMm(shape.size)}
         fontWeight={piece.bold ? 700 : 400}

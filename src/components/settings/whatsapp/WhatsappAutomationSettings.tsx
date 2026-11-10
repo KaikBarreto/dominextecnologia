@@ -32,6 +32,7 @@ import {
   type WhatsappAutomationPreferences,
   type WhatsappBillingEventKey,
   type WhatsappOsEventKey,
+  type WhatsappOsReminderTiming,
   type WhatsappTemplateStyle,
 } from '@/lib/whatsappAutomation';
 
@@ -83,12 +84,17 @@ const COPY = {
     days: 'dias',
     preview: 'Prévia da mensagem',
     previewHint: 'Dados ilustrativos — nenhuma mensagem será enviada nesta etapa.',
+    messageLanguageHint: 'As mensagens automáticas são enviadas em português (Brasil).',
     active: 'Ativa',
     inactive: 'Inativa',
     companyPreview: 'Sua empresa',
     illustrativePreview: 'Prévia ilustrativa',
     customerRule: 'Somente clientes com a opção “Receber mensagens pelo WhatsApp” ativa serão considerados.',
+    reminderWhen: 'Quando enviar o lembrete',
+    reminderWindowHint: 'O envio usa o horário dos lembretes em qualquer dia. Se a visita for antes da abertura da janela, o lembrete no dia não será enviado.',
+    reminderTimings: { day_before: '1 dia antes · recomendado', same_day: 'No dia' },
     events: {
+      scheduled_reminder: ['Lembrete de visita agendada', 'Antes da data marcada para a visita'],
       a_caminho: ['Técnico a caminho', 'Quando o técnico inicia o deslocamento'],
       em_andamento: ['Serviço iniciado', 'Quando o atendimento começa'],
       concluida: ['OS concluída', 'Quando a ordem de serviço é finalizada'],
@@ -107,9 +113,13 @@ const COPY = {
     templates: { automatic: 'Automatic rotation · recommended', objective: 'Objective', cordial: 'Friendly', detailed: 'Detailed' },
     osLink: 'Include work order tracking link', billingContent: 'Charge information', amount: 'Amount', paymentLink: 'Payment link',
     beforeDays: 'Days before', afterDays: 'Days after', days: 'days', preview: 'Message preview', previewHint: 'Illustrative data — no message will be sent at this stage.',
+    messageLanguageHint: 'Automatic messages are currently sent in Brazilian Portuguese.',
     active: 'Active', inactive: 'Inactive', companyPreview: 'Your company', illustrativePreview: 'Illustrative preview',
     customerRule: 'Only customers with “Receive WhatsApp messages” enabled will be considered.',
+    reminderWhen: 'When to send the reminder', reminderWindowHint: 'Sending uses the reminder hours on any day. If the visit is before the window opens, the same-day reminder will not be sent.',
+    reminderTimings: { day_before: '1 day before · recommended', same_day: 'On the day' },
     events: {
+      scheduled_reminder: ['Scheduled visit reminder', 'Before the scheduled visit date'],
       a_caminho: ['Technician on the way', 'When the technician starts travelling'], em_andamento: ['Service started', 'When the service begins'], concluida: ['Work order completed', 'When the work order is completed'],
       created: ['Charge created', 'Manual or created by a subscription'], before_due: ['Before due date', 'Configurable early reminder'], due_today: ['On due date', 'On the day the charge is due'], after_due: ['After due date', 'Only while the charge remains pending'],
     },
@@ -123,9 +133,13 @@ const COPY = {
     templates: { automatic: 'Rotación automática · recomendada', objective: 'Objetiva', cordial: 'Cordial', detailed: 'Detallada' },
     osLink: 'Incluir enlace de seguimiento de la orden', billingContent: 'Información del cobro', amount: 'Importe', paymentLink: 'Enlace de pago',
     beforeDays: 'Cuántos días antes', afterDays: 'Cuántos días después', days: 'días', preview: 'Vista previa', previewHint: 'Datos ilustrativos — no se enviará ningún mensaje en esta etapa.',
+    messageLanguageHint: 'Los mensajes automáticos se envían actualmente en portugués de Brasil.',
     active: 'Activa', inactive: 'Inactiva', companyPreview: 'Tu empresa', illustrativePreview: 'Vista previa ilustrativa',
     customerRule: 'Solo se considerarán clientes con “Recibir mensajes por WhatsApp” activo.',
+    reminderWhen: 'Cuándo enviar el recordatorio', reminderWindowHint: 'El envío usa el horario de recordatorios cualquier día. Si la visita es antes de la apertura, el recordatorio del mismo día no se enviará.',
+    reminderTimings: { day_before: '1 día antes · recomendado', same_day: 'El mismo día' },
     events: {
+      scheduled_reminder: ['Recordatorio de visita programada', 'Antes de la fecha programada para la visita'],
       a_caminho: ['Técnico en camino', 'Cuando el técnico inicia el desplazamiento'], em_andamento: ['Servicio iniciado', 'Cuando comienza la atención'], concluida: ['Orden finalizada', 'Cuando se completa la orden de trabajo'],
       created: ['Cobro generado', 'Manual o creado por una suscripción'], before_due: ['Antes del vencimiento', 'Recordatorio anticipado configurable'], due_today: ['En el vencimiento', 'El día del vencimiento'], after_due: ['Después del vencimiento', 'Solo si el cobro sigue pendiente'],
     },
@@ -140,16 +154,20 @@ const COPY = {
     templates: { automatic: 'Rotation automatique · recommandée', objective: 'Direct', cordial: 'Cordial', detailed: 'Détaillé' },
     osLink: 'Inclure le lien de suivi du bon', billingContent: 'Informations de facturation', amount: 'Montant', paymentLink: 'Lien de paiement',
     beforeDays: 'Jours avant', afterDays: 'Jours après', days: 'jours', preview: 'Aperçu du message', previewHint: 'Données illustratives — aucun message ne sera envoyé à ce stade.',
+    messageLanguageHint: 'Les messages automatiques sont actuellement envoyés en portugais du Brésil.',
     active: 'Active', inactive: 'Inactive', companyPreview: 'Votre entreprise', illustrativePreview: 'Aperçu illustratif',
     customerRule: 'Seuls les clients ayant activé « Recevoir des messages WhatsApp » seront concernés.',
+    reminderWhen: 'Quand envoyer le rappel', reminderWindowHint: 'L’envoi utilise les heures de rappel tous les jours. Si la visite précède l’ouverture, le rappel du jour ne sera pas envoyé.',
+    reminderTimings: { day_before: '1 jour avant · recommandé', same_day: 'Le jour même' },
     events: {
+      scheduled_reminder: ['Rappel de visite planifiée', 'Avant la date prévue de la visite'],
       a_caminho: ['Technicien en route', 'Quand le technicien commence le trajet'], em_andamento: ['Intervention commencée', 'Quand le service commence'], concluida: ['Bon terminé', 'Quand le bon de travail est finalisé'],
       created: ['Facture créée', 'Manuelle ou créée par un abonnement'], before_due: ['Avant l’échéance', 'Rappel anticipé configurable'], due_today: ['À l’échéance', 'Le jour où la facture arrive à échéance'], after_due: ['Après l’échéance', 'Uniquement si la facture reste impayée'],
     },
   },
 } as const;
 
-const OS_EVENTS: WhatsappOsEventKey[] = ['a_caminho', 'em_andamento', 'concluida'];
+const OS_EVENTS: WhatsappOsEventKey[] = ['scheduled_reminder', 'a_caminho', 'em_andamento', 'concluida'];
 const BILLING_EVENTS: WhatsappBillingEventKey[] = ['created', 'before_due', 'due_today', 'after_due'];
 
 function eventId(event: WhatsappAutomationEvent): string {
@@ -277,7 +295,6 @@ export function WhatsappAutomationSettings({
           <SegmentedControl
             value={domain}
             onValueChange={chooseDomain}
-            disabled={readOnly}
             className="[&_[role=radio][aria-checked=true]]:text-white"
             aria-label={copy.chooseEvent}
             options={[
@@ -304,77 +321,75 @@ export function WhatsappAutomationSettings({
                 return (
                   <div
                     key={eventId(event)}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setSelected(event)}
-                    onKeyDown={(keyboardEvent) => {
-                      if (keyboardEvent.key === 'Enter' || keyboardEvent.key === ' ') {
-                        keyboardEvent.preventDefault();
-                        setSelected(event);
-                      }
-                    }}
-                    /* O fundo cinza sozinho nao dizia que a linha estava
-                       selecionada nem que clicar seleciona: com um interruptor
-                       na direita, o clique parecia ser do interruptor. Agora a
-                       selecao tem faixa cheia a esquerda, icone saturado e o
-                       rotulo "Editando"; as nao selecionadas mostram a seta. */
+                    /* Selecao e switch sao controles irmaos: evita aninhar um
+                       controle interativo dentro de outro e preserva teclado e
+                       leitores de tela. */
                     className={cn(
-                      'relative flex w-full items-start gap-3 py-3 pl-4 pr-3 text-left transition-colors sm:pl-5 sm:pr-4',
+                      'relative flex w-full items-stretch transition-colors',
                       index > 0 && 'border-t',
-                      active ? 'bg-muted' : 'cursor-pointer hover:bg-muted/50',
+                      active ? 'bg-muted' : 'hover:bg-muted/50',
                     )}
-                    aria-pressed={active}
                   >
-                    {active && (
-                      <span className="absolute inset-y-0 left-0 w-1 bg-primary" aria-hidden="true" />
-                    )}
-                    <span className={cn(
-                      'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md',
-                      active ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground',
-                    )}>
-                      {event.domain === 'os' ? <Wrench className="h-4 w-4" /> : <CalendarClock className="h-4 w-4" />}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="flex flex-wrap items-center gap-2">
-                        <span className="text-sm font-medium">{title}</span>
-                        {active
-                          ? <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">{copy.editingBadge}</Badge>
-                          : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" aria-hidden="true" />}
+                    <button
+                      type="button"
+                      onClick={() => setSelected(event)}
+                      className="relative flex min-w-0 flex-1 items-start gap-3 py-3 pl-4 text-left sm:pl-5"
+                      aria-pressed={active}
+                    >
+                      {active && (
+                        <span className="absolute inset-y-0 left-0 w-1 bg-primary" aria-hidden="true" />
+                      )}
+                      <span className={cn(
+                        'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md',
+                        active ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground',
+                      )}>
+                        {event.domain === 'os' && event.key !== 'scheduled_reminder'
+                          ? <Wrench className="h-4 w-4" />
+                          : <CalendarClock className="h-4 w-4" />}
                       </span>
-                      <span className="block text-xs leading-relaxed text-muted-foreground">{description}</span>
-                    </span>
-                    <Switch
-                      checked={rule.enabled}
-                      onCheckedChange={(checked) => {
-                        setSelected(event);
-                        if (event.domain === 'os') {
-                          onPreferencesChange({
-                            ...preferences,
-                            os: {
-                              ...preferences.os,
-                              events: {
-                                ...preferences.os.events,
-                                [event.key]: { ...rule, enabled: checked },
+                      <span className="min-w-0 flex-1">
+                        <span className="flex flex-wrap items-center gap-2">
+                          <span className="text-sm font-medium">{title}</span>
+                          {active
+                            ? <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">{copy.editingBadge}</Badge>
+                            : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" aria-hidden="true" />}
+                        </span>
+                        <span className="block text-xs leading-relaxed text-muted-foreground">{description}</span>
+                      </span>
+                    </button>
+                    <div className="flex shrink-0 items-center px-3 sm:px-4">
+                      <Switch
+                        checked={rule.enabled}
+                        onCheckedChange={(checked) => {
+                          setSelected(event);
+                          if (event.domain === 'os') {
+                            onPreferencesChange({
+                              ...preferences,
+                              os: {
+                                ...preferences.os,
+                                events: {
+                                  ...preferences.os.events,
+                                  [event.key]: { ...rule, enabled: checked },
+                                },
                               },
-                            },
-                          });
-                        } else {
-                          onPreferencesChange({
-                            ...preferences,
-                            billing: {
-                              ...preferences.billing,
-                              events: {
-                                ...preferences.billing.events,
-                                [event.key]: { ...rule, enabled: checked },
+                            });
+                          } else {
+                            onPreferencesChange({
+                              ...preferences,
+                              billing: {
+                                ...preferences.billing,
+                                events: {
+                                  ...preferences.billing.events,
+                                  [event.key]: { ...rule, enabled: checked },
+                                },
                               },
-                            },
-                          });
-                        }
-                      }}
-                      onClick={(event) => event.stopPropagation()}
-                      disabled={readOnly}
-                      aria-label={`${copy.eventEnabled}: ${title}`}
-                    />
+                            });
+                          }
+                        }}
+                        disabled={readOnly || isSaving}
+                        aria-label={`${copy.eventEnabled}: ${title}`}
+                      />
+                    </div>
                   </div>
                 );
               })}
@@ -390,7 +405,7 @@ export function WhatsappAutomationSettings({
                   id="whatsapp-selected-event"
                   checked={selectedRule.enabled}
                   onCheckedChange={(checked) => updateSelectedRule({ enabled: checked })}
-                  disabled={readOnly}
+                  disabled={readOnly || isSaving}
                 />
               </div>
 
@@ -401,7 +416,7 @@ export function WhatsappAutomationSettings({
                 <Select
                   value={selectedRule.template}
                   onValueChange={(value) => updateSelectedRule({ template: value as WhatsappTemplateStyle })}
-                  disabled={readOnly}
+                  disabled={readOnly || isSaving}
                 >
                   <SelectTrigger id="whatsapp-template"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -414,16 +429,44 @@ export function WhatsappAutomationSettings({
               </div>
 
               {selected.domain === 'os' ? (
-                <OptionRow
-                  icon={Link2}
-                  label={copy.osLink}
-                  checked={preferences.os.includeLink}
-                  disabled={readOnly}
-                  onCheckedChange={(includeLink) => onPreferencesChange({
-                    ...preferences,
-                    os: { ...preferences.os, includeLink },
-                  })}
-                />
+                <>
+                  {selected.key === 'scheduled_reminder' && (
+                    <div className="space-y-2">
+                      <Label>{copy.reminderWhen}</Label>
+                      <SegmentedControl
+                        value={preferences.os.events.scheduled_reminder.timing}
+                        onValueChange={(timing) => onPreferencesChange({
+                          ...preferences,
+                          os: {
+                            ...preferences.os,
+                            events: {
+                              ...preferences.os.events,
+                              scheduled_reminder: {
+                                ...preferences.os.events.scheduled_reminder,
+                                timing: timing as WhatsappOsReminderTiming,
+                              },
+                            },
+                          },
+                        })}
+                        disabled={readOnly || isSaving}
+                        aria-label={copy.reminderWhen}
+                        options={(Object.keys(copy.reminderTimings) as WhatsappOsReminderTiming[])
+                          .map((value) => ({ value, label: copy.reminderTimings[value] }))}
+                      />
+                      <p className="text-xs text-muted-foreground">{copy.reminderWindowHint}</p>
+                    </div>
+                  )}
+                  <OptionRow
+                    icon={Link2}
+                    label={copy.osLink}
+                    checked={preferences.os.includeLink}
+                    disabled={readOnly || isSaving}
+                    onCheckedChange={(includeLink) => onPreferencesChange({
+                      ...preferences,
+                      os: { ...preferences.os, includeLink },
+                    })}
+                  />
+                </>
               ) : (
                 <>
                   {(selected.key === 'before_due' || selected.key === 'after_due') && (
@@ -444,7 +487,7 @@ export function WhatsappAutomationSettings({
                               : { daysAfterDue: value });
                           }}
                           className="w-24"
-                          disabled={readOnly}
+                          disabled={readOnly || isSaving}
                         />
                         <span className="text-sm text-muted-foreground">{copy.days}</span>
                       </div>
@@ -457,8 +500,8 @@ export function WhatsappAutomationSettings({
                       <p className="text-xs text-muted-foreground">{copy.events[selected.key][1]}</p>
                     </div>
                     <div className="grid gap-2 sm:grid-cols-2">
-                      <OptionRow icon={Banknote} label={copy.amount} compact checked={preferences.billing.includeAmount} disabled={readOnly} onCheckedChange={(includeAmount) => updateBilling({ includeAmount })} />
-                      <OptionRow icon={ExternalLink} label={copy.paymentLink} compact checked={preferences.billing.includePaymentLink} disabled={readOnly} onCheckedChange={(includePaymentLink) => updateBilling({ includePaymentLink })} />
+                      <OptionRow icon={Banknote} label={copy.amount} compact checked={preferences.billing.includeAmount} disabled={readOnly || isSaving} onCheckedChange={(includeAmount) => updateBilling({ includeAmount })} />
+                      <OptionRow icon={ExternalLink} label={copy.paymentLink} compact checked={preferences.billing.includePaymentLink} disabled={readOnly || isSaving} onCheckedChange={(includePaymentLink) => updateBilling({ includePaymentLink })} />
                     </div>
                   </div>
                 </>
@@ -477,6 +520,7 @@ export function WhatsappAutomationSettings({
                 <div>
                   <h3 className="text-sm font-semibold">{copy.preview}</h3>
                   <p className="text-xs text-muted-foreground">{copy.previewHint}</p>
+                  <p className="text-xs text-muted-foreground">{copy.messageLanguageHint}</p>
                 </div>
                 {selectedRule.enabled ? (
                   <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">

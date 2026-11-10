@@ -33,7 +33,7 @@ export function DraftResumeDialog({ open, onResume, onDiscard }: DraftResumeDial
             <DrawerDescription>{description}</DrawerDescription>
           </DrawerHeader>
           <DrawerFooter className="flex-row gap-2">
-            <Button variant="outline" onClick={onDiscard} className="flex-1">
+            <Button variant="cancel" onClick={onDiscard} className="flex-1">
               <RotateCcw className="mr-2 h-4 w-4" />
               Começar do zero
             </Button>

@@ -47,7 +47,7 @@ const ROUTE_TITLES: Record<string, string> = {
 };
 
 const SUFFIX = " | Dominex";
-const DEFAULT_TITLE = "Dominex — Gestão de Equipes de Campo e Ordens de Serviço";
+const DEFAULT_TITLE = "Dominex | Gestão de Equipes de Campo e Ordens de Serviço";
 
 /**
  * Resolve o nome limpo da tela atual (sem sufixo " | Dominex") a partir do pathname.
@@ -72,6 +72,7 @@ export const useResolvedRouteTitle = (): string => {
     else if (pathname.startsWith("/orcamento/")) title = "Orçamento";
     else if (pathname.startsWith("/proposta/")) title = "Proposta";
     else if (pathname.startsWith("/portal/")) title = "Portal do Cliente";
+    else if (pathname.startsWith("/c/")) title = "Validar certificado PMOC";
   }
 
   return title ?? "";
