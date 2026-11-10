@@ -144,6 +144,43 @@ export function useFormTemplates() {
     },
   });
 
+  const duplicateTemplate = useMutation({
+    mutationFn: async ({
+      sourceId,
+      baseName,
+      copyCount,
+    }: {
+      sourceId: string;
+      baseName: string;
+      copyCount: number;
+    }) => {
+      const { data, error } = await supabase.rpc('duplicate_form_template', {
+        p_source_id: sourceId,
+        p_base_name: baseName.trim(),
+        p_copy_count: copyCount,
+      });
+
+      if (error) throw error;
+      return data ?? [];
+    },
+    onSuccess: (copies) => {
+      queryClient.invalidateQueries({ queryKey: ['form-templates'] });
+      const count = Array.isArray(copies) ? copies.length : 0;
+      toast({
+        title: count === 1
+          ? 'Checklist duplicado como inativo'
+          : `${count} checklists duplicados como inativos`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Erro ao duplicar checklist',
+        description: getErrorMessage(error),
+        variant: 'destructive',
+      });
+    },
+  });
+
   const createQuestion = useMutation({
     mutationFn: async (question: FormQuestionInsert) => {
       const { data, error } = await supabase
@@ -271,6 +308,7 @@ export function useFormTemplates() {
     createTemplate,
     updateTemplate,
     deleteTemplate,
+    duplicateTemplate,
     createQuestion,
     createQuestionsBatch,
     updateQuestion,

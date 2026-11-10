@@ -1,7 +1,11 @@
 import { useState } from 'react';
-import { Check, CheckSquare2, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { Check, CheckSquare2, Copy, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { DuplicateEntityDialog } from '@/components/ui/DuplicateEntityDialog';
 import { Input } from '@/components/ui/input';
+import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
 import {
   createCrmCardItemId,
   useCrmChecklistTemplates,
@@ -14,8 +18,18 @@ interface CrmChecklistTemplatesManagerProps {
 }
 
 export function CrmChecklistTemplatesManager({ admin = false }: CrmChecklistTemplatesManagerProps) {
-  const { templates, isLoading, createTemplate, updateTemplate, deleteTemplate } = useCrmChecklistTemplates(admin);
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.crm.checklistTemplates;
+  const {
+    templates,
+    isLoading,
+    createTemplate,
+    updateTemplate,
+    deleteTemplate,
+    duplicateTemplate,
+  } = useCrmChecklistTemplates(admin);
   const [editing, setEditing] = useState<CrmChecklistTemplate | null>(null);
+  const [duplicating, setDuplicating] = useState<CrmChecklistTemplate | null>(null);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
   const [items, setItems] = useState<CrmChecklistTemplateItem[]>([]);
@@ -110,14 +124,59 @@ export function CrmChecklistTemplatesManager({ admin = false }: CrmChecklistTemp
                 <p className="truncate font-medium">{template.name}</p>
                 <p className="text-xs text-muted-foreground">{template.items.length} {template.items.length === 1 ? 'item' : 'itens'}</p>
               </div>
-              <div className="flex shrink-0 items-center">
-                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => beginEdit(template)} aria-label={`Editar ${template.name}`}><Pencil className="h-3.5 w-3.5" /></Button>
-                <Button size="icon" variant="destructive-ghost" className="h-8 w-8" onClick={() => deleteTemplate.mutate(template.id)} aria-label={`Excluir ${template.name}`}><Trash2 className="h-3.5 w-3.5" /></Button>
-              </div>
+              <RowActionsMenu
+                ariaLabel={`Ações de ${template.name}`}
+                actions={[
+                  {
+                    label: t.actionDuplicate,
+                    icon: Copy,
+                    onClick: () => setDuplicating(template),
+                  },
+                  {
+                    label: 'Editar',
+                    icon: Pencil,
+                    variant: 'edit',
+                    onClick: () => beginEdit(template),
+                  },
+                  {
+                    label: 'Excluir',
+                    icon: Trash2,
+                    variant: 'delete',
+                    onClick: () => deleteTemplate.mutate(template.id),
+                  },
+                ]}
+              />
             </div>
           ))}
         </div>
       )}
+
+      <DuplicateEntityDialog
+        open={!!duplicating}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setDuplicating(null);
+        }}
+        initialName={duplicating ? `${duplicating.name} - ${t.duplicateNameSuffix}` : ''}
+        isPending={duplicateTemplate.isPending}
+        labels={{
+          title: t.duplicateTitle,
+          description: t.duplicateDescription,
+          nameLabel: t.duplicateNameLabel,
+          quantityLabel: t.duplicateQuantityLabel,
+          quantityHint: t.duplicateQuantityHint,
+          copyHint: t.duplicateCopyHint,
+          cancel: t.duplicateCancel,
+          confirm: t.duplicateConfirm,
+          confirming: t.duplicateConfirming,
+          nameRequired: t.duplicateNameRequired,
+          quantityInvalid: t.duplicateQuantityInvalid,
+        }}
+        onConfirm={async (baseName, copyCount) => {
+          if (!duplicating) return;
+          await duplicateTemplate.mutateAsync({ source: duplicating, baseName, copyCount });
+          setDuplicating(null);
+        }}
+      />
     </div>
   );
 }

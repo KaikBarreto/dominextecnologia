@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, ArrowDownAZ, Plus, FileText, Trash2, Pencil, BookOpen, RotateCcw } from 'lucide-react';
+import { AlertCircle, ArrowDownAZ, Plus, FileText, Trash2, Pencil, BookOpen, Copy, RotateCcw } from 'lucide-react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,8 @@ import { ChecklistCatalogModal } from '@/components/technician/ChecklistCatalogM
 import { ChecklistPreviewDialog } from '@/components/service-orders/ChecklistPreviewDialog';
 import { ChecklistOsPreview } from '@/components/service-orders/ChecklistOsPreview';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DuplicateEntityDialog } from '@/components/ui/DuplicateEntityDialog';
+import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import type { FormQuestion, FormTemplate } from '@/types/database';
 import { ListDetailLayout, type ListDetailSortOption } from '@/components/ui/ListDetailLayout';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
@@ -35,7 +37,7 @@ import { useDataPagination } from '@/hooks/useDataPagination';
 import ChecklistDetail from '@/pages/ChecklistDetail';
 
 type TemplateWithServiceIds = { service_type_ids?: string[] };
-type ChecklistTemplate = FormTemplate & { questions?: FormQuestion[] };
+type ChecklistTemplate = FormTemplate & { questions: FormQuestion[] };
 
 function getServiceIds(template: unknown): string[] | undefined {
   return (template as TemplateWithServiceIds).service_type_ids;
@@ -51,6 +53,7 @@ export function ChecklistsPanel() {
   const [allServices, setAllServices] = useState(true);
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [duplicating, setDuplicating] = useState<ChecklistTemplate | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailMode, setDetailMode] = useState<'preview' | 'edit'>('preview');
   // Prévia em tela cheia com o visual do preenchimento da OS.
@@ -66,7 +69,7 @@ export function ChecklistsPanel() {
 
   const {
     templates, isLoading, isError, refetch,
-    createTemplate, updateTemplate, setTemplateServices, deleteTemplate,
+    createTemplate, updateTemplate, setTemplateServices, deleteTemplate, duplicateTemplate,
   } = useFormTemplates();
   const { serviceTypes } = useServiceTypes();
   const { categories: serviceTypeCategories } = useServiceTypeCategories();
@@ -112,8 +115,44 @@ export function ChecklistsPanel() {
         </span>
       ),
       trailing: <Badge variant="outline" className="px-1.5 py-0 text-[10px] tabular-nums">{questionsCount}</Badge>,
+      actions: (
+        <RowActionsMenu
+          ariaLabel={`${t.colActions}: ${template.name}`}
+          actions={[
+            {
+              label: t.actionDuplicate,
+              icon: Copy,
+              onClick: () => setDuplicating(template),
+            },
+            {
+              label: t.actionEditView,
+              icon: Pencil,
+              variant: 'edit',
+              onClick: () => {
+                setSelectedId(template.id);
+                setEditorInitialAction(undefined);
+                setEditorSession((current) => current + 1);
+                setDetailMode('edit');
+              },
+            },
+            showingInactive
+              ? {
+                  label: t.actionReactivate,
+                  icon: RotateCcw,
+                  variant: 'edit' as const,
+                  onClick: () => updateTemplate.mutate({ id: template.id, is_active: true }),
+                }
+              : {
+                  label: t.actionDelete,
+                  icon: Trash2,
+                  variant: 'delete' as const,
+                  onClick: () => setDeleteId(template.id),
+                },
+          ]}
+        />
+      ),
     };
-  }), [activeTemplates, serviceTypes, t]);
+  }), [activeTemplates, serviceTypes, showingInactive, t, updateTemplate]);
 
   const mobileTemplates = useMemo(() => {
     const query = mobileSearch.trim().toLocaleLowerCase(locale);
@@ -394,6 +433,12 @@ export function ChecklistsPanel() {
                   .replace('{n}', String(questionsCount));
                 const itemActions: ItemAction[] = [
                   {
+                    key: 'duplicate',
+                    label: t.actionDuplicate,
+                    icon: <Copy className="h-4 w-4" />,
+                    onClick: () => setDuplicating(template),
+                  },
+                  {
                     key: 'edit',
                     label: t.actionEditView,
                     icon: <Pencil className="h-4 w-4" />,
@@ -558,7 +603,40 @@ export function ChecklistsPanel() {
         templateId={previewTemplateId}
         open={!!previewTemplateId}
         onOpenChange={(o) => { if (!o) setPreviewTemplateId(null); }}
-        templates={activeTemplates as any}
+        templates={activeTemplates}
+      />
+
+      <DuplicateEntityDialog
+        open={!!duplicating}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setDuplicating(null);
+        }}
+        initialName={duplicating ? `${duplicating.name} - ${t.duplicateNameSuffix}` : ''}
+        isPending={duplicateTemplate.isPending}
+        labels={{
+          title: t.duplicateTitle,
+          description: t.duplicateDescription,
+          nameLabel: t.duplicateNameLabel,
+          quantityLabel: t.duplicateCountLabel,
+          quantityHint: t.duplicateCountHint,
+          copyHint: t.duplicateCopyHint,
+          cancel: t.btnCancel,
+          confirm: t.duplicateConfirm,
+          confirming: t.duplicateConfirming,
+          nameRequired: t.duplicateNameRequired,
+          quantityInvalid: t.duplicateCountInvalid,
+        }}
+        onConfirm={async (baseName, copyCount) => {
+          if (!duplicating) return;
+          await duplicateTemplate.mutateAsync({
+            sourceId: duplicating.id,
+            baseName,
+            copyCount,
+          });
+          setDuplicating(null);
+          setStatusTab('inactive');
+          setSelectedId(null);
+        }}
       />
 
       {/* Delete dialog */}

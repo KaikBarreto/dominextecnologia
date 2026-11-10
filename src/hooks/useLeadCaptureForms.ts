@@ -62,6 +62,17 @@ export interface LeadCaptureFormInput {
   success_message?: string | null;
 }
 
+export interface DuplicateLeadCaptureFormInput {
+  sourceId: string;
+  baseName: string;
+  copyCount: number;
+}
+
+export interface DuplicatedLeadCaptureForm {
+  id: string;
+  title: string;
+}
+
 export function useLeadCaptureForms() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -158,6 +169,37 @@ export function useLeadCaptureForms() {
     },
   });
 
+  const duplicateForm = useMutation({
+    mutationFn: async ({ sourceId, baseName, copyCount }: DuplicateLeadCaptureFormInput) => {
+      const { data, error } = await supabase.rpc('duplicate_lead_capture_form', {
+        p_source_id: sourceId,
+        p_base_name: baseName,
+        p_copy_count: copyCount,
+      });
+      if (error) throw error;
+      return (data ?? []) as DuplicatedLeadCaptureForm[];
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['lead-capture-forms'] });
+      queryClient.invalidateQueries({ queryKey: ['public-form-questions'] });
+      queryClient.invalidateQueries({ queryKey: ['public-form-question-counts'] });
+      const count = data.length || variables.copyCount;
+      toast({
+        title: count === 1 ? 'Formulário duplicado' : `${count} formulários duplicados`,
+        description: count === 1
+          ? 'A cópia está inativa para você revisar antes de publicar.'
+          : 'As cópias estão inativas para você revisar antes de publicar.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: 'destructive',
+        title: 'Não foi possível duplicar o formulário',
+        description: getErrorMessage(error),
+      });
+    },
+  });
+
   return {
     forms: formsQuery.data ?? [],
     isLoading: formsQuery.isLoading,
@@ -167,5 +209,6 @@ export function useLeadCaptureForms() {
     updateForm,
     toggleActive,
     deleteForm,
+    duplicateForm,
   };
 }

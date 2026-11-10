@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Pencil, Trash2, Link2, ClipboardList, MessageSquareText, UserPlus } from 'lucide-react';
+import { Plus, Pencil, Trash2, Link2, ClipboardList, MessageSquareText, UserPlus, Copy } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
+import { DuplicateEntityDialog } from '@/components/ui/DuplicateEntityDialog';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { useToast } from '@/hooks/use-toast';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -38,11 +39,12 @@ export function LeadCaptureManagerDialog({ open, onOpenChange }: Props) {
   const { toast } = useToast();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.customers.leadFormBuilder;
-  const { forms, isLoading, createForm, updateForm, toggleActive, deleteForm } = useLeadCaptureForms();
+  const { forms, isLoading, createForm, updateForm, toggleActive, deleteForm, duplicateForm } = useLeadCaptureForms();
   const { counts: questionCounts } = usePublicFormQuestionCounts();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<LeadCaptureForm | null>(null);
   const [toDelete, setToDelete] = useState<LeadCaptureForm | null>(null);
+  const [toDuplicate, setToDuplicate] = useState<LeadCaptureForm | null>(null);
   const [answersFor, setAnswersFor] = useState<LeadCaptureForm | null>(null);
 
   // `formId` vem do diálogo: id já gravado (edição, ou criação de uma tentativa
@@ -175,6 +177,11 @@ export function LeadCaptureManagerDialog({ open, onOpenChange }: Props) {
                         },
                       },
                       {
+                        label: t.actionDuplicate,
+                        icon: Copy,
+                        onClick: () => setToDuplicate(form),
+                      },
+                      {
                         label: t.actionDelete,
                         icon: Trash2,
                         variant: 'delete',
@@ -195,6 +202,34 @@ export function LeadCaptureManagerDialog({ open, onOpenChange }: Props) {
         form={editing}
         onSubmit={handleSubmit}
         isLoading={createForm.isPending || updateForm.isPending}
+      />
+
+      <DuplicateEntityDialog
+        open={!!toDuplicate}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setToDuplicate(null);
+        }}
+        initialName={t.duplicateNameSuggestion.replace('{name}', toDuplicate?.title ?? '')}
+        isPending={duplicateForm.isPending}
+        labels={{
+          title: t.duplicateTitle,
+          description: t.duplicateDescription,
+          nameLabel: t.duplicateNameLabel,
+          namePlaceholder: t.duplicateNamePlaceholder,
+          quantityLabel: t.duplicateQuantityLabel,
+          quantityHint: t.duplicateQuantityHint,
+          copyHint: t.duplicateInactiveHint,
+          cancel: t.duplicateCancel,
+          confirm: t.duplicateConfirm,
+          confirming: t.duplicating,
+          nameRequired: t.duplicateNameRequired,
+          quantityInvalid: t.duplicateQuantityInvalid,
+        }}
+        onConfirm={async (baseName, copyCount) => {
+          if (!toDuplicate) return;
+          await duplicateForm.mutateAsync({ sourceId: toDuplicate.id, baseName, copyCount });
+          setToDuplicate(null);
+        }}
       />
 
       <ResponsiveModal

@@ -18162,6 +18162,28 @@ export type Database = {
         Args: { p_title_id: string; p_user_id: string }
         Returns: boolean
       }
+      duplicate_form_template: {
+        Args: {
+          p_base_name: string
+          p_copy_count?: number
+          p_source_id: string
+        }
+        Returns: {
+          id: string
+          name: string
+        }[]
+      }
+      duplicate_lead_capture_form: {
+        Args: {
+          p_base_name: string
+          p_copy_count?: number
+          p_source_id: string
+        }
+        Returns: {
+          id: string
+          title: string
+        }[]
+      }
       edit_service_order_scope: {
         Args: { _items: Json; _service_order_id: string }
         Returns: Json
