@@ -16,6 +16,7 @@ import { isAllowedUploadUrl, isAnswerEmpty, type PublicFormAnswerValue, type Pub
 
 interface FormSubmissionsViewProps {
   form: Pick<LeadCaptureForm, 'id' | 'title'>;
+  initialSubmissionId?: string | null;
 }
 
 type Messages = ReturnType<typeof useMessages>;
@@ -70,11 +71,13 @@ function SubmissionCard({
   questions,
   t,
   onOpenImage,
+  highlighted,
 }: {
   submission: PublicFormSubmission;
   questions: PublicFormQuestion[];
   t: Messages;
   onOpenImage: (url: string, alt: string) => void;
+  highlighted: boolean;
 }) {
   const byId = useMemo(() => new Map(questions.map((question) => [question.id, question])), [questions]);
 
@@ -95,7 +98,7 @@ function SubmissionCard({
   const submittedAt = new Date(submission.submitted_at);
 
   return (
-    <article className="rounded-xl border bg-card">
+    <article className={highlighted ? 'rounded-xl border border-primary bg-card ring-2 ring-primary/20' : 'rounded-xl border bg-card'}>
       <header className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b px-3 py-2.5">
         <span className="text-sm font-medium tabular-nums">
           {Number.isNaN(submittedAt.getTime()) ? '-' : format(submittedAt, 'dd/MM/yyyy HH:mm')}
@@ -151,7 +154,7 @@ function SubmissionCard({
  * Respostas de um formulário, pergunta a pergunta (rótulo da pergunta, nunca o
  * id). Só leitura. Foto e assinatura abrem no viewer dedicado.
  */
-export function FormSubmissionsView({ form }: FormSubmissionsViewProps) {
+export function FormSubmissionsView({ form, initialSubmissionId = null }: FormSubmissionsViewProps) {
   const t = useMessages();
   const { questions, isLoading: questionsLoading } = usePublicFormQuestions(form.id);
   const {
@@ -196,13 +199,16 @@ export function FormSubmissionsView({ form }: FormSubmissionsViewProps) {
       <p className="text-xs text-muted-foreground">
         {fillMessage(total === 1 ? t.subTotalOne : t.subTotalMany, { n: total })}
       </p>
-      {submissions.map((submission) => (
+      {[...submissions]
+        .sort((a, b) => Number(b.id === initialSubmissionId) - Number(a.id === initialSubmissionId))
+        .map((submission) => (
         <SubmissionCard
           key={submission.id}
           submission={submission}
           questions={questions}
           t={t}
           onOpenImage={(url, alt) => setImage({ url, alt })}
+          highlighted={submission.id === initialSubmissionId}
         />
       ))}
       {hasNextPage && (

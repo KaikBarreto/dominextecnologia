@@ -39,6 +39,11 @@ export default defineConfig(({ mode }) => ({
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
+        // Mantém o Workbox responsável por cache/update e acrescenta somente
+        // os eventos de Web Push. O script importado participa da verificação
+        // de atualização do service worker sem migrar toda a PWA para um SW
+        // customizado (reduz risco nos fluxos offline já estabilizados).
+        importScripts: ["/push-sw.js"],
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,otf}"],
         // Páginas estáticas servidas fora da SPA (public/<pasta>/index.html) não

@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.39.24";
+export const APP_VERSION = "1.39.25";
 
 export const VERSION_NOTES =
-  "A emissão de NFS-e agora respeita o dia fiscal correto e impede o envio de uma competência futura, evitando recusas na virada do dia.";
+  "A nova central de notificações avisa sobre agenda, pagamentos, chamados e formulários no sistema e no aparelho, com regras configuráveis por empresa e pessoa.";

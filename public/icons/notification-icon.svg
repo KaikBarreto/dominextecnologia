@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-label="Dominex">
+  <rect width="192" height="192" rx="48" fill="#09090b"/>
+  <g fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round" stroke-width="12">
+    <path d="M55 83a41 41 0 0 1 82 0c0 46 18 46 18 46H37s18 0 18-46Z"/>
+    <path d="M79 151a19 19 0 0 0 34 0"/>
+  </g>
+</svg>

@@ -7,6 +7,9 @@ import {
   Info,
   Wrench,
   Calendar,
+  CalendarDays,
+  ClipboardCheck,
+  CircleDollarSign,
   FileText,
   DollarSign,
   X,
@@ -32,8 +35,12 @@ export const ICON_MAP: Record<string, LucideIcon> = {
   info: Info,
   wrench: Wrench,
   calendar: Calendar,
+  'calendar-days': CalendarDays,
+  'clipboard-check': ClipboardCheck,
+  'circle-dollar-sign': CircleDollarSign,
   'file-text': FileText,
   'dollar-sign': DollarSign,
+  AlertTriangle: AlertCircle,
 };
 
 export function getNotificationIcon(name: string): LucideIcon {
@@ -48,8 +55,8 @@ interface NotificationItemProps {
 
 /**
  * Item individual da lista do sino. Usa tokens semânticos (`bg-card`,
- * `bg-muted/60`, `bg-primary`, `text-primary-foreground`) — sem cor Tailwind
- * crua. Botão X usa `hover:bg-destructive` (token de "excluir").
+ * `bg-muted/60`, `bg-foreground`, `text-background`) — sem usar o verde da
+ * marca como destaque. Botão X usa `hover:bg-destructive` (token de "excluir").
  */
 export function NotificationItem({ notification, onClick, onDismiss }: NotificationItemProps) {
   const Icon = getNotificationIcon(notification.icon);
@@ -66,7 +73,7 @@ export function NotificationItem({ notification, onClick, onDismiss }: Notificat
       <div
         className={cn(
           'shrink-0 mt-0.5 h-8 w-8 rounded-full flex items-center justify-center',
-          isUnread ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground',
+          isUnread ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground',
         )}
       >
         <Icon className="h-4 w-4" />
