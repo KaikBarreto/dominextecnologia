@@ -74,6 +74,8 @@ import { segmentsHaveTechTools } from '@/config/technicianArea';
 import { companyHasSegment, normalizeCompanySegments } from '@/utils/companySegments';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useLogoInk } from '@/hooks/useLogoInk';
+import { useNavSurfaceTone } from '@/hooks/useNavSurfaceTone';
+import { getLogoPlateTone } from '@/utils/logoInk';
 import { useSidebar } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 import { HelpCenterDrawer } from '@/components/layout/HelpCenterDrawer';
@@ -251,16 +253,13 @@ export function SidebarMenuContent() {
   const { hasModule, hasScreen } = useCompanyModules();
   const { settings } = useCompanySettings();
   const { logoUrl, iconUrl, enabled: wlEnabled, defaultLogoDark, isLoading: logoLoading } = useWhiteLabel();
-  // Logo do tenant é UM arquivo só, desenhado tanto no menu escuro quanto no
-  // claro. Arte de tinta escura some no menu escuro (que é o padrão, nos dois
-  // temas do app), então ela ganha uma placa clara atrás. Arte clara segue
-  // direto no fundo escuro, sem placa.
+  // Logo do tenant é UM arquivo só para as duas superfícies. A tinta e o tom
+  // efetivo da nav decidem a placa: clara para arte escura sobre fundo escuro,
+  // escura para arte clara sobre fundo claro, e nenhuma quando já há contraste.
   const tenantLogoUrl = !isAdminUser ? logoUrl : null;
   const tenantLogoInk = useLogoInk(tenantLogoUrl);
-  const needsLogoPlate = Boolean(tenantLogoUrl) && tenantLogoInk === 'dark';
   const tenantIconUrl = !isAdminUser && wlEnabled ? iconUrl : null;
   const tenantIconInk = useLogoInk(tenantIconUrl);
-  const needsIconPlate = Boolean(tenantIconUrl) && tenantIconInk === 'dark';
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -290,6 +289,9 @@ export function SidebarMenuContent() {
     }
     return 'light';
   });
+  const navSurface = useNavSurfaceTone();
+  const logoPlateTone = getLogoPlateTone(tenantLogoInk, navSurface);
+  const iconPlateTone = getLogoPlateTone(tenantIconInk, navSurface);
 
   // ResizeObserver no trigger do rodapé — mede a altura em runtime pra que
   // o DropdownMenuContent receba `sideOffset={-profileTriggerHeight}` e fique
@@ -400,7 +402,11 @@ export function SidebarMenuContent() {
               >
                 {!isAdminUser && wlEnabled ? (
                   iconUrl ? (
-                    <span className={cn(needsIconPlate && 'rounded-md bg-white p-1')}>
+                    <span className={cn(
+                      iconPlateTone && 'rounded-md p-1',
+                      iconPlateTone === 'light' && 'bg-white',
+                      iconPlateTone === 'dark' && 'bg-zinc-950',
+                    )}>
                       <img src={iconUrl} alt="Icon" className="h-7 w-7 object-contain" />
                     </span>
                   ) : null
@@ -420,7 +426,12 @@ export function SidebarMenuContent() {
                 {/* `min-w-0 max-w-full`: a placa vira o novo pai do `max-w-full`
                     das imagens. Sem isso um logo largo passaria por cima da
                     borda da sidebar em vez de encolher. */}
-                <div className={cn('flex min-w-0 max-w-full items-center justify-center', needsLogoPlate && 'rounded-lg bg-white px-2.5 py-1')}>
+                <div className={cn(
+                  'flex min-w-0 max-w-full items-center justify-center',
+                  logoPlateTone && 'rounded-lg px-2.5 py-1',
+                  logoPlateTone === 'light' && 'bg-white',
+                  logoPlateTone === 'dark' && 'bg-zinc-950',
+                )}>
                   <img src={isAdminUser ? defaultLogoDark : logoUrl || defaultLogoDark} alt="Logo" className="nav-logo-light max-h-11 w-auto max-w-full object-contain dark:hidden" />
                   <img src={isAdminUser ? logoHorizontalVerde : logoUrl || logoHorizontalVerde} alt="Logo" className="nav-logo-dark max-h-11 w-auto max-w-full object-contain hidden dark:block" />
                 </div>

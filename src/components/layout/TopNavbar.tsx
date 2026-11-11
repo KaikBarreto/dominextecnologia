@@ -72,6 +72,8 @@ import { useCompanyModules, type ModuleCode } from '@/hooks/useCompanyModules';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useLogoInk } from '@/hooks/useLogoInk';
+import { useNavSurfaceTone } from '@/hooks/useNavSurfaceTone';
+import { getLogoPlateTone } from '@/utils/logoInk';
 import { HelpCenterDrawer } from '@/components/layout/HelpCenterDrawer';
 import { AccountSwitcherDropdown } from '@/components/account-switcher/AccountSwitcherDropdown';
 import { NotificationsBell } from '@/components/notifications/NotificationsBell';
@@ -193,8 +195,8 @@ export const TopNavbar = memo(() => {
   const tMenu = (title: string) => translateMenuLabel(title, shellT);
   const L = (path: string) => localizeAppPath(path, locale);
   const { logoUrl, defaultLogoDark, defaultLogoWhite, isLoading: logoLoading } = useWhiteLabel();
-  // A barra de topo também é escura por padrão (Fase 2), nos dois temas. Logo
-  // de tinta escura precisa de placa clara atrás pra não sumir.
+  // A mesma arte atende barra clara e escura; o tom efetivo da nav define se
+  // ela precisa de placa clara, escura ou de nenhuma placa.
   const logoInk = useLogoInk(logoUrl);
   const location = useLocation();
   const navigate = useNavigate();
@@ -205,6 +207,8 @@ export const TopNavbar = memo(() => {
     }
     return 'light';
   });
+  const navSurface = useNavSurfaceTone();
+  const logoPlateTone = getLogoPlateTone(logoInk, navSurface);
 
   const applyTheme = (next: 'light' | 'dark') => {
     setTheme(next);
@@ -271,7 +275,9 @@ export const TopNavbar = memo(() => {
               <span
                 className={cn(
                   'flex shrink-0 items-center',
-                  logoInk === 'dark' && 'rounded-lg bg-white px-2 py-1'
+                  logoPlateTone && 'rounded-lg px-2 py-1',
+                  logoPlateTone === 'light' && 'bg-white',
+                  logoPlateTone === 'dark' && 'bg-zinc-950',
                 )}
               >
                 <img

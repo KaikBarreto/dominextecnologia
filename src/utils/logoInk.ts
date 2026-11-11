@@ -9,15 +9,39 @@
  * (Fase 2). Medindo a luminância da própria arte dá pra colocar uma placa
  * clara atrás só de quem precisa, sem pedir nada ao cliente.
  *
- * O corte (0.38) é o MESMO de `chooseSocialBackground` em `osSocialImage.ts`,
- * de propósito: a arte social e o menu precisam concordar sobre o que é um
- * logo escuro, senão o cliente vê duas decisões diferentes pro mesmo arquivo.
+ * A decisão combina luminância média com presença relevante de tinta clara.
+ * Só a média não basta para logos mistos: um símbolo preto mais denso pode
+ * esconder que o nome da marca foi desenhado em branco e precisa de fundo
+ * escuro. `chooseSocialBackground` usa esta mesma classificação para o menu e
+ * a arte social concordarem sobre o mesmo arquivo.
  */
 
 export type LogoInk = 'dark' | 'light';
+export type LogoSurfaceTone = 'dark' | 'light';
 
 /** Acima disso a arte é considerada CLARA (pede fundo escuro). */
 export const LOGO_INK_LUMINANCE_THRESHOLD = 0.38;
+
+/** Branco/cinza muito claro que indica arte desenhada para fundo escuro. */
+const LIGHT_INK_LUMINANCE_THRESHOLD = 0.7;
+
+/**
+ * Parcela mínima de tinta clara para ela ser tratada como parte relevante do
+ * logo, e não como um brilho ou detalhe pequeno de uma arte escura.
+ */
+const MIN_LIGHT_INK_SHARE = 0.18;
+
+function relativeLuminance(red: number, green: number, blue: number): number {
+  const linearize = (channel: number) => {
+    const normalized = channel / 255;
+    return normalized <= 0.04045
+      ? normalized / 12.92
+      : ((normalized + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * linearize(red)
+    + 0.7152 * linearize(green)
+    + 0.0722 * linearize(blue);
+}
 
 /**
  * Luminância relativa média dos pixels visíveis, ponderada pelo alfa. Pixels
@@ -29,15 +53,7 @@ export function inkLuminance(pixels: Uint8ClampedArray): number | null {
   for (let index = 0; index < pixels.length; index += 4) {
     const alpha = pixels[index + 3] / 255;
     if (alpha < 0.15) continue;
-    const linearize = (channel: number) => {
-      const normalized = channel / 255;
-      return normalized <= 0.04045
-        ? normalized / 12.92
-        : ((normalized + 0.055) / 1.055) ** 2.4;
-    };
-    const luminance = 0.2126 * linearize(pixels[index])
-      + 0.7152 * linearize(pixels[index + 1])
-      + 0.0722 * linearize(pixels[index + 2]);
+    const luminance = relativeLuminance(pixels[index], pixels[index + 1], pixels[index + 2]);
     weightedLuminance += luminance * alpha;
     totalAlpha += alpha;
   }
@@ -49,7 +65,34 @@ export function inkLuminance(pixels: Uint8ClampedArray): number | null {
 export function classifyInk(pixels: Uint8ClampedArray): LogoInk | null {
   const luminance = inkLuminance(pixels);
   if (luminance === null) return null;
-  return luminance > LOGO_INK_LUMINANCE_THRESHOLD ? 'light' : 'dark';
+  if (luminance > LOGO_INK_LUMINANCE_THRESHOLD) return 'light';
+
+  let lightAlpha = 0;
+  let totalAlpha = 0;
+  for (let index = 0; index < pixels.length; index += 4) {
+    const alpha = pixels[index + 3] / 255;
+    if (alpha < 0.15) continue;
+    totalAlpha += alpha;
+    if (relativeLuminance(pixels[index], pixels[index + 1], pixels[index + 2]) >= LIGHT_INK_LUMINANCE_THRESHOLD) {
+      lightAlpha += alpha;
+    }
+  }
+
+  // Em logos mistos, preserva o lettering branco mesmo quando um símbolo
+  // preto e visualmente denso derruba a luminância média do arquivo inteiro.
+  return lightAlpha / totalAlpha >= MIN_LIGHT_INK_SHARE ? 'light' : 'dark';
+}
+
+/**
+ * Define a placa de contraste apenas quando a tinta e a superfície têm o
+ * mesmo tom. Em superfícies opostas o próprio fundo já dá contraste suficiente.
+ */
+export function getLogoPlateTone(
+  ink: LogoInk | null,
+  surface: LogoSurfaceTone,
+): LogoSurfaceTone | null {
+  if (ink === null || ink !== surface) return null;
+  return surface === 'dark' ? 'light' : 'dark';
 }
 
 // Um logo por tenant muda quase nunca; a URL já carrega o timestamp do upload,
