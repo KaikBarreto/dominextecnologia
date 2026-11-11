@@ -27,6 +27,30 @@ describe("pushDeviceLabel", () => {
     expect(pushDeviceLabel("Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/130.0 Mobile"))
       .toBe("Android · Chrome");
   });
+
+  it("reconhece iPhone em modo PWA mesmo quando o Safari informa Macintosh", () => {
+    const macSafari = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/18.0 Safari/605.1.15";
+
+    expect(pushDeviceLabel(macSafari, {
+      platform: "MacIntel",
+      maxTouchPoints: 5,
+      screenWidth: 390,
+      screenHeight: 844,
+      standalone: true,
+    })).toBe("iPhone · PWA");
+  });
+
+  it("não confunde Mac real com aparelho iOS", () => {
+    const macSafari = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/18.0 Safari/605.1.15";
+
+    expect(pushDeviceLabel(macSafari, {
+      platform: "MacIntel",
+      maxTouchPoints: 0,
+      screenWidth: 1440,
+      screenHeight: 900,
+      standalone: false,
+    })).toBe("Mac · Safari");
+  });
 });
 
 describe("supportsWebPush", () => {

@@ -22,6 +22,14 @@ export interface PushDeviceSummary {
   is_current: boolean;
 }
 
+export interface PushDeviceEnvironment {
+  platform?: string;
+  maxTouchPoints?: number;
+  screenWidth?: number;
+  screenHeight?: number;
+  standalone?: boolean;
+}
+
 type SerializedSubscription = {
   endpoint: string;
   keys: { p256dh: string; auth: string };
@@ -119,19 +127,50 @@ function serializeSubscription(subscription: PushSubscription): SerializedSubscr
   };
 }
 
-export function pushDeviceLabel(userAgent: string): string {
-  const device = /iPad/i.test(userAgent)
-    ? "iPad"
-    : /iPhone/i.test(userAgent)
-      ? "iPhone"
-      : /Android/i.test(userAgent)
-        ? "Android"
-        : /Windows/i.test(userAgent)
-          ? "Windows"
-          : /Macintosh|Mac OS/i.test(userAgent)
-            ? "Mac"
-            : "Dispositivo";
-  const browser = /Edg\//i.test(userAgent)
+function currentPushDeviceEnvironment(): PushDeviceEnvironment {
+  const navigatorWithStandalone = navigator as Navigator & { standalone?: boolean };
+  return {
+    platform: navigator.platform,
+    maxTouchPoints: navigator.maxTouchPoints,
+    screenWidth: window.screen?.width,
+    screenHeight: window.screen?.height,
+    standalone:
+      navigatorWithStandalone.standalone === true ||
+      window.matchMedia?.("(display-mode: standalone)").matches === true,
+  };
+}
+
+export function pushDeviceLabel(
+  userAgent: string,
+  environment: PushDeviceEnvironment = currentPushDeviceEnvironment(),
+): string {
+  const platform = environment.platform ?? "";
+  const smallestScreenSide = Math.min(
+    environment.screenWidth ?? Number.POSITIVE_INFINITY,
+    environment.screenHeight ?? Number.POSITIVE_INFINITY,
+  );
+  // Safari pode usar uma identificação de Macintosh em PWAs do iPhone/iPad.
+  // Toque múltiplo diferencia esses aparelhos de um Mac real; a menor lateral
+  // em CSS pixels separa telefone de tablet sem depender apenas do user-agent.
+  const macLikeAppleTouchDevice =
+    /Macintosh|Mac OS/i.test(userAgent) && (environment.maxTouchPoints ?? 0) > 1;
+  let device = "Dispositivo";
+  if (/iPhone|iPod/i.test(userAgent) || /iPhone|iPod/i.test(platform)) {
+    device = "iPhone";
+  } else if (/iPad/i.test(userAgent) || /iPad/i.test(platform)) {
+    device = "iPad";
+  } else if (macLikeAppleTouchDevice) {
+    device = smallestScreenSide <= 600 ? "iPhone" : "iPad";
+  } else if (/Android/i.test(userAgent)) {
+    device = "Android";
+  } else if (/Windows/i.test(userAgent)) {
+    device = "Windows";
+  } else if (/Macintosh|Mac OS/i.test(userAgent)) {
+    device = "Mac";
+  }
+  const browser = environment.standalone
+    ? "PWA"
+    : /Edg\//i.test(userAgent)
     ? "Edge"
     : /Firefox\//i.test(userAgent)
       ? "Firefox"
@@ -193,7 +232,9 @@ async function persistSubscription(
     company_id: companyId,
     subscription: serializeSubscription(subscription),
     user_agent: navigator.userAgent.slice(0, 512),
-    device_label: deviceLabel?.trim().slice(0, 100) || pushDeviceLabel(navigator.userAgent),
+    device_label:
+      deviceLabel?.trim().slice(0, 100) ||
+      pushDeviceLabel(navigator.userAgent, currentPushDeviceEnvironment()),
   });
 }
 

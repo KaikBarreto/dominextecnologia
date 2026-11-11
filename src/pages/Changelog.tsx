@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.30',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'iPhone identificado corretamente no push',
+        category: 'correcao',
+        description: 'A lista de aparelhos deixa de mostrar alguns iPhones e iPads como Mac. Quando o Dominex estiver instalado, o dispositivo passa a aparecer com seu tipo correto e a indicação PWA.',
+      },
+    ],
+  },
+  {
     version: '1.39.29',
     date: '11 de novembro de 2026',
     type: 'patch',
