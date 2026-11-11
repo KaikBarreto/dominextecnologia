@@ -31,7 +31,7 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
-    version: '1.41.1',
+    version: '1.39.22',
     date: '11 de novembro de 2026',
     type: 'patch',
     changes: [
@@ -43,9 +43,9 @@ export const changelog: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.41.0',
+    version: '1.39.21',
     date: '11 de novembro de 2026',
-    type: 'minor',
+    type: 'patch',
     changes: [
       {
         title: 'Loja de balcão, do orçamento à retirada',
