@@ -51,7 +51,8 @@ jobs:
             VAPID_PUBLIC_KEY="$WEB_PUSH_VAPID_PUBLIC_KEY" \
             VAPID_PRIVATE_KEY="$WEB_PUSH_VAPID_PRIVATE_KEY" \
             VAPID_SUBJECT="$WEB_PUSH_VAPID_SUBJECT" \
-            --project-ref "$SUPABASE_PROJECT_ID"
+            --remote="$SUPABASE_PROJECT_ID" \
+            --yes
 
       - name: Deploy edge functions
         run: |
