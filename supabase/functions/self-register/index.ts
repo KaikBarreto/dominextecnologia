@@ -5,6 +5,7 @@ import { isValidBrazilianPhone } from '../_shared/phone-validation.ts';
 import { canonicalizeCompanyOrigin } from '../_shared/company-origin.ts';
 import { resolveAffiliateId, resolveAffiliateOriginName } from '../_shared/affiliate-resolver.ts';
 import { resolveFirstPaidWhatsappTier } from '../_shared/whatsapp-pricing.ts';
+import { ensureDefaultFinancialAccounts } from '../_shared/default-financial-accounts.ts';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const trim = (v: unknown, max = 255) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
@@ -1028,13 +1029,12 @@ Deno.serve(async (req) => {
         { onConflict: 'company_id,name', ignoreDuplicates: true },
       );
 
-    // Seed default financial accounts
-    await supabaseAdmin
-      .from('financial_accounts')
-      .insert([
-        { company_id: company.id, name: 'Caixa', type: 'caixa', color: '#10b981', icon: 'Wallet', initial_balance: 0, sort_order: 0 },
-        { company_id: company.id, name: 'Conta Principal', type: 'banco', color: '#3b82f6', icon: 'Landmark', initial_balance: 0, sort_order: 1 },
-      ]);
+    // Fallback idempotente. A garantia canônica é o trigger em companies;
+    // este passo mantém o deploy seguro se a Edge chegar antes da migration.
+    const { error: accountsError } = await ensureDefaultFinancialAccounts(supabaseAdmin, company.id);
+    if (accountsError) {
+      console.error('[self-register] Falha ao garantir contas financeiras iniciais:', accountsError.message);
+    }
 
     // Seed catálogo de serviço default (tipos de serviço, status de OS, tipos de tarefa).
     // NÃO-FATAL: se falhar, a empresa já foi criada — apenas registra o erro e segue.

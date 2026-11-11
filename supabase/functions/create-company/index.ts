@@ -3,6 +3,7 @@ import { provisionAsaasCustomer } from '../_shared/asaas-customer.ts'
 import { isValidBrazilianPhone } from '../_shared/phone-validation.ts'
 import { canonicalizeCompanyOrigin } from '../_shared/company-origin.ts'
 import { resolveFirstPaidWhatsappTier } from '../_shared/whatsapp-pricing.ts'
+import { ensureDefaultFinancialAccounts } from '../_shared/default-financial-accounts.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -643,13 +644,9 @@ Deno.serve(async (req) => {
       )
     if (categoriesError) throw new Error('Não foi possível configurar as categorias financeiras iniciais.')
 
-    // 8. Seed default financial accounts
-    const { error: accountsError } = await supabaseAdmin
-      .from('financial_accounts')
-      .insert([
-        { company_id: company.id, name: 'Caixa', type: 'caixa', color: '#10b981', icon: 'Wallet', initial_balance: 0, sort_order: 0 },
-        { company_id: company.id, name: 'Conta Principal', type: 'banco', color: '#3b82f6', icon: 'Landmark', initial_balance: 0, sort_order: 1 },
-      ])
+    // 8. Fallback idempotente. A garantia canônica é o trigger em companies;
+    // este passo mantém o deploy seguro se a Edge chegar antes da migration.
+    const { error: accountsError } = await ensureDefaultFinancialAccounts(supabaseAdmin, company.id)
     if (accountsError) throw new Error('Não foi possível configurar as contas financeiras iniciais.')
 
     // 9. Seed catálogo de serviço default (tipos de serviço, status de OS, tipos de tarefa).

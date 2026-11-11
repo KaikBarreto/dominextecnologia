@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.26',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Contas financeiras prontas desde o cadastro',
+        category: 'correcao',
+        description: 'Toda empresa passa a receber automaticamente um caixa e uma conta principal. Empresas que ficaram sem nenhuma conta também são corrigidas, permitindo registrar vendas, contas a pagar, contas a receber e outras movimentações sem configuração manual prévia.',
+      },
+      {
+        title: 'Contas visíveis para a equipe autorizada',
+        category: 'correcao',
+        description: 'Quem possui acesso operacional ao Financeiro ou ao PDV volta a encontrar as contas e caixas da empresa ao registrar uma venda, uma conta a pagar ou outra movimentação. Os saldos e a edição das contas continuam restritos às permissões de gestão.',
+      },
+    ],
+  },
+  {
     version: '1.39.25',
     date: '11 de novembro de 2026',
     type: 'patch',
