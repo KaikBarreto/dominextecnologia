@@ -33,6 +33,7 @@ interface Payload {
 }
 
 const JSON_HEADERS = { ...corsHeaders, 'Content-Type': 'application/json' };
+const SALESPERSON_REQUIRED_PERMISSION = 'admin_empresas_acesso';
 
 /** Mesma forma de resposta das actions antigas (`{ error }` / payload cru). */
 function json(body: unknown, status = 200): Response {
@@ -114,8 +115,12 @@ Deno.serve(async (req) => {
       if (createErr) throw createErr;
       const newUserId = created.user!.id;
 
-      if (body.permissions?.length) {
-        await admin.from('admin_permissions').insert(body.permissions.map((p) => ({ user_id: newUserId, permission: p })));
+      const permissions = new Set(body.permissions ?? []);
+      if (body.link_salesperson_id) permissions.add(SALESPERSON_REQUIRED_PERMISSION);
+      if (permissions.size) {
+        await admin.from('admin_permissions').insert(
+          Array.from(permissions).map((permission) => ({ user_id: newUserId, permission })),
+        );
       }
       if (body.link_salesperson_id) {
         await admin.from('salespeople').update({ user_id: newUserId } as any).eq('id', body.link_salesperson_id);
@@ -126,8 +131,12 @@ Deno.serve(async (req) => {
     if (body.action === 'update_permissions') {
       if (!body.user_id) return new Response(JSON.stringify({ error: 'user_id obrigatório' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       await admin.from('admin_permissions').delete().eq('user_id', body.user_id);
-      if (body.permissions?.length) {
-        await admin.from('admin_permissions').insert(body.permissions.map((p) => ({ user_id: body.user_id!, permission: p })));
+      const permissions = new Set(body.permissions ?? []);
+      if (body.link_salesperson_id) permissions.add(SALESPERSON_REQUIRED_PERMISSION);
+      if (permissions.size) {
+        await admin.from('admin_permissions').insert(
+          Array.from(permissions).map((permission) => ({ user_id: body.user_id!, permission })),
+        );
       }
       // Manage salesperson link
       if (body.link_salesperson_id !== undefined) {

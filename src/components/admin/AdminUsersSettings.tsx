@@ -198,6 +198,15 @@ function CreateUserModal({
     setSelected((s) => s.includes(key) ? s.filter((k) => k !== key) : [...s, key]);
   };
 
+  const handleSalespersonLink = (value: string) => {
+    setLinkSalesperson(value);
+    if (value !== 'none') {
+      setSelected((current) => current.includes('admin_empresas_acesso')
+        ? current
+        : [...current, 'admin_empresas_acesso']);
+    }
+  };
+
   const create = useMutation({
     mutationFn: async () => {
       if (!email || !password) throw new Error('Email e senha são obrigatórios');
@@ -241,7 +250,7 @@ function CreateUserModal({
         </div>
         <div className="space-y-1.5">
           <Label>Vincular a vendedor (opcional)</Label>
-          <Select value={linkSalesperson} onValueChange={setLinkSalesperson}>
+          <Select value={linkSalesperson} onValueChange={handleSalespersonLink}>
             <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="none">— Nenhum —</SelectItem>
@@ -281,6 +290,15 @@ function EditPermissionsModal({
 
   const toggle = (k: string) => setSelected((s) => s.includes(k) ? s.filter((x) => x !== k) : [...s, k]);
 
+  const handleSalespersonLink = (value: string) => {
+    setLinkSalesperson(value);
+    if (value !== 'none') {
+      setSelected((current) => current.includes('admin_empresas_acesso')
+        ? current
+        : [...current, 'admin_empresas_acesso']);
+    }
+  };
+
   const save = useMutation({
     mutationFn: async () => {
       if (!user) return;
@@ -312,7 +330,7 @@ function EditPermissionsModal({
       <div className="space-y-4">
         <div className="space-y-1.5">
           <Label>Vincular a vendedor</Label>
-          <Select value={linkSalesperson} onValueChange={setLinkSalesperson}>
+          <Select value={linkSalesperson} onValueChange={handleSalespersonLink}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="none">— Nenhum —</SelectItem>
