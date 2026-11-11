@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.27',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Boas-vindas destravadas no PWA',
+        category: 'correcao',
+        description: 'A tela inicial com o vídeo volta a aceitar toques e rolagem normalmente no celular. O vídeo permanece dentro do seu quadro, permitindo assistir, confirmar ou pular durante o teste sem ficar preso na tela.',
+      },
+    ],
+  },
+  {
     version: '1.39.26',
     date: '11 de novembro de 2026',
     type: 'patch',
