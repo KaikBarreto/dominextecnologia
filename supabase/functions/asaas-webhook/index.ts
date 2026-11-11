@@ -82,6 +82,7 @@ import {
   webhookResponseFor,
 } from "../_shared/asaas-webhook-renewal.ts";
 import { resolveNfseRepricedRenewalAmount } from "../_shared/nfse-base-reprice.ts";
+import { syncCompanySubscriptionPrice } from "../_shared/company-subscription-price-sync.ts";
 import {
   invoiceStatusFromEvent,
   safeInvoiceErrorMessage,
@@ -1037,6 +1038,53 @@ async function processConfirmedPayment(
     );
   }
 
+  // Promoções itemizadas: o payment_key torna o consumo idempotente entre
+  // webhook, confirm-sale-payment e o trigger de company_payments. Fazemos aqui
+  // antes do histórico porque a inserção desse histórico é não-fatal; o cliente
+  // não pode ganhar um ciclo promocional extra só porque a trilha falhou.
+  const { data: promotionConsumption, error: promotionConsumptionError } = await supabase.rpc(
+    "consume_company_subscription_promotions",
+    { p_company_id: companyId, p_payment_key: `asaas:${opts.asaasPaymentId}` },
+  );
+  if (promotionConsumptionError) {
+    warnings.add("condição promocional: não foi possível avançar o ciclo confirmado.");
+    await alertAdmin(
+      supabase,
+      "subscription_promotion_consumption_failed",
+      "Promoção não avançou após pagamento",
+      `O pagamento ${opts.asaasPaymentId} de ${company.name} foi confirmado, mas a condição promocional não avançou.`,
+      { company_id: companyId, payment_id: opts.asaasPaymentId },
+    );
+  } else if (Number(promotionConsumption?.consumed || 0) > 0) {
+    try {
+      const promotionSync = await syncCompanySubscriptionPrice(supabase, companyId, true);
+      if (!promotionSync.ok) {
+        warnings.add(promotionSync.warning || "mensalidade promocional: sincronização pendente.");
+        await alertAdmin(
+          supabase,
+          "subscription_promotion_gateway_sync_failed",
+          "Virada da promoção não sincronizada",
+          `A condição promocional de ${company.name} avançou, mas a próxima cobrança automática ainda não recebeu o valor correto.`,
+          {
+            company_id: companyId,
+            payment_id: opts.asaasPaymentId,
+            target_monthly_value: promotionSync.targetMonthlyValue,
+          },
+        );
+      }
+    } catch (promotionSyncError) {
+      console.error(`[promotion-sync] falha para ${companyId}:`, promotionSyncError);
+      warnings.add("mensalidade promocional: sincronização pendente.");
+      await alertAdmin(
+        supabase,
+        "subscription_promotion_gateway_sync_failed",
+        "Virada da promoção não sincronizada",
+        `A condição promocional de ${company.name} avançou, mas não foi possível preparar a próxima cobrança.`,
+        { company_id: companyId, payment_id: opts.asaasPaymentId },
+      );
+    }
+  }
+
   if (hasPendingDowngrade && extrasOk) {
     // Sincroniza company_modules EXATAMENTE pro conjunto-alvo do downgrade:
     // remove os que não fazem mais parte e insere os que faltam. Reduz acesso
@@ -1959,6 +2007,32 @@ Deno.serve(async (req) => {
         ? await syncNfseBaseRepriceRenewal(supabase, resolved.company, payment)
         : null;
 
+      // Uma condição promocional pode ter sido salva/encerrada depois que a
+      // operadora materializou esta cobrança. O outbox limita a reconciliação
+      // às empresas realmente pendentes e evita sobrescrever outros preços.
+      if (resolved?.company) {
+        const { data: pendingPromotionSync, error: pendingPromotionSyncError } = await supabase
+          .from("company_subscription_price_sync")
+          .select("status")
+          .eq("company_id", resolved.company.id)
+          .in("status", ["pending", "failed"])
+          .maybeSingle();
+        if (pendingPromotionSyncError) {
+          throw new RetryableWebhookError(
+            `leitura do sync promocional falhou (${resolved.company.id})`,
+            pendingPromotionSyncError,
+          );
+        }
+        if (pendingPromotionSync) {
+          const promotionSync = await syncCompanySubscriptionPrice(supabase, resolved.company.id, true);
+          if (!promotionSync.ok) {
+            throw new RetryableWebhookError(
+              `sincronização promocional pendente (${resolved.company.id})`,
+            );
+          }
+        }
+      }
+
       // Cartão recorrente grava subscription_payments com asaas_payment_id NULL; quando
       // o pay_* nasce, vinculamos pelo subscription para o webhook de pagamento achar depois.
       if (payment.subscription) {
@@ -2024,6 +2098,31 @@ Deno.serve(async (req) => {
       const companyName = resolved?.company?.id === reversalCompanyId
         ? resolved.company.name
         : "empresa vinculada ao pagamento";
+      if (reversalCompanyId) {
+        const { count: promotionalConsumptions, error: promotionalConsumptionsError } = await supabase
+          .from("company_subscription_promotion_consumptions")
+          .select("id", { count: "exact", head: true })
+          .eq("company_id", reversalCompanyId)
+          .eq("payment_key", `asaas:${payment.id}`);
+        if (promotionalConsumptionsError) {
+          throw new RetryableWebhookError(
+            `leitura do consumo promocional no estorno falhou (${payment.id})`,
+            promotionalConsumptionsError,
+          );
+        }
+        if ((promotionalConsumptions || 0) > 0) {
+          // Política deliberada: estorno não devolve ciclo automaticamente. A
+          // negociação comercial pode ter concedido acesso durante o período;
+          // restauração automática permitiria ciclos grátis repetidos.
+          await alertAdmin(
+            supabase,
+            "subscription_promotion_reversal_review",
+            "Estorno com promoção exige revisão",
+            `O pagamento ${payment.id} de ${companyName} consumiu uma condição promocional e foi estornado. O ciclo não foi devolvido automaticamente.`,
+            { company_id: reversalCompanyId, payment_id: payment.id, reversal_kind: kind },
+          );
+        }
+      }
       let otherPayments: ReversalPaymentSnapshot[] = [];
       if (reversedPayment?.company_id && reversedPayment.ltv_credited_at) {
         const { data, error } = await supabase

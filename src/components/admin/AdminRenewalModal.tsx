@@ -12,6 +12,7 @@ import { CalendarIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAdminCompanyPayments, mapPaymentRpcError } from '@/hooks/useAdminCompanyPayments';
 import { getEffectiveSubscriptionValue } from '@/utils/subscriptionPricing';
+import type { Database } from '@/integrations/supabase/types';
 
 const schema = z.object({
   payment_value: z.string().min(1, 'Valor obrigatório'),
@@ -21,7 +22,7 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 interface AdminRenewalModalProps {
-  company: any;
+  company: Database['public']['Tables']['companies']['Row'];
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
@@ -63,8 +64,12 @@ export function AdminRenewalModal({ company, open, onOpenChange, onSuccess }: Ad
         notes: data.observations || undefined,
       },
       {
-        onSuccess: () => {
-          toast({ title: 'Assinatura renovada!' });
+        onSuccess: (result) => {
+          toast(result.syncWarning ? {
+            title: 'Assinatura renovada com pendência na cobrança',
+            description: result.syncWarning,
+            variant: 'destructive',
+          } : { title: 'Assinatura renovada!' });
           form.reset();
           onSuccess();
         },

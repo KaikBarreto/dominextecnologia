@@ -99,9 +99,11 @@ interface ModuleGridProps {
   selected: string[];
   onToggle: (code: string) => void;
   disabled?: boolean;
+  /** Itens que não podem ser removidos enquanto uma promoção estiver ativa. */
+  lockedCodes?: string[];
 }
 
-export function ModuleGrid({ modules, selected, onToggle, disabled = false }: ModuleGridProps) {
+export function ModuleGrid({ modules, selected, onToggle, disabled = false, lockedCodes = [] }: ModuleGridProps) {
   const gridModules = modules.filter(m => !HIDDEN_MODULE_CODES.includes(m.code));
 
   if (gridModules.length === 0) {
@@ -113,13 +115,15 @@ export function ModuleGrid({ modules, selected, onToggle, disabled = false }: Mo
       {gridModules.map(mod => {
         const isBase = isRequiredCustomModule(mod.code);
         const isChecked = isBase || selected.includes(mod.code);
-        const isLocked = isBase || disabled;
+        const isPromotionLocked = lockedCodes.includes(mod.code);
+        const isLocked = isBase || isPromotionLocked || disabled;
         return (
           <div
             key={mod.code}
             role="checkbox"
             aria-checked={isChecked}
             aria-disabled={isLocked}
+            title={isPromotionLocked ? 'Remova a condição promocional antes de retirar este módulo.' : undefined}
             className={cn(
               'flex items-center justify-between gap-3 p-3 rounded-lg border transition-colors select-none',
               isChecked ? 'border-primary bg-primary/5' : 'border-muted',
@@ -143,7 +147,7 @@ export function ModuleGrid({ modules, selected, onToggle, disabled = false }: Mo
               <div className="min-w-0">
                 <p className="text-sm font-medium leading-tight flex items-center gap-1.5">
                   {mod.code === 'basic' ? BASIC_BUNDLE_LABEL : mod.name}
-                  {isBase && <Lock className="h-3 w-3 text-muted-foreground shrink-0" />}
+                  {isLocked && <Lock className="h-3 w-3 text-muted-foreground shrink-0" />}
                 </p>
                 {(mod.description || mod.code === 'basic') && (
                   <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">

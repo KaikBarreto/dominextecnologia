@@ -35,7 +35,7 @@ import { ModuleGrid, useSubscriptionModules, withBaseModules, sumModulesPrice, B
 import { useNfseTiers } from '@/hooks/useNfseTiers';
 import { buildCustomPriceNote, appendNote } from '@/utils/customPriceNote';
 import { NumericInput } from '@/components/ui/numeric-input';
-import { CUSTOM_PLAN_INCLUDED_USERS } from '@/lib/subscriptionCatalog';
+import { CUSTOM_PLAN_INCLUDED_USERS, resolveExtraUserPrice } from '@/lib/subscriptionCatalog';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { readPastedCents } from '@/lib/money-paste-mask';
 import { isValidBrazilianPhone } from '@/lib/phone-validation';
@@ -49,6 +49,17 @@ import {
 import { CompanyAccessTab } from './CompanyAccessTab';
 import { CompanyFormSummary, type CompanyFormSection } from './CompanyFormSummary';
 import { WizardMobileSummary } from '@/components/ui/WizardReviewChecklist';
+import { SubscriptionPromotionsEditor } from './SubscriptionPromotionsEditor';
+import { useAdminCompanySubscriptionPromotions } from '@/hooks/useAdminCompanySubscriptionPromotions';
+import {
+  calculatePromotionalMonthlyValue,
+  extraUsersPromotionItem,
+  isPromotionDraftValid,
+  modulePromotionItem,
+  toPromotionPayload,
+  type SubscriptionPromotionDraft,
+  type SubscriptionPromotionItem,
+} from '@/lib/subscriptionPromotions';
 
 interface Props {
   open: boolean;
@@ -106,6 +117,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
   const [copied, setCopied] = useState(false);
   const creationIdempotencyKeyRef = useRef<string | null>(null);
   const submitLockRef = useRef(false);
+  const promotionsHydratedCompanyRef = useRef<string | null>(null);
 
   // ========== Queries ==========
   const { data: plans = [] } = useQuery({
@@ -199,6 +211,11 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     },
   });
 
+  const promotionsQuery = useAdminCompanySubscriptionPromotions(
+    company?.id,
+    open && isEditing,
+  );
+
   // ========== Form state ==========
   const [formData, setFormData] = useState({
     name: '', cnpj: '', email: '', phone: '', contact_name: '',
@@ -219,6 +236,12 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
 
   // Módulos do plano Personalizado (sempre inclui os base).
   const [selectedModules, setSelectedModules] = useState<string[]>([...BASE_MODULE_CODES]);
+  const [promotions, setPromotions] = useState<SubscriptionPromotionDraft[]>([]);
+  const hasExtraUsersPromotion = promotions.some((promotion) => promotion.scope_type === 'extra_users');
+  const promotedModuleCodes = promotions
+    .filter((promotion) => promotion.scope_type === 'module' && promotion.module_code)
+    .map((promotion) => promotion.module_code as string);
+  const hasNfsePromotion = promotedModuleCodes.includes('nfe');
 
   const [addr, setAddr] = useState({
     logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', cep: '',
@@ -237,9 +260,12 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     if (!open) {
       creationIdempotencyKeyRef.current = null;
       submitLockRef.current = false;
+      promotionsHydratedCompanyRef.current = null;
       return;
     }
     if (company) {
+      const hasLegacyCustomPrice = Number(company.custom_price) > 0
+        && company.pricing_adjustment_source !== 'item_promotions';
       setFormData({
         name: company.name || '',
         cnpj: company.cnpj ? cpfCnpjMask(company.cnpj) : '',
@@ -250,7 +276,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         subscription_status: company.subscription_status || 'testing',
         subscription_plan: company.subscription_plan || 'start',
         subscription_value: String(
-          Number(company.custom_price) > 0
+          hasLegacyCustomPrice
             ? company.custom_price
             : company.subscription_value || 0,
         ),
@@ -265,7 +291,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         affiliate_id: company.affiliate_id || '',
         admin_email: '',
         admin_password: '',
-        use_custom_price: !!company.custom_price && Number(company.custom_price) > 0,
+        use_custom_price: hasLegacyCustomPrice,
         custom_price_permanent: company.custom_price_permanent ?? true,
         custom_price_months: company.custom_price_months ? String(company.custom_price_months) : '3',
         nfse_tier: String(company.nfse_tier ?? 1),
@@ -288,10 +314,18 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
       });
       setCompanySegments([]);
       setAddr({ logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', cep: '' });
+      setPromotions([]);
     }
     setSelectedModules([...BASE_MODULE_CODES]);
     setActiveTab(isEditing ? initialTab : 'basic');
   }, [company, initialTab, isEditing, open]);
+
+  useEffect(() => {
+    if (!open || !company?.id || !promotionsQuery.data) return;
+    if (promotionsHydratedCompanyRef.current === company.id) return;
+    setPromotions(promotionsQuery.data);
+    promotionsHydratedCompanyRef.current = company.id;
+  }, [company?.id, open, promotionsQuery.data]);
 
   // A configuração regional chega por uma consulta separada. Atualiza apenas
   // os campos que dependem dela para não apagar edições já iniciadas no modal.
@@ -399,17 +433,27 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
   // ========== Toggle de módulo (plano Personalizado) ==========
   const handleToggleModule = useCallback((code: string) => {
     setSelectedModules(prev => {
+      const removing = prev.includes(code);
+      if (removing && promotions.some(promotion => promotion.module_code === code)) {
+        toast({
+          variant: 'destructive',
+          title: 'Remova a condição promocional primeiro',
+          description: 'O módulo continua contratado enquanto a promoção estiver ativa.',
+        });
+        return prev;
+      }
       const next = withBaseModules(
-        prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code],
+        removing ? prev.filter(c => c !== code) : [...prev, code],
       );
       if (!formData.use_custom_price) {
         updateField('subscription_value', String(sumModulesPrice(allModules, next, nfseTiers, Number(formData.nfse_tier), Number(formData.max_users))));
       }
       return next;
     });
-  }, [allModules, nfseTiers, formData.nfse_tier, formData.max_users, formData.use_custom_price, updateField]);
+  }, [allModules, nfseTiers, formData.nfse_tier, formData.max_users, formData.use_custom_price, promotions, toast, updateField]);
 
   const handleMaxUsersChange = useCallback((value: string) => {
+    if (hasExtraUsersPromotion) return;
     updateField('max_users', value);
     if (formData.subscription_plan === 'personalizado' && !formData.use_custom_price) {
       updateField(
@@ -423,7 +467,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         )),
       );
     }
-  }, [allModules, selectedModules, nfseTiers, formData.nfse_tier, formData.subscription_plan, formData.use_custom_price, updateField]);
+  }, [allModules, selectedModules, nfseTiers, formData.nfse_tier, formData.subscription_plan, formData.use_custom_price, hasExtraUsersPromotion, updateField]);
 
   // Clampa no blur, não na digitação: limpar o campo pra digitar "15" passa por
   // "1", e corrigir a cada tecla sequestraria o que o admin está escrevendo.
@@ -440,6 +484,44 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     nfseTiers,
     Number(formData.nfse_tier),
     Number(formData.max_users),
+  );
+  const promotionItems = useMemo<SubscriptionPromotionItem[]>(() => {
+    if (!isEditing || !isPersonalizado) return [];
+    const items: SubscriptionPromotionItem[] = [];
+
+    for (const code of selectedModules) {
+      if ((BASE_MODULE_CODES as readonly string[]).includes(code)) continue;
+      const module = allModules.find(item => item.code === code);
+      if (!module) continue;
+      const standardPrice = code === 'nfe'
+        ? Number(nfseTiers.find(tier => tier.tier === Number(formData.nfse_tier))?.price ?? module.price) || 0
+        : Number(module.price) || 0;
+      if (standardPrice <= 0) continue;
+      items.push(modulePromotionItem(code, module.name, standardPrice));
+    }
+
+    const extraUsers = Math.max(0, Math.floor(Number(formData.max_users) || 0) - CUSTOM_PLAN_INCLUDED_USERS);
+    const extraUserPrice = resolveExtraUserPrice(allModules);
+    if (extraUsers > 0 && extraUserPrice != null) {
+      items.push(extraUsersPromotionItem(extraUsers, extraUserPrice));
+    }
+    return items;
+  }, [allModules, formData.max_users, formData.nfse_tier, isEditing, isPersonalizado, nfseTiers, selectedModules]);
+  const promotionsDisabledReason = (() => {
+    if (promotionsQuery.isError) {
+      return 'Não foi possível carregar as condições promocionais. Recarregue a ficha antes de salvar.';
+    }
+    if (formData.billing_cycle !== 'monthly') {
+      return 'Condições por módulo ou usuário estão disponíveis somente no ciclo mensal.';
+    }
+    if (formData.use_custom_price) {
+      return 'Esta empresa usa um valor personalizado legado. Desative-o antes de criar promoções por item.';
+    }
+    return null;
+  })();
+  const promotionalMonthlyValue = calculatePromotionalMonthlyValue(
+    suggestedModulesPrice,
+    promotions,
   );
   // Preço de referência exibido nos hints: plano padrão usa o preço do plano;
   // personalizado usa a soma dos módulos e usuários excedentes.
@@ -560,11 +642,13 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
             && (parseFloat(formData.subscription_value) || 0) > 0,
           nfse_tier: parseInt(formData.nfse_tier) || 1,
           modules: modulesPayload,
+          promotions: toPromotionPayload(promotions),
         } });
         if (updateError || updateResult?.error) {
           const edgeMessage = await getInvokeErrorMessage(updateError);
           throw new Error(edgeMessage || updateResult?.error || 'Não foi possível salvar a empresa.');
         }
+        return updateResult;
       } else {
         const { data: session } = await supabase.auth.getSession();
         if (!session.session) throw new Error('Não autenticado');
@@ -612,13 +696,23 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
           throw new Error(edgeMessage || 'Não foi possível criar a empresa. Tente novamente.');
         }
         if (data?.error) throw new Error(data.error);
+        return data;
       }
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       creationIdempotencyKeyRef.current = null;
-      toast({ title: isEditing ? 'Empresa atualizada!' : 'Empresa criada com sucesso!' });
+      if (result?.asaas_warning) {
+        toast({
+          variant: 'destructive',
+          title: 'Empresa atualizada com pendência na cobrança',
+          description: `${result.asaas_warning} Tente sincronizar novamente antes da próxima cobrança.`,
+        });
+      } else {
+        toast({ title: isEditing ? 'Empresa atualizada!' : 'Empresa criada com sucesso!' });
+      }
       queryClient.invalidateQueries({ queryKey: ['admin-companies'] });
       if (company?.id) queryClient.invalidateQueries({ queryKey: ['company-modules', company.id] });
+      if (company?.id) queryClient.invalidateQueries({ queryKey: ['admin-company-subscription-promotions', company.id] });
       onSuccess();
     },
     onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(e) }),
@@ -639,6 +733,24 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     if (tab === 'commercial') {
       if (!formData.subscription_plan) return { valid: false, error: 'Plano é obrigatório' };
       if (!formData.subscription_expires_at) return { valid: false, error: 'Data de expiração é obrigatória' };
+      if (isEditing && promotionsQuery.isLoading) {
+        return { valid: false, error: 'Aguarde o carregamento das condições promocionais' };
+      }
+      if (isEditing && promotionsQuery.isError) {
+        return { valid: false, error: 'Não foi possível carregar as condições promocionais. Recarregue a ficha' };
+      }
+      if (promotions.length > 0 && formData.billing_cycle !== 'monthly') {
+        return { valid: false, error: 'Condições promocionais por item exigem cobrança mensal' };
+      }
+      if (promotions.length > 0 && formData.use_custom_price) {
+        return { valid: false, error: 'Use apenas um modelo de promoção: valor personalizado ou condição por item' };
+      }
+      if (promotions.length > 0 && !isPersonalizado) {
+        return { valid: false, error: 'Remova as condições promocionais antes de trocar o plano personalizado' };
+      }
+      if (promotions.some(promotion => !isPromotionDraftValid(promotion))) {
+        return { valid: false, error: 'Revise os valores e a quantidade de cobranças das promoções' };
+      }
     }
     if (tab === 'access' && !isEditing) {
       if (!formData.admin_email.trim()) return { valid: false, error: 'Email do administrador é obrigatório' };
@@ -726,7 +838,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
       contactName={formData.contact_name}
       status={formData.subscription_status}
       planName={selectedPlanName}
-      subscriptionValue={Number(formData.subscription_value)}
+      subscriptionValue={promotions.length > 0 ? promotionalMonthlyValue : Number(formData.subscription_value)}
       billingCycle={formData.billing_cycle}
       maxUsers={Number(formData.max_users)}
       expiresAt={formData.subscription_expires_at}
@@ -927,7 +1039,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
 
               <div className="space-y-2">
                 <Label>Plano *</Label>
-                <Select value={formData.subscription_plan} onValueChange={handlePlanChange}>
+                <Select value={formData.subscription_plan} onValueChange={handlePlanChange} disabled={promotions.length > 0}>
                   <SelectTrigger><SelectValue placeholder="Selecione o plano" /></SelectTrigger>
                   <SelectContent>
                     {plans.length === 0 ? (
@@ -948,6 +1060,11 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                     )}
                   </SelectContent>
                 </Select>
+                {promotions.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Remova as condições promocionais antes de trocar o plano.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -964,6 +1081,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                   modules={allModules}
                   selected={selectedModules}
                   onToggle={handleToggleModule}
+                  lockedCodes={promotedModuleCodes}
                 />
               </div>
             )}
@@ -974,7 +1092,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                 <Label className="flex items-center gap-2 text-sm font-medium">
                   <FileText className="h-4 w-4" />Nível de Notas Fiscais
                 </Label>
-                <Select value={formData.nfse_tier} onValueChange={updateNfseTier}>
+                <Select value={formData.nfse_tier} onValueChange={updateNfseTier} disabled={hasNfsePromotion}>
                   <SelectTrigger><SelectValue placeholder="Selecione o nível" /></SelectTrigger>
                   <SelectContent>
                     {nfseTiers.map((t) => (
@@ -985,9 +1103,22 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Define o limite mensal de notas e o valor cobrado pelo módulo.
+                  {hasNfsePromotion
+                    ? 'Remova a promoção de Notas Fiscais antes de alterar o nível.'
+                    : 'Define o limite mensal de notas e o valor cobrado pelo módulo.'}
                 </p>
               </div>
+            )}
+
+            {isEditing && isPersonalizado && (
+              <SubscriptionPromotionsEditor
+                items={promotionItems}
+                promotions={promotions}
+                normalMonthlyValue={suggestedModulesPrice}
+                onChange={setPromotions}
+                disabledReason={promotionsDisabledReason}
+                isLoading={promotionsQuery.isLoading}
+              />
             )}
 
             {/* Switch + valor personalizado */}
@@ -996,6 +1127,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                 <Switch
                   id="use-custom-price"
                   checked={formData.use_custom_price}
+                  disabled={promotions.length > 0}
                   onCheckedChange={(v) => {
                     setFormData(prev => ({ ...prev, use_custom_price: v }));
                     if (!v) {
@@ -1013,6 +1145,11 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                   Usar valor personalizado
                 </Label>
               </div>
+              {promotions.length > 0 && (
+                <p className="text-xs leading-5 text-muted-foreground">
+                  O valor personalizado fica indisponível enquanto houver uma condição promocional por módulo ou usuário.
+                </p>
+              )}
 
               {formData.use_custom_price && (
                 <div className="space-y-3">
@@ -1037,10 +1174,15 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                       <NumericInput
                         id="company-max-users-custom"
                         value={formData.max_users}
+                        disabled={hasExtraUsersPromotion}
                         onValueChange={handleMaxUsersChange}
                         onBlur={handleMaxUsersBlur}
                       />
-                      <p className="text-xs text-muted-foreground">{minUsersHint}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {hasExtraUsersPromotion
+                          ? 'Remova a promoção de usuários antes de alterar a quantidade.'
+                          : minUsersHint}
+                      </p>
                     </div>
                   </div>
 
@@ -1095,10 +1237,15 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                     <NumericInput
                       id="company-max-users-default"
                       value={formData.max_users}
+                      disabled={hasExtraUsersPromotion}
                       onValueChange={handleMaxUsersChange}
                       onBlur={handleMaxUsersBlur}
                     />
-                    <p className="text-xs text-muted-foreground">{minUsersHint}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {hasExtraUsersPromotion
+                        ? 'Remova a promoção de usuários antes de alterar a quantidade.'
+                        : minUsersHint}
+                    </p>
                   </div>
                 </div>
               )}
@@ -1121,9 +1268,14 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="monthly">Mensal</SelectItem>
-                    <SelectItem value="yearly">Anual</SelectItem>
+                    <SelectItem value="yearly" disabled={promotions.length > 0}>Anual</SelectItem>
                   </SelectContent>
                 </Select>
+                {promotions.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Remova as condições promocionais antes de mudar para o ciclo anual.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -1259,7 +1411,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
       <div className="shrink-0 border-t bg-background px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] sm:px-6 sm:pb-4">
         <WizardMobileSummary
           title="Resumo"
-          summary={`${selectedPlanName || 'Plano'} • R$ ${Number(formData.subscription_value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+          summary={`${selectedPlanName || 'Plano'} • R$ ${(promotions.length > 0 ? promotionalMonthlyValue : Number(formData.subscription_value || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
           className="xl:hidden"
         >
           <div className="pt-3">{summaryContent}</div>

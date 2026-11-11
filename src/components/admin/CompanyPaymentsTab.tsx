@@ -21,10 +21,11 @@ import {
   type UnifiedCompanyPayment,
 } from '@/hooks/useAdminCompanyPayments';
 import { RegisterCompanyPaymentModal } from '@/components/admin/RegisterCompanyPaymentModal';
+import type { Database } from '@/integrations/supabase/types';
 
 interface CompanyPaymentsTabProps {
   companyId: string;
-  company: any;
+  company: Database['public']['Tables']['companies']['Row'];
 }
 
 /**
@@ -104,8 +105,10 @@ export function CompanyPaymentsTab({ companyId, company }: CompanyPaymentsTabPro
   const handleConfirmDelete = () => {
     if (!paymentToDelete) return;
     deletePayment.mutate(paymentToDelete.id, {
-      onSuccess: () => {
-        toast({ title: 'Pagamento excluído', description: 'Valores e vencimento foram estornados.' });
+      onSuccess: ({ syncWarning }) => {
+        toast(syncWarning
+          ? { variant: 'destructive', title: 'Pagamento excluído com pendência', description: syncWarning }
+          : { title: 'Pagamento excluído', description: 'Valores, vencimento e condição promocional foram estornados.' });
         setPaymentToDelete(null);
       },
       onError: (error) => {

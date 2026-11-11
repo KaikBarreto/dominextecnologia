@@ -410,12 +410,17 @@ Deno.serve(async (req) => {
         gatewayAmount: expected,
       };
     } else {
-      // Valor efetivo mensal da empresa = fonte da verdade.
-      const cp = Number(company.custom_price) || 0;
-      const cpPermanent = company.custom_price_permanent === true;
-      const cpMonths = Number(company.custom_price_months) || 0;
-      const cpMade = Number(company.custom_price_payments_made) || 0;
-      const hasActiveCustomPrice = cp > 0 && (cpPermanent || (cpMonths > 0 && cpMade < cpMonths));
+      // Valor efetivo mensal é reconciliado no servidor: preserva custom_price
+      // legado e aplica os descontos itemizados ativos sem confiar no client.
+      const { data: effectiveValueRaw, error: effectiveValueError } = await supabase.rpc(
+        "get_company_effective_subscription_value",
+        { p_company_id: company_id },
+      );
+      if (effectiveValueError || !(Number(effectiveValueRaw) > 0)) {
+        throw new ValidationError("Não foi possível calcular a mensalidade vigente. Tente novamente.");
+      }
+      const effectiveValue = Number(effectiveValueRaw);
+      const hasActiveCustomPrice = effectiveValue !== (Number(company.subscription_value) || 0);
       const pendingRenewalValue = purpose === "renewal"
         ? Number(company.pending_subscription_value) || 0
         : 0;
@@ -424,9 +429,7 @@ Deno.serve(async (req) => {
       // pagamento e aplicar os campos pending_*.
       const effectiveCompanyValue = pendingRenewalValue > 0
         ? pendingRenewalValue
-        : hasActiveCustomPrice
-        ? cp
-        : Number(company.subscription_value) || 0;
+        : effectiveValue;
 
       // Base mensal de reconciliação = valor efetivo da empresa. Pode ser
       // rebaseada abaixo quando o cliente troca de plano na primeira venda.

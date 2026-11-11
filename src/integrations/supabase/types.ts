@@ -1478,6 +1478,7 @@ export type Database = {
           phone: string | null
           plan_locked: boolean
           ponto_kiosk_slug: string | null
+          pricing_adjustment_source: string | null
           salesperson_id: string | null
           sdr_id: string | null
           segment: string | null
@@ -1548,6 +1549,7 @@ export type Database = {
           phone?: string | null
           plan_locked?: boolean
           ponto_kiosk_slug?: string | null
+          pricing_adjustment_source?: string | null
           salesperson_id?: string | null
           sdr_id?: string | null
           segment?: string | null
@@ -1618,6 +1620,7 @@ export type Database = {
           phone?: string | null
           plan_locked?: boolean
           ponto_kiosk_slug?: string | null
+          pricing_adjustment_source?: string | null
           salesperson_id?: string | null
           sdr_id?: string | null
           segment?: string | null
@@ -2010,6 +2013,151 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "company_payments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_subscription_price_sync: {
+        Row: {
+          attempts: number
+          company_id: string
+          last_error: string | null
+          requested_at: string
+          status: string
+          synced_at: string | null
+          target_monthly_value: number
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          company_id: string
+          last_error?: string | null
+          requested_at?: string
+          status?: string
+          synced_at?: string | null
+          target_monthly_value: number
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          company_id?: string
+          last_error?: string | null
+          requested_at?: string
+          status?: string
+          synced_at?: string | null
+          target_monthly_value?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_subscription_price_sync_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_subscription_promotion_consumptions: {
+        Row: {
+          company_id: string
+          consumed_at: string
+          cycle_number: number
+          id: string
+          payment_key: string
+          promotion_id: string
+        }
+        Insert: {
+          company_id: string
+          consumed_at?: string
+          cycle_number: number
+          id?: string
+          payment_key: string
+          promotion_id: string
+        }
+        Update: {
+          company_id?: string
+          consumed_at?: string
+          cycle_number?: number
+          id?: string
+          payment_key?: string
+          promotion_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_subscription_promotion_consumptions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_subscription_promotion_consumptions_promotion_id_fkey"
+            columns: ["promotion_id"]
+            isOneToOne: false
+            referencedRelation: "company_subscription_promotions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_subscription_promotions: {
+        Row: {
+          billing_cycles: number
+          company_id: string
+          completed_at: string | null
+          consumed_cycles: number
+          created_at: string
+          created_by: string | null
+          id: string
+          module_code: string | null
+          promotional_unit_price: number
+          quantity: number
+          reason: string | null
+          scope_type: string
+          standard_unit_price: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          billing_cycles: number
+          company_id: string
+          completed_at?: string | null
+          consumed_cycles?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          module_code?: string | null
+          promotional_unit_price: number
+          quantity?: number
+          reason?: string | null
+          scope_type: string
+          standard_unit_price: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          billing_cycles?: number
+          company_id?: string
+          completed_at?: string | null
+          consumed_cycles?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          module_code?: string | null
+          promotional_unit_price?: number
+          quantity?: number
+          reason?: string | null
+          scope_type?: string
+          standard_unit_price?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_subscription_promotions_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
@@ -17668,6 +17816,22 @@ export type Database = {
       admin_apply_company_update: {
         Args: { p_company_id: string; p_modules: string[]; p_patch: Json }
         Returns: undefined
+      }
+      consume_company_subscription_promotions: {
+        Args: { p_company_id: string; p_payment_key: string }
+        Returns: Json
+      }
+      enqueue_company_subscription_price_sync: {
+        Args: { p_company_id: string }
+        Returns: number
+      }
+      get_company_effective_subscription_value: {
+        Args: { p_company_id: string }
+        Returns: number
+      }
+      refresh_company_subscription_promotion_price: {
+        Args: { p_company_id: string }
+        Returns: number
       }
       admin_delete_company: {
         Args: { p_company_id: string }

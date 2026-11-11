@@ -31,9 +31,33 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
-    version: '1.41.0',
+    version: '1.39.23',
     date: '11 de novembro de 2026',
-    type: 'minor',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Promoções temporárias por módulo e usuários',
+        category: 'recurso',
+        description: 'No painel de empresas, a equipe pode definir um valor promocional, inclusive gratuito, para cada módulo ou pacote de usuários adicionais e escolher por quantas mensalidades ele vale. A ficha mostra o valor durante a condição, quantas cobranças restam e o valor integral que será aplicado automaticamente depois.',
+      },
+    ],
+  },
+  {
+    version: '1.39.22',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Logo da empresa legível em qualquer tema',
+        category: 'correcao',
+        description: 'Marcas com texto claro, símbolo escuro, formato redondo ou cores misturadas agora recebem o fundo de apoio adequado somente quando precisam. O resultado acompanha o tema claro ou escuro no menu, na barra superior, nas Configurações e nas imagens de compartilhamento.',
+      },
+    ],
+  },
+  {
+    version: '1.39.21',
+    date: '11 de novembro de 2026',
+    type: 'patch',
     changes: [
       {
         title: 'Loja de balcão, do orçamento à retirada',

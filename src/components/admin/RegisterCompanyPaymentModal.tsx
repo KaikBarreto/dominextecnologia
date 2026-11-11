@@ -20,13 +20,14 @@ import { useToast } from '@/hooks/use-toast';
 import { cpfCnpjMask } from '@/utils/masks';
 import { useAdminCompanyPayments, mapPaymentRpcError } from '@/hooks/useAdminCompanyPayments';
 import { getEffectiveSubscriptionValue } from '@/utils/subscriptionPricing';
+import type { Database } from '@/integrations/supabase/types';
 
 const PAYMENT_METHODS = ['Pix', 'Boleto', 'Cartão', 'Dinheiro', 'Transferência'];
 
 const NONE_VALUE = '__none__';
 
 interface RegisterCompanyPaymentModalProps {
-  company: any;
+  company: Database['public']['Tables']['companies']['Row'];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -127,8 +128,12 @@ export function RegisterCompanyPaymentModal({ company, open, onOpenChange }: Reg
         closerId: data.type === 'venda' && data.closer_id !== NONE_VALUE ? data.closer_id : undefined,
       },
       {
-        onSuccess: () => {
-          toast({
+        onSuccess: (result) => {
+          toast(result.syncWarning ? {
+            variant: 'destructive',
+            title: 'Pagamento registrado com pendência na cobrança',
+            description: result.syncWarning,
+          } : {
             title: data.type === 'venda' ? 'Venda registrada!' : 'Renovação registrada!',
             description: 'Empresa ativada e vencimento estendido.',
           });
@@ -279,7 +284,7 @@ export function RegisterCompanyPaymentModal({ company, open, onOpenChange }: Reg
                       </FormControl>
                       <SelectContent>
                         <SelectItem value={NONE_VALUE}>Nenhum</SelectItem>
-                        {salespeople.map((s: any) => (
+                        {salespeople.map((s) => (
                           <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                         ))}
                       </SelectContent>
