@@ -84,6 +84,9 @@ const SEGMENTS: Record<string, SegmentTranslations> = {
   // fechamentos). Só o PDV usa 'caixas' hoje.
   caixas: { en: 'registers', es: 'cajas', fr: 'caisses' },
   compra: { en: 'purchase', es: 'compra', fr: 'achat' },
+  'pre-pedidos': { en: 'pre-orders', es: 'prepedidos', fr: 'precommandes' },
+  pedidos: { en: 'orders', es: 'pedidos', fr: 'commandes' },
+  'expedicao': { en: 'dispatch', es: 'expedicion', fr: 'expedition' },
   // Sub-segmento do PDV: a tela de VENDA (o carrinho), sub-tela do Caixa aberta
   // pelo botão "Nova venda". Termo de mercado por idioma (sale/venta/vente), não
   // 'checkout' — 'checkout' já é o nome da tela de assinatura do SaaS.
@@ -141,11 +144,13 @@ const ROUTES: AppRouteDef[] = [
   // demais são sub-telas. A VENDA (o carrinho) é sub-tela em '/pdv/venda',
   // alcançada pelo botão "Nova venda" do painel — NÃO tem item de menu próprio
   // (decisão do CEO 18/10/2026: o fluxo entra sempre pelo caixa).
-  // 'pdvOrders' (/pdv/pedidos) e 'pdvDispatch' (/pdv/expedicao) só entram na
-  // Onda 2 (modo balcão) — sem tela, sem rota, sem item de menu.
+  // Pré-pedidos e Expedição são sub-telas exclusivas do modo balcão.
   { key: 'pdv', base: '/pdv' },
   { key: 'pdvSale', base: '/pdv/venda' },
   { key: 'pdvPurchase', base: '/pdv/compra' },
+  { key: 'pdvPreorders', base: '/pdv/pre-pedidos' },
+  { key: 'pdvOrders', base: '/pdv/pedidos' },
+  { key: 'pdvDispatch', base: '/pdv/expedicao' },
   { key: 'pdvCashHistory', base: '/pdv/caixas' },
   { key: 'pdvReports', base: '/pdv/relatorios' },
   { key: 'pdvSettings', base: '/pdv/configuracoes' },

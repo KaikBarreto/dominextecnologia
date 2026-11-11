@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.39.20";
+export const APP_VERSION = "1.41.0";
 
 export const VERSION_NOTES =
-  "O cadastro de empresas agora evita duplicações mesmo com cliques repetidos, lentidão ou reenvio da mesma tentativa.";
+  "O PDV agora acompanha a loja inteira, do orçamento de balcão ao pagamento e à retirada. Caixas, estoque, financeiro, comprovantes, fiado, trocas e devoluções trabalham juntos sem misturar dados entre operadores.";

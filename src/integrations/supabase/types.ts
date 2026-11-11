@@ -2090,6 +2090,7 @@ export type Database = {
           os_stock_consumption_enabled: boolean
           pdv_barcode_prefix: string
           pdv_cash_account_id: string | null
+          pdv_fulfillment_mode: string
           pdv_mode: string
           pdv_strict_cash_tracking: boolean
           phone: string | null
@@ -2147,6 +2148,7 @@ export type Database = {
           os_stock_consumption_enabled?: boolean
           pdv_barcode_prefix?: string
           pdv_cash_account_id?: string | null
+          pdv_fulfillment_mode?: string
           pdv_mode?: string
           pdv_strict_cash_tracking?: boolean
           phone?: string | null
@@ -2204,6 +2206,7 @@ export type Database = {
           os_stock_consumption_enabled?: boolean
           pdv_barcode_prefix?: string
           pdv_cash_account_id?: string | null
+          pdv_fulfillment_mode?: string
           pdv_mode?: string
           pdv_strict_cash_tracking?: boolean
           phone?: string | null
@@ -2629,6 +2632,7 @@ export type Database = {
       }
       compras: {
         Row: {
+          cash_session_id: string | null
           client_request_id: string | null
           company_id: string
           created_at: string
@@ -2641,10 +2645,12 @@ export type Database = {
           request_hash: string | null
           status: string
           stock_id: string | null
+          terminal_id: string | null
           title: string
           updated_at: string
         }
         Insert: {
+          cash_session_id?: string | null
           client_request_id?: string | null
           company_id: string
           created_at?: string
@@ -2657,10 +2663,12 @@ export type Database = {
           request_hash?: string | null
           status?: string
           stock_id?: string | null
+          terminal_id?: string | null
           title: string
           updated_at?: string
         }
         Update: {
+          cash_session_id?: string | null
           client_request_id?: string | null
           company_id?: string
           created_at?: string
@@ -2673,15 +2681,30 @@ export type Database = {
           request_hash?: string | null
           status?: string
           stock_id?: string | null
+          terminal_id?: string | null
           title?: string
           updated_at?: string
         }
         Relationships: [
           {
+            foreignKeyName: "compras_cash_session_id_fkey"
+            columns: ["cash_session_id"]
+            isOneToOne: false
+            referencedRelation: "pdv_cash_sessions"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "compras_stock_id_fkey"
             columns: ["stock_id"]
             isOneToOne: false
             referencedRelation: "stocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compras_terminal_id_fkey"
+            columns: ["terminal_id"]
+            isOneToOne: false
+            referencedRelation: "pdv_terminals"
             referencedColumns: ["id"]
           },
         ]
@@ -10764,6 +10787,7 @@ export type Database = {
           customer_id: string | null
           delivered_at: string | null
           discount_amount: number
+          fulfillment_mode_snapshot: string | null
           id: string
           notes: string | null
           number: number
@@ -10791,6 +10815,7 @@ export type Database = {
           customer_id?: string | null
           delivered_at?: string | null
           discount_amount?: number
+          fulfillment_mode_snapshot?: string | null
           id?: string
           notes?: string | null
           number: number
@@ -10818,6 +10843,7 @@ export type Database = {
           customer_id?: string | null
           delivered_at?: string | null
           discount_amount?: number
+          fulfillment_mode_snapshot?: string | null
           id?: string
           notes?: string | null
           number?: number
@@ -19240,6 +19266,16 @@ export type Database = {
         }
       }
       pdv_fmt_brl: { Args: { p_value: number }; Returns: string }
+      pdv_get_purchase_cash_context_v2: {
+        Args: {
+          p_cash_session_id: string
+          p_stock_id: string
+          p_terminal_id: string
+        }
+        Returns: Json
+      }
+      pdv_get_counter_capability_v2: { Args: never; Returns: Json }
+      pdv_get_workflow_settings_v2: { Args: never; Returns: Json }
       pdv_list_order_drafts: {
         Args: { p_draft_type?: string; p_include_deleted?: boolean }
         Returns: {
@@ -19290,6 +19326,26 @@ export type Database = {
         }
       }
       pdv_order_summary: { Args: { p_order_id: string }; Returns: Json }
+      pdv_registrar_compra_material_direta_v2: {
+        Args: {
+          p_account_id: string
+          p_cash_session_id: string
+          p_category_id: string
+          p_client_request_id: string
+          p_description: string
+          p_due_date: string
+          p_is_paid: boolean
+          p_items: Json
+          p_notes: string
+          p_paid_date: string
+          p_payment_method: string
+          p_purchase_date: string
+          p_stock_id: string
+          p_supplier_id: string
+          p_terminal_id: string
+        }
+        Returns: Json
+      }
       pdv_replace_order: {
         Args: {
           p_client_request_id: string
@@ -19360,6 +19416,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      pdv_save_workflow_settings_v3: {
+        Args: { p_fulfillment_mode: string; p_pdv_mode: string }
+        Returns: Json
       }
       pdv_settle_order: {
         Args: {

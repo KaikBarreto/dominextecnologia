@@ -31,6 +31,43 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.0',
+    date: '11 de novembro de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Loja de balcão, do orçamento à retirada',
+        category: 'recurso',
+        description: 'O PDV agora pode trabalhar como venda direta, balcão e caixa ou balcão, caixa e retirada. A empresa escolhe o fluxo, cada pessoa vê somente a sua parte e o mesmo atendimento segue até a entrega, sem precisar refazer o pedido.',
+      },
+      {
+        title: 'Vários caixas sem misturar as operações',
+        category: 'seguranca',
+        description: 'Cada ponto de venda pode ter seu próprio caixa aberto ao mesmo tempo. Abertura, dinheiro inicial, vendas, compras, sangrias, reforços, fechamento, reabertura e relatórios ficam no caixa certo, com histórico e ações organizados pelo botão de três pontos.',
+      },
+      {
+        title: 'Orçamentos, pedidos e retirada no mesmo acompanhamento',
+        category: 'recurso',
+        description: 'Orçamentos de balcão usam a mesma tela prática de venda, podem reservar mercadoria e viram pedido no caixa. A visão por colunas mostra o que ainda está em orçamento, o que aguarda pagamento e o que já foi liberado para retirada, inclusive quando o fiado foi aprovado.',
+      },
+      {
+        title: 'Trocas, devoluções, reembolsos e saldo do cliente',
+        category: 'recurso',
+        description: 'O pós-venda passou a registrar devolução, troca, estorno, reembolso e voucher. Cliente e fornecedor ganharam um extrato próprio para acompanhar fiado, crédito e saldo usado em cada operação.',
+      },
+      {
+        title: 'Comprovantes e equipamentos do balcão',
+        category: 'recurso',
+        description: 'Pedidos e retiradas podem gerar comprovante não fiscal em papel térmico ou A4, com nome de arquivo fácil de reconhecer e opção de imprimir novamente pelo histórico. O DomiLink prepara a ligação com impressoras, balanças e leitores, e o celular ou tablet pode ler códigos pela câmera e imprimir etiquetas do estoque.',
+      },
+      {
+        title: 'Estoque e dinheiro acompanham cada venda',
+        category: 'melhoria',
+        description: 'Reserva, baixa, devolução e compra de material atualizam o histórico do estoque. Os relatórios mostram compras, vendas, custo, margem e curva ABC por período, enquanto caixa, contas, DRE e DFC recebem cada valor uma única vez.',
+      },
+    ],
+  },
+  {
     version: '1.39.20',
     date: '10 de novembro de 2026',
     type: 'patch',

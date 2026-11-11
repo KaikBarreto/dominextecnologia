@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PdvCashHistoryPanel } from './PdvCashHistoryPanel';
 import type { PdvLedgerEntry } from '@/lib/pdv/cash';
@@ -36,6 +36,32 @@ function entry(key: string, reference: string): PdvLedgerEntry {
 }
 
 describe('PdvCashHistoryPanel', () => {
+  it('oferece gerar comprovante em cada venda do histórico', async () => {
+    render(
+      <TooltipProvider>
+        <PdvCashHistoryPanel
+          texts={pdv['pt-br'].cashPanel.history}
+          entries={[entry('order-1', '#1042')]}
+          isLoading={false}
+          valuesVisible
+          money={(value) => `R$ ${value}`}
+          dateTime={(value) => value}
+          number={(value) => String(value)}
+          canManageFinance={false}
+          canDeleteFinance={false}
+          canEditPdvSales={false}
+          onEdit={vi.fn()}
+          onDelete={vi.fn()}
+        />
+      </TooltipProvider>,
+    );
+
+    const actions = screen.getByLabelText(pdv['pt-br'].cashPanel.history.columnActions);
+    actions.focus();
+    fireEvent.keyDown(actions, { key: 'Enter', code: 'Enter' });
+    await waitFor(() => expect(screen.getByText('Gerar comprovante')).toBeInTheDocument());
+  });
+
   it('marca apenas a transação que chegou depois da carga inicial', () => {
     const older = entry('sale-1', '#1');
     const newer = entry('sale-2', '#2');

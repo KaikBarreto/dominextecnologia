@@ -929,6 +929,7 @@ export const customers = {
       tabContracts: 'Contracts',
       tabDocuments: 'Documents',
       tabFinancial: 'Financial',
+      tabStock: 'Stock',
 
       actions: 'Actions',
       copyPortalLink: 'Copy portal link',
@@ -1087,6 +1088,7 @@ export const customers = {
       txnPending: 'Pending',
       viewDetails: 'View details',
       financeChargeBadge: 'Charge',
+      expensePaidByCustomerBadge: 'Paid by the customer',
 
       switcherSearch: 'Search customer...',
       switcherEmpty: 'No customers found.',
@@ -1658,6 +1660,7 @@ export const customers = {
       tabContracts: 'Contratos',
       tabDocuments: 'Documentos',
       tabFinancial: 'Financiero',
+      tabStock: 'Inventario',
 
       actions: 'Acciones',
       copyPortalLink: 'Copiar enlace del portal',
@@ -1816,6 +1819,7 @@ export const customers = {
       txnPending: 'Pendiente',
       viewDetails: 'Ver detalles',
       financeChargeBadge: 'Cobro',
+      expensePaidByCustomerBadge: 'Pagado por el cliente',
 
       switcherSearch: 'Buscar cliente...',
       switcherEmpty: 'Ningún cliente encontrado.',
@@ -2387,6 +2391,7 @@ export const customers = {
       tabContracts: 'Contrats',
       tabDocuments: 'Documents',
       tabFinancial: 'Financier',
+      tabStock: 'Stock',
 
       actions: 'Actions',
       copyPortalLink: 'Copier le lien du portail',
@@ -2545,6 +2550,7 @@ export const customers = {
       txnPending: 'En attente',
       viewDetails: `Voir les détails`,
       financeChargeBadge: `Facture`,
+      expensePaidByCustomerBadge: 'Payé par le client',
 
       switcherSearch: 'Rechercher un client...',
       switcherEmpty: 'Aucun client trouvé.',

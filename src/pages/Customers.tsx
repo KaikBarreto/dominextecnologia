@@ -227,7 +227,7 @@ export default function Customers() {
   const navigate = useNavigate();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.customers;
-  const { isAdminOrGestor, hasPermission } = useAuth();
+  const { isAdminOrGestor, hasPermission, hasPermissionRecord } = useAuth();
   const { hasModule } = useCompanyModules();
   const [searchTerm, setSearchTerm] = useState('');
   const [formOpen, setFormOpen] = useState(false);
@@ -879,6 +879,8 @@ export default function Customers() {
         customer={editingCustomer}
         onSubmit={handleSubmit}
         isLoading={createCustomer.isPending || updateCustomer.isPending}
+        canManageCreditLimit={hasModule('pdv')
+          && (isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:manage_party_credit')))}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

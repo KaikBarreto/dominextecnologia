@@ -24,6 +24,7 @@ interface UsePdvServerDraftSyncOptions<
   hydratedStorageKey: string | null;
   localCacheFound: boolean;
   draftType: 'sale' | 'purchase';
+  context: { cashSessionId: string | null; terminalId: string | null; stockId: string } | null;
   workspace: TWorkspace;
   setWorkspace: Dispatch<SetStateAction<TWorkspace>>;
   parseWorkspace: (raw: string) => TWorkspace;
@@ -31,6 +32,42 @@ interface UsePdvServerDraftSyncOptions<
 
 function asJson(value: unknown): Json {
   return JSON.parse(JSON.stringify(value)) as Json;
+}
+
+interface PdvServerDraftRow {
+  id: string;
+  revision: number | string;
+  payload: Json;
+  deleted_at?: string | null;
+}
+
+interface PdvServerDraftMutationResult {
+  revision?: number | string;
+  deleted_at?: string | null;
+}
+
+interface PdvDraftRpcData {
+  pdv_list_order_drafts_v2: PdvServerDraftRow[];
+  pdv_save_order_draft_v2: PdvServerDraftMutationResult;
+  pdv_delete_order_draft_v2: PdvServerDraftMutationResult;
+}
+
+type PdvDraftRpcName = keyof PdvDraftRpcData;
+type PdvDraftRpcError = { code?: string; message?: string; details?: string };
+type PdvDraftRpcCaller = <TName extends PdvDraftRpcName>(
+  name: TName,
+  args: Record<string, unknown>,
+) => PromiseLike<{ data: PdvDraftRpcData[TName] | null; error: PdvDraftRpcError | null }>;
+
+const draftRpc = supabase.rpc.bind(supabase) as unknown as PdvDraftRpcCaller;
+
+function isServerDraftRow(value: unknown): value is PdvServerDraftRow {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const row = value as Record<string, unknown>;
+  return typeof row.id === 'string'
+    && Number.isFinite(Number(row.revision))
+    && row.payload !== null
+    && typeof row.payload === 'object';
 }
 
 function updatedAtMs(value: string): number {
@@ -52,10 +89,14 @@ export function usePdvServerDraftSync<
   hydratedStorageKey,
   localCacheFound,
   draftType,
+  context,
   workspace,
   setWorkspace,
   parseWorkspace,
 }: UsePdvServerDraftSyncOptions<TDraft, TWorkspace>) {
+  const cashSessionId = context?.cashSessionId ?? null;
+  const terminalId = context?.terminalId ?? null;
+  const stockId = context?.stockId ?? null;
   const revisionsRef = useRef(new Map<string, number>());
   const serverPayloadRef = useRef(new Map<string, string>());
   const pendingSaveRef = useRef(new Map<string, {
@@ -116,8 +157,12 @@ export function usePdvServerDraftSync<
     }
 
     async function hydrateFromServer() {
-      const { data, error } = await supabase.rpc('pdv_list_order_drafts', {
+      if (!stockId) return;
+      const { data, error } = await draftRpc('pdv_list_order_drafts_v2', {
         p_draft_type: draftType,
+        p_cash_session_id: cashSessionId,
+        p_terminal_id: terminalId,
+        p_stock_id: stockId,
         p_include_deleted: false,
       });
       if (cancelled || currentStorageKeyRef.current !== requestKey) return;
@@ -127,7 +172,7 @@ export function usePdvServerDraftSync<
         return;
       }
 
-      const rows = data ?? [];
+      const rows = (data ?? []).filter(isServerDraftRow);
       const serverIds = new Set(rows.map((row) => row.id));
       for (const draftId of [...tombstonesRef.current]) {
         if (!serverIds.has(draftId)) tombstonesRef.current.delete(draftId);
@@ -181,7 +226,7 @@ export function usePdvServerDraftSync<
     return () => {
       cancelled = true;
     };
-  }, [draftType, hydratedStorageKey, localCacheFound, parseWorkspace, persistTombstones, setWorkspace, storageKey]);
+  }, [cashSessionId, draftType, hydratedStorageKey, localCacheFound, parseWorkspace, persistTombstones, setWorkspace, stockId, storageKey, terminalId]);
 
   useEffect(() => {
     if (!storageKey || serverReadyKey !== storageKey || hydratedStorageKey !== storageKey) return;
@@ -205,12 +250,16 @@ export function usePdvServerDraftSync<
                 expectedRevision: revisionsRef.current.get(draft.id) ?? 0,
               };
           pendingSaveRef.current.set(draft.id, pending);
-          const { data, error } = await supabase.rpc('pdv_save_order_draft', {
+          if (!stockId) return;
+          const { data, error } = await draftRpc('pdv_save_order_draft_v2', {
             p_draft_id: draft.id,
             p_draft_type: draftType,
             p_payload: asJson(draft),
             p_expected_revision: pending.expectedRevision,
             p_client_request_id: pending.requestId,
+            p_cash_session_id: cashSessionId,
+            p_terminal_id: terminalId,
+            p_stock_id: stockId,
           });
           if (currentStorageKeyRef.current !== requestKey) return;
           if (error) {
@@ -218,7 +267,12 @@ export function usePdvServerDraftSync<
             if (issue === 'conflict' || issueDuringRun == null) issueDuringRun = issue;
             continue;
           }
-          revisionsRef.current.set(draft.id, Number(data.revision));
+          const revision = Number(data?.revision);
+          if (!Number.isFinite(revision)) {
+            issueDuringRun = 'unavailable';
+            continue;
+          }
+          revisionsRef.current.set(draft.id, revision);
           serverPayloadRef.current.set(draft.id, serialized);
           pendingSaveRef.current.delete(draft.id);
         }
@@ -230,10 +284,15 @@ export function usePdvServerDraftSync<
             ? previousPending
             : { requestId: crypto.randomUUID(), expectedRevision: revision };
           pendingDeleteRef.current.set(draftId, pending);
-          const { data, error } = await supabase.rpc('pdv_delete_order_draft', {
+          if (!stockId) return;
+          const { data, error } = await draftRpc('pdv_delete_order_draft_v2', {
             p_draft_id: draftId,
             p_expected_revision: pending.expectedRevision,
             p_client_request_id: pending.requestId,
+            p_draft_type: draftType,
+            p_cash_session_id: cashSessionId,
+            p_terminal_id: terminalId,
+            p_stock_id: stockId,
           });
           if (currentStorageKeyRef.current !== requestKey) return;
           if (error) {
@@ -241,7 +300,7 @@ export function usePdvServerDraftSync<
             if (issue === 'conflict' || issueDuringRun == null) issueDuringRun = issue;
             continue;
           }
-          if (data.deleted_at) {
+          if (data?.deleted_at) {
             revisionsRef.current.delete(draftId);
             serverPayloadRef.current.delete(draftId);
             pendingSaveRef.current.delete(draftId);
@@ -254,7 +313,7 @@ export function usePdvServerDraftSync<
       });
     }, 600);
     return () => window.clearTimeout(timer);
-  }, [draftType, hydratedStorageKey, persistTombstones, serverReadyKey, storageKey, workspace]);
+  }, [cashSessionId, draftType, hydratedStorageKey, persistTombstones, serverReadyKey, stockId, storageKey, terminalId, workspace]);
 
   return { syncIssue, serverReady: serverReadyKey === storageKey, markDeleted };
 }

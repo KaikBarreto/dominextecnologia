@@ -1,11 +1,14 @@
-import { Trash2 } from 'lucide-react';
-import { PdvQuantityStepper } from '@/components/pdv/PdvQuantityStepper';
-import { PdvInlineDiscountEditor, type PdvInlineDiscountEditorTexts } from '@/components/pdv/PdvInlineDiscountEditor';
-import type { CartLine } from '@/lib/pdv/cart';
-import type { LocaleCode } from '@/lib/i18n/locales';
-import { PdvProductName } from '@/components/pdv/PdvProductName';
-import { PdvProductImagePreview } from '@/components/pdv/PdvProductImagePreview';
-import { inventoryQuantityStep } from '@/lib/inventoryUnits';
+import { Trash2 } from "lucide-react";
+import { PdvQuantityStepper } from "@/components/pdv/PdvQuantityStepper";
+import {
+  PdvInlineDiscountEditor,
+  type PdvInlineDiscountEditorTexts,
+} from "@/components/pdv/PdvInlineDiscountEditor";
+import type { CartLine } from "@/lib/pdv/cart";
+import type { LocaleCode } from "@/lib/i18n/locales";
+import { PdvProductName } from "@/components/pdv/PdvProductName";
+import { PdvProductImagePreview } from "@/components/pdv/PdvProductImagePreview";
+import { inventoryQuantityStep } from "@/lib/inventoryUnits";
 
 interface PdvCartLineRowProps {
   line: CartLine;
@@ -27,6 +30,8 @@ interface PdvCartLineRowProps {
   onRemove: (inventoryId: string) => void;
   /** Enter na edição de quantidade devolve o foco pra busca (balcão é fila). */
   onConfirmQuantityEdit?: () => void;
+  /** Mantém a mesma linha visual, mas sem controles em estados concluídos/cancelados. */
+  readOnly?: boolean;
 }
 
 /**
@@ -53,9 +58,13 @@ export function PdvCartLineRow({
   onDiscountEditingChange,
   onRemove,
   onConfirmQuantityEdit,
+  readOnly = false,
 }: PdvCartLineRowProps) {
   const lineGross = line.quantity * line.unitPrice;
-  const lineDiscount = Math.min(Math.max(line.discountAmount ?? 0, 0), lineGross);
+  const lineDiscount = Math.min(
+    Math.max(line.discountAmount ?? 0, 0),
+    lineGross,
+  );
   const lineTotal = lineGross - lineDiscount;
 
   return (
@@ -95,51 +104,63 @@ export function PdvCartLineRow({
 
         <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
           <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-            {formatCurrency(line.unitPrice)}/{line.unit?.trim() || 'un'}
+            {formatCurrency(line.unitPrice)}/{line.unit?.trim() || "un"}
           </span>
           <span className="h-3 w-px shrink-0 bg-border" aria-hidden="true" />
           <div className="flex min-w-0 items-center gap-1">
-            <PdvQuantityStepper
-              size="sm"
-              className="shrink-0"
-              quantity={line.quantity}
-              availableQuantity={line.availableQuantity}
-              step={inventoryQuantityStep(line.unit)}
-              onIncrement={(delta) => onIncrement(line.inventoryId, delta)}
-              onSetQuantity={(quantity) => onSetQuantity(line.inventoryId, quantity)}
-              onConfirmEdit={onConfirmQuantityEdit}
-              decrementAriaLabel="-"
-              incrementAriaLabel="+"
-              editAriaLabel={quantityEditLabel}
-            />
-            <span className="text-xs font-medium text-muted-foreground">{line.unit?.trim() || 'un'}</span>
+            {readOnly ? (
+              <span className="text-xs font-semibold tabular-nums">
+                {line.quantity}
+              </span>
+            ) : (
+              <PdvQuantityStepper
+                size="sm"
+                className="shrink-0"
+                quantity={line.quantity}
+                availableQuantity={line.availableQuantity}
+                step={inventoryQuantityStep(line.unit)}
+                onIncrement={(delta) => onIncrement(line.inventoryId, delta)}
+                onSetQuantity={(quantity) =>
+                  onSetQuantity(line.inventoryId, quantity)
+                }
+                onConfirmEdit={onConfirmQuantityEdit}
+                decrementAriaLabel="-"
+                incrementAriaLabel="+"
+                editAriaLabel={quantityEditLabel}
+              />
+            )}
+            <span className="text-xs font-medium text-muted-foreground">
+              {line.unit?.trim() || "un"}
+            </span>
           </div>
         </div>
       </div>
-      <div className="absolute right-0 top-1/2 flex -translate-y-1/2 items-center gap-0.5">
-        <PdvInlineDiscountEditor
-          variant="line"
-          iconOnly
-          label={discountLabel}
-          baseAmount={lineGross}
-          discountAmount={lineDiscount}
-          formatCurrency={formatCurrency}
-          currencySymbol={currencySymbol}
-          locale={locale}
-          currencyFractionDigits={currencyFractionDigits}
-          texts={discountEditorTexts}
-          onApply={(amount) => onSetLineDiscount(line.inventoryId, amount)}
-          onEditingChange={onDiscountEditingChange}
-        />
-        <button
-          type="button"
-          className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          onClick={() => onRemove(line.inventoryId)}
-          aria-label={removeLabel}
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
-      </div>
+      {!readOnly && (
+        <div className="absolute right-0 top-1/2 flex -translate-y-1/2 items-center gap-0.5">
+          <PdvInlineDiscountEditor
+            variant="line"
+            iconOnly
+            label={discountLabel}
+            baseAmount={lineGross}
+            discountAmount={lineDiscount}
+            formatCurrency={formatCurrency}
+            currencySymbol={currencySymbol}
+            locale={locale}
+            currencyFractionDigits={currencyFractionDigits}
+            texts={discountEditorTexts}
+            onApply={(amount) => onSetLineDiscount(line.inventoryId, amount)}
+            onEditingChange={onDiscountEditingChange}
+          />
+          <button
+            type="button"
+            className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={() => onRemove(line.inventoryId)}
+            aria-label={removeLabel}
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -39,6 +39,8 @@ import {
   History as HistoryIcon,
   BarChart3,
   Megaphone,
+  ListOrdered,
+  PackageCheck,
 } from 'lucide-react';
 import { AreaTecnicoIcon, OperacionalIcon } from '@/components/icons/MenuIcons';
 import {
@@ -67,6 +69,7 @@ import { MESSAGES } from '@/lib/i18n';
 import { localizeAppPath } from '@/lib/i18n/appRouteSlugs';
 import { translateMenuLabel } from '@/components/layout/shellLabels';
 import { useCompanyModules, type ModuleCode } from '@/hooks/useCompanyModules';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useLogoInk } from '@/hooks/useLogoInk';
 import { HelpCenterDrawer } from '@/components/layout/HelpCenterDrawer';
@@ -81,8 +84,9 @@ interface MenuItem {
   icon: ComponentType<{ className?: string }>;
   path?: string;
   screenKey?: string;
+  screenKeys?: string[];
   moduleKey?: ModuleCode;
-  children?: { title: string; icon: ComponentType<{ className?: string }>; path: string; screenKey?: string; moduleKey?: ModuleCode }[];
+  children?: { title: string; icon: ComponentType<{ className?: string }>; path: string; screenKey?: string; screenKeys?: string[]; moduleKey?: ModuleCode; requiresPdvCounter?: boolean }[];
 }
 
 const tenantMenuItems: MenuItem[] = [
@@ -114,14 +118,18 @@ const tenantMenuItems: MenuItem[] = [
   // ⚠️ ESPELHA o `tenantMenuItems` de `SidebarMenuContent.tsx`. Esta é a nav
   // HORIZONTAL (preferência do usuário em Configurações): item que só existe no
   // sidebar fica invisível pra quem escolheu a barra de cima.
-  // Pedidos e Expedição chegam na Onda 2 (modo balcão). "Caixa" (/pdv) é o
-  // PAINEL; a venda (/pdv/venda) é sub-tela sem item de menu — ver o sidebar.
+  // Orçamentos e Expedição aparecem somente no modo balcão e respeitam
+  // permissões próprias. "Caixa" (/pdv) é o PAINEL; a venda (/pdv/venda) é
+  // sub-tela sem item de menu — ver o sidebar.
   {
     title: 'PDV',
     icon: Store,
     moduleKey: 'pdv',
     children: [
       { title: 'Caixa', icon: ShoppingCart, path: '/pdv', screenKey: 'screen:pdv', moduleKey: 'pdv' },
+      { title: 'Orçamentos', icon: ClipboardList, path: '/pdv/pre-pedidos', screenKeys: ['screen:pdv', 'screen:pdv_orders'], moduleKey: 'pdv', requiresPdvCounter: true },
+      { title: 'Pedidos', icon: ListOrdered, path: '/pdv/pedidos', screenKey: 'screen:pdv_orders', moduleKey: 'pdv' },
+      { title: 'Expedição', icon: PackageCheck, path: '/pdv/expedicao', screenKey: 'screen:pdv_dispatch', moduleKey: 'pdv', requiresPdvCounter: true },
       { title: 'Histórico de Caixa', icon: HistoryIcon, path: '/pdv/caixas', screenKey: 'screen:pdv_cash_history', moduleKey: 'pdv' },
       { title: 'Relatórios da Loja', icon: BarChart3, path: '/pdv/relatorios', screenKey: 'screen:pdv_reports', moduleKey: 'pdv' },
       { title: 'Configurações do PDV', icon: SettingsIcon, path: '/pdv/configuracoes', screenKey: 'screen:pdv_settings', moduleKey: 'pdv' },
@@ -207,11 +215,14 @@ export const TopNavbar = memo(() => {
   const isSuperAdmin = roles.includes('super_admin');
   const isCompanyAdmin = roles.includes('admin');
 
-  const filterByAccess = <T extends { screenKey?: string; moduleKey?: ModuleCode }>(items: T[]): T[] => {
+  const { settings } = useCompanySettings();
+  const filterByAccess = <T extends { screenKey?: string; screenKeys?: string[]; moduleKey?: ModuleCode; requiresPdvCounter?: boolean }>(items: T[]): T[] => {
     return items.filter((item) => {
       if (item.screenKey && !hasScreenAccess(item.screenKey)) return false;
       if (item.screenKey && !hasScreen(item.screenKey)) return false;
+      if (item.screenKeys && !item.screenKeys.some((key) => hasScreenAccess(key) && hasScreen(key))) return false;
       if (item.moduleKey && !hasModule(item.moduleKey)) return false;
+      if (item.requiresPdvCounter && settings?.pdv_mode !== 'balcao') return false;
       return true;
     });
   };

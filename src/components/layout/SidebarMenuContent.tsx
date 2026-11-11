@@ -42,6 +42,8 @@ import {
   KanbanSquare,
   Store,
   ShoppingCart,
+  ListOrdered,
+  PackageCheck,
 } from 'lucide-react';
 import { OperacionalIcon, AreaTecnicoIcon } from '@/components/icons/MenuIcons';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
@@ -87,11 +89,12 @@ interface MenuItem {
   icon: ComponentType<{ className?: string }>;
   path?: string;
   screenKey?: string;
+  screenKeys?: string[];
   moduleKey?: ModuleCode;
   requiresSegment?: string;
   /** Gate dedicado: libera só se o segmento da empresa tem Área do Técnico™. */
   requiresTechTools?: boolean;
-  children?: { title: string; icon: ComponentType<{ className?: string }>; path: string; screenKey?: string; moduleKey?: ModuleCode; requiresSegment?: string }[];
+  children?: { title: string; icon: ComponentType<{ className?: string }>; path: string; screenKey?: string; screenKeys?: string[]; moduleKey?: ModuleCode; requiresSegment?: string; requiresPdvCounter?: boolean }[];
 }
 
 // Estrutura preservada do AppSidebar antigo do Dominex — não inventar itens novos.
@@ -133,11 +136,8 @@ const tenantMenuItems: MenuItem[] = [
   // (ou trial ativo), `hasModule('pdv')` é false, o grupo some inteiro e nenhum
   // filho sobra — o `filterByAccess` derruba os dois níveis.
   //
-  // ONDA 2 (modo balcão): 'Pedidos' (screen:pdv_orders) e 'Expedição'
-  // (screen:pdv_dispatch) NÃO entram aqui agora. Eles só fazem sentido com
-  // `company_settings.pdv_mode = 'balcao'`, que ainda não existe, e as telas
-  // também não — item de menu apontando pra rota inexistente é bug, não
-  // adiantamento. Entram junto com as telas, gateados pelo modo.
+  // Orçamentos e Expedição aparecem somente no modo balcão. Cada tela conserva
+  // a própria permissão; Pedidos é a consulta geral autorizada.
   //
   // ⚠️ "Caixa" (/pdv) é o PAINEL do caixa (abrir/fechar, gaveta, cofre, entradas
   // e saídas, histórico do dia). A tela de VENDA (o carrinho) mora em /pdv/venda
@@ -151,6 +151,9 @@ const tenantMenuItems: MenuItem[] = [
     moduleKey: 'pdv',
     children: [
       { title: 'Caixa', icon: ShoppingCart, path: '/pdv', screenKey: 'screen:pdv', moduleKey: 'pdv' },
+      { title: 'Orçamentos', icon: ClipboardList, path: '/pdv/pre-pedidos', screenKeys: ['screen:pdv', 'screen:pdv_orders'], moduleKey: 'pdv', requiresPdvCounter: true },
+      { title: 'Pedidos', icon: ListOrdered, path: '/pdv/pedidos', screenKey: 'screen:pdv_orders', moduleKey: 'pdv' },
+      { title: 'Expedição', icon: PackageCheck, path: '/pdv/expedicao', screenKey: 'screen:pdv_dispatch', moduleKey: 'pdv', requiresPdvCounter: true },
       { title: 'Histórico de Caixa', icon: HistoryIcon, path: '/pdv/caixas', screenKey: 'screen:pdv_cash_history', moduleKey: 'pdv' },
       { title: 'Relatórios da Loja', icon: BarChart3, path: '/pdv/relatorios', screenKey: 'screen:pdv_reports', moduleKey: 'pdv' },
       { title: 'Configurações do PDV', icon: SettingsIcon, path: '/pdv/configuracoes', screenKey: 'screen:pdv_settings', moduleKey: 'pdv' },
@@ -321,13 +324,15 @@ export function SidebarMenuContent() {
   const isCompanyAdmin = roles.includes('admin');
   const showLogoLoading = logoLoading && !isAdminUser;
 
-  const filterByAccess = <T extends { screenKey?: string; moduleKey?: ModuleCode; requiresSegment?: string; requiresTechTools?: boolean }>(items: T[]): T[] => {
+  const filterByAccess = <T extends { screenKey?: string; screenKeys?: string[]; moduleKey?: ModuleCode; requiresSegment?: string; requiresTechTools?: boolean; requiresPdvCounter?: boolean }>(items: T[]): T[] => {
     return items.filter(item => {
       if (item.screenKey && !hasScreenAccess(item.screenKey)) return false;
       if (item.screenKey && !hasScreen(item.screenKey)) return false;
+      if (item.screenKeys && !item.screenKeys.some((key) => hasScreenAccess(key) && hasScreen(key))) return false;
       if (item.moduleKey && !hasModule(item.moduleKey)) return false;
       if (item.requiresSegment && !companyHasSegment(settings?.segments, item.requiresSegment, settings?.segment)) return false;
       if (item.requiresTechTools && !segmentsHaveTechTools(normalizeCompanySegments(settings?.segments, settings?.segment))) return false;
+      if (item.requiresPdvCounter && settings?.pdv_mode !== 'balcao') return false;
       return true;
     });
   };

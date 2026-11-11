@@ -20,6 +20,9 @@ import { formatMoney } from '@/lib/format';
 import { usePartyLabels } from '@/hooks/usePartyLabels';
 import { formatPartyFieldValue, usePartyFieldConfig } from '@/hooks/usePartyFieldConfig';
 import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
+import { PartyAccountPanel } from '@/components/customers/PartyAccountPanel';
+import { useAuth } from '@/contexts/AuthContext';
+import { useCompanyModules } from '@/hooks/useCompanyModules';
 
 /**
  * Ficha do fornecedor: dados de cadastro + histórico de gastos
@@ -47,6 +50,13 @@ export function SupplierDetailContent({ supplier }: { supplier: Supplier }) {
   const { labelsFor } = usePartyLabels();
   const { fields: partyFields } = usePartyFieldConfig('supplier');
   const partyData = supplier as Supplier & { label_id?: string | null; custom_fields?: Record<string, unknown> };
+  const { isAdminOrGestor, hasPermission, hasPermissionRecord } = useAuth();
+  const { hasModule, hasScreen } = useCompanyModules();
+  const canViewPartyAccount = hasModule('pdv')
+    && hasScreen('screen:customers')
+    && (isAdminOrGestor() || hasPermission('fn:view_customer_financial'));
+  const canManagePartyCredit = canViewPartyAccount
+    && (isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:manage_party_credit')));
 
   const supplierTransactions = useMemo(
     () => transactions
@@ -116,6 +126,13 @@ export function SupplierDetailContent({ supplier }: { supplier: Supplier }) {
             <p className="text-sm text-muted-foreground italic">{t.noNotes}</p>
           )}
         </div>
+
+        <PartyAccountPanel
+          partyType="supplier"
+          partyId={supplier.id}
+          enabled={canViewPartyAccount}
+          canManage={canManagePartyCredit}
+        />
 
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-2">

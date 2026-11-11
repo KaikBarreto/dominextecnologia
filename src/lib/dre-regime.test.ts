@@ -8,6 +8,7 @@ import {
   isFutureCashDate,
   isPaidDateAllowedInTz,
   isDreExcludedGroup,
+  isDreCashFlowOnlyPdvRole,
   classifyDreCategory,
   DRE_NON_OPERATING_GROUP,
   parseDreDate,
@@ -447,6 +448,15 @@ describe('isDreExcludedGroup', () => {
     expect(isDreExcludedGroup('outros')).toBe(true);
     expect(isDreExcludedGroup('opex')).toBe(false);
     expect(isDreExcludedGroup(null)).toBe(false);
+  });
+});
+
+describe('isDreCashFlowOnlyPdvRole', () => {
+  it('exclui refund e reversão do resultado sem depender de categoria', () => {
+    expect(isDreCashFlowOnlyPdvRole('pdv_refund')).toBe(true);
+    expect(isDreCashFlowOnlyPdvRole('pdv_refund_reversal')).toBe(true);
+    expect(isDreCashFlowOnlyPdvRole('pdv_receivable_settlement')).toBe(false);
+    expect(isDreCashFlowOnlyPdvRole(null)).toBe(false);
   });
 });
 

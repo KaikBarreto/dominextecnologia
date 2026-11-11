@@ -28,6 +28,10 @@ describe('SearchableSelect — fluxo rápido por teclado', () => {
     fireEvent.click(screen.getByRole('combobox', { name: 'Escolher material' }));
     const search = await screen.findByPlaceholderText('Pesquisar material');
     await waitFor(() => expect(search).toHaveFocus());
+    expect(search).toHaveAttribute('type', 'text');
+    expect(search).toHaveAttribute('inputmode', 'search');
+    expect(search).toHaveAttribute('autocomplete', 'off');
+    expect(search).toHaveAttribute('data-form-type', 'other');
 
     fireEvent.keyDown(search, { key: 'Enter' });
     expect(onEmptyEnter).toHaveBeenCalledOnce();

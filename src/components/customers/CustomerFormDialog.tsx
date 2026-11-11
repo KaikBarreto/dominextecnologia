@@ -84,6 +84,14 @@ const customerSchema = z.object({
   // form, e omitimos do payload final pra não sobrescrever o que já existe.
   is_service_customer: z.boolean().optional(),
   is_store_customer: z.boolean().optional(),
+  credit_limit: z.preprocess(
+    (value) => value === '' || value === undefined || value === null ? null : Number(String(value).replace(',', '.')),
+    z.number({ invalid_type_error: 'Informe um limite válido' })
+      .min(0, 'O limite não pode ser negativo')
+      .max(99999999.99, 'O limite informado é muito alto')
+      .refine((value) => Math.round(value * 100) === value * 100, 'Use no máximo duas casas decimais')
+      .nullable(),
+  ).optional(),
 });
 
 type CustomerFormData = z.infer<typeof customerSchema>;
@@ -95,6 +103,7 @@ const EMPTY_FORM: CustomerFormData = {
   complement: '', neighborhood: '', city: '', state: '', zip_code: '',
   notes: '', origin: '', label_id: '', inscricao_municipal: '', inscricao_estadual: '', ibge_municipality_code: '',
   is_service_customer: true, is_store_customer: false,
+  credit_limit: null,
 };
 
 interface CustomerFormDialogProps {
@@ -111,6 +120,7 @@ interface CustomerFormDialogProps {
    * `pdv` — o campo nem aparece e o valor nasce do DEFAULT do banco.
    */
   defaultCustomerKind?: 'servico' | 'loja';
+  canManageCreditLimit?: boolean;
 }
 
 /** Título de seção do formulário: separa blocos de campos sem virar card. */
@@ -124,6 +134,7 @@ function SecaoForm({ children }: { children: React.ReactNode }) {
 
 export function CustomerFormDialog({
   open, onOpenChange, customer, onSubmit, isLoading, defaultCustomerKind = 'servico',
+  canManageCreditLimit = false,
 }: CustomerFormDialogProps) {
   const { hasModule } = useCompanyModules();
   const hasPdvModule = hasModule('pdv');
@@ -257,6 +268,7 @@ export function CustomerFormDialog({
           inscricao_municipal: (customer as any)?.inscricao_municipal ?? '',
           inscricao_estadual: (customer as any)?.inscricao_estadual ?? '',
           ibge_municipality_code: (customer as any)?.ibge_municipality_code ?? '',
+          credit_limit: canManageCreditLimit ? customer?.credit_limit ?? null : null,
           ...kindDefaults,
         });
       }
@@ -353,6 +365,7 @@ export function CustomerFormDialog({
           delete payload.is_service_customer;
           delete payload.is_store_customer;
         }
+        if (!hasPdvModule || !canManageCreditLimit) delete payload.credit_limit;
         const savedCustomer = await onSubmit(payload as unknown as Parameters<typeof onSubmit>[0]);
         const savedCustomerId = savedCustomer && typeof savedCustomer === 'object'
           ? savedCustomer.id
@@ -530,6 +543,23 @@ export function CustomerFormDialog({
                       )} />
                     </div>
                   </div>
+                )}
+                {hasPdvModule && canManageCreditLimit && (
+                  <FormField control={form.control} name="credit_limit" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Limite de fiado</FormLabel>
+                      <FormControl>
+                        <Input
+                          inputMode="decimal"
+                          placeholder="Sem limite liberado"
+                          value={field.value ?? ''}
+                          onChange={(event) => field.onChange(event.target.value)}
+                        />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground">Deixe vazio para não liberar compras no fiado.</p>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
                 )}
                 <SecaoForm>{t.formSectionContact}</SecaoForm>
                 <FormField control={form.control} name="phone" render={({ field }) => (

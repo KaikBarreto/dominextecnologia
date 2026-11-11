@@ -155,12 +155,16 @@ const CRM = React.lazy(() => import("./pages/CRM"));
 const Projects = React.lazy(() => import("./pages/Projects"));
 const ProjectDetail = React.lazy(() => import("./pages/ProjectDetail"));
 const Inventory = React.lazy(() => import("./pages/Inventory"));
-// PDV e Loja (add-on pago `pdv`). Pedidos e Expedição (modo balcão) chegam na Onda 2.
+// PDV e Loja (add-on pago `pdv`). No modo balcão, Orçamentos, Pedidos e
+// Expedição aparecem separadamente conforme a permissão do usuário.
 // `PdvCaixa` é o PAINEL (a raiz /pdv); `Pdv` é a tela de VENDA (o carrinho), hoje
 // sub-tela em /pdv/venda — ver o bloco de rotas do PDV lá embaixo.
 const PdvCaixa = React.lazy(() => import("./pages/PdvCaixa"));
 const Pdv = React.lazy(() => import("./pages/Pdv"));
 const PdvPurchase = React.lazy(() => import("./pages/PdvPurchase"));
+const PdvPreorders = React.lazy(() => import("./pages/PdvPreorders"));
+const PdvOrders = React.lazy(() => import("./pages/PdvOrders"));
+const PdvDispatch = React.lazy(() => import("./pages/PdvDispatch"));
 const PdvCashHistory = React.lazy(() => import("./pages/PdvCashHistory"));
 const PdvReports = React.lazy(() => import("./pages/PdvReports"));
 const PdvSettings = React.lazy(() => import("./pages/PdvSettings"));
@@ -314,6 +318,8 @@ function useDefaultRoute() {
     // abre o caixa antes de vender, e um carrinho vazio sem caixa aberto não
     // teria o que fazer.
     ['screen:pdv', '/pdv'],
+    ['screen:pdv_orders', '/pdv/pedidos'],
+    ['screen:pdv_dispatch', '/pdv/expedicao'],
   ];
   for (const [key, path] of appCandidates) {
     if (hasScreenAccess(key) && hasScreen(key)) return path;
@@ -371,7 +377,7 @@ function SubscriptionProtectedRoute({ children }: { children: React.ReactNode })
 }
 
 // Permission-gated route — redirects to default route if no access
-function PermissionRoute({ screenKey, children }: { screenKey: string; children: React.ReactNode }) {
+function PermissionRoute({ screenKey, children }: { screenKey: string | string[]; children: React.ReactNode }) {
   const {
     hasScreenAccess, loading, user, roles, permissions, adminPermissions,
     linkedAffiliateId, affiliateLoading,
@@ -390,7 +396,8 @@ function PermissionRoute({ screenKey, children }: { screenKey: string; children:
   // empresa pra /dashboard (Auth.tsx), então ESTE é o caminho que o afiliado
   // percorre logo depois de entrar.
   if (user && !linkedAffiliateId && roles.length === 0 && permissions.length === 0 && adminPermissions.length === 0) return <LoadingSpinner />;
-  if (!hasScreenAccess(screenKey) || !hasScreen(screenKey)) return <Navigate to={defaultRoute} replace />;
+  const acceptedScreens = Array.isArray(screenKey) ? screenKey : [screenKey];
+  if (!acceptedScreens.some((key) => hasScreenAccess(key) && hasScreen(key))) return <Navigate to={defaultRoute} replace />;
 
   return <>{children}</>;
 }
@@ -402,6 +409,19 @@ function SegmentRoute({ segment, children }: { segment: string; children: React.
 
   if (isLoading) return null;
   if (!companyHasSegment(settings?.segments, segment, settings?.segment)) return <Navigate to="/" replace />;
+
+  return <>{children}</>;
+}
+
+// A expedição só existe no fluxo balcão de três etapas. Este guard protege a
+// rota e falha fechado enquanto a configuração ainda não foi confirmada.
+function PdvDispatchModeRoute({ children }: { children: React.ReactNode }) {
+  const { settings, isLoading } = useCompanySettings();
+
+  if (isLoading) return <LoadingSpinner />;
+  if (settings?.pdv_mode !== 'balcao' || settings.pdv_fulfillment_mode !== 'dispatch') {
+    return <Navigate to="/pdv/pre-pedidos" replace />;
+  }
 
   return <>{children}</>;
 }
@@ -856,6 +876,9 @@ const AppRoutes = () => (
       {localizedAppRoutes('pdv', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv"><PdvCaixa /></PermissionRoute></ModuleRoute>)}
       {localizedAppRoutes('pdvSale', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv"><Pdv /></PermissionRoute></ModuleRoute>)}
       {localizedAppRoutes('pdvPurchase', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv"><PdvPurchase /></PermissionRoute></ModuleRoute>)}
+      {localizedAppRoutes('pdvPreorders', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey={['screen:pdv', 'screen:pdv_orders']}><PdvPreorders /></PermissionRoute></ModuleRoute>)}
+      {localizedAppRoutes('pdvOrders', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv_orders"><PdvOrders /></PermissionRoute></ModuleRoute>)}
+      {localizedAppRoutes('pdvDispatch', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv_dispatch"><PdvDispatchModeRoute><PdvDispatch /></PdvDispatchModeRoute></PermissionRoute></ModuleRoute>)}
       {localizedAppRoutes('pdvCashHistory', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv_cash_history"><PdvCashHistory /></PermissionRoute></ModuleRoute>)}
       {localizedAppRoutes('pdvReports', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv_reports"><PdvReports /></PermissionRoute></ModuleRoute>)}
       {localizedAppRoutes('pdvSettings', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv_settings"><PdvSettings /></PermissionRoute></ModuleRoute>)}

@@ -271,6 +271,17 @@ export function SearchableSelect({
         <Command filter={filterOption}>
           <CommandInput
             ref={searchInputRef}
+            name="catalog-search"
+            role="searchbox"
+            aria-autocomplete="list"
+            inputMode="search"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            data-1p-ignore
+            data-lpignore="true"
+            data-form-type="other"
             placeholder={searchPlaceholder}
             value={query}
             onValueChange={(v) => { setQuery(v); onSearchChange?.(v); }}

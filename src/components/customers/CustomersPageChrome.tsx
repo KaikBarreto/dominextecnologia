@@ -31,7 +31,7 @@ interface CustomersPageChromeProps {
  */
 export function CustomersPageChrome({ activeTab, onTabChange }: CustomersPageChromeProps) {
   const isMobile = useIsMobile();
-  const { isAdminOrGestor, hasPermission } = useAuth();
+  const { isAdminOrGestor, hasPermission, hasPermissionRecord } = useAuth();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.customers;
   const tSuppliers = t.suppliers;
@@ -94,6 +94,7 @@ export function CustomersPageChrome({ activeTab, onTabChange }: CustomersPageChr
         customer={null}
         onSubmit={(data) => createCustomer.mutateAsync(data as CustomerInput)}
         isLoading={createCustomer.isPending}
+        canManageCreditLimit={isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:manage_party_credit'))}
       />
 
       <CustomerSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />

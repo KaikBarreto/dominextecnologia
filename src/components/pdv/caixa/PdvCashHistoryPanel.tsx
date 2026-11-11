@@ -51,6 +51,8 @@ import {
 import { PdvMoneyInput } from '@/components/pdv/caixa/PdvMoneyInput';
 import { PDV_HISTORY_ROW_MOTION, PDV_MOTION_EASE } from '@/lib/pdv/motion';
 import { UserAvatarTooltip } from '@/components/ui/UserAvatarTooltip';
+import { openPdvOrderReceipt } from '@/components/pdv/receipt/PdvOrderReceiptButton';
+import { DEFAULT_PDV_RECEIPT_SETTINGS, type PdvReceiptFormat } from '@/lib/pdv/receipt/model';
 
 type HistoryTexts = (typeof pdv)['pt-br']['cashPanel']['history'];
 type LedgerBadgeKind = PdvLedgerKind | 'transferencia';
@@ -74,6 +76,7 @@ interface PdvCashHistoryPanelProps {
   canDeleteFinance: boolean;
   /** Permissão crítica e explícita `fn:edit_pdv_sales`. */
   canEditPdvSales: boolean;
+  receiptFormat?: PdvReceiptFormat;
   onEdit: (entry: PdvLedgerEntry) => void;
   onDelete: (entry: PdvLedgerEntry) => void;
 }
@@ -106,6 +109,7 @@ export function PdvCashHistoryPanel({
   canManageFinance,
   canDeleteFinance,
   canEditPdvSales,
+  receiptFormat = DEFAULT_PDV_RECEIPT_SETTINGS.defaultFormat,
   onEdit,
   onDelete,
 }: PdvCashHistoryPanelProps) {
@@ -121,6 +125,7 @@ export function PdvCashHistoryPanel({
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [exporting, setExporting] = useState<'excel' | 'pdf' | null>(null);
+  const [receiptLoadingId, setReceiptLoadingId] = useState<string | null>(null);
   const previousEntryKeysRef = useRef<Set<string>>(new Set());
   const hasLoadedEntriesRef = useRef(false);
 
@@ -342,7 +347,7 @@ export function PdvCashHistoryPanel({
     // sai do histórico. Chamar isso de "Excluir" prometia o que o sistema não
     // faz, então o rótulo é "Desfazer" — igual ao botão da confirmação.
     const deleteLabel = plan.path === 'revert_movement' ? texts.actionUndo : texts.actionDelete;
-    return [
+    const actions: RowAction[] = [
       {
         // Motivo colado no rótulo com DOIS-PONTOS, nunca travessão (régua de
         // copy da casa). Por isso os motivos são frases curtas em minúscula.
@@ -364,6 +369,27 @@ export function PdvCashHistoryPanel({
         onClick: () => onDelete(entry),
       },
     ];
+    if (entry.kind === 'venda') {
+      actions.unshift({
+        label: receiptLoadingId === entry.id ? 'Gerando comprovante...' : 'Gerar comprovante',
+        icon: ReceiptText,
+        disabled: receiptLoadingId === entry.id,
+        onClick: () => {
+          setReceiptLoadingId(entry.id);
+          void openPdvOrderReceipt(
+            entry.id,
+            receiptFormat,
+          ).catch((error) => {
+            toast({
+              variant: 'destructive',
+              title: 'Não foi possível gerar o comprovante',
+              description: error instanceof Error ? error.message : 'Tente novamente.',
+            });
+          }).finally(() => setReceiptLoadingId(null));
+        },
+      });
+    }
+    return actions;
   }
 
   return (

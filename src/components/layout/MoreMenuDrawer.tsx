@@ -44,6 +44,8 @@ import {
   KanbanSquare,
   Store,
   ShoppingCart,
+  ListOrdered,
+  PackageCheck,
 } from 'lucide-react';
 import { OperacionalIcon, AreaTecnicoIcon } from '@/components/icons/MenuIcons';
 import { Drawer, DrawerContent, DrawerTitle, DrawerDescription } from '@/components/ui/drawer';
@@ -74,11 +76,12 @@ interface MenuItem {
   icon: ComponentType<{ className?: string }>;
   path?: string;
   screenKey?: string;
+  screenKeys?: string[];
   moduleKey?: ModuleCode;
   requiresSegment?: string;
   /** Gate dedicado: libera só se o segmento da empresa tem Área do Técnico™. */
   requiresTechTools?: boolean;
-  children?: { title: string; icon: ComponentType<{ className?: string }>; path: string; screenKey?: string; moduleKey?: ModuleCode; requiresSegment?: string }[];
+  children?: { title: string; icon: ComponentType<{ className?: string }>; path: string; screenKey?: string; screenKeys?: string[]; moduleKey?: ModuleCode; requiresSegment?: string; requiresPdvCounter?: boolean }[];
 }
 
 const tenantMenuItems: MenuItem[] = [
@@ -110,8 +113,8 @@ const tenantMenuItems: MenuItem[] = [
   // ⚠️ ESTE ARRAY TEM QUE ESPELHAR o `tenantMenuItems` de `SidebarMenuContent.tsx`.
   // Este drawer é a ÚNICA porta do menu completo no celular (o bottom nav tem
   // slots fixos). O PDV é usado em TABLET e CELULAR no balcão, então faltar aqui
-  // seria pior que faltar no desktop. Pedidos e Expedição chegam na Onda 2
-  // (modo balcão), junto com as telas — ver comentário no sidebar.
+  // seria pior que faltar no desktop. Orçamentos e Expedição são gateados pelo
+  // modo balcão — ver comentário no sidebar.
   // "Caixa" (/pdv) é o PAINEL; a venda (/pdv/venda) é sub-tela sem item de menu.
   {
     title: 'PDV',
@@ -119,6 +122,9 @@ const tenantMenuItems: MenuItem[] = [
     moduleKey: 'pdv',
     children: [
       { title: 'Caixa', icon: ShoppingCart, path: '/pdv', screenKey: 'screen:pdv', moduleKey: 'pdv' },
+      { title: 'Orçamentos', icon: ClipboardList, path: '/pdv/pre-pedidos', screenKeys: ['screen:pdv', 'screen:pdv_orders'], moduleKey: 'pdv', requiresPdvCounter: true },
+      { title: 'Pedidos', icon: ListOrdered, path: '/pdv/pedidos', screenKey: 'screen:pdv_orders', moduleKey: 'pdv' },
+      { title: 'Expedição', icon: PackageCheck, path: '/pdv/expedicao', screenKey: 'screen:pdv_dispatch', moduleKey: 'pdv', requiresPdvCounter: true },
       { title: 'Histórico de Caixa', icon: HistoryIcon, path: '/pdv/caixas', screenKey: 'screen:pdv_cash_history', moduleKey: 'pdv' },
       { title: 'Relatórios da Loja', icon: BarChart3, path: '/pdv/relatorios', screenKey: 'screen:pdv_reports', moduleKey: 'pdv' },
       { title: 'Configurações do PDV', icon: SettingsIcon, path: '/pdv/configuracoes', screenKey: 'screen:pdv_settings', moduleKey: 'pdv' },
@@ -330,13 +336,15 @@ function MoreMenuList({ onClose }: { onClose: () => void }) {
 
   const isSuperAdmin = roles.includes('super_admin');
 
-  const filterByAccess = <T extends { screenKey?: string; moduleKey?: ModuleCode; requiresSegment?: string; requiresTechTools?: boolean }>(items: T[]): T[] => {
+  const filterByAccess = <T extends { screenKey?: string; screenKeys?: string[]; moduleKey?: ModuleCode; requiresSegment?: string; requiresTechTools?: boolean; requiresPdvCounter?: boolean }>(items: T[]): T[] => {
     return items.filter((item) => {
       if (item.screenKey && !hasScreenAccess(item.screenKey)) return false;
       if (item.screenKey && !hasScreen(item.screenKey)) return false;
+      if (item.screenKeys && !item.screenKeys.some((key) => hasScreenAccess(key) && hasScreen(key))) return false;
       if (item.moduleKey && !hasModule(item.moduleKey)) return false;
       if (item.requiresSegment && !companyHasSegment(settings?.segments, item.requiresSegment, settings?.segment)) return false;
       if (item.requiresTechTools && !segmentsHaveTechTools(normalizeCompanySegments(settings?.segments, settings?.segment))) return false;
+      if (item.requiresPdvCounter && settings?.pdv_mode !== 'balcao') return false;
       return true;
     });
   };

@@ -100,7 +100,7 @@ export function PdvCashIndicators({
           </h2>
           <div className="mt-4 flex min-w-0 items-center gap-2">
             <p className={cn(
-              'min-w-0 truncate text-4xl font-extrabold tracking-tight tabular-nums sm:text-5xl xl:text-6xl',
+              'min-w-0 break-words text-4xl font-extrabold tracking-tight tabular-nums sm:text-5xl xl:text-6xl',
               drawerAmount < 0 && 'text-destructive',
             )}>
               {isDrawerLoading ? (
@@ -173,7 +173,7 @@ export function PdvCashIndicators({
           type="button"
           disabled={isDrawerLoading || isCofreUnavailable}
           onClick={onClose}
-          className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-muted/40 py-2.5 text-[13px] font-semibold uppercase tracking-widest text-foreground transition-colors hover:border-red-600 hover:bg-red-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:bg-muted/40 disabled:hover:text-foreground"
+          className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-background py-2.5 text-[13px] font-semibold uppercase tracking-widest text-foreground transition-colors hover:border-red-600 hover:bg-red-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:bg-background disabled:hover:text-foreground"
         >
           {cashTexts.close}
         </button>
@@ -186,7 +186,7 @@ export function PdvCashIndicators({
               <Landmark className="h-5 w-5" />
               {accountTexts.title}
             </h2>
-            <p className="mt-4 min-w-0 truncate text-4xl font-extrabold tracking-tight tabular-nums sm:text-5xl xl:text-6xl">
+            <p className="mt-4 min-w-0 break-words text-4xl font-extrabold tracking-tight tabular-nums sm:text-5xl xl:text-6xl">
               {isAccountsLoading ? (
                 <Skeleton className="h-12 w-52 sm:h-14" />
               ) : isAccountsUnavailable ? (
@@ -215,7 +215,7 @@ export function PdvCashIndicators({
                   <span
                     key={acc.id}
                     className={cn(
-                      'max-w-full truncate rounded-full px-2.5 py-1 text-[10px] font-bold text-white',
+                      'max-w-full break-words rounded-full px-2.5 py-1 text-[10px] font-bold text-white',
                       ACCOUNT_TONES[index % ACCOUNT_TONES.length],
                     )}
                     title={`${acc.name}: ${valuesVisible ? money(acc.balance) : '•••••'}`}
@@ -225,7 +225,7 @@ export function PdvCashIndicators({
                   </span>
                 ))}
                 {remaining > 0 && (
-                  <span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">
+                  <span className="rounded-full border bg-background px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">
                     {accountTexts.more.replace('{count}', String(remaining))}
                   </span>
                 )}

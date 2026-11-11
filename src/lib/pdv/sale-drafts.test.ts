@@ -7,6 +7,7 @@ import {
   parsePdvSaleWorkspace,
   selectPdvSaleDraft,
   updatePdvSaleDraft,
+  pdvSaleDraftStorageKey,
   MAX_PDV_SALE_DRAFTS,
 } from '@/lib/pdv/sale-drafts';
 
@@ -20,6 +21,13 @@ const product = {
 };
 
 describe('rascunhos simultâneos da venda PDV', () => {
+  it('separa o cache do mesmo operador entre duas aberturas e dois Caixas', () => {
+    const base = { companyId: 'company', userId: 'operator', stockId: 'stock' };
+    const keyA = pdvSaleDraftStorageKey({ ...base, cashSessionId: 'opening-a', terminalId: 'cash-a' });
+    const keyB = pdvSaleDraftStorageKey({ ...base, cashSessionId: 'opening-b', terminalId: 'cash-b' });
+    expect(keyA).not.toBe(keyB);
+    expect(keyA).toContain(':opening-a:cash-a:stock');
+  });
   it('altera sempre o pedido endereçado sem contaminar o ativo ou os vizinhos', () => {
     let workspace = createPdvSaleWorkspace('2026-10-19', 'stock-a');
     const firstId = workspace.activeId;

@@ -21,6 +21,8 @@ export interface PillTab {
    * sutil; pills sem cor mantêm o padrão primary.
    */
   useColorBackground?: boolean;
+  /** Mantém o texto branco em fundos saturados, mesmo quando a cor é clara. */
+  forceWhiteForeground?: boolean;
 }
 
 interface MobilePillTabsProps {
@@ -190,6 +192,9 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className, varian
           // cor cheia de fundo + texto contrastante (igual ao card da conta e ao
           // sidebar do desktop). Sem isso, accentColor mantém o estilo sutil.
           const colorBg = accented && !!tab.useColorBackground;
+          const saturatedForeground = tab.forceWhiteForeground
+            ? '#ffffff'
+            : idealForeground(tab.accentColor);
 
           // Pill com cor própria (conta financeira):
           // - colorBg + ativo → fundo SATURADO na cor + texto via idealForeground.
@@ -201,7 +206,7 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className, varian
           const pillTextColor = idealForeground(tab.accentColor) === '#0f172a' ? '#0f172a' : `rgb(${rgb})`;
           const segmentedAccentStyle: React.CSSProperties = colorBg
             ? isActive
-              ? { backgroundColor: `rgb(${rgb})`, color: idealForeground(tab.accentColor) }
+              ? { backgroundColor: `rgb(${rgb})`, color: saturatedForeground }
               : {}
             : accented
             ? isActive

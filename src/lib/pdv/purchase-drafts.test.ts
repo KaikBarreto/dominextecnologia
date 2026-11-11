@@ -8,12 +8,17 @@ import {
   pdvPurchaseDraftTotal,
   selectPdvPurchaseDraft,
   updatePdvPurchaseDraft,
+  pdvPurchaseDraftStorageKey,
   MAX_PDV_PURCHASE_DRAFTS,
 } from '@/lib/pdv/purchase-drafts';
 
 const defaults = { purchaseDate: '2026-10-19', stockId: 'stock-a', accountId: 'acc-a', categoryId: 'cat-a' };
 
 describe('rascunhos simultâneos da compra PDV', () => {
+  it('separa a área de compras por local de estoque explícito', () => {
+    expect(pdvPurchaseDraftStorageKey({ companyId: 'company', userId: 'buyer', stockId: 'stock-a' }))
+      .not.toBe(pdvPurchaseDraftStorageKey({ companyId: 'company', userId: 'buyer', stockId: 'stock-b' }));
+  });
   it('isola conteúdo e clientRequestId por draftId durante troca rápida', () => {
     let workspace = addPdvPurchaseDraft(createPdvPurchaseWorkspace(defaults), defaults);
     const [first, second] = workspace.drafts;

@@ -8,6 +8,14 @@ import type { LocaleCode } from '@/lib/i18n/locales';
 export interface CompanySettings {
   id: string;
   company_id?: string | null;
+  /** Modo operacional do PDV; ausente/desconhecido falha fechado nos menus avançados. */
+  pdv_mode?: 'simples' | 'balcao' | null;
+  /** No modo balcão, define se a entrega ocorre no caixa ou em uma expedição separada. */
+  pdv_fulfillment_mode?: 'cashier' | 'dispatch' | null;
+  /** Conta canônica da tesouraria usada pelo caixa. */
+  pdv_cash_account_id?: string | null;
+  /** Quando ligado, o fundo/suprimento não pode exceder o disponível no cofre. */
+  pdv_strict_cash_tracking?: boolean | null;
   name: string;
   document?: string;
   phone?: string;

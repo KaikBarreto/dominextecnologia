@@ -16,7 +16,7 @@ import { MATERIAL_PURCHASE_REPORT_QUERY_KEY } from '@/hooks/useMaterialPurchaseR
 // fornecedor → recebe (total ou parcial) → o estoque entra.
 //
 // A ENTRADA NO ESTOQUE É EXCLUSIVA DO RECEBIMENTO DA O.C. e acontece 100% dentro
-// da RPC `receber_ordem_compra` (atômica, respeita `compras.stock_id` como local
+// da RPC protegida de recebimento (atômica, respeita `compras.stock_id` como local
 // de destino). O client NUNCA soma saldo, NUNCA chama register_inventory_movement
 // por conta própria nesse fluxo: duas portas de entrada duplicam saldo.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -30,6 +30,16 @@ export type CompraOrdemStatus =
 
 /** Status que ocupam a trava do banco (uq_compra_ordens_ativa_por_fornecedor). */
 const STATUS_EM_ABERTO: readonly CompraOrdemStatus[] = ['rascunho', 'enviada', 'recebida_parcial'];
+
+interface InventoryReceiptRpcResult {
+  data: unknown;
+  error: Error | null;
+}
+
+const inventoryReceiptRpc = supabase.rpc as unknown as (
+  fn: string,
+  args: Record<string, unknown>,
+) => PromiseLike<InventoryReceiptRpcResult>;
 
 export interface CompraOrdemItemRow {
   id: string;
@@ -72,7 +82,7 @@ export interface UseCompraOrdensResult {
   gerarOrdens: UseMutationResult<{ criadas: number; puladas: number }, Error, { compraId: string }, unknown>;
   /** Muda status (enviada / cancelada / volta pra rascunho). */
   setOrdemStatus: UseMutationResult<void, Error, { ordemId: string; status: CompraOrdemStatus }, unknown>;
-  /** Recebimento (parcial ou total) via RPC receber_ordem_compra. */
+  /** Recebimento (parcial ou total) via RPC protegida do estoque. */
   receber: UseMutationResult<void, Error, { ordemId: string; itens: { item_id: string; quantity: number }[] }, unknown>;
   deleteOrdem: UseMutationResult<void, Error, string, unknown>;
 }
@@ -381,7 +391,7 @@ export function useCompraOrdens(compraId: string | null): UseCompraOrdensResult 
         .map((i) => ({ item_id: i.item_id, quantity: Number(i.quantity) }));
       if (validos.length === 0) throw new Error(t.receiveEmpty);
 
-      const { error } = await supabase.rpc('receber_ordem_compra', {
+      const { error } = await inventoryReceiptRpc('inventory_receive_purchase_order_v3', {
         p_ordem_id: ordemId,
         p_itens: validos as unknown as Json,
       });

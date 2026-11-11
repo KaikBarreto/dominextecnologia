@@ -1,16 +1,19 @@
-import { ShoppingCart, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { EmptyState } from '@/components/mobile/EmptyState';
-import { PdvCartLineRow } from '@/components/pdv/PdvCartLineRow';
-import { PdvCartSummary, type PdvCartSummaryTexts } from '@/components/pdv/PdvCartSummary';
-import { PdvScrollFadeContainer } from '@/components/pdv/PdvScrollFadeContainer';
-import type { CartState } from '@/lib/pdv/cart';
-import { PDV_CART_ITEM_MOTION, PDV_MOTION_EASE } from '@/lib/pdv/motion';
-import type { LocaleCode } from '@/lib/i18n/locales';
-import type { Customer } from '@/types/database';
-import { cn } from '@/lib/utils';
-import { useState, type ReactNode } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { ShoppingCart, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/mobile/EmptyState";
+import { PdvCartLineRow } from "@/components/pdv/PdvCartLineRow";
+import {
+  PdvCartSummary,
+  type PdvCartSummaryTexts,
+} from "@/components/pdv/PdvCartSummary";
+import { PdvScrollFadeContainer } from "@/components/pdv/PdvScrollFadeContainer";
+import type { CartState } from "@/lib/pdv/cart";
+import { PDV_CART_ITEM_MOTION, PDV_MOTION_EASE } from "@/lib/pdv/motion";
+import type { LocaleCode } from "@/lib/i18n/locales";
+import type { Customer } from "@/types/database";
+import { cn } from "@/lib/utils";
+import { useState, type ReactNode } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 export interface PdvCartPanelTexts extends PdvCartSummaryTexts {
   title: string;
@@ -58,6 +61,12 @@ interface PdvCartPanelProps {
   additionFeedback?: { inventoryId: string; sequence: number };
   texts: PdvCartPanelTexts;
   className?: string;
+  readOnly?: boolean;
+  canFinalizeOverride?: boolean;
+  finalizeIcon?: ReactNode;
+  hideFinalizeShortcut?: boolean;
+  showAdvancedOptions?: boolean;
+  showFinalizeAction?: boolean;
 }
 
 /**
@@ -74,7 +83,7 @@ export function PdvCartPanel({
   customers,
   formatCurrency,
   currencySymbol,
-  locale = 'pt-br',
+  locale = "pt-br",
   currencyFractionDigits = 2,
   onSetDiscountAmount,
   onIncrement,
@@ -93,14 +102,22 @@ export function PdvCartPanel({
   additionFeedback,
   texts,
   className,
+  readOnly = false,
+  canFinalizeOverride,
+  finalizeIcon,
+  hideFinalizeShortcut = false,
+  showAdvancedOptions = true,
+  showFinalizeAction = true,
 }: PdvCartPanelProps) {
   // Produtos distintos: nunca somar kg + un + l sob o rótulo genérico "itens".
   const itemCount = cart.lines.length;
-  const [editingLineDiscount, setEditingLineDiscount] = useState<string | null>(null);
+  const [editingLineDiscount, setEditingLineDiscount] = useState<string | null>(
+    null,
+  );
   const reduceMotion = useReducedMotion();
 
   return (
-    <div className={cn('flex h-full flex-col', className)}>
+    <div className={cn("flex h-full flex-col", className)}>
       {orderSwitcher && <div className="shrink-0">{orderSwitcher}</div>}
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="min-w-0">
@@ -109,12 +126,13 @@ export function PdvCartPanel({
             <span className="font-bold">{texts.title}</span>
           </div>
           <p className="mt-0.5 truncate text-xs text-muted-foreground">
-            {(itemCount === 1 && texts.itemsCountOne)
+            {itemCount === 1 && texts.itemsCountOne
               ? texts.itemsCountOne
-              : texts.itemsCount.replace('{count}', String(itemCount))} · {texts.draftHint}
+              : texts.itemsCount.replace("{count}", String(itemCount))}{" "}
+            · {texts.draftHint}
           </p>
         </div>
-        {cart.lines.length > 0 && (
+        {cart.lines.length > 0 && !readOnly && (
           <Button
             type="button"
             variant="destructive-ghost"
@@ -155,7 +173,8 @@ export function PdvCartPanel({
               </motion.div>
             ) : (
               cart.lines.map((line) => {
-                const isLastAdded = additionFeedback?.inventoryId === line.inventoryId;
+                const isLastAdded =
+                  additionFeedback?.inventoryId === line.inventoryId;
                 return (
                   <motion.div
                     key={line.inventoryId}
@@ -179,8 +198,11 @@ export function PdvCartPanel({
                             x: 0,
                             scale: 1,
                             backgroundColor: isLastAdded
-                              ? ['hsl(var(--primary) / 0.14)', 'hsl(var(--primary) / 0)']
-                              : 'hsl(var(--primary) / 0)',
+                              ? [
+                                  "hsl(var(--primary) / 0.14)",
+                                  "hsl(var(--primary) / 0)",
+                                ]
+                              : "hsl(var(--primary) / 0)",
                           }
                     }
                     exit={
@@ -228,7 +250,9 @@ export function PdvCartPanel({
                       formatCurrency={formatCurrency}
                       noPhotoLabel={texts.noPhoto}
                       openPhotoLabel={texts.openProductPhoto}
-                      photoViewerDescription={texts.productPhotoViewerDescription}
+                      photoViewerDescription={
+                        texts.productPhotoViewerDescription
+                      }
                       removeLabel={texts.removeLine}
                       quantityEditLabel={texts.quantityEditLabel}
                       discountLabel={texts.itemDiscount}
@@ -250,6 +274,7 @@ export function PdvCartPanel({
                       }
                       onRemove={onRemove}
                       onConfirmQuantityEdit={onConfirmQuantityEdit}
+                      readOnly={readOnly}
                     />
                   </motion.div>
                 );
@@ -275,6 +300,12 @@ export function PdvCartPanel({
         advancedOptionsActive={advancedOptionsActive}
         advancedOptionsSummary={advancedOptionsSummary}
         texts={texts}
+        readOnly={readOnly}
+        canFinalizeOverride={canFinalizeOverride}
+        finalizeIcon={finalizeIcon}
+        hideFinalizeShortcut={hideFinalizeShortcut}
+        showAdvancedOptions={showAdvancedOptions}
+        showFinalizeAction={showFinalizeAction}
         className="min-h-0 flex-1 overflow-y-auto border-t border-border bg-muted/30"
       />
     </div>

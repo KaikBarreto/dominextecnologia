@@ -26,7 +26,7 @@ export interface PdvSaleDraftWorkspace {
   nextSequence: number;
 }
 
-type DraftOwner = { companyId: string; userId: string };
+type DraftOwner = { companyId: string; userId: string; cashSessionId: string; terminalId: string; stockId: string };
 
 function cloneCart(cart: CartState): CartState {
   return {
@@ -41,7 +41,7 @@ function nowIso(): string {
 }
 
 export function pdvSaleDraftStorageKey(owner: DraftOwner): string {
-  return `pdv_sale_drafts:${owner.companyId}:${owner.userId}`;
+  return `pdv_sale_drafts:${owner.companyId}:${owner.userId}:${owner.cashSessionId}:${owner.terminalId}:${owner.stockId}`;
 }
 
 export function createPdvSaleDraft(

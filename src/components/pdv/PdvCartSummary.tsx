@@ -1,13 +1,21 @@
-import { CreditCard, SlidersHorizontal, Vault } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { NoticeBanner } from '@/components/ui/NoticeBanner';
-import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
-import { PdvInlineDiscountEditor, type PdvInlineDiscountEditorTexts } from '@/components/pdv/PdvInlineDiscountEditor';
-import type { CartState } from '@/lib/pdv/cart';
-import { computeItemDiscountTotal, computeSubtotal, computeTotal } from '@/lib/pdv/cart';
-import type { LocaleCode } from '@/lib/i18n/locales';
-import type { Customer } from '@/types/database';
-import { cn } from '@/lib/utils';
+import { CreditCard, SlidersHorizontal, Vault } from "lucide-react";
+import type { ReactNode } from "react";
+import { Button } from "@/components/ui/button";
+import { NoticeBanner } from "@/components/ui/NoticeBanner";
+import { CustomerSelectField } from "@/components/customers/CustomerSelectField";
+import {
+  PdvInlineDiscountEditor,
+  type PdvInlineDiscountEditorTexts,
+} from "@/components/pdv/PdvInlineDiscountEditor";
+import type { CartState } from "@/lib/pdv/cart";
+import {
+  computeItemDiscountTotal,
+  computeSubtotal,
+  computeTotal,
+} from "@/lib/pdv/cart";
+import type { LocaleCode } from "@/lib/i18n/locales";
+import type { Customer } from "@/types/database";
+import { cn } from "@/lib/utils";
 
 export interface PdvCartSummaryTexts {
   customerLabel: string;
@@ -56,6 +64,13 @@ interface PdvCartSummaryProps {
   advancedOptionsSummary?: string;
   texts: PdvCartSummaryTexts;
   className?: string;
+  readOnly?: boolean;
+  /** Permite fluxos sem preço final, como salvar um orçamento ainda não valorizado. */
+  canFinalizeOverride?: boolean;
+  finalizeIcon?: ReactNode;
+  hideFinalizeShortcut?: boolean;
+  showAdvancedOptions?: boolean;
+  showFinalizeAction?: boolean;
 }
 
 /**
@@ -74,7 +89,7 @@ export function PdvCartSummary({
   customers,
   formatCurrency,
   currencySymbol,
-  locale = 'pt-br',
+  locale = "pt-br",
   currencyFractionDigits = 2,
   onSetDiscountAmount,
   onCustomerChange,
@@ -86,13 +101,19 @@ export function PdvCartSummary({
   advancedOptionsSummary,
   texts,
   className,
+  readOnly = false,
+  canFinalizeOverride,
+  finalizeIcon,
+  hideFinalizeShortcut = false,
+  showAdvancedOptions = true,
+  showFinalizeAction = true,
 }: PdvCartSummaryProps) {
   const subtotal = computeSubtotal(cart);
   const itemDiscounts = computeItemDiscountTotal(cart);
   const total = computeTotal(cart);
   // Carrinho vazio não abre pagamento: a RPC recusa pedido sem item, então a
   // tela bloqueia o botão em vez de deixar o operador bater no erro.
-  const canPay = cart.lines.length > 0 && total > 0;
+  const canPay = canFinalizeOverride ?? (cart.lines.length > 0 && total > 0);
 
   return (
     // Sem `shrink-0`/`flex-1` hardcoded aqui de propósito: quem usa este
@@ -101,7 +122,7 @@ export function PdvCartSummary({
     // no desktop/tablet (`Pdv.tsx`) ele é o ÚNICO conteúdo da coluna da
     // direita e precisa poder rolar se sobrar pouca altura (tablet com
     // numpad embaixo, por exemplo).
-    <div className={cn('space-y-3 px-4 py-3', className)}>
+    <div className={cn("space-y-3 px-4 py-3", className)}>
       <CustomerSelectField
         id="pdv-customer"
         variant="summary"
@@ -117,37 +138,53 @@ export function PdvCartSummary({
         emptyMessage={texts.customerEmpty}
         defaultCustomerKind="loja"
         showCreateLabel
-        onValueChange={(id) => onCustomerChange(id === '_none' ? null : id)}
+        disabled={readOnly}
+        onValueChange={(id) => onCustomerChange(id === "_none" ? null : id)}
       />
 
       <div className="flex items-center justify-between text-sm">
         <span className="text-muted-foreground">{texts.subtotal}</span>
-        <span className="font-medium tabular-nums">{formatCurrency(subtotal)}</span>
+        <span className="font-medium tabular-nums">
+          {formatCurrency(subtotal)}
+        </span>
       </div>
 
       {itemDiscounts > 0 && (
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">{texts.itemDiscounts}</span>
-          <span className="font-medium tabular-nums">− {formatCurrency(itemDiscounts)}</span>
+          <span className="font-medium tabular-nums">
+            − {formatCurrency(itemDiscounts)}
+          </span>
         </div>
       )}
 
-      <PdvInlineDiscountEditor
-        variant="order"
-        label={texts.discount}
-        baseAmount={Math.max(0, subtotal - itemDiscounts)}
-        discountAmount={cart.discount}
-        formatCurrency={formatCurrency}
-        currencySymbol={currencySymbol}
-        locale={locale}
-        currencyFractionDigits={currencyFractionDigits}
-        texts={texts.discountEditor}
-        onApply={onSetDiscountAmount}
-      />
+      {readOnly ? (
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">{texts.discount}</span>
+          <span className="font-medium tabular-nums">
+            − {formatCurrency(cart.discount)}
+          </span>
+        </div>
+      ) : (
+        <PdvInlineDiscountEditor
+          variant="order"
+          label={texts.discount}
+          baseAmount={Math.max(0, subtotal - itemDiscounts)}
+          discountAmount={cart.discount}
+          formatCurrency={formatCurrency}
+          currencySymbol={currencySymbol}
+          locale={locale}
+          currencyFractionDigits={currencyFractionDigits}
+          texts={texts.discountEditor}
+          onApply={onSetDiscountAmount}
+        />
+      )}
 
       <div className="flex items-center justify-between border-t border-border pt-2">
         <span className="text-base font-bold">{texts.total}</span>
-        <span className="text-2xl font-extrabold tabular-nums">{formatCurrency(total)}</span>
+        <span className="text-2xl font-extrabold tabular-nums">
+          {formatCurrency(total)}
+        </span>
       </div>
 
       {/* Caixa fechado não impede a venda (PIX, cartão e fiado seguem), então
@@ -185,32 +222,40 @@ export function PdvCartSummary({
           não disputa espaço com o rótulo. "Pagamento"/F4 vira ação
           SECUNDÁRIA (ghost, texto menor) logo abaixo: mesmo destino, menos
           peso visual. */}
-      <div>
-        <Button
-          type="button"
-          disabled={!canPay}
-          className="relative h-14 w-full justify-center px-12 text-lg font-bold"
-          onClick={onRequestPayment}
-        >
-          <span className="flex items-center justify-center gap-2">
-            <CreditCard className="h-5 w-5" />
-            {texts.finalizeLabel}
-          </span>
-          <kbd className="absolute right-4 rounded border border-current/30 px-1.5 py-0.5 text-[10px] opacity-70">
-            {texts.finalizeShortcut}
-          </kbd>
-        </Button>
-      </div>
+      {showFinalizeAction && (
+        <div>
+          <Button
+            type="button"
+            disabled={!canPay}
+            className="relative h-14 w-full justify-center px-12 text-lg font-bold"
+            onClick={onRequestPayment}
+          >
+            <span className="flex items-center justify-center gap-2">
+              {finalizeIcon ?? <CreditCard className="h-5 w-5" />}
+              {texts.finalizeLabel}
+            </span>
+            {!hideFinalizeShortcut && (
+              <kbd className="absolute right-4 rounded border border-current/30 px-1.5 py-0.5 text-[10px] opacity-70">
+                {texts.finalizeShortcut}
+              </kbd>
+            )}
+          </Button>
+        </div>
+      )}
 
-      <button
-        type="button"
-        className="relative flex w-full items-center justify-center gap-2 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        onClick={onOpenAdvancedOptions}
-      >
-        <SlidersHorizontal className="h-3.5 w-3.5" />
-        <span>{advancedOptionsSummary || texts.advancedOptionsTrigger}</span>
-        {advancedOptionsActive && <span className="sr-only"> — preenchido</span>}
-      </button>
+      {showAdvancedOptions && (
+        <button
+          type="button"
+          className="relative flex w-full items-center justify-center gap-2 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          onClick={onOpenAdvancedOptions}
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5" />
+          <span>{advancedOptionsSummary || texts.advancedOptionsTrigger}</span>
+          {advancedOptionsActive && (
+            <span className="sr-only"> — preenchido</span>
+          )}
+        </button>
+      )}
     </div>
   );
 }

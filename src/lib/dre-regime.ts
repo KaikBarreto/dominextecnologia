@@ -42,6 +42,21 @@ export function isDreExcludedGroup(group: string | null | undefined): boolean {
   return group === DRE_EXCLUDED_GROUP;
 }
 
+/**
+ * Movimentos que existem somente para custódia/DFC. A devolução comercial já
+ * recompõe receita e CMV no fato W5; lançar refund novamente no resultado
+ * duplicaria competência. O corte por papel é estrutural e antecede categoria,
+ * layout personalizado, regime, comparação e exportação.
+ */
+export const DRE_CASH_FLOW_ONLY_PDV_ROLES = new Set([
+  'pdv_refund',
+  'pdv_refund_reversal',
+]);
+
+export function isDreCashFlowOnlyPdvRole(role: string | null | undefined): boolean {
+  return !!role && DRE_CASH_FLOW_ONLY_PDV_ROLES.has(role);
+}
+
 /** Só o que o motor precisa ler — evita amarrar o módulo ao type completo. */
 export interface DreTransactionLike {
   transaction_date?: string | null;
@@ -58,6 +73,7 @@ export interface DreTransactionLike {
   transaction_type?: string | null;
   parent_transaction_id?: string | null;
   payroll_kind?: string | null;
+  pdv_financial_role?: string | null;
 }
 
 export interface DreDateRange {

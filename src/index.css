@@ -294,6 +294,21 @@ Design Premium com Verde da Marca #00C597
     /* --radius herda de [data-app] acima (0.375rem) */
   }
 
+  /* O PDV é uma superfície operacional: ações principais permanecem neutras
+     mesmo quando o tenant usa uma cor de marca no restante do sistema.
+     Verde e outras cores ficam reservados para status e confirmação. */
+  [data-pdv-ui] {
+    --primary: 0 0% 10%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 0 0% 10%;
+  }
+
+  .dark [data-pdv-ui] {
+    --primary: 0 0% 88%;
+    --primary-foreground: 0 0% 8%;
+    --ring: 0 0% 70%;
+  }
+
   /* ─── MENU ESCURO — nav-theme escopado às superfícies de NAV (Fase 2) ────────
      Ligado por `data-nav-theme="dark"` no <html> (hook useNavThemePreference +
      script anti-flash no index.html). Só "acende" ELEMENTOS marcados com

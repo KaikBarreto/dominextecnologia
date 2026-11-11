@@ -1,0 +1,54 @@
+# Exemplo fictício. Copie para um arquivo local fora do Git e ajuste apenas o necessário.
+# DomiLink sempre escuta exclusivamente em 127.0.0.1; o host não é configurável.
+
+[server]
+port = 8765
+allowed_origins = ["https://app.example.invalid"]
+session_ttl_seconds = 900
+pairing_ttl_seconds = 120
+max_body_bytes = 8388608
+rate_limit_requests = 120
+rate_limit_window_seconds = 60
+job_retention = 500
+
+[[devices]]
+id = "printer-demo"
+kind = "printer"
+adapter = "virtual"
+label = "Impressora virtual de demonstração"
+
+[[devices]]
+id = "scale-demo"
+kind = "scale"
+adapter = "virtual"
+label = "Balança virtual de demonstração"
+weight_kg = 1.250
+
+[[devices]]
+id = "barcode-demo"
+kind = "barcode"
+adapter = "virtual"
+label = "Leitor virtual de demonstração"
+codes = ["7890000000011", "QR:EXEMPLO-FICTICIO"]
+
+# Perfis abaixo são exemplos e ficam desabilitados até que o operador os configure.
+# Nunca inclua credenciais, documentos de cliente ou conteúdo de impressão neste arquivo.
+#
+# [[devices]]
+# id = "printer-network"
+# kind = "printer"
+# adapter = "escpos-network"
+# label = "Térmica 80 mm"
+# host = "192.0.2.10"
+# port = 9100
+# profile = "TM-T88III"
+# width = 80
+#
+# [[devices]]
+# id = "scale-serial"
+# kind = "scale"
+# adapter = "serial-scale"
+# label = "Balança serial"
+# port = "/dev/ttyUSB0"
+# baudrate = 9600
+# protocol = "line"

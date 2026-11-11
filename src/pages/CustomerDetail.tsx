@@ -92,6 +92,7 @@ import {
 import { usePartyLabels } from '@/hooks/usePartyLabels';
 import { formatPartyFieldValue, usePartyFieldConfig } from '@/hooks/usePartyFieldConfig';
 import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
+import { PartyAccountPanel } from '@/components/customers/PartyAccountPanel';
 
 type TabKey = 'geral' | 'equipamentos' | 'historico' | 'tarefas' | 'financeiro' | 'chamados' | 'contratos' | 'documentos' | 'cobrancas' | 'estoque';
 
@@ -161,6 +162,8 @@ export function CustomerDetailContent() {
   // trava própria — quem já vê a aba pode editar, igual à tela geral.
   const canDeleteFinance = isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:delete_finance'));
   const canManageFinance = isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:manage_finance'));
+  const canManagePartyCredit = hasModule('pdv')
+    && (isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:manage_party_credit')));
   const canManageCustomerDocuments = isAdminOrGestor() || hasPermission('fn:edit_customer');
   const hasPortal = hasModule('customer_portal');
   const hasCobrancas = hasModule('cobrancas');
@@ -1531,6 +1534,14 @@ export function CustomerDetailContent() {
 
       {activeTab === 'financeiro' && (
         <div className="space-y-4">
+          {id && (
+            <PartyAccountPanel
+              partyType="customer"
+              partyId={id}
+              enabled={hasModule('pdv') && canViewCustomerFinancial}
+              canManage={canManagePartyCredit}
+            />
+          )}
           {/* Cobrança alterada/excluída no gateway com o lançamento do
               Financeiro para trás: mesma faixa persistente da Central. */}
           <ChargeFinanceWarningBanner actions={chargeActions} />
@@ -1988,6 +1999,7 @@ export function CustomerDetailContent() {
           return updateCustomer.mutateAsync({ id: customer.id, ...data });
         }}
         isLoading={updateCustomer.isPending}
+        canManageCreditLimit={canManagePartyCredit}
       />
 
       {/* Create Opportunity Dialog — cliente da ficha vem travado (B1 do
@@ -2121,7 +2133,7 @@ export function CustomerDetailContent() {
           <AlertDialogFooter>
             <AlertDialogCancel>Voltar</AlertDialogCancel>
             <AlertDialogAction
-              variant="destructive"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={voidCustomerPaidExpense.isPending}
               onClick={async () => {
                 if (!voidingCustomerExpense) return;

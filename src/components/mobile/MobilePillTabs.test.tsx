@@ -56,4 +56,19 @@ describe('MobilePillTabs underline', () => {
     expect(screen.getByRole('tab', { name: 'Orçamentos' })).toHaveClass('font-bold');
     expect(screen.getByRole('tab', { name: 'Custos dos Serviços' })).not.toHaveClass('font-bold');
   });
+
+  it('mantém texto branco na categoria saturada quando solicitado', () => {
+    render(
+      <MobilePillTabs
+        tabs={[
+          { value: 'todos', label: 'Todos' },
+          { value: 'eletrica', label: 'Elétrica', accentColor: '#f2b900', useColorBackground: true, forceWhiteForeground: true },
+        ]}
+        activeTab="eletrica"
+        onTabChange={() => undefined}
+      />,
+    );
+
+    expect(screen.getByRole('tab', { name: 'Elétrica' })).toHaveStyle({ color: '#ffffff' });
+  });
 });

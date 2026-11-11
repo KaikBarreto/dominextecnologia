@@ -132,9 +132,14 @@ function PdvProductCardImpl({
       onFocus={onKeyboardFocus}
       onClick={() => !outOfStock && onSelect(product)}
       className={cn(
-        'group relative flex flex-col overflow-hidden rounded-lg border border-border bg-background text-left transition-shadow',
+        'group relative flex flex-col overflow-hidden rounded-lg border bg-background text-left outline-none transition-shadow focus:outline-none focus-visible:outline-none',
         outOfStock ? 'cursor-not-allowed' : 'hover:shadow-md active:scale-[0.98] cursor-pointer',
-        keyboardActive && !outOfStock && 'border-primary ring-2 ring-primary ring-offset-2',
+        // Um único contorno de 2 px, todo para dentro. A borda transparente
+        // preserva o tamanho do card e evita a segunda linha que aparecia
+        // junto do destaque; por ser inset, a lateral não é cortada pelo scroll.
+        keyboardActive && !outOfStock
+          ? 'border-transparent shadow-[inset_0_0_0_2px_hsl(var(--primary))]'
+          : 'border-border',
       )}
     >
       {/* `opacity-60` fica SÓ na foto, nunca no botão inteiro: o selo "Sem
