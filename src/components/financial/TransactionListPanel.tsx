@@ -38,6 +38,7 @@ import { findRelatedTransactions, deleteTransactionCascade } from '@/hooks/useRe
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCanManageFinanceTransactions } from '@/hooks/useCanManageFinanceTransactions';
 import {
   Table, TableBody, TableCell, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -266,6 +267,7 @@ export function TransactionListPanel({
   hideCardPurchasesUnlessAccountFiltered = false,
 }: TransactionListPanelProps) {
   const { hasPermission, isAdminOrGestor, hasPermissionRecord } = useAuth();
+  const canManageFinanceTransactions = useCanManageFinanceTransactions();
   // Espelha `public.can_delete_finance` (RLS de DELETE em financial_transactions):
   // admin/gestor sempre; para os demais, SÓ com registro em user_permissions
   // contendo a permissão (ou o curinga '*'). O fallback legado do
@@ -1248,20 +1250,20 @@ export function TransactionListPanel({
                   icon: isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />,
                   onClick: () => toggleGroup(group.groupId),
                 },
-                {
+                ...(canManageFinanceTransactions ? [{
                   key: 'undo-group',
                   label: fin.transactionList.paymentGroup.undo,
                   icon: <Undo2 className="h-4 w-4" />,
                   onClick: () => setUndoTarget(group),
-                },
+                }] : []),
               ] : [
-                {
+                ...(canManageFinanceTransactions ? [{
                   key: 'edit',
                   label: fin.transactionList.rowActions.edit,
                   icon: <Pencil className="h-4 w-4" />,
                   variant: 'edit' as const,
                   onClick: () => onEdit(t),
-                },
+                }] : []),
                 ...(canDeleteFinance ? [{
                   key: 'delete',
                   label: fin.transactionList.rowActions.delete,
@@ -1672,13 +1674,13 @@ export function TransactionListPanel({
                               icon: isExpanded ? ChevronDown : ChevronRight,
                               onClick: () => toggleGroup(group.groupId),
                             },
-                            {
+                            ...(canManageFinanceTransactions ? [{
                               label: fin.transactionList.paymentGroup.undo,
                               icon: Undo2,
                               onClick: () => setUndoTarget(group),
-                            },
+                            }] : []),
                           ] : [
-                            { label: fin.transactionList.rowActions.edit, icon: Pencil, variant: 'edit', onClick: () => onEdit(t) },
+                            { label: fin.transactionList.rowActions.edit, icon: Pencil, variant: 'edit', onClick: () => onEdit(t), hidden: !canManageFinanceTransactions },
                             { label: fin.transactionList.rowActions.delete, icon: Trash2, variant: 'delete', onClick: () => requestDelete(t.id), hidden: !canDeleteFinance },
                           ]) satisfies RowAction[]}
                         />

@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.39.31";
+export const APP_VERSION = "1.39.32";
 
 export const VERSION_NOTES =
-  "As notificações passam a seguir o idioma de cada destinatário e o envio push fica mais confiável.";
+  "As permissões do Financeiro ficaram mais claras e passam a liberar automaticamente os acessos necessários para concluir cada operação.";

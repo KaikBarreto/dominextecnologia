@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.32',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Permissões financeiras mais claras e completas',
+        category: 'correcao',
+        description: 'A permissão para criar e editar lançamentos agora libera automaticamente o uso das contas e caixas necessários para concluir a operação. Usuários somente leitura deixam de ver ações que seriam recusadas ao salvar, evitando formulários preenchidos em vão e combinações confusas de acesso.',
+      },
+    ],
+  },
+  {
     version: '1.39.31',
     date: '11 de novembro de 2026',
     type: 'patch',

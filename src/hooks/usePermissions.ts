@@ -132,10 +132,10 @@ export const FUNCTION_PERMISSIONS = [
   { key: 'fn:delete_customer', label: 'Excluir Cliente', description: 'Excluir clientes do sistema', group: 'Comercial', category: 'comercial', relatedScreen: 'screen:customers' },
   { key: 'fn:manage_equipment', label: 'Gerenciar Equipamentos', description: 'Criar, editar e excluir equipamentos', group: 'Serviços', category: 'servicos', relatedScreen: 'screen:equipment' },
   { key: 'fn:manage_inventory', label: 'Gerenciar Estoque', description: 'Gerenciar materiais e movimentações de estoque', group: 'Operacional', category: 'operacional', relatedScreen: 'screen:inventory' },
-  { key: 'fn:manage_finance', label: 'Gerenciar Financeiro', description: 'Criar e editar transações financeiras', group: 'Financeiro', category: 'financeiro', relatedScreen: 'screen:finance' },
+  { key: 'fn:manage_finance', label: 'Criar e editar lançamentos financeiros', description: 'Registrar e alterar vendas, despesas, contas a pagar, contas a receber e movimentações.', group: 'Financeiro', category: 'financeiro', relatedScreen: 'screen:finance' },
   { key: 'fn:delete_finance', label: 'Excluir Lançamento Financeiro', description: 'Excluir transações financeiras (contas a pagar, contas a receber e movimentações)', group: 'Financeiro', category: 'financeiro', relatedScreen: 'screen:finance' },
   { key: 'fn:view_finance_totals', label: 'Ver Totais Financeiros', description: 'Visualizar saldos, totais e projeções', group: 'Financeiro', category: 'financeiro', relatedScreen: 'screen:finance' },
-  { key: 'fn:use_bank_accounts', label: 'Usar Contas Bancárias', description: 'Selecionar contas em pagamentos e recebimentos, sem visualizar saldos bancários', group: 'Financeiro', category: 'financeiro', relatedScreen: 'screen:finance' },
+  { key: 'fn:use_bank_accounts', label: 'Usar contas e caixas', description: 'Selecionar contas em pagamentos e recebimentos, sem visualizar saldos. É incluída automaticamente ao liberar lançamentos ou a gestão das contas.', group: 'Financeiro', category: 'financeiro', relatedScreen: 'screen:finance' },
   { key: 'fn:manage_bank_accounts', label: 'Gerenciar Contas Bancárias', description: 'Visualizar saldos e cadastrar, editar, ajustar ou excluir contas bancárias', group: 'Financeiro', category: 'financeiro', relatedScreen: 'screen:finance' },
   // Mora na tela de OS (`relatedScreen`) porque é lá que a ação acontece — o fechamento
   // da OS —, mas é do grupo Financeiro porque o que ela libera é lançar dinheiro.
@@ -205,6 +205,38 @@ export function getAllPermissionKeys(): string[] {
   return ALL_PERMISSIONS.map(p => p.key);
 }
 
+const PERMISSION_DEPENDENCIES: Readonly<Record<string, readonly string[]>> = {
+  'fn:manage_finance': ['fn:use_bank_accounts'],
+  'fn:manage_bank_accounts': ['fn:use_bank_accounts'],
+};
+
+/**
+ * Fecha combinações impossíveis no permissionamento.
+ *
+ * Criar um lançamento ou administrar uma conta exige poder selecioná-la. A
+ * dependência fica centralizada aqui para editor, cargos e gravação direta
+ * enviarem sempre o mesmo conjunto. O curinga já cobre permissões presentes e
+ * futuras, portanto permanece compacto como `['*']`.
+ */
+export function normalizePermissionDependencies(permissions: readonly string[]): string[] {
+  if (permissions.includes('*')) return ['*'];
+
+  const normalized = new Set(permissions);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const [permission, dependencies] of Object.entries(PERMISSION_DEPENDENCIES)) {
+      if (!normalized.has(permission)) continue;
+      for (const dependency of dependencies) {
+        if (normalized.has(dependency)) continue;
+        normalized.add(dependency);
+        changed = true;
+      }
+    }
+  }
+  return [...normalized];
+}
+
 export interface PermissionPreset {
   id: string;
   name: string;
@@ -238,9 +270,9 @@ export function usePermissionPresets() {
       if (error) throw error;
       return (data || []).map(p => ({
         ...p,
-        permissions: Array.isArray(p.permissions)
+        permissions: normalizePermissionDependencies(Array.isArray(p.permissions)
           ? p.permissions.filter((permission): permission is string => typeof permission === 'string')
-          : [],
+          : []),
       })) as PermissionPreset[];
     },
   });
@@ -249,7 +281,11 @@ export function usePermissionPresets() {
     mutationFn: async (preset: { name: string; description?: string; permissions: string[] }) => {
       const { error } = await supabase
         .from('permission_presets')
-        .insert({ name: preset.name, description: preset.description || null, permissions: preset.permissions });
+        .insert({
+          name: preset.name,
+          description: preset.description || null,
+          permissions: normalizePermissionDependencies(preset.permissions),
+        });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -261,9 +297,12 @@ export function usePermissionPresets() {
 
   const updatePreset = useMutation({
     mutationFn: async ({ id, ...updates }: { id: string; name?: string; description?: string; permissions?: string[] }) => {
+      const normalizedUpdates = updates.permissions
+        ? { ...updates, permissions: normalizePermissionDependencies(updates.permissions) }
+        : updates;
       const { error } = await supabase
         .from('permission_presets')
-        .update(updates)
+        .update(normalizedUpdates)
         .eq('id', id);
       if (error) throw error;
     },
@@ -302,9 +341,9 @@ export function useUserPermissions() {
       if (error) throw error;
       return (data || []).map(p => ({
         ...p,
-        permissions: Array.isArray(p.permissions)
+        permissions: normalizePermissionDependencies(Array.isArray(p.permissions)
           ? p.permissions.filter((permission): permission is string => typeof permission === 'string')
-          : [],
+          : []),
       })) as UserPermission[];
     },
   });
@@ -320,7 +359,7 @@ export function useUserPermissions() {
         .from('user_permissions')
         .upsert({
           user_id,
-          permissions,
+          permissions: normalizePermissionDependencies(permissions),
           preset_id: preset_id || null,
           is_active: is_active ?? true,
         }, { onConflict: 'user_id' });

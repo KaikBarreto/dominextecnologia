@@ -6,6 +6,8 @@ import { ensureDefaultFinancialAccounts } from '../../supabase/functions/_shared
 const read = (path: string) => readFileSync(resolve(process.cwd(), path), 'utf8');
 const migration = read('supabase/migrations/20261111180000_seed_default_financial_accounts.sql');
 const permissionsMigration = read('supabase/migrations/20261111190000_reconcile_financial_account_permissions.sql');
+const dependenciesMigration = read('supabase/migrations/20261111200000_normalize_finance_permission_dependencies.sql');
+const reconciliationPermissionMigration = read('supabase/migrations/20261111201500_require_finance_permission_for_reconciliation.sql');
 const helper = read('supabase/functions/_shared/default-financial-accounts.ts');
 
 describe('provisionamento das contas financeiras iniciais', () => {
@@ -36,6 +38,24 @@ describe('provisionamento das contas financeiras iniciais', () => {
     expect(permissionsMigration).toContain("up.permissions ? 'screen:finance'");
     expect(permissionsMigration).toMatch(/UPDATE public\.user_permissions[\s\S]*fn:use_bank_accounts/);
     expect(permissionsMigration).toMatch(/UPDATE public\.permission_presets[\s\S]*fn:use_bank_accounts/);
+  });
+
+  it('mantém dependências financeiras consistentes em usuários e cargos futuros', () => {
+    expect(dependenciesMigration).toContain('normalize_finance_permission_dependencies');
+    expect(dependenciesMigration).toContain("NEW.permissions ? 'fn:manage_finance'");
+    expect(dependenciesMigration).toContain("NEW.permissions ? 'fn:manage_bank_accounts'");
+    expect(dependenciesMigration).toContain("'[\"fn:use_bank_accounts\"]'::jsonb");
+    expect(dependenciesMigration).toContain('ON public.user_permissions');
+    expect(dependenciesMigration).toContain('ON public.permission_presets');
+  });
+
+  it('exige autorização financeira também nas RPCs privilegiadas de conciliação', () => {
+    expect(reconciliationPermissionMigration).toContain('CREATE OR REPLACE FUNCTION public._reconcile_assert_write');
+    expect(reconciliationPermissionMigration).toContain('public.is_admin_or_gestor(auth.uid())');
+    expect(reconciliationPermissionMigration).toContain("public.pdv_has_explicit_action_permission_v2(auth.uid(), 'fn:manage_finance')");
+    expect(reconciliationPermissionMigration).toMatch(
+      /REVOKE ALL ON FUNCTION public\._reconcile_assert_write\(uuid\)[\s\S]*FROM PUBLIC, anon, authenticated;/,
+    );
   });
 
   it.each(['create-company', 'self-register'])(
