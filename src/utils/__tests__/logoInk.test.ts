@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { classifyInk, inkLuminance } from '../logoInk';
+import { classifyInk, getLogoPlateTone, inkLuminance } from '../logoInk';
 
 /** Monta um bloco de pixels RGBA repetindo as cores informadas. */
 function pixels(colors: Array<[number, number, number, number]>, repeat = 1): Uint8ClampedArray {
@@ -57,7 +57,45 @@ describe('classifyInk', () => {
     expect(classifyInk(pixels([[220, 235, 228, 255]], 8))).toBe('light');
   });
 
+  it('preserva logo misto com símbolo escuro e lettering branco', () => {
+    // Caso Glacial Cold: o símbolo escuro é mais denso e derruba a média, mas
+    // a placa clara apagaria o nome branco — a arte foi feita para fundo escuro.
+    expect(classifyInk(pixels([
+      [12, 12, 12, 255],
+      [12, 12, 12, 255],
+      [12, 12, 12, 255],
+      [255, 255, 255, 255],
+    ], 8))).toBe('light');
+  });
+
+  it('não muda logo escuro por causa de um detalhe branco pequeno', () => {
+    expect(classifyInk(pixels([
+      [12, 12, 12, 255],
+      [12, 12, 12, 255],
+      [12, 12, 12, 255],
+      [12, 12, 12, 255],
+      [12, 12, 12, 255],
+      [255, 255, 255, 255],
+    ], 8))).toBe('dark');
+  });
+
   it('sem pixel legível não arrisca palpite', () => {
     expect(classifyInk(pixels([TRANSPARENT], 8))).toBeNull();
+  });
+});
+
+describe('getLogoPlateTone', () => {
+  it.each([
+    { ink: 'dark' as const, surface: 'light' as const, plate: null },
+    { ink: 'dark' as const, surface: 'dark' as const, plate: 'light' },
+    { ink: 'light' as const, surface: 'light' as const, plate: 'dark' },
+    { ink: 'light' as const, surface: 'dark' as const, plate: null },
+  ])('tinta $ink sobre superfície $surface usa placa $plate', ({ ink, surface, plate }) => {
+    expect(getLogoPlateTone(ink, surface)).toBe(plate);
+  });
+
+  it('não arrisca placa quando a tinta não pôde ser medida', () => {
+    expect(getLogoPlateTone(null, 'light')).toBeNull();
+    expect(getLogoPlateTone(null, 'dark')).toBeNull();
   });
 });

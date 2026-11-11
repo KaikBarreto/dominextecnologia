@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.1',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Logo da empresa legível em qualquer tema',
+        category: 'correcao',
+        description: 'Marcas com texto claro, símbolo escuro, formato redondo ou cores misturadas agora recebem o fundo de apoio adequado somente quando precisam. O resultado acompanha o tema claro ou escuro no menu, na barra superior, nas Configurações e nas imagens de compartilhamento.',
+      },
+    ],
+  },
+  {
     version: '1.41.0',
     date: '11 de novembro de 2026',
     type: 'minor',

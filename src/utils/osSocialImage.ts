@@ -1,4 +1,4 @@
-import { LOGO_INK_LUMINANCE_THRESHOLD, inkLuminance } from './logoInk';
+import { classifyInk } from './logoInk';
 
 export const OS_SOCIAL_IMAGE_WIDTH = 1200;
 export const OS_SOCIAL_IMAGE_HEIGHT = 630;
@@ -151,16 +151,16 @@ function dominantBucket(colors: RGB[]): ColorBucket | null {
 }
 
 /**
- * Escolhe claro/escuro pela luminância média dos pixels visíveis do logo.
- * A transparência pesa na amostra; pixels quase transparentes são ignorados.
+ * Escolhe claro/escuro pela mesma classificação usada no menu. Isso também
+ * reconhece logos mistos com símbolo escuro e lettering branco.
  */
 export function chooseSocialBackground(pixels: Uint8ClampedArray): typeof LIGHT_BACKGROUND | typeof DARK_BACKGROUND {
-  const luminance = inkLuminance(pixels);
+  const ink = classifyInk(pixels);
 
   // Logo sem pixels legíveis: fundo escuro neutro, que funciona bem com o
   // padrão mais comum de logos transparentes claros.
-  if (luminance === null) return DARK_BACKGROUND;
-  return luminance > LOGO_INK_LUMINANCE_THRESHOLD ? DARK_BACKGROUND : LIGHT_BACKGROUND;
+  if (ink === null) return DARK_BACKGROUND;
+  return ink === 'light' ? DARK_BACKGROUND : LIGHT_BACKGROUND;
 }
 
 /**

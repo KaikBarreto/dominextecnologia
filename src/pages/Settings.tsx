@@ -392,7 +392,9 @@ export default function Settings() {
       ? settings.white_label_logo_url
       : settings?.logo_url || null;
   const socialPreviewSource = socialDraftUrl || settings?.os_social_image_url || currentBrandLogo;
-  const logoInk = useLogoInk(settings?.logo_url);
+  const companyLogoInk = useLogoInk(settings?.logo_url);
+  const whiteLabelLogoUrl = settings?.white_label_logo_url || settings?.logo_url || null;
+  const whiteLabelLogoInk = useLogoInk(whiteLabelLogoUrl);
 
   useEffect(() => {
     if (!socialEditorOpen || !currentBrandLogo) {
@@ -793,10 +795,11 @@ export default function Settings() {
                         <div
                           className={cn(
                             'flex h-28 w-28 shrink-0 items-center justify-center rounded-2xl p-3',
-                            // A prévia tem que mostrar o arquivo como ele é. Logo de
-                            // tinta escura sobre `bg-muted` sumia no tema escuro; aqui
-                            // o fundo acompanha a arte, igual ao menu.
-                            logoInk === 'dark' ? 'bg-white' : 'bg-muted/40'
+                            // A prévia usa o fundo ideal da própria arte, sem depender
+                            // do tema atual das Configurações.
+                            companyLogoInk === 'dark' && 'bg-white',
+                            companyLogoInk === 'light' && 'bg-zinc-950',
+                            companyLogoInk === null && 'bg-muted/40',
                           )}
                         >
                           <img src={settings.logo_url} alt="Logo" className="max-h-full max-w-full object-contain" />
@@ -1310,12 +1313,17 @@ export default function Settings() {
                               ? t.company.whiteLabelSection.fullLogoUsingCompany
                               : t.company.whiteLabelSection.fullLogoFallback}
                         </p>
-                        {(settings?.white_label_logo_url || settings?.logo_url) ? (
+                        {whiteLabelLogoUrl ? (
                           <div className="flex items-center gap-4">
                             <img
-                              src={settings?.white_label_logo_url || settings?.logo_url}
+                              src={whiteLabelLogoUrl}
                               alt="WL Logo"
-                              className="h-16 w-auto max-w-[200px] rounded-lg object-contain border bg-white p-1"
+                              className={cn(
+                                'h-16 w-auto max-w-[200px] rounded-lg border object-contain p-1',
+                                whiteLabelLogoInk === 'dark' && 'bg-white',
+                                whiteLabelLogoInk === 'light' && 'bg-zinc-950',
+                                whiteLabelLogoInk === null && 'bg-muted/40',
+                              )}
                               crossOrigin="anonymous"
                               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                             />
