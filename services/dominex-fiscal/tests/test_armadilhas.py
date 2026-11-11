@@ -9,8 +9,12 @@ Referência: docs/planos/2026-09-03-nfse-motor-proprio-sefin-nacional.md §armad
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
+
+import pytest
 from lxml import etree
 
+from app.errors import DadosInvalidos
 from app.schemas import Dps, EmitirRequest
 from app.sefin import evento as evento_mod
 from app.sefin.assinatura import XMLDSIG, assinar
@@ -335,11 +339,27 @@ def test_ambiente_vem_do_request_nunca_chumbado():
     assert [e.text for e in _tags(montar(_pedido(ambiente=1)), "//n:infDPS/n:tpAmb")] == ["1"]
 
 
+def test_competencia_nao_pode_virar_antes_do_dhemi_em_brasilia():
+    agora = datetime(2026, 11, 10, 21, 30, tzinfo=timezone(timedelta(hours=-3)))
+
+    with pytest.raises(
+        DadosInvalidos,
+        match="competência não pode ser uma data futura",
+    ):
+        montar(_pedido(dps={"dataCompetencia": "2026-11-11"}), agora=agora)
+
+
+def test_competencia_vira_junto_com_o_dhemi_em_brasilia():
+    agora = datetime(2026, 11, 11, 0, 0, tzinfo=timezone(timedelta(hours=-3)))
+    xml = montar(_pedido(dps={"dataCompetencia": "2026-11-11"}), agora=agora)
+
+    assert [e.text for e in _tags(xml, "//n:infDPS/n:dhEmi")] == [
+        "2026-11-11T00:00:00-03:00"
+    ]
+    assert [e.text for e in _tags(xml, "//n:infDPS/n:dCompet")] == ["2026-11-11"]
+
+
 def test_id_da_dps_precisa_ter_45_caracteres():
-    import pytest
-
-    from app.errors import DadosInvalidos
-
     with pytest.raises(DadosInvalidos):
         montar(_pedido(dps={"id": "DPS123"}))
 

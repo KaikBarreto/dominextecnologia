@@ -35,6 +35,7 @@ import { useUserCompany } from '@/hooks/useUserCompany';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
+import { nfseFiscalToday } from '@/lib/fiscal/nfseDates';
 import { invokeNfse, nfseOrientationDescription } from '@/utils/nfseEdge';
 import { calculateNfseTaxes } from '@/utils/nfseTaxes';
 import { NfseQuotaBlockModal, type NfseQuotaBlockInfo } from '@/components/fiscal/NfseQuotaBlockModal';
@@ -89,8 +90,6 @@ const STEPS: { key: StepKey }[] = [
   { key: 'valores' },
   { key: 'emitir' },
 ];
-
-const todayISO = () => new Date().toISOString().slice(0, 10);
 
 const emptyServico = (): NfseServicoState => ({
   serviceTypeId: '',
@@ -214,7 +213,7 @@ export function NovaNotaModal({
   const [draftId, setDraftId] = useState<string | null>(null);
 
   // ---- Estado do formulário ----
-  const [dataCompetencia, setDataCompetencia] = useState(todayISO());
+  const [dataCompetencia, setDataCompetencia] = useState(() => nfseFiscalToday());
   const [regimeApuracao, setRegimeApuracao] = useState('competencia');
   const [tomador, setTomador] = useState<NfseCustomer | null>(null);
   const [intermediario, setIntermediario] = useState<NfseCustomer | null>(null);
@@ -328,7 +327,7 @@ export function NovaNotaModal({
   const pessoasErrors = useMemo(() => {
     const e: string[] = [];
     if (!dataCompetencia) e.push(s.pessoas.competencia.required);
-    else if (dataCompetencia > todayISO()) e.push(s.pessoas.competencia.futureError);
+    else if (dataCompetencia > nfseFiscalToday()) e.push(s.pessoas.competencia.futureError);
     if (!tomador) e.push(s.pessoas.tomador.required);
 
     const tomadorManual = tomador?.partyEntryMode === 'manual';
@@ -483,7 +482,7 @@ export function NovaNotaModal({
   // ---- Reset ----
   const resetForm = useCallback(() => {
     setActiveStep('pessoas');
-    setDataCompetencia(todayISO());
+    setDataCompetencia(nfseFiscalToday());
     setRegimeApuracao('competencia');
     setTomador(null);
     setIntermediario(null);

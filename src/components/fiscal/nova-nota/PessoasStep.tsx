@@ -19,6 +19,7 @@ import { useCustomers } from '@/hooks/useCustomers';
 import { cpfCnpjMask } from '@/utils/masks';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { nfseFiscalToday } from '@/lib/fiscal/nfseDates';
 import type { Customer } from '@/types/database';
 import type { NfseCustomer } from './types';
 
@@ -44,8 +45,6 @@ interface PessoasStepProps {
   /** Erros de validação desta etapa (exibidos inline). */
   errors: string[];
 }
-
-const todayISO = () => new Date().toISOString().slice(0, 10);
 
 /**
  * Acha, na lista de pendências, a mensagem gerada a partir de um template com
@@ -185,7 +184,7 @@ export function PessoasStep({
           <DatePicker
             id="nfse-competencia"
             value={dataCompetencia}
-            max={todayISO()}
+            max={nfseFiscalToday()}
             onValueChange={onDataCompetencia}
             placeholder={MESSAGES[locale].app.common.datePicker.placeholder}
           />

@@ -353,75 +353,43 @@ function cleanDate(v: unknown): string {
   return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : "";
 }
 
-// ─── Fuso da empresa (competência da nota) ───────────────────────────────────
+// ─── Relógio fiscal da DPS ───────────────────────────────────────────────────
 //
-// ⚠️ DUPLICAÇÃO PROPOSITAL de `src/lib/timezone.ts`. A edge roda em Deno e NÃO
-// pode importar de `src/` (o bundle da função não enxerga o app). As duas cópias
-// têm a MESMA regra: `en-CA` é o único locale que o Intl formata exatamente como
-// ISO YYYY-MM-DD, e fuso inválido cai no padrão em vez de lançar RangeError.
-//
-// Por que isto existe: o fallback da competência era
-// `new Date().toISOString().slice(0, 10)`, que é o dia EM UTC. Entre 21:00 e a
-// meia-noite de Brasília o UTC já virou, então a nota saía com a competência do
-// DIA SEGUINTE — inclusive para empresa em São Paulo, e inclusive virando o MÊS
-// fiscal no dia 30/31. Competência é campo fiscal: o dia tem que ser o dia DA
-// EMPRESA, lido de `company_settings.timezone`.
+// O motor próprio monta `dhEmi` em America/Sao_Paulo. A competência precisa
+// usar o MESMO dia civil: entre 00:00 e 02:59 UTC o UTC já virou, mas o relógio
+// fiscal ainda está no dia anterior. Usar o fuso do navegador ou até o fuso
+// operacional da empresa nessa janela produz a rejeição oficial "dCompet
+// posterior a dhEmi".
 
-const DEFAULT_TIME_ZONE = "America/Sao_Paulo";
+const NFSE_FISCAL_TIME_ZONE = "America/Sao_Paulo";
 
-/** Dia (YYYY-MM-DD) de AGORA no fuso informado. Fuso inválido cai no padrão. */
-function hojeNoFuso(timeZone: string): string {
-  const opcoes: Intl.DateTimeFormatOptions = {
+/** Dia (YYYY-MM-DD) do instante no mesmo fuso usado pelo `dhEmi` da DPS. */
+export function dataFiscalNfse(agoraMs = Date.now()): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: NFSE_FISCAL_TIME_ZONE,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  };
-  const agora = new Date();
-  try {
-    return new Intl.DateTimeFormat("en-CA", { timeZone, ...opcoes }).format(
-      agora,
-    );
-  } catch {
-    return new Intl.DateTimeFormat("en-CA", {
-      timeZone: DEFAULT_TIME_ZONE,
-      ...opcoes,
-    })
-      .format(agora);
-  }
+  }).format(new Date(agoraMs));
 }
 
-/**
- * Fuso da empresa (`company_settings.timezone`), com validação leve de nome IANA
- * no mesmo espírito de `self-register`. Empresa sem linha de settings, coluna
- * ausente, valor lixo ou falha de leitura caem em America/Sao_Paulo: o fuso é um
- * conforto, NUNCA um bloqueio de emissão.
- */
-async function fusoDaEmpresa(
-  supabase: { from: (t: string) => any },
-  companyId: string,
-): Promise<string> {
-  try {
-    const { data, error } = await supabase
-      .from("company_settings")
-      .select("timezone")
-      .eq("company_id", companyId)
-      .maybeSingle();
-    if (error) return DEFAULT_TIME_ZONE;
-    const tz = clean((data as Record<string, unknown> | null)?.timezone);
-    if (!tz || !/^[A-Za-z_]+\/[A-Za-z0-9_+\-/]+$/.test(tz)) {
-      return DEFAULT_TIME_ZONE;
-    }
-    // Confirma com o próprio Intl: nome plausível ainda pode não existir na base
-    // de fusos do runtime (aí o formatador lança e derrubaria a emissão).
-    try {
-      new Intl.DateTimeFormat("en-CA", { timeZone: tz });
-      return tz;
-    } catch {
-      return DEFAULT_TIME_ZONE;
-    }
-  } catch {
-    return DEFAULT_TIME_ZONE;
+export interface NfseCompetenceDateError {
+  error: "future_competence";
+  message: string;
+}
+
+/** Valida a regra oficial antes de idempotência, cota, numeração ou transmissão. */
+export function validarDataCompetenciaFiscal(
+  dataCompetencia: string,
+  agoraMs = Date.now(),
+): NfseCompetenceDateError | null {
+  if (dataCompetencia > dataFiscalNfse(agoraMs)) {
+    return {
+      error: "future_competence",
+      message: "A competência não pode ser uma data futura.",
+    };
   }
+  return null;
 }
 
 /**
@@ -434,7 +402,7 @@ async function fusoDaEmpresa(
  * documento continuam batendo na mesma chave, como sempre foi.
  *
  * ⚠️ `dataCompetencia` faz parte da chave. Quando ela vem do fallback, a chave
- * passa a carregar o dia DA EMPRESA em vez do dia UTC (correção de 2026-09-17),
+ * passa a carregar o dia FISCAL em vez do dia UTC,
  * então uma nota emitida na janela das 21h à meia-noite gera uma chave diferente
  * da que teria sido gerada antes. Isso NÃO cria nota duplicada:
  *   - nota que já existe com a chave antiga continua existindo e é encontrada
@@ -443,7 +411,7 @@ async function fusoDaEmpresa(
  *     idempotency_key), que continua valendo sobre o valor NOVO;
  *   - duas emissões do mesmo dia, pelo caminho novo, produzem a MESMA chave e a
  *     segunda devolve 200 "já emitida" como sempre.
- * O único efeito é na retentativa feita EXATAMENTE na virada do dia da empresa:
+ * O único efeito é na retentativa feita EXATAMENTE na virada do dia fiscal:
  * aí a competência muda e a chave muda, que é o comportamento correto e já era o
  * de antes (só que na virada do UTC).
  */
@@ -897,21 +865,22 @@ export async function emitirNfseAutorizada(
       );
     }
 
-    // dataCompetencia: body (YYYY-MM-DD) OU rascunho OU HOJE NO FUSO DA EMPRESA.
-    //
-    // O fallback é o caminho NORMAL, não a exceção: a tela só manda a data quando
-    // o usuário mexe no campo. Por isso ele lê `company_settings.timezone` e
-    // formata o dia da empresa, em vez do dia UTC (defeito corrigido aqui).
-    //
-    // A leitura do fuso só acontece quando o fallback é usado — nota com
-    // competência informada no body ou no rascunho não paga a consulta.
+    // dataCompetencia: body (YYYY-MM-DD) OU rascunho OU HOJE FISCAL DA DPS.
     //
     // ⚠️ Este valor entra na chave determinística de idempotência logo abaixo.
     // Ver a nota em `deterministicKey` sobre o efeito na reemissão.
+    const agoraFiscalMs = Date.now();
     let dataCompetencia = cleanDate(body?.dataCompetencia) ||
       cleanDate(draft?.data_competencia);
     if (!dataCompetencia) {
-      dataCompetencia = hojeNoFuso(await fusoDaEmpresa(supabase, companyId));
+      dataCompetencia = dataFiscalNfse(agoraFiscalMs);
+    }
+    const erroDataCompetencia = validarDataCompetenciaFiscal(
+      dataCompetencia,
+      agoraFiscalMs,
+    );
+    if (erroDataCompetencia) {
+      return jsonResponse(erroDataCompetencia, 422);
     }
 
     // ---- Config fiscal: uma única leitura define ambiente, cobertura,

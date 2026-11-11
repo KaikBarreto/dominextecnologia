@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.24',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'NFS-e emitida com a data fiscal correta',
+        category: 'correcao',
+        description: 'A data de competência agora acompanha o mesmo dia usado pela emissão fiscal. Isso evita que uma nota seja recusada como futura durante a virada do dia, inclusive quando o sistema é acessado de outro fuso horário.',
+      },
+    ],
+  },
+  {
     version: '1.39.23',
     date: '11 de novembro de 2026',
     type: 'patch',

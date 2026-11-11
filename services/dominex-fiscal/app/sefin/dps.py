@@ -7,7 +7,7 @@ exato. Não "limpar" esses comentários: cada um custou uma tentativa de emissã
 from __future__ import annotations
 
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 
 from nfelib.nfse.bindings.v1_0 import dps_v1_00 as dps_mod
@@ -51,6 +51,18 @@ def _enum(classe, valor: str):
 def montar(req: EmitirRequest, agora: datetime | None = None) -> bytes:
     """Devolve a DPS serializada (ainda SEM assinatura)."""
     agora = agora or datetime.now(FUSO_BR)
+
+    competencia_texto = (
+        _texto(req.dps.data_competencia) or agora.date().isoformat()
+    )
+    try:
+        competencia = date.fromisoformat(competencia_texto)
+    except ValueError as exc:
+        raise DadosInvalidos(
+            "A data de competência da nota fiscal é inválida."
+        ) from exc
+    if competencia > agora.date():
+        raise DadosInvalidos("A competência não pode ser uma data futura.")
 
     id_dps = _texto(req.dps.id)
     if len(id_dps) != 45:
@@ -209,7 +221,7 @@ def montar(req: EmitirRequest, agora: datetime | None = None) -> bytes:
         verAplic=VER_APLIC,
         serie=_texto(req.dps.serie),
         nDPS=_texto(req.dps.numero),
-        dCompet=_texto(req.dps.data_competencia) or agora.date().isoformat(),
+        dCompet=competencia.isoformat(),
         tpEmit=ts.TsemitenteDps.VALUE_1,  # 1 = o próprio prestador
         cLocEmi=_digitos(req.dps.codigo_municipio_emissor) or None,
         prest=prestador,
