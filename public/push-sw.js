@@ -5,7 +5,7 @@ const DEFAULT_ICON = "/icons/notification-icon.svg";
 const DEFAULT_BADGE = "/icons/icon-96x96.png";
 
 function safeActionPath(value) {
-  if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//")) {
+  if (typeof value !== "string" || !value.trim()) {
     return DEFAULT_ACTION;
   }
   try {
@@ -30,14 +30,21 @@ function readPayload(event) {
 
 self.addEventListener("push", (event) => {
   const payload = readPayload(event);
-  const action = safeActionPath(payload.action_url);
+  const declarative =
+    payload.web_push === 8030 &&
+    payload.notification &&
+    typeof payload.notification === "object"
+      ? payload.notification
+      : null;
+  const notification = declarative || payload;
+  const action = safeActionPath(notification.navigate || payload.action_url);
   const title =
-    typeof payload.title === "string" && payload.title.trim()
-      ? payload.title.trim().slice(0, 120)
+    typeof notification.title === "string" && notification.title.trim()
+      ? notification.title.trim().slice(0, 120)
       : "Nova notificação no Dominex";
   const body =
-    typeof payload.body === "string" && payload.body.trim()
-      ? payload.body.replace(/\s+/g, " ").trim().slice(0, 240)
+    typeof notification.body === "string" && notification.body.trim()
+      ? notification.body.replace(/\s+/g, " ").trim().slice(0, 240)
       : "Abra o Dominex para ver os detalhes.";
 
   // O navegador/SO decide se a prévia aparece na tela bloqueada. O payload é
@@ -46,8 +53,16 @@ self.addEventListener("push", (event) => {
     body,
     icon: DEFAULT_ICON,
     badge: DEFAULT_BADGE,
-    tag: typeof payload.tag === "string" ? payload.tag.slice(0, 120) : undefined,
+    tag:
+      typeof notification.tag === "string"
+        ? notification.tag.slice(0, 120)
+        : typeof payload.tag === "string"
+          ? payload.tag.slice(0, 120)
+          : undefined,
     renotify: payload.priority === "high",
+    // `false` solicita explicitamente o som padrão. O navegador/SO ainda pode
+    // silenciar por Foco, modo silencioso ou preferência do aparelho.
+    silent: notification.silent === true,
     data: { action_url: action, notification_id: payload.notification_id || null },
   };
 

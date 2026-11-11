@@ -59,9 +59,14 @@ test('worker global exige CRON_SECRET em comparação segura', () => {
 test('push específico limita título e corpo e mantém deep link interno', () => {
   assert.match(worker, /previewText\(delivery\.title,[\s\S]*120\)/);
   assert.match(worker, /previewText\(delivery\.message,[\s\S]*240\)/);
-  assert.match(serviceWorker, /payload\.body/);
+  assert.match(worker, /web_push:\s*8030/);
+  assert.match(worker, /silent:\s*false/);
+  assert.match(worker, /notificationNavigateUrl\(actionUrl\)/);
+  assert.match(serviceWorker, /payload\.web_push\s*===\s*8030/);
+  assert.match(serviceWorker, /silent:\s*notification\.silent\s*===\s*true/);
+  assert.match(serviceWorker, /notification\.body/);
   assert.match(serviceWorker, /slice\(0, 240\)/);
-  assert.match(serviceWorker, /safeActionPath\(payload\.action_url\)/);
+  assert.match(serviceWorker, /safeActionPath\(notification\.navigate\s*\|\|\s*payload\.action_url\)/);
 });
 
 test('release busca o script importado sem cache HTTP', () => {

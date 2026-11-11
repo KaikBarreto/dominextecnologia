@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.39.32";
+export const APP_VERSION = "1.39.33";
 
 export const VERSION_NOTES =
-  "As permissões do Financeiro ficaram mais claras e passam a liberar automaticamente os acessos necessários para concluir cada operação.";
+  "As notificações push passam a solicitar o som padrão do aparelho em sistemas compatíveis.";

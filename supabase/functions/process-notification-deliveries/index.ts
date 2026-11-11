@@ -20,6 +20,8 @@ type ClaimedDelivery = {
   attempts?: number
 }
 
+const APP_ORIGIN = 'https://www.dominex.app'
+
 const SAFE_TITLES: Record<string, string> = {
   'schedule.daily_digest': 'Seus compromissos de hoje',
   'schedule.daily_digest.v1': 'Seus compromissos de hoje',
@@ -38,6 +40,16 @@ function titleFor(type: string) {
 function previewText(value: string | null | undefined, fallback: string, maxLength: number) {
   const normalized = value?.replace(/\s+/g, ' ').trim()
   return (normalized || fallback).slice(0, maxLength)
+}
+
+function notificationNavigateUrl(value: string | null | undefined): string {
+  try {
+    const base = new URL(APP_ORIGIN)
+    const target = new URL(value || '/dashboard', base)
+    return target.origin === base.origin ? target.href : new URL('/dashboard', base).href
+  } catch {
+    return `${APP_ORIGIN}/dashboard`
+  }
 }
 
 function validProviderEndpoint(value: string): boolean {
@@ -128,18 +140,35 @@ Deno.serve(async (req) => {
           failed += 1
           return
         }
+        const title = previewText(delivery.title, titleFor(delivery.notification_type), 120)
+        const body = previewText(delivery.message, 'Abra o Dominex para ver os detalhes.', 240)
+        const actionUrl = delivery.action_url || '/dashboard'
+        const tag = delivery.notification_id
+
         await webpush.sendNotification(
           {
             endpoint: delivery.endpoint,
             keys: { p256dh: delivery.p256dh, auth: delivery.auth },
           },
           JSON.stringify({
+            // Safari/iOS 18.4+ consegue exibir este bloco sem depender do SW.
+            // `silent: false` solicita o som padrão do sistema, quando permitido.
+            web_push: 8030,
+            notification: {
+              title,
+              body,
+              navigate: notificationNavigateUrl(actionUrl),
+              tag,
+              silent: false,
+            },
+            // Compatibilidade com navegadores que ainda usam Web Push clássico
+            // e com versões anteriores do push-sw.js durante a atualização.
             version: 1,
             notification_id: delivery.notification_id,
-            title: previewText(delivery.title, titleFor(delivery.notification_type), 120),
-            body: previewText(delivery.message, 'Abra o Dominex para ver os detalhes.', 240),
-            action_url: delivery.action_url || '/dashboard',
-            tag: delivery.notification_id,
+            title,
+            body,
+            action_url: actionUrl,
+            tag,
             priority: delivery.priority || 'normal',
           }),
           {

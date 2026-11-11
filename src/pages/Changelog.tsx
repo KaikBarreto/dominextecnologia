@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.33',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Push com alerta sonoro no aparelho',
+        category: 'melhoria',
+        description: 'As notificações passam a solicitar o som padrão do celular em sistemas compatíveis. O aparelho ainda respeita o modo silencioso, o Foco e as preferências de notificação escolhidas pela pessoa.',
+      },
+    ],
+  },
+  {
     version: '1.39.32',
     date: '11 de novembro de 2026',
     type: 'patch',
