@@ -910,7 +910,11 @@ const AppRoutes = () => (
       {/* Rota antiga: redireciona direto pra aba RT da nova tela (mantém bookmarks/links). */}
       <Route path="/responsaveis-tecnicos" element={<Navigate to="/configuracoes-contrato?tab=rt" replace />} />
       <Route path="/usuarios" element={<Navigate to="/configuracoes?tab=usuarios" replace />} />
-      {localizedAppRoutes('settings', <PermissionRoute screenKey="screen:settings"><Settings /></PermissionRoute>)}
+      {/* Preferências pessoais de notificações vivem em Configurações, mas não
+          podem exigir acesso administrativo à tela inteira. O próprio Settings
+          mostra somente a aba pessoal quando `screen:settings` não foi liberada;
+          regras da empresa seguem gate visual + RLS por `fn:manage_settings`. */}
+      {localizedAppRoutes('settings', <Settings />)}
       {localizedAppRoutes('profile', <Profile />)}
       <Route path="/equipes" element={<Navigate to="/funcionarios" replace />} />
       {localizedAppRoutes('employees', <PermissionRoute screenKey="screen:employees"><ModuleRoute moduleKey="rh"><Employees /></ModuleRoute></PermissionRoute>)}

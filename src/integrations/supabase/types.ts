@@ -16480,14 +16480,323 @@ export type Database = {
           },
         ]
       }
+      company_notification_rules: {
+        Row: {
+          company_id: string
+          created_at: string
+          enabled: boolean
+          event_type: string
+          id: string
+          in_app_enabled: boolean
+          push_enabled: boolean
+          recipient_policy: Json
+          reminder_minutes: number | null
+          schedule_time: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          enabled?: boolean
+          event_type: string
+          id?: string
+          in_app_enabled?: boolean
+          push_enabled?: boolean
+          recipient_policy?: Json
+          reminder_minutes?: number | null
+          schedule_time?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          enabled?: boolean
+          event_type?: string
+          id?: string
+          in_app_enabled?: boolean
+          push_enabled?: boolean
+          recipient_policy?: Json
+          reminder_minutes?: number | null
+          schedule_time?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_notification_rules_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_events: {
+        Row: {
+          action_url: string | null
+          category: string
+          company_id: string
+          created_at: string
+          dedupe_key: string
+          event_type: string
+          icon: string
+          id: string
+          last_error: string | null
+          message: string | null
+          occurred_at: string
+          payload: Json
+          priority: string
+          recipient_user_ids: string[]
+          routed_at: string | null
+          source_id: string | null
+          source_type: string
+          title: string
+        }
+        Insert: {
+          action_url?: string | null
+          category?: string
+          company_id: string
+          created_at?: string
+          dedupe_key: string
+          event_type: string
+          icon?: string
+          id?: string
+          last_error?: string | null
+          message?: string | null
+          occurred_at?: string
+          payload?: Json
+          priority?: string
+          recipient_user_ids?: string[]
+          routed_at?: string | null
+          source_id?: string | null
+          source_type: string
+          title: string
+        }
+        Update: {
+          action_url?: string | null
+          category?: string
+          company_id?: string
+          created_at?: string
+          dedupe_key?: string
+          event_type?: string
+          icon?: string
+          id?: string
+          last_error?: string | null
+          message?: string | null
+          occurred_at?: string
+          payload?: Json
+          priority?: string
+          recipient_user_ids?: string[]
+          routed_at?: string | null
+          source_id?: string | null
+          source_type?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_deliveries: {
+        Row: {
+          attempts: number
+          channel: string
+          claimed_at: string | null
+          created_at: string
+          id: string
+          last_error: string | null
+          next_attempt_at: string
+          notification_id: string
+          provider_status: number | null
+          sent_at: string | null
+          status: string
+          subscription_id: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          channel?: string
+          claimed_at?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          next_attempt_at?: string
+          notification_id: string
+          provider_status?: number | null
+          sent_at?: string | null
+          status?: string
+          subscription_id: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          channel?: string
+          claimed_at?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          next_attempt_at?: string
+          notification_id?: string
+          provider_status?: number | null
+          sent_at?: string | null
+          status?: string
+          subscription_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_deliveries_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "user_notifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_deliveries_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "push_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      push_subscriptions: {
+        Row: {
+          active: boolean
+          auth: string
+          company_id: string
+          created_at: string
+          device_label: string | null
+          endpoint: string
+          failure_count: number
+          id: string
+          last_failure_at: string | null
+          last_seen_at: string
+          last_success_at: string | null
+          p256dh: string
+          updated_at: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          auth: string
+          company_id: string
+          created_at?: string
+          device_label?: string | null
+          endpoint: string
+          failure_count?: number
+          id?: string
+          last_failure_at?: string | null
+          last_seen_at?: string
+          last_success_at?: string | null
+          p256dh: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          auth?: string
+          company_id?: string
+          created_at?: string
+          device_label?: string | null
+          endpoint?: string
+          failure_count?: number
+          id?: string
+          last_failure_at?: string | null
+          last_seen_at?: string
+          last_success_at?: string | null
+          p256dh?: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_notification_preferences: {
+        Row: {
+          company_id: string
+          created_at: string
+          event_type: string
+          id: string
+          in_app_enabled: boolean | null
+          push_enabled: boolean | null
+          quiet_end: string | null
+          quiet_start: string | null
+          timezone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          event_type: string
+          id?: string
+          in_app_enabled?: boolean | null
+          push_enabled?: boolean | null
+          quiet_end?: string | null
+          quiet_start?: string | null
+          timezone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          in_app_enabled?: boolean | null
+          push_enabled?: boolean | null
+          quiet_end?: string | null
+          quiet_start?: string | null
+          timezone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_notification_preferences_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_notifications: {
         Row: {
           action_url: string | null
+          category: string
+          company_id: string | null
           created_at: string
+          dedupe_key: string | null
+          dismissed_at: string | null
+          entity_id: string | null
+          entity_type: string | null
+          event_id: string | null
           expires_at: string | null
           icon: string | null
           id: string
+          in_app_visible: boolean
           message: string | null
+          metadata: Json
+          priority: string
           read_at: string | null
           title: string
           type: string
@@ -16495,11 +16804,21 @@ export type Database = {
         }
         Insert: {
           action_url?: string | null
+          category?: string
+          company_id?: string | null
           created_at?: string
+          dedupe_key?: string | null
+          dismissed_at?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          event_id?: string | null
           expires_at?: string | null
           icon?: string | null
           id?: string
+          in_app_visible?: boolean
           message?: string | null
+          metadata?: Json
+          priority?: string
           read_at?: string | null
           title: string
           type: string
@@ -16507,17 +16826,42 @@ export type Database = {
         }
         Update: {
           action_url?: string | null
+          category?: string
+          company_id?: string | null
           created_at?: string
+          dedupe_key?: string | null
+          dismissed_at?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          event_id?: string | null
           expires_at?: string | null
           icon?: string | null
           id?: string
+          in_app_visible?: boolean
           message?: string | null
+          metadata?: Json
+          priority?: string
           read_at?: string | null
           title?: string
           type?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_notifications_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_notifications_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "notification_events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_permissions: {
         Row: {
@@ -17825,6 +18169,10 @@ export type Database = {
         Args: { p_company_id: string }
         Returns: number
       }
+      enqueue_schedule_daily_digests: {
+        Args: { _now?: string }
+        Returns: number
+      }
       get_company_effective_subscription_value: {
         Args: { p_company_id: string }
         Returns: number
@@ -17979,6 +18327,24 @@ export type Database = {
           balance: number
         }[]
       }
+      claim_notification_deliveries: {
+        Args: { p_limit?: number; p_orphan_minutes?: number }
+        Returns: {
+          action_url: string | null
+          attempts: number
+          auth: string
+          category: string
+          delivery_id: string
+          endpoint: string
+          message: string | null
+          notification_id: string
+          notification_type: string
+          p256dh: string
+          priority: string
+          subscription_id: string
+          title: string
+        }[]
+      }
       check_email_available: { Args: { _email: string }; Returns: boolean }
       claim_subscription_payment_nfse: {
         Args: {
@@ -17991,6 +18357,16 @@ export type Database = {
       cleanup_tenant_charge_mirror_on_delete: {
         Args: { p_asaas_payment_id: string; p_company_id: string }
         Returns: Json
+      }
+      complete_notification_delivery: {
+        Args: {
+          p_delivery_id: string
+          p_error?: string
+          p_provider_status?: number
+          p_retry_after_seconds?: number
+          p_success: boolean
+        }
+        Returns: boolean
       }
       close_due_credit_card_bills: { Args: never; Returns: number }
       commit_os_material_consumption: {
@@ -18245,6 +18621,10 @@ export type Database = {
         Args: { p_portal_id: string; p_session_token: string }
         Returns: boolean
       }
+      count_unread_user_notifications: {
+        Args: { _company_id: string }
+        Returns: number
+      }
       delete_company_payment_with_rollback: {
         Args: { p_payment_id: string }
         Returns: undefined
@@ -18357,6 +18737,10 @@ export type Database = {
         }[]
       }
       dismiss_domiflix_learning_reminder: { Args: never; Returns: string }
+      dismiss_user_notification: {
+        Args: { _notification_id: string }
+        Returns: boolean
+      }
       domiflix_user_can_access_learning_title: {
         Args: { p_title_id: string; p_user_id: string }
         Returns: boolean
@@ -19118,9 +19502,17 @@ export type Database = {
         Returns: Json
       }
       list_usable_financial_accounts: { Args: never; Returns: Json }
+      mark_all_user_notifications_read: {
+        Args: { _company_id: string }
+        Returns: number
+      }
       mark_lead_worked_and_release: {
         Args: { p_company_id: string }
         Returns: Json
+      }
+      mark_user_notification_read: {
+        Args: { _notification_id: string }
+        Returns: boolean
       }
       match_employee_face_for_kiosk: {
         Args: {
@@ -19130,6 +19522,15 @@ export type Database = {
           p_quality_score: number
         }
         Returns: Json
+      }
+      notification_next_allowed_at: {
+        Args: {
+          _company_id: string
+          _event_type: string
+          _now?: string
+          _user_id: string
+        }
+        Returns: string
       }
       next_compra_numero: { Args: { p_company_id: string }; Returns: number }
       next_compra_ordem_numero: {
@@ -20130,6 +20531,14 @@ export type Database = {
       reset_system_step: {
         Args: { p_audit_id: string; p_company_id: string; p_step: string }
         Returns: Json
+      }
+      retry_pending_notification_events: {
+        Args: { p_limit?: number }
+        Returns: number
+      }
+      route_notification_event: {
+        Args: { _event_id: string }
+        Returns: number
       }
       resolve_billing_reminder: {
         Args: { p_transaction_id: string }

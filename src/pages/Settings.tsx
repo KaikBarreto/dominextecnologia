@@ -4,7 +4,7 @@ import { MESSAGES } from '@/lib/i18n';
 import { Badge } from '@/components/ui/badge';
 import { useSearchParams } from 'react-router-dom';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
-import { Settings as SettingsIcon, Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw, Paintbrush, Image, FileText, MapPin, Phone, Mail, ClipboardList, ShieldCheck, TableProperties, Camera, PenTool, Calendar, Keyboard, UserCircle, CheckCircle2, Tags, Globe, Plug, Receipt, CreditCard } from 'lucide-react';
+import { Settings as SettingsIcon, Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw, Paintbrush, Image, FileText, MapPin, Phone, Mail, ClipboardList, ShieldCheck, TableProperties, Camera, PenTool, Calendar, Keyboard, UserCircle, CheckCircle2, Tags, Globe, Plug, Receipt, CreditCard, BellRing } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { BrandedQRCode, type QRDotStyle, type QRCornerStyle } from '@/components/BrandedQRCode';
@@ -53,10 +53,12 @@ import * as LucideIcons from 'lucide-react';
 import type { AppRole } from '@/types/database';
 import { tenantFileOptions } from '@/utils/tenantStorage';
 import { createCustomOsSocialImage, createOsSocialImageFromLogo } from '@/utils/osSocialImage';
+import { NotificationSettingsContent } from '@/components/settings/notifications/NotificationSettingsContent';
+import { canManageCompanyNotificationRules, canSaveCompanySettings } from '@/components/settings/notifications/notificationSettingsAccess';
 
 const UsersPage = lazy(() => import('@/pages/Users'));
 
-const ALL_TABS = ['empresa', 'regional', 'usuarios', 'usabilidade', 'atalhos', 'aparencia', 'integracoes'];
+const ALL_TABS = ['empresa', 'regional', 'usuarios', 'usabilidade', 'atalhos', 'aparencia', 'integracoes', 'notificacoes'];
 
 // Snapshot canônico de `settings` no MESMO shape/ordem do payload salvo
 // (buildPayload). Usado em 2 lugares: baseline do auto-save (lastSavedJsonRef)
@@ -99,7 +101,41 @@ function settingsToJson(settings: any): string {
   });
 }
 
+function PersonalNotificationSettingsPage({ canManageRules }: { canManageRules: boolean }) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.settings;
+
+  return (
+    <div className="space-y-6">
+      <PageHeader title={t.page.title} subtitle={t.page.subtitle} icon={SettingsIcon} />
+      <NotificationSettingsContent canManageRules={canManageRules} />
+    </div>
+  );
+}
+
+/**
+ * Porta de entrada da rota. A árvore administrativa é deliberadamente outro
+ * componente para que usuários sem `screen:settings` não montem sequer os
+ * hooks de company_settings, termos, origens, módulos, logos ou auto-save.
+ */
 export default function Settings() {
+  const { hasScreenAccess, hasRole, hasPermission, hasPermissionRecord, isAdminOrGestor } = useAuth();
+  const canAccessSettingsScreen = hasScreenAccess('screen:settings');
+  const canManageNotificationRules = canManageCompanyNotificationRules({
+    isAdminOrGestor: isAdminOrGestor(),
+    isSuperAdmin: hasRole('super_admin' as AppRole),
+    hasPermissionRecord,
+    hasManageSettingsPermission: hasPermission('fn:manage_settings'),
+  });
+
+  if (!canAccessSettingsScreen) {
+    return <PersonalNotificationSettingsPage canManageRules={canManageNotificationRules} />;
+  }
+
+  return <AdministrativeSettings />;
+}
+
+function AdministrativeSettings() {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.settings;
   // Rótulo/descrição do toggle são os MESMOS textos que a tela de Movimentações
@@ -114,9 +150,10 @@ export default function Settings() {
     { value: 'atalhos', label: t.page.tabs.atalhos, icon: Keyboard },
     { value: 'aparencia', label: t.page.tabs.aparencia, icon: Palette },
     { value: 'integracoes', label: t.page.tabs.integracoes, icon: Plug },
+    { value: 'notificacoes', label: t.page.tabs.notificacoes, icon: BellRing },
   ];
 
-  const { hasScreenAccess, hasRole, hasPermission, hasPermissionRecord } = useAuth();
+  const { hasScreenAccess, hasRole, hasPermission, hasPermissionRecord, isAdminOrGestor } = useAuth();
   const { hasModule } = useCompanyModules();
   const { companyId } = useUserCompany();
   // Gate da Zona de Perigo: admin do tenant OR super_admin Auctus.
@@ -129,6 +166,13 @@ export default function Settings() {
   // QUALQUER key, entregando a exportação sozinha a quem ninguém autorizou.
   const canExportData =
     canResetSystem || (hasPermissionRecord && hasPermission('fn:export_company_data'));
+  const canAccessSettingsScreen = hasScreenAccess('screen:settings');
+  const canManageNotificationRules = canManageCompanyNotificationRules({
+    isAdminOrGestor: isAdminOrGestor(),
+    isSuperAdmin: hasRole('super_admin' as AppRole),
+    hasPermissionRecord,
+    hasManageSettingsPermission: hasPermission('fn:manage_settings'),
+  });
   const [wlGateOpen, setWlGateOpen] = useState(false);
   const [termsModalOpen, setTermsModalOpen] = useState(false);
   const [originManagerOpen, setOriginManagerOpen] = useState(false);
@@ -138,10 +182,14 @@ export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTabState] = useState(() => {
     const tabFromUrl = searchParams.get('tab');
+    if (!canAccessSettingsScreen) return 'notificacoes';
     return tabFromUrl && ALL_TABS.includes(tabFromUrl) ? tabFromUrl : 'empresa';
   });
 
   const visibleTabs = settingsTabs.filter(t => {
+    // Preferências próprias ficam acessíveis sem liberar dados/configurações da
+    // empresa. O backend ainda aplica own-row nas preferências e RLS nas regras.
+    if (!canAccessSettingsScreen) return t.value === 'notificacoes';
     if (t.value === 'usuarios') return hasScreenAccess('screen:users');
     // Regional: aba visível para TODOS (qualquer usuário muda o próprio idioma).
     // Dentro da aba, campos da empresa (idioma padrão, moeda, fuso) continuam
@@ -150,13 +198,25 @@ export default function Settings() {
     return true;
   });
   const setActiveTab = (tab: string) => {
+    if (!canAccessSettingsScreen && tab !== 'notificacoes') return;
     setActiveTabState(tab);
     setSearchParams({ tab }, { replace: true });
   };
+
+  useEffect(() => {
+    if (canAccessSettingsScreen || activeTab === 'notificacoes') return;
+    setActiveTabState('notificacoes');
+    setSearchParams({ tab: 'notificacoes' }, { replace: true });
+  }, [activeTab, canAccessSettingsScreen, setSearchParams]);
   // canSave: query terminou e o usuário é de tenant com empresa — mesmo sem
   // linha em company_settings (o hook auto-cria via INSERT no primeiro save).
   // super_admin fica canSave=false e o auto-save continua morto pra ele.
   const { settings, isLoading, updateSettings, canSave } = useCompanySettings();
+  // A rota agora também atende preferências PESSOAIS de notificação. Portanto,
+  // estar associado a um tenant não basta para habilitar writes de
+  // company_settings: técnicos sem `screen:settings` não podem disparar save
+  // por debounce, blur ou unmount enquanto usam a aba pessoal.
+  const canSaveSettings = canSaveCompanySettings(canAccessSettingsScreen, canSave);
   const { toast } = useToast();
   // "Incluir compras no cartão nas Movimentações" é preferência PESSOAL (não
   // da empresa), por isso vem de user_preferences (own-row), diferente dos
@@ -326,7 +386,7 @@ export default function Settings() {
     // `settings` é truthy — empresa sem linha em company_settings também
     // precisa conseguir salvar (o hook cria a linha via INSERT).
     // canSave é false pra super_admin: o auto-save continua morto pra ele.
-    if (!canSave) return;
+    if (!canSaveSettings) return;
     settingsLoadedRef.current = true;
     if (!settings) {
       // Sem linha ainda: baseline = estado atual do form (defaults vazios).
@@ -342,10 +402,10 @@ export default function Settings() {
     // buildPayload muda a cada keystroke, mas o único ramo que o usa (sem
     // linha) é protegido por `!lastSavedJsonRef.current` — roda uma vez só;
     // o ramo com settings apenas re-escreve o mesmo baseline (idempotente).
-  }, [settings, canSave, buildPayload]);
+  }, [settings, canSaveSettings, buildPayload]);
 
   const debouncedSave = useCallback(() => {
-    if (!settingsLoadedRef.current || isHydratingRef.current) return;
+    if (!canSaveSettings || !settingsLoadedRef.current || isHydratingRef.current) return;
     // Marca "sujo" assim que algo muda; o indicador reflete na hora.
     const dirty = JSON.stringify(buildPayload()) !== lastSavedJsonRef.current;
     setIsDirty(dirty);
@@ -359,7 +419,7 @@ export default function Settings() {
       setIsDirty(false);
       updateSettings.mutate(payload as any);
     }, 800);
-  }, [buildPayload, updateSettings]);
+  }, [buildPayload, canSaveSettings, updateSettings]);
 
   useEffect(() => {
     debouncedSave();
@@ -370,7 +430,7 @@ export default function Settings() {
   // Não pode ser chamado no cleanup do efeito de debounce (roda a cada render
   // e mataria o debounce); só em onBlur e no unmount real.
   const flushSave = useCallback(() => {
-    if (!settingsLoadedRef.current || isHydratingRef.current) return;
+    if (!canSaveSettings || !settingsLoadedRef.current || isHydratingRef.current) return;
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     const payload = buildPayload();
     const json = JSON.stringify(payload);
@@ -379,7 +439,7 @@ export default function Settings() {
     setIsDirty(false);
     // Fire-and-forget: a requisição HTTP sai mesmo se o componente desmontar.
     updateSettings.mutate(payload as any);
-  }, [buildPayload, updateSettings]);
+  }, [buildPayload, canSaveSettings, updateSettings]);
 
   // Ref sempre apontando pra versão mais recente de flushSave, pra usar no
   // efeito de unmount (deps vazias) sem capturar uma closure obsoleta.
@@ -1704,7 +1764,7 @@ export default function Settings() {
                             ) : (
                               <Switch
                                 checked={!!settings?.os_stock_consumption_enabled}
-                                disabled={!canSave || updateSettings.isPending}
+                                disabled={!canSaveSettings || updateSettings.isPending}
                                 onCheckedChange={handleToggleStockConsumption}
                               />
                             )
@@ -1750,7 +1810,7 @@ export default function Settings() {
                     onChange={handleChangeQuoteApprovalMode}
                     off={{ value: 'recebido', label: t.usability.quoteFinance.modeReceived }}
                     on={{ value: 'a_receber', label: t.usability.quoteFinance.modeReceivable }}
-                    disabled={!canSave || updateSettings.isPending}
+                    disabled={!canSaveSettings || updateSettings.isPending}
                     aria-label={t.usability.quoteFinance.modeTitle}
                   />
                 )}
@@ -1773,7 +1833,7 @@ export default function Settings() {
                 ) : (
                   <Switch
                     checked={!!settings?.quote_public_approval_creates_receivable}
-                    disabled={!canSave || updateSettings.isPending}
+                    disabled={!canSaveSettings || updateSettings.isPending}
                     onCheckedChange={handleTogglePublicApprovalReceivable}
                   />
                 )}
@@ -1794,7 +1854,7 @@ export default function Settings() {
                 ) : (
                   <Switch
                     checked={!!settings?.os_finish_revenue_prompt_enabled}
-                    disabled={!canSave || updateSettings.isPending}
+                    disabled={!canSaveSettings || updateSettings.isPending}
                     onCheckedChange={handleToggleOsFinishRevenuePrompt}
                   />
                 )}
@@ -1907,6 +1967,9 @@ export default function Settings() {
       case 'integracoes':
         return <SettingsIntegrationContent />;
 
+      case 'notificacoes':
+        return <NotificationSettingsContent canManageRules={canManageNotificationRules} />;
+
       default:
         return null;
     }
@@ -1948,7 +2011,7 @@ export default function Settings() {
         title={t.page.title}
         subtitle={t.page.subtitle}
         icon={SettingsIcon}
-        actions={saveStatus}
+        actions={activeTab === 'notificacoes' ? undefined : saveStatus}
       />
 
       {/* onBlur no container captura o blur dos inputs filhos (bubbles) e faz

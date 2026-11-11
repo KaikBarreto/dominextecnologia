@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.25',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Notificações importantes no sistema e no aparelho',
+        category: 'recurso',
+        description: 'A equipe passa a receber avisos dos compromissos do dia, pagamentos confirmados, novos chamados e formulários respondidos. As mensagens mostram informações úteis, como valor, cliente e número do chamado, e podem aparecer no sino ou como notificação no aparelho com o PWA instalado.',
+      },
+      {
+        title: 'Cada empresa escolhe quem recebe cada aviso',
+        category: 'recurso',
+        description: 'A nova área Notificações, dentro de Configurações, permite definir os canais e destinatários de cada tipo de aviso. Cada pessoa também pode escolher o que deseja receber, administrar seus aparelhos e configurar um horário silencioso para o push.',
+      },
+    ],
+  },
+  {
     version: '1.39.24',
     date: '11 de novembro de 2026',
     type: 'patch',

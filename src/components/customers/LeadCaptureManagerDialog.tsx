@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, Link2, ClipboardList, MessageSquareText, UserPlus, Copy } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import {
@@ -29,13 +29,20 @@ import { LeadCaptureFormDialog } from './LeadCaptureFormDialog';
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialFormId?: string | null;
+  initialSubmissionId?: string | null;
 }
 
 function isExpired(form: LeadCaptureForm): boolean {
   return !!form.expires_at && new Date(form.expires_at).getTime() < Date.now();
 }
 
-export function LeadCaptureManagerDialog({ open, onOpenChange }: Props) {
+export function LeadCaptureManagerDialog({
+  open,
+  onOpenChange,
+  initialFormId = null,
+  initialSubmissionId = null,
+}: Props) {
   const { toast } = useToast();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.customers.leadFormBuilder;
@@ -46,6 +53,12 @@ export function LeadCaptureManagerDialog({ open, onOpenChange }: Props) {
   const [toDelete, setToDelete] = useState<LeadCaptureForm | null>(null);
   const [toDuplicate, setToDuplicate] = useState<LeadCaptureForm | null>(null);
   const [answersFor, setAnswersFor] = useState<LeadCaptureForm | null>(null);
+
+  useEffect(() => {
+    if (!open || !initialFormId || isLoading) return;
+    const requestedForm = forms.find((form) => form.id === initialFormId);
+    if (requestedForm) setAnswersFor(requestedForm);
+  }, [forms, initialFormId, isLoading, open]);
 
   // `formId` vem do diálogo: id já gravado (edição, ou criação de uma tentativa
   // anterior que falhou nas perguntas) ou null quando ainda precisa criar.
@@ -238,7 +251,9 @@ export function LeadCaptureManagerDialog({ open, onOpenChange }: Props) {
         title={t.subTitle}
         description={answersFor?.title}
       >
-        {answersFor && <FormSubmissionsView form={answersFor} />}
+        {answersFor && (
+          <FormSubmissionsView form={answersFor} initialSubmissionId={initialSubmissionId} />
+        )}
       </ResponsiveModal>
 
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
