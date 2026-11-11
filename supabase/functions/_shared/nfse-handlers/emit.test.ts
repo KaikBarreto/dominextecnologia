@@ -22,9 +22,42 @@ import {
   dataFiscalNfse,
   ehRecusaDeDocumento,
   emissaoNacionalObrigatoriaSimples,
+  retryKeyForDraft,
+  shouldReturnExistingEmission,
   validarDataCompetenciaFiscal,
   validarProntidaoFiscal,
 } from "./emit.ts";
+
+Deno.test("retentativa por novo rascunho preserva sufixo único dentro do limite", () => {
+  const draftId = "48b97df6-6a69-4f65-8b21-a97d300922a4";
+  const key = retryKeyForDraft("x".repeat(512), draftId);
+
+  assertEquals(key.length, 512);
+  assertEquals(key.endsWith(`#retry-${draftId}`), true);
+});
+
+Deno.test("retentativa por novo rascunho não devolve a rejeição anterior", () => {
+  assertEquals(
+    shouldReturnExistingEmission({
+      existingId: "rejeicao-anterior",
+      emissionId: "rascunho-novo",
+      tentativaAnterior: "",
+      retentativaComNovoRascunho: true,
+      reemissaoPosCancelamento: false,
+    }),
+    false,
+  );
+  assertEquals(
+    shouldReturnExistingEmission({
+      existingId: "autorizada-anterior",
+      emissionId: "rascunho-novo",
+      tentativaAnterior: "",
+      retentativaComNovoRascunho: false,
+      reemissaoPosCancelamento: false,
+    }),
+    true,
+  );
+});
 
 // --- Recusa oficial → linha `rejeitada` ----------------------------------------
 

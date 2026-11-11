@@ -576,7 +576,10 @@ export function NovaNotaModal({
   /**
    * Emite a nota:
    * - Se há draftId: salva o estado atual (upsert) e depois emite por emissionId.
-   * - Caso contrário: emite direto com o body completo.
+   * - Caso contrário: emite direto com o body completo, sem criar um rascunho
+   *   intermediário. Além de evitar lixo na lista, isso permite que uma nova
+   *   tentativa substitua com segurança uma rejeição anterior com a mesma
+   *   chave determinística.
    */
   const handleEmit = async () => {
     if (submittingRef.current) return;
@@ -589,12 +592,18 @@ export function NovaNotaModal({
     try {
       let emissionIdToUse = draftId;
 
-      // Salva/atualiza o rascunho primeiro (persistência do estado atual).
-      const saveRes = await invokeNfse<{ emission?: { id: string } }>(
-        'nfse-save-draft',
-        buildDraftBody(),
-      );
-      if (saveRes.ok && saveRes.data?.emission?.id) {
+      // Rascunho explícito é atualizado antes da emissão. Nota NOVA segue com
+      // o body completo abaixo: criar um rascunho aqui fazia a retentativa
+      // colidir com a chave da rejeição anterior depois de já falar com o Fisco.
+      if (emissionIdToUse) {
+        const saveRes = await invokeNfse<{ emission?: { id: string } }>(
+          'nfse-save-draft',
+          buildDraftBody(),
+        );
+        if (!saveRes.ok || !saveRes.data?.emission?.id) {
+          toast.error(saveRes.message ?? s.toasts.draftError);
+          return;
+        }
         emissionIdToUse = saveRes.data.emission.id;
         setDraftId(emissionIdToUse);
       }

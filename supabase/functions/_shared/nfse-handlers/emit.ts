@@ -273,9 +273,40 @@ async function rodarTolerandoColunaAusente(
  */
 const STATUS_DE_TENTATIVA_FALHA = new Set<string>([
   NFSE_STATUS.REJEITADA,
-  NFSE_STATUS.CONFIRMACAO_PENDENTE,
   NFSE_STATUS.FALHOU,
 ]);
+
+/**
+ * Uma confirmação pendente não é uma rejeição segura para retransmitir: o
+ * documento pode ter sido autorizado e só a resposta ter se perdido. Esse
+ * estado precisa ser reconciliado por consulta antes de qualquer novo envio.
+ */
+const STATUS_DE_RESULTADO_INCERTO = new Set<string>([
+  NFSE_STATUS.CONFIRMACAO_PENDENTE,
+]);
+
+/**
+ * Quando uma versão antiga do front cria um rascunho antes de retentar uma
+ * rejeição, a chave determinística base já pertence à linha rejeitada. A nova
+ * tentativa recebe um sufixo estável derivado do próprio rascunho, preservando
+ * as duas trilhas e evitando a UNIQUE depois de a DPS já ter sido transmitida.
+ */
+export function retryKeyForDraft(base: string, emissionId: string): string {
+  const suffix = `#retry-${clean(emissionId)}`;
+  return `${base.slice(0, Math.max(0, 512 - suffix.length))}${suffix}`;
+}
+
+export function shouldReturnExistingEmission(input: {
+  existingId?: string | null;
+  emissionId?: string | null;
+  tentativaAnterior: string;
+  retentativaComNovoRascunho: boolean;
+  reemissaoPosCancelamento: boolean;
+}): boolean {
+  return !!input.existingId && input.existingId !== input.emissionId &&
+    !input.tentativaAnterior && !input.retentativaComNovoRascunho &&
+    !input.reemissaoPosCancelamento;
+}
 
 /**
  * Status em que a nota JÁ FOI DOCUMENTO FISCAL: existiu, tem número e chave, e
@@ -964,12 +995,40 @@ export async function emitirNfseAutorizada(
         if (legacyEnvironment === fiscalEnvironment) existing = legacy;
       }
     }
+
+    const existingStatus = clean(existing?.status).toLowerCase();
+    if (
+      existing && existing.id !== emissionId &&
+      STATUS_DE_RESULTADO_INCERTO.has(existingStatus)
+    ) {
+      return jsonResponse(
+        {
+          error: "nfse_confirmation_pending",
+          message:
+            "A tentativa anterior ainda aguarda confirmação oficial. Atualize o status antes de emitir novamente.",
+        },
+        409,
+      );
+    }
+
+    // Compatibilidade com versões antigas do front: elas salvavam um rascunho
+    // novo antes de retentar uma rejeição. A chave base continua reservada à
+    // tentativa anterior; o novo rascunho recebe uma chave de retry própria.
+    const retentativaComNovoRascunho = !!(
+      existing && emissionId && existing.id !== emissionId &&
+      STATUS_DE_TENTATIVA_FALHA.has(existingStatus)
+    );
+    if (retentativaComNovoRascunho) {
+      idempotencyKey = retryKeyForDraft(idempotencyKey, emissionId);
+    }
+
     // Tentativa anterior que FALHOU não bloqueia: a linha é reaproveitada pela
     // nova tentativa (UPDATE), em vez de virar 200 "já emitida" ou colidir com a
     // UNIQUE (company_id, idempotency_key) num INSERT.
     const tentativaAnterior = existing &&
         existing.id !== emissionId &&
-        STATUS_DE_TENTATIVA_FALHA.has(clean(existing.status).toLowerCase())
+        !retentativaComNovoRascunho &&
+        STATUS_DE_TENTATIVA_FALHA.has(existingStatus)
       ? String(existing.id)
       : "";
 
@@ -999,10 +1058,13 @@ export async function emitirNfseAutorizada(
       });
     }
 
-    if (
-      existing && existing.id !== emissionId && !tentativaAnterior &&
-      !reemissaoPosCancelamento
-    ) {
+    if (shouldReturnExistingEmission({
+      existingId: existing?.id,
+      emissionId,
+      tentativaAnterior,
+      retentativaComNovoRascunho,
+      reemissaoPosCancelamento,
+    })) {
       return jsonResponse(
         {
           emission: existing,

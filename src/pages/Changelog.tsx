@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.28',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Nova tentativa de NFS-e registrada corretamente',
+        category: 'correcao',
+        description: 'Depois de corrigir uma nota rejeitada, a nova emissão passa a usar os dados revisados e deixa de reapresentar a tentativa anterior. Quando o resultado oficial ainda estiver incerto, o sistema bloqueia um novo envio até confirmar o status e evita duplicidade fiscal.',
+      },
+    ],
+  },
+  {
     version: '1.39.27',
     date: '11 de novembro de 2026',
     type: 'patch',

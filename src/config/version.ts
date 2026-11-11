@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.39.27";
+export const APP_VERSION = "1.39.28";
 
 export const VERSION_NOTES =
-  "A tela de boas-vindas volta a responder normalmente a toques e rolagem no PWA, mantendo o vídeo dentro do seu quadro.";
+  "Uma NFS-e rejeitada pode ser corrigida e enviada novamente sem reapresentar a tentativa anterior.";
