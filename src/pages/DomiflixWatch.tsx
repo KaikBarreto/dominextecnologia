@@ -739,6 +739,12 @@ export interface NetflixPlayerProps {
   subtitles?: DomiflixSubtitle[];
   locked?: boolean;
   orientation?: "landscape" | "portrait";
+  /**
+   * Mantém o player fisicamente contido quando ele aparece dentro de uma tela
+   * rolável (ex.: boas-vindas). No iOS/PWA, a camada nativa do <video> pode
+   * capturar gestos fora do quadro se o player conservar recursos de fullscreen.
+   */
+  contained?: boolean;
 }
 
 type SubtitleSize = "small" | "medium" | "large";
@@ -954,6 +960,7 @@ export function NetflixPlayer({
   subtitles = [],
   locked = false,
   orientation = "landscape",
+  contained = false,
 }: NetflixPlayerProps) {
   const isMobile = useIsMobile();
   const ytContainerRef = useRef<HTMLDivElement>(null);
@@ -1208,6 +1215,7 @@ export function NetflixPlayer({
   );
 
   const toggleFullscreen = useCallback(async () => {
+    if (contained) return;
     const el = playerContainerRef.current as (HTMLDivElement & {
       webkitRequestFullscreen?: () => Promise<void> | void;
     }) | null;
@@ -1232,7 +1240,7 @@ export function NetflixPlayer({
     } catch {
       // Alguns navegadores não oferecem fullscreen; o player continua inline.
     }
-  }, [orientation]);
+  }, [contained, orientation]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -1260,8 +1268,10 @@ export function NetflixPlayer({
           toggleMute();
           break;
         case "f":
-          e.preventDefault();
-          toggleFullscreen();
+          if (!contained) {
+            e.preventDefault();
+            toggleFullscreen();
+          }
           break;
         case "Escape":
           if (document.fullscreenElement) document.exitFullscreen();
@@ -1271,7 +1281,7 @@ export function NetflixPlayer({
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [togglePlay, skip, toggleMute, toggleFullscreen, locked]);
+  }, [togglePlay, skip, toggleMute, toggleFullscreen, locked, contained]);
 
   // ── Create YouTube player ──
   useEffect(() => {
@@ -1552,13 +1562,18 @@ export function NetflixPlayer({
       // O container pai (`domiflix-player-root`) já é flex/center com fundo preto.
       className={cn(
         "relative bg-black select-none overflow-hidden",
+        contained && "isolate touch-pan-y",
         isFullscreen
           ? "h-screen w-screen max-h-none max-w-none aspect-auto"
           : orientation === "portrait"
             ? "aspect-[9/16] h-[min(78dvh,900px)] w-auto max-h-full max-w-full"
             : "aspect-video h-full w-full max-h-[56.25vw] max-w-[177.78vh]",
       )}
-      style={{ cursor: showHud ? "default" : "none" }}
+      style={{
+        cursor: showHud ? "default" : "none",
+        contain: contained ? "layout paint" : undefined,
+      }}
+      data-contained-player={contained ? "true" : undefined}
       onMouseMove={resetHideTimer}
       onTouchStart={() => {
         // Em mobile NÃO chamamos resetHideTimer no touchstart — deixamos o
@@ -1669,8 +1684,12 @@ export function NetflixPlayer({
             src={html5StreamUrl}
             // object-contain (não cover): mantém aspect ratio real do vídeo
             // sem cropar — letterbox/pillarbox dentro do container 16:9.
-            className="absolute inset-0 w-full h-full object-contain"
+            className={cn(
+              "absolute inset-0 h-full w-full object-contain",
+              contained && "pointer-events-none",
+            )}
             playsInline
+            disablePictureInPicture={contained}
             preload="auto"
           />
           {/* Hidden preview video for frame thumbnails.
@@ -2196,7 +2215,7 @@ export function NetflixPlayer({
                 )}
               </div>
 
-            <button
+            {!contained && <button
               onClick={toggleFullscreen}
               className="order-4 rounded-sm p-1 text-white transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white motion-reduce:transform-none motion-reduce:transition-none"
               aria-label={isFullscreen ? "Sair da tela cheia" : "Abrir em tela cheia"}
@@ -2206,7 +2225,7 @@ export function NetflixPlayer({
               ) : (
                 <FullscreenIcon className="w-7 h-7 md:w-8 md:h-8" />
               )}
-            </button>
+            </button>}
           </div>
         </div>
 

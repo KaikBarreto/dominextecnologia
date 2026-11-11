@@ -209,7 +209,8 @@ export function DomiflixIntroGate() {
   return (
     <div
       ref={dialogRef}
-      className="fixed inset-0 z-[10000] overflow-y-auto bg-[#111] text-white"
+      className="fixed inset-0 z-[10000] touch-pan-y overflow-y-auto overscroll-y-contain bg-[#111] text-white"
+      style={{ WebkitOverflowScrolling: "touch" }}
       role="dialog"
       aria-modal="true"
       aria-label={
@@ -257,6 +258,7 @@ export function DomiflixIntroGate() {
                 }}
                 subtitles={extras.subtitles}
                 locked
+                contained
               />
             </div>
           </div>
