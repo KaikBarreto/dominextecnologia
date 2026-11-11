@@ -225,6 +225,7 @@ export function usePdvCashRegister(focusedSessionId: string | null = null) {
   const { user } = useAuth();
 
   const invalidateCash = () => {
+    queryClient.invalidateQueries({ queryKey: SESSION_KEYS.terminals });
     queryClient.invalidateQueries({ queryKey: SESSION_KEYS.sessions });
     queryClient.invalidateQueries({ queryKey: ['pdv-cash-session-operators'] });
     queryClient.invalidateQueries({ queryKey: SESSION_KEYS.cofre });
@@ -352,6 +353,19 @@ export function usePdvCashRegister(focusedSessionId: string | null = null) {
     onSuccess: invalidateCash,
   });
 
+  const ensureSetup = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.rpc('pdv_ensure_setup');
+      if (error) throw error;
+      return data as unknown as {
+        configured: boolean;
+        cash_account_created: boolean;
+        terminal_created: boolean;
+      };
+    },
+    onSuccess: invalidateCash,
+  });
+
   const closeSession = useMutation({
     mutationFn: async (vars: { sessionId: string; countedAmount: number; notes?: string }) => {
       const { data, error } = await supabase.rpc('pdv_close_cash_session', {
@@ -466,6 +480,7 @@ export function usePdvCashRegister(focusedSessionId: string | null = null) {
       cofreQuery.refetch();
     },
     refetchCofre: cofreQuery.refetch,
+    ensureSetup,
     openSession,
     closeSession,
     registerMovement,

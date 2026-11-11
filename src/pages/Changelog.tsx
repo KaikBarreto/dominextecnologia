@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.20',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'PDV pronto para abrir o primeiro caixa',
+        category: 'correcao',
+        description: 'Empresas com o módulo PDV ativo agora recebem automaticamente o primeiro caixa e a conta do cofre. Se um cadastro antigo ainda estiver incompleto, administradores e gestores podem prepará-lo diretamente na tela de Caixa, sem depender das Configurações do PDV.',
+      },
+    ],
+  },
+  {
     version: '1.39.19',
     date: '10 de novembro de 2026',
     type: 'patch',

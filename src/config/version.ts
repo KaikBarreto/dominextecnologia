@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.39.19";
+export const APP_VERSION = "1.39.20";
 
 export const VERSION_NOTES =
-  "Clientes, fornecedores e materiais agora aceitam planilhas Dominex ou Auvo; equipamentos usam o modelo Dominex, sempre com conferência antes de salvar.";
+  "Ao ativar o PDV, o primeiro caixa e a conta do cofre agora ficam prontos automaticamente para abrir o turno.";

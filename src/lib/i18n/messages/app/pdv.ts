@@ -278,7 +278,13 @@ export const pdv = {
       },
       noTerminal: {
         title: 'Nenhum caixa cadastrado',
-        description: 'Cadastre o caixa da loja em Configurações do PDV para abrir o turno e vender no balcão.',
+        description: 'Prepare o primeiro caixa e a conta do cofre para abrir o turno e vender no balcão.',
+        askManager: 'Peça a um administrador ou gestor para preparar o primeiro caixa da loja.',
+        setup: 'Preparar primeiro caixa',
+        settingUp: 'Preparando caixa...',
+        success: 'Caixa preparado',
+        successDescription: 'O primeiro caixa e a conta do cofre estão prontos. Agora você já pode abrir o turno.',
+        error: 'Não foi possível preparar o caixa',
       },
       closed: {
         title: 'Caixa fechado',
@@ -833,7 +839,13 @@ export const pdv = {
       },
       noTerminal: {
         title: 'No register configured',
-        description: 'Register your store checkout in POS Settings to open the shift and sell at the counter.',
+        description: 'Prepare the first register and vault account to open the shift and sell at the counter.',
+        askManager: 'Ask an administrator or manager to prepare the store’s first register.',
+        setup: 'Prepare first register',
+        settingUp: 'Preparing register...',
+        success: 'Register prepared',
+        successDescription: 'The first register and vault account are ready. You can now open the shift.',
+        error: 'Could not prepare the register',
       },
       closed: {
         title: 'Register closed',
@@ -1383,7 +1395,13 @@ export const pdv = {
       },
       noTerminal: {
         title: 'Ninguna caja registrada',
-        description: 'Registre la caja de la tienda en Configuración del POS para abrir el turno y vender en el mostrador.',
+        description: 'Prepare la primera caja y la cuenta de bóveda para abrir el turno y vender en el mostrador.',
+        askManager: 'Pida a un administrador o gestor que prepare la primera caja de la tienda.',
+        setup: 'Preparar primera caja',
+        settingUp: 'Preparando caja...',
+        success: 'Caja preparada',
+        successDescription: 'La primera caja y la cuenta de bóveda están listas. Ya puede abrir el turno.',
+        error: 'No se pudo preparar la caja',
       },
       closed: {
         title: 'Caja cerrada',
@@ -1927,7 +1945,13 @@ export const pdv = {
       },
       noTerminal: {
         title: 'Aucune caisse enregistrée',
-        description: "Enregistrez la caisse de la boutique dans les paramètres du POS pour ouvrir le poste et vendre au comptoir.",
+        description: "Préparez la première caisse et le compte du coffre pour ouvrir le poste et vendre au comptoir.",
+        askManager: "Demandez à un administrateur ou à un gestionnaire de préparer la première caisse de la boutique.",
+        setup: 'Préparer la première caisse',
+        settingUp: 'Préparation de la caisse...',
+        success: 'Caisse préparée',
+        successDescription: "La première caisse et le compte du coffre sont prêts. Vous pouvez maintenant ouvrir le poste.",
+        error: 'Impossible de préparer la caisse',
       },
       closed: {
         title: 'Caisse fermée',

@@ -131,6 +131,7 @@ export default function PdvCaixa() {
     isError,
     error: loadError,
     refetch,
+    ensureSetup,
     openSession,
     closeSession,
     registerMovement,
@@ -446,6 +447,22 @@ export default function PdvCaixa() {
     });
   }
 
+  async function handleEnsureSetup() {
+    try {
+      await ensureSetup.mutateAsync();
+      toast({
+        title: t.noTerminal.success,
+        description: t.noTerminal.successDescription,
+      });
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: t.noTerminal.error,
+        description: pdvCashErrorMessage(error),
+      });
+    }
+  }
+
   async function handleCloseCash(args: { countedAmount: number; notes: string | null }) {
     const result = await closeSession.mutateAsync({
       sessionId: session.id,
@@ -749,7 +766,21 @@ export default function PdvCaixa() {
             <EmptyState
               icon={<Store className="h-12 w-12" />}
               title={t.noTerminal.title}
-              description={t.noTerminal.description}
+              description={
+                isAdminOrGestor()
+                  ? t.noTerminal.description
+                  : t.noTerminal.askManager
+              }
+              action={
+                isAdminOrGestor()
+                  ? {
+                      label: ensureSetup.isPending
+                        ? t.noTerminal.settingUp
+                        : t.noTerminal.setup,
+                      onClick: handleEnsureSetup,
+                    }
+                  : undefined
+              }
             />
           </CardContent>
         </Card>
