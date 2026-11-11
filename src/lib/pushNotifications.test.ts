@@ -6,11 +6,13 @@ vi.mock("@/integrations/supabase/client", () => ({
 
 import {
   PUSH_LOGOUT_TIMEOUT_MS,
+  enablePushNotifications,
   pushDeviceLabel,
   supportsWebPush,
   urlBase64ToUint8Array,
   waitForBestEffort,
 } from "@/lib/pushNotifications";
+import { supabase } from "@/integrations/supabase/client";
 
 describe("urlBase64ToUint8Array", () => {
   it("converte base64url sem padding", () => {
@@ -51,5 +53,46 @@ describe("waitForBestEffort", () => {
   it("encerra antes do teto quando a limpeza termina", async () => {
     await expect(waitForBestEffort(Promise.resolve(), PUSH_LOGOUT_TIMEOUT_MS))
       .resolves.toBe("completed");
+  });
+});
+
+describe("enablePushNotifications", () => {
+  it("usa o service worker já ativo sem ficar preso em serviceWorker.ready", async () => {
+    const subscription = {
+      endpoint: "https://web.push.apple.com/example",
+      toJSON: () => ({
+        endpoint: "https://web.push.apple.com/example",
+        keys: { p256dh: "p".repeat(32), auth: "a".repeat(24) },
+      }),
+    } as unknown as PushSubscription;
+    const subscribe = vi.fn().mockResolvedValue(subscription);
+    const registration = {
+      active: {},
+      pushManager: {
+        getSubscription: vi.fn().mockResolvedValue(null),
+        subscribe,
+      },
+    } as unknown as ServiceWorkerRegistration;
+    const getRegistration = vi.fn().mockResolvedValue(registration);
+
+    Object.defineProperty(window, "PushManager", { configurable: true, value: class {} });
+    Object.defineProperty(window, "Notification", {
+      configurable: true,
+      value: { permission: "granted", requestPermission: vi.fn() },
+    });
+    Object.defineProperty(navigator, "serviceWorker", {
+      configurable: true,
+      value: {
+        getRegistration,
+        ready: new Promise<ServiceWorkerRegistration>(() => {}),
+      },
+    });
+    vi.mocked(supabase.functions.invoke)
+      .mockResolvedValueOnce({ data: { public_key: "A".repeat(65) }, error: null } as never)
+      .mockResolvedValueOnce({ data: { subscription: { id: "sub-1" } }, error: null } as never);
+
+    await expect(enablePushNotifications("company-1")).resolves.toBe("subscribed");
+    expect(getRegistration).toHaveBeenCalledWith("/");
+    expect(subscribe).toHaveBeenCalledOnce();
   });
 });

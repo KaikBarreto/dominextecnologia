@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.29',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Abas mais fáceis de arrastar no celular',
+        category: 'melhoria',
+        description: 'As barras de abas horizontais não se movimentam mais para cima e para baixo. Setas discretas nas laterais mostram quando existem mais opções fora da tela, sem atrapalhar a rolagem normal da página.',
+      },
+      {
+        title: 'Ativação do push mais confiável no PWA',
+        category: 'correcao',
+        description: 'A ativação das notificações aproveita imediatamente o serviço já iniciado pelo aplicativo e não mostra falha apenas porque a lista de aparelhos demorou para atualizar. Se algo realmente impedir a ativação, a mensagem agora orienta o que fazer.',
+      },
+    ],
+  },
+  {
     version: '1.39.28',
     date: '11 de novembro de 2026',
     type: 'patch',

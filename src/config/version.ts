@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.39.28";
+export const APP_VERSION = "1.39.29";
 
 export const VERSION_NOTES =
-  "Uma NFS-e rejeitada pode ser corrigida e enviada novamente sem reapresentar a tentativa anterior.";
+  "As abas horizontais ficaram mais claras e estáveis no celular, e a ativação do push ganhou uma recuperação mais confiável no PWA.";

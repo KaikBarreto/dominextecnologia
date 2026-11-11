@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback, type ReactNode } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { hexToRgbTriplet, idealForeground } from '@/lib/colorContrast';
 
@@ -178,9 +179,10 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className, varian
       <div
         ref={scrollRef}
         role="tablist"
+        aria-label={showLeft || showRight ? 'Abas. Deslize horizontalmente para ver mais opções.' : 'Abas'}
         style={maskStyle}
         className={cn(
-          'flex overflow-x-auto px-3 snap-x scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden transition-[mask-image] duration-200',
+          'flex touch-manipulation snap-x scroll-px-3 overflow-x-auto overflow-y-hidden overscroll-x-contain px-3 scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden transition-[mask-image] duration-200',
           variant === 'underline' ? 'items-end gap-1 border-b border-border pb-0' : 'gap-1.5 pb-1',
         )}
       >
@@ -343,6 +345,24 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className, varian
           );
         })}
       </div>
+      {showLeft && (
+        <span
+          aria-hidden="true"
+          title="Mais abas à esquerda"
+          className="pointer-events-none absolute left-1 top-1/2 z-10 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full border border-border/70 bg-background/95 text-foreground/70 shadow-sm md:hidden"
+        >
+          <ChevronLeft className="h-4 w-4" strokeWidth={2.5} />
+        </span>
+      )}
+      {showRight && (
+        <span
+          aria-hidden="true"
+          title="Mais abas à direita"
+          className="pointer-events-none absolute right-1 top-1/2 z-10 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full border border-border/70 bg-background/95 text-foreground/70 shadow-sm md:hidden"
+        >
+          <ChevronRight className="h-4 w-4" strokeWidth={2.5} />
+        </span>
+      )}
     </div>
   );
 

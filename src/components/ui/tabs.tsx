@@ -26,7 +26,7 @@ const TabsList = React.forwardRef<
     ref={ref}
     className={cn(
       variant === "underline"
-        ? "flex h-auto items-end justify-start gap-1 overflow-x-auto border-b border-border bg-transparent p-0 text-muted-foreground scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        ? "flex h-auto touch-manipulation snap-x snap-proximity scroll-px-3 items-end justify-start gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain border-b border-border bg-transparent p-0 text-muted-foreground scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         : "inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
       className,
     )}
@@ -54,7 +54,7 @@ const TabsTrigger = React.forwardRef<
         ? "text-[15px] font-semibold"
         : "text-sm font-medium",
       variant === "underline"
-        ? "-mb-px shrink-0 rounded-none border-b-2 border-transparent bg-transparent px-4 py-2.5 shadow-none hover:text-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
+        ? "-mb-px shrink-0 snap-start rounded-none border-b-2 border-transparent bg-transparent px-4 py-2.5 shadow-none hover:text-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
         : "rounded-sm px-3 py-1.5 transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm",
       className,
     )}

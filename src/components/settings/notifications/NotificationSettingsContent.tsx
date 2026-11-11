@@ -86,8 +86,12 @@ function PushDeviceCard() {
         await push.enable();
         toast({ title: 'Push ativado!', description: 'Este aparelho já pode receber notificações.' });
       }
-    } catch {
-      toast({ variant: 'destructive', title: 'Não foi possível alterar o push', description: friendlyError() });
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Não foi possível alterar o push',
+        description: error instanceof Error ? error.message : friendlyError(),
+      });
     }
   };
 

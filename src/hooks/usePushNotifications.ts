@@ -54,7 +54,12 @@ export function usePushNotifications() {
             : "Este aparelho não conseguiu ativar as notificações.",
         );
       }
-      setDevices(await listPushDevices(companyId));
+      // A assinatura já está ativa neste ponto. Atualizar a lista de aparelhos é
+      // secundário e não pode transformar uma ativação bem-sucedida em erro se
+      // a rede ficar lenta logo depois do cadastro.
+      void listPushDevices(companyId)
+        .then(setDevices)
+        .catch(() => undefined);
       return nextState;
     } finally {
       setIsPending(false);

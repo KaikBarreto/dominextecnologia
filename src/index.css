@@ -676,6 +676,18 @@ html {
   -webkit-overflow-scrolling: touch;
 }
 
+/* Navegações underline no mobile são trilhos horizontais, nunca uma segunda
+   área de rolagem vertical. `touch-action: manipulation` mantém o swipe lateral
+   e deixa o gesto vertical seguir para a página quando começa sobre as abas. */
+@media screen and (max-width: 767px) {
+  [role="tablist"].overflow-x-auto,
+  .overflow-x-auto.border-b {
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    touch-action: manipulation;
+  }
+}
+
 /* Dark mode: NÃO inverter o ícone nativo do date/time picker. `color-scheme:
    dark` (declarado em `.dark` acima) já faz o Chromium e o Safari desenharem
    esse ícone em branco sozinhos, sem CSS extra. Um `filter: invert(1)` aqui

@@ -27,10 +27,14 @@ type SerializedSubscription = {
   keys: { p256dh: string; auth: string };
 };
 
-function withTimeout<T>(promise: Promise<T>, timeoutMs = PUSH_OPERATION_TIMEOUT_MS): Promise<T> {
+function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs = PUSH_OPERATION_TIMEOUT_MS,
+  timeoutMessage = "A operação de notificações demorou mais que o esperado.",
+): Promise<T> {
   return new Promise((resolve, reject) => {
     const timeout = window.setTimeout(
-      () => reject(new Error("A operação de notificações demorou mais que o esperado.")),
+      () => reject(new Error(timeoutMessage)),
       timeoutMs,
     );
     promise.then(
@@ -141,17 +145,42 @@ export function pushDeviceLabel(userAgent: string): string {
 
 async function currentSubscription(): Promise<PushSubscription | null> {
   if (!supportsWebPush()) return null;
-  const registration = await withTimeout(navigator.serviceWorker.getRegistration("/"), 3_000);
+  const registration = await withTimeout(
+    navigator.serviceWorker.getRegistration("/"),
+    3_000,
+    "O PWA demorou para localizar o serviço de notificações. Feche e abra o aplicativo e tente novamente.",
+  );
   if (!registration) return null;
-  return registration.pushManager.getSubscription();
+  return withTimeout(
+    registration.pushManager.getSubscription(),
+    3_000,
+    "O aparelho demorou para consultar a assinatura push. Tente novamente.",
+  );
 }
 
 async function invokeSubscriptionManager<T>(body: Record<string, unknown>): Promise<T> {
   const { data, error } = await withTimeout(
     supabase.functions.invoke("manage-push-subscription", { body }),
+    PUSH_OPERATION_TIMEOUT_MS,
+    "A conexão demorou para salvar o push. Confira a internet e tente novamente.",
   );
   if (error) throw new Error("Não foi possível salvar as notificações neste aparelho.");
   return data as T;
+}
+
+async function readyPushRegistration(): Promise<ServiceWorkerRegistration> {
+  const existing = await withTimeout(
+    navigator.serviceWorker.getRegistration("/"),
+    3_000,
+    "O PWA demorou para localizar o serviço de notificações. Feche e abra o aplicativo e tente novamente.",
+  );
+  if (existing?.active) return existing;
+
+  return withTimeout(
+    navigator.serviceWorker.ready,
+    PUSH_OPERATION_TIMEOUT_MS,
+    "O PWA ainda está terminando de iniciar. Feche e abra o aplicativo e tente ativar o push novamente.",
+  );
 }
 
 async function persistSubscription(
@@ -191,13 +220,26 @@ export async function enablePushNotifications(
       : await Notification.requestPermission();
   if (permission !== "granted") return permission === "denied" ? "blocked" : "available";
 
-  const registration = await withTimeout(navigator.serviceWorker.ready);
-  let subscription = await registration.pushManager.getSubscription();
+  const registration = await readyPushRegistration();
+  let subscription = await withTimeout(
+    registration.pushManager.getSubscription(),
+    3_000,
+    "O aparelho demorou para consultar a assinatura push. Tente novamente.",
+  );
   if (!subscription) {
-    subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(publicKey),
-    });
+    try {
+      subscription = await withTimeout(
+        registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey),
+        }),
+        12_000,
+        "O aparelho demorou para criar a assinatura push. Feche e abra o PWA e tente novamente.",
+      );
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith("O aparelho demorou")) throw error;
+      throw new Error("O aparelho não conseguiu criar a assinatura push. Feche e abra o PWA e tente novamente.");
+    }
   }
 
   await persistSubscription(companyId, subscription, deviceLabel);
