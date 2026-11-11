@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.31',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Notificações no idioma de cada pessoa',
+        category: 'melhoria',
+        description: 'Avisos de agenda, pagamentos, chamados e formulários agora seguem o idioma escolhido pelo destinatário, incluindo valores e textos da mensagem. O envio para o aparelho também foi corrigido para não depender da abertura prévia do sino.',
+      },
+    ],
+  },
+  {
     version: '1.39.30',
     date: '11 de novembro de 2026',
     type: 'patch',

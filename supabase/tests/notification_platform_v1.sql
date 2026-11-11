@@ -97,6 +97,10 @@ BEGIN
     RAISE EXCEPTION 'RPCs atomicas do worker incompletas';
   END IF;
 
+  IF to_regprocedure('public.localize_notification_content(text,jsonb,text,text,text,text)') IS NULL THEN
+    RAISE EXCEPTION 'Localizacao por destinatario ausente';
+  END IF;
+
   IF NOT EXISTS (
     SELECT 1
     FROM pg_proc p
@@ -112,6 +116,58 @@ BEGIN
     HAVING count(DISTINCT p.proname) = 3
   ) THEN
     RAISE EXCEPTION 'Funcoes privilegiadas sem SECURITY DEFINER';
+  END IF;
+END;
+$test$;
+
+DO $test$
+DECLARE
+  v_title text;
+  v_message text;
+BEGIN
+  SELECT title, message INTO v_title, v_message
+  FROM public.localize_notification_content(
+    'billing.charge_paid',
+    '{"amount":1234.56,"customer_name":"Empresa Exemplo"}'::jsonb,
+    'fallback',
+    'fallback',
+    'pt-br',
+    'BRL'
+  );
+
+  IF v_title <> 'Pagamento recebido'
+     OR v_message <> 'Pagamento de R$ 1.234,56 recebido de Empresa Exemplo.' THEN
+    RAISE EXCEPTION 'Localizacao pt-BR de pagamento invalida: % / %', v_title, v_message;
+  END IF;
+
+  SELECT title, message INTO v_title, v_message
+  FROM public.localize_notification_content(
+    'billing.charge_paid',
+    '{"amount":1234.56,"customer_name":"Example Company"}'::jsonb,
+    'fallback',
+    'fallback',
+    'en',
+    'BRL'
+  );
+
+  IF v_title <> 'Payment received'
+     OR v_message <> 'Payment of R$1,234.56 received from Example Company.' THEN
+    RAISE EXCEPTION 'Localizacao EN de pagamento invalida: % / %', v_title, v_message;
+  END IF;
+
+  SELECT title, message INTO v_title, v_message
+  FROM public.localize_notification_content(
+    'schedule.daily_digest',
+    '{"item_count":2,"scope":"team"}'::jsonb,
+    'fallback',
+    'fallback',
+    'es',
+    'BRL'
+  );
+
+  IF v_title <> 'Compromisos de hoy'
+     OR v_message <> 'Tu equipo tiene 2 compromisos hoy.' THEN
+    RAISE EXCEPTION 'Localizacao ES da agenda invalida: % / %', v_title, v_message;
   END IF;
 END;
 $test$;
