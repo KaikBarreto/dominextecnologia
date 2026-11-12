@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.35',
+    date: '12 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Avisos aparecem na ordem certa',
+        category: 'correcao',
+        description: 'Tutoriais, pesquisas, tarefas do dia, novidades e o convite para ativar notificações agora aguardam sua vez. Isso evita telas sobrepostas e impede que um aviso seja marcado como visto antes de realmente aparecer.',
+      },
+    ],
+  },
+  {
     version: '1.39.34',
     date: '12 de novembro de 2026',
     type: 'patch',

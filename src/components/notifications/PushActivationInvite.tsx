@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useToast } from '@/hooks/use-toast';
 import { isInstalledPwa } from '@/lib/pwaStandalone';
+import { OVERLAY_PRIORITY, useOverlaySlot } from '@/contexts/OverlayCoordinatorContext';
 
 const INVITE_DELAY_MS = 1_800;
 const SNOOZE_MS = 7 * 24 * 60 * 60 * 1_000;
@@ -37,6 +38,10 @@ export function PushActivationInvite() {
   const iosNeedsInstall = isIosDevice() && !isInstalledPwa();
   const canInvitePush = push.support === 'supported' && push.state === 'available';
   const canInviteInstall = push.support === 'unsupported' && iosNeedsInstall;
+  const isActiveOverlay = useOverlaySlot(visible, {
+    id: 'push-activation-invite',
+    priority: OVERLAY_PRIORITY.backgroundPrompt,
+  });
 
   useEffect(() => {
     setVisible(false);
@@ -76,7 +81,7 @@ export function PushActivationInvite() {
     }
   };
 
-  if (!visible) return null;
+  if (!visible || !isActiveOverlay) return null;
 
   return (
     <aside

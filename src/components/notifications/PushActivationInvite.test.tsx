@@ -1,6 +1,11 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PushActivationInvite } from './PushActivationInvite';
+import {
+  OVERLAY_PRIORITY,
+  OverlayCoordinatorProvider,
+  useOverlaySlot,
+} from '@/contexts/OverlayCoordinatorContext';
 
 const enable = vi.fn();
 
@@ -53,5 +58,28 @@ describe('PushActivationInvite', () => {
     render(<PushActivationInvite />);
     await act(async () => vi.advanceTimersByTime(2_000));
     expect(screen.queryByText('Não perca nenhum aviso importante')).not.toBeInTheDocument();
+  });
+
+  it('espera o tutorial terminar antes de aparecer', async () => {
+    function Tutorial({ open }: { open: boolean }) {
+      const active = useOverlaySlot(open, { id: 'tutorial-preview', priority: OVERLAY_PRIORITY.critical });
+      return open && active ? <div>Tutorial em andamento</div> : null;
+    }
+    function Flow({ tutorialOpen }: { tutorialOpen: boolean }) {
+      return (
+        <OverlayCoordinatorProvider>
+          <Tutorial open={tutorialOpen} />
+          <PushActivationInvite />
+        </OverlayCoordinatorProvider>
+      );
+    }
+
+    const { rerender } = render(<Flow tutorialOpen />);
+    await act(async () => vi.advanceTimersByTime(1_800));
+    expect(screen.getByText('Tutorial em andamento')).toBeInTheDocument();
+    expect(screen.queryByText('Não perca nenhum aviso importante')).not.toBeInTheDocument();
+
+    rerender(<Flow tutorialOpen={false} />);
+    expect(screen.getByText('Não perca nenhum aviso importante')).toBeInTheDocument();
   });
 });

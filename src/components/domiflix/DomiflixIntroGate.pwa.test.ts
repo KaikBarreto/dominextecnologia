@@ -9,6 +9,10 @@ const playerSource = readFileSync(
   `${process.cwd()}/src/pages/DomiflixWatch.tsx`,
   "utf8",
 );
+const appLayoutSource = readFileSync(
+  `${process.cwd()}/src/components/layout/AppLayout.tsx`,
+  "utf8",
+);
 
 describe("DomiflixIntroGate no PWA", () => {
   it("mantém a tela de boas-vindas rolável por toque", () => {
@@ -22,5 +26,11 @@ describe("DomiflixIntroGate no PWA", () => {
     expect(playerSource).toContain('contain: contained ? "layout paint" : undefined');
     expect(playerSource).toContain('contained && "pointer-events-none"');
     expect(playerSource).toContain("{!contained && <button");
+  });
+
+  it("reserva a prioridade crítica enquanto o tutorial ainda está carregando", () => {
+    expect(appLayoutSource).toContain('id: \'domiflix-intro-loading\'');
+    expect(appLayoutSource).toContain('priority: OVERLAY_PRIORITY.critical');
+    expect(appLayoutSource).toContain('fallback={<DomiflixIntroGateFallback />}');
   });
 });
