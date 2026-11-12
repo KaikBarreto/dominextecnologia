@@ -33,7 +33,9 @@ jobs:
 
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # Evita falha intermitente ao resolver `latest` pela API de releases
+          # do GitHub (rate limit) e torna o deploy reproduzivel.
+          version: 3.1.0
 
       - name: Link project
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
