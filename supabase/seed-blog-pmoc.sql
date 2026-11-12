@@ -58,16 +58,18 @@ INSERT INTO public.blog_posts (
 <p>É a norma mais importante e a que dá o nome popular ao tema. A <strong>Lei Federal nº 13.589, de 4 de janeiro de 2018</strong>, tornou obrigatória a manutenção de instalações e equipamentos de sistemas de climatização em edificações de uso público e coletivo.</p>
 
 <blockquote>
-<p>A Lei nº 13.589/2018 determina, em síntese, que todos os edifícios de uso público e coletivo que possuam ambientes de ar interior climatizado artificialmente devem dispor de um Plano de Manutenção, Operação e Controle (PMOC) dos respectivos sistemas, executado por responsável técnico habilitado. (Paráfrase do texto legal — consulte a íntegra publicada no Diário Oficial da União.)</p>
+<p>A Lei nº 13.589/2018 determina, em síntese, que edifícios de uso público e coletivo com ambientes climatizados artificialmente devem manter um PMOC dos respectivos sistemas. A habilitação profissional e a responsabilidade técnica devem observar a Portaria GM/MS nº 3.523/1998, as regras dos conselhos profissionais e as exigências locais aplicáveis. (Paráfrase; consulte a íntegra publicada no Diário Oficial da União.)</p>
 </blockquote>
 
 <h3>Portaria GM/MS nº 3.523/1998</h3>
 
-<p>Anterior à lei, a <strong>Portaria do Ministério da Saúde nº 3.523/1998</strong> foi a primeira norma a exigir o PMOC para sistemas de climatização com capacidade acima de determinado porte, estabelecendo medidas básicas de limpeza, manutenção e controle da qualidade do ar para prevenir riscos à saúde dos ocupantes.</p>
+<p>Anterior à lei, a <strong>Portaria do Ministério da Saúde nº 3.523/1998</strong> estabeleceu medidas básicas de limpeza, manutenção e controle da qualidade do ar para prevenir riscos à saúde dos ocupantes. Para sistemas acima de 5 TR (15.000 kcal/h ou 60.000 BTU/h), o art. 6º exige responsável técnico habilitado, PMOC disponível no imóvel e registro contínuo da execução.</p>
 
-<h3>Resolução ANVISA RE nº 9/2003</h3>
+<p><strong>Atenção à diferença:</strong> 60.000 BTU/h é o marco expresso pela Portaria para a exigência de responsável técnico habilitado. Não deve ser usado como uma dispensa geral do PMOC, porque a Lei nº 13.589/2018 alcança os edifícios de uso público e coletivo com ambientes climatizados artificialmente.</p>
 
-<p>A <strong>Resolução RE nº 9, de 16 de janeiro de 2003, da ANVISA</strong>, complementa o arcabouço definindo <strong>padrões referenciais de qualidade do ar interior</strong> em ambientes climatizados artificialmente de uso público e coletivo — como limites para contaminação microbiológica e recomendações de renovação de ar. É a referência técnica para os parâmetros que o PMOC deve monitorar.</p>
+<h3>RDC ANVISA nº 886/2024 e ABNT NBR 17037:2023</h3>
+
+<p>A <strong>Resolução RE nº 9/2003 foi revogada pela RDC ANVISA nº 886/2024</strong>. Para a avaliação da qualidade do ar interior em ambientes não residenciais climatizados artificialmente, a orientação atual da Anvisa aponta a <strong>ABNT NBR 17037:2023</strong> como referência técnica, sem afastar regulamentos específicos aplicáveis. Consulte a norma vigente e a vigilância sanitária local antes de fixar parâmetros ou frequências.</p>
 
 <p>Vale lembrar que, além dessas normas federais, podem existir <strong>regulamentações estaduais e municipais</strong> e exigências específicas da vigilância sanitária local. Sempre verifique as regras da sua região.</p>
 
@@ -153,7 +155,7 @@ INSERT INTO public.blog_posts (
     <tr><td>Verificação de ruídos, vibração e fixação</td><td>Trimestral</td><td>Identificar desgastes mecânicos</td></tr>
     <tr><td>Medição de parâmetros elétricos e de pressão</td><td>Semestral</td><td>Detectar sobrecarga e vazamento de gás</td></tr>
     <tr><td>Limpeza de dutos e tomadas de ar externo</td><td>Anual</td><td>Renovação de ar e controle de contaminantes</td></tr>
-    <tr><td>Análise da qualidade do ar interior (QAI)</td><td>Semestral / Anual</td><td>Verificar conformidade com a RE nº 9/2003</td></tr>
+    <tr><td>Avaliação da qualidade do ar interior (QAI)</td><td>Conforme plano, risco e norma aplicável</td><td>Avaliar a QAI segundo a ABNT NBR 17037:2023 e regras específicas do ambiente</td></tr>
   </tbody>
 </table>
 
@@ -265,7 +267,7 @@ INSERT INTO public.blog_posts (
 
 <p>O PMOC é, ao mesmo tempo, uma obrigação legal, uma ferramenta de saúde pública e uma boa prática de engenharia. Entender como ele funciona — do inventário à comprovação — é o que separa uma empresa de refrigeração que entrega valor de uma que só "vende manutenção".</p>
 
-<p>Se a sua empresa quer profissionalizar a entrega de PMOC, ganhar escala e nunca mais perder uma comprovação numa fiscalização, conheça o <a href="/sistema-pmoc">sistema de PMOC da Dominex</a> e o nosso <a href="/sistema-para-refrigeracao">sistema completo para empresas de refrigeração</a>. Comece o teste grátis de 14 dias, sem cartão, e veja como transformar a obrigação do PMOC em diferencial competitivo.</p>$html$,
+<p>Se a sua empresa quer profissionalizar a entrega de PMOC, ganhar escala e nunca mais perder uma comprovação numa fiscalização, conheça o <a href="/sistema-pmoc">sistema de PMOC da Dominex</a> e o nosso <a href="/sistema-para-refrigeracao">sistema completo para empresas de refrigeração</a>. Comece o teste grátis de 7 dias, sem cartão, e veja como transformar a obrigação do PMOC em diferencial competitivo.</p>$html$,
   'PMOC',
   ARRAY['PMOC','ar-condicionado','manutenção','Lei 13.589','refrigeração','climatização'],
   'published',

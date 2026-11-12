@@ -312,6 +312,7 @@ export function injectHeadSeo(shell, post, locale, alternates) {
   const articleLd = {
     '@context': 'https://schema.org',
     '@type': 'BlogPosting',
+    '@id': `${url}#article`,
     headline: title,
     description,
     image,

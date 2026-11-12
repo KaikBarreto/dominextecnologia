@@ -1,7 +1,12 @@
 import type { AnchorHTMLAttributes, MouseEvent, ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
-import { buildWhatsAppUrl, getPageContextFragment } from '@/lib/whatsapp';
+import {
+  buildWhatsAppUrl,
+  getPageContextFragment,
+  resolveCompanyOriginKey,
+} from '@/lib/whatsapp';
 import { useLocale } from '@/lib/i18n';
+import { trackWhatsAppLead } from '@/lib/gtag';
 import { COMPANY_WHATSAPP_NUMBER } from './whatsappNumbers';
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
 
@@ -37,6 +42,12 @@ export default function WhatsAppCtaLink({
     if (event.defaultPrevented) return;
 
     event.preventDefault();
+    trackWhatsAppLead({
+      pagePath: pathname,
+      locale,
+      placement: 'inline_cta',
+      acquisitionChannel: resolveCompanyOriginKey() ?? 'direct',
+    });
     window.open(
       buildWhatsAppUrl(COMPANY_WHATSAPP_NUMBER, contextualFragment, locale),
       '_blank',

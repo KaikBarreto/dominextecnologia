@@ -237,7 +237,14 @@ export default function AdminBlogEditor() {
         status,
         author_name: selectedAuthor?.name || user?.email?.split("@")[0] || "Admin",
         author_id: authorId || null,
-        published_at: status === "published" ? new Date().toISOString() : null,
+        // A primeira publicacao e um sinal editorial/SEO historico. Editar ou
+        // despublicar temporariamente um artigo nao pode reescrever
+        // `datePublished`; `updated_at` ja e mantido pelo trigger do banco e
+        // alimenta `dateModified` no JSON-LD.
+        published_at:
+          status === "published"
+            ? post?.published_at || new Date().toISOString()
+            : post?.published_at || null,
         locale,
       };
 

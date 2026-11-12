@@ -939,6 +939,7 @@ export function renderBlogPost(
   const articleLd = {
     '@context': 'https://schema.org',
     '@type': 'BlogPosting',
+    '@id': `${pageUrl}#article`,
     headline: title,
     description,
     image,
