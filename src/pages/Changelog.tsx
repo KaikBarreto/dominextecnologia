@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.34',
+    date: '12 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ativação de notificações mais fácil',
+        category: 'melhoria',
+        description: 'O Dominex passa a convidar cada pessoa a ativar os avisos no próprio aparelho. A permissão só é solicitada depois do toque e, no iPhone fora do aplicativo instalado, a tela orienta como adicionar o Dominex à Tela de Início.',
+      },
+      {
+        title: 'Lembretes automáticos da conta',
+        category: 'recurso',
+        description: 'Administradores e gestores passam a receber avisos sobre o fim do período de teste, o vencimento da assinatura e pagamentos pendentes. Esses avisos já vêm ligados por padrão, podem ser ajustados em Configurações e seguem o idioma de cada pessoa.',
+      },
+    ],
+  },
+  {
     version: '1.39.33',
     date: '11 de novembro de 2026',
     type: 'patch',

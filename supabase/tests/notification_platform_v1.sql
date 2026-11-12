@@ -39,6 +39,9 @@ BEGIN
     CROSS JOIN (VALUES
       ('schedule.daily_digest'::text),
       ('billing.charge_paid'::text),
+      ('account.trial_expiring'::text),
+      ('account.subscription_expiring'::text),
+      ('account.payment_required'::text),
       ('portal.ticket_created'::text),
       ('form.submission_received'::text)
     ) expected(event_type)
@@ -169,6 +172,36 @@ BEGIN
      OR v_message <> 'Tu equipo tiene 2 compromisos hoy.' THEN
     RAISE EXCEPTION 'Localizacao ES da agenda invalida: % / %', v_title, v_message;
   END IF;
+
+  SELECT title, message INTO v_title, v_message
+  FROM public.localize_notification_content(
+    'account.trial_expiring',
+    '{"days_remaining":1}'::jsonb,
+    'fallback',
+    'fallback',
+    'pt-br',
+    'BRL'
+  );
+
+  IF v_title <> 'Seu teste termina amanhã'
+     OR v_message <> 'Ative seu plano para continuar usando o Dominex sem interrupção.' THEN
+    RAISE EXCEPTION 'Localizacao pt-BR do teste invalida: % / %', v_title, v_message;
+  END IF;
+
+  SELECT title, message INTO v_title, v_message
+  FROM public.localize_notification_content(
+    'account.subscription_expiring',
+    '{"days_remaining":3}'::jsonb,
+    'fallback',
+    'fallback',
+    'en',
+    'BRL'
+  );
+
+  IF v_title <> 'Your subscription is due in 3 days'
+     OR v_message <> 'Renew your subscription to keep access to Dominex.' THEN
+    RAISE EXCEPTION 'Localizacao EN da mensalidade invalida: % / %', v_title, v_message;
+  END IF;
 END;
 $test$;
 
@@ -215,6 +248,10 @@ BEGIN
 
   IF to_regprocedure('public.enqueue_schedule_daily_digests(timestamp with time zone)') IS NULL THEN
     RAISE EXCEPTION 'Produtor schedule.daily_digest ausente';
+  END IF;
+
+  IF to_regprocedure('public.enqueue_account_lifecycle_notifications(timestamp with time zone)') IS NULL THEN
+    RAISE EXCEPTION 'Produtor de lembretes do ciclo da conta ausente';
   END IF;
 END;
 $test$;

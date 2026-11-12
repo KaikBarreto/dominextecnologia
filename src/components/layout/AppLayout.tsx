@@ -28,6 +28,7 @@ import { MobileBottomNav } from './MobileBottomNav';
 import { SystemFooter } from './SystemFooter';
 import { VersionUpdateNotification } from '@/components/pwa/VersionUpdateNotification';
 import { NotificationsBell } from '@/components/notifications/NotificationsBell';
+import { PushActivationInvite } from '@/components/notifications/PushActivationInvite';
 import { AdminNotificationBell } from '@/components/admin/AdminNotificationBell';
 import { AppLanguageSwitcher } from '@/components/i18n/AppLanguageSwitcher';
 import { HeaderClock } from '@/components/layout/HeaderClock';
@@ -127,6 +128,7 @@ export function AppLayout() {
       {!isAdminUser && user && <Suspense fallback={<div className="fixed inset-0 z-[10000] bg-[#111]" />}><DomiflixIntroGate /></Suspense>}
       {!isAdminUser && user && <PlatformNpsSurvey />}
       <VersionUpdateNotification />
+      {!isAdminUser && user && <PushActivationInvite />}
       {/* Popup diário de tarefas (1x/dia, BRT). Só para usuários não-admin. */}
       {!isAdminUser && user && (
         <DailyTasksPopup

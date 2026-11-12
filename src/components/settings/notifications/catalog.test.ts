@@ -25,4 +25,16 @@ describe('catálogo de notificações', () => {
       { key: 'screen:customers', label: 'Quem acessa Clientes e Formulários' },
     ]);
   });
+
+  it('mantém lembretes de teste e mensalidade ligados por padrão', () => {
+    const lifecycleEvents = NOTIFICATION_EVENTS.filter((event) => event.eventType.startsWith('account.'));
+    expect(lifecycleEvents.map((event) => event.eventType)).toEqual([
+      'account.trial_expiring',
+      'account.subscription_expiring',
+      'account.payment_required',
+    ]);
+    for (const event of lifecycleEvents) {
+      expect(getEffectiveChannels(getRuleOrDefault(event, []))).toEqual({ inApp: true, push: true });
+    }
+  });
 });

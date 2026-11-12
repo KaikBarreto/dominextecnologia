@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.39.33";
+export const APP_VERSION = "1.39.34";
 
 export const VERSION_NOTES =
-  "As notificações push passam a solicitar o som padrão do aparelho em sistemas compatíveis.";
+  "O Dominex agora convida cada pessoa a ativar as notificações e lembra administradores sobre o fim do teste, o vencimento e pagamentos pendentes da assinatura.";

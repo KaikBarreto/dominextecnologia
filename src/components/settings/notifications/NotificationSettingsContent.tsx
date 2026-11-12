@@ -17,6 +17,7 @@ import {
   Smartphone,
   Users,
   Wrench,
+  BadgeAlert,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -50,6 +51,7 @@ type EventFilter = 'all' | 'enabled' | 'disabled';
 const CATEGORY_ICONS: Record<NotificationCategory, typeof Bell> = {
   agenda: CalendarDays,
   financeiro: CreditCard,
+  conta: BadgeAlert,
   operacional: Wrench,
   formularios: ClipboardCheck,
 };

@@ -1,6 +1,6 @@
 import type { CompanyNotificationRule, UserNotificationPreference } from '@/hooks/useNotificationSettings';
 
-export type NotificationCategory = 'agenda' | 'financeiro' | 'operacional' | 'formularios';
+export type NotificationCategory = 'agenda' | 'financeiro' | 'conta' | 'operacional' | 'formularios';
 
 export interface NotificationEventDefinition {
   eventType: string;
@@ -33,6 +33,27 @@ export const NOTIFICATION_EVENTS: NotificationEventDefinition[] = [
     ],
   },
   {
+    eventType: 'account.trial_expiring',
+    title: 'Fim do período de teste',
+    description: 'Lembretes 3 dias antes, 1 dia antes e no último dia do teste.',
+    category: 'conta',
+    permissionOptions: [],
+  },
+  {
+    eventType: 'account.subscription_expiring',
+    title: 'Vencimento da mensalidade',
+    description: 'Lembretes 3 dias antes e no dia do vencimento da assinatura.',
+    category: 'conta',
+    permissionOptions: [],
+  },
+  {
+    eventType: 'account.payment_required',
+    title: 'Pagamento da mensalidade pendente',
+    description: 'Aviso quando a assinatura entrar em situação de pagamento pendente.',
+    category: 'conta',
+    permissionOptions: [],
+  },
+  {
     eventType: 'portal.ticket_created',
     title: 'Novo chamado do portal',
     description: 'Aviso quando um cliente abre um chamado pelo portal.',
@@ -56,6 +77,7 @@ export const NOTIFICATION_EVENTS: NotificationEventDefinition[] = [
 export const CATEGORY_LABELS: Record<NotificationCategory, string> = {
   agenda: 'Agenda',
   financeiro: 'Financeiro',
+  conta: 'Conta e assinatura',
   operacional: 'OS e chamados',
   formularios: 'Formulários',
 };

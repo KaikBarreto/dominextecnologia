@@ -112,7 +112,8 @@ describe("enablePushNotifications", () => {
       },
     });
     vi.mocked(supabase.functions.invoke)
-      .mockResolvedValueOnce({ data: { public_key: "A".repeat(65) }, error: null } as never)
+      // Chave publica VAPID P-256 sem padding tem 87 caracteres em base64url.
+      .mockResolvedValueOnce({ data: { public_key: "B".repeat(87) }, error: null } as never)
       .mockResolvedValueOnce({ data: { subscription: { id: "sub-1" } }, error: null } as never);
 
     await expect(enablePushNotifications("company-1")).resolves.toBe("subscribed");
