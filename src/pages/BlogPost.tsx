@@ -31,7 +31,7 @@ import { RelatedPosts } from '@/components/blog/RelatedPosts';
 import WhatsAppCtaLink from '@/components/landing/WhatsAppCtaLink';
 import { COMPANY_WHATSAPP_NUMBER } from '@/components/landing/whatsappNumbers';
 import { BLOG_AUTHOR_AVATAR } from '@/components/blog/blogShared';
-import { stripDuplicateLeadingTitle } from '@/lib/blogContent';
+import { sanitizeBlogHtml, stripDuplicateLeadingTitle } from '@/lib/blogContent';
 import { resolveWcagForeground } from '@/lib/colorContrast';
 
 // Página pública. NUNCA herda o white-label do tenant logado: restaura o brand
@@ -538,10 +538,12 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
                 // quase preto, então ali o link continua com text-primary normal.
                 className="blog-content prose prose-sm max-w-none prose-headings:text-neutral-900 prose-a:text-[#007a52] prose-strong:text-neutral-900 prose-img:rounded-xl sm:prose-base dark:prose-invert dark:prose-headings:text-white dark:prose-strong:text-white dark:prose-a:text-primary"
                 dangerouslySetInnerHTML={{
-                  __html: replaceRegistrationCtas(
-                    stripDuplicateLeadingTitle(post.content || '', post.title),
-                    t.postCtaButton,
-                    locale,
+                  __html: sanitizeBlogHtml(
+                    replaceRegistrationCtas(
+                      stripDuplicateLeadingTitle(post.content || '', post.title),
+                      t.postCtaButton,
+                      locale,
+                    ),
                   ),
                 }}
               />

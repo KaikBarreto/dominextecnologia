@@ -14,7 +14,7 @@ set
 <p>Se você prefere uma explicação rápida em vídeo antes de mergulhar no guia, assista a este resumo do que é o PMOC:</p>
 
 <figure>
-  <iframe src="https://www.youtube.com/embed/zL9gzpfX6_8" title="O que é PMOC? WebTV CREA-RJ" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+  <iframe src="https://www.youtube-nocookie.com/embed/zL9gzpfX6_8" title="O que é PMOC? WebTV CREA-RJ" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
   <figcaption>Vídeo: "O que é PMOC?", WebTV CREA-RJ (YouTube).</figcaption>
 </figure>
 

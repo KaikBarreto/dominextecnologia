@@ -29,7 +29,7 @@
 // leitura, filtrando status=eq.published. Nenhum dado sensível.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { stripDuplicateLeadingTitle } from '../functions/_lib/blog-content.js';
+import { sanitizeBlogHtml, stripDuplicateLeadingTitle } from '../functions/_lib/blog-content.js';
 
 const SITE_URL = 'https://www.dominex.app';
 const DEFAULT_OG_IMAGE = `${SITE_URL}/images/og-social.jpg`;
@@ -394,8 +394,8 @@ function renderRelatedHtml(related, locale) {
 
 /**
  * Injeta o CONTEÚDO do post dentro do <div id="root"></div> pra crawlers sem JS.
- * O `content` é HTML confiável (vem do nosso editor admin). Mantém os scripts do
- * SPA intactos — o React re-renderiza por cima pra humanos. Inclui o "Leia
+ * O `content` é sanitizado antes da injecao. Mantém os scripts do SPA intactos
+ * — o React re-renderiza por cima pra humanos. Inclui o "Leia
  * também" (relacionados) como links internos crawláveis.
  */
 function injectBody(shell, post, related, locale) {
@@ -410,7 +410,9 @@ function injectBody(shell, post, related, locale) {
   if (post.published_at) meta.push(escapeText(String(post.published_at).slice(0, 10)));
 
   const relatedHtml = renderRelatedHtml(related, locale);
-  const content = stripDuplicateLeadingTitle(post.content || '', post.title || '');
+  const content = sanitizeBlogHtml(
+    stripDuplicateLeadingTitle(post.content || '', post.title || '')
+  );
 
   // <article> com o conteúdo + "Leia também". O React substitui o innerHTML do
   // #root no mount; os crawlers sem JS leem este markup (incluindo os links

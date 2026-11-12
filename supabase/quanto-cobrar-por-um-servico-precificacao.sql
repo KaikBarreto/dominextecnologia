@@ -133,6 +133,13 @@ SET content = $html$
   <figcaption>Seja eletricista, refrigerista ou instalador, a hora do técnico custa bem mais que o salário dividido pelo mês.</figcaption>
 </figure>
 
+<h2 id="video-precificacao">Vídeo: como calcular o preço de venda de um serviço</h2>
+<p>O vídeo oficial do Sebrae resume a relação entre gastos fixos e variáveis, margem de contribuição, preço de venda e ponto de equilíbrio. Use-o como introdução e faça a conta com seus próprios custos: copiar a margem de outra empresa não revela o preço sustentável da sua operação.</p>
+<figure class="blog-editorial-figure">
+  <iframe src="https://www.youtube-nocookie.com/embed/ofuPr0mkmNA" title="Sebrae explica como calcular o preço de venda de produto e serviço" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+  <figcaption>Vídeo do Sebrae, publicado em 17/12/2024. A explicação complementa as fórmulas e os exemplos detalhados abaixo.</figcaption>
+</figure>
+
 <h2 id="tres-formas">As 3 formas de precificar: BDI, markup e margem de contribuição</h2>
 
 <p>Existem três métodos clássicos pra transformar custo em preço de venda. Eles não competem entre si, cada um serve a uma situação. O markup é o do dia a dia (orçamento de serviço comum). O BDI é o de obra e instalação (empreitada). A margem de contribuição é a ferramenta de decisão (saber se vale a pena pegar o trabalho e qual o seu ponto de equilíbrio). Vamos abrir cada um com fórmula e exemplo, e no fim uma tabela diz quando usar qual.</p>
