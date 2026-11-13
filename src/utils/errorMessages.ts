@@ -69,6 +69,7 @@ const SQLSTATE_MESSAGES: Record<string, string> = {
   // ── Syntax error or access rule (class 42) ──
   '42P01': 'Não foi possível acessar este recurso. Atualize a página e tente novamente.',
   '42P10': 'Não foi possível salvar agora. Entre em contato com o suporte se persistir.',
+  '42804': 'Não foi possível processar os dados agora. Atualize a página e tente novamente.',
   '42703': 'Não foi possível processar a operação. Atualize a página e tente novamente.',
   '42501': 'Você não tem permissão para realizar esta ação.',
 
@@ -446,6 +447,7 @@ function looksTechnicalEnglish(raw: string): boolean {
     m.includes('permission denied') ||
     m.includes('violates') ||
     m.includes('invalid input syntax') ||
+    m.includes('is of type') && (m.includes('expression is of type') || m.includes('rewrite or cast')) ||
     m.includes('constraint') && (m.includes('failed') || m.includes('violation')) ||
     /^pgrst\d+/i.test(raw) ||
     /^\d{2}[a-z0-9]{3}\s/i.test(raw) // ex: "42P10 ..."
