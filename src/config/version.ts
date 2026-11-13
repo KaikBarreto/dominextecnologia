@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.39.20";
+export const APP_VERSION = "1.39.21";
 
 export const VERSION_NOTES =
-  "Ao ativar o PDV, o primeiro caixa e a conta do cofre agora ficam prontos automaticamente para abrir o turno.";
+  "A edição do material agora oferece exclusão definitiva com um aviso claro, e catálogos grandes de serviços carregam sem cortes.";

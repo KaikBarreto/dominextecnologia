@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Wand2, Plus, Loader2, ImageIcon, X, ScanBarcode } from 'lucide-react';
+import { Wand2, Plus, Loader2, ImageIcon, X, ScanBarcode, Trash2 } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,14 +56,18 @@ interface InventoryFormDialogProps {
    *  o stockId do primeiro local bloqueado, para que o pai abra a transferência
    *  com a origem correta já pré-selecionada. */
   onOpenTransfer?: (item: InventoryItem, fromStockId: string) => void;
+  /** Solicita a exclusão definitiva do cadastro. A confirmação fica no pai
+   *  para usar o mesmo fluxo seguro da ação disponível na listagem. */
+  onDelete?: (item: InventoryItem) => void;
 }
 
 /** Número salvo → texto do campo. Vazio quando 0/nulo (nunca "0" travado) e vírgula como separador. */
 const toNumericText = (n?: number | null) => (!n ? '' : String(n).replace('.', ','));
 
-export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, onOpenTransfer }: InventoryFormDialogProps) {
+export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, onOpenTransfer, onDelete }: InventoryFormDialogProps) {
   const { locale } = useAppLocaleContext();
-  const t = MESSAGES[locale].app.inventory.formDialog;
+  const inventoryMessages = MESSAGES[locale].app.inventory;
+  const t = inventoryMessages.formDialog;
   const { toast } = useToast();
   const { createItem, updateItem, getMinQuantityForStock, getQuantityForStock, updateStockLevelMinQuantity, getPresenceForStock, setInventoryPresence, stockLevelsLoaded } = useInventory();
   const { stocks, isLoading: stocksLoading } = useStocks();
@@ -476,11 +480,25 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
       title={isEditing ? t.titleEdit : t.titleNew}
       className="sm:max-w-[680px]"
       footer={
-        <div className="flex gap-2">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1" disabled={isPending}>{t.cancel}</Button>
-          <Button onClick={handleSubmit} disabled={isPending || !stocksHydrated} className="flex-1">
-            {isPending ? t.saving : t.save}
-          </Button>
+        <div className="flex flex-col-reverse gap-2 sm:flex-row">
+          {isEditing && item && onDelete && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onDelete(item)}
+              disabled={isPending}
+              className="border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              {inventoryMessages.delete.title}
+            </Button>
+          )}
+          <div className="flex flex-1 gap-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1" disabled={isPending}>{t.cancel}</Button>
+            <Button onClick={handleSubmit} disabled={isPending || !stocksHydrated} className="flex-1">
+              {isPending ? t.saving : t.save}
+            </Button>
+          </div>
         </div>
       }
     >

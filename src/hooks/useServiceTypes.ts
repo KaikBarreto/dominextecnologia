@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { fetchAllPaginated } from '@/utils/supabasePagination';
 
 export interface ServiceType {
   id: string;
@@ -56,13 +57,11 @@ export function useServiceTypes() {
       // Defense-in-depth: filtra pela própria empresa no client (RLS continua a fronteira)
       const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
       const companyId = await getCurrentUserCompanyId();
-      const { data, error } = await supabase
+      return fetchAllPaginated<ServiceType>(() => supabase
         .from('service_types')
         .select('*')
         .eq('company_id', companyId)
-        .order('name');
-      if (error) throw error;
-      return data as unknown as ServiceType[];
+        .order('name'));
     },
   });
 
@@ -70,7 +69,7 @@ export function useServiceTypes() {
     mutationFn: async (input: ServiceTypeInput) => {
       const { data, error } = await supabase
         .from('service_types')
-        .insert(input as any)
+        .insert(input as never)
         .select()
         .single();
       if (error) throw error;
@@ -89,7 +88,7 @@ export function useServiceTypes() {
     mutationFn: async ({ id, ...input }: ServiceTypeInput & { id: string }) => {
       const { data, error } = await supabase
         .from('service_types')
-        .update(input as any)
+        .update(input as never)
         .eq('id', id)
         .select()
         .single();

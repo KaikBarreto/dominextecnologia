@@ -323,6 +323,13 @@ export default function Inventory() {
     setDeleteDialogOpen(true);
   };
 
+  const handleDeleteFromEditor = (item: InventoryItem) => {
+    setDialogOpen(false);
+    setEditingItem(null);
+    setItemToDelete(item);
+    setDeleteDialogOpen(true);
+  };
+
   /** Abre o dialog de transferência a partir do menu de ações (origem = activeStockId normal). */
   const handleTransferClick = (item: InventoryItem, e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -1171,6 +1178,7 @@ export default function Inventory() {
         item={editingItem}
         activeStockId={resolvedStockId}
         onOpenTransfer={handleTransferFromBlockedStock}
+        onDelete={handleDeleteFromEditor}
       />
 
       {/* Dialog de transferência entre depósitos */}

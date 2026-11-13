@@ -81,7 +81,7 @@ export const inventory = {
     },
     delete: {
       title: 'Excluir material',
-      description: 'Tem certeza que deseja excluir o material "{name}"? Esta ação não pode ser desfeita.',
+      description: 'O cadastro "{name}" será excluído de todos os locais, junto com os saldos e o histórico de movimentações. Esta ação não é apenas uma transferência e não pode ser desfeita.',
       cancel: 'Cancelar',
       confirm: 'Excluir',
     },
@@ -1132,7 +1132,7 @@ export const inventory = {
     },
     delete: {
       title: 'Delete material',
-      description: 'Are you sure you want to delete "{name}"? This action cannot be undone.',
+      description: 'The material "{name}" will be deleted from every location, including its balances and movement history. This is not a transfer and cannot be undone.',
       cancel: 'Cancel',
       confirm: 'Delete',
     },
@@ -2166,7 +2166,7 @@ export const inventory = {
     },
     delete: {
       title: 'Eliminar material',
-      description: '¿Seguro que deseas eliminar "{name}"? Esta acción no se puede deshacer.',
+      description: 'El material "{name}" se eliminará de todas las ubicaciones, junto con sus saldos y su historial de movimientos. No es una transferencia y no se puede deshacer.',
       cancel: 'Cancelar',
       confirm: 'Eliminar',
     },
@@ -3200,7 +3200,7 @@ export const inventory = {
     },
     delete: {
       title: 'Supprimer le matériau',
-      description: 'Voulez-vous vraiment supprimer « {name} » ? Cette action est irréversible.',
+      description: 'Le matériau « {name} » sera supprimé de tous les emplacements, avec ses soldes et son historique de mouvements. Il ne s’agit pas d’un transfert et cette action est irréversible.',
       cancel: 'Annuler',
       confirm: 'Supprimer',
     },

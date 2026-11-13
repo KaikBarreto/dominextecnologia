@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.21',
+    date: '13 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Exclusão definitiva de material mais fácil de encontrar',
+        category: 'melhoria',
+        description: 'Ao editar um material, agora você encontra a opção Excluir material no próprio rodapé. Antes de confirmar, o sistema deixa claro que a exclusão vale para todos os locais e também remove os saldos e o histórico, diferenciando essa ação de apenas transferir ou retirar o material de um local.',
+      },
+      {
+        title: 'Catálogos grandes de serviços carregam por completo',
+        category: 'correcao',
+        description: 'A listagem de tipos de serviço passou a buscar todos os registros em partes, evitando cortes quando a empresa possui um catálogo muito grande.',
+      },
+    ],
+  },
+  {
     version: '1.39.20',
     date: '11 de novembro de 2026',
     type: 'patch',
