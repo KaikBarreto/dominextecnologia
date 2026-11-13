@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.39.37";
+export const APP_VERSION = "1.39.38";
 
 export const VERSION_NOTES =
-  "Administradores e usuários autorizados voltaram a criar e editar despesas, receitas e contas normalmente no Financeiro.";
+  "O salvamento de lançamentos parcelados foi corrigido para administradores e gestores no Financeiro.";

@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.38',
+    date: '13 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Parcelas financeiras salvam normalmente',
+        category: 'correcao',
+        description: 'Administradores e gestores voltaram a salvar despesas e receitas parceladas ou recorrentes sem uma recusa indevida ao concluir o lançamento.',
+      },
+    ],
+  },
+  {
     version: '1.39.37',
     date: '13 de novembro de 2026',
     type: 'patch',
