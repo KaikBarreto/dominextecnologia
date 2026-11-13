@@ -1,10 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
-import type { ServiceOrder } from '@/types/database';
-
-// Status que fazem o chamado "sumir" do card (encerrado)
-const PORTAL_CALL_CLOSED_STATUSES = ['concluida', 'cancelada'];
+import type { PortalCall } from '@/lib/portalCalls';
 
 export function useDashboardStats() {
   return useQuery({
@@ -32,10 +29,21 @@ export function useDashboardStats() {
           .order('created_at', { ascending: false })
       );
 
-      // Chamados abertos: origin='portal' e status fora dos encerradores
-      const portalCalls = (allOS as ServiceOrder[]).filter(
-        (os) => os.origin === 'portal' && !PORTAL_CALL_CLOSED_STATUSES.includes(os.status),
-      );
+      // Chamado é uma solicitação independente. Só entra no dashboard enquanto
+      // aguarda triagem; a OS vinculada passa a pertencer ao fluxo normal.
+      const { data: portalCallsData, error: portalCallsError } = await supabase
+        .from('portal_calls')
+        .select(`
+          *,
+          customer:customers(id, name, phone, celular),
+          equipment:equipment(id, name, brand, model),
+          contract:contracts(id, name),
+          service_order:service_orders(id, order_number, status, scheduled_date)
+        `)
+        .eq('status', 'aguardando_analise')
+        .order('created_at', { ascending: false });
+      if (portalCallsError) throw portalCallsError;
+      const portalCalls = (portalCallsData ?? []) as PortalCall[];
 
       // Fetch customer count
       const { count: customerCount, error: customerError } = await supabase

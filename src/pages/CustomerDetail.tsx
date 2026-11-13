@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { AlertCircle, ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus, Edit, Trash2, UserCircle, Copy, FileText, Megaphone, CheckSquare, CheckCircle2, ChevronDown, Pencil, Eye, Wallet, RotateCcw, Handshake } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus, Edit, Trash2, UserCircle, Copy, FileText, CheckSquare, CheckCircle2, ChevronDown, Pencil, Eye, Wallet, RotateCcw, Handshake } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,8 @@ import { AddressMap } from '@/components/ui/AddressMap';
 import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
 import { ContactFormDialog } from '@/components/customers/ContactFormDialog';
 import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrderFormDialog';
+import { PortalCallsPanel } from '@/components/service-orders/PortalCallsPanel';
+import { usePortalCalls } from '@/hooks/usePortalCalls';
 import { ContractFormDialog } from '@/components/contracts/ContractFormDialog';
 import { LeadFormDialog } from '@/components/crm/LeadFormDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -81,7 +83,6 @@ import { CustomerStockTab } from '@/components/customers/CustomerStockTab';
 import { CustomerExpenseDialog } from '@/components/customers/CustomerExpenseDialog';
 import { CustomerDeleteDebtNotice } from '@/components/customers/CustomerDeleteDebtNotice';
 import { useCustomerPaidExpenses, type CustomerPaidExpense } from '@/hooks/useCustomerPaidExpenses';
-import { buildPortalCallsPath } from '@/lib/portalCalls';
 import { CustomerDocumentsTab } from '@/components/customers/CustomerDocumentsTab';
 import {
   formatCustomerDocument,
@@ -195,6 +196,7 @@ export function CustomerDetailContent() {
   const id = customer?.id ?? (isUuid(routeParam) ? routeParam : undefined);
 
   const { serviceOrders, createServiceOrder, deleteServiceOrder } = useServiceOrders();
+  const customerPortalCalls = usePortalCalls({ customerId: id, enabled: Boolean(id) });
   const { submitTask } = useTaskSubmit();
   const { transactions, createTransaction, updateTransaction, deleteTransaction } = useFinancial();
   const { equipment: customerEquipment, createEquipment } = useEquipment(id);
@@ -616,17 +618,12 @@ export function CustomerDetailContent() {
     }
   };
 
-  // Portal tickets (origin = 'portal')
-  const portalTickets = customerOrders.filter(os => (os as any).origin === 'portal');
-
   const { sortedItems: sortedOrders, sortConfig: osSortConfig, handleSort: handleOsSort } = useTableSort(customerOrders);
   const ordersPagination = useDataPagination(sortedOrders);
   const { sortedItems: sortedTasks, sortConfig: taskSortConfig, handleSort: handleTaskSort } = useTableSort(customerTasks);
   const tasksPagination = useDataPagination(sortedTasks);
   const { sortedItems: sortedTransactions, sortConfig: finSortConfig, handleSort: handleFinSort } = useTableSort(financeRows);
   const transactionsPagination = useDataPagination(sortedTransactions);
-  const { sortedItems: sortedTickets, sortConfig: ticketSortConfig, handleSort: handleTicketSort } = useTableSort(portalTickets);
-  const ticketsPagination = useDataPagination(sortedTickets);
   const { sortedItems: sortedContracts, sortConfig: contractSortConfig, handleSort: handleContractSort } = useTableSort(customerContracts);
   const contractsPagination = useDataPagination(sortedContracts);
 
@@ -1299,7 +1296,7 @@ export function CustomerDetailContent() {
                           {os.scheduled_date ? format(new Date(os.scheduled_date), 'dd/MM/yyyy', { locale: ptBR }) : '-'}
                         </TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="icon" className="min-h-[44px] min-w-[44px]" onClick={() => navigate(buildPortalCallsPath(os.id))}>
+                          <Button variant="ghost" size="icon" className="min-h-[44px] min-w-[44px]" onClick={() => navigate(`/ordens-servico?os=${encodeURIComponent(os.id)}`)}>
                             <Eye className="h-4 w-4" />
                           </Button>
                         </TableCell>
@@ -1412,51 +1409,18 @@ export function CustomerDetailContent() {
 
       {activeTab === 'chamados' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">{t.ticketsHeading}</h2>
-          </div>
-          {portalTickets.length === 0 ? (
-            <EmptyState
-              size="compact"
-              icon={<Megaphone className="h-10 w-10" />}
-              title={t.emptyTicketsTitle}
-              description={!portalLink ? t.emptyTicketsNoPortal : t.emptyTicketsNoData}
-            />
-          ) : (
-            <Card className={cn(isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                     <TableRow>
-                      <SortableTableHead sortKey="order_number" sortConfig={ticketSortConfig} onSort={handleTicketSort}>{t.colTicketOs}</SortableTableHead>
-                      <SortableTableHead sortKey="description" sortConfig={ticketSortConfig} onSort={handleTicketSort}>{t.colTicketDesc}</SortableTableHead>
-                      <SortableTableHead sortKey="status" sortConfig={ticketSortConfig} onSort={handleTicketSort}>{t.colTicketStatus}</SortableTableHead>
-                      <SortableTableHead sortKey="created_at" sortConfig={ticketSortConfig} onSort={handleTicketSort} className="hidden sm:table-cell">{t.colTicketDate}</SortableTableHead>
-                      <SortableTableHead sortKey="" sortConfig={ticketSortConfig} onSort={() => {}}>{t.colTicketActions}</SortableTableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {ticketsPagination.paginatedItems.map((os) => (
-                      <TableRow key={os.id} className={cn(isMobile && 'active:bg-muted/50 transition-colors')}>
-                        <TableCell><span className="font-mono font-medium">{formatOSNumber(os.order_number)}</span></TableCell>
-                        <TableCell><p className="text-sm truncate max-w-[200px] leading-relaxed">{os.description || '-'}</p></TableCell>
-                        <TableCell><Badge variant="outline">{osStatusLabels[os.status]}</Badge></TableCell>
-                        <TableCell className="hidden sm:table-cell">
-                          {format(new Date(os.created_at), 'dd/MM/yyyy', { locale: ptBR })}
-                        </TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="icon" className="min-h-[44px] min-w-[44px]" onClick={() => window.open(`${window.location.origin}/os-tecnico/${os.id}`, '_blank')}>
-                            <ExternalLink className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-              <DataTablePagination page={ticketsPagination.page} totalPages={ticketsPagination.totalPages} totalItems={ticketsPagination.totalItems} from={ticketsPagination.from} to={ticketsPagination.to} pageSize={ticketsPagination.pageSize} onPageChange={ticketsPagination.setPage} onPageSizeChange={ticketsPagination.setPageSize} />
-            </CardContent></Card>
-          )}
+          <PortalCallsPanel
+            calls={customerPortalCalls.calls}
+            isLoading={customerPortalCalls.isLoading}
+            isError={customerPortalCalls.isError}
+            canManage={isAdminOrGestor() || hasPermission('fn:create_os')}
+            isConverting={customerPortalCalls.convertCall.isPending}
+            isClosing={customerPortalCalls.closeCall.isPending}
+            onRetry={() => { void customerPortalCalls.refetch(); }}
+            onConvert={(callId) => customerPortalCalls.convertCall.mutateAsync(callId)}
+            onCloseWithoutOs={(callId) => customerPortalCalls.closeCall.mutateAsync(callId)}
+            onOpenServiceOrder={(serviceOrderId) => navigate(`/ordens-servico?os=${encodeURIComponent(serviceOrderId)}`)}
+          />
         </div>
       )}
 

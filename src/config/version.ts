@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.39.38";
+export const APP_VERSION = "1.39.39";
 
 export const VERSION_NOTES =
-  "O salvamento de lançamentos parcelados foi corrigido para administradores e gestores no Financeiro.";
+  "Chamados enviados pelos portais agora passam por análise antes de gerar uma ordem de serviço.";

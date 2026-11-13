@@ -11475,6 +11475,93 @@ export type Database = {
           },
         ]
       }
+      portal_calls: {
+        Row: {
+          company_id: string
+          contract_id: string | null
+          created_at: string
+          customer_id: string
+          description: string
+          equipment_id: string | null
+          id: string
+          protocol_number: number
+          resolved_at: string | null
+          resolved_by: string | null
+          service_order_id: string | null
+          source: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          contract_id?: string | null
+          created_at?: string
+          customer_id: string
+          description: string
+          equipment_id?: string | null
+          id?: string
+          protocol_number?: number
+          resolved_at?: string | null
+          resolved_by?: string | null
+          service_order_id?: string | null
+          source: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          contract_id?: string | null
+          created_at?: string
+          customer_id?: string
+          description?: string
+          equipment_id?: string | null
+          id?: string
+          protocol_number?: number
+          resolved_at?: string | null
+          resolved_by?: string | null
+          service_order_id?: string | null
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_calls_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "portal_calls_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "portal_calls_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "portal_calls_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "portal_calls_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: true
+            referencedRelation: "service_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pricing_settings: {
         Row: {
           admin_indirect_rate: number
@@ -18369,6 +18456,10 @@ export type Database = {
         Returns: boolean
       }
       close_due_credit_card_bills: { Args: never; Returns: number }
+      close_portal_call_without_os: {
+        Args: { p_call_id: string }
+        Returns: Json
+      }
       commit_os_material_consumption: {
         Args: { p_lines: Json; p_service_order_id: string }
         Returns: Json
@@ -18422,6 +18513,10 @@ export type Database = {
       contract_portal_session_is_valid: {
         Args: { p_session_token: string; p_token: string }
         Returns: boolean
+      }
+      convert_portal_call_to_service_order: {
+        Args: { p_call_id: string }
+        Returns: Json
       }
       create_bank_statement_import: {
         Args: {

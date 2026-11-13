@@ -87,11 +87,11 @@ import {
 import { useTenantCharges } from '@/hooks/useTenantCharges';
 import { contractFrequencyToCycle } from '@/utils/contractBillingCycle';
 import { PortalCallsPanel } from '@/components/service-orders/PortalCallsPanel';
+import { usePortalCalls } from '@/hooks/usePortalCalls';
 import { ServiceOrderFormDialog, type ServiceOrderFormData } from '@/components/service-orders/ServiceOrderFormDialog';
 import { OsPmocDocumentsDialog } from '@/components/service-orders/OsPmocDocumentsDialog';
 import { canGenerateOsPmocDocuments } from '@/lib/osPmocDocuments';
 import { LinkExistingServiceOrderDialog } from '@/components/service-orders/LinkExistingServiceOrderDialog';
-import { buildPortalCallsPath, isPortalCall } from '@/lib/portalCalls';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
@@ -243,6 +243,7 @@ export default function ContractDetail() {
   const navigate = useNavigate();
   const { id, isResolving: isResolvingId } = useResolveContractId(routeParam);
   const { contract, isLoading, cancelOccurrenceOs, linkExistingServiceOrder, stats, linkedTransactions, isLoadingTransactions } = useContractDetail(id);
+  const contractPortalCalls = usePortalCalls({ contractId: id, enabled: Boolean(id) });
   const {
     serviceOrders,
     isLoading: isLoadingServiceOrders,
@@ -613,10 +614,6 @@ export default function ContractDetail() {
     });
     return orders.map((o, i) => ({ ...o, occurrence_number: i + 1 }));
   }, [contract]);
-  const contractCalls = useMemo(
-    () => ((contract?.service_orders || []) as unknown as ServiceOrder[]).filter(isPortalCall),
-    [contract],
-  );
   const { sortedItems: sortedOcc, sortConfig: occSortConfig, handleSort: handleOccSort } = useTableSort(sortedOccurrences);
   const occPagination = useDataPagination(sortedOcc);
   const recPagination = useDataPagination(linkedTransactions || []);
@@ -2315,9 +2312,16 @@ export default function ContractDetail() {
 
         const callsContent = (
           <PortalCallsPanel
-            items={contractCalls}
-            defaultView="all"
-            onOpenCall={(order) => navigate(buildPortalCallsPath(order.id))}
+            calls={contractPortalCalls.calls}
+            isLoading={contractPortalCalls.isLoading}
+            isError={contractPortalCalls.isError}
+            canManage={isAdminOrGestor() || hasPermission('fn:create_os')}
+            isConverting={contractPortalCalls.convertCall.isPending}
+            isClosing={contractPortalCalls.closeCall.isPending}
+            onRetry={() => { void contractPortalCalls.refetch(); }}
+            onConvert={(callId) => contractPortalCalls.convertCall.mutateAsync(callId)}
+            onCloseWithoutOs={(callId) => contractPortalCalls.closeCall.mutateAsync(callId)}
+            onOpenServiceOrder={(serviceOrderId) => navigate(`/ordens-servico?os=${encodeURIComponent(serviceOrderId)}`)}
           />
         );
 

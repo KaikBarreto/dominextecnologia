@@ -20,7 +20,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
-import { ArrowLeft, Paperclip, Plus, Trash2, CheckCircle2, Circle, Upload, FileText, Calendar, Tag, Download, QrCode, ClipboardList, ExternalLink, Copy, Edit, LayoutGrid, List, Image, ChevronRight, ChevronDown, X, Megaphone, Package } from 'lucide-react';
+import { ArrowLeft, Paperclip, Plus, Trash2, CheckCircle2, Circle, Upload, FileText, Calendar, Tag, Download, QrCode, ClipboardList, ExternalLink, Copy, Edit, LayoutGrid, List, Image, ChevronRight, ChevronDown, X, Package } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -50,14 +50,15 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { isUuid, extractShortCode, buildSlugSegment } from '@/utils/prettyLinks';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatOSNumber } from '@/lib/osNumber';
 import { PortalCallsPanel } from '@/components/service-orders/PortalCallsPanel';
+import { usePortalCalls } from '@/hooks/usePortalCalls';
 import { usePartyLabels } from '@/hooks/usePartyLabels';
 import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
-import { buildPortalCallsPath, isPortalCall } from '@/lib/portalCalls';
 
 type TabKey = 'geral' | 'anexos' | 'tarefas' | 'chamados';
 
@@ -159,7 +160,9 @@ export function EquipmentDetailContent() {
   const te = tEquipment.detail;
   const { attachments, isLoading: attachLoading, uploadAttachment, deleteAttachment } = useEquipmentAttachments(id);
   const { tasks, isLoading: tasksLoading, createTask, toggleTask, deleteTask } = useEquipmentTasks(id);
-  const { serviceOrders, isLoading: ordersLoading } = useServiceOrders();
+  const { serviceOrders } = useServiceOrders();
+  const equipmentPortalCalls = usePortalCalls({ equipmentId: id, enabled: Boolean(id) });
+  const { hasPermission, isAdminOrGestor } = useAuth();
   const { customers } = useCustomers();
   const { categories } = useEquipmentCategories();
   const { fields: fieldConfigs } = useEquipmentFieldConfig();
@@ -210,7 +213,6 @@ export function EquipmentDetailContent() {
   }, [equipment, routeParam, navigate]);
 
   const equipmentOrders = serviceOrders.filter(os => os.equipment_id === id);
-  const equipmentCalls = equipmentOrders.filter(isPortalCall);
   const { sortedItems: sortedEqOrders, sortConfig: eqOsSortConfig, handleSort: handleEqOsSort } = useTableSort(equipmentOrders);
   const ordersPagination = useDataPagination(sortedEqOrders);
   // Fetch portal token for this customer to generate proper QR URL
@@ -1002,17 +1004,17 @@ export function EquipmentDetailContent() {
 
       {activeTab === 'chamados' && (
         <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Megaphone className="h-5 w-5 text-muted-foreground" />
-            <h2 className="text-sm font-bold uppercase tracking-widest text-foreground/70">
-              {MESSAGES[locale].app.os.tabs.calls}
-            </h2>
-          </div>
           <PortalCallsPanel
-            items={equipmentCalls}
-            isLoading={ordersLoading}
-            defaultView="all"
-            onOpenCall={(order) => navigate(buildPortalCallsPath(order.id))}
+            calls={equipmentPortalCalls.calls}
+            isLoading={equipmentPortalCalls.isLoading}
+            isError={equipmentPortalCalls.isError}
+            canManage={isAdminOrGestor() || hasPermission('fn:create_os')}
+            isConverting={equipmentPortalCalls.convertCall.isPending}
+            isClosing={equipmentPortalCalls.closeCall.isPending}
+            onRetry={() => { void equipmentPortalCalls.refetch(); }}
+            onConvert={(callId) => equipmentPortalCalls.convertCall.mutateAsync(callId)}
+            onCloseWithoutOs={(callId) => equipmentPortalCalls.closeCall.mutateAsync(callId)}
+            onOpenServiceOrder={(serviceOrderId) => navigate(`/ordens-servico?os=${encodeURIComponent(serviceOrderId)}`)}
           />
         </div>
       )}

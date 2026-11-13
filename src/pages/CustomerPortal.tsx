@@ -833,14 +833,18 @@ function CustomerPortalContent({
       // Antes daqui havia um INSERT direto em `service_orders`. Desde
       // 18/10/2026 o `anon` não tem INSERT na tabela e o botão devolvia
       // `42501 permission denied for table service_orders` pro cliente final.
-      // Agora a criação passa pela RPC SECURITY DEFINER (ver
+      // Agora o recebimento passa pela RPC SECURITY DEFINER (ver
       // createCustomerPortalTicket), que revalida portal/permissão/assinatura/
       // módulo e resolve customer e company pelo token, sem confiar no client.
+      // A RPC cria somente `portal_calls`; a OS nasce depois da triagem interna.
       // `sessionToken` é a sessão do portal com senha, a MESMA que autorizou a
       // leitura: sem ela, um portal protegido aceitaria chamado de quem não
       // passou pela senha.
-      await createCustomerPortalTicket(token, ticketDesc, sessionToken, ticketEquipmentId);
-      toast({ title: t.ticketSuccess });
+      const receipt = await createCustomerPortalTicket(token, ticketDesc, sessionToken, ticketEquipmentId);
+      toast({
+        title: t.ticketSuccess,
+        description: t.ticketSuccessDescription.replace('{protocol}', String(receipt.protocolNumber)),
+      });
       setShowTicketForm(false);
       setTicketDesc('');
       setTicketEquipmentId('');

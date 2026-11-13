@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.39',
+    date: '13 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Chamados passam por análise antes de virar OS',
+        category: 'melhoria',
+        description: 'Solicitações enviadas pelos portais agora recebem um protocolo e aguardam análise. A equipe pode criar uma ordem de serviço quando necessário ou encerrar o chamado sem gerar OS, evitando ordens abertas automaticamente e mantendo o vínculo para acompanhamento.',
+      },
+    ],
+  },
+  {
     version: '1.39.38',
     date: '13 de novembro de 2026',
     type: 'patch',
