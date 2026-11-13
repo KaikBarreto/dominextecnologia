@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 /**
- * Métricas de infraestrutura do motor fiscal (`dominex-fiscal`, na VPS).
+ * Métricas de infraestrutura da API compartilhada `motor-fiscal`, na VPS.
  *
  * Fronteira única do Supabase pra a edge function `admin-infra-metrics`, que é
  * um proxy autenticado: o `FISCAL_SERVICE_TOKEN` é segredo de SERVIÇO e não
