@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.37',
+    date: '13 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Lançamentos financeiros liberados novamente',
+        category: 'correcao',
+        description: 'Administradores e pessoas autorizadas voltaram a criar e editar despesas, receitas, contas a pagar e contas a receber normalmente, sem receber uma recusa de permissão indevida ao salvar.',
+      },
+    ],
+  },
+  {
     version: '1.39.36',
     date: '13 de novembro de 2026',
     type: 'patch',
