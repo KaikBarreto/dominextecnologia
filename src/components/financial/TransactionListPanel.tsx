@@ -66,6 +66,10 @@ import { FinancialCategoryPill } from './FinancialCategoryPill';
 import { FinancialTransactionDetailsPanel } from './FinancialTransactionDetailsPanel';
 import { getCategoryIcon, getCostCenterIcon } from './categoryIcons';
 import type { LucideIcon } from 'lucide-react';
+import {
+  buildFinancialCategoryLookup,
+  resolveFinancialCategoryDisplay,
+} from '@/lib/financial-category-display';
 
 /**
  * Círculo cor+ícone pro filtro multi-select (categoria/centro de custo).
@@ -326,8 +330,8 @@ export function TransactionListPanel({
   const { accounts: allAccounts } = useFinancialAccounts();
   const { costCenters } = useCostCenters();
   const { categories: financialCategories } = useFinancialCategories();
-  const categoriesByName = useMemo(
-    () => new Map(financialCategories.map((category) => [category.name, category])),
+  const categoryLookup = useMemo(
+    () => buildFinancialCategoryLookup(financialCategories),
     [financialCategories],
   );
   const costCentersById = useMemo(
@@ -357,8 +361,13 @@ export function TransactionListPanel({
   const categories = useMemo(() => {
     const cats = new Set<string>();
     visibilityTransactions.forEach((t) => { if (t.category) cats.add(t.category); });
-    return Array.from(cats).sort();
-  }, [visibilityTransactions]);
+    return Array.from(cats).sort((a, b) => (
+      resolveFinancialCategoryDisplay(a, categoryLookup).name.localeCompare(
+        resolveFinancialCategoryDisplay(b, categoryLookup).name,
+        'pt-BR',
+      )
+    ));
+  }, [visibilityTransactions, categoryLookup]);
 
   // Combine accounts from transactions + master list (so empty accounts also show)
   const accountNames = useMemo(() => {
@@ -704,15 +713,19 @@ export function TransactionListPanel({
   // busca + filtros vigentes). Mesma data exibida na tabela: quando a transação
   // é parcela de cartão, usa a data da fatura (credit_card_bill_date).
   const buildExportRows = (): MovimentacaoReportRow[] =>
-    filtered.map((t) => ({
-      date: (t as any).credit_card_bill_date ?? t.transaction_date,
-      type: t.transaction_type === 'entrada' ? 'entrada' : 'saida',
-      description: t.description || '',
-      category: t.category || '',
-      account: (t as any).account?.name || '',
-      amount: Number(t.amount),
-      isPaid: !!t.is_paid,
-    }));
+    filtered.map((t) => {
+      const category = resolveFinancialCategoryDisplay(t.category, categoryLookup);
+      return {
+        date: (t as any).credit_card_bill_date ?? t.transaction_date,
+        type: t.transaction_type === 'entrada' ? 'entrada' : 'saida',
+        description: t.description || '',
+        category: category.name,
+        categoryColor: category.color,
+        account: (t as any).account?.name || '',
+        amount: Number(t.amount),
+        isPaid: !!t.is_paid,
+      };
+    });
 
   const handleExportPDF = async () => {
     try {
@@ -842,11 +855,13 @@ export function TransactionListPanel({
         onChange={setCategoryFilter}
         emptyLabel={fin.transactionList.filters.categoryAll}
         options={categories.map((c) => {
-          const known = categoriesByName.get(c);
+          const display = resolveFinancialCategoryDisplay(c, categoryLookup);
           return {
             value: c,
-            label: c,
-            icon: known ? filterIconNode(known.color, getCategoryIcon(known.icon)) : undefined,
+            label: display.name,
+            icon: display.category
+              ? filterIconNode(display.color, getCategoryIcon(display.category.icon))
+              : undefined,
           };
         })}
       />
@@ -1227,7 +1242,7 @@ export function TransactionListPanel({
                     {childDetailsExpanded && (
                       <FinancialTransactionDetailsPanel
                         transaction={c}
-                        category={c.category ? categoriesByName.get(c.category) : null}
+                        category={resolveFinancialCategoryDisplay(c.category, categoryLookup).category}
                         costCenter={c.cost_center_id ? costCentersById.get(c.cost_center_id) : null}
                       />
                     )}
@@ -1337,8 +1352,8 @@ export function TransactionListPanel({
                       )}
                       {!group && t.category && (
                         <FinancialCategoryPill
-                          name={t.category}
-                          category={categoriesByName.get(t.category)}
+                          name={resolveFinancialCategoryDisplay(t.category, categoryLookup).name}
+                          category={resolveFinancialCategoryDisplay(t.category, categoryLookup).category}
                           size="sm"
                         />
                       )}
@@ -1399,7 +1414,7 @@ export function TransactionListPanel({
                   {areDetailsExpanded && (
                     <FinancialTransactionDetailsPanel
                       transaction={t}
-                      category={t.category ? categoriesByName.get(t.category) : null}
+                      category={resolveFinancialCategoryDisplay(t.category, categoryLookup).category}
                       costCenter={t.cost_center_id ? costCentersById.get(t.cost_center_id) : null}
                     />
                   )}
@@ -1511,7 +1526,7 @@ export function TransactionListPanel({
                             <TableCell colSpan={visibleColumnCount} className="p-0">
                               <FinancialTransactionDetailsPanel
                                 transaction={c}
-                                category={c.category ? categoriesByName.get(c.category) : null}
+                                category={resolveFinancialCategoryDisplay(c.category, categoryLookup).category}
                                 costCenter={c.cost_center_id ? costCentersById.get(c.cost_center_id) : null}
                               />
                             </TableCell>
@@ -1611,7 +1626,11 @@ export function TransactionListPanel({
                               )}
                               {t.category && (
                                 <span className="min-w-0 max-w-full">
-                                  <FinancialCategoryPill name={t.category} category={categoriesByName.get(t.category)} size="sm" />
+                                  <FinancialCategoryPill
+                                    name={resolveFinancialCategoryDisplay(t.category, categoryLookup).name}
+                                    category={resolveFinancialCategoryDisplay(t.category, categoryLookup).category}
+                                    size="sm"
+                                  />
                                 </span>
                               )}
                             </div>
@@ -1691,7 +1710,7 @@ export function TransactionListPanel({
                         <TableCell colSpan={visibleColumnCount} className="p-0">
                           <FinancialTransactionDetailsPanel
                             transaction={t}
-                            category={t.category ? categoriesByName.get(t.category) : null}
+                            category={resolveFinancialCategoryDisplay(t.category, categoryLookup).category}
                             costCenter={t.cost_center_id ? costCentersById.get(t.cost_center_id) : null}
                           />
                         </TableCell>

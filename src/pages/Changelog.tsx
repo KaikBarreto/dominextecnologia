@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.40',
+    date: '13 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Relatório de contas a pagar mostra somente despesas',
+        category: 'correcao',
+        description: 'A área de contas passa a abrir em A Pagar e o PDF respeita essa escolha, evitando que vendas e outras receitas apareçam junto das despesas. A visualização combinada continua disponível pela opção Todas.',
+      },
+      {
+        title: 'Categorias mais claras nos relatórios financeiros',
+        category: 'melhoria',
+        description: 'As categorias passam a aparecer em etiquetas com sua própria cor e texto branco. Registros antigos também voltam a mostrar o nome correto da categoria, sem códigos técnicos no relatório.',
+      },
+    ],
+  },
+  {
     version: '1.39.39',
     date: '13 de novembro de 2026',
     type: 'patch',

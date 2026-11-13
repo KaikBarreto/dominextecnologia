@@ -9,6 +9,7 @@ import { MESSAGES } from '@/lib/i18n';
 import type { LocaleCode } from '@/lib/i18n/locales';
 import { safeTimeZone, todayInTz } from '@/lib/timezone';
 import { formatMoney } from '@/lib/format';
+import { financialCategoryColorToRgb } from '@/lib/financial-category-display';
 
 /**
  * Relatório PDF A4 paginado (real) das Movimentações financeiras.
@@ -290,14 +291,59 @@ export async function generateMovimentacoesReportPdf(data: MovimentacoesPdfData)
       5: { cellWidth: 26, halign: 'right' },
       6: { cellWidth: 20, halign: 'center' },
     },
-    // Pinta valores: receita verde, despesa vermelha.
+    // Pinta valores e reserva o texto da categoria para o badge desenhado logo
+    // depois. Branco sobre a célula é intencional: o fundo saturado entra no
+    // `didDrawCell`, preservando o cálculo de quebra/altura do autoTable.
     didParseCell: (hookData) => {
+      if (hookData.section === 'body' && hookData.column.index === 3) {
+        const row = rows[hookData.row.index];
+        if (row?.category) {
+          hookData.cell.styles.textColor = [255, 255, 255];
+          hookData.cell.styles.fontStyle = 'bold';
+          hookData.cell.styles.fontSize = 7.4;
+        }
+      }
       if (hookData.section === 'body' && hookData.column.index === 5) {
         const raw = String(hookData.cell.raw ?? '');
         if (raw.startsWith('+')) hookData.cell.styles.textColor = [22, 163, 74];
         else if (raw.startsWith('-')) hookData.cell.styles.textColor = [220, 38, 38];
         hookData.cell.styles.fontStyle = 'bold';
       }
+    },
+    didDrawCell: (hookData) => {
+      if (hookData.section !== 'body' || hookData.column.index !== 3) return;
+      const row = rows[hookData.row.index];
+      if (!row?.category) return;
+
+      const lines = hookData.cell.text.length > 0
+        ? hookData.cell.text
+        : [row.category];
+      const [red, green, blue] = financialCategoryColorToRgb(row.categoryColor);
+      const horizontalInset = 0.7;
+      const horizontalPadding = 1.3;
+      const lineHeight = 3;
+      const maxBadgeWidth = Math.max(0, hookData.cell.width - horizontalInset * 2);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.4);
+      const widestLine = Math.max(...lines.map((line) => doc.getTextWidth(line)), 0);
+      const badgeWidth = Math.min(maxBadgeWidth, widestLine + horizontalPadding * 2);
+      const badgeHeight = Math.min(
+        Math.max(4.5, lines.length * lineHeight + 1.8),
+        Math.max(4.5, hookData.cell.height - 1.4),
+      );
+      const badgeX = hookData.cell.x + horizontalInset;
+      const badgeY = hookData.cell.y + (hookData.cell.height - badgeHeight) / 2;
+
+      doc.setFillColor(red, green, blue);
+      doc.roundedRect(badgeX, badgeY, badgeWidth, badgeHeight, 1.8, 1.8, 'F');
+      doc.setTextColor(255, 255, 255);
+      const firstBaseline = badgeY + badgeHeight / 2
+        - ((lines.length - 1) * lineHeight) / 2
+        + 0.9;
+      lines.forEach((line, index) => {
+        doc.text(line, badgeX + horizontalPadding, firstBaseline + index * lineHeight);
+      });
     },
   });
 
