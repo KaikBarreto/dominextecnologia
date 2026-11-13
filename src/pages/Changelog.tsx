@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.40',
+    date: '13 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Comissão considera o valor realmente pago',
+        category: 'correcao',
+        description: 'O painel de vendedores passa a calcular a primeira venda e sua comissão pelo pagamento recebido. Quando o primeiro ciclo tiver desconto, o valor recorrente do plano não aumenta indevidamente a comissão.',
+      },
+    ],
+  },
+  {
     version: '1.39.39',
     date: '13 de novembro de 2026',
     type: 'patch',

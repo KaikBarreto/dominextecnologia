@@ -1328,16 +1328,17 @@ async function processConfirmedPayment(
       //   - anual:  total = base * 0.20 (inalterado)
       //   - COM SDR → closer 80% / sdr 20% (ANTES 50/50)
       //   - SEM SDR → 100% closer
-      // Base de comissão = subscription_value mensal (mesmo "valor da venda" que o
-      // closer informa no diálogo Registrar Venda). NÃO multiplicamos por 12 no anual
-      // — o diálogo usa o valor informado direto, então mantemos paridade.
+      // Base de comissão = valor efetivamente pago neste primeiro pagamento.
+      // `subscription_value` representa o preço recorrente contratado e pode ser
+      // diferente quando existe desconto/promocional no primeiro ciclo. Usá-lo aqui
+      // infla venda e comissão (ex.: cliente paga 150, plano recorrente custa 297).
       //
       // SDR: companies.sdr_id é capturado na ORIGEM (link de teste/venda ou form do
       // painel master). Se a empresa tem sdr_id → comissão dividida 80/20; senão,
       // 100% closer. O closer é SEMPRE company.salesperson_id.
       const isYearly = company.billing_cycle === "yearly";
       const totalRate = isYearly ? 0.20 : 1.00;
-      const commissionBase = Number(company.subscription_value || paymentAmount);
+      const commissionBase = Number(paymentAmount);
       const total = Math.round(commissionBase * totalRate * 100) / 100;
 
       const sdrId: string | null = company.sdr_id ?? null;
@@ -1368,7 +1369,7 @@ async function processConfirmedPayment(
           customer_name: company.name,
           customer_origin: company.origin,
           amount: commissionBase,
-          paid_amount: company.subscription_value ?? paymentAmount,
+          paid_amount: paymentAmount,
           commission_amount: total,
           closer_commission: closerCommission,
           sdr_commission: sdrCommission,

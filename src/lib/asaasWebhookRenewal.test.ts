@@ -426,6 +426,17 @@ describe('asaas-webhook — a fronteira fatal x não-fatal, no fonte real', () =
     expect(webhookSource.slice(colsIdx, colsIdx + 600)).toContain('affiliate_id');
   });
 
+  it('comissão da primeira venda usa o valor efetivamente pago, não o preço recorrente', () => {
+    const i = webhookSource.indexOf('const commissionBase = Number(paymentAmount)');
+    expect(i, 'base canônica da comissão não encontrada no webhook').toBeGreaterThan(-1);
+
+    const trecho = webhookSource.slice(i, i + 1800);
+    expect(trecho).toContain('amount: commissionBase');
+    expect(trecho).toContain('paid_amount: paymentAmount');
+    expect(trecho).not.toContain('company.subscription_value || paymentAmount');
+    expect(trecho).not.toContain('company.subscription_value ?? paymentAmount');
+  });
+
   it.each([
     // Escrita pós-mutex → não-fatal, com recuperação. Re-entregar seria no-op.
     ['histórico de pagamento da empresa (company_payments)'],

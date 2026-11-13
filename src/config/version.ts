@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.39.39";
+export const APP_VERSION = "1.39.40";
 
 export const VERSION_NOTES =
-  "Chamados enviados pelos portais agora passam por análise antes de gerar uma ordem de serviço.";
+  "Comissões de primeira venda agora consideram o valor realmente pago, inclusive quando há desconto no primeiro ciclo.";
