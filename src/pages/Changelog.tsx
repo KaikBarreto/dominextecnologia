@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.36',
+    date: '13 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Aprovação de orçamento pode ser revertida',
+        category: 'recurso',
+        description: 'Um orçamento aprovado por engano pode voltar para Enviado pelo menu de ações, mantendo o mesmo link para uma nova resposta do cliente. Para proteger o histórico, a reversão só fica disponível antes de gerar uma ordem de serviço, um lançamento financeiro ou uma cobrança.',
+      },
+    ],
+  },
+  {
     version: '1.39.35',
     date: '12 de novembro de 2026',
     type: 'patch',

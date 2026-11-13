@@ -20557,6 +20557,10 @@ export type Database = {
         Returns: Json
       }
       restore_legacy_dre: { Args: { p_company_id: string }; Returns: Json }
+      revert_quote_approval: {
+        Args: { p_quote_id: string }
+        Returns: Json
+      }
       revert_credit_card_bill_payment: {
         Args: { p_transaction_id: string }
         Returns: Json

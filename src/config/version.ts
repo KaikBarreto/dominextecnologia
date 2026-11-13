@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.39.35";
+export const APP_VERSION = "1.39.36";
 
 export const VERSION_NOTES =
-  "Tutoriais, tarefas, novidades e o convite de notificações agora aparecem na ordem certa, sem sobreposição nem avisos perdidos.";
+  "Orçamentos aprovados por engano agora podem voltar para Enviado com segurança, mantendo o mesmo link para uma nova resposta do cliente.";
