@@ -5,7 +5,7 @@ import { FormWizardStepper } from '@/components/ui/FormWizardStepper';
 import { cn } from '@/lib/utils';
 
 export interface ServiceOrderWizardStep {
-  key: 'client' | 'equipment' | 'details' | 'review';
+  key: 'client' | 'equipment' | 'details' | 'budget' | 'review';
   label: string;
 }
 
@@ -80,13 +80,13 @@ export function ServiceOrderFormSummary({
       )}
     >
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {mode === 'review' ? 'Confira antes de salvar' : 'Resumo da OS'}
         </p>
-        <p className="mt-1 break-words text-sm font-semibold text-foreground">
+        <p className="mt-1 break-words text-base font-semibold text-foreground">
           {data.customerName || 'Cliente não selecionado'}
         </p>
-        <p className="mt-0.5 break-words text-xs text-muted-foreground">{services}</p>
+        <p className="mt-0.5 break-words text-sm text-muted-foreground">{services}</p>
       </div>
 
       <div className="grid grid-cols-3 divide-x border-y py-2">
@@ -107,7 +107,7 @@ export function ServiceOrderFormSummary({
         </div>
       </div>
 
-      <dl className="space-y-2.5 text-xs">
+      <dl className="space-y-3 text-sm">
         <div className="flex items-start justify-between gap-3">
           <dt className="flex items-center gap-1.5 text-muted-foreground"><Users className="h-3.5 w-3.5" /> Responsáveis</dt>
           <dd className="max-w-[58%] text-right font-medium">{joinNames(responsibleNames, 'Não definidos')}</dd>
@@ -132,11 +132,11 @@ export function ServiceOrderFormSummary({
         <div className="space-y-4 border-t pt-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Descrição</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Descrição</p>
               <p className="mt-1 whitespace-pre-wrap text-sm">{data.description?.trim() || 'Sem descrição.'}</p>
             </div>
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Observações internas</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Observações internas</p>
               <p className="mt-1 whitespace-pre-wrap text-sm">{data.notes?.trim() || 'Sem observações.'}</p>
             </div>
           </div>
@@ -163,11 +163,11 @@ export function ServiceOrderReviewDetails({ data }: { data: ServiceOrderFormSumm
     <section aria-label="Detalhes finais da ordem de serviço" className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Descrição</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Descrição</p>
           <p className="mt-1 whitespace-pre-wrap text-sm">{data.description?.trim() || 'Sem descrição.'}</p>
         </div>
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Observações internas</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Observações internas</p>
           <p className="mt-1 whitespace-pre-wrap text-sm">{data.notes?.trim() || 'Sem observações.'}</p>
         </div>
       </div>

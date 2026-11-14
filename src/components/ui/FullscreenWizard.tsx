@@ -15,7 +15,10 @@ import { cn } from '@/lib/utils';
 export function FullscreenWizard({ floatingNotice, className, ...props }: Omit<ResponsiveModalProps, 'fullScreen' | 'floatingContent'> & {
   floatingNotice?: React.ReactNode;
 }) {
-  return <ResponsiveModal {...props} fullScreen floatingContent={floatingNotice} className={cn('min-w-0 overflow-x-hidden', className)} />;
+  return <ResponsiveModal {...props} fullScreen floatingContent={floatingNotice} className={cn(
+    'min-w-0 overflow-x-hidden [&_input:not([type=checkbox]):not([type=radio])]:min-h-12 [&_input]:text-base [&_textarea]:text-base [&_[role=combobox]]:min-h-12 [&_label]:text-base',
+    className,
+  )} />;
 }
 
 export const FullscreenWizardAction = React.forwardRef<HTMLButtonElement, ButtonProps>(

@@ -131,7 +131,7 @@ export function ServiceTypesMultiSelect({
       aria-label={selectedIds.length === 0 ? 'Adicionar serviços' : 'Gerenciar serviços'}
       disabled={disabled}
       onClick={isMobile ? () => setOpen(true) : undefined}
-      className={`h-10 w-full justify-center gap-2 border-dashed font-medium text-primary ${onCreate ? 'rounded-r-none' : ''}`}
+      className={`h-full min-h-12 min-w-0 flex-1 justify-center gap-2 border-dashed text-base font-medium text-primary ${onCreate ? 'rounded-r-none' : ''}`}
     >
       <Plus className="h-4 w-4 shrink-0" />
       <span>{selectedIds.length === 0 ? 'Adicionar serviços' : 'Gerenciar serviços'}</span>
@@ -143,7 +143,7 @@ export function ServiceTypesMultiSelect({
       type="button"
       variant="outline"
       size="icon"
-      className="h-10 w-10 shrink-0 rounded-l-none border-l-0 bg-muted hover:bg-primary hover:text-primary-foreground"
+      className="h-full min-h-12 w-12 shrink-0 self-stretch rounded-l-none border-l-0 bg-muted hover:bg-primary hover:text-primary-foreground"
       onClick={onCreate}
       aria-label="Criar tipo de serviço"
       title="Criar tipo de serviço"
@@ -215,7 +215,7 @@ export function ServiceTypesMultiSelect({
     return (
       <div className="space-y-2">
         {showSelectedList && selectedList}
-        <div className="flex">{trigger}{createButton}</div>
+        <div className="flex h-12 items-stretch">{trigger}{createButton}</div>
         <ResponsiveModal open={open} onOpenChange={handleMobileOpenChange} title="Tipos de serviço da OS">
           <div className="overflow-hidden rounded-lg border">{body}</div>
         </ResponsiveModal>
@@ -226,7 +226,7 @@ export function ServiceTypesMultiSelect({
   return (
     <div className="space-y-2">
       {showSelectedList && selectedList}
-      <div className="flex">
+      <div className="flex h-12 items-stretch">
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>{trigger}</PopoverTrigger>
           <PopoverContent align="start" className="w-[360px] p-0">

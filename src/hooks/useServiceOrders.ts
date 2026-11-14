@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
+import { normalizeServiceOrderNumberError } from '@/lib/service-order-number-errors';
 import {
   bookServiceOrderSchedule,
   isScheduleConflictError,
@@ -103,6 +104,8 @@ export function getLegacyOverrideEquipmentItems(items: RawScopeItem[] = []) {
 }
 
 export interface ServiceOrderInput extends ScheduleBookingOverride {
+  /** Reserva de numeração: seu UUID será o id da primeira OS; nunca segue ao banco como coluna. */
+  number_reservation_id?: string;
   customer_id: string;
   equipment_id?: string;
   technician_id?: string;
@@ -303,6 +306,7 @@ export function useServiceOrders() {
         budget_items,
         budget_pricing,
         confirm_scope_response_deletion,
+        number_reservation_id,
         ...restWithBooking
       } = input;
       const rest = { ...restWithBooking };
@@ -323,11 +327,31 @@ export function useServiceOrders() {
         ['technician_id', 'team_id', 'customer_id', 'equipment_id', 'service_type_id', 'form_template_id', 'lead_id']
       );
 
+      let reservedIdentity: { id: string; order_number: number } | null = null;
+      if (number_reservation_id) {
+        if (!user?.id || !company_id) throw new Error('Entre novamente para confirmar a numeração da OS.');
+        const { data: reservation, error: reservationError } = await supabase.rpc('reserve_service_order_number', {
+          p_company_id: company_id,
+          p_user_id: user.id,
+          p_request_id: number_reservation_id,
+        });
+        if (reservationError) throw normalizeServiceOrderNumberError(reservationError);
+        const value = reservation as { reservation_id?: string; order_number?: number } | null;
+        if (!value || value.reservation_id !== number_reservation_id.toLowerCase()
+            || !Number.isSafeInteger(value.order_number) || Number(value.order_number) <= 0) {
+          throw new Error('Não foi possível confirmar o número da OS. Tente novamente.');
+        }
+        reservedIdentity = { id: value.reservation_id, order_number: value.order_number! };
+      }
+
       if (input.schedule_override) {
         if ((input.schedule_override_reason?.trim().length ?? 0) < 10) {
           throw new Error('A justificativa do conflito deve ter pelo menos 10 caracteres.');
         }
-        const orderPayload = normalizeOptionalForeignKeys(rest, [
+        const orderPayload = normalizeOptionalForeignKeys({
+          ...rest,
+          ...(number_reservation_id ? { number_reservation_id } : {}),
+        }, [
           'technician_id',
           'team_id',
           'customer_id',
@@ -345,7 +369,7 @@ export function useServiceOrders() {
           p_equipment_items: getLegacyOverrideEquipmentItems(equipment_items),
           p_assignee_user_ids: assignee_user_ids ?? [],
         } as never);
-        if (error) throw normalizeScheduleBookingError(error);
+        if (error) throw normalizeServiceOrderNumberError(normalizeScheduleBookingError(error));
         const createdId = (data as any)?.id;
         if (createdId && service_type_ids !== undefined) {
           await syncServiceOrderServiceTypes(createdId, service_type_ids);
@@ -366,11 +390,11 @@ export function useServiceOrders() {
 
       const { data, error } = await supabase
         .from('service_orders')
-        .insert(sanitized as any)
+        .insert({ ...sanitized, ...(reservedIdentity ?? {}) } as any)
         .select()
         .single();
       
-      if (error) throw normalizeScheduleBookingError(error);
+      if (error) throw normalizeServiceOrderNumberError(normalizeScheduleBookingError(error));
 
       // Insert assignees into junction table
       if (assignee_user_ids && assignee_user_ids.length > 0) {
@@ -462,6 +486,7 @@ export function useServiceOrders() {
       schedule_override,
       schedule_override_reason,
       schedule_request_id,
+      number_reservation_id,
       ...input
     }: ServiceOrderUpdate & { assignee_user_ids?: string[]; equipment_items?: Array<{ equipment_id?: string; form_template_id?: string }> }) => {
       const touchesSchedule = [

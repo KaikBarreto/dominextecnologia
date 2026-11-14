@@ -26,7 +26,7 @@ class ResizeObserverStub {
 (globalThis as any).ResizeObserver = (globalThis as any).ResizeObserver || ResizeObserverStub;
 
 const testState = vi.hoisted(() => ({
-  profile: null as { company_id: string } | null,
+  profile: null as { company_id: string; id?: string } | null,
   userId: null as string | null,
   numberReservation: null as { id: string; number: number; expiresAt: number } | null,
   numberOptions: null as { requestId?: string | null } | null,
@@ -227,7 +227,8 @@ async function addServiceItem() {
     setter.call(serviceSelect, 'svc-1');
     serviceSelect.dispatchEvent(new Event('change', { bubbles: true }));
   });
-  const confirmAdd = qAll('button').find(button => button.textContent?.trim() === 'Adicionar');
+  const picker = serviceSelect.closest('[role="dialog"]')!;
+  const confirmAdd = Array.from(picker.querySelectorAll('button')).find(button => button.textContent?.trim() === 'Adicionar');
   expect(confirmAdd).toBeTruthy();
   await clickAsync(confirmAdd!);
 }
@@ -244,6 +245,9 @@ async function advanceToMaterials() {
 
 beforeEach(() => {
   sessionStorage.clear();
+  for (const key of Object.keys(localStorage)) {
+    if (key.startsWith('quote-pricing-bdi:')) localStorage.removeItem(key);
+  }
   testState.profile = null;
   testState.userId = null;
   testState.numberReservation = null;
@@ -291,7 +295,7 @@ describe('QuoteFormDialog — preço unitário do serviço na tabela (prova real
       button.textContent?.includes('Manutenção Preventiva')
       && !button.textContent?.includes(tq.serviceAddButton));
     expect(serviceRowButton).toBeTruthy();
-    click(serviceRowButton!);
+    expect(serviceRowButton!).toHaveAttribute('aria-expanded', 'true');
     expect(document.body.textContent).toContain('Recursos');
     expect(document.body.textContent).toContain('84,85');
   });
@@ -301,7 +305,7 @@ describe('QuoteFormDialog — preço unitário do serviço na tabela (prova real
     await goPastRecipient(); // agora em "services"
 
     await addServiceItem();
-    click(q('button[aria-label="Abrir serviço Manutenção Preventiva"]')!);
+    expect(q('button[aria-label="Recolher serviço Manutenção Preventiva"]')).toHaveAttribute('aria-expanded', 'true');
 
     // Depois de adicionado, a tabela mostra o preço unitário editável. A
     // linha da tabela (`ServiceItemsList`) mapeia sem key estável no
@@ -743,7 +747,10 @@ describe('QuoteFormDialog — modo de precificação e estrutura do wizard', () 
     expect((q('input[aria-label="Preço cobrado"]') as HTMLInputElement).value).toBe('220,59');
     expect(document.body.textContent).toContain('220,59');
 
+    await clickAsync(findButtonByText('Alterar forma de precificação')!);
     click(q('#quote-manual-pricing')!);
+    await clickAsync(findButtonByText(tq.next)!);
+    await clickAsync(findButtonByText(tq.next)!);
     expect(q('#quote-bdi-advanced')).toBeNull();
     expect((q('#quote-distance-km') as HTMLInputElement).value).toBe('100');
     expect((q(`input[aria-label="${tq.bdiKmCost}"]`) as HTMLInputElement).value).toBe('1,5');
@@ -825,10 +832,13 @@ describe('QuoteFormDialog — modo de precificação e estrutura do wizard', () 
     await goPastRecipient();
     await advanceToCommercial();
 
+    await clickAsync(findButtonByText('Alterar forma de precificação')!);
     const useBdiToggle = q('#quote-use-bdi') as HTMLElement;
     expect(useBdiToggle).toBeTruthy();
     expect(useBdiToggle).toHaveAttribute('aria-pressed', 'true');
     click(q('#quote-manual-pricing')!);
+    await clickAsync(findButtonByText(tq.next)!);
+    await clickAsync(findButtonByText(tq.next)!);
 
     expect(document.body.textContent).toContain('Preços definidos nos itens');
     await clickAsync(findButtonByText(tq.saveDraft)!);
@@ -857,9 +867,11 @@ describe('QuoteFormDialog — modo de precificação e estrutura do wizard', () 
     await clickAsync(findButtonByText(tq.next)!);
     await clickAsync(findButtonByText(tq.next)!);
 
-    const useBdiToggle = q('#quote-use-bdi') as HTMLElement;
+    await clickAsync(findButtonByText('Alterar forma de precificação')!);
     click(q('#quote-manual-pricing')!);
-    click(useBdiToggle);
+    click(q('#quote-use-bdi')!);
+    await clickAsync(findButtonByText(tq.next)!);
+    await clickAsync(findButtonByText(tq.next)!);
 
     expect(document.body.textContent).toContain('Itens com preço manual mantêm o valor atual');
     const applyButton = findButtonByText('Aplicar BDI aos itens com custo');
@@ -874,7 +886,10 @@ describe('QuoteFormDialog — modo de precificação e estrutura do wizard', () 
     mount();
     await goPastRecipient();
     await advanceToCommercial();
+    await clickAsync(findButtonByText('Alterar forma de precificação')!);
     click(q('#quote-manual-pricing')!);
+    await clickAsync(findButtonByText(tq.next)!);
+    await clickAsync(findButtonByText(tq.next)!);
 
     const stepper = q('[aria-label="Etapas do orçamento"]')!;
     const servicesStep = Array.from(stepper.querySelectorAll('button')).find(button => button.textContent?.includes('Serviços e custos'))!;
@@ -892,11 +907,53 @@ describe('QuoteFormDialog — modo de precificação e estrutura do wizard', () 
     }), expect.anything());
   });
 
+  it('oferece o modo manual antes de adicionar e mostra o preço antes dos custos opcionais', async () => {
+    mount();
+    await goPastRecipient();
+    expect(q('#quote-manual-pricing')).toBeTruthy();
+    expect(q('#quote-use-bdi')).toBeTruthy();
+    expect(q('input[aria-label="Preço de Manutenção Preventiva"]')).toBeNull();
+    click(q('#quote-manual-pricing')!);
+    await addServiceItem();
+
+    const price = q('input[aria-label="Preço de Manutenção Preventiva"]') as HTMLInputElement;
+    expect(price).toHaveValue(250);
+    expect(q('button[aria-label="Recolher serviço Manutenção Preventiva"]')).toHaveAttribute('aria-expanded', 'true');
+    const composition = q('details') as HTMLDetailsElement;
+    expect(composition.open).toBe(false);
+    expect(composition.querySelector('summary')?.textContent).toContain('opcional');
+    expect(price.compareDocumentPosition(composition) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    typeInto(price, '400');
+    await clickAsync(findButtonByText(tq.saveDraft)!);
+    expect(testState.createMutate.mock.calls[0][0]).toMatchObject({
+      use_bdi: false, total_value: 400,
+      items: [expect.objectContaining({ pricing_mode: 'manual', unit_price: 400 })],
+    });
+  });
+
+  it('expande o serviço recém-adicionado e preserva o valor do serviço anterior', async () => {
+    mount();
+    await goPastRecipient();
+    click(q('#quote-manual-pricing')!);
+    await addServiceItem();
+    typeInto(q('input[aria-label="Preço de Manutenção Preventiva"]') as HTMLInputElement, '400');
+    await addServiceItem();
+
+    expect(qAll('button[aria-label="Recolher serviço Manutenção Preventiva"]')).toHaveLength(1);
+    expect(qAll('button[aria-label="Abrir serviço Manutenção Preventiva"]')).toHaveLength(1);
+    expect(q('input[aria-label="Preço de Manutenção Preventiva"]')).toHaveValue(250);
+    await clickAsync(findButtonByText(tq.saveDraft)!);
+    expect(testState.createMutate.mock.calls[0][0]).toMatchObject({
+      use_bdi: false, total_value: 650,
+      items: [expect.objectContaining({ unit_price: 400 }), expect.objectContaining({ unit_price: 250 })],
+    });
+  });
+
   it('permite escolher a modalidade de preço de cada serviço', async () => {
     mount();
     await goPastRecipient();
     await addServiceItem();
-    click(q('button[aria-label="Abrir serviço Manutenção Preventiva"]')!);
+    expect(q('button[aria-label="Recolher serviço Manutenção Preventiva"]')).toHaveAttribute('aria-expanded', 'true');
 
     expect(q('[aria-label="Modo de preço de Manutenção Preventiva"]')).toBeTruthy();
   });
@@ -933,9 +990,9 @@ describe('QuoteFormDialog — modo de precificação e estrutura do wizard', () 
 
     await goPastRecipient();
     await addServiceItem();
-    await clickAsync(findButtonByText(tq.next)!);
-    await clickAsync(findButtonByText(tq.next)!);
     expect(q('#quote-use-bdi')).toHaveAttribute('aria-pressed', 'false');
+    await clickAsync(findButtonByText(tq.next)!);
+    await clickAsync(findButtonByText(tq.next)!);
     expect(document.body.textContent).toContain('Preços definidos nos itens');
   });
 
@@ -1048,7 +1105,7 @@ describe('QuoteFormDialog — modo de precificação e estrutura do wizard', () 
     mount();
     await clickAsync(findButtonByText('Retomar')!);
     await clickAsync(findButtonByText(tq.next)!);
-    expect(q('button[aria-label="Abrir serviço Manutenção Preventiva"]')).toBeTruthy();
+    expect(q('button[aria-label="Recolher serviço Manutenção Preventiva"]')).toHaveAttribute('aria-expanded', 'true');
     expect(testState.createMutate).not.toHaveBeenCalled();
   });
 
@@ -1092,13 +1149,13 @@ describe('QuoteFormDialog — modo de precificação e estrutura do wizard', () 
     mount();
     await goPastRecipient();
     await addServiceItem();
-    await clickAsync(q('button[aria-label="Abrir serviço Manutenção Preventiva"]')!);
+    expect(q('button[aria-label="Recolher serviço Manutenção Preventiva"]')).toHaveAttribute('aria-expanded', 'true');
     typeInto(q('input[aria-label="Preço de Manutenção Preventiva"]') as HTMLInputElement, '0');
     await clickAsync(findButtonByText('Revisar orçamento')!);
     expect(document.body.textContent).toContain('Há itens sem preço');
     expect(findButtonByText(tq.createQuote)).not.toBeDisabled();
     await clickAsync(findButtonByText('Rever serviços')!);
-    expect(q('button[aria-label="Abrir serviço Manutenção Preventiva"]')).toBeTruthy();
+    expect(q('button[aria-label="Recolher serviço Manutenção Preventiva"]')).toHaveAttribute('aria-expanded', 'true');
     expect(testState.createMutate).not.toHaveBeenCalled();
   });
 
@@ -1133,7 +1190,7 @@ describe('QuoteFormDialog — modo de precificação e estrutura do wizard', () 
     await clickAsync(findButtonByText('Fechar')!);
     await goPastRecipient();
     await addServiceItem();
-    await clickAsync(q('button[aria-label="Abrir serviço Manutenção Preventiva"]')!);
+    expect(q('button[aria-label="Recolher serviço Manutenção Preventiva"]')).toHaveAttribute('aria-expanded', 'true');
     typeInto(q('input[aria-label="Preço de Manutenção Preventiva"]') as HTMLInputElement, '375');
     await clickAsync(findButtonByText(tq.reviewFullPreview)!);
     expect(q('[data-testid="quote-preview-data"]')).toHaveAttribute('data-total', '375');
@@ -1195,5 +1252,59 @@ describe('calculateItemPrice — modalidades de material', () => {
     expect(calculateItemPrice({ ...base, mode: 'registered' })).toBe(150);
     expect(calculateItemPrice({ ...base, mode: 'cost_bdi' })).toBe(160);
     expect(calculateItemPrice({ ...base, mode: 'manual' })).toBe(123);
+  });
+});
+
+
+describe('preferência de precificação para novos orçamentos', () => {
+  const key = 'quote-pricing-bdi:company-preference:user-preference';
+  const setupUser = () => {
+    testState.profile = { company_id: 'company-preference', id: 'user-preference' };
+  };
+
+  it('lembra a última escolha manual ou BDI ao abrir outro orçamento', async () => {
+    setupUser();
+    mount();
+    await goPastRecipient();
+    click(q('#quote-manual-pricing')!);
+    expect(localStorage.getItem(key)).toBe('false');
+    mount(undefined, false);
+    sessionStorage.clear();
+    mount();
+    await goPastRecipient();
+    expect(q('#quote-manual-pricing')).toHaveAttribute('aria-pressed', 'true');
+    click(q('#quote-use-bdi')!);
+    expect(localStorage.getItem(key)).toBe('true');
+    mount(undefined, false);
+    sessionStorage.clear();
+    mount();
+    await goPastRecipient();
+    expect(q('#quote-use-bdi')).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('não transporta a escolha entre usuários ou empresas', async () => {
+    setupUser();
+    localStorage.setItem(key, 'false');
+    testState.profile = { company_id: 'company-preference', id: 'outro-usuario' };
+    mount();
+    await goPastRecipient();
+    expect(q('#quote-use-bdi')).toHaveAttribute('aria-pressed', 'true');
+    mount(undefined, false);
+    testState.profile = { company_id: 'outra-empresa', id: 'user-preference' };
+    mount();
+    await goPastRecipient();
+    expect(q('#quote-use-bdi')).toHaveAttribute('aria-pressed', 'true');
+    expect(localStorage.getItem(key)).toBe('false');
+  });
+
+  it('respeita o modo do orçamento editado sem mudar a preferência dos novos', async () => {
+    setupUser();
+    localStorage.setItem(key, 'false');
+    mount({ id: 'existing-quote', quote_number: 42, prospect_name: 'Cliente existente', quote_items: [], use_bdi: true } as Quote);
+    await goPastRecipient();
+    expect(q('#quote-use-bdi')).toHaveAttribute('aria-pressed', 'true');
+    click(q('#quote-manual-pricing')!);
+    click(q('#quote-use-bdi')!);
+    expect(localStorage.getItem(key)).toBe('false');
   });
 });

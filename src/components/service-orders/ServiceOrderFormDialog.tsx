@@ -5,7 +5,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { useServiceOrderNumberReservation } from '@/hooks/useServiceOrderNumberReservation';
+import { normalizeServiceOrderNumberError } from '@/lib/service-order-number-errors';
+import { DocumentNumberStatus } from '@/components/ui/DocumentNumberStatus';
+import { FullscreenWizard, FullscreenWizardAction, FullscreenWizardNotice } from '@/components/ui/FullscreenWizard';
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from '@/components/ui/form';
@@ -44,7 +47,6 @@ import { AssigneeMultiSelect } from '@/components/schedule/AssigneeMultiSelect';
 import { ChecklistPreviewDialog } from '@/components/service-orders/ChecklistPreviewDialog';
 import { CepLookup } from '@/components/CepLookup';
 import { useFormDraft } from '@/hooks/useFormDraft';
-import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
@@ -188,6 +190,10 @@ export function ServiceOrderFormDialog({
   const isEditing = !!serviceOrder;
   const [step, setStep] = useState(0);
   const [maxStepReached, setMaxStepReached] = useState(0);
+  const stepTopRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (open) stepTopRef.current?.parentElement?.scrollTo({ top: 0 });
+  }, [step, open]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | undefined>(serviceOrder?.customer_id ?? defaultCustomerId);
   const [selectedServiceTypeIds, setSelectedServiceTypeIds] = useState<string[]>(
     serviceOrder?.service_type_id ? [serviceOrder.service_type_id] : [],
@@ -274,6 +280,41 @@ export function ServiceOrderFormDialog({
   } | null>(null);
   const queryClient = useQueryClient();
   const { user, profile } = useAuth();
+  const numberUserId = user?.id ?? profile?.user_id;
+  const numberScope = profile?.company_id && numberUserId ? `${profile.company_id}:${numberUserId}` : null;
+  const osDraftKey = numberScope ? `service-order-form:${numberScope}` : 'service-order-form:session';
+  const [numberSession, setNumberSession] = useState<{ scope: string | null; requestId: string; active: boolean }>(() => ({ scope: null, requestId: crypto.randomUUID(), active: false }));
+  useEffect(() => {
+    if (!open || isEditing || !numberScope) {
+      setNumberSession(previous => ({ ...previous, active: false }));
+      return;
+    }
+    let requestId = crypto.randomUUID() as string;
+    try {
+      const raw = sessionStorage.getItem(`form-draft:${osDraftKey}`);
+      const saved = raw ? JSON.parse(raw)?._numberReservationId : null;
+      if (typeof saved === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(saved)) requestId = saved.toLowerCase();
+    } catch { /* Reserva nova se o rascunho local não puder ser lido. */ }
+    setNumberSession({ scope: numberScope, requestId, active: true });
+  }, [open, isEditing, numberScope, osDraftKey]);
+  const numberReservation = useServiceOrderNumberReservation({
+    companyId: profile?.company_id, userId: numberUserId, requestId: numberSession.requestId,
+    isOpen: open, isEditing, enabled: numberSession.active && numberSession.scope === numberScope,
+  });
+  const requiresNumber = !isEditing && !!numberScope;
+  const formSessionRef = useRef({ open, recordId: serviceOrder?.id, scope: numberScope, generation: 0 });
+  if (formSessionRef.current.open !== open || formSessionRef.current.recordId !== serviceOrder?.id || formSessionRef.current.scope !== numberScope) {
+    formSessionRef.current = { open, recordId: serviceOrder?.id, scope: numberScope, generation: formSessionRef.current.generation + 1 };
+  }
+  useEffect(() => () => { formSessionRef.current.generation += 1; }, []);
+  const numberOwnerRef = useRef(numberScope);
+  useEffect(() => {
+    const previous = numberOwnerRef.current;
+    numberOwnerRef.current = numberScope;
+    if (previous && previous !== numberScope && open) onOpenChange(false);
+  }, [numberScope, open, onOpenChange]);
+  const [numberSaveError, setNumberSaveError] = useState('');
+  useEffect(() => { setNumberSaveError(''); }, [open, numberSession.requestId]);
   const { settings: pricingSettings } = usePricingSettings();
   const budgetQuery = useServiceOrderBudget(isEditing ? serviceOrder?.id : null);
   const serviceTypesQuery = useServiceOrderServiceTypes(isEditing ? serviceOrder?.id : null);
@@ -368,6 +409,7 @@ export function ServiceOrderFormDialog({
   });
 
   type OSDraft = ServiceOrderFormData & {
+    _numberReservationId?: string;
     _selectedCustomerId?: string;
     _selectedServiceTypeIds?: string[];
     _budgetItems?: ServiceOrderBudgetItem[];
@@ -376,7 +418,7 @@ export function ServiceOrderFormDialog({
     _requireClientSignature?: boolean;
     _generateNpsSurvey?: boolean;
   };
-  const draft = useFormDraft<OSDraft>({ key: 'service-order-form', isOpen: open, isEditing });
+  const draft = useFormDraft<OSDraft>({ key: osDraftKey, isOpen: open, isEditing, ignoreKeys: ['_numberReservationId'] });
 
   // Save draft on changes
   const watchedValues = form.watch();
@@ -404,9 +446,10 @@ export function ServiceOrderFormDialog({
   }, [recurrenceEnabled, recurrenceSpec, describeRecurrenceIssue, watchedValues.scheduled_date, t, locale, timezone]);
 
   useEffect(() => {
-    if (open && !isEditing && !draft.showResumePrompt) {
+    if (open && !isEditing && !draft.showResumePrompt && (!requiresNumber || (numberSession.active && numberSession.scope === numberScope))) {
       draft.saveDraft({
         ...watchedValues,
+        _numberReservationId: numberSession.requestId,
         _selectedCustomerId: selectedCustomerId,
         _selectedServiceTypeIds: selectedServiceTypeIds,
         _budgetItems: budgetItems,
@@ -416,7 +459,7 @@ export function ServiceOrderFormDialog({
         _generateNpsSurvey: generateNpsSurvey,
       });
     }
-  }, [watchedValues, selectedCustomerId, selectedServiceTypeIds, budgetItems, budgetPricing, requireTechSignature, requireClientSignature, generateNpsSurvey, open, isEditing, draft.showResumePrompt]);
+  }, [watchedValues, selectedCustomerId, selectedServiceTypeIds, budgetItems, budgetPricing, requireTechSignature, requireClientSignature, generateNpsSurvey, open, isEditing, draft.showResumePrompt, requiresNumber, numberSession, numberScope]);
 
   // Load existing equipment items when editing
   const loadExistingEquipmentItems = async (osId: string) => {
@@ -577,7 +620,7 @@ export function ServiceOrderFormDialog({
         setRecurrenceWeekdays([dayOfWeek]);
       }
       if (!isEditing && draft.hasDraft && draft.draftData) {
-        // Draft will be applied via DraftResumeDialog
+        // Rascunho aplicado pelo aviso flutuante de recuperação
       } else {
         form.reset({
           customer_id: serviceOrder?.customer_id ?? defaultCustomerId ?? '',
@@ -695,22 +738,24 @@ export function ServiceOrderFormDialog({
   // continuava habilitado e sem spinner — dois cliques ali criavam duas OS.
   // O ref é quem barra de fato (não depende de re-render); o state só desenha
   // o botão travado.
-  const submittingRef = useRef(false);
+  const submittingRef = useRef<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submitLocked = isLoading || isSubmitting;
+  useEffect(() => { setIsSubmitting(false); }, [open, numberScope, serviceOrder?.id]);
   const handleModalOpenChange = (nextOpen: boolean) => {
     if (!nextOpen && submitLocked) return;
     onOpenChange(nextOpen);
   };
   const withSubmitLock = async (run: () => Promise<void>) => {
-    if (submittingRef.current) return;
-    submittingRef.current = true;
+    const session = formSessionRef.current.generation;
+    if (submittingRef.current === session) return;
+    submittingRef.current = session;
     setIsSubmitting(true);
     try {
       await run();
     } finally {
-      submittingRef.current = false;
-      setIsSubmitting(false);
+      if (submittingRef.current === session) submittingRef.current = null;
+      if (formSessionRef.current.generation === session) setIsSubmitting(false);
     }
   };
 
@@ -719,8 +764,16 @@ export function ServiceOrderFormDialog({
 
   // Single OS with first equipment_id (all equipment tracked via form_template per equipment in the technician link)
   const runCreateSubmit = async () => {
+    const session = formSessionRef.current.generation;
+    const currentSession = () => formSessionRef.current.generation === session;
+    if (requiresNumber && !numberReservation.reservation) {
+      editToast({ variant: 'destructive', title: 'Aguarde a confirmação do número da OS ou tente novamente.' });
+      return;
+    }
+    const reservedNumber = numberReservation.reservation;
     const data = form.getValues();
     const serviceAddressPayload = await buildServiceAddressPayload();
+    if (!currentSession()) return;
 
     // If adhoc customer, auto-create first
     let customerId = data.customer_id;
@@ -735,7 +788,7 @@ export function ServiceOrderFormDialog({
         state: adhocState || undefined,
         zip_code: adhocCep?.replace(/\D/g, '') || undefined,
       } as any);
-      if (!result) return;
+      if (!currentSession() || !result) return;
       customerId = (result as any).id;
     }
 
@@ -806,13 +859,15 @@ export function ServiceOrderFormDialog({
       const groupId = crypto.randomUUID();
       const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
       const company_id = await getCurrentUserCompanyId();
-      const inserts = dates.map(date => {
+      if (!currentSession() || (profile?.company_id && company_id !== profile.company_id)) return;
+      const inserts = dates.map((date, index) => {
         const occurrencePlan = shiftSchedulePlanToStart(
           data.schedule_plan as ServiceOrderScheduleSlot[],
           date,
         );
         const firstSlot = occurrencePlan[0];
         return normalizeOptionalForeignKeys({
+        ...(index === 0 && reservedNumber ? { id: reservedNumber.id, order_number: reservedNumber.number } : {}),
         customer_id: customerId,
         technician_id: techId || null,
         team_id: teamId || null,
@@ -848,8 +903,10 @@ export function ServiceOrderFormDialog({
       });
 
       const { data: created, error } = await supabase.from('service_orders').insert(inserts as any).select('id');
+      if (!currentSession()) return;
       if (error) {
-        editToast({ variant: 'destructive', title: t.toastErrorRecurring, description: getErrorMessage(error) });
+        editToast({ variant: 'destructive', title: t.toastErrorRecurring, description: getErrorMessage(normalizeServiceOrderNumberError(error)) });
+        if (['OSN02', 'OSN03'].includes(error.code)) { setNumberSaveError('Confira a reserva do número antes de tentar novamente.'); void numberReservation.retry(); }
         return;
       }
 
@@ -862,6 +919,7 @@ export function ServiceOrderFormDialog({
           // O erro era descartado por completo aqui (nem console havia): a série
           // inteira nascia sem responsável e o aviso anunciava sucesso.
           const { error: aErr } = await supabase.from('service_order_assignees').insert(assigneeRows);
+          if (!currentSession()) return;
           if (aErr) {
             console.error('Error inserting assignees (recurrence):', aErr);
             editToast({
@@ -871,8 +929,11 @@ export function ServiceOrderFormDialog({
             });
           }
         }
+        if (!currentSession()) return;
         await Promise.all(created.map(async (row: any) => {
+          if (!currentSession()) return;
           await syncServiceOrderServiceTypes(row.id, selectedServiceTypeIds);
+          if (!currentSession()) return;
           if (equipment_items.length > 0) {
             const { error: scopeError } = await supabase.rpc('sync_service_order_scope_with_services' as any, {
               _service_order_id: row.id,
@@ -880,10 +941,12 @@ export function ServiceOrderFormDialog({
             });
             if (scopeError) throw scopeError;
           }
+          if (!currentSession()) return;
           await syncServiceOrderBudget(row.id, budgetItems, budgetPricing);
         }));
       }
 
+      if (!currentSession()) return;
       editToast({ title: t.toastRecurringCreated.replace('{n}', String(dates.length)) });
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
@@ -896,6 +959,7 @@ export function ServiceOrderFormDialog({
     // Normal single OS creation
     const cleanedData = {
       ...data,
+      ...(reservedNumber ? { number_reservation_id: reservedNumber.id } : {}),
       customer_id: customerId,
       technician_id: techId,
       team_id: teamId,
@@ -918,7 +982,20 @@ export function ServiceOrderFormDialog({
       // Sem defaultStatus, omitimos pra o backend usar o default do schema.
       ...(defaultStatus ? { status: defaultStatus } : {}),
     };
-    await onSubmit(cleanedData);
+    try {
+      await onSubmit(cleanedData);
+    } catch (error) {
+      if (!currentSession()) return;
+      const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : '';
+      if (code.startsWith('OSN')) {
+        const friendly = normalizeServiceOrderNumberError(error);
+        setNumberSaveError(friendly instanceof Error ? friendly.message : 'Não foi possível confirmar o número da OS. Tente novamente.');
+        void numberReservation.retry();
+        return;
+      }
+      throw error;
+    }
+    if (!currentSession()) return;
     draft.clearDraft();
     form.reset();
     onOpenChange(false);
@@ -1255,11 +1332,12 @@ export function ServiceOrderFormDialog({
   };
 
   const STEPS_WITH_LABELS = useMemo<ServiceOrderWizardStep[]>(() => [
-    { key: 'client' as const, label: t.stepClient },
+    { key: 'client' as const, label: 'Atendimento' },
     { key: 'equipment' as const, label: t.stepEquipment },
     { key: 'details' as const, label: t.stepDetails },
+    { key: 'budget' as const, label: 'Orçamento (opcional)' },
     { key: 'review' as const, label: t.stepReview },
-  ], [t.stepClient, t.stepEquipment, t.stepDetails, t.stepReview]);
+  ], [t.stepEquipment, t.stepDetails, t.stepReview]);
 
   // A etapa "Equipamentos e Checklists" agora sempre aparece: além do CRUD de
   // equipamentos (condicional ao tipo de serviço), ela hospeda os "Checklists
@@ -1357,15 +1435,19 @@ export function ServiceOrderFormDialog({
     },
     {
       key: 'services',
-      label: t.reviewServicesBudget,
-      detail: selectedServiceNames.length > 0 || budgetItems.length > 0
-        ? t.reviewServicesCounts
-          .replace('{services}', String(selectedServiceNames.length))
-          .replace('{items}', String(budgetItems.length))
-        : t.reviewServicesOptional,
-      complete: selectedServiceNames.length > 0 || budgetItems.length > 0,
+      label: 'Serviços do atendimento',
+      detail: selectedServiceNames.length ? selectedServiceNames.join(', ') : t.reviewServicesOptional,
+      complete: selectedServiceNames.length > 0,
       optional: true,
       stepIndex: activeSteps.findIndex(item => item.key === 'client'),
+    },
+    {
+      key: 'budget',
+      label: 'Orçamento',
+      detail: budgetItems.length ? `${budgetItems.length} itens orçados` : 'Sem orçamento nesta OS',
+      complete: budgetItems.length > 0,
+      optional: true,
+      stepIndex: activeSteps.findIndex(item => item.key === 'budget'),
     },
     {
       key: 'scope',
@@ -1400,7 +1482,9 @@ export function ServiceOrderFormDialog({
       ids,
       budgetItems.map(item => item.service_type_id),
     );
-    const addedIds = reconciledIds.filter(id => !selectedServiceTypeIds.includes(id));
+    const addedIds = reconciledIds.filter(id => addMissingBudgetItems
+      ? !budgetItems.some(item => item.service_type_id === id)
+      : !selectedServiceTypeIds.includes(id));
     setSelectedServiceTypeIds(reconciledIds);
     form.setValue('service_type_id', reconciledIds[0] ?? '');
 
@@ -2263,34 +2347,34 @@ export function ServiceOrderFormDialog({
         {navigationMessage && !canGoNext() && (
           <p className="text-right text-xs text-destructive" role="alert">{navigationMessage}</p>
         )}
-        <div className="flex justify-between w-full">
+        <div className="flex items-center justify-end gap-2 w-full">
         <div>
           {step > 0 && (
-            <Button type="button" variant="outline" onClick={goBack}>
-              <ChevronLeft className="mr-2 h-4 w-4" />
-              {t.btnBack}
-            </Button>
+            <FullscreenWizardAction type="button" variant="cancel" onClick={goBack}>
+              <ChevronLeft className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">{t.btnBack}</span><span className="sr-only sm:hidden">{t.btnBack}</span>
+            </FullscreenWizardAction>
           )}
         </div>
-        <div className="flex gap-2">
-          <Button type="button" variant="outline" disabled={submitLocked} onClick={() => handleModalOpenChange(false)}>
+        <div className="flex min-w-0 flex-1 justify-end gap-2 sm:flex-initial">
+          <FullscreenWizardAction type="button" variant="cancel" className="hidden sm:inline-flex" disabled={submitLocked} onClick={() => handleModalOpenChange(false)}>
             {t.btnCancel}
-          </Button>
+          </FullscreenWizardAction>
           {isLastStep ? (
-            <Button type="submit" form="os-edit-form" disabled={isLoading || isSubmitting} className="bg-primary text-primary-foreground hover:bg-primary/90">
+            <FullscreenWizardAction type="submit" form="os-edit-form" disabled={isLoading || isSubmitting} className="bg-primary text-primary-foreground hover:bg-primary/90">
               {(isLoading || isSubmitting) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t.btnSave}
-            </Button>
+            </FullscreenWizardAction>
           ) : (
-            <Button
+            <FullscreenWizardAction
               type="button"
               onClick={(e) => { e.preventDefault(); goNext(); }}
               aria-disabled={!canGoNext()}
-              className="aria-disabled:opacity-50"
+              className="flex-1 aria-disabled:opacity-50 sm:flex-initial"
             >
-              {t.btnNext}
+              {currentStepKey === 'budget' && budgetItems.length === 0 ? <><span className="sm:hidden">Sem orçamento</span><span className="hidden sm:inline">Continuar sem orçamento</span></> : t.btnNext}
               <ChevronRight className="ml-2 h-4 w-4" />
-            </Button>
+            </FullscreenWizardAction>
           )}
         </div>
         </div>
@@ -2299,20 +2383,18 @@ export function ServiceOrderFormDialog({
 
     return (
       <>
-      <ResponsiveModal
+      <FullscreenWizard
         open={open}
         onOpenChange={handleModalOpenChange}
-        title={editTitle ?? t.titleEdit}
+        headerActions={<DocumentNumberStatus number={serviceOrder?.order_number} />}
+        title={editTitle ?? 'Editar ordem de serviço'}
         description={editDescription ?? t.editDescription}
-        density="compact"
-        className="sm:h-[88vh] sm:max-h-[88vh] sm:w-[96vw] sm:max-w-[1180px]"
-        drawerClassName="h-[90dvh]"
         footer={editFooter}
       >
         {isPmocOrder && (
           <PmocComplianceBadge variant="ribbon" withTooltip className="mb-4" />
         )}
-        <div className="sticky top-0 z-20 -mx-1 mb-4 bg-background/95 px-1 pb-2 pt-0.5 backdrop-blur supports-[backdrop-filter]:bg-background/90">
+        <div ref={stepTopRef} className="sticky top-0 z-20 mb-8 bg-background px-0 py-5">
           <ServiceOrderFormStepper
             steps={activeSteps}
             currentIndex={step}
@@ -2323,19 +2405,19 @@ export function ServiceOrderFormDialog({
 
         <div className={cn(
           'grid gap-8',
-          showDesktopSummary && 'xl:grid-cols-[minmax(0,1fr)_288px] xl:gap-0 xl:divide-x',
+          showDesktopSummary && 'xl:grid-cols-[minmax(0,1fr)_320px] xl:gap-10',
         )}>
-        <div className={cn('order-2 min-w-0 xl:order-1', showDesktopSummary && 'xl:pr-8')}>
+        <div className={cn('order-2 min-w-0 xl:order-1', showDesktopSummary && 'xl:pr-2')}>
         <Form {...form}>
           <form id="os-edit-form" onSubmit={(e) => { e.preventDefault(); if (isLastStep) form.handleSubmit(handleEditSubmit)(); }} className="space-y-4">
             <StepTransition stepKey={currentStepKey} index={step} className="space-y-4">
-            {/* Step 1: Atendimento e orçamento */}
+            {/* Etapa de atendimento: sem campos de orçamento */}
             {currentStepKey === 'client' && (
               <div className="space-y-5">
-                <div className="space-y-1 border-b pb-4">
-                  <h2 className="text-base font-semibold">{t.stepClient}</h2>
+                <div className="space-y-2 pb-3">
+                  <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Atendimento</h2>
                   <p className="text-sm text-muted-foreground">
-                    {t.clientStepDescription}
+                    Escolha o cliente e os serviços do atendimento. O orçamento pode ser definido depois.
                   </p>
                 </div>
                 <FormField control={form.control} name="customer_id" render={({ field }) => (
@@ -2343,6 +2425,7 @@ export function ServiceOrderFormDialog({
                     <FormLabel>{t.labelCustomer}</FormLabel>
                     <FormControl>
                       <CustomerSelectField
+                        variant="large"
                         customers={customers}
                         value={field.value}
                         onValueChange={(v) => { field.onChange(v); setSelectedCustomerId(v); form.setValue('equipment_id', ''); resetEquipmentSelection(); }}
@@ -2366,29 +2449,18 @@ export function ServiceOrderFormDialog({
                       <ServiceTypesMultiSelect
                         services={serviceTypes.filter(st => st.is_active)}
                         selectedIds={selectedServiceTypeIds}
-                        onChange={handleServiceTypesChange}
+                        onChange={(ids) => handleServiceTypesChange(ids, false)}
                         lockedIds={budgetItems.map(item => item.service_type_id).filter((id): id is string => !!id)}
-                        showSelectedList={false}
-                        selectionTargetId="os-service-budget"
+                        showSelectedList
                         onCreate={() => setQuickCreateServiceTypeOpen(true)}
                       />
                     </FormControl>
                     <p className="text-xs text-muted-foreground">
-                      {t.serviceBudgetHint}
+                      Selecione os serviços do atendimento. Valores e materiais podem ser definidos depois, na etapa opcional de orçamento.
                     </p>
                     <FormMessage />
                   </FormItem>
                 )} />
-
-                <section id="os-service-budget" className="scroll-mt-12 border-t pt-5">
-                  <ServiceOrderBudgetSection
-                    items={budgetItems}
-                    onChange={handleBudgetItemsChange}
-                    pricing={budgetPricing}
-                    onPricingChange={handleBudgetPricingChange}
-                    loading={isEditing && budgetQuery.isLoading}
-                  />
-                </section>
 
                 {/* Endereço de serviço (diferente do cliente) — alternativa ao endereço do cliente */}
                 {serviceAddressSection}
@@ -2401,8 +2473,8 @@ export function ServiceOrderFormDialog({
             {/* Step 3: Equipe e agenda */}
             {currentStepKey === 'details' && (
               <div className="space-y-5">
-                <div className="space-y-1 border-b pb-4">
-                  <h2 className="text-base font-semibold">{t.stepDetails}</h2>
+                <div className="space-y-2 pb-3">
+                  <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">{t.stepDetails}</h2>
                   <p className="text-sm text-muted-foreground">
                     {t.detailsStepDescription}
                   </p>
@@ -2434,6 +2506,27 @@ export function ServiceOrderFormDialog({
               </div>
             )}
 
+            {currentStepKey === 'budget' && (
+              <section id="os-service-budget" className="space-y-6">
+                <div className="space-y-2">
+                  <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Orçamento da OS</h2>
+                  <p className="text-base text-muted-foreground">Esta etapa é opcional. Defina valores e materiais apenas se quiser orçar neste atendimento.</p>
+                </div>
+                {selectedServiceTypeIds.some(id => !budgetItems.some(item => item.service_type_id === id)) && (
+                  <Button type="button" onClick={() => handleServiceTypesChange(selectedServiceTypeIds)} className="h-12 gap-2">
+                    <Plus className="h-4 w-4" />Orçar serviços selecionados
+                  </Button>
+                )}
+                <ServiceOrderBudgetSection
+                  items={budgetItems}
+                  onChange={handleBudgetItemsChange}
+                  pricing={budgetPricing}
+                  onPricingChange={handleBudgetPricingChange}
+                  loading={isEditing && budgetQuery.isLoading}
+                />
+              </section>
+            )}
+
             {currentStepKey === 'review' && (
               <div className="space-y-5">
                 <WizardReviewChecklist items={serviceOrderReviewItems} onEdit={setStep} />
@@ -2457,14 +2550,14 @@ export function ServiceOrderFormDialog({
         </Form>
         </div>
         {showDesktopSummary && (
-          <aside className="hidden min-w-0 xl:order-2 xl:block xl:pl-8">
+          <aside className="hidden min-w-0 xl:order-2 xl:block xl:pl-6">
             <div className="xl:sticky xl:top-0">
               <ServiceOrderFormSummary data={formSummaryData} />
             </div>
           </aside>
         )}
         </div>
-      </ResponsiveModal>
+      </FullscreenWizard>
 
       {/* Contract date propagation dialog */}
       <AlertDialog open={contractDateDialogOpen} onOpenChange={setContractDateDialogOpen}>
@@ -2558,34 +2651,34 @@ export function ServiceOrderFormDialog({
       {navigationMessage && !canGoNext() && (
         <p className="text-right text-xs text-destructive" role="alert">{navigationMessage}</p>
       )}
-      <div className="flex justify-between w-full">
+      <div className="flex items-center justify-end gap-2 w-full">
       <div>
         {step > 0 && (
-          <Button type="button" variant="outline" onClick={goBack}>
-            <ChevronLeft className="mr-2 h-4 w-4" />
-            {t.btnBack}
-          </Button>
+          <FullscreenWizardAction type="button" variant="cancel" onClick={goBack}>
+            <ChevronLeft className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">{t.btnBack}</span><span className="sr-only sm:hidden">{t.btnBack}</span>
+          </FullscreenWizardAction>
         )}
       </div>
-      <div className="flex gap-2">
-        <Button type="button" variant="outline" disabled={submitLocked} onClick={() => handleModalOpenChange(false)}>
+      <div className="flex min-w-0 flex-1 justify-end gap-2 sm:flex-initial">
+        <FullscreenWizardAction type="button" variant="cancel" className="hidden sm:inline-flex" disabled={submitLocked} onClick={() => handleModalOpenChange(false)}>
           {t.btnCancel}
-        </Button>
+        </FullscreenWizardAction>
         {isLastStep ? (
-          <Button type="submit" form="os-create-form" disabled={isLoading || isSubmitting} className="bg-primary text-primary-foreground hover:bg-primary/90">
+          <FullscreenWizardAction type="submit" form="os-create-form" disabled={isLoading || isSubmitting || (requiresNumber && !numberReservation.reservation)} className="bg-primary text-primary-foreground hover:bg-primary/90">
             {(isLoading || isSubmitting) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {recurrenceEnabled ? t.btnCreateRecurring : t.btnCreate}
-          </Button>
+          </FullscreenWizardAction>
         ) : (
-          <Button
+          <FullscreenWizardAction
             type="button"
             onClick={(e) => { e.preventDefault(); goNext(); }}
             aria-disabled={!canGoNext()}
-            className="aria-disabled:opacity-50"
+            className="flex-1 aria-disabled:opacity-50 sm:flex-initial"
           >
-            {t.btnNext}
+            {currentStepKey === 'budget' && budgetItems.length === 0 ? <><span className="sm:hidden">Sem orçamento</span><span className="hidden sm:inline">Continuar sem orçamento</span></> : t.btnNext}
             <ChevronRight className="ml-2 h-4 w-4" />
-          </Button>
+          </FullscreenWizardAction>
         )}
       </div>
       </div>
@@ -2593,21 +2686,49 @@ export function ServiceOrderFormDialog({
   );
 
   return (
-    <ResponsiveModal
+    <FullscreenWizard
       open={open}
       onOpenChange={handleModalOpenChange}
-      title={t.titleCreate}
+      title="Criar ordem de serviço"
+      headerActions={<div className="flex flex-col items-end gap-1">
+        <DocumentNumberStatus number={numberReservation.reservation?.number} pending={requiresNumber && !numberReservation.error} unavailable={requiresNumber && !!numberReservation.error} reserved />
+        {recurrenceEnabled && numberReservation.reservation && <span className="text-xs text-muted-foreground">Primeira OS da série</span>}
+        {(numberReservation.error || numberSaveError) && <Button type="button" variant="outline" size="sm" disabled={submitLocked} onClick={() => {
+          if (numberReservation.errorKind === 'expired' || numberReservation.errorKind === 'consumed') setNumberSession({ scope: numberScope, requestId: crypto.randomUUID(), active: true });
+          else void numberReservation.retry();
+        }}>{numberReservation.errorKind === 'expired' || numberReservation.errorKind === 'consumed' ? 'Gerar novo número' : 'Tentar novamente'}</Button>}
+      </div>}
       description={t.createDescription}
-      density="compact"
-      className="sm:h-[88vh] sm:max-h-[88vh] sm:w-[96vw] sm:max-w-[1180px]"
-      drawerClassName="h-[90dvh]"
       footer={createFooter}
-    >
-      <DraftResumeDialog
-        open={draft.showResumePrompt}
-        onResume={() => {
+      floatingNotice={draft.showResumePrompt ? <FullscreenWizardNotice
+        title="Rascunho encontrado"
+        description="Retome os dados desta ordem de serviço ou comece um novo atendimento."
+        actions={<>
+          <FullscreenWizardAction variant="cancel" disabled={submitLocked} onClick={() => {
+          draft.discardDraft();
+          setSelectedCustomerId(defaultCustomerId);
+          setSelectedServiceTypeIds([]);
+          setSelectedEquipmentIds([]);
+          setEquipmentTemplateMap({});
+          setEquipmentServiceTypeMap({});
+          setSelectedStandaloneTemplateIds([]);
+          setBudgetItems([]);
+          setBudgetPricing({ ...DEFAULT_SERVICE_ORDER_BUDGET_PRICING });
+          setNumberSession({ scope: numberScope, requestId: crypto.randomUUID(), active: true });
+          setRequireTechSignature(false);
+          setRequireClientSignature(false);
+          setGenerateNpsSurvey(npsSettings.generate_on_finish);
+          form.reset({
+            customer_id: '', equipment_id: '', technician_id: '',
+            os_type: 'manutencao_corretiva', service_type_id: '',
+            scheduled_date: computedDate, scheduled_time: computedTime,
+            duration_minutes: 120, schedule_plan: computedSchedulePlan, description: '', notes: '', form_template_id: '',
+          });
+        }}>Começar do zero</FullscreenWizardAction>
+          <FullscreenWizardAction disabled={submitLocked} onClick={() => {
           if (draft.draftData) {
             const {
+              _numberReservationId,
               _selectedCustomerId,
               _selectedServiceTypeIds,
               _budgetItems,
@@ -2636,21 +2757,11 @@ export function ServiceOrderFormDialog({
             if (_generateNpsSurvey !== undefined) setGenerateNpsSurvey(_generateNpsSurvey);
           }
           draft.acceptDraft();
-        }}
-        onDiscard={() => {
-          draft.discardDraft();
-          setRequireTechSignature(false);
-          setRequireClientSignature(false);
-          setGenerateNpsSurvey(npsSettings.generate_on_finish);
-          form.reset({
-            customer_id: '', equipment_id: '', technician_id: '',
-            os_type: 'manutencao_corretiva', service_type_id: '',
-            scheduled_date: computedDate, scheduled_time: computedTime,
-            duration_minutes: 120, schedule_plan: computedSchedulePlan, description: '', notes: '', form_template_id: '',
-          });
-        }}
-      />
-      <div className="sticky top-0 z-20 -mx-1 mb-4 bg-background/95 px-1 pb-2 pt-0.5 backdrop-blur supports-[backdrop-filter]:bg-background/90">
+        }}>Retomar</FullscreenWizardAction>
+        </>}
+      /> : null}
+    >
+      <div ref={stepTopRef} className="sticky top-0 z-20 mb-8 bg-background px-0 py-5">
         <ServiceOrderFormStepper
           steps={activeSteps}
           currentIndex={step}
@@ -2661,20 +2772,21 @@ export function ServiceOrderFormDialog({
 
       <div className={cn(
         'grid gap-8',
-        showDesktopSummary && 'xl:grid-cols-[minmax(0,1fr)_288px] xl:gap-0 xl:divide-x',
+        showDesktopSummary && 'xl:grid-cols-[minmax(0,1fr)_320px] xl:gap-10',
       )}>
-      <div className={cn('order-2 min-w-0 xl:order-1', showDesktopSummary && 'xl:pr-8')}>
+      <div className={cn('order-2 min-w-0 xl:order-1', showDesktopSummary && 'xl:pr-2')}>
       <Form {...form}>
+        {(numberReservation.error || numberSaveError) && <NoticeBanner variant="warning" className="mb-5">{numberSaveError || numberReservation.error}</NoticeBanner>}
         <form id="os-create-form" onSubmit={(e) => { e.preventDefault(); if (isLastStep) handleCreateSubmit(); }} className="space-y-4">
           <StepTransition stepKey={currentStepKey} index={step} className="space-y-4">
-          {/* Step 1: Atendimento e orçamento */}
+          {/* Etapa de atendimento: sem campos de orçamento */}
           {currentStepKey === 'client' && (
             <div className="space-y-5">
-              <div className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-4 pb-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0 space-y-1">
-                  <h2 className="text-base font-semibold">{t.stepClient}</h2>
+                  <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Atendimento</h2>
                   <p className="text-sm text-muted-foreground">
-                    Escolha o cliente, defina o serviço e monte os itens previstos para a OS.
+                    Escolha o cliente e os serviços do atendimento. O orçamento pode ser definido depois.
                   </p>
                 </div>
                 <LabeledSwitch
@@ -2702,6 +2814,7 @@ export function ServiceOrderFormDialog({
                     <FormLabel>{t.labelCustomer}</FormLabel>
                     <FormControl>
                       <CustomerSelectField
+                        variant="large"
                         customers={customers}
                         value={field.value}
                         onValueChange={(v) => { field.onChange(v); setSelectedCustomerId(v); resetEquipmentSelection(); }}
@@ -2780,28 +2893,18 @@ export function ServiceOrderFormDialog({
                     <ServiceTypesMultiSelect
                       services={serviceTypes.filter(st => st.is_active)}
                       selectedIds={selectedServiceTypeIds}
-                      onChange={handleServiceTypesChange}
+                      onChange={(ids) => handleServiceTypesChange(ids, false)}
                       lockedIds={budgetItems.map(item => item.service_type_id).filter((id): id is string => !!id)}
-                      showSelectedList={false}
-                      selectionTargetId="os-service-budget"
+                      showSelectedList
                       onCreate={() => setQuickCreateServiceTypeOpen(true)}
                     />
                   </FormControl>
                   <p className="text-xs text-muted-foreground">
-                    {t.serviceBudgetHint}
+                    Selecione os serviços do atendimento. Valores e materiais podem ser definidos depois, na etapa opcional de orçamento.
                   </p>
                   <FormMessage />
                 </FormItem>
               )} />
-
-              <section id="os-service-budget" className="scroll-mt-12 border-t pt-5">
-                <ServiceOrderBudgetSection
-                  items={budgetItems}
-                  onChange={handleBudgetItemsChange}
-                  pricing={budgetPricing}
-                  onPricingChange={handleBudgetPricingChange}
-                />
-              </section>
 
               {/* Endereço de serviço (diferente do cliente) — alternativa ao endereço do cliente */}
               {serviceAddressSection}
@@ -2814,8 +2917,8 @@ export function ServiceOrderFormDialog({
           {/* Step 3: Equipe e agenda */}
           {currentStepKey === 'details' && (
             <div className="space-y-5">
-              <div className="space-y-1 border-b pb-4">
-                <h2 className="text-base font-semibold">{t.stepDetails}</h2>
+              <div className="space-y-2 pb-3">
+                <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">{t.stepDetails}</h2>
                 <p className="text-sm text-muted-foreground">
                   {t.detailsStepDescription}
                 </p>
@@ -2922,7 +3025,28 @@ export function ServiceOrderFormDialog({
             </div>
           )}
 
-          {currentStepKey === 'review' && (
+          {currentStepKey === 'budget' && (
+              <section id="os-service-budget" className="space-y-6">
+                <div className="space-y-2">
+                  <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Orçamento da OS</h2>
+                  <p className="text-base text-muted-foreground">Esta etapa é opcional. Defina valores e materiais apenas se quiser orçar neste atendimento.</p>
+                </div>
+                {selectedServiceTypeIds.some(id => !budgetItems.some(item => item.service_type_id === id)) && (
+                  <Button type="button" onClick={() => handleServiceTypesChange(selectedServiceTypeIds)} className="h-12 gap-2">
+                    <Plus className="h-4 w-4" />Orçar serviços selecionados
+                  </Button>
+                )}
+                <ServiceOrderBudgetSection
+                  items={budgetItems}
+                  onChange={handleBudgetItemsChange}
+                  pricing={budgetPricing}
+                  onPricingChange={handleBudgetPricingChange}
+                  loading={isEditing && budgetQuery.isLoading}
+                />
+              </section>
+            )}
+
+            {currentStepKey === 'review' && (
             <div className="space-y-5">
               <WizardReviewChecklist items={serviceOrderReviewItems} onEdit={setStep} />
               <ServiceOrderReviewDetails data={formSummaryData} />
@@ -2945,7 +3069,7 @@ export function ServiceOrderFormDialog({
       </Form>
       </div>
       {showDesktopSummary && (
-        <aside className="hidden min-w-0 xl:order-2 xl:block xl:pl-8">
+        <aside className="hidden min-w-0 xl:order-2 xl:block xl:pl-6">
           <div className="xl:sticky xl:top-0">
             <ServiceOrderFormSummary data={formSummaryData} />
           </div>
@@ -2999,7 +3123,7 @@ export function ServiceOrderFormDialog({
         onOpenChange={setQuickCreateServiceTypeOpen}
         onCreated={(created) => {
           // A lista de tipos já é invalidada pela mutation; seleciona o recém-criado.
-          handleServiceTypesChange([...selectedServiceTypeIds, created.id]);
+          handleServiceTypesChange([...selectedServiceTypeIds, created.id], false);
         }}
       />
 
@@ -3010,6 +3134,6 @@ export function ServiceOrderFormDialog({
         onOpenChange={(o) => { if (!o) setPreviewTemplateId(null); }}
         templates={templates}
       />
-    </ResponsiveModal>
+    </FullscreenWizard>
   );
 }

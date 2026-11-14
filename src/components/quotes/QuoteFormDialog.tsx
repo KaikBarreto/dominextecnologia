@@ -49,6 +49,7 @@ import { QuickServiceTypeDialog } from '@/components/service-orders/QuickService
 import { useQuoteFormDraft } from '@/hooks/useQuoteFormDraft';
 import { useQuoteNumberReservation } from '@/hooks/useQuoteNumberReservation';
 import { DraftResumeNotice } from '@/components/ui/DraftResumeNotice';
+import { DocumentNumberStatus } from '@/components/ui/DocumentNumberStatus';
 import { FullscreenWizard, FullscreenWizardAction } from '@/components/ui/FullscreenWizard';
 import { FormDraftStatus } from '@/components/ui/FormDraftStatus';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
@@ -309,7 +310,16 @@ function ServiceItemsList({
   inventoryItems: InventoryItem[];
   costResources: CostResource[];
 }) {
-  const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+  const [expandedIdx, setExpandedIdx] = useState<number | null>(() => serviceItems.length ? allItems.indexOf(serviceItems[serviceItems.length - 1]) : null);
+  const previousServiceCount = useRef(serviceItems.length);
+  useEffect(() => {
+    if (serviceItems.length > previousServiceCount.current) {
+      setExpandedIdx(allItems.indexOf(serviceItems[serviceItems.length - 1]));
+    } else if (serviceItems.length < previousServiceCount.current) {
+      setExpandedIdx(null);
+    }
+    previousServiceCount.current = serviceItems.length;
+  }, [serviceItems, allItems]);
   const handlePricePaste = (event: React.ClipboardEvent<HTMLInputElement>, index: number) => {
     const cents = readPastedCents(event);
     if (cents == null) return;
@@ -318,8 +328,8 @@ function ServiceItemsList({
   const subtotal = serviceItems.reduce((sum, item) => sum + item.total_price, 0);
 
   return (
-    <div className="border-y">
-      <div className="divide-y">
+    <div>
+      <div className="space-y-5">
         {serviceItems.map((item) => {
           const globalIdx = allItems.indexOf(item);
           const isExpanded = expandedIdx === globalIdx;
@@ -373,23 +383,11 @@ function ServiceItemsList({
 
               {isExpanded && (
                 <div className="pb-8 pt-3">
-                  <QuoteServiceCostEditor
-                    value={{
-                      serviceTypeId: item.service_type_id,
-                      composition: item.cost_composition ?? createQuoteCostComposition(),
-                      saveAsCatalogDefault: item.save_costs_to_catalog,
-                    }}
-                    onChange={next => onUpdateCostComposition(globalIdx, next.composition, next.saveAsCatalogDefault === true)}
-                    bdiFactor={bdiFactor}
-                    formatMoney={fmt}
-                    currencySymbol={currencySymbol}
-                    inventoryItems={inventoryItems}
-                    costResources={costResources}
-                  />
 
-                  <section className="mt-8 space-y-5 border-t pt-7">
+
+                  <section className="space-y-5">
                     <div>
-                      <h4 className="text-xl font-semibold sm:text-2xl">Preço e apresentação no orçamento</h4>
+                      <h4 className="text-xl font-semibold sm:text-2xl">Preço do serviço</h4>
                       <p className="mt-1 text-sm text-muted-foreground">Defina como o serviço será cobrado e o texto que o cliente verá.</p>
                     </div>
                     <div className="grid grid-cols-2 gap-4 xl:grid-cols-[minmax(13rem,1.4fr)_5rem_9rem]">
@@ -432,8 +430,8 @@ function ServiceItemsList({
                     </div>
 
                     {item.pricing_mode === 'manual' && (
-                      <p className="text-sm leading-relaxed text-warning">
-                        Preço manual: fora da precificação automática.
+                      <p className="text-sm leading-relaxed text-foreground">
+                        Este é o valor cobrado do cliente. O BDI não é aplicado a este preço.
                         {useBdi && hasCosts && (
                           <button type="button" className="ml-1 underline underline-offset-2" onClick={() => onRestoreAutomatic(globalIdx)}>Restaurar cálculo com BDI</button>
                         )}
@@ -451,6 +449,24 @@ function ServiceItemsList({
                       />
                     </div>
                   </section>
+                  <details key={item.pricing_mode === 'cost_bdi' ? 'calculated' : 'optional'} open={item.pricing_mode === 'cost_bdi'} className="mt-7">
+                    <summary className="cursor-pointer py-3 text-lg font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{item.pricing_mode === 'cost_bdi' ? 'Composição dos custos' : 'Custos internos e composição (opcional)'}</summary>
+                    <div className="pt-4">
+                  <QuoteServiceCostEditor
+                    value={{
+                      serviceTypeId: item.service_type_id,
+                      composition: item.cost_composition ?? createQuoteCostComposition(),
+                      saveAsCatalogDefault: item.save_costs_to_catalog,
+                    }}
+                    onChange={next => onUpdateCostComposition(globalIdx, next.composition, next.saveAsCatalogDefault === true)}
+                    bdiFactor={bdiFactor}
+                    formatMoney={fmt}
+                    currencySymbol={currencySymbol}
+                    inventoryItems={inventoryItems}
+                    costResources={costResources}
+                  />
+                    </div>
+                  </details>
                 </div>
               )}
             </article>
@@ -466,6 +482,14 @@ function ServiceItemsList({
 }
 
 // ─── Main Component ─────────────────────────────────────────────────────────
+function readQuoteBdiPreference(key: string | null): boolean {
+  try {
+    return !key || localStorage.getItem(key) !== 'false';
+  } catch {
+    return true;
+  }
+}
+
 export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogProps) {
   const { locale, currency } = useAppLocaleContext();
   const tq = MESSAGES[locale].app.crm.quotes;
@@ -487,6 +511,10 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const { items: inventoryItems } = useInventory();
   const { resources: costResources } = useCostResources();
   const { profile, user } = useAuth();
+  const preferenceUserId = user?.id || profile?.user_id || profile?.id;
+  const bdiPreferenceKey = profile?.company_id && preferenceUserId
+    ? `quote-pricing-bdi:${profile.company_id}:${preferenceUserId}`
+    : null;
   const { settings: companySettings } = useCompanySettings();
   const queryClient = useQueryClient();
   const saveQuoteServiceCosts = useSaveQuoteServiceCosts();
@@ -532,7 +560,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     cardDiscountRate: false,
     cardInstallments: false,
   });
-  const [useBdi, setUseBdi] = useState(true);
+  const [useBdi, setUseBdi] = useState(() => readQuoteBdiPreference(bdiPreferenceKey));
 
   // ── Items ──
   const [items, setItems] = useState<FormQuoteItem[]>([]);
@@ -707,8 +735,9 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     setTerms('');
     setReceivableInstallments(1);
     setReceivableFirstDueDate('');
-    setUseBdi(true);
-    setDisplacementPricingMode('cost_bdi');
+    const preferredUseBdi = readQuoteBdiPreference(bdiPreferenceKey);
+    setUseBdi(preferredUseBdi);
+    setDisplacementPricingMode(preferredUseBdi ? 'cost_bdi' : 'manual');
     setManualDisplacementPrice(0);
     setShowLaborCostInProposal(false);
     setShowInputsCostInProposal(false);
@@ -724,7 +753,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     setKmCostCfg(Number(pricing?.km_cost ?? 1));
     setCardDiscountRateCfg(Number(pricing?.card_discount_rate ?? 6));
     setCardInstallmentsCfg(Number(pricing?.card_installments ?? 10));
-  }, [templates, pricing]);
+  }, [templates, pricing, bdiPreferenceKey]);
 
   useEffect(() => {
     if (draftScopeRef.current === draftScopeKey) return;
@@ -1191,6 +1220,13 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
 
   const handleUseBdiChange = (enabled: boolean) => {
     setUseBdi(enabled);
+    if (!isEditing && bdiPreferenceKey) {
+      try {
+        localStorage.setItem(bdiPreferenceKey, String(enabled));
+      } catch {
+        // Armazenamento indisponível não impede criar o orçamento atual.
+      }
+    }
     if (!enabled) {
       setItems(prev => prev.map(item => ({
         ...item,
@@ -1620,20 +1656,30 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     </section>
   );
 
-  const bdiConfigBlock = (
-    <section className="space-y-6">
-      <SectionHeader icon={<Calculator className="h-4 w-4 text-primary" />} title="Como formar o preço?" />
+  const pricingMethodBlock = (
+    <section className="space-y-4" aria-label="Formação do preço do orçamento">
+      <div><h2 className="text-2xl font-semibold sm:text-3xl">Como você quer precificar?</h2><p className="mt-2 text-base text-muted-foreground">Escolha antes de adicionar os serviços. Cada item também pode ter seu próprio preço.</p></div>
       <div role="group" aria-label="Modo de formação do preço" className="grid gap-3 sm:grid-cols-2">
-        <button type="button" id="quote-use-bdi" aria-pressed={useBdi} onClick={() => handleUseBdiChange(true)}
-          className={cn('min-h-24 rounded-xl border px-5 py-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', useBdi ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:border-primary')}>
-          <span className="block text-lg font-semibold">Calcular com BDI</span>
-          <span className={cn('mt-1 block text-sm leading-relaxed', useBdi ? 'text-primary-foreground/80' : 'text-muted-foreground')}>Impostos, administração e lucro sobre os custos.</span>
-        </button>
         <button type="button" id="quote-manual-pricing" aria-pressed={!useBdi} onClick={() => handleUseBdiChange(false)}
           className={cn('min-h-24 rounded-xl border px-5 py-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', !useBdi ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:border-primary')}>
           <span className="block text-lg font-semibold">Preço cadastrado ou manual</span>
           <span className={cn('mt-1 block text-sm leading-relaxed', !useBdi ? 'text-primary-foreground/80' : 'text-muted-foreground')}>Mantém os preços dos itens, sem recálculo automático.</span>
         </button>
+        <button type="button" id="quote-use-bdi" aria-pressed={useBdi} onClick={() => handleUseBdiChange(true)}
+          className={cn('min-h-24 rounded-xl border px-5 py-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', useBdi ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:border-primary')}>
+          <span className="block text-lg font-semibold">Calcular com BDI</span>
+          <span className={cn('mt-1 block text-sm leading-relaxed', useBdi ? 'text-primary-foreground/80' : 'text-muted-foreground')}>Impostos, administração e lucro sobre os custos.</span>
+        </button>
+      </div>
+    </section>
+  );
+
+  const bdiConfigBlock = (
+    <section className="space-y-6">
+      <SectionHeader icon={<Calculator className="h-4 w-4 text-primary" />} title={useBdi ? "BDI e condições" : "Preço e condições"} />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-base font-medium">{useBdi ? 'Cálculo com BDI habilitado para os itens por custo.' : 'Preços cadastrados ou manuais, sem aplicar BDI.'}</p>
+        <Button type="button" variant="outline" onClick={() => setStep(STEP_KEYS.indexOf('services'))}>Alterar forma de precificação</Button>
       </div>
       <div className={cn('grid gap-7 lg:items-start', useBdi && 'lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]')}>
         <div>
@@ -1852,7 +1898,8 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
 
           {/* ══ STEP 2: SERVIÇOS E COMPOSIÇÃO DE CUSTOS ══ */}
           {currentStepKey === 'services' && (
-            <div className="space-y-6">
+            <div className="space-y-8">
+              {pricingMethodBlock}
               <section ref={itemsSectionRef} className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <SectionHeader icon={<Wrench className="h-4 w-4 text-primary" />} title={tq.servicesHeader} />
@@ -1897,7 +1944,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                   />
                 )}
               </section>
-              {serviceItems.length > 0 && <div className="space-y-2 border-t pt-4">
+              {serviceItems.length > 0 && <div className="space-y-2 pt-2">
                 <Button type="button" variant="outline" className="min-h-12 w-full text-base font-semibold" onClick={() => { setNavigationMessage(''); setStep(STEP_KEYS.indexOf('review')); }}>
                   Revisar orçamento <ChevronRight className="ml-2 h-4 w-4" />
                 </Button>
@@ -1928,7 +1975,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
                   <>
                     {/* Mobile (abaixo de sm): lista de cards — a tabela espremida
                         cortava o nome do material numa tela de 360px. */}
-                    <div className="divide-y border-y">
+                    <div className="divide-y">
                       {materialItems.map((item) => {
                         const globalIdx = items.indexOf(item);
                         const unit = item.inventory_id
@@ -2490,9 +2537,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
         exitLabel={tq.formExitLabel}
         headerActions={!isEditing && !draftQuoteId ? <div className="flex flex-col items-end gap-0.5">
           <FormDraftStatus status={draft.status} savedAt={draft.savedAt} persistence={draft.persistence} expiresAt={draft.expiresAt} isLoading={draft.isLoading} syncIssue={draft.syncIssue} onRetry={draft.retry} />
-          <span className="text-xs font-semibold text-foreground sm:text-sm" title="Este número é reservado para este orçamento e será mantido ao salvar.">
-            {numberReservation.reservation ? `Nº ${numberReservation.reservation.number}` : requiresNumber ? numberReservation.error ? 'Número indisponível' : 'Gerando número…' : 'Número ao salvar'}
-          </span>
+          <DocumentNumberStatus number={numberReservation.reservation?.number} pending={requiresNumber && !numberReservation.error} unavailable={requiresNumber && !!numberReservation.error} reserved />
         </div> : undefined}
         description="Monte os itens, confira a precificação e revise a proposta antes de salvar."
         className="min-w-0 overflow-x-hidden"

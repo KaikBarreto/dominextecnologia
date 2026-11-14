@@ -8,10 +8,13 @@ const source = readFileSync(
 
 describe('ContractFormDialog — estrutura do wizard', () => {
   it('mantém altura estável, rodapé externo e resumo contextual', () => {
-    expect(source).toContain('sm:h-[90vh] sm:max-h-[90vh] sm:w-[96vw] sm:max-w-[1240px]');
-    expect(source).toContain('drawerClassName="h-[90dvh]"');
+    expect(source).toContain('<FullscreenWizard');
+    expect(source).toContain('<FullscreenWizardAction');
+    expect(source).not.toContain('sm:h-[90vh] sm:max-h-[90vh]');
+    expect(source).toContain('floatingNotice={!isEditing && draft.showResumePrompt');
+    expect(source).not.toContain('<DraftResumeDialog');
     expect(source).toContain('footer={wizardFooter}');
-    expect(source).toContain('xl:grid-cols-[minmax(0,1fr)_248px]');
+    expect(source).toContain('xl:grid-cols-[minmax(0,1fr)_300px]');
     expect(source).toContain('aria-label="Resumo do contrato"');
   });
 

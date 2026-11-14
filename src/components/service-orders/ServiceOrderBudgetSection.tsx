@@ -1,13 +1,10 @@
 import { Calculator, Sparkles } from 'lucide-react';
 import { QuoteItemsTable } from '@/components/quotes/QuoteItemsTable';
 import { QuoteBdiScopeGuide } from '@/components/quotes/QuoteBdiScopeGuide';
-import { BDICompositionPreview } from '@/components/pricing/BDICompositionPreview';
+import { QuoteBdiComposer } from '@/components/quotes/QuoteBdiComposer';
 import { Skeleton } from '@/components/ui/skeleton';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { NumericInput, parseDecimalInputValue } from '@/components/ui/numeric-input';
-import { Switch } from '@/components/ui/switch';
 import {
   applyBdiToServiceOrderBudgetItems,
   calculateServiceOrderBdiFactor,
@@ -27,51 +24,6 @@ interface ServiceOrderBudgetSectionProps {
   onPricingChange?: (pricing: ServiceOrderBudgetPricing) => void;
 }
 
-function EditableRateField({
-  id,
-  label,
-  value,
-  onCommit,
-}: {
-  id: string;
-  label: string;
-  value: number;
-  onCommit: (value: number) => void;
-}) {
-  const [draft, setDraft] = useState(String(value).replace('.', ','));
-  useEffect(() => setDraft(String(value).replace('.', ',')), [value]);
-  const commit = () => {
-    const parsed = parseDecimalInputValue(draft);
-    if (parsed == null || parsed < 0) {
-      setDraft(String(value).replace('.', ','));
-      return;
-    }
-    onCommit(parsed);
-  };
-  return (
-    <div className="space-y-1.5">
-      <Label htmlFor={id} className="text-xs">{label}</Label>
-      <div className="relative">
-        <NumericInput
-          id={id}
-          decimal
-          maxDecimals={2}
-          value={draft}
-          onValueChange={setDraft}
-          onBlur={commit}
-          onKeyDown={event => {
-            if (event.key === 'Enter') {
-              event.preventDefault();
-              event.currentTarget.blur();
-            }
-          }}
-          className="h-9 pr-8 tabular-nums"
-        />
-        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
-      </div>
-    </div>
-  );
-}
 export function ServiceOrderBudgetSection({
   items,
   onChange,
@@ -112,91 +64,15 @@ export function ServiceOrderBudgetSection({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-8">
       {pricing && onPricingChange && (
-        <section className="space-y-4 border-y py-4" aria-label="Precificação da ordem de serviço">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <Label htmlFor="os-use-bdi" className="text-sm font-semibold">Precificar com BDI</Label>
-              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-                {pricing.use_bdi
-                  ? 'Transforme o seu custo em preço para o cliente. Cada item ainda pode usar preço cadastrado ou manual.'
-                  : 'Orçamento padrão: use os preços cadastrados ou digite livremente, sem cálculo automático.'}
-              </p>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <span className="text-xs font-medium text-muted-foreground">
-                {pricing.use_bdi ? 'BDI automático' : 'Preço livre'}
-              </span>
-              <Switch
-                id="os-use-bdi"
-                checked={pricing.use_bdi}
-                onCheckedChange={checked => onPricingChange({ ...pricing, use_bdi: checked })}
-              />
-            </div>
+        <section className="space-y-4" aria-label="Precificação da ordem de serviço">
+          <h3 className="text-xl font-semibold sm:text-2xl">Como você quer precificar?</h3>
+          <div role="group" aria-label="Modo de formação do preço da OS" className="grid gap-3 sm:grid-cols-2">
+            {[{ bdi: false, title: 'Preço cadastrado ou manual', text: 'Use o preço do catálogo ou informe o valor que será cobrado.' }, { bdi: true, title: 'Calcular com BDI', text: 'Forme o preço a partir dos custos, impostos, administração e lucro.' }].map(mode => <Button key={String(mode.bdi)} type="button" variant="outline" aria-pressed={pricing.use_bdi === mode.bdi} onClick={() => onPricingChange({ ...pricing, use_bdi: mode.bdi })} className={`h-auto min-h-24 flex-col items-start whitespace-normal rounded-xl px-5 py-4 text-left ${pricing.use_bdi === mode.bdi ? 'border-primary bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground' : ''}`}>
+              <span className="text-lg font-semibold">{mode.title}</span><span className="mt-1 text-sm font-normal leading-relaxed opacity-80">{mode.text}</span>
+            </Button>)}
           </div>
-
-          {pricing.use_bdi && (
-            <div className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-3">
-                {([
-                  ['tax_rate', 'Impostos'],
-                  ['admin_indirect_rate', 'Adm. indireta'],
-                  ['profit_rate', 'Lucro'],
-                ] as const).map(([field, label]) => (
-                  <EditableRateField
-                    key={field}
-                    id={`os-${field}`}
-                    label={label}
-                    value={pricing[field]}
-                    onCommit={value => setPricingRate(field, value)}
-                  />
-                ))}
-              </div>
-
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs leading-relaxed text-muted-foreground">
-                  Coeficiente <strong className="text-foreground">{bdiFactor.toFixed(4)}</strong>. Aplicar afeta somente itens com custo conhecido.
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="shrink-0 gap-1.5"
-                  disabled={!items.some(item => Number(item.unit_total_cost || 0) > 0)}
-                  onClick={() => onChange?.(applyBdiToServiceOrderBudgetItems(items, bdiFactor))}
-                >
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Aplicar aos itens com custo
-                </Button>
-              </div>
-
-              {automaticItems.length > 0 && (
-                <BDICompositionPreview
-                  totalCost={automaticCost}
-                  finalPrice={automaticPrice}
-                  bdiFactor={bdiFactor}
-                  taxRate={pricing.tax_rate}
-                  adminRate={pricing.admin_indirect_rate}
-                  profitRate={pricing.profit_rate}
-                  formatMoney={money}
-                  formatRate={value => number(value, { maximumFractionDigits: 2 })}
-                  labels={{
-                    composition: 'Composição automática desta OS',
-                    cost: 'Seu custo',
-                    tax: 'Impostos',
-                    admin: 'Administração',
-                    profit: 'Lucro',
-                    finalPrice: 'Cliente paga',
-                    factor: 'Coeficiente BDI',
-                    factorFormation: 'Formação do coeficiente',
-                    priceFormula: 'Custo dividido pelo coeficiente',
-                  }}
-                  variant="inline"
-                />
-              )}
-            </div>
-          )}
         </section>
       )}
 
@@ -209,14 +85,30 @@ export function ServiceOrderBudgetSection({
           items={items}
           onChange={next => onChange?.(next as ServiceOrderBudgetItem[])}
           readOnly={!onChange}
-          showServicePicker={false}
+          variant={onChange ? "wizard" : "table"}
+          showServicePicker={Boolean(onChange)}
           pricingEnabled={Boolean(pricing?.use_bdi)}
           bdiFactor={bdiFactor}
         />
       )}
 
-      {pricing && items.length > 0 && (
-        <QuoteBdiScopeGuide
+      {pricing?.use_bdi && onPricingChange && <section className="space-y-4">
+        <QuoteBdiComposer
+          totalCost={automaticCost} finalPrice={automaticPrice} bdiFactor={bdiFactor}
+          taxRate={pricing.tax_rate} adminRate={pricing.admin_indirect_rate} profitRate={pricing.profit_rate}
+          onTaxChange={value => setPricingRate('tax_rate', value)}
+          onAdminChange={value => setPricingRate('admin_indirect_rate', value)}
+          onProfitChange={value => setPricingRate('profit_rate', value)}
+          formatMoney={money} formatRate={value => number(value, { maximumFractionDigits: 2 })}
+        />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">Preços manuais são preservados. Recalcule apenas quando desejar.</p>
+          <Button type="button" className="h-12 gap-2" disabled={!items.some(item => Number(item.unit_total_cost || 0) > 0)} onClick={() => onChange?.(applyBdiToServiceOrderBudgetItems(items, bdiFactor))}><Sparkles className="h-4 w-4" />Aplicar BDI aos itens com custo</Button>
+        </div>
+      </section>}
+
+      {pricing?.use_bdi && items.length > 0 && (
+        <details className="text-sm"><summary className="cursor-pointer py-2 font-semibold">Conferir onde o BDI foi aplicado</summary><QuoteBdiScopeGuide
           items={items.map(item => ({
             item_type: item.item_type === 'material' ? 'material' as const : 'servico' as const,
             pricing_mode: item.pricing_mode ?? 'manual',
@@ -232,26 +124,26 @@ export function ServiceOrderBudgetSection({
           displacementPrice={0}
           formatMoney={money}
           compact
-        />
+        /></details>
       )}
 
       {items.length > 0 && (
-        <div className="ml-auto w-full max-w-sm space-y-2 rounded-lg border bg-muted/20 p-3 text-sm">
-          <div className="flex justify-between text-muted-foreground">
+        <div className="space-y-3 rounded-2xl bg-primary p-5 text-base text-primary-foreground sm:p-6">
+          <div className="flex flex-wrap justify-between gap-3 text-primary-foreground/80">
             <span>Serviços e mão de obra</span>
             <span>{money(totals.services)}</span>
           </div>
-          <div className="flex justify-between text-muted-foreground">
+          <div className="flex flex-wrap justify-between gap-3 text-primary-foreground/80">
             <span>Materiais</span>
             <span>{money(totals.materials)}</span>
           </div>
           {adjustment !== 0 && (
-            <div className="flex justify-between text-muted-foreground">
+            <div className="flex flex-wrap justify-between gap-3 text-primary-foreground/80">
               <span>Ajustes e descontos do orçamento</span>
               <span>{money(adjustment)}</span>
             </div>
           )}
-          <div className="flex justify-between border-t pt-2 font-semibold">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-primary-foreground/20 pt-4 text-xl font-semibold sm:text-2xl">
             <span className="flex items-center gap-1.5">
               <Calculator className="h-4 w-4" /> Total para faturamento
             </span>
@@ -262,4 +154,3 @@ export function ServiceOrderBudgetSection({
     </div>
   );
 }
-import { useEffect, useState } from 'react';

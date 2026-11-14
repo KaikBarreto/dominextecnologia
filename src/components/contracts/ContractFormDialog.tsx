@@ -17,7 +17,7 @@ import { AssigneeMultiSelect } from '@/components/schedule/AssigneeMultiSelect';
 import { useContracts, useContractPlanActivities, generateOccurrences, getFrequencyLabel, type PlanActivityInput, type FreqCode, activityPeriodMonths, generateGroupedVisits, isMonthlyCadence, REGENERABLE_OS_STATUSES } from '@/hooks/useContracts';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { StepTransition } from '@/components/ui/step-transition';
-import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
+import { FullscreenWizard, FullscreenWizardAction, FullscreenWizardNotice } from '@/components/ui/FullscreenWizard';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { useCustomers, CustomerInput } from '@/hooks/useCustomers';
 import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
@@ -763,8 +763,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   };
 
   // Rascunho (só em CRIAÇÃO). Persiste TODO o estado de preenchimento das etapas
-  // em sessionStorage e, ao reabrir com rascunho salvo, oferece o DraftResumeDialog.
-  // Espelha o padrão do QuoteFormDialog (useFormDraft + DraftResumeDialog). Agora
+  // em sessionStorage e oferece recuperação flutuante ao reabrir. Agora
   // o rascunho cobre também a Unidade & RT, os Ambientes (com equipamentos), os
   // itens do contrato comum e a config POR MÁQUINA (Fase 3 — escopo/começa-na-
   // visita/checklists), pra não perder o trabalho ao fechar/recarregar o modal.
@@ -2937,29 +2936,32 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // Conteúdo do wizard (stepper + etapas). Renderizado dentro do ResponsiveModal,
   // cujo footer recebe a navegação Voltar/Próximo/Criar separadamente.
   const wizardContent = (
-    <div className="flex min-w-0 flex-col">
+    <div className="mx-auto flex w-full max-w-[1600px] min-w-0 flex-col pb-6 pt-5 sm:pt-7" onChangeCapture={() => {
+      if (!isEditing && draft.showResumePrompt) draft.startNewDraft(buildDraftSnapshot());
+    }}>
         <FormWizardStepper
           steps={STEPS}
           currentIndex={step}
           maxReachedIndex={visibleMaxStepIndex}
           onStepChange={goToStep}
           ariaLabel="Etapas do contrato"
-          className="border-b pb-3"
+          tone="contrast"
+          className="pb-5 sm:pb-7"
         />
 
         {/* Content — animação direcional de troca de etapa (slide + fade).
             O scroll fica no container do ResponsiveModal; o StepTransition não
             força overflow/height. */}
-        <div className="mt-4 grid flex-1 gap-6 xl:grid-cols-[minmax(0,1fr)_248px] xl:gap-0 xl:divide-x">
-          <main ref={stepContentRef} className="min-w-0 xl:pr-6">
-            <header className="mb-4">
+        <div className="mt-3 grid flex-1 gap-8 xl:grid-cols-[minmax(0,1fr)_300px] xl:gap-10">
+          <main ref={stepContentRef} className="min-w-0">
+            <header className="mb-7 sm:mb-9">
               <p className="hidden text-[11px] font-semibold uppercase tracking-wide text-muted-foreground lg:block">
                 Etapa {step + 1} de {STEPS.length}
               </p>
-              <h3 className="mt-1 text-lg font-semibold leading-tight text-foreground">
+              <h3 className="mt-1 text-2xl font-semibold leading-tight tracking-tight text-foreground sm:text-3xl lg:text-4xl">
                 {currentStepCopy.title}
               </h3>
-              <p className="mt-1 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+              <p className="mt-3 max-w-3xl text-base leading-relaxed text-muted-foreground">
                 {currentStepCopy.description}
               </p>
             </header>
@@ -2970,29 +2972,36 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           >
           {/* STEP: Informações */}
           {currentStepKey === 'info' && (
-            <div className="space-y-4">
-              <div className="space-y-2" data-contract-validation="name">
-                <Label>{t.info.nameLabel}</Label>
-                <Input value={name} onChange={e => setName(e.target.value)} placeholder={t.info.namePlaceholder} />
-                <p className="text-xs text-muted-foreground">{t.info.nameHint}</p>
-              </div>
+            <div className="space-y-7">
               <div className="space-y-2" data-contract-validation="customer">
                 <Label>{t.info.customerLabel}</Label>
                 <CustomerSelectField
+                  variant="large"
                   customers={customers}
                   value={customerId}
-                  onValueChange={v => { setCustomerId(v); if (!isEditing) { setLooseItems([]); setEnvironments([]); setSelectedEnvKey(null); } }}
+                  onValueChange={v => {
+                    if (!isEditing && draft.showResumePrompt) draft.startNewDraft({ ...buildDraftSnapshot(), customerId: v });
+                    setCustomerId(v);
+                    if (!isEditing) { setLooseItems([]); setEnvironments([]); setSelectedEnvKey(null); }
+                  }}
                   placeholder={t.info.customerPlaceholder}
                   searchPlaceholder={t.info.customerSearchPlaceholder}
                   onCreateFull={() => setShowQuickCustomer(true)}
                 />
               </div>
+              <div className="space-y-2" data-contract-validation="name">
+                <Label>{t.info.nameLabel}</Label>
+                <Input value={name} onChange={e => setName(e.target.value)} placeholder={t.info.namePlaceholder} />
+                <p className="text-xs text-muted-foreground">{t.info.nameHint}</p>
+              </div>
 
               {/* PMOC é exclusivo de refrigeração. Unidade e RT aparecem logo
                   após a escolha da modalidade porque completam os dados-base do
                   contrato, sem criar uma etapa opcional isolada. */}
-              {canUsePmoc && pmocToggleSection}
-              {isPmoc && pmocUnitSection}
+              <div className="space-y-6">
+                {canUsePmoc && pmocToggleSection}
+                {isPmoc && pmocUnitSection}
+              </div>
             </div>
           )}
 
@@ -4831,30 +4840,30 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           )}
           </StepTransition>
           </main>
-          <aside className="hidden xl:block xl:pl-6" aria-label="Resumo do contrato">
-            <div className="sticky top-0 space-y-4 rounded-xl border bg-muted/10 p-4">
+          <aside className="hidden xl:block xl:border-l xl:pl-8" aria-label="Resumo do contrato">
+            <div className="sticky top-5 space-y-6">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <p className="text-lg font-semibold tracking-tight text-foreground">
                   Resumo do contrato
                 </p>
-                <p className="mt-1 break-words text-sm font-semibold">
+                <p className="mt-2 break-words text-xl font-semibold tracking-tight">
                   {name.trim() || 'Contrato sem nome'}
                 </p>
-                <p className="mt-0.5 break-words text-xs text-muted-foreground">
+                <p className="mt-2 break-words text-sm leading-relaxed text-muted-foreground">
                   {customers.find((customer) => customer.id === customerId)?.name || 'Cliente não selecionado'}
                 </p>
               </div>
-              <div className="grid grid-cols-2 divide-x rounded-lg bg-muted/50 px-1 py-3">
+              <div className="grid grid-cols-2 gap-4 py-2">
                 <div className="px-2.5">
                   <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Equipamentos</p>
-                  <p className="mt-1 text-lg font-semibold">{effectiveItems.length}</p>
+                  <p className="mt-1 text-3xl font-semibold tabular-nums">{effectiveItems.length}</p>
                 </div>
                 <div className="px-2.5">
                   <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Visitas</p>
-                  <p className="mt-1 text-lg font-semibold">{visitCount}</p>
+                  <p className="mt-1 text-3xl font-semibold tabular-nums">{visitCount}</p>
                 </div>
               </div>
-              <dl className="space-y-2 text-xs">
+              <dl className="space-y-4 text-sm">
                 <div className="flex items-start justify-between gap-3">
                   <dt className="text-muted-foreground">Modalidade</dt>
                   <dd className="text-right font-medium">{isPmoc ? 'PMOC' : 'Contrato comum'}</dd>
@@ -4910,12 +4919,12 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // Navegação do wizard — vai pro footer do ResponsiveModal (fixo abaixo do
   // conteúdo rolável, no desktop e no mobile).
   const wizardFooter = (
-    <div className="flex flex-col gap-2">
+    <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-3">
       <WizardMobileSummary
         title="Resumo do contrato"
         summary={`${effectiveItems.length} equipamento(s) · ${visitCount} visita(s)`}
       >
-        <div className="space-y-3 text-xs">
+        <div className="space-y-3 text-sm">
           <div>
             <p className="font-semibold text-foreground">{name.trim() || 'Contrato sem nome'}</p>
             <p className="mt-0.5 text-muted-foreground">{clientName === '-' ? 'Cliente não selecionado' : clientName}</p>
@@ -4930,24 +4939,24 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       {navigationMessage && !canNext() && (
         <p className="text-right text-xs text-destructive" role="alert">{navigationMessage}</p>
       )}
-      <div className="flex flex-row justify-between gap-2">
-        <Button variant="outline" onClick={() => step === 0 ? handleUserClose() : setStep(step - 1)} disabled={submitting}>
-          {step === 0 ? t.nav.cancel : <><ChevronLeft className="h-4 w-4 mr-1" /> {t.nav.back}</>}
-        </Button>
+      <div className="grid grid-cols-2 gap-3 sm:flex sm:justify-end">
+        <FullscreenWizardAction variant="cancel" onClick={() => step === 0 ? handleUserClose() : setStep(step - 1)} disabled={submitting}>
+          {step === 0 ? t.nav.cancel : <><ChevronLeft className="h-5 w-5 mr-1" /> {t.nav.back}</>}
+        </FullscreenWizardAction>
         {step < STEPS.length - 1 ? (
-          <Button
+          <FullscreenWizardAction
             onClick={advanceContractWithValidation}
             aria-disabled={!canNext()}
             className="aria-disabled:opacity-50"
           >
-            {t.nav.next} <ChevronRight className="h-4 w-4 ml-1" />
-          </Button>
+            {t.nav.next} <ChevronRight className="h-5 w-5 ml-1" />
+          </FullscreenWizardAction>
         ) : (
-          <Button onClick={handleSubmit} disabled={submitting || !canNext()} className="bg-primary text-primary-foreground hover:bg-primary/90">
+          <FullscreenWizardAction onClick={handleSubmit} disabled={submitting || !canNext()} className="min-w-0 whitespace-normal sm:min-w-52">
             {submitting ? (
               <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {t.nav.saving}</>
             ) : isEditing ? t.nav.saveChanges : `${t.nav.createContract} (${visitCount} ${t.nav.oss})`}
-          </Button>
+          </FullscreenWizardAction>
         )}
       </div>
     </div>
@@ -4955,36 +4964,30 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
 
   return (
     <>
-    {/* Container do wizard: modal central no desktop, drawer de baixo no mobile.
-        `handleModalOpenChange` intercepta o FECHAR por interação (X, arrastar o
-        drawer, Escape) pra flushar o rascunho antes do conteúdo desmontar. */}
-    <ResponsiveModal
+    {/* A saída preserva o flush do rascunho existente. Avisos de recuperação
+        usam o slot flutuante sem disputar foco com o formulário. */}
+    <FullscreenWizard
       open={open}
       onOpenChange={handleModalOpenChange}
-      title={isEditing ? t.modalTitleEdit : t.modalTitleNew}
-      description="Configure por etapas e revise antes de salvar."
-      density="compact"
-      className="sm:h-[90vh] sm:max-h-[90vh] sm:w-[96vw] sm:max-w-[1240px]"
-      drawerClassName="h-[90dvh]"
+      title={locale === 'pt-br' ? (isEditing ? 'Editar contrato' : 'Criar contrato') : (isEditing ? t.modalTitleEdit : t.modalTitleNew)}
+      description="Defina o cliente, organize o escopo e a agenda e revise antes de salvar."
       footer={wizardFooter}
-      lockBackdrop
+      floatingNotice={!isEditing && draft.showResumePrompt ? (
+        <FullscreenWizardNotice
+          title="Rascunho encontrado"
+          description="Retome o preenchimento deste contrato ou comece do zero. O rascunho está salvo neste dispositivo."
+          actions={<>
+            <FullscreenWizardAction variant="cancel" className="px-3 text-sm" onClick={() => draft.discardDraft()}>Começar do zero</FullscreenWizardAction>
+            <FullscreenWizardAction className="px-3 text-sm" onClick={() => {
+              if (draft.draftData) applyContractDraft(draft.draftData);
+              draft.acceptDraft();
+            }}>Retomar</FullscreenWizardAction>
+          </>}
+        />
+      ) : null}
     >
       {wizardContent}
-    </ResponsiveModal>
-
-    {/* Rascunho (só criação): oferece retomar o preenchimento interrompido. */}
-    {!isEditing && (
-      <DraftResumeDialog
-        open={draft.showResumePrompt}
-        onResume={() => {
-          if (draft.draftData) applyContractDraft(draft.draftData);
-          draft.acceptDraft();
-        }}
-        onDiscard={() => {
-          draft.discardDraft();
-        }}
-      />
-    )}
+    </FullscreenWizard>
 
     <CustomerFormDialog
       open={showQuickCustomer}

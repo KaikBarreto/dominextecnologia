@@ -9635,6 +9635,12 @@ export type Database = {
           },
         ]
       }
+      service_order_number_reservations: {
+        Row: { id: string; company_id: string; user_id: string; order_number: number; service_order_id: string | null; consumed_at: string | null; created_at: string; expires_at: string }
+        Insert: { id: string; company_id: string; user_id: string; order_number: number; service_order_id?: string | null; consumed_at?: string | null; created_at?: string; expires_at?: string }
+        Update: { id?: string; company_id?: string; user_id?: string; order_number?: number; service_order_id?: string | null; consumed_at?: string | null; created_at?: string; expires_at?: string }
+        Relationships: [{ foreignKeyName: "service_order_number_reservations_company_id_fkey"; columns: ["company_id"]; isOneToOne: false; referencedRelation: "companies"; referencedColumns: ["id"] }, { foreignKeyName: "service_order_number_reservations_service_order_id_fkey"; columns: ["service_order_id"]; isOneToOne: false; referencedRelation: "service_orders"; referencedColumns: ["id"] }]
+      }
       quote_number_reservations: {
         Row: { id: string; company_id: string; user_id: string; quote_number: number; quote_id: string | null; consumed_at: string | null; request_hash: string | null; created_at: string; expires_at: string }
         Insert: { id: string; company_id: string; user_id: string; quote_number: number; quote_id?: string | null; consumed_at?: string | null; request_hash?: string | null; created_at?: string; expires_at?: string }
@@ -17845,6 +17851,7 @@ export type Database = {
           transaction_count: number
         }[]
       }
+      reserve_service_order_number: { Args: { p_company_id: string; p_user_id: string; p_request_id: string }; Returns: Json }
       reserve_quote_number: { Args: { p_company_id: string; p_user_id: string; p_request_id: string }; Returns: Json }
       create_reserved_quote: { Args: { p_reservation_id: string; p_quote: Json; p_items: Json; p_company_id: string; p_user_id: string }; Returns: Json }
       quote_number_assert_access: { Args: { p_company_id: string; p_user_id: string }; Returns: undefined }

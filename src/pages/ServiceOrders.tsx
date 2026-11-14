@@ -4,6 +4,10 @@ import { fuzzyIncludes, fuzzyIncludesPhone } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   ClipboardList,
+  Clock,
+  Navigation,
+  PauseCircle,
+  XCircle,
   Plus,
   Search,
   Pencil,
@@ -431,6 +435,10 @@ export default function ServiceOrders() {
       ? filteredOrders.filter((os) => isPortalIntake(os as any))
       // OS de triagem sai das colunas de status pra não aparecer em duas colunas.
       : filteredOrders.filter((os) => os.status === col.key && !isPortalIntake(os as any));
+
+  const visibleKanbanColumns = hasSearch
+    ? kanbanColumns.filter((column) => ordersForColumn(column).length > 0)
+    : kanbanColumns;
 
   // "+" no header da coluna só faz sentido em status NÃO-terminais.
   // Criar OS já "concluida" ou "cancelada" pelo atalho seria pegadinha pro gestor.
@@ -1157,6 +1165,12 @@ export default function ServiceOrders() {
                       </div>
                     ))}
                   </div>
+                ) : hasSearch && filteredOrders.length === 0 ? (
+                  <EmptyState
+                    icon={<Search className="h-12 w-12" />}
+                    title={t.empty.noneFoundTitle}
+                    description={t.empty.noneFoundDescription}
+                  />
                 ) : (
                 <div className={cn(
                   'flex gap-4 overflow-x-auto pb-4',
@@ -1164,8 +1178,10 @@ export default function ServiceOrders() {
                   // swipe encaixa numa coluna). No desktop, scroll livre.
                   isMobile && 'snap-x snap-mandatory'
                 )}>
-                  {kanbanColumns.map((col) => {
+                  {visibleKanbanColumns.map((col) => {
                     const columnOrders = ordersForColumn(col);
+                    const statusIcons: Record<string, typeof ClipboardList> = { agendada: Calendar, pendente: Clock, a_caminho: Navigation, em_andamento: ClipboardList, pausada: PauseCircle, concluida: CheckCircle2, cancelada: XCircle };
+                    const ColumnIcon = col.isPortal ? Megaphone : statusIcons[col.key] ?? ClipboardList;
                     return (
                       <div
                         key={col.key}
@@ -1184,18 +1200,15 @@ export default function ServiceOrders() {
                           if (osId) handleStatusChange({ id: osId } as ServiceOrder, col.key as OsStatus);
                         }}
                       >
-                        {/* Header coluna — padrão EcoSistema (barra colorida em cima + título uppercase + "+") */}
-                        <div className="px-3 pt-3 pb-2 border-b">
-                          <div
-                            className="h-1 w-full rounded-full mb-2.5"
-                            style={{ backgroundColor: col.color }}
-                          />
+                        {/* Mesmo tratamento do CRM: cor do status e conteúdo branco. */}
+                        <div className="rounded-t-2xl px-3 py-3 text-white" style={{ backgroundColor: col.color }}>
                           <div className="flex items-center justify-between gap-2">
-                            <h3 className="font-bold text-sm tracking-wide text-foreground uppercase truncate">
-                              {col.label}
+                            <h3 data-os-column-title className="flex min-w-0 items-center gap-2 text-base font-semibold text-white">
+                              <ColumnIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                              <span className="truncate">{col.label}</span>
                             </h3>
                             <div className="flex items-center gap-1.5 shrink-0">
-                              <span className="text-xs text-muted-foreground tabular-nums">
+                              <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs font-medium tabular-nums text-white">
                                 {columnOrders.length}
                               </span>
                               {canCreateNewInColumn(col.key) && (
@@ -1203,7 +1216,7 @@ export default function ServiceOrders() {
                                   variant="ghost"
                                   size="icon"
                                   className={cn(
-                                    'active:scale-[0.98] transition-transform',
+                                    'text-white hover:bg-white/20 hover:text-white active:scale-[0.98] transition-transform',
                                     // Hit area 44pt no mobile (iOS guideline); compacto no desktop.
                                     isMobile ? 'h-11 w-11' : 'h-7 w-7'
                                   )}
