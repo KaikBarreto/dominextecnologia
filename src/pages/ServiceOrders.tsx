@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
+import { KanbanColumnHeader } from '@/components/ui/KanbanColumnHeader';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -1185,18 +1186,12 @@ export default function ServiceOrders() {
                           if (osId) handleStatusChange({ id: osId } as ServiceOrder, col.key as OsStatus);
                         }}
                       >
-                        {/* Mesmo tratamento do CRM: cor do status e conteúdo branco. */}
-                        <div className="rounded-t-2xl px-3 py-3 text-white" style={{ backgroundColor: col.color }}>
-                          <div className="flex items-center justify-between gap-2">
-                            <h3 data-os-column-title className="flex min-w-0 items-center gap-2 text-base font-semibold text-white">
-                              <ColumnIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                              <span className="truncate">{col.label}</span>
-                            </h3>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs font-medium tabular-nums text-white">
-                                {columnOrders.length}
-                              </span>
-                              {canCreateNewInColumn(col.key) && (
+                        <KanbanColumnHeader
+                          title={col.label}
+                          color={col.color}
+                          count={columnOrders.length}
+                          icon={ColumnIcon}
+                          actions={canCreateNewInColumn(col.key) && (
                                 <Button
                                   variant="ghost"
                                   size="icon"
@@ -1212,9 +1207,7 @@ export default function ServiceOrders() {
                                   <Plus className="h-4 w-4" />
                                 </Button>
                               )}
-                            </div>
-                          </div>
-                        </div>
+                        />
                         <div className="flex-1 p-2 space-y-2 max-h-[60vh] overflow-y-auto">
                           {columnOrders.map((os) => {
                             const creator = (os as any).created_by_profile as { full_name: string | null; avatar_url: string | null; email: string | null } | null;

@@ -31,6 +31,17 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.41',
+    date: '14 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      { title: 'Orçamentos, contratos e OS em tela cheia', category: 'melhoria', description: 'Criar e editar ficou mais legível no computador e no celular, com campos maiores, seletores consistentes e ações fixas. A escolha entre preço manual e BDI aparece antes dos serviços e é lembrada para os próximos orçamentos neste navegador.' },
+      { title: 'Orçamento rápido dentro da OS', category: 'melhoria', description: 'Uma etapa opcional permite adicionar serviços e materiais, ajustar os valores, usar BDI e conferir o total. O atendimento inicial fica mais simples para quem não precisa orçar.' },
+      { title: 'Veja o número da OS antes de salvar', category: 'melhoria', description: 'O número definitivo aparece no cabeçalho desde a criação e é preservado ao salvar ou retomar o rascunho. Em recorrências, identifica a primeira OS. Números de preenchimentos abandonados podem deixar saltos na sequência.' },
+      { title: 'Kanban de OS mais claro', category: 'melhoria', description: 'Os cabeçalhos usam a cor do status, com texto e ícones brancos. Ao pesquisar, aparecem apenas as colunas que contêm resultados; ao limpar a busca, o quadro completo retorna.' },
+    ],
+  },
+  {
     version: '1.39.40',
     date: '13 de novembro de 2026',
     type: 'patch',

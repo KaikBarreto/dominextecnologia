@@ -10707,18 +10707,6 @@ export type Database = {
         Update: { id?: string; company_id?: string; user_id?: string; order_number?: number; service_order_id?: string | null; consumed_at?: string | null; created_at?: string; expires_at?: string }
         Relationships: [{ foreignKeyName: "service_order_number_reservations_company_id_fkey"; columns: ["company_id"]; isOneToOne: false; referencedRelation: "companies"; referencedColumns: ["id"] }, { foreignKeyName: "service_order_number_reservations_service_order_id_fkey"; columns: ["service_order_id"]; isOneToOne: false; referencedRelation: "service_orders"; referencedColumns: ["id"] }]
       }
-      quote_number_reservations: {
-        Row: { id: string; company_id: string; user_id: string; quote_number: number; quote_id: string | null; consumed_at: string | null; request_hash: string | null; created_at: string; expires_at: string }
-        Insert: { id: string; company_id: string; user_id: string; quote_number: number; quote_id?: string | null; consumed_at?: string | null; request_hash?: string | null; created_at?: string; expires_at?: string }
-        Update: { id?: string; company_id?: string; user_id?: string; quote_number?: number; quote_id?: string | null; consumed_at?: string | null; request_hash?: string | null; created_at?: string; expires_at?: string }
-        Relationships: [{ foreignKeyName: "quote_number_reservations_company_id_fkey"; columns: ["company_id"]; isOneToOne: false; referencedRelation: "companies"; referencedColumns: ["id"] }, { foreignKeyName: "quote_number_reservations_quote_id_fkey"; columns: ["quote_id"]; isOneToOne: false; referencedRelation: "quotes"; referencedColumns: ["id"] }]
-      }
-      quote_form_drafts: {
-        Row: { company_id: string; user_id: string; payload: Json | null; revision: number; last_request_id: string; updated_at: string; expires_at: string }
-        Insert: { company_id: string; user_id: string; payload?: Json | null; revision?: number; last_request_id: string; updated_at?: string; expires_at?: string }
-        Update: { company_id?: string; user_id?: string; payload?: Json | null; revision?: number; last_request_id?: string; updated_at?: string; expires_at?: string }
-        Relationships: [{ foreignKeyName: "quote_form_drafts_company_id_fkey"; columns: ["company_id"]; isOneToOne: false; referencedRelation: "companies"; referencedColumns: ["id"] }]
-      }
       pdv_order_drafts: {
         Row: {
           company_id: string
@@ -19870,12 +19858,6 @@ export type Database = {
         }[]
       }
       reserve_service_order_number: { Args: { p_company_id: string; p_user_id: string; p_request_id: string }; Returns: Json }
-      reserve_quote_number: { Args: { p_company_id: string; p_user_id: string; p_request_id: string }; Returns: Json }
-      create_reserved_quote: { Args: { p_reservation_id: string; p_quote: Json; p_items: Json; p_company_id: string; p_user_id: string }; Returns: Json }
-      quote_number_assert_access: { Args: { p_company_id: string; p_user_id: string }; Returns: undefined }
-      get_quote_form_draft: { Args: { p_company_id: string; p_user_id: string }; Returns: Json }
-      save_quote_form_draft: { Args: { p_company_id: string; p_user_id: string; p_payload: Json; p_expected_revision: number; p_request_id: string }; Returns: Json }
-      quote_form_draft_assert_access: { Args: { p_company_id: string; p_user_id: string }; Returns: undefined }
       pdv_assert_draft_access: { Args: never; Returns: string }
       pdv_assert_ref_company: {
         Args: {

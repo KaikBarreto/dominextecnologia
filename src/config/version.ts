@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.39.40";
+export const APP_VERSION = "1.39.41";
 
 export const VERSION_NOTES =
-  "Relatórios de contas a pagar agora mostram somente as despesas e identificam melhor cada categoria.";
+  "Criação de orçamentos, contratos e OS em tela cheia, orçamento rápido na OS, numeração antecipada e Kanban com cabeçalhos padronizados.";
