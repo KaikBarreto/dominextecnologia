@@ -28,6 +28,7 @@ import { MobileBottomNav } from './MobileBottomNav';
 import { SystemFooter } from './SystemFooter';
 import { VersionUpdateNotification } from '@/components/pwa/VersionUpdateNotification';
 import { NotificationsBell } from '@/components/notifications/NotificationsBell';
+import { PushActivationInvite } from '@/components/notifications/PushActivationInvite';
 import { AdminNotificationBell } from '@/components/admin/AdminNotificationBell';
 import { AppLanguageSwitcher } from '@/components/i18n/AppLanguageSwitcher';
 import { HeaderClock } from '@/components/layout/HeaderClock';
@@ -37,6 +38,7 @@ import { SubscriptionRenewalBanner } from '@/components/billing/SubscriptionRene
 import { TasksDrawer } from '@/components/tasks/TasksDrawer';
 import { DailyTasksPopup } from '@/components/tasks/DailyTasksPopup';
 import { DomiflixLearningReminder } from '@/components/domiflix/DomiflixLearningReminder';
+import { OVERLAY_PRIORITY, useOverlaySlot } from '@/contexts/OverlayCoordinatorContext';
 import {
   Tooltip,
   TooltipContent,
@@ -49,6 +51,17 @@ import logoGreen from '@/assets/logo-horizontal-verde.png';
 const DomiflixIntroGate = lazy(() => import('@/components/domiflix/DomiflixIntroGate').then((module) => ({ default: module.DomiflixIntroGate })));
 
 const TABLET_MAX_WIDTH = 1280; // tablet vai até 1279px; ≥1280 é desktop.
+
+function DomiflixIntroGateFallback() {
+  const isActiveOverlay = useOverlaySlot(true, {
+    id: 'domiflix-intro-loading',
+    priority: OVERLAY_PRIORITY.critical,
+  });
+
+  return isActiveOverlay
+    ? <div className="fixed inset-0 z-[10000] bg-[#111]" aria-label="Carregando tutorial inicial" />
+    : null;
+}
 
 /**
  * `AppLayout` — shell de navegação principal do Dominex.
@@ -124,9 +137,10 @@ export function AppLayout() {
 
   return (
     <>
-      {!isAdminUser && user && <Suspense fallback={<div className="fixed inset-0 z-[10000] bg-[#111]" />}><DomiflixIntroGate /></Suspense>}
+      {!isAdminUser && user && <Suspense fallback={<DomiflixIntroGateFallback />}><DomiflixIntroGate /></Suspense>}
       {!isAdminUser && user && <PlatformNpsSurvey />}
       <VersionUpdateNotification />
+      {!isAdminUser && user && <PushActivationInvite />}
       {/* Popup diário de tarefas (1x/dia, BRT). Só para usuários não-admin. */}
       {!isAdminUser && user && (
         <DailyTasksPopup

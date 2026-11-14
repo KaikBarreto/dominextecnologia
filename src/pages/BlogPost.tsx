@@ -31,7 +31,7 @@ import { RelatedPosts } from '@/components/blog/RelatedPosts';
 import WhatsAppCtaLink from '@/components/landing/WhatsAppCtaLink';
 import { COMPANY_WHATSAPP_NUMBER } from '@/components/landing/whatsappNumbers';
 import { BLOG_AUTHOR_AVATAR } from '@/components/blog/blogShared';
-import { stripDuplicateLeadingTitle } from '@/lib/blogContent';
+import { sanitizeBlogHtml, stripDuplicateLeadingTitle } from '@/lib/blogContent';
 import { resolveWcagForeground } from '@/lib/colorContrast';
 
 // Página pública. NUNCA herda o white-label do tenant logado: restaura o brand
@@ -346,28 +346,50 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
       ptBr ? `${SITE_URL}${localizePath(`/blog/${ptBr.slug}`, DEFAULT_LOCALE)}` : url,
     );
 
-    // JSON-LD Article
-    const ld = document.createElement('script');
-    ld.type = 'application/ld+json';
-    ld.setAttribute('data-blog-jsonld', 'true');
-    ld.textContent = JSON.stringify({
-      '@context': 'https://schema.org',
-      '@type': 'Article',
-      headline: title,
-      description,
-      image,
-      inLanguage: getLocaleDef(locale).htmlLang,
-      datePublished: post.published_at || post.created_at,
-      dateModified: post.updated_at || post.published_at || post.created_at,
-      author: { '@type': 'Organization', name: post.author_name || 'Dominex' },
-      publisher: {
-        '@type': 'Organization',
-        name: 'Dominex',
-        logo: { '@type': 'ImageObject', url: `${SITE_URL}/logo-horizontal-verde.png` },
-      },
-      mainEntityOfPage: { '@type': 'WebPage', '@id': url },
+    // O SSG ja entrega o BlogPosting no HTML inicial. Reutiliza esse bloco na
+    // hidratacao e cria um apenas na navegacao SPA, evitando Article +
+    // BlogPosting duplicados para a mesma URL.
+    const existingLd = Array.from(
+      document.head.querySelectorAll<HTMLScriptElement>('script[type="application/ld+json"]'),
+    ).find((script) => {
+      try {
+        const value = JSON.parse(script.textContent || '{}');
+        const type = value?.['@type'];
+        const pageId = value?.mainEntityOfPage?.['@id'];
+        return (type === 'BlogPosting' || type === 'Article') && pageId === url;
+      } catch {
+        return false;
+      }
     });
-    document.head.appendChild(ld);
+    const ld = existingLd || document.createElement('script');
+    if (!existingLd) {
+      const authorName = post.author_name || 'Dominex';
+      const organizationAuthor = /^(dominex|equipe dominex|dominex team)$/i.test(authorName);
+      ld.type = 'application/ld+json';
+      ld.setAttribute('data-blog-jsonld', 'true');
+      ld.textContent = JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'BlogPosting',
+        '@id': `${url}#article`,
+        headline: title,
+        description,
+        image,
+        inLanguage: getLocaleDef(locale).htmlLang,
+        datePublished: post.published_at || post.created_at,
+        dateModified: post.updated_at || post.published_at || post.created_at,
+        author: organizationAuthor
+          ? { '@type': 'Organization', '@id': `${SITE_URL}/#organization`, name: 'Dominex' }
+          : { '@type': 'Person', name: authorName },
+        publisher: {
+          '@type': 'Organization',
+          '@id': `${SITE_URL}/#organization`,
+          name: 'Dominex',
+          logo: { '@type': 'ImageObject', url: `${SITE_URL}/logo-horizontal-verde.png` },
+        },
+        mainEntityOfPage: { '@type': 'WebPage', '@id': url },
+      });
+      document.head.appendChild(ld);
+    }
 
     return () => {
       document.title = prevTitle;
@@ -376,6 +398,8 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
       else if (prevCanonical !== null) canonical!.setAttribute('href', prevCanonical);
       if (prevHtmlLang !== null) htmlEl.setAttribute('lang', prevHtmlLang);
       hreflangEls.forEach((el) => el.remove());
+      // Remove tambem o bloco vindo do SSG ao sair/trocar de post, para que a
+      // proxima rota nao herde dados estruturados da URL anterior.
       ld.remove();
     };
   }, [post, locale, alternates]);
@@ -514,10 +538,12 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
                 // quase preto, então ali o link continua com text-primary normal.
                 className="blog-content prose prose-sm max-w-none prose-headings:text-neutral-900 prose-a:text-[#007a52] prose-strong:text-neutral-900 prose-img:rounded-xl sm:prose-base dark:prose-invert dark:prose-headings:text-white dark:prose-strong:text-white dark:prose-a:text-primary"
                 dangerouslySetInnerHTML={{
-                  __html: replaceRegistrationCtas(
-                    stripDuplicateLeadingTitle(post.content || '', post.title),
-                    t.postCtaButton,
-                    locale,
+                  __html: sanitizeBlogHtml(
+                    replaceRegistrationCtas(
+                      stripDuplicateLeadingTitle(post.content || '', post.title),
+                      t.postCtaButton,
+                      locale,
+                    ),
                   ),
                 }}
               />

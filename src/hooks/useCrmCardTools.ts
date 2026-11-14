@@ -52,6 +52,30 @@ export function normalizeCrmChecklistTemplateItems(value: unknown): CrmChecklist
   });
 }
 
+export function buildCrmChecklistTemplateCopies(
+  source: CrmChecklistTemplate,
+  baseName: string,
+  copyCount: number,
+): Array<{ name: string; items: CrmChecklistTemplateItem[] }> {
+  const normalizedName = baseName.trim();
+  if (!Number.isInteger(copyCount) || copyCount < 1 || copyCount > 20) {
+    throw new Error('A quantidade deve ficar entre 1 e 20');
+  }
+  const largestSuffix = copyCount > 1 ? ` (${copyCount})` : '';
+  const finalNameLength = Array.from(`${normalizedName}${largestSuffix}`).length;
+  if (!normalizedName || finalNameLength > 100) {
+    throw new Error('Informe um nome cujo resultado final tenha até 100 caracteres, incluindo a numeração');
+  }
+
+  return Array.from({ length: copyCount }, (_, index) => ({
+    name: copyCount === 1 ? normalizedName : `${normalizedName} (${index + 1})`,
+    items: source.items.map((item) => ({
+      id: createCrmCardItemId(),
+      text: item.text,
+    })),
+  }));
+}
+
 export function normalizeCrmLeadChecklists(value: unknown): CrmLeadChecklist[] {
   if (!Array.isArray(value)) return [];
   return value.flatMap((checklist) => {
@@ -198,7 +222,55 @@ export function useCrmChecklistTemplates(admin = false) {
     onError: (error) => toast({ variant: 'destructive', title: 'Não foi possível excluir o modelo', description: getErrorMessage(error) }),
   });
 
-  return { templates: query.data ?? [], isLoading: query.isLoading, createTemplate, updateTemplate, deleteTemplate };
+  const duplicateTemplate = useMutation({
+    mutationFn: async ({
+      source,
+      baseName,
+      copyCount,
+    }: {
+      source: CrmChecklistTemplate;
+      baseName: string;
+      copyCount: number;
+    }) => {
+      const companyId = admin ? null : await getCurrentUserCompanyId();
+      if (!admin && !companyId) throw new Error('Empresa não encontrada');
+
+      const rows = buildCrmChecklistTemplateCopies(source, baseName, copyCount).map((copy) => {
+        const payload: Record<string, unknown> = { ...copy };
+        if (!admin) payload.company_id = companyId;
+        return payload;
+      });
+
+      // `table` alterna entre o catálogo do tenant e o catálogo master. Os dois
+      // aceitam o mesmo lote, mas o overload gerado pelo Supabase não consegue
+      // intersectar inserts de uma union de nomes de tabela.
+      const { data, error } = await supabase.from(table).insert(rows as never).select('id, name');
+      if (error) throw error;
+      return data ?? [];
+    },
+    onSuccess: (copies) => {
+      queryClient.invalidateQueries({ queryKey });
+      toast({
+        title: copies.length === 1
+          ? 'Modelo de checklist duplicado'
+          : `${copies.length} modelos de checklist duplicados`,
+      });
+    },
+    onError: (error) => toast({
+      variant: 'destructive',
+      title: 'Não foi possível duplicar o modelo',
+      description: getErrorMessage(error),
+    }),
+  });
+
+  return {
+    templates: query.data ?? [],
+    isLoading: query.isLoading,
+    createTemplate,
+    updateTemplate,
+    deleteTemplate,
+    duplicateTemplate,
+  };
 }
 
 export function useLeadCardTools(leadId: string | null | undefined, admin = false) {

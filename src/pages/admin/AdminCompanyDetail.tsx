@@ -37,6 +37,11 @@ import { OriginBadge } from '@/components/admin/OriginBadge';
 import { useAffiliate } from '@/hooks/useAffiliateData';
 import { getEffectiveSubscriptionValue } from '@/utils/subscriptionPricing';
 import { CompanyTutorialSuccessTab } from '@/components/admin/CompanyTutorialSuccessTab';
+import { useAdminCompanySubscriptionPromotions } from '@/hooks/useAdminCompanySubscriptionPromotions';
+import {
+  calculatePromotionalMonthlyValue,
+  remainingPromotionCycles,
+} from '@/lib/subscriptionPromotions';
 
 export default function AdminCompanyDetail() {
   const { id } = useParams();
@@ -157,6 +162,12 @@ export default function AdminCompanyDetail() {
     enabled: !!id,
   });
 
+  const {
+    data: activePromotions = [],
+    isLoading: promotionsLoading,
+    isError: promotionsError,
+  } = useAdminCompanySubscriptionPromotions(id, !!id);
+
   const modulesLoading = modulesCatalogLoading || plansLoading || addonsLoading;
 
   // Plano da empresa + rótulo amigável.
@@ -180,6 +191,9 @@ export default function AdminCompanyDetail() {
     .filter((m) => allCodes.has(m.code))
     .map((m) => ({ ...m, fromPlan: planCodes.includes(m.code) }))
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  const extraUsersPromotion = activePromotions.find(promotion => promotion.scope_type === 'extra_users');
+  const normalMonthlyValue = Number(company?.subscription_value) || 0;
+  const promotionalMonthlyValue = calculatePromotionalMonthlyValue(normalMonthlyValue, activePromotions);
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
@@ -547,8 +561,46 @@ export default function AdminCompanyDetail() {
               <Users className="h-4 w-4 text-muted-foreground" />
               <span className="text-xs text-muted-foreground uppercase tracking-wider">Usuários:</span>
               <span className="font-semibold">{company.max_users || 5}</span>
+              {extraUsersPromotion && (
+                <Badge className="border-0 bg-amber-500 text-xs text-white hover:bg-amber-500">
+                  {extraUsersPromotion.promotional_unit_price === 0
+                    ? `Usuários grátis por ${remainingPromotionCycles(extraUsersPromotion)} cobranças`
+                    : `${extraUsersPromotion.promotional_unit_price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/usuário por ${remainingPromotionCycles(extraUsersPromotion)} cobranças`}
+                </Badge>
+              )}
             </div>
           </div>
+
+          {promotionsError && (
+            <div role="alert" className="flex items-start gap-2 rounded-lg border p-3">
+              <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" aria-hidden="true" />
+              <div>
+                <p className="text-sm font-semibold">Condições promocionais indisponíveis</p>
+                <p className="text-xs leading-5 text-muted-foreground">
+                  Recarregue a ficha antes de alterar módulos ou usuários desta empresa.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {promotionsLoading ? (
+            <Skeleton className="h-16 w-full rounded-lg" />
+          ) : activePromotions.length > 0 ? (
+            <div className="grid gap-3 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 sm:grid-cols-2">
+              <div>
+                <p className="text-xs text-muted-foreground">Próxima mensalidade</p>
+                <p className="text-lg font-semibold tabular-nums">
+                  {promotionalMonthlyValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </p>
+              </div>
+              <div className="sm:text-right">
+                <p className="text-xs text-muted-foreground">Após todas as promoções</p>
+                <p className="text-lg font-semibold tabular-nums">
+                  {normalMonthlyValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </p>
+              </div>
+            </div>
+          ) : null}
 
           {/* Lista de módulos */}
           {modulesLoading ? (
@@ -584,6 +636,20 @@ export default function AdminCompanyDetail() {
                       <Badge variant="secondary" className="text-xs">
                         {mod.fromPlan ? 'Incluso no plano' : 'Adicional'}
                       </Badge>
+                      {(() => {
+                        const promotion = activePromotions.find(item => (
+                          item.scope_type === 'module' && item.module_code === mod.code
+                        ));
+                        if (!promotion) return null;
+                        const remaining = remainingPromotionCycles(promotion);
+                        return (
+                          <Badge className="border-0 bg-amber-500 text-xs text-white hover:bg-amber-500">
+                            {promotion.promotional_unit_price === 0
+                              ? `Grátis por ${remaining} ${remaining === 1 ? 'cobrança' : 'cobranças'}`
+                              : `${promotion.promotional_unit_price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} por ${remaining} ${remaining === 1 ? 'cobrança' : 'cobranças'}`}
+                          </Badge>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>

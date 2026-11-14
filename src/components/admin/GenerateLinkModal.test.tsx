@@ -54,6 +54,7 @@ import { GenerateLinkModal } from './GenerateLinkModal';
 
 let container: HTMLDivElement;
 let root: Root;
+let clipboardWrite: ReturnType<typeof vi.fn>;
 
 function mount() {
   act(() => {
@@ -65,6 +66,23 @@ const q = (sel: string) => document.querySelector(sel) as HTMLElement | null;
 
 function click(el: HTMLElement) {
   act(() => { el.click(); });
+}
+
+async function clickAndFlush(el: HTMLElement) {
+  await act(async () => {
+    el.click();
+    await Promise.resolve();
+  });
+}
+
+function buttonByText(text: string) {
+  return Array.from(document.querySelectorAll('button')).find((button) =>
+    button.textContent?.includes(text),
+  ) as HTMLButtonElement;
+}
+
+function generatedLinkInput() {
+  return document.querySelector('input[readonly]') as HTMLInputElement | null;
 }
 
 // Radix Tabs troca de aba no `onMouseDown` (não `onClick`) — precisa
@@ -95,6 +113,11 @@ function typeInto(input: HTMLInputElement, value: string) {
 }
 
 beforeEach(() => {
+  clipboardWrite = vi.fn().mockRejectedValue(new Error('Clipboard indisponível no teste'));
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: { writeText: clipboardWrite },
+  });
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
@@ -149,5 +172,54 @@ describe('GenerateLinkModal — campo de preço personalizado, aba "Personalizad
     expect(input.type).toBe('text');
     paste(input, 'R$ 4.550');
     expect(input.value).toBe('4.550,00');
+  });
+});
+
+describe('GenerateLinkModal — snapshot do link gerado', () => {
+  it('invalida a venda ao trocar para teste e só volta a copiar depois de regenerar com tipo=teste', async () => {
+    mount();
+
+    click(q('#venda')!.closest('div')!);
+    await clickAndFlush(buttonByText('Gerar Link'));
+
+    const saleLink = generatedLinkInput()?.value;
+    expect(saleLink).toBeTruthy();
+    expect(new URL(saleLink!).searchParams.get('tipo')).toBe('venda');
+    expect(document.body.textContent).toContain('Tipo: Venda direta');
+
+    click(q('#teste')!.closest('div')!);
+
+    expect(generatedLinkInput()).toBeNull();
+    expect(document.body.textContent).not.toContain('Resumo do Link:');
+
+    await clickAndFlush(buttonByText('Gerar Link'));
+
+    const trialLink = generatedLinkInput()?.value;
+    expect(trialLink).toBeTruthy();
+    expect(new URL(trialLink!).searchParams.get('tipo')).toBe('teste');
+    expect(document.body.textContent).toContain('Tipo: Teste (7 dias)');
+    expect(clipboardWrite).toHaveBeenLastCalledWith(trialLink);
+  });
+
+  it('invalida o link quando a configuração comercial muda e regenera o plano correto', async () => {
+    mount();
+
+    await clickAndFlush(buttonByText('Gerar Link'));
+    expect(generatedLinkInput()).not.toBeNull();
+
+    clickTab('Comercial');
+    click(q('#personalizado')!.closest('div')!);
+
+    expect(generatedLinkInput()).toBeNull();
+    expect(document.body.textContent).not.toContain('Resumo do Link:');
+
+    await clickAndFlush(buttonByText('Gerar Link'));
+
+    const customizedLink = generatedLinkInput()?.value;
+    expect(customizedLink).toBeTruthy();
+    const params = new URL(customizedLink!).searchParams;
+    expect(params.get('plano')).toBe('personalizado');
+    expect(params.get('bloqueado')).toBe('1');
+    expect(document.body.textContent).toContain('Plano: Personalizado');
   });
 });

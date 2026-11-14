@@ -87,7 +87,7 @@ import { useOsBillingAction } from '@/hooks/useOsBillingAction';
 import { useOsBillingFlags } from '@/hooks/useOsBillingFlags';
 import { OsBilledBadge } from '@/components/service-orders/OsBilledBadge';
 import { PortalCallsPanel } from '@/components/service-orders/PortalCallsPanel';
-import { isOpenPortalCall } from '@/lib/portalCalls';
+import { usePortalCalls } from '@/hooks/usePortalCalls';
 import { ResetServiceOrderDialog } from '@/components/service-orders/ResetServiceOrderDialog';
 import { isServiceOrderEntry } from '@/lib/serviceOrderAccess';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
@@ -128,6 +128,8 @@ export default function ServiceOrders() {
       setViewingOsId(requestedOsId);
       setViewDialogOpen(true);
     }
+    const requestedCallId = params.get('chamado');
+    if (requestedCallId) setSelectedPortalCallId(requestedCallId);
   }, [location.search, location.state]);
 
   // Aplica o foco assim que o input mobile estiver montado (após isLoading=false)
@@ -151,6 +153,7 @@ export default function ServiceOrders() {
   const [osToReset, setOsToReset] = useState<ServiceOrder | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewingOsId, setViewingOsId] = useState<string | null>(null);
+  const [selectedPortalCallId, setSelectedPortalCallId] = useState<string | null>(null);
   const [pmocDocumentsOsId, setPmocDocumentsOsId] = useState<string | null>(null);
   const [statusConfigOpen, setStatusConfigOpen] = useState(false);
   // Default = kanban (preferência do CEO). Persiste a escolha do usuário em localStorage:
@@ -176,6 +179,7 @@ export default function ServiceOrders() {
   // O usuário salvava, via "criada com sucesso" e não achava mais.
   const { preset, range, setPreset, setRange, filterByDate } = useDateRangeFilter('all');
   const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, deleteServiceOrder, resetServiceOrder } = useServiceOrders();
+  const portalCalls = usePortalCalls();
   const { settings: companySettings } = useCompanySettings();
   const { statuses } = useOsStatuses();
   // Receita ao finalizar a OS. `maybeOpen` decide sozinho se abre (toggle da
@@ -404,37 +408,14 @@ export default function ServiceOrders() {
     });
   };
 
-  // Coluna fixa "Chamados do Portal" — caixa de entrada do cliente final.
-  // O chamado aberto pelo portal nasce SEM data agendada, e antes disso ele não
-  // tinha onde aparecer: sumia da lista (o filtro de data descartava item sem data)
-  // e não tem lugar no calendário. Medido em 21/10/2026: 17 OS sem data em 5
-  // empresas, duas da ENGETEC paradas desde julho/agosto sem ninguém ver.
-  // A coluna é a primeira do kanban e esvazia sozinha: no instante em que alguém
-  // marca a data, a OS sai daqui e entra no fluxo normal de status.
-  const PORTAL_COLUMN_KEY = '__portal__';
-  const isPortalIntake = (os: { origin?: string | null; scheduled_date?: string | null }) =>
-    os.origin === 'portal' && !os.scheduled_date;
-
-  // A coluna só entra no quadro QUANDO HÁ chamado esperando triagem. Vazia ela
-  // é redundante: a aba "Chamados" (ao lado, no menu da tela) já lista os
-  // pedidos do portal com descrição e ações, e é lá que se faz a triagem de
-  // verdade. Aqui o papel é outro: avisar, no meio do fluxo de trabalho, que
-  // chegou pedido novo de cliente. Sem pedido novo, não há o que avisar, e uma
-  // coluna permanentemente vazia só empurra as colunas de status pra direita.
-  const portalIntakeCount = filteredOrders.filter((os) => isPortalIntake(os as any)).length;
-
+  // O kanban recebe somente OS reais. Chamados aguardando análise vivem na
+  // caixa de entrada própria e só aparecem aqui depois da conversão explícita.
   const kanbanColumns: Array<{ key: string; label: string; color: string; isPortal?: boolean }> = [
-    ...(portalIntakeCount > 0
-      ? [{ key: PORTAL_COLUMN_KEY, label: t.sections.portalColumn, color: 'hsl(var(--info))', isPortal: true }]
-      : []),
     ...statusOptions,
   ];
 
   const ordersForColumn = (col: { key: string; isPortal?: boolean }) =>
-    col.isPortal
-      ? filteredOrders.filter((os) => isPortalIntake(os as any))
-      // OS de triagem sai das colunas de status pra não aparecer em duas colunas.
-      : filteredOrders.filter((os) => os.status === col.key && !isPortalIntake(os as any));
+    filteredOrders.filter((os) => os.status === col.key);
 
   const visibleKanbanColumns = hasSearch
     ? kanbanColumns.filter((column) => ordersForColumn(column).length > 0)
@@ -442,10 +423,9 @@ export default function ServiceOrders() {
 
   // "+" no header da coluna só faz sentido em status NÃO-terminais.
   // Criar OS já "concluida" ou "cancelada" pelo atalho seria pegadinha pro gestor.
-  // Na coluna do portal nunca: chamado do portal quem abre é o cliente.
   const CREATE_NEW_BLOCKED_STATUSES: OsStatus[] = ['concluida', 'cancelada'];
   const canCreateNewInColumn = (status: string) =>
-    canCreateOS && status !== PORTAL_COLUMN_KEY && !CREATE_NEW_BLOCKED_STATUSES.includes(status as OsStatus);
+    canCreateOS && !CREATE_NEW_BLOCKED_STATUSES.includes(status as OsStatus);
 
   // Abre o modal de Nova OS com status pré-preenchido pela coluna do kanban.
   const handleNewOsWithStatus = (status: OsStatus) => {
@@ -467,7 +447,7 @@ export default function ServiceOrders() {
       value: 'calls',
       label: t.tabs.calls,
       icon: Megaphone,
-      sublabel: String(serviceOrders.filter(isOpenPortalCall).length),
+      sublabel: String(portalCalls.awaitingReviewCount),
     },
     { value: 'report', label: t.tabs.report, icon: BarChart3 },
     { value: 'nps', label: t.tabs.nps, icon: Star },
@@ -626,10 +606,19 @@ export default function ServiceOrders() {
         {activeTab === 'calls' && (
           <div className="space-y-4">
             <PortalCallsPanel
-              items={serviceOrders}
-              isLoading={isLoading}
-              onOpenCall={(order) => {
-                setViewingOsId(order.id);
+              calls={portalCalls.calls}
+              isLoading={portalCalls.isLoading}
+              isError={portalCalls.isError}
+              selectedCallId={selectedPortalCallId}
+              canManage={canCreateOS}
+              isConverting={portalCalls.convertCall.isPending}
+              isClosing={portalCalls.closeCall.isPending}
+              onRetry={() => { void portalCalls.refetch(); }}
+              onConvert={(callId) => portalCalls.convertCall.mutateAsync(callId)}
+              onCloseWithoutOs={(callId) => portalCalls.closeCall.mutateAsync(callId)}
+              onOpenServiceOrder={(serviceOrderId) => {
+                setActiveTab('orders');
+                setViewingOsId(serviceOrderId);
                 setViewDialogOpen(true);
               }}
             />
@@ -1189,12 +1178,8 @@ export default function ServiceOrders() {
                           'min-w-[280px] flex-1 flex flex-col rounded-2xl border bg-muted/30',
                           isMobile && 'snap-start'
                         )}
-                        // A coluna do portal não é alvo de drop: ela não é um status,
-                        // é "falta marcar a data". Soltar uma OS aqui não teria o que
-                        // gravar, então nem aceita o arrasto.
-                        onDragOver={(e) => { if (!col.isPortal) e.preventDefault(); }}
+                        onDragOver={(e) => e.preventDefault()}
                         onDrop={(e) => {
-                          if (col.isPortal) return;
                           e.preventDefault();
                           const osId = e.dataTransfer.getData('text/plain');
                           if (osId) handleStatusChange({ id: osId } as ServiceOrder, col.key as OsStatus);
@@ -1236,8 +1221,8 @@ export default function ServiceOrders() {
                             return (
                             <Card
                               key={os.id}
-                              draggable={!col.isPortal}
-                              onDragStart={(e) => { if (!col.isPortal) e.dataTransfer.setData('text/plain', os.id); }}
+                              draggable
+                              onDragStart={(e) => e.dataTransfer.setData('text/plain', os.id)}
                               onClick={() => { setViewingOsId(os.id); setViewDialogOpen(true); }}
                               className="group relative cursor-pointer active:cursor-grabbing rounded-2xl shadow-sm hover:shadow-md active:scale-[0.98] transition-all"
                             >
@@ -1327,7 +1312,7 @@ export default function ServiceOrders() {
                             <EmptyState
                               size="compact"
                               icon={<ClipboardList className="h-10 w-10" />}
-                              title={col.isPortal ? t.empty.portalColumnEmpty : t.empty.columnEmpty}
+                              title={t.empty.columnEmpty}
                             />
                           )}
                         </div>

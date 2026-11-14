@@ -35,8 +35,7 @@ describe('gate do módulo PDV e Loja', () => {
     const semGate = doCatalogo.filter((k) => SCREEN_TO_MODULE_MAP[k] !== 'pdv');
     expect(semGate).toEqual([]);
 
-    // E o catálogo tem que cobrir as 6 telas previstas (as 2 do modo balcão
-    // ainda não têm rota — Onda 2 —, mas a permissão já existe).
+    // E o catálogo tem que cobrir as 6 telas previstas.
     expect(doCatalogo.slice().sort()).toEqual([...PDV_SCREEN_KEYS].slice().sort());
   });
 
@@ -46,16 +45,14 @@ describe('gate do módulo PDV e Loja', () => {
     }
   });
 
-  it('as 4 telas da Onda 1 têm rota registrada, e as do modo balcão não', () => {
+  it('as 6 telas do PDV têm rota registrada, incluindo balcão e expedição', () => {
     expect(localizedTemplatesFor('pdv')).toContain('/pdv');
     expect(localizedTemplatesFor('pdvCashHistory')).toContain('/pdv/caixas');
     expect(localizedTemplatesFor('pdvReports')).toContain('/pdv/relatorios');
     expect(localizedTemplatesFor('pdvSettings')).toContain('/pdv/configuracoes');
 
-    // Onda 2 (modo balcão): sem tela, sem rota. Se alguém registrar a rota sem
-    // criar a tela, este teste cai e lembra de fazer os dois juntos.
-    expect(localizedTemplatesFor('pdvOrders')).toEqual([]);
-    expect(localizedTemplatesFor('pdvDispatch')).toEqual([]);
+    expect(localizedTemplatesFor('pdvPreorders')).toContain('/pdv/pre-pedidos');
+    expect(localizedTemplatesFor('pdvDispatch')).toContain('/pdv/expedicao');
   });
 
   it('a rota do PDV responde também no slug traduzido', () => {

@@ -11,8 +11,9 @@
  */
 
 import { useEffect, useMemo } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { invalidatePdvReportCaches } from '@/hooks/pdvReportCache';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
 import type { FinancialTransaction } from '@/types/database';
@@ -32,6 +33,10 @@ export interface PdvCashSession {
   opened_by: string | null;
   opened_at: string;
   opening_amount: number;
+  /** Presente em sessões v2; conta canônica da gaveta usada pelas RPCs de cobertura. */
+  cash_account_id?: string | null;
+  /** NULL/1 = legado; 2 pertence exclusivamente ao hook/writer v2. */
+  contract_version: number | null;
   closed_by: string | null;
   closed_at: string | null;
   counted_amount: number | null;
@@ -39,6 +44,47 @@ export interface PdvCashSession {
   difference: number | null;
   status: string;
   notes: string | null;
+}
+
+export function assertLegacyCashSessionContract(session: PdvCashSession): PdvCashSession {
+  const version = session.contract_version;
+  if (version === 2) {
+    throw new Error('Este caixa usa o contrato novo e não pode ser operado pelo modo anterior.');
+  }
+  if (version !== null && version !== 1) {
+    throw new Error('A versão do caixa não pôde ser confirmada com segurança.');
+  }
+  return session;
+}
+
+export function selectLegacyOpenCashSessionForMutation(
+  sessions: PdvCashSession[],
+  sessionId: string,
+): PdvCashSession {
+  const session = sessions.find((item) => item.id === sessionId);
+  if (!session) {
+    throw new Error('O caixa selecionado não está disponível no modo anterior. Atualize a tela.');
+  }
+  assertLegacyCashSessionContract(session);
+  if (session.status !== 'aberta') {
+    throw new Error('Este caixa não está aberto para receber movimentações.');
+  }
+  return session;
+}
+
+async function assertCompanyAllowsLegacyCashOpening(): Promise<void> {
+  const { data, error } = await supabase
+    .from('pdv_cash_sessions')
+    .select('contract_version')
+    .eq('status', 'aberta')
+    .filter('contract_version', 'eq', 2)
+    .limit(1);
+  if (error) {
+    throw new Error('Não foi possível validar o contrato dos caixas abertos. Atualize a tela.');
+  }
+  if ((data ?? []).length > 0) {
+    throw new Error('Existe um caixa do contrato novo aberto. Finalize-o antes de usar o modo anterior.');
+  }
 }
 
 /** Retorno de `pdv_cofre_balance()`. Todo número já vem arredondado do servidor. */
@@ -220,23 +266,27 @@ async function fetchOperatorNames(userIds: string[]): Promise<Record<string, str
   return map;
 }
 
+export async function invalidatePdvCashRegisterCaches(queryClient: QueryClient) {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: SESSION_KEYS.sessions }),
+    queryClient.invalidateQueries({ queryKey: ['pdv-cash-session-operators'] }),
+    queryClient.invalidateQueries({ queryKey: SESSION_KEYS.cofre }),
+    queryClient.invalidateQueries({ queryKey: ['pdv-cash-session-detail'] }),
+    queryClient.invalidateQueries({ queryKey: ['financial-accounts'] }),
+    queryClient.invalidateQueries({ queryKey: ['account-balances'] }),
+    queryClient.invalidateQueries({ queryKey: ['financial-transactions'] }),
+    queryClient.invalidateQueries({ queryKey: ['financial-summary'] }),
+    invalidatePdvReportCaches(queryClient),
+  ]);
+}
+
 export function usePdvCashRegister(focusedSessionId: string | null = null) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
-  const invalidateCash = () => {
-    queryClient.invalidateQueries({ queryKey: SESSION_KEYS.sessions });
-    queryClient.invalidateQueries({ queryKey: ['pdv-cash-session-operators'] });
-    queryClient.invalidateQueries({ queryKey: SESSION_KEYS.cofre });
-    queryClient.invalidateQueries({ queryKey: ['pdv-cash-session-detail'] });
-    // Sangria/suprimento/quebra de caixa criam lançamento de verdade: o
-    // Financeiro tem que reagir junto, senão o saldo da tela de contas fica
-    // velho até o próximo refetch natural.
-    queryClient.invalidateQueries({ queryKey: ['financial-accounts'] });
-    queryClient.invalidateQueries({ queryKey: ['account-balances'] });
-    queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
-    queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
-  };
+  // Sangria/suprimento/quebra de caixa criam lançamentos reais. Estoque,
+  // Financeiro e os três relatórios comerciais devem reagir juntos.
+  const invalidateCash = () => invalidatePdvCashRegisterCaches(queryClient);
 
   const terminalsQuery = useQuery({
     queryKey: SESSION_KEYS.terminals,
@@ -267,19 +317,23 @@ export function usePdvCashRegister(focusedSessionId: string | null = null) {
           .from('pdv_cash_sessions')
           .select('*')
           .eq('status', 'aberta')
+          .or('contract_version.is.null,contract_version.eq.1')
           .order('opened_at', { ascending: true }),
         supabase
           .from('pdv_cash_sessions')
           .select('*')
           .eq('status', 'fechada')
+          .or('contract_version.is.null,contract_version.eq.1')
           .order('closed_at', { ascending: false })
           .limit(1),
       ]);
       if (openRes.error) throw openRes.error;
       if (closedRes.error) throw closedRes.error;
 
-      const openSessions = (openRes.data ?? []) as PdvCashSession[];
-      const lastClosed = ((closedRes.data ?? []) as PdvCashSession[])[0] ?? null;
+      const openSessions = ((openRes.data ?? []) as unknown as PdvCashSession[])
+        .map(assertLegacyCashSessionContract);
+      const lastClosedRow = ((closedRes.data ?? []) as unknown as PdvCashSession[])[0] ?? null;
+      const lastClosed = lastClosedRow ? assertLegacyCashSessionContract(lastClosedRow) : null;
       return { openSessions, lastClosed };
     },
     refetchOnMount: 'always',
@@ -326,34 +380,31 @@ export function usePdvCashRegister(focusedSessionId: string | null = null) {
     [sessionsQuery.data?.openSessions],
   );
 
-  /**
-   * Caixa em FOCO. Regra: o caixa que EU abri vem primeiro (é o meu turno);
-   * sem nenhum meu, o primeiro aberto da empresa (gestor conferindo o caixa do
-   * balconista). Fica explícito pra não virar "o primeiro que o banco devolveu".
-   */
+  /** Caixa em foco: seleção explícita ou abertura do próprio operador. */
   const session = useMemo(() => {
     if (openSessions.length === 0) return null;
-    return (
-      openSessions.find((s) => s.id === focusedSessionId) ??
-      openSessions.find((s) => s.opened_by === user?.id) ??
-      openSessions[0]
-    );
+    if (focusedSessionId) {
+      return openSessions.find((s) => s.id === focusedSessionId) ?? null;
+    }
+    return openSessions.find((s) => s.opened_by === user?.id) ?? null;
   }, [focusedSessionId, openSessions, user?.id]);
 
   const openSession = useMutation({
     mutationFn: async (vars: { terminalId: string; openingAmount: number }) => {
+      await assertCompanyAllowsLegacyCashOpening();
       const { data, error } = await supabase.rpc('pdv_open_cash_session', {
         p_terminal_id: vars.terminalId,
         p_opening_amount: vars.openingAmount,
       });
       if (error) throw error;
-      return data as unknown as PdvCashSession;
+      return assertLegacyCashSessionContract(data as unknown as PdvCashSession);
     },
     onSuccess: invalidateCash,
   });
 
   const closeSession = useMutation({
     mutationFn: async (vars: { sessionId: string; countedAmount: number; notes?: string }) => {
+      selectLegacyOpenCashSessionForMutation(openSessions, vars.sessionId);
       const { data, error } = await supabase.rpc('pdv_close_cash_session', {
         p_session_id: vars.sessionId,
         p_counted_amount: vars.countedAmount,
@@ -373,6 +424,7 @@ export function usePdvCashRegister(focusedSessionId: string | null = null) {
       toAccountId?: string | null;
       reason?: string | null;
     }) => {
+      selectLegacyOpenCashSessionForMutation(openSessions, vars.sessionId);
       const { data, error } = await supabase.rpc('pdv_cash_movement', {
         p_session_id: vars.sessionId,
         p_kind: vars.kind,

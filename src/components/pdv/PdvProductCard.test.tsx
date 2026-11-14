@@ -50,6 +50,9 @@ describe('PdvProductCard', () => {
       />,
     );
     expect(getByRole('button')).toHaveAttribute('tabindex', '0');
+    expect(getByRole('button')).toHaveClass('border-transparent');
+    expect(getByRole('button').className).toContain('inset_0_0_0_2px');
+    expect(getByRole('button')).not.toHaveClass('border-primary');
 
     rerender(
       <PdvProductCard
@@ -63,6 +66,7 @@ describe('PdvProductCard', () => {
       />,
     );
     expect(getByRole('button')).toHaveAttribute('tabindex', '-1');
+    expect(getByRole('button')).toHaveClass('border-border');
   });
 
   it('não reabre o skeleton ao remontar uma foto já carregada após pesquisa', () => {

@@ -12,7 +12,7 @@ import {
   FileText, Plus, Search, Pencil, Trash2, Eye, CheckCircle2, XCircle,
   ExternalLink, DollarSign, ArrowRight, Settings2, TrendingUp,
   Wallet, BarChart3, FileEdit, Send, Clock, Boxes, Link2, CreditCard,
-  Undo2, Receipt,
+  Undo2, Receipt, RotateCcw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
@@ -68,6 +68,10 @@ import { deleteTransactionCascade, findRelatedTransactions } from '@/hooks/useRe
 // Mensagem do servidor já vem em PT-BR quando o erro é de RPC (SQLSTATE P0001).
 import { getRpcErrorMessage } from '@/hooks/useCreditCardBills';
 import type { FinancialTransaction } from '@/types/database';
+import {
+  canRevertQuoteApproval,
+  getQuoteApprovalRevertErrorCode,
+} from '@/lib/quote-approval-revert';
 
 // Tabs are built dynamically using i18n inside the Quotes component.
 const ALL_SIDEBAR_TAB_KEYS = [
@@ -214,7 +218,7 @@ function QuotesList({
   // `hasPermission` (sem registro => libera por ter qualquer role) NÃO vale
   // aqui: mostraria o botão pra quem o banco recusa. UX; a trava é a RLS.
   const canDeleteFinance = isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:delete_finance'));
-  const { quotes, isLoading, updateStatus, deleteQuote, kpis } = useQuotes();
+  const { quotes, isLoading, updateStatus, revertApproval, deleteQuote, kpis } = useQuotes();
   const { convertToServiceOrder, approveQuoteFinancial, isConverting, isApproving } = useQuoteConversion();
   const { settings: companySettings } = useCompanySettings();
   // Guarda contra contar a mesma venda duas vezes (cobrar → aprovar). Metade
@@ -222,7 +226,7 @@ function QuotesList({
   // pro orçamento. Quando a empresa nunca usou cobrança nenhuma, o set vem
   // vazio e não atrapalha o fluxo normal de aprovação — não precisa gate de
   // módulo aqui. A trava DEFINITIVA fica pendente no banco: ver nota abaixo.
-  const { chargedQuoteIds } = useQuoteChargedIds();
+  const { chargedQuoteIds, isLoading: chargedQuoteIdsLoading } = useQuoteChargedIds();
   const hasChargeBlockingApproval = (q: Quote) =>
     !q.financial_generated_at && chargedQuoteIds.has(q.id);
   const { toast } = useToast();
@@ -268,6 +272,7 @@ function QuotesList({
   const [undoQuote, setUndoQuote] = useState<Quote | null>(null);
   const [undoPreview, setUndoPreview] = useState<{ txns: FinancialTransaction[]; orphan: boolean } | null>(null);
   const [isUndoing, setIsUndoing] = useState(false);
+  const [revertingApprovalQuote, setRevertingApprovalQuote] = useState<Quote | null>(null);
 
   // Ação A — leva o usuário direto ao lançamento gerado na aprovação. A tela de
   // Movimentações se vira com o ?txn (ajusta o período, destaca a linha e limpa
@@ -322,6 +327,37 @@ function QuotesList({
       });
     } finally {
       setIsUndoing(false);
+    }
+  };
+
+  const confirmRevertApproval = async () => {
+    const q = revertingApprovalQuote;
+    if (!q) return;
+    try {
+      await revertApproval.mutateAsync(q.id);
+      toast({
+        title: tq.revertApprovalSuccessTitle,
+        description: tq.revertApprovalSuccessDesc.replace('{number}', String(q.quote_number)),
+      });
+      setRevertingApprovalQuote(null);
+    } catch (error) {
+      const code = getQuoteApprovalRevertErrorCode(error);
+      const description = code === 'financial_exists'
+        ? tq.revertApprovalErrorFinancial
+        : code === 'charge_exists'
+          ? tq.revertApprovalErrorCharge
+          : code === 'service_order_exists'
+            ? tq.revertApprovalErrorServiceOrder
+            : code === 'invalid_status'
+              ? tq.revertApprovalErrorStatus
+              : code === 'forbidden' || code === 'unauthorized'
+                ? tq.revertApprovalErrorPermission
+                : tq.revertApprovalErrorGeneric;
+      toast({
+        variant: 'destructive',
+        title: tq.revertApprovalErrorTitle,
+        description,
+      });
     }
   };
 
@@ -524,6 +560,18 @@ function QuotesList({
         label: tq.actionReject,
         icon: <XCircle className="h-4 w-4" />,
         onClick: () => updateStatus.mutate({ id: q.id, status: 'rejeitado' }),
+      });
+    }
+
+    if (canRevertQuoteApproval(q, {
+      hasLiveCharge: chargedQuoteIds.has(q.id),
+      chargeStateLoading: chargedQuoteIdsLoading,
+    })) {
+      actions.push({
+        key: 'revert-approval',
+        label: tq.actionRevertApprovalMobile,
+        icon: <RotateCcw className="h-4 w-4" />,
+        onClick: () => setRevertingApprovalQuote(q),
       });
     }
 
@@ -854,6 +902,15 @@ function QuotesList({
                             hidden: q.status !== 'enviado',
                           },
                           {
+                            label: tq.actionRevertApproval,
+                            icon: RotateCcw,
+                            onClick: () => setRevertingApprovalQuote(q),
+                            hidden: !canRevertQuoteApproval(q, {
+                              hasLiveCharge: chargedQuoteIds.has(q.id),
+                              chargeStateLoading: chargedQuoteIdsLoading,
+                            }),
+                          },
+                          {
                             label: tq.actionConvertOS,
                             icon: ArrowRight,
                             onClick: () => setDistributingQuote(q),
@@ -969,6 +1026,36 @@ function QuotesList({
             >
               {tq.deleteConfirm}
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Aprovação sem efeitos colaterais: volta a proposta para decisão do cliente. */}
+      <AlertDialog
+        open={!!revertingApprovalQuote}
+        onOpenChange={(open) => {
+          if (!open && !revertApproval.isPending) setRevertingApprovalQuote(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{tq.revertApprovalTitle}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {tq.revertApprovalDesc.replace(
+                '{number}',
+                String(revertingApprovalQuote?.quote_number ?? ''),
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={revertApproval.isPending}>
+              {tq.revertApprovalCancel}
+            </AlertDialogCancel>
+            <Button onClick={confirmRevertApproval} disabled={revertApproval.isPending}>
+              {revertApproval.isPending
+                ? tq.revertApprovalProcessing
+                : tq.revertApprovalConfirm}
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

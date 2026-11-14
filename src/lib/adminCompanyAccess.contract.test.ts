@@ -16,8 +16,16 @@ describe('acesso administrativo da empresa', () => {
     expect(edge).toContain('admin.auth.getUser(token)');
     expect(edge).toContain("_role: 'super_admin'");
     expect(edge).toContain("_permission: 'admin_empresas_acesso'");
+    expect(edge).toContain("_permission: 'admin_vendedores_ver_todos'");
     expect(edge).toContain('roleError || permissionError');
     expect(edge).toContain('!isSuperAdmin && !hasPermission');
+  });
+
+  it('limita vendedor comum às empresas da própria carteira', () => {
+    expect(edge).toContain(".from('salespeople')");
+    expect(edge).toContain(".eq('user_id', callerId)");
+    expect(edge).toContain(".eq('salesperson_id', salesperson.id)");
+    expect(edge).toContain('Empresa não encontrada ou fora da sua carteira.');
   });
 
   it('confirma no servidor que o usuário pertence à empresa enviada', () => {

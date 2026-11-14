@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type SetStateAction } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type SetStateAction } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ShoppingCart, Search, ShoppingBasket, ArrowLeft, Barcode, Keyboard } from 'lucide-react';
+import { ShoppingCart, Search, ShoppingBasket, ArrowLeft, Barcode, CheckCircle2, Keyboard, RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -77,6 +77,8 @@ import {
   findPdvGridNeighbor,
   isPdvEditableTarget,
   nextPdvIndex,
+  resolvePdvCommandShortcut,
+  shouldNavigatePdvCatalogFromSearch,
   type PdvGridDirection,
   type PdvGridItemRect,
 } from '@/lib/pdv/keyboard';
@@ -87,6 +89,23 @@ import { PdvPaymentDialog } from '@/components/pdv/PdvPaymentDialog';
 import { PdvAdvancedOptionsDialog, type PdvPendingAttachment } from '@/components/pdv/PdvAdvancedOptionsDialog';
 import { PdvOrderSwitcher } from '@/components/pdv/PdvOrderSwitcher';
 import { PdvShortcutHelpDialog } from '@/components/pdv/PdvShortcutHelpDialog';
+import { PdvOrderReceiptButton } from '@/components/pdv/receipt/PdvOrderReceiptButton';
+import { PdvDirectSalePostSaleDialog } from '@/components/pdv/direct-sale-v2/PdvDirectSalePostSaleDialog';
+import {
+  parsePdvSaleCashContext,
+  resolvePdvSaleCashContext,
+} from '@/components/pdv/caixa-v2/pdvSaleContext';
+import { derivePdvReturnsAccess, usePdvReturnsFeature } from '@/hooks/usePdvReturns';
+import { derivePdvAfterSaleAccess, usePdvAfterSaleFeature } from '@/hooks/usePdvAfterSale';
+import { usePdvReceiptSettings } from '@/hooks/usePdvReceiptSettings';
+import { readDeviceReceiptFormat } from '@/lib/pdv/receipt/devicePreference';
+import {
+  canonicalizePdvDirectSalePayments,
+  shouldUseLegacyPdvRoute,
+  usePdvDirectSaleV2,
+  type PdvCompleteDirectSaleV2Result,
+} from '@/hooks/usePdvDirectSaleV2';
+import type { Customer } from '@/types/database';
 import { hasPdvSaleDraftContent, MAX_PDV_SALE_DRAFTS, type PdvSaleAttempt } from '@/lib/pdv/sale-drafts';
 import {
   clearPdvSaleEditDraft,
@@ -117,6 +136,12 @@ const NUMPAD_BREAKPOINT = 1024;
  */
 const PDV_PANEL_PATH = '/pdv';
 const PDV_SALE_PATH = '/pdv/venda';
+
+interface CompletedPdvSale {
+  orderId: string;
+  orderNumber: number;
+  total: number;
+}
 
 /** `3 * <código>` digitado antes do código (manual) ou antes da rajada do leitor. */
 function extractMultiplierPrefix(raw: string): { multiplier: number; term: string } {
@@ -189,6 +214,38 @@ function extractSaleWarnings(avisos: PdvSettleResult['avisos']): SaleWarningCode
   return out;
 }
 
+/** Mantém o modelo visual antigo sem permitir uma segunda escrita legada. */
+// eslint-disable-next-line react-refresh/only-export-components
+export function adaptPdvDirectSaleV2Result(
+  result: PdvCompleteDirectSaleV2Result,
+  payments: Parameters<ReturnType<typeof usePdvDirectSaleV2>['complete']['mutateAsync']>[0]['payments'],
+  itemCount: number,
+  receivedAt = new Date().toISOString(),
+): PdvSettleResult {
+  return {
+    order_id: result.orderId,
+    numero: result.orderNumber,
+    status: 'entregue',
+    total: result.total,
+    subtotal: result.subtotal,
+    desconto: result.discountAmount,
+    itens: itemCount,
+    pagamentos: payments.map((payment, index) => ({
+      payment_id: `v2-${index}`,
+      method: payment.method,
+      amount: payment.amount,
+      change_amount: payment.change_amount ?? 0,
+      account_id: payment.account_id ?? null,
+      transaction_id: null,
+      received_at: receivedAt,
+    })),
+    estoque: { baixado: true },
+    avisos: [],
+    idempotente: result.idempotent,
+    modo: 'direct',
+  };
+}
+
 /**
  * VENDA de balcão (sub-tela do módulo PDV e Loja) — Onda 1, modo simples.
  *
@@ -204,10 +261,98 @@ function extractSaleWarnings(avisos: PdvSettleResult['avisos']): SaleWarningCode
  * duplo clique viraria venda dobrada.
  */
 export default function Pdv() {
+  const location = useLocation();
+  return <PdvNewSaleGate editRoute={shouldUseLegacyPdvRoute(location.search)} />;
+}
+
+function PdvNewSaleGate({ editRoute }: { editRoute: boolean }) {
+  const directSale = usePdvDirectSaleV2();
+
+  return (
+    <PdvSaleContractGate
+      directSale={directSale}
+      legacy={<PdvSaleWorkspace directSale={directSale} />}
+      editRoute={editRoute}
+    />
+  );
+}
+
+export function PdvSaleContractGate({
+  directSale,
+  legacy,
+  editRoute = false,
+}: {
+  directSale: ReturnType<typeof usePdvDirectSaleV2>;
+  legacy: ReactNode;
+  editRoute?: boolean;
+}) {
+  // Edição/substituição ainda pertence nominalmente ao contrato legado. A
+  // exceção só é considerada DEPOIS de a capability responder; estado
+  // desconhecido jamais monta nenhum writer.
+  if (directSale.contract === 'legacy' && editRoute) {
+    return <>{legacy}</>;
+  }
+
+  // A substituição atômica existente pertence ao contrato legado. Nunca
+  // deixamos uma venda v2 cair nesse writer: reservas, coberturas e recebíveis
+  // v2 precisam de uma RPC de substituição igualmente versionada.
+  if (directSale.contract === 'v2' && editRoute) {
+    return (
+      <div className="space-y-4" data-testid="pdv-direct-sale-v2-edit-blocked">
+        <PageHeader title="Editar venda" subtitle="Protegendo os dados desta venda" icon={ShoppingCart} />
+        <NoticeBanner variant="destructive" title="Esta venda não pode ser editada por esta tela">
+          Use as ações de pós-venda para devolver, trocar ou estornar. Nenhuma alteração foi feita.
+        </NoticeBanner>
+      </div>
+    );
+  }
+
+  // A capability continua sendo confirmada antes de liberar qualquer writer,
+  // mas não troca a interface aprovada do PDV. A evolução do contrato deve ser
+  // conectada por adaptadores dentro deste mesmo workspace visual.
+  if (directSale.contract === 'v2' || directSale.contract === 'legacy') return <>{legacy}</>;
+
+  return (
+    <div className="space-y-4" data-testid="pdv-direct-sale-gate-blocked">
+      <PageHeader title="Venda de balcão" subtitle="Confirmando a versão segura da venda..." icon={ShoppingCart} />
+      {directSale.capability.isLoading ? (
+        <PdvSkeleton isMobileCart={false} showNumpad={false} />
+      ) : (
+        <NoticeBanner
+          variant="destructive"
+          title="Não foi possível liberar a venda com segurança"
+          action={(
+            <Button type="button" variant="outline" onClick={() => void directSale.capability.refetch()}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Tentar novamente
+            </Button>
+          )}
+        >
+          A venda ficou bloqueada para evitar usar uma versão incompleta. Nenhum pedido foi criado.
+        </NoticeBanner>
+      )}
+    </div>
+  );
+}
+
+function PdvSaleWorkspace({
+  directSale,
+}: {
+  directSale: ReturnType<typeof usePdvDirectSaleV2>;
+}) {
+  const isV2 = directSale.contract === 'v2';
+  const v2Catalog = directSale.catalog.data;
   const navigate = useNavigate();
   const location = useLocation();
   const { locale, currency, timezone } = useAppLocaleContext();
-  const { user, profile } = useAuth();
+  const {
+    user,
+    profile,
+    roles,
+    permissions,
+    isAdminOrGestor,
+    hasPermissionRecord,
+  } = useAuth();
   const t = MESSAGES[locale].app.pdv.cashier;
   const { toast } = useToast();
   const isMobileCart = useMediaBreakpoint(CART_DRAWER_BREAKPOINT);
@@ -218,20 +363,48 @@ export default function Pdv() {
   const { accessibleIds, isLoading: accessibleIdsLoading } = useAccessibleInventoryIds();
   const { stocks, isLoading: stocksLoading } = useStocks();
   const { groups, isLoading: groupsLoading } = useMaterialGroups();
-  const { customers, isLoading: customersLoading } = useCustomers();
-  const { accounts, isLoading: accountsLoading } = useFinancialAccounts();
-  const { canUseBankAccounts } = useBankPermissions();
+  const { customers: legacyCustomers, isLoading: customersLoading } = useCustomers();
+  const { accounts: legacyAccounts, isLoading: accountsLoading } = useFinancialAccounts();
+  const { canUseBankAccounts: legacyCanUseBankAccounts } = useBankPermissions();
   // Terminal, sessão aberta e cofre vêm do MESMO hook do painel do Caixa
   // (`/pdv`), pra a venda e o painel nunca discordarem sobre qual caixa está
   // aberto nem sobre qual conta é o cofre.
   const {
-    terminals,
-    session,
-    cofre,
+    terminals: legacyTerminals,
+    session: legacySession,
+    cofre: legacyCofre,
     isLoading: cashLoading,
   } = usePdvCashRegister();
   const { createOrder, settleOrder, replaceOrder } = usePdvSale();
   const uploadAttachment = useUploadPdvOrderAttachment();
+  const receiptSettings = usePdvReceiptSettings();
+  const returnsFeature = usePdvReturnsFeature(profile?.company_id);
+  const afterSaleFeature = usePdvAfterSaleFeature(profile?.company_id);
+  const privilegedAfterSale = isAdminOrGestor() || roles.includes('super_admin');
+  const returnsAccess = derivePdvReturnsAccess({
+    featureEnabled: returnsFeature.data === true,
+    privileged: privilegedAfterSale,
+    hasPermissionRecord,
+    permissions,
+  });
+  const afterSaleAccess = derivePdvAfterSaleAccess({
+    featureEnabled: afterSaleFeature.data === true,
+    privileged: privilegedAfterSale,
+    hasPermissionRecord,
+    permissions,
+  });
+  const requestedCashContext = useMemo(
+    () => parsePdvSaleCashContext(location.search),
+    [location.search],
+  );
+  const resolvedV2CashContext = useMemo(
+    () => resolvePdvSaleCashContext({
+      requested: requestedCashContext,
+      terminals: v2Catalog?.terminals ?? [],
+      sessions: v2Catalog?.sessions ?? [],
+    }),
+    [requestedCashContext, v2Catalog?.sessions, v2Catalog?.terminals],
+  );
 
   // Carregamento inicial da tela inteira (catálogo + locais + categorias +
   // clientes) — pedido do CEO 2026-10-18: "carregou e depois vieram as fotos,
@@ -244,23 +417,56 @@ export default function Pdv() {
   // fechado" e lista contas de recebimento: sem esperar, o operador veria o
   // aviso de caixa fechado piscar com o caixa ABERTO (carregando não é vazio,
   // nem no dinheiro).
-  const isLoadingPdv =
-    inventoryLoading ||
-    !stockLevelsLoaded ||
-    accessibleIdsLoading ||
-    stocksLoading ||
-    groupsLoading ||
-    customersLoading ||
-    accountsLoading ||
-    cashLoading;
+  const isLoadingPdv = isV2
+    ? directSale.catalog.isLoading || stocksLoading || groupsLoading
+    : inventoryLoading ||
+      !stockLevelsLoaded ||
+      accessibleIdsLoading ||
+      stocksLoading ||
+      groupsLoading ||
+      customersLoading ||
+      accountsLoading ||
+      cashLoading;
 
-  const pdvStocks = useMemo(() => stocks.filter((s) => s.purpose === 'pdv'), [stocks]);
+  const pdvStocks = useMemo(() => {
+    const storeStocks = stocks.filter((stock) => stock.purpose === 'pdv');
+    if (!isV2) return storeStocks;
+    const allowedStockIds = new Set((v2Catalog?.terminals ?? []).map((terminal) => terminal.stockId));
+    return storeStocks.filter((stock) => allowedStockIds.has(stock.id));
+  }, [isV2, stocks, v2Catalog?.terminals]);
+  const customers = useMemo<Customer[]>(
+    () => isV2
+      ? (v2Catalog?.customers ?? []).map((customer) => ({
+          id: customer.id,
+          name: customer.name,
+          customer_type: 'pf',
+          created_at: '',
+          updated_at: '',
+        }))
+      : legacyCustomers,
+    [isV2, legacyCustomers, v2Catalog?.customers],
+  );
   const maxTransactionDate = todayInTz(timezone);
   const draftOwner = useMemo(
-    () => user?.id && profile?.company_id
-      ? { userId: user.id, companyId: profile.company_id }
-      : null,
-    [profile?.company_id, user?.id],
+    () => {
+      if (!user?.id || !profile?.company_id) return null;
+      if (isV2 && resolvedV2CashContext.status === 'resolved') return {
+          userId: user.id,
+          companyId: profile.company_id,
+          cashSessionId: resolvedV2CashContext.context.sessionId,
+          terminalId: resolvedV2CashContext.context.terminalId,
+          stockId: resolvedV2CashContext.context.stockId,
+        };
+      if (!isV2 && legacySession?.id && legacySession.terminal_id && pdvStocks[0]?.id) return {
+        userId: user.id,
+        companyId: profile.company_id,
+        cashSessionId: legacySession.id,
+        terminalId: legacySession.terminal_id,
+        stockId: pdvStocks[0].id,
+      };
+      return null;
+    },
+    [isV2, legacySession?.id, legacySession?.terminal_id, pdvStocks, profile?.company_id, resolvedV2CashContext, user?.id],
   );
   const {
     workspace: draftWorkspace,
@@ -274,12 +480,17 @@ export default function Pdv() {
   } = usePdvSaleDraftWorkspace({
     owner: draftOwner,
     transactionDate: maxTransactionDate,
-    defaultStockId: pdvStocks[0]?.id ?? null,
+    defaultStockId: resolvedV2CashContext.status === 'resolved'
+      ? resolvedV2CashContext.context.stockId
+      : pdvStocks[0]?.id ?? null,
   });
 
   const cart = activeDraft?.cart ?? EMPTY_CART;
   const activeDraftId = activeDraft?.id ?? null;
-  const selectedStockId = activeDraft?.stockId ?? pdvStocks[0]?.id ?? null;
+  const selectedStockId = activeDraft?.stockId
+    ?? (resolvedV2CashContext.status === 'resolved'
+      ? resolvedV2CashContext.context.stockId
+      : pdvStocks[0]?.id ?? null);
   const orderNotes = activeDraft?.notes ?? '';
   const transactionDate = activeDraft?.transactionDate ?? maxTransactionDate;
 
@@ -300,6 +511,21 @@ export default function Pdv() {
   const setOrderNotes = useCallback((notes: string) => {
     updateActiveDraft((draft) => ({ ...draft, notes, attempt: null }));
   }, [updateActiveDraft]);
+
+  const preferredV2StockId = useMemo(() => {
+    if (!isV2 || resolvedV2CashContext.status !== 'resolved') return null;
+    return resolvedV2CashContext.context.stockId;
+  }, [isV2, resolvedV2CashContext]);
+
+  // O catálogo seguro pode responder depois do rascunho local. Alinhamos
+  // apenas rascunho vazio; um carrinho preenchido nunca muda de local sozinho.
+  useEffect(() => {
+    if (!isV2 || !activeDraft || activeDraft.cart.lines.length > 0 || !preferredV2StockId) return;
+    const stockAllowed = (v2Catalog?.terminals ?? []).some(
+      (terminal) => terminal.stockId === activeDraft.stockId,
+    );
+    if (!stockAllowed) setSelectedStockId(preferredV2StockId);
+  }, [activeDraft, isV2, preferredV2StockId, setSelectedStockId, v2Catalog?.terminals]);
 
   const [search, setSearch] = useState('');
   const [activeProductIndex, setActiveProductIndex] = useState(0);
@@ -331,9 +557,20 @@ export default function Pdv() {
   const [attachmentBusy, setAttachmentBusy] = useState(false);
   const [advancedOptionsOpen, setAdvancedOptionsOpen] = useState(false);
   const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
+  const [completedSale, setCompletedSale] = useState<CompletedPdvSale | null>(null);
+  const [postSaleOpen, setPostSaleOpen] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
+  const autoReceiptRef = useRef<HTMLDivElement>(null);
+  const autoReceiptDoneRef = useRef<string | null>(null);
+  const receiptFormat = readDeviceReceiptFormat()
+    ?? receiptSettings.data?.defaultFormat
+    ?? '80mm';
+  const hasPostSaleAccess = (
+    returnsAccess.enabled
+    && (returnsAccess.canReturn || returnsAccess.canReverse || returnsAccess.canCancelResidual)
+  ) || (afterSaleAccess.enabled && afterSaleAccess.canView);
 
   /**
    * A TENTATIVA DE VENDA em curso. Guarda o pedido já criado e a chave de
@@ -351,6 +588,18 @@ export default function Pdv() {
     attachments: PdvPendingAttachment[];
   } | null>(null);
   const editDraftHydratedRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!completedSale || !receiptSettings.data?.autoPrint) return;
+    if (autoReceiptDoneRef.current === completedSale.orderId) return;
+    autoReceiptDoneRef.current = completedSale.orderId;
+    const timer = window.setTimeout(() => {
+      autoReceiptRef.current
+        ?.querySelectorAll<HTMLButtonElement>('button')
+        .forEach((button) => button.click());
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [completedSale, receiptSettings.data?.autoPrint]);
 
   // Rascunho é isolado por usuário + empresa e por pedido. Em terminal
   // compartilhado, trocar de conta nunca pode exibir dados da venda anterior.
@@ -500,6 +749,28 @@ export default function Pdv() {
     barcode: string | null;
     unitCost: number;
   })[] = useMemo(() => {
+    if (isV2) {
+      return (v2Catalog?.materials ?? []).map((material) => {
+        const availability = material.availableByStock.find(
+          (entry) => entry.stockId === selectedStockId,
+        );
+        return {
+          inventoryId: material.id,
+          name: material.name,
+          imageUrl: material.imageUrl,
+          unitPrice: material.salePrice ?? 0,
+          unit: material.unit || 'un',
+          // O core v2 congela o custo no servidor. Ele nunca trafega no
+          // catálogo do operador nem participa do payload do navegador.
+          unitCost: 0,
+          availableQuantity: availability && !availability.hasConflict
+            ? availability.availableQuantity
+            : 0,
+          groupId: material.groupId,
+          barcode: material.barcode,
+        };
+      });
+    }
     return items
       .filter((item) => item.is_sellable !== false)
       .filter((item) => accessibleIds.has(item.id))
@@ -517,7 +788,7 @@ export default function Pdv() {
         groupId: item.group_id ?? null,
         barcode: item.barcode ?? null,
       })) as (PdvGridProduct & { groupId: string | null; barcode: string | null; unitCost: number })[];
-  }, [items, accessibleIds, selectedStockId, getQuantityForStock]);
+  }, [isV2, v2Catalog?.materials, items, accessibleIds, selectedStockId, getQuantityForStock]);
 
   // A venda original CONTINUA baixando o estoque enquanto esta tela está
   // aberta. O snapshot usa preço/custo/nome históricos, enquanto foto e saldo
@@ -706,6 +977,7 @@ export default function Pdv() {
         label: g.name,
         accentColor: g.color ?? undefined,
         useColorBackground: true,
+        forceWhiteForeground: true,
       })),
     ],
     [groups, t.categories.all],
@@ -836,7 +1108,11 @@ export default function Pdv() {
       ArrowRight: 'right',
     };
     const direction = directionByKey[e.key];
-    if (direction && keyboardProducts.length > 0) {
+    if (
+      direction
+      && keyboardProducts.length > 0
+      && shouldNavigatePdvCatalogFromSearch(e.key, search)
+    ) {
       e.preventDefault();
       moveProductFocus(direction);
       return;
@@ -877,13 +1153,29 @@ export default function Pdv() {
   const total = computeTotal(cart);
   const canPay = cart.lines.length > 0 && total > 0;
 
-  // Terminal da venda: o do caixa aberto (é o turno de quem está vendendo);
-  // sem caixa aberto, o primeiro terminal ativo (venda em PIX/cartão/fiado não
-  // depende de gaveta).
-  const terminalId = session?.terminal_id ?? terminals[0]?.id ?? null;
-  const cashSessionId = session?.id ?? null;
-  const hasOpenCashSession = !!session;
-  const hasCofreAccount = !!cofre?.conta_id;
+  // No v2, terminal, sessão e conta da gaveta vêm juntos da projeção
+  // fechada. O hook legado exclui caixas contract_version=2 de propósito.
+  const resolvedV2Context = resolvedV2CashContext.status === 'resolved'
+    ? resolvedV2CashContext.context
+    : null;
+  const v2Terminal = isV2 && resolvedV2Context
+    ? (v2Catalog?.terminals.find((terminal) =>
+        terminal.id === resolvedV2Context.terminalId
+        && terminal.stockId === selectedStockId) ?? null)
+    : null;
+  const v2Session = isV2 && v2Terminal
+    ? (v2Catalog?.sessions.find((candidate) =>
+        candidate.id === resolvedV2Context?.sessionId
+        && candidate.terminalId === v2Terminal.id) ?? null)
+    : null;
+  const terminalId = isV2
+    ? v2Terminal?.id ?? null
+    : legacySession?.terminal_id ?? legacyTerminals[0]?.id ?? null;
+  const cashSessionId = isV2 ? v2Session?.id ?? null : legacySession?.id ?? null;
+  const hasOpenCashSession = isV2 ? !!v2Session : !!legacySession;
+  const hasCofreAccount = isV2
+    ? !!v2Session?.cashAccountId && !!v2Catalog?.cashAccount
+    : !!legacyCofre?.conta_id;
 
   /**
    * Contas que podem receber PIX, transferência e cartão. Cartão de CRÉDITO
@@ -893,13 +1185,24 @@ export default function Pdv() {
    * engordaria o saldo do cofre sem entrar na conferência da gaveta.
    */
   const paymentAccounts = useMemo(
-    () =>
-      accounts
+    () => {
+      if (isV2) {
+        return (v2Catalog?.bankAccounts ?? []).map((account) => ({
+          id: account.id,
+          name: account.name,
+          type: account.type,
+          color: account.color ?? '#6B7280',
+          institution_code: account.institutionCode,
+          institution_name: account.institutionName,
+          bank_name: account.bankName,
+        }));
+      }
+      return legacyAccounts
         .filter((acc) => acc.is_active && acc.type !== 'cartao')
         .slice()
         .sort((a, b) => {
-          const aCofre = a.id === cofre?.conta_id ? 1 : 0;
-          const bCofre = b.id === cofre?.conta_id ? 1 : 0;
+          const aCofre = a.id === legacyCofre?.conta_id ? 1 : 0;
+          const bCofre = b.id === legacyCofre?.conta_id ? 1 : 0;
           return aCofre - bCofre;
         })
         .map((acc) => ({
@@ -910,9 +1213,13 @@ export default function Pdv() {
           institution_code: acc.institution_code,
           institution_name: acc.institution_name,
           bank_name: acc.bank_name,
-        })),
-    [accounts, cofre?.conta_id],
+        }));
+    },
+    [isV2, legacyAccounts, legacyCofre?.conta_id, v2Catalog?.bankAccounts],
   );
+  const canUseBankAccounts = isV2
+    ? (v2Catalog?.bankAccounts.length ?? 0) > 0
+    : legacyCanUseBankAccounts;
 
   // O diálogo sempre lê o snapshot congelado no instante em que foi aberto.
   // Trocar de pedido noutra aba ou por evento de storage enquanto o modal
@@ -1015,6 +1322,9 @@ export default function Pdv() {
     let result: PdvSettleResult;
 
     if (editDraft) {
+      if (isV2) {
+        throw new Error('Esta venda usa o contrato novo e não pode ser alterada por esta tela.');
+      }
       // ÚNICA escrita financeira do fluxo de edição. Se qualquer validação,
       // estorno, item, pagamento ou baixa de estoque falhar, o PostgreSQL
       // reverte tudo e a venda original continua paga.
@@ -1043,6 +1353,67 @@ export default function Pdv() {
             ...current,
             [draftId]: (current[draftId] ?? []).filter((item) => item.id !== pending.id),
           }));
+        } catch {
+          attachmentFailed = true;
+        }
+      }
+      if (attachmentFailed) toast({ variant: 'destructive', title: t.toast.attachFailed });
+    } else if (isV2) {
+      if (!v2Catalog || !v2Terminal || !v2Session || !v2Catalog.cashAccount) {
+        throw new Error('Abra um caixa neste terminal antes de finalizar a venda.');
+      }
+      const signature = JSON.stringify({
+        cart: cartSignature(
+          paymentCart,
+          v2Terminal.stockId,
+          v2Session.id,
+          notes,
+          paymentDate,
+          null,
+        ),
+        payments: canonicalizePdvDirectSalePayments(payments),
+      });
+      let attempt = attemptByDraftRef.current.get(draftId)
+        ?? draftWorkspace.drafts.find((draft) => draft.id === draftId)?.attempt
+        ?? null;
+      if (!attempt || attempt.signature !== signature) {
+        attempt = { signature, orderId: null, clientRequestId: crypto.randomUUID() };
+        attemptByDraftRef.current.set(draftId, attempt);
+        updateDraft(draftId, (draft) => ({ ...draft, attempt }));
+      }
+
+      const completed = await directSale.complete.mutateAsync({
+        attemptId: attempt.clientRequestId,
+        terminalId: v2Terminal.id,
+        cashSessionId: v2Session.id,
+        cashAccountId: v2Session.cashAccountId,
+        customerId: paymentCart.customerId,
+        items: paymentCart.lines.map((line) => ({
+          inventoryId: line.inventoryId,
+          stockId: v2Terminal.stockId,
+          quantity: line.quantity,
+          unitPrice: line.unitPrice,
+          discountAmount: line.discountAmount,
+        })),
+        orderDiscountAmount: paymentCart.discount,
+        notes,
+        transactionDate: paymentDate === maxTransactionDate ? null : paymentDate,
+        payments,
+      });
+      result = adaptPdvDirectSaleV2Result(completed, payments, paymentCart.lines.length);
+      directSale.releaseAttempt(attempt.clientRequestId);
+
+      // No v2 o pedido nasce e é concluído atomicamente. Fotos entram depois;
+      // falha de Storage não transforma uma venda concluída em meia venda.
+      let attachmentFailed = false;
+      for (const pending of attachments) {
+        try {
+          await uploadAttachment.mutateAsync({
+            orderId: result.order_id,
+            file: pending.file,
+            clientAttachmentId: pending.id,
+          });
+          URL.revokeObjectURL(pending.previewUrl);
         } catch {
           attachmentFailed = true;
         }
@@ -1140,6 +1511,11 @@ export default function Pdv() {
     const saleTotal = Number(result.total) || 0;
     const saleChange = Math.round(change * 100) / 100;
     const saleWarnings = extractSaleWarnings(result.avisos);
+    setCompletedSale({
+      orderId: result.order_id,
+      orderNumber: saleNumber,
+      total: saleTotal,
+    });
     toast({
       title: t.saleSuccess.title.replace('{number}', String(saleNumber)),
       // `ToastDescription` é um <div> (Radix), então <div>/NoticeBanner aqui
@@ -1170,8 +1546,34 @@ export default function Pdv() {
   // overlays também suspendem a página (o F9 do pagamento pertence ao diálogo).
   useEffect(() => {
     function handleGlobalKeyDown(e: KeyboardEvent) {
-      if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.defaultPrevented || e.altKey) return;
       if (paymentOpen || confirmClearOpen || advancedOptionsOpen || shortcutHelpOpen) return;
+
+      const commandAction = resolvePdvCommandShortcut(e);
+      if (commandAction) {
+        if (
+          (commandAction === 'quantity_up' || commandAction === 'quantity_down')
+          && isPdvEditableTarget(e.target)
+        ) return;
+        e.preventDefault();
+        if (commandAction === 'search') {
+          searchInputRef.current?.focus();
+        } else if (commandAction === 'payment') {
+          openPayment();
+        } else if (commandAction === 'help') {
+          setShortcutHelpOpen(true);
+        } else if (cart.lines.length > 0) {
+          const lastLine = cart.lines[cart.lines.length - 1];
+          const step = inventoryQuantityStep(lastLine.unit);
+          setCart(incrementLineQuantity(
+            cart,
+            lastLine.inventoryId,
+            commandAction === 'quantity_up' ? step : -step,
+          ));
+        }
+        return;
+      }
+      if (e.ctrlKey || e.metaKey) return;
 
       if (e.key === 'F2') {
         e.preventDefault();
@@ -1526,7 +1928,11 @@ export default function Pdv() {
     },
     onCreate: handleCreateDraft,
     onDelete: handleDeleteDraft,
-    disabled: createOrder.isPending || settleOrder.isPending || replaceOrder.isPending,
+    disabled:
+      createOrder.isPending ||
+      settleOrder.isPending ||
+      replaceOrder.isPending ||
+      directSale.complete.isPending,
   };
 
   const cartPanelProps = {
@@ -1620,6 +2026,27 @@ export default function Pdv() {
     </button>
   );
 
+  if (isV2 && directSale.catalog.isError) {
+    return (
+      <div className="flex flex-col gap-4" data-testid="pdv-direct-sale-v2-catalog-blocked">
+        {backToCashPanel}
+        <PageHeader title={t.title} subtitle={t.subtitle} icon={ShoppingCart} />
+        <NoticeBanner
+          variant="destructive"
+          title="Não foi possível carregar a venda com segurança"
+          action={(
+            <Button type="button" variant="outline" onClick={() => void directSale.catalog.refetch()}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Tentar novamente
+            </Button>
+          )}
+        >
+          Nenhum pedido foi criado. Atualize os dados para continuar.
+        </NoticeBanner>
+      </div>
+    );
+  }
+
   if (isLoadingPdv) {
     return (
       <div className="flex flex-col gap-4">
@@ -1630,7 +2057,32 @@ export default function Pdv() {
     );
   }
 
-  if (stockLevelsLoaded && pdvStocks.length === 0) {
+  if (isV2 && resolvedV2CashContext.status !== 'resolved') {
+    const contextMessage = resolvedV2CashContext.status === 'ambiguous'
+      ? 'Há mais de um caixa aberto. Volte ao painel e escolha a gaveta antes de iniciar a venda.'
+      : resolvedV2CashContext.status === 'invalid'
+        ? 'O caixa informado não corresponde ao terminal ou ao estoque. Abra a venda novamente pelo painel do Caixa.'
+        : 'Abra um caixa antes de iniciar a venda.';
+    return (
+      <div className="space-y-6">
+        {backToCashPanel}
+        <PageHeader title={t.title} subtitle={t.subtitle} icon={ShoppingCart} />
+        <NoticeBanner
+          variant="destructive"
+          title="Não foi possível identificar o caixa desta venda"
+          action={(
+            <Button type="button" variant="outline" onClick={() => navigate(PDV_PANEL_PATH)}>
+              Voltar ao Caixa
+            </Button>
+          )}
+        >
+          {contextMessage} Nenhum pedido ou pagamento foi criado.
+        </NoticeBanner>
+      </div>
+    );
+  }
+
+  if ((isV2 || stockLevelsLoaded) && pdvStocks.length === 0) {
     return (
       <div className="space-y-6">
         {backToCashPanel}
@@ -1661,7 +2113,9 @@ export default function Pdv() {
     .slice(0, 2)
     .map((part) => part[0]?.toLocaleUpperCase(locale))
     .join('') || 'OP';
-  const activeTerminalName = terminals.find((terminal) => terminal.id === terminalId)?.name ?? '';
+  const activeTerminalName = isV2
+    ? v2Terminal?.name ?? ''
+    : legacyTerminals.find((terminal) => terminal.id === terminalId)?.name ?? '';
   const desktopOrderSwitcher = (
     <div className="hidden w-[22rem] shrink-0 md:block lg:w-[25rem] min-[1280px]:w-[30rem]">
       <PdvOrderSwitcher header {...orderSwitcherProps} />
@@ -1732,7 +2186,7 @@ export default function Pdv() {
   return (
     // pb generoso no mobile: dá espaço pra barra fixa do carrinho (acima do bottom
     // nav global, ver offset de 96px abaixo) não cobrir o fim da grade.
-    <div className={cn('flex flex-col gap-4', isMobileCart && 'pb-44')}>
+    <div className={cn('flex flex-col gap-4', isMobileCart && 'pb-44')} data-pdv-ui>
       <div className="relative">
         <div ref={headerRef}>{headerCompressed ? compactHeaderBlock : fullHeaderBlock}</div>
         {/* Sonda invisível: SEMPRE a variante OPOSTA à visível, pra medir sem
@@ -1758,6 +2212,44 @@ export default function Pdv() {
         >
           {t.editDraft.description}
         </NoticeBanner>
+      )}
+
+      {completedSale && (
+        <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <CheckCircle2 className="h-6 w-6 shrink-0 text-emerald-600" aria-hidden="true" />
+            <div className="min-w-0">
+              <p className="font-semibold">Pedido #{completedSale.orderNumber} concluído</p>
+              <p className="text-sm text-muted-foreground">
+                Total {formatCurrency(completedSale.total)}. O comprovante pode ser reaberto sem gerar outra venda.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <PdvOrderReceiptButton
+              orderId={completedSale.orderId}
+              format={receiptFormat}
+              label="Gerar comprovante"
+            />
+            {isV2 && hasPostSaleAccess && (
+              <Button type="button" onClick={() => setPostSaleOpen(true)}>
+                Abrir pós-venda
+              </Button>
+            )}
+          </div>
+          {receiptSettings.data?.autoPrint && (
+            <div ref={autoReceiptRef} className="hidden" aria-hidden="true">
+              {Array.from({ length: receiptSettings.data.copies }, (_, index) => (
+                <PdvOrderReceiptButton
+                  key={`${completedSale.orderId}-${index}`}
+                  orderId={completedSale.orderId}
+                  format={receiptFormat}
+                  label={`Impressão automática ${index + 1}`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       <div
@@ -1817,7 +2309,11 @@ export default function Pdv() {
                 </span>
               </div>
               {pdvStocks.length > 1 && (
-                <Select value={selectedStockId ?? undefined} onValueChange={setSelectedStockId}>
+                <Select
+                  value={selectedStockId ?? undefined}
+                  onValueChange={setSelectedStockId}
+                  disabled={isV2 && resolvedV2CashContext.status === 'resolved'}
+                >
                   <SelectTrigger className="w-full sm:w-56">
                     <SelectValue placeholder={t.stock.locationLabel} />
                   </SelectTrigger>
@@ -2028,15 +2524,15 @@ export default function Pdv() {
         description={t.shortcuts.description}
         closeLabel={t.shortcuts.close}
         shortcuts={[
-          { keys: ['F2'], label: t.shortcuts.search },
+          { keys: ['F2', '⌘/Ctrl F'], label: t.shortcuts.search },
           { keys: ['F3'], label: t.shortcuts.customer },
-          { keys: ['F4'], label: t.shortcuts.payment },
+          { keys: ['F4', '⌘/Ctrl Enter'], label: t.shortcuts.payment },
           { keys: ['F6', 'F7'], label: t.shortcuts.switchOrder },
           { keys: ['F8'], label: t.shortcuts.newOrder },
-          { keys: ['F9'], label: t.shortcuts.finalize },
+          { keys: ['F9', '⌘/Ctrl Enter'], label: t.shortcuts.finalize },
           { keys: ['↑', '↓', 'Enter'], label: t.shortcuts.results },
-          { keys: ['+', '−'], label: t.shortcuts.quantity },
-          { keys: ['?'], label: t.shortcuts.help },
+          { keys: ['+', '−', '⌘/Ctrl +/−'], label: t.shortcuts.quantity },
+          { keys: ['?', '⌘/Ctrl K'], label: t.shortcuts.help },
         ]}
       />
 
@@ -2075,6 +2571,18 @@ export default function Pdv() {
         onRemoveAttachment={handleRemoveAttachment}
         attaching={attachmentBusy}
       />
+
+      {isV2 && completedSale && (
+        <PdvDirectSalePostSaleDialog
+          open={postSaleOpen}
+          onOpenChange={setPostSaleOpen}
+          orderId={completedSale.orderId}
+          orderNumber={completedSale.orderNumber}
+          receiptFormat={receiptFormat}
+          returnsAccess={returnsAccess}
+          afterSaleAccess={afterSaleAccess}
+        />
+      )}
 
       {/* Confirmação de cancelar carrinho (Esc com busca vazia, ou botão de lixeira) */}
       <AlertDialog open={confirmClearOpen} onOpenChange={setConfirmClearOpen}>

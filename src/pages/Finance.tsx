@@ -17,6 +17,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { useCanManageFinanceSettings } from '@/hooks/useCanManageFinanceSettings';
+import { useCanManageFinanceTransactions } from '@/hooks/useCanManageFinanceTransactions';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -106,6 +107,7 @@ export default function Finance() {
   const { preset, range, setPreset, setRange } = useDateRangeFilter('this_month');
   const { hasModule } = useCompanyModules();
   const canManageFinanceSettings = useCanManageFinanceSettings();
+  const canManageFinanceTransactions = useCanManageFinanceTransactions();
 
   // O Financeiro (Contas, DRE e DFC) é base. Cobranças e Assinaturas recorrentes
   // continuam atrás do add-on `cobrancas`; o Exceção é barrado pela PermissionRoute.
@@ -131,6 +133,7 @@ export default function Finance() {
   const {
     accounts,
     transfer,
+    canManageBankAccounts,
     isError: isAccountsError,
     isErrorBalances,
     refetch: refetchAccounts,
@@ -256,19 +259,21 @@ export default function Finance() {
     deleteTransaction,
   });
 
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = async (data: Parameters<typeof submitTransaction>[0]) => {
     const result = await submitTransaction(data, editingTransaction);
     setEditingTransaction(null);
     return result;
   };
 
   const handleEdit = (t: FinancialTransaction) => {
+    if (!canManageFinanceTransactions) return;
     setEditingTransaction(t);
     setDefaultType(t.transaction_type);
     setFormOpen(true);
   };
 
   const handleNew = (type: TransactionType) => {
+    if (!canManageFinanceTransactions) return;
     setEditingTransaction(null);
     setDefaultType(type);
     setFormOpen(true);
@@ -276,6 +281,7 @@ export default function Finance() {
 
   const handleMovementKind = (kind: 'entrada' | 'saida' | 'transferencia') => {
     if (kind === 'transferencia') {
+      if (!canManageBankAccounts || !canManageFinanceTransactions) return;
       setTransferOpen(true);
       return;
     }
@@ -284,7 +290,7 @@ export default function Finance() {
 
   // Só Movimentações mantém FAB. Em Contas, "Nova Conta" faz parte da toolbar
   // responsiva e não precisa reservar um vazio extra no fim da página.
-  const screenHasFab = screen === 'movimentacoes';
+  const screenHasFab = screen === 'movimentacoes' && canManageFinanceTransactions;
 
   // Subtítulo do header por tela (cada tela é própria agora).
   const screenSubtitle =
@@ -422,7 +428,7 @@ export default function Finance() {
       </div>
 
       <TransactionFormDialog
-        open={formOpen}
+        open={canManageFinanceTransactions && formOpen}
         onOpenChange={setFormOpen}
         transaction={editingTransaction}
         onSubmit={handleSubmit}
@@ -431,14 +437,14 @@ export default function Finance() {
       />
 
       <NewMovementDialog
-        open={movementPickerOpen}
+        open={canManageFinanceTransactions && movementPickerOpen}
         onOpenChange={setMovementPickerOpen}
         onSelect={handleMovementKind}
         transferDisabled={transferableAccounts.length < 2}
       />
 
       <TransferFormDialog
-        open={transferOpen}
+        open={canManageBankAccounts && canManageFinanceTransactions && transferOpen}
         onOpenChange={setTransferOpen}
         accounts={transferableAccounts}
         onSubmit={async (data) => { await transfer.mutateAsync(data); }}

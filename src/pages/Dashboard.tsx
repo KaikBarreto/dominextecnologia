@@ -344,6 +344,7 @@ export default function Dashboard() {
         portalCalls={stats?.portalCalls ?? []}
         isLoading={isLoading}
         userId={user?.id ?? profile?.user_id ?? ''}
+        companyId={profile?.company_id ?? ''}
       />
       <MobilePageHeader
         title={t.greeting.hello.replace('{name}', firstName)}

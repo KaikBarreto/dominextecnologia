@@ -38,6 +38,17 @@ export interface InventoryMovementWithRelations extends InventoryMovementRow {
   counterpartStock: { name: string } | null;
 }
 
+const MOVEMENT_PAGE_SIZE = 1_000;
+const LOOKUP_CHUNK_SIZE = 200;
+
+function chunkIds(ids: string[]): string[][] {
+  const chunks: string[][] = [];
+  for (let index = 0; index < ids.length; index += LOOKUP_CHUNK_SIZE) {
+    chunks.push(ids.slice(index, index + LOOKUP_CHUNK_SIZE));
+  }
+  return chunks;
+}
+
 /**
  * Histórico de movimentações de estoque (Kardex) da empresa.
  *
@@ -54,15 +65,21 @@ export function useInventoryMovements() {
   const query = useQuery({
     queryKey: ['inventory-movements'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('inventory_movements')
-        .select('*')
-        // Kardex geral não mistura materiais que pertencem ao estoque de cliente.
-        .is('customer_id', null)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      const rows = (data || []) as InventoryMovementRow[];
+      const rows: InventoryMovementRow[] = [];
+      for (let offset = 0; ; offset += MOVEMENT_PAGE_SIZE) {
+        const { data, error } = await supabase
+          .from('inventory_movements')
+          .select('*')
+          // Kardex geral não mistura materiais que pertencem ao estoque de cliente.
+          .is('customer_id', null)
+          .order('created_at', { ascending: false })
+          .order('id', { ascending: false })
+          .range(offset, offset + MOVEMENT_PAGE_SIZE - 1);
+        if (error) throw error;
+        const page = (data ?? []) as InventoryMovementRow[];
+        rows.push(...page);
+        if (page.length < MOVEMENT_PAGE_SIZE) break;
+      }
 
       if (rows.length === 0) return [] as InventoryMovementWithRelations[];
 
@@ -71,11 +88,12 @@ export function useInventoryMovements() {
         ...new Set(rows.map((m) => m.inventory_id).filter((v): v is string => !!v)),
       ];
       const materialMap = new Map<string, { name: string; sku: string | null }>();
-      if (inventoryIds.length > 0) {
-        const { data: invRows } = await supabase
+      for (const ids of chunkIds(inventoryIds)) {
+        const { data: invRows, error: lookupError } = await supabase
           .from('inventory')
           .select('id, name, sku')
-          .in('id', inventoryIds);
+          .in('id', ids);
+        if (lookupError) throw lookupError;
         (invRows || []).forEach((i) => {
           materialMap.set(i.id, { name: i.name, sku: i.sku ?? null });
         });
@@ -86,11 +104,12 @@ export function useInventoryMovements() {
         ...new Set(rows.map((m) => m.created_by).filter((v): v is string => !!v)),
       ];
       const creatorMap = new Map<string, MovementCreator>();
-      if (creatorIds.length > 0) {
-        const { data: profiles } = await supabase
+      for (const ids of chunkIds(creatorIds)) {
+        const { data: profiles, error: lookupError } = await supabase
           .from('profiles')
           .select('user_id, full_name, email, avatar_url')
-          .in('user_id', creatorIds);
+          .in('user_id', ids);
+        if (lookupError) throw lookupError;
         (profiles || []).forEach((p) => {
           creatorMap.set(p.user_id, {
             full_name: p.full_name ?? null,
@@ -105,11 +124,12 @@ export function useInventoryMovements() {
         ...new Set(rows.map((m) => m.supplier_id).filter((v): v is string => !!v)),
       ];
       const supplierMap = new Map<string, { name: string }>();
-      if (supplierIds.length > 0) {
-        const { data: sups } = await supabase
+      for (const ids of chunkIds(supplierIds)) {
+        const { data: sups, error: lookupError } = await supabase
           .from('suppliers')
           .select('id, name')
-          .in('id', supplierIds);
+          .in('id', ids);
+        if (lookupError) throw lookupError;
         (sups || []).forEach((s) => {
           supplierMap.set(s.id, { name: s.name });
         });
@@ -120,11 +140,12 @@ export function useInventoryMovements() {
         ...new Set(rows.map((m) => m.service_order_id).filter((v): v is string => !!v)),
       ];
       const orderMap = new Map<string, number>();
-      if (orderIds.length > 0) {
-        const { data: orders } = await supabase
+      for (const ids of chunkIds(orderIds)) {
+        const { data: orders, error: lookupError } = await supabase
           .from('service_orders')
           .select('id, order_number')
-          .in('id', orderIds);
+          .in('id', ids);
+        if (lookupError) throw lookupError;
         (orders || []).forEach((o) => {
           if (o.order_number != null) orderMap.set(o.id, o.order_number);
         });
@@ -143,22 +164,24 @@ export function useInventoryMovements() {
         ...new Set(rows.map((m) => m.related_movement_id).filter((v): v is string => !!v)),
       ];
       const relatedStockIdMap = new Map<string, string>();
-      if (relatedIds.length > 0) {
-        const { data: relatedMovements } = await supabase
+      for (const ids of chunkIds(relatedIds)) {
+        const { data: relatedMovements, error: lookupError } = await supabase
           .from('inventory_movements')
           .select('id, stock_id')
-          .in('id', relatedIds);
+          .in('id', ids);
+        if (lookupError) throw lookupError;
         (relatedMovements || []).forEach((r) => {
           relatedStockIdMap.set(r.id, r.stock_id);
           stockIds.add(r.stock_id);
         });
       }
 
-      if (stockIds.size > 0) {
-        const { data: stockRows } = await supabase
+      for (const ids of chunkIds([...stockIds])) {
+        const { data: stockRows, error: lookupError } = await supabase
           .from('stocks')
           .select('id, name')
-          .in('id', [...stockIds]);
+          .in('id', ids);
+        if (lookupError) throw lookupError;
         (stockRows || []).forEach((s) => {
           stockMap.set(s.id, { name: s.name });
         });

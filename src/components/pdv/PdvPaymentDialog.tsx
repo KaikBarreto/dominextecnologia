@@ -391,7 +391,7 @@ export function PdvPaymentDialog({
   useEffect(() => {
     if (!open) return;
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'F9') {
+      if (e.key === 'F9' || ((e.metaKey || e.ctrlKey) && e.key === 'Enter')) {
         e.preventDefault();
         e.stopPropagation();
         void handleConfirm();
@@ -617,7 +617,7 @@ export function PdvPaymentDialog({
                 key={row.id}
                 className={cn(
                   'grid grid-cols-1 gap-3 p-3 md:grid-cols-[minmax(150px,0.8fr)_minmax(190px,1fr)_minmax(210px,1.15fr)_40px] md:items-center',
-                  touched && issue && 'bg-destructive/5 ring-1 ring-inset ring-destructive/60',
+                  touched && issue && 'ring-1 ring-inset ring-destructive',
                 )}
               >
                 <div className="flex min-w-0 items-center gap-3">

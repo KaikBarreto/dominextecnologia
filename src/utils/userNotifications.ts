@@ -6,9 +6,9 @@ import { supabase } from '@/integrations/supabase/client';
  *
  * RLS de `user_notifications` bloqueia INSERT direto pelo cliente — sempre
  * via edge function `create-user-notification` (service_role internamente).
- * A função valida que o caller só pode notificar:
- *   - a si mesmo (`caller.id === user_id`); OU
- *   - qualquer um, se o caller tiver role `admin`/`super_admin`.
+ * A função é self-only: o caller só pode notificar a si mesmo e o tenant é
+ * derivado do token. Fan-out para outras pessoas pertence ao roteador
+ * server-side, que aplica tenant, permissões e preferências.
  *
  * Best-effort: erros são logados mas NÃO propagados — notificação é UX
  * nice-to-have, não pode quebrar o fluxo principal (ex: marcar OS como

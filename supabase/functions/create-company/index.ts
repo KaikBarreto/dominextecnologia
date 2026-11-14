@@ -1,13 +1,18 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { provisionAsaasCustomer } from '../_shared/asaas-customer.ts'
 import { isValidBrazilianPhone } from '../_shared/phone-validation.ts'
 import { canonicalizeCompanyOrigin } from '../_shared/company-origin.ts'
 import { resolveFirstPaidWhatsappTier } from '../_shared/whatsapp-pricing.ts'
+import { ensureDefaultFinancialAccounts } from '../_shared/default-financial-accounts.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
+const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
+  status,
+  headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+})
 
 function normalizeSegments(value: unknown, fallback: unknown): string[] {
   const raw = Array.isArray(value) ? value : []
@@ -74,45 +79,84 @@ const isValidInternationalPhone = (phone: string): boolean => {
   return digits.length >= 7 && digits.length <= 15
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+type AdminClient = SupabaseClient
+
+async function rollbackCreationUserOnly(supabaseAdmin: AdminClient, userId: string | null) {
+  if (!userId) return
+  const { error } = await supabaseAdmin.auth.admin.deleteUser(userId)
+  if (error && !error.message.toLowerCase().includes('not found')) {
+    console.error('[create-company] Falha ao desfazer usuário:', error.message)
+  }
+}
+
+async function rollbackCreation(
+  supabaseAdmin: AdminClient,
+  companyId: string | null,
+  userId: string | null,
+  idempotencyKey: string | null,
+) {
+  // O usuario pode existir sem profile vinculado quando a falha acontece no
+  // meio do fluxo; por isso a Auth API e chamada mesmo que a RPC tambem saiba
+  // apagar usuarios ja ligados ao tenant.
+  await rollbackCreationUserOnly(supabaseAdmin, userId)
+
+  if (companyId && idempotencyKey) {
+    const { error } = await supabaseAdmin.rpc('rollback_admin_company_creation', {
+      p_company_id: companyId,
+      p_idempotency_key: idempotencyKey,
+    })
+    if (error) {
+      console.error('[create-company] Falha no rollback atômico da empresa:', error.message)
+    }
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
+  let supabaseAdmin: AdminClient | null = null
+  let createdCompanyId: string | null = null
+  let createdUserId: string | null = null
+  let creationIdempotencyKey: string | null = null
+
   try {
-    const supabaseAdmin = createClient(
+    supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
 
-    // Verify caller is super_admin
+    // Esta edge usa service role e cria tenant + usuario. A autorizacao precisa
+    // acontecer antes de ler/processar o payload e falhar fechada se qualquer
+    // uma das verificacoes nao puder ser concluida.
     const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    if (!authHeader?.startsWith('Bearer ')) return json({ error: 'Não autenticado.' }, 401)
+
+    const { data: { user: caller }, error: authError } = await supabaseAdmin.auth.getUser(authHeader.slice(7))
+    if (authError || !caller) return json({ error: 'Não autenticado.' }, 401)
+
+    const [superAdminResult, companyPermissionResult] = await Promise.all([
+      supabaseAdmin.rpc('has_role', {
+        _user_id: caller.id,
+        _role: 'super_admin',
+      }),
+      supabaseAdmin.rpc('has_admin_permission', {
+        _user_id: caller.id,
+        _permission: 'admin_empresas',
+      }),
+    ])
+    if (superAdminResult.error || companyPermissionResult.error) {
+      console.error('[create-company] Falha ao validar permissao do solicitante', {
+        role: superAdminResult.error?.message,
+        permission: companyPermissionResult.error?.message,
       })
+      return json({ error: 'Não foi possível validar sua permissão para criar empresas. Tente novamente.' }, 503)
     }
-
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user: caller } } = await supabaseAdmin.auth.getUser(token)
-    if (!caller) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
-
-    const { data: hasRole } = await supabaseAdmin.rpc('has_role', {
-      _user_id: caller.id,
-      _role: 'super_admin',
-    })
-
-    if (!hasRole) {
-      return new Response(JSON.stringify({ error: 'Forbidden: requires super_admin role' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+    if (!superAdminResult.data && !companyPermissionResult.data) {
+      return json({ error: 'Você não tem permissão para criar empresas.' }, 403)
     }
 
     const body = await req.json()
@@ -146,7 +190,15 @@ Deno.serve(async (req) => {
       custom_price_note,
       nfse_tier,
       plan_locked,
+      idempotency_key,
     } = body
+
+    if (idempotency_key !== undefined && (typeof idempotency_key !== 'string' || !UUID_PATTERN.test(idempotency_key))) {
+      return json({ error: 'Não foi possível validar esta tentativa de criação. Feche o formulário e tente novamente.' }, 400)
+    }
+    creationIdempotencyKey = typeof idempotency_key === 'string'
+      ? idempotency_key
+      : crypto.randomUUID()
 
     const countryCode = resolveCountryCode(country_code)
     const regionalDefaults = COUNTRY_REGIONAL_DEFAULTS[countryCode]
@@ -162,10 +214,35 @@ Deno.serve(async (req) => {
     const normalizedSegments = normalizeSegments(segments, segment)
 
     if (!company_name || !admin_email || !admin_password) {
-      return new Response(JSON.stringify({ error: 'Missing required fields' }), {
+      return new Response(JSON.stringify({ error: 'Nome da empresa, e-mail e senha do administrador são obrigatórios.' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
+    }
+
+    // Retry depois de timeout/resposta perdida: devolve a empresa concluida.
+    // Se a primeira requisicao ainda esta trabalhando, nao inicia outra cadeia
+    // de efeitos colaterais em paralelo.
+    if (typeof idempotency_key === 'string') {
+      const { data: existingCreation, error: existingCreationError } = await supabaseAdmin
+        .from('companies')
+        .select('id, creation_requested_by, creation_completed_at')
+        .eq('creation_idempotency_key', creationIdempotencyKey)
+        .maybeSingle()
+
+      if (existingCreationError) {
+        console.error('[create-company] Falha ao consultar chave idempotente:', existingCreationError.message)
+        return json({ error: 'Não foi possível validar esta tentativa de criação. Tente novamente.' }, 503)
+      }
+      if (existingCreation) {
+        if (existingCreation.creation_requested_by !== caller.id) {
+          return json({ error: 'Esta tentativa de criação não é válida para o usuário atual.' }, 409)
+        }
+        if (existingCreation.creation_completed_at) {
+          return json({ success: true, company_id: existingCreation.id, idempotent: true })
+        }
+        return json({ error: 'A empresa já está sendo criada. Aguarde alguns instantes.' }, 409)
+      }
     }
 
     const phoneIsValid = !company_phone || (countryCode === 'BR'
@@ -346,7 +423,33 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 1. Create the company
+    // Cria o usuario ANTES do tenant. O e-mail de Auth ja e unico e funciona
+    // como primeira barreira contra cliques/retries concorrentes: chamadas
+    // perdedoras falham sem deixar uma empresa parcial no banco.
+    const { data: newUser, error: userError } = await supabaseAdmin.auth.admin.createUser({
+      email: admin_email,
+      password: admin_password,
+      email_confirm: true,
+      user_metadata: { full_name: contact_name || company_name },
+    })
+
+    if (userError) {
+      const isDuplicate = userError.message.toLowerCase().includes('already')
+        || userError.message.toLowerCase().includes('duplicate')
+      console.error('[create-company] Falha ao criar usuário administrador:', userError.message)
+      return json({
+        error: isDuplicate
+          ? 'Este e-mail já está cadastrado no sistema.'
+          : 'Não foi possível criar o acesso do administrador. Tente novamente.',
+      }, 400)
+    }
+
+    createdUserId = newUser.user.id
+    const userId = createdUserId
+
+    // 1. Create the company. A chave unica e a barreira definitiva quando
+    // duas chamadas usam administradores diferentes ou o retry chega depois
+    // da criacao do usuario, mas antes da resposta HTTP anterior.
     const isPureTrial = (subscription_status || 'testing') === 'testing'
       && plan_locked !== true
       && !(Number(custom_price) > 0)
@@ -379,14 +482,32 @@ Deno.serve(async (req) => {
         nfse_tier: nfse_tier ?? 1,
         whatsapp_tier: resolvedWhatsappTier,
         plan_locked: !isPureTrial && (plan_locked === true || (subscription_status === 'testing' && Number(subscription_value) > 0)),
+        creation_idempotency_key: creationIdempotencyKey,
+        creation_requested_by: caller.id,
       })
       .select('id')
       .single()
 
     if (companyError) {
       console.error('Error creating company:', companyError)
-      throw new Error(`Erro ao criar empresa: ${companyError.message}`)
+      await rollbackCreationUserOnly(supabaseAdmin, createdUserId)
+      createdUserId = null
+
+      if (companyError.code === '23505' && creationIdempotencyKey) {
+        const { data: existing } = await supabaseAdmin
+          .from('companies')
+          .select('id, creation_completed_at, creation_requested_by')
+          .eq('creation_idempotency_key', creationIdempotencyKey)
+          .maybeSingle()
+        if (existing?.creation_requested_by === caller.id && existing.creation_completed_at) {
+          return json({ success: true, company_id: existing.id, idempotent: true })
+        }
+        return json({ error: 'A empresa já está sendo criada. Aguarde alguns instantes.' }, 409)
+      }
+
+      throw new Error('Não foi possível criar a empresa.')
     }
+    createdCompanyId = company.id
 
     // 1a. Grava apenas códigos ativos e previamente validados. No Personalizado,
     //     falha e desfaz o tenant se o contrato de módulos não puder ser salvo.
@@ -397,10 +518,9 @@ Deno.serve(async (req) => {
       if (modulesError) {
         console.error('[create-company] Falha ao gravar company_modules:', modulesError.message)
         if (isPersonalizado) {
-          const { error: rollbackError } = await supabaseAdmin.from('companies').delete().eq('id', company.id)
-          if (rollbackError) {
-            console.error('[create-company] Falha ao desfazer empresa após erro de módulos:', rollbackError.message)
-          }
+          await rollbackCreation(supabaseAdmin, createdCompanyId, createdUserId, creationIdempotencyKey)
+          createdCompanyId = null
+          createdUserId = null
           return new Response(JSON.stringify({ error: 'Não foi possível configurar os módulos obrigatórios da empresa.' }), {
             status: 503,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -409,63 +529,26 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 1b. Provisiona o customer Asaas (find-or-create) e grava companies.asaas_customer_id.
-    //     BEST-EFFORT: nunca bloqueia a criação da empresa — se falhar (chave ausente, sem
-    //     CNPJ, erro Asaas), apenas registra o aviso. Checkout e backfill recuperam depois.
-    try {
-      const provision = await provisionAsaasCustomer(supabaseAdmin, {
-        id: company.id,
-        name: company_name,
-        email: company_email || admin_email,
-        cnpj: company_cnpj || null,
-        asaas_customer_id: null,
-        address: company_address || null,
-        // Empresa recém-criada pelo painel master: notificação de cobrança nasce DESLIGADA
-        // (companies.billing_notifications_enabled default false). Ligar é ato manual.
-        billing_notifications_enabled: false,
-        billing_email: null,
-      })
-      if (provision.outcome === 'failed') {
-        console.error('[create-company] Asaas customer não provisionado (não-fatal):', provision.error)
-      }
-    } catch (asaasErr) {
-      console.error('[create-company] Exceção ao provisionar customer Asaas (não-fatal):', asaasErr)
-    }
-
-    // 2. Create the master user
-    const { data: newUser, error: userError } = await supabaseAdmin.auth.admin.createUser({
-      email: admin_email,
-      password: admin_password,
-      email_confirm: true,
-      user_metadata: { full_name: contact_name || company_name },
-    })
-
-    if (userError) {
-      // Rollback: delete the company
-      await supabaseAdmin.from('companies').delete().eq('id', company.id)
-      const isDuplicate = userError.message.toLowerCase().includes('already') || userError.message.toLowerCase().includes('duplicate')
-      const msg = isDuplicate ? 'Este e-mail já está cadastrado no sistema.' : userError.message
-      return new Response(JSON.stringify({ error: msg }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
-
-    const userId = newUser.user.id
-
     // Wait for trigger to create profile
     await new Promise(resolve => setTimeout(resolve, 500))
 
-    // 3. Link profile to company
-    await supabaseAdmin
+    // 3. Link profile to company. O select prova que o trigger de Auth criou o
+    // profile; update sem linha afetada nao pode ser tratado como sucesso.
+    const { data: linkedProfile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .update({ company_id: company.id, phone: company_phone || null })
       .eq('user_id', userId)
+      .select('user_id')
+      .maybeSingle()
+    if (profileError || !linkedProfile) {
+      throw new Error('Não foi possível vincular o administrador à empresa.')
+    }
 
     // 4. Assign admin role
-    await supabaseAdmin
+    const { error: roleError } = await supabaseAdmin
       .from('user_roles')
       .insert({ user_id: userId, role: 'admin' })
+    if (roleError) throw new Error('Não foi possível configurar o perfil administrador.')
 
     // 5. Give full permissions
     const allPermissions = [
@@ -478,13 +561,14 @@ Deno.serve(async (req) => {
       'fn:view_employees', 'fn:manage_employees', 'fn:view_reports',
     ]
 
-    await supabaseAdmin
+    const { error: permissionsError } = await supabaseAdmin
       .from('user_permissions')
       .insert({
         user_id: userId,
         permissions: allPermissions,
         is_active: true,
       })
+    if (permissionsError) throw new Error('Não foi possível configurar as permissões do administrador.')
 
     // 6. O trigger de companies normalmente já cria esta linha. Upsert evita a
     // inserção redundante/erro UNIQUE e aplica os defaults regionais do país.
@@ -505,11 +589,9 @@ Deno.serve(async (req) => {
       }, { onConflict: 'company_id' })
     if (settingsError) {
       console.error('[create-company] Falha ao configurar regional:', settingsError.message)
-      const { error: userRollbackError } = await supabaseAdmin.auth.admin.deleteUser(userId)
-      if (userRollbackError) {
-        console.error('[create-company] Falha ao desfazer usuário após erro regional:', userRollbackError.message)
-      }
-      await supabaseAdmin.from('companies').delete().eq('id', company.id)
+      await rollbackCreation(supabaseAdmin, createdCompanyId, createdUserId, creationIdempotencyKey)
+      createdCompanyId = null
+      createdUserId = null
       return new Response(JSON.stringify({ error: 'Não foi possível configurar os padrões regionais da empresa.' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -554,20 +636,18 @@ Deno.serve(async (req) => {
     // Com .insert() puro, a segunda passada estouraria 23505 e derrubaria o
     // cadastro de empresa nova — caminho critico. ignoreDuplicates = ON CONFLICT
     // DO NOTHING: nao sobrescreve o que ja existe, nao duplica, nao quebra.
-    await supabaseAdmin
+    const { error: categoriesError } = await supabaseAdmin
       .from('financial_categories')
       .upsert(
         defaultCategories.map(c => ({ ...c, company_id: company.id })),
         { onConflict: 'company_id,name', ignoreDuplicates: true },
       )
+    if (categoriesError) throw new Error('Não foi possível configurar as categorias financeiras iniciais.')
 
-    // 8. Seed default financial accounts
-    await supabaseAdmin
-      .from('financial_accounts')
-      .insert([
-        { company_id: company.id, name: 'Caixa', type: 'caixa', color: '#10b981', icon: 'Wallet', initial_balance: 0, sort_order: 0 },
-        { company_id: company.id, name: 'Conta Principal', type: 'banco', color: '#3b82f6', icon: 'Landmark', initial_balance: 0, sort_order: 1 },
-      ])
+    // 8. Fallback idempotente. A garantia canônica é o trigger em companies;
+    // este passo mantém o deploy seguro se a Edge chegar antes da migration.
+    const { error: accountsError } = await ensureDefaultFinancialAccounts(supabaseAdmin, company.id)
+    if (accountsError) throw new Error('Não foi possível configurar as contas financeiras iniciais.')
 
     // 9. Seed catálogo de serviço default (tipos de serviço, status de OS, tipos de tarefa).
     //    NÃO-FATAL: se falhar, a empresa já foi criada — apenas registra o erro e segue.
@@ -582,6 +662,40 @@ Deno.serve(async (req) => {
       console.error('Aviso: exceção ao semear catálogo de serviço (não-fatal):', seedErr)
     }
 
+    // Provisionamento externo fica por ultimo: se qualquer etapa obrigatoria
+    // anterior falhar, o rollback nao deixa customer orfao no Asaas.
+    // Continua BEST-EFFORT; checkout e backfill recuperam indisponibilidade.
+    try {
+      const provision = await provisionAsaasCustomer(supabaseAdmin, {
+        id: company.id,
+        name: company_name,
+        email: company_email || admin_email,
+        cnpj: company_cnpj || null,
+        asaas_customer_id: null,
+        address: company_address || null,
+        billing_notifications_enabled: false,
+        billing_email: null,
+      })
+      if (provision.outcome === 'failed') {
+        console.error('[create-company] Asaas customer não provisionado (não-fatal):', provision.error)
+      }
+    } catch (asaasErr) {
+      console.error('[create-company] Exceção ao provisionar customer Asaas (não-fatal):', asaasErr)
+    }
+
+    const { error: completionError } = await supabaseAdmin
+      .from('companies')
+      .update({ creation_completed_at: new Date().toISOString() })
+      .eq('id', company.id)
+      .eq('creation_idempotency_key', creationIdempotencyKey)
+      .select('id')
+      .single()
+    if (completionError) throw new Error('Não foi possível concluir o registro idempotente da empresa.')
+
+    // A partir daqui o catch nao deve desfazer uma criacao concluida.
+    createdCompanyId = null
+    createdUserId = null
+
     return new Response(JSON.stringify({
       success: true, 
       company_id: company.id, 
@@ -591,9 +705,11 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Erro interno'
     console.error('create-company error:', error)
-    return new Response(JSON.stringify({ error: message }), {
+    if (supabaseAdmin && (createdCompanyId || createdUserId)) {
+      await rollbackCreation(supabaseAdmin, createdCompanyId, createdUserId, creationIdempotencyKey)
+    }
+    return new Response(JSON.stringify({ error: 'Não foi possível criar a empresa. Tente novamente.' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })

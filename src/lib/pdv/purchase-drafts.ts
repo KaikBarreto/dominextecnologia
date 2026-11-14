@@ -47,6 +47,7 @@ export interface PdvPurchaseDraftDefaults {
 interface PdvPurchaseDraftOwner {
   companyId: string;
   userId: string;
+  stockId: string;
 }
 
 const newId = () => crypto.randomUUID();
@@ -60,7 +61,7 @@ export const createPdvPurchaseItem = (id = newId()): PdvPurchaseItemDraft => ({
 });
 
 export function pdvPurchaseDraftStorageKey(owner: PdvPurchaseDraftOwner): string {
-  return `pdv_purchase_drafts:${owner.companyId}:${owner.userId}`;
+  return `pdv_purchase_drafts:${owner.companyId}:${owner.userId}:${owner.stockId}`;
 }
 
 export function createPdvPurchaseDraft(

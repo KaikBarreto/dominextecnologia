@@ -33,6 +33,7 @@ export const settings = {
         atalhos: 'Atalhos',
         aparencia: 'Aparência',
         integracoes: 'Integrações',
+        notificacoes: 'Notificações',
       },
     },
 
@@ -1803,6 +1804,7 @@ export const settings = {
         atalhos: 'Shortcuts',
         aparencia: 'Appearance',
         integracoes: 'Integrations',
+        notificacoes: 'Notifications',
       },
     },
 
@@ -3500,6 +3502,7 @@ export const settings = {
         atalhos: 'Atajos',
         aparencia: 'Apariencia',
         integracoes: 'Integraciones',
+        notificacoes: 'Notificaciones',
       },
     },
 
@@ -5197,6 +5200,7 @@ export const settings = {
         atalhos: 'Raccourcis',
         aparencia: 'Apparence',
         integracoes: 'Intégrations',
+        notificacoes: 'Notifications',
       },
     },
 

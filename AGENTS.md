@@ -56,6 +56,8 @@
 - RLS e seguranca; filtro client e UX. Sempre avaliar os dois.
 - White-label e multi-tenant nao podem vazar dados entre empresas/tenants.
 - Copy de UI, erro e email para usuario final deve ser PT-BR.
+- Artigo vertical ou regulatorio deve responder a intencao logo no inicio, usar exemplo/checklist original, citar fontes primarias, conectar links internos e CTA coerente; video so entra quando acrescentar explicacao ou demonstracao e nunca substitui a resposta textual. Em norma, lei ou obrigacao, registrar data e responsavel pela revisao.
+- Conteudo que explica lei, norma tecnica, obrigatoriedade ou responsabilidade profissional deve registrar data de revisao, citar fonte oficial vigente e passar por revisao periodica com responsavel tecnico/editorial identificado antes de publicacao ou republicacao.
 - Codigos internos de backend, RPC, SQLSTATE, nomes de tabela, constraint ou detalhes tecnicos nunca devem aparecer em toast, email ou copy para usuario final; mapear o erro de dominio para uma orientacao clara em PT-BR antes do fallback generico e cobrir a familia de codigos com teste quando aplicavel.
 - Hook e a fronteira do Supabase: componente nao deve chamar `supabase.from(...)` direto sem motivo claro.
 - Intervalos escolhidos em calendario devem comparar por dia civil inclusivo; horario em `from`/`to` nao pode excluir o primeiro ou o ultimo dia selecionado.

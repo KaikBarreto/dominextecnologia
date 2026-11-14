@@ -9,7 +9,8 @@ import {
   AlertTriangle,
   DollarSign,
   Edit,
-  Trash2,
+  Archive,
+  ArchiveRestore,
   TrendingUp,
   TrendingDown,
   Boxes,
@@ -140,6 +141,13 @@ const GENERAL_STOCK_UI = {
   },
 } as const;
 
+const ARCHIVE_UI = {
+  'pt-br': { archive: 'Arquivar', restore: 'Desarquivar', archived: 'Arquivado', show: 'Mostrar arquivados', title: 'Arquivar material', description: 'Arquivar "{name}"? O material sai das operações, mas o cadastro e o histórico continuam guardados.', cancel: 'Cancelar', confirm: 'Arquivar' },
+  en: { archive: 'Archive', restore: 'Restore', archived: 'Archived', show: 'Show archived', title: 'Archive material', description: 'Archive "{name}"? It leaves daily operations, but its record and history remain saved.', cancel: 'Cancel', confirm: 'Archive' },
+  es: { archive: 'Archivar', restore: 'Restaurar', archived: 'Archivado', show: 'Mostrar archivados', title: 'Archivar material', description: '¿Archivar "{name}"? Sale de las operaciones, pero su registro e historial se conservan.', cancel: 'Cancelar', confirm: 'Archivar' },
+  fr: { archive: 'Archiver', restore: 'Restaurer', archived: 'Archivé', show: 'Afficher les archivés', title: 'Archiver le matériel', description: 'Archiver « {name} » ? Il quitte les opérations, mais sa fiche et son historique restent conservés.', cancel: 'Annuler', confirm: 'Archiver' },
+} as const;
+
 export default function Inventory() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -152,12 +160,13 @@ export default function Inventory() {
   const { locale, currency, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory;
   const generalStockUi = GENERAL_STOCK_UI[locale];
+  const archiveUi = ARCHIVE_UI[locale];
   const {
     items,
     stockLevels,
     isLoading,
     stats,
-    deleteItem,
+    setArchived,
     getQuantityForStock,
     getMinQuantityForStock,
     getPresenceForStock,
@@ -178,8 +187,9 @@ export default function Inventory() {
   const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
   const [groupFilter, setGroupFilter] = useState<string[]>([]);
   const [lowStockOnly, setLowStockOnly] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<InventoryItem | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [itemToArchive, setItemToArchive] = useState<InventoryItem | null>(null);
   const [exportFormat, setExportFormat] = useState<ExportFormat | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const [nfeImportOpen, setNfeImportOpen] = useState(false);
@@ -274,8 +284,9 @@ export default function Inventory() {
         ? true
         : getPresenceForStock(item.id, resolvedStockId);
     // Filtro de acesso por local: enquanto carrega, não esconde nada (evita flash).
-    const matchesAccessible = isLoadingAccessible ? true : accessibleIds.has(item.id);
-    return matchesSearch && matchesCategory && matchesGroup && matchesLowStock && matchesPresence && matchesAccessible;
+    const matchesAccessible = Boolean(item.archived_at) || isLoadingAccessible || accessibleIds.has(item.id);
+    const matchesArchived = showArchived ? true : !item.archived_at;
+    return matchesSearch && matchesCategory && matchesGroup && matchesLowStock && matchesPresence && matchesAccessible && matchesArchived;
   });
 
   // Enriquece cada item com effectiveQty (saldo do local ativo) para que a
@@ -313,10 +324,14 @@ export default function Inventory() {
     setDialogOpen(true);
   };
 
-  const handleDeleteClick = (item: InventoryItem, e?: React.MouseEvent) => {
+  const handleArchiveClick = (item: InventoryItem, e?: React.MouseEvent) => {
     e?.stopPropagation();
-    setItemToDelete(item);
-    setDeleteDialogOpen(true);
+    if (item.archived_at) {
+      setArchived.mutate({ id: item.id, archived: false });
+      return;
+    }
+    setItemToArchive(item);
+    setArchiveDialogOpen(true);
   };
 
   /** Abre o dialog de transferência a partir do menu de ações (origem = activeStockId normal). */
@@ -346,11 +361,11 @@ export default function Inventory() {
     setInlineMovementOpen(true);
   };
 
-  const handleConfirmDelete = async () => {
-    if (itemToDelete) {
-      await deleteItem.mutateAsync(itemToDelete.id);
-      setItemToDelete(null);
-      setDeleteDialogOpen(false);
+  const handleConfirmArchive = async () => {
+    if (itemToArchive) {
+      await setArchived.mutateAsync({ id: itemToArchive.id, archived: true });
+      setItemToArchive(null);
+      setArchiveDialogOpen(false);
     }
   };
 
@@ -472,6 +487,7 @@ export default function Inventory() {
   // RPC de acesso autorizou. As quantidades consolidadas abaixo vêm SOMENTE de
   // `stockLevels`, já filtrado por RLS, nunca de `inventory.quantity`.
   const accessibleInventoryItems = items.filter((i) => {
+    if (i.archived_at) return false;
     const accessible = isLoadingAccessible ? true : accessibleIds.has(i.id);
     return accessible;
   });
@@ -560,13 +576,15 @@ export default function Inventory() {
     (searchQuery ? 1 : 0) +
     (categoryFilter.length > 0 ? 1 : 0) +
     (groupFilter.length > 0 ? 1 : 0) +
-    (lowStockOnly ? 1 : 0);
+    (lowStockOnly ? 1 : 0) +
+    (showArchived ? 1 : 0);
 
   const clearFilters = () => {
     setSearchQuery('');
     setCategoryFilter([]);
     setGroupFilter([]);
     setLowStockOnly(false);
+    setShowArchived(false);
   };
 
   const filterContent = (
@@ -586,6 +604,23 @@ export default function Inventory() {
           <span className="text-sm font-medium flex items-center gap-1.5">
             <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
             {t.filters.lowStockOnly}
+          </span>
+        </button>
+      </div>
+      <div className="space-y-2">
+        <button
+          type="button"
+          className="flex w-full cursor-pointer items-center gap-2.5 text-left"
+          onClick={() => setShowArchived((value) => !value)}
+        >
+          <Checkbox
+            checked={showArchived}
+            onCheckedChange={(value) => setShowArchived(!!value)}
+            className="pointer-events-none"
+          />
+          <span className="flex items-center gap-1.5 text-sm font-medium">
+            <Archive className="h-3.5 w-3.5" />
+            {archiveUi.show}
           </span>
         </button>
       </div>
@@ -802,12 +837,12 @@ export default function Inventory() {
                   <EmptyState
                     icon={<Package className="h-12 w-12" />}
                     title={
-                      searchQuery || categoryFilter.length > 0 || groupFilter.length > 0 || lowStockOnly
+                      searchQuery || categoryFilter.length > 0 || groupFilter.length > 0 || lowStockOnly || showArchived
                         ? t.empty.noneFoundTitle
                         : t.empty.noneTitle
                     }
                     description={
-                      searchQuery || categoryFilter.length > 0 || groupFilter.length > 0 || lowStockOnly
+                      searchQuery || categoryFilter.length > 0 || groupFilter.length > 0 || lowStockOnly || showArchived
                         ? t.empty.noneFoundDescription
                         : t.empty.noneDescriptionMobile
                     }
@@ -821,7 +856,14 @@ export default function Inventory() {
                         const belowMin = isLowStockForActiveStock(item);
                         const itemGroup = groups.find((g) => g.id === item.group_id);
 
-                        const itemActions: ItemAction[] = [
+                        const itemActions: ItemAction[] = item.archived_at ? [
+                          {
+                            key: 'restore',
+                            label: archiveUi.restore,
+                            icon: <ArchiveRestore className="h-4 w-4" />,
+                            onClick: () => handleArchiveClick(item),
+                          },
+                        ] : [
                           {
                             key: 'view',
                             label: t.rowActions.view,
@@ -860,11 +902,11 @@ export default function Inventory() {
                               }]
                             : []),
                           {
-                            key: 'delete',
-                            label: t.rowActions.delete,
-                            icon: <Trash2 className="h-4 w-4" />,
+                            key: 'archive',
+                            label: archiveUi.archive,
+                            icon: <Archive className="h-4 w-4" />,
                             variant: 'destructive' as const,
-                            onClick: () => handleDeleteClick(item),
+                            onClick: () => handleArchiveClick(item),
                           },
                         ];
 
@@ -886,7 +928,7 @@ export default function Inventory() {
                         return (
                           <MobileListItem
                             key={item.id}
-                            onClick={() => handleEdit(item)}
+                            onClick={item.archived_at ? undefined : () => handleEdit(item)}
                             actions={itemActions}
                             leading={
                               <InventoryItemThumbnail
@@ -905,6 +947,9 @@ export default function Inventory() {
                                 )}
                                 {belowMin && (
                                   <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
+                                )}
+                                {item.archived_at && (
+                                  <Badge className="bg-foreground text-background">{archiveUi.archived}</Badge>
                                 )}
                               </div>
                             }
@@ -986,12 +1031,12 @@ export default function Inventory() {
                       size="compact"
                       icon={<Package className="h-12 w-12" />}
                       title={
-                        searchQuery || categoryFilter.length > 0 || groupFilter.length > 0 || lowStockOnly
+                        searchQuery || categoryFilter.length > 0 || groupFilter.length > 0 || lowStockOnly || showArchived
                           ? t.empty.noneFoundTitle
                           : t.empty.noneTitle
                       }
                       description={
-                        searchQuery || categoryFilter.length > 0 || groupFilter.length > 0 || lowStockOnly
+                        searchQuery || categoryFilter.length > 0 || groupFilter.length > 0 || lowStockOnly || showArchived
                           ? t.empty.noneFoundDescription
                           : t.empty.noneDescriptionDesktop
                       }
@@ -1025,7 +1070,7 @@ export default function Inventory() {
                               const belowMin = isLowStockForActiveStock(item);
                               const itemGroup = groups.find((g) => g.id === item.group_id);
                               return (
-                                <TableRow key={item.id} className={belowMin ? 'bg-destructive/5' : undefined}>
+                                <TableRow key={item.id}>
                                   <TableCell className="font-medium">
                                     <div className="flex min-w-0 items-center gap-2.5">
                                       <InventoryItemThumbnail
@@ -1037,6 +1082,9 @@ export default function Inventory() {
                                       <div className="flex min-w-0 items-center gap-1.5">
                                         <LowStockIcon item={item} />
                                         <span className="min-w-0 break-words">{item.name}</span>
+                                        {item.archived_at && (
+                                          <Badge className="bg-foreground text-background">{archiveUi.archived}</Badge>
+                                        )}
                                       </div>
                                     </div>
                                   </TableCell>
@@ -1073,17 +1121,19 @@ export default function Inventory() {
                                   <TableCell>
                                     <RowActionsMenu
                                       actions={[
-                                        ...(!isGeneralStockView
+                                        ...(!item.archived_at && !isGeneralStockView
                                           ? [
                                               { label: t.rowActions.edit, icon: Edit, variant: 'edit' as const, onClick: () => handleEdit(item) },
                                               { label: t.rowActions.registerEntrada, icon: TrendingUp, variant: 'default' as const, onClick: () => handleInlineMovement(item, 'entrada') },
                                               { label: t.rowActions.registerSaida, icon: TrendingDown, variant: 'default' as const, onClick: () => handleInlineMovement(item, 'saida') },
                                             ]
                                           : []),
-                                        ...(!isGeneralStockView && stocks.length > 1
+                                        ...(!item.archived_at && !isGeneralStockView && stocks.length > 1
                                           ? [{ label: t.rowActions.transfer, icon: ArrowRightLeft, variant: 'default' as const, onClick: () => handleTransferClick(item) }]
                                           : []),
-                                        { label: t.rowActions.delete, icon: Trash2, variant: 'delete', onClick: () => handleDeleteClick(item) },
+                                        item.archived_at
+                                          ? { label: archiveUi.restore, icon: ArchiveRestore, variant: 'default', onClick: () => handleArchiveClick(item) }
+                                          : { label: archiveUi.archive, icon: Archive, variant: 'delete', onClick: () => handleArchiveClick(item) },
                                       ]}
                                     />
                                   </TableCell>
@@ -1207,22 +1257,22 @@ export default function Inventory() {
         />
       )}
 
-      {/* Confirmação de exclusão */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      {/* Arquivamento preserva Kardex, compras, reservas e relatórios. */}
+      <AlertDialog open={archiveDialogOpen} onOpenChange={setArchiveDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t.delete.title}</AlertDialogTitle>
+            <AlertDialogTitle>{archiveUi.title}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t.delete.description.replace('{name}', itemToDelete?.name ?? '')}
+              {archiveUi.description.replace('{name}', itemToArchive?.name ?? '')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{t.delete.cancel}</AlertDialogCancel>
+            <AlertDialogCancel>{archiveUi.cancel}</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleConfirmDelete}
+              onClick={handleConfirmArchive}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {t.delete.confirm}
+              {archiveUi.confirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

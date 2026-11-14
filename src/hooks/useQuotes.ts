@@ -10,6 +10,10 @@ import { getQuoteCommercialTotal } from '@/lib/quote-commercial-total';
 import type { QuoteCostComposition } from '@/components/quotes/QuoteServiceCostEditor';
 import type { Json } from '@/integrations/supabase/types';
 import { quoteNumberErrorMessage } from '@/lib/quote-number-errors';
+import {
+  QuoteApprovalRevertError,
+  normalizeQuoteApprovalRevertErrorCode,
+} from '@/lib/quote-approval-revert';
 
 export interface QuoteItem {
   id?: string;
@@ -340,6 +344,36 @@ export function useQuotes() {
     },
   });
 
+  const revertApproval = useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await supabase.rpc('revert_quote_approval', {
+        p_quote_id: id,
+      });
+
+      // Erro técnico do PostgREST nunca sobe para a copy final. A tela traduz
+      // apenas os códigos de domínio allowlisted pela RPC.
+      if (error) throw new QuoteApprovalRevertError('unknown');
+
+      const result = data && typeof data === 'object' && !Array.isArray(data)
+        ? data as { ok?: unknown; error?: unknown; status?: unknown; reverted?: unknown }
+        : null;
+
+      if (result?.ok !== true) {
+        throw new QuoteApprovalRevertError(
+          normalizeQuoteApprovalRevertErrorCode(result?.error),
+        );
+      }
+
+      return {
+        status: result.status === 'enviado' ? 'enviado' : null,
+        reverted: result.reverted === true,
+      };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quotes'] });
+    },
+  });
+
   const deleteQuote = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from('quotes').delete().eq('id', id);
@@ -467,6 +501,7 @@ export function useQuotes() {
     createQuote,
     updateQuote,
     updateStatus,
+    revertApproval,
     deleteQuote,
     duplicateQuote,
     fetchQuoteByToken,

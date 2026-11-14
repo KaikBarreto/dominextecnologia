@@ -192,6 +192,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (profileData && isStillCurrent()) {
         setProfile(profileData as Profile);
+        // Reconcilia silenciosamente uma assinatura já autorizada. Nunca abre
+        // prompt no boot: a permissão só é pedida pelo botão em Configurações.
+        // O dynamic import evita acoplar Push API ao caminho crítico do auth.
+        if ((profileData as Profile).company_id) {
+          import('@/lib/pushNotifications')
+            .then((module) => module.reconcilePushSubscription((profileData as Profile).company_id!))
+            .catch((error) => console.warn('[Auth] push reconciliation failed:', error));
+        }
       }
 
       // Fetch roles
@@ -319,6 +327,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    // Desvincula este endpoint antes de encerrar o JWT. Se a chamada ao backend
+    // falhar, o helper ainda executa unsubscribe local e o provedor passa a
+    // rejeitar o endpoint antigo, evitando push da conta anterior neste aparelho.
+    if (user && profile?.company_id) {
+      try {
+        const pushCleanup = import('@/lib/pushNotifications')
+          .then(({ detachPushForLogout }) => detachPushForLogout(profile.company_id!));
+        // O teto engloba até o carregamento do chunk lazy: a landing não paga
+        // o custo de push e uma rede ruim nunca prende o botão Sair.
+        await Promise.race([
+          pushCleanup,
+          new Promise<void>((resolve) => window.setTimeout(resolve, 2_000)),
+        ]);
+      } catch (error) {
+        console.warn('[Auth] push cleanup failed:', error);
+      }
+    }
+
     // Clean up active session
     const sessionToken = localStorage.getItem('session_token');
     if (sessionToken && user) {

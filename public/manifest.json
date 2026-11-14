@@ -1,6 +1,7 @@
 {
   "name": "Dominex",
   "short_name": "Dominex",
+  "id": "/",
   "description": "Gestão de equipes de campo e ordens de serviço",
   "start_url": "/dashboard",
   "display": "standalone",

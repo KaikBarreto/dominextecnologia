@@ -147,4 +147,13 @@ describe('catálogo de permissões', () => {
     const naArvore = SCREEN_PERMISSIONS.flatMap(s => getFunctionsByScreen(s.key)).map(f => f.key);
     expect(naArvore.slice().sort()).toEqual(FUNCTION_PERMISSIONS.map(f => f.key).slice().sort());
   });
+
+  it('cataloga a conclusão de venda direta dentro da tela do PDV', () => {
+    const permission = FUNCTION_PERMISSIONS.find(f => f.key === 'fn:complete_direct_sale');
+    expect(permission).toMatchObject({
+      category: 'pdv',
+      relatedScreen: 'screen:pdv',
+    });
+    expect(getFunctionsByScreen('screen:pdv').map(f => f.key)).toContain('fn:complete_direct_sale');
+  });
 });

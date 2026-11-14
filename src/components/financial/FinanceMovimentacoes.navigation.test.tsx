@@ -25,6 +25,9 @@ vi.mock('@/hooks/useFinancialAccounts', () => ({
     transfer: { mutateAsync: vi.fn(), isPending: false },
   }),
 }));
+vi.mock('@/hooks/useCanManageFinanceTransactions', () => ({
+  useCanManageFinanceTransactions: () => true,
+}));
 vi.mock('@/hooks/useRecalculateBills', () => ({
   useRecalculateBills: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));

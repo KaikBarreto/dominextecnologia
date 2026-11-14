@@ -15,6 +15,9 @@ import { usePdvServerDraftSync } from '@/hooks/usePdvServerDraftSync';
 interface DraftWorkspaceOwner {
   companyId: string;
   userId: string;
+  cashSessionId: string;
+  terminalId: string;
+  stockId: string;
 }
 
 interface UsePdvSaleDraftWorkspaceOptions {
@@ -133,6 +136,7 @@ export function usePdvSaleDraftWorkspace({
     hydratedStorageKey: hydration.key,
     localCacheFound: hydration.cacheFound,
     draftType: 'sale',
+    context: owner ? { cashSessionId: owner.cashSessionId, terminalId: owner.terminalId, stockId: owner.stockId } : null,
     workspace,
     setWorkspace,
     parseWorkspace: parseServerWorkspace,

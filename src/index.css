@@ -294,6 +294,21 @@ Design Premium com Verde da Marca #00C597
     /* --radius herda de [data-app] acima (0.375rem) */
   }
 
+  /* O PDV é uma superfície operacional: ações principais permanecem neutras
+     mesmo quando o tenant usa uma cor de marca no restante do sistema.
+     Verde e outras cores ficam reservados para status e confirmação. */
+  [data-pdv-ui] {
+    --primary: 0 0% 10%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 0 0% 10%;
+  }
+
+  .dark [data-pdv-ui] {
+    --primary: 0 0% 88%;
+    --primary-foreground: 0 0% 8%;
+    --ring: 0 0% 70%;
+  }
+
   /* ─── MENU ESCURO — nav-theme escopado às superfícies de NAV (Fase 2) ────────
      Ligado por `data-nav-theme="dark"` no <html> (hook useNavThemePreference +
      script anti-flash no index.html). Só "acende" ELEMENTOS marcados com
@@ -659,6 +674,18 @@ Design Premium com Verde da Marca #00C597
 html {
   overflow: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+/* Navegações underline no mobile são trilhos horizontais, nunca uma segunda
+   área de rolagem vertical. `touch-action: manipulation` mantém o swipe lateral
+   e deixa o gesto vertical seguir para a página quando começa sobre as abas. */
+@media screen and (max-width: 767px) {
+  [role="tablist"].overflow-x-auto,
+  .overflow-x-auto.border-b {
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    touch-action: manipulation;
+  }
 }
 
 /* Dark mode: NÃO inverter o ícone nativo do date/time picker. `color-scheme:

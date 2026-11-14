@@ -25,7 +25,7 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as
   | undefined;
 
 const USE_MOCK_ENV =
-  (import.meta as any).env?.VITE_USE_MOCK_PMOC_PORTAL === 'true';
+  import.meta.env.VITE_USE_MOCK_PMOC_PORTAL === 'true';
 
 function shouldUseMock(token: string): boolean {
   if (USE_MOCK_ENV) return true;
@@ -165,20 +165,25 @@ export async function fetchPmocPortal(
       | { error: 'module_unavailable'; company_name?: string | null }
       | { access: 'denied'; company_name?: string | null }
       | { access: 'password_required'; company_name?: string | null };
+    const responseMeta = data as {
+      error?: string;
+      access?: string;
+      company_name?: string | null;
+    };
 
     // Módulo fora da assinatura: HTTP 200, mas o corpo sinaliza indisponível.
     // Lança erro tipado próprio — NÃO é "token inválido" nem erro de rede.
-    if (data && typeof data === 'object' && (data as any).error === 'module_unavailable') {
+    if (data && typeof data === 'object' && responseMeta.error === 'module_unavailable') {
       throw new PortalModuleUnavailableError(
-        (data as { company_name?: string | null }).company_name ?? null,
+        responseMeta.company_name ?? null,
       );
     }
 
     // Portal privado + visitante sem permissão: HTTP 200 { access:'denied' }.
     // Estado próprio — a tela oferece login pra quem é da empresa dona.
-    if (data && typeof data === 'object' && (data as any).access === 'denied') {
+    if (data && typeof data === 'object' && responseMeta.access === 'denied') {
       throw new PortalPrivateError(
-        (data as { company_name?: string | null }).company_name ?? null,
+        responseMeta.company_name ?? null,
       );
     }
 
@@ -205,7 +210,7 @@ export async function fetchPmocPortal(
 }
 
 /**
- * Abre um chamado (OS corretiva) a partir do Portal do Contrato.
+ * Envia um chamado para a caixa de entrada do Portal do Contrato.
  *
  * Esta funcao e a FRONTEIRA do Supabase pra essa acao: a pagina nao escreve em
  * `service_orders`. O papel `anon` nao tem INSERT nessa tabela (a varredura de
@@ -234,8 +239,8 @@ export async function createPmocPortalTicket(
   token: string,
   description: string,
   sessionToken?: string | null,
-): Promise<void> {
-  const { error } = await supabaseAnon.rpc('create_contract_portal_ticket', {
+): Promise<{ portalCallId: string; protocolNumber: number }> {
+  const { data, error } = await supabaseAnon.rpc('create_contract_portal_ticket', {
     p_token: token,
     p_description: description.trim(),
     // `p_session_token?: string` no types.ts (DEFAULT NULL no banco): sem sessao
@@ -244,6 +249,18 @@ export async function createPmocPortalTicket(
     p_session_token: sessionToken || undefined,
   });
   if (error) throw error;
+  const payload = data as { portal_call_id?: unknown; protocol_number?: unknown } | null;
+  if (
+    !payload
+    || typeof payload.portal_call_id !== 'string'
+    || typeof payload.protocol_number !== 'number'
+  ) {
+    throw new Error('portal_ticket_receipt_invalid');
+  }
+  return {
+    portalCallId: payload.portal_call_id,
+    protocolNumber: payload.protocol_number,
+  };
 }
 
 // ---------------------------------------------------------------------------

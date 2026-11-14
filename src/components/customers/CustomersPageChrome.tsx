@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ClipboardList, Plus, Settings2, Truck, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCustomers, type CustomerInput } from '@/hooks/useCustomers';
@@ -31,7 +31,7 @@ interface CustomersPageChromeProps {
  */
 export function CustomersPageChrome({ activeTab, onTabChange }: CustomersPageChromeProps) {
   const isMobile = useIsMobile();
-  const { isAdminOrGestor, hasPermission } = useAuth();
+  const { isAdminOrGestor, hasPermission, hasPermissionRecord } = useAuth();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.customers;
   const tSuppliers = t.suppliers;
@@ -42,6 +42,28 @@ export function CustomersPageChrome({ activeTab, onTabChange }: CustomersPageChr
   const [novoOpen, setNovoOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [leadFormsOpen, setLeadFormsOpen] = useState(false);
+  const notificationParams = new URLSearchParams(
+    typeof window === 'undefined' ? '' : window.location.search,
+  );
+  const shouldOpenLeadForms = notificationParams.get('leadForms') === '1';
+  const requestedFormId = notificationParams.get('form');
+  const requestedSubmissionId = notificationParams.get('submission');
+
+  useEffect(() => {
+    if (activeTab === 'clientes' && shouldOpenLeadForms) {
+      setLeadFormsOpen(true);
+    }
+  }, [activeTab, shouldOpenLeadForms]);
+
+  const handleLeadFormsOpenChange = (open: boolean) => {
+    setLeadFormsOpen(open);
+    if (open || typeof window === 'undefined') return;
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.delete('leadForms');
+    nextUrl.searchParams.delete('form');
+    nextUrl.searchParams.delete('submission');
+    window.history.replaceState(window.history.state, '', `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+  };
 
   // No celular as ações da tela vivem na toolbar/FAB da própria lista, não aqui.
   const showActions = !isMobile;
@@ -94,11 +116,17 @@ export function CustomersPageChrome({ activeTab, onTabChange }: CustomersPageChr
         customer={null}
         onSubmit={(data) => createCustomer.mutateAsync(data as CustomerInput)}
         isLoading={createCustomer.isPending}
+        canManageCreditLimit={isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:manage_party_credit'))}
       />
 
       <CustomerSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
 
-      <LeadCaptureManagerDialog open={leadFormsOpen} onOpenChange={setLeadFormsOpen} />
+      <LeadCaptureManagerDialog
+        open={leadFormsOpen}
+        onOpenChange={handleLeadFormsOpenChange}
+        initialFormId={requestedFormId}
+        initialSubmissionId={requestedSubmissionId}
+      />
     </>
   );
 }

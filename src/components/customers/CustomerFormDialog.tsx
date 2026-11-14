@@ -27,6 +27,7 @@ import { StateCitySelector } from '@/components/StateCitySelector';
 import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 import { phoneMask, mobileMask, cpfCnpjMask, cepMask } from '@/utils/masks';
 import { CnpjDocumentInput } from '@/components/customers/CnpjDocumentInput';
+import { ieDaUf, mesmaIe, cnpjBaixado, resultadoDeCampos } from '@/utils/consultaIe';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { geocodeAddress, buildCustomerAddress } from '@/utils/geolocation';
 import { useFormDraft } from '@/hooks/useFormDraft';
@@ -83,6 +84,14 @@ const customerSchema = z.object({
   // form, e omitimos do payload final pra não sobrescrever o que já existe.
   is_service_customer: z.boolean().optional(),
   is_store_customer: z.boolean().optional(),
+  credit_limit: z.preprocess(
+    (value) => value === '' || value === undefined || value === null ? null : Number(String(value).replace(',', '.')),
+    z.number({ invalid_type_error: 'Informe um limite válido' })
+      .min(0, 'O limite não pode ser negativo')
+      .max(99999999.99, 'O limite informado é muito alto')
+      .refine((value) => Math.round(value * 100) === value * 100, 'Use no máximo duas casas decimais')
+      .nullable(),
+  ).optional(),
 });
 
 type CustomerFormData = z.infer<typeof customerSchema>;
@@ -94,6 +103,7 @@ const EMPTY_FORM: CustomerFormData = {
   complement: '', neighborhood: '', city: '', state: '', zip_code: '',
   notes: '', origin: '', label_id: '', inscricao_municipal: '', inscricao_estadual: '', ibge_municipality_code: '',
   is_service_customer: true, is_store_customer: false,
+  credit_limit: null,
 };
 
 interface CustomerFormDialogProps {
@@ -110,6 +120,7 @@ interface CustomerFormDialogProps {
    * `pdv` — o campo nem aparece e o valor nasce do DEFAULT do banco.
    */
   defaultCustomerKind?: 'servico' | 'loja';
+  canManageCreditLimit?: boolean;
 }
 
 /** Título de seção do formulário: separa blocos de campos sem virar card. */
@@ -123,6 +134,7 @@ function SecaoForm({ children }: { children: React.ReactNode }) {
 
 export function CustomerFormDialog({
   open, onOpenChange, customer, onSubmit, isLoading, defaultCustomerKind = 'servico',
+  canManageCreditLimit = false,
 }: CustomerFormDialogProps) {
   const { hasModule } = useCompanyModules();
   const hasPdvModule = hasModule('pdv');
@@ -169,6 +181,22 @@ export function CustomerFormDialog({
     defaultValues: EMPTY_FORM,
   });
 
+  /**
+   * Resultado da consulta de inscrição estadual (Sintegra) do último CNPJ
+   * consultado. Só informativo: NUNCA sobrescreve IE já digitada.
+   * `divergente` traz a IE da base e a que está na ficha; `ausente` é a
+   * afirmação de que não existe IE ativa; `indisponivel` é falha de consulta
+   * (inclusive limite de requisições) e não afirma nada.
+   */
+  const [ieAviso, setIeAviso] = useState<
+    | { kind: 'divergente'; sugerida: string; uf: string; atual: string }
+    | { kind: 'ausente' }
+    | { kind: 'indisponivel' }
+    | null
+  >(null);
+  /** Situação cadastral diferente de "Ativa" (Baixada/Suspensa/Inapta). */
+  const [situacaoAlerta, setSituacaoAlerta] = useState<string | null>(null);
+
   // Save draft on form changes
   const watchedValues = form.watch();
   useEffect(() => {
@@ -183,6 +211,9 @@ export function CustomerFormDialog({
       setPhotoFile(null);
       setPhotoPreview((customer as any)?.photo_url || null);
       setPersistedCustomerId(null);
+      // Avisos da consulta de CNPJ são do CNPJ consultado nesta abertura.
+      setIeAviso(null);
+      setSituacaoAlerta(null);
       setPortalSettings(DEFAULT_CUSTOMER_PORTAL_SETTINGS);
       setPortalPassword('');
       setPortalPasswordConfirmation('');
@@ -237,6 +268,7 @@ export function CustomerFormDialog({
           inscricao_municipal: (customer as any)?.inscricao_municipal ?? '',
           inscricao_estadual: (customer as any)?.inscricao_estadual ?? '',
           ibge_municipality_code: (customer as any)?.ibge_municipality_code ?? '',
+          credit_limit: canManageCreditLimit ? customer?.credit_limit ?? null : null,
           ...kindDefaults,
         });
       }
@@ -333,6 +365,7 @@ export function CustomerFormDialog({
           delete payload.is_service_customer;
           delete payload.is_store_customer;
         }
+        if (!hasPdvModule || !canManageCreditLimit) delete payload.credit_limit;
         const savedCustomer = await onSubmit(payload as unknown as Parameters<typeof onSubmit>[0]);
         const savedCustomerId = savedCustomer && typeof savedCustomer === 'object'
           ? savedCustomer.id
@@ -511,6 +544,23 @@ export function CustomerFormDialog({
                     </div>
                   </div>
                 )}
+                {hasPdvModule && canManageCreditLimit && (
+                  <FormField control={form.control} name="credit_limit" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Limite de fiado</FormLabel>
+                      <FormControl>
+                        <Input
+                          inputMode="decimal"
+                          placeholder="Sem limite liberado"
+                          value={field.value ?? ''}
+                          onChange={(event) => field.onChange(event.target.value)}
+                        />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground">Deixe vazio para não liberar compras no fiado.</p>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                )}
                 <SecaoForm>{t.formSectionContact}</SecaoForm>
                 <FormField control={form.control} name="phone" render={({ field }) => (
                   <FormItem>
@@ -659,7 +709,16 @@ export function CustomerFormDialog({
                     <FormControl>
                       <CnpjDocumentInput
                         value={field.value || ''}
-                        onChange={field.onChange}
+                        // Tela com campo de Inscrição Estadual: aqui o
+                        // resultado é exibido e gravado, então vale gastar a
+                        // cota da consulta (3/min por IP).
+                        buscarIe
+                        onChange={(v) => {
+                          field.onChange(v);
+                          // Documento mudou: os avisos do CNPJ anterior não valem mais.
+                          setIeAviso(null);
+                          setSituacaoAlerta(null);
+                        }}
                         placeholder="000.000.000-00"
                         onDataFound={(d) => {
                           // Sobrescreve campos fiscais/endereço com o oficial, mas só quando o dado veio preenchido
@@ -680,9 +739,91 @@ export function CustomerFormDialog({
                           // Nome: só preenche se estiver vazio (não apaga o apelido que o usuário digitou)
                           const currentName = (form.getValues('name') || '').trim();
                           if (!currentName) form.setValue('name', d.nomeFantasia || d.razaoSocial || '');
+
+                          // ── Inscrição estadual (Sintegra) ──────────────────
+                          // Regras em src/utils/consultaIe.ts. Resumo:
+                          // só preenche IE VAZIA, só com inscrição ATIVA da UF
+                          // do cadastro (IE de outra UF é rejeição 234), e
+                          // divergência nunca sobrescreve o que foi digitado.
+                          const ieRes = resultadoDeCampos({
+                            inscricoes: d.inscricoesEstaduais,
+                            situacaoCadastral: d.situacaoCadastral,
+                            indisponivel: d.ieIndisponivel,
+                          });
+                          // UF do form; se ainda estiver vazia, a que a própria
+                          // consulta devolveu (o setValue acima já aplicou).
+                          const ufAlvo = ((form.getValues('state') || '') || d.state || '').trim();
+                          const achada = ieDaUf(ieRes, ufAlvo);
+                          const ieAtual = (form.getValues('inscricao_estadual') || '').trim();
+
+                          if (!ieAtual) {
+                            if (achada) {
+                              form.setValue('inscricao_estadual', achada.inscricao_estadual);
+                              setIeAviso(null);
+                            } else if (ieRes.success && (ieRes.inscricoes?.length ?? 0) === 0) {
+                              // Afirmação de ausência (≠ falha de consulta).
+                              setIeAviso({ kind: 'ausente' });
+                            } else if (!ieRes.success) {
+                              setIeAviso({ kind: 'indisponivel' });
+                            } else {
+                              setIeAviso(null);
+                            }
+                          } else if (achada && !mesmaIe(ieAtual, achada.inscricao_estadual)) {
+                            setIeAviso({
+                              kind: 'divergente',
+                              sugerida: achada.inscricao_estadual,
+                              uf: achada.uf,
+                              atual: ieAtual,
+                            });
+                          } else {
+                            setIeAviso(null);
+                          }
+
+                          // CNPJ não-ativo: emitir nota contra ele é recusa certa.
+                          setSituacaoAlerta(
+                            cnpjBaixado(ieRes) ? (d.situacaoCadastral ?? '').trim() : null,
+                          );
                         }}
                       />
                     </FormControl>
+                    {/* Situação cadastral diferente de "Ativa": aviso em
+                        vermelho, porque nota contra CNPJ assim é recusada. */}
+                    {situacaoAlerta && (
+                      <p className="text-xs font-medium text-destructive">
+                        {t.documentLookup.situacaoAlerta.replace('{situacao}', situacaoAlerta)}
+                      </p>
+                    )}
+                    {/* IE do Sintegra diverge da digitada: informa e oferece a
+                        troca, sem sobrescrever nada por conta própria. */}
+                    {ieAviso?.kind === 'divergente' && (
+                      <div className="space-y-0.5">
+                        <p className="text-xs text-muted-foreground">
+                          {t.documentLookup.ieDivergente
+                            .replace('{ie}', ieAviso.sugerida)
+                            .replace('{uf}', ieAviso.uf)
+                            .replace('{atual}', ieAviso.atual)}
+                        </p>
+                        <Button
+                          type="button"
+                          variant="link"
+                          className="h-auto p-0 text-xs"
+                          onClick={() => {
+                            form.setValue('inscricao_estadual', ieAviso.sugerida);
+                            setIeAviso(null);
+                          }}
+                        >
+                          {t.documentLookup.ieUsarSintegra}
+                        </Button>
+                      </div>
+                    )}
+                    {ieAviso?.kind === 'ausente' && (
+                      <p className="text-xs text-muted-foreground">{t.documentLookup.ieAusente}</p>
+                    )}
+                    {ieAviso?.kind === 'indisponivel' && (
+                      <p className="text-xs text-muted-foreground">
+                        {t.documentLookup.ieIndisponivel}
+                      </p>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )} />

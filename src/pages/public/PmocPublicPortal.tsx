@@ -591,13 +591,17 @@ function PortalContent({
       // anônima, amarrado numa policy "Public can create portal tickets" que
       // não existe mais: desde 18/10/2026 o `anon` não tem INSERT na tabela e o
       // botão devolvia `42501 permission denied for table service_orders` pro
-      // cliente final. Agora a criação passa pela RPC SECURITY DEFINER
+      // cliente final. Agora o recebimento passa pela RPC SECURITY DEFINER
       // (ver createPmocPortalTicket), que revalida portal/assinatura/módulo e
       // resolve customer/company/contract pelo token, sem confiar no client.
+      // A RPC cria somente `portal_calls`; a OS nasce depois da triagem interna.
       // `sessionToken` é a sessão que a RPC exige quando a seção `ocorrencias`
       // está em 'password'. Vazia em link livre — a RPC ignora.
-      await createPmocPortalTicket(token, ticketDesc, sessionToken);
-      toast({ title: t.ticketSuccess });
+      const receipt = await createPmocPortalTicket(token, ticketDesc, sessionToken);
+      toast({
+        title: t.ticketSuccess,
+        description: t.ticketSuccessDescription.replace('{protocol}', String(receipt.protocolNumber)),
+      });
       setShowTicketModal(false);
       setTicketDesc('');
     } catch (err: unknown) {

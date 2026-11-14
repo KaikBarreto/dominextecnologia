@@ -48,6 +48,7 @@ import {
   isPayrollAdvance,
   isFutureCashDate,
   isDreExcludedGroup,
+  isDreCashFlowOnlyPdvRole,
   classifyDreCategory,
   type DreRegime,
 } from '@/lib/dre-regime';
@@ -112,7 +113,11 @@ interface FinanceDREProps {
   canIncludeSubscriptionProjections?: boolean;
 }
 
-type DreTransaction = FinancialTransaction & { customer?: unknown };
+type DreTransaction = FinancialTransaction & {
+  customer?: unknown;
+  // Coluna adicionada pelas migrations PDV; opcional até regenerar os tipos.
+  pdv_financial_role?: string | null;
+};
 
 /**
  * O motor de regime (datas, corte de período e valor por regime) vive em
@@ -334,6 +339,10 @@ export function FinanceDRE({
       // Calculado uma vez por corte, não por linha.
       const out: DreTransaction[] = [];
       for (const t of rawTransactions) {
+        // Refund/estorno são somente custódia + DFC. A devolução W5 já
+        // recompôs receita/CMV; este corte estrutural vem antes de categoria,
+        // regime, layout personalizado, comparativo e exportação.
+        if (isDreCashFlowOnlyPdvRole(t.pdv_financial_role)) continue;
         // Lançamento CANCELADO não é resultado. Quando um funcionário é
         // desativado, o gatilho do banco marca as folhas futuras com
         // `cancelled_at` e DEIXA a linha viva (pra não sumir com o histórico).
@@ -776,12 +785,13 @@ export function FinanceDRE({
         nature = 'revenue';
       } else {
         const configured = categoryDreConfigMap.get(transaction.category || '')?.nature;
+        const legacyGroup = categoryDreGroupMap.get(transaction.category || '');
+        if (configured === 'excluded' || isDreExcludedGroup(legacyGroup)) return;
         const legacy = classifyDreCategory(
           transaction.category,
-          categoryDreGroupMap.get(transaction.category || ''),
+          legacyGroup,
         );
-        if (configured === 'excluded' || legacy === 'outros') return;
-        nature = configured && configured !== 'excluded'
+        nature = configured
           ? configured
           : legacy === 'impostos'
             ? 'deduction'

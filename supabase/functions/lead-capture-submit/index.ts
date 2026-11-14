@@ -8,14 +8,22 @@ import { getCorsHeaders, handleCors } from '../_shared/cors.ts';
 // negócio (resolver company_id pelo short_code, validar required/formato/whitelist,
 // inserir em customers com origin='public_form', rate-limit por ip_hash, incrementar
 // submission_count) para a RPC service-role-only:
-//   public.submit_lead_capture_form(p_short_code, p_fields, p_consent, p_ip_hash)
+//   public.submit_lead_capture_form(p_short_code, p_fields, p_consent, p_ip_hash, p_answers)
 // A RPC retorna { success: true } (neutro) ou dá RAISE EXCEPTION com mensagem
 // genérica PT-BR. A edge só: lê IP real → hash SHA-256 (LGPD, nunca o IP cru),
 // trata honeypot (descarte silencioso), valida lixo óbvio, e mapeia o erro da RPC
 // pra status HTTP (429 em rate-limit, 400 no resto). NUNCA vaza stack/tenant.
+//
+// `answers` (respostas das perguntas personalizadas, { "<question_id>": valor }) é
+// repassado CRU à RPC como p_answers. A edge só garante que é um objeto; a
+// whitelist por question_id daquele formulário, o tipo e os tetos por resposta
+// são da RPC (validate_public_form_answers). Ausente vira {} (cliente antigo).
 
-// Teto do payload total (~8KB). Formulário de captação é pequeno; acima disso é lixo.
-const MAX_PAYLOAD_BYTES = 8 * 1024;
+// Teto do payload total (32KB). Eram 8KB quando o formulário só tinha os campos de
+// cadastro; as perguntas abertas (texto longo, até 4000 caracteres cada, mais
+// múltipla escolha) fazem o payload legítimo passar disso. Acima de 32KB é lixo:
+// o servidor ainda limita cada resposta e o total de respostas por envio.
+const MAX_PAYLOAD_BYTES = 32 * 1024;
 
 // Mensagens genéricas PT-BR emitidas PELA EDGE (as de negócio vêm da RPC).
 const MSG = {
@@ -110,6 +118,8 @@ Deno.serve(async (req) => {
     const short_code = typeof raw.short_code === 'string' ? raw.short_code.trim() : '';
     const fields = raw.fields;
     const consent = raw.consent;
+    // Ausente (cliente antigo, formulário sem perguntas) vira {}.
+    const answers = raw.answers === undefined || raw.answers === null ? {} : raw.answers;
 
     if (!short_code) {
       return jsonResponse(req, { error: MSG.invalidInput }, 400);
@@ -118,6 +128,9 @@ Deno.serve(async (req) => {
       return jsonResponse(req, { error: MSG.invalidInput }, 400);
     }
     if (typeof consent !== 'boolean') {
+      return jsonResponse(req, { error: MSG.invalidInput }, 400);
+    }
+    if (typeof answers !== 'object' || Array.isArray(answers)) {
       return jsonResponse(req, { error: MSG.invalidInput }, 400);
     }
 
@@ -137,6 +150,7 @@ Deno.serve(async (req) => {
       p_fields: fields,
       p_consent: consent,
       p_ip_hash: ipHash,
+      p_answers: answers,
     });
 
     if (error) {

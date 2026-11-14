@@ -56,6 +56,7 @@ import {
 import { EmptyState } from '@/components/mobile/EmptyState';
 import type { DateRange } from '@/components/ui/DateRangeFilter';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
+import { useCanManageFinanceTransactions } from '@/hooks/useCanManageFinanceTransactions';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -106,10 +107,12 @@ export function FinanceOverview({
   onTransfer,
   canTransfer,
 }: FinanceOverviewProps) {
+  const canManageFinanceTransactions = useCanManageFinanceTransactions();
   const {
     accounts,
     balances,
     cardBillTotals,
+    canManageBankAccounts,
     isLoading: isLoadingAccounts,
     isLoadingBalances,
   } = useFinancialAccounts();
@@ -513,27 +516,33 @@ export function FinanceOverview({
               </button>
             </div>
 
-            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <Button
-                type="button"
-                onClick={onNewMovement}
-                className="min-w-0 gap-2 bg-background px-3 text-foreground hover:bg-background/90"
-              >
-                <Plus className="h-4 w-4 shrink-0" />
-                <span className="truncate">{ov.actions.newMovement}</span>
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onTransfer}
-                disabled={!canTransfer}
-                title={!canTransfer ? fin.newMovement.transferDisabled : undefined}
-                className="min-w-0 gap-2 border-background/25 bg-transparent px-3 text-background hover:bg-background/10 hover:text-background disabled:border-background/10 disabled:text-background/45"
-              >
-                <ArrowRightLeft className="h-4 w-4 shrink-0" />
-                <span className="truncate">{ov.actions.transfer}</span>
-              </Button>
-            </div>
+            {canManageFinanceTransactions && (
+              <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {canManageFinanceTransactions && (
+                  <Button
+                    type="button"
+                    onClick={onNewMovement}
+                    className="min-w-0 gap-2 bg-background px-3 text-foreground hover:bg-background/90"
+                  >
+                    <Plus className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{ov.actions.newMovement}</span>
+                  </Button>
+                )}
+                {canManageBankAccounts && canManageFinanceTransactions && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onTransfer}
+                    disabled={!canTransfer}
+                    title={!canTransfer ? fin.newMovement.transferDisabled : undefined}
+                    className="min-w-0 gap-2 border-background/25 bg-transparent px-3 text-background hover:bg-background/10 hover:text-background disabled:border-background/10 disabled:text-background/45"
+                  >
+                    <ArrowRightLeft className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{ov.actions.transfer}</span>
+                  </Button>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 

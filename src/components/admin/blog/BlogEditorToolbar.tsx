@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { sanitizeBlogHtml } from "@/lib/blogContent";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
@@ -127,7 +128,7 @@ export const BlogEditorToolbar = ({ editor, onImageUpload }: BlogEditorToolbarPr
     if (!editor || !infographicHtml) return;
     editor.chain().focus().insertContent({
       type: 'infographic',
-      attrs: { html: infographicHtml, caption: infographicCaption },
+      attrs: { html: sanitizeBlogHtml(infographicHtml), caption: infographicCaption },
     }).run();
     setInfographicHtml("");
     setInfographicCaption("");
@@ -566,7 +567,7 @@ if (!editor) return null;
             {infographicHtml && (
               <div className="border border-border rounded-lg p-3">
                 <p className="text-xs text-muted-foreground mb-2">Pré-visualização:</p>
-                <div dangerouslySetInnerHTML={{ __html: infographicHtml }} className="overflow-auto max-h-60" />
+                <div dangerouslySetInnerHTML={{ __html: sanitizeBlogHtml(infographicHtml) }} className="overflow-auto max-h-60" />
               </div>
             )}
           </div>

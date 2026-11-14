@@ -17,7 +17,7 @@ export function InventoryReportsTab() {
         activeTab={activeReport}
         onTabChange={(value) => setActiveReport(value as InventoryReport)}
         tabs={[
-          { value: 'purchases', label: 'Compras', icon: <ShoppingCart className="h-4 w-4" /> },
+          { value: 'purchases', label: 'Compras e vendas', icon: <ShoppingCart className="h-4 w-4" /> },
           { value: 'abc', label: 'Curva ABC', icon: <BarChart3 className="h-4 w-4" /> },
         ]}
       />

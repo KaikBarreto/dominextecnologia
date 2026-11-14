@@ -31,6 +31,432 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.40',
+    date: '13 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Relatório de contas a pagar mostra somente despesas',
+        category: 'correcao',
+        description: 'A área de contas passa a abrir em A Pagar e o PDF respeita essa escolha, evitando que vendas e outras receitas apareçam junto das despesas. A visualização combinada continua disponível pela opção Todas.',
+      },
+      {
+        title: 'Categorias mais claras nos relatórios financeiros',
+        category: 'melhoria',
+        description: 'As categorias passam a aparecer em etiquetas com sua própria cor e texto branco. Registros antigos também voltam a mostrar o nome correto da categoria, sem códigos técnicos no relatório.',
+      },
+    ],
+  },
+  {
+    version: '1.39.39',
+    date: '13 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Chamados passam por análise antes de virar OS',
+        category: 'melhoria',
+        description: 'Solicitações enviadas pelos portais agora recebem um protocolo e aguardam análise. A equipe pode criar uma ordem de serviço quando necessário ou encerrar o chamado sem gerar OS, evitando ordens abertas automaticamente e mantendo o vínculo para acompanhamento.',
+      },
+    ],
+  },
+  {
+    version: '1.39.38',
+    date: '13 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Parcelas financeiras salvam normalmente',
+        category: 'correcao',
+        description: 'Administradores e gestores voltaram a salvar despesas e receitas parceladas ou recorrentes sem uma recusa indevida ao concluir o lançamento.',
+      },
+    ],
+  },
+  {
+    version: '1.39.37',
+    date: '13 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Lançamentos financeiros liberados novamente',
+        category: 'correcao',
+        description: 'Administradores e pessoas autorizadas voltaram a criar e editar despesas, receitas, contas a pagar e contas a receber normalmente, sem receber uma recusa de permissão indevida ao salvar.',
+      },
+    ],
+  },
+  {
+    version: '1.39.36',
+    date: '13 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Aprovação de orçamento pode ser revertida',
+        category: 'recurso',
+        description: 'Um orçamento aprovado por engano pode voltar para Enviado pelo menu de ações, mantendo o mesmo link para uma nova resposta do cliente. Para proteger o histórico, a reversão só fica disponível antes de gerar uma ordem de serviço, um lançamento financeiro ou uma cobrança.',
+      },
+    ],
+  },
+  {
+    version: '1.39.35',
+    date: '12 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Avisos aparecem na ordem certa',
+        category: 'correcao',
+        description: 'Tutoriais, pesquisas, tarefas do dia, novidades e o convite para ativar notificações agora aguardam sua vez. Isso evita telas sobrepostas e impede que um aviso seja marcado como visto antes de realmente aparecer.',
+      },
+    ],
+  },
+  {
+    version: '1.39.34',
+    date: '12 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ativação de notificações mais fácil',
+        category: 'melhoria',
+        description: 'O Dominex passa a convidar cada pessoa a ativar os avisos no próprio aparelho. A permissão só é solicitada depois do toque e, no iPhone fora do aplicativo instalado, a tela orienta como adicionar o Dominex à Tela de Início.',
+      },
+      {
+        title: 'Lembretes automáticos da conta',
+        category: 'recurso',
+        description: 'Administradores e gestores passam a receber avisos sobre o fim do período de teste, o vencimento da assinatura e pagamentos pendentes. Esses avisos já vêm ligados por padrão, podem ser ajustados em Configurações e seguem o idioma de cada pessoa.',
+      },
+    ],
+  },
+  {
+    version: '1.39.33',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Push com alerta sonoro no aparelho',
+        category: 'melhoria',
+        description: 'As notificações passam a solicitar o som padrão do celular em sistemas compatíveis. O aparelho ainda respeita o modo silencioso, o Foco e as preferências de notificação escolhidas pela pessoa.',
+      },
+    ],
+  },
+  {
+    version: '1.39.32',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Permissões financeiras mais claras e completas',
+        category: 'correcao',
+        description: 'A permissão para criar e editar lançamentos agora libera automaticamente o uso das contas e caixas necessários para concluir a operação. Usuários somente leitura deixam de ver ações que seriam recusadas ao salvar, evitando formulários preenchidos em vão e combinações confusas de acesso.',
+      },
+    ],
+  },
+  {
+    version: '1.39.31',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Notificações no idioma de cada pessoa',
+        category: 'melhoria',
+        description: 'Avisos de agenda, pagamentos, chamados e formulários agora seguem o idioma escolhido pelo destinatário, incluindo valores e textos da mensagem. O envio para o aparelho também foi corrigido para não depender da abertura prévia do sino.',
+      },
+    ],
+  },
+  {
+    version: '1.39.30',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'iPhone identificado corretamente no push',
+        category: 'correcao',
+        description: 'A lista de aparelhos deixa de mostrar alguns iPhones e iPads como Mac. Quando o Dominex estiver instalado, o dispositivo passa a aparecer com seu tipo correto e a indicação PWA.',
+      },
+    ],
+  },
+  {
+    version: '1.39.29',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Abas mais fáceis de arrastar no celular',
+        category: 'melhoria',
+        description: 'As barras de abas horizontais não se movimentam mais para cima e para baixo. Setas discretas nas laterais mostram quando existem mais opções fora da tela, sem atrapalhar a rolagem normal da página.',
+      },
+      {
+        title: 'Ativação do push mais confiável no PWA',
+        category: 'correcao',
+        description: 'A ativação das notificações aproveita imediatamente o serviço já iniciado pelo aplicativo e não mostra falha apenas porque a lista de aparelhos demorou para atualizar. Se algo realmente impedir a ativação, a mensagem agora orienta o que fazer.',
+      },
+    ],
+  },
+  {
+    version: '1.39.28',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Nova tentativa de NFS-e registrada corretamente',
+        category: 'correcao',
+        description: 'Depois de corrigir uma nota rejeitada, a nova emissão passa a usar os dados revisados e deixa de reapresentar a tentativa anterior. Quando o resultado oficial ainda estiver incerto, o sistema bloqueia um novo envio até confirmar o status e evita duplicidade fiscal.',
+      },
+    ],
+  },
+  {
+    version: '1.39.27',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Boas-vindas destravadas no PWA',
+        category: 'correcao',
+        description: 'A tela inicial com o vídeo volta a aceitar toques e rolagem normalmente no celular. O vídeo permanece dentro do seu quadro, permitindo assistir, confirmar ou pular durante o teste sem ficar preso na tela.',
+      },
+    ],
+  },
+  {
+    version: '1.39.26',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Contas financeiras prontas desde o cadastro',
+        category: 'correcao',
+        description: 'Toda empresa passa a receber automaticamente um caixa e uma conta principal. Empresas que ficaram sem nenhuma conta também são corrigidas, permitindo registrar vendas, contas a pagar, contas a receber e outras movimentações sem configuração manual prévia.',
+      },
+      {
+        title: 'Contas visíveis para a equipe autorizada',
+        category: 'correcao',
+        description: 'Quem possui acesso operacional ao Financeiro ou ao PDV volta a encontrar as contas e caixas da empresa ao registrar uma venda, uma conta a pagar ou outra movimentação. Os saldos e a edição das contas continuam restritos às permissões de gestão.',
+      },
+    ],
+  },
+  {
+    version: '1.39.25',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Notificações importantes no sistema e no aparelho',
+        category: 'recurso',
+        description: 'A equipe passa a receber avisos dos compromissos do dia, pagamentos confirmados, novos chamados e formulários respondidos. As mensagens mostram informações úteis, como valor, cliente e número do chamado, e podem aparecer no sino ou como notificação no aparelho com o PWA instalado.',
+      },
+      {
+        title: 'Cada empresa escolhe quem recebe cada aviso',
+        category: 'recurso',
+        description: 'A nova área Notificações, dentro de Configurações, permite definir os canais e destinatários de cada tipo de aviso. Cada pessoa também pode escolher o que deseja receber, administrar seus aparelhos e configurar um horário silencioso para o push.',
+      },
+    ],
+  },
+  {
+    version: '1.39.24',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'NFS-e emitida com a data fiscal correta',
+        category: 'correcao',
+        description: 'A data de competência agora acompanha o mesmo dia usado pela emissão fiscal. Isso evita que uma nota seja recusada como futura durante a virada do dia, inclusive quando o sistema é acessado de outro fuso horário.',
+      },
+    ],
+  },
+  {
+    version: '1.39.23',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Promoções temporárias por módulo e usuários',
+        category: 'recurso',
+        description: 'No painel de empresas, a equipe pode definir um valor promocional, inclusive gratuito, para cada módulo ou pacote de usuários adicionais e escolher por quantas mensalidades ele vale. A ficha mostra o valor durante a condição, quantas cobranças restam e o valor integral que será aplicado automaticamente depois.',
+      },
+    ],
+  },
+  {
+    version: '1.39.22',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Logo da empresa legível em qualquer tema',
+        category: 'correcao',
+        description: 'Marcas com texto claro, símbolo escuro, formato redondo ou cores misturadas agora recebem o fundo de apoio adequado somente quando precisam. O resultado acompanha o tema claro ou escuro no menu, na barra superior, nas Configurações e nas imagens de compartilhamento.',
+      },
+    ],
+  },
+  {
+    version: '1.39.21',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Loja de balcão, do orçamento à retirada',
+        category: 'recurso',
+        description: 'O PDV agora pode trabalhar como venda direta, balcão e caixa ou balcão, caixa e retirada. A empresa escolhe o fluxo, cada pessoa vê somente a sua parte e o mesmo atendimento segue até a entrega, sem precisar refazer o pedido.',
+      },
+      {
+        title: 'Vários caixas sem misturar as operações',
+        category: 'seguranca',
+        description: 'Cada ponto de venda pode ter seu próprio caixa aberto ao mesmo tempo. Abertura, dinheiro inicial, vendas, compras, sangrias, reforços, fechamento, reabertura e relatórios ficam no caixa certo, com histórico e ações organizados pelo botão de três pontos.',
+      },
+      {
+        title: 'Orçamentos, pedidos e retirada no mesmo acompanhamento',
+        category: 'recurso',
+        description: 'Orçamentos de balcão usam a mesma tela prática de venda, podem reservar mercadoria e viram pedido no caixa. A visão por colunas mostra o que ainda está em orçamento, o que aguarda pagamento e o que já foi liberado para retirada, inclusive quando o fiado foi aprovado.',
+      },
+      {
+        title: 'Trocas, devoluções, reembolsos e saldo do cliente',
+        category: 'recurso',
+        description: 'O pós-venda passou a registrar devolução, troca, estorno, reembolso e voucher. Cliente e fornecedor ganharam um extrato próprio para acompanhar fiado, crédito e saldo usado em cada operação.',
+      },
+      {
+        title: 'Comprovantes e equipamentos do balcão',
+        category: 'recurso',
+        description: 'Pedidos e retiradas podem gerar comprovante não fiscal em papel térmico ou A4, com nome de arquivo fácil de reconhecer e opção de imprimir novamente pelo histórico. O DomiLink prepara a ligação com impressoras, balanças e leitores, e o celular ou tablet pode ler códigos pela câmera e imprimir etiquetas do estoque.',
+      },
+      {
+        title: 'Estoque e dinheiro acompanham cada venda',
+        category: 'melhoria',
+        description: 'Reserva, baixa, devolução e compra de material atualizam o histórico do estoque. Os relatórios mostram compras, vendas, custo, margem e curva ABC por período, enquanto caixa, contas, DRE e DFC recebem cada valor uma única vez.',
+      },
+    ],
+  },
+  {
+    version: '1.39.20',
+    date: '10 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cadastro de empresa não duplica mais',
+        category: 'correcao',
+        description: 'Cliques repetidos, lentidão da internet ou o reenvio da mesma tentativa agora resultam em uma única empresa. Se alguma etapa obrigatória falhar, o cadastro incompleto e o acesso criado durante a tentativa são removidos automaticamente.',
+      },
+    ],
+  },
+  {
+    version: '1.39.19',
+    date: '10 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Criação de empresa liberada para usuários autorizados',
+        category: 'correcao',
+        description: 'Usuários com acesso à gestão de empresas podem voltar a concluir a criação pelo painel comercial. Se algo impedir o cadastro, a mensagem agora explica o problema em vez de mostrar apenas um erro genérico.',
+      },
+      {
+        title: 'Link de teste não reutiliza mais uma venda anterior',
+        category: 'correcao',
+        description: 'Ao trocar o tipo, o plano, o preço ou o vendedor depois de gerar um link, o endereço anterior deixa de ficar disponível. Um novo link passa a ser gerado com exatamente as opções mostradas no resumo, evitando enviar uma venda quando a intenção era oferecer um teste.',
+      },
+    ],
+  },
+  {
+    version: '1.39.18',
+    date: '10 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Montar formulário ficou mais fácil de ler',
+        category: 'melhoria',
+        description: 'Os títulos e os textos das quatro etapas ficaram maiores, no mesmo tamanho do orçamento, e as opções de ligar e desligar passaram a ter o nome em destaque com a explicação logo abaixo.',
+      },
+      {
+        title: 'Etapa de publicação organizada em dois grupos',
+        category: 'melhoria',
+        description: 'A última etapa deixou de ser uma pilha de opções e virou dois grupos lado a lado: onde o formulário aparece e as regras de envio. A validade e o limite de envios ficam na mesma linha, e a mensagem de agradecimento ganhou espaço próprio embaixo.',
+      },
+    ],
+  },
+  {
+    version: '1.39.17',
+    date: '10 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Resumo do formulário enquanto você monta',
+        category: 'melhoria',
+        description: 'A tela de montar formulário passou a mostrar um resumo fixo do lado, com o título, a finalidade, quantos dados do cliente estão ligados, quantas perguntas você já criou e onde o formulário vai aparecer. No celular esse resumo fica numa barrinha no rodapé, que abre quando você toca. A tela também aproveita melhor o monitor, e os dados do cliente ficam em duas colunas.',
+      },
+    ],
+  },
+  {
+    version: '1.39.16',
+    date: '10 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'O CNPJ agora traz a inscrição estadual',
+        description: 'No cadastro de cliente, digitar o CNPJ já trazia nome, endereço, telefone e e-mail. Faltava a inscrição estadual, que precisava ser digitada à mão. Agora ela vem preenchida quando a empresa tem uma inscrição ativa no estado dela. Se o campo já estiver preenchido com um número diferente, nada é sobrescrito: o sistema mostra os dois e você escolhe.',
+        category: 'recurso',
+      },
+      {
+        title: 'Configurações fiscais sugerem a inscrição estadual e o regime da sua empresa',
+        description: 'Ao informar o CNPJ da sua própria empresa nas configurações fiscais, a inscrição estadual e o regime tributário passam a vir sugeridos, em vez de você preencher os dois na mão. O regime vem da última declaração que a Receita tem, que pode estar com alguns anos de atraso, então o sistema mostra o ano junto para você confirmar com o contador antes de salvar.',
+        category: 'recurso',
+      },
+      {
+        title: 'Aviso quando o CNPJ está baixado na Receita',
+        description: 'Ao buscar os dados pelo CNPJ, se a situação cadastral da empresa não estiver ativa, aparece um aviso no cadastro. Antes isso passava em silêncio.',
+        category: 'melhoria',
+      },
+    ],
+  },
+  {
+    version: '1.39.15',
+    date: '10 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Monte formulários com as suas próprias perguntas',
+        category: 'recurso',
+        description: 'O formulário de cadastro de cliente virou um construtor completo, que abre em tela cheia e caminha em quatro passos. Além dos campos de cadastro, você cria as perguntas que quiser, em texto curto ou longo, número, sim ou não, escolha única, múltipla escolha, data, foto, assinatura e nota de 0 a 10, marcando quais são obrigatórias e arrastando para mudar a ordem, do mesmo jeito que no checklist.',
+      },
+      {
+        title: 'Formulário dentro do Portal do Cliente',
+        category: 'recurso',
+        description: 'Você escolhe se o formulário fica só no link público ou se também aparece no portal do seu cliente. Respondido pelo portal, o envio já chega ligado ao cadastro dele, sem você digitar nada. A seção Formulários aparece sozinha no portal assim que você publica o primeiro.',
+      },
+      {
+        title: 'Formulário que só coleta respostas',
+        category: 'recurso',
+        description: 'Agora o formulário pode ter duas finalidades: cadastrar um cliente novo, como já funcionava, ou apenas recolher respostas, útil para pesquisa de satisfação, atualização de dados e levantamento antes da visita. A finalidade fica marcada na lista, então você bate o olho e sabe para que serve cada um. Você também personaliza a mensagem de agradecimento.',
+      },
+      {
+        title: 'Respostas guardadas e fáceis de consultar',
+        category: 'melhoria',
+        description: 'Cada formulário tem a sua lista de respostas, com data, de onde veio o envio e o cliente ligado quando houver. Fotos e assinaturas abrem em tela cheia.',
+      },
+    ],
+  },
+  {
+    version: '1.39.14',
+    date: '9 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Logo da empresa não ganha mais fundo preto ao ser enviado',
+        category: 'correcao',
+        description: 'Ao enviar um logo com fundo transparente, o sistema trocava esse fundo por preto, e as partes escuras da marca ficavam escondidas dentro dele. Agora o arquivo é guardado como você envia, com a transparência preservada. Se o seu logo já estava assim, basta enviá-lo de novo em Configurações.',
+      },
+      {
+        title: 'Marca de traço escuro aparece inteira no menu',
+        category: 'melhoria',
+        description: 'Logo de cores escuras ganha um fundo claro atrás no menu, na barra de topo e na prévia das Configurações, para ficar legível tanto no tema claro quanto no escuro.',
+      },
+    ],
+  },
+  {
+    version: '1.39.13',
+    date: '9 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Checklist desativado não some mais da tela',
+        category: 'correcao',
+        description: 'A lista de checklists passou a ter duas abas, Ativos e Inativos. Ao desativar um checklist ele muda de aba em vez de desaparecer, continua podendo ser aberto e volta a ficar disponível para as ordens de serviço pelo botão Reativar.',
+      },
+    ],
+  },
+  {
     version: '1.39.12',
     date: '8 de novembro de 2026',
     type: 'patch',

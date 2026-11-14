@@ -133,7 +133,9 @@ export function InventoryAbcReport() {
     return {
       insight,
       secondaryValue: view === 'stock' ? money(row.unit_cost) : `${number(row.current_balance, { maximumFractionDigits: 3 })} ${row.unit || 'un'}`,
-      tertiaryValue: view === 'pdv' ? money(row.pdv_margin) : view === 'usage' ? money(row.unit_cost) : money(row.sale_price),
+      tertiaryValue: view === 'pdv'
+        ? row.pdv_margin == null ? 'Indisponível' : money(row.pdv_margin)
+        : view === 'usage' ? money(row.unit_cost) : money(row.sale_price),
     };
   };
 
@@ -217,6 +219,12 @@ export function InventoryAbcReport() {
       {report.error && (
         <NoticeBanner variant="destructive" action="Tentar novamente" onClick={() => void report.refetch()}>
           Não foi possível carregar a Curva ABC agora. Tente novamente em instantes.
+        </NoticeBanner>
+      )}
+
+      {view === 'pdv' && (report.data ?? []).some((row) => row.pdv_margin == null && row.pdv_revenue > 0) && (
+        <NoticeBanner variant="warning">
+          Há vendas sem custo conhecido. A margem desses materiais aparece como indisponível, nunca como zero.
         </NoticeBanner>
       )}
 
@@ -306,7 +314,7 @@ export function InventoryAbcReport() {
                         <TableCell className="text-right tabular-nums text-muted-foreground">{formatPercent(row.cumulativeShare)}</TableCell>
                         <TableCell className="text-right tabular-nums">{quantityText(row)}</TableCell>
                         <TableCell className="text-right tabular-nums">{cells.secondaryValue}</TableCell>
-                        <TableCell className={cn('text-right tabular-nums', view === 'pdv' && row.pdv_margin < 0 && 'font-semibold text-destructive')}>{cells.tertiaryValue}</TableCell>
+                        <TableCell className={cn('text-right tabular-nums', view === 'pdv' && row.pdv_margin != null && row.pdv_margin < 0 && 'font-semibold text-destructive')}>{cells.tertiaryValue}</TableCell>
                         <TableCell><span className={cn('inline-flex items-center gap-1.5 text-xs', cells.insight.warning && 'font-medium text-warning')}>{cells.insight.warning && <AlertTriangle className="h-3.5 w-3.5" />}{cells.insight.text}</span></TableCell>
                       </TableRow>
                     );

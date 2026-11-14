@@ -19,10 +19,45 @@ import {
 } from "../nfse-provider.ts";
 import {
   deveRegistrarTentativa,
+  dataFiscalNfse,
   ehRecusaDeDocumento,
   emissaoNacionalObrigatoriaSimples,
+  retryKeyForDraft,
+  shouldReturnExistingEmission,
+  validarDataCompetenciaFiscal,
   validarProntidaoFiscal,
 } from "./emit.ts";
+
+Deno.test("retentativa por novo rascunho preserva sufixo único dentro do limite", () => {
+  const draftId = "48b97df6-6a69-4f65-8b21-a97d300922a4";
+  const key = retryKeyForDraft("x".repeat(512), draftId);
+
+  assertEquals(key.length, 512);
+  assertEquals(key.endsWith(`#retry-${draftId}`), true);
+});
+
+Deno.test("retentativa por novo rascunho não devolve a rejeição anterior", () => {
+  assertEquals(
+    shouldReturnExistingEmission({
+      existingId: "rejeicao-anterior",
+      emissionId: "rascunho-novo",
+      tentativaAnterior: "",
+      retentativaComNovoRascunho: true,
+      reemissaoPosCancelamento: false,
+    }),
+    false,
+  );
+  assertEquals(
+    shouldReturnExistingEmission({
+      existingId: "autorizada-anterior",
+      emissionId: "rascunho-novo",
+      tentativaAnterior: "",
+      retentativaComNovoRascunho: false,
+      reemissaoPosCancelamento: false,
+    }),
+    true,
+  );
+});
 
 // --- Recusa oficial → linha `rejeitada` ----------------------------------------
 
@@ -119,6 +154,31 @@ const CONFIG_OK = {
   certificado_ref: "tenant/certificado-cifrado.b64",
   certificate_expires_at: "2027-11-04T23:00:00Z",
 };
+
+Deno.test("relógio fiscal não antecipa a competência na virada UTC", () => {
+  const antesDaMeiaNoiteFiscal = Date.parse("2026-11-11T00:30:00Z");
+  assertEquals(dataFiscalNfse(antesDaMeiaNoiteFiscal), "2026-11-10");
+  assertEquals(
+    validarDataCompetenciaFiscal("2026-11-11", antesDaMeiaNoiteFiscal),
+    {
+      error: "future_competence",
+      message: "A competência não pode ser uma data futura.",
+    },
+  );
+});
+
+Deno.test("competência vira junto com a meia-noite fiscal de Brasília", () => {
+  const meiaNoiteFiscal = Date.parse("2026-11-11T03:00:00Z");
+  assertEquals(dataFiscalNfse(meiaNoiteFiscal), "2026-11-11");
+  assertEquals(
+    validarDataCompetenciaFiscal("2026-11-11", meiaNoiteFiscal),
+    null,
+  );
+  assertEquals(
+    validarDataCompetenciaFiscal("2026-10-31", meiaNoiteFiscal),
+    null,
+  );
+});
 
 Deno.test("configuração pronta passa pelo gate fiscal", () => {
   assertEquals(validarProntidaoFiscal(CONFIG_OK, AGORA), null);

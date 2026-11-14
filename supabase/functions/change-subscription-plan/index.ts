@@ -152,6 +152,16 @@ Deno.serve(async (req) => {
       .single();
     if (companyError || !company) throw new ValidationError("Empresa não encontrada.");
 
+    const { count: activePromotionCount, error: activePromotionError } = await supabase
+      .from("company_subscription_promotions")
+      .select("id", { count: "exact", head: true })
+      .eq("company_id", company_id)
+      .eq("status", "active");
+    if (activePromotionError) throw new ValidationError("Não foi possível validar as condições promocionais da empresa.");
+    if ((activePromotionCount || 0) > 0) {
+      throw new ValidationError("Esta empresa possui uma condição promocional ativa. Ajuste-a no painel administrativo antes de trocar o plano.");
+    }
+
     const isCustom = plan_code === "personalizado";
 
     // --- Catálogo de preços (server-side) ---

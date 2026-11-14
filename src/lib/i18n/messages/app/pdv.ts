@@ -308,8 +308,8 @@ export const pdv = {
         description: 'Contas de banco e dinheiro da empresa',
         empty: 'Nenhuma conta cadastrada no Financeiro.',
         more: 'e mais {count}',
-        bleed: 'Sangria',
-        supply: 'Suprimento',
+        bleed: 'Retirar dinheiro',
+        supply: 'Adicionar dinheiro',
       },
       actions: {
         aria: 'Ações rápidas do caixa',
@@ -863,8 +863,8 @@ export const pdv = {
         description: 'Company bank and cash accounts',
         empty: 'No account registered in Finance.',
         more: 'and {count} more',
-        bleed: 'Cash out',
-        supply: 'Cash in',
+        bleed: 'Withdraw cash',
+        supply: 'Add cash',
       },
       actions: {
         aria: 'Quick register actions',
@@ -1413,8 +1413,8 @@ export const pdv = {
         description: 'Cuentas de banco y efectivo de la empresa',
         empty: 'Ninguna cuenta registrada en Finanzas.',
         more: 'y {count} más',
-        bleed: 'Retiro',
-        supply: 'Aporte',
+        bleed: 'Retirar dinero',
+        supply: 'Agregar dinero',
       },
       actions: {
         aria: 'Acciones rápidas de caja',
@@ -1957,8 +1957,8 @@ export const pdv = {
         description: "Comptes bancaires et d'espèces de l'entreprise",
         empty: 'Aucun compte enregistré dans Finance.',
         more: 'et {count} de plus',
-        bleed: 'Prélèvement',
-        supply: 'Apport',
+        bleed: 'Retirer de l’argent',
+        supply: 'Ajouter de l’argent',
       },
       actions: {
         aria: 'Actions rapides de caisse',

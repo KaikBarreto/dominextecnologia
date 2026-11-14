@@ -17,6 +17,46 @@ export function nextPdvIndex(current: number, length: number, delta: number): nu
 
 export type PdvGridDirection = 'up' | 'down' | 'left' | 'right';
 
+export type PdvCommandShortcutAction =
+  | 'search'
+  | 'payment'
+  | 'help'
+  | 'quantity_up'
+  | 'quantity_down';
+
+/** Aliases de mercado; Alt nunca participa para preservar atalhos do SO. */
+export function resolvePdvCommandShortcut(input: {
+  key: string;
+  ctrlKey?: boolean;
+  metaKey?: boolean;
+  altKey?: boolean;
+}): PdvCommandShortcutAction | null {
+  if (input.altKey || (!input.ctrlKey && !input.metaKey)) return null;
+  const key = input.key.toLocaleLowerCase('pt-BR');
+  if (key === 'f') return 'search';
+  if (key === 'enter') return 'payment';
+  if (key === 'k') return 'help';
+  if (key === '+' || key === '=') return 'quantity_up';
+  if (key === '-') return 'quantity_down';
+  return null;
+}
+
+/**
+ * Decide quando uma seta sai da busca e entra no catálogo.
+ *
+ * Com texto digitado, esquerda/direita continuam movendo o cursor no campo.
+ * Cima/baixo sempre entram nos produtos; com a busca vazia, qualquer seta
+ * pode iniciar a navegação do catálogo.
+ */
+export function shouldNavigatePdvCatalogFromSearch(
+  key: string,
+  searchValue: string,
+): boolean {
+  if (key === 'ArrowUp' || key === 'ArrowDown') return true;
+  if (key === 'ArrowLeft' || key === 'ArrowRight') return searchValue.length === 0;
+  return false;
+}
+
 export interface PdvGridItemRect {
   id: string;
   left: number;
@@ -48,6 +88,21 @@ export function findPdvGridNeighbor(
   const currentX = current.left + current.width / 2;
   const currentY = current.top + current.height / 2;
   const vertical = direction === 'up' || direction === 'down';
+  const readingOrder = [...items].sort((a, b) => {
+    const rowTolerance = Math.max(a.height, b.height) * 0.55;
+    const aY = a.top + a.height / 2;
+    const bY = b.top + b.height / 2;
+    if (Math.abs(aY - bY) <= rowTolerance) return a.left - b.left;
+    return a.top - b.top;
+  });
+
+  // Esquerda/direita percorrem a lista visual inteira. Assim, a direita no
+  // último card de uma linha desce para o primeiro da próxima e a esquerda no
+  // primeiro sobe para o último da anterior, inclusive entre seções.
+  if (!vertical) {
+    const index = readingOrder.findIndex((item) => item.id === currentId);
+    return readingOrder[nextPdvIndex(index, readingOrder.length, direction === 'right' ? 1 : -1)]?.id ?? currentId;
+  }
 
   const candidates = items
     .filter((item) => item.id !== currentId)
@@ -71,7 +126,22 @@ export function findPdvGridNeighbor(
       return Math.abs((item.top + item.height / 2) - currentY) <= rowTolerance;
     });
 
-  if (candidates.length === 0) return currentId;
+  if (candidates.length === 0) {
+    const edgeItems = [...items]
+      .filter((item) => item.id !== currentId)
+      .sort((a, b) => {
+        const aY = a.top + a.height / 2;
+        const bY = b.top + b.height / 2;
+        const edgeOrder = direction === 'up' ? bY - aY : aY - bY;
+        if (Math.abs(edgeOrder) > 4) return edgeOrder;
+
+        const aX = a.left + a.width / 2;
+        const bX = b.left + b.width / 2;
+        return Math.abs(aX - currentX) - Math.abs(bX - currentX);
+      });
+
+    return edgeItems[0]?.id ?? currentId;
+  }
 
   // Primeiro encontra a fileira/coluna mais próxima. Uma tolerância pequena
   // absorve diferenças de altura entre cards da mesma fileira sem misturar a

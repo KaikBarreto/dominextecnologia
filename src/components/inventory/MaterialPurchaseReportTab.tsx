@@ -23,6 +23,7 @@ import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { FilterButton } from '@/components/ui/FilterButton';
 import { SearchField } from '@/components/ui/search-field-actions';
 import { MaterialPriceAnalysis } from '@/components/inventory/MaterialPriceAnalysis';
+import { MaterialCommercialPeriodSummary } from '@/components/pdv/reports/MaterialCommercialPeriodSummary';
 import { useMaterialPurchaseReport, type MaterialPurchaseReportRow } from '@/hooks/useMaterialPurchaseReport';
 import { useInventory } from '@/hooks/useInventory';
 import { useMaterialGroups } from '@/hooks/useMaterialGroups';
@@ -185,6 +186,10 @@ export function MaterialPurchaseReportTab() {
   }), [rows, materialIds, hideZero, search]);
 
   const summary = useMemo(() => summarizeMaterialPurchases(filteredMaterialRows), [filteredMaterialRows]);
+  const commercialSummary = useMemo(() => filteredMaterialRows.reduce((total, row) => ({
+    revenue: total.revenue + (row.net_revenue ?? 0),
+    margin: total.margin == null || row.margin == null ? null : total.margin + row.margin,
+  }), { revenue: 0, margin: 0 as number | null }), [filteredMaterialRows]);
   const paymentBreakdown = useMemo(() => buildPaymentBreakdown(filteredMaterialRows), [filteredMaterialRows]);
   const displayRows = useMemo(() => (
     viewMode === 'group'
@@ -369,8 +374,8 @@ export function MaterialPurchaseReportTab() {
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard title={t.kpis.purchased} value={money(summary.purchasedTotal)} description={t.kpis.purchaseCount.replace('{count}', number(summary.purchaseCount))} icon={ShoppingCart} colorClass="bg-primary" expanded={expandedKpi === 'purchased'} onClick={() => setExpandedKpi((value) => value === 'purchased' ? null : 'purchased')} />
-        <MetricCard title={t.kpis.sold} value="—" description={t.kpis.pdvDescription} icon={WalletCards} colorClass="bg-info" disabled badge={t.kpis.pdv} />
-        <MetricCard title={t.kpis.grossProfit} value="—" description={t.kpis.pdvDescription} icon={TrendingUp} colorClass="bg-success" disabled badge={t.kpis.pdv} />
+        <MetricCard title={t.kpis.sold} value={money(commercialSummary.revenue)} description="Receita líquida após devoluções" icon={WalletCards} colorClass="bg-info" disabled badge={t.kpis.pdv} />
+        <MetricCard title={t.kpis.grossProfit} value={commercialSummary.margin == null ? 'Indisponível' : money(commercialSummary.margin)} description="Receita líquida menos CMV conhecido" icon={TrendingUp} colorClass="bg-success" disabled badge={t.kpis.pdv} />
         <MetricCard title={t.kpis.projection} value={money(summary.projectedProfit)} description={t.kpis.projectionDescription} icon={BarChart3} colorClass="bg-warning" badge={t.estimate} expanded={expandedKpi === 'projection'} onClick={() => setExpandedKpi((value) => value === 'projection' ? null : 'projection')} />
       </div>
 
@@ -395,6 +400,13 @@ export function MaterialPurchaseReportTab() {
 
       {pricedCoverage < 100 && <NoticeBanner variant="warning">{t.priceCoverageWarning.replace('{coverage}', `${number(pricedCoverage, { maximumFractionDigits: 1 })}%`)}</NoticeBanner>}
       {report.error && <NoticeBanner variant="destructive" action={t.retry} onClick={() => void report.refetch()}>{t.loadError}</NoticeBanner>}
+
+      {!report.error && !report.isLoading && (
+        <MaterialCommercialPeriodSummary
+          rows={filteredMaterialRows}
+          periodLabel={startDate || endDate ? `${startDate || 'início'} a ${endDate || 'hoje'}` : 'Todo o período'}
+        />
+      )}
 
       {!report.error && (
         <MaterialPriceAnalysis

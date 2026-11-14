@@ -47,6 +47,7 @@ const RPC_ERROR_MESSAGES: Record<string, string> = {
   empresa_nao_encontrada: 'Empresa não encontrada.',
   pagamento_nao_encontrado: 'Pagamento não encontrado. Atualize a página e tente novamente.',
   pagamento_asaas_nao_excluivel: 'Cobranças do Asaas não podem ser excluídas por aqui.',
+  pagamento_promocional_nao_e_ultimo: 'Este pagamento consumiu uma condição promocional e só pode ser excluído depois dos pagamentos posteriores.',
 };
 
 /** Traduz erros das RPCs de pagamento pra PT-BR sem expor detalhe técnico. */
@@ -140,6 +141,7 @@ export function useAdminCompanyPayments(companyId: string | undefined) {
     queryClient.invalidateQueries({ queryKey: ['admin-subscriptions'] });
     queryClient.invalidateQueries({ queryKey: ['admin-payments'] });
     queryClient.invalidateQueries({ queryKey: ['subscription_history', companyId] });
+    queryClient.invalidateQueries({ queryKey: ['admin-company-subscription-promotions', companyId] });
   };
 
   const registerPayment = useMutation({
@@ -158,7 +160,32 @@ export function useAdminCompanyPayments(companyId: string | undefined) {
         // omitir é seguro e o vendedor leva 100% da comissão da 1ª venda.
       });
       if (error) throw error;
-      return data;
+
+      // O trigger do pagamento já consome a cobrança promocional de forma
+      // atômica. Se isso gerou uma virada de preço, tentamos sincronizar a
+      // recorrência agora; falhar aqui NÃO desfaz nem repete o pagamento.
+      const { data: pendingSync, error: pendingSyncError } = await supabase
+        .from('company_subscription_price_sync')
+        .select('status')
+        .eq('company_id', companyId!)
+        .in('status', ['pending', 'failed'])
+        .maybeSingle();
+
+      let syncWarning: string | null = null;
+      if (pendingSyncError) {
+        syncWarning = 'O pagamento foi registrado, mas não foi possível conferir a atualização da cobrança automática.';
+      } else if (pendingSync) {
+        const { data: syncResult, error: syncError } = await supabase.functions.invoke(
+          'sync-company-subscription-price',
+          { body: { company_id: companyId } },
+        );
+        if (syncError || syncResult?.success === false) {
+          syncWarning = syncResult?.warning
+            || 'O pagamento foi registrado, mas a cobrança automática ainda precisa ser sincronizada.';
+        }
+      }
+
+      return { paymentId: data, syncWarning };
     },
     onSuccess: invalidateAll,
   });
@@ -169,6 +196,28 @@ export function useAdminCompanyPayments(companyId: string | undefined) {
         p_payment_id: paymentId,
       });
       if (error) throw error;
+
+      const { data: pendingSync, error: pendingSyncError } = await supabase
+        .from('company_subscription_price_sync')
+        .select('status')
+        .eq('company_id', companyId!)
+        .in('status', ['pending', 'failed'])
+        .maybeSingle();
+
+      let syncWarning: string | null = null;
+      if (pendingSyncError) {
+        syncWarning = 'O pagamento foi excluído, mas não foi possível conferir a atualização da cobrança automática.';
+      } else if (pendingSync) {
+        const { data: syncResult, error: syncError } = await supabase.functions.invoke(
+          'sync-company-subscription-price',
+          { body: { company_id: companyId } },
+        );
+        if (syncError || syncResult?.success === false) {
+          syncWarning = syncResult?.warning
+            || 'O pagamento foi excluído, mas a cobrança automática ainda precisa ser sincronizada.';
+        }
+      }
+      return { syncWarning };
     },
     onSuccess: invalidateAll,
   });

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, ArrowDownAZ, Plus, FileText, Trash2, Pencil, BookOpen, RotateCcw } from 'lucide-react';
+import { AlertCircle, ArrowDownAZ, Plus, FileText, Trash2, Pencil, BookOpen, Copy, RotateCcw } from 'lucide-react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { Button } from '@/components/ui/button';
@@ -21,12 +21,15 @@ import { useServiceTypeCategories } from '@/hooks/useServiceTypeCategories';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
+import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { FABButton } from '@/components/mobile/FABButton';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { ChecklistCatalogModal } from '@/components/technician/ChecklistCatalogModal';
 import { ChecklistPreviewDialog } from '@/components/service-orders/ChecklistPreviewDialog';
 import { ChecklistOsPreview } from '@/components/service-orders/ChecklistOsPreview';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DuplicateEntityDialog } from '@/components/ui/DuplicateEntityDialog';
+import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import type { FormQuestion, FormTemplate } from '@/types/database';
 import { ListDetailLayout, type ListDetailSortOption } from '@/components/ui/ListDetailLayout';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
@@ -34,7 +37,7 @@ import { useDataPagination } from '@/hooks/useDataPagination';
 import ChecklistDetail from '@/pages/ChecklistDetail';
 
 type TemplateWithServiceIds = { service_type_ids?: string[] };
-type ChecklistTemplate = FormTemplate & { questions?: FormQuestion[] };
+type ChecklistTemplate = FormTemplate & { questions: FormQuestion[] };
 
 function getServiceIds(template: unknown): string[] | undefined {
   return (template as TemplateWithServiceIds).service_type_ids;
@@ -50,6 +53,7 @@ export function ChecklistsPanel() {
   const [allServices, setAllServices] = useState(true);
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [duplicating, setDuplicating] = useState<ChecklistTemplate | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailMode, setDetailMode] = useState<'preview' | 'edit'>('preview');
   // Prévia em tela cheia com o visual do preenchimento da OS.
@@ -58,18 +62,26 @@ export function ChecklistsPanel() {
   const [editorSession, setEditorSession] = useState(0);
   const [mobileSearch, setMobileSearch] = useState('');
   const [mobileSort, setMobileSort] = useState<'name-asc' | 'name-desc'>('name-asc');
+  // Subaba de status. `is_active` é sobrecarregado: a lixeira desta tela e o
+  // toggle "Ativo" da ficha gravam o MESMO campo. Enquanto a lista só mostrava
+  // ativos, desligar o toggle era o mesmo que excluir sem volta.
+  const [statusTab, setStatusTab] = useState<'active' | 'inactive'>('active');
 
   const {
     templates, isLoading, isError, refetch,
-    createTemplate, setTemplateServices, deleteTemplate,
+    createTemplate, updateTemplate, setTemplateServices, deleteTemplate, duplicateTemplate,
   } = useFormTemplates();
   const { serviceTypes } = useServiceTypes();
   const { categories: serviceTypeCategories } = useServiceTypeCategories();
-  const activeTemplates = templates.filter((template) => template.is_active);
+  const activeCount = templates.filter((template) => template.is_active).length;
+  const inactiveCount = templates.length - activeCount;
+  const showingInactive = statusTab === 'inactive';
+  const activeTemplates = templates.filter((template) => template.is_active === !showingInactive);
   const selectedTemplate = useMemo(
     () => activeTemplates.find((template) => template.id === selectedId) as ChecklistTemplate | undefined,
     [activeTemplates, selectedId],
   );
+  const reactivate = (id: string) => updateTemplate.mutate({ id, is_active: true });
 
   const checklistSortOptions = useMemo<ListDetailSortOption[]>(() => [
     {
@@ -103,8 +115,44 @@ export function ChecklistsPanel() {
         </span>
       ),
       trailing: <Badge variant="outline" className="px-1.5 py-0 text-[10px] tabular-nums">{questionsCount}</Badge>,
+      actions: (
+        <RowActionsMenu
+          ariaLabel={`${t.colActions}: ${template.name}`}
+          actions={[
+            {
+              label: t.actionDuplicate,
+              icon: Copy,
+              onClick: () => setDuplicating(template),
+            },
+            {
+              label: t.actionEditView,
+              icon: Pencil,
+              variant: 'edit',
+              onClick: () => {
+                setSelectedId(template.id);
+                setEditorInitialAction(undefined);
+                setEditorSession((current) => current + 1);
+                setDetailMode('edit');
+              },
+            },
+            showingInactive
+              ? {
+                  label: t.actionReactivate,
+                  icon: RotateCcw,
+                  variant: 'edit' as const,
+                  onClick: () => updateTemplate.mutate({ id: template.id, is_active: true }),
+                }
+              : {
+                  label: t.actionDelete,
+                  icon: Trash2,
+                  variant: 'delete' as const,
+                  onClick: () => setDeleteId(template.id),
+                },
+          ]}
+        />
+      ),
     };
-  }), [activeTemplates, serviceTypes, t]);
+  }), [activeTemplates, serviceTypes, showingInactive, t, updateTemplate]);
 
   const mobileTemplates = useMemo(() => {
     const query = mobileSearch.trim().toLocaleLowerCase(locale);
@@ -145,6 +193,14 @@ export function ChecklistsPanel() {
     setSelectedId(id);
     setDetailMode('preview');
     setEditorInitialAction(undefined);
+  };
+
+  const changeStatusTab = (value: string) => {
+    setStatusTab(value === 'inactive' ? 'inactive' : 'active');
+    setSelectedId(null);
+    setDetailMode('preview');
+    setEditorInitialAction(undefined);
+    setMobileSearch('');
   };
 
   const openEditor = (initialAction?: 'create-question') => {
@@ -189,8 +245,8 @@ export function ChecklistsPanel() {
     }
   };
 
-  const templateToDelete = activeTemplates.find((t) => t.id === deleteId);
-  const detailContent = selectedTemplate ? (
+  const templateToDelete = templates.find((t) => t.id === deleteId);
+  const detailBody = selectedTemplate ? (
     detailMode === 'edit' ? (
       <ChecklistDetail
         key={`${selectedTemplate.id}-${editorSession}`}
@@ -218,6 +274,30 @@ export function ChecklistsPanel() {
       Selecione um checklist para visualizar como ele ficará na OS.
     </div>
   );
+
+  // Checklist inativo continua abrindo normal; o aviso explica por que ele sumiu
+  // das OSs e oferece a volta em um clique, sem botão extra na listagem.
+  const detailContent = selectedTemplate && !selectedTemplate.is_active ? (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 rounded-xl border bg-muted/40 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-sm font-medium">{t.inactiveNoticeTitle}</p>
+          <p className="text-sm text-muted-foreground">{t.inactiveNoticeDesc}</p>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          className="shrink-0 gap-2"
+          disabled={updateTemplate.isPending}
+          onClick={() => reactivate(selectedTemplate.id)}
+        >
+          <RotateCcw className="h-4 w-4" />
+          {t.actionReactivate}
+        </Button>
+      </div>
+      {detailBody}
+    </div>
+  ) : detailBody;
 
   if (isLoading) {
     return (
@@ -286,18 +366,32 @@ export function ChecklistsPanel() {
         </div>
       )}
 
+      {/* Subabas de status: o inativo não some mais da tela, só muda de aba. */}
+      {detailMode !== 'edit' && templates.length > 0 && !(isMobile && selectedTemplate) && (
+        <MobilePillTabs
+          variant="underline"
+          level="section"
+          tabs={[
+            { value: 'active', label: t.tabActive, sublabel: String(activeCount) },
+            { value: 'inactive', label: t.tabInactive, sublabel: String(inactiveCount) },
+          ]}
+          activeTab={statusTab}
+          onTabChange={changeStatusTab}
+        />
+      )}
+
       {activeTemplates.length === 0 ? (
         isMobile ? (
           <EmptyState
             icon={<FileText className="h-12 w-12" />}
-            title={t.emptyTitle}
-            description={t.emptyDescriptionMobile}
+            title={showingInactive ? t.emptyInactiveTitle : t.emptyTitle}
+            description={showingInactive ? t.emptyInactiveDesc : t.emptyDescriptionMobile}
           />
         ) : (
           <div className="flex flex-col items-center justify-center border-y py-12 text-center">
             <FileText className="mb-4 h-12 w-12 text-muted-foreground" />
-            <h3 className="text-lg font-medium">{t.emptyTitle}</h3>
-            <p className="text-muted-foreground">{t.emptyDescriptionDesktop}</p>
+            <h3 className="text-lg font-medium">{showingInactive ? t.emptyInactiveTitle : t.emptyTitle}</h3>
+            <p className="text-muted-foreground">{showingInactive ? t.emptyInactiveDesc : t.emptyDescriptionDesktop}</p>
           </div>
         )
       ) : isMobile && selectedTemplate ? (
@@ -339,6 +433,12 @@ export function ChecklistsPanel() {
                   .replace('{n}', String(questionsCount));
                 const itemActions: ItemAction[] = [
                   {
+                    key: 'duplicate',
+                    label: t.actionDuplicate,
+                    icon: <Copy className="h-4 w-4" />,
+                    onClick: () => setDuplicating(template),
+                  },
+                  {
                     key: 'edit',
                     label: t.actionEditView,
                     icon: <Pencil className="h-4 w-4" />,
@@ -348,13 +448,21 @@ export function ChecklistsPanel() {
                       openEditor();
                     },
                   },
-                  {
-                    key: 'delete',
-                    label: t.actionDelete,
-                    icon: <Trash2 className="h-4 w-4" />,
-                    variant: 'destructive',
-                    onClick: () => setDeleteId(template.id),
-                  },
+                  showingInactive
+                    ? {
+                        key: 'reactivate',
+                        label: t.actionReactivate,
+                        icon: <RotateCcw className="h-4 w-4" />,
+                        variant: 'edit' as const,
+                        onClick: () => reactivate(template.id),
+                      }
+                    : {
+                        key: 'delete',
+                        label: t.actionDelete,
+                        icon: <Trash2 className="h-4 w-4" />,
+                        variant: 'destructive' as const,
+                        onClick: () => setDeleteId(template.id),
+                      },
                 ];
 
                 return (
@@ -495,7 +603,40 @@ export function ChecklistsPanel() {
         templateId={previewTemplateId}
         open={!!previewTemplateId}
         onOpenChange={(o) => { if (!o) setPreviewTemplateId(null); }}
-        templates={activeTemplates as any}
+        templates={activeTemplates}
+      />
+
+      <DuplicateEntityDialog
+        open={!!duplicating}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setDuplicating(null);
+        }}
+        initialName={duplicating ? `${duplicating.name} - ${t.duplicateNameSuffix}` : ''}
+        isPending={duplicateTemplate.isPending}
+        labels={{
+          title: t.duplicateTitle,
+          description: t.duplicateDescription,
+          nameLabel: t.duplicateNameLabel,
+          quantityLabel: t.duplicateCountLabel,
+          quantityHint: t.duplicateCountHint,
+          copyHint: t.duplicateCopyHint,
+          cancel: t.btnCancel,
+          confirm: t.duplicateConfirm,
+          confirming: t.duplicateConfirming,
+          nameRequired: t.duplicateNameRequired,
+          quantityInvalid: t.duplicateCountInvalid,
+        }}
+        onConfirm={async (baseName, copyCount) => {
+          if (!duplicating) return;
+          await duplicateTemplate.mutateAsync({
+            sourceId: duplicating.id,
+            baseName,
+            copyCount,
+          });
+          setDuplicating(null);
+          setStatusTab('inactive');
+          setSelectedId(null);
+        }}
       />
 
       {/* Delete dialog */}

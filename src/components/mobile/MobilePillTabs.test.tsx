@@ -30,6 +30,7 @@ describe('MobilePillTabs underline', () => {
     const fornecedores = screen.getByRole('tab', { name: 'Fornecedores' });
 
     expect(tablist).toHaveClass('border-b', 'border-border');
+    expect(tablist).toHaveClass('overflow-y-hidden', 'overscroll-x-contain', 'touch-manipulation');
     expect(tablist).not.toHaveClass('bg-muted');
     expect(clientes).toHaveAttribute('aria-selected', 'true');
     expect(clientes).toHaveClass('border-primary', 'bg-transparent', 'rounded-none');
@@ -37,6 +38,32 @@ describe('MobilePillTabs underline', () => {
 
     fireEvent.click(fornecedores);
     expect(onTabChange).toHaveBeenCalledWith('fornecedores');
+  });
+
+  it('indica quando existem mais abas fora da área visível', () => {
+    render(
+      <MobilePillTabs
+        variant="underline"
+        tabs={[
+          { value: 'geral', label: 'Geral' },
+          { value: 'notificacoes', label: 'Notificações' },
+          { value: 'integracoes', label: 'Integrações' },
+        ]}
+        activeTab="geral"
+        onTabChange={() => undefined}
+      />,
+    );
+
+    const tablist = screen.getByRole('tablist');
+    Object.defineProperties(tablist, {
+      clientWidth: { configurable: true, value: 220 },
+      scrollWidth: { configurable: true, value: 520 },
+      scrollLeft: { configurable: true, value: 0 },
+    });
+    fireEvent.scroll(tablist);
+
+    expect(tablist).toHaveAttribute('aria-label', 'Abas. Deslize horizontalmente para ver mais opções.');
+    expect(document.querySelector('[title="Mais abas à direita"]')).toBeInTheDocument();
   });
 
   it('destaca em negrito a aba ativa de nível de tela', () => {
@@ -55,5 +82,20 @@ describe('MobilePillTabs underline', () => {
 
     expect(screen.getByRole('tab', { name: 'Orçamentos' })).toHaveClass('font-bold');
     expect(screen.getByRole('tab', { name: 'Custos dos Serviços' })).not.toHaveClass('font-bold');
+  });
+
+  it('mantém texto branco na categoria saturada quando solicitado', () => {
+    render(
+      <MobilePillTabs
+        tabs={[
+          { value: 'todos', label: 'Todos' },
+          { value: 'eletrica', label: 'Elétrica', accentColor: '#f2b900', useColorBackground: true, forceWhiteForeground: true },
+        ]}
+        activeTab="eletrica"
+        onTabChange={() => undefined}
+      />,
+    );
+
+    expect(screen.getByRole('tab', { name: 'Elétrica' })).toHaveStyle({ color: '#ffffff' });
   });
 });

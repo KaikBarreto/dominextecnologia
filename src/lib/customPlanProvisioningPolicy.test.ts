@@ -61,7 +61,17 @@ describe('provisionamento do plano personalizado', () => {
       const modulesFailure = source.indexOf('Falha ao gravar');
 
       expect(modulesFailure).toBeGreaterThan(-1);
-      expect(source.slice(modulesFailure, modulesFailure + 900)).toContain(".from('companies').delete().eq('id', company.id)");
+      const failureBranch = source.slice(modulesFailure, modulesFailure + 900);
+
+      if (name === 'self-register') {
+        expect(failureBranch).toContain(".from('companies').delete().eq('id', company.id)");
+        return;
+      }
+
+      expect(failureBranch).toContain(
+        'rollbackCreation(supabaseAdmin, createdCompanyId, createdUserId, creationIdempotencyKey)',
+      );
+      expect(source).toContain("supabaseAdmin.rpc('rollback_admin_company_creation'");
     },
   );
 });

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Pencil, Trash2, Link2, ClipboardList } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Plus, Pencil, Trash2, Link2, ClipboardList, MessageSquareText, UserPlus, Copy } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -10,39 +10,63 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
+import { DuplicateEntityDialog } from '@/components/ui/DuplicateEntityDialog';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { useToast } from '@/hooks/use-toast';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { MESSAGES } from '@/lib/i18n/messages';
+import { fillMessage } from '@/lib/leadFormBuilderText';
 import { buildSlugSegment } from '@/utils/prettyLinks';
 import {
   useLeadCaptureForms,
   type LeadCaptureForm,
   type LeadCaptureFormInput,
 } from '@/hooks/useLeadCaptureForms';
+import { usePublicFormQuestionCounts } from '@/hooks/usePublicFormQuestions';
+import { FormSubmissionsView } from '@/components/forms/FormSubmissionsView';
 import { LeadCaptureFormDialog } from './LeadCaptureFormDialog';
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialFormId?: string | null;
+  initialSubmissionId?: string | null;
 }
 
 function isExpired(form: LeadCaptureForm): boolean {
   return !!form.expires_at && new Date(form.expires_at).getTime() < Date.now();
 }
 
-export function LeadCaptureManagerDialog({ open, onOpenChange }: Props) {
+export function LeadCaptureManagerDialog({
+  open,
+  onOpenChange,
+  initialFormId = null,
+  initialSubmissionId = null,
+}: Props) {
   const { toast } = useToast();
-  const { forms, isLoading, createForm, updateForm, toggleActive, deleteForm } = useLeadCaptureForms();
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.customers.leadFormBuilder;
+  const { forms, isLoading, createForm, updateForm, toggleActive, deleteForm, duplicateForm } = useLeadCaptureForms();
+  const { counts: questionCounts } = usePublicFormQuestionCounts();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<LeadCaptureForm | null>(null);
   const [toDelete, setToDelete] = useState<LeadCaptureForm | null>(null);
+  const [toDuplicate, setToDuplicate] = useState<LeadCaptureForm | null>(null);
+  const [answersFor, setAnswersFor] = useState<LeadCaptureForm | null>(null);
 
-  const handleSubmit = async (data: LeadCaptureFormInput) => {
-    if (editing) {
-      await updateForm.mutateAsync({ ...data, id: editing.id });
-    } else {
-      await createForm.mutateAsync(data);
+  useEffect(() => {
+    if (!open || !initialFormId || isLoading) return;
+    const requestedForm = forms.find((form) => form.id === initialFormId);
+    if (requestedForm) setAnswersFor(requestedForm);
+  }, [forms, initialFormId, isLoading, open]);
+
+  // `formId` vem do diálogo: id já gravado (edição, ou criação de uma tentativa
+  // anterior que falhou nas perguntas) ou null quando ainda precisa criar.
+  const handleSubmit = async (data: LeadCaptureFormInput, formId: string | null): Promise<LeadCaptureForm> => {
+    if (formId) {
+      return updateForm.mutateAsync({ ...data, id: formId });
     }
-    setEditing(null);
+    return createForm.mutateAsync(data);
   };
 
   const copyLink = (form: LeadCaptureForm) => {
@@ -50,19 +74,19 @@ export function LeadCaptureManagerDialog({ open, onOpenChange }: Props) {
     const segment = buildSlugSegment([form.title], form.short_code, 'cadastro');
     const url = `${window.location.origin}/cadastro/${segment}`;
     navigator.clipboard?.writeText(url).then(
-      () => toast({ title: 'Link gerado e copiado!' }),
-      () => toast({ title: 'Link gerado', description: url }),
+      () => toast({ title: t.linkCopied }),
+      () => toast({ title: t.linkGenerated, description: url }),
     );
   };
 
   const statusBadge = (form: LeadCaptureForm) => {
     if (isExpired(form)) {
-      return <Badge className="border-transparent bg-slate-600 text-white hover:bg-slate-600">Expirado</Badge>;
+      return <Badge className="border-transparent bg-slate-600 text-white hover:bg-slate-600">{t.statusExpired}</Badge>;
     }
     if (!form.is_active) {
-      return <Badge className="border-transparent bg-slate-600 text-white hover:bg-slate-600">Inativo</Badge>;
+      return <Badge className="border-transparent bg-slate-600 text-white hover:bg-slate-600">{t.statusInactive}</Badge>;
     }
-    return <Badge className="border-transparent bg-emerald-600 text-white hover:bg-emerald-600">Ativo</Badge>;
+    return <Badge className="border-transparent bg-emerald-600 text-white hover:bg-emerald-600">{t.statusActive}</Badge>;
   };
 
   return (
@@ -70,8 +94,8 @@ export function LeadCaptureManagerDialog({ open, onOpenChange }: Props) {
       <ResponsiveModal
         open={open}
         onOpenChange={onOpenChange}
-        title="Formulários de captação"
-        description="Links públicos para o cliente se cadastrar sozinho."
+        title={t.managerTitle}
+        description={t.managerDesc}
         footer={
           <Button
             className="w-full gap-2"
@@ -81,7 +105,7 @@ export function LeadCaptureManagerDialog({ open, onOpenChange }: Props) {
             }}
           >
             <Plus className="h-4 w-4" />
-            Novo formulário
+            {t.newForm}
           </Button>
         }
       >
@@ -95,62 +119,92 @@ export function LeadCaptureManagerDialog({ open, onOpenChange }: Props) {
           <EmptyState
             size="compact"
             icon={<ClipboardList className="h-8 w-8" />}
-            title="Nenhum formulário ainda"
-            description="Crie um link público para receber cadastros de novos clientes."
+            title={t.emptyTitle}
+            description={t.emptyDesc}
           />
         ) : (
           <div className="rounded-xl border bg-card">
-            {forms.map((form, idx) => (
-              <div
-                key={form.id}
-                className={`flex items-center gap-3 px-3 py-3 ${idx > 0 ? 'border-t' : ''}`}
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="min-w-0 truncate text-sm font-medium">{form.title}</p>
-                    {statusBadge(form)}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {form.submission_count} {form.submission_count === 1 ? 'cadastro' : 'cadastros'}
-                  </p>
-                </div>
-                <Switch
-                  checked={form.is_active && !isExpired(form)}
-                  disabled={isExpired(form) || toggleActive.isPending}
-                  onCheckedChange={(v) => toggleActive.mutate({ id: form.id, is_active: v })}
-                  aria-label="Ativar formulário"
-                />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  title="Copiar link"
-                  onClick={() => copyLink(form)}
+            {forms.map((form, idx) => {
+              const questionCount = questionCounts[form.id] ?? 0;
+              return (
+                <div
+                  key={form.id}
+                  className={`flex items-center gap-3 px-3 py-3 ${idx > 0 ? 'border-t' : ''}`}
                 >
-                  <Link2 className="h-4 w-4" />
-                </Button>
-                <RowActionsMenu
-                  triggerClassName="h-8 w-8"
-                  actions={[
-                    {
-                      label: 'Editar',
-                      icon: Pencil,
-                      variant: 'edit',
-                      onClick: () => {
-                        setEditing(form);
-                        setFormOpen(true);
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <p className="min-w-0 truncate text-sm font-medium">{form.title}</p>
+                      {statusBadge(form)}
+                      {form.purpose === 'generic' ? (
+                        <Badge variant="info" className="gap-1">
+                          <ClipboardList className="h-3 w-3" />
+                          {t.purposeGenericTitle}
+                        </Badge>
+                      ) : (
+                        <Badge variant="default" className="gap-1">
+                          <UserPlus className="h-3 w-3" />
+                          {t.purposeLeadTitle}
+                        </Badge>
+                      )}
+                      {form.show_in_customer_portal && (
+                        <Badge className="border-transparent bg-violet-600 text-white hover:bg-violet-600">{t.badgePortal}</Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {fillMessage(form.submission_count === 1 ? t.sentOne : t.sentMany, { n: form.submission_count })}
+                      {' · '}
+                      {fillMessage(questionCount === 1 ? t.questionsOne : t.questionsMany, { n: questionCount })}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={form.is_active && !isExpired(form)}
+                    disabled={isExpired(form) || toggleActive.isPending}
+                    onCheckedChange={(v) => toggleActive.mutate({ id: form.id, is_active: v })}
+                    aria-label={t.activateAria}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    title={t.actionCopyLink}
+                    aria-label={t.actionCopyLink}
+                    onClick={() => copyLink(form)}
+                  >
+                    <Link2 className="h-4 w-4" />
+                  </Button>
+                  <RowActionsMenu
+                    triggerClassName="h-8 w-8"
+                    actions={[
+                      {
+                        label: t.actionAnswers,
+                        icon: MessageSquareText,
+                        onClick: () => setAnswersFor(form),
                       },
-                    },
-                    {
-                      label: 'Excluir',
-                      icon: Trash2,
-                      variant: 'delete',
-                      onClick: () => setToDelete(form),
-                    },
-                  ]}
-                />
-              </div>
-            ))}
+                      {
+                        label: t.actionEdit,
+                        icon: Pencil,
+                        variant: 'edit',
+                        onClick: () => {
+                          setEditing(form);
+                          setFormOpen(true);
+                        },
+                      },
+                      {
+                        label: t.actionDuplicate,
+                        icon: Copy,
+                        onClick: () => setToDuplicate(form),
+                      },
+                      {
+                        label: t.actionDelete,
+                        icon: Trash2,
+                        variant: 'delete',
+                        onClick: () => setToDelete(form),
+                      },
+                    ]}
+                  />
+                </div>
+              );
+            })}
           </div>
         )}
       </ResponsiveModal>
@@ -163,16 +217,55 @@ export function LeadCaptureManagerDialog({ open, onOpenChange }: Props) {
         isLoading={createForm.isPending || updateForm.isPending}
       />
 
+      <DuplicateEntityDialog
+        open={!!toDuplicate}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setToDuplicate(null);
+        }}
+        initialName={t.duplicateNameSuggestion.replace('{name}', toDuplicate?.title ?? '')}
+        isPending={duplicateForm.isPending}
+        labels={{
+          title: t.duplicateTitle,
+          description: t.duplicateDescription,
+          nameLabel: t.duplicateNameLabel,
+          namePlaceholder: t.duplicateNamePlaceholder,
+          quantityLabel: t.duplicateQuantityLabel,
+          quantityHint: t.duplicateQuantityHint,
+          copyHint: t.duplicateInactiveHint,
+          cancel: t.duplicateCancel,
+          confirm: t.duplicateConfirm,
+          confirming: t.duplicating,
+          nameRequired: t.duplicateNameRequired,
+          quantityInvalid: t.duplicateQuantityInvalid,
+        }}
+        onConfirm={async (baseName, copyCount) => {
+          if (!toDuplicate) return;
+          await duplicateForm.mutateAsync({ sourceId: toDuplicate.id, baseName, copyCount });
+          setToDuplicate(null);
+        }}
+      />
+
+      <ResponsiveModal
+        open={!!answersFor}
+        onOpenChange={(o) => !o && setAnswersFor(null)}
+        title={t.subTitle}
+        description={answersFor?.title}
+      >
+        {answersFor && (
+          <FormSubmissionsView form={answersFor} initialSubmissionId={initialSubmissionId} />
+        )}
+      </ResponsiveModal>
+
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir formulário</AlertDialogTitle>
+            <AlertDialogTitle>{t.deleteTitle}</AlertDialogTitle>
             <AlertDialogDescription>
-              {`Tem certeza que deseja excluir "${toDelete?.title ?? ''}"? O link deixará de funcionar.`}
+              {fillMessage(t.deleteDesc, { title: toDelete?.title ?? '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{t.deleteCancel}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
@@ -180,7 +273,7 @@ export function LeadCaptureManagerDialog({ open, onOpenChange }: Props) {
                 setToDelete(null);
               }}
             >
-              Excluir
+              {t.deleteConfirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

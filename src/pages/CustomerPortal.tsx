@@ -22,6 +22,7 @@ import {
   ReceiptText,
   Lock,
   LogOut,
+  ClipboardCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -54,7 +55,12 @@ import {
 import { OSRatingSurvey } from '@/components/technician/OSRatingSurvey';
 import { supabaseAnon } from '@/integrations/supabase/anonClient';
 import { buildPmocPortalUrl } from '@/utils/pmocPortalApi';
-import { createCustomerPortalTicket } from '@/utils/customerPortalApi';
+import {
+  createCustomerPortalTicket,
+  fetchCustomerPortalForms,
+  type CustomerPortalForm,
+} from '@/utils/customerPortalApi';
+import { PortalFormsSection } from '@/components/portal/PortalFormsSection';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { PortalChargesSection } from '@/components/portal/PortalChargesSection';
@@ -626,6 +632,19 @@ function CustomerPortalContent({
     [lockedSet],
   );
 
+  // ── Formulários publicados no portal ──
+  // Não há chave `forms` em `portal_settings.permissions`: o gate é o próprio
+  // servidor. Lista vazia (ou erro, ex.: portal com senha ainda sem sessão) =
+  // seção escondida. Recarrega quando a sessão muda (desbloqueio por senha).
+  const [portalForms, setPortalForms] = useState<CustomerPortalForm[]>([]);
+  useEffect(() => {
+    let alive = true;
+    fetchCustomerPortalForms(token, sessionToken || null)
+      .then((list) => { if (alive) setPortalForms(list); })
+      .catch(() => { if (alive) setPortalForms([]); });
+    return () => { alive = false; };
+  }, [token, sessionToken]);
+
   // ── Estado do modal de chamado ──
   const [showUnlockModal, setShowUnlockModal] = useState(false);
   const [showTicketForm, setShowTicketForm] = useState(false);
@@ -814,14 +833,18 @@ function CustomerPortalContent({
       // Antes daqui havia um INSERT direto em `service_orders`. Desde
       // 18/10/2026 o `anon` não tem INSERT na tabela e o botão devolvia
       // `42501 permission denied for table service_orders` pro cliente final.
-      // Agora a criação passa pela RPC SECURITY DEFINER (ver
+      // Agora o recebimento passa pela RPC SECURITY DEFINER (ver
       // createCustomerPortalTicket), que revalida portal/permissão/assinatura/
       // módulo e resolve customer e company pelo token, sem confiar no client.
+      // A RPC cria somente `portal_calls`; a OS nasce depois da triagem interna.
       // `sessionToken` é a sessão do portal com senha, a MESMA que autorizou a
       // leitura: sem ela, um portal protegido aceitaria chamado de quem não
       // passou pela senha.
-      await createCustomerPortalTicket(token, ticketDesc, sessionToken, ticketEquipmentId);
-      toast({ title: t.ticketSuccess });
+      const receipt = await createCustomerPortalTicket(token, ticketDesc, sessionToken, ticketEquipmentId);
+      toast({
+        title: t.ticketSuccess,
+        description: t.ticketSuccessDescription.replace('{protocol}', String(receipt.protocolNumber)),
+      });
       setShowTicketForm(false);
       setTicketDesc('');
       setTicketEquipmentId('');
@@ -1402,7 +1425,11 @@ function CustomerPortalContent({
     ...(permissions.documents
       ? [{ value: 'documentos', label: t.sectionDocuments, icon: sectionIcon('documents', <Files className="h-4 w-4 shrink-0" />) }]
       : []),
-  ], [charges.length, contracts.length, lockedSet, permissions, sectionIcon, t]);
+    // Formulários: sem chave de permissão; aparece só se o servidor devolveu algum.
+    ...(portalForms.length > 0
+      ? [{ value: 'formularios', label: t.sectionForms, icon: <ClipboardCheck className="h-4 w-4 shrink-0" /> }]
+      : []),
+  ], [charges.length, contracts.length, lockedSet, permissions, portalForms.length, sectionIcon, t]);
 
   useEffect(() => {
     if (navSections.length > 0 && !navSections.some((section) => section.value === activeTab)) {
@@ -1537,6 +1564,15 @@ function CustomerPortalContent({
           locale={locale}
           currency={currency ?? 'BRL'}
           timezone={timezone}
+        />
+      )}
+      {activeTab === 'formularios' && portalForms.length > 0 && (
+        <PortalFormsSection
+          token={token}
+          sessionToken={sessionToken}
+          forms={portalForms}
+          lang={locale}
+          t={t}
         />
       )}
 

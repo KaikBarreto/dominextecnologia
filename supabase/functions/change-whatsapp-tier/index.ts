@@ -116,6 +116,18 @@ Deno.serve(async (req) => {
       throw new ValidationError("company_not_found", "Empresa não encontrada.");
     }
 
+    const { count: activePromotionCount, error: activePromotionError } = await supabase
+      .from("company_subscription_promotions")
+      .select("id", { count: "exact", head: true })
+      .eq("company_id", company_id)
+      .eq("status", "active");
+    if (activePromotionError) {
+      throw new ValidationError("promotion_check_failed", "Não foi possível validar as condições promocionais da empresa.");
+    }
+    if ((activePromotionCount || 0) > 0) {
+      throw new ValidationError("promotion_active", "Ajuste a condição promocional ativa antes de alterar o nível de Avisos de WhatsApp.");
+    }
+
     const currentTier = Number(company.whatsapp_tier) || 1;
 
     // Só upgrade. Downgrade/igual fora de escopo.

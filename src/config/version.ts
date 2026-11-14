@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.39.12";
+export const APP_VERSION = "1.39.40";
 
 export const VERSION_NOTES =
-  "Logo e site da Dominex com mais presença nos rodapés das propostas, com leitura adaptada ao celular e link clicável no PDF.";
+  "Relatórios de contas a pagar agora mostram somente as despesas e identificam melhor cada categoria.";

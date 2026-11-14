@@ -22,8 +22,8 @@ interface PdvCashSummaryCardsProps {
  * custo na hora da venda, então a margem bruta é medida. A EcoSistema precisa
  * chamar isso de "projeção" porque lá o custo do material não é conhecido.
  *
- * Sem cards saturados: a cor diferencia o valor e a página continua fácil de
- * percorrer sem competir visualmente com as ações rápidas.
+ * Sem cards coloridos: a hierarquia tipográfica diferencia os valores e a
+ * página continua fácil de percorrer sem competir com as ações rápidas.
  */
 export function PdvCashSummaryCards({
   texts,
@@ -46,7 +46,7 @@ export function PdvCashSummaryCards({
           value={result.sold}
           valuesVisible={valuesVisible}
           money={money}
-          className="text-green-600 dark:text-green-500"
+          className="text-foreground"
         />
         <SummaryValue
           label={texts.purchased}
@@ -60,11 +60,7 @@ export function PdvCashSummaryCards({
           value={result.profit}
           valuesVisible={valuesVisible}
           money={money}
-          className={cn(
-            profitPositive
-              ? 'text-orange-600 dark:text-orange-500'
-              : 'text-red-600 dark:text-red-500',
-          )}
+          className={cn(profitPositive ? 'text-foreground' : 'text-destructive')}
           helper={
             result.marginPct != null && valuesVisible
               ? texts.margin.replace(
@@ -114,7 +110,7 @@ function SummaryValue({
       <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground sm:text-xs">
         {label}
       </p>
-      <p className={cn('truncate text-xl font-extrabold tabular-nums sm:text-2xl', className)}>
+      <p className={cn('break-words text-xl font-extrabold tabular-nums sm:text-2xl', className)}>
         <PdvAnimatedMoney value={value} visible={valuesVisible} money={money} />
       </p>
       {helper && <p className="text-[10px] text-muted-foreground sm:text-xs">{helper}</p>}

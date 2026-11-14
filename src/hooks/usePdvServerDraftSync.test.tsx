@@ -33,6 +33,7 @@ function useHarness(initial: TestWorkspace) {
     hydratedStorageKey: 'pdv:user:company',
     localCacheFound: true,
     draftType: 'sale',
+    context: { cashSessionId: 'cash-a', terminalId: 'terminal-a', stockId: 'stock-a' },
     workspace,
     setWorkspace,
     parseWorkspace: useCallback(parseWorkspace, []),
@@ -52,8 +53,8 @@ describe('usePdvServerDraftSync', () => {
   it('serializa saves por ID, usa a revisão retornada e apaga só o draft removido', async () => {
     const revisions = new Map<string, number>();
     rpc.mockImplementation(async (name: string, args: Record<string, unknown>) => {
-      if (name === 'pdv_list_order_drafts') return { data: [], error: null };
-      if (name === 'pdv_save_order_draft') {
+      if (name === 'pdv_list_order_drafts_v2') return { data: [], error: null };
+      if (name === 'pdv_save_order_draft_v2') {
         const id = String(args.p_draft_id);
         const revision = (revisions.get(id) ?? 0) + 1;
         revisions.set(id, revision);
@@ -67,7 +68,7 @@ describe('usePdvServerDraftSync', () => {
     await act(async () => { await Promise.resolve(); });
     await act(async () => { await vi.advanceTimersByTimeAsync(650); });
 
-    const firstSave = rpc.mock.calls.find(([name, args]) => name === 'pdv_save_order_draft' && args.p_draft_id === first.id);
+    const firstSave = rpc.mock.calls.find(([name, args]) => name === 'pdv_save_order_draft_v2' && args.p_draft_id === first.id);
     expect(firstSave?.[1].p_expected_revision).toBe(0);
 
     act(() => {
@@ -79,7 +80,7 @@ describe('usePdvServerDraftSync', () => {
       }));
     });
     await act(async () => { await vi.advanceTimersByTimeAsync(650); });
-    const firstSaves = rpc.mock.calls.filter(([name, args]) => name === 'pdv_save_order_draft' && args.p_draft_id === first.id);
+    const firstSaves = rpc.mock.calls.filter(([name, args]) => name === 'pdv_save_order_draft_v2' && args.p_draft_id === first.id);
     expect(firstSaves.at(-1)?.[1].p_expected_revision).toBe(1);
 
     act(() => {
@@ -87,16 +88,16 @@ describe('usePdvServerDraftSync', () => {
       result.current.setWorkspace((current) => ({ ...current, drafts: [current.drafts[1]], activeId: second.id }));
     });
     await act(async () => { await vi.advanceTimersByTimeAsync(650); });
-    expect(rpc).toHaveBeenCalledWith('pdv_delete_order_draft', expect.objectContaining({
+    expect(rpc).toHaveBeenCalledWith('pdv_delete_order_draft_v2', expect.objectContaining({
       p_draft_id: first.id,
       p_expected_revision: 2,
     }));
-    expect(rpc).not.toHaveBeenCalledWith('pdv_delete_order_draft', expect.objectContaining({ p_draft_id: second.id }));
+    expect(rpc).not.toHaveBeenCalledWith('pdv_delete_order_draft_v2', expect.objectContaining({ p_draft_id: second.id }));
     expect(window.localStorage.getItem('pdv:user:company:server-deletions')).toBeNull();
   });
 
   it('expõe conflito CAS sem sobrescrever ou fazer retry automático', async () => {
-    rpc.mockImplementation(async (name: string) => name === 'pdv_list_order_drafts'
+    rpc.mockImplementation(async (name: string) => name === 'pdv_list_order_drafts_v2'
       ? { data: [], error: null }
       : { data: null, error: { code: '40001', message: 'revision conflict' } });
 
@@ -105,6 +106,6 @@ describe('usePdvServerDraftSync', () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(650); });
 
     expect(result.current.syncIssue).toBe('conflict');
-    expect(rpc.mock.calls.filter(([name]) => name === 'pdv_save_order_draft')).toHaveLength(1);
+    expect(rpc.mock.calls.filter(([name]) => name === 'pdv_save_order_draft_v2')).toHaveLength(1);
   });
 });

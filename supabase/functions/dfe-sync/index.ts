@@ -7,7 +7,7 @@
 // parâmetro `companyId` neste contrato.
 //
 // A rodada em si mora em `_shared/dfe-sync-core.ts`, compartilhada com o cron.
-// Ver lá as TRÊS OBRIGAÇÕES ANTI-656 (§10.3 do RUNBOOK do dominex-fiscal) —
+// Ver lá as TRÊS OBRIGAÇÕES ANTI-656 (RUNBOOK do motor-fiscal) —
 // elas são a razão de o botão e o cron serem o MESMO código.
 //
 // -----------------------------------------------------------------------------

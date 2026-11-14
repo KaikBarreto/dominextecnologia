@@ -24,6 +24,8 @@ import { useFiscalCertificateAuditInvalidator } from '@/hooks/useFiscalCertifica
 import { invokeNfse } from '@/utils/nfseEdge';
 import { supabase } from '@/integrations/supabase/client';
 import { type CnpjData } from '@/components/customers/CnpjDocumentInput';
+import { ieDaUf, mesmaIe, resultadoDeCampos } from '@/utils/consultaIe';
+import { sugerirRegime } from '@/utils/regimeSugerido';
 import { cnpjMask, cepMask } from '@/utils/masks';
 import { formatDate as formatDateLib } from '@/lib/format';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -31,7 +33,7 @@ import { MESSAGES } from '@/lib/i18n/messages';
 import { FISCAL_SCREEN_PERMISSION } from '@/components/fiscal/fiscalPermissions';
 import { EmpresaSection } from '@/components/fiscal/EmpresaSection';
 import { CertificadoSection } from '@/components/fiscal/CertificadoSection';
-import { ImpostosSection } from '@/components/fiscal/ImpostosSection';
+import { ImpostosSection, type IeHint, type RegimeHint } from '@/components/fiscal/ImpostosSection';
 import { ServicosSection } from '@/components/fiscal/ServicosSection';
 import { automaticCoverageCheckKey } from '@/lib/fiscal/automaticCoverage';
 
@@ -169,12 +171,23 @@ export default function FiscalSettings() {
     message: string;
   } | null>(null);
   const [checkingCoverage, setCheckingCoverage] = useState(false);
+
+  /**
+   * Avisos da consulta de CNPJ sobre inscrição estadual e regime tributário.
+   * Puramente informativos: a consulta só PREENCHE campo vazio e nunca
+   * sobrescreve o que o usuário (ou o banco) já tinha. Ambos ficam visíveis na
+   * seção Tributação, onde os dois campos moram.
+   */
+  const [ieHint, setIeHint] = useState<IeHint | null>(null);
+  const [regimeHint, setRegimeHint] = useState<RegimeHint | null>(null);
+
   // `null` usa o valor persistido; `false` bloqueia durante/falha da consulta;
   // uma string identifica o IBGE efetivamente confirmado nesta sessão. Assim
   // uma cobertura antiga nunca continua verde depois de trocar o município.
   const [coverageConfirmedInSession, setCoverageConfirmedInSession] = useState<string | false | null>(null);
   /** Uma tentativa automática por combinação persistida de A1, município e ambiente. */
   const automaticCoverageAttemptRef = useRef<string | null>(null);
+
 
   // Certificado
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -435,14 +448,27 @@ export default function FiscalSettings() {
   };
 
   /**
-   * CNPJ (BrasilAPI) → pré-preenche razão social e endereço fiscal. Só
-   * preenche campo VAZIO — empresa já cadastrada não pode ter endereço
-   * trocado por baixo dos panos ao reabrir esta tela.
+   * CNPJ (consulta pública) → pré-preenche razão social, endereço fiscal,
+   * inscrição estadual e sugere o regime tributário. Só preenche campo VAZIO —
+   * empresa já cadastrada não pode ter endereço, IE ou regime trocados por
+   * baixo dos panos ao reabrir esta tela.
+   *
+   * IE: só a inscrição ATIVA da UF do endereço fiscal (IE de outra UF é
+   * rejeição 234 na SEFAZ). Ver `src/utils/consultaIe.ts`.
+   *
+   * REGIME: o campo nasce com 'simples_nacional' (default do EMPTY_FORM), então
+   * "vazio" aqui tem dois significados. Preenchemos direto só quando o campo
+   * está literalmente vazio; quando a empresa ainda NÃO salvou regime nenhum
+   * (`settings.regime_tributario` nulo) e a consulta discorda do default,
+   * apenas SUGERIMOS, com a procedência e um botão. Regime já salvo não é
+   * tocado nem sugerido: esse valor vai pro provedor de emissão.
    */
   const handleCnpjDataFound = useCallback(
     (data: CnpjData) => {
       let shouldBackfillIbge = false;
       let backfillZip = '';
+      let nextIeHint: IeHint | null = null;
+      let nextRegimeHint: RegimeHint | null = null;
       setForm((p) => {
         const next = { ...p };
         if (data.razaoSocial && !p.razao_social.trim()) next.razao_social = data.razaoSocial;
@@ -458,12 +484,77 @@ export default function FiscalSettings() {
           shouldBackfillIbge = true;
           backfillZip = data.zipCode;
         }
+
+        // ── Inscrição estadual ──────────────────────────────────────────────
+        const ieRes = resultadoDeCampos({
+          inscricoes: data.inscricoesEstaduais,
+          situacaoCadastral: data.situacaoCadastral,
+          indisponivel: data.ieIndisponivel,
+        });
+        // UF do form; se ainda estiver vazia, a que a consulta devolveu.
+        const ufAlvo = (p.uf.trim() || data.state || '').trim();
+        const achada = ieDaUf(ieRes, ufAlvo);
+        const ieAtual = p.inscricao_estadual.trim();
+        if (!ieAtual) {
+          if (achada) {
+            next.inscricao_estadual = achada.inscricao_estadual;
+            nextIeHint = { kind: 'preenchida', ie: achada.inscricao_estadual, uf: achada.uf };
+          } else if (ieRes.success && (ieRes.inscricoes?.length ?? 0) === 0) {
+            // Afirmação de ausência (≠ falha de consulta).
+            nextIeHint = { kind: 'ausente' };
+          } else if (!ieRes.success) {
+            nextIeHint = { kind: 'indisponivel' };
+          }
+        } else if (achada && !mesmaIe(ieAtual, achada.inscricao_estadual)) {
+          nextIeHint = {
+            kind: 'divergente',
+            ie: achada.inscricao_estadual,
+            uf: achada.uf,
+            atual: ieAtual,
+          };
+        }
+
+        // ── Regime tributário ───────────────────────────────────────────────
+        const sugestao = sugerirRegime({
+          optanteSimples: data.optanteSimples,
+          optanteMei: data.optanteMei,
+          anoOpcaoSimples: data.anoOpcaoSimples,
+          anoOpcaoMei: data.anoOpcaoMei,
+          regimeEcf: data.regimeEcf,
+        });
+        if (sugestao) {
+          if (!p.regime_tributario.trim()) {
+            next.regime_tributario = sugestao.regime;
+            nextRegimeHint = { ...sugestao, applied: true };
+          } else if (!settings.regime_tributario && sugestao.regime !== p.regime_tributario) {
+            nextRegimeHint = { ...sugestao, applied: false };
+          }
+        }
+
         return next;
       });
+      setIeHint(nextIeHint);
+      setRegimeHint(nextRegimeHint);
       if (shouldBackfillIbge) void backfillIbge(backfillZip);
     },
-    [backfillIbge],
+    [backfillIbge, settings.regime_tributario],
   );
+
+  /** Troca a IE pela que a consulta trouxe (ação explícita do usuário). */
+  const handleUseSintegraIe = useCallback(() => {
+    if (ieHint?.kind !== 'divergente') return;
+    const { ie, uf } = ieHint;
+    setForm((p) => ({ ...p, inscricao_estadual: ie }));
+    setIeHint({ kind: 'preenchida', ie, uf });
+  }, [ieHint]);
+
+  /** Aplica o regime sugerido (ação explícita do usuário). */
+  const handleUseSuggestedRegime = useCallback(() => {
+    if (!regimeHint || regimeHint.applied) return;
+    const { regime } = regimeHint;
+    setForm((p) => ({ ...p, regime_tributario: regime }));
+    setRegimeHint({ ...regimeHint, applied: true });
+  }, [regimeHint]);
 
   const handleCertSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -738,7 +829,17 @@ export default function FiscalSettings() {
             )}
 
             {section === 'impostos' && (
-              <ImpostosSection t={t} form={form} onChange={setField} onSave={handleSave} saving={isSaving} />
+              <ImpostosSection
+                t={t}
+                form={form}
+                onChange={setField}
+                onSave={handleSave}
+                saving={isSaving}
+                ieHint={ieHint}
+                onUseSintegraIe={handleUseSintegraIe}
+                regimeHint={regimeHint}
+                onUseSuggestedRegime={handleUseSuggestedRegime}
+              />
             )}
 
             {section === 'servicos' && <ServicosSection t={t} />}

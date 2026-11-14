@@ -1,8 +1,9 @@
 // =============================================================================
 // _shared/providers/sefin.ts — motor fiscal PRÓPRIO (Sefin Nacional).
 // =============================================================================
-// Adaptador HTTP para o microserviço `dominex-fiscal` (services/dominex-fiscal),
-// que roda na VPS. A Edge Function não faz mTLS — e o padrão nacional autentica
+// Adaptador HTTP para a API compartilhada `motor-fiscal`
+// (github.com/KaikBarreto/motor-fiscal), que roda na VPS. A Edge Function não faz
+// mTLS — e o padrão nacional autentica
 // EXCLUSIVAMENTE por mTLS com o certificado A1 do próprio cliente. Daí o salto.
 //
 // ┌───────────────────────────────────────────────────────────────────────────┐

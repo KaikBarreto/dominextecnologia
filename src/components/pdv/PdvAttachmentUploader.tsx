@@ -131,7 +131,7 @@ export function PdvAttachmentUploader({
                 key={attachment.id}
                 className={cn(
                   'flex min-w-0 items-center gap-3 rounded-lg border bg-background p-2.5',
-                  isError && 'border-destructive/50 bg-destructive/5',
+                  isError && 'border-destructive',
                 )}
               >
                 <img
@@ -150,7 +150,7 @@ export function PdvAttachmentUploader({
                     <span
                       className={cn(
                         'flex shrink-0 items-center gap-1 text-xs font-medium',
-                        isError ? 'text-destructive' : isReady ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground',
+                        isError ? 'text-destructive' : isReady ? 'text-foreground' : 'text-muted-foreground',
                       )}
                     >
                       {isError ? (
@@ -178,7 +178,7 @@ export function PdvAttachmentUploader({
                   type="button"
                   onClick={() => onRemoveAttachment(attachment.id)}
                   aria-label={`${texts.removePhoto}: ${attachment.file.name}`}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
                   disabled={disabled}
                 >
                   <X className="h-4 w-4" aria-hidden="true" />

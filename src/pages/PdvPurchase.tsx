@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Keyboard, PackagePlus, Plus, ShieldAlert, Trash2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -28,7 +28,7 @@ import { PdvShortcutHelpDialog } from '@/components/pdv/PdvShortcutHelpDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { useCanRegisterDirectMaterialPurchase } from '@/hooks/useCanRegisterDirectMaterialPurchase';
-import { useDirectMaterialPurchase } from '@/hooks/useDirectMaterialPurchase';
+import { useDirectMaterialPurchase, usePdvPurchaseCashContext } from '@/hooks/useDirectMaterialPurchase';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { useInventory } from '@/hooks/useInventory';
@@ -55,12 +55,14 @@ import { isPdvEditableTarget, nextPdvIndex } from '@/lib/pdv/keyboard';
 import { todayInTz } from '@/lib/timezone';
 import { typography } from '@/lib/typography';
 import { cn } from '@/lib/utils';
+import { parsePdvPurchaseCashContext } from '@/components/pdv/caixa-v2/pdvPurchaseContext';
 
 const purchaseCode = (sequence: number) => `PC-${String(sequence).padStart(3, '0')}`;
 const NO_SUPPLIER_VALUE = '_none';
 
 export default function PdvPurchase() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, profile } = useAuth();
   const { locale, currency, timezone } = useAppLocaleContext();
   const { toast } = useToast();
@@ -76,6 +78,14 @@ export default function PdvPurchase() {
   const { accounts } = useFinancialAccounts();
   const { categories } = useFinancialCategories();
   const { registerPurchase } = useDirectMaterialPurchase();
+  const parsedCashContext = useMemo(
+    () => parsePdvPurchaseCashContext(location.search),
+    [location.search],
+  );
+  const requestedCashContext = parsedCashContext.kind === 'present' ? parsedCashContext.context : null;
+  const cashContextQuery = usePdvPurchaseCashContext(requestedCashContext);
+  const cashMode = parsedCashContext.kind !== 'absent';
+  const confirmedCashContext = parsedCashContext.kind === 'present' ? cashContextQuery.data ?? null : null;
   const submittingDraftIdRef = useRef<string | null>(null);
   const materialTriggerRefs = useRef(new Map<string, HTMLButtonElement>());
   const quantityInputRefs = useRef(new Map<string, HTMLInputElement>());
@@ -104,15 +114,15 @@ export default function PdvPurchase() {
   );
   const defaults = useMemo(() => ({
     purchaseDate: today,
-    stockId: defaultStock?.id ?? '',
-    accountId: eligibleAccounts[0]?.id ?? '',
+    stockId: confirmedCashContext?.stockId ?? (cashMode ? '' : defaultStock?.id ?? ''),
+    accountId: confirmedCashContext?.cashAccountId ?? eligibleAccounts[0]?.id ?? '',
     categoryId: defaultCategory?.id ?? '',
-  }), [today, defaultStock?.id, eligibleAccounts, defaultCategory?.id]);
-  const owner = useMemo(() => user?.id && profile?.company_id
-    ? { userId: user.id, companyId: profile.company_id }
-    : null, [user?.id, profile?.company_id]);
+  }), [today, confirmedCashContext?.stockId, confirmedCashContext?.cashAccountId, cashMode, defaultStock?.id, eligibleAccounts, defaultCategory?.id]);
+  const owner = useMemo(() => user?.id && profile?.company_id && defaults.stockId && (!cashMode || confirmedCashContext)
+    ? { userId: user.id, companyId: profile.company_id, stockId: defaults.stockId }
+    : null, [user?.id, profile?.company_id, defaults.stockId, cashMode, confirmedCashContext]);
   const { workspace, activeDraft, updateDraft, createDraft, selectDraft, deleteDraft, syncIssue } =
-    usePdvPurchaseDraftWorkspace({ owner, defaults });
+    usePdvPurchaseDraftWorkspace({ owner, defaults, cashContext: confirmedCashContext });
 
   const formatCurrency = (value: number) => formatMoney(value, currency, locale);
   const supplierOptions = useMemo(
@@ -186,6 +196,14 @@ export default function PdvPurchase() {
       !item.inventory_id || item.quantity <= 0 || item.unit_price < 0,
     );
 
+    if (cashMode && !confirmedCashContext) return 'O caixa desta compra não está mais disponível.';
+    if (confirmedCashContext && draft.stockId !== confirmedCashContext.stockId) return 'O local da compra não corresponde ao caixa selecionado.';
+    if (confirmedCashContext && draft.paymentStatus === 'paid' && draft.paymentMethod === 'dinheiro'
+      && draft.accountId !== confirmedCashContext.cashAccountId) return 'Pagamento em dinheiro deve usar a conta deste caixa.';
+    if (confirmedCashContext && !(draft.paymentStatus === 'paid' && draft.paymentMethod === 'dinheiro')
+      && draft.accountId === confirmedCashContext.cashAccountId) return 'Escolha outra conta para pagamentos que não saem em dinheiro deste caixa.';
+    if (confirmedCashContext && draft.paymentStatus === 'paid' && draft.paymentMethod === 'dinheiro'
+      && (draft.purchaseDate !== today || draft.paidDate !== today)) return 'Compra paga com o dinheiro do caixa deve usar a data de hoje.';
     if (!draft.supplierId) return t.validation.supplier;
     if (!draft.stockId) return t.validation.stock;
     if (!draft.purchaseDate) return t.validation.purchaseDate;
@@ -249,7 +267,20 @@ export default function PdvPurchase() {
     const submittedDraftId = draft.id;
     submittingDraftIdRef.current = submittedDraftId;
     setSubmittingDraftId(submittedDraftId);
+    let mutationStarted = false;
     try {
+      let submittedCashContext = requestedCashContext;
+      if (cashMode) {
+        if (parsedCashContext.kind !== 'present') throw new Error('O endereço desta compra não identifica um caixa válido.');
+        const refreshed = await cashContextQuery.refetch();
+        if (refreshed.error || !refreshed.data) throw new Error('Este caixa foi fechado ou não está mais disponível. Volte ao Caixa e tente novamente.');
+        submittedCashContext = {
+          sessionId: refreshed.data.sessionId,
+          terminalId: refreshed.data.terminalId,
+          stockId: refreshed.data.stockId,
+        };
+      }
+      mutationStarted = true;
       await registerPurchase.mutateAsync({
         clientRequestId: draft.clientRequestId,
         stockId: draft.stockId,
@@ -264,12 +295,16 @@ export default function PdvPurchase() {
         paymentMethod: draft.paymentStatus === 'paid' ? draft.paymentMethod : null,
         description: draft.description.trim() || null,
         notes: draft.notes.trim() || null,
+        cashContext: submittedCashContext,
       });
       setDraftToFinalize(null);
       deleteDraft(submittedDraftId);
       window.setTimeout(() => focusMaterialSearch(), 50);
-    } catch {
-      // O hook já mostra o erro; o rascunho e a chave idempotente ficam intactos para retry.
+    } catch (error) {
+      if (cashMode && !mutationStarted && error instanceof Error) {
+        toast({ title: 'Não foi possível confirmar o caixa', description: error.message, variant: 'destructive' });
+      }
+      // O rascunho e a chave idempotente ficam intactos para retry.
     } finally {
       if (submittingDraftIdRef.current === submittedDraftId) submittingDraftIdRef.current = null;
       setSubmittingDraftId((current) => current === submittedDraftId ? null : current);
@@ -278,7 +313,28 @@ export default function PdvPurchase() {
 
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
+      if (event.defaultPrevented || event.altKey) return;
+
+      const command = event.ctrlKey || event.metaKey;
+      const commandKey = event.key.toLowerCase();
+      if (command && commandKey === 'k') {
+        event.preventDefault();
+        if (!draftToFinalize && !supplierCreateDraftId) setShortcutHelpOpen(true);
+        return;
+      }
+      if (command && commandKey === 'f') {
+        event.preventDefault();
+        if (!shortcutHelpOpen && !draftToFinalize && !supplierCreateDraftId) focusMaterialSearch();
+        return;
+      }
+      if (command && event.key === 'Enter') {
+        event.preventDefault();
+        if (!shortcutHelpOpen && !draftToFinalize && !supplierCreateDraftId && activeDraft) {
+          requestFinalizeRef.current(activeDraft);
+        }
+        return;
+      }
+      if (command) return;
       if (isPdvEditableTarget(event.target)) return;
 
       const helpKey = event.key === '?' || (event.code === 'Slash' && event.shiftKey);
@@ -333,6 +389,15 @@ export default function PdvPurchase() {
     workspace.drafts,
   ]);
 
+  if (cashMode && parsedCashContext.kind === 'invalid') {
+    return <CashPurchaseContextError onBack={() => navigate(localizeAppPath('/pdv', locale))} onRetry={null} />;
+  }
+  if (cashMode && cashContextQuery.isLoading) {
+    return <div className="mx-auto w-full max-w-3xl space-y-4 p-4 sm:p-6"><Card><CardContent className="py-12 text-center text-sm text-muted-foreground">Confirmando o caixa desta compra…</CardContent></Card></div>;
+  }
+  if (cashMode && (cashContextQuery.isError || !confirmedCashContext)) {
+    return <CashPurchaseContextError onBack={() => navigate(localizeAppPath('/pdv', locale))} onRetry={() => void cashContextQuery.refetch()} />;
+  }
   if (!activeDraft) return null;
 
   if (!canRegister) {
@@ -373,7 +438,7 @@ export default function PdvPurchase() {
   };
 
   return (
-    <div className="flex w-full flex-col gap-4">
+    <div className="flex w-full flex-col gap-4" data-pdv-ui>
       <header className="flex items-center gap-4 border-b border-border pb-3">
         <div className="flex min-w-0 flex-1 items-center">
           <Button type="button" variant="ghost" size="icon" onClick={() => navigate(localizeAppPath('/pdv', locale))} aria-label={tw.back}>
@@ -409,6 +474,12 @@ export default function PdvPurchase() {
       {syncIssue && (
         <NoticeBanner variant={syncIssue === 'conflict' ? 'warning' : 'info'}>
           {syncIssue === 'conflict' ? tw.syncConflict : tw.syncUnavailable}
+        </NoticeBanner>
+      )}
+
+      {confirmedCashContext && (
+        <NoticeBanner variant="neutral" title={`Compra pelo ${confirmedCashContext.terminalName}`}>
+          Esta compra usa o estoque e a abertura deste caixa. Se for paga em dinheiro, a saída será registrada nele.
         </NoticeBanner>
       )}
 
@@ -456,7 +527,7 @@ export default function PdvPurchase() {
               </div>
               <div className="space-y-1.5">
                 <Label>{t.fields.stock} *</Label>
-                <Select value={activeDraft.stockId} disabled={busy} onValueChange={(stockId) => patchDraft(draftId, { stockId })}>
+                <Select value={activeDraft.stockId} disabled={busy || cashMode} onValueChange={(stockId) => patchDraft(draftId, { stockId })}>
                   <SelectTrigger><SelectValue placeholder={t.fields.stockPlaceholder} /></SelectTrigger>
                   <SelectContent>{stocks.map((stock) => <SelectItem key={stock.id} value={stock.id}>{stock.name}</SelectItem>)}</SelectContent>
                 </Select>
@@ -490,7 +561,7 @@ export default function PdvPurchase() {
                 const inventoryItem = inventory.find((candidate) => candidate.id === item.inventoryId);
                 const lineTotal = parsePdvPurchaseNumber(item.quantityText) * parsePdvPurchaseNumber(item.unitPriceText);
                 return (
-                  <div key={item.id} className="grid gap-3 rounded-xl border bg-muted/15 p-3 md:grid-cols-[minmax(0,1fr)_120px_150px_40px] md:items-end">
+                  <div key={item.id} className="grid gap-3 rounded-xl border bg-background p-3 md:grid-cols-[minmax(0,1fr)_120px_150px_40px] md:items-end">
                     <div className="space-y-1.5">
                       <Label>{t.items.material} {index + 1}</Label>
                       <InventoryMaterialSelect
@@ -578,7 +649,7 @@ export default function PdvPurchase() {
               <div className="flex flex-col items-start gap-1.5"><Label>{t.fields.paymentStatus}</Label><LabeledSwitch value={activeDraft.paymentStatus} disabled={busy} onChange={(paymentStatus) => patchDraft(draftId, { paymentStatus: paymentStatus as PdvPurchasePaymentStatus })} off={{ value: 'pending', label: t.status.pending }} on={{ value: 'paid', label: t.status.paid }} aria-label={t.fields.paymentStatus} /></div>
               {activeDraft.paymentStatus === 'paid' ? (
                 <>
-                  <div className="space-y-1.5"><Label>{t.fields.paymentMethod} *</Label><Select value={activeDraft.paymentMethod} disabled={busy} onValueChange={(paymentMethod) => patchDraft(draftId, { paymentMethod })}><SelectTrigger><SelectValue placeholder={tf.paymentMethodPlaceholder} /></SelectTrigger><SelectContent><SelectItem value="dinheiro">{tf.paymentMethods.dinheiro}</SelectItem><SelectItem value="pix">{tf.paymentMethods.pix}</SelectItem><SelectItem value="cartao_debito">{tf.paymentMethods.cartao_debito}</SelectItem><SelectItem value="transferencia">{tf.paymentMethods.transferencia}</SelectItem><SelectItem value="boleto">{tf.paymentMethods.boleto}</SelectItem><SelectItem value="cheque">{tf.paymentMethods.cheque}</SelectItem></SelectContent></Select></div>
+                  <div className="space-y-1.5"><Label>{t.fields.paymentMethod} *</Label><Select value={activeDraft.paymentMethod} disabled={busy} onValueChange={(paymentMethod) => patchDraft(draftId, { paymentMethod, ...(paymentMethod === 'dinheiro' && confirmedCashContext ? { accountId: confirmedCashContext.cashAccountId } : {}) })}><SelectTrigger><SelectValue placeholder={tf.paymentMethodPlaceholder} /></SelectTrigger><SelectContent><SelectItem value="dinheiro">{tf.paymentMethods.dinheiro}</SelectItem><SelectItem value="pix">{tf.paymentMethods.pix}</SelectItem><SelectItem value="cartao_debito">{tf.paymentMethods.cartao_debito}</SelectItem><SelectItem value="transferencia">{tf.paymentMethods.transferencia}</SelectItem><SelectItem value="boleto">{tf.paymentMethods.boleto}</SelectItem><SelectItem value="cheque">{tf.paymentMethods.cheque}</SelectItem></SelectContent></Select></div>
                   <div className="space-y-1.5"><Label>{t.fields.paidDate} *</Label><DatePicker value={activeDraft.paidDate} disabled={busy} max={today} onValueChange={(paidDate) => patchDraft(draftId, { paidDate, paidDateTouched: true })} /></div>
                 </>
               ) : <div className="space-y-1.5"><Label>{t.fields.dueDate} *</Label><DatePicker value={activeDraft.dueDate} disabled={busy} onValueChange={(dueDate) => patchDraft(draftId, { dueDate })} /></div>}
@@ -651,9 +722,33 @@ export default function PdvPurchase() {
           { keys: ['F6', 'F7'], label: tw.shortcuts.switchOrder },
           { keys: ['F8'], label: tw.shortcuts.newOrder },
           { keys: ['F9'], label: tw.shortcuts.finalize },
+          { keys: ['Enter'], label: tw.shortcuts.flow },
+          { keys: ['⌘/Ctrl', 'F'], label: tw.shortcuts.marketSearch },
+          { keys: ['⌘/Ctrl', 'Enter'], label: tw.shortcuts.marketFinalize },
+          { keys: ['⌘/Ctrl', 'K'], label: tw.shortcuts.marketHelp },
           { keys: ['?'], label: tw.shortcuts.help },
         ]}
       />
+    </div>
+  );
+}
+
+function CashPurchaseContextError({ onBack, onRetry }: { onBack: () => void; onRetry: (() => void) | null }) {
+  return (
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 p-4 sm:p-6">
+      <Button type="button" variant="ghost" className="w-fit gap-2" onClick={onBack}>
+        <ArrowLeft className="h-4 w-4" /> Voltar ao Caixa
+      </Button>
+      <Card>
+        <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
+          <ShieldAlert className="h-10 w-10 text-destructive" />
+          <h1 className="text-xl font-bold">Este caixa não está disponível</h1>
+          <p className="max-w-md text-sm text-muted-foreground">
+            Volte ao Caixa e abra a compra novamente. Nenhum material ou lançamento foi registrado.
+          </p>
+          {onRetry && <Button type="button" variant="outline" onClick={onRetry}>Tentar novamente</Button>}
+        </CardContent>
+      </Card>
     </div>
   );
 }

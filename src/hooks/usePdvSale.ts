@@ -28,8 +28,9 @@
  * `src/hooks/useProjects.ts`.
  */
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { invalidatePdvReportCaches } from '@/hooks/pdvReportCache';
 import { sanitizeStorageFileName } from '@/utils/storagePath';
 import { currentCompanyId, tenantFileOptions } from '@/utils/tenantStorage';
 import type { SettlePaymentPayload } from '@/lib/pdv/payment';
@@ -106,6 +107,22 @@ export interface PdvSettleResult {
   modo?: string;
 }
 
+export async function invalidatePdvSaleCaches(queryClient: QueryClient) {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['inventory'] }),
+    queryClient.invalidateQueries({ queryKey: ['inventory-stock-levels'] }),
+    queryClient.invalidateQueries({ queryKey: ['inventory-movements'] }),
+    queryClient.invalidateQueries({ queryKey: ['financial-accounts'] }),
+    queryClient.invalidateQueries({ queryKey: ['account-balances'] }),
+    queryClient.invalidateQueries({ queryKey: ['financial-transactions'] }),
+    queryClient.invalidateQueries({ queryKey: ['financial-summary'] }),
+    queryClient.invalidateQueries({ queryKey: ['pdv-cofre-balance'] }),
+    queryClient.invalidateQueries({ queryKey: ['pdv-cash-session-detail'] }),
+    queryClient.invalidateQueries({ queryKey: ['pdv-customer-credit'] }),
+    invalidatePdvReportCaches(queryClient),
+  ]);
+}
+
 export function usePdvSale() {
   const queryClient = useQueryClient();
 
@@ -114,18 +131,7 @@ export function usePdvSale() {
    * reagir, senão a grade do PDV segue mostrando o saldo velho e o painel do
    * caixa o total velho.
    */
-  const invalidateAfterSale = () => {
-    queryClient.invalidateQueries({ queryKey: ['inventory'] });
-    queryClient.invalidateQueries({ queryKey: ['inventory-stock-levels'] });
-    queryClient.invalidateQueries({ queryKey: ['inventory-movements'] });
-    queryClient.invalidateQueries({ queryKey: ['financial-accounts'] });
-    queryClient.invalidateQueries({ queryKey: ['account-balances'] });
-    queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
-    queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
-    queryClient.invalidateQueries({ queryKey: ['pdv-cofre-balance'] });
-    queryClient.invalidateQueries({ queryKey: ['pdv-cash-session-detail'] });
-    queryClient.invalidateQueries({ queryKey: ['pdv-customer-credit'] });
-  };
+  const invalidateAfterSale = () => invalidatePdvSaleCaches(queryClient);
 
   const createOrder = useMutation({
     mutationFn: async (input: PdvCreateOrderInput): Promise<string> => {
@@ -281,6 +287,59 @@ export interface PdvOrderAttachmentUploadResult {
   storagePath: string;
 }
 
+export interface PdvOrderAttachmentUploadInput {
+  orderId: string;
+  file: File;
+  /** Identidade estável da intenção. Reusar no retry preserva path e linha. */
+  clientAttachmentId?: string;
+}
+
+export async function uploadPdvOrderAttachment(
+  vars: PdvOrderAttachmentUploadInput,
+): Promise<PdvOrderAttachmentUploadResult> {
+  const companyId = await currentCompanyId();
+  if (!companyId) throw new Error('Empresa não encontrada para o usuário.');
+
+  const safeName = sanitizeStorageFileName(vars.file.name);
+  const stableId = vars.clientAttachmentId?.replace(/[^a-zA-Z0-9-]/g, '') || crypto.randomUUID();
+  const storagePath = `${companyId}/pdv-orders/${vars.orderId}/${stableId}_${safeName}`;
+  const stableRetry = Boolean(vars.clientAttachmentId);
+
+  const { error: uploadError } = await supabase.storage
+    .from(PDV_ORDER_ATTACHMENTS_BUCKET)
+    .upload(storagePath, vars.file, await tenantFileOptions({
+      contentType: vars.file.type || undefined,
+      ...(stableRetry ? { upsert: true } : {}),
+    }));
+  if (uploadError) throw uploadError;
+
+  const { error: insertError } = await supabase
+    .from('pdv_order_attachments')
+    .upsert({
+      order_id: vars.orderId,
+      storage_path: storagePath,
+      file_name: vars.file.name,
+      mime_type: vars.file.type || null,
+      size_bytes: vars.file.size ?? null,
+    } as never, {
+      onConflict: 'order_id,storage_path',
+      ignoreDuplicates: true,
+    });
+
+  if (insertError) {
+    // Em retry idempotente a resposta do INSERT pode se perder depois do
+    // commit. Não apague o objeto estável: a próxima tentativa reconcilia a
+    // mesma linha pelo índice único. No fluxo legado aleatório, a limpeza
+    // best-effort continua evitando órfão.
+    if (!stableRetry) {
+      await supabase.storage.from(PDV_ORDER_ATTACHMENTS_BUCKET).remove([storagePath]).catch(() => {});
+    }
+    throw insertError;
+  }
+
+  return { storagePath };
+}
+
 /**
  * Sobe UMA foto (já comprimida por `processImageFile`, ver
  * `src/utils/imageConvert.ts`) pro bucket `financial-receipts`, em
@@ -294,36 +353,7 @@ export interface PdvOrderAttachmentUploadResult {
  */
 export function useUploadPdvOrderAttachment() {
   return useMutation({
-    mutationFn: async (vars: { orderId: string; file: File }): Promise<PdvOrderAttachmentUploadResult> => {
-      const companyId = await currentCompanyId();
-      if (!companyId) throw new Error('Empresa não encontrada para o usuário.');
-
-      const safeName = sanitizeStorageFileName(vars.file.name);
-      const storagePath = `${companyId}/pdv-orders/${vars.orderId}/${crypto.randomUUID()}_${safeName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from(PDV_ORDER_ATTACHMENTS_BUCKET)
-        .upload(storagePath, vars.file, await tenantFileOptions({ contentType: vars.file.type || undefined }));
-      if (uploadError) throw uploadError;
-
-      const { error: insertError } = await supabase
-        .from('pdv_order_attachments')
-        .insert({
-          order_id: vars.orderId,
-          storage_path: storagePath,
-          file_name: vars.file.name,
-          mime_type: vars.file.type || null,
-          size_bytes: vars.file.size ?? null,
-        } as never);
-
-      if (insertError) {
-        // best-effort: não deixa arquivo órfão no Storage se a linha falhou.
-        await supabase.storage.from(PDV_ORDER_ATTACHMENTS_BUCKET).remove([storagePath]).catch(() => {});
-        throw insertError;
-      }
-
-      return { storagePath };
-    },
+    mutationFn: uploadPdvOrderAttachment,
   });
 }
 

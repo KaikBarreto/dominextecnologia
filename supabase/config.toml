@@ -411,3 +411,14 @@ verify_jwt = false
 # usuario, tenant e permissao explicita, sem depender do fallback legado.
 [functions.api-key-manager]
 verify_jwt = true
+
+# Assinaturas Web Push do usuário autenticado. O gateway fica aberto para que
+# a função devolva erros PT-BR, mas ela revalida Bearer via auth.getUser e deriva
+# company_id do profile antes de usar service_role.
+[functions.manage-push-subscription]
+verify_jwt = false
+
+# Worker global da fila de push. Chamado apenas por pg_cron/pg_net com
+# Authorization: Bearer <CRON_SECRET>; não aceita sessão de usuário.
+[functions.process-notification-deliveries]
+verify_jwt = false

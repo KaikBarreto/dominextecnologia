@@ -6,8 +6,11 @@ import {
   DollarSign,
   Scale,
   Store,
+  PlusCircle,
+  RefreshCw,
   TrendingDown,
   TrendingUp,
+  Vault,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -24,6 +27,9 @@ import { localizeAppPath } from '@/lib/i18n/appRouteSlugs';
 import { useFinancial } from '@/hooks/useFinancial';
 import { useFinancialAccounts, type FinancialAccount } from '@/hooks/useFinancialAccounts';
 import { useBankPermissions } from '@/hooks/useBankPermissions';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { usePdvReceiptSettings } from '@/hooks/usePdvReceiptSettings';
+import { DEFAULT_PDV_RECEIPT_SETTINGS } from '@/lib/pdv/receipt/model';
 import {
   usePdvCashRegister,
   usePdvCashActorProfiles,
@@ -44,6 +50,15 @@ import { PdvSaleEditDialog } from '@/components/pdv/caixa/PdvSaleEditDialog';
 import { PdvOpenCashDialog } from '@/components/pdv/caixa/PdvOpenCashDialog';
 import { PdvCloseCashDialog } from '@/components/pdv/caixa/PdvCloseCashDialog';
 import { PdvCashMovementDialog } from '@/components/pdv/caixa/PdvCashMovementDialog';
+import { PdvFirstCashSetupDialog } from '@/components/pdv/caixa/PdvFirstCashSetupDialog';
+import { PdvCashQueuePanel } from '@/components/pdv/counter/PdvCashQueuePanel';
+import { PdvCashV2Page } from '@/components/pdv/caixa-v2/PdvCashV2Page';
+import { canOperateOtherPdvCash } from '@/components/pdv/caixa-v2/pdvCashAccess';
+import {
+  selectPdvCashV2Route,
+  usePdvCashV2Capability,
+  usePdvCashV2MaintenancePresence,
+} from '@/hooks/usePdvCashSessionsV2';
 import {
   buildPdvLedger,
   computeExpectedCash,
@@ -95,11 +110,141 @@ interface PendingDrawerSync {
  */
 export default function PdvCaixa() {
   const navigate = useNavigate();
+  const { locale } = useAppLocaleContext();
+  const { settings, isLoading, isError, refetch: refetchSettings } = useCompanySettings();
+  const { user, roles, permissions, isAdminOrGestor, hasPermission, hasPermissionRecord } = useAuth();
+  const { canManageBankAccounts } = useBankPermissions();
+  const capability = usePdvCashV2Capability(!!user);
+  const cashAccountId = settings?.pdv_cash_account_id ?? null;
+  const canManageOthers = canOperateOtherPdvCash({ roles, permissions, hasPermissionRecord });
+  const canManageFinance = isAdminOrGestor() || hasPermission('fn:manage_finance');
+  const canManageSettings = isAdminOrGestor()
+    || (hasPermissionRecord && hasPermission('fn:manage_pdv_settings'));
+  const canCoverPdvOrders = isAdminOrGestor()
+    || (hasPermissionRecord && hasPermission('fn:cover_pdv_order'));
+  const maintenance = usePdvCashV2MaintenancePresence({
+    enabled: !!user,
+    userId: user?.id ?? null,
+  });
+  const route = selectPdvCashV2Route({
+    capabilityGate: capability.gate,
+    maintenanceLoading: maintenance.isLoading,
+    maintenanceError: maintenance.error,
+    hasOpenV2Session: maintenance.data,
+  });
+
+  // O rollback de rollout só volta ao writer legado depois que a projeção
+  // confirma que não existe sessão v2 aberta para este operador/gestor.
+  if (route === 'legacy') return <PdvCaixaLegacy />;
+
+  if (route === 'loading' || (route === 'v2' && isLoading)) {
+    return (
+      <div className="space-y-4">
+        <PageHeader title="Caixa" subtitle="Validando o acesso seguro ao Caixa" icon={Banknote} />
+        <Skeleton className="h-48 w-full" />
+      </div>
+    );
+  }
+
+  if (route === 'blocked' || (route === 'v2' && isError) || !user) {
+    return (
+      <PdvCashV2GateError
+        description="Não foi possível confirmar qual contrato de caixa esta empresa pode usar. Nenhuma operação foi liberada."
+        onRetry={() => {
+          void capability.refetch();
+          void maintenance.refetch();
+          void refetchSettings();
+        }}
+      />
+    );
+  }
+
+  if (route === 'v2' && !cashAccountId) {
+    return (
+      <PdvCashV2GateError
+        description={canManageSettings
+          ? 'Escolha qual conta do tipo Caixa representa o dinheiro em espécie da loja.'
+          : 'Peça a um responsável para escolher a conta de dinheiro nas Configurações do PDV.'}
+        actionLabel={canManageSettings ? 'Configurar conta do dinheiro' : undefined}
+        onAction={canManageSettings ? () => navigate(localizeAppPath('/pdv/configuracoes', locale)) : undefined}
+        onRetry={() => {
+          void capability.refetch();
+          void maintenance.refetch();
+          void refetchSettings();
+        }}
+      />
+    );
+  }
+
+  if (route === 'v2') {
+    return (
+      <PdvCashV2Page
+        cashAccountId={cashAccountId}
+        allowNewSessions
+        userId={user.id}
+        canManageOthers={canManageOthers}
+        canViewTreasury={canManageBankAccounts}
+        canManageFinance={canManageFinance}
+        canCoverPdvOrders={canCoverPdvOrders}
+        canManageSettings={canManageSettings}
+      />
+    );
+  }
+
+  if (route === 'maintenance') {
+    return (
+      <PdvCashV2Page
+        cashAccountId={cashAccountId}
+        allowNewSessions={false}
+        userId={user.id}
+        canManageOthers={canManageOthers}
+        canViewTreasury={canManageBankAccounts}
+        canManageFinance={canManageFinance}
+        canCoverPdvOrders={canCoverPdvOrders}
+        canManageSettings={canManageSettings}
+      />
+    );
+  }
+
+  return (
+    <PdvCashV2GateError
+      description="O contrato de caixa não pôde ser confirmado."
+      onRetry={() => {
+        void capability.refetch();
+        void maintenance.refetch();
+        void refetchSettings();
+      }}
+    />
+  );
+}
+
+function PdvCashV2GateError({ description, onRetry, actionLabel, onAction }: { description: string; onRetry: () => void; actionLabel?: string; onAction?: () => void }) {
+  return (
+    <div className="space-y-4">
+      <PageHeader title="Caixa" subtitle="Validação segura do caixa" icon={Banknote} />
+      <Card>
+        <CardContent className="flex flex-col items-center gap-3 px-4 py-10 text-center">
+          <AlertTriangle className="h-12 w-12 text-destructive" />
+          <h2 className="text-lg font-bold text-destructive">Caixa temporariamente bloqueado</h2>
+          <p className="max-w-md text-sm text-muted-foreground">{description}</p>
+          <div className="flex flex-wrap justify-center gap-2">
+            {actionLabel && onAction ? <Button onClick={onAction}><Vault className="h-4 w-4" /> {actionLabel}</Button> : null}
+            <Button variant="outline" onClick={onRetry}><RefreshCw className="h-4 w-4" /> Tentar novamente</Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function PdvCaixaLegacy() {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const { locale } = useAppLocaleContext();
   const { money, dateTime, number } = useLocaleFormatters();
   const t = MESSAGES[locale].app.pdv.cashPanel;
   const { user, profile, isAdminOrGestor, hasPermission, hasPermissionRecord } = useAuth();
+  const receiptSettings = usePdvReceiptSettings();
 
   // Mesmo critério do resto do Financeiro: quem cria lançamento é admin/gestor
   // ou quem tem `fn:manage_finance` explícito. Abrir e fechar o caixa NÃO pede
@@ -115,6 +260,10 @@ export default function PdvCaixa() {
     isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:delete_finance'));
   const canEditPdvSales =
     isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:edit_pdv_sales'));
+  const canCoverPdvOrders =
+    isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:cover_pdv_order'));
+  const canManageSettings =
+    isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:manage_pdv_settings'));
   const { canUseBankAccounts, canManageBankAccounts } = useBankPermissions();
   const [focusedSessionId, setFocusedSessionId] = useState<string | null>(null);
 
@@ -152,6 +301,8 @@ export default function PdvCaixa() {
 
   const [valuesVisible, setValuesVisible] = useState(true);
   const [openDialogOpen, setOpenDialogOpen] = useState(false);
+  const [firstCashSetupOpen, setFirstCashSetupOpen] = useState(false);
+  const [openAfterFirstSetup, setOpenAfterFirstSetup] = useState(false);
   const [closeDialogOpen, setCloseDialogOpen] = useState(false);
   const [movementKind, setMovementKind] = useState<'sangria' | 'suprimento' | null>(null);
   const [txnType, setTxnType] = useState<'entrada' | 'saida' | null>(null);
@@ -174,6 +325,12 @@ export default function PdvCaixa() {
       // localStorage bloqueado (modo privado): segue visível, sem quebrar.
     }
   }, []);
+
+  useEffect(() => {
+    if (!openAfterFirstSetup || terminals.length === 0) return;
+    setOpenAfterFirstSetup(false);
+    setOpenDialogOpen(true);
+  }, [openAfterFirstSetup, terminals.length]);
 
   function toggleValues() {
     setValuesVisible((prev) => {
@@ -695,7 +852,7 @@ export default function PdvCaixa() {
 
   // ── Render ───────────────────────────────────────────────────────────────
 
-  const header = <PageHeader title={t.title} subtitle={t.subtitle} icon={Banknote} />;
+  const header = <PageHeader title={t.title} subtitle={t.subtitle} icon={Banknote} actions={!session ? <Button type="button" disabled={terminals.length === 0 && !canManageSettings} onClick={() => { if (terminals.length === 0) setFirstCashSetupOpen(true); else setOpenDialogOpen(true); }}><PlusCircle className="h-4 w-4" /> Abrir caixa</Button> : undefined} />;
 
   // Carregando NUNCA é vazio: Skeleton até os dados chegarem.
   if (isLoading) {
@@ -749,10 +906,22 @@ export default function PdvCaixa() {
             <EmptyState
               icon={<Store className="h-12 w-12" />}
               title={t.noTerminal.title}
-              description={t.noTerminal.description}
+              description="Na primeira abertura, escolha o nome e o estoque deste caixa."
+              action={canManageSettings ? {
+                label: 'Abrir caixa',
+                onClick: () => setFirstCashSetupOpen(true),
+              } : undefined}
             />
           </CardContent>
         </Card>
+        <PdvFirstCashSetupDialog
+          open={firstCashSetupOpen}
+          onOpenChange={setFirstCashSetupOpen}
+          onCreated={() => {
+            setOpenAfterFirstSetup(true);
+            refetch();
+          }}
+        />
       </div>
     );
   }
@@ -760,7 +929,7 @@ export default function PdvCaixa() {
   const financeDeniedReason = canManageFinance ? undefined : t.actions.financeDenied;
 
   return (
-    <div className="space-y-5 pb-6">
+    <div className="space-y-5 pb-6" data-pdv-ui>
       {header}
 
       {openSessions.length > 0 && (
@@ -876,6 +1045,16 @@ export default function PdvCaixa() {
             />
           </div>
 
+          <PdvCashQueuePanel
+            canCover={canCoverPdvOrders}
+            terminalId={session.terminal_id}
+            sessionId={session.id}
+            cashAccountId={session.cash_account_id ?? null}
+            accounts={accounts}
+            canUseBankAccounts={canUseBankAccounts}
+            onGoToCashPanel={() => undefined}
+          />
+
           {detail.isError ? (
             <Card>
               <CardContent className="flex flex-col items-center gap-3 px-4 py-8 text-center">
@@ -918,6 +1097,7 @@ export default function PdvCaixa() {
               canManageFinance={canManageFinance}
               canDeleteFinance={canDeleteFinance}
               canEditPdvSales={canEditPdvSales}
+              receiptFormat={receiptSettings.data?.defaultFormat ?? DEFAULT_PDV_RECEIPT_SETTINGS.defaultFormat}
               onEdit={handleLedgerEdit}
               onDelete={handleLedgerDelete}
             />
@@ -1111,17 +1291,16 @@ function CashAction({
       disabled={disabled}
       onClick={onClick}
       title={title}
+      data-tone={tone}
       className={cn(
         'flex min-w-0 flex-col items-center gap-1.5 py-2 transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-24 sm:justify-center sm:gap-2 sm:rounded-lg sm:py-0 sm:text-white sm:shadow-sm',
         tones.button,
       )}
     >
-      <span
-        className={cn(
-          'flex h-14 w-14 max-w-full items-center justify-center rounded-2xl text-white shadow-sm sm:h-auto sm:w-auto sm:bg-transparent sm:shadow-none',
-          tones.icon,
-        )}
-      >
+      <span className={cn(
+        'flex h-14 w-14 max-w-full items-center justify-center rounded-2xl text-white shadow-sm sm:h-auto sm:w-auto sm:bg-transparent sm:shadow-none',
+        tones.icon,
+      )}>
         <Icon className="h-6 w-6" />
       </span>
       <span className="text-center text-[10px] font-medium leading-tight sm:text-[13px] sm:font-semibold sm:uppercase sm:tracking-[0.12em]">

@@ -42,6 +42,8 @@ import {
   KanbanSquare,
   Store,
   ShoppingCart,
+  ListOrdered,
+  PackageCheck,
 } from 'lucide-react';
 import { OperacionalIcon, AreaTecnicoIcon } from '@/components/icons/MenuIcons';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
@@ -71,6 +73,9 @@ import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { segmentsHaveTechTools } from '@/config/technicianArea';
 import { companyHasSegment, normalizeCompanySegments } from '@/utils/companySegments';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
+import { useLogoInk } from '@/hooks/useLogoInk';
+import { useNavSurfaceTone } from '@/hooks/useNavSurfaceTone';
+import { getLogoPlateTone } from '@/utils/logoInk';
 import { useSidebar } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 import { HelpCenterDrawer } from '@/components/layout/HelpCenterDrawer';
@@ -86,11 +91,12 @@ interface MenuItem {
   icon: ComponentType<{ className?: string }>;
   path?: string;
   screenKey?: string;
+  screenKeys?: string[];
   moduleKey?: ModuleCode;
   requiresSegment?: string;
   /** Gate dedicado: libera só se o segmento da empresa tem Área do Técnico™. */
   requiresTechTools?: boolean;
-  children?: { title: string; icon: ComponentType<{ className?: string }>; path: string; screenKey?: string; moduleKey?: ModuleCode; requiresSegment?: string }[];
+  children?: { title: string; icon: ComponentType<{ className?: string }>; path: string; screenKey?: string; screenKeys?: string[]; moduleKey?: ModuleCode; requiresSegment?: string; requiresPdvCounter?: boolean }[];
 }
 
 // Estrutura preservada do AppSidebar antigo do Dominex — não inventar itens novos.
@@ -132,11 +138,8 @@ const tenantMenuItems: MenuItem[] = [
   // (ou trial ativo), `hasModule('pdv')` é false, o grupo some inteiro e nenhum
   // filho sobra — o `filterByAccess` derruba os dois níveis.
   //
-  // ONDA 2 (modo balcão): 'Pedidos' (screen:pdv_orders) e 'Expedição'
-  // (screen:pdv_dispatch) NÃO entram aqui agora. Eles só fazem sentido com
-  // `company_settings.pdv_mode = 'balcao'`, que ainda não existe, e as telas
-  // também não — item de menu apontando pra rota inexistente é bug, não
-  // adiantamento. Entram junto com as telas, gateados pelo modo.
+  // Orçamentos e Expedição aparecem somente no modo balcão. Cada tela conserva
+  // a própria permissão; Pedidos é a consulta geral autorizada.
   //
   // ⚠️ "Caixa" (/pdv) é o PAINEL do caixa (abrir/fechar, gaveta, cofre, entradas
   // e saídas, histórico do dia). A tela de VENDA (o carrinho) mora em /pdv/venda
@@ -150,6 +153,9 @@ const tenantMenuItems: MenuItem[] = [
     moduleKey: 'pdv',
     children: [
       { title: 'Caixa', icon: ShoppingCart, path: '/pdv', screenKey: 'screen:pdv', moduleKey: 'pdv' },
+      { title: 'Orçamentos', icon: ClipboardList, path: '/pdv/pre-pedidos', screenKeys: ['screen:pdv', 'screen:pdv_orders'], moduleKey: 'pdv', requiresPdvCounter: true },
+      { title: 'Pedidos', icon: ListOrdered, path: '/pdv/pedidos', screenKey: 'screen:pdv_orders', moduleKey: 'pdv' },
+      { title: 'Expedição', icon: PackageCheck, path: '/pdv/expedicao', screenKey: 'screen:pdv_dispatch', moduleKey: 'pdv', requiresPdvCounter: true },
       { title: 'Histórico de Caixa', icon: HistoryIcon, path: '/pdv/caixas', screenKey: 'screen:pdv_cash_history', moduleKey: 'pdv' },
       { title: 'Relatórios da Loja', icon: BarChart3, path: '/pdv/relatorios', screenKey: 'screen:pdv_reports', moduleKey: 'pdv' },
       { title: 'Configurações do PDV', icon: SettingsIcon, path: '/pdv/configuracoes', screenKey: 'screen:pdv_settings', moduleKey: 'pdv' },
@@ -247,6 +253,13 @@ export function SidebarMenuContent() {
   const { hasModule, hasScreen } = useCompanyModules();
   const { settings } = useCompanySettings();
   const { logoUrl, iconUrl, enabled: wlEnabled, defaultLogoDark, isLoading: logoLoading } = useWhiteLabel();
+  // Logo do tenant é UM arquivo só para as duas superfícies. A tinta e o tom
+  // efetivo da nav decidem a placa: clara para arte escura sobre fundo escuro,
+  // escura para arte clara sobre fundo claro, e nenhuma quando já há contraste.
+  const tenantLogoUrl = !isAdminUser ? logoUrl : null;
+  const tenantLogoInk = useLogoInk(tenantLogoUrl);
+  const tenantIconUrl = !isAdminUser && wlEnabled ? iconUrl : null;
+  const tenantIconInk = useLogoInk(tenantIconUrl);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -276,6 +289,9 @@ export function SidebarMenuContent() {
     }
     return 'light';
   });
+  const navSurface = useNavSurfaceTone();
+  const logoPlateTone = getLogoPlateTone(tenantLogoInk, navSurface);
+  const iconPlateTone = getLogoPlateTone(tenantIconInk, navSurface);
 
   // ResizeObserver no trigger do rodapé — mede a altura em runtime pra que
   // o DropdownMenuContent receba `sideOffset={-profileTriggerHeight}` e fique
@@ -310,13 +326,15 @@ export function SidebarMenuContent() {
   const isCompanyAdmin = roles.includes('admin');
   const showLogoLoading = logoLoading && !isAdminUser;
 
-  const filterByAccess = <T extends { screenKey?: string; moduleKey?: ModuleCode; requiresSegment?: string; requiresTechTools?: boolean }>(items: T[]): T[] => {
+  const filterByAccess = <T extends { screenKey?: string; screenKeys?: string[]; moduleKey?: ModuleCode; requiresSegment?: string; requiresTechTools?: boolean; requiresPdvCounter?: boolean }>(items: T[]): T[] => {
     return items.filter(item => {
       if (item.screenKey && !hasScreenAccess(item.screenKey)) return false;
       if (item.screenKey && !hasScreen(item.screenKey)) return false;
+      if (item.screenKeys && !item.screenKeys.some((key) => hasScreenAccess(key) && hasScreen(key))) return false;
       if (item.moduleKey && !hasModule(item.moduleKey)) return false;
       if (item.requiresSegment && !companyHasSegment(settings?.segments, item.requiresSegment, settings?.segment)) return false;
       if (item.requiresTechTools && !segmentsHaveTechTools(normalizeCompanySegments(settings?.segments, settings?.segment))) return false;
+      if (item.requiresPdvCounter && settings?.pdv_mode !== 'balcao') return false;
       return true;
     });
   };
@@ -383,7 +401,15 @@ export function SidebarMenuContent() {
                 )}
               >
                 {!isAdminUser && wlEnabled ? (
-                  iconUrl ? <img src={iconUrl} alt="Icon" className="h-7 w-7 object-contain" /> : null
+                  iconUrl ? (
+                    <span className={cn(
+                      iconPlateTone && 'rounded-md p-1',
+                      iconPlateTone === 'light' && 'bg-white',
+                      iconPlateTone === 'dark' && 'bg-zinc-950',
+                    )}>
+                      <img src={iconUrl} alt="Icon" className="h-7 w-7 object-contain" />
+                    </span>
+                  ) : null
                 ) : (
                   <>
                     <img src={iconePreto} alt="Logo" className="nav-logo-light h-7 w-7 object-contain dark:hidden" />
@@ -397,8 +423,18 @@ export function SidebarMenuContent() {
                   collapsed ? 'opacity-0 pointer-events-none' : 'opacity-100'
                 )}
               >
-                <img src={isAdminUser ? defaultLogoDark : logoUrl || defaultLogoDark} alt="Logo" className="nav-logo-light max-h-11 w-auto max-w-full object-contain dark:hidden" />
-                <img src={isAdminUser ? logoHorizontalVerde : logoUrl || logoHorizontalVerde} alt="Logo" className="nav-logo-dark max-h-11 w-auto max-w-full object-contain hidden dark:block" />
+                {/* `min-w-0 max-w-full`: a placa vira o novo pai do `max-w-full`
+                    das imagens. Sem isso um logo largo passaria por cima da
+                    borda da sidebar em vez de encolher. */}
+                <div className={cn(
+                  'flex min-w-0 max-w-full items-center justify-center',
+                  logoPlateTone && 'rounded-lg px-2.5 py-1',
+                  logoPlateTone === 'light' && 'bg-white',
+                  logoPlateTone === 'dark' && 'bg-zinc-950',
+                )}>
+                  <img src={isAdminUser ? defaultLogoDark : logoUrl || defaultLogoDark} alt="Logo" className="nav-logo-light max-h-11 w-auto max-w-full object-contain dark:hidden" />
+                  <img src={isAdminUser ? logoHorizontalVerde : logoUrl || logoHorizontalVerde} alt="Logo" className="nav-logo-dark max-h-11 w-auto max-w-full object-contain hidden dark:block" />
+                </div>
               </div>
             </>
           )}

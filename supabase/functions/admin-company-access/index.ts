@@ -62,20 +62,29 @@ Deno.serve(async (req) => {
     }
 
     const callerId = callerData.user.id;
-    const [{ data: isSuperAdmin, error: roleError }, { data: hasPermission, error: permissionError }] =
+    const [
+      { data: isSuperAdmin, error: roleError },
+      { data: hasPermission, error: permissionError },
+      { data: canSeeAllSalespeople, error: scopePermissionError },
+    ] =
       await Promise.all([
         admin.rpc('has_role', { _user_id: callerId, _role: 'super_admin' }),
         admin.rpc('has_admin_permission', {
           _user_id: callerId,
           _permission: 'admin_empresas_acesso',
         }),
+        admin.rpc('has_admin_permission', {
+          _user_id: callerId,
+          _permission: 'admin_vendedores_ver_todos',
+        }),
       ]);
 
-    if (roleError || permissionError) {
+    if (roleError || permissionError || scopePermissionError) {
       console.error('[admin-company-access] falha ao validar autorização', {
         callerId,
         roleError: roleError?.message,
         permissionError: permissionError?.message,
+        scopePermissionError: scopePermissionError?.message,
       });
       return json({ error: 'Não foi possível validar sua autorização.' }, 503);
     }
@@ -86,6 +95,47 @@ Deno.serve(async (req) => {
     const body = (await req.json()) as RequestBody;
     if (!body.company_id || !UUID_PATTERN.test(body.company_id)) {
       return json({ error: 'Empresa inválida.' }, 400);
+    }
+
+    // Espelha o recorte da UI: vendedor comum só opera empresas da própria
+    // carteira. Coordenador com admin_vendedores_ver_todos e master continuam
+    // com acesso amplo. O vínculo e a empresa são conferidos antes de qualquer
+    // leitura privilegiada de profiles/auth.
+    if (!isSuperAdmin && !canSeeAllSalespeople) {
+      const { data: salesperson, error: salespersonError } = await admin
+        .from('salespeople')
+        .select('id')
+        .eq('user_id', callerId)
+        .maybeSingle();
+
+      if (salespersonError) {
+        console.error('[admin-company-access] falha ao resolver vendedor', {
+          callerId,
+          error: salespersonError.message,
+        });
+        return json({ error: 'Não foi possível validar sua carteira.' }, 503);
+      }
+
+      if (salesperson) {
+        const { data: portfolioCompany, error: companyError } = await admin
+          .from('companies')
+          .select('id')
+          .eq('id', body.company_id)
+          .eq('salesperson_id', salesperson.id)
+          .maybeSingle();
+
+        if (companyError) {
+          console.error('[admin-company-access] falha ao validar empresa da carteira', {
+            callerId,
+            companyId: body.company_id,
+            error: companyError.message,
+          });
+          return json({ error: 'Não foi possível validar sua carteira.' }, 503);
+        }
+        if (!portfolioCompany) {
+          return json({ error: 'Empresa não encontrada ou fora da sua carteira.' }, 403);
+        }
+      }
     }
 
     if (body.action === 'list_users') {

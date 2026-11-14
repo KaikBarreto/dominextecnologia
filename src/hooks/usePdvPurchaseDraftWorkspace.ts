@@ -12,20 +12,24 @@ import {
   type PdvPurchaseWorkspace,
 } from '@/lib/pdv/purchase-drafts';
 import { usePdvServerDraftSync } from '@/hooks/usePdvServerDraftSync';
+import { pdvPurchaseCashDraftStorageSuffix, type PdvPurchaseCashContext } from '@/components/pdv/caixa-v2/pdvPurchaseContext';
 
 interface PdvPurchaseWorkspaceOwner {
   companyId: string;
   userId: string;
+  stockId: string;
 }
 
 interface UsePdvPurchaseDraftWorkspaceOptions {
   owner: PdvPurchaseWorkspaceOwner | null;
   defaults: PdvPurchaseDraftDefaults;
+  cashContext?: PdvPurchaseCashContext | null;
 }
 
 export function usePdvPurchaseDraftWorkspace({
   owner,
   defaults,
+  cashContext = null,
 }: UsePdvPurchaseDraftWorkspaceOptions) {
   const [workspace, setWorkspace] = useState<PdvPurchaseWorkspace>(() =>
     createPdvPurchaseWorkspace(defaults),
@@ -37,7 +41,11 @@ export function usePdvPurchaseDraftWorkspace({
     key: null,
     cacheFound: false,
   });
-  const storageKey = useMemo(() => owner ? pdvPurchaseDraftStorageKey(owner) : null, [owner]);
+  const storageKey = useMemo(() => {
+    if (!owner) return null;
+    const base = pdvPurchaseDraftStorageKey(owner);
+    return cashContext ? `${base}:${pdvPurchaseCashDraftStorageSuffix(cashContext)}` : base;
+  }, [cashContext, owner]);
 
   useEffect(() => {
     if (!storageKey) {
@@ -127,6 +135,11 @@ export function usePdvPurchaseDraftWorkspace({
     hydratedStorageKey: hydration.key,
     localCacheFound: hydration.cacheFound,
     draftType: 'purchase',
+    context: owner ? {
+      cashSessionId: cashContext?.sessionId ?? null,
+      terminalId: cashContext?.terminalId ?? null,
+      stockId: owner.stockId,
+    } : null,
     workspace,
     setWorkspace,
     parseWorkspace: parseServerWorkspace,

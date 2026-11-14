@@ -123,6 +123,7 @@ function clickButton(text: string) {
 }
 
 beforeEach(() => {
+  MUTATION_RESULT.mutate.mockClear();
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
@@ -308,6 +309,29 @@ describe('CompanyFormModal — workspace e etapas de criação', () => {
     clickButton('Continuar');
     expect(document.body.textContent).toContain('Defina as credenciais de acesso');
     expect(document.body.textContent).toContain('Criar empresa');
+  });
+
+  it('aceita somente um submit enquanto a criação está em andamento', () => {
+    mount();
+
+    const textInputs = Array.from(document.querySelectorAll('input')) as HTMLInputElement[];
+    typeInto(textInputs.find((input) => input.placeholder === 'Nome da empresa')!, 'Empresa Exemplo');
+    typeInto(textInputs.find((input) => input.placeholder === 'email@empresa.com')!, 'contato@exemplo.com');
+    clickButton('Continuar');
+    clickButton('Continuar');
+
+    const password = document.querySelector('input[type="password"]') as HTMLInputElement;
+    typeInto(password, 'SenhaForte123!');
+
+    const submit = Array.from(document.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('Criar empresa'),
+    ) as HTMLButtonElement;
+    act(() => {
+      submit.click();
+      submit.click();
+    });
+
+    expect(MUTATION_RESULT.mutate).toHaveBeenCalledTimes(1);
   });
 
   it('mantém edição não linear com uma única ação de salvar', () => {

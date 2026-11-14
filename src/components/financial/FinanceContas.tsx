@@ -38,6 +38,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { useCanManageFinanceSettings } from '@/hooks/useCanManageFinanceSettings';
+import { useCanManageFinanceTransactions } from '@/hooks/useCanManageFinanceTransactions';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAllCreditCardBills, type CreditCardBillWithTransactions } from '@/hooks/useCreditCardBills';
 import { isTransactionInDateRange } from '@/lib/finance-date';
@@ -105,6 +106,15 @@ import {
 import { ReceivableBalanceChargeDialogs } from './ReceivableBalanceChargeDialogs';
 import { getCategoryIcon, getCostCenterIcon } from './categoryIcons';
 import type { LucideIcon } from 'lucide-react';
+import {
+  buildFinancialCategoryLookup,
+  resolveFinancialCategoryDisplay,
+} from '@/lib/financial-category-display';
+import {
+  DEFAULT_FINANCE_ACCOUNTS_SUBTAB,
+  matchesFinanceAccountsSubTab,
+  type FinanceAccountsSubTab,
+} from '@/lib/finance-accounts-subtab';
 
 /**
  * Círculo cor+ícone pro filtro multi-select (categoria/centro de custo).
@@ -122,7 +132,6 @@ function filterIconNode(color: string, Icon: LucideIcon | null) {
   );
 }
 
-type SubTab = 'todas' | 'pagar' | 'receber';
 type FilterStatus = 'pendentes' | 'vencidas' | 'pagas' | 'todas';
 type AccountsView = 'list' | 'calendar';
 
@@ -156,7 +165,7 @@ export function FinanceContas({
   onMarkAsPaid,
   dateRange,
 }: FinanceContasProps) {
-  const [subTab, setSubTab] = useState<SubTab>('todas');
+  const [subTab, setSubTab] = useState<FinanceAccountsSubTab>(DEFAULT_FINANCE_ACCOUNTS_SUBTAB);
   const [filter, setFilter] = useState<FilterStatus>('todas');
   const [view, setView] = useState<AccountsView>('list');
   // Filtro multi-select: vazio = todas as categorias. Pattern FilterCheckboxGroup.
@@ -215,6 +224,7 @@ export function FinanceContas({
   // hora: o banco recusa (RLS pede `can_manage_system`) e o erro chegava sem
   // explicação. Mesmo critério do CostCenterSelect.
   const canManageFinanceSettings = useCanManageFinanceSettings();
+  const canManageFinanceTransactions = useCanManageFinanceTransactions();
   // Espelha `public.can_delete_finance` (RLS de DELETE em financial_transactions):
   // admin/gestor sempre; para os demais, SÓ com registro em user_permissions
   // contendo a permissão (ou o curinga '*'). O fallback legado do
@@ -224,8 +234,8 @@ export function FinanceContas({
   const { accounts: allAccounts } = useFinancialAccounts();
   const { costCenters } = useCostCenters();
   const { categories: financialCategories } = useFinancialCategories();
-  const categoriesByName = useMemo(
-    () => new Map(financialCategories.map((category) => [category.name, category])),
+  const categoryLookup = useMemo(
+    () => buildFinancialCategoryLookup(financialCategories),
     [financialCategories],
   );
   const costCentersById = useMemo(
@@ -256,6 +266,7 @@ export function FinanceContas({
     t.payroll_kind === 'salary' && !!t.employee_id && !t.is_paid;
 
   const handleMarkAsPaidClick = (t: PayrollTxn) => {
+    if (!canManageFinanceTransactions) return;
     if (isPayrollSalaryRow(t)) {
       setPayrollTxn(t);
       return;
@@ -322,8 +333,7 @@ export function FinanceContas({
   // representa elas é o agregado em `cardInvoices`. Em subTab='receber' não tem cartão.
   const baseFiltered = useMemo(() => {
     return transactions.filter((t) => {
-      const correctType = subTab === 'todas'
-        || (subTab === 'pagar' ? t.transaction_type === 'saida' : t.transaction_type === 'entrada');
+      const correctType = matchesFinanceAccountsSubTab(t.transaction_type, subTab);
       if (!correctType) return false;
       // Despesas de cartão viram uma única linha de fatura em "Todas" e "A Pagar".
       if (t.transaction_type === 'saida' && t.credit_card_bill_date) return false;
@@ -383,6 +393,7 @@ export function FinanceContas({
     return (
       fuzzyIncludes(t.description, search)
       || fuzzyIncludes(t.category, search)
+      || fuzzyIncludes(resolveFinancialCategoryDisplay(t.category, categoryLookup).name, search)
       || fuzzyIncludes(t.customer?.name, search)
       || fuzzyIncludes(t.supplier?.name, search)
       || fuzzyIncludes(t.employee?.name, search)
@@ -398,8 +409,7 @@ export function FinanceContas({
   const searchBase = useMemo(() => {
     const pool = allTransactions ?? transactions;
     return pool.filter((t) => {
-      const correctType = subTab === 'todas'
-        || (subTab === 'pagar' ? t.transaction_type === 'saida' : t.transaction_type === 'entrada');
+      const correctType = matchesFinanceAccountsSubTab(t.transaction_type, subTab);
       if (!correctType) return false;
       if (t.transaction_type === 'saida' && t.credit_card_bill_date) return false;
       return true;
@@ -589,8 +599,13 @@ export function FinanceContas({
     for (const t of pool) {
       if (t.category) set.add(t.category);
     }
-    return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'));
-  }, [baseFiltered, filter, today]);
+    return Array.from(set).sort((a, b) => (
+      resolveFinancialCategoryDisplay(a, categoryLookup).name.localeCompare(
+        resolveFinancialCategoryDisplay(b, categoryLookup).name,
+        'pt-BR',
+      )
+    ));
+  }, [baseFiltered, filter, today, categoryLookup]);
 
   // Resumo da categoria ativa: total + quantidade de lancamentos.
   const categorySummary = useMemo(() => {
@@ -688,7 +703,7 @@ export function FinanceContas({
   // (`useCanLaunchLeadRevenue`), que é a condição que a RPC checa no servidor:
   // quem não pode gerenciar o Financeiro não vê checkbox nenhum, em vez de
   // marcar 40 contas e levar um 42501 no clique.
-  const batchEnabled = isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:manage_finance'));
+  const batchEnabled = canManageFinanceTransactions;
 
   /** Contas que JÁ têm filha de baixa parcial (mesmo teste estrutural da RPC). */
   const partialParentIds = useMemo(() => {
@@ -864,6 +879,7 @@ export function FinanceContas({
   ];
 
   const handleEdit = (t: FinancialTransaction) => {
+    if (!canManageFinanceTransactions) return;
     setEditingTransaction(t);
     setContaFormOpen(true);
   };
@@ -910,11 +926,13 @@ export function FinanceContas({
           onChange={setCategoryFilter}
           emptyLabel={fin.accounts.categoryFilter.emptyLabel}
           options={availableCategories.map((category) => {
-            const known = categoriesByName.get(category);
+            const display = resolveFinancialCategoryDisplay(category, categoryLookup);
             return {
               value: category,
-              label: category,
-              icon: known ? filterIconNode(known.color, getCategoryIcon(known.icon)) : undefined,
+              label: display.name,
+              icon: display.category
+                ? filterIconNode(display.color, getCategoryIcon(display.category.icon))
+                : undefined,
             };
           })}
         />
@@ -954,20 +972,27 @@ export function FinanceContas({
     : [];
 
   const buildExportRows = (): MovimentacaoReportRow[] => [
-    ...filtered.map((t) => ({
-      date: t.due_date ?? t.transaction_date,
-      type: t.transaction_type === 'entrada' ? 'entrada' as const : 'saida' as const,
-      description: t.description || '',
-      category: t.category || '',
-      account: allAccounts.find((account) => account.id === t.account_id)?.name ?? '',
-      amount: Number(t.amount),
-      isPaid: !!t.is_paid,
-    })),
+    // Defesa adicional do documento: mesmo que a lista mude no futuro, o PDF
+    // de "A Pagar" nunca recebe entradas e o de "A Receber" nunca recebe saídas.
+    ...filtered.filter((t) => matchesFinanceAccountsSubTab(t.transaction_type, subTab)).map((t) => {
+      const category = resolveFinancialCategoryDisplay(t.category, categoryLookup);
+      return {
+        date: t.due_date ?? t.transaction_date,
+        type: t.transaction_type === 'entrada' ? 'entrada' as const : 'saida' as const,
+        description: t.description || '',
+        category: category.name,
+        categoryColor: category.color,
+        account: allAccounts.find((account) => account.id === t.account_id)?.name ?? '',
+        amount: Number(t.amount),
+        isPaid: !!t.is_paid,
+      };
+    }),
     ...visibleInvoices.map((bill) => ({
       date: bill.due_date,
       type: 'saida' as const,
       description: `${fin.accounts.cardInvoices.invoice} — ${cardAccountMap[bill.account_id]?.name ?? ''}`,
       category: fin.accounts.cardInvoices.sectionTitle,
+      categoryColor: '#64748b',
       account: cardAccountMap[bill.account_id]?.name ?? '',
       amount: Math.max(0, Number(bill.total_amount ?? 0) - Number(bill.amount_paid ?? 0)),
       isPaid: bill.status === 'paid',
@@ -1072,7 +1097,7 @@ export function FinanceContas({
             variant="underline"
             tabs={directionTabs}
             activeTab={subTab}
-            onTabChange={(value) => { setSubTab(value as SubTab); setFilter('todas'); setCategoryFilter([]); setCostCenterFilter([]); setSearch(''); }}
+            onTabChange={(value) => { setSubTab(value as FinanceAccountsSubTab); setFilter('todas'); setCategoryFilter([]); setCostCenterFilter([]); setSearch(''); }}
           />
         </div>
         <div className="hidden lg:flex self-stretch shrink-0" role="tablist" aria-label="Tipo de conta">
@@ -1082,7 +1107,7 @@ export function FinanceContas({
               type="button"
               role="tab"
               aria-selected={subTab === tab.value}
-              onClick={() => { setSubTab(tab.value as SubTab); setFilter('todas'); setCategoryFilter([]); setCostCenterFilter([]); setSearch(''); }}
+              onClick={() => { setSubTab(tab.value as FinanceAccountsSubTab); setFilter('todas'); setCategoryFilter([]); setCostCenterFilter([]); setSearch(''); }}
               className={cn(
                 'inline-flex min-h-11 items-center gap-2 border-b-2 px-3 text-sm font-medium transition-colors',
                 subTab === tab.value
@@ -1126,7 +1151,7 @@ export function FinanceContas({
                 linha inteira de toolbar e saía da tela ao rolar a lista. Sem ele
                 a 2ª linha fica com os 3 controles da régua (Exportar, Filtros,
                 lista/calendário). Desktop segue com o botão inline. */}
-            {!isMobile && (
+            {!isMobile && canManageFinanceTransactions && (
               <Button onClick={() => { setEditingTransaction(null); setContaFormOpen(true); }} size="sm" className="col-span-2 h-10 w-full gap-2 shrink-0 bg-foreground text-background hover:bg-foreground/90 sm:col-span-1 sm:h-9 sm:w-auto">
                 <Plus className="h-4 w-4" /> {fin.accounts.header.newButton}
               </Button>
@@ -1289,7 +1314,9 @@ export function FinanceContas({
             icon={subTab === 'receber' ? <ArrowUpCircle className="h-10 w-10" /> : subTab === 'pagar' ? <ArrowDownCircle className="h-10 w-10" /> : <DollarSign className="h-10 w-10" />}
             title={subTab === 'receber' ? fin.accounts.empty.noReceivableTitle : subTab === 'pagar' ? fin.accounts.empty.noPayableTitle : 'Nenhuma conta por aqui'}
             description={subTab === 'receber' ? fin.accounts.empty.noReceivableDescription : subTab === 'pagar' ? fin.accounts.empty.noPayableDescription : 'Crie uma conta a pagar ou a receber para começar.'}
-            action={{ label: fin.accounts.actions.newAccount, onClick: () => { setEditingTransaction(null); setContaFormOpen(true); } }}
+            action={canManageFinanceTransactions
+              ? { label: fin.accounts.actions.newAccount, onClick: () => { setEditingTransaction(null); setContaFormOpen(true); } }
+              : undefined}
           />
         )
       ) : filtered.length === 0 ? (
@@ -1333,8 +1360,9 @@ export function FinanceContas({
               const chargeRow = t as unknown as ReceivableChargeRow;
               const chargeAction = receivableCharge.actionFor(chargeRow);
               const chargeBadge = receivableCharge.onlineChargeBadgeFor(chargeRow);
+              const categoryDisplay = resolveFinancialCategoryDisplay(t.category, categoryLookup);
               const itemActions: ItemAction[] = [
-                ...(!t.is_paid ? [{
+                ...(!t.is_paid && canManageFinanceTransactions ? [{
                   key: 'mark-paid',
                   label: t.transaction_type === 'entrada' ? fin.accounts.actions.markReceived : fin.accounts.actions.markPaid,
                   icon: <Check className="h-4 w-4" />,
@@ -1355,13 +1383,13 @@ export function FinanceContas({
                   icon: <Receipt className="h-4 w-4" />,
                   onClick: () => setViewingTxn(t),
                 }] : []),
-                {
+                ...(canManageFinanceTransactions ? [{
                   key: 'edit',
                   label: fin.accounts.actions.edit,
                   icon: <Pencil className="h-4 w-4" />,
                   variant: 'edit' as const,
                   onClick: () => handleEdit(t),
-                },
+                }] : []),
                 ...(canDeleteFinance ? [{
                   key: 'delete',
                   label: fin.accounts.actions.delete,
@@ -1467,7 +1495,7 @@ export function FinanceContas({
                           ) : (
                             <Badge className="bg-slate-500 text-white text-[10px] px-1.5 py-0">{fin.accounts.status.pending}</Badge>
                           )}
-                          {t.category && <FinancialCategoryPill name={t.category} category={categoriesByName.get(t.category)} size="sm" />}
+                          {t.category && <FinancialCategoryPill name={categoryDisplay.name} category={categoryDisplay.category} size="sm" />}
                         </div>
                         {partial && <span className="text-warning text-[11px]">{fin.accounts.table.received}: {fmt(received)} {fin.accounts.table.of} {fmt(Number(t.amount))}</span>}
                         {receiptBreakdown && (
@@ -1483,7 +1511,7 @@ export function FinanceContas({
                     <>
                       <FinancialTransactionDetailsPanel
                         transaction={t}
-                        category={t.category ? categoriesByName.get(t.category) : null}
+                        category={categoryDisplay.category}
                         costCenter={t.cost_center_id ? costCentersById.get(t.cost_center_id) : null}
                         onViewPartialHistory={partial ? () => setViewingTxn(t) : undefined}
                         onlineCharge={chargeBadge}
@@ -1543,6 +1571,7 @@ export function FinanceContas({
                     const chargeRow = t as unknown as ReceivableChargeRow;
                     const chargeAction = receivableCharge.actionFor(chargeRow);
                     const chargeBadge = receivableCharge.onlineChargeBadgeFor(chargeRow);
+                    const categoryDisplay = resolveFinancialCategoryDisplay(t.category, categoryLookup);
                     return (
                     <Fragment key={t.id}>
                     <TableRow
@@ -1591,7 +1620,7 @@ export function FinanceContas({
                         </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
-                        {t.category && <FinancialCategoryPill name={t.category} category={categoriesByName.get(t.category)} />}
+                        {t.category && <FinancialCategoryPill name={categoryDisplay.name} category={categoryDisplay.category} />}
                       </TableCell>
                       <TableCell className="text-sm">
                         {t.due_date ? (
@@ -1647,7 +1676,7 @@ export function FinanceContas({
                               label: t.transaction_type === 'entrada' ? fin.accounts.actions.markAsReceived : fin.accounts.actions.markAsPaid,
                               icon: Check,
                               onClick: () => handleMarkAsPaidClick(t),
-                              hidden: t.is_paid,
+                              hidden: t.is_paid || !canManageFinanceTransactions,
                             },
                             {
                               label: fin.accounts.actions.viewHistory,
@@ -1669,6 +1698,7 @@ export function FinanceContas({
                               icon: Pencil,
                               variant: 'edit',
                               onClick: () => handleEdit(t),
+                              hidden: !canManageFinanceTransactions,
                             },
                             {
                               label: fin.accounts.actions.delete,
@@ -1686,7 +1716,7 @@ export function FinanceContas({
                         <TableCell colSpan={batchEnabled ? 7 : 6} className="p-0">
                           <FinancialTransactionDetailsPanel
                             transaction={t}
-                            category={t.category ? categoriesByName.get(t.category) : null}
+                            category={categoryDisplay.category}
                             costCenter={t.cost_center_id ? costCentersById.get(t.cost_center_id) : null}
                             onViewPartialHistory={partial ? () => setViewingTxn(t) : undefined}
                             onlineCharge={chargeBadge}
@@ -1984,7 +2014,7 @@ export function FinanceContas({
       {/* FAB de "Nova Conta" no mobile (no desktop o botão continua na toolbar).
           Some enquanto a barra de seleção do lote está na tela: as duas moram no
           mesmo offset de 96px e o FAB cobriria o botão de pagar selecionadas. */}
-      {isMobile && !(batchEnabled && selectedRows.length > 0) && (
+      {isMobile && canManageFinanceTransactions && !(batchEnabled && selectedRows.length > 0) && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
           label={fin.accounts.header.newButton}
