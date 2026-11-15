@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { rpc, authScope } = vi.hoisted(() => ({ rpc: vi.fn(), authScope: { companyId: 'company-a', permissions: ['screen:pdv'] as string[] } }));
-vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'operator-1' }, profile: { company_id: authScope.companyId }, permissions: authScope.permissions, roles: ['comercial'], hasPermissionRecord: true, loading: false, profileLoading: false }) }));
+vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'operator-1' }, profile: { company_id: authScope.companyId, user_id: 'operator-1', is_active: true }, permissions: authScope.permissions, roles: ['comercial'], hasPermissionRecord: true, loading: false, profileLoading: false }) }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc } }));
 
 import {

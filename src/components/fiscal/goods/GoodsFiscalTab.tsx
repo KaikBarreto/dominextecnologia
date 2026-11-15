@@ -1,3 +1,5 @@
+import { useGoodsFiscalAccess } from '@/hooks/useGoodsFiscalAccess';
+import { goodsRejectionGuidance } from "@/lib/fiscal/goodsRejectionGuidance";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -56,6 +58,7 @@ const STATUS: Record<string, { label: string; className: string }> = {
 };
 
 export function GoodsFiscalTab({ model }: { model: GoodsModel }) {
+  const access = useGoodsFiscalAccess();
   const [open, setOpen] = useState(false);
   const [typeSelectorOpen, setTypeSelectorOpen] = useState(false);
   const [direction, setDirection] = useState<GoodsDirection>("saida");
@@ -114,6 +117,7 @@ export function GoodsFiscalTab({ model }: { model: GoodsModel }) {
     }
   };
 
+  if (!access.allowed) return <p role={access.isLoading ? 'status' : 'alert'} className="py-6 text-sm text-muted-foreground">{access.isLoading ? 'Verificando acesso fiscal…' : 'Você precisa de permissão para emitir notas fiscais de mercadorias. Peça ao administrador para conferir seu acesso.'}</p>;
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -213,7 +217,7 @@ export function GoodsFiscalTab({ model }: { model: GoodsModel }) {
                   </p>
                   {document.last_error_message ? (
                     <p className="mt-2 text-sm font-medium text-destructive">
-                      {String(document.last_error_message)}
+                      {goodsRejectionGuidance(document.last_error_code)}
                     </p>
                   ) : null}
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -270,7 +274,7 @@ export function GoodsFiscalTab({ model }: { model: GoodsModel }) {
                     Total
                   </p>
                   <strong className="text-lg">
-                    {formatMoney(total, "BRL")}
+                    {formatMoney(total, "BRL", locale)}
                   </strong>
                 </div>
               </article>

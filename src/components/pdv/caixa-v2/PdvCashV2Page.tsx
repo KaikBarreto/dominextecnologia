@@ -17,7 +17,7 @@ import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { usePdvCashSessionDetailV2 } from '@/hooks/usePdvCashSessionDetailV2';
 import { usePdvReceiptSettings } from '@/hooks/usePdvReceiptSettings';
 import { useToast } from '@/hooks/use-toast';
-import { openPdvOrderReceipt } from '@/components/pdv/receipt/PdvOrderReceiptButton';
+import { usePdvOrderReceiptOpener } from '@/components/pdv/receipt/PdvOrderReceiptButton';
 import { DEFAULT_PDV_RECEIPT_SETTINGS, type PdvReceiptFormat } from '@/lib/pdv/receipt/model';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { useLocaleFormatters } from '@/lib/format/hooks';
@@ -284,15 +284,19 @@ function BreakdownValue({ label, value, tone }: { label: string; value: string; 
 
 function CashMovements({ entries, isLoading, isError, valuesVisible, money, dateTime, receiptFormat, onRetry }: { entries: ReturnType<typeof usePdvCashSessionDetailV2>['entries']; isLoading: boolean; isError: boolean; valuesVisible: boolean; money: (value: number) => string; dateTime: (value: string | Date | null | undefined) => string; receiptFormat: PdvReceiptFormat; onRetry: () => void }) {
   const [query, setQuery] = useState('');
-  const [receiptLoadingId, setReceiptLoadingId] = useState<string | null>(null);
+  const receiptOpener = usePdvOrderReceiptOpener();
+  const [receiptLoading, setReceiptLoading] = useState<{ id: string; isCurrent: () => boolean } | null>(null);
+  const receiptLoadingId = receiptLoading?.isCurrent() ? receiptLoading.id : null;
+  const setReceiptLoadingId = (id: string | null) => setReceiptLoading(id ? { id, isCurrent: receiptOpener.isCurrent } : null);
   const [selectedEntry, setSelectedEntry] = useState<CashMovementEntry | null>(null);
   const { toast } = useToast();
   const generateReceipt = (entry: ReturnType<typeof usePdvCashSessionDetailV2>['entries'][number]) => {
     if (!entry.orderId) return;
     setReceiptLoadingId(entry.id);
-    void openPdvOrderReceipt(entry.orderId, receiptFormat).catch((error) => {
+    void receiptOpener.open(entry.orderId, receiptFormat).catch((error) => {
+      if (!receiptOpener.isCurrent()) return;
       toast({ variant: 'destructive', title: 'Não foi possível gerar o comprovante', description: error instanceof Error ? error.message : 'Tente novamente.' });
-    }).finally(() => setReceiptLoadingId(null));
+    }).finally(() => { if (receiptOpener.isCurrent()) setReceiptLoadingId(null); });
   };
   const filtered = entries.filter((entry) => `${entry.description ?? ''} ${entry.notes ?? ''} ${entry.kind}`.toLocaleLowerCase('pt-BR').includes(query.trim().toLocaleLowerCase('pt-BR')));
   if (isLoading) return <PdvPageSkeleton variant="table" label="Carregando transações do caixa" />;

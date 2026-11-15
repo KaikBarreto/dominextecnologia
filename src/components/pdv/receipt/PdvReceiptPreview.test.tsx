@@ -65,10 +65,31 @@ describe('PdvReceiptPreview', () => {
     expect(screen.getByRole('heading', {name:/COMPROVANTE DE RETIRADA/})).toBeInTheDocument();
     expect(screen.getAllByText('RETIRADO')).toHaveLength(2);
     expect(screen.getAllByText('RESTANTE')).toHaveLength(2);
-    expect(screen.getByText(/Registro de retirada:/)).toHaveTextContent('RET-2087-01');
-    expect(screen.getByText(/Assinatura:/)).toBeInTheDocument();
+    expect(screen.queryByText(/Registro de retirada:/)).not.toBeInTheDocument();
+    expect(screen.queryByText('RET-2087-01')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Local:/)).not.toBeInTheDocument();
+    expect(screen.getByText('Assinatura de quem retirou')).toBeInTheDocument();
     expect(screen.queryByText(/R\$/)).not.toBeInTheDocument();
     expect(screen.queryByText('TOTAL')).not.toBeInTheDocument();
+  });
+
+  it('agrupa título centralizado, cliente e operador/data como no comprovante EcoSistema', () => {
+    const {container}=render(<PdvReceiptPreview snapshot={getPdvReceiptPreviewFixture('delivery')} format="80mm" />);
+    const metadata=container.querySelector('[data-receipt-metadata]')!;
+    expect(metadata).toHaveClass('text-center');
+    expect(metadata).toContainElement(screen.getByRole('heading',{name:/COMPROVANTE DE RETIRADA/}));
+    expect(metadata).toHaveTextContent('Cliente: Cliente exemplo');
+    expect(metadata).toHaveTextContent('Operador: Maria');
+    expect(metadata).not.toHaveTextContent('Local:');
+  });
+
+  it.each(['58mm', '80mm', 'a4'] as const)('reserva espaço para uma única assinatura, sem segundo campo em %s', format => {
+    const snapshot = getPdvReceiptPreviewFixture('delivery');
+    snapshot.withdrawal!.receivedBy = null;
+    render(<PdvReceiptPreview snapshot={snapshot} format={format} />);
+    expect(screen.getAllByText('Assinatura de quem retirou')).toHaveLength(1);
+    expect(screen.queryByText(/Recebido por:/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Espaço para assinatura')).toHaveStyle({ height: format === 'a4' ? '26mm' : '20mm' });
   });
 
   it('orçamento e pedido preservam as mesmas colunas e valores, com PAGO no final do pedido quitado', () => {

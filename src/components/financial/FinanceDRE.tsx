@@ -1,3 +1,4 @@
+import { FinancePdvReconciliation } from './FinancePdvReconciliation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -1780,6 +1781,8 @@ export function FinanceDRE({
           />
         </div>
       )}
+
+      {costCenterFilter.length===0 && <FinancePdvReconciliation range={range} regime={regime} startDate={dreStartDate} asOf={today} />}
 
       {/* DRE Table */}
       <Card className="border-0 shadow-none overflow-visible bg-muted/15">

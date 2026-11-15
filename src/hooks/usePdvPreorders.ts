@@ -267,9 +267,12 @@ export function usePdvPreorder(preorderId: string | null) {
 
 export function fetchPdvPreorderDetail(
   preorderId: string,
+  signal?: AbortSignal,
 ): Promise<PdvPreorderDetail> {
-  return callRpc<PdvPreorderDetail>("pdv_get_preorder_v2", {
-    p_preorder_id: preorderId,
+  const request = pdvRpc("pdv_get_preorder_v2", { p_preorder_id: preorderId }) as Promise<RpcResult> & { abortSignal?: (signal: AbortSignal) => PromiseLike<RpcResult> };
+  return Promise.resolve(signal && request.abortSignal ? request.abortSignal(signal) : request).then(({ data, error }) => {
+    if (error) throw mapPdvPreorderError(error);
+    return data as PdvPreorderDetail;
   });
 }
 

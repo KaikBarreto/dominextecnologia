@@ -161,6 +161,20 @@ describe("PdvPreorderDetail", () => {
     expect(onValue).not.toHaveBeenCalled();
   });
 
+  it("permite salvar preços alterados no rodapé antes de converter o orçamento", async () => {
+    const onValue = vi.fn().mockResolvedValue({});
+    const onConvert = vi.fn();
+    render(<PdvPreorderDetail {...baseProps} canValue canConvert onValue={onValue} onConvert={onConvert} />);
+    expect(screen.getByRole('button', {name:'Gerar pedido'})).toBeDisabled();
+    fireEvent.change(screen.getAllByLabelText('Preço unitário')[0], {target:{value:'25,00'}});
+    const saveActions = screen.getAllByRole('button', {name:'Salvar preços'});
+    expect(saveActions.length).toBeGreaterThan(1);
+    saveActions.forEach(button => expect(button).toBeEnabled());
+    fireEvent.click(saveActions[saveActions.length - 1]);
+    await waitFor(() => expect(onValue).toHaveBeenCalledOnce());
+    expect(onConvert).not.toHaveBeenCalled();
+  });
+
   it("quem só valoriza pode editar preços sem receber ação Gerar pedido", () => {
     render(<PdvPreorderDetail {...baseProps} canValue canConvert={false} />);
     expect(screen.getAllByLabelText('Preço unitário')).toHaveLength(2);

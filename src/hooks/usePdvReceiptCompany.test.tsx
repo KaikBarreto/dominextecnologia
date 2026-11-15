@@ -11,7 +11,7 @@ const state = vi.hoisted(() => ({
 }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({
   user: state.userId ? { id: state.userId } : null,
-  profile: { user_id: state.profileUserId, company_id: state.companyId },
+  profile: { user_id: state.profileUserId, company_id: state.companyId, is_active: true },
   loading: state.loading, profileLoading: state.profileLoading, roles: state.roles, permissions: state.permissions, hasPermissionRecord: true,
 }) }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc: state.rpc } }));

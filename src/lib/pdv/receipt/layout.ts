@@ -2,6 +2,9 @@ import type { PdvReceiptFormat, PdvReceiptSnapshot } from "./model";
 import { formatReceiptMoney, getPdvReceiptApproval, getPdvReceiptCoverageLines, getPdvReceiptDocumentMetadata, getPdvReceiptNote, getPdvReceiptWithdrawalItems } from "./model";
 import { safeTimeZone } from "@/lib/timezone";
 
+/** Área livre para escrever, antes da linha única de assinatura. */
+export const PDV_RECEIPT_SIGNATURE_SPACE_MM: Record<PdvReceiptFormat, number> = { a4: 26, '58mm': 20, '80mm': 20 };
+
 export interface PdvReceiptLine {
   text: string;
   align?: "left" | "center" | "right";
@@ -147,17 +150,12 @@ export function buildPdvReceiptLines(
     if (snapshot.company.phone) addText(snapshot.company.phone);
   }
   lines.push(
-    { text: isDelivery ? metadata.title : `${metadata.title} Nº ${snapshot.order.number}`, bold: true, inverse: kind !== "budget", size: kind === "sale" ? 9 : 12 },
-    ...(isDelivery ? [{ text: `${metadata.numberLabel} Nº ${snapshot.order.number}`, bold: true, size: 13, gapAfter: 2 }] : []),
-    { text: `Data: ${new Date(isDelivery && snapshot.withdrawal ? snapshot.withdrawal.withdrawnAt : snapshot.order.issuedAt).toLocaleString("pt-BR", { timeZone: safeTimeZone(snapshot.company.timeZone) })}` },
-    { text: `Operador: ${(isDelivery ? snapshot.withdrawal?.operatorName : null) || snapshot.order.operatorName}` },
+    { text: isDelivery ? metadata.title : `${metadata.title} Nº ${snapshot.order.number}`, align: 'center', bold: true, inverse: kind !== "budget", size: kind === "sale" ? 9 : 12 },
+    ...(isDelivery ? [{ text: `${metadata.numberLabel} Nº ${snapshot.order.number}`, align: 'center' as const, bold: true, size: 13, gapAfter: 2 }] : []),
+    { text: `Data: ${new Date(isDelivery && snapshot.withdrawal ? snapshot.withdrawal.withdrawnAt : snapshot.order.issuedAt).toLocaleString("pt-BR", { timeZone: safeTimeZone(snapshot.company.timeZone) })}`, align: 'center' },
+    { text: `Operador: ${(isDelivery ? snapshot.withdrawal?.operatorName : null) || snapshot.order.operatorName}`, align: 'center' },
   );
-  if (snapshot.order.terminalName && !isDelivery) addText(`Terminal: ${snapshot.order.terminalName}`);
-  if (snapshot.order.customerName) addText(`Cliente: ${snapshot.order.customerName}`);
-  if (isDelivery && snapshot.withdrawal) {
-    addText(`Retirada: ${snapshot.withdrawal.id}`);
-    if (snapshot.withdrawal.stockName) addText(`Local: ${snapshot.withdrawal.stockName}`);
-  }
+  if (snapshot.order.customerName) lines.push({text:`Cliente: ${snapshot.order.customerName}`,align:'center'});
   if (metadata.instruction) addText(metadata.instruction, true);
   lines.push({ text: metadata.itemHeading, bold: true, inverse: true, gapAfter: 1 });
   if (isDelivery) {
@@ -167,8 +165,9 @@ export function buildPdvReceiptLines(
       addText(`Retirado: ${item.quantity} ${item.unit} · Restante: ${item.remainingQuantity} ${item.unit}`);
     }
     if (!items.length) addText("Nenhum item retirado informado neste documento.");
-    addText(snapshot.withdrawal?.receivedBy ? `Recebido por: ${snapshot.withdrawal.receivedBy}` : "Recebido por: __________________________");
-    addText("Assinatura: __________________________");
+    if (snapshot.withdrawal?.receivedBy) addText(`Recebido por: ${snapshot.withdrawal.receivedBy}`);
+    lines.push({ text: '', gapAfter: PDV_RECEIPT_SIGNATURE_SPACE_MM[format] });
+    addText("Assinatura de quem retirou");
   } else {
     if (isCommercial) lines.push({ text: "ITEM                         QTD.       TOTAL", bold: true, inverse: true });
     for (const item of snapshot.items) {

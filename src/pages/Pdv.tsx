@@ -1,3 +1,6 @@
+import { usePdvPaymentVoucher } from '@/hooks/usePdvPaymentVoucher';
+import { useGoodsFiscalAccess } from '@/hooks/useGoodsFiscalAccess';
+import { PdvNfceSaleAction } from '@/components/fiscal/goods/PdvNfceSaleAction';
 import { canCapturePdvCatalogScan } from '@/lib/pdv/catalogKeyboard';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type SetStateAction } from 'react';
 import { createPortal } from 'react-dom';
@@ -96,7 +99,7 @@ import { PdvOrderSwitcher } from '@/components/pdv/PdvOrderSwitcher';
 import { PdvDraftSyncNotice } from '@/components/pdv/PdvDraftSyncNotice';
 import { transferRecoveredDraftAttachments } from '@/lib/pdv/draft-attachments';
 import { PdvShortcutHelpDialog } from '@/components/pdv/PdvShortcutHelpDialog';
-import { PdvOrderReceiptButton, openPdvOrderReceipt } from '@/components/pdv/receipt/PdvOrderReceiptButton';
+import { PdvOrderReceiptButton, usePdvOrderReceiptOpener } from '@/components/pdv/receipt/PdvOrderReceiptButton';
 import { PdvDirectSalePostSaleDialog } from '@/components/pdv/direct-sale-v2/PdvDirectSalePostSaleDialog';
 import { InventoryIdentifierCameraScanner } from '@/components/inventory/identifiers/InventoryIdentifierCameraScanner';
 import {
@@ -170,20 +173,28 @@ export function PdvLastSaleHeader({ completedSale, scopeKey, receiptFormat, canO
   children: ReactNode;
 }) {
   const { currency, locale } = useAppLocaleContext();
+  const fiscalAccess = useGoodsFiscalAccess();
   const [lastSaleMenuOpen, setLastSaleMenuOpen] = useState(false);
-  useEffect(() => setLastSaleMenuOpen(false), [scopeKey]);
+  const promptedFiscalSales = useRef(new Set<string>());
+  const [fiscalTarget, setFiscalTarget] = useState<{ orderId: string; scopeKey: string } | null>(null);
+  useEffect(() => { setLastSaleMenuOpen(false); setFiscalTarget(null); }, [scopeKey, fiscalAccess.scopeId, fiscalAccess.allowed]);
   return <>
-      {completedSale && completedSale.scopeKey === scopeKey ? <div className="flex min-w-0 items-center border-b border-border bg-card pr-2 [&_.pdv-order-switcher]:border-b-0">
+      {completedSale && completedSale.scopeKey === scopeKey ? <><div className="flex min-w-0 items-center border-b border-border bg-card pr-2 [&_.pdv-order-switcher]:border-b-0">
         <div className="min-w-0 flex-1">{children}</div>
         <Popover open={lastSaleMenuOpen} onOpenChange={setLastSaleMenuOpen}>
           <PopoverTrigger asChild><Button type="button" variant="ghost" size="sm" className="shrink-0 gap-1 px-2 text-xs" data-testid="pdv-last-sale-trigger" aria-label={`Último pedido #${completedSale.orderNumber}`}><span className="hidden sm:inline">Último pedido</span><span className="sm:hidden">Último</span><strong>#{completedSale.orderNumber}</strong></Button></PopoverTrigger>
           <PopoverContent align="end" aria-label="Ações do último pedido" className="w-72 max-w-[calc(100vw-2rem)] space-y-3">
             <div><p className="font-semibold">Pedido #{completedSale.orderNumber} concluído</p><p className="text-sm tabular-nums text-muted-foreground">{formatMoney(completedSale.total, currency, locale)}</p></div>
             <PdvOrderReceiptButton orderId={completedSale.orderId} format={receiptFormat} documentKind="sale" label="Comprovante" className="w-full" />
+            {fiscalAccess.allowed && <Button type="button" variant="outline" className="w-full" onClick={() => { setLastSaleMenuOpen(false); setFiscalTarget({ orderId: completedSale.orderId, scopeKey: completedSale.scopeKey }); }}>NFC-e desta venda</Button>}
             {canOpenPostSale && <Button type="button" variant="outline" className="w-full" onClick={() => { setLastSaleMenuOpen(false); onOpenPostSale(); }}>Abrir pós-venda</Button>}
           </PopoverContent>
         </Popover>
-      </div> : children}
+      </div>
+      {fiscalAccess.allowed && <PdvNfceSaleAction orderId={completedSale.orderId} confirmed promptAfterPayment={!promptedFiscalSales.current.has(`${completedSale.scopeKey}:${completedSale.orderId}`)} onPromptShown={() => promptedFiscalSales.current.add(`${completedSale.scopeKey}:${completedSale.orderId}`)} contextKey={completedSale.scopeKey}
+        detailsOpen={fiscalTarget?.orderId === completedSale.orderId && fiscalTarget.scopeKey === scopeKey}
+        onDetailsOpenChange={open => setFiscalTarget(open ? {orderId:completedSale.orderId,scopeKey:completedSale.scopeKey} : null)} />}
+      </> : children}
   </>;
 }
 
@@ -648,6 +659,7 @@ function PdvSaleWorkspace({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const autoReceipt = usePdvStageReceiptAuto();
+  const receiptOpener = usePdvOrderReceiptOpener();
   const receiptFormat = readDeviceReceiptFormat()
     ?? resolvePdvReceiptStagePolicy(receiptSettings.data, 'sale').format;
   const hasPostSaleAccess = (
@@ -1338,7 +1350,24 @@ function PdvSaleWorkspace({
   const paymentCart = paymentOpen && paymentSnapshotRef.current
     ? paymentSnapshotRef.current.cart
     : cart;
-  const { credit: customerCredit } = usePdvCustomerCredit(paymentCart.customerId);
+  const paymentVoucher = usePdvPaymentVoucher({
+    open: paymentOpen,
+    enabled: isV2,
+    scopeKey: completedSaleScope,
+    snapshotRef: paymentSnapshotRef,
+    drafts: draftWorkspace.drafts,
+    conflictingDraftIds: draftConflicts.map(conflict => conflict.id),
+    hasAttempt: draftId => attemptByDraftRef.current.has(draftId),
+    updateDraft,
+  });
+  useEffect(() => {
+    if (paymentOpen && !paymentVoucher.inScope) {
+      setPaymentOpen(false);
+      paymentVoucher.reset();
+      paymentSnapshotRef.current = null;
+    }
+  }, [paymentOpen, paymentVoucher]);
+  const { credit: customerCredit, isLoading: customerCreditPending, isError: customerCreditError, errorMessage: customerCreditErrorMessage, refetch: retryCustomerCredit } = usePdvCustomerCredit(paymentCart.customerId, paymentOpen);
   const customerName = useMemo(
     () => customers.find((c) => c.id === paymentCart.customerId)?.name ?? null,
     [customers, paymentCart.customerId],
@@ -1403,6 +1432,7 @@ function PdvSaleWorkspace({
       editDraft: saleEditDrafts[activeDraft.id] ?? null,
       attachments: [...(attachmentsByDraft[activeDraft.id] ?? [])],
     };
+    paymentVoucher.capture(paymentSnapshotRef.current, receiptOpener.isCurrent);
     setCartDrawerOpen(false);
     setPaymentOpen(true);
   }
@@ -1435,7 +1465,7 @@ function PdvSaleWorkspace({
       discountAmount: line.discountAmount,
     }));
 
-    const receiptAttempt = autoReceipt.prepare('sale', !editDraft);
+    const receiptAttempt = receiptOpener.guardAttempt(autoReceipt.prepare('sale', !editDraft));
     try {
     let result: PdvSettleResult;
     let preserveConfirmedDraft = false;
@@ -1618,8 +1648,8 @@ function PdvSaleWorkspace({
       });
     }
 
-    if (isV2 && completedSaleScopeRef.current !== completedSaleScope) { receiptAttempt.cancel(); return; }
-    if (!editDraft) void receiptAttempt.commit(`sale:${result.order_id}`, (format, options) => openPdvOrderReceipt(result.order_id, format, { ...options, documentKind: 'sale' }), result.idempotente);
+    if (!receiptOpener.isCurrent() || isV2 && completedSaleScopeRef.current !== completedSaleScope) { receiptAttempt.cancel(); return; }
+    if (!editDraft) void receiptAttempt.commit(`sale:${result.order_id}`, (format, options) => receiptOpener.open(result.order_id, format, { ...options, documentKind: 'sale' }), result.idempotente);
     else receiptAttempt.cancel();
 
     const change = (result.pagamentos ?? []).reduce(
@@ -1686,8 +1716,8 @@ function PdvSaleWorkspace({
       // tempo na tela que o padrão (5s) pra o operador conferir sem correr.
       duration: saleChange > 0 || saleWarnings.length > 0 ? 15000 : 8000,
       action: <ToastAction altText={`Abrir comprovante do pedido ${saleNumber}`} onClick={() => {
-        if (completedSaleScopeRef.current !== completedSaleScope) return;
-        void openPdvOrderReceipt(result.order_id, receiptFormat, { documentKind: 'sale' }).catch(() => {
+        if (!receiptOpener.isCurrent() || completedSaleScopeRef.current !== completedSaleScope) return;
+        void receiptOpener.open(result.order_id, receiptFormat, { documentKind: 'sale' }).catch(() => {
           if (completedSaleScopeRef.current === completedSaleScope) toast({ title: 'Não foi possível gerar o comprovante', description: 'Tente novamente pelo atalho do último pedido.', variant: 'destructive' });
         });
       }}>Comprovante</ToastAction>,
@@ -1695,7 +1725,7 @@ function PdvSaleWorkspace({
       setTimeout(() => searchInputRef.current?.focus(), 0);
     }
 
-    } catch (error) { receiptAttempt.cancel(); throw error; }
+    } catch (error) { receiptAttempt.cancel(); if (receiptOpener.isCurrent()) throw error; return; }
   }
 
   // Atalhos operacionais do balcão. Teclas imprimíveis nunca atravessam campos;
@@ -1911,7 +1941,7 @@ function PdvSaleWorkspace({
     onOpenAdvancedOptions: () => setAdvancedOptionsOpen(true),
     advancedOptionsActive: advancedOptionsSummary.length > 0,
     advancedOptionsSummary,
-    appliedCreditContent: isV2 && activeDraft && activeDraftId ? (
+    appliedCreditContent: isV2 && !paymentOpen && activeDraft && activeDraftId ? (
       <PdvAppliedVoucherControl
         key={`${activeDraftId}:${activeDraft.cart.customerId ?? 'sem-cliente'}`}
         enabled
@@ -2219,10 +2249,10 @@ function PdvSaleWorkspace({
       />
 
       <PdvPaymentDialog
-        open={paymentOpen}
+        open={paymentOpen && paymentVoucher.inScope}
         onOpenChange={(open) => {
           setPaymentOpen(open);
-          if (!open) paymentSnapshotRef.current = null;
+          if (!open) { paymentVoucher.reset(); paymentSnapshotRef.current = null; }
         }}
         texts={t.payment}
         total={computeTotal(paymentCart)}
@@ -2236,7 +2266,26 @@ function PdvSaleWorkspace({
         appliedVoucher={paymentOpen
           ? paymentSnapshotRef.current?.appliedVoucher ?? null
           : activeDraft?.appliedVoucher ?? null}
+        embeddedEditorOpen={paymentVoucher.pickerOpen}
+        appliedCreditContent={isV2 && paymentOpen && paymentVoucher.inScope && paymentSnapshotRef.current ? (
+          <fieldset disabled={!paymentVoucher.canEdit} className="min-w-0">
+            <PdvAppliedVoucherControl
+              key={`${paymentSnapshotRef.current.draftId}:${paymentSnapshotRef.current.cart.customerId ?? 'sem-cliente'}:${paymentVoucher.canEdit}`}
+              enabled
+              customerId={paymentSnapshotRef.current.cart.customerId}
+              total={computeTotal(paymentSnapshotRef.current.cart)}
+              value={paymentSnapshotRef.current.appliedVoucher}
+              formatCurrency={formatCurrency}
+              onChange={paymentVoucher.onChange}
+              onPickerOpenChange={paymentVoucher.onPickerOpenChange}
+            />
+          </fieldset>
+        ) : undefined}
         customerCredit={customerCredit}
+        customerCreditPending={customerCreditPending}
+        customerCreditError={customerCreditError}
+        customerCreditErrorMessage={customerCreditErrorMessage}
+        onRetryCustomerCredit={() => retryCustomerCredit()}
         accounts={paymentAccounts}
         canUseBankAccounts={canUseBankAccounts}
         hasOpenCashSession={hasOpenCashSession}

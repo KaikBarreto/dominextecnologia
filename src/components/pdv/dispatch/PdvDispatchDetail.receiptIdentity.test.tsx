@@ -4,6 +4,7 @@ import type { PdvAfterSaleAccess } from '@/hooks/usePdvAfterSale';
 import { PdvDispatchDetail } from './PdvDispatchDetail';
 
 const mocks = vi.hoisted(() => ({ complete: vi.fn(), fetchReceipt: vi.fn(), pdf: vi.fn(), toast: vi.fn(), close: vi.fn(), pending: vi.fn() }));
+vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'user-fixture' }, profile: { user_id: 'user-fixture', company_id: 'company-fixture', is_active: true }, roles: ['estoque'], permissions: ['screen:pdv_dispatch'], hasPermissionRecord: true, loading: false, profileLoading: false }) }));
 vi.mock('@/hooks/usePdvDispatch', () => ({
   usePdvCompleteDispatch: () => ({ mutateAsync: mocks.complete, isPending: false }),
   fetchPdvDeliveryReceipt: mocks.fetchReceipt,

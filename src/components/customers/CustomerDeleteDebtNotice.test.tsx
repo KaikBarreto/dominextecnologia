@@ -5,14 +5,14 @@
 //
 // As duas situações, lado a lado:
 //   • SEM o add-on `pdv`: nenhuma menção a fiado no diálogo E nenhuma consulta
-//     ao banco (nem `customers`, nem `customer_credit_ledger`). Diálogo
+//     à RPC de crédito. Diálogo
 //     IDÊNTICO ao de hoje.
 //   • COM o add-on: aviso saturado (NoticeBanner variant="warning", nunca tint
 //     pastel montado à mão) com o valor em moeda, e nada quando o saldo é zero
 //     ou é crédito a favor do cliente.
 //
-// O aviso NÃO bloqueia a exclusão de propósito: o direito do titular (LGPD)
-// vence; o que faltava era o operador saber do que está abrindo mão.
+// Esta suíte verifica somente a apresentação do aviso. A proteção de exclusão
+// no servidor é validada separadamente; não é demonstrada por este componente.
 // ─────────────────────────────────────────────────────────────────────────────
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as React from 'react';
@@ -25,33 +25,30 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 const state = vi.hoisted(() => ({
   hasPdv: false,
   creditLimit: null as number | null,
-  ledger: [] as { amount: number }[],
+  debt: 0,
   reads: [] as string[],
 }));
 
-function thenable(value: unknown) {
-  return {
-    maybeSingle: () => Promise.resolve(value),
-    then: (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) =>
-      Promise.resolve(value).then(resolve, reject),
-  };
-}
-
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
-    from: (table: string) => {
-      state.reads.push(table);
-      if (table === 'customers') {
-        return {
-          select: () => ({ eq: () => thenable({ data: { credit_limit: state.creditLimit }, error: null }) }),
-        };
+    rpc: (name: string, args: { p_customer_id: string }) => {
+      state.reads.push(name);
+      if (name !== 'pdv_get_customer_credit_summary_v3' || args.p_customer_id !== 'cliente-1') {
+        throw new Error('Consulta inesperada no teste de crédito');
       }
-      if (table === 'customer_credit_ledger') {
-        return { select: () => ({ eq: () => thenable({ data: state.ledger, error: null }) }) };
-      }
-      throw new Error(`tabela inesperada no teste: ${table}`);
+      return { single: () => Promise.resolve({ data: { credit_limit: state.creditLimit, debt: state.debt }, error: null }) };
     },
+    from: () => { throw new Error('O aviso deve usar somente o resumo canônico, não consultar ledger ou extrato detalhado.'); },
   },
+}));
+
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({
+    user: { id: 'operator-1' },
+    profile: { user_id: 'operator-1', company_id: 'company-1', is_active: true },
+    roles: ['admin'], permissions: ['*'], hasPermissionRecord: true,
+    loading: false, profileLoading: false,
+  }),
 }));
 
 vi.mock('@/contexts/AppLocaleContext', () => ({
@@ -98,7 +95,7 @@ const texto = () => (container.textContent ?? '').replace(/[\u00A0\u202F]/g, ' '
 beforeEach(() => {
   state.hasPdv = false;
   state.creditLimit = null;
-  state.ledger = [];
+  state.debt = 0;
   state.reads = [];
   container = document.createElement('div');
   document.body.appendChild(container);
@@ -114,7 +111,7 @@ afterEach(() => {
 describe('CustomerDeleteDebtNotice — aviso de fiado na exclusão de cliente', () => {
   it('SEM o módulo PDV: não renderiza nada e NÃO consulta o banco', async () => {
     state.hasPdv = false;
-    state.ledger = [{ amount: 800 }];
+    state.debt = 80;
 
     await mount('cliente-1');
 
@@ -122,14 +119,15 @@ describe('CustomerDeleteDebtNotice — aviso de fiado na exclusão de cliente', 
     expect(state.reads).toEqual([]);
   });
 
-  it('COM o módulo e dívida em aberto: avisa quanto é, com o valor em dinheiro', async () => {
+  it('COM o módulo e dívida canônica de R$80: avisa sem consultar o ledger antigo', async () => {
     state.hasPdv = true;
-    state.ledger = [{ amount: 500 }, { amount: 300 }];
+    state.debt = 80;
 
     await mount('cliente-1');
 
     expect(texto()).toContain('Fiado em aberto');
-    expect(texto()).toContain('R$ 800,00');
+    expect(texto()).toContain('R$ 80,00');
+    expect(state.reads).toEqual(['pdv_get_customer_credit_summary_v3']);
     // Copy PT-BR, sem travessão, dizendo o que o operador está abrindo mão.
     expect(texto()).toContain('a cobrança fica sem registro');
     expect(texto()).not.toContain('—');
@@ -141,7 +139,7 @@ describe('CustomerDeleteDebtNotice — aviso de fiado na exclusão de cliente', 
 
   it('COM o módulo e saldo quitado: não avisa nada', async () => {
     state.hasPdv = true;
-    state.ledger = [{ amount: 500 }, { amount: -500 }];
+    state.debt = 0;
 
     await mount('cliente-1');
 
@@ -150,7 +148,7 @@ describe('CustomerDeleteDebtNotice — aviso de fiado na exclusão de cliente', 
 
   it('COM o módulo e crédito a favor do cliente: não avisa nada', async () => {
     state.hasPdv = true;
-    state.ledger = [{ amount: -120 }];
+    state.debt = -120;
 
     await mount('cliente-1');
 
@@ -159,7 +157,7 @@ describe('CustomerDeleteDebtNotice — aviso de fiado na exclusão de cliente', 
 
   it('diálogo fechado (customerId null): não consulta o banco nem com o módulo', async () => {
     state.hasPdv = true;
-    state.ledger = [{ amount: 800 }];
+    state.debt = 80;
 
     await mount(null);
 

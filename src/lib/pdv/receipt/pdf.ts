@@ -2,7 +2,7 @@ import { jsPDF } from 'jspdf';
 import { autoTable, type UserOptions, type RowInput } from 'jspdf-autotable';
 import { openPdfInTab } from '@/utils/openPdfInTab';
 import { DOMINEX_LOGO_BLACK_BASE64 } from '@/utils/dominexLogoBase64';
-import { buildPdvReceiptItemBlocks, buildPdvReceiptLines, getPdvReceiptItemColumnProportions, getPdvReceiptPaymentRows, fitPdvReceiptLogo, stackPdvReceiptItemColumns } from './layout';
+import { buildPdvReceiptItemBlocks, buildPdvReceiptLines, getPdvReceiptItemColumnProportions, getPdvReceiptPaymentRows, fitPdvReceiptLogo, stackPdvReceiptItemColumns, PDV_RECEIPT_SIGNATURE_SPACE_MM } from './layout';
 import { formatReceiptMoney, getPdvReceiptApproval, getPdvReceiptCoverageLines, getPdvReceiptDocumentMetadata, getPdvReceiptNote, receiptFilename, type PdvReceiptFormat, type PdvReceiptSnapshot } from './model';
 import { safeTimeZone } from '@/lib/timezone';
 
@@ -152,23 +152,16 @@ function renderStructuredReceipt(doc: jsPDF, snapshot: PdvReceiptSnapshot, forma
   const dateOptions = { timeZone: safeTimeZone(snapshot.company.timeZone) };
   const issuedAt = `${issuedDate.toLocaleDateString('pt-BR', dateOptions)}\n${issuedDate.toLocaleTimeString('pt-BR', { ...dateOptions, hour: '2-digit', minute: '2-digit' })}`;
   const title = isDelivery ? `${metadata.title}\nPEDIDO Nº ${snapshot.order.number}` : `${metadata.title} Nº ${snapshot.order.number}`;
-  table({
-    body: [[title]],
-    styles: { font: PDF_SANS_FONT, fontSize: isA4 ? 21 : format === '58mm' ? 12 : 14, fontStyle: 'bold', textColor: 0, fillColor: 255, lineWidth: 0, cellPadding: {top:0,right:0,bottom:1,left:0}, overflow: 'linebreak' },
-    pageBreak: 'avoid',
-  });
-  if (!isDelivery && snapshot.order.budgetNumber != null) {
-    table({ body: [[`Origem: Orçamento Nº ${snapshot.order.budgetNumber}`]], styles: { font: PDF_SANS_FONT, fontSize: isA4 ? 9 : 8, textColor: 0, lineWidth: 0, cellPadding: 0 } });
-  }
-  // Uma moldura leve mantém o contexto unido; o título tem hierarquia própria.
+  // Mesmo bloco do comprovante EcoSistema: título, cliente e operador/data.
   table({
     body: [
+      [{ content: title, colSpan: 2, styles: { fontStyle: 'bold' as const, fontSize: isA4 ? 18 : format === '58mm' ? 11 : 13, halign: 'center' as const, cellPadding: isA4 ? 3 : 2 } }],
+      ...(!isDelivery && snapshot.order.budgetNumber != null ? [[{ content: `Origem: Orçamento Nº ${snapshot.order.budgetNumber}`, colSpan: 2 }]] : []),
       [{ content: `Cliente: ${snapshot.order.customerName || 'Não informado'}`, colSpan: 2, styles: { fontStyle: 'bold' as const, fontSize: isA4 ? 10 : format === '58mm' ? 8 : 9 } }],
-      [`Operador: ${(isDelivery ? snapshot.withdrawal?.operatorName : null) || snapshot.order.operatorName}${!isDelivery && snapshot.order.terminalName ? `\n${snapshot.order.terminalName}` : ''}`, issuedAt],
-      ...(isDelivery && snapshot.withdrawal ? [[{ content: `Registro de retirada: ${snapshot.withdrawal.id}${snapshot.withdrawal.stockName ? `\nLocal: ${snapshot.withdrawal.stockName}` : ''}`, colSpan: 2 }]] : []),
+      [`Operador: ${(isDelivery ? snapshot.withdrawal?.operatorName : null) || snapshot.order.operatorName}`, issuedAt],
     ],
-    styles: { font: PDF_SANS_FONT, fontSize: isA4 ? 9 : 8, textColor: 0, fillColor: 255, lineColor: 130, lineWidth: 0.18, cellPadding: isA4 ? 2 : format === '58mm' ? 1.2 : 1.4, overflow: 'linebreak', halign: 'left', valign: 'middle' },
-    columnStyles: { 0: { cellWidth: contentWidth * 0.65 }, 1: { cellWidth: contentWidth * 0.35, halign:'right' } },
+    styles: { font: PDF_SANS_FONT, fontSize: isA4 ? 9 : 8, textColor: 0, fillColor: 255, lineColor: 130, lineWidth: 0.18, cellPadding: isA4 ? 2 : format === '58mm' ? 1.2 : 1.4, overflow: 'linebreak', halign: 'center', valign: 'middle' },
+    columnStyles: { 0: { cellWidth: contentWidth * 0.65 }, 1: { cellWidth: contentWidth * 0.35 } },
     pageBreak: 'avoid',
   });
   const pendingPrices = snapshot.items.some(item => item.pricePending);
@@ -292,13 +285,23 @@ function renderStructuredReceipt(doc: jsPDF, snapshot: PdvReceiptSnapshot, forma
   }
 
   if (isDelivery) {
+    const writingSpace = PDV_RECEIPT_SIGNATURE_SPACE_MM[format];
+    const receiver = snapshot.withdrawal?.receivedBy;
     table({
       body: [
-        [snapshot.withdrawal?.receivedBy ? `Recebido por: ${snapshot.withdrawal.receivedBy}` : `Recebido por: ${'_'.repeat(format === '58mm' ? 20 : 32)}`],
-        [`Assinatura: ${'_'.repeat(format === '58mm' ? 24 : 36)}`],
+        ...(receiver ? [[`Recebido por: ${receiver}`]] : []),
+        [{ content: '', styles: { minCellHeight: writingSpace + 8, cellPadding: 0 } }],
       ],
-      styles: { font: PDF_SANS_FONT, fontSize, textColor: 0, lineWidth: 0, cellPadding: { top: isA4 ? 4 : 3, right: padding, bottom: isA4 ? 4 : 3, left: padding }, overflow: 'linebreak' },
+      styles: { font: PDF_SANS_FONT, fontSize, textColor: 0, lineWidth: 0, cellPadding: { top: 1, right: padding, bottom: 1, left: padding }, overflow: 'linebreak' },
       pageBreak: 'avoid',
+      didDrawCell(data) {
+        if (data.section !== 'body' || data.row.index !== (receiver ? 1 : 0)) return;
+        const lineY = data.cell.y + writingSpace;
+        doc.setDrawColor(0); doc.setLineWidth(0.2);
+        doc.line(data.cell.x + 2, lineY, data.cell.x + data.cell.width - 2, lineY);
+        doc.setFont(PDF_SANS_FONT, 'normal'); doc.setFontSize(fontSize);
+        doc.text('Assinatura de quem retirou', width / 2, lineY + 4.5, { align: 'center' });
+      },
     });
   }
   const approval = getPdvReceiptApproval(snapshot);

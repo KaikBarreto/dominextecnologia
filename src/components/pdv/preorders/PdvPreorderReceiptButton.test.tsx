@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PdvPreorderReceiptButton, openPdvPreorderReceipt } from './PdvPreorderReceiptButton';
 
 const mocks = vi.hoisted(() => ({ fetch: vi.fn(), pdf: vi.fn(), open: vi.fn(), pending: vi.fn(), toast: vi.fn(), device: vi.fn(), company: vi.fn() }));
+vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'user-fixture' }, profile: { user_id: 'user-fixture', company_id: 'company-fixture', is_active: true }, roles: ['admin'], permissions: [], hasPermissionRecord: false, loading: false, profileLoading: false }) }));
 vi.mock('@/hooks/usePdvPreorders', () => ({ fetchPdvPreorderDetail: mocks.fetch }));
 vi.mock('@/hooks/usePdvReceiptCompany', () => ({ usePdvReceiptCompany: mocks.company, PDV_RECEIPT_COMPANY_PENDING: 'Aguarde a identificação da empresa para gerar o comprovante.' }));
 vi.mock('@/hooks/usePdvReceiptSettings', () => ({ usePdvReceiptSettings: () => ({ data: { defaultFormat: 'a4', stages: { budget: { format: '58mm', copies: 1, autoPrint: false } } } }) }));
@@ -24,7 +25,7 @@ describe('comprovante do orçamento', () => {
     render(<PdvPreorderReceiptButton preorderId="budget-12" customerName="Cliente exemplo" />);
     fireEvent.click(screen.getByRole('button', { name: /gerar comprovante/i }));
     await waitFor(() => expect(mocks.open).toHaveBeenCalledOnce());
-    expect(mocks.fetch).toHaveBeenCalledWith('budget-12');
+    expect(mocks.fetch).toHaveBeenCalledWith('budget-12', expect.any(AbortSignal));
     expect(mocks.pdf).toHaveBeenCalledWith(expect.objectContaining({ documentKind: 'budget', payments: [], totals: { subtotal: 20, discount: 0, total: 20 } }), '58mm', { copies: 1 });
     expect(mocks.open.mock.calls[0][1]).toBe('Orçamento 12 - Cliente exemplo');
   });

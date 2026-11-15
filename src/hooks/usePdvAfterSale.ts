@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { invalidatePdvReportCaches, usePdvAuthorizedQueryScope } from '@/hooks/pdvReportCache';
@@ -90,6 +91,17 @@ export interface PdvAfterSaleReturn {
   exchanges: PdvAfterSaleExchange[];
 }
 
+export type PdvResidualVoucher = Pick<PdvAfterSaleVoucher, 'voucherId' | 'publicCode' | 'expiresOn' | 'balance'> & {
+  issuedAmount: number | null; status: PdvAfterSaleVoucherStatus | null; canReverse: boolean; eligibilityKnown: boolean;
+};
+export type PdvResidualRefund = Pick<PdvAfterSaleRefund, 'refundId' | 'method' | 'amount' | 'status' | 'requiresConfirmationReference' | 'canConfirm' | 'canReverse'> & { eligibilityKnown: boolean };
+export interface PdvAfterSaleResidual {
+  cancellationId: string; orderId: string; occurredOn: string; reason: string;
+  accessMasked: boolean;
+  residualAmount: number | null; reductionAmount: number | null; creditedAmount: number | null; unallocatedAmount: number | null;
+  financialStatus: 'allocated' | 'pending_disposition' | null; vouchers: PdvResidualVoucher[]; refunds: PdvResidualRefund[];
+}
+
 export interface PdvAfterSaleCashOption { sessionId: string; terminalId: string; terminalName: string; accountId: string; label: string }
 export interface PdvAfterSaleAccountOption { accountId: string; label: string; methods: Array<'pix' | 'transferencia'> }
 export interface PdvAfterSaleExchangeCandidate { orderId: string; orderNumber: number; total: number; status: string; createdAt: string }
@@ -103,6 +115,7 @@ export interface PdvAfterSaleWorkspace {
   orderCandidates: PdvAfterSaleOrderCandidate[];
   exchangeCandidates: PdvAfterSaleExchangeCandidate[];
   returns: PdvAfterSaleReturn[];
+  residualCancellation?: PdvAfterSaleResidual | null;
 }
 
 export interface PdvVoucherSearchItem {
@@ -223,6 +236,47 @@ const methods = new Set<PdvAfterSalePayment['method']>(['dinheiro', 'pix', 'tran
 const voucherStatuses = new Set<PdvAfterSaleVoucherStatus>(['active', 'exhausted', 'expired', 'reversed']);
 const refundStatuses = new Set<PdvAfterSaleRefundStatus>(['pending', 'settled', 'reversed']);
 
+export function projectPdvResidualAfterSale(payload: unknown, orderId: string): PdvAfterSaleResidual | null {
+  if (payload === null || payload === undefined) return null;
+  const item = record(payload);
+  if (item.order_id !== orderId || item.source_kind !== 'order_residual_cancellation_v3'
+    || (item.access_masked !== undefined && typeof item.access_masked !== 'boolean')) throw new Error('Contrato inválido: residual.source.');
+  const basic = { cancellationId: requiredText(item.cancellation_id, 'cancellation_id'), orderId,
+    occurredOn: isoDate(item.occurred_on, 'occurred_on'), reason: requiredText(item.reason, 'reason') };
+  if (item.access_masked === true) return { ...basic, accessMasked: true, residualAmount: null, reductionAmount: null,
+    creditedAmount: null, unallocatedAmount: null, financialStatus: null, vouchers: [], refunds: [] };
+  const money = (value: unknown): number => {
+    const amount = requiredNumber(value, 'residual.amount');
+    if (pdvMoneyCentsFromNumber(amount) === null) throw new Error('Contrato inválido: residual.amount.');
+    return amount;
+  };
+  if (item.order_id !== orderId || item.source_kind !== 'order_residual_cancellation_v3'
+    || !['allocated', 'pending_disposition'].includes(String(item.financial_status))) throw new Error('Contrato inválido: residual.source.');
+  const residualAmount = money(item.residual_amount); const unallocatedAmount = money(item.unallocated_amount);
+  if (unallocatedAmount > residualAmount || (item.financial_status === 'allocated') !== (unallocatedAmount === 0)) throw new Error('Contrato inválido: residual.allocation.');
+  const dispositions = list(item.dispositions, entry => { const d = record(entry); const amount = requiredNumber(d.amount, 'disposition.amount'); if (pdvMoneyCentsFromNumber(Math.abs(amount)) === null) throw new Error('Contrato inválido: disposition.amount.'); return { kind: requiredText(d.disposition_kind, 'disposition_kind'), amount }; });
+  const total = (kind: string) => Math.round(dispositions.filter(d => d.kind === kind).reduce((sum, d) => sum + d.amount, 0) * 100) / 100;
+  return {
+    ...basic, accessMasked: false, residualAmount, unallocatedAmount, reductionAmount: total('receivable_reduction'), creditedAmount: total('customer_credit'),
+    financialStatus: item.financial_status as PdvAfterSaleResidual['financialStatus'],
+    vouchers: list(item.vouchers, entry => {
+      const v = record(entry); const known = v.can_reverse !== undefined && v.status !== undefined && v.issued_amount !== undefined;
+      if (known && !voucherStatuses.has(v.status as PdvAfterSaleVoucherStatus)) throw new Error('Contrato inválido: voucher.status.');
+      return { voucherId: requiredText(v.voucher_id, 'voucher_id'), publicCode: requiredText(v.public_code, 'public_code'),
+        expiresOn: optionalText(v.expires_on, 'expires_on'), balance: money(v.balance),
+        status: known ? v.status as PdvAfterSaleVoucherStatus : null, issuedAmount: known ? money(v.issued_amount) : null,
+        eligibilityKnown: known, canReverse: known && requiredBoolean(v.can_reverse, 'can_reverse') };
+    }),
+    refunds: list(item.refunds, entry => {
+      const r = record(entry); const known = r.can_confirm !== undefined && r.can_reverse !== undefined && r.requires_confirmation_reference !== undefined;
+      if (!methods.has(r.method as PdvAfterSalePayment['method']) || !refundStatuses.has(r.status as PdvAfterSaleRefundStatus)) throw new Error('Contrato inválido: residual.refund.');
+      return { refundId: requiredText(r.refund_id, 'refund_id'), method: r.method as PdvAfterSalePayment['method'], amount: money(r.amount), status: r.status as PdvAfterSaleRefundStatus,
+        eligibilityKnown: known, canConfirm: known && requiredBoolean(r.can_confirm, 'can_confirm'), canReverse: known && requiredBoolean(r.can_reverse, 'can_reverse'),
+        requiresConfirmationReference: known && requiredBoolean(r.requires_confirmation_reference, 'requires_confirmation_reference') };
+    }),
+  };
+}
+
 export function projectPdvAfterSaleWorkspace(payload: unknown): PdvAfterSaleWorkspace {
   const root = record(payload);
   const order = record(root.order);
@@ -269,6 +323,7 @@ export function projectPdvAfterSaleWorkspace(payload: unknown): PdvAfterSaleWork
       const item = record(entry);
       return { orderId: requiredText(item.order_id, `exchange_candidates.${index}.order_id`), orderNumber: requiredNumber(item.order_number, `exchange_candidates.${index}.order_number`), total: requiredNumber(item.total, `exchange_candidates.${index}.total`), status: requiredText(item.status, `exchange_candidates.${index}.status`), createdAt: isoDate(item.created_at, `exchange_candidates.${index}.created_at`) };
     }),
+    residualCancellation: projectPdvResidualAfterSale(root.residual_cancellation, requiredText(order.order_id, 'order.order_id')),
     returns: list(root.returns, (entry, index) => {
       const item = record(entry);
       const unallocatedAmount = requiredNumber(item.unallocated_amount, `returns.${index}.unallocated_amount`);
@@ -340,7 +395,27 @@ export function usePdvAfterSaleFeature(companyId: string | null | undefined) {
 
 export function usePdvAfterSaleWorkspace(orderId: string | null, enabled: boolean) {
   const scope = usePdvAuthorizedQueryScope();
-  return useQuery({ queryKey: [...PDV_AFTER_SALE_QUERY_ROOT, ...scope.key, 'workspace', orderId], queryFn: () => call('pdv_get_after_sale_workspace_v2', { p_order_id: orderId }).then(projectPdvAfterSaleWorkspace), enabled: Boolean(orderId) && enabled && scope.ready, staleTime: 5_000, gcTime: 0 });
+  const ready = Boolean(orderId) && enabled && scope.ready;
+  const signature = JSON.stringify([scope.key, orderId, ready]);
+  const current = useRef<{ signature: string; epoch: string; mounted: boolean } | null>(null);
+  if (!current.current || current.current.signature !== signature) current.current = { signature, epoch: crypto.randomUUID(), mounted: true };
+  const token = current.current;
+  useEffect(() => { token.mounted = true; return () => { token.mounted = false; }; }, [token]);
+  const isCurrent = () => ready && token.mounted && current.current === token;
+  const query = useQuery({
+    queryKey: [...PDV_AFTER_SALE_QUERY_ROOT, ...scope.key, 'workspace', orderId, token.epoch], enabled: ready,
+    staleTime: 5_000, gcTime: 0, placeholderData: () => undefined,
+    queryFn: async ({ signal }) => {
+      const request = rpc('pdv_get_after_sale_workspace_v2', { p_order_id: orderId }) as Promise<RpcResult> & { abortSignal?: (signal: AbortSignal) => Promise<RpcResult> };
+      const result = await (request.abortSignal ? request.abortSignal(signal) : request);
+      if (!isCurrent() || signal.aborted) throw new Error('O contexto do pedido mudou.');
+      if (result.error) throw mapPdvAfterSaleError(result.error);
+      const data = projectPdvAfterSaleWorkspace(result.data);
+      if (data.order.orderId !== orderId) throw new Error('Não foi possível conferir os dados deste pedido.');
+      return data;
+    },
+  });
+  return { ...query, data: ready && isCurrent() ? query.data : undefined, scopeKey: token.epoch, isCurrent };
 }
 
 export function usePdvVoucherSearch(input: { query: string; customerId: string | null; limit?: number; offset?: number; enabled: boolean }) {

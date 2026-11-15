@@ -1897,6 +1897,11 @@ export type Database = {
       }
       company_nfce_settings: {
         Row: {
+          after_payment_mode: string
+          default_operation_nature: string
+          include_identified_consumer: boolean
+          open_danfce_after_authorization: boolean
+          automatic_canary_approved: boolean
           access_url_homologation: string | null
           access_url_production: string | null
           approved_at: string | null
@@ -1914,6 +1919,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          after_payment_mode?: string
+          default_operation_nature?: string
+          include_identified_consumer?: boolean
+          open_danfce_after_authorization?: boolean
+          automatic_canary_approved?: boolean
           access_url_homologation?: string | null
           access_url_production?: string | null
           approved_at?: string | null
@@ -1931,6 +1941,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          after_payment_mode?: string
+          default_operation_nature?: string
+          include_identified_consumer?: boolean
+          open_danfce_after_authorization?: boolean
+          automatic_canary_approved?: boolean
           access_url_homologation?: string | null
           access_url_production?: string | null
           approved_at?: string | null
@@ -20172,8 +20187,32 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      finance_get_pdv_reconciliation_v3: {
+        Args: { p_projection: string; p_from: string; p_to: string; p_limit?: number; p_offset?: number }
+        Returns: Json
+      }
+      finance_get_pdv_reconciliation_entry_v3: {
+        Args: { p_event_key: string; p_projection: string; p_from: string; p_to: string }
+        Returns: Json
+      }
       pdv_fmt_brl: { Args: { p_value: number }; Returns: string }
       pdv_current_actor_can_read_orders_v4: { Args: never; Returns: boolean }
+      pdv_get_order_residual_plan_v3: {
+        Args: { p_order_id: string }
+        Returns: Json
+      }
+      pdv_get_order_residual_cancellation_v3: {
+        Args: { p_order_id: string }
+        Returns: Json
+      }
+      pdv_cancel_order_residual_v3: {
+        Args: { p_order_id: string; p_reason: string; p_dispositions: Json; p_expected_plan_hash: string; p_idempotency_key: string }
+        Returns: Json
+      }
+      pdv_get_customer_credit_summary_v3: {
+        Args: { p_customer_id: string }
+        Returns: { credit_limit: number | null; debt: number }[]
+      }
       pdv_get_customer_payment_options_v3: {
         Args: { p_customer_id: string }
         Returns: Json

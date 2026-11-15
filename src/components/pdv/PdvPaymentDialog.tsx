@@ -98,6 +98,10 @@ export interface PdvPaymentDialogProps {
   embeddedEditorOpen?: boolean;
   /** Limite e saldo devedor do cliente, pro fiado. */
   customerCredit: PdvCustomerCredit | null;
+  customerCreditPending?: boolean;
+  customerCreditError?: boolean;
+  customerCreditErrorMessage?: string | null;
+  onRetryCustomerCredit?: () => unknown;
   /** Contas que podem receber Pix, transferência e cartão (sem cartão de crédito). */
   accounts: AccountOptionSource[];
   /** Pode selecionar contas em pagamentos, sem necessariamente ver seus saldos. */
@@ -196,6 +200,10 @@ export function PdvPaymentDialog({
   appliedCreditContent,
   embeddedEditorOpen = false,
   customerCredit,
+  customerCreditPending = false,
+  customerCreditError = false,
+  customerCreditErrorMessage = null,
+  onRetryCustomerCredit,
   accounts,
   canUseBankAccounts,
   hasOpenCashSession,
@@ -287,6 +295,7 @@ export function PdvPaymentDialog({
   const paid = sumPayments(rows);
   const change = computeTotalChange(rows);
   const fiado = sumFiado(rows);
+  const creditUnavailable = fiado > 0 && Boolean(customerId) && (customerCreditPending || customerCreditError);
 
   const validation = useMemo(
     () =>
@@ -450,7 +459,7 @@ export function PdvPaymentDialog({
 
   async function handleConfirm() {
     setTouched(true);
-    if (embeddedEditorOpen || submitGuard.current || !validation.ok) return;
+    if (embeddedEditorOpen || submitGuard.current || !validation.ok || creditUnavailable) return;
     submitGuard.current = true;
     setSubmitting(true);
     setServerError(null);
@@ -589,7 +598,7 @@ export function PdvPaymentDialog({
     {serverError && <NoticeBanner variant="destructive">{serverError}</NoticeBanner>}
     {embeddedEditorOpen ? <p className="py-1 text-center text-sm font-medium text-muted-foreground" role="status">Aplique ou cancele a escolha do voucher acima para continuar.</p> : <div className="flex gap-3">
       <Button type="button" variant="cancel-ghost" disabled={submitting} onClick={() => onOpenChange(false)} className="h-[52px] font-bold sm:h-14">{texts.cancel}</Button>
-      <Button type="button" className="h-[52px] flex-1 font-bold sm:h-14" autoFocus={payableTotal === 0 && !isCompact} disabled={submitting || !validation.ok} onClick={handleConfirm}>{submitting && <Loader2 className="h-4 w-4 animate-spin" />}{submitting ? texts.submitting : texts.confirm}<kbd className="ml-1 hidden rounded border border-current/30 px-1 text-[10px] opacity-70 sm:inline">F9</kbd></Button>
+      <Button type="button" className="h-[52px] flex-1 font-bold sm:h-14" autoFocus={payableTotal === 0 && !isCompact} disabled={submitting || !validation.ok || creditUnavailable} onClick={handleConfirm}>{submitting && <Loader2 className="h-4 w-4 animate-spin" />}{submitting ? texts.submitting : texts.confirm}<kbd className="ml-1 hidden rounded border border-current/30 px-1 text-[10px] opacity-70 sm:inline">F9</kbd></Button>
     </div>}
   </div>;
 
@@ -616,13 +625,17 @@ export function PdvPaymentDialog({
           <div className="payment-active-rows"><AnimatePresence initial={false}>{sortedRows.filter(row => row.method !== 'saldo_cliente').map(renderSelectedPayment)}</AnimatePresence></div>
         </div> : <NoticeBanner variant="success" icon={Ticket} title="Venda coberta pelo voucher" role="status">Nenhum outro recebimento é necessário. Confirme para concluir a venda.</NoticeBanner>}
 
-        {fiado > 0 && customerName && customerCredit?.creditLimit != null && <p className="text-xs leading-relaxed text-muted-foreground">{texts.creditInfo.replace('{name}', customerName).replace('{debt}', money(customerCredit.debt)).replace('{limit}', money(customerCredit.creditLimit))}</p>}
+        {creditUnavailable && <div className="flex flex-wrap items-center justify-between gap-2" role={customerCreditError ? 'alert' : 'status'}>
+          <p className={customerCreditError ? 'text-sm text-destructive' : 'text-sm text-muted-foreground'}>{customerCreditError ? (customerCreditErrorMessage || 'Não foi possível conferir a dívida e o limite do cliente.') : 'Conferindo a dívida e o limite do cliente…'}</p>
+          {customerCreditError && onRetryCustomerCredit && <Button type="button" variant="outline" size="sm" onClick={() => void onRetryCustomerCredit()}>Tentar novamente</Button>}
+        </div>}
+        {fiado > 0 && customerName && customerCredit && <p className="text-xs leading-relaxed text-muted-foreground">{(customerCredit.debt < 0 ? texts.creditBalanceInfo : customerCredit.creditLimit != null ? texts.creditInfo : texts.creditDebtInfo).replace('{name}', customerName).replace('{debt}', money(customerCredit.debt)).replace('{balance}', money(Math.abs(customerCredit.debt))).replace('{limit}', money(customerCredit.creditLimit ?? 0))}</p>}
         {(multiplePayments || change > 0) && <div className="paymentsplitstatus grid grid-cols-2 gap-3 border-t pt-3 text-sm">
           <div><p className="text-xs text-muted-foreground">Distribuído</p><strong className="whitespace-nowrap tabular-nums">{money(paid)}</strong></div>
           <div className="text-right"><p className="text-xs text-muted-foreground">{change > 0 ? texts.change : remaining < -0.01 ? texts.excess : texts.remaining}</p><strong className="whitespace-nowrap tabular-nums">{money(change > 0 ? change : Math.abs(remaining))}</strong></div>
           <div className="payprogress" aria-hidden="true"><div style={{ width: `${Math.min(100, Math.max(0, payableTotal ? paid / payableTotal * 100 : 100))}%` }} /></div>
         </div>}
-        {validation.warnings.map((code) => <NoticeBanner key={code} variant="warning">{texts.warnings[code]}</NoticeBanner>)}
+        {validation.warnings.filter(code => !creditUnavailable || code !== 'cliente_sem_limite_definido').map((code) => <NoticeBanner key={code} variant="warning">{texts.warnings[code]}</NoticeBanner>)}
       </section>
     </motion.div>
   </ResponsiveModal>;

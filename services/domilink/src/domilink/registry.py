@@ -37,7 +37,12 @@ class DeviceRegistry:
             )
         if config.adapter == "system-pdf" and config.kind == "printer":
             return SystemPdfPrinter(
-                config.id, config.label, printer_name=str(options.get("printer_name", ""))
+                config.id,
+                config.label,
+                printer_name=str(options.get("printer_name", "")),
+                paper_width_mm=(
+                    float(options["paper_width_mm"]) if options.get("paper_width_mm") else None
+                ),
             )
         if config.adapter.startswith("escpos-") and config.kind == "printer":
             return EscposPrinter(

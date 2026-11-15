@@ -31,6 +31,43 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.3',
+    date: '15 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Devoluções com destino do saldo mais claro',
+        category: 'melhoria',
+        description: 'Ao devolver ou cancelar itens de uma venda já paga, o operador confere o destino do saldo e acompanha o histórico da operação, conforme suas permissões.',
+      },
+      {
+        title: 'Voucher durante o recebimento',
+        category: 'melhoria',
+        description: 'O voucher é um crédito que o cliente pode aproveitar em outra compra. Durante o recebimento, é possível conferir o saldo disponível e escolher o valor a usar.',
+      },
+      {
+        title: 'Consulta de fiado mais confiável',
+        category: 'correcao',
+        description: 'Se não for possível consultar os valores do cliente, o sistema avisa e permite tentar novamente, evitando confundir uma falha de consulta com saldo zerado.',
+      },
+      {
+        title: 'Comprovantes mais organizados',
+        category: 'melhoria',
+        description: 'Pedidos, orçamentos e retiradas têm identificação mais clara nos comprovantes térmicos e A4, com espaço para assinatura e acesso respeitando as permissões do operador.',
+      },
+      {
+        title: 'Configuração manual do DomiLink',
+        category: 'melhoria',
+        description: 'A configuração oferece o pacote do DomiLink e orientações para conexão local dos equipamentos. A compatibilidade de cada equipamento ainda exige validação física.',
+      },
+      {
+        title: 'Preparação da NFC-e após a venda',
+        category: 'melhoria',
+        description: 'A venda concluída pode iniciar o preenchimento da NFC-e com os dados do atendimento. A emissão depende da configuração fiscal e da homologação do emitente.',
+      },
+    ],
+  },
+  {
     version: '1.41.2',
     date: '15 de novembro de 2026',
     type: 'patch',

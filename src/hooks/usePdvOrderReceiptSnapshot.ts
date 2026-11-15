@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toReceiptCents, type PdvReceiptSnapshot } from '@/lib/pdv/receipt/model';
@@ -5,7 +6,8 @@ import { PdvReceiptSettingsError } from '@/hooks/usePdvReceiptSettings';
 import { usePdvAuthorizedQueryScope } from '@/hooks/pdvReportCache';
 
 type RpcResult = { data: unknown; error: { details?: string; message?: string } | null };
-type RpcCaller = (name: string,args?:Record<string,unknown>)=>Promise<RpcResult>;
+type RpcRequest = PromiseLike<RpcResult> & { abortSignal?: (signal: AbortSignal) => RpcRequest };
+type RpcCaller = (name: string,args?:Record<string,unknown>)=>RpcRequest;
 const rpc=supabase.rpc.bind(supabase) as unknown as RpcCaller;
 
 const object=(value:unknown):Record<string,unknown>|null=>value&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:null;
@@ -48,13 +50,30 @@ export function projectPdvOrderReceiptSnapshot(payload:unknown):PdvReceiptSnapsh
   };
 }
 
-export async function fetchPdvOrderReceiptSnapshot(orderId:string):Promise<PdvReceiptSnapshot>{
-  const {data,error}=await rpc('pdv_get_order_receipt_snapshot_v3',{p_order_id:orderId});
+export async function fetchPdvOrderReceiptSnapshot(orderId:string,signal?:AbortSignal):Promise<PdvReceiptSnapshot>{
+  let request=rpc('pdv_get_order_receipt_snapshot_v3',{p_order_id:orderId});
+  if(signal&&request.abortSignal)request=request.abortSignal(signal);
+  const {data,error}=await request;
   if(error){const code=/(?:^|\s)code=([a-z0-9_]+)/i.exec(error.details??'')?.[1]??'pdv_receipt_unknown';const messages:Record<string,string>={pdv_receipt_not_found:'O comprovante deste pedido ainda não está disponível.',pdv_receipt_order_denied:'Você não tem permissão para consultar este comprovante.',pdv_receipt_integrity_failed:'O comprovante salvo requer revisão.'};throw new PdvReceiptSettingsError(messages[code]??'Não foi possível carregar o comprovante.',code);}
   return projectPdvOrderReceiptSnapshot(data);
 }
 
 export function usePdvOrderReceiptSnapshot(orderId:string|null,enabled=false){
   const scope=usePdvAuthorizedQueryScope();
-  return useQuery({queryKey:['pdv','orders',...scope.key,orderId,'receipt-snapshot'],queryFn:()=>fetchPdvOrderReceiptSnapshot(orderId!),enabled:Boolean(orderId)&&enabled&&scope.ready,staleTime:30_000,gcTime:0});
+  const allowed=Boolean(orderId)&&enabled&&scope.ready;
+  const signature=JSON.stringify([scope.key,orderId,allowed]);
+  const current=useRef({signature});
+  if(current.current.signature!==signature)current.current={signature};
+  const captured=current.current;
+  const query=useQuery({
+    queryKey:['pdv','orders',...scope.key,orderId,'receipt-snapshot'],
+    queryFn:async({signal})=>{
+      const assertCurrent=()=>{if(!allowed||signal.aborted||current.current!==captured)throw new DOMException('O contexto do comprovante mudou.','AbortError');};
+      assertCurrent();
+      try{return await fetchPdvOrderReceiptSnapshot(orderId!,signal);}
+      finally{assertCurrent();}
+    },
+    enabled:allowed,staleTime:30_000,gcTime:0,placeholderData:()=>undefined,
+  });
+  return allowed?query:{...query,data:undefined};
 }

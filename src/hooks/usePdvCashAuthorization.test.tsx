@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
-  auth: { user: { id: 'user-1' }, profile: { company_id: 'company-1' }, roles: ['admin'], permissions: ['screen:pdv'], hasPermissionRecord: true, loading: false, profileLoading: false },
+  auth: { user: { id: 'user-1' }, profile: { company_id: 'company-1', user_id: 'user-1', is_active: true }, roles: ['admin'], permissions: ['screen:pdv'], hasPermissionRecord: true, loading: false, profileLoading: false },
   enabled: true,
   marker: 'first',
   deny: false,
@@ -65,7 +65,7 @@ function expectNoPreviousData(result: ReturnType<typeof useWorkspace>) {
 
 beforeEach(() => {
   vi.clearAllMocks(); state.enabled = true; state.marker = 'first'; state.deny = false;
-  state.auth = { user: { id: 'user-1' }, profile: { company_id: 'company-1' }, roles: ['admin'], permissions: ['screen:pdv'], hasPermissionRecord: true, loading: false, profileLoading: false };
+  state.auth = { user: { id: 'user-1' }, profile: { company_id: 'company-1', user_id: 'user-1', is_active: true }, roles: ['admin'], permissions: ['screen:pdv'], hasPermissionRecord: true, loading: false, profileLoading: false };
   state.rpc.mockImplementation(async (name, args) => reply(name, args));
 });
 
@@ -79,8 +79,8 @@ describe('caixas v2 — cache autorizado de todas as leituras', () => {
     expect(result.current.history.history).toHaveLength(1);
     const previousScope = result.current.cash.authorizationScopeKey;
     state.marker = 'second';
-    if (change === 'user') state.auth.user = { id: 'user-2' };
-    if (change === 'company') state.auth.profile = { company_id: 'company-2' };
+    if (change === 'user') { state.auth.user = { id: 'user-2' }; state.auth.profile.user_id = 'user-2'; }
+    if (change === 'company') state.auth.profile = { company_id: 'company-2', user_id: state.auth.user.id, is_active: true };
     if (change === 'permissions') state.auth.permissions = [];
     if (change === 'roles') state.auth.roles = ['comercial'];
     if (change === 'permission-record') state.auth.hasPermissionRecord = false;

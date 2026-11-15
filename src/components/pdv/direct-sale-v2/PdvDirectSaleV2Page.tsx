@@ -9,7 +9,7 @@ import { PdvSalePreviewView } from '@/components/pdv/PdvSalePreviewView';
 import { PdvPaymentDialog } from '@/components/pdv/PdvPaymentDialog';
 import { PdvAppliedVoucherControl } from '@/components/pdv/PdvAppliedVoucherControl';
 import { type PdvGridProduct } from '@/components/pdv/PdvProductCard';
-import { PdvOrderReceiptButton, openPdvOrderReceipt } from '@/components/pdv/receipt/PdvOrderReceiptButton';
+import { PdvOrderReceiptButton, usePdvOrderReceiptOpener } from '@/components/pdv/receipt/PdvOrderReceiptButton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
@@ -128,6 +128,7 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
   const controlsRef = useRef<HTMLDivElement>(null);
   const rowRef = useRef<HTMLDivElement>(null);
   const autoReceipt = usePdvStageReceiptAuto();
+  const receiptOpener = usePdvOrderReceiptOpener();
 
   const catalog = directSale.catalog.data;
   useEffect(() => {
@@ -404,7 +405,7 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
     const signature = saleSignature(cart, terminal.id, notes, transactionDate, payments);
     attemptRef.current = resolvePdvDirectSaleAttemptV2(attemptRef.current, signature);
     const attemptId = attemptRef.current.id;
-    const receiptAttempt = autoReceipt.prepare('sale');
+    const receiptAttempt = receiptOpener.guardAttempt(autoReceipt.prepare('sale'));
     let result: Awaited<ReturnType<typeof directSale.complete.mutateAsync>>;
     try {
     result = await directSale.complete.mutateAsync({
@@ -428,8 +429,9 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
       payments,
     });
 
-    } catch (error) { receiptAttempt.cancel(); throw error; }
-    void receiptAttempt.commit(`sale:${result.orderId}`, (format, options) => openPdvOrderReceipt(result.orderId, format, { ...options, documentKind: 'sale' }), result.idempotent);
+    } catch (error) { receiptAttempt.cancel(); if (receiptOpener.isCurrent()) throw error; return; }
+    if (!receiptOpener.isCurrent()) { receiptAttempt.cancel(); return; }
+    void receiptAttempt.commit(`sale:${result.orderId}`, (format, options) => receiptOpener.open(result.orderId, format, { ...options, documentKind: 'sale' }), result.idempotent);
 
     const readyAttachments = attachments.filter((attachment) => attachment.status === 'ready');
     setCompletedSale({

@@ -5,6 +5,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Mapping, Optional
+from urllib.parse import urlsplit
 
 if sys.version_info >= (3, 11):  # pragma: no cover - ambiente atual usa 3.9
     import tomllib
@@ -58,10 +59,26 @@ def _bounded_int(value: Any, name: str, minimum: int, maximum: int) -> int:
 def _validate_origin(origin: Any) -> str:
     if not isinstance(origin, str) or not origin:
         raise ConfigError("allowed_origins aceita somente origens explícitas")
-    if origin == "*" or "/" in origin.split("://", 1)[-1]:
-        raise ConfigError("origem curinga ou com caminho não é permitida")
-    if not origin.startswith(("http://", "https://")):
-        raise ConfigError("origem deve começar com http:// ou https://")
+    try:
+        parsed = urlsplit(origin)
+        valid = (
+            parsed.scheme in {"http", "https"}
+            and parsed.hostname
+            and parsed.username is None
+            and parsed.password is None
+            and parsed.path in {"", "/"}
+            and not parsed.query
+            and not parsed.fragment
+            and "*" not in origin
+            and not any(character.isspace() for character in origin)
+        )
+        _ = parsed.port  # Valida porta/faixa e IPv6 antes de iniciar o serviço.
+    except ValueError as exc:
+        raise ConfigError(
+            "Configure a origem exata do aplicativo, sem caminho ou credenciais"
+        ) from exc
+    if not valid:
+        raise ConfigError("Configure a origem exata do aplicativo, sem caminho ou credenciais")
     return origin.rstrip("/")
 
 

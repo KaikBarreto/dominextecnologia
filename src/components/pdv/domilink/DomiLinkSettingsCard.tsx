@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { DomiLinkBrand } from './DomiLinkBrand';
-import { Barcode, ChevronDown, CircleAlert, Loader2, Printer, Scale, Unplug } from 'lucide-react';
+import { Barcode, ChevronDown, CircleAlert, Download, Loader2, Printer, Scale, Unplug } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -54,6 +54,11 @@ export function DomiLinkSettingsCard() {
     </div>
 
     <p className="text-sm text-muted-foreground">Conecte a impressora, a balança e o leitor deste computador.</p>
+
+    <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-3">
+      <Button type="button" variant="outline" size="sm" asChild><a href="/downloads/domilink/domilink-fontes-0.1.0.zip" download><Download className="mr-2 h-4 w-4" />Baixar pacote Python</a></Button>
+      <p className="text-xs text-muted-foreground">Instalação manual · requer Python 3.9 ou mais recente. As instruções acompanham o pacote.</p>
+    </div>
 
     {!domiLink.enabled && <p className="mt-4 text-sm text-muted-foreground">Desligado neste computador. Os equipamentos podem ser conectados quando você precisar.</p>}
 

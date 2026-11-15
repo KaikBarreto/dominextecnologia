@@ -167,15 +167,32 @@ describe('generatePdvReceiptPdf', () => {
 
     const deliveryText = await readPdfContent(generatePdvReceiptPdf(getPdvReceiptPreviewFixture('delivery'), format));
     expect(deliveryText).toContain('COMPROVANTE DE RETIRADA');
-    expect(deliveryText).toContain('RET-2087-01');
+    expect(deliveryText).not.toContain('RET-2087-01');
+    expect(deliveryText).not.toContain('Registro de retirada:');
+    expect(deliveryText).not.toContain('Local:');
     expect(deliveryText).toContain('RETIRADO');
     expect(deliveryText).toContain('RESTANTE');
     expect(deliveryText).toContain('1 un');
     expect(deliveryText).toContain('Recebido por: Cliente exemplo');
-    expect(deliveryText).toContain('Assinatura:');
+    expect(deliveryText).toContain('Assinatura de quem retirou');
     expect(deliveryText).not.toContain('R$');
     expect(deliveryText).not.toContain('Subtotal');
     expect(deliveryText).not.toContain('Fiado');
+  });
+
+  it.each(['58mm', '80mm', 'a4'] as const)('deixa área livre antes da única assinatura e não cria outro campo em %s', async format => {
+    const snapshot = getPdvReceiptPreviewFixture('delivery');
+    snapshot.withdrawal!.receivedBy = null;
+    const blob = generatePdvReceiptPdf(snapshot, format);
+    const content = await readPdfContent(blob);
+    expect(content.match(/Assinatura de quem retirou/g)).toHaveLength(1);
+    expect(content).not.toContain('Recebido por:');
+    expect(content).not.toContain('________');
+    const blocks = decodedPdfStreams(await readPdfSource(blob)).flatMap(stream => [...stream.matchAll(/BT[\s\S]*?ET/g)].map(match => match[0]));
+    const index = blocks.findIndex(block => block.includes('(Assinatura de quem retirou) Tj'));
+    const previous = blocks.slice(0, index).reverse().find(block => /[\d.-]+ [\d.-]+ Td/.test(block))!;
+    const y = (block: string) => Number(block.match(/[\d.-]+ ([\d.-]+) Td/)?.[1]);
+    expect((y(previous) - y(blocks[index])) * 25.4 / 72).toBeGreaterThanOrEqual(format === 'a4' ? 26 : 20);
   });
 
   it('não infere crédito aprovado ou pagamento a partir de métodos do snapshot', async () => {
@@ -281,6 +298,21 @@ describe('generatePdvReceiptPdf', () => {
     }
     const y = paymentBlocks.map(block => Number(block.match(/[\d.-]+ ([\d.-]+) Td/)?.[1]));
     expect(new Set(y).size).toBe(3);
+  });
+
+  it.each(['58mm', '80mm', 'a4'] as const)('centraliza os títulos dentro do bloco de identificação em %s', async format => {
+    for (const kind of ['budget', 'pickup'] as const) {
+      const snapshot = getPdvReceiptPreviewFixture(kind);
+      const title = kind === 'budget' ? 'ORÇAMENTO Nº 1042' : 'PEDIDO Nº 2087';
+      const source = decodedPdfStreams(await readPdfSource(generatePdvReceiptPdf(snapshot, format))).join('\n');
+      const block = [...source.matchAll(/BT([\s\S]*?)ET/g)].map(match => match[1]).find(text => text.includes(`(${title}) Tj`))!;
+      expect(block).toBeDefined();
+      const fontSize = Number(block.match(/\/F\d+ ([\d.]+) Tf/)?.[1]);
+      const x = Number(block.match(/([\d.-]+) [\d.-]+ Td/)?.[1]) * 25.4 / 72;
+      const measure = new jsPDF();measure.setFont('helvetica', 'bold');measure.setFontSize(fontSize);
+      const width = format === 'a4' ? 210 : format === '58mm' ? 58 : 80;
+      expect(x + measure.getTextWidth(title) / 2).toBeCloseTo(width / 2, 1);
+    }
   });
 
 });

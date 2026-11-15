@@ -190,6 +190,8 @@ export const pdv = {
         removeRow: 'Remover esta forma de pagamento',
         fillRemaining: 'Usar o que falta',
         creditInfo: '{name} já deve {debt} e o limite é {limit}.',
+        creditDebtInfo: '{name} já deve {debt}.',
+        creditBalanceInfo: '{name} tem {balance} de saldo a favor.',
         creditNoLimit: '{name} já deve {debt} e não tem limite de crédito definido.',
         cashClosedTitle: 'Caixa fechado',
         cashClosedDescription:
@@ -750,6 +752,8 @@ export const pdv = {
         removeRow: 'Remove this payment method',
         fillRemaining: 'Use what is left',
         creditInfo: '{name} already owes {debt} and the limit is {limit}.',
+        creditDebtInfo: '{name} already owes {debt}.',
+        creditBalanceInfo: '{name} has a credit balance of {balance}.',
         creditNoLimit: '{name} already owes {debt} and has no credit limit set.',
         cashClosedTitle: 'Register closed',
         cashClosedDescription:
@@ -1302,6 +1306,8 @@ export const pdv = {
         removeRow: 'Quitar esta forma de pago',
         fillRemaining: 'Usar lo que falta',
         creditInfo: '{name} ya debe {debt} y el límite es {limit}.',
+        creditDebtInfo: '{name} ya debe {debt}.',
+        creditBalanceInfo: '{name} tiene {balance} de saldo a favor.',
         creditNoLimit: '{name} ya debe {debt} y no tiene límite de crédito definido.',
         cashClosedTitle: 'Caja cerrada',
         cashClosedDescription:
@@ -1852,6 +1858,8 @@ export const pdv = {
         removeRow: 'Retirer ce moyen de paiement',
         fillRemaining: 'Utiliser le reste',
         creditInfo: '{name} doit déjà {debt} et la limite est {limit}.',
+        creditDebtInfo: '{name} doit déjà {debt}.',
+        creditBalanceInfo: '{name} a un solde créditeur de {balance}.',
         creditNoLimit: `{name} doit déjà {debt} et n'a pas de limite de crédit définie.`,
         cashClosedTitle: 'Caisse fermée',
         cashClosedDescription: `Pour encaisser en espèces, ouvrez d'abord la caisse. PIX, carte et compte client fonctionnent caisse fermée.`,

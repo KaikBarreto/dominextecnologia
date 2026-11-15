@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { formatReceiptMoney, getPdvReceiptApproval, getPdvReceiptCoverageLines, getPdvReceiptDocumentMetadata, getPdvReceiptNote, type PdvReceiptFormat, type PdvReceiptSnapshot } from '@/lib/pdv/receipt/model';
-import { buildPdvReceiptItemBlocks, getPdvReceiptItemColumnProportions, getPdvReceiptPaymentRows, stackPdvReceiptItemColumns } from '@/lib/pdv/receipt/layout';
+import { buildPdvReceiptItemBlocks, getPdvReceiptItemColumnProportions, getPdvReceiptPaymentRows, stackPdvReceiptItemColumns, PDV_RECEIPT_SIGNATURE_SPACE_MM } from '@/lib/pdv/receipt/layout';
 import { cn } from '@/lib/utils';
 import { safeTimeZone } from '@/lib/timezone';
 import dominexLogo from '@/assets/logo-black-horizontal.png';
@@ -67,17 +67,14 @@ export function PdvReceiptPreview({ snapshot, format, className }: PdvReceiptPre
         </div>
       </header>
 
-      <div className="my-3">
-        <h4 className="font-bold uppercase" style={{fontSize:isA4?22:format==='58mm'?16:19,lineHeight:1.2}}>{isDelivery ? <>{metadata.title}<br />PEDIDO Nº {snapshot.order.number}</> : `${metadata.title} Nº ${snapshot.order.number}`}</h4>
-        {!isDelivery && snapshot.order.budgetNumber != null && <p className="mt-1 text-[11px] text-black">Origem: Orçamento Nº {snapshot.order.budgetNumber}</p>}
-      </div>
-      <section className="my-3 text-left" style={{ border: '1px solid #828282',fontSize:12 }} data-receipt-metadata>
+      <section className="my-3 text-center" style={{ border: '1px solid #828282',fontSize:12 }} data-receipt-metadata>
+        <h4 className="px-1.5 py-2 font-bold uppercase" style={{fontSize:isA4?22:format==='58mm'?16:19,lineHeight:1.2,borderBottom:'1px solid #828282'}}>{isDelivery ? <>{metadata.title}<br />PEDIDO Nº {snapshot.order.number}</> : `${metadata.title} Nº ${snapshot.order.number}`}</h4>
+        {!isDelivery && snapshot.order.budgetNumber != null && <p className="px-1.5 py-1.5 text-[11px] text-black" style={{borderBottom:'1px solid #828282'}}>Origem: Orçamento Nº {snapshot.order.budgetNumber}</p>}
         <p className="px-1.5 py-1.5 font-bold" style={{ borderBottom: '1px solid #828282' }}>Cliente: {snapshot.order.customerName || 'Não informado'}</p>
         <div className="grid grid-cols-[65%_35%]">
-          <p className="flex items-center px-1.5 py-1.5" style={{ borderRight: '1px solid #828282' }}><span>Operador: {(isDelivery ? snapshot.withdrawal?.operatorName : null) || snapshot.order.operatorName}{!isDelivery && snapshot.order.terminalName && <><br />{snapshot.order.terminalName}</>}</span></p>
-          <p className="px-1.5 py-1.5 text-right">{dateText}<br />{timeText}</p>
+          <p className="flex items-center justify-center px-1.5 py-1.5" style={{ borderRight: '1px solid #828282' }}><span>Operador: {(isDelivery ? snapshot.withdrawal?.operatorName : null) || snapshot.order.operatorName}</span></p>
+          <p className="px-1.5 py-1.5">{dateText}<br />{timeText}</p>
         </div>
-        {isDelivery && snapshot.withdrawal && <p className="px-1.5 py-2" style={{ borderTop: '1px solid #828282' }}>Registro de retirada: {snapshot.withdrawal.id}{snapshot.withdrawal.stockName && <><br />Local: {snapshot.withdrawal.stockName}</>}</p>}
       </section>
 
       <div className="my-3 space-y-2">
@@ -111,7 +108,11 @@ export function PdvReceiptPreview({ snapshot, format, className }: PdvReceiptPre
 
 
       {note && <p className="my-3 p-1.5">Observações: {note}</p>}
-      {isDelivery && <section className="my-4 space-y-6 p-1.5"><p>Recebido por: {snapshot.withdrawal?.receivedBy || '__________________________________'}</p><p>Assinatura: ____________________________________</p></section>}
+      {isDelivery && <section className="my-4 p-1.5" data-receipt-signature>
+        {snapshot.withdrawal?.receivedBy && <p>Recebido por: {snapshot.withdrawal.receivedBy}</p>}
+        <div aria-label="Espaço para assinatura" style={{ height: `${PDV_RECEIPT_SIGNATURE_SPACE_MM[format]}mm`, borderBottom: '1px solid #111' }} />
+        <p className="mt-2 text-center">Assinatura de quem retirou</p>
+      </section>}
       {approval && <div className="my-3 mx-auto border border-black text-center font-bold" style={{width:'max-content',minWidth:isA4?100:86,maxWidth:'100%',padding:'5px 13px',fontSize:isA4?15:format==='58mm'?12:13,lineHeight:1.3}} data-receipt-approval>{approval}</div>}
       <footer className="mt-3 text-center text-[11px] text-black">
         {!snapshot.company.whiteLabelEnabled && <div className="mt-4 border-t border-black/20 pt-3" data-dominex-branding>

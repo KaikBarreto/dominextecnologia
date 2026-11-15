@@ -44,6 +44,9 @@ function projectSetup(value: unknown): PdvSetupResult {
 
 function safeSetupError(error: RpcError): Error {
   const detail = `${error?.details ?? ''}`.toLowerCase();
+  if (detail.includes('pdv_setup_user_inactive')) {
+    return new Error('Seu acesso está desativado. Peça ao administrador para conferir seu cadastro.');
+  }
   if (detail.includes('pdv_setup_auth_required')) {
     return new Error('Sua sessão expirou. Entre novamente para preparar o caixa.');
   }

@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { goodsPaymentLabel } from '@/lib/fiscal/pdvNfce';
+import { useAppLocaleContext } from "@/contexts/AppLocaleContext";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -55,6 +57,8 @@ import {
   type GoodsModel,
   type GoodsSourceType,
 } from "@/hooks/useGoodsFiscal";
+
+import { useGoodsFiscalAccess } from "@/hooks/useGoodsFiscalAccess";
 
 type Step = "dados" | "itens" | "impostos" | "faturamento" | "transporte" | "opcoes" | "preview";
 
@@ -163,19 +167,26 @@ const requiredFiscal = (item: GoodsFiscalItem, direction: GoodsDirection) => {
   return issues;
 };
 
-export function GoodsFiscalWizard({
-  model,
-  direction,
-  open,
-  onOpenChange,
-  onSaved,
-}: {
+interface GoodsFiscalWizardProps {
   model: GoodsModel;
   direction: GoodsDirection;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSaved?: () => void;
-}) {
+  onSaved?: (result?: Record<string, unknown>) => void;
+  sourceType?: Exclude<GoodsSourceType, 'manual'>;
+  sourceId?: string | null;
+  documentId?: string | null;
+  initialDraft?: GoodsFiscalDraft | null;
+  initialNature?: string;
+  includeIdentifiedConsumer?: boolean;
+}
+export function GoodsFiscalWizard(props: GoodsFiscalWizardProps) {
+  const access = useGoodsFiscalAccess();
+  if (!props.open || !access.allowed) return null;
+  return <GoodsFiscalWizardContent key={`${access.scopeId}:${props.model}:${props.direction}:${props.sourceId ?? 'manual'}`} {...props} />;
+}
+function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSaved, sourceType, sourceId, documentId, initialDraft, initialNature, includeIdentifiedConsumer = true }: GoodsFiscalWizardProps) {
+  const { locale } = useAppLocaleContext();
   const [step, setStep] = useState<Step>("dados");
   const [draft, setDraft] = useState<GoodsFiscalDraft>(() => newDraft(model, direction));
   const [sourceMode, setSourceMode] = useState<"manual" | "import">("manual");
@@ -189,10 +200,16 @@ export function GoodsFiscalWizard({
   const sources = useGoodsFiscalSources(
     draft.direction,
     sourceQuery,
-    open && sourceMode === "import",
+    open && sourceMode === "import" && !sourceId,
   );
   const importer = useGoodsFiscalSourceImport();
+  const importSourceRef = useRef(importer.mutateAsync);
+  importSourceRef.current = importer.mutateAsync;
+  const openingDocument = useRef({ id: documentId, draft: initialDraft });
+  const [sourceLoading, setSourceLoading] = useState(false);
+  const [sourceError, setSourceError] = useState<string | null>(null);
   const saver = useSaveGoodsFiscalDocument();
+  const importedSource = draft.sourceType !== 'manual' && !!draft.sourceId;
   const currentIndex = STEPS.findIndex((entry) => entry.key === step);
   const total = useMemo(
     () => draft.items.reduce((sum, item) => sum + item.total, 0),
@@ -216,7 +233,26 @@ export function GoodsFiscalWizard({
     setSourceQuery("");
     setSelectedSource(null);
     setSelectedPartyId("");
-  }, [open, model, direction]);
+    if (initialNature) setDraft(current => ({ ...current, nature: initialNature }));
+  }, [open, model, direction, initialNature]);
+
+  useEffect(() => {
+    if (!open || !sourceId || !sourceType) return;
+    let active = true;
+    setSourceMode('import'); setSelectedSource(sourceId); setSourceLoading(true); setSourceError(null);
+    importSourceRef.current({ sourceType, sourceId }).then(imported => {
+      if (!active) return;
+      const saved = openingDocument.current.draft;
+      const restored = saved?.model === model && saved.sourceType === sourceType && saved.sourceId === sourceId && Array.isArray(saved.items) && Array.isArray(saved.payments) ? saved : null;
+      const party = restored ? restored.party : includeIdentifiedConsumer ? imported.party : null;
+      setDraft(current => ({ ...current, ...imported, ...restored, id: openingDocument.current.id ?? null, model,
+        sourceType, sourceId, direction: imported.direction, party,
+        nature: restored?.nature || initialNature || current.nature }));
+      setSelectedPartyId(party?.id ?? '');
+    }).catch(() => { if (active) setSourceError('Não foi possível importar a venda confirmada. Confira seu acesso fiscal e tente novamente.'); })
+      .finally(() => { if (active) setSourceLoading(false); });
+    return () => { active = false; };
+  }, [open, model, sourceId, sourceType, initialNature, includeIdentifiedConsumer]);
 
   const patch = (values: Partial<GoodsFiscalDraft>) =>
     setDraft((current) => ({ ...current, ...values }));
@@ -337,6 +373,7 @@ export function GoodsFiscalWizard({
       (!draft.party?.name.trim() || !draft.party.document.replace(/\D/g, ""))
     )
       return `Informe o ${draft.direction === "entrada" ? "fornecedor" : "cliente"} e o CPF/CNPJ.`;
+    if (step === 'dados' && model === 65 && draft.party && ![11,14].includes(draft.party.document.replace(/\D/g,'').length)) return 'Informe um CPF/CNPJ válido ou remova a identificação do consumidor.';
     if (step === "itens" && draft.items.length === 0)
       return "Adicione ao menos um item.";
     if (step === "itens" && fiscalIssues.length)
@@ -367,7 +404,9 @@ export function GoodsFiscalWizard({
   const back = () => setStep(STEPS[Math.max(0, currentIndex - 1)].key);
 
   const persist = async (emit: boolean) => {
+    if (saver.isPending || sourceLoading || sourceError) return;
     if (emit) {
+      if (model === 65 && draft.party && ![11,14].includes(draft.party.document.replace(/\D/g,'').length)) { setStep('dados'); toast.error('Informe um CPF/CNPJ válido ou remova a identificação do consumidor.'); return; }
       if (
         model === 55 &&
         (!draft.party?.name.trim() || !draft.party.document.replace(/\D/g, ""))
@@ -398,25 +437,15 @@ export function GoodsFiscalWizard({
     }
     try {
       const response = await saver.mutateAsync({
-        draft: {
-          ...draft,
-          payments: draft.payments.map((entry) => ({
-            ...entry,
-            amount:
-              model === 65 && draft.payments.length === 1
-                ? total
-                : entry.amount,
-          })),
-        },
+        draft,
         emit,
       });
       if (typeof response.id === "string") patch({ id: response.id });
-      toast.success(
-        emit
-          ? "Nota enviada com segurança para o motor fiscal."
-          : "Rascunho salvo.",
-      );
-      onSaved?.();
+      if (response.status === 'authorized') toast.success(`${model === 65 ? 'NFC-e' : 'NF-e'} autorizada pela SEFAZ.`);
+      else if (response.status === 'rejected') toast.error('Documento rejeitado. Confira a situação e corrija as pendências fiscais.');
+      else if (emit) toast.message('Solicitação fiscal registrada. Acompanhe a situação desta mesma nota.');
+      else toast.success('Rascunho salvo.');
+      onSaved?.(response);
       if (emit) onOpenChange(false);
     } catch (error) {
       toast.error((error as Error).message);
@@ -439,7 +468,7 @@ export function GoodsFiscalWizard({
         <FullscreenWizardAction
           variant="outline"
           onClick={() => persist(false)}
-          disabled={saver.isPending}
+          disabled={saver.isPending || sourceLoading || !!sourceError}
           className="flex-1 sm:flex-none"
         >
           <Save className="mr-2 h-5 w-5" />
@@ -450,13 +479,13 @@ export function GoodsFiscalWizard({
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Total da nota
         </p>
-        <p className="text-xl font-bold">{formatMoney(total, "BRL")}</p>
+        <p className="text-xl font-bold">{formatMoney(total, "BRL", locale)}</p>
       </div>
       <div className="order-3 sm:ml-auto">
         {step === "preview" ? (
           <FullscreenWizardAction
             onClick={() => persist(true)}
-            disabled={saver.isPending}
+            disabled={saver.isPending || sourceLoading || !!sourceError}
             className="w-full sm:w-auto"
           >
             {saver.isPending ? (
@@ -490,7 +519,7 @@ export function GoodsFiscalWizard({
       footer={footer}
       headerActions={
         <div className="flex items-center gap-2">
-          <Badge className="border-0 bg-black text-white hover:bg-black dark:bg-white dark:text-black">
+          <Badge className="border-0 bg-primary text-primary-foreground hover:bg-primary/90">
             {draft.direction === "entrada" ? "Entrada" : "Saída"}
           </Badge>
           <Badge variant="outline">
@@ -503,7 +532,7 @@ export function GoodsFiscalWizard({
         <div className="flex items-center gap-6">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total da nota</p>
-            <p className="text-lg font-bold tabular-nums">{formatMoney(total, "BRL")}</p>
+            <p className="text-lg font-bold tabular-nums">{formatMoney(total, "BRL", locale)}</p>
           </div>
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Itens</p>
@@ -511,7 +540,7 @@ export function GoodsFiscalWizard({
           </div>
         </div>
         {draft.items.length > 0 && fiscalIssues.length === 0 ? (
-          <Badge className="gap-1.5 border-0 bg-black px-3 py-1.5 text-white dark:bg-white dark:text-black">
+          <Badge className="gap-1.5 border-0 bg-primary px-3 py-1.5 text-primary-foreground">
             <CircleCheck className="h-3.5 w-3.5" />Pronta pra emitir
           </Badge>
         ) : (
@@ -569,6 +598,9 @@ export function GoodsFiscalWizard({
       </nav>
 
       <div className="mx-auto w-full max-w-7xl py-6 sm:py-8">
+        {sourceLoading && <p role="status" className="mb-5 flex items-center gap-2"><Loader2 className="h-5 w-5 animate-spin" />Importando a venda confirmada…</p>}
+        {sourceError && <p role="alert" className="mb-5 text-destructive">{sourceError}</p>}
+        {sourceId && !sourceLoading && !sourceError && <p className="mb-5 text-sm text-muted-foreground">Venda concluída importada para conferência. A emissão fiscal não altera o pagamento.</p>}
         {step === "dados" && (
           <section className="space-y-7">
             <header>
@@ -588,6 +620,7 @@ export function GoodsFiscalWizard({
               </span>
               <Button
                 type="button"
+                disabled={!!sourceId}
                 onClick={() => {
                   setSourceMode("manual");
                   patch({
@@ -603,7 +636,7 @@ export function GoodsFiscalWizard({
                 className={cn(
                   "h-10 gap-2 px-4 text-sm font-bold",
                   sourceMode === "manual" &&
-                    "border-black bg-black text-white hover:bg-black/85 hover:text-white dark:border-white dark:bg-white dark:text-black",
+                    "border-primary bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground",
                 )}
               >
                 <PackagePlus className="h-4 w-4" />
@@ -611,6 +644,7 @@ export function GoodsFiscalWizard({
               </Button>
               <Button
                 type="button"
+                disabled={!!sourceId}
                 onClick={() => {
                   setSourceMode("import");
                   patch({ sourceType: "manual", sourceId: null });
@@ -619,14 +653,14 @@ export function GoodsFiscalWizard({
                 className={cn(
                   "h-10 gap-2 px-4 text-sm font-bold",
                   sourceMode === "import" &&
-                    "border-black bg-black text-white hover:bg-black/85 hover:text-white dark:border-white dark:bg-white dark:text-black",
+                    "border-primary bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground",
                 )}
               >
                 <FileInput className="h-4 w-4" />
                 Importar {draft.direction === "entrada" ? "compra" : "venda"}
               </Button>
             </div>
-            {sourceMode === "import" && (
+            {sourceMode === "import" && !sourceId && (
               <div className="space-y-4">
                 <div className="relative max-w-xl">
                   <Search className="absolute left-3 top-3.5 h-5 w-5 text-muted-foreground" />
@@ -656,15 +690,15 @@ export function GoodsFiscalWizard({
                         className={cn(
                           "flex items-center gap-4 rounded-2xl border-2 p-4 text-left",
                           selectedSource === source.sourceId
-                            ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
+                            ? "border-primary bg-primary text-primary-foreground"
                             : "border-border hover:border-foreground/30",
                         )}
                       >
                         <span
                           className={cn(
-                            "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-black text-white dark:bg-white dark:text-black",
+                            "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground",
                             selectedSource === source.sourceId &&
-                              "bg-white text-black dark:bg-black dark:text-white",
+                              "bg-primary-foreground text-primary",
                           )}
                         >
                           {source.sourceType === "pdv_sale" ? (
@@ -682,14 +716,14 @@ export function GoodsFiscalWizard({
                             className={cn(
                               "mt-1 block text-sm text-muted-foreground",
                               selectedSource === source.sourceId &&
-                                "text-white/75 dark:text-black/70",
+                                "text-primary-foreground/75",
                             )}
                           >
                             {source.originLabel} · {source.itemCount} itens
                           </span>
                         </span>
                         <strong className="shrink-0">
-                          {formatMoney(source.total, "BRL")}
+                          {formatMoney(source.total, "BRL", locale)}
                         </strong>
                       </button>
                     ))}
@@ -722,7 +756,7 @@ export function GoodsFiscalWizard({
                 <Label htmlFor="goods-party-selector" className="font-semibold">
                   {draft.direction === "entrada" ? "Selecionar fornecedor" : "Selecionar cliente"}
                 </Label>
-                <div className="max-w-3xl [&_button:last-child]:bg-black [&_button:last-child]:text-white [&_button:last-child]:hover:bg-black/85 dark:[&_button:last-child]:bg-white dark:[&_button:last-child]:text-black">
+                <div className="max-w-3xl [&_button:last-child]:bg-primary [&_button:last-child]:text-primary-foreground [&_button:last-child]:hover:bg-primary/90">
                   {draft.direction === "entrada" ? (
                     <SupplierSelectField
                       id="goods-party-selector"
@@ -753,11 +787,12 @@ export function GoodsFiscalWizard({
                 </p>
               </div>
             ) : null}
+            {model === 65 && draft.party && <Button type="button" variant="outline" onClick={() => { patch({party:null}); setSelectedPartyId(''); }}>Usar consumidor não identificado</Button>}
             {model === 65 && !draft.party ? (
-              <div className="flex items-center justify-between gap-4 rounded-2xl bg-black p-5 text-white dark:bg-white dark:text-black">
+              <div className="flex items-center justify-between gap-4 rounded-2xl bg-primary p-5 text-primary-foreground">
                 <div>
                   <p className="font-bold">Consumidor não identificado</p>
-                  <p className="mt-1 text-sm text-white/75 dark:text-black/70">
+                  <p className="mt-1 text-sm text-primary-foreground/75">
                     Permitido para este fluxo de NFC-e.
                   </p>
                 </div>
@@ -924,7 +959,7 @@ export function GoodsFiscalWizard({
                                   Fiscal incompleto
                                 </Badge>
                               ) : (
-                                <Badge className="border-0 bg-black text-white dark:bg-white dark:text-black">
+                                <Badge className="border-0 bg-primary text-primary-foreground">
                                   <BadgeCheck className="mr-1 h-3.5 w-3.5" />
                                   Pronto
                                 </Badge>
@@ -932,7 +967,7 @@ export function GoodsFiscalWizard({
                             </div>
                             <p className="mt-2 text-sm text-muted-foreground">
                               {item.quantity} {item.unit || "UN"} ×{" "}
-                              {formatMoney(item.unitPrice, "BRL")}
+                              {formatMoney(item.unitPrice, "BRL", locale)}
                             </p>
                             {missing.length ? (
                               <p className="mt-2 text-sm font-medium text-destructive">
@@ -950,7 +985,7 @@ export function GoodsFiscalWizard({
                             )}
                           </div>
                           <div className="text-right">
-                            <strong>{formatMoney(item.total, "BRL")}</strong>
+                            <strong>{formatMoney(item.total, "BRL", locale)}</strong>
                             <Button
                               type="button"
                               size="icon"
@@ -988,9 +1023,9 @@ export function GoodsFiscalWizard({
                             <TableCell>{item.ncm || "—"}</TableCell>
                             <TableCell>{draft.direction === "entrada" ? item.cfopEntryInternal : item.cfopExitInternal}</TableCell>
                             <TableCell>{item.quantity} {item.unit || "UN"}</TableCell>
-                            <TableCell>{formatMoney(item.unitPrice, "BRL")}</TableCell>
-                            <TableCell>{formatMoney(item.discount, "BRL")}</TableCell>
-                            <TableCell className="font-bold">{formatMoney(item.total, "BRL")}</TableCell>
+                            <TableCell>{formatMoney(item.unitPrice, "BRL", locale)}</TableCell>
+                            <TableCell>{formatMoney(item.discount, "BRL", locale)}</TableCell>
+                            <TableCell className="font-bold">{formatMoney(item.total, "BRL", locale)}</TableCell>
                             <TableCell><Button type="button" size="icon" variant="ghost" className="text-destructive" onClick={() => patch({ items: draft.items.filter((entry) => entry.id !== item.id) })}><Trash2 className="h-4 w-4" /></Button></TableCell>
                           </TableRow>
                         ))}
@@ -1049,7 +1084,7 @@ export function GoodsFiscalWizard({
                   </SelectContent>
                 </Select>
               </div>}
-              {step === "faturamento" && <div className="space-y-2">
+              {step === "faturamento" && !importedSource && <div className="space-y-2">
                 <Label>Meio de pagamento</Label>
                 <Select
                   value={draft.payments[0]?.method ?? "90"}
@@ -1069,7 +1104,7 @@ export function GoodsFiscalWizard({
                   </SelectContent>
                 </Select>
               </div>}
-              {step === "faturamento" && <div className="space-y-2">
+              {step === "faturamento" && !importedSource && <div className="space-y-2">
                 <Label>Valor recebido</Label>
                 <Input
                   inputMode="decimal"
@@ -1089,7 +1124,7 @@ export function GoodsFiscalWizard({
                   }
                 />
               </div>}
-              {step === "faturamento" && <div className="space-y-2">
+              {step === "faturamento" && !importedSource && <div className="space-y-2">
                 <Label>Troco</Label>
                 <Input
                   inputMode="decimal"
@@ -1111,6 +1146,14 @@ export function GoodsFiscalWizard({
                     })
                   }
                 />
+              </div>}
+              {step === 'faturamento' && importedSource && <div className="space-y-3 lg:col-span-2" aria-label="Pagamentos da venda confirmada">
+                <p className="text-sm text-muted-foreground">Pagamentos importados da venda concluída. O valor recebido inclui o troco informado no caixa.</p>
+                <div className="divide-y border-y">{draft.payments.map((payment,index) => <div key={index} className="flex flex-wrap items-start justify-between gap-3 py-3">
+                  <div><p className="font-semibold">{goodsPaymentLabel(payment.method)}</p>{payment.deferred && <p className="text-xs text-muted-foreground">Pagamento a prazo aprovado</p>}{Number(payment.change)>0 && <p className="text-sm text-muted-foreground">Troco: {formatMoney(Number(payment.change),'BRL',locale)}</p>}</div>
+                  <p className="font-bold tabular-nums">{formatMoney(payment.amount,'BRL',locale)}</p>
+                </div>)}</div>
+                <p className="flex flex-wrap justify-between gap-2 font-semibold"><span>Total aplicado à venda</span><span className="tabular-nums">{formatMoney(draft.payments.reduce((sum,p) => sum+p.amount-Number(p.change||0),0),'BRL',locale)}</span></p>
               </div>}
               {step === "opcoes" && <div className="space-y-2 lg:col-span-2">
                 <Label>Informações adicionais</Label>
@@ -1184,10 +1227,10 @@ export function GoodsFiscalWizard({
                         {item.description}
                         <small className="block text-slate-600">
                           {item.quantity} {item.unit || "UN"} ×{" "}
-                          {formatMoney(item.unitPrice, "BRL")}
+                          {formatMoney(item.unitPrice, "BRL", locale)}
                         </small>
                       </span>
-                      <strong>{formatMoney(item.total, "BRL")}</strong>
+                      <strong>{formatMoney(item.total, "BRL", locale)}</strong>
                     </div>
                   ))}
                 </div>
@@ -1196,17 +1239,17 @@ export function GoodsFiscalWizard({
                     Valor total{" "}
                   </span>
                   <strong className="ml-3 text-xl">
-                    {formatMoney(total, "BRL")}
+                    {formatMoney(total, "BRL", locale)}
                   </strong>
                 </div>
               </div>
               <aside className="space-y-4">
-                <div className="rounded-2xl bg-black p-5 text-white dark:bg-white dark:text-black">
+                <div className="rounded-2xl bg-primary p-5 text-primary-foreground">
                   <ReceiptText className="h-7 w-7" />
                   <h3 className="mt-4 text-lg font-bold">Resumo da emissão</h3>
                   <dl className="mt-4 space-y-3 text-sm">
                     <div>
-                      <dt className="text-white/65 dark:text-black/65">
+                      <dt className="text-primary-foreground/65">
                         Origem
                       </dt>
                       <dd className="font-semibold">
@@ -1220,17 +1263,17 @@ export function GoodsFiscalWizard({
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-white/65 dark:text-black/65">
+                      <dt className="text-primary-foreground/65">
                         Itens
                       </dt>
                       <dd className="font-semibold">{draft.items.length}</dd>
                     </div>
                     <div>
-                      <dt className="text-white/65 dark:text-black/65">
+                      <dt className="text-primary-foreground/65">
                         Total
                       </dt>
                       <dd className="text-xl font-bold">
-                        {formatMoney(total, "BRL")}
+                        {formatMoney(total, "BRL", locale)}
                       </dd>
                     </div>
                   </dl>

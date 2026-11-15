@@ -29,9 +29,9 @@ vi.mock('@/hooks/usePdvPreorders', () => ({
 vi.mock('@/hooks/usePdvPreorderCatalog', () => ({ usePdvPreorderCatalog: () => ({ data: { customers: [], materials: [], stocks: [], terminals: [] }, isLoading: false, isError: false, refetch: state.retry }) }));
 vi.mock('@/hooks/usePdvSalesFlow', () => ({ usePdvSalesFlow: () => ({ data: state.empty, refetch: state.retry }), usePdvSalesFlowOrder: () => ({ data: null, refetch: state.retry }), resolvePdvSalesFlowMode: () => 'dispatch' }));
 vi.mock('@/components/pdv/preorders/PdvPreorderDetail', () => ({ PdvPreorderDetail: () => null }));
-vi.mock('@/components/pdv/preorders/PdvPreorderReceiptButton', () => ({ PdvPreorderReceiptButton: () => null, openPdvPreorderReceipt: vi.fn() }));
+vi.mock('@/components/pdv/preorders/PdvPreorderReceiptButton', () => ({ PdvPreorderReceiptButton: () => null, usePdvPreorderReceiptOpener: () => ({ open: vi.fn(), isCurrent: () => true, guardAttempt: (attempt: unknown) => attempt }) }));
 vi.mock('@/components/pdv/dispatch/PdvDispatchDetail', () => ({ PdvDispatchDetail: () => null }));
-vi.mock('@/components/pdv/dispatch/PdvDeliveryReceiptButton', () => ({ PdvDeliveryReceiptButton: () => null, openPdvDeliveryReceipt: vi.fn() }));
+vi.mock('@/components/pdv/dispatch/PdvDeliveryReceiptButton', () => ({ PdvDeliveryReceiptButton: () => null, usePdvDeliveryReceiptOpener: () => ({ open: vi.fn(), isCurrent: () => true, guardAttempt: (attempt: unknown) => attempt }) }));
 // A visibilidade responsiva do layout pertence ao CSS. O stub conserva a transição lista/detalhe usada pelas páginas.
 vi.mock('@/components/ui/ListDetailLayout', () => ({ ListDetailLayout: ({ mobileDetailOpen, listTitle, children }: { mobileDetailOpen: boolean; listTitle: string; children: React.ReactNode }) => mobileDetailOpen ? <section aria-label="Detalhe mobile">{children}</section> : <section aria-label={listTitle}>Lista disponível</section> }));
 

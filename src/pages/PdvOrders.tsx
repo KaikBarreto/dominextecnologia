@@ -1,3 +1,7 @@
+import { useGoodsFiscalAccess } from '@/hooks/useGoodsFiscalAccess';
+import { PdvNfceSaleAction } from '@/components/fiscal/goods/PdvNfceSaleAction';
+import { isPdvNfceSaleConfirmed } from '@/lib/fiscal/pdvNfce';
+import { usePdvAuthorizedQueryScope } from '@/hooks/pdvReportCache';
 import '@/components/pdv/PdvWorkspace.css';
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -22,7 +26,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useLocaleFormatters } from '@/lib/format/hooks';
 import { usePdvReceiptSettings } from '@/hooks/usePdvReceiptSettings';
 import { DEFAULT_PDV_RECEIPT_SETTINGS } from '@/lib/pdv/receipt/model';
-import { openPdvOrderReceipt } from '@/components/pdv/receipt/PdvOrderReceiptButton';
+import { usePdvOrderReceiptOpener } from '@/components/pdv/receipt/PdvOrderReceiptButton';
 import { PdvOrderActionsMenu, type PdvOrderActionsMenuProps } from '@/components/pdv/PdvOrderActionsMenu';
 import { PdvReturnsPanel } from '@/components/pdv/returns/PdvReturnsPanel';
 import { PdvAfterSalePanel } from '@/components/pdv/after-sale/PdvAfterSalePanel';
@@ -49,6 +53,9 @@ const SECTION_PARAM: Record<OrderSection, string | null> = { details: null, paym
 
 export default function PdvOrders() {
   const mobile = useIsMobile();
+  const fiscalScope = JSON.stringify(usePdvAuthorizedQueryScope().key);
+  const fiscalAccess = useGoodsFiscalAccess();
+  const [fiscalTarget, setFiscalTarget] = useState<{ orderId: string; scope: string; open: boolean } | null>(null);
   const [view, setView] = useState<'list' | 'flow'>('list');
   const capability = usePdvCounterCapability();
   const navigate = useNavigate();
@@ -74,6 +81,7 @@ export default function PdvOrders() {
   const list = usePdvOrdersList(filters);
   const detail = usePdvOrderWorkspace(selectedId);
   const receiptSettings = usePdvReceiptSettings();
+  const receiptOpener = usePdvOrderReceiptOpener();
   const { toast } = useToast();
   const rows = list.data?.rows ?? [];
   const total = list.data?.total ?? 0;
@@ -82,6 +90,8 @@ export default function PdvOrders() {
   const activeView = view === 'flow' && canViewFlow ? 'flow' : 'list';
   const mobileDetail = activeView === 'list' && mobile && Boolean(selectedId);
 
+  useEffect(() => { setFiscalTarget(null); }, [fiscalScope, fiscalAccess.scopeId, fiscalAccess.allowed]);
+  useEffect(() => { setFiscalTarget(current => current && current.orderId !== selectedId ? null : current); }, [selectedId]);
   useEffect(() => {
     const handle = window.setTimeout(() => setFilters((current) => ({ ...current, query: query.trim(), page: 0 })), 250);
     return () => window.clearTimeout(handle);
@@ -109,7 +119,7 @@ export default function PdvOrders() {
   const select = (id: string | null) => setParams((current) => { const next = new URLSearchParams(current); next.delete('order'); next.delete('acao'); if (id) next.set('pedido', id); else next.delete('pedido'); return next; }, { replace: true });
   const generateReceipt = async (row: PdvOrderListRow) => {
     try {
-      await openPdvOrderReceipt(row.id, receiptSettings.data?.defaultFormat ?? DEFAULT_PDV_RECEIPT_SETTINGS.defaultFormat);
+      await receiptOpener.open(row.id, receiptSettings.data?.defaultFormat ?? DEFAULT_PDV_RECEIPT_SETTINGS.defaultFormat);
     } catch (error) {
       toast({ variant: 'destructive', title: 'Não foi possível gerar o comprovante', description: error instanceof Error ? error.message : 'Tente novamente.' });
     }
@@ -124,6 +134,7 @@ export default function PdvOrders() {
   const orderActions = (row: PdvOrderListRow): PdvOrderActionsMenuProps => {
     const confirmed = !['rascunho', 'aguardando_pagamento', 'cancelado'].includes(row.commercialStatus);
     return { orderId: row.id, orderNumber: row.number, canGenerateReceipt: row.canGenerateReceipt,
+      onFiscal: fiscalAccess.allowed && isPdvNfceSaleConfirmed(row.commercialStatus) && row.canGenerateReceipt ? () => { select(row.id); setFiscalTarget({orderId:row.id,scope:fiscalScope,open:true}); } : undefined,
       onView: () => openSection(row.id, 'details'), onReceipt: () => void generateReceipt(row),
       onReceive: (privileged || hasScreenAccess('screen:pdv')) && ['aguardando', 'parcial'].includes(row.paymentStatus) ? () => navigate(`/pdv?fila=1&pedido=${encodeURIComponent(row.id)}`) : undefined,
       onPickup: (privileged || hasScreenAccess('screen:pdv_dispatch')) && ['liberado', 'parcial'].includes(row.pickupStatus) ? () => navigate(`/pdv/expedicao?pedido=${encodeURIComponent(row.id)}`) : undefined,
@@ -135,9 +146,10 @@ export default function PdvOrders() {
   const detailContent = !selectedId ? <OrderDetailEmpty />
     : detail.isLoading ? <PdvPageSkeleton variant="detail" label="Carregando detalhes do pedido" />
     : detail.isError || !detail.data ? <div className="space-y-3">{mobile && <Button type="button" variant="ghost" onClick={() => select(null)}><ArrowLeft className="h-4 w-4" />Voltar aos pedidos</Button>}<EmptyState icon={<RefreshCw className="h-12 w-12 text-destructive" />} title="Não foi possível abrir o pedido" description={detail.error instanceof Error ? detail.error.message : 'Ele pode ter saído dos caixas que você pode consultar.'} action={{ label: 'Atualizar', onClick: () => void detail.refetch() }} /></div>
-    : <OrderDetail detail={detail.data} money={money} dateTime={dateTime} format={receiptSettings.data?.defaultFormat ?? DEFAULT_PDV_RECEIPT_SETTINGS.defaultFormat} onBack={mobile ? () => select(null) : undefined} section={section} onSectionChange={next => openSection(selectedId!, next)} returnsAccess={returnsAccess} afterSaleAccess={afterSaleAccess} onReceive={(privileged || hasScreenAccess('screen:pdv')) && ['aguardando', 'parcial'].includes(detail.data.order.paymentStatus) ? () => navigate(`/pdv?fila=1&pedido=${encodeURIComponent(selectedId!)}`) : undefined} onPickup={(privileged || hasScreenAccess('screen:pdv_dispatch')) && ['liberado', 'parcial'].includes(detail.data.order.pickupStatus) ? () => navigate(`/pdv/expedicao?pedido=${encodeURIComponent(selectedId!)}`) : undefined} onReload={() => void Promise.all([detail.refetch(), list.refetch()])} />;
+    : <OrderDetail detail={detail.data} money={money} dateTime={dateTime} format={receiptSettings.data?.defaultFormat ?? DEFAULT_PDV_RECEIPT_SETTINGS.defaultFormat} onBack={mobile ? () => select(null) : undefined} section={section} onSectionChange={next => openSection(selectedId!, next)} returnsAccess={returnsAccess} afterSaleAccess={afterSaleAccess} onReceive={(privileged || hasScreenAccess('screen:pdv')) && ['aguardando', 'parcial'].includes(detail.data.order.paymentStatus) ? () => navigate(`/pdv?fila=1&pedido=${encodeURIComponent(selectedId!)}`) : undefined} onPickup={(privileged || hasScreenAccess('screen:pdv_dispatch')) && ['liberado', 'parcial'].includes(detail.data.order.pickupStatus) ? () => navigate(`/pdv/expedicao?pedido=${encodeURIComponent(selectedId!)}`) : undefined} onReload={() => void Promise.all([detail.refetch(), list.refetch()])} onFiscal={fiscalAccess.allowed ? () => setFiscalTarget({orderId:detail.data!.order.id,scope:fiscalScope,open:true}) : undefined} />;
 
   return <div className="pdv-workspace space-y-4 pb-20 lg:pb-8" data-pdv-ui>
+    {fiscalAccess.allowed && fiscalTarget && fiscalTarget.scope === fiscalScope && fiscalTarget.orderId === selectedId && <PdvNfceSaleAction orderId={fiscalTarget.orderId} confirmed detailsOpen={fiscalTarget.open} onDetailsOpenChange={open => setFiscalTarget(current => current?.scope === fiscalScope && current.orderId === selectedId ? {...current,open} : current)} contextKey={fiscalScope} />}
     {!mobileDetail && <PageHeader title="Pedidos" subtitle="Consulte os pedidos dos caixas permitidos para o seu perfil." icon={ListOrdered} actions={canViewFlow ? <PdvWorkspaceViewToggle value={activeView} showFlow onChange={value => setView(value === 'flow' ? 'flow' : 'list')} /> : undefined} />}
 
 
@@ -187,7 +199,7 @@ function CurrentStatusBadge({ order }: { order: Parameters<typeof pdvOrderCurren
   return <span data-pdv-order-status className={cn('inline-flex rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white', state.tone)}>{state.label}</span>;
 }
 
-function OrderDetail({ detail, money, dateTime, format, onBack, section, onSectionChange, returnsAccess, afterSaleAccess, onReceive, onPickup, onReload }: { detail: NonNullable<ReturnType<typeof usePdvOrderWorkspace>['data']>; money: (value: number) => string; dateTime: (value: string | Date | null | undefined) => string; format: typeof DEFAULT_PDV_RECEIPT_SETTINGS.defaultFormat; onBack?: () => void; section: OrderSection; onSectionChange: (section: OrderSection) => void; returnsAccess: ReturnType<typeof derivePdvReturnsAccess>; afterSaleAccess: ReturnType<typeof derivePdvAfterSaleAccess>; onReceive?: () => void; onPickup?: () => void; onReload: () => void }) {
+function OrderDetail({ detail, money, dateTime, format, onBack, section, onSectionChange, returnsAccess, afterSaleAccess, onReceive, onPickup, onReload, onFiscal }: { detail: NonNullable<ReturnType<typeof usePdvOrderWorkspace>['data']>; money: (value: number) => string; dateTime: (value: string | Date | null | undefined) => string; format: typeof DEFAULT_PDV_RECEIPT_SETTINGS.defaultFormat; onBack?: () => void; section: OrderSection; onSectionChange: (section: OrderSection) => void; returnsAccess: ReturnType<typeof derivePdvReturnsAccess>; afterSaleAccess: ReturnType<typeof derivePdvAfterSaleAccess>; onReceive?: () => void; onPickup?: () => void; onReload: () => void; onFiscal?: () => void }) {
   const confirmed = !['rascunho', 'aguardando_pagamento', 'cancelado'].includes(detail.order.commercialStatus);
   const canOpenReturns = detail.order.commercialStatus !== 'cancelado' && returnsAccess.enabled && (confirmed && (returnsAccess.canReturn || returnsAccess.canReverse) || returnsAccess.canCancelResidual);
   const canOpenValues = confirmed && afterSaleAccess.enabled && afterSaleAccess.canView;
@@ -195,12 +207,13 @@ function OrderDetail({ detail, money, dateTime, format, onBack, section, onSecti
   const activeSection = section === 'returns' && !canOpenReturns || section === 'values' && !canOpenValues || section === 'delivery' && !hasDelivery ? 'details' : section;
   const payments = usePdvOrderReceiptSnapshot(detail.order.id, activeSection === 'payments' && detail.order.canGenerateReceipt);
   const { toast } = useToast();
+  const receiptOpener = usePdvOrderReceiptOpener(detail.order.id);
   const generateReceipt = async () => {
-    try { await openPdvOrderReceipt(detail.order.id, format); }
+    try { await receiptOpener.open(detail.order.id, format); }
     catch (error) { toast({ variant: 'destructive', title: 'Não foi possível gerar o comprovante', description: error instanceof Error ? error.message : 'Tente novamente.' }); }
   };
   return <div className="pdv-entity-detail space-y-6">
-    <header className="flex flex-wrap items-start justify-between gap-3"><div className="flex min-w-0 flex-1 basis-52 items-start gap-3">{onBack && <Button type="button" size="icon" variant="ghost" aria-label="Voltar aos pedidos" onClick={onBack}><ArrowLeft className="h-5 w-5" /></Button>}<div><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Pedido</p><h2 className="pdv-entity-title">#{detail.order.number}</h2><p className="text-sm text-muted-foreground">{detail.order.customerName ?? 'Cliente não informado'} · {dateTime(detail.order.createdAt)}</p></div></div><div className="flex shrink-0 flex-wrap items-center gap-2">{onReceive ? <Button onClick={onReceive}>Receber no caixa</Button> : onPickup ? <Button onClick={onPickup}>Conferir retirada</Button> : null}<PdvOrderActionsMenu orderId={detail.order.id} orderNumber={detail.order.number} canGenerateReceipt={detail.order.canGenerateReceipt} onView={() => onSectionChange('details')} onReceipt={() => void generateReceipt()} onReceive={onReceive} onPickup={onPickup} onReturns={canOpenReturns ? () => onSectionChange('returns') : undefined} onValues={canOpenValues ? () => onSectionChange('values') : undefined} /></div></header>
+    <header className="flex flex-wrap items-start justify-between gap-3"><div className="flex min-w-0 flex-1 basis-52 items-start gap-3">{onBack && <Button type="button" size="icon" variant="ghost" aria-label="Voltar aos pedidos" onClick={onBack}><ArrowLeft className="h-5 w-5" /></Button>}<div><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Pedido</p><h2 className="pdv-entity-title">#{detail.order.number}</h2><p className="text-sm text-muted-foreground">{detail.order.customerName ?? 'Cliente não informado'} · {dateTime(detail.order.createdAt)}</p></div></div><div className="flex shrink-0 flex-wrap items-center gap-2">{onReceive ? <Button onClick={onReceive}>Receber no caixa</Button> : onPickup ? <Button onClick={onPickup}>Conferir retirada</Button> : null}<PdvOrderActionsMenu orderId={detail.order.id} orderNumber={detail.order.number} canGenerateReceipt={detail.order.canGenerateReceipt} onView={() => onSectionChange('details')} onReceipt={() => void generateReceipt()} onFiscal={isPdvNfceSaleConfirmed(detail.order.commercialStatus) && detail.order.canGenerateReceipt ? onFiscal : undefined} onReceive={onReceive} onPickup={onPickup} onReturns={canOpenReturns ? () => onSectionChange('returns') : undefined} onValues={canOpenValues ? () => onSectionChange('values') : undefined} /></div></header>
     <div className="flex flex-wrap gap-2"><CurrentStatusBadge order={detail.order} /></div>
     <Tabs value={activeSection} onValueChange={value => onSectionChange(value as OrderSection)}>
     <TabsList variant="underline" aria-label="Áreas do pedido">

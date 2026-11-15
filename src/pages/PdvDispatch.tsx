@@ -15,8 +15,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/AuthContext';
 import { stablePdvAttempt, usePdvCompleteDispatch, usePdvDispatchHistory, usePdvDispatchOrder, usePdvDispatchQueue } from '@/hooks/usePdvDispatch';
 import { usePdvStageReceiptAuto } from '@/hooks/usePdvStageReceiptAuto';
-import { usePdvReceiptCompany } from '@/hooks/usePdvReceiptCompany';
-import { PdvDeliveryReceiptButton, openPdvDeliveryReceipt } from '@/components/pdv/dispatch/PdvDeliveryReceiptButton';
+import { PdvDeliveryReceiptButton, usePdvDeliveryReceiptOpener } from '@/components/pdv/dispatch/PdvDeliveryReceiptButton';
 import { PdvDispatchStatusBadge } from '@/components/pdv/dispatch/PdvDispatchStatusBadge';
 import { PdvDispatchDetail } from '@/components/pdv/dispatch/PdvDispatchDetail';
 import { derivePdvReturnsAccess, usePdvReturnsFeature } from '@/hooks/usePdvReturns';
@@ -43,8 +42,8 @@ export default function PdvDispatch() {
   const quickDetail = usePdvDispatchOrder(quickOrderId);
   const completeDispatch = usePdvCompleteDispatch();
   const autoReceipt = usePdvStageReceiptAuto();
-  const receiptCompany = usePdvReceiptCompany();
-  const quickReceiptAttempt = useRef<ReturnType<typeof autoReceipt.prepare> | null>(null);
+  const receiptOpener = usePdvDeliveryReceiptOpener();
+  const quickReceiptAttempt = useRef<ReturnType<typeof receiptOpener.guardAttempt> | null>(null);
   const quickInFlight = useRef(false);
   const quickAttempts = useRef(new Map<string, { signature: string; id: string }>());
   const [searchParams, setSearchParams] = useSearchParams();
@@ -79,7 +78,14 @@ export default function PdvDispatch() {
   }, [history.data, requestedOrderId]);
 
   useEffect(() => {
-    if (!quickOrderId || quickInFlight.current) return;
+    if (!quickOrderId) return;
+    if (!quickReceiptAttempt.current?.isCurrent()) {
+      quickReceiptAttempt.current?.cancel();
+      quickAttempts.current.clear();
+      setQuickOrderId(null);
+      return;
+    }
+    if (quickInFlight.current) return;
     if (quickDetail.isError) {
       toast({ title: 'Não foi possível abrir a retirada', description: 'Atualize a fila e tente novamente.', variant: 'destructive' });
       setQuickOrderId(null);
@@ -101,9 +107,10 @@ export default function PdvDispatch() {
     quickInFlight.current = true;
     const receiptAttempt = quickReceiptAttempt.current;
     void completeDispatch.mutateAsync({ orderId: quickOrderId, lines, attemptId: attempt.id }).then(result => {
+      if (!receiptOpener.isCurrent()) { receiptAttempt?.cancel(); return; }
       if (typeof result.delivery_id === 'string') {
         const id = result.delivery_id;
-        void receiptAttempt?.commit(`delivery:${id}`, (format, options) => openPdvDeliveryReceipt(id, format, { ...options, company: receiptCompany }), result.idempotent === true);
+        void receiptAttempt?.commit(`delivery:${id}`, (format, options) => receiptOpener.open(id, format, options), result.idempotent === true);
       } else receiptAttempt?.cancel();
       if (result.status === 'entregue') {
         if (typeof result.delivery_id === 'string') setLastDeliveryId(result.delivery_id);
@@ -115,9 +122,10 @@ export default function PdvDispatch() {
       return Promise.all([queue.refetch(), history.refetch(), ...(selectedId ? [detail.refetch()] : [])]);
     }).catch(error => {
       receiptAttempt?.cancel();
+      if (!receiptOpener.isCurrent()) return;
       toast({ title: 'Retirada não registrada', description: error instanceof Error ? error.message : 'Atualize e tente novamente.', variant: 'destructive' });
-    }).finally(() => { quickInFlight.current = false; setQuickOrderId(null); });
-  }, [completeDispatch, detail, history, queue, quickDetail.data, quickDetail.isError, quickDetail.isFetching, quickOrderId, receiptCompany, selectedId, setSearchParams, toast]);
+    }).finally(() => { quickInFlight.current = false; if (receiptOpener.isCurrent()) setQuickOrderId(null); });
+  }, [completeDispatch, detail, history, queue, quickDetail.data, quickDetail.isError, quickDetail.isFetching, quickOrderId, receiptOpener, selectedId, setSearchParams, toast]);
 
   function selectOrder(orderId: string | null) {
     setSelectedId(orderId);
@@ -137,7 +145,7 @@ export default function PdvDispatch() {
     {!mobileDetailOpen && <PageHeader title="Expedição e retirada" subtitle="Separe, entregue e consulte o pós-venda dos pedidos do balcão." icon={PackageCheck} actions={stage === 'active' ? <PdvWorkspaceViewToggle value={activeView} showBoard showFlow={canViewFlow} onChange={next => { setView(next); selectOrder(null); }} /> : undefined} />}
     {lastDeliveryId && <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-4"><p className="text-sm font-semibold">Retirada concluída. A fila está pronta para o próximo pedido.</p><PdvDeliveryReceiptButton deliveryId={lastDeliveryId} /></div>}
     {!mobileDetailOpen && <nav className="flex gap-6 overflow-x-auto border-b" aria-label="Etapas da expedição"><button type="button" onClick={() => { setStage('active'); selectOrder(null); }} className={`shrink-0 border-b-2 pb-2 text-sm font-semibold ${stage === 'active' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground'}`}>Em andamento</button><button type="button" onClick={() => { setStage('delivered'); setView('list'); selectOrder(null); }} className={`shrink-0 border-b-2 pb-2 text-sm font-semibold ${stage === 'delivered' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground'}`}>Entregues e pós-venda</button></nav>}
-    {activeView === 'flow' && canViewFlow ? <PdvFullSalesFlow fulfillmentMode={capability.data!.fulfillmentMode} formatMoney={value => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} onOpen={card => { const destination = pdvFlowCardDestination(card, { pdv: hasScreenAccess('screen:pdv'), orders: hasScreenAccess('screen:pdv_orders'), dispatch: hasScreenAccess('screen:pdv_dispatch') }); if (!destination) return; if (destination.startsWith('/pdv/expedicao?') && card.orderId) { setView('list'); setStage(card.stage === 'completed' ? 'delivered' : 'active'); selectOrder(card.orderId); } else navigate(destination); }} /> : (stage === 'active' ? queue.isLoading : history.isLoading) ? <PdvPageSkeleton variant={activeView === 'board' ? 'kanban' : 'list-detail'} listLeading columns={2} label="Carregando expedição" /> : (stage === 'active' ? queue.isError : history.isError) ? <EmptyState icon={<RefreshCw className="h-12 w-12 text-destructive" />} title="Não foi possível carregar a expedição" description="Nenhum pedido foi alterado." action={{ label: 'Tentar novamente', onClick: () => void refetchStage() }} /> : activeView === 'list' ? <ListDetailLayout items={items} selectedId={selectedId ?? undefined} listTitle={stage === 'active' ? 'Pedidos liberados' : 'Pedidos entregues'} listDescription={stage === 'active' ? 'Sem valores financeiros na expedição' : 'Histórico disponível para devolução e pós-venda'} sortOptions={[oldestFirst]} storageKey={`pdv-dispatch-${stage}-list`} searchPlaceholder="Buscar pedido ou cliente" emptyLabel={stage === 'active' ? 'Nenhum pedido aguardando retirada' : 'Nenhum pedido entregue encontrado'} mobileDetailOpen={isMobile ? mobileDetailOpen : undefined} onSelect={selectOrder}>{detailContent}</ListDetailLayout> : isMobile && selectedId ? <div className="bg-background">{detailContent}</div> : <div className={selectedId ? 'grid min-w-0 gap-4 xl:grid-cols-[minmax(22rem,0.9fr)_minmax(32rem,1.1fr)] xl:items-start' : undefined}><DispatchBoard orders={orders} selectedId={selectedId} compact={Boolean(selectedId)} onSelect={selectOrder} onCompletePickup={canDeliver ? id => { if (!quickOrderId) { quickReceiptAttempt.current = autoReceipt.prepare('delivery'); setQuickOrderId(id); } } : undefined} pendingOrderId={quickOrderId} />{selectedId && <aside className="min-w-0 rounded-lg border bg-background p-4">{detailContent}</aside>}</div>}
+    {activeView === 'flow' && canViewFlow ? <PdvFullSalesFlow fulfillmentMode={capability.data!.fulfillmentMode} formatMoney={value => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} onOpen={card => { const destination = pdvFlowCardDestination(card, { pdv: hasScreenAccess('screen:pdv'), orders: hasScreenAccess('screen:pdv_orders'), dispatch: hasScreenAccess('screen:pdv_dispatch') }); if (!destination) return; if (destination.startsWith('/pdv/expedicao?') && card.orderId) { setView('list'); setStage(card.stage === 'completed' ? 'delivered' : 'active'); selectOrder(card.orderId); } else navigate(destination); }} /> : (stage === 'active' ? queue.isLoading : history.isLoading) ? <PdvPageSkeleton variant={activeView === 'board' ? 'kanban' : 'list-detail'} listLeading columns={2} label="Carregando expedição" /> : (stage === 'active' ? queue.isError : history.isError) ? <EmptyState icon={<RefreshCw className="h-12 w-12 text-destructive" />} title="Não foi possível carregar a expedição" description="Nenhum pedido foi alterado." action={{ label: 'Tentar novamente', onClick: () => void refetchStage() }} /> : activeView === 'list' ? <ListDetailLayout items={items} selectedId={selectedId ?? undefined} listTitle={stage === 'active' ? 'Pedidos liberados' : 'Pedidos entregues'} listDescription={stage === 'active' ? 'Sem valores financeiros na expedição' : 'Histórico disponível para devolução e pós-venda'} sortOptions={[oldestFirst]} storageKey={`pdv-dispatch-${stage}-list`} searchPlaceholder="Buscar pedido ou cliente" emptyLabel={stage === 'active' ? 'Nenhum pedido aguardando retirada' : 'Nenhum pedido entregue encontrado'} mobileDetailOpen={isMobile ? mobileDetailOpen : undefined} onSelect={selectOrder}>{detailContent}</ListDetailLayout> : isMobile && selectedId ? <div className="bg-background">{detailContent}</div> : <div className={selectedId ? 'grid min-w-0 gap-4 xl:grid-cols-[minmax(22rem,0.9fr)_minmax(32rem,1.1fr)] xl:items-start' : undefined}><DispatchBoard orders={orders} selectedId={selectedId} compact={Boolean(selectedId)} onSelect={selectOrder} onCompletePickup={canDeliver ? id => { if (!quickOrderId) { quickReceiptAttempt.current = receiptOpener.guardAttempt(autoReceipt.prepare('delivery')); setQuickOrderId(id); } } : undefined} pendingOrderId={quickOrderId} />{selectedId && <aside className="min-w-0 rounded-lg border bg-background p-4">{detailContent}</aside>}</div>}
   </div>;
 }
 
