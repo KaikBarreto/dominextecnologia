@@ -1,5 +1,3 @@
-import { AdminBankAccountsSection } from '@/components/admin/AdminBankAccountsSection';
-import { AdminBankReconciliation } from '@/components/admin/AdminBankReconciliation';
 import { buildDreCategoryIndex, classifyForDre } from '@/lib/adminDreBuckets';
 import type { Tables } from '@/integrations/supabase/types';
 import { AdminCashFlowSection } from '@/components/admin/AdminCashFlowSection';
@@ -48,7 +46,6 @@ export default function AdminFinancial() {
       { value: 'charts', label: 'Gráficos', icon: BarChart3, group: 'Análise' },
       { value: 'dre', label: 'Resultado (DRE)', icon: FileText, group: 'Análise' },
       { value: 'reconciliation', label: 'Conciliação bancária', icon: Scale, group: 'Análise' },
-      { value: 'accounts', label: 'Contas e OFX', icon: Wallet, group: 'Gestão' },
       { value: 'cashflow', label: 'Fluxo de caixa (DFC)', icon: Wallet, group: 'Análise' },
     ] : []),
     { value: 'settings', label: 'Configurações', icon: Settings2, group: 'Sistema' },
@@ -144,8 +141,6 @@ export default function AdminFinancial() {
         );
       case 'charts':
         return <FinancialCharts transactions={transactions} categories={categories} />;
-      case 'accounts':
-        return <AdminBankAccountsSection canManage={canManage} renderTransactions={accountId => <AdminBankReconciliation accountId={accountId} canManage={canManage} />} />;
       case 'cashflow':
         return <AdminCashFlowSection canManage={canManage} />;
       case 'dre':

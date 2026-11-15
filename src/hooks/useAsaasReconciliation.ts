@@ -62,6 +62,7 @@ export function useAsaasBalance() {
 }
 
 interface LedgerFilters {
+  direction?: LedgerDirection;
   /** Vazio/undefined = todos os status. */
   status?: LedgerStatus[];
   page?: number;
@@ -73,11 +74,13 @@ interface LedgerFilters {
 export function useLedgerAsaas(filters: LedgerFilters = {}) {
   return useQuery({
     queryKey: [...LEDGER_KEY, filters],
+    refetchInterval:30_000,
     queryFn: async (): Promise<{ items: LedgerAsaasItem[]; count: number }> => {
       let query = supabase
         .from('admin_realized_asaas_movements')
         .select('id,asaas_transaction_id,asaas_event_type,asaas_payment_id,direction,amount,occurred_at,description,category,status,source,admin_financial_transaction_id,company_id,created_at', { count: 'exact' })
         .order('occurred_at', { ascending: false }).order('id', { ascending: false });
+      if (filters.direction) query=query.eq('direction',filters.direction);
       if (filters.from) query = query.gte('occurred_at', filters.from+'T00:00:00-03:00');
       if (filters.to) query = query.lte('occurred_at', filters.to+'T23:59:59.999999-03:00');
 

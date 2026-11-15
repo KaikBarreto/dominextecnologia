@@ -67,21 +67,21 @@ export function CategorizeLedgerModal({ item, open, onOpenChange }: Props) {
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
-      title="Categorizar movimento"
+      title={isIncome ? "Revisar recebimento" : "Classificar despesa"}
       footer={
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={categorize.isPending}>
             Cancelar
           </Button>
           <Button className="bg-black text-white hover:bg-zinc-800" onClick={handleConfirm} disabled={!selected || categorize.isPending}>
-            {categorize.isPending ? 'Salvando...' : 'Confirmar'}
+            {categorize.isPending ? 'Salvando...' : 'Salvar classificação'}
           </Button>
         </div>
       }
     >
       <div className="space-y-4">
         {/* Resumo do movimento */}
-        <div className="rounded-xl border bg-white p-3 space-y-2 shadow-sm">
+        <div className="space-y-2 border-b pb-4">
           <div className="flex items-center justify-between gap-3">
             <span className="text-xs text-muted-foreground">
               {format(new Date(item.occurred_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
@@ -112,11 +112,11 @@ export function CategorizeLedgerModal({ item, open, onOpenChange }: Props) {
         {isIncome && <p className="text-sm text-muted-foreground">Vendas e renovações devem ser registradas na empresa, para identificar o cliente e evitar duplicações.</p>}
         {/* Seleção de categoria */}
         <div className="space-y-2">
-          <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <label htmlFor="review-category" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Categoria ({isIncome ? 'receita' : 'despesa'})
           </label>
           <Select value={selected} onValueChange={setSelected}>
-            <SelectTrigger>
+            <SelectTrigger id="review-category">
               <SelectValue placeholder="Escolha uma categoria" />
             </SelectTrigger>
             <SelectContent>
