@@ -634,7 +634,16 @@ function WhatsappOperationalHistory({ jobs, isLoading }: { jobs: ConnectionState
           <div className="divide-y rounded-lg bg-muted/20">
             {jobs.slice(0, 15).map((job) => (
               <div key={job.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 text-sm">
-                <div><p className="font-medium">{job.event_key.replace('os.', 'OS · ').replace('billing.', 'Cobrança · ')}</p><p className="text-xs text-muted-foreground">{new Date(job.created_at).toLocaleString('pt-BR')}{job.last_error ? ` · ${job.last_error}` : ''}</p></div>
+                <div>
+                  <p className="font-medium">{job.event_key.replace('os.', 'OS · ').replace('billing.', 'Cobrança · ')}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {job.recipient_kind === 'customer_contact'
+                      ? job.customer_contact?.name ?? 'Contato removido'
+                      : 'Contato principal'}
+                    {' · '}{new Date(job.created_at).toLocaleString('pt-BR')}
+                    {job.last_error ? ` · ${job.last_error}` : ''}
+                  </p>
+                </div>
                 <Badge variant="outline">{labels[job.status] ?? job.status}</Badge>
               </div>
             ))}

@@ -34,6 +34,13 @@ import { ContractFormDialog } from '@/components/contracts/ContractFormDialog';
 import { LeadFormDialog } from '@/components/crm/LeadFormDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useCustomerContacts } from '@/hooks/useCustomerContacts';
+import {
+  isWhatsappPhoneOptedOut,
+  resolveCustomerWhatsappRecipients,
+  useCustomerWhatsappRoutes,
+  whatsappRouteBadgesForContact,
+  type CustomerWhatsappRecipientCandidate,
+} from '@/hooks/useCustomerWhatsappRoutes';
 import { osStatusLabels } from '@/types/database';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
@@ -94,6 +101,10 @@ import { usePartyLabels } from '@/hooks/usePartyLabels';
 import { formatPartyFieldValue, usePartyFieldConfig } from '@/hooks/usePartyFieldConfig';
 import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
 import { PartyAccountPanel } from '@/components/customers/PartyAccountPanel';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  CustomerWhatsappRecipients,
+} from '@/components/customers/CustomerWhatsappRecipients';
 
 type TabKey = 'geral' | 'equipamentos' | 'historico' | 'tarefas' | 'financeiro' | 'chamados' | 'contratos' | 'documentos' | 'cobrancas' | 'estoque';
 
@@ -146,7 +157,7 @@ export function CustomerDetailContent() {
   // por id (UUID) ou por `public_short_code`. `id` abaixo é sempre o id real.
   const { id: routeParam } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { locale } = useAppLocaleContext();
+  const { locale, countryCode } = useAppLocaleContext();
   const tCustomers = MESSAGES[locale].app.customers;
   const tCommon = MESSAGES[locale].app.common;
   const t = tCustomers.detail;
@@ -157,17 +168,21 @@ export function CustomerDetailContent() {
   const { isAdminOrGestor, hasPermission, hasPermissionRecord } = useAuth();
   const { hasModule, hasScreen } = useCompanyModules();
   const canViewCustomerFinancial = hasScreen('screen:finance')
-    && (isAdminOrGestor() || hasPermission('fn:view_customer_financial'));
+    && (isAdminOrGestor()
+      || hasPermission('fn:view_customer_financial')
+      || hasPermission('fn:manage_finance'));
   // Mesma regra do Financeiro geral (TransactionListPanel): só admin/gestor ou
   // quem tem a permissão explícita pode excluir lançamento. Editar não tem
   // trava própria — quem já vê a aba pode editar, igual à tela geral.
   const canDeleteFinance = isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:delete_finance'));
   const canManageFinance = isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:manage_finance'));
+  const canEditCustomer = isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:edit_customer'));
   const canManagePartyCredit = hasModule('pdv')
     && (isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:manage_party_credit')));
   const canManageCustomerDocuments = isAdminOrGestor() || hasPermission('fn:edit_customer');
   const hasPortal = hasModule('customer_portal');
   const hasCobrancas = hasModule('cobrancas');
+  const hasWhatsapp = hasModule('whatsapp');
   const canCreateOpportunity = hasModule('crm');
   const { isActive: isPaymentActive } = useTenantPaymentAccount();
   const showCobrancasTab = hasCobrancas && isPaymentActive;
@@ -203,7 +218,18 @@ export function CustomerDetailContent() {
   const { categories } = useEquipmentCategories();
   const { contracts } = useContracts();
 
-  const { contacts, createContact, updateContact, deleteContact } = useCustomerContacts(id);
+  const {
+    contacts,
+    refetch: refetchCustomerContacts,
+    createContact,
+    updateContact,
+    deleteContact,
+  } = useCustomerContacts(id);
+  const customerWhatsappRoutes = useCustomerWhatsappRoutes(
+    id,
+    hasWhatsapp && Boolean(id),
+    customer?.company_id,
+  );
   const { activeOrigins } = useCustomerOrigins();
   const { labelsFor } = usePartyLabels();
   const { labelsFor: equipmentLabelsFor } = usePartyLabels('equipment');
@@ -240,6 +266,10 @@ export function CustomerDetailContent() {
   const [financeSubTab, setFinanceSubTab] = useState<FinanceSubTab>('tudo');
   const [viewingTxn, setViewingTxn] = useState<FinancialTransaction | null>(null);
   const [chargeDialogOpen, setChargeDialogOpen] = useState(false);
+  const [whatsappRecipientPicker, setWhatsappRecipientPicker] = useState<{
+    message: string;
+    recipients: CustomerWhatsappRecipientCandidate[];
+  } | null>(null);
   // Edição de lançamento manual (aba Financeiro) — mesmo formulário do Financeiro geral.
   const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | null>(null);
   const [txnFormOpen, setTxnFormOpen] = useState(false);
@@ -438,8 +468,7 @@ export function CustomerDetailContent() {
       ? buildCheckoutUrl(charge.public_short_code)
       : charge.invoice_url ?? '';
     const whatsappMsg = t.chargeWhatsappMsg.replace('{value}', `R$ ${formatBRL(charge.value)}`);
-    const phone = customer?.celular || customer?.phone || '';
-    const whatsappLink = buildWhatsAppLink(phone, `${whatsappMsg}\n${checkoutUrl}`);
+    const message = `${whatsappMsg}\n${checkoutUrl}`;
     return buildChargeRowActions(
       charge,
       {
@@ -456,9 +485,85 @@ export function CustomerDetailContent() {
           navigator.clipboard.writeText(checkoutUrl);
           toast({ title: t.chargeLinkCopied });
         },
-        onWhatsapp: () => {
-          const link = whatsappLink ?? `https://wa.me/?text=${encodeURIComponent(`${whatsappMsg}\n${checkoutUrl}`)}`;
-          window.open(link, '_blank', 'noopener,noreferrer');
+        onWhatsapp: async () => {
+          const primaryPhone = customer?.celular?.trim() || customer?.phone?.trim() || '';
+          if (hasWhatsapp && customerWhatsappRoutes.isLoading) {
+            toast({ title: 'Carregando destinatários do WhatsApp. Tente novamente em instantes.' });
+            return;
+          }
+          if (hasWhatsapp && customerWhatsappRoutes.isError) {
+            toast({
+              variant: 'destructive',
+              title: 'Não foi possível confirmar o destinatário financeiro',
+              description: 'Tente novamente antes de abrir a mensagem para evitar o envio ao contato errado.',
+            });
+            return;
+          }
+          let freshRoutes = customerWhatsappRoutes.routes;
+          let freshOptedOutPhones = customerWhatsappRoutes.optedOutPhones;
+          let freshContacts = contacts;
+          if (hasWhatsapp) {
+            try {
+              const [routeSnapshot, contactsSnapshot] = await Promise.all([
+                customerWhatsappRoutes.refetch(),
+                refetchCustomerContacts(),
+              ]);
+              if (contactsSnapshot.error) throw contactsSnapshot.error;
+              freshRoutes = routeSnapshot.routes;
+              freshOptedOutPhones = routeSnapshot.optedOutPhones;
+              freshContacts = contactsSnapshot.data ?? [];
+            } catch {
+              toast({
+                variant: 'destructive',
+                title: 'Não foi possível confirmar o destinatário financeiro',
+                description: 'Tente novamente antes de abrir a mensagem para evitar o envio ao contato errado.',
+              });
+              return;
+            }
+          }
+          const resolved = resolveCustomerWhatsappRecipients(
+            hasWhatsapp ? freshRoutes.find((route) => route.category === 'billing') : undefined,
+            { name: customer?.name ?? '', phone: primaryPhone },
+            freshContacts,
+            hasWhatsapp ? freshOptedOutPhones : [],
+            countryCode,
+          );
+          if (resolved.disabled || (resolved.isExplicit && resolved.recipients.length === 0)) {
+            toast({
+              variant: 'destructive',
+              title: 'Nenhum destinatário financeiro disponível',
+              description: 'Revise os destinatários do WhatsApp na ficha deste cliente.',
+            });
+            return;
+          }
+          if (resolved.recipients.length > 1) {
+            setWhatsappRecipientPicker({ message, recipients: resolved.recipients });
+            return;
+          }
+          const recipient = resolved.recipients[0];
+          if (recipient) {
+            const link = buildWhatsAppLink(recipient.phone, message, countryCode);
+            if (!link) {
+              toast({
+                variant: 'destructive',
+                title: 'Telefone do destinatário inválido',
+                description: 'Revise o número configurado na ficha do cliente.',
+              });
+              return;
+            }
+            window.open(link, '_blank', 'noopener,noreferrer');
+            return;
+          }
+          if (isWhatsappPhoneOptedOut(primaryPhone, freshOptedOutPhones, countryCode)) {
+            toast({
+              variant: 'destructive',
+              title: 'Este número pediu para não receber mensagens',
+              description: 'Escolha outro destinatário financeiro na ficha do cliente.',
+            });
+            return;
+          }
+          // Compatibilidade do fluxo manual para cliente legado sem telefone.
+          window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
         },
         onOpenCheckout: () => {
           if (checkoutUrl) window.open(checkoutUrl, '_blank', 'noopener,noreferrer');
@@ -999,7 +1104,7 @@ export function CustomerDetailContent() {
               </CardContent></Card>
             );
           })()}
-          {/* Responsável no Local */}
+          {/* Contatos e destinatários */}
           <Card className={cn('sm:col-span-2', 'lg:rounded-none lg:border-0 lg:border-b lg:border-border/60 lg:bg-transparent lg:shadow-none', isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-4 space-y-3 lg:px-0">
             <div className="flex items-center justify-between">
               <p className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-1">
@@ -1028,10 +1133,15 @@ export function CustomerDetailContent() {
                 {contacts.map((c) => {
                   const whatsappNumber = c.phone?.replace(/\D/g, '');
                   const whatsappUrl = whatsappNumber ? `https://wa.me/55${whatsappNumber}` : null;
+                  const routeBadges = whatsappRouteBadgesForContact(customerWhatsappRoutes.routes, c.id);
                   return (
                     <div key={c.id} className={cn('flex items-start justify-between gap-3 rounded-lg border p-3 bg-muted/30', isMobile && 'rounded-2xl active:scale-[0.98] transition-transform duration-100')}>
                       <div className="space-y-1 min-w-0 flex-1">
-                        <p className="text-sm font-medium">{c.name}</p>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <p className="text-sm font-medium">{c.name}</p>
+                          {routeBadges.includes('service_order') && <Badge className="bg-blue-600 text-white">OS</Badge>}
+                          {routeBadges.includes('billing') && <Badge className="bg-emerald-600 text-white">Financeiro</Badge>}
+                        </div>
                         {c.position && (
                           <p className="text-xs text-muted-foreground">{c.position}</p>
                         )}
@@ -1075,6 +1185,26 @@ export function CustomerDetailContent() {
                   );
                 })}
               </div>
+            )}
+
+            {hasWhatsapp && id && (
+              <CustomerWhatsappRecipients
+                customerId={id}
+                primaryName={customer.name}
+                primaryPhone={customer.celular?.trim() || customer.phone?.trim()}
+                contacts={contacts}
+                routes={customerWhatsappRoutes.routes}
+                optedOutPhones={customerWhatsappRoutes.optedOutPhones}
+                isLoading={customerWhatsappRoutes.isLoading}
+                isError={customerWhatsappRoutes.isError}
+                isSaving={customerWhatsappRoutes.saveRoute.isPending}
+                customerAutomationEnabled={customer.whatsapp_notifications_enabled ?? true}
+                canEditOperational={canEditCustomer}
+                canViewFinancial={canViewCustomerFinancial}
+                canEditFinancial={canManageFinance}
+                onRetry={() => { void customerWhatsappRoutes.refetch(); }}
+                onSave={(input) => customerWhatsappRoutes.saveRoute.mutateAsync(input)}
+              />
             )}
           </CardContent></Card>
 
@@ -2055,6 +2185,82 @@ export function CustomerDetailContent() {
       {/* Editar cobrança + confirmar exclusão: MESMOS diálogos da Central de
           Cobranças (`useChargeActions`), com as mesmas travas. */}
       <ChargeActionDialogs actions={chargeActions} />
+
+      <Dialog open={!!whatsappRecipientPicker} onOpenChange={(open) => { if (!open) setWhatsappRecipientPicker(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Escolher destinatário financeiro</DialogTitle>
+            <DialogDescription>
+              Esta cobrança possui mais de um destinatário autorizado. Escolha para quem abrir a mensagem.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            {whatsappRecipientPicker?.recipients.map((recipient) => (
+              <Button
+                key={`${recipient.kind}:${recipient.contactId ?? 'primary'}`}
+                variant="outline"
+                className="h-auto min-h-12 w-full justify-start px-3 py-2 text-left"
+                onClick={async () => {
+                  let currentRecipient = recipient;
+                  if (hasWhatsapp) {
+                    try {
+                      const [routeSnapshot, contactsSnapshot] = await Promise.all([
+                        customerWhatsappRoutes.refetch(),
+                        refetchCustomerContacts(),
+                      ]);
+                      if (contactsSnapshot.error) throw contactsSnapshot.error;
+                      const current = resolveCustomerWhatsappRecipients(
+                        routeSnapshot.routes.find((route) => route.category === 'billing'),
+                        {
+                          name: customer.name,
+                          phone: customer.celular?.trim() || customer.phone?.trim(),
+                        },
+                        contactsSnapshot.data ?? [],
+                        routeSnapshot.optedOutPhones,
+                        countryCode,
+                      ).recipients.find((candidate) => candidate.kind === recipient.kind
+                        && candidate.contactId === recipient.contactId);
+                      if (!current) {
+                        toast({
+                          variant: 'destructive',
+                          title: 'Destinatário não está mais disponível',
+                          description: 'A configuração mudou. Abra novamente o envio para escolher um destinatário atual.',
+                        });
+                        setWhatsappRecipientPicker(null);
+                        return;
+                      }
+                      currentRecipient = current;
+                    } catch {
+                      toast({
+                        variant: 'destructive',
+                        title: 'Não foi possível confirmar o destinatário financeiro',
+                        description: 'Tente novamente antes de abrir a mensagem para evitar o envio ao contato errado.',
+                      });
+                      return;
+                    }
+                  }
+                  const link = buildWhatsAppLink(currentRecipient.phone, whatsappRecipientPicker.message, countryCode);
+                  if (link) {
+                    window.open(link, '_blank', 'noopener,noreferrer');
+                  } else {
+                    toast({
+                      variant: 'destructive',
+                      title: 'Telefone do destinatário inválido',
+                      description: 'Revise o número configurado na ficha do cliente.',
+                    });
+                  }
+                  setWhatsappRecipientPicker(null);
+                }}
+              >
+                <span className="min-w-0">
+                  <span className="block truncate font-medium">{recipient.name}</span>
+                  <span className="block text-xs text-muted-foreground">{formatCustomerPhone(recipient.phone)}</span>
+                </span>
+              </Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <CustomerTransactionDetailModal
         open={!!viewingTxn}

@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.42',
+    date: '15 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Destinatários certos para cada mensagem no WhatsApp',
+        category: 'recurso',
+        description: 'Cada cliente pode ter contatos diferentes para ordens de serviço e assuntos financeiros. É possível escolher um ou mais destinatários em cada categoria, mantendo o contato principal quando nenhuma preferência for configurada.',
+      },
+      {
+        title: 'Preferência de mensagens respeitada por telefone',
+        category: 'melhoria',
+        description: 'O comando de saída bloqueia somente o número que pediu para parar. Pedidos como “cancelar visita” ou “cancelar cobrança” não são confundidos com o bloqueio das mensagens.',
+      },
+    ],
+  },
+  {
     version: '1.39.41',
     date: '14 de novembro de 2026',
     type: 'patch',

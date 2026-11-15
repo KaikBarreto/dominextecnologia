@@ -621,7 +621,8 @@ async function collectSheets({
             'customers',
             'id, name, nome_fantasia, company_name, customer_type, document, inscricao_estadual, ' +
               'inscricao_municipal, email, phone, celular, address, address_number, complement, ' +
-              'neighborhood, city, state, zip_code, origin, birth_date, notes, created_at',
+              'neighborhood, city, state, zip_code, origin, birth_date, notes, ' +
+              'whatsapp_notifications_enabled, created_at',
             {
               orderBy: ['name', 'id'],
               // Lixeira não é backup.
@@ -630,6 +631,45 @@ async function collectSheets({
             },
           ),
         );
+        // As preferências de destinatários também fazem parte da portabilidade.
+        // Sem rota explícita, só o contato principal recebe (legado).
+        const whatsappRoutes = await fetchAllPaged(
+          'customer_whatsapp_routes',
+          'id, customer_id, category, enabled',
+          { orderBy: ['id'] },
+        );
+        const whatsappRecipients = await fetchAllPaged(
+          'customer_whatsapp_route_recipients',
+          'id, route_id, recipient_kind, customer_contact_id',
+          { orderBy: ['id'] },
+        );
+        const routeByCustomerCategory = new Map<string, DbRow>();
+        for (const route of whatsappRoutes) {
+          routeByCustomerCategory.set(`${route.customer_id}:${route.category}`, route);
+        }
+        const recipientsByRoute = new Map<string, DbRow[]>();
+        for (const recipient of whatsappRecipients) {
+          const key = String(recipient.route_id);
+          recipientsByRoute.set(key, [...(recipientsByRoute.get(key) ?? []), recipient]);
+        }
+        const customerWhatsappEnabled = new Map(
+          rows.map((customer) => [String(customer.id), customer.whatsapp_notifications_enabled === true]),
+        );
+        const receivesWhatsapp = (
+          customerId: unknown,
+          category: 'service_order' | 'billing',
+          kind: 'customer_primary' | 'customer_contact',
+          contactId?: unknown,
+        ): boolean => {
+          if (customerWhatsappEnabled.get(String(customerId)) !== true) return false;
+          const route = routeByCustomerCategory.get(`${customerId}:${category}`);
+          if (!route) return kind === 'customer_primary';
+          if (route.enabled !== true) return false;
+          return (recipientsByRoute.get(String(route.id)) ?? []).some((recipient) =>
+            recipient.recipient_kind === kind
+            && (kind === 'customer_primary' || recipient.customer_contact_id === contactId),
+          );
+        };
         sheets.push({
           key: 'customers',
           columns: [
@@ -638,7 +678,8 @@ async function collectSheets({
             T('email', 28), T('phone'), T('celular'),
             T('address', 32), T('address_number'), T('complement'), T('neighborhood'),
             T('city'), T('state'), T('zip_code'),
-            T('origin'), T('birth_date'), T('notes', 40), T('created_at'),
+            T('origin'), T('birth_date'), T('notes', 40),
+            T('whatsapp_service_order'), T('whatsapp_billing'), T('created_at'),
           ],
           rows: rows.map((r) => [
             s(r.name), s(r.nome_fantasia), s(r.company_name), s(r.customer_type),
@@ -646,7 +687,10 @@ async function collectSheets({
             s(r.email), s(r.phone), s(r.celular),
             s(r.address), s(r.address_number), s(r.complement), s(r.neighborhood),
             s(r.city), s(r.state), s(r.zip_code),
-            s(r.origin), d(r.birth_date), s(r.notes), d(r.created_at),
+            s(r.origin), d(r.birth_date), s(r.notes),
+            b(receivesWhatsapp(r.id, 'service_order', 'customer_primary')),
+            b(receivesWhatsapp(r.id, 'billing', 'customer_primary')),
+            d(r.created_at),
           ]),
         });
 
@@ -668,11 +712,14 @@ async function collectSheets({
           key: 'customerContacts',
           columns: [
             T('customer', 32), T('name', 28), T('position'), T('phone'), T('email', 28),
-            T('notes', 40), T('created_at'),
+            T('notes', 40), T('whatsapp_service_order'), T('whatsapp_billing'), T('created_at'),
           ],
           rows: contacts.map((r) => [
             ref(customers, r.customer_id), s(r.name), s(r.position), s(r.phone), s(r.email),
-            s(r.notes), d(r.created_at),
+            s(r.notes),
+            b(receivesWhatsapp(r.customer_id, 'service_order', 'customer_contact', r.id)),
+            b(receivesWhatsapp(r.customer_id, 'billing', 'customer_contact', r.id)),
+            d(r.created_at),
           ]),
         });
         break;

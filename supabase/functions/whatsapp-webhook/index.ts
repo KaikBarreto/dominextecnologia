@@ -10,10 +10,10 @@
 //     (open→connected, connecting→qr, close→disconnected). Detecta BAN.
 //   - MESSAGES_UPDATE / SEND_MESSAGE (ack de entrega) → marca whatsapp_events
 //     como 'entregue' quando aplicável.
-//   - MESSAGES_UPSERT (mensagem RECEBIDA do cliente) → detecta opt-out ("parar",
-//     "sair", "cancelar") pra não enviar mais àquele número. Ver PENDÊNCIA: a
-//     tabela whatsapp_opt_outs não está no contrato da Onda 1; gravamos de forma
-//     tolerante (ignora se a tabela não existe). Grava também a CHAVE da
+//   - MESSAGES_UPSERT (mensagem RECEBIDA do cliente) → detecta comandos claros
+//     de opt-out ("parar", "sair", "stop") pra não enviar mais àquele número. O bloqueio é por
+//     company_id + telefone: um contato não desliga os demais destinatários do
+//     mesmo cliente. Grava também a CHAVE da
 //     mensagem (remote_jid + message_id) em whatsapp_inbound_keys, pro worker
 //     poder marcar a conversa como lida antes de responder — NUNCA o corpo da
 //     mensagem, nem trecho, nem tamanho (a Evolution roda com
@@ -25,6 +25,7 @@
 
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { parseEvolutionDeliveryAck } from "../_shared/evolution-ack.ts";
+import { isWhatsAppOptOutText } from "../_shared/whatsapp-opt-out.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -64,17 +65,14 @@ function mapConnectionStatus(state: string, statusReason?: number): string {
   }
 }
 
-/** Detecta intenção de opt-out numa mensagem recebida do cliente. */
-function isOptOutText(text: string): boolean {
-  const t = text.trim().toLowerCase();
-  return /^(parar|sair|cancelar|pare|stop|descadastrar|remover|nao quero|não quero)\b/.test(t);
-}
-
 /** Extrai o telefone (só dígitos, com DDI) do remoteJid do Baileys. */
 function jidToPhone(jid: string | null | undefined): string | null {
   if (!jid) return null;
   const digits = jid.split("@")[0]?.replace(/\D/g, "") ?? "";
-  if (digits.length < 10) return null;
+  // Mesmo contrato E.164 do worker/SQL. Alguns países suportados possuem
+  // números válidos com 8 ou 9 dígitos já incluindo o DDI; rejeitá-los aqui
+  // faria o destinatário receber mensagens, mas impediria o próprio PARAR.
+  if (digits.length < 8 || digits.length > 15) return null;
   return digits;
 }
 
@@ -155,14 +153,16 @@ async function resolveCompanyByInstance(
   instanceName: string,
 ): Promise<{ company_id: string; connection_id: string | null } | null> {
   if (!instanceName) return null;
-  const { data: connection } = await supabase
+  const { data: connection, error: connectionError } = await supabase
     .from("whatsapp_connections")
     .select("id, company_id")
     .eq("instance_name", instanceName)
     .maybeSingle();
+  if (connectionError) throw connectionError;
   if (connection) return { company_id: connection.company_id, connection_id: connection.id };
-  const { data: legacy } = await supabase
+  const { data: legacy, error: legacyError } = await supabase
     .from("company_whatsapp_settings").select("company_id").eq("instance_name", instanceName).maybeSingle();
+  if (legacyError) throw legacyError;
   return legacy ? { company_id: legacy.company_id, connection_id: null } : null;
 }
 
@@ -181,7 +181,6 @@ async function findDeliveryEvent(
   supabase: SupabaseClient,
   companyId: string,
   providerMessageId: string | null,
-  remotePhone: string | null,
 ): Promise<DeliveryEvent | null> {
   const delays = [0, 150, 350, 750];
   for (const delay of delays) {
@@ -198,18 +197,11 @@ async function findDeliveryEvent(
       continue;
     }
 
-    if (remotePhone) {
-      const { data } = await supabase
-        .from("whatsapp_events")
-        .select("id, job_id, status")
-        .eq("company_id", companyId)
-        .eq("phone", remotePhone)
-        .in("status", ["enviado", "entregue", "lido"])
-        .order("sent_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (data) return data as DeliveryEvent;
-    }
+    // Sem o ID do provedor não existe correlação segura. Usar apenas o
+    // telefone podia promover o job errado quando duas mensagens saíam perto.
+    // O caller devolve 503 para a Evolution repetir o ACK em vez de corromper
+    // a auditoria de outro envio.
+    if (!providerMessageId) return null;
   }
   return null;
 }
@@ -255,7 +247,19 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  const tenant = await resolveCompanyByInstance(supabase, instanceName);
+  let tenant: Awaited<ReturnType<typeof resolveCompanyByInstance>>;
+  try {
+    tenant = await resolveCompanyByInstance(supabase, instanceName);
+  } catch (error) {
+    console.error("[whatsapp-webhook] falha ao resolver instância", {
+      instanceName,
+      event,
+      message: error instanceof Error ? error.message : String(error),
+    });
+    // Falha de banco é transitória e diferente de instância realmente
+    // desconhecida. 503 preserva ACKs e opt-outs via retry da Evolution.
+    return jsonResponse({ error: "instance_resolution_unavailable" }, 503);
+  }
   if (!tenant) {
     // 200 pra não gerar retry de uma instância que não conhecemos.
     console.warn("[whatsapp-webhook] instância desconhecida", { instanceName, event });
@@ -408,12 +412,10 @@ Deno.serve(async (req) => {
         const ack = parseEvolutionDeliveryAck(u);
         if (!ack) continue;
 
-        const remotePhone = jidToPhone(ack.remoteJid);
         const ev = await findDeliveryEvent(
           supabase,
           companyId,
           ack.providerMessageId,
-          remotePhone,
         );
         if (!ev) {
           unmatchedAcks += 1;
@@ -455,9 +457,9 @@ Deno.serve(async (req) => {
 
     // ----------------------------------------------------------------------
     // MESSAGES_UPSERT (mensagem recebida) → detecção de OPT-OUT.
-    // PENDÊNCIA: whatsapp_opt_outs não está no contrato da Onda 1. Gravamos de
-    // forma tolerante (ignora se a tabela não existir). Não processa mensagens
-    // que a PRÓPRIA instância enviou (fromMe).
+    // O opt-out é canônico por número. Não desliga a autorização global do
+    // cliente, pois portaria, síndico e administradora podem ser destinatários
+    // independentes. Não processa mensagens que a PRÓPRIA instância enviou.
     // ----------------------------------------------------------------------
     if (event === "MESSAGES_UPSERT") {
       const messages = Array.isArray(data?.messages)
@@ -480,31 +482,24 @@ Deno.serve(async (req) => {
 
         const text = m?.message?.conversation ??
           m?.message?.extendedTextMessage?.text ?? "";
-        if (typeof text === "string" && text && isOptOutText(text)) {
+        if (typeof text === "string" && text && isWhatsAppOptOutText(text)) {
           const phone = jidToPhone(m?.key?.remoteJid ?? null);
           if (phone) {
             try {
-              await supabase
+              const { error: optOutError } = await supabase
                 .from("whatsapp_opt_outs")
                 .upsert(
                   { company_id: companyId, phone, opted_out_at: new Date().toISOString() },
                   { onConflict: "company_id,phone" },
                 );
-              const { data: customers } = await supabase
-                .from("customers")
-                .select("id, phone, celular")
-                .eq("company_id", companyId);
-              const matchingIds = (customers ?? [])
-                .filter((customer) => normalizePhone(customer.celular ?? customer.phone) === phone)
-                .map((customer) => customer.id);
-              if (matchingIds.length) {
-                await supabase.from("customers").update({
-                  whatsapp_notifications_enabled: false,
-                  whatsapp_opt_out_at: new Date().toISOString(),
-                }).eq("company_id", companyId).in("id", matchingIds);
-              }
-            } catch (_e) {
-              console.warn("[whatsapp-webhook] whatsapp_opt_outs indisponível (pendência Onda 1).");
+              if (optOutError) throw optOutError;
+            } catch (error) {
+              console.error("[whatsapp-webhook] não foi possível registrar o opt-out por telefone.", {
+                message: error instanceof Error ? error.message : String(error),
+              });
+              // O upsert é idempotente. Repetir o evento é mais seguro do que
+              // confirmar 200 e continuar enviando após um PARAR não gravado.
+              return jsonResponse({ error: "opt_out_persistence_unavailable" }, 503);
             }
           }
         }

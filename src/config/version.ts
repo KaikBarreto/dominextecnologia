@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.39.41";
+export const APP_VERSION = "1.39.42";
 
 export const VERSION_NOTES =
-  "Criação de orçamentos, contratos e OS em tela cheia, orçamento rápido na OS, numeração antecipada e Kanban com cabeçalhos padronizados.";
+  "Destinatários personalizados de WhatsApp para ordens de serviço e mensagens financeiras.";

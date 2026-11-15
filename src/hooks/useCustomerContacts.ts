@@ -16,7 +16,7 @@ export interface CustomerContact {
 export function useCustomerContacts(customerId?: string) {
   const queryClient = useQueryClient();
 
-  const { data: contacts = [], isLoading } = useQuery({
+  const contactsQuery = useQuery({
     queryKey: ['customer-contacts', customerId],
     queryFn: async () => {
       if (!customerId) return [];
@@ -30,6 +30,8 @@ export function useCustomerContacts(customerId?: string) {
     },
     enabled: !!customerId,
   });
+  const contacts = contactsQuery.data ?? [];
+  const isLoading = contactsQuery.isLoading;
 
   const createContact = useMutation({
     mutationFn: async (contact: { customer_id: string; name: string; phone?: string; email?: string; position?: string; notes?: string }) => {
@@ -66,5 +68,14 @@ export function useCustomerContacts(customerId?: string) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['customer-contacts', customerId] }),
   });
 
-  return { contacts, isLoading, createContact, updateContact, deleteContact };
+  return {
+    contacts,
+    isLoading,
+    isError: contactsQuery.isError,
+    error: contactsQuery.error,
+    refetch: contactsQuery.refetch,
+    createContact,
+    updateContact,
+    deleteContact,
+  };
 }

@@ -57,6 +57,7 @@ export interface UserRole {
 
 export interface Customer {
   id: string;
+  company_id?: string;
   customer_type: CustomerType;
   name: string;
   company_name?: string;

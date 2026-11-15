@@ -503,6 +503,8 @@ export const settings = {
           origin: 'Origem',
           birth_date: 'Data de Nascimento',
           notes: 'Observações',
+          whatsapp_service_order: 'Recebe WhatsApp de OS',
+          whatsapp_billing: 'Recebe WhatsApp financeiro',
           created_at: 'Cadastrado em',
         },
         customerContacts: {
@@ -512,6 +514,8 @@ export const settings = {
           phone: 'Telefone',
           email: 'Email',
           notes: 'Observações',
+          whatsapp_service_order: 'Recebe WhatsApp de OS',
+          whatsapp_billing: 'Recebe WhatsApp financeiro',
           created_at: 'Criado em',
         },
         equipment: {
@@ -2254,6 +2258,8 @@ export const settings = {
           origin: 'Source',
           birth_date: 'Birth Date',
           notes: 'Notes',
+          whatsapp_service_order: 'Receives work order WhatsApp',
+          whatsapp_billing: 'Receives financial WhatsApp',
           created_at: 'Created at',
         },
         customerContacts: {
@@ -2263,6 +2269,8 @@ export const settings = {
           phone: 'Phone',
           email: 'Email',
           notes: 'Notes',
+          whatsapp_service_order: 'Receives work order WhatsApp',
+          whatsapp_billing: 'Receives financial WhatsApp',
           created_at: 'Created at',
         },
         equipment: {
@@ -3952,6 +3960,8 @@ export const settings = {
           origin: 'Origen',
           birth_date: 'Fecha de Nacimiento',
           notes: 'Notas',
+          whatsapp_service_order: 'Recibe WhatsApp de órdenes',
+          whatsapp_billing: 'Recibe WhatsApp financiero',
           created_at: 'Creado el',
         },
         customerContacts: {
@@ -3961,6 +3971,8 @@ export const settings = {
           phone: 'Teléfono',
           email: 'Email',
           notes: 'Notas',
+          whatsapp_service_order: 'Recibe WhatsApp de órdenes',
+          whatsapp_billing: 'Recibe WhatsApp financiero',
           created_at: 'Creado el',
         },
         equipment: {
@@ -5650,6 +5662,8 @@ export const settings = {
           origin: 'Origine',
           birth_date: 'Date de Naissance',
           notes: 'Notes',
+          whatsapp_service_order: 'Reçoit les WhatsApp d’intervention',
+          whatsapp_billing: 'Reçoit les WhatsApp financiers',
           created_at: 'Créé le',
         },
         customerContacts: {
@@ -5659,6 +5673,8 @@ export const settings = {
           phone: 'Téléphone',
           email: 'E-mail',
           notes: 'Notes',
+          whatsapp_service_order: 'Reçoit les WhatsApp d’intervention',
+          whatsapp_billing: 'Reçoit les WhatsApp financiers',
           created_at: 'Créé le',
         },
         equipment: {

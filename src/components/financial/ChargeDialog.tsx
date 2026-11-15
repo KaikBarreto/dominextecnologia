@@ -35,6 +35,12 @@ import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
 import { Loader2, Copy, Check, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, Calculator, UserCog, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useCustomers, type CustomerInput } from '@/hooks/useCustomers';
+import { useCustomerContacts } from '@/hooks/useCustomerContacts';
+import {
+  resolveCustomerWhatsappRecipients,
+  type CustomerWhatsappRecipientCandidate,
+  useCustomerWhatsappRoutes,
+} from '@/hooks/useCustomerWhatsappRoutes';
 import {
   useTenantCharges,
   buildCheckoutUrl,
@@ -118,6 +124,28 @@ interface ChargeDialogProps {
 // Meios de pagamento efetivos (respeitam as flags allow_* da conta).
 type BillingMethod = TenantChargeBillingType;
 
+const WHATSAPP_RECIPIENT_COPY = {
+  'pt-br': {
+    label: 'Destinatário financeiro',
+    sendingTo: 'A mensagem será aberta para',
+    disabled: 'As mensagens financeiras estão desativadas para este cliente.',
+    unavailable: 'Nenhum destinatário financeiro válido está configurado para este cliente.',
+    loadError: 'Não foi possível confirmar o destinatário financeiro. Tente novamente.',
+  },
+  en: {
+    label: 'Billing recipient', sendingTo: 'The message will open for', disabled: 'Billing messages are disabled for this customer.',
+    unavailable: 'No valid billing recipient is configured for this customer.', loadError: 'Could not confirm the billing recipient. Try again.',
+  },
+  es: {
+    label: 'Destinatario financiero', sendingTo: 'El mensaje se abrirá para', disabled: 'Los mensajes financieros están desactivados para este cliente.',
+    unavailable: 'No hay un destinatario financiero válido configurado para este cliente.', loadError: 'No se pudo confirmar el destinatario financiero. Inténtalo de nuevo.',
+  },
+  fr: {
+    label: 'Destinataire financier', sendingTo: 'Le message sera ouvert pour', disabled: 'Les messages financiers sont désactivés pour ce client.',
+    unavailable: 'Aucun destinataire financier valide n’est configuré pour ce client.', loadError: 'Impossible de confirmer le destinataire financier. Réessayez.',
+  },
+} as const;
+
 /** Converte string com vírgula ou ponto para número float. Retorna NaN se inválido. */
 function parseDecimalInput(v: string): number {
   return parseFloat(v.replace(',', '.'));
@@ -158,7 +186,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
   // contagem dupla não enxergava essa cobrança.
   const [osVinculada, setOsVinculada] = useState('');
   const { serviceOrders: osOptions } = useServiceOrderOptions(open && !source, null);
-  const { locale, timezone } = useAppLocaleContext();
+  const { locale, timezone, countryCode } = useAppLocaleContext();
   const t = MESSAGES[locale].app.charges.cobrar;
   const fin = MESSAGES[locale].app.finance;
   const { toast } = useToast();
@@ -328,6 +356,50 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
     () => customers.find((c) => c.id === customerId) ?? null,
     [customers, customerId],
   );
+  const {
+    contacts: customerContacts,
+    refetch: refetchCustomerContacts,
+  } = useCustomerContacts(customerId || undefined);
+  const customerWhatsappRoutes = useCustomerWhatsappRoutes(
+    customerId || undefined,
+    open && Boolean(customerId),
+    selectedCustomer?.company_id,
+  );
+  const billingWhatsappRoute = useMemo(
+    () => customerWhatsappRoutes.routes.find((route) => route.category === 'billing'),
+    [customerWhatsappRoutes.routes],
+  );
+  const billingWhatsappRecipients = useMemo(() => resolveCustomerWhatsappRecipients(
+    billingWhatsappRoute,
+    {
+      name: selectedCustomer?.name ?? '',
+      phone: selectedCustomer?.celular?.trim() || selectedCustomer?.phone?.trim(),
+    },
+    customerContacts,
+    customerWhatsappRoutes.optedOutPhones,
+    countryCode,
+  ), [billingWhatsappRoute, countryCode, customerContacts, customerWhatsappRoutes.optedOutPhones, selectedCustomer]);
+  const [whatsappRecipientKey, setWhatsappRecipientKey] = useState('');
+  const whatsappRecipientOptions = useMemo(
+    () => billingWhatsappRecipients.recipients.map((recipient) => ({
+      ...recipient,
+      key: `${recipient.kind}:${recipient.contactId ?? 'primary'}`,
+    })),
+    [billingWhatsappRecipients.recipients],
+  );
+  const selectedWhatsappRecipient = useMemo(
+    () => whatsappRecipientOptions.find((recipient) => recipient.key === whatsappRecipientKey)
+      ?? whatsappRecipientOptions[0]
+      ?? null,
+    [whatsappRecipientKey, whatsappRecipientOptions],
+  );
+
+  useEffect(() => {
+    const firstKey = whatsappRecipientOptions[0]?.key ?? '';
+    if (!whatsappRecipientOptions.some((recipient) => recipient.key === whatsappRecipientKey)) {
+      setWhatsappRecipientKey(firstKey);
+    }
+  }, [whatsappRecipientKey, whatsappRecipientOptions]);
 
   // Inicializa uma nova sessão do formulário. A jornada de carregamento da
   // conta (fallback imediato -> valores persistidos) é tratada separadamente
@@ -782,8 +854,47 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
     }
   };
 
-  const handleSendWhatsapp = () => {
+  const handleSendWhatsapp = async () => {
     if (!result) return;
+    const recipientCopy = WHATSAPP_RECIPIENT_COPY[locale];
+    if (customerWhatsappRoutes.isError) {
+      toast({ variant: 'destructive', title: recipientCopy.loadError });
+      return;
+    }
+    let currentRecipients = billingWhatsappRecipients;
+    let currentSelected: CustomerWhatsappRecipientCandidate | null = selectedWhatsappRecipient;
+    try {
+      const [routeSnapshot, contactsSnapshot] = await Promise.all([
+        customerWhatsappRoutes.refetch(),
+        refetchCustomerContacts(),
+      ]);
+      if (contactsSnapshot.error) throw contactsSnapshot.error;
+      currentRecipients = resolveCustomerWhatsappRecipients(
+        routeSnapshot.routes.find((route) => route.category === 'billing'),
+        {
+          name: selectedCustomer?.name ?? '',
+          phone: selectedCustomer?.celular?.trim() || selectedCustomer?.phone?.trim(),
+        },
+        contactsSnapshot.data ?? [],
+        routeSnapshot.optedOutPhones,
+        countryCode,
+      );
+      currentSelected = whatsappRecipientKey
+        ? currentRecipients.recipients.find((recipient) =>
+          `${recipient.kind}:${recipient.contactId ?? 'primary'}` === whatsappRecipientKey) ?? null
+        : currentRecipients.recipients[0] ?? null;
+    } catch {
+      toast({ variant: 'destructive', title: recipientCopy.loadError });
+      return;
+    }
+    if (currentRecipients.disabled) {
+      toast({ variant: 'destructive', title: recipientCopy.disabled });
+      return;
+    }
+    if (currentRecipients.isExplicit && !currentSelected) {
+      toast({ variant: 'destructive', title: recipientCopy.unavailable });
+      return;
+    }
     // No caso órfão não há `charge`, usamos o `amount` do formulário (estado local).
     const chargeValue = result.orphan || !('charge' in result) ? amount : result.charge.value;
     const valueLabel = formatBRL(chargeValue);
@@ -791,9 +902,14 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
     const message = `${t.whatsappMessage
       .replace('{value}', valueLabel)
       .replace('{description}', descPart)}\n${displayUrl}`;
-    const phone = selectedCustomer?.celular || selectedCustomer?.phone || '';
-    const link = buildWhatsAppLink(phone, message);
-    // Sem telefone válido: abre o WhatsApp Web sem destinatário com o texto pronto.
+    const phone = currentSelected?.phone ?? '';
+    const link = buildWhatsAppLink(phone, message, countryCode);
+    // O fallback sem destinatário existe apenas no modo legado. Uma rota
+    // financeira explícita nunca pode escapar para a pessoa errada.
+    if (!link && currentRecipients.isExplicit) {
+      toast({ variant: 'destructive', title: recipientCopy.unavailable });
+      return;
+    }
     window.open(link ?? `https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener');
   };
 
@@ -1726,13 +1842,57 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
               </div>
             </div>
 
+            {customerWhatsappRoutes.isError ? (
+              <NoticeBanner variant="warning">
+                {WHATSAPP_RECIPIENT_COPY[locale].loadError}
+              </NoticeBanner>
+            ) : billingWhatsappRecipients.disabled ? (
+              <NoticeBanner variant="warning">
+                {WHATSAPP_RECIPIENT_COPY[locale].disabled}
+              </NoticeBanner>
+            ) : billingWhatsappRecipients.isExplicit && whatsappRecipientOptions.length === 0 ? (
+              <NoticeBanner variant="warning">
+                {WHATSAPP_RECIPIENT_COPY[locale].unavailable}
+              </NoticeBanner>
+            ) : whatsappRecipientOptions.length > 1 ? (
+              <div className="space-y-2">
+                <Label htmlFor="charge-whatsapp-recipient">
+                  {WHATSAPP_RECIPIENT_COPY[locale].label}
+                </Label>
+                <Select value={selectedWhatsappRecipient?.key ?? ''} onValueChange={setWhatsappRecipientKey}>
+                  <SelectTrigger id="charge-whatsapp-recipient">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {whatsappRecipientOptions.map((recipient) => (
+                      <SelectItem key={recipient.key} value={recipient.key}>
+                        {recipient.name} · {recipient.phone}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : selectedWhatsappRecipient ? (
+              <p className="text-xs text-muted-foreground">
+                {WHATSAPP_RECIPIENT_COPY[locale].sendingTo} <span className="font-medium text-foreground">{selectedWhatsappRecipient.name}</span>.
+              </p>
+            ) : null}
+
             <div className="flex flex-col sm:flex-row gap-2 pt-1">
               <Button
                 type="button"
                 onClick={handleSendWhatsapp}
+                disabled={
+                  customerWhatsappRoutes.isLoading
+                  || customerWhatsappRoutes.isError
+                  || billingWhatsappRecipients.disabled
+                  || (billingWhatsappRecipients.isExplicit && !selectedWhatsappRecipient)
+                }
                 className="bg-[#25D366] hover:bg-[#1fb955] text-white"
               >
-                <WhatsAppIcon className="mr-2 h-4 w-4" />
+                {customerWhatsappRoutes.isLoading
+                  ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  : <WhatsAppIcon className="mr-2 h-4 w-4" />}
                 {t.success.sendWhatsapp}
               </Button>
               <Button type="button" variant="outline" onClick={resetForm}>

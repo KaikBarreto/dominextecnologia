@@ -27,15 +27,33 @@ class ResizeObserverStub {
 }
 (globalThis as any).ResizeObserver = (globalThis as any).ResizeObserver || ResizeObserverStub;
 
-const { toastSpy, createMutateAsync, updateCustomerMutateAsync } = vi.hoisted(() => ({
+const {
+  toastSpy,
+  createMutateAsync,
+  updateCustomerMutateAsync,
+  routeRefetch,
+  contactsRefetch,
+  whatsappState,
+} = vi.hoisted(() => ({
   toastSpy: vi.fn(),
   createMutateAsync: vi.fn(),
   updateCustomerMutateAsync: vi.fn(),
+  routeRefetch: vi.fn(),
+  contactsRefetch: vi.fn(),
+  whatsappState: {
+    routes: [] as unknown[],
+    optedOutPhones: [] as string[],
+    contacts: [] as unknown[],
+    isLoading: false,
+    isError: false,
+    resolved: { isExplicit: false, disabled: false, recipients: [] as unknown[] },
+  },
 }));
 
 vi.mock('@/contexts/AppLocaleContext', () => ({
   useAppLocaleContext: () => ({
     locale: 'pt-br',
+    countryCode: 'BR',
     currency: 'BRL',
     timezone: 'America/Sao_Paulo',
     isLoading: false,
@@ -47,13 +65,35 @@ vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: toastSpy }),
 }));
 
-const CUSTOMER_OK = { id: 'cust-ok', name: 'Cliente Ok', document: '11144477735', email: '', phone: '', celular: '' };
-const CUSTOMER_NODOC = { id: 'cust-nodoc', name: 'Cliente Sem Doc', document: '', email: '', phone: '', celular: '' };
+const CUSTOMER_OK = { id: 'cust-ok', company_id: 'company-1', name: 'Cliente Ok', document: '11144477735', email: '', phone: '', celular: '(11) 99999-0000' };
+const CUSTOMER_NODOC = { id: 'cust-nodoc', company_id: 'company-1', name: 'Cliente Sem Doc', document: '', email: '', phone: '', celular: '' };
 
 vi.mock('@/hooks/useCustomers', () => ({
   useCustomers: () => ({
     customers: [CUSTOMER_OK, CUSTOMER_NODOC],
     updateCustomer: { mutateAsync: updateCustomerMutateAsync, isPending: false },
+  }),
+}));
+
+vi.mock('@/hooks/useCustomerContacts', () => ({
+  useCustomerContacts: () => ({
+    contacts: whatsappState.contacts,
+    isLoading: false,
+    refetch: contactsRefetch,
+  }),
+}));
+
+vi.mock('@/hooks/useCustomerWhatsappRoutes', () => ({
+  resolveCustomerWhatsappRecipients: () => whatsappState.resolved,
+  useCustomerWhatsappRoutes: () => ({
+    routes: whatsappState.routes,
+    optedOutPhones: whatsappState.optedOutPhones,
+    routeByCategory: () => undefined,
+    isLoading: whatsappState.isLoading,
+    isError: whatsappState.isError,
+    error: null,
+    refetch: routeRefetch,
+    saveRoute: { mutateAsync: vi.fn(), isPending: false },
   }),
 }));
 
@@ -223,6 +263,9 @@ function pillByLabel(label: string) {
 function buttonByText(label: string) {
   return Array.from(document.querySelectorAll('button')).find((b) => b.textContent?.trim() === label);
 }
+function whatsappButton() {
+  return Array.from(document.querySelectorAll('button')).find((b) => b.textContent?.includes('WhatsApp'));
+}
 function setInputValue(input: HTMLInputElement, value: string) {
   act(() => {
     const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!;
@@ -258,8 +301,44 @@ function paste(input: HTMLInputElement, text: string) {
   });
 }
 
+async function createChargeAndShowSuccess() {
+  createMutateAsync.mockResolvedValue({
+    orphan: false,
+    charge: { financeWarning: null, public_short_code: 'abc123', value: 100 },
+  });
+  mount();
+  selectValue(q('[data-testid="customer-select"]') as HTMLSelectElement, CUSTOMER_OK.id);
+  setInputValue(q('#charge-amount') as HTMLInputElement, '10000');
+  await act(async () => {
+    buttonByText('Gerar agora')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await Promise.resolve();
+  });
+  expect(whatsappButton()).toBeTruthy();
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
+  whatsappState.routes = [];
+  whatsappState.optedOutPhones = [];
+  whatsappState.contacts = [];
+  whatsappState.isLoading = false;
+  whatsappState.isError = false;
+  whatsappState.resolved = {
+    isExplicit: false,
+    disabled: false,
+    recipients: [{
+      kind: 'customer_primary',
+      contactId: null,
+      name: CUSTOMER_OK.name,
+      phone: CUSTOMER_OK.celular,
+    }],
+  };
+  routeRefetch.mockImplementation(async () => ({
+    routes: whatsappState.routes,
+    optedOutPhones: whatsappState.optedOutPhones,
+  }));
+  contactsRefetch.mockImplementation(async () => ({ data: whatsappState.contacts, error: null }));
+  vi.spyOn(window, 'open').mockImplementation(() => null);
   accountState.allowPix = true;
   accountState.allowBoleto = true;
   accountState.allowCard = true;
@@ -279,6 +358,7 @@ afterEach(() => {
   act(() => root.unmount());
   container.remove();
   document.body.innerHTML = '';
+  vi.restoreAllMocks();
 });
 
 describe('ChargeDialog — reorganização em abas', () => {
@@ -566,5 +646,92 @@ describe('ChargeDialog — resumo de quanto o cliente paga', () => {
     setInputValue(q('#adv-discount') as HTMLInputElement, '5');
     expect(text()).toContain('Pagando até o vencimento');
     expect(text()).toContain('950,00');
+  });
+});
+
+describe('ChargeDialog — destinatário financeiro do WhatsApp', () => {
+  it('revalida rota e opt-out no clique antes de abrir o WhatsApp', async () => {
+    await createChargeAndShowSuccess();
+    whatsappState.resolved = { isExplicit: true, disabled: true, recipients: [] };
+
+    await act(async () => {
+      whatsappButton()!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
+    });
+
+    expect(routeRefetch).toHaveBeenCalledTimes(1);
+    expect(contactsRefetch).toHaveBeenCalledTimes(1);
+    expect(window.open).not.toHaveBeenCalled();
+    expect(toastSpy).toHaveBeenCalledWith(expect.objectContaining({
+      variant: 'destructive',
+      title: 'As mensagens financeiras estão desativadas para este cliente.',
+    }));
+  });
+
+  it('falha fechado quando uma rota explícita possui telefone inválido', async () => {
+    whatsappState.resolved = {
+      isExplicit: true,
+      disabled: false,
+      recipients: [{ kind: 'customer_contact', contactId: 'contact-1', name: 'Síndico', phone: '1199' }],
+    };
+    await createChargeAndShowSuccess();
+
+    await act(async () => {
+      whatsappButton()!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
+    });
+
+    expect(window.open).not.toHaveBeenCalled();
+    expect(toastSpy).toHaveBeenCalledWith(expect.objectContaining({
+      variant: 'destructive',
+      title: 'Nenhum destinatário financeiro válido está configurado para este cliente.',
+    }));
+  });
+
+  it('não abre o WhatsApp se a revalidação falhar', async () => {
+    await createChargeAndShowSuccess();
+    routeRefetch.mockRejectedValueOnce(new Error('indisponível'));
+
+    await act(async () => {
+      whatsappButton()!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
+    });
+
+    expect(window.open).not.toHaveBeenCalled();
+    expect(toastSpy).toHaveBeenCalledWith(expect.objectContaining({
+      variant: 'destructive',
+      title: 'Não foi possível confirmar o destinatário financeiro. Tente novamente.',
+    }));
+  });
+
+  it('mantém o fallback genérico somente para cliente legado sem telefone', async () => {
+    whatsappState.resolved = { isExplicit: false, disabled: false, recipients: [] };
+    await createChargeAndShowSuccess();
+
+    await act(async () => {
+      whatsappButton()!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await Promise.resolve();
+    });
+
+    expect(window.open).toHaveBeenCalledWith(
+      expect.stringMatching(/^https:\/\/wa\.me\/\?text=/),
+      '_blank',
+      'noopener',
+    );
+  });
+
+  it('mostra seletor quando há vários destinatários autorizados', async () => {
+    whatsappState.resolved = {
+      isExplicit: true,
+      disabled: false,
+      recipients: [
+        { kind: 'customer_contact', contactId: 'sindico', name: 'Síndico', phone: '(11) 98888-0001' },
+        { kind: 'customer_contact', contactId: 'administradora', name: 'Administradora', phone: '(11) 97777-0002' },
+      ],
+    };
+    await createChargeAndShowSuccess();
+
+    expect(text()).toContain('Destinatário financeiro');
+    expect(text()).toContain('Síndico');
   });
 });

@@ -89,7 +89,7 @@ const COPY = {
     inactive: 'Inativa',
     companyPreview: 'Sua empresa',
     illustrativePreview: 'Prévia ilustrativa',
-    customerRule: 'Somente clientes com a opção “Receber mensagens pelo WhatsApp” ativa serão considerados.',
+    customerRule: 'Os destinatários de OS e financeiro são definidos na ficha de cada cliente. A autorização geral do WhatsApp também precisa estar ativa.',
     reminderWhen: 'Quando enviar o lembrete',
     reminderWindowHint: 'O envio usa o horário dos lembretes em qualquer dia. Se a visita for antes da abertura da janela, o lembrete no dia não será enviado.',
     reminderTimings: { day_before: '1 dia antes · recomendado', same_day: 'No dia' },
@@ -115,7 +115,7 @@ const COPY = {
     beforeDays: 'Days before', afterDays: 'Days after', days: 'days', preview: 'Message preview', previewHint: 'Illustrative data — no message will be sent at this stage.',
     messageLanguageHint: 'Automatic messages are currently sent in Brazilian Portuguese.',
     active: 'Active', inactive: 'Inactive', companyPreview: 'Your company', illustrativePreview: 'Illustrative preview',
-    customerRule: 'Only customers with “Receive WhatsApp messages” enabled will be considered.',
+    customerRule: 'Work order and billing recipients are configured in each customer profile. General WhatsApp authorization must also be enabled.',
     reminderWhen: 'When to send the reminder', reminderWindowHint: 'Sending uses the reminder hours on any day. If the visit is before the window opens, the same-day reminder will not be sent.',
     reminderTimings: { day_before: '1 day before · recommended', same_day: 'On the day' },
     events: {
@@ -135,7 +135,7 @@ const COPY = {
     beforeDays: 'Cuántos días antes', afterDays: 'Cuántos días después', days: 'días', preview: 'Vista previa', previewHint: 'Datos ilustrativos — no se enviará ningún mensaje en esta etapa.',
     messageLanguageHint: 'Los mensajes automáticos se envían actualmente en portugués de Brasil.',
     active: 'Activa', inactive: 'Inactiva', companyPreview: 'Tu empresa', illustrativePreview: 'Vista previa ilustrativa',
-    customerRule: 'Solo se considerarán clientes con “Recibir mensajes por WhatsApp” activo.',
+    customerRule: 'Los destinatarios de órdenes y cobros se configuran en la ficha de cada cliente. La autorización general de WhatsApp también debe estar activa.',
     reminderWhen: 'Cuándo enviar el recordatorio', reminderWindowHint: 'El envío usa el horario de recordatorios cualquier día. Si la visita es antes de la apertura, el recordatorio del mismo día no se enviará.',
     reminderTimings: { day_before: '1 día antes · recomendado', same_day: 'El mismo día' },
     events: {
@@ -156,7 +156,7 @@ const COPY = {
     beforeDays: 'Jours avant', afterDays: 'Jours après', days: 'jours', preview: 'Aperçu du message', previewHint: 'Données illustratives — aucun message ne sera envoyé à ce stade.',
     messageLanguageHint: 'Les messages automatiques sont actuellement envoyés en portugais du Brésil.',
     active: 'Active', inactive: 'Inactive', companyPreview: 'Votre entreprise', illustrativePreview: 'Aperçu illustratif',
-    customerRule: 'Seuls les clients ayant activé « Recevoir des messages WhatsApp » seront concernés.',
+    customerRule: 'Les destinataires des interventions et factures sont configurés dans la fiche de chaque client. L’autorisation générale WhatsApp doit aussi être active.',
     reminderWhen: 'Quand envoyer le rappel', reminderWindowHint: 'L’envoi utilise les heures de rappel tous les jours. Si la visite précède l’ouverture, le rappel du jour ne sera pas envoyé.',
     reminderTimings: { day_before: '1 jour avant · recommandé', same_day: 'Le jour même' },
     events: {

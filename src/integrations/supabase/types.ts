@@ -4178,6 +4178,86 @@ export type Database = {
           },
         ]
       }
+      customer_whatsapp_route_recipients: {
+        Row: {
+          created_at: string
+          customer_contact_id: string | null
+          id: string
+          recipient_kind: string
+          route_id: string
+        }
+        Insert: {
+          created_at?: string
+          customer_contact_id?: string | null
+          id?: string
+          recipient_kind: string
+          route_id: string
+        }
+        Update: {
+          created_at?: string
+          customer_contact_id?: string | null
+          id?: string
+          recipient_kind?: string
+          route_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_whatsapp_route_recipients_customer_contact_id_fkey"
+            columns: ["customer_contact_id"]
+            isOneToOne: false
+            referencedRelation: "customer_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_whatsapp_route_recipients_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "customer_whatsapp_routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_whatsapp_routes: {
+        Row: {
+          category: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          enabled: boolean
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          enabled?: boolean
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          enabled?: boolean
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_whatsapp_routes_customer_company_fkey"
+            columns: ["customer_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id", "company_id"]
+          },
+        ]
+      }
       customer_credit_ledger: {
         Row: {
           amount: number
@@ -17149,6 +17229,7 @@ export type Database = {
           company_id: string
           connection_id: string | null
           cost_estimate: number | null
+          customer_contact_id: string | null
           delivered_at: string | null
           error: string | null
           id: string
@@ -17158,6 +17239,8 @@ export type Database = {
           provider: string | null
           provider_message_id: string | null
           read_at: string | null
+          recipient_kind: string
+          recipient_route_id: string | null
           sent_at: string
           status: string
           template_id: string | null
@@ -17167,6 +17250,7 @@ export type Database = {
           company_id: string
           connection_id?: string | null
           cost_estimate?: number | null
+          customer_contact_id?: string | null
           delivered_at?: string | null
           error?: string | null
           id?: string
@@ -17176,6 +17260,8 @@ export type Database = {
           provider?: string | null
           provider_message_id?: string | null
           read_at?: string | null
+          recipient_kind?: string
+          recipient_route_id?: string | null
           sent_at?: string
           status: string
           template_id?: string | null
@@ -17185,6 +17271,7 @@ export type Database = {
           company_id?: string
           connection_id?: string | null
           cost_estimate?: number | null
+          customer_contact_id?: string | null
           delivered_at?: string | null
           error?: string | null
           id?: string
@@ -17194,12 +17281,28 @@ export type Database = {
           provider?: string | null
           provider_message_id?: string | null
           read_at?: string | null
+          recipient_kind?: string
+          recipient_route_id?: string | null
           sent_at?: string
           status?: string
           template_id?: string | null
           trigger?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "whatsapp_events_customer_contact_id_fkey"
+            columns: ["customer_contact_id"]
+            isOneToOne: false
+            referencedRelation: "customer_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_events_recipient_route_id_fkey"
+            columns: ["recipient_route_id"]
+            isOneToOne: false
+            referencedRelation: "customer_whatsapp_routes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "whatsapp_events_company_id_fkey"
             columns: ["company_id"]
@@ -17428,6 +17531,7 @@ export type Database = {
           connection_id: string
           created_at: string
           customer_id: string | null
+          customer_contact_id: string | null
           dedupe_key: string
           defers: number
           dispatch_started_at: string | null
@@ -17439,6 +17543,8 @@ export type Database = {
           next_attempt_at: string
           provider: string
           provider_message_id: string | null
+          recipient_kind: string
+          recipient_route_id: string | null
           schedule_snapshot_at: string | null
           schedule_snapshot_timing: string | null
           sent_at: string | null
@@ -17453,6 +17559,7 @@ export type Database = {
           connection_id: string
           created_at?: string
           customer_id?: string | null
+          customer_contact_id?: string | null
           dedupe_key: string
           defers?: number
           dispatch_started_at?: string | null
@@ -17464,6 +17571,8 @@ export type Database = {
           next_attempt_at?: string
           provider: string
           provider_message_id?: string | null
+          recipient_kind?: string
+          recipient_route_id?: string | null
           schedule_snapshot_at?: string | null
           schedule_snapshot_timing?: string | null
           sent_at?: string | null
@@ -17478,6 +17587,7 @@ export type Database = {
           connection_id?: string
           created_at?: string
           customer_id?: string | null
+          customer_contact_id?: string | null
           dedupe_key?: string
           defers?: number
           dispatch_started_at?: string | null
@@ -17489,6 +17599,8 @@ export type Database = {
           next_attempt_at?: string
           provider?: string
           provider_message_id?: string | null
+          recipient_kind?: string
+          recipient_route_id?: string | null
           schedule_snapshot_at?: string | null
           schedule_snapshot_timing?: string | null
           sent_at?: string | null
@@ -17498,6 +17610,20 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "whatsapp_send_jobs_customer_contact_id_fkey"
+            columns: ["customer_contact_id"]
+            isOneToOne: false
+            referencedRelation: "customer_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_send_jobs_recipient_route_id_fkey"
+            columns: ["recipient_route_id"]
+            isOneToOne: false
+            referencedRelation: "customer_whatsapp_routes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "whatsapp_send_jobs_company_id_fkey"
             columns: ["company_id"]
@@ -17871,6 +17997,16 @@ export type Database = {
       }
     }
     Functions: {
+      set_customer_whatsapp_route: {
+        Args: {
+          p_category: string
+          p_contact_ids: string[]
+          p_customer_id: string
+          p_enabled: boolean
+          p_include_primary: boolean
+        }
+        Returns: string
+      }
       _affiliates_resolve_slug: {
         Args: { p_id: string; p_name: string; p_self_id?: string }
         Returns: string
@@ -21178,6 +21314,10 @@ export type Database = {
         Args: { p_company_id: string; p_job_id: string; p_phone: string }
         Returns: string
       }
+      whatsapp_begin_send_job_dispatch: {
+        Args: { p_company_id: string; p_job_id: string; p_phone: string }
+        Returns: string
+      }
       whatsapp_can_send: { Args: { p_company_id: string }; Returns: boolean }
       whatsapp_claim_send_jobs: {
         Args: { p_limit?: number; p_orphan_minutes?: number }
@@ -21262,6 +21402,17 @@ export type Database = {
         Returns: string
       }
       whatsapp_finalize_scheduled_os_reminder: {
+        Args: {
+          p_company_id: string
+          p_job_id: string
+          p_next_send_at: string
+          p_phone: string
+          p_provider_message_id: string
+          p_sent_at: string
+        }
+        Returns: boolean
+      }
+      whatsapp_finalize_send_job: {
         Args: {
           p_company_id: string
           p_job_id: string
