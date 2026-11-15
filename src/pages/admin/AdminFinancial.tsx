@@ -1,3 +1,4 @@
+import { AdminAccountsSection } from "@/components/admin/AdminAccountsSection";
 import { buildDreCategoryIndex, classifyForDre } from '@/lib/adminDreBuckets';
 import type { Tables } from '@/integrations/supabase/types';
 import { AdminCashFlowSection } from '@/components/admin/AdminCashFlowSection';
@@ -46,6 +47,8 @@ export default function AdminFinancial() {
       { value: 'charts', label: 'Gráficos', icon: BarChart3, group: 'Análise' },
       { value: 'dre', label: 'Resultado (DRE)', icon: FileText, group: 'Análise' },
       { value: 'reconciliation', label: 'Conciliação bancária', icon: Scale, group: 'Análise' },
+      { value: 'payables', label: 'Contas a pagar', icon: TrendingDown, group: 'Movimentações' },
+      { value: 'receivables', label: 'Contas a receber', icon: TrendingUp, group: 'Movimentações' },
       { value: 'cashflow', label: 'Fluxo de caixa (DFC)', icon: Wallet, group: 'Análise' },
     ] : []),
     { value: 'settings', label: 'Configurações', icon: Settings2, group: 'Sistema' },
@@ -96,7 +99,7 @@ export default function AdminFinancial() {
 
   const renderContent = () => {
     if (!canSeeTotals) return <p role="alert" className="rounded-xl border bg-white p-5">Seu perfil não permite consultar o financeiro. Solicite acesso à tela e aos totais para continuar.</p>;
-    if (transactionsError && !['reconciliation','cashflow','accounts','settings'].includes(activeSection)) return <div role="alert" className="rounded-xl border bg-white p-5"><p>Não foi possível carregar todas as movimentações do período.</p><Button variant="outline" onClick={()=>refetchTransactions()}>Tentar novamente</Button></div>;
+    if (transactionsError && !['reconciliation','cashflow','accounts','settings','payables','receivables'].includes(activeSection)) return <div role="alert" className="rounded-xl border bg-white p-5"><p>Não foi possível carregar todas as movimentações do período.</p><Button variant="outline" onClick={()=>refetchTransactions()}>Tentar novamente</Button></div>;
     switch (activeSection) {
       case 'overview':
         return (
@@ -141,8 +144,12 @@ export default function AdminFinancial() {
         );
       case 'charts':
         return <FinancialCharts transactions={transactions} categories={categories} />;
+      case 'payables':
+        return <AdminAccountsSection key="payables" direction="debit" canManage={canManage} />;
+      case 'receivables':
+        return <AdminAccountsSection key="receivables" direction="credit" canManage={canManage} />;
       case 'cashflow':
-        return <AdminCashFlowSection canManage={canManage} />;
+        return <AdminCashFlowSection canManage={canManage} onManageAccounts={direction=>setActiveSection(direction==='debit'?'payables':'receivables')} />;
       case 'dre':
         return <FinancialDRESection transactions={transactions} categories={categories} periodLabel={periodLabel} periodStart={range.from} periodEnd={range.to} />;
       case 'reconciliation':
