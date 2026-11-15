@@ -1,3 +1,5 @@
+import { AdminBankAccountsSection } from '@/components/admin/AdminBankAccountsSection';
+import { AdminBankReconciliation } from '@/components/admin/AdminBankReconciliation';
 import { buildDreCategoryIndex, classifyForDre } from '@/lib/adminDreBuckets';
 import type { Tables } from '@/integrations/supabase/types';
 import { AdminCashFlowSection } from '@/components/admin/AdminCashFlowSection';
@@ -46,6 +48,7 @@ export default function AdminFinancial() {
       { value: 'charts', label: 'Gráficos', icon: BarChart3, group: 'Análise' },
       { value: 'dre', label: 'Resultado (DRE)', icon: FileText, group: 'Análise' },
       { value: 'reconciliation', label: 'Conciliação bancária', icon: Scale, group: 'Análise' },
+      { value: 'accounts', label: 'Contas e OFX', icon: Wallet, group: 'Gestão' },
       { value: 'cashflow', label: 'Fluxo de caixa (DFC)', icon: Wallet, group: 'Análise' },
     ] : []),
     { value: 'settings', label: 'Configurações', icon: Settings2, group: 'Sistema' },
@@ -96,7 +99,7 @@ export default function AdminFinancial() {
 
   const renderContent = () => {
     if (!canSeeTotals) return <p role="alert" className="rounded-xl border bg-white p-5">Seu perfil não permite consultar o financeiro. Solicite acesso à tela e aos totais para continuar.</p>;
-    if (transactionsError && !['reconciliation','cashflow','settings'].includes(activeSection)) return <div role="alert" className="rounded-xl border bg-white p-5"><p>Não foi possível carregar todas as movimentações do período.</p><Button variant="outline" onClick={()=>refetchTransactions()}>Tentar novamente</Button></div>;
+    if (transactionsError && !['reconciliation','cashflow','accounts','settings'].includes(activeSection)) return <div role="alert" className="rounded-xl border bg-white p-5"><p>Não foi possível carregar todas as movimentações do período.</p><Button variant="outline" onClick={()=>refetchTransactions()}>Tentar novamente</Button></div>;
     switch (activeSection) {
       case 'overview':
         return (
@@ -141,10 +144,12 @@ export default function AdminFinancial() {
         );
       case 'charts':
         return <FinancialCharts transactions={transactions} categories={categories} />;
+      case 'accounts':
+        return <AdminBankAccountsSection canManage={canManage} renderTransactions={accountId => <AdminBankReconciliation accountId={accountId} canManage={canManage} />} />;
       case 'cashflow':
         return <AdminCashFlowSection canManage={canManage} />;
       case 'dre':
-        return <FinancialDRESection transactions={transactions} categories={categories} periodLabel={periodLabel} />;
+        return <FinancialDRESection transactions={transactions} categories={categories} periodLabel={periodLabel} periodStart={range.from} periodEnd={range.to} />;
       case 'reconciliation':
         return <ReconciliationSection canManage={canManage} />;
       case 'settings':
