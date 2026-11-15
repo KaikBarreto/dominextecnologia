@@ -30,7 +30,7 @@ export function FinancialCharts({ transactions, categories }: Props) {
 
   return (
     <Card className="border-0 shadow-lg">
-      <CardHeader className="border-b bg-muted/30 py-3">
+      <CardHeader className="border-b bg-white py-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="text-base font-semibold">Distribuição por categoria</CardTitle>
           <Tabs value={type} onValueChange={(v) => setType(v as any)}>

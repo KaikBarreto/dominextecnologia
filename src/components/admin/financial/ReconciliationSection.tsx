@@ -1,4 +1,6 @@
-import { useMemo, useState } from 'react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useState } from 'react';
 import { RefreshCw, AlertTriangle, CheckCircle2, CircleDollarSign, Scale } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -12,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { useAdminFinancialCategories } from '@/hooks/useAdminFinancialCategories';
 import {
   useAsaasBalance,
+  useAdminLedgerSummary,
   useLedgerAsaas,
   useSyncAsaasLedger,
   type LedgerAsaasItem,
@@ -34,52 +37,37 @@ const STATUS_OPTIONS: { value: LedgerStatus; label: string }[] = [
 /**
  * Aba de Conciliação bancária do Asaas (painel master Auctus).
  *
- * Topo: saldo no Asaas × saldo no sistema (créditos − débitos do ledger),
- * indicador de divergência, última sincronização e botão de sincronizar.
+ * Topo: saldo no Asaas × saldo agregado do ledger, indicador de divergência,
+ * última importação e botão de sincronizar.
  * Embaixo: extrato filtrável por status com ação de categorizar.
  */
-export function ReconciliationSection() {
+export function ReconciliationSection({canManage = false}: {canManage?: boolean}) {
+  const [page, setPage] = useState(0);
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
   const [statusFilter, setStatusFilter] = useState<LedgerStatus[]>([]);
   const [categorizeItem, setCategorizeItem] = useState<LedgerAsaasItem | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
   const { data: categories = [] } = useAdminFinancialCategories();
   const { data: asaasBalance, isLoading: balanceLoading, isError: balanceError } = useAsaasBalance();
-  // Saldo do sistema sempre da base completa (independe do filtro de status).
-  const { data: allItems = [], isLoading: ledgerLoading } = useLedgerAsaas();
-  const { data: filteredItems = [] } = useLedgerAsaas({ status: statusFilter });
+  // Totais vêm da RPC agregada e não podem depender da página limitada do extrato.
+  const { data: ledgerSummary, isLoading: ledgerLoading, isError: ledgerError } = useAdminLedgerSummary();
+  const { data: ledgerPage, isLoading: listLoading, isError: listError, refetch: reloadList } = useLedgerAsaas({ status: statusFilter, page, from, to });
+  const filteredItems = ledgerPage?.items ?? [];
   const sync = useSyncAsaasLedger();
 
-  // Saldo do sistema = soma de créditos − débitos.
-  const systemBalance = useMemo(
-    () =>
-      allItems.reduce(
-        (acc, it) => acc + (it.direction === 'credit' ? Number(it.amount) : -Number(it.amount)),
-        0,
-      ),
-    [allItems],
-  );
+  const systemBalance = Number(ledgerSummary?.balance ?? 0);
 
   const diff = (asaasBalance ?? 0) - systemBalance;
   const reconciled = isReconciled(diff);
-  const canCompare = !balanceLoading && !balanceError && !ledgerLoading;
+  const canCompare = !balanceLoading && !balanceError && !ledgerLoading && !ledgerError && ledgerSummary != null && asaasBalance != null;
 
-  // Última sincronização = movimento mais recente (created_at).
-  const lastSync = useMemo(() => {
-    if (allItems.length === 0) return null;
-    const max = allItems.reduce((m, it) => {
-      const ts = new Date(it.created_at).getTime();
-      return ts > m ? ts : m;
-    }, 0);
-    return max > 0 ? new Date(max) : null;
-  }, [allItems]);
-
-  const pendingCount = useMemo(
-    () => allItems.filter((it) => it.status === 'pending_categorization').length,
-    [allItems],
-  );
+  const lastImportedAt = ledgerSummary?.last_imported_at ?? null;
+  const pendingCount = Number(ledgerSummary?.pending_count ?? 0);
 
   const openCategorize = (item: LedgerAsaasItem) => {
+    if (!canManage) return;
     setCategorizeItem(item);
     setModalOpen(true);
   };
@@ -113,7 +101,7 @@ export function ReconciliationSection() {
               </div>
               {ledgerLoading ? (
                 <Skeleton className="h-7 w-32" />
-              ) : (
+              ) : ledgerError ? <p role="alert">Saldo indisponível. Tente atualizar.</p> : (
                 <p className="text-xl lg:text-2xl font-bold">{fmt(systemBalance)}</p>
               )}
             </div>
@@ -131,17 +119,17 @@ export function ReconciliationSection() {
             </NoticeBanner>
           )}
 
-          {/* Última sincronização + botão */}
+          {/* Última importação + botão */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <p className="text-xs text-muted-foreground">
-              {lastSync
-                ? `Última sincronização: ${format(lastSync, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`
-                : 'Nenhuma sincronização ainda.'}
+              {lastImportedAt
+                ? `Última importação: ${format(new Date(lastImportedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`
+                : 'Nenhuma importação ainda.'}
             </p>
             <Button
               onClick={() => sync.mutate(undefined)}
-              disabled={sync.isPending}
-              className="gap-2 w-full sm:w-auto"
+              disabled={!canManage || sync.isPending}
+              className="gap-2 w-full sm:w-auto bg-black text-white hover:bg-zinc-800"
             >
               <RefreshCw className={cn('h-4 w-4', sync.isPending && 'animate-spin')} />
               {sync.isPending ? 'Sincronizando...' : 'Sincronizar com Asaas'}
@@ -159,7 +147,7 @@ export function ReconciliationSection() {
               emptyLabel="Todos"
               options={STATUS_OPTIONS}
               selected={statusFilter}
-              onChange={(next) => setStatusFilter(next as LedgerStatus[])}
+              onChange={(next) => {setStatusFilter(next as LedgerStatus[]);setPage(0);}}
               className="flex-1 max-w-sm"
             />
             {pendingCount > 0 && (
@@ -170,12 +158,19 @@ export function ReconciliationSection() {
             )}
           </div>
 
+          <div className="flex flex-wrap items-end gap-3">
+            <div><Label htmlFor="ledger-from">De</Label><Input id="ledger-from" type="date" value={from} onChange={e=>{setFrom(e.target.value);setPage(0);}}/></div>
+            <div><Label htmlFor="ledger-to">Até</Label><Input id="ledger-to" type="date" value={to} min={from} onChange={e=>{setTo(e.target.value);setPage(0);}}/></div>
+            <p className="text-sm text-muted-foreground">{ledgerPage?.count ?? 0} movimentos no filtro · o saldo considera todo o extrato.</p>
+          </div>
           <div className="-mx-4 lg:-mx-5">
-            <LedgerAsaasList items={filteredItems} categories={categories} onCategorize={openCategorize} />
+            {listLoading ? <p role="status" className="p-5">Carregando extrato…</p> : listError ? <div role="alert" className="p-5">Não foi possível carregar o extrato.<Button variant="outline" onClick={()=>reloadList()}>Tentar novamente</Button></div> :
+            <LedgerAsaasList items={filteredItems} categories={categories} canManage={canManage} onCategorize={openCategorize} />}
           </div>
         </CardContent>
       </Card>
 
+      <div className="flex items-center justify-end gap-3"><Button variant="outline" disabled={page===0 || listLoading} onClick={()=>setPage(p=>p-1)}>Anterior</Button><span className="text-sm">Página {page+1} de {Math.max(1,Math.ceil((ledgerPage?.count??0)/50))}</span><Button variant="outline" disabled={(page+1)*50 >= (ledgerPage?.count??0) || listLoading} onClick={()=>setPage(p=>p+1)}>Próxima</Button></div>
       <CategorizeLedgerModal item={categorizeItem} open={modalOpen} onOpenChange={setModalOpen} />
     </div>
   );

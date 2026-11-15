@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -39,6 +39,7 @@ const formatAmountForInput = (v: number) =>
 export function AdminFinancialMovementModal({ open, onOpenChange, defaultType = 'income', transaction }: AdminFinancialMovementModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const requestId = useRef(crypto.randomUUID());
   const updateMutation = useUpdateAdminFinancialTransaction();
   const { data: allCategories = [] } = useAdminFinancialCategories();
   const isEditing = Boolean(transaction);
@@ -51,6 +52,7 @@ export function AdminFinancialMovementModal({ open, onOpenChange, defaultType = 
 
   useEffect(() => {
     if (!open) return;
+    requestId.current = crypto.randomUUID();
     if (transaction) {
       setType(transaction.type);
       setCategory(transaction.category);
@@ -67,7 +69,7 @@ export function AdminFinancialMovementModal({ open, onOpenChange, defaultType = 
     setShowErrors(false);
   }, [open, defaultType, transaction]);
 
-  const typeCategories = allCategories.filter((c) => c.type === type);
+  const typeCategories = allCategories.filter((c) => c.type === type && (isEditing || !["sale", "first_sale", "renewal", "upgrade"].includes(c.name)));
   const categories = typeCategories.map((c) => ({ value: c.name, label: c.label, color: c.color, icon: c.icon as string | null }));
 
   // Em edição, a categoria do lançamento pode estar desativada (is_active=false)
@@ -94,8 +96,11 @@ export function AdminFinancialMovementModal({ open, onOpenChange, defaultType = 
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      const { error } = await supabase.from('admin_financial_transactions').insert({ type, category, amount: parsedAmount, description: description || null, transaction_date: brtTransactionTimestamp(date), created_by: user?.id });
+      const { error } = await supabase.rpc('admin_create_financial_movement', {
+        p_request_id: requestId.current, p_type: type, p_category: category,
+        p_amount: parsedAmount, p_description: description || null,
+        p_date: brtTransactionTimestamp(date), p_awaiting_asaas: false,
+      });
       if (error) throw error;
     },
     onSuccess: () => {

@@ -5,7 +5,6 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import {
@@ -15,10 +14,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import {
-  ADMIN_SCREEN_PERMISSIONS,
-  ADMIN_FUNCTION_PERMISSIONS,
-} from '@/hooks/useAdminPermissions';
+import { AdminPermissionsEditor } from '@/components/admin/AdminPermissionsEditor';
 
 interface AdminUser {
   id: string;
@@ -194,10 +190,6 @@ function CreateUserModal({
     setPassword(s);
   };
 
-  const toggle = (key: string) => {
-    setSelected((s) => s.includes(key) ? s.filter((k) => k !== key) : [...s, key]);
-  };
-
   const handleSalespersonLink = (value: string) => {
     setLinkSalesperson(value);
     if (value !== 'none') {
@@ -258,7 +250,7 @@ function CreateUserModal({
             </SelectContent>
           </Select>
         </div>
-        <PermissionsPicker selected={selected} onToggle={toggle} />
+        <PermissionsPicker selected={selected} onChange={setSelected} />
       </div>
     </ResponsiveModal>
   );
@@ -287,8 +279,6 @@ function EditPermissionsModal({
     () => salespeople.filter((s) => !s.user_id || s.user_id === user?.id),
     [salespeople, user?.id]
   );
-
-  const toggle = (k: string) => setSelected((s) => s.includes(k) ? s.filter((x) => x !== k) : [...s, k]);
 
   const handleSalespersonLink = (value: string) => {
     setLinkSalesperson(value);
@@ -338,7 +328,7 @@ function EditPermissionsModal({
             </SelectContent>
           </Select>
         </div>
-        <PermissionsPicker selected={selected} onToggle={toggle} />
+        <PermissionsPicker selected={selected} onChange={setSelected} />
       </div>
     </ResponsiveModal>
   );
@@ -393,33 +383,6 @@ function ResetPasswordModal({ user, onClose }: { user: AdminUser | null; onClose
 }
 
 // ============== Permission picker ==============
-function PermissionsPicker({ selected, onToggle }: { selected: string[]; onToggle: (k: string) => void }) {
-  return (
-    <div className="space-y-3">
-      <div>
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Telas</p>
-        <div className="max-h-44 overflow-y-auto">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {ADMIN_SCREEN_PERMISSIONS.map((p) => (
-              <label key={p.key} className="flex items-center gap-2 rounded-md border p-2 cursor-pointer hover:bg-muted/50">
-                <Checkbox checked={selected.includes(p.key)} onCheckedChange={() => onToggle(p.key)} />
-                <span className="text-sm">{p.label}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-      </div>
-      <div>
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Funções</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {ADMIN_FUNCTION_PERMISSIONS.map((p) => (
-            <label key={p.key} className="flex items-center gap-2 rounded-md border p-2 cursor-pointer hover:bg-muted/50">
-              <Checkbox checked={selected.includes(p.key)} onCheckedChange={() => onToggle(p.key)} />
-              <span className="text-sm">{p.label}</span>
-            </label>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+function PermissionsPicker({ selected, onChange }: { selected: string[]; onChange: (next: string[]) => void }) {
+  return <AdminPermissionsEditor value={selected} onChange={onChange} />;
 }

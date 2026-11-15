@@ -85,6 +85,30 @@ function directionOf(value: number): "credit" | "debit" {
   return Number(value) < 0 ? "debit" : "credit";
 }
 
+function amountsMatch(a: number | string | null | undefined, b: number): boolean {
+  return Math.abs(Number(a) - b) < 0.005;
+}
+
+/**
+ * O paymentId sozinho NÃO identifica a linha: o mesmo pagamento pode ter a
+ * receita e uma ou mais tarifas. Só oferecemos a chave do webhook compatível
+ * com a família do evento do extrato; tipo/direção/valor ainda são validados.
+ */
+function knownWebhookKeys(tx: AsaasFinancialTx, direction: "credit" | "debit"): string[] {
+  if (!tx.paymentId) return [];
+  const event = String(tx.type ?? "").toUpperCase();
+  if (direction === "credit" && ["PAYMENT_RECEIVED", "PAYMENT_CONFIRMED"].includes(event)) {
+    return [tx.paymentId];
+  }
+  if (direction === "debit" && event.includes("ANTICIPATION") && event.endsWith("_FEE")) {
+    return [`${tx.paymentId}_anticipation_fee`];
+  }
+  if (direction === "debit" && event.endsWith("_FEE")) {
+    return [`${tx.paymentId}_fee`];
+  }
+  return [];
+}
+
 /** Puxa TODO o extrato Asaas no intervalo (paginação por offset). */
 async function fetchAsaasExtract(startDate: string, finishDate: string): Promise<AsaasFinancialTx[]> {
   const out: AsaasFinancialTx[] = [];
@@ -144,7 +168,7 @@ Deno.serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } },
     );
 
-    // ===== Auth: cron (x-cron-secret) OU super_admin =====
+    // ===== Auth: cron (x-cron-secret) OU permissão financeira de lançamento =====
     const cronSecret = (Deno.env.get("CRON_SECRET") || "").trim();
     const providedCron = (req.headers.get("x-cron-secret") || "").trim();
     const isCron = cronSecret.length > 0 && providedCron === cronSecret;
@@ -160,12 +184,15 @@ Deno.serve(async (req) => {
       if (authError || !user) {
         return json({ error: "Token inválido." }, 401);
       }
-      const { data: isSuperAdmin } = await supabase.rpc("has_role", {
+      const { data: canManage, error: permissionError } = await supabase.rpc("can_manage_admin_financial", {
         _user_id: user.id,
-        _role: "super_admin",
       });
-      if (!isSuperAdmin) {
-        return json({ error: "Acesso negado. Apenas o administrador master." }, 403);
+      if (permissionError) {
+        console.error("[sync-asaas-ledger] guarda financeira indisponível:", permissionError.message);
+        return json({ error: "Não foi possível validar a permissão financeira." }, 503);
+      }
+      if (!canManage) {
+        return json({ error: "Permissão de lançamento financeiro necessária." }, 403);
       }
       callerId = user.id;
     }
@@ -181,16 +208,33 @@ Deno.serve(async (req) => {
     // ===== Extrato Asaas =====
     const extract = await fetchAsaasExtract(startDate, finishDate);
 
-    // Pré-carrega os lançamentos do webhook que casam com algum paymentId do extrato.
-    // Conhecido = admin_financial_transactions.asaas_transaction_id IN (paymentId, paymentId+'_fee').
+    // O sync só é fonte para linhas ainda automáticas/pendentes. Uma decisão
+    // humana não pode ser sobrescrita por um replay do mesmo ftn_.
+    const existingLedgerStatus = new Map<string, string>();
+    const extractIds = [...new Set(extract.map((tx) => tx.id).filter(Boolean))];
+    const LEDGER_CHUNK = 100;
+    for (let i = 0; i < extractIds.length; i += LEDGER_CHUNK) {
+      const { data: rows, error } = await supabase
+        .from("ledger_asaas")
+        .select("asaas_transaction_id, status")
+        .in("asaas_transaction_id", extractIds.slice(i, i + LEDGER_CHUNK));
+      if (error) throw new Error(`falha ao pré-carregar ledger: ${error.message}`);
+      for (const row of rows ?? []) {
+        if (row.asaas_transaction_id) existingLedgerStatus.set(row.asaas_transaction_id, String(row.status ?? ""));
+      }
+    }
+
+    // Pré-carrega as possíveis chaves do webhook. A decisão final abaixo também
+    // confere família, direção e valor — paymentId por si só não é suficiente.
     const candidateIds = new Set<string>();
     for (const tx of extract) {
       if (tx.paymentId) {
         candidateIds.add(tx.paymentId);
         candidateIds.add(`${tx.paymentId}_fee`);
+        candidateIds.add(`${tx.paymentId}_anticipation_fee`);
       }
     }
-    const knownByAsaasId = new Map<string, { id: string; category: string | null }>();
+    const knownByAsaasId = new Map<string, { id: string; category: string | null; type: string; amount: number }>();
     if (candidateIds.size > 0) {
       const ids = Array.from(candidateIds);
       // Quebra em lotes pra não estourar limite do .in()
@@ -199,11 +243,16 @@ Deno.serve(async (req) => {
         const slice = ids.slice(i, i + CHUNK);
         const { data: rows } = await supabase
           .from("admin_financial_transactions")
-          .select("id, category, asaas_transaction_id")
+          .select("id, category, type, amount, asaas_transaction_id")
           .in("asaas_transaction_id", slice);
         for (const r of rows ?? []) {
           if (r.asaas_transaction_id) {
-            knownByAsaasId.set(r.asaas_transaction_id, { id: r.id, category: r.category ?? null });
+            knownByAsaasId.set(r.asaas_transaction_id, {
+              id: r.id,
+              category: r.category ?? null,
+              type: r.type,
+              amount: Number(r.amount),
+            });
           }
         }
       }
@@ -213,21 +262,26 @@ Deno.serve(async (req) => {
     let known = 0;
     let unknown = 0;
     let failed = 0;
+    let manuallySkipped = 0;
 
     for (const tx of extract) {
       try {
+        if (existingLedgerStatus.get(tx.id) === "manually_categorized") {
+          manuallySkipped++;
+          continue;
+        }
         const direction = directionOf(tx.value);
         const amount = Math.abs(Number(tx.value));
         const occurredAt = asaasDateToIsoBRT(tx.date);
         const paymentId = tx.paymentId ?? null;
         const description = tx.description ?? null;
 
-        // Tenta casar o movimento com um lançamento do webhook (CONHECIDO).
-        // Casa pelo paymentId direto OU pela variante '_fee' (tarifa do webhook).
-        let matched: { id: string; category: string | null } | undefined;
-        if (paymentId) {
-          matched = knownByAsaasId.get(paymentId) ?? knownByAsaasId.get(`${paymentId}_fee`);
-        }
+        // Tenta casar o movimento com lançamento do webhook. Nunca usa o
+        // paymentId cru para tarifa: isso era o que ligava PAYMENT_FEE à venda.
+        const expectedType = direction === "credit" ? "income" : "expense";
+        const matched = knownWebhookKeys(tx, direction)
+          .map((key) => knownByAsaasId.get(key))
+          .find((candidate) => !!candidate && candidate.type === expectedType && amountsMatch(candidate.amount, amount));
 
         let status: string;
         let category: string | null;
@@ -264,15 +318,18 @@ Deno.serve(async (req) => {
               ignoreDuplicates: true,
             });
           if (insErr) {
-            console.error(`[sync-asaas-ledger] falha ao criar lançamento provisório ${tx.id}:`, insErr.message);
+            throw new Error(`falha ao criar lançamento provisório ${tx.id}: ${insErr.message}`);
           }
 
           // Recupera o id do lançamento (recém-criado OU pré-existente) pra linkar no ledger.
-          const { data: provRow } = await supabase
+          const { data: provRow, error: provLookupErr } = await supabase
             .from("admin_financial_transactions")
             .select("id")
             .eq("asaas_transaction_id", tx.id)
             .maybeSingle();
+          if (provLookupErr || !provRow?.id) {
+            throw new Error(`lançamento provisório indisponível ${tx.id}: ${provLookupErr?.message ?? "não encontrado"}`);
+          }
           adminTxId = provRow?.id ?? null;
         }
 
@@ -318,6 +375,7 @@ Deno.serve(async (req) => {
       known,            // movimentos já categorizados pelo webhook (venda/renovação/tarifa)
       unknown,          // movimentos provisórios (Outras Receitas/Despesas)
       failed,
+      manually_skipped: manuallySkipped,
       total_in_extract: extract.length,
       window: { startDate, finishDate },
       synced_at: new Date().toISOString(),

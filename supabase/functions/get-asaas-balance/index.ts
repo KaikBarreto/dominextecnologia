@@ -5,7 +5,7 @@
 //
 // Endpoint Asaas: GET /finance/balance → { balance: number }.
 //
-// Auth (regra-lei Dominex #6): SOMENTE super_admin. Valida Authorization + has_role
+// Auth: super_admin ou leitura financeira delegada. Valida Authorization e permissão
 // server-side. Frontend só esconde o botão; a fronteira de segurança é aqui.
 //
 // Cliente Supabase: service_role (faz getUser do token + has_role). Não grava nada.
@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } },
     );
 
-    // ===== Auth: super_admin obrigatório =====
+    // ===== Auth: leitura financeira explícita =====
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return json({ error: "Autenticação necessária." }, 401);
@@ -46,19 +46,17 @@ Deno.serve(async (req) => {
     if (authError || !user) {
       return json({ error: "Token inválido." }, 401);
     }
-    const { data: isSuperAdmin } = await supabase.rpc("has_role", {
-      _user_id: user.id,
-      _role: "super_admin",
-    });
-    if (!isSuperAdmin) {
-      return json({ error: "Acesso negado. Apenas o administrador master." }, 403);
+    const { data: canRead, error: permissionError } = await supabase.rpc("can_read_admin_financial", { _user_id: user.id });
+    if (permissionError || canRead !== true) {
+      return json({ error: "Acesso negado ao financeiro." }, 403);
     }
 
     // ===== Saldo Asaas =====
     // asaas.get lança AsaasConfigError (chave ausente) ou AsaasApiError (falha HTTP/negócio).
     const data = await asaas.get<{ balance?: number }>("/finance/balance");
 
-    return json({ balance: Number(data?.balance ?? 0) }, 200);
+    if (data?.balance == null || !Number.isFinite(Number(data.balance))) return json({error: "Saldo temporariamente indisponível."},502);
+    return json({ balance: Number(data.balance) }, 200);
   } catch (e) {
     if (e instanceof AsaasConfigError) {
       console.error("[get-asaas-balance] config:", e.message);

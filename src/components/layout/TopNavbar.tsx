@@ -157,7 +157,7 @@ const adminMenuItems: (MenuItem & { masterOnly?: boolean })[] = [
   { title: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard', screenKey: 'admin_dashboard' },
   { title: 'CRM/Tarefas', icon: Target, path: '/admin/crm', screenKey: 'admin_crm' },
   { title: 'Empresas', icon: Building2, path: '/admin/empresas', screenKey: 'admin_empresas' },
-  { title: 'Vendedores', icon: Briefcase, path: '/admin/vendedores', screenKey: 'admin_vendedores' },
+  { title: 'Equipe', icon: Briefcase, path: '/admin/vendedores', screenKey: 'admin_vendedores' },
   { title: 'Afiliados', icon: Handshake, path: '/admin/afiliados', screenKey: 'admin_afiliados' },
   { title: 'Financeiro', icon: DollarSign, path: '/admin/financeiro', screenKey: 'admin_financeiro' },
   { title: 'Avisos e NPS', icon: Megaphone, path: '/admin/avisos', screenKey: 'admin_avisos', masterOnly: true },

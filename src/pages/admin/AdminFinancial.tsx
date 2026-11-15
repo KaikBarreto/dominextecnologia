@@ -1,3 +1,6 @@
+import { buildDreCategoryIndex, classifyForDre } from '@/lib/adminDreBuckets';
+import type { Tables } from '@/integrations/supabase/types';
+import { AdminCashFlowSection } from '@/components/admin/AdminCashFlowSection';
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Wallet, TrendingUp, TrendingDown, History, LayoutDashboard, BarChart3, FileText, Settings2, Plus, Scale } from 'lucide-react';
@@ -25,13 +28,14 @@ import { cn } from '@/lib/utils';
 export default function AdminFinancial() {
   const { hasFunctionAccess } = useAdminPermissions();
   const canSeeTotals = hasFunctionAccess('admin_financeiro_totais');
+  const canManage = canSeeTotals && hasFunctionAccess('admin_financeiro_lancamentos');
   const isMobile = useIsMobile();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalDefaultType, setModalDefaultType] = useState<'income' | 'expense'>('income');
   const [activeSection, setActiveSection] = useState('overview');
 
-  const { preset, range, setPreset, setRange, filterByDate } = useDateRangeFilter('this_month');
+  const { preset, range, setPreset, setRange } = useDateRangeFilter('this_month');
 
   const tabs: SettingsTab[] = [
     ...(canSeeTotals ? [{ value: 'overview', label: 'Visão Geral', icon: LayoutDashboard, group: 'Análise' }] : []),
@@ -41,29 +45,40 @@ export default function AdminFinancial() {
     ...(canSeeTotals ? [
       { value: 'charts', label: 'Gráficos', icon: BarChart3, group: 'Análise' },
       { value: 'dre', label: 'Resultado (DRE)', icon: FileText, group: 'Análise' },
-      { value: 'reconciliation', label: 'Conciliação', icon: Scale, group: 'Análise' },
+      { value: 'reconciliation', label: 'Conciliação bancária', icon: Scale, group: 'Análise' },
+      { value: 'cashflow', label: 'Fluxo de caixa (DFC)', icon: Wallet, group: 'Análise' },
     ] : []),
     { value: 'settings', label: 'Configurações', icon: Settings2, group: 'Sistema' },
   ];
 
-  const { data: allTransactions = [] } = useQuery({
-    queryKey: ['admin-financial-transactions-all'],
+  const { data: allTransactions = [], isError: transactionsError, refetch: refetchTransactions } = useQuery({
+    queryKey: ['admin-financial-transactions-all', range.from?.toISOString(), range.to?.toISOString()],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('admin_financial_transactions')
-        .select('*')
-        .order('transaction_date', { ascending: false });
-      if (error) throw error;
-      return data ?? [];
+      let query = supabase.from('admin_financial_transactions').select('*').order('transaction_date', { ascending: false }).order('id', { ascending: false });
+      if (range.from) query = query.gte('transaction_date', `${format(range.from, 'yyyy-MM-dd')}T00:00:00-03:00`);
+      if (range.to) {
+        const next = new Date(range.to); next.setDate(next.getDate()+1);
+        query = query.lt('transaction_date', `${format(next, 'yyyy-MM-dd')}T00:00:00-03:00`);
+      }
+      const rows: Tables<'admin_financial_transactions'>[] = [];
+      for(let page=0;page<100;page++) {
+        const {data,error} = await query.range(page*500,page*500+499);
+        if(error)throw error;
+        rows.push(...(data ?? []));
+        if(!data || data.length<500)return rows;
+      }
+      throw new Error('Escolha um período menor.');
     },
   });
 
   const { data: categories = [] } = useAdminFinancialCategories();
 
-  const transactions = useMemo(() => filterByDate(allTransactions as any[], 'transaction_date'), [allTransactions, filterByDate]);
+  const transactions = allTransactions;
 
-  const income = transactions.filter((t: any) => t.type === 'income').reduce((s: number, t: any) => s + Number(t.amount), 0);
-  const expenses = transactions.filter((t: any) => t.type === 'expense').reduce((s: number, t: any) => s + Number(t.amount), 0);
+  const categoryIndex = useMemo(() => buildDreCategoryIndex(categories), [categories]);
+  const resultTransactions = transactions.filter(t => classifyForDre(t, categoryIndex).bucket !== null);
+  const income = resultTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount), 0);
+  const expenses = resultTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount), 0);
 
   const periodLabel = useMemo(() => {
     if (!range.from && !range.to) return 'Todos os tempos';
@@ -72,14 +87,16 @@ export default function AdminFinancial() {
     return `${f} → ${t}`;
   }, [range]);
 
-  const openModal = (type: 'income' | 'expense') => { setModalDefaultType(type); setIsModalOpen(true); };
+  const openModal = (type: 'income' | 'expense') => { if (!canManage) return; setModalDefaultType(type); setIsModalOpen(true); };
 
   // FAB só aparece em abas que fazem sentido criar lançamento.
-  const showFab = isMobile && ['income', 'expenses', 'history', 'overview'].includes(activeSection);
+  const showFab = canManage && isMobile && ['income', 'expenses', 'history', 'overview'].includes(activeSection);
   const fabType: 'income' | 'expense' = activeSection === 'expenses' ? 'expense' : 'income';
   const fabLabel = fabType === 'income' ? 'Receita' : 'Despesa';
 
   const renderContent = () => {
+    if (!canSeeTotals) return <p role="alert" className="rounded-xl border bg-white p-5">Seu perfil não permite consultar o financeiro. Solicite acesso à tela e aos totais para continuar.</p>;
+    if (transactionsError && !['reconciliation','cashflow','settings'].includes(activeSection)) return <div role="alert" className="rounded-xl border bg-white p-5"><p>Não foi possível carregar todas as movimentações do período.</p><Button variant="outline" onClick={()=>refetchTransactions()}>Tentar novamente</Button></div>;
     switch (activeSection) {
       case 'overview':
         return (
@@ -93,7 +110,7 @@ export default function AdminFinancial() {
             />
             <FinancialCharts transactions={transactions} categories={categories} />
             <Card className="border-0 shadow-lg">
-              <CardHeader className="border-b bg-muted/30 py-3">
+              <CardHeader className="border-b bg-white py-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base font-semibold flex items-center gap-2">
                     <History className="h-4 w-4 text-muted-foreground" />Últimas Movimentações
@@ -114,7 +131,7 @@ export default function AdminFinancial() {
       case 'history':
         return (
           <Card className="border-0 shadow-lg">
-            <CardHeader className="border-b bg-muted/30 py-3">
+            <CardHeader className="border-b bg-white py-3">
               <CardTitle className="text-base font-semibold">Histórico</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
@@ -124,12 +141,14 @@ export default function AdminFinancial() {
         );
       case 'charts':
         return <FinancialCharts transactions={transactions} categories={categories} />;
+      case 'cashflow':
+        return <AdminCashFlowSection canManage={canManage} />;
       case 'dre':
         return <FinancialDRESection transactions={transactions} categories={categories} periodLabel={periodLabel} />;
       case 'reconciliation':
-        return <ReconciliationSection />;
+        return <ReconciliationSection canManage={canManage} />;
       case 'settings':
-        return <FinancialSettingsSection />;
+        return canManage ? <FinancialSettingsSection /> : <p>Seu perfil permite consultar o financeiro. Para editar categorias, solicite a permissão de lançamentos.</p>;
       default: return null;
     }
   };
@@ -148,7 +167,7 @@ export default function AdminFinancial() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1 min-w-0">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-primary/10"><Wallet className="h-5 w-5 text-primary" /></div>
+              <div className="p-2 rounded-xl bg-black"><Wallet className="h-5 w-5 text-white" /></div>
               <div>
                 <h1 className="text-xl lg:text-2xl font-bold">Financeiro</h1>
                 <p className="text-xs sm:text-sm text-muted-foreground">Controle financeiro do SaaS</p>
