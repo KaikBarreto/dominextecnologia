@@ -1,4 +1,5 @@
-import { Shield, Lock, QrCode, FileText, CreditCard as CreditCardIcon, Loader2, Check, ArrowLeft, Calendar, XCircle, CheckCircle2, Sparkles, AlertTriangle } from "lucide-react";
+import { Shield, Lock, FileText, CreditCard as CreditCardIcon, Loader2, Check, ArrowLeft, Calendar, XCircle, CheckCircle2, Sparkles, AlertTriangle } from "lucide-react";
+import { PixIcon } from "@/components/ui/PixIcon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -628,7 +629,7 @@ export function CheckoutLayout({
                           aria-disabled={isPixMethodSelected || undefined}
                           onClick={() => onCreatePayment("pix")}
                         >
-                          {isCreatingPayment && paymentMethod === "pix" ? <Loader2 className="h-6 w-6 animate-spin" /> : <QrCode className="h-6 w-6" />}
+                          {isCreatingPayment && paymentMethod === "pix" ? <Loader2 className="h-6 w-6 animate-spin" /> : <PixIcon className="h-6 w-6" />}
                           <div className="flex flex-col items-start sm:items-center">
                             <span className="text-sm font-bold">{t.methodPixTitle}</span>
                             <span className={cn("text-xs transition-colors", isPixMethodSelected ? "text-white/80" : "text-muted-foreground group-hover:text-white/80")}>{t.methodPixSubtitle}</span>

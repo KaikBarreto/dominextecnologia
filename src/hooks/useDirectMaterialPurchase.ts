@@ -22,6 +22,10 @@ const CASH_PURCHASE_ERROR_MESSAGES: Record<string, string> = {
   PDV_CASH_PURCHASE_IN_PROGRESS: 'Esta compra ainda está sendo processada. Aguarde e tente novamente.',
   PDV_CASH_PURCHASE_CONTEXT_REUSED: 'Esta compra já foi registrada fora deste caixa.',
   PDV_CASH_PURCHASE_FINANCIAL_MISSING: 'Não foi possível concluir o lançamento financeiro. Nenhum dado foi salvo.',
+  pdv_supplier_credit_insufficient: 'O saldo do fornecedor não cobre o total desta compra.',
+  pdv_supplier_credit_in_progress: 'Esta compra ainda está sendo processada. Aguarde e tente novamente.',
+  pdv_supplier_credit_supplier_invalid: 'O fornecedor não está disponível nesta empresa.',
+  pdv_supplier_credit_financial_missing: 'Não foi possível concluir o financeiro desta compra. Nenhum dado foi salvo.',
 };
 
 export function getDirectMaterialPurchaseErrorMessage(error: unknown): string {
@@ -55,6 +59,10 @@ export interface DirectMaterialPurchaseInput {
   notes?: string | null;
   cashContext?: PdvPurchaseCashContext | null;
 }
+
+type GenericRpcResult = { data: unknown; error: unknown | null };
+type GenericRpc = (name: string, args: Record<string, unknown>) => Promise<GenericRpcResult>;
+const callRpc = supabase.rpc.bind(supabase) as unknown as GenericRpc;
 
 export interface ConfirmedPdvPurchaseCashContext extends PdvPurchaseCashContext {
   terminalName: string;
@@ -135,7 +143,21 @@ export function useDirectMaterialPurchase() {
         p_description: input.description ?? null,
         p_notes: input.notes ?? null,
       };
-      const result = input.cashContext
+      const result = input.paymentMethod === 'saldo_fornecedor'
+        ? await callRpc('pdv_register_direct_purchase_supplier_credit_v3', {
+            p_cash_session_id: input.cashContext?.sessionId ?? null,
+            p_terminal_id: input.cashContext?.terminalId ?? null,
+            p_client_request_id: input.clientRequestId,
+            p_stock_id: input.stockId,
+            p_supplier_id: input.supplierId,
+            p_items: input.items as unknown as Json,
+            p_purchase_date: input.purchaseDate,
+            p_account_id: input.accountId,
+            p_category_id: input.categoryId,
+            p_description: input.description ?? null,
+            p_notes: input.notes ?? null,
+          })
+        : input.cashContext
         ? await supabase.rpc('pdv_registrar_compra_material_direta_v2', {
             p_cash_session_id: input.cashContext.sessionId,
             p_terminal_id: input.cashContext.terminalId,
@@ -161,6 +183,8 @@ export function useDirectMaterialPurchase() {
       queryClient.invalidateQueries({ queryKey: ['pdv-cash-session-detail'] });
       queryClient.invalidateQueries({ queryKey: ['pdv-cash-sessions-v2'] });
       queryClient.invalidateQueries({ queryKey: ['pdv-cash-purchase-context'] });
+      queryClient.invalidateQueries({ queryKey: ['pdv-supplier-credit'] });
+      queryClient.invalidateQueries({ queryKey: ['party-account-v2'] });
       queryClient.invalidateQueries({ queryKey: MATERIAL_PURCHASE_REPORT_QUERY_KEY });
       toast({ title: t.successTitle, description: t.successDescription });
     },

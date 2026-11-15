@@ -7,20 +7,30 @@ describe('contrato de navegação do caixa v2', () => {
     expect(pageSource).toContain('border-primary bg-primary text-primary-foreground shadow-sm');
     expect(pageSource).toContain('border-border bg-background text-muted-foreground');
     expect(pageSource).not.toContain('bg-muted/50 text-muted-foreground');
-    expect(pageSource).toContain('rounded-lg border px-4 py-2');
+    expect(pageSource).toContain('min-h-14');
+    expect(pageSource).toContain('rounded-lg border');
     expect(pageSource).toContain('{cashDisplayName(terminal)}');
     expect(pageSource).toContain("return name || 'Caixa 01'");
     expect(pageSource).not.toContain("String(index + 1).padStart(2, '0')");
     expect(pageSource).toContain('PdvCashIndicators');
   });
 
-  it('mostra resumo e movimentações numa visão única, sem subabas internas', () => {
+  it('mostra fila, resumo e movimentações numa visão única, sem subabas internas', () => {
     expect(pageSource).toContain('Resumo do caixa atual');
-    expect(pageSource).toContain('Movimentações do caixa');
+    expect(pageSource).toContain('Histórico de transações');
     expect(pageSource).not.toContain('Visão geral');
-    expect(pageSource).not.toContain('Pedidos do balcão');
     expect(pageSource).not.toContain('WorkspaceTabButton');
-    expect(pageSource).not.toContain('PdvCashQueuePanel');
+    expect(pageSource).toContain('PdvCashQueuePanel');
+    expect(pageSource).toContain('canCover={canCoverPdvOrders && canAct}');
+    expect(pageSource).toContain('sessionId={focusedSession.id}');
+    expect(pageSource).toContain('terminalId={focusedTerminal.id}');
+  });
+
+  it('abre o caixa correto ao chegar pelo kanban de pedidos do balcão', () => {
+    expect(pageSource).toContain("new URLSearchParams(location.search).get('fila') === '1'");
+    expect(pageSource).toContain('ownSession ?? (cash.openSessions.length === 1 ? cash.openSessions[0] : null)');
+    expect(pageSource).toContain('Escolha o caixa que vai receber os pedidos do balcão.');
+    expect(pageSource).toContain('id="pedidos-do-balcao"');
   });
 
   it('mantém o histórico fechado fora das abas do caixa aberto', () => {
@@ -41,8 +51,8 @@ describe('contrato de navegação do caixa v2', () => {
     expect(pageSource).toContain('terminalId: focusedTerminal.id');
     expect(pageSource).toContain('stockId: focusedTerminal.stockId');
     expect(pageSource).toContain('label="Nova compra" tone="purchase" disabled={!canAct || !purchasePath}');
-    expect(pageSource).toContain("disabled ? 'sm:border sm:border-border sm:bg-background sm:text-foreground sm:shadow-none'");
-    expect(pageSource).toContain("disabled ? 'border border-border bg-background text-foreground shadow-none'");
+    expect(pageSource).toContain("const highlighted = tone === 'sale' && !disabled");
+    expect(pageSource).toContain("border-border bg-card text-foreground enabled:hover:bg-muted");
     expect(pageSource).not.toContain('disabled:opacity-40');
     expect(pageSource).toContain('if (purchasePath) navigate(purchasePath)');
   });

@@ -12,6 +12,9 @@ DECLARE
   material uuid:='c2150000-0000-4000-8000-000000000007';
   preorder uuid:='c2150000-0000-4000-8000-000000000008';
   item uuid:='c2150000-0000-4000-8000-000000000009';
+  terminal uuid:='c2150000-0000-4000-8000-000000000010';
+  cash_session uuid:='c2150000-0000-4000-8000-000000000011';
+  cash_account uuid:='c2150000-0000-4000-8000-000000000012';
   items jsonb; valued jsonb; result jsonb; blocked boolean; before_fin integer; before_mov integer;
 BEGIN
   INSERT INTO auth.users(instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at,confirmation_token,email_change,email_change_token_new,recovery_token) VALUES
@@ -27,7 +30,16 @@ BEGIN
     (cashier,'["screen:pdv_orders","fn:value_pdv_preorder","fn:convert_pdv_preorder"]',true),
     (screen_only,'["screen:pdv_orders"]',true);
   INSERT INTO public.company_modules(company_id,module_code) VALUES(c,'pdv');
+  -- A criação da empresa já fornece um estoque padrão; a fixture escolhe outro explicitamente.
+  UPDATE public.stocks SET is_default=false WHERE company_id IN (c) AND is_default IS TRUE;
   INSERT INTO public.stocks(id,company_id,name,is_default) VALUES(stock,c,'Loja',true);
+  INSERT INTO public.financial_accounts(id,company_id,name,type,initial_balance,is_active)
+  VALUES(cash_account,c,'Cofre fixture valorizacao','caixa',0,true);
+  INSERT INTO public.pdv_terminals(id,company_id,name,stock_id,is_active)
+  VALUES(terminal,c,'Caixa destino',stock,true);
+  INSERT INTO public.pdv_cash_sessions(id,company_id,terminal_id,opened_by,opening_amount,status,
+    cash_account_id,cash_account_name_snapshot,cash_policy_snapshot,contract_version)
+  VALUES(cash_session,c,terminal,cashier,0,'aberta',cash_account,'Cofre fixture valorizacao','{}',2);
   INSERT INTO public.inventory(id,company_id,sku,name,unit,quantity,cost_price) VALUES(material,c,'VAL-1','Material','un',10,4);
   INSERT INTO public.inventory_stock_levels(company_id,inventory_id,stock_id,quantity,is_present) VALUES(c,material,stock,10,true);
 
@@ -48,43 +60,47 @@ BEGIN
   ));
   PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',seller,'role','authenticated')::text,true);
   result:=public.pdv_save_preorder_v2(preorder,0,jsonb_build_object('stock_id',stock),items,'value-save-0001');
-  result:=public.pdv_forward_preorder_v2(preorder,1,'value-forward-1');
+  -- Escolha de destino passa pela mesma RPC/CAS da UI, antes de encaminhar.
+  result:=public.pdv_assign_preorder_terminal_v3(preorder,1,terminal,'value-target-01');
+  IF (result->>'revision')::int<>2 OR (result->>'target_terminal_id')::uuid<>terminal THEN RAISE EXCEPTION 'destino incorreto'; END IF;
+  result:=public.pdv_forward_preorder_v2(preorder,2,'value-forward-1');
+  IF (result->>'revision')::int<>3 OR result->>'status'<>'encaminhado' THEN RAISE EXCEPTION 'encaminhamento incorreto'; END IF;
 
   valued:=jsonb_build_array(jsonb_build_object('id',item,'unit_price',10,'discount_amount',0));
   PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',legacy,'role','authenticated')::text,true);
   blocked:=false; BEGIN
-    PERFORM public.pdv_value_preorder_v2(preorder,2,'{}'::jsonb,valued,'value-legacy-01');
+    PERFORM public.pdv_value_preorder_v2(preorder,3,'{}'::jsonb,valued,'value-legacy-01');
   EXCEPTION WHEN insufficient_privilege THEN blocked:=true; END;
   IF NOT blocked THEN RAISE EXCEPTION 'role legado valorizou sem permissao explicita'; END IF;
   blocked:=false; BEGIN
-    PERFORM public.pdv_convert_preorder_v2(preorder,2,'convert-legacy-1');
+    PERFORM public.pdv_convert_preorder_v2(preorder,3,'convert-legacy-1');
   EXCEPTION WHEN insufficient_privilege THEN blocked:=true; END;
   IF NOT blocked THEN RAISE EXCEPTION 'role legado converteu sem permissao explicita'; END IF;
 
   PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',screen_only,'role','authenticated')::text,true);
   blocked:=false; BEGIN
-    PERFORM public.pdv_value_preorder_v2(preorder,2,'{}'::jsonb,valued,'value-screen-01');
+    PERFORM public.pdv_value_preorder_v2(preorder,3,'{}'::jsonb,valued,'value-screen-01');
   EXCEPTION WHEN insufficient_privilege THEN blocked:=true; END;
   IF NOT blocked THEN RAISE EXCEPTION 'screen sem capacidade valorizou'; END IF;
   blocked:=false; BEGIN
-    PERFORM public.pdv_convert_preorder_v2(preorder,2,'convert-screen-1');
+    PERFORM public.pdv_convert_preorder_v2(preorder,3,'convert-screen-1');
   EXCEPTION WHEN insufficient_privilege THEN blocked:=true; END;
   IF NOT blocked THEN RAISE EXCEPTION 'screen sem capacidade converteu'; END IF;
 
   PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',cashier,'role','authenticated')::text,true);
   SELECT count(*) INTO before_fin FROM public.financial_transactions WHERE company_id=c;
   SELECT count(*) INTO before_mov FROM public.inventory_movements WHERE company_id=c;
-  result:=public.pdv_value_preorder_v2(preorder,2,jsonb_build_object('discount_amount',1),valued,'value-authorized');
-  IF (result->>'revision')::int<>3 OR (result->>'has_missing_prices')::boolean THEN RAISE EXCEPTION 'valorizacao autorizada incorreta'; END IF;
+  result:=public.pdv_value_preorder_v2(preorder,3,jsonb_build_object('discount_amount',1),valued,'value-authorized');
+  IF (result->>'revision')::int<>4 OR (result->>'has_missing_prices')::boolean THEN RAISE EXCEPTION 'valorizacao autorizada incorreta'; END IF;
   IF NOT EXISTS(SELECT 1 FROM public.pdv_preorders WHERE id=preorder AND status='encaminhado' AND subtotal=20 AND discount_amount=1 AND total=19) THEN RAISE EXCEPTION 'valorizacao nao persistiu total/estado'; END IF;
-  result:=public.pdv_value_preorder_v2(preorder,2,jsonb_build_object('discount_amount',1),valued,'value-authorized');
-  IF (result->>'revision')::int<>3 THEN RAISE EXCEPTION 'retry de valorizacao avancou revisao'; END IF;
+  result:=public.pdv_value_preorder_v2(preorder,3,jsonb_build_object('discount_amount',1),valued,'value-authorized');
+  IF (result->>'revision')::int<>4 THEN RAISE EXCEPTION 'retry de valorizacao avancou revisao'; END IF;
   blocked:=false; BEGIN
-    PERFORM public.pdv_value_preorder_v2(preorder,2,jsonb_build_object('discount_amount',1),valued,'value-stale-001');
+    PERFORM public.pdv_value_preorder_v2(preorder,3,jsonb_build_object('discount_amount',1),valued,'value-stale-001');
   EXCEPTION WHEN serialization_failure THEN blocked:=true; END;
   IF NOT blocked THEN RAISE EXCEPTION 'CAS obsoleto valorizou'; END IF;
 
-  result:=public.pdv_convert_preorder_v2(preorder,3,'value-convert-1');
+  result:=public.pdv_convert_preorder_v2(preorder,4,'value-convert-1');
   IF result->>'order_id' IS NULL THEN RAISE EXCEPTION 'caixa autorizado nao converteu'; END IF;
   IF (SELECT count(*) FROM public.financial_transactions WHERE company_id=c)<>before_fin
      OR (SELECT count(*) FROM public.inventory_movements WHERE company_id=c)<>before_mov

@@ -73,4 +73,13 @@ describe('rascunhos simultâneos da compra PDV', () => {
     expect(workspace).toBe(full);
     expect(workspace.drafts).toHaveLength(MAX_PDV_PURCHASE_DRAFTS);
   });
+  it('recupera todos os atendimentos válidos acima do limite sem permitir nova criação', () => {
+    const original = createPdvPurchaseWorkspace(defaults);
+    const drafts = Array.from({ length: 21 }, (_, i) => ({ ...original.drafts[0], id: `recover-${i}`, sequence: i + 1 }));
+    const restored = parsePdvPurchaseWorkspace(JSON.stringify({ drafts, activeId: 'recover-20', nextSequence: 22 }), defaults);
+    expect(restored.drafts).toHaveLength(21);
+    expect(restored.activeId).toBe('recover-20');
+    expect(addPdvPurchaseDraft(restored, defaults)).toBe(restored);
+  });
+
 });

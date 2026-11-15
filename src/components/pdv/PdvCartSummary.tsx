@@ -1,8 +1,12 @@
-import { CreditCard, SlidersHorizontal, Vault } from "lucide-react";
-import type { ReactNode } from "react";
+import { PdvCartWorkspaceTotals, PdvCartWorkspaceFooter } from './PdvCartWorkspaceParts';
+import { ArrowRight, ChevronDown, CreditCard, SlidersHorizontal, Ticket, Vault } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Button } from "@/components/ui/button";
 import { NoticeBanner } from "@/components/ui/NoticeBanner";
 import { CustomerSelectField } from "@/components/customers/CustomerSelectField";
+import { PdvCustomerProfileDialog } from '@/components/pdv/PdvCustomerProfileDialog';
+import { PdvPartyProfileButton } from '@/components/pdv/PdvPartyProfileButton';
 import {
   PdvInlineDiscountEditor,
   type PdvInlineDiscountEditorTexts,
@@ -29,6 +33,8 @@ export interface PdvCartSummaryTexts {
   discount: string;
   discountPlaceholder: string;
   total: string;
+  /** Orçamentos exibem seu valor, sem anunciar recebimento antes do caixa. */
+  amountDue?: string;
   paymentLabel: string;
   paymentShortcut: string;
   finalizeLabel: string;
@@ -71,6 +77,25 @@ interface PdvCartSummaryProps {
   hideFinalizeShortcut?: boolean;
   showAdvancedOptions?: boolean;
   showFinalizeAction?: boolean;
+  /** Crédito/voucher aplicado depois do total comercial e antes do recebimento. */
+  appliedCreditContent?: ReactNode;
+  /** O carrinho completo pode posicionar o mesmo seletor acima dos materiais. */
+  hideCustomerSelector?: boolean;
+  layout?: 'stacked' | 'workspace';
+  appliedCreditAmount?: number;
+  onSaveQuote?: () => void;
+}
+
+export function PdvCartCustomerSelector({ cart, customers, texts, onCustomerChange, readOnly = false, compact = false }: Pick<PdvCartSummaryProps, 'cart' | 'customers' | 'texts' | 'onCustomerChange' | 'readOnly'> & { compact?: boolean }) {
+  const selectedCustomer = customers.find(customer => customer.id === cart.customerId);
+  return <div className="flex w-full min-w-0 items-start gap-1"><div className="min-w-0 flex-1"><CustomerSelectField
+    id="pdv-customer" variant={compact ? 'pdv' : 'summary'} summaryLabel={compact ? 'Cliente' : texts.customerLabel}
+    createLabel={texts.customerCreate} value={cart.customerId ?? undefined}
+    customers={customers} allowNone noneValue="_none" noneLabel={texts.customerNone}
+    placeholder={texts.customerPlaceholder} searchPlaceholder={texts.customerSearchPlaceholder}
+    emptyMessage={texts.customerEmpty} defaultCustomerKind="loja" showCreateLabel={!compact} disabled={readOnly}
+    onValueChange={id => onCustomerChange(id === '_none' ? null : id)}
+  /></div>{selectedCustomer ? <PdvCustomerProfileDialog key={selectedCustomer.id} customer={selectedCustomer} /> : <PdvPartyProfileButton label="Ver ficha do cliente" disabled />}</div>;
 }
 
 /**
@@ -107,6 +132,11 @@ export function PdvCartSummary({
   hideFinalizeShortcut = false,
   showAdvancedOptions = true,
   showFinalizeAction = true,
+  appliedCreditContent,
+  hideCustomerSelector = false,
+  layout = 'stacked',
+  appliedCreditAmount = 0,
+  onSaveQuote,
 }: PdvCartSummaryProps) {
   const subtotal = computeSubtotal(cart);
   const itemDiscounts = computeItemDiscountTotal(cart);
@@ -114,6 +144,29 @@ export function PdvCartSummary({
   // Carrinho vazio não abre pagamento: a RPC recusa pedido sem item, então a
   // tela bloqueia o botão em vez de deixar o operador bater no erro.
   const canPay = canFinalizeOverride ?? (cart.lines.length > 0 && total > 0);
+  const [creditsOpen, setCreditsOpen] = useState(false);
+  const reduceMotion = useReducedMotion();
+
+  if (layout === 'workspace') return <>
+    <PdvCartWorkspaceTotals className={className} subtotalLabel={texts.subtotal} subtotal={formatCurrency(subtotal)} totalLabel={texts.total} total={formatCurrency(total)} amountLabel={texts.amountDue ?? 'Restante a receber'} amount={formatCurrency(Math.max(0, total - appliedCreditAmount))}
+      beforeTotal={<>
+      {itemDiscounts > 0 && <div className="sumline"><span>{texts.itemDiscounts}</span><strong>− {formatCurrency(itemDiscounts)}</strong></div>}
+      {readOnly ? <div className="sumline"><span>Descontos</span><strong>{formatCurrency(cart.discount)}</strong></div> : <PdvInlineDiscountEditor presentation="preview" variant="order" label="Descontos" baseAmount={Math.max(0, subtotal - itemDiscounts)} discountAmount={cart.discount} formatCurrency={formatCurrency} currencySymbol={currencySymbol} locale={locale} currencyFractionDigits={currencyFractionDigits} texts={texts.discountEditor} onApply={onSetDiscountAmount} />}
+      </>}
+      afterTotal={<>
+      {(appliedCreditContent || appliedCreditAmount > 0) && <>
+      <button type="button" className="benefitbtn" disabled={readOnly} aria-expanded={creditsOpen} onClick={() => setCreditsOpen(open => !open)}><span className="row"><Ticket />Créditos do cliente</span><span className="row">{appliedCreditAmount > 0 ? '− ' + formatCurrency(appliedCreditAmount) : 'Usar crédito'}<ChevronDown /></span></button>
+      <AnimatePresence initial={false}>{creditsOpen && <motion.div className="creditpicker" initial={reduceMotion ? false : { height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: reduceMotion ? 0 : 0.34 }}>{cart.customerId ? appliedCreditContent : <small>Selecione um cliente para consultar os créditos.</small>}</motion.div>}</AnimatePresence>
+      </>}
+      </>}
+    />
+    <PdvCartWorkspaceFooter>
+      {showFinalizeAction && <button type="button" className="btn primary" disabled={!canPay || readOnly} onClick={onRequestPayment}>{finalizeIcon ?? <ArrowRight />}{hideFinalizeShortcut ? (texts.finalizeLabel || texts.paymentLabel) : 'Receber agora'}</button>}
+      {onSaveQuote && <button type="button" className="btn ghost" disabled={!cart.lines.length || readOnly} onClick={onSaveQuote}>Salvar orçamento</button>}
+      {showAdvancedOptions && <button type="button" className="btn ghost" disabled={readOnly} onClick={onOpenAdvancedOptions}><SlidersHorizontal />{advancedOptionsSummary || texts.advancedOptionsTrigger}</button>}
+      <small>{hideFinalizeShortcut ? 'Orçamento ainda não confirma pagamento.' : 'F4 para receber · Créditos preservam o valor da venda'}</small>
+    </PdvCartWorkspaceFooter>
+  </>;
 
   return (
     // Sem `shrink-0`/`flex-1` hardcoded aqui de propósito: quem usa este
@@ -123,24 +176,7 @@ export function PdvCartSummary({
     // direita e precisa poder rolar se sobrar pouca altura (tablet com
     // numpad embaixo, por exemplo).
     <div className={cn("space-y-3 px-4 py-3", className)}>
-      <CustomerSelectField
-        id="pdv-customer"
-        variant="summary"
-        summaryLabel={texts.customerLabel}
-        createLabel={texts.customerCreate}
-        value={cart.customerId ?? undefined}
-        customers={customers}
-        allowNone
-        noneValue="_none"
-        noneLabel={texts.customerNone}
-        placeholder={texts.customerPlaceholder}
-        searchPlaceholder={texts.customerSearchPlaceholder}
-        emptyMessage={texts.customerEmpty}
-        defaultCustomerKind="loja"
-        showCreateLabel
-        disabled={readOnly}
-        onValueChange={(id) => onCustomerChange(id === "_none" ? null : id)}
-      />
+      {!hideCustomerSelector && <PdvCartCustomerSelector cart={cart} customers={customers} texts={texts} onCustomerChange={onCustomerChange} readOnly={readOnly} />}
 
       <div className="flex items-center justify-between text-sm">
         <span className="text-muted-foreground">{texts.subtotal}</span>
@@ -186,6 +222,8 @@ export function PdvCartSummary({
           {formatCurrency(total)}
         </span>
       </div>
+
+      {appliedCreditContent}
 
       {/* Caixa fechado não impede a venda (PIX, cartão e fiado seguem), então
           é AVISO com o caminho pro painel, nunca bloqueio da tela. */}

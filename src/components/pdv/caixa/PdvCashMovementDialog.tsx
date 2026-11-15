@@ -1,3 +1,4 @@
+import '@/components/pdv/PdvWorkspace.css';
 import { useEffect, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -114,14 +115,14 @@ export function PdvCashMovementDialog({
   );
 
   return (
-    <ResponsiveModal
+    <ResponsiveModal drawerClassName="pdv-dialog"
       open={open}
       onOpenChange={(v) => {
         if (!v && !submitting) onOpenChange(false);
       }}
       title={isBleed ? texts.bleedTitle : texts.supplyTitle}
       description={isBleed ? texts.bleedDescription : texts.supplyDescription}
-      className="sm:max-w-[440px]"
+      className="pdv-dialog sm:max-w-[440px]"
       footer={footer}
     >
       <div className="space-y-4">

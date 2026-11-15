@@ -2,6 +2,7 @@ import type { LucideIcon } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { cn } from '@/lib/utils';
+import { typography } from '@/lib/typography';
 
 interface MobilePageHeaderProps {
   title: string;
@@ -30,10 +31,10 @@ export function MobilePageHeader({
   }
 
   return (
-    <div className={cn('flex items-center gap-2 h-14 mb-3', className)}>
+    <div className={cn('mb-4 flex min-h-14 items-center gap-3 py-1', className)}>
       {Icon && <Icon className="h-5 w-5 text-foreground/70 shrink-0" />}
       <div className="flex-1 min-w-0">
-        <h1 className="text-base font-semibold tracking-tight truncate leading-tight">{title}</h1>
+        <h1 className={cn(typography.pageTitle, 'break-words')}>{title}</h1>
         {subtitle && (
           <p className="text-[11px] text-muted-foreground truncate leading-tight">{subtitle}</p>
         )}

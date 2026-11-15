@@ -48,6 +48,10 @@ function drawCode128(document: jsPDF, value: string, x: number, y: number, width
   });
 }
 
+export function canEncodeCode128B(value: string): boolean {
+  return Boolean(value) && [...value].every((char) => char.charCodeAt(0) >= 32 && char.charCodeAt(0) <= 126);
+}
+
 async function qrPng(value: string, size = 240): Promise<string> {
   if (typeof document === 'undefined') throw new Error('A geração de etiqueta precisa ser iniciada no navegador.');
   const svg = renderToStaticMarkup(createElement(QRCodeSVG, {
@@ -113,7 +117,12 @@ async function renderLabel(
   document.text(fitText(document, unit, contentWidth), x + padding, y + 8.5);
   if (label.sku) document.text(fitText(document, `SKU ${label.sku}`, contentWidth), x + padding, y + 11.5);
   const barcodeY = y + Math.max(13, height - 13);
-  drawCode128(document, label.code, x + padding, barcodeY, contentWidth, 7);
+  if (canEncodeCode128B(label.code)) {
+    drawCode128(document, label.code, x + padding, barcodeY, contentWidth, 7);
+  } else {
+    document.setFontSize(6.5);
+    document.text('Leia pelo QR Code', x + padding + contentWidth / 2, barcodeY + 4, { align: 'center' });
+  }
   document.setFontSize(6);
   document.text(fitText(document, label.code, contentWidth), x + padding + contentWidth / 2, barcodeY + 9.5, { align: 'center' });
 }

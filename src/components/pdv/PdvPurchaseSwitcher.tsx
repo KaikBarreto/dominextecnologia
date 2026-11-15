@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Check, ChevronDown, PackagePlus, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -66,6 +66,7 @@ export function PdvPurchaseSwitcher({
   header = false,
 }: PdvPurchaseSwitcherProps) {
   const [open, setOpen] = useState(false);
+  const confirmDeleteRef = useRef<HTMLButtonElement>(null);
   const [pendingDelete, setPendingDelete] = useState<PdvPurchaseSwitcherItem | null>(null);
   const active = orders.find((order) => order.id === activeId) ?? orders[0];
 
@@ -174,7 +175,7 @@ export function PdvPurchaseSwitcher({
       </div>
 
       <AlertDialog open={!!pendingDelete} onOpenChange={(next) => !next && setPendingDelete(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent onOpenAutoFocus={event => { event.preventDefault(); confirmDeleteRef.current?.focus(); }}>
           <AlertDialogHeader>
             <AlertDialogTitle>{texts.deleteTitle}</AlertDialogTitle>
             <AlertDialogDescription>{deleteDescription}</AlertDialogDescription>
@@ -182,6 +183,7 @@ export function PdvPurchaseSwitcher({
           <AlertDialogFooter>
             <AlertDialogCancel>{texts.keepOrder}</AlertDialogCancel>
             <AlertDialogAction
+              ref={confirmDeleteRef}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
                 if (pendingDelete) onDelete(pendingDelete.id);

@@ -1,4 +1,10 @@
 import type { DomiflixLearningStatus } from "@/hooks/useDomiflix";
+import { resolveAppSlug } from '@/lib/i18n/appRouteSlugs';
+
+/** Dicas de curso não disputam espaço com a operação do balcão. */
+export function shouldShowTutorialReminder(pathname: string): boolean {
+  return !resolveAppSlug(pathname)?.startsWith('pdv');
+}
 
 const COPY = {
   trial: [

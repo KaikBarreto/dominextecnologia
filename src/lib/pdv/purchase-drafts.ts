@@ -238,8 +238,7 @@ export function parsePdvPurchaseWorkspace(
     const parsed = JSON.parse(raw) as Partial<PdvPurchaseWorkspace>;
     const drafts = (Array.isArray(parsed.drafts) ? parsed.drafts : [])
       .map((draft) => sanitizeDraft(draft, defaults))
-      .filter((draft): draft is PdvPurchaseDraft => draft != null)
-      .slice(0, MAX_PDV_PURCHASE_DRAFTS);
+      .filter((draft): draft is PdvPurchaseDraft => draft != null);
     if (drafts.length === 0) return createPdvPurchaseWorkspace(defaults);
     const activeId = drafts.some((draft) => draft.id === parsed.activeId)
       ? parsed.activeId as string

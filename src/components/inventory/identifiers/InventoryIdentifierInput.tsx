@@ -10,6 +10,7 @@ import {
   type ResolvedInventoryIdentifier,
   useInventoryIdentifiers,
 } from '@/hooks/useInventoryIdentifiers';
+import { InventoryIdentifierCameraScanner } from './InventoryIdentifierCameraScanner';
 
 interface InventoryIdentifierInputProps {
   onResolved: (result: ResolvedInventoryIdentifier) => void;
@@ -89,6 +90,13 @@ export function InventoryIdentifierInput({
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">Leitor USB funciona automaticamente. Você também pode digitar o código.</p>
+        <InventoryIdentifierCameraScanner
+          onScan={(scannedCode) => {
+            setCode(scannedCode);
+            void find(scannedCode);
+          }}
+          disabled={!enabled || resolve.isPending}
+        />
       </form>
       {message && <NoticeBanner variant="warning" className="mt-3">{message}</NoticeBanner>}
     </div>

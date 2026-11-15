@@ -1,3 +1,4 @@
+import '@/components/pdv/PdvWorkspace.css';
 import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -86,7 +87,7 @@ export function PdvCashV2OpenDialog({
   }
 
   return (
-    <ResponsiveModal
+    <ResponsiveModal drawerClassName="pdv-dialog" className="pdv-dialog"
       open={open}
       onOpenChange={(next) => !submitting && onOpenChange(next)}
       title="Abrir caixa"
@@ -228,7 +229,7 @@ export function PdvCashV2EventDialog({
   }
 
   return (
-    <ResponsiveModal
+    <ResponsiveModal drawerClassName="pdv-dialog" className="pdv-dialog"
       open={open}
       onOpenChange={(next) => !submitting && onOpenChange(next)}
       title={content.title}
@@ -341,7 +342,7 @@ export function PdvCashV2CloseDialog({
   }
 
   return (
-    <ResponsiveModal
+    <ResponsiveModal drawerClassName="pdv-dialog" className="pdv-dialog"
       open={open}
       onOpenChange={(next) => !submitting && onOpenChange(next)}
       title="Fechar caixa"

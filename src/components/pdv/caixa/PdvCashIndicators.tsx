@@ -55,7 +55,7 @@ const ACCOUNT_TONES = [
 /**
  * Faixa financeira do topo do caixa, no molde aprovado da EcoSistema: duas
  * colunas abertas, números dominantes e separação só por alinhamento/divisor.
- * Cor saturada fica reservada às ações rápidas e aos chips das contas.
+ * A ação Nova venda concentra o destaque; chips identificam as contas.
  */
 export function PdvCashIndicators({
   cashTexts,
@@ -89,18 +89,18 @@ export function PdvCashIndicators({
     <div
       className={cn(
         'grid w-full gap-5',
-        canManageBankAccounts && 'lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-0',
+        canManageBankAccounts && 'lg:grid-cols-[minmax(0,440px)_minmax(0,1fr)] lg:gap-0',
       )}
     >
-      <section className="flex min-w-0 flex-col justify-between lg:min-h-[220px] lg:pr-6">
+      <section className="flex min-w-0 flex-col justify-between lg:min-h-[210px] lg:pr-6">
         <div>
-          <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          <h2 className="flex items-center gap-2 text-[13px] font-semibold uppercase tracking-widest text-muted-foreground">
             <Banknote className="h-5 w-5" />
             {cashTexts.title}
           </h2>
           <div className="mt-4 flex min-w-0 items-center gap-2">
             <p className={cn(
-              'min-w-0 break-words text-4xl font-extrabold tracking-tight tabular-nums sm:text-5xl xl:text-6xl',
+              'min-w-0 break-words text-4xl font-bold tracking-tight tabular-nums lg:text-5xl',
               drawerAmount < 0 && 'text-destructive',
             )}>
               {isDrawerLoading ? (
@@ -180,13 +180,13 @@ export function PdvCashIndicators({
       </section>
 
       {canManageBankAccounts && (
-        <section className="flex min-w-0 flex-col justify-between lg:min-h-[220px] lg:border-l lg:pl-6">
+        <section className="flex min-w-0 flex-col justify-between lg:min-h-[210px] lg:border-l lg:pl-6">
           <div>
-            <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            <h2 className="flex items-center gap-2 text-[13px] font-semibold uppercase tracking-widest text-muted-foreground">
               <Landmark className="h-5 w-5" />
               {accountTexts.title}
             </h2>
-            <p className="mt-4 min-w-0 break-words text-4xl font-extrabold tracking-tight tabular-nums sm:text-5xl xl:text-6xl">
+            <p className="mt-4 min-w-0 break-words text-4xl font-bold tracking-tight tabular-nums lg:text-5xl">
               {isAccountsLoading ? (
                 <Skeleton className="h-12 w-52 sm:h-14" />
               ) : isAccountsUnavailable ? (

@@ -1,8 +1,9 @@
-import { useRef } from 'react';
+import { projectPdvCatalogCustomer, type PdvCatalogCustomer } from '@/lib/pdv/catalogCustomer';
+import { pdvDirectSaleIdempotencyKey } from '@/lib/pdv/directSaleRecovery';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { SettlePaymentPayload } from '@/lib/pdv/payment';
-import { invalidatePdvReportCaches } from '@/hooks/pdvReportCache';
+import { invalidatePdvReportCaches, usePdvAuthorizedQueryScope } from '@/hooks/pdvReportCache';
 import { PDV_CASH_V2_QUERY_ROOT } from '@/hooks/usePdvCashSessionsV2';
 
 type RpcError = { code?: string; message?: string; details?: string };
@@ -30,7 +31,7 @@ export interface PdvDirectSaleBankAccountV2 extends PdvDirectSaleOptionV2 {
   institutionName: string | null; bankName: string | null;
 }
 export interface PdvDirectSaleCatalogV2 {
-  materials: PdvDirectSaleMaterialV2[]; customers: PdvDirectSaleOptionV2[];
+  materials: PdvDirectSaleMaterialV2[]; customers: PdvCatalogCustomer[];
   terminals: PdvDirectSaleTerminalV2[]; sessions: PdvDirectSaleSessionV2[];
   cashAccount: PdvDirectSaleOptionV2 | null; bankAccounts: PdvDirectSaleBankAccountV2[];
 }
@@ -43,6 +44,8 @@ export interface PdvCompleteDirectSaleV2Input {
   customerId: string | null; items: PdvDirectSaleItemV2[];
   orderDiscountAmount: number; notes?: string | null; transactionDate?: string | null;
   payments: SettlePaymentPayload[];
+  /** Chave histórica já conhecida ou chave versionada persistida antes da RPC. */
+  idempotencyKey?: string;
 }
 export interface PdvCompleteDirectSaleV2Result {
   orderId: string; orderNumber: number; deliveryId: string;
@@ -82,9 +85,13 @@ export function mapPdvDirectSaleV2Error(error: RpcError): PdvDirectSaleV2Error {
     pdv_direct_sale_credit_forbidden: 'Você não tem permissão para aprovar venda no fiado.',
     pdv_direct_sale_credit_limit_exceeded: 'O limite disponível do cliente não cobre esta venda.',
     pdv_direct_sale_due_date_invalid: 'O vencimento do fiado não pode estar no passado.',
+    pdv_direct_sale_voucher_invalid: 'O voucher escolhido venceu, não pertence ao cliente ou não possui saldo suficiente.',
+    pdv_direct_sale_customer_balance_insufficient: 'O saldo disponível do cliente não cobre este valor.',
+    pdv_payment_customer_invalid: 'Selecione um cliente válido para usar saldo ou voucher.',
     pdv_direct_sale_coverage_mismatch: 'A soma das formas de pagamento deve ser igual ao total.',
     pdv_direct_sale_in_progress: 'Esta venda já está em processamento. Aguarde e tente novamente.',
     pdv_direct_sale_payload_invalid: 'Revise os itens e as formas de pagamento.',
+    pdv_direct_sale_payments_limit: 'Use no máximo 24 parcelas e mais duas formas de pagamento.',
     pdv_direct_sale_cart_invalid: 'Revise as quantidades dos itens.',
     pdv_direct_sale_cart_header_invalid: 'Revise o desconto, a data e as observações da venda.',
     pdv_direct_sale_cart_header_value_invalid: 'Revise o desconto e a data da venda.',
@@ -132,6 +139,7 @@ export function canonicalizePdvDirectSalePayments(payments: SettlePaymentPayload
       change_amount: payment.change_amount ?? 0,
       account_id: payment.account_id ?? null,
       due_date: payment.due_date ?? null,
+      reference_id: payment.reference_id ?? null,
     }))
     .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
 }
@@ -166,7 +174,7 @@ export function projectPdvDirectSaleCatalogV2(payload: unknown): PdvDirectSaleCa
         }),
       }];
     }),
-    customers: options(value?.customers),
+    customers: list(value?.customers).flatMap(raw => { const customer = projectPdvCatalogCustomer(raw); return customer ? [customer] : []; }),
     terminals: list(value?.terminals).flatMap((raw) => {
       const item = object(raw); const id = text(item?.id); const name = text(item?.name); const stockId = text(item?.stock_id);
       return id && name && stockId ? [{ id, name, stockId }] : [];
@@ -206,6 +214,7 @@ export function buildPdvDirectSaleV2RpcPayload(input: PdvCompleteDirectSaleV2Inp
       ...(payment.change_amount ? { change_amount: payment.change_amount } : {}),
       ...(payment.account_id ? { account_id: payment.account_id } : {}),
       ...(payment.due_date ? { due_date: payment.due_date } : {}),
+      ...(payment.reference_id ? { reference_id: payment.reference_id } : {}),
     })),
     p_idempotency_key: idempotencyKey,
   };
@@ -225,38 +234,44 @@ function projectResult(payload: unknown): PdvCompleteDirectSaleV2Result {
 
 export function usePdvDirectSaleV2() {
   const queryClient = useQueryClient();
-  const attemptKeys = useRef(new Map<string, string>());
+  const scope = usePdvAuthorizedQueryScope();
   const capability = useQuery({
-    queryKey: ['pdv-direct-sale-v2', 'capability'],
+    queryKey: ['pdv-direct-sale-v2', 'capability', ...scope.key], enabled: scope.ready,
     queryFn: async () => { const { data, error } = await callRpc('pdv_get_direct_sale_capability_v2');
       if (error) throw mapPdvDirectSaleV2Error(error); return projectPdvDirectSaleCapabilityV2(data); },
     staleTime: 30_000,
   });
   const catalog = useQuery({
-    queryKey: ['pdv-direct-sale-v2', 'catalog'], enabled: capability.data?.enabled === true,
-    queryFn: async () => { const { data, error } = await callRpc('pdv_get_direct_sale_catalog_v2');
+    queryKey: ['pdv-direct-sale-v2', 'catalog', ...scope.key], enabled: scope.ready && capability.data?.enabled === true,
+    queryFn: async () => { const { data, error } = await callRpc('pdv_get_direct_sale_catalog_v3');
       if (error) throw mapPdvDirectSaleV2Error(error); return projectPdvDirectSaleCatalogV2(data); },
     staleTime: 15_000,
   });
   const complete = useMutation({
     mutationFn: async (input: PdvCompleteDirectSaleV2Input) => {
-      let key = attemptKeys.current.get(input.attemptId);
-      if (!key) { key = `direct-sale-${crypto.randomUUID()}`; attemptKeys.current.set(input.attemptId, key); }
+      const key = input.idempotencyKey ?? pdvDirectSaleIdempotencyKey(input.attemptId);
+      if (!input.attemptId || key.trim() !== key || key.length < 8 || key.length > 200) {
+        throw new PdvDirectSaleV2Error('A tentativa precisa ser conferida em Pedidos antes de reenviar.', 'pdv_direct_sale_attempt_invalid');
+      }
       const { data, error } = await callRpc('pdv_complete_direct_sale_rollout_v2', buildPdvDirectSaleV2RpcPayload(input, key));
       if (error) throw mapPdvDirectSaleV2Error(error); return projectResult(data);
     },
-    onSuccess: async () => {
+    onSuccess: () => {
       const invalidations = ([['inventory'],['inventory-stock-levels'],['inventory-movements'],
         ['pdv-stock-reservations'],['pdv-stock-availability'],['financial-accounts'],
         ['account-balances'],['financial-transactions'],['financial-summary'],['pdv-cofre-balance'],
-        ['pdv-cash-sessions'],['pdv-cash-session-detail'],['pdv-customer-credit'],['pdv-orders'],
+        ['pdv-cash-sessions'],['pdv-cash-session-detail'],['pdv-customer-credit'],['pdv-customer-payment-options'],['party-account-v2'],['pdv-orders'],
         ['pdv-direct-sale-v2'],PDV_CASH_V2_QUERY_ROOT] as const).map((key) => queryClient.invalidateQueries({ queryKey: [...key] }));
-      await Promise.all([...invalidations, invalidatePdvReportCaches(queryClient)]);
+      // A venda já foi confirmada pelo servidor. Marcar todas as leituras
+      // como desatualizadas é imediato; refazer relatórios em segundo plano
+      // não pode manter o caixa em "Finalizando" nem sugerir um novo envio.
+      void Promise.allSettled([...invalidations, invalidatePdvReportCaches(queryClient)]);
     },
   });
   return {
     capability, catalog, complete,
     contract: selectPdvSaleContract({ loading: capability.isLoading, error: capability.error, capability: capability.data }),
-    releaseAttempt: (attemptId: string) => attemptKeys.current.delete(attemptId),
+    // A identidade pertence à tentativa persistida; limpar a UI não a renova.
+    releaseAttempt: (_attemptId: string) => undefined,
   };
 }

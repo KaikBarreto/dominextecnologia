@@ -83,8 +83,11 @@ BEGIN
     (company_a,'pdv'),(company_b,'pdv');
   INSERT INTO public.company_settings(company_id,name,pdv_mode) VALUES
     (company_a,'Fixture terminal A','simples'),
-    (company_b,'Fixture terminal B','simples');
+    (company_b,'Fixture terminal B','simples')
+  ON CONFLICT (company_id) DO UPDATE SET name=EXCLUDED.name, pdv_mode=EXCLUDED.pdv_mode;
   INSERT INTO public.customers(id,company_id,name) VALUES(customer_a,company_a,'Cliente fixture');
+  -- A criação da empresa já fornece um estoque padrão; a fixture escolhe outro explicitamente.
+  UPDATE public.stocks SET is_default=false WHERE company_id IN (company_a, company_b) AND is_default IS TRUE;
   INSERT INTO public.stocks(id,company_id,name,is_default,purpose,customer_id) VALUES
     (stock_a,company_a,'Loja A',true,'operacional',NULL),
     (customer_stock_a,company_a,'Estoque do cliente',false,'operacional',customer_a),

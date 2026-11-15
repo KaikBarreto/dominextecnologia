@@ -492,6 +492,7 @@ export function SidebarMenuContent() {
                         <NavLink
                           key={child.path}
                           to={L(child.path)}
+                          end={child.path === '/pdv'}
                           title={tMenu(child.title)}
                           className={({ isActive }) =>
                             cn(
@@ -516,6 +517,7 @@ export function SidebarMenuContent() {
                     <NavLink
                       key={item.path}
                       to={L(item.path!)}
+                      end={item.path === '/pdv'}
                       title={collapsed ? tMenu(item.title) : undefined}
                       className={cn(
                         // className como STRING (não função): dentro de TooltipTrigger

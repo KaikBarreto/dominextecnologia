@@ -36,4 +36,21 @@ describe('W3 fluxo balcão', () => {
     const args = buildPdvCoverageRpcArgs({ orderId: 'o1', terminalId: 't1', cashSessionId: 's1', cashAccountId: 'a1', attemptId: 'same-attempt', payments: [{ method: 'dinheiro', amount: 50, change_amount: 10, card_token: 'segredo' } as never] });
     expect(args).toEqual({ p_order_id: 'o1', p_terminal_id: 't1', p_cash_session_id: 's1', p_cash_account_id: 'a1', p_payments: [{ method: 'dinheiro', amount: 50 }], p_idempotency_key: 'same-attempt' });
   });
+
+  it('preserva voucher e parcelas do fiado na cobertura do pedido', () => {
+    const args = buildPdvCoverageRpcArgs({
+      orderId: 'o1', terminalId: 't1', cashSessionId: 's1', cashAccountId: 'a1',
+      attemptId: 'same-attempt',
+      payments: [
+        { method: 'voucher', amount: 40, reference_id: 'voucher-1' },
+        { method: 'fiado', amount: 30, due_date: '2026-12-10' },
+        { method: 'fiado', amount: 30, due_date: '2027-01-10' },
+      ],
+    });
+    expect(args).toMatchObject({ p_payments: [
+      { method: 'voucher', amount: 40, reference_id: 'voucher-1' },
+      { method: 'fiado', amount: 30, due_date: '2026-12-10' },
+      { method: 'fiado', amount: 30, due_date: '2027-01-10' },
+    ] });
+  });
 });

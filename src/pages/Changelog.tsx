@@ -31,6 +31,38 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.1',
+    date: '15 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Venda, compra e orçamento com o mesmo jeito de usar',
+        category: 'melhoria',
+        description: 'As telas do PDV ganharam uma apresentação mais consistente, com seleção de cliente ou fornecedor, código do material separado do nome, fotos e resumo do atendimento. A busca e os atalhos ajudam a incluir vários itens em sequência, e as abas facilitam alternar entre atendimentos.',
+      },
+      {
+        title: 'Recebimento mais claro, inclusive com várias formas',
+        category: 'melhoria',
+        description: 'A finalização organiza o valor e a conta de destino junto de cada forma de pagamento. O resumo e os descontos ficam mais fáceis de conferir, com opção de ampliar a tela e manter essa preferência para o próximo atendimento.',
+      },
+      {
+        title: 'Caixas, pedidos e retirada mais fáceis de acompanhar',
+        category: 'melhoria',
+        description: 'O caixa do usuário recebe prioridade ao entrar, e pedidos, orçamentos e retirada compartilham uma visão mais consistente do fluxo do balcão. Menus de ações, filtros e telas de carregamento seguem o padrão do sistema.',
+      },
+      {
+        title: 'Comprovante certo para cada etapa',
+        category: 'melhoria',
+        description: 'Orçamento, pedido e retirada têm identificação própria nos comprovantes térmicos e A4. O layout destaca os materiais, os totais e as formas de pagamento, com textos mais legíveis e configuração de impressão por etapa.',
+      },
+      {
+        title: 'Mais proteção para cada caixa e atendimento',
+        category: 'seguranca',
+        description: 'A separação das movimentações entre caixas foi reforçada. A recuperação de rascunhos preserva versões diferentes, e uma tentativa de venda interrompida passa a conservar sua identificação para evitar a repetição da mesma venda.',
+      },
+    ],
+  },
+  {
     version: '1.39.44',
     date: '15 de novembro de 2026',
     type: 'patch',

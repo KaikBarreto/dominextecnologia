@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { usePdvAuthorizedQueryScope } from '@/hooks/pdvReportCache';
+import { invalidatePdvCashV2Caches } from '@/hooks/usePdvCashSessionsV2';
 
 export type PartyAccountType = 'customer' | 'supplier';
 
@@ -36,6 +38,7 @@ export interface PartyAccountEntry {
   accountStatus: 'paid' | 'closed_by_credit' | 'partial' | 'open' | null;
   accountId: string | null;
   cashSessionId: string | null;
+  requiresCashSession?: boolean;
   settlementMethod: 'dinheiro' | 'pix' | 'transferencia' | null;
   canReverse: boolean;
 }
@@ -100,6 +103,10 @@ const ERROR_MESSAGES: Record<string, string> = {
   pdv_receivable_reversal_insufficient_custody: 'O caixa não tem dinheiro suficiente para este estorno.',
   pdv_party_account_receivable_mismatch: 'A conta escolhida não pertence a este cliente.',
   pdv_party_account_settlement_not_found: 'O recebimento não pertence a este cliente.',
+  pdv_receivable_receiving_context_required: 'Escolha o caixa que está recebendo o pagamento.',
+  pdv_receivable_receiving_context_mismatch: 'Use o caixa identificado neste recebimento.',
+  pdv_receivable_receiving_context_missing: 'Este recebimento antigo não identifica o caixa. Peça a revisão de um responsável.',
+  pdv_cash_session_forbidden: 'Você não tem acesso a este caixa.',
 };
 
 const ALLOWED_SOURCE_TYPES = new Set<PartyAccountSourceType>([
@@ -172,6 +179,7 @@ export function projectPartyAccountStatement(value: unknown): PartyAccountStatem
         : null,
       accountId: row.account_id == null ? null : text(row.account_id),
       cashSessionId: row.cash_session_id == null ? null : text(row.cash_session_id),
+      requiresCashSession: row.requires_cash_session === true,
       settlementMethod: ['dinheiro', 'pix', 'transferencia'].includes(text(row.settlement_method))
         ? text(row.settlement_method) as PartyAccountEntry['settlementMethod']
         : null,
@@ -322,10 +330,12 @@ export function usePartyAccountStatement({
   enabled?: boolean;
 }) {
   const queryClient = useQueryClient();
+  const scope = usePdvAuthorizedQueryScope();
+  const authorizationState = scope.ready ? 'ready' : 'pending';
   const offset = Math.max(0, page - 1) * pageSize;
   const query = useQuery({
-    queryKey: [...PARTY_ACCOUNT_ROOT_KEY, partyType, partyId, segment, pageSize, offset],
-    enabled: enabled && Boolean(partyId),
+    queryKey: [...PARTY_ACCOUNT_ROOT_KEY, ...scope.key, authorizationState, partyType, partyId, segment, pageSize, offset, 'receiving-context-v5'],
+    enabled: enabled && scope.ready && Boolean(partyId),
     queryFn: () => callRpc('pdv_party_account_statement_v3', {
       p_party_type: partyType,
       p_party_id: partyId,
@@ -337,15 +347,17 @@ export function usePartyAccountStatement({
       && error instanceof PartyAccountDomainError
       && error.kind === 'unavailable',
     staleTime: 30_000,
+    gcTime: 0,
   });
 
   const receivableOptions = useQuery({
-    queryKey: [...PARTY_ACCOUNT_ROOT_KEY, 'receivable-options', partyId],
-    enabled: enabled && receivablesEnabled && partyType === 'customer' && Boolean(partyId),
+    queryKey: [...PARTY_ACCOUNT_ROOT_KEY, ...scope.key, authorizationState, 'receivable-options', partyId],
+    enabled: enabled && scope.ready && receivablesEnabled && partyType === 'customer' && Boolean(partyId),
     queryFn: () => callRpc('pdv_party_receivable_options_v3', {
       p_customer_id: partyId,
     }, projectReceivableOptions),
     staleTime: 30_000,
+    gcTime: 0,
     retry: false,
   });
 
@@ -357,6 +369,10 @@ export function usePartyAccountStatement({
       queryClient.invalidateQueries({ queryKey: ['pdv-orders'] }),
       queryClient.invalidateQueries({ queryKey: ['customers'] }),
       queryClient.invalidateQueries({ queryKey: ['suppliers'] }),
+      queryClient.invalidateQueries({ queryKey: ['pdv-customer-payment-options'] }),
+      queryClient.invalidateQueries({ queryKey: ['pdv-cash'] }),
+      queryClient.invalidateQueries({ queryKey: ['pdv-after-sale-v2'] }),
+      invalidatePdvCashV2Caches(queryClient),
     ]);
   };
 
@@ -401,7 +417,7 @@ export function usePartyAccountStatement({
       p_allocations: [{ receivable_id: input.receivableId, amount: input.amount }],
       p_method: input.method,
       p_account_id: input.accountId,
-      p_session_id: input.method === 'dinheiro' ? input.cashSessionId : null,
+      p_session_id: input.cashSessionId,
       p_received_on: input.receivedOn,
       p_notes: input.notes.trim(),
       p_idempotency_key: input.idempotencyKey,

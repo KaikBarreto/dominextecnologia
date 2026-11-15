@@ -166,3 +166,24 @@ describe('useBarcodeScanner', () => {
     expect(segundo).toHaveBeenCalledExactlyOnceWith('7891234567895');
   });
 });
+
+describe('fronteiras do leitor em formulários', () => {
+  it.each([{ isComposing: true }, { repeat: true }, { keyCode: 229 }])('descarta rajada quando Enter pertence à edição %o', options => {
+    const onScan = vi.fn(); renderHook(() => useBarcodeScanner({ onScan }));
+    '123456'.split('').forEach(key => teclar(key));
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true, ...options }));
+    teclar('Enter'); expect(onScan).not.toHaveBeenCalled();
+  });
+  it('respeita evento já consumido e limpa a rajada', () => {
+    const onScan = vi.fn(); renderHook(() => useBarcodeScanner({ onScan }));
+    '123456'.split('').forEach(key => teclar(key));
+    const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }); event.preventDefault(); document.body.dispatchEvent(event);
+    teclar('Enter'); expect(onScan).not.toHaveBeenCalled();
+  });
+  it('permite ao catálogo rejeitar quantidades e seleção de cliente sem quebrar consumidores antigos', () => {
+    const onScan = vi.fn(); const input = document.createElement('input'); document.body.appendChild(input);
+    renderHook(() => useBarcodeScanner({ onScan, shouldCaptureTarget: target => target !== input }));
+    '123456'.split('').forEach(key => teclar(key, input)); expect(teclar('Enter', input).defaultPrevented).toBe(false); expect(onScan).not.toHaveBeenCalled();
+    '654321'.split('').forEach(key => teclar(key)); teclar('Enter'); expect(onScan).toHaveBeenCalledExactlyOnceWith('654321'); input.remove();
+  });
+});

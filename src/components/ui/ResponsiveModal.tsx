@@ -31,6 +31,8 @@ export interface ResponsiveModalProps {
   description?: string;
   children: React.ReactNode;
   className?: string;
+  /** Aparência do conteúdo rolável, sem alterar os outros modais. */
+  bodyClassName?: string;
   /** Classes aplicadas ao drawer móvel; use para estabilizar a altura de wizards entre etapas. */
   drawerClassName?: string;
   /** Footer content rendered below the scrollable area (fica colado embaixo, fora do scroll) */
@@ -68,6 +70,7 @@ export function ResponsiveModal({
   description,
   children,
   className,
+  bodyClassName,
   drawerClassName,
   footer,
   overlayId,
@@ -153,6 +156,7 @@ export function ResponsiveModal({
               'min-h-0 flex-1 overflow-y-auto px-4',
               density === 'compact' ? 'pb-4' : 'pb-6',
               className,
+              bodyClassName,
             )}>
               {children}
             </div>
@@ -190,7 +194,7 @@ export function ResponsiveModal({
           {...(description ? {} : { 'aria-describedby': undefined })}
         >
           {fullScreen ? (
-            <DialogHeader className={cn('flex shrink-0 flex-row items-center gap-3 space-y-0 border-b px-4 py-3 text-left sm:gap-6 sm:px-10 sm:py-5 [@media(max-height:500px)]:py-2', headerActions && 'grid grid-cols-[auto_minmax(0,1fr)] gap-y-1 py-2 sm:flex sm:py-5')}>
+            <DialogHeader data-fullscreen-header className={cn('flex shrink-0 flex-row items-center gap-3 space-y-0 border-b px-4 py-3 text-left sm:gap-6 sm:px-10 sm:py-5 [@media(max-height:500px)]:py-2', headerActions && 'grid grid-cols-[auto_minmax(0,1fr)] gap-y-1 py-2 sm:flex sm:py-5')}>
               <Button
                 type="button"
                 variant="cancel-ghost"
@@ -213,7 +217,7 @@ export function ResponsiveModal({
               {description ? <DialogDescription className={cn(density === 'compact' && 'text-xs')}>{description}</DialogDescription> : null}
             </DialogHeader>
           )}
-          <div className={cn('min-h-0 flex-1 overflow-y-auto', fullScreen && 'px-4 pb-5 pt-0 sm:px-10 sm:pb-6')}>{children}</div>
+          <div className={cn('min-h-0 flex-1 overflow-y-auto', fullScreen && 'px-4 pb-5 pt-0 sm:px-10 sm:pb-6', bodyClassName)}>{children}</div>
           {fullScreen && floatingContent && footerHeight !== null ? (
             <div data-fullscreen-floating className="pointer-events-none absolute inset-x-0 z-30 flex justify-center px-4" style={{ bottom: footerHeight + 16 }}>
               <div className="pointer-events-auto w-full max-w-3xl motion-safe:animate-in motion-safe:slide-in-from-bottom-3 motion-safe:fade-in duration-200">{floatingContent}</div>

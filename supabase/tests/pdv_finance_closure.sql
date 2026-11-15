@@ -2,7 +2,7 @@
 BEGIN;
 
 DO $contract$
-DECLARE v_fn text; v_src text;
+DECLARE v_fn text; v_src text; v_rls_helper regprocedure;
 BEGIN
   IF NOT EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
     WHERE n.nspname='public' AND c.relname='pdv_card_settlement_details'
@@ -19,6 +19,7 @@ BEGIN
     'public.pdv_party_receivable_options_v3(uuid)',
     'public.pdv_party_settle_receivables_v2(uuid,jsonb,text,uuid,uuid,date,text,text)',
     'public.pdv_party_reverse_receivable_settlement_v2(uuid,uuid,uuid,uuid,text,text)',
+    'public.pdv_can_read_financial_transaction_current_user_v3(uuid,uuid)',
     'public.pdv_list_open_card_authorizations_v3()',
     'public.pdv_settle_card_authorization_v3(uuid,uuid,date,text,text,integer,numeric,text)'
   ] LOOP
@@ -31,6 +32,7 @@ BEGIN
     'public.pdv_settle_receivables_v2(jsonb,text,uuid,uuid,date,text,text)',
     'public.pdv_reverse_receivable_settlement_v2(uuid,uuid,uuid,text,text)',
     'public.pdv_can_access_cash_session_v3(uuid,uuid,uuid)',
+    'public.pdv_can_read_financial_transaction_v3(uuid,uuid,uuid)',
     'public.pdv_card_settlement_context_v3()',
     'public.pdv_guard_customer_credit_limit_v3()'
   ] LOOP
@@ -60,8 +62,27 @@ BEGIN
   IF NOT EXISTS(SELECT 1 FROM pg_policies policy
     WHERE policy.schemaname='public' AND policy.tablename='financial_transactions'
       AND policy.policyname='Scoped financial transaction reads v3'
-      AND policy.qual LIKE '%pdv_can_read_financial_transaction_v3%') THEN
+      AND (policy.qual LIKE '%pdv_can_read_financial_transaction_current_user_v3%'
+        OR policy.qual LIKE '%can_read_financial_transaction_row_current_user_v4%')) THEN
     RAISE EXCEPTION 'RLS financeira ainda permite leitura company-only';
+  END IF;
+  -- A base publicada pode usar o wrapper por linha v4 (INSERT RETURNING).
+  -- O comportamento de custodia abaixo continua obrigatorio em ambas as versoes.
+  SELECT CASE WHEN policy.qual LIKE '%can_read_financial_transaction_row_current_user_v4%'
+    THEN to_regprocedure('public.can_read_financial_transaction_row_current_user_v4(uuid,uuid,text,uuid)')
+    ELSE to_regprocedure('public.pdv_can_read_financial_transaction_current_user_v3(uuid,uuid)') END
+    INTO v_rls_helper FROM pg_policies policy
+    WHERE policy.schemaname='public' AND policy.tablename='financial_transactions'
+      AND policy.policyname='Scoped financial transaction reads v3';
+  IF v_rls_helper IS NULL OR has_function_privilege('anon',v_rls_helper,'EXECUTE')
+     OR NOT has_function_privilege('authenticated',v_rls_helper,'EXECUTE') THEN
+    RAISE EXCEPTION 'ACL do wrapper usado pela RLS financeira incorreta';
+  END IF;
+  SELECT pg_get_functiondef(v_rls_helper) INTO v_src;
+  IF position('auth.uid()' in v_src)=0
+     OR (position('pdv_can_read_financial_transaction_v3' in v_src)=0
+       AND position('pdv_can_access_cash_session_v3' in v_src)=0) THEN
+    RAISE EXCEPTION 'wrapper RLS nao fixa a identidade na sessao autenticada';
   END IF;
   IF NOT EXISTS(SELECT 1 FROM pg_policies policy
     WHERE policy.schemaname='public' AND policy.tablename='financial_transactions'
@@ -92,7 +113,7 @@ DECLARE
   tx_a uuid:='f3000000-0000-4000-8000-000000000061';
   tx_b uuid:='f3000000-0000-4000-8000-000000000062';
   tx_other uuid:='f3000000-0000-4000-8000-000000000063';
-  state text; detail text;
+  state text; detail text; visible_count integer;
 BEGIN
   INSERT INTO auth.users(instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,
     raw_app_meta_data,raw_user_meta_data,created_at,updated_at,confirmation_token,email_change,
@@ -135,16 +156,33 @@ BEGIN
      OR public.pdv_can_access_cash_session_v3(user_a,company_a,session_other)
      OR public.pdv_can_access_cash_session_v3(user_b,company_a,session_a) THEN
     RAISE EXCEPTION 'Caixa A/B ou outro tenant vazou sem permissao explicita'; END IF;
+  -- A policy real tambem deve negar o gestor sem capacidade nominal entre caixas.
+  PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',user_b,'role','authenticated')::text,true);
+  EXECUTE 'SET LOCAL ROLE authenticated';
+  SELECT count(*) INTO visible_count FROM public.financial_transactions WHERE id=tx_a;
+  IF visible_count<>0 THEN
+    RAISE EXCEPTION 'RLS autenticada concedeu Caixa A ao gestor sem permissao nominal (linhas visiveis=%)',visible_count;
+  END IF;
+  EXECUTE 'RESET ROLE';
+  PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',user_a,'role','authenticated')::text,true);
+
   IF public.pdv_can_read_financial_transaction_v3(user_a,company_a,tx_a) IS DISTINCT FROM TRUE
      OR public.pdv_can_read_financial_transaction_v3(user_a,company_a,tx_b)
      OR public.pdv_can_read_financial_transaction_v3(user_a,company_b,tx_other) THEN
-    RAISE EXCEPTION 'RLS/helper financeiro vazou transacao Caixa A/B/tenant'; END IF;
+    RAISE EXCEPTION 'RLS/helper financeiro divergente: proprio=%, outro_caixa=%, outro_tenant=%',
+      public.pdv_can_read_financial_transaction_v3(user_a,company_a,tx_a),
+      public.pdv_can_read_financial_transaction_v3(user_a,company_a,tx_b),
+      public.pdv_can_read_financial_transaction_v3(user_a,company_b,tx_other);
+  END IF;
 
+  PERFORM set_config('request.jwt.claims','{"role":"service_role"}',true);
   UPDATE public.user_permissions SET permissions=permissions||'["fn:operate_other_pdv_cash"]'::jsonb
    WHERE user_id=user_b;
-  IF public.pdv_can_access_cash_session_v3(user_b,company_a,session_a) IS DISTINCT FROM TRUE
-     OR public.pdv_can_access_cash_session_v3(user_b,company_b,session_other) THEN
-    RAISE EXCEPTION 'permissao cruzada nao respeitou empresa'; END IF;
+  PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',user_b,'role','authenticated')::text,true);
+  -- Este helper owner-only recebe a empresa ja autorizada do contexto.
+  -- A negativa de outro tenant pertence ao wrapper financeiro e a RLS real.
+  IF public.pdv_can_access_cash_session_v3(user_b,company_a,session_a) IS DISTINCT FROM TRUE THEN
+    RAISE EXCEPTION 'permissao nominal nao abriu caixa autorizado da mesma empresa'; END IF;
   IF public.pdv_can_read_financial_transaction_v3(user_b,company_a,tx_a) IS DISTINCT FROM TRUE
      OR public.pdv_can_read_financial_transaction_v3(user_b,company_b,tx_other) THEN
     RAISE EXCEPTION 'leitura financeira cruzada ignorou empresa'; END IF;
@@ -166,5 +204,30 @@ BEGIN
   IF (SELECT credit_limit FROM public.customers WHERE id=customer_a)<>200.25 THEN
     RAISE EXCEPTION 'limite em centavos nao foi salvo'; END IF;
 END $isolation$;
+
+-- A policy e o wrapper precisam funcionar com os privilegios reais da API.
+SET LOCAL ROLE authenticated;
+DO $rls_behavior$
+DECLARE visible_count integer;
+BEGIN
+  PERFORM set_config('request.jwt.claims',jsonb_build_object(
+    'sub','f3000000-0000-4000-8000-000000000011','role','authenticated')::text,true);
+  SELECT count(*) INTO visible_count FROM public.financial_transactions
+   WHERE id IN ('f3000000-0000-4000-8000-000000000061',
+                'f3000000-0000-4000-8000-000000000062',
+                'f3000000-0000-4000-8000-000000000063');
+  IF visible_count<>1 THEN
+    RAISE EXCEPTION 'RLS autenticada nao isolou caixa proprio, outro operador e tenant';
+  END IF;
+  IF public.pdv_can_read_financial_transaction_current_user_v3(
+       'f3000000-0000-4000-8000-000000000001','f3000000-0000-4000-8000-000000000061') IS DISTINCT FROM true
+     OR public.pdv_can_read_financial_transaction_current_user_v3(
+       'f3000000-0000-4000-8000-000000000001','f3000000-0000-4000-8000-000000000062')
+     OR public.pdv_can_read_financial_transaction_current_user_v3(
+       'f3000000-0000-4000-8000-000000000002','f3000000-0000-4000-8000-000000000063') THEN
+    RAISE EXCEPTION 'wrapper da API nao preservou isolamento financeiro';
+  END IF;
+END $rls_behavior$;
+RESET ROLE;
 
 ROLLBACK;

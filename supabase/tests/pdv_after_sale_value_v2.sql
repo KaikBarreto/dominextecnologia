@@ -3,7 +3,7 @@
 BEGIN;
 
 DO $contract$
-DECLARE v_fn text; v_src text;
+DECLARE v_fn text; v_src text; v_table text; v_role text; v_privilege text;
 BEGIN
   FOREACH v_fn IN ARRAY ARRAY[
     'public.pdv_issue_return_voucher_v2(uuid,numeric,date,text)',
@@ -29,7 +29,11 @@ BEGIN
     'public.pdv_guard_after_sale_relationship_v2()',
     'public.pdv_voucher_balance_internal_v2(uuid)',
     'public.pdv_free_return_value_internal_v2(uuid,uuid,uuid,numeric,text)',
-    'public.pdv_settle_refund_internal_v2(uuid,uuid,uuid,uuid,uuid,uuid)'
+    'public.pdv_settle_refund_internal_v2(uuid,uuid,uuid,uuid,uuid,uuid)',
+    'public.pdv_request_return_refund_v2_before_retry_fix(uuid,uuid,numeric,text,uuid,uuid,text)',
+    'public.pdv_reverse_return_refund_v2_before_retry_fix(uuid,text,text)',
+    'public.pdv_reverse_return_voucher_v2_before_retry_fix(uuid,text,text)',
+    'public.pdv_guard_voucher_active_customer_v2()'
   ] LOOP
     IF has_function_privilege('anon',v_fn,'EXECUTE')
       OR has_function_privilege('authenticated',v_fn,'EXECUTE')
@@ -42,9 +46,19 @@ BEGIN
       WHERE namespace.nspname='public' AND table_row.relname=names.name
         AND table_row.relrowsecurity AND table_row.relforcerowsecurity)) THEN
     RAISE EXCEPTION 'livro W5-02 sem FORCE RLS'; END IF;
-  IF has_table_privilege('authenticated','public.pdv_vouchers','SELECT')
-    OR has_table_privilege('service_role','public.pdv_refund_events','INSERT') THEN
-    RAISE EXCEPTION 'livro W5-02 exposto diretamente'; END IF;
+  FOREACH v_table IN ARRAY ARRAY[
+    'pdv_return_value_events','pdv_vouchers','pdv_voucher_entries','pdv_refunds',
+    'pdv_refund_events','pdv_exchanges','pdv_exchange_value_applications',
+    'pdv_refund_confirmation_references'
+  ] LOOP
+    FOREACH v_role IN ARRAY ARRAY['anon','authenticated','service_role'] LOOP
+      FOREACH v_privilege IN ARRAY ARRAY['SELECT','INSERT','UPDATE','DELETE'] LOOP
+        IF has_table_privilege(v_role,'public.'||v_table,v_privilege) THEN
+          RAISE EXCEPTION 'livro W5-02 exposto diretamente: %.% para %',v_table,v_privilege,v_role;
+        END IF;
+      END LOOP;
+    END LOOP;
+  END LOOP;
   IF (SELECT enabled FROM public.app_feature_flags WHERE key='pdv_after_sale_value_v2') IS DISTINCT FROM false THEN
     RAISE EXCEPTION 'rollout W5-02 não nasceu fechado'; END IF;
   SELECT pg_get_functiondef('public.seed_system_financial_categories()'::regprocedure) INTO v_src;
@@ -52,7 +66,30 @@ BEGIN
     RAISE EXCEPTION 'seed financeiro futuro não inclui categorias DFC-only'; END IF;
   SELECT pg_get_functiondef('public.pdv_financial_projection_rows_v2(uuid)'::regprocedure) INTO v_src;
   IF position('pdv_refund_reversal' in v_src)=0 THEN RAISE EXCEPTION 'DFC não inclui estorno de refund'; END IF;
+  SELECT pg_get_functiondef('public.pdv_request_return_refund_v2(uuid,uuid,numeric,text,uuid,uuid,text)'::regprocedure) INTO v_src;
+  IF position('request.status=''completed''' in v_src)=0
+    OR position('request.status=''completed''' in v_src)>=position('pdv_request_return_refund_v2_before_retry_fix' in v_src) THEN
+    RAISE EXCEPTION 'retry de refund ainda valida estado mutável antes de devolver resultado concluído'; END IF;
+  SELECT pg_get_functiondef('public.pdv_reverse_return_refund_v2(uuid,text,text)'::regprocedure) INTO v_src;
+  IF position('request.status=''completed''' in v_src)=0
+    OR position('request.status=''completed''' in v_src)>=position('pdv_reverse_return_refund_v2_before_retry_fix' in v_src) THEN
+    RAISE EXCEPTION 'retry do estorno de refund ainda não devolve o resultado concluído primeiro'; END IF;
+  SELECT pg_get_functiondef('public.pdv_reverse_return_voucher_v2(uuid,text,text)'::regprocedure) INTO v_src;
+  IF position('request.status=''completed''' in v_src)=0
+    OR position('request.status=''completed''' in v_src)>=position('pdv_reverse_return_voucher_v2_before_retry_fix' in v_src) THEN
+    RAISE EXCEPTION 'retry do estorno de voucher ainda não devolve o resultado concluído primeiro'; END IF;
+  IF NOT EXISTS(
+    SELECT 1 FROM pg_trigger trigger_row
+     WHERE trigger_row.tgrelid='public.pdv_vouchers'::regclass
+       AND trigger_row.tgname='guard_pdv_voucher_active_customer_v2'
+       AND NOT trigger_row.tgisinternal
+  ) THEN RAISE EXCEPTION 'voucher ainda pode ser emitido para cliente inativo'; END IF;
   SELECT pg_get_functiondef('public.pdv_cover_exchange_order_v2(uuid,uuid,uuid,numeric,numeric,text,uuid,uuid,text)'::regprocedure) INTO v_src;
+  IF position('pdv_cover_exchange_order_core_015_v2' in v_src)=0
+     OR has_function_privilege('authenticated','public.pdv_cover_exchange_order_core_015_v2(uuid,uuid,uuid,numeric,numeric,text,uuid,uuid,text)','EXECUTE') THEN
+    RAISE EXCEPTION 'troca nao usa core protegido pela custodia';
+  END IF;
+  SELECT pg_get_functiondef('public.pdv_cover_exchange_order_core_015_v2(uuid,uuid,uuid,numeric,numeric,text,uuid,uuid,text)'::regprocedure) INTO v_src;
   IF position('pdv_claim_operation_request' in v_src)>=position('v_order.status' in v_src) THEN
     RAISE EXCEPTION 'troca valida estado mutável antes do claim/replay'; END IF;
   IF position('ORDER BY customer.id FOR UPDATE' in v_src)=0
@@ -75,6 +112,7 @@ DECLARE
   ua uuid:='b1410000-0000-4000-8000-000000000011'; ub uuid:='b1410000-0000-4000-8000-000000000012';
   uc uuid:='b1410000-0000-4000-8000-000000000013';
   customer_a uuid:='b1410000-0000-4000-8000-000000000021'; customer_b uuid:='b1410000-0000-4000-8000-000000000022';
+  customer_other_a uuid:='b1410000-0000-4000-8000-000000000023';
   cash_account uuid:='b1410000-0000-4000-8000-000000000031'; bank_account uuid:='b1410000-0000-4000-8000-000000000032';
   stock_a uuid:='b1410000-0000-4000-8000-000000000033';
   terminal uuid:='b1410000-0000-4000-8000-000000000041'; original_order uuid:='b1410000-0000-4000-8000-000000000051';
@@ -84,8 +122,12 @@ DECLARE
   card_settled_payment uuid:='b1410000-0000-4000-8000-000000000064';
   cash_test_order uuid:='b1410000-0000-4000-8000-000000000053';
   credit_race_order uuid:='b1410000-0000-4000-8000-000000000054';
+  exact_voucher_order uuid:='b1410000-0000-4000-8000-000000000055';
+  foreign_customer_order uuid:='b1410000-0000-4000-8000-000000000056';
   return_request uuid:='b1410000-0000-4000-8000-000000000072'; disposition_credit uuid;
-  session_id uuid; voucher_id uuid; cash_refund uuid; pix_refund uuid; result jsonb; replay jsonb; context jsonb;
+  session_id uuid; voucher_id uuid; reversible_voucher uuid; exact_voucher uuid;
+  cash_refund uuid; pix_refund uuid;
+  result jsonb; replay jsonb; context jsonb;
   blocked boolean; detail text; financial_before integer; dfc numeric; original_status text;
   facts_before integer; audit_id uuid:='b1410000-0000-4000-8000-000000000099'; card_refund uuid;
 BEGIN
@@ -101,7 +143,7 @@ BEGIN
   UPDATE public.profiles SET company_id=ca,is_active=true WHERE user_id=uc;
   INSERT INTO public.user_roles(user_id,role) VALUES(ua,'comercial'),(ub,'comercial'),(uc,'comercial');
   INSERT INTO public.user_permissions(user_id,permissions,is_active) VALUES
-    (ua,'["screen:pdv","screen:pdv_orders","fn:view_pdv_after_sale","fn:issue_pdv_voucher","fn:refund_pdv_return","fn:confirm_pdv_refund","fn:reverse_pdv_refund","fn:reverse_pdv_after_sale","fn:cover_pdv_exchange","fn:approve_pdv_credit"]',true),
+    (ua,'["screen:pdv","screen:pdv_orders","fn:view_pdv_after_sale","fn:issue_pdv_voucher","fn:refund_pdv_return","fn:confirm_pdv_refund","fn:reverse_pdv_refund","fn:reverse_pdv_after_sale","fn:cover_pdv_order","fn:cover_pdv_exchange","fn:approve_pdv_credit"]',true),
     (ub,'["screen:pdv","screen:pdv_orders","fn:view_pdv_after_sale","fn:issue_pdv_voucher"]',true),
     (uc,'["screen:pdv","screen:pdv_orders","fn:cover_pdv_exchange"]',true);
   INSERT INTO public.company_modules(company_id,module_code) VALUES(ca,'pdv'),(cb,'pdv');
@@ -109,22 +151,46 @@ BEGIN
     (cash_account,ca,'Cofre W5-02','caixa',500,true),(bank_account,ca,'Banco W5-02','banco',0,true);
   INSERT INTO public.company_settings(company_id,name,timezone,pdv_cash_account_id,pdv_strict_cash_tracking,pdv_mode)
   VALUES(ca,'W5-02 Empresa A','America/Sao_Paulo',cash_account,true,'balcao'),
-    (cb,'W5-02 Empresa B','America/Sao_Paulo',NULL,true,'simples');
+    (cb,'W5-02 Empresa B','America/Sao_Paulo',NULL,true,'simples')
+  ON CONFLICT (company_id) DO UPDATE SET name=EXCLUDED.name, timezone=EXCLUDED.timezone, pdv_cash_account_id=EXCLUDED.pdv_cash_account_id, pdv_strict_cash_tracking=EXCLUDED.pdv_strict_cash_tracking, pdv_mode=EXCLUDED.pdv_mode;
+  -- A criação da empresa já fornece um estoque padrão; a fixture escolhe outro explicitamente.
+  UPDATE public.stocks SET is_default=false WHERE company_id IN (ca) AND is_default IS TRUE;
   INSERT INTO public.stocks(id,company_id,name,is_default) VALUES(stock_a,ca,'Estoque W5-02',true);
   INSERT INTO public.pdv_terminals(id,company_id,name,is_active,stock_id) VALUES(terminal,ca,'Caixa W5-02',true,stock_a);
   INSERT INTO public.customers(id,company_id,name,credit_limit,is_deleted) VALUES
-    (customer_a,ca,'Cliente W5-02',500,false),(customer_b,cb,'Cliente externo',500,false);
+    (customer_a,ca,'Cliente W5-02',500,false),(customer_b,cb,'Cliente externo',500,false),
+    (customer_other_a,ca,'Outro cliente W5-02',500,false);
   UPDATE public.app_feature_flags SET company_allowlist=ARRAY[ca,cb]::uuid[]
    WHERE key IN('pdv_returns_v2','pdv_party_accounts_v2','pdv_after_sale_value_v2');
   PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',ua,'role','authenticated')::text,true);
   result:=public.pdv_open_cash_session_v2(terminal,cash_account,200,'w502-open-cash-0001');
   session_id:=(result->>'session_id')::uuid;
 
-  INSERT INTO public.pdv_orders(id,company_id,number,customer_id,stock_id,status,subtotal,total,client_request_id)
-  VALUES(original_order,ca,1410001,customer_a,stock_a,'entregue',100,100,'w502-original-order-0001'),
-    (new_order,ca,1410002,customer_a,stock_a,'aguardando_pagamento',70,70,'w502-new-order-0001'),
-    (cash_test_order,ca,1410003,customer_a,stock_a,'aguardando_pagamento',1,1,'w502-cash-test-order-0001'),
-    (credit_race_order,ca,1410004,customer_a,stock_a,'aguardando_pagamento',1000,1000,'w502-credit-race-order-0001');
+  INSERT INTO public.pdv_orders(id,company_id,number,customer_id,stock_id,status,subtotal,total,
+    client_request_id,cash_session_id,contract_version,operation_mode_snapshot,target_terminal_id,terminal_id)
+  VALUES(original_order,ca,1410001,customer_a,stock_a,'entregue',170,170,
+      'w502-original-order-0001',session_id,2,'counter',terminal,terminal),
+    (new_order,ca,1410002,customer_a,stock_a,'aguardando_pagamento',70,70,
+      'w502-new-order-0001',session_id,2,'counter',terminal,terminal),
+    (cash_test_order,ca,1410003,customer_a,stock_a,'aguardando_pagamento',1,1,
+      'w502-cash-test-order-0001',session_id,2,'counter',terminal,terminal),
+    (credit_race_order,ca,1410004,customer_a,stock_a,'aguardando_pagamento',1000,1000,
+      'w502-credit-race-order-0001',session_id,2,'counter',terminal,terminal);
+  INSERT INTO public.pdv_orders(id,company_id,number,customer_id,stock_id,status,subtotal,total,
+    client_request_id,contract_version,operation_mode_snapshot,target_terminal_id)
+  VALUES(exact_voucher_order,ca,1410005,customer_a,stock_a,'aguardando_pagamento',2,2,
+      'w502-exact-voucher-order-0001',2,'counter',terminal),
+    (foreign_customer_order,ca,1410006,customer_other_a,stock_a,'aguardando_pagamento',1,1,
+      'w502-foreign-customer-order-0001',2,'counter',terminal);
+  -- Pedidos v2 têm itens coerentes, inclusive os usados somente na matriz financeira.
+  INSERT INTO public.pdv_order_items(company_id,order_id,description,quantity,unit_price,unit_cost,total,unit,
+    item_type,contract_version,gross_total_v2,line_discount_amount_v2,order_discount_allocated_v2,unit_cost_v2)
+  VALUES(ca,original_order,'Serviço original fixture',1,170,0,170,'un','service',2,170,0,0,0),
+    (ca,new_order,'Serviço da troca',1,70,0,70,'un','service',2,70,0,0,0),
+    (ca,cash_test_order,'Serviço para negativa de caixa',1,1,0,1,'un','service',2,1,0,0,0),
+    (ca,credit_race_order,'Serviço para limite de crédito',1,1000,0,1000,'un','service',2,1000,0,0,0),
+    (ca,exact_voucher_order,'Serviço voucher exato',1,2,0,2,'un','service',2,2,0,0,0),
+    (ca,foreign_customer_order,'Serviço de outro cliente',1,1,0,1,'un','service',2,1,0,0,0);
   INSERT INTO public.pdv_order_payments(id,company_id,order_id,method,amount,change_amount,financial_account_id,
     contract_version,coverage_kind,coverage_status,settlement_status,authorized_at,settled_at,created_by)
   VALUES(cash_payment,ca,original_order,'dinheiro',100,0,cash_account,2,'cash','authorized','settled',now(),now(),ua),
@@ -182,6 +248,46 @@ BEGIN
   EXCEPTION WHEN OTHERS THEN GET STACKED DIAGNOSTICS detail=PG_EXCEPTION_DETAIL; END;
   IF detail IS NULL THEN RAISE EXCEPTION 'mesma chave aceitou payload diferente'; END IF;
 
+  -- Um voucher ainda sem uso pode ser estornado. Repetir exatamente a mesma
+  -- operação devolve o primeiro resultado e não cria uma segunda compensação.
+  result:=public.pdv_issue_return_voucher_v2(return_id,1,public.company_today(ca)+30,
+    'w502-voucher-reversible-issue-0001');
+  reversible_voucher:=(result->>'voucher_id')::uuid;
+  result:=public.pdv_reverse_return_voucher_v2(reversible_voucher,'Emissão de teste cancelada',
+    'w502-voucher-reversible-reverse-0001');
+  replay:=public.pdv_reverse_return_voucher_v2(reversible_voucher,'Emissão de teste cancelada',
+    'w502-voucher-reversible-reverse-0001');
+  IF replay->>'idempotent'<>'true' OR replay->>'voucher_id'<>reversible_voucher::text
+    OR (SELECT count(*) FROM public.pdv_voucher_entries entry
+      WHERE entry.voucher_id=reversible_voucher)<>2 THEN
+    RAISE EXCEPTION 'retry do estorno de voucher informou falha ou duplicou fatos'; END IF;
+
+  -- Voucher de outro cliente nunca cobre o pedido, mesmo dentro da mesma
+  -- empresa. Em seguida, um voucher exato zera o restante sem gerar receita.
+  blocked:=false;
+  BEGIN
+    PERFORM public.pdv_apply_voucher_to_order_v2(foreign_customer_order,voucher_id,1,
+      'w502-voucher-other-customer-0001');
+  EXCEPTION WHEN check_violation THEN blocked:=true; END;
+  IF NOT blocked OR EXISTS(SELECT 1 FROM public.pdv_order_payments payment
+    WHERE payment.order_id=foreign_customer_order) THEN
+    RAISE EXCEPTION 'voucher de um cliente cobriu pedido de outro cliente'; END IF;
+  result:=public.pdv_issue_return_voucher_v2(return_id,2,public.company_today(ca)+30,
+    'w502-voucher-exact-issue-0001');
+  exact_voucher:=(result->>'voucher_id')::uuid;
+  SELECT count(*) INTO financial_before FROM public.financial_transactions WHERE company_id=ca;
+  result:=public.pdv_apply_voucher_to_order_v2(exact_voucher_order,exact_voucher,2,
+    'w502-voucher-exact-apply-0001');
+  replay:=public.pdv_apply_voucher_to_order_v2(exact_voucher_order,exact_voucher,2,
+    'w502-voucher-exact-apply-0001');
+  IF (result->>'remaining_order_amount')::numeric<>0
+    OR (result->>'voucher_balance')::numeric<>0
+    OR replay->>'idempotent'<>'true'
+    OR (SELECT count(*) FROM public.pdv_order_payments payment
+      WHERE payment.order_id=exact_voucher_order AND payment.method='voucher' AND payment.amount=2)<>1
+    OR (SELECT count(*) FROM public.financial_transactions WHERE company_id=ca)<>financial_before THEN
+    RAISE EXCEPTION 'voucher exato falhou, duplicou ou movimentou DRE/DFC: %, %',result,replay; END IF;
+
   PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',ub,'role','authenticated')::text,true);
   blocked:=false;
   BEGIN PERFORM public.pdv_issue_return_voucher_v2(return_id,1,NULL,'w502-cross-tenant-0001');
@@ -194,7 +300,11 @@ BEGIN
   IF result->>'status'<>'settled' OR NOT EXISTS(SELECT 1 FROM public.financial_transactions transaction
     WHERE transaction.pdv_settlement_group_id=cash_refund AND transaction.pdv_financial_role='pdv_refund'
       AND transaction.amount=30) OR (SELECT sum(amount) FROM public.pdv_return_dispositions
-        WHERE commercial_return_id=return_id)<>30 THEN RAISE EXCEPTION 'refund dinheiro não liquidou/realocou'; END IF;
+        WHERE commercial_return_id=return_id)<>28 THEN RAISE EXCEPTION 'refund dinheiro não liquidou/realocou'; END IF;
+  -- Voucher40 + voucher exato2 + reembolso30 deixam28 em crédito.
+  IF (SELECT coalesce(sum(amount),0) FROM public.pdv_return_dispositions WHERE commercial_return_id=return_id)
+    +(SELECT coalesce(sum(amount),0) FROM public.pdv_return_value_events WHERE commercial_return_id=return_id)<>100 THEN
+    RAISE EXCEPTION 'reembolso/vouchers/crédito não conservaram os100 devolvidos';END IF;
   replay:=public.pdv_request_return_refund_v2(return_id,cash_payment,30,'Devolução em dinheiro',
     cash_account,session_id,'w502-refund-cash-0001');
   IF replay->>'idempotent'<>'true' OR replay->>'refund_id'<>cash_refund::text THEN RAISE EXCEPTION 'retry duplicou refund'; END IF;
@@ -202,6 +312,9 @@ BEGIN
   IF result->>'status'<>'reversed' OR NOT EXISTS(SELECT 1 FROM public.financial_transactions transaction
     WHERE transaction.pdv_settlement_group_id=cash_refund AND transaction.pdv_financial_role='pdv_refund_reversal') THEN
     RAISE EXCEPTION 'estorno do refund não recompôs DFC/custódia'; END IF;
+  replay:=public.pdv_reverse_return_refund_v2(cash_refund,'Cliente desistiu do reembolso','w502-refund-cash-reverse-0001');
+  IF replay->>'idempotent'<>'true' OR replay->>'refund_id'<>cash_refund::text THEN
+    RAISE EXCEPTION 'retry do estorno de refund informou falha ou duplicou fatos'; END IF;
 
   SELECT count(*) INTO financial_before FROM public.financial_transactions WHERE company_id=ca;
   result:=public.pdv_request_return_refund_v2(return_id,pix_payment,20,'Reembolso Pix pendente',
@@ -214,9 +327,15 @@ BEGIN
 
   -- O mesmo cartão, agora liquidado de verdade, pode originar refund pendente;
   -- confirmação e reversão continuam append-only.
-  result:=public.pdv_request_return_refund_v2(return_id,card_settled_payment,5,'Cartão liquidado',
+  result:=public.pdv_request_return_refund_v2(return_id,card_settled_payment,10,'Cartão liquidado',
     NULL,NULL,'w502-refund-card-settled-0001'); card_refund:=(result->>'refund_id')::uuid;
   IF result->>'status'<>'pending' THEN RAISE EXCEPTION 'cartão settled não gerou refund pendente'; END IF;
+  replay:=public.pdv_request_return_refund_v2(return_id,card_settled_payment,10,'Cartão liquidado',
+    NULL,NULL,'w502-refund-card-settled-0001');
+  IF replay->>'idempotent'<>'true' OR replay->>'refund_id'<>card_refund::text
+    OR (SELECT count(*) FROM public.pdv_refunds refund
+      WHERE refund.original_payment_id=card_settled_payment)<>1 THEN
+    RAISE EXCEPTION 'retry do reembolso integral informou falha ou duplicou fatos'; END IF;
   PERFORM public.pdv_confirm_return_refund_v2(card_refund,bank_account,'ACQ-W502-CARD-0001','w502-refund-card-confirm-0001');
   PERFORM public.pdv_reverse_return_refund_v2(card_refund,'Estorno de teste','w502-refund-card-reverse-0001');
 
@@ -271,6 +390,21 @@ BEGIN
     cash_account,session_id,'w502-refund-over-0001');
   EXCEPTION WHEN check_violation THEN blocked:=true; END;
   IF NOT blocked THEN RAISE EXCEPTION 'refund excedeu pagamento original'; END IF;
+
+  -- O cadastro pode ter sido desativado depois da venda. Nesse caso a emissão
+  -- falha inteira: sem voucher, sem claim concluído e sem consumir a devolução.
+  SELECT count(*) INTO facts_before FROM public.pdv_vouchers WHERE company_id=ca;
+  UPDATE public.customers SET is_deleted=true WHERE id=customer_a;
+  detail:=NULL;
+  BEGIN
+    PERFORM public.pdv_issue_return_voucher_v2(return_id,1,NULL,'w502-inactive-customer-voucher-0001');
+  EXCEPTION WHEN OTHERS THEN GET STACKED DIAGNOSTICS detail=PG_EXCEPTION_DETAIL; END;
+  UPDATE public.customers SET is_deleted=false WHERE id=customer_a;
+  IF detail IS DISTINCT FROM 'code=pdv_voucher_customer_inactive'
+    OR (SELECT count(*) FROM public.pdv_vouchers WHERE company_id=ca)<>facts_before
+    OR EXISTS(SELECT 1 FROM public.pdv_operation_requests request
+      WHERE request.company_id=ca AND request.idempotency_key='w502-inactive-customer-voucher-0001') THEN
+    RAISE EXCEPTION 'cliente inativo recebeu voucher ou deixou fato parcial: %',detail; END IF;
 
   INSERT INTO public.stock_access(company_id,stock_id,user_id) VALUES(ca,stock_a,ua);
   UPDATE public.user_permissions SET permissions=

@@ -1,0 +1,6 @@
+.pdv-product-placeholder {display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;color:hsl(var(--muted-foreground));overflow:hidden}
+.pdv-product-placeholder svg {width:18px;height:18px;flex-shrink:0;stroke-width:1.5}
+.pdv-product-code {display:inline-block;align-self:flex-start;max-width:100%;padding:2px 5px;margin-right:6px;border-radius:3px;background:hsl(var(--primary));color:hsl(var(--primary-foreground));font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:10px;font-weight:600;line-height:1.4;letter-spacing:.025em;overflow-wrap:anywhere;vertical-align:baseline}
+.pdv-product-thumbnail > div[title] {border:0;background:transparent}
+.pdv-product-thumbnail > div[title] > span {display:none}
+.pdv-product-thumbnail > div[title] > svg {width:18px;height:18px;opacity:1;stroke-width:1.5}

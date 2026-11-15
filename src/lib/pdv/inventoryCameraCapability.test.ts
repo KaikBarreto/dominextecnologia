@@ -12,17 +12,29 @@ describe('canScanInventoryIdentifierWithCamera', () => {
     else delete (navigator as unknown as { mediaDevices?: MediaDevices }).mediaDevices;
   });
 
-  it('mantem fallback manual quando BarcodeDetector nao existe', () => {
+  it('usa o leitor por software quando BarcodeDetector nao existe', () => {
     delete (window as Window & { BarcodeDetector?: unknown }).BarcodeDetector;
-    expect(canScanInventoryIdentifierWithCamera()).toBe(false);
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: { getUserMedia: () => Promise.resolve({}) },
+    });
+    expect(canScanInventoryIdentifierWithCamera()).toBe(true);
   });
 
-  it('habilita camera somente quando detector e getUserMedia existem', () => {
+  it('habilita camera quando o navegador permite abrir o video', () => {
     Object.defineProperty(window, 'BarcodeDetector', { configurable: true, value: class {} });
     Object.defineProperty(navigator, 'mediaDevices', {
       configurable: true,
       value: { getUserMedia: () => Promise.resolve({}) },
     });
     expect(canScanInventoryIdentifierWithCamera()).toBe(true);
+  });
+
+  it('mantem entrada manual quando a camera nao pode ser aberta', () => {
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: undefined,
+    });
+    expect(canScanInventoryIdentifierWithCamera()).toBe(false);
   });
 });

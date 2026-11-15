@@ -89,17 +89,22 @@ export interface UseBarcodeScannerOptions {
   enabled?: boolean;
   maxKeyGapMs?: number;
   minLength?: number;
+  /** Restringe o leitor ao contexto autorizado pelo consumidor; padrão preserva comportamento legado. */
+  shouldCaptureTarget?: (target: EventTarget | null) => boolean;
 }
 
 export function useBarcodeScanner({
   onScan,
   enabled = true,
+  shouldCaptureTarget,
   maxKeyGapMs = DEFAULT_MAX_KEY_GAP_MS,
   minLength = DEFAULT_MIN_LENGTH,
 }: UseBarcodeScannerOptions): void {
   // onScan vive em ref pra que trocar o callback não reinstale o listener (e
   // não perca uma rajada no meio).
   const onScanRef = React.useRef(onScan);
+  const captureTargetRef = React.useRef(shouldCaptureTarget);
+  captureTargetRef.current = shouldCaptureTarget;
   React.useEffect(() => {
     onScanRef.current = onScan;
   }, [onScan]);
@@ -118,7 +123,8 @@ export function useBarcodeScanner({
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (isFreeTextTarget(event.target)) {
+      if (event.defaultPrevented || event.isComposing || event.keyCode === 229 || event.repeat
+        || isFreeTextTarget(event.target) || captureTargetRef.current?.(event.target) === false) {
         reset();
         return;
       }

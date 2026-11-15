@@ -170,6 +170,7 @@ export function mapPdvAfterSaleError(error: unknown): Error {
     pdv_exchange_voucher_invalid: 'O voucher venceu, não pertence ao cliente ou não possui saldo suficiente.',
     pdv_voucher_insufficient: 'O voucher não possui saldo suficiente.',
     pdv_voucher_expired: 'Este voucher está vencido.',
+    pdv_voucher_customer_inactive: 'O cliente deste voucher está inativo. Revise o cadastro antes de continuar.',
   };
   if (messages[code]) return new Error(messages[code]);
   if (raw.code === '42501' || /denied|forbidden|disabled/.test(code)) return new Error('Seu perfil não permite realizar esta ação.');

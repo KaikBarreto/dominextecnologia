@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessages';
 import type { LocaleCode } from '@/lib/i18n/locales';
+import { PDV_RECEIPT_COMPANY_QUERY_ROOT } from '@/lib/pdv/receipt/cacheKeys';
 
 export interface CompanySettings {
   id: string;
@@ -219,13 +220,14 @@ export function useCompanySettings() {
 
       return { previous };
     },
-    onSuccess: (row) => {
+    onSuccess: async (row) => {
       if (row) {
         queryClient.setQueryData<CompanySettingsState>(queryKey, (old) => ({
           settings: row,
           companyId: old?.companyId ?? row.company_id ?? null,
         }));
       }
+      await queryClient.invalidateQueries({ queryKey: PDV_RECEIPT_COMPANY_QUERY_ROOT });
     },
     onError: (error, _input, context) => {
       if (context?.previous) {

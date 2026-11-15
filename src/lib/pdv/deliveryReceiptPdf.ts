@@ -1,12 +1,12 @@
-import jsPDF from 'jspdf';
 import { openPdfInTab } from '@/utils/openPdfInTab';
+import { generatePdvReceiptPdf } from './receipt/pdf';
+import type { PdvReceiptFormat, PdvReceiptSnapshot } from './receipt/model';
 import type { PdvDeliveryReceipt } from '@/hooks/usePdvDispatch';
 
 const PAGE_TOP_MM = 18;
 const PAGE_BOTTOM_MM = 275;
 const ITEM_LINE_HEIGHT_MM = 5;
 const ITEM_GAP_MM = 2;
-const PDF_SANS_FONT = 'helvetica';
 
 export interface PdvDeliveryReceiptBlock {
   page: number;
@@ -39,44 +39,47 @@ export function planPdvDeliveryReceiptBlocks(
   return { blocks, page, y };
 }
 
-export function generatePdvDeliveryReceiptPdf(snapshot: PdvDeliveryReceipt): Blob {
-  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-  let y = 18;
-  doc.setFont(PDF_SANS_FONT, 'bold'); doc.setFontSize(16);
-  doc.text('COMPROVANTE DE RETIRADA', 16, y); y += 7;
-  doc.setFontSize(10); doc.text('NÃO FISCAL', 16, y); y += 10;
-  doc.setFont(PDF_SANS_FONT, 'normal');
-  doc.text(`Pedido #${snapshot.order.number}`, 16, y); y += 6;
-  doc.text(`Retirada: ${new Date(snapshot.withdrawnAt).toLocaleString('pt-BR')}`, 16, y); y += 6;
-  if (snapshot.customerName) { doc.text(`Cliente: ${snapshot.customerName}`, 16, y); y += 6; }
-  if (snapshot.stockName) { doc.text(`Local: ${snapshot.stockName}`, 16, y); y += 8; }
-  doc.setFont(PDF_SANS_FONT, 'bold'); doc.text('Itens retirados', 16, y); y += 6;
-  doc.setFont(PDF_SANS_FONT, 'normal');
-  const plan = planPdvDeliveryReceiptBlocks(
-    snapshot.items,
-    y,
-    (text) => doc.splitTextToSize(text, 178) as string[],
-  );
-  let renderedPage = 1;
-  for (const block of plan.blocks) {
-    while (renderedPage < block.page) {
-      doc.addPage();
-      renderedPage += 1;
-    }
-    doc.text(block.lines, 16, block.y);
-  }
-  y = plan.y + 5;
-  const noticeLines = doc.splitTextToSize(snapshot.notice, 178) as string[];
-  const noticeHeight = noticeLines.length * ITEM_LINE_HEIGHT_MM;
-  if (y + noticeHeight > PAGE_BOTTOM_MM) {
-    doc.addPage();
-    y = PAGE_TOP_MM;
-  }
-  doc.setFontSize(9); doc.setTextColor(90);
-  doc.text(noticeLines, 16, y);
-  return doc.output('blob');
+export interface PdvDeliveryReceiptPdfOptions {
+  format?: PdvReceiptFormat;
+  company?: PdvReceiptSnapshot['company'];
+  receivedBy?: string | null;
+  operatorName?: string | null;
+  copies?: 1 | 2 | 3;
 }
 
-export function previewPdvDeliveryReceipt(snapshot: PdvDeliveryReceipt, target?: Window | null) {
-  openPdfInTab(generatePdvDeliveryReceiptPdf(snapshot), `retirada-pedido-${snapshot.order.number}.pdf`, target);
+/** A origem é o evento de retirada persistido; nenhum valor ou quantidade comercial é reconstruído. */
+export function toPdvDeliveryReceiptSnapshot(
+  snapshot: PdvDeliveryReceipt,
+  options: PdvDeliveryReceiptPdfOptions = {},
+): PdvReceiptSnapshot {
+  return {
+    documentKind: 'delivery',
+    company: options.company ?? { name: 'Retirada de materiais', whiteLabelEnabled: false },
+    order: {
+      number: snapshot.order.number,
+      issuedAt: snapshot.withdrawnAt,
+      customerName: snapshot.customerName,
+      operatorName: options.operatorName || 'Não informado',
+    },
+    items: [],
+    totals: { subtotal: 0, discount: 0, total: 0 },
+    payments: [],
+    withdrawal: {
+      id: snapshot.deliveryId,
+      withdrawnAt: snapshot.withdrawnAt,
+      stockName: snapshot.stockName,
+      receivedBy: options.receivedBy,
+      operatorName: options.operatorName,
+      items: snapshot.items.map(item => ({ ...item })),
+    },
+    note: snapshot.notice,
+  };
+}
+
+export function generatePdvDeliveryReceiptPdf(snapshot: PdvDeliveryReceipt, options: PdvDeliveryReceiptPdfOptions = {}): Blob {
+  return generatePdvReceiptPdf(toPdvDeliveryReceiptSnapshot(snapshot, options), options.format ?? 'a4', { copies: options.copies });
+}
+
+export function previewPdvDeliveryReceipt(snapshot: PdvDeliveryReceipt, target?: Window | null, options: PdvDeliveryReceiptPdfOptions = {}) {
+  openPdfInTab(generatePdvDeliveryReceiptPdf(snapshot, options), `Comprovante de Retirada ${snapshot.order.number}`, target);
 }

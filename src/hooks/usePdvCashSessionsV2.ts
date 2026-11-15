@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { invalidatePdvReportCaches } from '@/hooks/pdvReportCache';
+import { invalidatePdvReportCaches, usePdvAuthorizedQueryScope } from '@/hooks/pdvReportCache';
 
 type RpcError = { code?: string; message?: string; details?: string };
 type RpcResult = { data: unknown; error: RpcError | null };
@@ -141,6 +141,8 @@ export async function invalidatePdvCashV2Caches(queryClient: QueryClient) {
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: [...ROOT, 'open'] }),
     queryClient.invalidateQueries({ queryKey: [...ROOT, 'history'] }),
+    queryClient.invalidateQueries({ queryKey: [...ROOT, 'history-page'] }),
+    queryClient.invalidateQueries({ queryKey: [...ROOT, 'detail'] }),
     queryClient.invalidateQueries({ queryKey: [...ROOT, 'snapshot'] }),
     queryClient.invalidateQueries({ queryKey: [...ROOT, 'maintenance-presence'] }),
     queryClient.invalidateQueries({ queryKey: ['pdv-cash-sessions'] }),
@@ -182,9 +184,11 @@ export function selectPdvCashV2Route(input: {
 }
 
 export function usePdvCashV2Capability(enabled: boolean) {
+  const scope = usePdvAuthorizedQueryScope();
   const query = useQuery({
-    queryKey: [...ROOT, 'capability'],
-    enabled,
+    queryKey: [...ROOT, 'capability', ...scope.key],
+    enabled: enabled && scope.ready,
+    gcTime: 0,
     queryFn: async (): Promise<{ enabled: boolean; contractVersion: number }> => {
       // Rollout transitório: o writer de venda direta v2 depende exatamente do
       // contrato de custódia v2. Enquanto não existe flag própria de caixa, esta
@@ -201,13 +205,16 @@ export function usePdvCashV2Capability(enabled: boolean) {
     staleTime: 30_000,
     retry: false,
   });
+  const isLoading = enabled && (!scope.ready || query.isLoading);
+  const data = enabled && scope.ready ? query.data : undefined;
+  const error = enabled && scope.ready ? query.error : null;
   return {
     ...query,
-    gate: selectPdvCashV2Gate({
-      loading: query.isLoading,
-      error: query.error,
-      capability: query.data,
-    }),
+    data,
+    error,
+    isLoading,
+    authorizationReady: scope.ready,
+    gate: selectPdvCashV2Gate({ loading: isLoading, error, capability: data }),
   };
 }
 
@@ -215,9 +222,12 @@ export function usePdvCashV2MaintenancePresence(input: {
   enabled: boolean;
   userId: string | null;
 }) {
-  return useQuery({
-    queryKey: [...ROOT, 'maintenance-presence', 'company', input.userId],
-    enabled: input.enabled && !!input.userId,
+  const scope = usePdvAuthorizedQueryScope();
+  const enabled = input.enabled && !!input.userId && scope.ready;
+  const query = useQuery({
+    queryKey: [...ROOT, 'maintenance-presence', 'company', input.userId, ...scope.key],
+    enabled,
+    gcTime: 0,
     queryFn: async (): Promise<boolean> => {
       // A RPC devolve somente a presença empresarial, sem nome, terminal ou
       // valor. Assim um caixa v2 de A bloqueia o writer legado de B sem vazar
@@ -233,6 +243,12 @@ export function usePdvCashV2MaintenancePresence(input: {
     refetchOnWindowFocus: 'always',
     retry: false,
   });
+  return {
+    ...query,
+    data: enabled ? query.data : undefined,
+    isLoading: input.enabled && (!scope.ready || !input.userId || query.isLoading),
+    authorizationReady: scope.ready,
+  };
 }
 
 function record(value: unknown): Record<string, unknown> {
@@ -405,8 +421,8 @@ export function mapPdvCashV2Error(error: unknown): Error {
     PDV_CASH_ALREADY_REOPENED: 'Este caixa já foi reaberto.',
     PDV_CASH_REOPEN_NOT_LATEST: 'Existe um caixa mais recente neste terminal ou para este operador.',
     PDV_CASH_CUSTODY_INSUFFICIENT: 'A gaveta não possui dinheiro suficiente para essa saída.',
-    PDV_CASH_RECONCILIATION_REQUIRED: 'A custódia precisa ser conciliada antes de continuar.',
-    PDV_CASH_CLOSE_NOT_BALANCED: 'O caixa não pôde ser fechado porque a custódia não zerou.',
+    PDV_CASH_RECONCILIATION_REQUIRED: 'O dinheiro separado nos caixas precisa de conferência. Consulte o histórico de caixas antes de continuar.',
+    PDV_CASH_CLOSE_NOT_BALANCED: 'Ainda há valores pendentes no fechamento. Confira o dinheiro contado e as movimentações do caixa.',
   };
   const mapped = byCode[code] ?? byCode[code.toUpperCase()];
   if (mapped) return new Error(mapped);
@@ -689,9 +705,12 @@ export function usePdvCashHistoryV2(input: {
   history: PdvCashHistoryFilters;
 }) {
   const queryClient = useQueryClient();
+  const scope = usePdvAuthorizedQueryScope();
+  const enabled = input.enabled && !!input.userId && scope.ready;
   const query = useQuery({
-    queryKey: [...ROOT, 'history-page', input.userId, input.history],
-    enabled: input.enabled && !!input.userId,
+    queryKey: [...ROOT, 'history-page', input.userId, input.history, ...scope.key],
+    enabled,
+    gcTime: 0,
     queryFn: async () => {
       const { data, error } = await rpc('pdv_cash_history_v2', {
         p_terminal_id: input.history.terminalId,
@@ -721,13 +740,14 @@ export function usePdvCashHistoryV2(input: {
   });
 
   return {
-    terminals: query.data?.terminals ?? [],
-    history: query.data?.rows ?? [],
-    operators: query.data?.operators ?? {},
-    hasMoreHistory: query.data?.hasMore ?? false,
-    canManageOthers: query.data?.canManageOthers ?? false,
-    isLoading: query.isLoading,
-    isHistoryLoading: query.isLoading,
+    terminals: enabled ? query.data?.terminals ?? [] : [],
+    history: enabled ? query.data?.rows ?? [] : [],
+    operators: enabled ? query.data?.operators ?? {} : {},
+    hasMoreHistory: enabled && (query.data?.hasMore ?? false),
+    canManageOthers: enabled && (query.data?.canManageOthers ?? false),
+    isLoading: input.enabled && (!scope.ready || !input.userId || query.isLoading),
+    isHistoryLoading: input.enabled && (!scope.ready || !input.userId || query.isLoading),
+    authorizationReady: scope.ready,
     isError: query.isError,
     error: query.error ?? null,
     refetch: query.refetch,
@@ -743,12 +763,14 @@ export function usePdvCashSessionsV2(input: {
   history: PdvCashHistoryFilters;
 }) {
   const queryClient = useQueryClient();
-  const enabled = input.enabled && !!input.userId;
+  const scope = usePdvAuthorizedQueryScope();
+  const enabled = input.enabled && !!input.userId && scope.ready;
   const snapshotEnabled = enabled && !!input.cashAccountId;
 
   const terminalsQuery = useQuery({
-    queryKey: [...ROOT, 'terminals'],
+    queryKey: [...ROOT, 'terminals', ...scope.key],
     enabled,
+    gcTime: 0,
     queryFn: async (): Promise<PdvCashV2Terminal[]> => {
       const { data, error } = await rpc('pdv_list_cash_terminals_v2');
       if (error) throw mapPdvCashV2Error(error);
@@ -758,8 +780,9 @@ export function usePdvCashSessionsV2(input: {
   });
 
   const openSessionsQuery = useQuery({
-    queryKey: [...ROOT, 'open', input.userId, input.canManageOthers],
+    queryKey: [...ROOT, 'open', input.userId, input.canManageOthers, ...scope.key],
     enabled,
+    gcTime: 0,
     queryFn: async () => {
       const { data, error } = await rpc('pdv_list_cash_sessions_v2', {
         p_status: 'aberta',
@@ -776,8 +799,9 @@ export function usePdvCashSessionsV2(input: {
   });
 
   const historyQuery = useQuery({
-    queryKey: [...ROOT, 'history', input.userId, input.canManageOthers, input.history],
+    queryKey: [...ROOT, 'history', input.userId, input.canManageOthers, input.history, ...scope.key],
     enabled,
+    gcTime: 0,
     queryFn: async () => {
       const { data, error } = await rpc('pdv_list_cash_sessions_v2', {
         p_status: 'fechada',
@@ -792,8 +816,9 @@ export function usePdvCashSessionsV2(input: {
   });
 
   const snapshotQuery = useQuery({
-    queryKey: [...ROOT, 'snapshot', input.cashAccountId],
+    queryKey: [...ROOT, 'snapshot', input.cashAccountId, ...scope.key],
     enabled: snapshotEnabled,
+    gcTime: 0,
     queryFn: async (): Promise<PdvCashV2Snapshot> => {
       const { data, error } = await rpc('pdv_cash_snapshot_v2', {
         p_cash_account_id: input.cashAccountId,
@@ -851,18 +876,20 @@ export function usePdvCashSessionsV2(input: {
   });
 
   return {
-    terminals: terminalsQuery.data ?? [],
-    openSessions: openSessionsQuery.data?.rows ?? [],
-    history: historyQuery.data?.rows ?? [],
-    hasMoreHistory: historyQuery.data?.hasMore ?? false,
-    operators: {
+    terminals: enabled ? terminalsQuery.data ?? [] : [],
+    openSessions: enabled ? openSessionsQuery.data?.rows ?? [] : [],
+    history: enabled ? historyQuery.data?.rows ?? [] : [],
+    hasMoreHistory: enabled && (historyQuery.data?.hasMore ?? false),
+    operators: enabled ? {
       ...(openSessionsQuery.data?.operators ?? {}),
       ...(historyQuery.data?.operators ?? {}),
-    },
-    snapshot: snapshotQuery.data ?? null,
-    isLoading: terminalsQuery.isLoading || openSessionsQuery.isLoading
-      || (snapshotEnabled && snapshotQuery.isLoading),
-    isHistoryLoading: historyQuery.isLoading,
+    } : {},
+    snapshot: snapshotEnabled ? snapshotQuery.data ?? null : null,
+    isLoading: input.enabled && (!scope.ready || !input.userId || terminalsQuery.isLoading || openSessionsQuery.isLoading
+      || (snapshotEnabled && snapshotQuery.isLoading)),
+    isHistoryLoading: input.enabled && (!scope.ready || !input.userId || historyQuery.isLoading),
+    authorizationReady: scope.ready,
+    authorizationScopeKey: JSON.stringify(scope.key),
     isError: terminalsQuery.isError || openSessionsQuery.isError
       || (snapshotEnabled && snapshotQuery.isError),
     error: terminalsQuery.error ?? openSessionsQuery.error ?? snapshotQuery.error ?? null,

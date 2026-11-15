@@ -1,3 +1,4 @@
+import '@/components/pdv/PdvWorkspace.css';
 import { useEffect, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -101,13 +102,13 @@ export function PdvCloseCashDialog({
   );
 
   return (
-    <ResponsiveModal
+    <ResponsiveModal drawerClassName="pdv-dialog"
       open={open}
       onOpenChange={(v) => {
         if (!v && !submitting) onOpenChange(false);
       }}
       title={texts.title}
-      className="sm:max-w-[480px]"
+      className="pdv-dialog sm:max-w-[480px]"
       footer={footer}
     >
       <div className="space-y-4">

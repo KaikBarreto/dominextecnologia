@@ -10904,6 +10904,7 @@ export type Database = {
           total: number
           unit: string
           unit_cost: number
+          unit_factor_snapshot: number
           unit_price: number
         }
         Insert: {
@@ -10918,6 +10919,7 @@ export type Database = {
           total?: number
           unit: string
           unit_cost?: number
+          unit_factor_snapshot?: number
           unit_price?: number
         }
         Update: {
@@ -10932,6 +10934,7 @@ export type Database = {
           total?: number
           unit?: string
           unit_cost?: number
+          unit_factor_snapshot?: number
           unit_price?: number
         }
         Relationships: [
@@ -20120,6 +20123,31 @@ export type Database = {
         }
       }
       pdv_fmt_brl: { Args: { p_value: number }; Returns: string }
+      pdv_current_actor_can_read_orders_v4: { Args: never; Returns: boolean }
+      pdv_get_customer_payment_options_v3: {
+        Args: { p_customer_id: string }
+        Returns: Json
+      }
+      pdv_get_supplier_payment_option_v3: {
+        Args: { p_supplier_id: string }
+        Returns: Json
+      }
+      pdv_register_direct_purchase_supplier_credit_v3: {
+        Args: {
+          p_account_id: string
+          p_cash_session_id: string
+          p_category_id: string
+          p_client_request_id: string
+          p_description: string
+          p_items: Json
+          p_notes: string
+          p_purchase_date: string
+          p_stock_id: string
+          p_supplier_id: string
+          p_terminal_id: string
+        }
+        Returns: Json
+      }
       pdv_get_purchase_cash_context_v2: {
         Args: {
           p_cash_session_id: string

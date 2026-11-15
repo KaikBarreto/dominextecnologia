@@ -615,7 +615,7 @@ BEGIN
   ) VALUES (
     v_legacy_child, v_company_a, 'entrada', 'Baixa legada 30', 30,
     'Recebimento parcial', public.company_today(v_company_a) - 2,
-    public.company_today(v_company_a) - 2, true, NULL, v_r4, 'finance'
+    public.company_today(v_company_a) - 2, true, NULL, v_r4, 'geral'
   );
   IF (SELECT amount_received FROM public.financial_transactions WHERE id = v_r4) <> 30 THEN
     RAISE EXCEPTION 'filho legado não recalculou a obrigação';
@@ -667,7 +667,7 @@ BEGIN
     ) VALUES (
       v_company_a, 'entrada', 'Escala inválida', 0.001, 'Recebimento parcial',
       public.company_today(v_company_a), public.company_today(v_company_a), true,
-      v_customer_a, v_r5, 'finance'
+      v_customer_a, v_r5, 'geral'
     );
   EXCEPTION WHEN check_violation THEN v_blocked := true;
   END;
@@ -682,7 +682,7 @@ BEGIN
     ) VALUES (
       v_company_a, 'entrada', 'Valor negativo', -1, 'Recebimento parcial',
       public.company_today(v_company_a), public.company_today(v_company_a), true,
-      v_customer_a, v_r5, 'finance'
+      v_customer_a, v_r5, 'geral'
     );
   EXCEPTION WHEN check_violation THEN v_blocked := true;
   END;
@@ -769,7 +769,7 @@ BEGIN
   END IF;
 
   IF to_regclass('public.pdv_settlement_applications') IS NOT NULL THEN
-    SELECT count(*) INTO v_count FROM public.pdv_settlement_applications;
+    SELECT count(*) INTO v_count FROM public.pdv_settlement_applications WHERE company_id=v_company_a;
     IF v_count <> 0 THEN
       RAISE EXCEPTION 'W1A-03 criou aplicacoes DRE-caixa indevidamente';
     END IF;
@@ -800,6 +800,7 @@ BEGIN
   END IF;
 
   -- Lifecycle real de admin_delete com alocacao ligada a dois financeiros.
+  PERFORM set_config('request.jwt.claims','{}',true);
   INSERT INTO public.companies (id, name, subscription_status)
   VALUES (v_company_c, 'Empresa Recebiveis C', 'active');
   INSERT INTO public.customers (id, company_id, name)
@@ -835,6 +836,7 @@ BEGIN
 
   UPDATE public.user_roles SET role = 'super_admin'::public.app_role
    WHERE user_id = v_user_a;
+  PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',v_user_a,'role','authenticated')::text,true);
   PERFORM public.admin_delete_company(v_company_c);
   IF EXISTS (SELECT 1 FROM public.companies WHERE id = v_company_c)
      OR EXISTS (

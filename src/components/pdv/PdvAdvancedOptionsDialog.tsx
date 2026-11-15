@@ -1,3 +1,4 @@
+import '@/components/pdv/PdvWorkspace.css';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
@@ -85,12 +86,12 @@ export function PdvAdvancedOptionsDialog({
   const isRetroactive = transactionDate !== maxDate;
 
   return (
-    <ResponsiveModal
+    <ResponsiveModal drawerClassName="pdv-dialog"
       open={open}
       onOpenChange={onOpenChange}
       title={texts.title}
       description={texts.description}
-      className="sm:max-w-[480px]"
+      className="pdv-dialog sm:max-w-[480px]"
       footer={
         <div className="flex w-full justify-end">
           <Button type="button" className="w-full sm:w-auto" onClick={() => onOpenChange(false)}>

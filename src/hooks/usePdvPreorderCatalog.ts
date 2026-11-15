@@ -1,3 +1,5 @@
+import { projectPdvCatalogCustomer, type PdvCatalogCustomer } from "@/lib/pdv/catalogCustomer";
+import { usePdvAuthorizedQueryScope } from "@/hooks/pdvReportCache";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { mapPdvPreorderError } from "@/hooks/usePdvPreorders";
@@ -22,7 +24,7 @@ export interface PdvPreorderCatalogParty {
 
 export interface PdvPreorderCatalog {
   materials: PdvPreorderCatalogMaterial[];
-  customers: PdvPreorderCatalogParty[];
+  customers: PdvCatalogCustomer[];
   stocks: PdvPreorderCatalogParty[];
   terminals: Array<PdvPreorderCatalogParty & { stock_id: string }>;
 }
@@ -97,11 +99,10 @@ export function projectPdvPreorderCatalog(
         },
       ];
     }),
-    customers: (payload?.customers ?? []).flatMap((item) =>
-      typeof item.id === "string" && typeof item.name === "string"
-        ? [{ id: item.id, name: item.name }]
-        : [],
-    ),
+    customers: (payload?.customers ?? []).flatMap((item) => {
+      const customer = projectPdvCatalogCustomer(item);
+      return customer ? [customer] : [];
+    }),
     stocks: (payload?.stocks ?? []).flatMap((item) =>
       typeof item.id === "string" && typeof item.name === "string"
         ? [{ id: item.id, name: item.name }]
@@ -116,11 +117,12 @@ export function projectPdvPreorderCatalog(
 }
 
 export function usePdvPreorderCatalog(enabled = true) {
+  const scope = usePdvAuthorizedQueryScope();
   return useQuery({
-    queryKey: ["pdv-preorders", "catalog"],
+    queryKey: ["pdv-preorders", "catalog", ...scope.key],
     queryFn: async () => {
       const [catalog, terminals] = await Promise.all([
-        pdvRpc("pdv_get_preorder_catalog_v2"),
+        pdvRpc("pdv_get_preorder_catalog_v3"),
         pdvRpc("pdv_list_preorder_terminals_v3"),
       ]);
       if (catalog.error) throw mapPdvPreorderError(catalog.error);
@@ -130,7 +132,7 @@ export function usePdvPreorderCatalog(enabled = true) {
         terminals: Array.isArray(terminals.data) ? terminals.data as Array<Record<string, unknown>> : [],
       });
     },
-    enabled,
+    enabled: enabled && scope.ready,
     staleTime: 30_000,
   });
 }

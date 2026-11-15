@@ -200,7 +200,10 @@ function AdministrativeSettings() {
   const setActiveTab = (tab: string) => {
     if (!canAccessSettingsScreen && tab !== 'notificacoes') return;
     setActiveTabState(tab);
-    setSearchParams({ tab }, { replace: true });
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', tab);
+    if (tab !== 'integracoes') next.delete('integration');
+    setSearchParams(next, { replace: true });
   };
 
   useEffect(() => {

@@ -26,11 +26,19 @@ BEGIN
       AND table_row.relrowsecurity AND table_row.relforcerowsecurity) THEN
     RAISE EXCEPTION 'referências sem FORCE RLS'; END IF;
   SELECT pg_get_functiondef('public.pdv_cover_existing_order_v2(uuid,uuid,uuid,uuid,jsonb,text)'::regprocedure) INTO v_src;
+  IF position('pdv_cover_existing_order_core_015_v2' in v_src)=0 THEN
+    RAISE EXCEPTION 'cobertura publica nao valida custodia antes do core';
+  END IF;
+  SELECT pg_get_functiondef('public.pdv_cover_existing_order_base_v2(uuid,uuid,uuid,uuid,jsonb,text)'::regprocedure) INTO v_src;
   IF position('PDV_VOUCHER_PREAPPLIED_V21' in v_src)=0 OR position('v_existing_voucher' in v_src)=0 THEN
     RAISE EXCEPTION 'cobertura comum não integrou voucher'; END IF;
   SELECT pg_get_functiondef('public.reset_system_step(uuid,text,uuid)'::regprocedure) INTO v_src;
   IF position('PDV_REFUND_CONFIRMATION_RESET_V2' in v_src)=0 THEN RAISE EXCEPTION 'reset não limpa confirmação'; END IF;
   SELECT pg_get_functiondef('public.pdv_get_after_sale_workspace_v2(uuid)'::regprocedure) INTO v_src;
+  IF position('pdv_get_after_sale_workspace_core_015_v2' in v_src)=0 THEN
+    RAISE EXCEPTION 'projecao publica nao filtra o workspace canonico';
+  END IF;
+  SELECT pg_get_functiondef('public.pdv_get_after_sale_workspace_core_015_v2(uuid)'::regprocedure) INTO v_src;
   IF v_src~*'(cmv|cost_price|unit_cost|initial_balance|account_number)'
     OR position('reallocatable_amount' in v_src)=0 OR position('unallocated_amount' in v_src)=0 THEN
     RAISE EXCEPTION 'projeção contém campo sensível'; END IF;
@@ -44,6 +52,7 @@ DECLARE
   customer_a uuid:='b1420000-0000-4000-8000-000000000021'; customer_b uuid:='b1420000-0000-4000-8000-000000000022';
   cash_account uuid:='b1420000-0000-4000-8000-000000000031'; bank_account uuid:='b1420000-0000-4000-8000-000000000032';
   stock_a uuid:='b1420000-0000-4000-8000-000000000041'; terminal uuid:='b1420000-0000-4000-8000-000000000042';
+  stock_b uuid:=gen_random_uuid(); terminal_b uuid:=gen_random_uuid();
   original_order uuid:='b1420000-0000-4000-8000-000000000051'; ordinary_order uuid:='b1420000-0000-4000-8000-000000000052';
   race_order uuid:='b1420000-0000-4000-8000-000000000053'; other_order uuid:='b1420000-0000-4000-8000-000000000054';
   pix_payment uuid:='b1420000-0000-4000-8000-000000000061'; return_id uuid:='b1420000-0000-4000-8000-000000000071';
@@ -78,9 +87,14 @@ BEGIN
   VALUES(cash_account,ca,'Cofre 142', 'caixa',500,true),(bank_account,ca,'Banco 142','banco',0,true);
   INSERT INTO public.company_settings(company_id,name,timezone,pdv_cash_account_id,pdv_strict_cash_tracking,pdv_mode)
   VALUES(ca,'W5-02B A','America/Sao_Paulo',cash_account,true,'balcao'),
-    (cb,'W5-02B B','America/Sao_Paulo',NULL,true,'balcao');
+    (cb,'W5-02B B','America/Sao_Paulo',NULL,true,'balcao')
+  ON CONFLICT (company_id) DO UPDATE SET name=EXCLUDED.name, timezone=EXCLUDED.timezone, pdv_cash_account_id=EXCLUDED.pdv_cash_account_id, pdv_strict_cash_tracking=EXCLUDED.pdv_strict_cash_tracking, pdv_mode=EXCLUDED.pdv_mode;
+  -- A criação da empresa já fornece um estoque padrão; a fixture escolhe outro explicitamente.
+  UPDATE public.stocks SET is_default=false WHERE company_id IN (ca) AND is_default IS TRUE;
   INSERT INTO public.stocks(id,company_id,name,is_default) VALUES(stock_a,ca,'Estoque 142',true);
   INSERT INTO public.pdv_terminals(id,company_id,name,stock_id,is_active) VALUES(terminal,ca,'Caixa 142',stock_a,true);
+  INSERT INTO public.stocks(id,company_id,name,is_default) VALUES(stock_b,cb,'Outro local142',false);
+  INSERT INTO public.pdv_terminals(id,company_id,name,stock_id,is_active) VALUES(terminal_b,cb,'Outro caixa142',stock_b,true);
   INSERT INTO public.customers(id,company_id,name,credit_limit,is_deleted) VALUES
     (customer_a,ca,'Cliente A',500,false),(customer_b,cb,'Cliente B',500,false);
   UPDATE public.app_feature_flags SET company_allowlist=array_append(company_allowlist,ca)
@@ -92,11 +106,15 @@ BEGIN
   session_id:=(result->>'session_id')::uuid;
 
   INSERT INTO public.pdv_orders(id,company_id,number,customer_id,status,subtotal,total,client_request_id,
-    contract_version,operation_mode_snapshot,stock_id)
-  VALUES(original_order,ca,1420001,customer_a,'entregue',100,100,'w502b-original-0001',2,'counter',stock_a),
-    (ordinary_order,ca,1420002,customer_a,'aguardando_pagamento',100,100,'w502b-ordinary-0001',2,'counter',stock_a),
-    (race_order,ca,1420003,customer_a,'aguardando_pagamento',100,100,'w502b-race-0001',2,'counter',stock_a),
-    (other_order,cb,1420004,customer_b,'aguardando_pagamento',100,100,'w502b-other-0001',2,'counter',NULL);
+    contract_version,operation_mode_snapshot,stock_id,target_terminal_id,terminal_id,cash_session_id)
+  VALUES(original_order,ca,1420001,customer_a,'entregue',100,100,'w502b-original-0001',2,'counter',stock_a,terminal,terminal,session_id),
+    (ordinary_order,ca,1420002,customer_a,'aguardando_pagamento',100,100,'w502b-ordinary-0001',2,'counter',stock_a,terminal,NULL,NULL),
+    (race_order,ca,1420003,customer_a,'aguardando_pagamento',100,100,'w502b-race-0001',2,'counter',stock_a,terminal,NULL,NULL),
+    (other_order,cb,1420004,customer_b,'aguardando_pagamento',100,100,'w502b-other-0001',2,'counter',stock_b,terminal_b,NULL,NULL);
+  INSERT INTO public.pdv_order_items(company_id,order_id,description,quantity,unit_price,unit_cost,total,unit,
+   item_type,contract_version,gross_total_v2,line_discount_amount_v2,order_discount_allocated_v2,unit_cost_v2)
+  VALUES(ca,ordinary_order,'Serviço fixture',1,100,0,100,'un','service',2,100,0,0,0),
+    (ca,race_order,'Serviço fixture',1,100,0,100,'un','service',2,100,0,0,0);
   INSERT INTO public.pdv_order_payments(id,company_id,order_id,method,amount,change_amount,financial_account_id,
     contract_version,coverage_kind,coverage_status,settlement_status,authorized_at,settled_at,created_by)
   VALUES(pix_payment,ca,original_order,'pix',100,0,bank_account,2,'pix','authorized','settled',now(),now(),ua);
@@ -110,8 +128,15 @@ BEGIN
   INSERT INTO public.pdv_return_dispositions(company_id,commercial_return_id,disposition_kind,amount,credit_entry_id)
   VALUES(ca,return_id,'customer_credit',100,credit_entry);
 
-  -- Matriz de permissão: caixa pode aplicar voucher sem ganhar ação de troca.
+  -- Outro operador não herda o caixa só por compartilhar o estoque.
   PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',uc,'role','authenticated')::text,true);
+  blocked:=false;BEGIN PERFORM public.pdv_get_after_sale_workspace_v2(original_order);
+  EXCEPTION WHEN insufficient_privilege THEN blocked:=true;END;
+  IF NOT blocked THEN RAISE EXCEPTION 'operador alheio leu o caixa da fixture';END IF;
+  -- A matriz positiva usa o próprio operador com concessão reduzida. Não
+  -- concede acesso entre caixas para viabilizar a fixture.
+  UPDATE public.user_permissions SET permissions='["screen:pdv","screen:pdv_orders","fn:view_pdv_after_sale","fn:cover_pdv_order"]'::jsonb WHERE user_id=ua;
+  PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',ua,'role','authenticated')::text,true);
   workspace:=public.pdv_get_after_sale_workspace_v2(original_order);
   IF workspace->'capabilities'->>'apply_voucher'<>'true'
     OR workspace->'capabilities'->>'create_exchange'<>'false'
@@ -126,6 +151,8 @@ BEGIN
        WHERE (item->>'return_id')::uuid=return_id)<>0 THEN
     RAISE EXCEPTION 'crédito inicial não foi projetado como realocável: %',workspace; END IF;
   PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',ua,'role','authenticated')::text,true);
+
+  UPDATE public.user_permissions SET permissions='["screen:pdv","screen:pdv_orders","fn:view_pdv_after_sale","fn:issue_pdv_voucher","fn:refund_pdv_return","fn:confirm_pdv_refund","fn:reverse_pdv_refund","fn:cover_pdv_order","fn:cover_pdv_exchange","fn:use_bank_accounts"]'::jsonb WHERE user_id=ua;
 
   result:=public.pdv_issue_return_voucher_v2(return_id,80,public.company_today(ca)+30,'w502b-voucher-issue-0001');
   voucher_id:=(result->>'voucher_id')::uuid; public_code:=result->>'public_code';
@@ -239,7 +266,7 @@ BEGIN
     RAISE EXCEPTION 'troca com diferença não fechou centavos: %',result; END IF;
   workspace:=public.pdv_get_after_sale_workspace_v2(original_order);
   IF workspace::text LIKE '%E2E-PIX-SECRET-1234%' OR workspace::text~*'(cmv|unit_cost|cost_price|initial_balance)'
-    OR workspace->'capabilities'->>'direct_sale_voucher'<>'false'
+    OR workspace->'capabilities'->>'direct_sale_voucher'<>'true'
     OR workspace::text NOT LIKE '%••••1234%' THEN RAISE EXCEPTION 'workspace vazou segredo/custo ou omitiu redaction: %',workspace; END IF;
   IF NOT EXISTS(SELECT 1 FROM jsonb_array_elements(workspace->'returns') item
       WHERE (item->>'return_id')::uuid=return_id
@@ -253,11 +280,13 @@ BEGIN
   -- Disposição mista segue exatamente a ordem do writer. O abatimento pode
   -- ser revertido, mas não pode ser "pulado" quando um crédito anterior já
   -- foi consumido, pois o helper 141 também pararia nesse ponto.
+  PERFORM set_config('request.jwt.claims','{}',true);
   INSERT INTO public.customers(id,company_id,name,credit_limit,is_deleted)
   VALUES(mixed_customer,ca,'Cliente misto',500,false);
+  PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',ua,'role','authenticated')::text,true);
   INSERT INTO public.pdv_orders(id,company_id,number,customer_id,status,subtotal,total,client_request_id,
-    contract_version,operation_mode_snapshot,stock_id)
-  VALUES(mixed_order,ca,1420005,mixed_customer,'entregue',50,50,'w502b-mixed-order-0001',2,'counter',stock_a);
+    contract_version,operation_mode_snapshot,stock_id,target_terminal_id,terminal_id,cash_session_id)
+  VALUES(mixed_order,ca,1420005,mixed_customer,'entregue',50,50,'w502b-mixed-order-0001',2,'counter',stock_a,terminal,terminal,session_id);
   SELECT request_id INTO mixed_request FROM public.pdv_claim_operation_request(ca,'commercial.return.v2',
     'w502b-mixed-return-0001',jsonb_build_object('fixture','mixed'));
   INSERT INTO public.pdv_commercial_returns(id,company_id,order_id,customer_id,event_kind,occurred_on,reason,

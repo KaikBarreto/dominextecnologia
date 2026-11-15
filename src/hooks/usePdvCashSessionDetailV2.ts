@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { mapPdvCashV2Error } from '@/hooks/usePdvCashSessionsV2';
+import { usePdvAuthorizedQueryScope } from '@/hooks/pdvReportCache';
 
 export type PdvCashV2DetailEntryKind =
   | 'opening'
@@ -154,9 +155,12 @@ export function projectPdvCashV2SessionDetail(payload: unknown): PdvCashV2Sessio
 }
 
 export function usePdvCashSessionDetailV2(sessionId: string | null) {
+  const scope = usePdvAuthorizedQueryScope();
+  const enabled = !!sessionId && scope.ready;
   const query = useQuery({
-    queryKey: ['pdv-cash-sessions-v2', 'detail', sessionId],
-    enabled: !!sessionId,
+    queryKey: ['pdv-cash-sessions-v2', 'detail', sessionId, ...scope.key],
+    enabled,
+    gcTime: 0,
     queryFn: async () => {
       const { data, error } = await rpc('pdv_cash_session_detail_v2', {
         p_session_id: sessionId,
@@ -174,9 +178,10 @@ export function usePdvCashSessionDetailV2(sessionId: string | null) {
   });
 
   return {
-    detail: query.data ?? null,
-    entries: query.data?.entries ?? [],
-    isLoading: !!sessionId && query.isLoading,
+    detail: enabled ? query.data ?? null : null,
+    entries: enabled ? query.data?.entries ?? [] : [],
+    isLoading: !!sessionId && (!scope.ready || query.isLoading),
+    authorizationReady: scope.ready,
     isError: !!sessionId && query.isError,
     error: query.error ?? null,
     refetch: query.refetch,

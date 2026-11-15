@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
 import type { Customer } from '@/types/database';
@@ -22,6 +22,7 @@ const customers = [
 ] as Customer[];
 
 beforeAll(() => {
+  vi.stubGlobal('scrollTo', vi.fn());
   vi.stubGlobal('ResizeObserver', class {
     observe() {}
     unobserve() {}
@@ -69,4 +70,52 @@ describe('CustomerSelectField', () => {
     fireEvent.click(quickAdd);
     expect(screen.getByText('Cadastro rápido')).toBeVisible();
   });
+
+  it('no PDV expande a busca na própria ficha e mantém pesquisa por documento, telefone, endereço e etiqueta', async () => {
+    const onValueChange = vi.fn();
+    const { container } = render(<CustomerSelectField variant="pdv" customers={[
+      { ...customers[0], document: '529.982.247-25', phone: '(11) 98877-6655', address: 'Rua das Flores', neighborhood: 'Centro', city: 'São Paulo', state: 'SP' },
+      { id: 'customer-2', name: 'Outro cliente' },
+    ] as Customer[]} onValueChange={onValueChange} />);
+
+    fireEvent.click(screen.getByRole('combobox'));
+    const input = screen.getByRole('searchbox', { name: 'Buscar cliente' });
+    expect(input).toHaveAttribute('placeholder', 'Nome, CPF/CNPJ, telefone, endereço…');
+    const contact = screen.getByRole('option', { name: /Cliente com nome extenso/ });
+    expect(contact).toHaveTextContent('529.982.247-25 · (11) 98877-6655');
+    expect(contact).toHaveTextContent('Rua das Flores, Centro, São Paulo - SP');
+    expect(container.querySelector('.clientoptions')).toContainElement(input);
+    await waitFor(() => expect(input).toHaveFocus());
+    for (const query of ['52998224725', '11988776655', 'Rua das Flores', 'Centro', 'São Paulo', 'VIP']) {
+      fireEvent.change(input, { target: { value: query } });
+      expect(screen.getAllByRole('option')).toHaveLength(1);
+      expect(screen.getByRole('option')).toHaveTextContent('Cliente com nome extenso');
+    }
+    fireEvent.click(screen.getByRole('option'));
+    expect(onValueChange).toHaveBeenCalledExactlyOnceWith('customer-1');
+    expect(screen.getByRole('combobox')).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByRole('combobox')).toHaveFocus();
+  });
+
+  it('no PDV permite navegar por teclado, cancelar sem trocar cliente e cadastrar pela busca atual', async () => {
+    const onValueChange = vi.fn();
+    const onCreateFull = vi.fn();
+    render(<CustomerSelectField variant="pdv" customers={customers} value="customer-1" onValueChange={onValueChange} onCreateFull={onCreateFull} />);
+    const trigger = screen.getByRole('combobox');
+    fireEvent.click(trigger);
+    const input = screen.getByRole('searchbox', { name: 'Buscar cliente' });
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    expect(screen.getByRole('option')).toHaveFocus();
+    fireEvent.keyDown(screen.getByRole('option'), { key: 'Escape' });
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(trigger).toHaveFocus();
+    expect(onValueChange).not.toHaveBeenCalled();
+    fireEvent.click(trigger);
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar cliente' }), { target: { value: 'Cliente novo' } });
+    await waitFor(() => expect(screen.getByText('Nenhum cliente encontrado.')).toBeVisible());
+    fireEvent.click(screen.getByRole('button', { name: 'Criar cliente' }));
+    expect(onCreateFull).toHaveBeenCalledOnce();
+    expect(onValueChange).not.toHaveBeenCalled();
+  });
+
 });

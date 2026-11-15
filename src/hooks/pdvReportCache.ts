@@ -32,18 +32,19 @@ export function pdvAuthorizedQueryScope(input: {
 }
 
 export function usePdvAuthorizedQueryScope() {
-  const { user, profile, permissions, roles, hasPermissionRecord, profileLoading } = useAuth();
+  const { user, profile, permissions, roles, hasPermissionRecord, profileLoading, loading } = useAuth();
   const companyId = profile?.company_id ?? null;
-  const key = useMemo(() => pdvAuthorizedQueryScope({
+  const ready = Boolean(user?.id && companyId && !profileLoading && !loading);
+  const key = useMemo(() => [...pdvAuthorizedQueryScope({
     companyId,
     userId: user?.id,
     permissions,
     roles,
     hasPermissionRecord,
-  }), [companyId, hasPermissionRecord, permissions, roles, user?.id]);
+  }), ready ? 'ready' : 'pending'] as const, [companyId, hasPermissionRecord, permissions, ready, roles, user?.id]);
   return {
     key,
-    ready: Boolean(user?.id && companyId && !profileLoading),
+    ready,
   };
 }
 

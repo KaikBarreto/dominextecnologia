@@ -32,6 +32,16 @@ describe('projectPdvOrderReceiptSnapshot',()=>{
   it('recusa pagamentos que nao fecham os centavos',()=>{
     expect(()=>projectPdvOrderReceiptSnapshot({...payload,payments:[{method:'pix',amount:99.99}]})).toThrow(/não fecham/);
   });
+  it('distingue fiado aprovado de pagamento recebido sem tratar toda cobertura como dinheiro',()=>{
+    expect(projectPdvOrderReceiptSnapshot(payload).coverage).toEqual({paidAmount:0,approvedCreditAmount:100,status:'credit_approved'});
+    expect(projectPdvOrderReceiptSnapshot({...payload,payments:[{method:'pix',amount:70},{method:'fiado',amount:30}]}).coverage)
+      .toEqual({paidAmount:70,approvedCreditAmount:30,status:'mixed'});
+    expect(projectPdvOrderReceiptSnapshot({...payload,payments:[{method:'pix',amount:100}]}).coverage)
+      .toEqual({paidAmount:100,approvedCreditAmount:0,status:'paid'});
+  });
+  it('não afirma pagamento quando o método do snapshot não é reconhecido',()=>{
+    expect(projectPdvOrderReceiptSnapshot({...payload,payments:[{method:'metodo_desconhecido',amount:100}]}).coverage).toBeUndefined();
+  });
   it('recusa linha cujo preço, desconto e total não fecham os centavos',()=>{
     expect(()=>projectPdvOrderReceiptSnapshot({...payload,items:[{...payload.items[0],total:99.99}]})).toThrow(/itens/);
   });

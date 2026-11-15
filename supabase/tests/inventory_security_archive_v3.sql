@@ -59,6 +59,8 @@ BEGIN
     (manager_a,'["screen:inventory","fn:manage_inventory"]',true),
     (denied_a,'[]',true),
     (manager_b,'["screen:inventory","fn:manage_inventory"]',true);
+  -- A criação da empresa já fornece um estoque padrão; a fixture escolhe outro explicitamente.
+  UPDATE public.stocks SET is_default=false WHERE company_id IN (company_a, company_b) AND is_default IS TRUE;
   INSERT INTO public.stocks(id,company_id,name,is_default) VALUES
     (stock_a,company_a,'Principal A',true),
     (stock_restricted,company_a,'Restrito A',false),

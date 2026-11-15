@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { rpc } = vi.hoisted(() => ({ rpc: vi.fn() }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc } }));
+vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'operator-1' }, profile: { company_id: 'company-1' }, roles: [], permissions: [], hasPermissionRecord: true, loading: false, profileLoading: false }) }));
 
 import {
   mapPdvPreorderError,

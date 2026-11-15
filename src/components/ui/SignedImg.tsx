@@ -57,17 +57,17 @@ export function SignedImg({
   ...rest
 }: SignedImgProps) {
   const resolved = useSignedUrl(src);
-  const [errored, setErrored] = useState(false);
+  const [erroredSource, setErroredSource] = useState<string | null>(null);
 
   // Reset error state quando src ou resolved muda — nova tentativa válida.
   useEffect(() => {
-    setErrored(false);
+    setErroredSource(null);
   }, [src, resolved]);
 
   const effectiveSrc = resolved ?? src ?? undefined;
 
   // Placeholder amigável: sem src OU erro de carregamento.
-  if (!effectiveSrc || errored) {
+  if (!effectiveSrc || erroredSource === effectiveSrc) {
     return (
       <div
         // Herda dimensões via className do consumer (mesmas classes que iriam pro img).
@@ -88,10 +88,11 @@ export function SignedImg({
 
   const img = (
     <img
+      key={effectiveSrc}
       {...rest}
       src={effectiveSrc}
       className={className}
-      onError={() => setErrored(true)}
+      onError={() => setErroredSource(effectiveSrc)}
     />
   );
 

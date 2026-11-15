@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { AlertCircle, ArrowDownToLine, CircleDollarSign, History, RotateCcw, WalletCards } from 'lucide-react';
@@ -109,6 +109,17 @@ export function PartyAccountPanel({
     ? statement.summary.asOf
     : today();
   const entries = useMemo(() => statement?.entries ?? [], [statement?.entries]);
+  const cashSessionRequired = (action?.kind === 'settle' || action?.kind === 'reverseSettlement')
+    && (method === 'dinheiro' || (action.kind === 'settle'
+      ? action.entry.requiresCashSession === true
+      : Boolean(action.entry.cashSessionId)));
+  const availableCashSessions = useMemo(() => (account.receivableOptions.data?.cashSessions ?? [])
+    .filter(item => method !== 'dinheiro' || item.cashAccountId === accountId),
+  [account.receivableOptions.data?.cashSessions, method, accountId]);
+  useEffect(() => {
+    if (!cashSessionRequired || cashSessionId || (action?.kind === 'reverseSettlement' && method !== 'dinheiro')) return;
+    if (availableCashSessions.length === 1) setCashSessionId(availableCashSessions[0].id);
+  }, [action?.kind, availableCashSessions, cashSessionId, cashSessionRequired, method]);
 
   if (!enabled || account.isHidden) return null;
 
@@ -136,7 +147,8 @@ export function PartyAccountPanel({
     setEntryKind('credit');
     setMethod(next.kind === 'reverseSettlement' ? next.entry.settlementMethod ?? 'pix' : 'pix');
     setAccountId(next.kind === 'reverseSettlement' ? next.entry.accountId ?? '' : '');
-    setCashSessionId('');
+    setCashSessionId(next.kind === 'reverseSettlement' && next.entry.settlementMethod !== 'dinheiro'
+      ? next.entry.cashSessionId ?? '' : '');
     setRequestId(newRequestId());
   };
 
@@ -181,7 +193,7 @@ export function PartyAccountPanel({
           amount: Number(amount.replace(',', '.')),
           method,
           accountId,
-          cashSessionId: method === 'dinheiro' ? cashSessionId : null,
+          cashSessionId: cashSessionRequired ? cashSessionId : null,
           receivedOn: occurredOn,
           notes: description,
           idempotencyKey: requestId,
@@ -190,7 +202,7 @@ export function PartyAccountPanel({
         await account.reverseSettlement.mutateAsync({
           settlementTransactionId: action.entry.id,
           accountId,
-          cashSessionId: method === 'dinheiro' ? cashSessionId : null,
+          cashSessionId: cashSessionRequired ? cashSessionId : null,
           reason: description,
           idempotencyKey: requestId,
         });
@@ -269,7 +281,7 @@ export function PartyAccountPanel({
           )}
 
           <div className="px-4 py-4 sm:px-5">
-            <div className="mb-4 flex w-full gap-1 rounded-lg bg-muted p-1 sm:w-fit" role="tablist" aria-label="Tipo de movimento">
+            <div className="mb-4 flex w-full gap-6 overflow-x-auto border-b" role="tablist" aria-label="Tipo de movimento">
               <SegmentButton active={segment === 'accounts'} onClick={() => { setSegment('accounts'); setPage(1); }}>
                 Contas
               </SegmentButton>
@@ -352,7 +364,7 @@ export function PartyAccountPanel({
             <Button type="button" disabled={mutation.isPending
               || !description.trim()
               || ((action?.kind === 'settle' || action?.kind === 'apply' || action?.kind === 'post') && !(Number(amount.replace(',', '.')) !== 0))
-              || ((action?.kind === 'settle' || action?.kind === 'reverseSettlement') && (!accountId || (method === 'dinheiro' && !cashSessionId)))} onClick={() => void submit()}>
+              || ((action?.kind === 'settle' || action?.kind === 'reverseSettlement') && (!accountId || (cashSessionRequired && !cashSessionId)))} onClick={() => void submit()}>
               {mutation.isPending ? 'Salvando…' : action?.kind === 'reverse' || action?.kind === 'reverseSettlement' ? 'Confirmar estorno' : 'Confirmar'}
             </Button>
           </div>
@@ -411,16 +423,20 @@ export function PartyAccountPanel({
                   ))}
                 </select>
               </div>
-              {method === 'dinheiro' && (
+              {cashSessionRequired && (
                 <div className="space-y-2">
-                  <Label htmlFor="party-settlement-session">Caixa aberto</Label>
-                  <select id="party-settlement-session" value={cashSessionId} onChange={(event) => setCashSessionId(event.target.value)}
+                  <Label htmlFor="party-settlement-session">{action.kind === 'reverseSettlement' && method !== 'dinheiro' ? 'Caixa do recebimento' : 'Caixa que recebe'}</Label>
+                  {action.kind === 'reverseSettlement' && method !== 'dinheiro' ? (
+                    <Input id="party-settlement-session" readOnly value={availableCashSessions.find(item => item.id === cashSessionId)?.label ?? 'Caixa registrado no recebimento'} />
+                  ) : <select id="party-settlement-session" value={cashSessionId} onChange={(event) => setCashSessionId(event.target.value)}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                     <option value="">Selecione</option>
-                    {(account.receivableOptions.data?.cashSessions ?? []).filter((item) => item.cashAccountId === accountId).map((item) => (
+                    {availableCashSessions.map((item) => (
                       <option key={item.id} value={item.id}>{item.label}</option>
                     ))}
-                  </select>
+                  </select>}
+                  {method !== 'dinheiro' && action.kind === 'settle' && <p className="text-xs text-muted-foreground">O valor entra na conta bancária. O caixa identifica quem recebeu.</p>}
+                  {action.kind === 'settle' && availableCashSessions.length === 0 && <p className="text-sm text-destructive">Abra seu caixa no PDV para registrar este recebimento.</p>}
                 </div>
               )}
             </>
@@ -451,8 +467,18 @@ function SegmentButton({ active, onClick, children }: { active: boolean; onClick
       type="button"
       role="tab"
       aria-selected={active}
+      tabIndex={active ? 0 : -1}
       onClick={onClick}
-      className={cn('min-h-9 flex-1 rounded-md px-4 text-sm font-medium transition-colors sm:flex-none', active ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}
+      onKeyDown={(event) => {
+        if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key)) return;
+        const tabs = Array.from(event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]') ?? []);
+        const current = tabs.indexOf(event.currentTarget);
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (current + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+        event.preventDefault();
+        tabs[next]?.focus();
+        tabs[next]?.click();
+      }}
+      className={cn('-mb-px min-h-10 shrink-0 border-b-2 px-0 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring', active ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground')}
     >
       {children}
     </button>

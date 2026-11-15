@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { generatePdvDeliveryReceiptPdf, planPdvDeliveryReceiptBlocks } from './deliveryReceiptPdf';
+import { generatePdvDeliveryReceiptPdf, planPdvDeliveryReceiptBlocks, toPdvDeliveryReceiptSnapshot } from './deliveryReceiptPdf';
 import type { PdvDeliveryReceipt } from '@/hooks/usePdvDispatch';
 
 function longReceipt(itemCount = 80): PdvDeliveryReceipt {
@@ -51,4 +51,30 @@ describe('comprovante de retirada paginado', () => {
     });
     expect(source.match(/\/Type \/Page\b/g)?.length ?? 0).toBeGreaterThan(1);
   });
+  it('preserva quantidades do evento e usa a empresa fornecida sem criar preços', () => {
+    const receipt = longReceipt(2);
+    const company = { name: 'Loja Exemplo', whiteLabelEnabled: true, logoDataUrl: 'data:image/png;base64,example' };
+    const snapshot = toPdvDeliveryReceiptSnapshot(receipt, { company, receivedBy: 'Cliente exemplo' });
+    expect(snapshot.company).toBe(company);
+    expect(snapshot.documentKind).toBe('delivery');
+    expect(snapshot.withdrawal?.items).toEqual(receipt.items);
+    expect(snapshot.withdrawal?.id).toBe(receipt.deliveryId);
+    expect(snapshot.withdrawal?.receivedBy).toBe('Cliente exemplo');
+    expect(snapshot.items).toEqual([]);
+    expect(snapshot.payments).toEqual([]);
+  });
+
+  it.each(['58mm', '80mm'] as const)('respeita formato explícito %s e mantém A4 como padrão legado', async format => {
+    const blob = generatePdvDeliveryReceiptPdf(longReceipt(2), { format, copies: 2 });
+    const source = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result ?? ''));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsBinaryString(blob);
+    });
+    const mediaBox = source.match(/\/MediaBox \[([\d.]+) ([\d.]+) ([\d.]+) ([\d.]+)\]/);
+    expect(Number(mediaBox?.[3]) * 25.4 / 72).toBeCloseTo(format === '58mm' ? 58 : 80, 1);
+    expect(source.match(/\/Type \/Page\b/g)).toHaveLength(2);
+  });
+
 });

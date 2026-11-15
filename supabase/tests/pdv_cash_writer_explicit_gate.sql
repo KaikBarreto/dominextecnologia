@@ -84,6 +84,8 @@ BEGIN
     (uo,'["screen:pdv","fn:operate_other_pdv_cash","fn:reopen_pdv_cash"]',true),
     (uw,'["*"]',true),(us,'["screen:pdv"]',true);
   INSERT INTO public.company_modules(company_id,module_code) VALUES(c,'pdv'),(c2,'pdv');
+  -- A criação da empresa já fornece um estoque padrão; a fixture escolhe outro explicitamente.
+  UPDATE public.stocks SET is_default=false WHERE company_id IN (c) AND is_default IS TRUE;
   INSERT INTO public.stocks(id,company_id,name,is_default) VALUES(stock,c,'Mesmo estoque',true);
   INSERT INTO public.financial_accounts(id,company_id,name,type,initial_balance,is_active)
     VALUES(account,c,'Cofre 018','caixa',1000,true);
@@ -97,8 +99,8 @@ BEGIN
   PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',ub,'role','authenticated')::text,true);
   r:=public.pdv_open_cash_session_v2(tb,account,100,'018-open-b'); sb:=(r->>'session_id')::uuid;
   INSERT INTO public.pdv_orders(id,company_id,number,salesperson_id,stock_id,terminal_id,target_terminal_id,
-    status,subtotal,total,cash_session_id,client_request_id,paid_at,delivered_at)
-    VALUES(sale,c,180,ub,stock,tb,tb,'entregue',7,7,sb,'018-sale-settlement',now(),now());
+    status,subtotal,total,cash_session_id,client_request_id,paid_at,delivered_at,contract_version)
+    VALUES(sale,c,180,ub,stock,tb,tb,'entregue',7,7,sb,'018-sale-settlement',now(),now(),2);
   INSERT INTO public.financial_transactions(id,company_id,transaction_type,description,amount,category,
     transaction_date,paid_date,is_paid,origin,payment_method,created_by)
     VALUES(settlement,c,'entrada','Venda direta 018',7,'Venda PDV',current_date,current_date,true,'pdv','dinheiro',ub);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { encodeCode128B } from '@/lib/pdv/inventoryLabelPdf';
+import { canEncodeCode128B, encodeCode128B } from '@/lib/pdv/inventoryLabelPdf';
 
 describe('encodeCode128B', () => {
   it('gera barras com quiet zone e checksum deterministico', () => {
@@ -15,5 +15,10 @@ describe('encodeCode128B', () => {
   it('recusa vazio e caracteres fora do conjunto B', () => {
     expect(() => encodeCode128B('')).toThrow(/Code 128/);
     expect(() => encodeCode128B('ação')).toThrow(/Code 128/);
+  });
+
+  it('permite que a etiqueta use somente QR quando o alias tem acento', () => {
+    expect(canEncodeCode128B('DX-ABC123')).toBe(true);
+    expect(canEncodeCode128B('ação')).toBe(false);
   });
 });

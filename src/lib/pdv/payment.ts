@@ -45,6 +45,8 @@ export const PDV_PAYMENT_METHODS = [
   'credito',
   'transferencia',
   'fiado',
+  'saldo_cliente',
+  'voucher',
 ] as const;
 
 export type PdvPaymentMethod = (typeof PDV_PAYMENT_METHODS)[number];
@@ -54,6 +56,14 @@ const METHODS_REQUIRING_ACCOUNT: PdvPaymentMethod[] = ['pix', 'debito', 'credito
 
 export function requiresAccount(method: PdvPaymentMethod): boolean {
   return METHODS_REQUIRING_ACCOUNT.indexOf(method) >= 0;
+}
+
+/** Crédito/voucher nunca pode ultrapassar o total comercial nem o saldo disponível. */
+export function clampStoredValueApplication(total: number, balance: number, requested: number): number {
+  const safeTotal = round2(Math.max(0, Number(total) || 0));
+  const safeBalance = round2(Math.max(0, Number(balance) || 0));
+  const safeRequested = round2(Math.max(0, Number(requested) || 0));
+  return round2(Math.min(safeTotal, safeBalance, safeRequested));
 }
 
 /** Uma linha de pagamento na tela (pagamento misto é regra, não exceção). */
@@ -72,6 +82,10 @@ export interface PaymentRow {
   accountId: string | null;
   /** Vencimento do fiado, em `yyyy-MM-dd`. */
   dueDate: string | null;
+  /** Quantidade de parcelas do fiado; o payload envia uma conta por vencimento. */
+  installmentCount?: number;
+  /** Voucher ou fonte de saldo escolhida. Saldo usa o próprio cliente no servidor. */
+  referenceId?: string | null;
 }
 
 export interface SettlePaymentPayload {
@@ -80,6 +94,7 @@ export interface SettlePaymentPayload {
   change_amount?: number;
   account_id?: string;
   due_date?: string;
+  reference_id?: string;
 }
 
 /** `Date` → `yyyy-MM-dd` pelos componentes LOCAIS (nunca via UTC, que volta o dia). */
@@ -122,6 +137,8 @@ export function newPaymentRow(
     tendered: method === 'dinheiro' ? round2(Math.max(0, amount)) : 0,
     accountId: requiresAccount(method) ? (options.accountId ?? null) : null,
     dueDate: method === 'fiado' ? defaultFiadoDueDate(options.today) : null,
+    installmentCount: 1,
+    referenceId: null,
   };
 }
 
@@ -226,7 +243,11 @@ export type PaymentIssueCode =
   /** Venda em dinheiro sem conta de cofre configurada. */
   | 'cofre_nao_configurado'
   /** Fiado passaria do limite de crédito do cliente. */
-  | 'fiado_acima_do_limite';
+  | 'fiado_acima_do_limite'
+  | 'valor_armazenado_sem_cliente'
+  | 'valor_armazenado_sem_referencia'
+  | 'saldo_cliente_insuficiente'
+  | 'voucher_insuficiente';
 
 export type PaymentWarningCode =
   /** Cliente sem `credit_limit`: a venda passa, mas sem teto nenhum. */
@@ -253,6 +274,10 @@ export interface PaymentContext {
   customerCreditLimit?: number | null;
   /** Saldo devedor atual do cliente (soma do `customer_credit_ledger`). */
   customerDebt?: number;
+  /** Saldo positivo do cliente, apenas para antecipar a validação do servidor. */
+  availableCustomerBalance?: number | null;
+  /** Saldo dos vouchers carregados para o cliente, indexado pelo id. */
+  voucherBalances?: Record<string, number>;
 }
 
 export interface PaymentValidation {
@@ -310,6 +335,28 @@ export function validatePayments(rows: PaymentRow[], ctx: PaymentContext): Payme
     if (row.method === 'fiado' && !row.dueDate) {
       issues.push({ code: 'fiado_sem_vencimento', rowId: row.id });
     }
+    if (row.method === 'voucher' && !row.referenceId) {
+      issues.push({ code: 'valor_armazenado_sem_referencia', rowId: row.id });
+    }
+    if (
+      row.method === 'saldo_cliente'
+      && ctx.availableCustomerBalance != null
+      && round2(row.amount) > round2(ctx.availableCustomerBalance)
+    ) {
+      issues.push({ code: 'saldo_cliente_insuficiente', rowId: row.id });
+    }
+    if (
+      row.method === 'voucher'
+      && row.referenceId
+      && ctx.voucherBalances
+      && round2(row.amount) > round2(ctx.voucherBalances[row.referenceId] ?? 0)
+    ) {
+      issues.push({ code: 'voucher_insuficiente', rowId: row.id });
+    }
+  }
+
+  if ((has(list, 'saldo_cliente') || has(list, 'voucher')) && !ctx.hasCustomer) {
+    issues.push({ code: 'valor_armazenado_sem_cliente' });
   }
 
   // Dinheiro: as duas condições que a RPC recusa, antecipadas na tela pra o
@@ -348,8 +395,33 @@ export function validatePayments(rows: PaymentRow[], ctx: PaymentContext): Payme
  * `NULLIF(valor, '')::uuid` e `null` de JSON chegaria como a string `"null"`
  * em alguns caminhos de serialização.
  */
+export function splitFiadoInstallments(
+  amount: number,
+  count: number,
+  firstDueDate: string,
+): Array<{ amount: number; dueDate: string }> {
+  const safeCount = Math.max(1, Math.min(24, Math.floor(count || 1)));
+  const totalCents = Math.round(round2(Math.max(0, amount)) * 100);
+  const baseCents = Math.floor(totalCents / safeCount);
+  let remainder = totalCents - baseCents * safeCount;
+  const [year, month, day] = firstDueDate.split('-').map(Number);
+  const first = new Date(year, (month || 1) - 1, day || 1, 12);
+  return Array.from({ length: safeCount }, (_, index) => {
+    const cents = baseCents + (remainder-- > 0 ? 1 : 0);
+    return { amount: cents / 100, dueDate: toIsoDate(addMonths(first, index)) };
+  });
+}
+
 export function toSettlePayload(rows: PaymentRow[]): SettlePaymentPayload[] {
-  return (rows || []).map((row) => {
+  return (rows || []).flatMap((row) => {
+    if (row.method === 'fiado' && row.dueDate) {
+      return splitFiadoInstallments(row.amount, row.installmentCount ?? 1, row.dueDate)
+        .map((installment) => ({
+          method: 'fiado' as const,
+          amount: installment.amount,
+          due_date: installment.dueDate,
+        }));
+    }
     const payload: SettlePaymentPayload = {
       method: row.method,
       amount: round2(Number(row.amount) || 0),
@@ -359,9 +431,9 @@ export function toSettlePayload(rows: PaymentRow[]): SettlePaymentPayload[] {
       if (change > 0) payload.change_amount = change;
     } else if (requiresAccount(row.method)) {
       if (row.accountId) payload.account_id = row.accountId;
-    } else if (row.method === 'fiado') {
-      if (row.dueDate) payload.due_date = row.dueDate;
+    } else if (row.method === 'voucher' && row.referenceId) {
+      payload.reference_id = row.referenceId;
     }
-    return payload;
+    return [payload];
   });
 }

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Plus, UserRound } from 'lucide-react';
+import { PdvPartySelect } from '@/components/pdv/PdvPartySelect';
 import { Button } from '@/components/ui/button';
-import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { SearchableSelect, type SearchableSelectOption } from '@/components/ui/SearchableSelect';
 import { QuickCustomerDialog } from '@/components/financial/QuickCustomerDialog';
 import { cn } from '@/lib/utils';
 import type { Customer } from '@/types/database';
@@ -44,7 +45,7 @@ export interface CustomerSelectFieldProps {
   /** Repassado ao combobox interno, pra `<Label htmlFor>` focar o campo certo. */
   id?: string;
   /** Tratamento visual compacto do resumo do PDV, com contexto dentro do campo. */
-  variant?: 'default' | 'summary' | 'large';
+  variant?: 'default' | 'summary' | 'large' | 'pdv';
   /** Rótulo contextual mostrado acima do nome no modo `summary`. */
   summaryLabel?: string;
   /** Rótulo acessível do quick-add externo no modo `summary`. */
@@ -87,17 +88,20 @@ export function CustomerSelectField({
   const [searchQuery, setSearchQuery] = useState('');
   const { labelsFor } = usePartyLabels();
 
-  const options = [
+  const options: SearchableSelectOption[] = [
     ...(allowNone ? [{ value: noneValue, label: noneLabel }] : []),
     ...customers.map((c) => {
       const labels = labelsFor('customer', c.id);
       return {
         value: c.id,
         label: c.name,
-        sublabel: c.document || c.email || c.phone || c.celular || undefined,
+        sublabel: variant === 'pdv'
+          ? [c.document, c.phone || c.celular].filter(Boolean).join(' · ') || c.email || undefined
+          : c.document || c.email || c.phone || c.celular || undefined,
+        ...(variant === 'pdv' ? { detail: [c.address, c.address_number, c.neighborhood, [c.city, c.state].filter(Boolean).join(' - ')].filter(Boolean).join(', ') || undefined } : {}),
         ...(variant === 'large' ? { icon: <CustomerAvatar name={c.name} photoUrl={c.photo_url} /> } : {}),
         // O sublabel mostra só UM dado, mas a busca enxerga todos, inclusive a etiqueta.
-        keywords: [c.company_name, c.nome_fantasia, c.document, c.email, c.phone, c.celular, ...labels.map((label) => label.name)].filter(
+        keywords: [c.company_name, c.nome_fantasia, c.document, c.email, c.phone, c.celular, c.address, c.address_number, c.neighborhood, c.city, c.state, ...labels.map((label) => label.name)].filter(
           (k): k is string => !!k,
         ),
         suffix: <PartyLabelBadges labels={labels} mode="summary" />,
@@ -116,7 +120,7 @@ export function CustomerSelectField({
   };
 
   const quickAddLabel = createLabel ?? 'Criar cliente';
-  const field = variant === 'summary' ? (
+  const field = variant === 'pdv' ? <PdvPartySelect id={id} value={value} options={options} label={summaryLabel || 'Cliente'} placeholder={allowNone ? noneLabel : placeholder} searchLabel="Buscar cliente" searchPlaceholder="Nome, CPF/CNPJ, telefone, endereço…" listLabel="Clientes" emptyMessage={emptyMessage || 'Nenhum cliente encontrado.'} createLabel={quickAddLabel} disabled={disabled} className={className} onValueChange={onValueChange} onCreate={handleCreateClick} /> : variant === 'summary' ? (
     <div
       className={cn(
         'flex min-h-14 w-full overflow-hidden rounded-md border border-input bg-background ring-offset-background transition-colors focus-within:border-ring focus-within:ring-1 focus-within:ring-ring',

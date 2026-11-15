@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, type ReactNode } from 'react';
+import { useRef, useState, useCallback, useEffect, type ReactNode, type MutableRefObject } from 'react';
 import { Loader2, ArrowDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -14,6 +14,7 @@ interface MobilePullToRefreshProps {
   className?: string;
   /** Callback de scroll do container — usado pelo header para o cross-fade logo ↔ título. */
   onScroll?: (e: React.UIEvent<HTMLDivElement>) => void;
+  scrollContainerRef?: MutableRefObject<HTMLDivElement | null>;
 }
 
 /**
@@ -33,12 +34,25 @@ export function MobilePullToRefresh({
   disabled = false,
   className,
   onScroll,
+  scrollContainerRef,
 }: MobilePullToRefreshProps) {
   const [pullDistance, setPullDistance] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const startYRef = useRef(0);
   const isPullingRef = useRef(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!disabled) return;
+    isPullingRef.current = false;
+    startYRef.current = 0;
+    setPullDistance(0);
+  }, [disabled]);
+
+  const setContainerRef = useCallback((node: HTMLDivElement | null) => {
+    containerRef.current = node;
+    if (scrollContainerRef) scrollContainerRef.current = node;
+  }, [scrollContainerRef]);
 
   const handleTouchStart = useCallback(
     (e: React.TouchEvent) => {
@@ -106,7 +120,7 @@ export function MobilePullToRefresh({
 
   return (
     <div
-      ref={containerRef}
+      ref={setContainerRef}
       data-scroll-container
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
@@ -114,13 +128,13 @@ export function MobilePullToRefresh({
       onTouchCancel={handleTouchEnd}
       onScroll={onScroll}
       className={cn('relative overflow-y-auto', className)}
-      style={{ touchAction: pullDistance > 0 ? 'none' : 'pan-y' }}
+      style={{ touchAction: disabled ? undefined : pullDistance > 0 ? 'none' : 'pan-y' }}
     >
       {/* Indicador de pull */}
       <div
         className={cn(
           'pointer-events-none absolute left-0 right-0 top-0 z-10 flex items-center justify-center transition-opacity',
-          (pullDistance > 0 || isRefreshing) ? 'opacity-100' : 'opacity-0',
+          disabled ? 'hidden' : (pullDistance > 0 || isRefreshing) ? 'opacity-100' : 'opacity-0',
         )}
         style={{ height: showFullSpinner ? 56 : pullDistance, transition: isRefreshing ? 'height 200ms ease-out' : 'none' }}
       >
@@ -145,9 +159,10 @@ export function MobilePullToRefresh({
 
       {/* Conteúdo — translada pra baixo conforme o pull */}
       <div
+        className={disabled ? 'contents' : undefined}
         style={{
-          transform: `translateY(${showFullSpinner ? 56 : pullDistance}px)`,
-          transition: isPullingRef.current ? 'none' : 'transform 200ms ease-out',
+          transform: disabled ? undefined : `translateY(${showFullSpinner ? 56 : pullDistance}px)`,
+          transition: disabled ? undefined : isPullingRef.current ? 'none' : 'transform 200ms ease-out',
         }}
       >
         {children}

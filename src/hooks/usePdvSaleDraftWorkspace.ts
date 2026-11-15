@@ -9,8 +9,9 @@ import {
   updatePdvSaleDraft,
   type PdvSaleDraft,
   type PdvSaleDraftWorkspace,
+  MAX_PDV_SALE_DRAFTS,
 } from '@/lib/pdv/sale-drafts';
-import { usePdvServerDraftSync } from '@/hooks/usePdvServerDraftSync';
+import { usePdvServerDraftSync, type PdvDraftPersistResult } from '@/hooks/usePdvServerDraftSync';
 
 interface DraftWorkspaceOwner {
   companyId: string;
@@ -24,16 +25,19 @@ interface UsePdvSaleDraftWorkspaceOptions {
   owner: DraftWorkspaceOwner | null;
   transactionDate: string;
   defaultStockId: string | null;
+  directSaleV2?: boolean;
 }
 
 export function usePdvSaleDraftWorkspace({
   owner,
   transactionDate,
   defaultStockId,
+  directSaleV2 = false,
 }: UsePdvSaleDraftWorkspaceOptions) {
   const [workspace, setWorkspace] = useState<PdvSaleDraftWorkspace>(() =>
     createPdvSaleWorkspace(transactionDate, defaultStockId),
   );
+  const [localPersistenceIssue, setLocalPersistenceIssue] = useState(false);
   const hydratedStorageKeyRef = useRef<string | null>(null);
   const [hydration, setHydration] = useState<{ key: string | null; cacheFound: boolean }>({
     key: null,
@@ -42,6 +46,10 @@ export function usePdvSaleDraftWorkspace({
   const defaultsRef = useRef({ transactionDate, defaultStockId });
   defaultsRef.current = { transactionDate, defaultStockId };
   const storageKey = useMemo(() => (owner ? pdvSaleDraftStorageKey(owner) : null), [owner]);
+  const liveStorageKeyRef = useRef(storageKey);
+  const liveWorkspaceRef = useRef(workspace);
+  liveStorageKeyRef.current = storageKey;
+  liveWorkspaceRef.current = workspace;
 
   useEffect(() => {
     if (!storageKey) {
@@ -54,9 +62,11 @@ export function usePdvSaleDraftWorkspace({
       return;
     }
     let raw: string | null = null;
+    setLocalPersistenceIssue(false);
     try {
       raw = window.localStorage.getItem(storageKey);
     } catch {
+      setLocalPersistenceIssue(true);
       // Safari privado/storage cheio: a sessão continua funcional em memória.
     }
     setWorkspace(parsePdvSaleWorkspace(
@@ -69,25 +79,15 @@ export function usePdvSaleDraftWorkspace({
   }, [storageKey]); // troca de usuário/empresa precisa isolar tudo imediatamente
 
   useEffect(() => {
-    if (!storageKey || hydratedStorageKeyRef.current !== storageKey) return;
+    if (!storageKey || hydratedStorageKeyRef.current !== storageKey || hydration.key !== storageKey) return;
     try {
       window.localStorage.setItem(storageKey, JSON.stringify(workspace));
+      setLocalPersistenceIssue(false);
     } catch {
+      setLocalPersistenceIssue(true);
       // Best-effort: nunca derruba uma venda porque o cache local ficou cheio.
     }
-  }, [storageKey, workspace]);
-
-  // Outra aba do MESMO usuário/empresa atualizou os rascunhos. O evento não
-  // dispara na aba que escreveu, então não cria loop. Escopado pela chave.
-  useEffect(() => {
-    if (!storageKey) return;
-    function handleStorage(event: StorageEvent) {
-      if (event.key !== storageKey || event.newValue == null) return;
-      setWorkspace(parsePdvSaleWorkspace(event.newValue, transactionDate, defaultStockId));
-    }
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, [storageKey, transactionDate, defaultStockId]);
+  }, [hydration.key, storageKey, workspace]);
 
   // Hoje/local podem chegar depois do perfil. Só preenche campos ainda não
   // escolhidos; nunca pisa numa data retroativa ou local selecionado.
@@ -102,9 +102,13 @@ export function usePdvSaleDraftWorkspace({
     }));
   }, [transactionDate, defaultStockId]);
 
+  const visibleWorkspace = useMemo(
+    () => hydration.key === storageKey ? workspace : createPdvSaleWorkspace(transactionDate, defaultStockId),
+    [defaultStockId, hydration.key, storageKey, transactionDate, workspace],
+  );
   const activeDraft = useMemo(
-    () => workspace.drafts.find((draft) => draft.id === workspace.activeId) ?? workspace.drafts[0],
-    [workspace],
+    () => visibleWorkspace.drafts.find((draft) => draft.id === visibleWorkspace.activeId) ?? visibleWorkspace.drafts[0],
+    [visibleWorkspace],
   );
 
   const updateDraft = useCallback((draftId: string, updater: (draft: PdvSaleDraft) => PdvSaleDraft) => {
@@ -131,7 +135,10 @@ export function usePdvSaleDraftWorkspace({
     ),
     [],
   );
-  const { markDeleted, syncIssue, serverReady } = usePdvServerDraftSync({
+  const createConflictCopy = useCallback((draft: PdvSaleDraft, id: string, sequence: number): PdvSaleDraft => ({
+    ...draft, id, sequence, attempt: directSaleV2 ? draft.attempt : null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+  }), [directSaleV2]);
+  const { markDeleted, syncIssue, serverReady, recoveryPersistenceIssue, draftConflicts, resolveDraftConflict, resolvingDraftId, retrySync, lastResolution, saveDraftNow } = usePdvServerDraftSync({
     storageKey,
     hydratedStorageKey: hydration.key,
     localCacheFound: hydration.cacheFound,
@@ -140,16 +147,51 @@ export function usePdvSaleDraftWorkspace({
     workspace,
     setWorkspace,
     parseWorkspace: parseServerWorkspace,
+    createConflictCopy,
   });
+  const persistDraftNow = useCallback(async (
+    draftId: string,
+    updater: (draft: PdvSaleDraft) => PdvSaleDraft,
+  ): Promise<{ server: PdvDraftPersistResult; localSaved: boolean }> => {
+    if (!storageKey || liveStorageKeyRef.current !== storageKey || hydration.key !== storageKey
+      || hydratedStorageKeyRef.current !== storageKey) return { server: 'scope_changed', localSaved: false };
+    const previous = liveWorkspaceRef.current.drafts.find(item => item.id === draftId);
+    let next = updatePdvSaleDraft(liveWorkspaceRef.current, draftId, updater);
+    let draft = next.drafts.find(item => item.id === draftId);
+    if (!draft) return { server: 'not_found', localSaved: false };
+    // Retry da mesma barreira conserva também o snapshot e o request CAS;
+    // atualizar só o relógio perderia a resposta de um save já confirmado.
+    if (previous && JSON.stringify({ ...draft, updatedAt: previous.updatedAt }) === JSON.stringify(previous)) {
+      next = liveWorkspaceRef.current;
+      draft = previous;
+    }
+    liveWorkspaceRef.current = next;
+    const target = draft;
+    setWorkspace(current => {
+      // Saves explícitos continuam endereçados por ID: uma edição/seleção
+      // enfileirada em outro atendimento não é substituída pelo snapshot.
+      const merged = { ...current, drafts: current.drafts.map(item => item.id === draftId ? target : item) };
+      liveWorkspaceRef.current = merged;
+      return merged;
+    });
+    let localSaved = false;
+    try {
+      window.localStorage.setItem(storageKey, JSON.stringify(next));
+      localSaved = true; setLocalPersistenceIssue(false);
+    } catch { setLocalPersistenceIssue(true); }
+    const server = await saveDraftNow(draft);
+    return { server: liveStorageKeyRef.current === storageKey ? server : 'scope_changed', localSaved };
+  }, [hydration.key, saveDraftNow, storageKey]);
   const deleteDraft = useCallback((draftId: string) => {
     markDeleted(draftId);
     setWorkspace((current) => deletePdvSaleDraft(current, draftId, transactionDate, defaultStockId));
   }, [defaultStockId, markDeleted, transactionDate]);
 
   return {
-    workspace,
+    workspace: visibleWorkspace,
     activeDraft,
     updateDraft,
+    persistDraftNow,
     updateActiveDraft,
     createDraft,
     selectDraft,
@@ -157,5 +199,13 @@ export function usePdvSaleDraftWorkspace({
     setWorkspace,
     syncIssue,
     serverReady,
+    localPersistenceIssue: localPersistenceIssue || recoveryPersistenceIssue,
+    draftConflicts,
+    resolveDraftConflict,
+    resolvingDraftId,
+    retrySync,
+    lastResolution,
+    canCreateDraft: visibleWorkspace.drafts.length < MAX_PDV_SALE_DRAFTS,
+    creationLimitReached: visibleWorkspace.drafts.length >= MAX_PDV_SALE_DRAFTS,
   };
 }

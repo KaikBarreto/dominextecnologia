@@ -48,6 +48,14 @@ describe("PdvSalesFlowCard", () => {
 
   it("oferece o menu de ações no padrão do kanban", () => {
     render(<PdvSalesFlowCard card={card} onOpen={() => undefined} />);
-    expect(screen.getByRole("button", { name: /ações de orçamento/i })).toHaveTextContent("Ações");
+    expect(screen.getByRole("button", { name: /ações de orçamento/i })).toHaveTextContent("");
   });
+  it("conclui a retirada pela ação direta sem abrir outro painel", () => {
+    const onOpen = vi.fn(), onComplete = vi.fn();
+    render(<PdvSalesFlowCard card={{...card, stage: 'pickup'}} onOpen={onOpen} onCompletePickup={onComplete} />);
+    fireEvent.click(screen.getByRole('button', {name: 'Marcar como retirado'}));
+    expect(onComplete).toHaveBeenCalledOnce();
+    expect(onOpen).not.toHaveBeenCalled();
+  });
+
 });

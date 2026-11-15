@@ -38,6 +38,7 @@ describe('PdvPurchaseSwitcher', () => {
     fireEvent.click(screen.getByRole('button', { expanded: false }));
     fireEvent.click(screen.getByRole('button', { name: 'Excluir pedido: PC-002' }));
     expect(screen.getByRole('alertdialog')).toHaveTextContent('PC-002 de Fornecedor Sul, com 2 item(ns) e total R$ 120.00');
+    expect(screen.getByRole('button', { name: 'Excluir pedido' })).toHaveFocus();
     fireEvent.click(screen.getByRole('button', { name: 'Excluir pedido' }));
     expect(onDelete).toHaveBeenLastCalledWith('filled');
   });

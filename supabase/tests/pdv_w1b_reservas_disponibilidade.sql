@@ -169,6 +169,8 @@ BEGIN
     (v_company_a, 'basic'), (v_company_a, 'pdv'),
     (v_company_b, 'basic'), (v_company_b, 'pdv');
 
+  -- A criação da empresa já fornece um estoque padrão; a fixture escolhe outro explicitamente.
+  UPDATE public.stocks SET is_default=false WHERE company_id IN (v_company_a, v_company_b) AND is_default IS TRUE;
   INSERT INTO public.stocks (id, company_id, name, is_default)
   VALUES
     (v_stock_a, v_company_a, 'Principal A', true),

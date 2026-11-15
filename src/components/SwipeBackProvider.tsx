@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
-import { animate, motion, useMotionValue } from "framer-motion";
+import { animate, useMotionValue } from "framer-motion";
 
 /**
  * SwipeBackMotion — implementação real do gesto "arrastar da borda esquerda
@@ -37,9 +37,10 @@ const VERTICAL_CANCEL_RATIO = 1.5;
 // Duração da animação final de commit (ms).
 const COMMIT_ANIM_MS = 180;
 
-function SwipeBackMotion({ children }: { children: React.ReactNode }) {
+function SwipeBackMotion({ targetRef }: { targetRef: React.RefObject<HTMLDivElement> }) {
   const navigate = useNavigate();
   const x = useMotionValue(0);
+  const animationRef = React.useRef<{ stop: () => void } | null>(null);
 
   // Refs guardam o estado do gesto em curso sem causar re-render.
   const stateRef = React.useRef({
@@ -58,6 +59,18 @@ function SwipeBackMotion({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     // Em SSR não faz nada.
     if (typeof window === "undefined") return;
+    let disposed = false;
+    const gestureState = stateRef.current;
+    const target = targetRef.current;
+    const updateTransform = (value: number) => {
+      if (target) target.style.transform = value === 0 ? "" : `translateX(${value}px)`;
+    };
+    updateTransform(x.get());
+    const unsubscribe = x.on("change", updateTransform);
+    const springBack = () => {
+      animationRef.current?.stop();
+      animationRef.current = animate(x, 0, { type: "spring", stiffness: 300, damping: 30 });
+    };
 
     /**
      * canSwipeBack — checa todas as pré-condições no momento do touchstart.
@@ -110,7 +123,7 @@ function SwipeBackMotion({ children }: { children: React.ReactNode }) {
       // Se entrou multi-touch durante o drag, aborta sem animar.
       if (event.touches.length > 1) {
         s.isActive = false;
-        animate(x, 0, { type: "spring", stiffness: 300, damping: 30 });
+        springBack();
         return;
       }
 
@@ -121,7 +134,7 @@ function SwipeBackMotion({ children }: { children: React.ReactNode }) {
       // Scroll vertical detectado → cancela o gesto e libera o scroll nativo.
       if (Math.abs(dy) > Math.abs(dx) * VERTICAL_CANCEL_RATIO) {
         s.isActive = false;
-        animate(x, 0, { type: "spring", stiffness: 300, damping: 30 });
+        springBack();
         return;
       }
 
@@ -147,10 +160,12 @@ function SwipeBackMotion({ children }: { children: React.ReactNode }) {
       if (shouldCommit) {
         // Vibração leve (no-op em dispositivos sem suporte / iOS).
         navigator.vibrate?.(8);
-        animate(x, width, {
+        animationRef.current?.stop();
+        animationRef.current = animate(x, width, {
           duration: COMMIT_ANIM_MS / 1000,
           ease: "easeOut",
           onComplete: () => {
+            if (disposed) return;
             // Volta no histórico e reseta o offset instantâneo. A próxima
             // tela já renderiza em x=0, sem flash da animação anterior.
             navigateRef.current(-1);
@@ -159,7 +174,7 @@ function SwipeBackMotion({ children }: { children: React.ReactNode }) {
         });
       } else {
         // Cancela: spring suave de volta ao zero.
-        animate(x, 0, { type: "spring", stiffness: 300, damping: 30 });
+        springBack();
       }
     };
 
@@ -167,7 +182,7 @@ function SwipeBackMotion({ children }: { children: React.ReactNode }) {
       const s = stateRef.current;
       if (!s.isActive) return;
       s.isActive = false;
-      animate(x, 0, { type: "spring", stiffness: 300, damping: 30 });
+      springBack();
     };
 
     // passive:true para start/end (não bloqueamos), passive:false para move
@@ -178,12 +193,19 @@ function SwipeBackMotion({ children }: { children: React.ReactNode }) {
     document.addEventListener("touchcancel", handleTouchCancel, { passive: true });
 
     return () => {
+      disposed = true;
+      gestureState.isActive = false;
+      animationRef.current?.stop();
+      animationRef.current = null;
+      unsubscribe();
+      x.set(0);
+      if (target) target.style.transform = "";
       document.removeEventListener("touchstart", handleTouchStart);
       document.removeEventListener("touchmove", handleTouchMove);
       document.removeEventListener("touchend", handleTouchEnd);
       document.removeEventListener("touchcancel", handleTouchCancel);
     };
-  }, [x]);
+  }, [targetRef, x]);
 
   return (
     <>
@@ -193,9 +215,6 @@ function SwipeBackMotion({ children }: { children: React.ReactNode }) {
         aria-hidden
         className="fixed inset-0 -z-10 bg-muted/60 pointer-events-none"
       />
-      <motion.div style={{ x }} className="min-h-screen">
-        {children}
-      </motion.div>
     </>
   );
 }

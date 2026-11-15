@@ -1,3 +1,4 @@
+import '@/components/pdv/PdvWorkspace.css';
 import { useRef, useState } from 'react';
 import { Ban, Loader2 } from 'lucide-react';
 import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
@@ -33,7 +34,7 @@ export function PdvCancelResidualDialog({ open, onOpenChange, orderId, orderNumb
     }
   }
 
-  return <ResponsiveDialog open={open} onOpenChange={onOpenChange} title="Cancelar saldo não entregue" description={`Pedido #${orderNumber} · ${remainingQuantity} unidade(s) ainda não entregue(s).`} footer={<div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><Button variant="outline" onClick={() => onOpenChange(false)}>Voltar</Button><Button variant="destructive" onClick={() => void submit()} disabled={!reason.trim() || mutation.isPending}>{mutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Ban className="mr-2 h-4 w-4" />}Cancelar somente o saldo</Button></div>}>
+  return <ResponsiveDialog className="pdv-dialog" drawerClassName="pdv-dialog" open={open} onOpenChange={onOpenChange} title="Cancelar saldo não entregue" description={`Pedido #${orderNumber} · ${remainingQuantity} unidade(s) ainda não entregue(s).`} footer={<div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><Button variant="cancel" onClick={() => onOpenChange(false)}>Voltar</Button><Button variant="destructive" onClick={() => void submit()} disabled={!reason.trim() || mutation.isPending}>{mutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Ban className="mr-2 h-4 w-4" />}Cancelar somente o saldo</Button></div>}>
     <div className="space-y-4 py-3"><NoticeBanner variant="warning">Itens já entregues não serão alterados. Esta ação também não estorna pagamentos.</NoticeBanner><label className="space-y-1 text-sm font-medium">Motivo<Textarea aria-label="Motivo do cancelamento do saldo" maxLength={500} value={reason} onChange={(event) => { setReason(event.target.value); attempt.current = null; }} placeholder="Ex.: cliente desistiu do restante" /></label></div>
   </ResponsiveDialog>;
 }

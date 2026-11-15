@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { Tables, Enums } from '@/integrations/supabase/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { hasExplicitUserManagementPermission } from '@/lib/userManagementPermissions';
 
 export type Profile = Tables<'profiles'>;
 export type UserRole = Tables<'user_roles'>;
@@ -114,6 +115,7 @@ export function useUsers() {
         .from('user_permissions')
         .select('permissions')
         .eq('user_id', user.id)
+        .eq('is_active', true)
         .maybeSingle();
       return (data?.permissions as string[]) || [];
     },
@@ -121,7 +123,7 @@ export function useUsers() {
   });
 
   // Curinga '*' = Acesso Total dinâmico (libera tudo, inclusive gerir usuários).
-  const hasManageUsersPermission = userPerms?.includes('*') || userPerms?.includes('fn:manage_users') || (userPerms?.length || 0) >= 27;
+  const hasManageUsersPermission = hasExplicitUserManagementPermission(userPerms);
   const canManageRoles = currentUserRole === 'admin' || currentUserRole === 'gestor' || hasManageUsersPermission || !hasAdmin;
 
   const updateUserRole = useMutation({

@@ -59,6 +59,8 @@ BEGIN
   INSERT INTO public.company_modules(company_id,module_code) VALUES(ca,'basic'),(ca,'pdv'),(cb,'basic'),(cb,'pdv');
   UPDATE public.app_feature_flags SET company_allowlist=ARRAY[ca,cb]::uuid[] WHERE key='pdv_returns_v2';
   INSERT INTO public.customers(id,company_id,name,is_deleted) VALUES(customer_a,ca,'Cliente A',false),(customer_b,cb,'Cliente B',false);
+  -- A criação da empresa já fornece um estoque padrão; a fixture escolhe outro explicitamente.
+  UPDATE public.stocks SET is_default=false WHERE company_id IN (ca) AND is_default IS TRUE;
   INSERT INTO public.stocks(id,company_id,name,is_default) VALUES(stock_a,ca,'Estoque projeção',true);
   INSERT INTO public.pdv_orders(id,company_id,number,customer_id,stock_id,status,subtotal,total,client_request_id) VALUES
     (order_a,ca,1395001,customer_a,stock_a,'retirada_parcial',100,100,'w5-projection-order-a'),

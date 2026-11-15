@@ -173,6 +173,9 @@ const PdvSettings = React.lazy(() => import("./pages/PdvSettings"));
 const PdvUiReview = import.meta.env.DEV
   ? React.lazy(() => import("./pages/dev/PdvUiReview"))
   : null;
+const PdvLiveDemoReview = import.meta.env.DEV
+  ? React.lazy(() => import("./pages/dev/PdvLiveDemoReview"))
+  : null;
 const PmocContractDocsUiReview = import.meta.env.DEV
   ? React.lazy(() => import("./pages/dev/PmocContractDocsUiReview"))
   : null;
@@ -184,6 +187,7 @@ const Contracts = React.lazy(() => import("./pages/Contracts"));
 const ContractDetail = React.lazy(() => import("./pages/ContractDetail"));
 const ContractSettings = React.lazy(() => import("./pages/ContractSettings"));
 const Users = React.lazy(() => import("./pages/Users"));
+const SettingsDomiLinkRoute = React.lazy(() => import('@/components/settings/domilink/SettingsDomiLinkRoute').then(module => ({ default: module.SettingsDomiLinkRoute })));
 const Settings = React.lazy(() => import("./pages/Settings"));
 const Profile = React.lazy(() => import("./pages/Profile"));
 const TechnicianArea = React.lazy(() => import("./pages/TechnicianArea"));
@@ -422,6 +426,17 @@ function PdvDispatchModeRoute({ children }: { children: React.ReactNode }) {
   if (settings?.pdv_mode !== 'balcao' || settings.pdv_fulfillment_mode !== 'dispatch') {
     return <Navigate to="/pdv/pre-pedidos" replace />;
   }
+
+  return <>{children}</>;
+}
+
+// Orçamentos do balcão não existem no modo de venda direta. O menu já os
+// esconde; este guard aplica a mesma regra ao acesso por endereço/atalho.
+function PdvCounterModeRoute({ children }: { children: React.ReactNode }) {
+  const { settings, isLoading } = useCompanySettings();
+
+  if (isLoading) return <LoadingSpinner />;
+  if (settings?.pdv_mode !== 'balcao') return <Navigate to="/pdv" replace />;
 
   return <>{children}</>;
 }
@@ -719,6 +734,9 @@ const AppRoutes = () => (
     {PdvUiReview && (
       <Route path="/__dev/pdv-ui-review/*" element={<PdvUiReview />} />
     )}
+    {PdvLiveDemoReview && (
+      <Route path="/__dev/pdv-live-demo" element={<PdvLiveDemoReview />} />
+    )}
     {PmocContractDocsUiReview && (
       <Route path="/__dev/pmoc-contract-docs-review" element={<PmocContractDocsUiReview />} />
     )}
@@ -876,7 +894,7 @@ const AppRoutes = () => (
       {localizedAppRoutes('pdv', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv"><PdvCaixa /></PermissionRoute></ModuleRoute>)}
       {localizedAppRoutes('pdvSale', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv"><Pdv /></PermissionRoute></ModuleRoute>)}
       {localizedAppRoutes('pdvPurchase', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv"><PdvPurchase /></PermissionRoute></ModuleRoute>)}
-      {localizedAppRoutes('pdvPreorders', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey={['screen:pdv', 'screen:pdv_orders']}><PdvPreorders /></PermissionRoute></ModuleRoute>)}
+      {localizedAppRoutes('pdvPreorders', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey={['screen:pdv', 'screen:pdv_orders']}><PdvCounterModeRoute><PdvPreorders /></PdvCounterModeRoute></PermissionRoute></ModuleRoute>)}
       {localizedAppRoutes('pdvOrders', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv_orders"><PdvOrders /></PermissionRoute></ModuleRoute>)}
       {localizedAppRoutes('pdvDispatch', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv_dispatch"><PdvDispatchModeRoute><PdvDispatch /></PdvDispatchModeRoute></PermissionRoute></ModuleRoute>)}
       {localizedAppRoutes('pdvCashHistory', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv_cash_history"><PdvCashHistory /></PermissionRoute></ModuleRoute>)}
@@ -914,7 +932,7 @@ const AppRoutes = () => (
           podem exigir acesso administrativo à tela inteira. O próprio Settings
           mostra somente a aba pessoal quando `screen:settings` não foi liberada;
           regras da empresa seguem gate visual + RLS por `fn:manage_settings`. */}
-      {localizedAppRoutes('settings', <Settings />)}
+      {localizedAppRoutes('settings', <SettingsDomiLinkRoute><Settings /></SettingsDomiLinkRoute>)}
       {localizedAppRoutes('profile', <Profile />)}
       <Route path="/equipes" element={<Navigate to="/funcionarios" replace />} />
       {localizedAppRoutes('employees', <PermissionRoute screenKey="screen:employees"><ModuleRoute moduleKey="rh"><Employees /></ModuleRoute></PermissionRoute>)}

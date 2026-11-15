@@ -10,12 +10,9 @@ import { useIsMobile } from "@/hooks/use-mobile";
  * animação aqui de forma LAZY e só em mobile tira ~5,5MB de framer-motion do
  * entry chunk e do caminho crítico da landing pública (que é desktop-heavy).
  *
- * Em desktop e no SSR: renderiza os filhos diretamente, num <div> com a MESMA
- * classe min-h-screen que o wrapper de animação usaria — layout idêntico, zero
- * mismatch de hidratação e nenhum import de framer-motion.
- *
- * Em mobile: monta a camada lazy. Enquanto o chunk carrega (fallback), os
- * filhos já aparecem no mesmo wrapper neutro — sem flash nem layout shift.
+ * O conteúdo permanece no mesmo div em todas as larguras. A camada lazy é
+ * apenas um controlador irmão dos filhos: carregar o chunk ou mudar o
+ * breakpoint nunca remonta formulários e telas em andamento.
  *
  * Coloque DENTRO do <BrowserRouter> (o motion usa useNavigate) e FORA das
  * <Routes> (precisa envolver tudo que pode ser navegado).
@@ -24,15 +21,14 @@ const SwipeBackMotion = React.lazy(() => import("./SwipeBackProvider"));
 
 export function SwipeBackProvider({ children }: { children: React.ReactNode }) {
   const isMobile = useIsMobile();
-
-  // Fallback neutro: mesmo wrapper visual do motion, sem animação.
-  const plain = <div className="min-h-screen">{children}</div>;
-
-  if (!isMobile) return plain;
+  const targetRef = React.useRef<HTMLDivElement>(null);
 
   return (
-    <React.Suspense fallback={plain}>
-      <SwipeBackMotion>{children}</SwipeBackMotion>
-    </React.Suspense>
+    <div ref={targetRef} className="min-h-screen">
+      {children}
+      {isMobile ? <React.Suspense fallback={null}>
+        <SwipeBackMotion targetRef={targetRef} />
+      </React.Suspense> : null}
+    </div>
   );
 }

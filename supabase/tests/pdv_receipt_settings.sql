@@ -5,8 +5,10 @@ DO $contract$
 BEGIN
   IF has_function_privilege('anon','public.pdv_get_receipt_settings_v2()','EXECUTE')
      OR NOT has_function_privilege('authenticated','public.pdv_get_receipt_settings_v2()','EXECUTE')
+     OR has_function_privilege('anon','public.pdv_get_order_receipt_snapshot_v3(uuid)','EXECUTE')
+     OR NOT has_function_privilege('authenticated','public.pdv_get_order_receipt_snapshot_v3(uuid)','EXECUTE')
+     OR has_function_privilege('authenticated','public.pdv_get_order_receipt_snapshot_v2(uuid)','EXECUTE')
      OR has_function_privilege('anon','public.pdv_get_order_receipt_snapshot_v2(uuid)','EXECUTE')
-     OR NOT has_function_privilege('authenticated','public.pdv_get_order_receipt_snapshot_v2(uuid)','EXECUTE')
      OR has_table_privilege('authenticated','public.pdv_receipt_settings','SELECT')
      OR has_table_privilege('authenticated','public.pdv_order_receipt_snapshots','SELECT') THEN
     RAISE EXCEPTION 'ACL incorreta nas configuracoes de comprovante';
@@ -34,6 +36,8 @@ DECLARE
   settlement1 uuid := 'c3500000-0000-4000-8000-000000000012';
   group1 uuid := 'c3500000-0000-4000-8000-000000000013';
   inventory1 uuid := 'c3500000-0000-4000-8000-000000000014';
+  cash_account1 uuid := 'c3500000-0000-4000-8000-000000000019';
+  session1 uuid := 'c3500000-0000-4000-8000-000000000020';
   payload jsonb; denied_state text; denied_detail text;
   original_hash text;
   financial_before bigint;
@@ -58,7 +62,7 @@ BEGIN
     (u1,'["screen:pdv_settings","screen:pdv","fn:manage_pdv_settings"]',true),
     (u2,'["screen:pdv_settings","screen:pdv_orders","fn:manage_pdv_settings"]',true),
     (screen_only,'["screen:pdv_settings"]',true),
-    (restricted_user,'["screen:pdv"]',true);
+    (restricted_user,'["screen:pdv","fn:operate_other_pdv_cash"]',true);
   INSERT INTO public.company_modules(company_id,module_code) VALUES(c1,'pdv'),(c2,'pdv');
 
   PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',u1,'role','authenticated')::text,true);
@@ -94,6 +98,10 @@ BEGIN
 
   -- Fixture equivalente a venda direta W2-02 mista. O snapshot nasce somente
   -- quando o pedido v2 chega a entregue, depois de itens e coberturas.
+  -- Preparacao privilegiada das fixtures; claims operacionais voltam antes das leituras.
+  PERFORM set_config('request.jwt.claims','{}',true);
+  INSERT INTO public.financial_accounts(id,company_id,name,type,initial_balance,is_active)
+  VALUES(cash_account1,c1,'Cofre Snapshot','caixa',0,true);
   INSERT INTO public.company_settings(
     company_id,name,timezone,document,address,address_number,neighborhood,city,state,zip_code,phone,
     logo_url,white_label_enabled,white_label_logo_url
@@ -108,12 +116,17 @@ BEGIN
     white_label_enabled=excluded.white_label_enabled,white_label_logo_url=excluded.white_label_logo_url;
   INSERT INTO public.customers(id,company_id,name,is_deleted)
   VALUES(customer1,c1,'Cliente Snapshot',false);
+  -- A criação da empresa já fornece um estoque padrão; a fixture escolhe outro explicitamente.
+  UPDATE public.stocks SET is_default=false WHERE company_id IN (c1) AND is_default IS TRUE;
   INSERT INTO public.stocks(id,company_id,name,is_default)
   VALUES(stock1,c1,'Loja',true);
   INSERT INTO public.inventory(id,company_id,sku,name,unit,quantity,cost_price,sale_price)
   VALUES(inventory1,c1,'CIM-50','Cimento CP II 50 kg','un',10,12,95);
   INSERT INTO public.pdv_terminals(id,company_id,name,stock_id)
   VALUES(terminal1,c1,'Caixa 1',stock1);
+  INSERT INTO public.pdv_cash_sessions(id,company_id,terminal_id,opened_by,opening_amount,status,
+    cash_account_id,cash_account_name_snapshot,cash_policy_snapshot,contract_version)
+  VALUES(session1,c1,terminal1,u1,0,'aberta',cash_account1,'Cofre Snapshot','{}',2);
   INSERT INTO public.financial_transactions(
     id,company_id,transaction_type,description,amount,category,
     transaction_date,due_date,is_paid,customer_id,origin,payment_method,
@@ -124,10 +137,10 @@ BEGIN
   INSERT INTO public.pdv_orders(
     id,company_id,number,customer_id,salesperson_id,stock_id,terminal_id,
     status,subtotal,discount_amount,total,notes,contract_version,
-    operation_mode_snapshot,created_at,paid_at
+    operation_mode_snapshot,created_at,paid_at,cash_session_id
   ) VALUES(
     order1,c1,1042,customer1,u1,stock1,terminal1,'pago',190,5,185,
-    'Separar no depósito coberto.',2,'direct',now(),now()
+    'Separar no depósito coberto.',2,'direct',now(),now(),session1
   );
   INSERT INTO public.pdv_order_items(
     id,company_id,order_id,inventory_id,description,quantity,unit_price,unit_cost,
@@ -169,26 +182,26 @@ BEGIN
   SELECT count(*) INTO fiscal_outbox_before FROM public.nfce_outbox;
   SELECT count(*) INTO fiscal_events_before FROM public.nfce_events;
   PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',u1,'role','authenticated')::text,true);
-  payload:=public.pdv_get_order_receipt_snapshot_v2(order1);
+  payload:=public.pdv_get_order_receipt_snapshot_v3(order1);
   IF payload->'order'->>'number'<>'1042'
-     OR payload->'totals'->>'subtotal'<>'190'
-     OR payload->'totals'->>'discount'<>'5'
-     OR payload->'totals'->>'total'<>'185'
+     OR (payload->'totals'->>'subtotal')::numeric<>190
+     OR (payload->'totals'->>'discount')::numeric<>5
+     OR (payload->'totals'->>'total')::numeric<>185
      OR payload->'company'->>'document'<>'00.000.000/0001-00'
      OR payload->'company'->>'phone'<>'(00) 0000-0000'
      OR payload->'company'->>'logo_url'<>'https://example.invalid/logo-white-label.png'
      OR payload->'company'->>'white_label_enabled'<>'true'
      OR payload->'company'->>'address' NOT LIKE '%Rua Snapshot%'
      OR jsonb_array_length(payload->'payments')<>2
-     OR NOT EXISTS(SELECT 1 FROM jsonb_array_elements(payload->'payments') payment WHERE payment->>'method'='fiado' AND payment->>'amount'='85' AND payment->>'due_date'=(current_date+30)::text)
-     OR NOT EXISTS(SELECT 1 FROM jsonb_array_elements(payload->'payments') payment WHERE payment->>'method'='pix' AND payment->>'amount'='100') THEN
+     OR NOT EXISTS(SELECT 1 FROM jsonb_array_elements(payload->'payments') payment WHERE payment->>'method'='fiado' AND (payment->>'amount')::numeric=85 AND payment->>'due_date'=(current_date+30)::text)
+     OR NOT EXISTS(SELECT 1 FROM jsonb_array_elements(payload->'payments') payment WHERE payment->>'method'='pix' AND (payment->>'amount')::numeric=100) THEN
     RAISE EXCEPTION 'snapshot nao preservou centavos, pagamento misto ou fiado: %',payload;
   END IF;
   IF (payload - 'company')::text ~ '(unit_cost|cost_price|credit_limit|customer_document|email|phone)' THEN
     RAISE EXCEPTION 'snapshot vazou custo, limite, documento ou contato do cliente';
   END IF;
   -- Ler/reimprimir e puro: nenhuma tabela financeira, estoque ou fiscal muda.
-  PERFORM public.pdv_get_order_receipt_snapshot_v2(order1);
+  PERFORM public.pdv_get_order_receipt_snapshot_v3(order1);
   IF financial_before<>(SELECT count(*) FROM public.financial_transactions)
      OR inventory_before<>(SELECT count(*) FROM public.inventory_movements)
      OR fiscal_documents_before<>(SELECT count(*) FROM public.nfce_documents)
@@ -230,20 +243,20 @@ BEGIN
     RAISE EXCEPTION 'tentativa de mutacao alterou o snapshot imutavel';
   END IF;
 
-  -- Outro tenant recebe not-found, sem descobrir o snapshot.
+  -- A fronteira v3 nega outro tenant antes de consultar o snapshot interno.
   PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',u2,'role','authenticated')::text,true);
   denied_state:=NULL; denied_detail:=NULL;
-  BEGIN PERFORM public.pdv_get_order_receipt_snapshot_v2(order1);
+  BEGIN PERFORM public.pdv_get_order_receipt_snapshot_v3(order1);
   EXCEPTION WHEN OTHERS THEN GET STACKED DIAGNOSTICS denied_state=RETURNED_SQLSTATE,denied_detail=PG_EXCEPTION_DETAIL; END;
-  IF denied_state IS DISTINCT FROM '42501' OR denied_detail IS DISTINCT FROM 'code=pdv_receipt_stock_denied' THEN
+  IF denied_state IS DISTINCT FROM '42501' OR denied_detail IS DISTINCT FROM 'code=pdv_receipt_cash_denied' THEN
     RAISE EXCEPTION 'cross-tenant nao falhou sem vazamento: % %',denied_state,denied_detail;
   END IF;
 
-  -- Mesmo tenant sem ACL do local não pode reimprimir nem observar o pedido.
+  -- Mesmo com capacidade nominal entre caixas, a ACL do local continua obrigatoria.
   INSERT INTO public.stock_access(company_id,stock_id,user_id) VALUES(c1,stock1,u1);
   PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',restricted_user,'role','authenticated')::text,true);
   denied_state:=NULL; denied_detail:=NULL;
-  BEGIN PERFORM public.pdv_get_order_receipt_snapshot_v2(order1);
+  BEGIN PERFORM public.pdv_get_order_receipt_snapshot_v3(order1);
   EXCEPTION WHEN OTHERS THEN
     GET STACKED DIAGNOSTICS denied_state=RETURNED_SQLSTATE,denied_detail=PG_EXCEPTION_DETAIL;
   END;
@@ -264,11 +277,11 @@ BEGIN
   END IF;
   denied_state:=NULL; denied_detail:=NULL;
   BEGIN
-    PERFORM public.pdv_get_order_receipt_snapshot_v2(order1);
+    PERFORM public.pdv_get_order_receipt_snapshot_v3(order1);
   EXCEPTION WHEN OTHERS THEN
     GET STACKED DIAGNOSTICS denied_state=RETURNED_SQLSTATE,denied_detail=PG_EXCEPTION_DETAIL;
   END;
-  IF denied_state IS DISTINCT FROM '42501' OR denied_detail IS DISTINCT FROM 'code=pdv_receipt_order_denied' THEN
+  IF denied_state IS DISTINCT FROM '42501' OR denied_detail IS DISTINCT FROM 'code=pdv_receipt_cash_denied' THEN
     RAISE EXCEPTION 'usuario sem tela nao falhou fechado: % %',denied_state,denied_detail;
   END IF;
 END

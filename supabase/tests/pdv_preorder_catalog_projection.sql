@@ -57,11 +57,18 @@ BEGIN
   INSERT INTO public.customers(id,company_id,name,document,email,phone,credit_limit,is_deleted) VALUES
     (customer1,c1,'Cliente visivel','00000000000','privado@example.invalid','11999999999',500,false),
     (customer2,c2,'Cliente outro tenant','11111111111','outro@example.invalid','11888888888',900,false);
+  -- A criação da empresa já fornece um estoque padrão; a fixture escolhe outro explicitamente.
+  UPDATE public.stocks SET is_default=false WHERE company_id IN (c1, c2) AND is_default IS TRUE;
   INSERT INTO public.stocks(id,company_id,name,is_default) VALUES
     (stock1,c1,'Loja A',true),
     (stock2,c2,'Loja B',true),
     (hidden_stock,c1,'Cofre restrito',false);
-  INSERT INTO public.stock_access(company_id,stock_id,user_id) VALUES(c1,hidden_stock,u2);
+  -- O bootstrap cria outro estoque aberto e pode semear presença dos materiais nele.
+  -- Restrinja todos os locais fora da Loja A a outro usuário DA MESMA empresa;
+  -- a projeção deve continuar excluindo estoque/material restrito e o outro tenant.
+  INSERT INTO public.stock_access(company_id,stock_id,user_id)
+  SELECT c1,local.id,no_screen FROM public.stocks local
+  WHERE local.company_id=c1 AND local.id<>stock1;
   INSERT INTO public.inventory_stock_levels(company_id,inventory_id,stock_id,quantity,is_present)
   VALUES
     (c1,i1,stock1,5,true),
@@ -77,6 +84,11 @@ BEGIN
   ) VALUES(c1,i1,stock1,preorder_item1,'coverage','guaranteed',2,91.23,u1);
 
   PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',u1,'role','authenticated')::text,true);
+  IF public.can_access_stock(u1,stock1) IS DISTINCT FROM true
+     OR EXISTS(SELECT 1 FROM public.stocks local WHERE local.company_id=c1 AND local.id<>stock1
+       AND public.can_access_stock(u1,local.id)) THEN
+    RAISE EXCEPTION 'fixture nao isolou os locais nominais do operador';
+  END IF;
   payload := public.pdv_get_preorder_catalog_v2();
 
   IF jsonb_array_length(payload->'materials') <> 1

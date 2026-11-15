@@ -1,3 +1,4 @@
+import '@/components/pdv/PdvWorkspace.css';
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,7 +55,7 @@ export function PdvFirstCashSetupDialog({ open, onOpenChange, onCreated }: Props
   }
 
   return (
-    <ResponsiveModal
+    <ResponsiveModal drawerClassName="pdv-dialog" className="pdv-dialog"
       open={open}
       onOpenChange={onOpenChange}
       title="Abrir o primeiro caixa"

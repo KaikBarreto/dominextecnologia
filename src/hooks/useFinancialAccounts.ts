@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
 import { useBankPermissions } from '@/hooks/useBankPermissions';
+import { usePdvAuthorizedQueryScope } from '@/hooks/pdvReportCache';
 
 export interface FinancialAccount {
   id: string;
@@ -75,6 +76,8 @@ export function useFinancialAccounts() {
   const { user } = useAuth();
   const { canUseBankAccounts, canManageBankAccounts } = useBankPermissions();
   const queryClient = useQueryClient();
+  const scope = usePdvAuthorizedQueryScope();
+  const authorizationState = scope.ready ? 'ready' : 'pending';
 
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: ['financial-accounts'] });
@@ -86,8 +89,9 @@ export function useFinancialAccounts() {
   };
 
   const accountsQuery = useQuery({
-    queryKey: ['financial-accounts', canManageBankAccounts ? 'manage' : 'use'],
-    enabled: canUseBankAccounts,
+    queryKey: ['financial-accounts', ...scope.key, authorizationState, canManageBankAccounts ? 'manage' : 'use'],
+    enabled: scope.ready && canUseBankAccounts,
+    gcTime: 0,
     queryFn: async () => {
       // Quem só USA contas recebe nome/id e metadados operacionais, mas o
       // saldo inicial nem trafega pelo navegador. Gerente recebe a linha
@@ -115,8 +119,9 @@ export function useFinancialAccounts() {
   // Credit card (cartao) accounts are excluded from real cash balance;
   // their "balance" is the open bill amount (total of uncommitted card spend).
   const balancesQuery = useQuery({
-    queryKey: ['account-balances', canManageBankAccounts],
-    enabled: canManageBankAccounts,
+    queryKey: ['account-balances', ...scope.key, authorizationState, canManageBankAccounts],
+    enabled: scope.ready && canManageBankAccounts,
+    gcTime: 0,
     queryFn: async () => {
       const { data: accounts, error: accErr } = await supabase
         .from('financial_accounts')
@@ -285,9 +290,9 @@ export function useFinancialAccounts() {
   });
 
   return {
-    accounts: accountsQuery.data ?? [],
-    balances: balancesQuery.data?.balances ?? {},
-    cardBillTotals: balancesQuery.data?.cardBillTotals ?? {},
+    accounts: scope.ready && canUseBankAccounts ? accountsQuery.data ?? [] : [],
+    balances: scope.ready && canManageBankAccounts ? balancesQuery.data?.balances ?? {} : {},
+    cardBillTotals: scope.ready && canManageBankAccounts ? balancesQuery.data?.cardBillTotals ?? {} : {},
     isLoading: accountsQuery.isLoading,
     isError: accountsQuery.isError,
     error: accountsQuery.error ?? null,
@@ -297,8 +302,8 @@ export function useFinancialAccounts() {
     isErrorBalances: canManageBankAccounts && balancesQuery.isError,
     balancesError: balancesQuery.error ?? null,
     refetch: () => {
-      accountsQuery.refetch();
-      balancesQuery.refetch();
+      if (scope.ready && canUseBankAccounts) void accountsQuery.refetch();
+      if (scope.ready && canManageBankAccounts) void balancesQuery.refetch();
     },
     canUseBankAccounts,
     canManageBankAccounts,

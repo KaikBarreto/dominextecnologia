@@ -96,6 +96,9 @@ interface SearchableSelectProps {
   focusSearchOnOpen?: boolean;
   /** Enter com a busca vazia. Útil para avançar do lançador rápido à finalização. */
   onEmptyEnter?: () => void;
+  /** Composição visual do gatilho; busca e seleção continuam compartilhadas. */
+  triggerContent?: React.ReactNode;
+  hideIndicator?: boolean;
 }
 
 export function SearchableSelect({
@@ -118,6 +121,8 @@ export function SearchableSelect({
   triggerRef,
   focusSearchOnOpen = false,
   onEmptyEnter,
+  triggerContent,
+  hideIndicator = false,
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
@@ -255,12 +260,14 @@ export function SearchableSelect({
               anônimo e o overflow não se aplica. O rótulo precisa do próprio
               span truncável (item flex é blockificado) + min-w-0 no pai,
               senão nome longo de material some cortado no meio da palavra. */}
+          {triggerContent ?? (
           <span className="flex items-center gap-2 min-w-0 flex-1">
             {selected?.icon}
             <span className="min-w-0 flex-1 truncate">{selected ? selected.label : placeholder}</span>
             {selected?.selectedSuffix ?? selected?.suffix}
           </span>
-          <ChevronsUpDown className={cn('ml-2 h-4 w-4 shrink-0 self-center opacity-50', indicatorClassName)} />
+          )}
+          {!hideIndicator && <ChevronsUpDown className={cn('ml-2 h-4 w-4 shrink-0 self-center opacity-50', indicatorClassName)} />}
         </Button>
       </PopoverTrigger>
       <PopoverContent
