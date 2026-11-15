@@ -59,7 +59,7 @@ describe('PdvReceiptPreview', () => {
     expect(screen.queryByText('PAGO')).not.toBeInTheDocument();
   });
 
-  it('comprovante mostra só quantidades do evento, saldo restante e assinatura', () => {
+  it('comprovante mostra quantidades do evento e saldo restante sem assinatura', () => {
     const snapshot = getPdvReceiptPreviewFixture('delivery');
     render(<PdvReceiptPreview snapshot={snapshot} format="a4" />);
     expect(screen.getByRole('heading', {name:/COMPROVANTE DE RETIRADA/})).toBeInTheDocument();
@@ -68,7 +68,8 @@ describe('PdvReceiptPreview', () => {
     expect(screen.queryByText(/Registro de retirada:/)).not.toBeInTheDocument();
     expect(screen.queryByText('RET-2087-01')).not.toBeInTheDocument();
     expect(screen.queryByText(/Local:/)).not.toBeInTheDocument();
-    expect(screen.getByText('Assinatura de quem retirou')).toBeInTheDocument();
+    expect(screen.queryByText(/Assinatura/)).not.toBeInTheDocument();
+    expect(screen.getByText('Recebido por: Cliente exemplo')).toBeInTheDocument();
     expect(screen.queryByText(/R\$/)).not.toBeInTheDocument();
     expect(screen.queryByText('TOTAL')).not.toBeInTheDocument();
   });
@@ -83,13 +84,13 @@ describe('PdvReceiptPreview', () => {
     expect(metadata).not.toHaveTextContent('Local:');
   });
 
-  it.each(['58mm', '80mm', 'a4'] as const)('reserva espaço para uma única assinatura, sem segundo campo em %s', format => {
+  it.each(['58mm', '80mm', 'a4'] as const)('retirada não reserva área de assinatura nem exibe campos vazios em %s', format => {
     const snapshot = getPdvReceiptPreviewFixture('delivery');
     snapshot.withdrawal!.receivedBy = null;
     render(<PdvReceiptPreview snapshot={snapshot} format={format} />);
-    expect(screen.getAllByText('Assinatura de quem retirou')).toHaveLength(1);
+    expect(screen.queryByText(/Assinatura/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Recebido por:/)).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Espaço para assinatura')).toHaveStyle({ height: format === 'a4' ? '26mm' : '20mm' });
+    expect(screen.queryByLabelText('Espaço para assinatura')).not.toBeInTheDocument();
   });
 
   it('orçamento e pedido preservam as mesmas colunas e valores, com PAGO no final do pedido quitado', () => {

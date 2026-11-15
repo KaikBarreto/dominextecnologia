@@ -2,7 +2,7 @@ import { jsPDF } from 'jspdf';
 import { autoTable, type UserOptions, type RowInput } from 'jspdf-autotable';
 import { openPdfInTab } from '@/utils/openPdfInTab';
 import { DOMINEX_LOGO_BLACK_BASE64 } from '@/utils/dominexLogoBase64';
-import { buildPdvReceiptItemBlocks, buildPdvReceiptLines, getPdvReceiptItemColumnProportions, getPdvReceiptPaymentRows, fitPdvReceiptLogo, stackPdvReceiptItemColumns, PDV_RECEIPT_SIGNATURE_SPACE_MM } from './layout';
+import { buildPdvReceiptItemBlocks, buildPdvReceiptLines, getPdvReceiptItemColumnProportions, getPdvReceiptPaymentRows, fitPdvReceiptLogo, stackPdvReceiptItemColumns } from './layout';
 import { formatReceiptMoney, getPdvReceiptApproval, getPdvReceiptCoverageLines, getPdvReceiptDocumentMetadata, getPdvReceiptNote, receiptFilename, type PdvReceiptFormat, type PdvReceiptSnapshot } from './model';
 import { safeTimeZone } from '@/lib/timezone';
 
@@ -284,24 +284,12 @@ function renderStructuredReceipt(doc: jsPDF, snapshot: PdvReceiptSnapshot, forma
     });
   }
 
-  if (isDelivery) {
-    const writingSpace = PDV_RECEIPT_SIGNATURE_SPACE_MM[format];
-    const receiver = snapshot.withdrawal?.receivedBy;
+  const receiver = isDelivery ? snapshot.withdrawal?.receivedBy : null;
+  if (receiver) {
     table({
-      body: [
-        ...(receiver ? [[`Recebido por: ${receiver}`]] : []),
-        [{ content: '', styles: { minCellHeight: writingSpace + 8, cellPadding: 0 } }],
-      ],
+      body: [[`Recebido por: ${receiver}`]],
       styles: { font: PDF_SANS_FONT, fontSize, textColor: 0, lineWidth: 0, cellPadding: { top: 1, right: padding, bottom: 1, left: padding }, overflow: 'linebreak' },
       pageBreak: 'avoid',
-      didDrawCell(data) {
-        if (data.section !== 'body' || data.row.index !== (receiver ? 1 : 0)) return;
-        const lineY = data.cell.y + writingSpace;
-        doc.setDrawColor(0); doc.setLineWidth(0.2);
-        doc.line(data.cell.x + 2, lineY, data.cell.x + data.cell.width - 2, lineY);
-        doc.setFont(PDF_SANS_FONT, 'normal'); doc.setFontSize(fontSize);
-        doc.text('Assinatura de quem retirou', width / 2, lineY + 4.5, { align: 'center' });
-      },
     });
   }
   const approval = getPdvReceiptApproval(snapshot);

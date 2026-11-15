@@ -174,25 +174,20 @@ describe('generatePdvReceiptPdf', () => {
     expect(deliveryText).toContain('RESTANTE');
     expect(deliveryText).toContain('1 un');
     expect(deliveryText).toContain('Recebido por: Cliente exemplo');
-    expect(deliveryText).toContain('Assinatura de quem retirou');
+    expect(deliveryText).not.toContain('Assinatura');
     expect(deliveryText).not.toContain('R$');
     expect(deliveryText).not.toContain('Subtotal');
     expect(deliveryText).not.toContain('Fiado');
   });
 
-  it.each(['58mm', '80mm', 'a4'] as const)('deixa área livre antes da única assinatura e não cria outro campo em %s', async format => {
+  it.each(['58mm', '80mm', 'a4'] as const)('retirada não inclui assinatura nem campos vazios para preencher em %s', async format => {
     const snapshot = getPdvReceiptPreviewFixture('delivery');
     snapshot.withdrawal!.receivedBy = null;
     const blob = generatePdvReceiptPdf(snapshot, format);
     const content = await readPdfContent(blob);
-    expect(content.match(/Assinatura de quem retirou/g)).toHaveLength(1);
+    expect(content).not.toContain('Assinatura');
     expect(content).not.toContain('Recebido por:');
     expect(content).not.toContain('________');
-    const blocks = decodedPdfStreams(await readPdfSource(blob)).flatMap(stream => [...stream.matchAll(/BT[\s\S]*?ET/g)].map(match => match[0]));
-    const index = blocks.findIndex(block => block.includes('(Assinatura de quem retirou) Tj'));
-    const previous = blocks.slice(0, index).reverse().find(block => /[\d.-]+ [\d.-]+ Td/.test(block))!;
-    const y = (block: string) => Number(block.match(/[\d.-]+ ([\d.-]+) Td/)?.[1]);
-    expect((y(previous) - y(blocks[index])) * 25.4 / 72).toBeGreaterThanOrEqual(format === 'a4' ? 26 : 20);
   });
 
   it('não infere crédito aprovado ou pagamento a partir de métodos do snapshot', async () => {

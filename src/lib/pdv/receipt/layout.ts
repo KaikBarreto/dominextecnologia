@@ -2,9 +2,6 @@ import type { PdvReceiptFormat, PdvReceiptSnapshot } from "./model";
 import { formatReceiptMoney, getPdvReceiptApproval, getPdvReceiptCoverageLines, getPdvReceiptDocumentMetadata, getPdvReceiptNote, getPdvReceiptWithdrawalItems } from "./model";
 import { safeTimeZone } from "@/lib/timezone";
 
-/** Área livre para escrever, antes da linha única de assinatura. */
-export const PDV_RECEIPT_SIGNATURE_SPACE_MM: Record<PdvReceiptFormat, number> = { a4: 26, '58mm': 20, '80mm': 20 };
-
 export interface PdvReceiptLine {
   text: string;
   align?: "left" | "center" | "right";
@@ -166,8 +163,6 @@ export function buildPdvReceiptLines(
     }
     if (!items.length) addText("Nenhum item retirado informado neste documento.");
     if (snapshot.withdrawal?.receivedBy) addText(`Recebido por: ${snapshot.withdrawal.receivedBy}`);
-    lines.push({ text: '', gapAfter: PDV_RECEIPT_SIGNATURE_SPACE_MM[format] });
-    addText("Assinatura de quem retirou");
   } else {
     if (isCommercial) lines.push({ text: "ITEM                         QTD.       TOTAL", bold: true, inverse: true });
     for (const item of snapshot.items) {

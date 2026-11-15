@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.4',
+    date: '15 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Comprovantes de retirada mais objetivos',
+        category: 'melhoria',
+        description: 'Os comprovantes de retirada deixam de exibir o campo de assinatura e o espaço reservado para ele, tanto na prévia quanto nos formatos térmicos e A4.',
+      },
+    ],
+  },
+  {
     version: '1.41.3',
     date: '15 de novembro de 2026',
     type: 'patch',

@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { formatReceiptMoney, getPdvReceiptApproval, getPdvReceiptCoverageLines, getPdvReceiptDocumentMetadata, getPdvReceiptNote, type PdvReceiptFormat, type PdvReceiptSnapshot } from '@/lib/pdv/receipt/model';
-import { buildPdvReceiptItemBlocks, getPdvReceiptItemColumnProportions, getPdvReceiptPaymentRows, stackPdvReceiptItemColumns, PDV_RECEIPT_SIGNATURE_SPACE_MM } from '@/lib/pdv/receipt/layout';
+import { buildPdvReceiptItemBlocks, getPdvReceiptItemColumnProportions, getPdvReceiptPaymentRows, stackPdvReceiptItemColumns } from '@/lib/pdv/receipt/layout';
 import { cn } from '@/lib/utils';
 import { safeTimeZone } from '@/lib/timezone';
 import dominexLogo from '@/assets/logo-black-horizontal.png';
@@ -108,11 +108,7 @@ export function PdvReceiptPreview({ snapshot, format, className }: PdvReceiptPre
 
 
       {note && <p className="my-3 p-1.5">Observações: {note}</p>}
-      {isDelivery && <section className="my-4 p-1.5" data-receipt-signature>
-        {snapshot.withdrawal?.receivedBy && <p>Recebido por: {snapshot.withdrawal.receivedBy}</p>}
-        <div aria-label="Espaço para assinatura" style={{ height: `${PDV_RECEIPT_SIGNATURE_SPACE_MM[format]}mm`, borderBottom: '1px solid #111' }} />
-        <p className="mt-2 text-center">Assinatura de quem retirou</p>
-      </section>}
+      {isDelivery && snapshot.withdrawal?.receivedBy && <p className="my-3 p-1.5">Recebido por: {snapshot.withdrawal.receivedBy}</p>}
       {approval && <div className="my-3 mx-auto border border-black text-center font-bold" style={{width:'max-content',minWidth:isA4?100:86,maxWidth:'100%',padding:'5px 13px',fontSize:isA4?15:format==='58mm'?12:13,lineHeight:1.3}} data-receipt-approval>{approval}</div>}
       <footer className="mt-3 text-center text-[11px] text-black">
         {!snapshot.company.whiteLabelEnabled && <div className="mt-4 border-t border-black/20 pt-3" data-dominex-branding>
