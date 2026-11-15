@@ -72,8 +72,7 @@ import { useCompanyModules, type ModuleCode } from '@/hooks/useCompanyModules';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useLogoInk } from '@/hooks/useLogoInk';
-import { useNavSurfaceTone } from '@/hooks/useNavSurfaceTone';
-import { getLogoPlateTone } from '@/utils/logoInk';
+import { getContrastingLogoSurfaceTone } from '@/utils/logoInk';
 import { HelpCenterDrawer } from '@/components/layout/HelpCenterDrawer';
 import { AccountSwitcherDropdown } from '@/components/account-switcher/AccountSwitcherDropdown';
 import { NotificationsBell } from '@/components/notifications/NotificationsBell';
@@ -195,8 +194,8 @@ export const TopNavbar = memo(() => {
   const tMenu = (title: string) => translateMenuLabel(title, shellT);
   const L = (path: string) => localizeAppPath(path, locale);
   const { logoUrl, defaultLogoDark, defaultLogoWhite, isLoading: logoLoading } = useWhiteLabel();
-  // A mesma arte atende barra clara e escura; o tom efetivo da nav define se
-  // ela precisa de placa clara, escura ou de nenhuma placa.
+  // A mesma arte atende barra clara e escura; sua tinta define o contraste da
+  // faixa inteira do menu, sem criar uma placa local ao redor da imagem.
   const logoInk = useLogoInk(logoUrl);
   const location = useLocation();
   const navigate = useNavigate();
@@ -207,8 +206,9 @@ export const TopNavbar = memo(() => {
     }
     return 'light';
   });
-  const navSurface = useNavSurfaceTone();
-  const logoPlateTone = getLogoPlateTone(logoInk, navSurface);
+  const logoSurfaceTone = logoUrl
+    ? getContrastingLogoSurfaceTone(logoInk) ?? undefined
+    : undefined;
 
   const applyTheme = (next: 'light' | 'dark') => {
     setTheme(next);
@@ -267,19 +267,16 @@ export const TopNavbar = memo(() => {
   return (
     <>
       <TooltipProvider delayDuration={200}>
-        <header data-nav-surface className="hidden xl:flex h-14 items-center justify-between border-b border-border bg-background px-4 text-foreground">
+        <header
+          data-nav-surface
+          data-tenant-logo-surface={logoSurfaceTone}
+          className="tenant-logo-surface hidden xl:flex h-14 items-center justify-between border-b border-border bg-background px-4 text-foreground transition-colors duration-300"
+        >
           <div className="flex items-center gap-6 min-w-0 flex-1">
             {logoLoading ? (
               <div className="h-7 w-28 rounded bg-muted animate-pulse shrink-0" />
             ) : logoUrl ? (
-              <span
-                className={cn(
-                  'flex shrink-0 items-center',
-                  logoPlateTone && 'rounded-lg px-2 py-1',
-                  logoPlateTone === 'light' && 'bg-white',
-                  logoPlateTone === 'dark' && 'bg-zinc-950',
-                )}
-              >
+              <span className="flex shrink-0 items-center">
                 <img
                   src={logoUrl}
                   alt="Logo"

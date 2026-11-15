@@ -2050,7 +2050,7 @@ function PortalNotFound() {
         {t.notFoundDesc}
       </p>
       <a
-        href="https://dominex.app"
+        href="https://www.dominex.app"
         className={cn(
           'mt-6 inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl bg-primary px-6',
           'text-sm font-semibold text-primary-foreground',

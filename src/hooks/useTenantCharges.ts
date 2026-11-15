@@ -292,7 +292,7 @@ export interface DeleteChargeResult {
 
 /** Monta a URL pública amigável do checkout a partir do short_code. */
 export function buildCheckoutUrl(shortCode: string): string {
-  return `https://dominex.app/pagar/${shortCode}`;
+  return `https://www.dominex.app/pagar/${shortCode}`;
 }
 
 export interface UseTenantChargesOptions {

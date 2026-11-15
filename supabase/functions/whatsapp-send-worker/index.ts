@@ -898,7 +898,7 @@ async function buildOsMessage(
   lines.push(actions[style]);
   if (pref(settings.automation_preferences, ["os", "includeLink"], true)) {
     const segment = os.public_short_code || os.id;
-    lines.push("", `*Acompanhe a OS:* https://dominex.app/os-tecnico/${segment}?modo=cliente`);
+    lines.push("", `*Acompanhe a OS:* https://www.dominex.app/os-tecnico/${segment}?modo=cliente`);
   }
   return lines.join("\n");
 }
@@ -956,7 +956,7 @@ async function buildBillingMessage(
     pref(settings.automation_preferences, ["billing", "includeAmount"], true) ? `*Valor:* ${money(charge.value)}` : null,
     `*Vencimento:* ${dateBr(charge.due_date)}`,
     pref(settings.automation_preferences, ["billing", "includePaymentLink"], true) && charge.public_short_code
-      ? `*Pagar agora:* https://dominex.app/pagar/${charge.public_short_code}`
+      ? `*Pagar agora:* https://www.dominex.app/pagar/${charge.public_short_code}`
       : null,
   ].filter(Boolean);
   return [

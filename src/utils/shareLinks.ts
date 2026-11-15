@@ -41,7 +41,7 @@ export function buildServiceOrderShareLink(
     query.set('preview', String(previewKey));
   }
 
-  return `https://dominex.app/os-tecnico/${segment}?${query.toString()}`;
+  return `https://www.dominex.app/os-tecnico/${segment}?${query.toString()}`;
 }
 
 interface ProposalShareLinkParams {
@@ -63,7 +63,7 @@ export function buildProposalShareLink({ token, recipientName }: ProposalShareLi
   const segment = recipientName
     ? buildSlugSegment([recipientName], token, 'proposta')
     : token;
-  return `https://dominex.app/proposta/${segment}`;
+  return `https://www.dominex.app/proposta/${segment}`;
 }
 
 /**

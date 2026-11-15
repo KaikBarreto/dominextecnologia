@@ -500,7 +500,7 @@ export function buildPmocPortalUrl(
     | { shortCode?: string | null; name?: string | null; token?: string | null },
   origin?: string,
 ): string {
-  const base = origin ?? (typeof window !== 'undefined' ? window.location.origin : 'https://dominex.app');
+  const base = origin ?? (typeof window !== 'undefined' ? window.location.origin : 'https://www.dominex.app');
 
   if (typeof tokenOrArgs === 'string') {
     return `${base}/contrato/unidade/${tokenOrArgs}`;

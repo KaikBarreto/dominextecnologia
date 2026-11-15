@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.43',
+    date: '15 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Logo white-label mais legível nos menus',
+        category: 'correcao',
+        description: 'A área inteira do logo agora escolhe automaticamente fundo claro ou escuro para manter o contraste, sem moldura ao redor da imagem. O comportamento é o mesmo no computador, no menu recolhido e no celular.',
+      },
+      {
+        title: 'Acesso ao Dominex normalizado no celular',
+        category: 'correcao',
+        description: 'Links de acompanhamento, propostas, cobranças e documentos passam a usar o endereço oficial com www. Instalações antigas do aplicativo também conseguem limpar a configuração anterior e continuar na mesma tela, evitando a página de erro do navegador.',
+      },
+    ],
+  },
+  {
     version: '1.39.42',
     date: '15 de novembro de 2026',
     type: 'patch',

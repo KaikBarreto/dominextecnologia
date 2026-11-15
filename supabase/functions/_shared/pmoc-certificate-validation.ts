@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const APP_DOMAIN = "https://dominex.app";
+const APP_DOMAIN = "https://www.dominex.app";
 
 export interface PmocCertificateValidationIdentity {
   certificateNumber: number;

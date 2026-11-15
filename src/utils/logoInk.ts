@@ -95,6 +95,14 @@ export function getLogoPlateTone(
   return surface === 'dark' ? 'light' : 'dark';
 }
 
+/** Tom da faixa inteira: sempre o oposto da tinta detectada no logo. */
+export function getContrastingLogoSurfaceTone(
+  ink: LogoInk | null,
+): LogoSurfaceTone | null {
+  if (ink === null) return null;
+  return ink === 'dark' ? 'light' : 'dark';
+}
+
 // Um logo por tenant muda quase nunca; a URL já carrega o timestamp do upload,
 // então dá pra memorizar por URL sem risco de servir resultado velho.
 const cache = new Map<string, LogoInk | null>();

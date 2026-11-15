@@ -26,7 +26,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
-const APP_DOMAIN = "https://dominex.app";
+const APP_DOMAIN = "https://www.dominex.app";
 const PORTAL_PATH = "/contrato/unidade"; // /contrato/unidade/<token>
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

@@ -1523,7 +1523,7 @@ function AdministrativeSettings() {
                         {/* Preview ao vivo */}
                         <div className="flex flex-col items-center justify-center gap-2 rounded-lg border bg-white p-4">
                           <BrandedQRCode
-                            value="https://dominex.app"
+                            value="https://www.dominex.app"
                             size={140}
                             logoUrl={settings?.white_label_logo_url || settings?.logo_url || null}
                             dotStyle={wlQrDotStyle}

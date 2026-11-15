@@ -74,8 +74,7 @@ import { segmentsHaveTechTools } from '@/config/technicianArea';
 import { companyHasSegment, normalizeCompanySegments } from '@/utils/companySegments';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useLogoInk } from '@/hooks/useLogoInk';
-import { useNavSurfaceTone } from '@/hooks/useNavSurfaceTone';
-import { getLogoPlateTone } from '@/utils/logoInk';
+import { getContrastingLogoSurfaceTone } from '@/utils/logoInk';
 import { useSidebar } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 import { HelpCenterDrawer } from '@/components/layout/HelpCenterDrawer';
@@ -289,9 +288,9 @@ export function SidebarMenuContent() {
     }
     return 'light';
   });
-  const navSurface = useNavSurfaceTone();
-  const logoPlateTone = getLogoPlateTone(tenantLogoInk, navSurface);
-  const iconPlateTone = getLogoPlateTone(tenantIconInk, navSurface);
+  const tenantLogoSurface = !isAdminUser && wlEnabled && (collapsed ? tenantIconUrl : tenantLogoUrl)
+    ? getContrastingLogoSurfaceTone(collapsed ? tenantIconInk : tenantLogoInk) ?? undefined
+    : undefined;
 
   // ResizeObserver no trigger do rodapé — mede a altura em runtime pra que
   // o DropdownMenuContent receba `sideOffset={-profileTriggerHeight}` e fique
@@ -386,7 +385,8 @@ export function SidebarMenuContent() {
         {/* Logo */}
         <NavLink
           to={showAdminMenu ? adminHomePath : L('/dashboard')}
-          className="nav-logo-area relative h-16 flex items-center justify-center border-b border-border shrink-0 overflow-hidden bg-white dark:bg-sidebar px-2"
+          data-tenant-logo-surface={tenantLogoSurface}
+          className="nav-logo-area tenant-logo-surface relative h-16 flex items-center justify-center border-b border-border shrink-0 overflow-hidden bg-white dark:bg-sidebar px-2 transition-colors duration-300"
         >
           {showLogoLoading ? (
             collapsed
@@ -402,13 +402,7 @@ export function SidebarMenuContent() {
               >
                 {!isAdminUser && wlEnabled ? (
                   iconUrl ? (
-                    <span className={cn(
-                      iconPlateTone && 'rounded-md p-1',
-                      iconPlateTone === 'light' && 'bg-white',
-                      iconPlateTone === 'dark' && 'bg-zinc-950',
-                    )}>
-                      <img src={iconUrl} alt="Icon" className="h-7 w-7 object-contain" />
-                    </span>
+                    <img src={iconUrl} alt="Icon" className="h-7 w-7 object-contain" />
                   ) : null
                 ) : (
                   <>
@@ -423,15 +417,9 @@ export function SidebarMenuContent() {
                   collapsed ? 'opacity-0 pointer-events-none' : 'opacity-100'
                 )}
               >
-                {/* `min-w-0 max-w-full`: a placa vira o novo pai do `max-w-full`
-                    das imagens. Sem isso um logo largo passaria por cima da
-                    borda da sidebar em vez de encolher. */}
-                <div className={cn(
-                  'flex min-w-0 max-w-full items-center justify-center',
-                  logoPlateTone && 'rounded-lg px-2.5 py-1',
-                  logoPlateTone === 'light' && 'bg-white',
-                  logoPlateTone === 'dark' && 'bg-zinc-950',
-                )}>
+                {/* O contraste pertence à faixa inteira do cabeçalho. O wrapper
+                    existe só para limitar logos largos à largura da sidebar. */}
+                <div className="flex min-w-0 max-w-full items-center justify-center">
                   <img src={isAdminUser ? defaultLogoDark : logoUrl || defaultLogoDark} alt="Logo" className="nav-logo-light max-h-11 w-auto max-w-full object-contain dark:hidden" />
                   <img src={isAdminUser ? logoHorizontalVerde : logoUrl || logoHorizontalVerde} alt="Logo" className="nav-logo-dark max-h-11 w-auto max-w-full object-contain hidden dark:block" />
                 </div>

@@ -4286,7 +4286,7 @@ Existem três caminhos para o orçamento chegar ao cliente, e eles fazem coisas 
 
 #### Gerar link da proposta
 
-No menu de ações da linha, Gerar link da proposta. O sistema monta um endereço amigável no formato https://dominex.app/proposta/nome-do-cliente-<código>, copia para a área de transferência e mostra Link gerado e copiado! com Já pode colar e enviar pro cliente. Se o navegador bloquear a cópia, o link aparece na própria mensagem.
+No menu de ações da linha, Gerar link da proposta. O sistema monta um endereço amigável no formato https://www.dominex.app/proposta/nome-do-cliente-<código>, copia para a área de transferência e mostra Link gerado e copiado! com Já pode colar e enviar pro cliente. Se o navegador bloquear a cópia, o link aparece na própria mensagem.
 
 Gerar o link promove o orçamento de Rascunho para Enviado. E isso é o que faz aparecerem os botões Aprovar e Rejeitar na página do cliente: em Rascunho, o cliente abre a proposta mas não tem como responder. Se o cliente diz "abri e não achei o botão de aprovar", quase sempre é isso. O sistema nunca faz o caminho inverso: um orçamento já aprovado, rejeitado, convertido ou expirado não volta para Enviado.
 

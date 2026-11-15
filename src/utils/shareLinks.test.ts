@@ -13,7 +13,7 @@ describe('buildServiceOrderShareLink', () => {
       serviceName: 'Manutenção',
       osId: 'fallback-id',
     })).toBe(
-      'https://dominex.app/os-tecnico/cliente-exemplo-manutencao-abc234def567?modo=cliente',
+      'https://www.dominex.app/os-tecnico/cliente-exemplo-manutencao-abc234def567?modo=cliente',
     );
   });
 
@@ -24,7 +24,7 @@ describe('buildServiceOrderShareLink', () => {
       serviceName: 'Manutenção',
       previewKey: 'nova arte 2',
     })).toBe(
-      'https://dominex.app/os-tecnico/cliente-exemplo-manutencao-abc234def567?modo=cliente&preview=nova+arte+2',
+      'https://www.dominex.app/os-tecnico/cliente-exemplo-manutencao-abc234def567?modo=cliente&preview=nova+arte+2',
     );
   });
 });

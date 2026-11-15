@@ -108,7 +108,7 @@ export interface DrawCertificadoArtResult {
 
 function certificateBackgroundUrl(slug: string): string | null {
   if (slug.startsWith("essencial-")) return null;
-  const baseUrl = (Deno.env.get("DOC_ART_BACKGROUND_BASE_URL") ?? "https://dominex.app")
+  const baseUrl = (Deno.env.get("DOC_ART_BACKGROUND_BASE_URL") ?? "https://www.dominex.app")
     .replace(/\/+$/, "");
   return `${baseUrl}/images/certificate-backgrounds/${slug}.jpg`;
 }

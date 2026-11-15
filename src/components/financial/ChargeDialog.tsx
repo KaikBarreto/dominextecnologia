@@ -527,7 +527,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
   // invoice_url do Asaas no caso órfão.
   //
   // No caso normal usamos SEMPRE a URL COMPLETA via buildCheckoutUrl(short_code)
-  // (https://dominex.app/pagar/<code>). O `charge.checkout_url` do edge vem
+  // (https://www.dominex.app/pagar/<code>). O `charge.checkout_url` do edge vem
   // RELATIVO ('/pagar/<code>'), que não funciona ao copiar/compartilhar — por isso
   // NÃO o usamos aqui. O invoice_url do Asaas (caso órfão) já é URL completa.
   const displayUrl = (() => {

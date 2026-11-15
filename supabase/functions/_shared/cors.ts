@@ -1,6 +1,8 @@
 const ALLOWED_ORIGINS = [
-  'https://dominex.app',
   'https://www.dominex.app',
+  // Mantido durante a migração para requisições antigas; novos links e o
+  // fallback de CORS usam sempre a primeira origem, que é a canônica.
+  'https://dominex.app',
 ];
 
 // Permite qualquer subdomínio de dominex.app (teste, staging, etc),

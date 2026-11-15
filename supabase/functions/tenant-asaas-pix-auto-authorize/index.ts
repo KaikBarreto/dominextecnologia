@@ -99,7 +99,7 @@ function cycleToPixAutoFrequency(cycle: Cycle): string {
 
 /** Valor mínimo aceito pela Asaas por cobrança (R$ 5,00). */
 const MIN_VALUE = 5;
-const PUBLIC_APP_ORIGIN = "https://dominex.app";
+const PUBLIC_APP_ORIGIN = "https://www.dominex.app";
 
 /** hoje + `days` em UTC, formatado YYYY-MM-DD (usado quando next_due_date não vem). */
 function dueDateFromDays(days: number): string {

@@ -17,6 +17,7 @@ const llmsDocumentation = await readFile(new URL('public/docs/llms.txt', root), 
 const bookingMigration = await readFile(new URL('supabase/migrations/20261017122000_public_api_v1_booking_engine.sql', root), 'utf8');
 const multiDayBookingMigration = await readFile(new URL('supabase/migrations/20261019173000_os_multiplos_dias_na_agenda.sql', root), 'utf8');
 const crmCardsMigration = await readFile(new URL('supabase/migrations/20261029120000_public_api_v1_crm_cards.sql', root), 'utf8');
+const canonicalOriginMigration = await readFile(new URL('supabase/migrations/20261115013000_normalize_public_tracking_url_origin.sql', root), 'utf8');
 const contract = parse(openapiSource);
 
 test('OpenAPI servido pelo gateway e identico a fonte YAML canonica', () => {
@@ -120,6 +121,19 @@ test('RPCs do CRM derivam tenant e escopo no servidor e excluem funis de projeto
   );
   assert.ok(createRpc.indexOf('FROM public.public_api_idempotency') < createRpc.indexOf('FROM public.crm_stages'));
   assert.ok(updateRpc.indexOf('FROM public.public_api_idempotency') < updateRpc.indexOf('FROM public.leads l'));
+});
+
+test('link público de OS usa a origem canônica sem ampliar a superfície da RPC', () => {
+  assert.match(canonicalOriginMigration, /https:\/\/www\.dominex\.app\/os-tecnico\//);
+  assert.doesNotMatch(canonicalOriginMigration, /https:\/\/dominex\.app\/os-tecnico\//);
+  assert.match(
+    canonicalOriginMigration,
+    /REVOKE ALL ON FUNCTION public\.public_api_service_order_response\(uuid, uuid, boolean\)[\s\S]+FROM PUBLIC, anon, authenticated, service_role/i,
+  );
+  assert.deepEqual(
+    contract.components.schemas.ServiceOrder.properties.public_tracking_url,
+    { type: 'string', format: 'uri' },
+  );
 });
 
 test('nenhuma edge registra segredo, Authorization ou corpo integral', () => {

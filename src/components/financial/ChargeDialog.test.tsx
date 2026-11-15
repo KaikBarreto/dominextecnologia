@@ -116,7 +116,7 @@ vi.mock('@/hooks/useServiceOrderOptions', () => ({
 
 vi.mock('@/hooks/useTenantCharges', () => ({
   useTenantCharges: () => ({ create: { mutateAsync: createMutateAsync, isPending: false } }),
-  buildCheckoutUrl: (code: string) => `https://dominex.app/pagar/${code}`,
+  buildCheckoutUrl: (code: string) => `https://www.dominex.app/pagar/${code}`,
 }));
 
 // Mutável entre testes: simula os flags allow_* da conta (única fonte de

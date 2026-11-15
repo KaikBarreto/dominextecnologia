@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { classifyInk, getLogoPlateTone, inkLuminance } from '../logoInk';
+import {
+  classifyInk,
+  getContrastingLogoSurfaceTone,
+  getLogoPlateTone,
+  inkLuminance,
+} from '../logoInk';
 
 /** Monta um bloco de pixels RGBA repetindo as cores informadas. */
 function pixels(colors: Array<[number, number, number, number]>, repeat = 1): Uint8ClampedArray {
@@ -97,5 +102,18 @@ describe('getLogoPlateTone', () => {
   it('não arrisca placa quando a tinta não pôde ser medida', () => {
     expect(getLogoPlateTone(null, 'light')).toBeNull();
     expect(getLogoPlateTone(null, 'dark')).toBeNull();
+  });
+});
+
+describe('getContrastingLogoSurfaceTone', () => {
+  it.each([
+    { ink: 'dark' as const, expected: 'light' },
+    { ink: 'light' as const, expected: 'dark' },
+  ])('tinta $ink usa a faixa $expected', ({ ink, expected }) => {
+    expect(getContrastingLogoSurfaceTone(ink)).toBe(expected);
+  });
+
+  it('não força uma faixa enquanto a tinta ainda não foi medida', () => {
+    expect(getContrastingLogoSurfaceTone(null)).toBeNull();
   });
 });

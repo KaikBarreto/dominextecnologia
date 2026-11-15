@@ -62,7 +62,7 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 
 // Portal PMOC público — mesma base/rota usada em generate-pmoc-qr-pdf e em
 // buildPmocPortalUrl no frontend (`/contrato/unidade/<token>`).
-const APP_DOMAIN = "https://dominex.app";
+const APP_DOMAIN = "https://www.dominex.app";
 const PORTAL_PATH = "/contrato/unidade";
 
 // =============================================================================

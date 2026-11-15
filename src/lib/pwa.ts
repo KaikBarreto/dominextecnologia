@@ -51,7 +51,10 @@ function hasOpenModal(): boolean {
 type FetchLike = (
   input: RequestInfo | URL,
   init?: RequestInit,
-) => Promise<Pick<Response, "ok" | "headers">>;
+) => Promise<
+  Pick<Response, "ok" | "headers"> &
+  Partial<Pick<Response, "redirected" | "url">>
+>;
 
 /**
  * Confirma que o host consegue entregar HTML novo antes de abandonar a sessão
@@ -79,7 +82,18 @@ export async function canReachAppShell(
       signal: controller.signal,
     });
     const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
-    return response.ok && contentType.includes("text/html");
+    const responseChangedOrigin = response.url
+      ? new URL(response.url).origin !== probeUrl.origin
+      : false;
+
+    // Um 301 para outra origem pode terminar em HTML 200 e parecer saudável
+    // para fetch(). No Safari, porém, reutilizar essa resposta numa navegação
+    // controlada pelo SW gera "Response served by service worker has
+    // redirections". Só recarrega com HTML direto da MESMA origem.
+    return response.ok
+      && !response.redirected
+      && !responseChangedOrigin
+      && contentType.includes("text/html");
   } catch {
     return false;
   } finally {

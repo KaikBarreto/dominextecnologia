@@ -16,6 +16,7 @@ import { appScreenKey, localizeAppPath } from '@/lib/i18n/appRouteSlugs';
 import { useNavigationPreference } from '@/hooks/useNavigationPreference';
 import { useNavThemePreference } from '@/hooks/useNavThemePreference';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
+import { useLogoInk } from '@/hooks/useLogoInk';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobilePullToRefresh } from '@/components/mobile/MobilePullToRefresh';
@@ -47,6 +48,7 @@ import {
 } from '@/components/ui/tooltip';
 import logoDark from '@/assets/logo-dark.png';
 import logoGreen from '@/assets/logo-horizontal-verde.png';
+import { getContrastingLogoSurfaceTone } from '@/utils/logoInk';
 
 const DomiflixIntroGate = lazy(() => import('@/components/domiflix/DomiflixIntroGate').then((module) => ({ default: module.DomiflixIntroGate })));
 
@@ -360,7 +362,11 @@ function MobileTabletHeader({ isAdminUser, scrolled }: { isAdminUser: boolean; s
   const navigate = useNavigate();
   const location = useLocation();
   const { user, signOut } = useAuth();
-  const { logoUrl, isLoading: logoLoading } = useWhiteLabel();
+  const { logoUrl, enabled: whiteLabelEnabled, isLoading: logoLoading } = useWhiteLabel();
+  const logoInk = useLogoInk(!isAdminUser && whiteLabelEnabled ? logoUrl : null);
+  const logoSurfaceTone = !isAdminUser && whiteLabelEnabled && logoUrl
+    ? getContrastingLogoSurfaceTone(logoInk) ?? undefined
+    : undefined;
   const { locale } = useAppLocaleContext();
   const accountT = MESSAGES[locale].app.shell.account;
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -387,7 +393,8 @@ function MobileTabletHeader({ isAdminUser, scrolled }: { isAdminUser: boolean; s
   // (lg breakpoint do tailwind = 1024px, mesmo do MOBILE_BREAKPOINT.)
   return (
     <header
-      className="sticky top-0 z-10 flex items-center justify-between border-b bg-background px-4 py-3"
+      data-tenant-logo-surface={logoSurfaceTone}
+      className="tenant-logo-surface sticky top-0 z-10 flex items-center justify-between border-b bg-background px-4 py-3 transition-colors duration-300"
       style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
     >
       {/* Lado esquerdo: back arrow no mobile, Menu hamburger no tablet+ */}
