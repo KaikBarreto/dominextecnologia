@@ -1,6 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import {
@@ -84,7 +82,7 @@ export function CategorizeLedgerModal({ item, open, onOpenChange }: Props) {
         <div className="space-y-2 border-b pb-4">
           <div className="flex items-center justify-between gap-3">
             <span className="text-xs text-muted-foreground">
-              {format(new Date(item.occurred_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+              {new Intl.DateTimeFormat("pt-BR", {timeZone:"America/Sao_Paulo",dateStyle:"short",timeStyle:"short"}).format(new Date(item.occurred_at))}
             </span>
             <span
               className={cn(
