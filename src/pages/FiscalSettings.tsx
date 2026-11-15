@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { ArrowLeft, Building2, CheckCircle2, AlertCircle, AlertTriangle, Info, Landmark, Loader2, MapPin, RefreshCw, Shield, Wrench } from 'lucide-react';
+import { ArrowLeft, Building2, CheckCircle2, AlertCircle, AlertTriangle, Info, Landmark, Loader2, MapPin, RefreshCw, Shield, Wrench, ReceiptText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
@@ -36,14 +36,15 @@ import { CertificadoSection } from '@/components/fiscal/CertificadoSection';
 import { ImpostosSection, type IeHint, type RegimeHint } from '@/components/fiscal/ImpostosSection';
 import { ServicosSection } from '@/components/fiscal/ServicosSection';
 import { automaticCoverageCheckKey } from '@/lib/fiscal/automaticCoverage';
+import { GoodsSettingsSection } from '@/components/fiscal/GoodsSettingsSection';
 
 export { FISCAL_SCREEN_PERMISSION };
 
 /** Seções da tela de Configurações fiscais. */
-export type FiscalSettingsSection = 'empresa' | 'certificado' | 'impostos' | 'servicos';
+export type FiscalSettingsSection = 'empresa' | 'certificado' | 'mercadorias' | 'impostos' | 'servicos';
 
 function normalizeSection(raw: string | null): FiscalSettingsSection {
-  return raw === 'certificado' || raw === 'impostos' || raw === 'servicos' ? raw : 'empresa';
+  return raw === 'certificado' || raw === 'mercadorias' || raw === 'impostos' || raw === 'servicos' ? raw : 'empresa';
 }
 
 /** Form local — strings cruas pra inputs controlados (evita o "0" preso). */
@@ -665,6 +666,7 @@ export default function FiscalSettings() {
   const navTabs: SettingsTab[] = [
     { value: 'empresa', label: t.settings.sections.empresa, icon: Building2 },
     { value: 'certificado', label: t.settings.sections.certificado, icon: Shield },
+    { value: 'mercadorias', label: 'NF-e e NFC-e', icon: ReceiptText },
     { value: 'impostos', label: t.settings.sections.impostos, icon: Landmark },
     { value: 'servicos', label: t.settings.sections.servicos, icon: Wrench },
   ];
@@ -825,6 +827,13 @@ export default function FiscalSettings() {
                 uploadingCert={uploadingCert}
                 isRecordingConsent={isRecordingConsent}
                 onUpload={handleUploadCertificate}
+              />
+            )}
+
+            {section === 'mercadorias' && (
+              <GoodsSettingsSection
+                environment={form.fiscal_ambiente}
+                certificateReady={certificateReady}
               />
             )}
 

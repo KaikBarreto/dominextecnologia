@@ -776,10 +776,12 @@ export const nfse = {
           placeholder: 'Selecione o intermediário',
           removeAriaLabel: 'Remover intermediário',
           manualNameRequired: 'Informe o nome ou razão social do intermediário.',
+          manualDocRequired: 'Informe o CPF/CNPJ do intermediário.',
+          missingDoc: 'Este intermediário está sem CPF/CNPJ. Complete o cadastro antes de emitir.',
           naoEnviadoAviso:
-            'Ainda não enviamos o intermediário na nota fiscal — os dados ficam salvos no rascunho, mas não aparecem na nota emitida.',
+            'O intermediário informado será enviado na nota fiscal.',
           naoSuportadoEmissao:
-            'O intermediário do serviço ainda não é enviado na nota fiscal. Remova o intermediário para emitir — os dados ficam salvos no rascunho.',
+            'Revise os dados fiscais do intermediário antes de emitir.',
         },
         // Modo "digitar manualmente" do tomador/intermediário (dados avulsos,
         // só valem nesta nota — não viram cadastro em Clientes).
@@ -883,9 +885,24 @@ export const nfse = {
           placeholder: 'Descreva o serviço prestado (aparece na nota)...',
           required: 'A discriminação do serviço é obrigatória.',
         },
+        referencias: {
+          sectionTitle: 'Referências opcionais',
+          hint: 'Use quando o serviço estiver ligado a responsabilidade técnica, contrato ou pedido.',
+          documentoTecnico: 'Documento de responsabilidade técnica',
+          documentoReferencia: 'Documento de referência',
+          pedidoB2b: 'Pedido B2B',
+          optional: 'Opcional',
+        },
       },
       // ---- Etapa 3 — Valores ----
       valores: {
+        ajustes: {
+          sectionTitle: 'Ajustes do valor',
+          hint: 'Descontos condicionados dependem de evento futuro; os incondicionados reduzem a base de cálculo.',
+          deducoes: 'Deduções da base (R$)',
+          descontoCondicionado: 'Desconto condicionado (R$)',
+          descontoIncondicionado: 'Desconto incondicionado (R$)',
+        },
         valorServico: {
           label: 'Valor do serviço',
           required: 'Informe um valor de serviço válido (maior que zero).',
@@ -907,10 +924,12 @@ export const nfse = {
         },
         retencoes: {
           sectionTitle: 'Retenções federais',
-          hint: 'Valores em R$ retidos na fonte (PIS, COFINS, CSLL). INSS e IRRF ainda não estão disponíveis nesta emissão de NFS-e.',
+          hint: 'Valores em R$ efetivamente retidos na fonte.',
           pis: 'PIS retido (R$)',
           cofins: 'COFINS retido (R$)',
           csll: 'CSLL retido (R$)',
+          inss: 'INSS retido (R$)',
+          irrf: 'IRRF retido (R$)',
         },
         percTribSn: {
           label: 'Percentual de tributos do Simples Nacional (%)',
@@ -924,6 +943,9 @@ export const nfse = {
         previa: {
           title: 'Prévia do cálculo (ISS {aliq}%)',
           valorServico: 'Valor do serviço',
+          deducoes: '(-) Deduções',
+          descontoIncondicionado: '(-) Desconto incondicionado',
+          baseCalculo: 'Base de cálculo do ISS',
           iss: 'ISS {tipo}',
           issRetido: '(retido)',
           issDue: '(devido)',
@@ -1733,10 +1755,12 @@ export const nfse = {
           placeholder: 'Select intermediary',
           removeAriaLabel: 'Remove intermediary',
           manualNameRequired: "Please enter the intermediary's name or company name.",
+          manualDocRequired: "Please enter the intermediary's tax ID.",
+          missingDoc: 'This intermediary has no tax ID. Complete the record before issuing.',
           naoEnviadoAviso:
-            "We don't send the intermediary on the invoice yet — the data is saved to the draft, but it won't appear on the issued invoice.",
+            'The intermediary will be included in the invoice.',
           naoSuportadoEmissao:
-            'The service intermediary is not yet sent on the invoice. Remove the intermediary to issue — the data stays saved in the draft.',
+            'Review the intermediary tax details before issuing.',
         },
         // "Enter manually" mode for the recipient/intermediary (one-off data,
         // valid only for this invoice — does not create a customer record).
@@ -1839,8 +1863,23 @@ export const nfse = {
           placeholder: 'Describe the service rendered (appears on the invoice)...',
           required: 'Service description is required.',
         },
+        referencias: {
+          sectionTitle: 'Optional references',
+          hint: 'Use when the service is linked to a technical responsibility, contract, or order.',
+          documentoTecnico: 'Technical responsibility document',
+          documentoReferencia: 'Reference document',
+          pedidoB2b: 'B2B order',
+          optional: 'Optional',
+        },
       },
       valores: {
+        ajustes: {
+          sectionTitle: 'Amount adjustments',
+          hint: 'Conditional discounts depend on a future event; unconditional discounts reduce the tax base.',
+          deducoes: 'Tax-base deductions (R$)',
+          descontoCondicionado: 'Conditional discount (R$)',
+          descontoIncondicionado: 'Unconditional discount (R$)',
+        },
         valorServico: {
           label: 'Service amount',
           required: 'Enter a valid service amount (greater than zero).',
@@ -1862,10 +1901,12 @@ export const nfse = {
         },
         retencoes: {
           sectionTitle: 'Federal withholdings',
-          hint: 'R$ amounts withheld at source (PIS, COFINS, CSLL). INSS and IRRF are not yet available in this NFS-e issuance flow.',
+          hint: 'Amounts in R$ effectively withheld at source.',
           pis: 'PIS withheld (R$)',
           cofins: 'COFINS withheld (R$)',
           csll: 'CSLL withheld (R$)',
+          inss: 'INSS withheld (R$)',
+          irrf: 'IRRF withheld (R$)',
         },
         percTribSn: {
           label: 'Simples Nacional total tax rate (%)',
@@ -1879,6 +1920,9 @@ export const nfse = {
         previa: {
           title: 'Calculation preview (SST {aliq}%)',
           valorServico: 'Service amount',
+          deducoes: '(-) Deductions',
+          descontoIncondicionado: '(-) Unconditional discount',
+          baseCalculo: 'SST calculation base',
           iss: 'SST {tipo}',
           issRetido: '(withheld)',
           issDue: '(due)',
@@ -2689,10 +2733,12 @@ export const nfse = {
           placeholder: 'Selecciona intermediario',
           removeAriaLabel: 'Eliminar intermediario',
           manualNameRequired: 'Ingresa el nombre o razón social del intermediario.',
+          manualDocRequired: 'Ingresa el CPF/CNPJ del intermediario.',
+          missingDoc: 'Este intermediario no tiene CPF/CNPJ. Completa el registro antes de emitir.',
           naoEnviadoAviso:
-            'Todavía no enviamos el intermediario en la factura — los datos quedan guardados en el borrador, pero no aparecen en la factura emitida.',
+            'El intermediario informado se incluirá en la factura.',
           naoSuportadoEmissao:
-            'El intermediario del servicio todavía no se envía en la factura. Elimina el intermediario para emitir — los datos quedan guardados en el borrador.',
+            'Revisa los datos fiscales del intermediario antes de emitir.',
         },
         // Modo "ingresar manualmente" del receptor/intermediario (datos
         // sueltos, válidos solo en esta factura — no crean un registro de cliente).
@@ -2795,8 +2841,23 @@ export const nfse = {
           placeholder: 'Describe el servicio prestado (aparece en la factura)...',
           required: 'La descripción del servicio es obligatoria.',
         },
+        referencias: {
+          sectionTitle: 'Referencias opcionales',
+          hint: 'Úsalo cuando el servicio esté vinculado a una responsabilidad técnica, contrato o pedido.',
+          documentoTecnico: 'Documento de responsabilidad técnica',
+          documentoReferencia: 'Documento de referencia',
+          pedidoB2b: 'Pedido B2B',
+          optional: 'Opcional',
+        },
       },
       valores: {
+        ajustes: {
+          sectionTitle: 'Ajustes del valor',
+          hint: 'Los descuentos condicionados dependen de un evento futuro; los incondicionados reducen la base imponible.',
+          deducoes: 'Deducciones de la base (R$)',
+          descontoCondicionado: 'Descuento condicionado (R$)',
+          descontoIncondicionado: 'Descuento incondicionado (R$)',
+        },
         valorServico: {
           label: 'Valor del servicio',
           required: 'Ingresa un valor de servicio válido (mayor que cero).',
@@ -2818,10 +2879,12 @@ export const nfse = {
         },
         retencoes: {
           sectionTitle: 'Retenciones federales',
-          hint: 'Importes en R$ retenidos en la fuente (PIS, COFINS, CSLL). INSS e IRRF todavía no están disponibles en esta emisión de NFS-e.',
+          hint: 'Importes en R$ efectivamente retenidos en la fuente.',
           pis: 'PIS retenido (R$)',
           cofins: 'COFINS retenido (R$)',
           csll: 'CSLL retenido (R$)',
+          inss: 'INSS retenido (R$)',
+          irrf: 'IRRF retenido (R$)',
         },
         percTribSn: {
           label: 'Porcentaje de tributos del Simples Nacional (%)',
@@ -2835,6 +2898,9 @@ export const nfse = {
         previa: {
           title: 'Vista previa del cálculo (ISS {aliq}%)',
           valorServico: 'Valor del servicio',
+          deducoes: '(-) Deducciones',
+          descontoIncondicionado: '(-) Descuento incondicionado',
+          baseCalculo: 'Base de cálculo del ISS',
           iss: 'ISS {tipo}',
           issRetido: '(retenido)',
           issDue: '(debido)',
@@ -3649,10 +3715,12 @@ export const nfse = {
           placeholder: 'Sélectionnez l\'intermédiaire',
           removeAriaLabel: 'Supprimer l\'intermédiaire',
           manualNameRequired: 'Veuillez saisir le nom ou la raison sociale de l\'intermédiaire.',
+          manualDocRequired: 'Veuillez saisir le CPF/CNPJ de l\'intermédiaire.',
+          missingDoc: 'Cet intermédiaire n\'a pas de CPF/CNPJ. Complétez sa fiche avant d\'émettre.',
           naoEnviadoAviso:
-            'Nous n\'envoyons pas encore l\'intermédiaire sur la facture — les données restent enregistrées dans le brouillon, mais n\'apparaissent pas sur la facture émise.',
+            'L\'intermédiaire renseigné sera inclus dans la facture.',
           naoSuportadoEmissao:
-            'L\'intermédiaire du service n\'est pas encore envoyé sur la facture. Retirez l\'intermédiaire pour émettre — les données restent enregistrées dans le brouillon.',
+            'Vérifiez les données fiscales de l\'intermédiaire avant d\'émettre.',
         },
         // Mode "saisie manuelle" du bénéficiaire/intermédiaire (données
         // ponctuelles, valables seulement pour cette facture — ne créent pas de fiche client).
@@ -3755,8 +3823,23 @@ export const nfse = {
           placeholder: 'Décrivez le service presté (apparaît sur la facture)...',
           required: 'La description du service est obligatoire.',
         },
+        referencias: {
+          sectionTitle: 'Références facultatives',
+          hint: 'À utiliser lorsque le service est lié à une responsabilité technique, un contrat ou une commande.',
+          documentoTecnico: 'Document de responsabilité technique',
+          documentoReferencia: 'Document de référence',
+          pedidoB2b: 'Commande B2B',
+          optional: 'Facultatif',
+        },
       },
       valores: {
+        ajustes: {
+          sectionTitle: 'Ajustements du montant',
+          hint: "Les remises conditionnelles dépendent d'un événement futur ; les remises inconditionnelles réduisent la base imposable.",
+          deducoes: 'Déductions de la base (R$)',
+          descontoCondicionado: 'Remise conditionnelle (R$)',
+          descontoIncondicionado: 'Remise inconditionnelle (R$)',
+        },
         valorServico: {
           label: 'Montant du service',
           required: 'Saisissez un montant de service valide (supérieur à zéro).',
@@ -3778,10 +3861,12 @@ export const nfse = {
         },
         retencoes: {
           sectionTitle: 'Retenues fédérales',
-          hint: "Montants en R$ retenus à la source (PIS, COFINS, CSLL). L'INSS et l'IRRF ne sont pas encore disponibles dans cette émission de NFS-e.",
+          hint: 'Montants en R$ effectivement retenus à la source.',
           pis: 'PIS retenu (R$)',
           cofins: 'COFINS retenu (R$)',
           csll: 'CSLL retenu (R$)',
+          inss: 'INSS retenu (R$)',
+          irrf: 'IRRF retenu (R$)',
         },
         percTribSn: {
           label: 'Pourcentage de taxes Simples Nacional (%)',
@@ -3795,6 +3880,9 @@ export const nfse = {
         previa: {
           title: 'Aperçu du calcul (taxe {aliq}%)',
           valorServico: 'Montant du service',
+          deducoes: '(-) Déductions',
+          descontoIncondicionado: '(-) Remise inconditionnelle',
+          baseCalculo: 'Base de calcul de la taxe',
           iss: 'Taxe de service {tipo}',
           issRetido: '(retenue)',
           issDue: '(due)',

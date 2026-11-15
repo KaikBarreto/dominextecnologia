@@ -501,6 +501,52 @@ export function ServicoStep({
         )}
       </div>
 
+      <Separator />
+
+      <div className="space-y-3">
+        <div>
+          <Label className="text-base">{s.servico.referencias.sectionTitle}</Label>
+          <p className="text-[11px] text-muted-foreground mt-1">
+            {s.servico.referencias.hint}
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="nfse-doc-tecnico" className="text-xs text-muted-foreground">
+              {s.servico.referencias.documentoTecnico}
+            </Label>
+            <Input
+              id="nfse-doc-tecnico"
+              value={servico.documentoResponsabilidadeTecnica}
+              onChange={(e) => onServicoChange({ documentoResponsabilidadeTecnica: e.target.value })}
+              placeholder={s.servico.referencias.optional}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="nfse-doc-referencia" className="text-xs text-muted-foreground">
+              {s.servico.referencias.documentoReferencia}
+            </Label>
+            <Input
+              id="nfse-doc-referencia"
+              value={servico.documentoReferencia}
+              onChange={(e) => onServicoChange({ documentoReferencia: e.target.value })}
+              placeholder={s.servico.referencias.optional}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="nfse-pedido-b2b" className="text-xs text-muted-foreground">
+              {s.servico.referencias.pedidoB2b}
+            </Label>
+            <Input
+              id="nfse-pedido-b2b"
+              value={servico.pedidoB2b}
+              onChange={(e) => onServicoChange({ pedidoB2b: e.target.value })}
+              placeholder={s.servico.referencias.optional}
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Cadastro rápido: grava na MESMA lista de serviços (a das ordens de
           serviço) já com os códigos fiscais, e puxa direto pra nota. */}
       <QuickServiceTypeDialog

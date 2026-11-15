@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { AlertTriangle, ChevronDown, ChevronRight, Pencil, User, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, Pencil, User, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -170,6 +170,16 @@ export function PessoasStep({
   // Mensagem tem `{campos}` interpolado — casa pelo prefixo/sufixo fixos do
   // template em vez de igualdade exata.
   const tomadorAddressError = findByTemplate(errors, m.enderecoIncompletoTomador);
+  const intermediarioManualNameError = errors.find(
+    (e) => e === s.pessoas.intermediario.manualNameRequired,
+  );
+  const intermediarioManualDocError = errors.find(
+    (e) => e === s.pessoas.intermediario.manualDocRequired,
+  );
+  const intermediarioAddressError = findByTemplate(
+    errors,
+    m.enderecoIncompletoIntermediario,
+  );
 
   return (
     <div className="space-y-5">
@@ -288,13 +298,6 @@ export function PessoasStep({
 
         {showIntermediario && (
           <div className="space-y-2 pl-1">
-            {/* Aviso permanente: o intermediário ainda não vai na nota (só no
-                rascunho) — mostrado ANTES do usuário selecionar/digitar, pra
-                não descobrir isso só na hora de emitir. */}
-            <p className="flex items-start gap-1.5 text-[11px] text-amber-600 dark:text-amber-400">
-              <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-px" />
-              <span>{s.pessoas.intermediario.naoEnviadoAviso}</span>
-            </p>
             {intermediario && intermediarioMode === 'cadastro' ? (
               <div className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-muted/20 px-3 py-2">
                 <span className="flex items-center gap-2 truncate text-sm">
@@ -338,10 +341,20 @@ export function PessoasStep({
                   <ManualPartyFields
                     value={intermediario ?? emptyManualParty()}
                     onChange={patchIntermediarioManual}
+                    nameError={intermediarioManualNameError}
+                    docError={intermediarioManualDocError}
+                    addressError={intermediarioAddressError}
                     required={false}
                     m={m}
                   />
                 )}
+                {intermediarioMode === 'cadastro' &&
+                  intermediario &&
+                  !intermediario.document?.trim() && (
+                    <p className="text-sm text-destructive">
+                      {s.pessoas.intermediario.missingDoc}
+                    </p>
+                  )}
               </div>
             )}
           </div>
@@ -405,10 +418,7 @@ function PartyModeToggle({
 /**
  * Campos de tomador/intermediário digitados avulsos nesta nota (não vira
  * cadastro em `customers`). Nome/documento são obrigatórios quando `required`
- * (tomador — a nota não sai sem eles); pra intermediário (`required={false}`)
- * ficam sem asterisco porque a emissão está bloqueada de qualquer forma (ver
- * `pessoas.intermediario.naoSuportadoEmissao`) — o dado só é usado se/quando
- * o intermediário for suportado na nota.
+ * (tomador e intermediário, quando presentes, precisam de identidade fiscal).
  *
  * Endereço é TUDO OU NADA (mesma regra da edge — `common.ts` em
  * `nfse-handlers`): incompleto vira pendência bloqueante (`addressError`).

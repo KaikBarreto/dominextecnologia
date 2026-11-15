@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Wand2, Plus, Loader2, ImageIcon, X, ScanBarcode } from 'lucide-react';
+import { Wand2, Plus, Loader2, ImageIcon, X, ScanBarcode, Package, ReceiptText } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SignedImg } from '@/components/ui/SignedImg';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,6 +32,12 @@ import { processImageFile } from '@/utils/imageConvert';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { validateInventoryPmocProduct } from '@/lib/inventoryPmocProduct';
+import { InventoryFiscalFields } from './InventoryFiscalFields';
+import {
+  normalizeMaterialFiscalFields,
+  validateMaterialFiscalFields,
+  type MaterialFiscalField,
+} from '@/lib/fiscal/materialFiscal';
 
 /** Bucket `inventory-photos`: privado, por empresa. Ver tenantStorage.ts. */
 const PHOTO_BUCKET = 'inventory-photos';
@@ -61,6 +68,30 @@ interface InventoryFormDialogProps {
 /** Número salvo → texto do campo. Vazio quando 0/nulo (nunca "0" travado) e vírgula como separador. */
 const toNumericText = (n?: number | null) => (!n ? '' : String(n).replace('.', ','));
 
+const EMPTY_FISCAL_FIELDS: Pick<InventoryItemInsert, MaterialFiscalField> = {
+  fiscal_ncm: null,
+  fiscal_cest: null,
+  fiscal_gtin: null,
+  fiscal_origin: null,
+  fiscal_cfop_internal: null,
+  fiscal_cfop_interstate: null,
+  fiscal_cfop_entry_internal: null,
+  fiscal_cfop_entry_interstate: null,
+  fiscal_cfop_exit_internal: null,
+  fiscal_cfop_exit_interstate: null,
+  fiscal_icms_code: null,
+  fiscal_icms_rate: null,
+  fiscal_icms_reduction_rate: null,
+  fiscal_pis_cst: null,
+  fiscal_cofins_cst: null,
+  fiscal_ipi_cst: null,
+  fiscal_ipi_rate: null,
+  fiscal_pis_rate: null,
+  fiscal_cofins_rate: null,
+  fiscal_tax_unit: null,
+  fiscal_ibs_cbs_cst: null,
+};
+
 export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, onOpenTransfer }: InventoryFormDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory.formDialog;
@@ -73,10 +104,13 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
   const pdvEnabled = hasModule('pdv');
   const isEditing = !!item;
 
+  const [activeTab, setActiveTab] = useState<'geral' | 'fiscal'>('geral');
+
   const [formData, setFormData] = useState<Partial<InventoryItemInsert>>({
     name: '', sku: '', category: '', group_id: null, description: '', quantity: 0, unit: 'un', cost_price: 0, sale_price: 0, supplier_id: null,
     is_pmoc_product: false, pmoc_manufacturer: null, pmoc_anvisa_registration: null,
     pmoc_batch_number: null, pmoc_manufactured_on: null, pmoc_expires_on: null,
+    ...EMPTY_FISCAL_FIELDS,
   });
   const [isSkuGenerating, setIsSkuGenerating] = useState(false);
   // Quick-create de grupo de material (botão "+" ao lado do seletor).
@@ -194,6 +228,27 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
           pmoc_batch_number: item.pmoc_batch_number,
           pmoc_manufactured_on: item.pmoc_manufactured_on,
           pmoc_expires_on: item.pmoc_expires_on,
+          fiscal_ncm: item.fiscal_ncm,
+          fiscal_cest: item.fiscal_cest,
+          fiscal_gtin: item.fiscal_gtin,
+          fiscal_origin: item.fiscal_origin,
+          fiscal_cfop_internal: item.fiscal_cfop_internal,
+          fiscal_cfop_interstate: item.fiscal_cfop_interstate,
+          fiscal_cfop_entry_internal: item.fiscal_cfop_entry_internal,
+          fiscal_cfop_entry_interstate: item.fiscal_cfop_entry_interstate,
+          fiscal_cfop_exit_internal: item.fiscal_cfop_exit_internal,
+          fiscal_cfop_exit_interstate: item.fiscal_cfop_exit_interstate,
+          fiscal_icms_code: item.fiscal_icms_code,
+          fiscal_icms_rate: item.fiscal_icms_rate,
+          fiscal_icms_reduction_rate: item.fiscal_icms_reduction_rate,
+          fiscal_pis_cst: item.fiscal_pis_cst,
+          fiscal_cofins_cst: item.fiscal_cofins_cst,
+          fiscal_ipi_cst: item.fiscal_ipi_cst,
+          fiscal_ipi_rate: item.fiscal_ipi_rate,
+          fiscal_pis_rate: item.fiscal_pis_rate,
+          fiscal_cofins_rate: item.fiscal_cofins_rate,
+          fiscal_tax_unit: item.fiscal_tax_unit,
+          fiscal_ibs_cbs_cst: item.fiscal_ibs_cbs_cst,
         });
         setNumericText({
           quantity: toNumericText(item.quantity),
@@ -210,6 +265,7 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
         cost_price: 0, sale_price: 0, supplier_id: null, is_pmoc_product: false,
         pmoc_manufacturer: null, pmoc_anvisa_registration: null, pmoc_batch_number: null,
         pmoc_manufactured_on: null, pmoc_expires_on: null,
+        ...EMPTY_FISCAL_FIELDS,
       });
       setNumericText({ quantity: '', cost_price: '', sale_price: '' });
       setPhotoUrl('');
@@ -227,6 +283,10 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
     run();
     return () => { cancelled = true; };
   }, [item, open]);
+
+  useEffect(() => {
+    if (open) setActiveTab('geral');
+  }, [open, item?.id]);
 
   // Zera a trava de hidratação a cada abertura (ou troca de item) — a próxima
   // passagem pelo efeito abaixo hidrata de novo, do zero.
@@ -265,6 +325,13 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
     if (!stocksHydrated) return;
     let savedItemId: string | null = null;
 
+    const fiscalValidationError = validateMaterialFiscalFields(formData);
+    if (fiscalValidationError) {
+      setActiveTab('fiscal');
+      toast({ variant: 'destructive', title: 'Revise os dados fiscais', description: fiscalValidationError });
+      return;
+    }
+
     const pmocValidationError = validateInventoryPmocProduct({
       isPmocProduct: formData.is_pmoc_product === true,
       manufacturer: formData.pmoc_manufacturer,
@@ -298,6 +365,7 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
       // is_sellable só é editável com o módulo PDV; sem o módulo, nunca
       // sobrescreve o default (true) da coluna com um estado que a tela nem mostrou.
       ...(pdvEnabled ? { is_sellable: isSellable } : {}),
+      ...normalizeMaterialFiscalFields(formData),
     };
 
     if (isEditing && item) {
@@ -485,6 +553,18 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
       }
     >
       <form onSubmit={handleSubmit} className="space-y-6">
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'geral' | 'fiscal')}>
+          <TabsList className="h-auto w-full justify-start gap-6 overflow-x-auto rounded-none border-b bg-transparent p-0">
+            <TabsTrigger value="geral" className="gap-2 rounded-none border-b-2 border-transparent px-1 py-3 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none">
+              <Package className="h-4 w-4" /> Cadastro
+            </TabsTrigger>
+            <TabsTrigger value="fiscal" className="gap-2 rounded-none border-b-2 border-transparent px-1 py-3 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none">
+              <ReceiptText className="h-4 w-4" /> Fiscal
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        <div hidden={activeTab !== 'geral'} className="space-y-6">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label>{t.fields.name}</Label>
@@ -880,6 +960,14 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
             )}
           </div>
         )}
+        </div>
+
+        <div hidden={activeTab !== 'fiscal'}>
+          <InventoryFiscalFields
+            value={formData}
+            onChange={(field, value) => handleChange(field, value)}
+          />
+        </div>
       </form>
     </ResponsiveModal>
 

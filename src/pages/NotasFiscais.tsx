@@ -11,6 +11,7 @@ import {
   FileBarChart,
   Inbox,
   RefreshCw,
+  ReceiptText,
 } from 'lucide-react';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { FABButton } from '@/components/mobile/FABButton';
@@ -45,6 +46,9 @@ import { nfseRowToEmission, type NfseListRow } from '@/components/fiscal/nfseRow
 import { NfseListTab } from '@/components/fiscal/NfseListTab';
 import { NotasRecebidasTab } from '@/components/fiscal/inboundNotes/NotasRecebidasTab';
 import { AutoEmissoesTab } from '@/components/fiscal/AutoEmissoesTab';
+import { GoodsFiscalTab } from '@/components/fiscal/goods/GoodsFiscalTab';
+
+type FiscalTab = 'visao-geral' | 'nfe' | 'nfce' | 'nfse' | 'recebidas' | 'automaticas';
 
 /** Quantas notas o atalho "Últimas emissões" mostra. */
 const RECENT_LIMIT = 5;
@@ -85,7 +89,7 @@ export default function NotasFiscais() {
   const [searchParams, setSearchParams] = useSearchParams();
   // Abre na listagem (a informação que o usuário busca primeiro); "Relatório
   // fiscal" (ex-"Visão Geral") é a 2ª aba.
-  const [tab, setTab] = useState<'visao-geral' | 'nfse' | 'recebidas' | 'automaticas'>('nfse');
+  const [tab, setTab] = useState<FiscalTab>('nfse');
   const [novaOpen, setNovaOpen] = useState(false);
   const [selected, setSelected] = useState<NfseEmission | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -260,6 +264,8 @@ export default function NotasFiscais() {
   // primeiro — é o que o usuário busca ao entrar na tela; "Relatório fiscal"
   // (ex-"Visão Geral") é o resumo, depois.
   const navTabs: SettingsTab[] = [
+    { value: 'nfe', label: 'NF-e', icon: FileText },
+    { value: 'nfce', label: 'NFC-e', icon: ReceiptText },
     { value: 'nfse', label: t.tabs.list, icon: FileText },
     { value: 'visao-geral', label: t.tabs.overview, icon: FileBarChart },
     { value: 'automaticas', label: t.tabs.automatic, icon: RefreshCw },
@@ -307,13 +313,13 @@ export default function NotasFiscais() {
                 buraco antes do conteúdo. */}
             {!isMobile && periodFilter}
             {configButton}
-            {!isMobile && novaNotaButton}
+            {!isMobile && tab === 'nfse' && novaNotaButton}
           </>
         }
       />
 
       {/* Medidor de consumo mensal de NFS-e (+ período, no mobile) */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className={cn('flex flex-wrap items-center gap-2', tab !== 'nfse' && tab !== 'visao-geral' && 'hidden')}>
         <NfseQuotaBadge companyId={companyId} />
         {isMobile && periodFilter}
       </div>
@@ -344,9 +350,13 @@ export default function NotasFiscais() {
             variant="underline"
             tabs={navTabs}
             activeTab={tab}
-            onTabChange={(v) => setTab(v as 'visao-geral' | 'nfse' | 'recebidas' | 'automaticas')}
+            onTabChange={(v) => setTab(v as FiscalTab)}
           >
-            {tab === 'recebidas' ? (
+            {tab === 'nfe' ? (
+              <GoodsFiscalTab model={55} />
+            ) : tab === 'nfce' ? (
+              <GoodsFiscalTab model={65} />
+            ) : tab === 'recebidas' ? (
               /* ---- Notas recebidas: NF-e/NFS-e emitidas contra o CNPJ do cliente ---- */
               <NotasRecebidasTab />
             ) : tab === 'automaticas' ? (
@@ -380,7 +390,7 @@ export default function NotasFiscais() {
       {/* Ação principal da tela: emitir. No mobile fica flutuando (FAB) pra
           continuar ao alcance mesmo com a lista rolada; no desktop já existe o
           botão inline no header (novaNotaButton), então não duplicamos aqui. */}
-      {isMobile && (
+      {isMobile && tab === 'nfse' && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
           label={t.actions.newNote}
