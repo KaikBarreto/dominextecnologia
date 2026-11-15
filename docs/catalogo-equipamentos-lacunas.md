@@ -1,38 +1,33 @@
-# Catálogo GLOBAL de equipamentos — mapa de lacunas
+# Códigos de equipamentos: cobertura documental e lacunas
 
-> Companheiro de `catalogo-equipamentos.md`. Lista só o que AINDA falta / tem confiança baixa.
-> Atualizado em 2026-06-15 (pós ACJs de janela + tabela Hitachi de fontes secundárias).
+Revisão: 15/11/2026. Responsável pela curadoria desta entrega: equipe técnica Dominex.
 
-## 0) Estado atual
-- 17 marcas, **5 categorias** (Split Hi-Wall, Cassete, Piso-Teto, Multi-Split, Janela (ACJ)), **110 modelos**.
-- **Fotos: 110/110** — todas no bucket próprio `equipment-catalog` (path `models/<id>.<ext>`). Sem hotlink de terceiro.
-- **Manuais: 105/110** — em PDF no `equipment-catalog`. Faltam 5 (4 Philco ACJ + 1 Consul ACJ Inverter — sem PDF público; mostram badge "Manual Indisponível").
-- **Códigos de erro:** todos os splits/cassete/piso-teto têm; os **26 ACJ de janela NÃO têm** (são mecânicos/eletrônicos simples, sem display de código — esperado). Brastemp "ative!" (on/off) idem.
-- **Hitachi airHome 600:** só o código `EA` é confirmado no manual oficial; os demais (01/03/06/09/10/13) vêm de docs Hitachi RAC da MESMA plataforma (fontes secundárias, confiança média) — registrados pra dar partida ao técnico, validar com a rede autorizada antes de tratar como definitivos.
-- **Logos** — re-hospedados (`logos/<slug>.png`); Agratto/Philco/Komeco corrigidos. (Demais marcas com logo_url externo estável — re-hospedar quando der.)
-- Bucket `equipment-catalog`: público (leitura), escrita só super_admin.
+O catálogo remoto continua sendo a fonte dos registros cadastrados. A leitura acrescenta códigos de manuais nos modelos abaixo, sem gravar ou substituir dados remotos. Não representa uma lista completa de todos os equipamentos, alarmes ou procedimentos de serviço.
 
-## 1) Entradas "linha geral" — RESOLVIDO (2026-06-15)
-As 8 marcas que tinham 1 entrada genérica sem BTU (Gree, Midea, Consul, Daikin, Electrolux, Fujitsu, LG, Samsung) foram **expandidas em variantes por BTU** (9k/12k/18k/24k; Consul 9/12/18/22k), com SKU real, e cada variante reusa a foto + manual + tabela de códigos da linha. As genéricas foram removidas. 32 variantes criadas.
-- Refinamento futuro (não-bloqueante): foto/manual hoje são compartilhados por linha (1 por marca, reusados entre BTUs — splits são visualmente idênticos). Se quiser foto/manual por SKU exato, é nova rodada de pesquisa.
-- GC do Storage: as 8 fotos/manuais das genéricas removidas seguem no bucket nos paths com o id antigo (reusados pelas variantes) — NÃO limpar por "id de modelo órfão".
+## Famílias verificadas nesta entrega
 
-## 2) Confiança / ressalvas de códigos de erro (mantidas)
-- Brastemp = plataforma Consul (equivalência ALTA, texto exato merece 2ª fonte). `E5` Brastemp não semeado.
-- Carrier/Springer = só tabela Midea inverter; convenção "pisca N vezes" e Cassete/Piso-Teto (40KVCB/42XQA/42BQA) não semeados.
-- Hitachi E1–E8 têm conflito A/B entre fontes; E4/E7/E8 + F0–F2 fora. Validar contra HIOM-MSPAR001.
-- Philco: só F1–F5 inverter genérica; E1–E10 do ITQFM9W e "EA" não entraram.
-- Elgin: só Eco Plus II; Eco Life Inverter e linhas antigas (só imagem) fora.
-- TCL: códigos de portais técnicos (média), não validados linha-a-linha.
-- Komeco: Cassete/Piso-Teto trifásico só fonte secundária; Multi-Split sem dados.
+| Marca / modelos | Cobertura complementar | Documento e escopo comprovado |
+| --- | --- | --- |
+| Daikin FTKP09/12/18/24Q5VL e FTKP09/12/18/24S5VL | 28 códigos, incluindo a indicação normal `00`; significado e grupo, sem inventar diagnóstico ou reparo | [Manual oficial 3P611135-1G](https://www.daikin.com.br/static/uploads/conteudos/downloads/231009034205000000.pdf), modelos na capa e tabela na página 18 |
+| Daikin FTHP09/12/18/24Q5VL e FTHP09/12/18/24S5VL | Mesmos 28 códigos, com a referência própria da linha quente/frio | [Manual oficial 3P611135-2F](https://www.daikin.com.br/static/uploads/conteudos/downloads/231009034252000000.pdf), modelos na capa e tabela na página 18 |
+| Samsung AR09/12/18DYFAAWK, incluindo terminações NAZ/XAZ | 10 códigos de instalação: C101, C121, C122, C123, C154, 88, C162, C163, C422 e C554 | Manual Samsung DB68-13010A-00, família na página 1 e tabela “Indicador de erro” na página 2. [Cópia do documento original distribuída pela CentralAr](https://castaticstorage.blob.core.windows.net/centralar/mds/manuais/samsung/inverter/3866/manual%20%2B%20termo%20de%20garantia/manual%20%2B%20termo%20de%20garantia.pdf). O [suporte oficial do AR09DYFAAWKNAZ](https://www.samsung.com/br/support/model/AR09DYFAAWKNAZ/) confirma o modelo; o guia de operação disponível ali não contém essa tabela de falhas. |
 
-## 3) Multi-Split — quase tudo em aberto
-Só Springer tem 1 modelo Multi-Split. Demais marcas sem modelos/códigos de Multi-Split nas fontes públicas.
+São 38 significados distintos em três referências documentais. A quantidade de modelos efetivamente beneficiados depende dos registros remotos e de seus códigos exatos; não é inferida pelo nome comercial. Códigos já cadastrados, inclusive suas descrições e traduções, têm precedência. A busca global, a disponibilidade do botão e o detalhe consultam a mesma compatibilidade.
 
-## 4) Categorias ainda ausentes
-Existem 4 (Split Hi-Wall, Cassete, Piso-Teto, Multi-Split). Faltam (criar quando houver modelos): Janela, Portátil, Duto, Splitão, Cortina de Ar.
+## Lacunas conhecidas que não foram preenchidas por aproximação
 
-## 5) Observações de re-hospedagem
-- Algumas fotos de modelos "linha geral" e variantes específicas usam imagem representativa da linha (não do SKU exato) — aceitável, marcado nas fontes.
-- 2 pares de modelos compartilham a mesma imagem de origem (Agratto Piso-Teto 36k/55k; Brastemp Clean) — cada um tem seu próprio arquivo no bucket.
-- Whirlpool = N/A no BR (não vende AC; opera via Brastemp/Consul). Não semear.
+- **Demais Daikin:** FTKC/FTHC Full Inverter, FTK/FTH Advance, SkyAir, Multi Split, VRV e outros sufixos FTKP/FTHP exigem manual da família correspondente. Sem uma capa/tabela de modelos compatível, a entrega não aplica automaticamente os códigos EcoSwing.
+- **Demais Samsung:** WindFree com códigos BV/TX/BS, outras variantes DX/DY e AR24DYFAAWK não recebem o complemento desta entrega. A marca ou o nome “WindFree” sozinhos não demonstram compatibilidade.
+- **Samsung DYFA:** o complemento cobre a tabela de instalação verificada, não todo o catálogo de falhas do manual de serviço. Os códigos de função apresentados na [ajuda geral Samsung](https://www.samsung.com/br/support/home-appliances/codigos-de-erro-no-seu-ar-condicionado-samsung/) variam por modelo e não foram convertidos em uma tabela universal.
+- **Outras marcas/domínios:** esta entrega preserva os códigos existentes de LG, Gree, Midea, Fujitsu e demais marcas. Não atribui tabelas Daikin/Samsung a equipamentos de outras marcas, compressores ou linha branca.
+- **Sem código de modelo ou marca identificada:** o complemento não é aplicado. É necessário conferir a etiqueta e completar o cadastro antes de escolher o manual.
+
+## Próxima curadoria
+
+1. Levantar no catálogo remoto modelos sem códigos, agrupados por código exato e domínio; registrar a data e os totais dessa consulta.
+2. Consultar a [central oficial Daikin](https://www.daikin.com.br/profissionais/downloads) e o suporte oficial específico de cada modelo Samsung, priorizando famílias com mais equipamentos sem informação.
+3. Confirmar modelos abrangidos na capa ou tabela do manual e conferir a página dos códigos visualmente, pois alguns PDFs representam os códigos como imagens.
+4. Acrescentar referência, página, data de revisão e teste que rejeite modelos semelhantes não compatíveis. Se o documento vier de distribuidor, identificar essa hospedagem e não apresentá-la como link oficial da fabricante.
+5. Só importar códigos para a base global após revisão do escopo documental e coordenação da alteração. Uma falha ou indicação do manual não autoriza inventar uma causa única nem uma substituição de peça.
+
+Não houve auditoria quantitativa de todos os registros de produção neste documento. Os dados cadastrais podem evoluir em outras sessões; totais de cobertura exigem uma nova consulta ao banco.

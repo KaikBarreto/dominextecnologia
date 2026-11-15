@@ -56,6 +56,9 @@ const POTENCIA_PARA_W: Record<string, number> = {
   W: 1,
   kW: 1000,
   HP: 745.699872, // 1 HP ≈ 746 W
+  // Referência comercial aproximada, nunca a potência mecânica do motor.
+  // Unidade própria impede misturar os dois significados em favoritos/deep-links.
+  HP_ref: 9000 / 3.412142,
   cv: 735.49875, // cavalo-vapor métrico ≈ 735,5 W
   'BTU/h': 1 / 3.412142, // 1 W = 3,412142 BTU/h
   TR: 3516.852842, // 1 TR = 12000 BTU/h
@@ -65,6 +68,7 @@ const POTENCIA_UNIDADES: UnidadeDef[] = [
   { code: 'W', label: 'W' },
   { code: 'kW', label: 'kW' },
   { code: 'HP', label: 'HP' },
+  { code: 'HP_ref', label: 'HP comercial (aprox.)' },
   { code: 'cv', label: 'cv' },
   { code: 'BTU/h', label: 'BTU/h' },
   { code: 'TR', label: 'TR (tonelada de refrigeração)' },
@@ -147,7 +151,9 @@ export function converter(
 ): number {
   if (categoria === 'temperatura') {
     const base = temperaturaParaCelsius(valor, de);
-    return celsiusPara(base, para);
+    // Temperaturas absolutas (não deltas). Tolerância apenas para ponto flutuante.
+    if (base < -273.1500001) return NaN;
+    return celsiusPara(Math.max(-273.15, base), para);
   }
 
   const fatores =
@@ -166,12 +172,28 @@ export function converter(
 }
 
 /**
- * Formata o resultado da conversão em PT-BR, com até 6 casas significativas e
+ * Formata o resultado da conversão em PT-BR, com até 6 casas decimais e
  * sem zeros à direita desnecessários.
  */
 export function formatarResultado(valor: number): string {
   if (!Number.isFinite(valor)) return '—';
+  if (valor !== 0 && Math.abs(valor) < 0.000001) {
+    return new Intl.NumberFormat('pt-BR', { notation: 'scientific', maximumSignificantDigits: 8 }).format(valor);
+  }
   // Arredonda pra evitar lixo de ponto flutuante, mantém precisão útil.
   const arredondado = Number(valor.toFixed(6));
   return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 6 }).format(arredondado);
+}
+
+/** Lê números PT-BR, inclusive resultados agrupados ao editar o lado calculado. */
+export function lerValorConversao(valor: string): number {
+  const raw = valor.trim().replace(/\s/g, '');
+  if (!raw) return NaN;
+  if (raw.includes(',')) {
+    if (!/^[+-]?(?:\d+|\d{1,3}(?:\.\d{3})+)?,\d*(?:[eE][+-]?\d+)?$/.test(raw)) return NaN;
+    return Number(raw.replace(/\./g, '').replace(',', '.'));
+  }
+  if (/^[+-]?\d{1,3}(\.\d{3})+$/.test(raw)) return Number(raw.replace(/\./g, ''));
+  if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(raw)) return NaN;
+  return Number(raw);
 }

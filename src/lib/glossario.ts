@@ -20,10 +20,9 @@ export interface TermoGlossario {
 export const GLOSSARIO: TermoGlossario[] = [
   {
     id: 'btu',
-    termo: 'BTU / BTU/h',
-    descricao:
-      'Unidade que mede a capacidade de refrigeração de um aparelho — quanto calor ele consegue remover do ambiente. Quanto maior o BTU, mais o ar-condicionado "gela". O "/h" indica por hora.',
-    exemplo: 'Um quarto pequeno geralmente pede um aparelho de ~9.000 BTUs.',
+    termo: "BTU / BTU/h",
+    descricao: "BTU mede energia térmica; BTU/h mede a capacidade de retirar ou fornecer calor por hora. A capacidade de refrigeração não é o consumo elétrico.",
+    exemplo: "Um aparelho de 9.000 BTU/h pode retirar essa quantidade de calor por hora nas condições especificadas pelo fabricante.",
   },
   {
     id: 'carga-termica',
@@ -35,10 +34,9 @@ export const GLOSSARIO: TermoGlossario[] = [
   },
   {
     id: 'capacitor',
-    termo: 'Capacitor (µF — microfarad)',
-    descricao:
-      'Componente que armazena energia e ajuda o motor (compressor ou ventilador) a dar a partida e a girar. Sua capacidade é medida em microfarad (µF). Capacitor errado ou estufado faz o aparelho não ligar ou desarmar.',
-    exemplo: 'Um compressor de 18.000 BTUs costuma usar um capacitor de ~40 µF.',
+    termo: "Capacitor (µF — microfarad)",
+    descricao: "Componente que armazena energia elétrica. Capacitores de partida e permanentes têm funções diferentes. A capacitância, a tolerância, a tensão e o tipo devem seguir a especificação do motor.",
+    exemplo: "Se o manual pede 35 µF ±5%, use essa especificação. Os BTU/h do aparelho não determinam o capacitor.",
   },
   {
     id: 'tensao-capacitor',
@@ -50,24 +48,22 @@ export const GLOSSARIO: TermoGlossario[] = [
   },
   {
     id: 'amper',
-    termo: 'Amper (A)',
-    descricao:
-      'Mede a corrente elétrica, ou seja, o quanto de energia está "passando" pelo fio naquele momento. Corrente acima do normal indica motor forçando, problema mecânico ou tensão errada.',
-    exemplo: '1.844 W ÷ 220 V = 8,38 A de corrente.',
+    termo: "Ampere (A)",
+    descricao: "Mede a corrente elétrica, o fluxo de carga elétrica no circuito. Compare a medição com a placa e as condições de operação do equipamento.",
+    exemplo: "Em uma carga resistiva ideal, 1.844 W ÷ 220 V ≈ 8,38 A. Para motores, o fator de potência também importa.",
   },
   {
     id: 'watt',
-    termo: 'Watt (W) / Quilowatt (kW)',
-    descricao:
-      'Mede a potência elétrica — quanta energia o aparelho consome ou produz. 1 kW (quilowatt) = 1.000 W. É o que aparece na conta de luz.',
-    exemplo: 'Um split de 12.000 BTUs consome em torno de 1.100 W (1,1 kW).',
+    termo: "Watt (W) / Quilowatt (kW)",
+    descricao: "W e kW medem potência. A energia consumida ao longo do tempo é medida em kWh, unidade usada na conta de luz. Potência elétrica consumida e capacidade térmica são grandezas diferentes.",
+    exemplo: "Uma carga constante de 1.000 W ligada por 2 horas consome 2 kWh.",
   },
   {
     id: 'hp',
-    termo: 'HP (Horse Power / cv)',
+    termo: 'HP (potência mecânica)',
     descricao:
-      'Unidade de potência de motores, também chamada de "cavalo" (cv). Em energia, 1 HP ≈ 2.544 BTU/h. Na prática comercial da refrigeração, costuma-se associar 1 HP a cerca de 9.000 BTUs de capacidade.',
-    exemplo: 'Um compressor de 1 HP equivale, na prática, a ~9.000 BTUs.',
+      '1 HP mecânico equivale a aproximadamente 745,7 W ou 2.544,43 BTU/h; cv é outra unidade (cerca de 735,5 W). O HP comercial de ar-condicionado é uma referência aproximada de capacidade, diferente da potência mecânica e do consumo elétrico.',
+    exemplo: 'Alguns aparelhos da classe comercial de 1 HP entregam cerca de 9.000 BTU/h. Confira a capacidade real na ficha do modelo.',
   },
   {
     id: 'tr',
@@ -78,10 +74,9 @@ export const GLOSSARIO: TermoGlossario[] = [
   },
   {
     id: 'pressao',
-    termo: 'Pressão (bar, psi, kPa, atm, mca)',
-    descricao:
-      'A pressão do gás no sistema é medida em várias unidades. As mais comuns no manômetro são bar e psi. 1 bar ≈ 14,5 psi ≈ 100 kPa ≈ 0,99 atm. Pressão fora do padrão indica falta ou excesso de gás.',
-    exemplo: 'Uma leitura de 4 bar no manômetro equivale a cerca de 58 psi.',
+    termo: "Pressão (bar, psi, kPa, atm, mca)",
+    descricao: "bar e psi são comuns no manômetro: 1 bar ≈ 14,5 psi = 100 kPa. A unidade não informa se a leitura é relativa à atmosfera ou absoluta. Pressão isolada não determina a carga de refrigerante.",
+    exemplo: "4 bar ≈ 58 psi. Analise também temperatura, operação e manual do equipamento.",
   },
   {
     id: 'temperatura',

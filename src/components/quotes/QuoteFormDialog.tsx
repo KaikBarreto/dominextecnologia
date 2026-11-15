@@ -310,16 +310,16 @@ function ServiceItemsList({
   inventoryItems: InventoryItem[];
   costResources: CostResource[];
 }) {
-  const [expandedIdx, setExpandedIdx] = useState<number | null>(() => serviceItems.length ? allItems.indexOf(serviceItems[serviceItems.length - 1]) : null);
+  const [expandedIdx, setExpandedIdx] = useState<number | null>(() => useBdi && serviceItems.length ? allItems.indexOf(serviceItems[serviceItems.length - 1]) : null);
   const previousServiceCount = useRef(serviceItems.length);
   useEffect(() => {
     if (serviceItems.length > previousServiceCount.current) {
-      setExpandedIdx(allItems.indexOf(serviceItems[serviceItems.length - 1]));
+      setExpandedIdx(useBdi ? allItems.indexOf(serviceItems[serviceItems.length - 1]) : null);
     } else if (serviceItems.length < previousServiceCount.current) {
       setExpandedIdx(null);
     }
     previousServiceCount.current = serviceItems.length;
-  }, [serviceItems, allItems]);
+  }, [serviceItems, allItems, useBdi]);
   const handlePricePaste = (event: React.ClipboardEvent<HTMLInputElement>, index: number) => {
     const cents = readPastedCents(event);
     if (cents == null) return;
@@ -351,9 +351,11 @@ function ServiceItemsList({
                   <span className="min-w-0">
                     <span className="block text-lg font-semibold leading-6 sm:text-xl">{item.description}</span>
                     <span className="mt-1 block text-xs leading-relaxed text-primary-foreground/75 sm:text-sm">
-                      {hasCosts
-                        ? `Mão de obra ${fmt(item.unit_labor_cost)} · Insumos ${fmt(item.unit_materials_cost)} · Recursos ${fmt(item.unit_extras_cost)}`
-                        : tq.serviceNoCosts}
+                      {useBdi
+                        ? hasCosts
+                          ? `Mão de obra ${fmt(item.unit_labor_cost)} · Insumos ${fmt(item.unit_materials_cost)} · Recursos ${fmt(item.unit_extras_cost)}`
+                          : tq.serviceNoCosts
+                        : item.pricing_mode === 'registered' ? 'Preço cadastrado' : 'Preço manual'}
                     </span>
                   </span>
 
@@ -365,8 +367,8 @@ function ServiceItemsList({
                         <span className="mt-0.5 block font-semibold tabular-nums">{item.quantity}</span>
                       </span>
                       <span>
-                        <span className="block text-xs font-medium uppercase tracking-wide text-primary-foreground/75">Custo unit.</span>
-                        <span className="mt-0.5 block font-semibold tabular-nums">{hasCosts ? fmt(item.unit_total_cost) : '—'}</span>
+                        <span className="block text-xs font-medium uppercase tracking-wide text-primary-foreground/75">{useBdi ? 'Custo unit.' : 'Preço unit.'}</span>
+                        <span className="mt-0.5 block font-semibold tabular-nums">{useBdi ? hasCosts ? fmt(item.unit_total_cost) : '—' : fmt(item.unit_price)}</span>
                       </span>
                     </span>
                     <span className="text-right">
@@ -385,13 +387,13 @@ function ServiceItemsList({
                 <div className="pb-8 pt-3">
 
 
-                  <section className="space-y-5">
-                    <div>
+                  <section className={useBdi ? 'space-y-5' : 'grid gap-4 sm:grid-cols-[minmax(0,16rem)_minmax(0,1fr)] sm:items-start'}>
+                    {useBdi && <div>
                       <h4 className="text-xl font-semibold sm:text-2xl">Preço do serviço</h4>
                       <p className="mt-1 text-sm text-muted-foreground">Defina como o serviço será cobrado e o texto que o cliente verá.</p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 xl:grid-cols-[minmax(13rem,1.4fr)_5rem_9rem]">
-                      <div className="col-span-2 space-y-1.5 xl:col-span-1">
+                    </div>}
+                    <div className={cn('grid grid-cols-[minmax(0,5rem)_minmax(0,10rem)] gap-4', useBdi && 'grid-cols-2 xl:grid-cols-[minmax(13rem,1.4fr)_5rem_9rem]')}>
+                      {useBdi && <div className="col-span-2 space-y-1.5 xl:col-span-1">
                         <Label className="text-sm font-semibold text-foreground">Forma de precificação</Label>
                         <ServicePricingModeControl
                           item={item}
@@ -399,7 +401,7 @@ function ServiceItemsList({
                           allowRegistered={canUseRegisteredPrice(item)}
                           onChange={mode => onUpdatePricingMode(globalIdx, mode)}
                         />
-                      </div>
+                      </div>}
                       <div className="space-y-1.5">
                         <Label className="text-sm font-semibold text-foreground">{tq.serviceColQty}</Label>
                         <Input
@@ -429,7 +431,7 @@ function ServiceItemsList({
                       </div>
                     </div>
 
-                    {item.pricing_mode === 'manual' && (
+                    {useBdi && item.pricing_mode === 'manual' && (
                       <p className="text-sm leading-relaxed text-foreground">
                         Este é o valor cobrado do cliente. O BDI não é aplicado a este preço.
                         {useBdi && hasCosts && (
@@ -444,13 +446,14 @@ function ServiceItemsList({
                         value={item.details ?? ''}
                         onChange={event => onUpdateDetails(globalIdx, event.target.value)}
                         placeholder={tq.itemDetailsPlaceholder}
-                        rows={3}
-                        className="min-h-24 resize-y"
+                        rows={useBdi ? 3 : 2}
+                        className={cn('resize-y', useBdi ? 'min-h-24' : 'min-h-16')}
                       />
                     </div>
+                    {!useBdi && item.pricing_mode !== 'registered' && canUseRegisteredPrice(item) && <button type="button" className="w-fit text-sm font-medium underline underline-offset-4 sm:col-span-2" onClick={() => onUpdatePricingMode(globalIdx, 'registered')}>Usar preço cadastrado</button>}
                   </section>
-                  <details key={item.pricing_mode === 'cost_bdi' ? 'calculated' : 'optional'} open={item.pricing_mode === 'cost_bdi'} className="mt-7">
-                    <summary className="cursor-pointer py-3 text-lg font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{item.pricing_mode === 'cost_bdi' ? 'Composição dos custos' : 'Custos internos e composição (opcional)'}</summary>
+                  <details key={item.pricing_mode === 'cost_bdi' && useBdi ? 'calculated' : 'optional'} open={useBdi && item.pricing_mode === 'cost_bdi'} className={useBdi ? 'mt-7' : 'mt-4'}>
+                    <summary className={cn('cursor-pointer py-3 font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring', useBdi ? 'text-lg' : 'text-sm text-muted-foreground hover:text-foreground')}>{useBdi ? item.pricing_mode === 'cost_bdi' ? 'Composição dos custos' : 'Custos internos e composição (opcional)' : 'Ver ou ajustar custos internos (opcional)'}</summary>
                     <div className="pt-4">
                   <QuoteServiceCostEditor
                     value={{

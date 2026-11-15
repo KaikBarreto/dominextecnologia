@@ -8,7 +8,7 @@ import {
   useLocation,
   Navigate,
 } from 'react-router-dom';
-import { Home, Lock, ChevronLeft } from 'lucide-react';
+import { Home, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AreaTecnicoIcon } from '@/components/icons/MenuIcons';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
@@ -216,7 +216,7 @@ function ToolsShell({
         />
         <h1
           className={cn(
-            'text-lg font-semibold tracking-tight lg:text-2xl',
+            'text-2xl font-bold tracking-tight lg:text-3xl',
             withVeil && 'text-white',
           )}
         >
@@ -268,9 +268,9 @@ function ToolsShell({
         headerInner(false)
       )}
 
-      {/* Pills (mobile). */}
+      {/* A mesma navegação horizontal em todas as larguras evita uma segunda sidebar. */}
       {(isLocked || (isOwnSegment && activeTab !== 'inicio')) && (
-        <div className="lg:hidden">
+        <div>
           <MobilePillTabs
             variant="underline"
             level="screen"
@@ -286,36 +286,12 @@ function ToolsShell({
       )}
 
       {(isOwnSegment || isLocked) && (
-        <div className="lg:flex lg:gap-6">
-          {/* Sidebar (desktop) */}
-          <nav className="hidden lg:flex lg:w-56 lg:shrink-0 lg:flex-col lg:gap-1">
-            {navItems.map((t) => {
-              const isActive = activeTab === t.value;
-              return (
-                <button
-                  key={t.value}
-                  type="button"
-                  onClick={() => onSwitchTab(t.value)}
-                  className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                    isActive
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                  )}
-                >
-                  <t.icon className="h-5 w-5 shrink-0" />
-                  <span className="min-w-0 flex-1 break-words text-left leading-tight">{t.label}</span>
-                  {t.locked && <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
-                </button>
-              );
-            })}
-          </nav>
-
+        <div>
           {/* Conteúdo */}
           <div
             className={cn(
               'min-w-0 flex-1',
-              !isLocked && !isFullWidthTool && 'mx-auto w-full max-w-4xl',
+              !isLocked && !isFullWidthTool && 'mx-auto w-full max-w-5xl',
             )}
           >
             {isLocked ? (
@@ -329,7 +305,7 @@ function ToolsShell({
                       variant="ghost"
                       size="sm"
                       onClick={onBack}
-                      className="-ml-2 h-9 gap-1 px-2 text-muted-foreground hover:text-foreground"
+                      className="-ml-2 h-11 gap-1 px-2 text-muted-foreground hover:bg-red-600 hover:text-white"
                     >
                       <ChevronLeft className="h-4 w-4" />
                       {tArea.btnBack}

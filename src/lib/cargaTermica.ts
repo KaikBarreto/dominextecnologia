@@ -2,7 +2,7 @@
  * Cálculo de carga térmica (estimativa de BTUs) para dimensionamento de ar-condicionado.
  *
  * ⚠️ ESTIMATIVA. Esta fórmula é uma referência simplificada inspirada nas
- * recomendações da NBR 5858 / ABNT para conforto térmico, mas NÃO substitui um
+ * referências simplificadas de conforto térmico, mas NÃO substitui um
  * cálculo de carga térmica feito por profissional habilitado. O resultado serve
  * apenas como ponto de partida para a escolha do equipamento. Diferentes
  * realidades de instalação (isolamento, orientação solar, materiais, ocupação
@@ -53,9 +53,13 @@ export interface CargaTermicaInput {
 /**
  * Calcula a capacidade necessária em BTUs (já arredondada pra cima).
  */
-export function calcularCargaTermica(input: CargaTermicaInput): number {
+export function calcularCargaTermica(input: CargaTermicaInput): number | null {
   const F = CARGA_TERMICA_FATORES;
   const { altura, largura, comprimento, pessoas, eletronicos, janelas, ensolarado } = input;
+
+  if (![altura, largura, comprimento, pessoas, eletronicos, janelas].every(Number.isFinite)) return null;
+  if (altura <= 0 || largura <= 0 || comprimento <= 0) return null;
+  if (![pessoas, eletronicos, janelas].every((n) => Number.isInteger(n) && n >= 0)) return null;
 
   const area = largura * comprimento; // m²
   const base = area * (ensolarado ? F.btuPorM2Sol : F.btuPorM2Sombra);
@@ -68,10 +72,10 @@ export function calcularCargaTermica(input: CargaTermicaInput): number {
       : 0;
 
   const total = base + pessoasBtu + eletronicosBtu + janelasBtu + peDireitoExtra;
-  return Math.ceil(total);
+  return Number.isFinite(total) && total > 0 ? Math.ceil(total) : null;
 }
 
 /** Formata BTUs com separador de milhar PT-BR. Ex: 23006 → "23.006". */
 export function formatarBtus(btus: number): string {
-  return new Intl.NumberFormat('pt-BR').format(btus);
+  return new Intl.NumberFormat('pt-BR', { notation: Math.abs(btus) >= 1e9 ? 'scientific' : 'standard', maximumFractionDigits: 2 }).format(btus);
 }

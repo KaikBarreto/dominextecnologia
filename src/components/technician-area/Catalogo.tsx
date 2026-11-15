@@ -1,3 +1,4 @@
+import { calcularEnergiaCatalogo } from '@/lib/energiaCatalogo';
 import { useEffect, useMemo, useState, type ReactNode, type ComponentType } from 'react';
 import {
   Routes,
@@ -64,6 +65,9 @@ import { GasDetail } from './GasDetail';
 import { GasBadge } from './GasBadge';
 import { RemoteConfig } from './RemoteConfig';
 import { CatalogImage } from './CatalogImage';
+import { ManufacturerDocuments, ManufacturerManualLink } from './ManufacturerDocuments';
+import { EquipmentReferenceNotice } from './EquipmentReferenceNotice';
+import { getEquipmentCodeReference } from '@/data/equipmentErrorCodeReferences';
 import {
   registrarModeloRecente,
   isModeloFavorito,
@@ -1706,6 +1710,8 @@ function ModelosList({
         </div>
       </ResponsiveModal>
 
+      <ManufacturerDocuments brandName={brand.name} />
+
       {isLoading ? (
         <LoadingBlock />
       ) : models.length === 0 ? (
@@ -1899,9 +1905,9 @@ function RemoteCard({
           />
         </button>
       ) : (
-        <div className="flex h-44 w-full flex-col items-center justify-center gap-1 bg-white">
-          <PackageSearch className="h-12 w-12 text-neutral-300" />
-          <span className="text-xs text-neutral-400">{t.noPhoto}</span>
+        <div className="flex h-28 w-full flex-col items-center justify-center gap-1 bg-muted/40">
+          <PackageSearch className="h-9 w-9 text-muted-foreground/60" />
+          <span className="text-xs text-muted-foreground">{t.noPhoto}</span>
         </div>
       )}
 
@@ -2237,9 +2243,9 @@ function lerEnergiaConfig(): EnergiaConfig {
     const tarifa = Number(parsed.tarifa);
     const horasDia = Number(parsed.horasDia);
     return {
-      tarifa: Number.isFinite(tarifa) && tarifa > 0 ? tarifa : ENERGIA_DEFAULTS.tarifa,
+      tarifa: Number.isFinite(tarifa) && tarifa >= 0 ? tarifa : ENERGIA_DEFAULTS.tarifa,
       horasDia:
-        Number.isFinite(horasDia) && horasDia > 0 && horasDia <= 24
+        Number.isFinite(horasDia) && horasDia >= 0 && horasDia <= 24
           ? horasDia
           : ENERGIA_DEFAULTS.horasDia,
     };
@@ -2296,17 +2302,9 @@ function kwh(v: number): string {
 /**
  * Bloco "Consumo de energia" do card de detalhe (só AC e linha branca).
  *
- * Hora e mês são SEMPRE coerentes entre si: mês = hora × horasDia × 30.
- *
- * - Com `consumo_kwh_mes` OFICIAL: ele é a verdade do mês. A hora vira o consumo
- *   MÉDIO por hora de uso → kWh/h = mês ÷ (horasDia × 30). Rótulo do mês sem
- *   "(estimado)" (é oficial), mas a nota de estimativa continua. Mexer nas horas
- *   muda a hora exibida (faz sentido: mesma energia mensal espalhada por mais/menos horas).
- * - Sem oficial, com `potencia_w`: kWh/h = W/1000 (potência nominal) e
- *   mês = hora × horasDia × 30 (estimado). Rótulo "(estimado · X h/dia)".
- * - Sem nenhum dado → "Consumo não informado". Nunca inventa número.
- *
- * gasto/h = kWh/h × tarifa; gasto/mês = kWh/mês × tarifa.
+ * A referência mensal cadastrada não informa as horas/ciclo de ensaio.
+ * Ela é apresentada sem convertê-la para consumo horário. A simulação
+ * ajustável usa apenas a potência elétrica nominal e fica separada da referência.
  */
 function ConsumoEnergia({ model }: { model: EquipmentModel }) {
   const { locale, currency } = useAppLocaleContext();
@@ -2318,45 +2316,21 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
   const [tarifaStr, setTarifaStr] = useState(() => String(cfg.tarifa).replace('.', ','));
   const [horasNum, setHorasNum] = useState<number>(() => cfg.horasDia);
 
-  // Defensivo: selects de busca por código não trazem as colunas → tratar como ausente.
-  const potencia = typeof model.potencia_w === 'number' ? model.potencia_w : null;
-  const oficialMes = typeof model.consumo_kwh_mes === 'number' ? model.consumo_kwh_mes : null;
-
-  const temDado = potencia != null || oficialMes != null;
-
-  // Geladeira/freezer rodam contínuo (24h/dia): o slider de horas não se aplica.
-  // Pra esses, o "por mês" é sempre o mês cheio a 24h e a hora é ancorada em 24h.
   const continuo = rodaContinuo(model);
-  const horasDiaUso = continuo ? 24 : cfg.horasDia;
-  const ancoraHoras = continuo ? 24 : ENERGIA_DEFAULTS.horasDia;
-
-  // Horas mensais de uso (base da relação hora ↔ mês). Sempre > 0 (config validada).
-  const horasMes = horasDiaUso * 30;
-
-  // Consumo por hora de OPERAÇÃO = base fixa do equipamento; o mês escala com as
-  // horas/dia (mês = hora × horasDiaUso × 30).
-  // - Contínuo (geladeira): horasDiaUso e ancoraHoras = 24 → mês = oficial (mês
-  //   cheio 24h), hora = oficial ÷ (24 × 30); o slider NÃO afeta.
-  // - AC/outros liga-desliga: ancorado em ENERGIA_DEFAULTS.horasDia (8h/dia);
-  //   por-hora = oficial ÷ (8 × 30). A 8h/dia o mês bate o oficial; a 12h, ×1,5; a 24h, ×3.
-  // - Sem oficial: por-hora = potência nominal (W/1000); inverter consome menos que isso.
-  let kwhHora: number | null = null;
-  if (oficialMes != null) {
-    kwhHora = oficialMes / (ancoraHoras * 30);
-  } else if (potencia != null) {
-    kwhHora = potencia / 1000;
-  }
-  const kwhMes = kwhHora != null ? kwhHora * horasMes : null;
-  const baseEhPotencia = oficialMes == null && kwhMes != null;
-
-  const gastoHora = kwhHora != null ? kwhHora * cfg.tarifa : null;
-  const gastoMes = kwhMes != null ? kwhMes * cfg.tarifa : null;
+  const { referenciaKwhMes, gastoReferenciaMes, estimativaNominal } = calcularEnergiaCatalogo({
+    potenciaW: model.potencia_w,
+    consumoKwhMes: model.consumo_kwh_mes,
+    tarifa: cfg.tarifa,
+    horasDia: cfg.horasDia,
+    continuo,
+  });
+  const temDado = referenciaKwhMes !== null || estimativaNominal !== null;
 
   function commitConfig() {
     const t = Number(tarifaStr.replace(',', '.'));
     const h = horasNum;
     setCfg({
-      tarifa: Number.isFinite(t) && t > 0 ? t : ENERGIA_DEFAULTS.tarifa,
+      tarifa: Number.isFinite(t) && t >= 0 ? t : ENERGIA_DEFAULTS.tarifa,
       horasDia: Number.isFinite(h) && h >= 0 && h <= 24 ? h : ENERGIA_DEFAULTS.horasDia,
     });
     setOpen(false);
@@ -2381,7 +2355,7 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
           }}
         >
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs">
+            <Button variant="ghost" size="sm" className="min-h-11 gap-1 px-2 text-sm">
               <SlidersHorizontal className="h-3.5 w-3.5" />
               {t.adjust}
             </Button>
@@ -2399,7 +2373,7 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
                 placeholder="0,90"
               />
             </div>
-            <div className="space-y-2">
+            {estimativaNominal !== null && !continuo && <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <label className="text-xs text-muted-foreground">{t.usageHoursPerDay}</label>
                 <span className="text-sm font-semibold tabular-nums text-foreground">
@@ -2415,7 +2389,7 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
                 className="py-1.5"
                 aria-label={t.usageHoursPerDay}
               />
-            </div>
+            </div>}
             <Button size="sm" className="w-full" onClick={commitConfig}>
               {t.apply}
             </Button>
@@ -2426,40 +2400,39 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
       {!temDado ? (
         <p className="mt-2 text-xs text-muted-foreground">{t.noConsumptionData}</p>
       ) : (
-        <div className="mt-2 space-y-1.5 text-sm">
-          {kwhHora != null && (
-            <div className="flex items-start justify-between gap-3">
-              <span className="min-w-0 font-medium text-foreground">{t.perHour}</span>
-              <span className="shrink-0 whitespace-nowrap text-right font-medium text-foreground">
-                {kwh(kwhHora)}/h
-                {gastoHora != null && (
-                  <span className="ml-1 text-muted-foreground">· {money(gastoHora)}</span>
-                )}
+        <div className="mt-3 space-y-3 text-sm">
+          {referenciaKwhMes !== null && <div className="space-y-2">
+            <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+              <span className="font-medium text-foreground">{t.registeredMonthlyConsumption}</span>
+              <span className="font-semibold tabular-nums text-foreground">
+                {kwh(referenciaKwhMes)}
+                {gastoReferenciaMes !== null && <span className="ml-1 font-normal text-muted-foreground">· {money(gastoReferenciaMes)}</span>}
               </span>
             </div>
-          )}
-          {kwhMes != null && (
-            <div className="flex items-start justify-between gap-3">
-              <span className="min-w-0 font-medium text-foreground">
+            <p className="text-xs leading-relaxed text-muted-foreground">{t.registeredMonthlyNote}</p>
+          </div>}
+          {estimativaNominal !== null && <div className={cn('space-y-2', referenciaKwhMes !== null && 'border-t pt-3')}>
+            <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+              <span className="font-medium text-foreground">{t.perHour}</span>
+              <span className="font-semibold tabular-nums text-foreground">
+                {kwh(estimativaNominal.kwhHora)}
+                {estimativaNominal.gastoHora !== null && <span className="ml-1 font-normal text-muted-foreground">· {money(estimativaNominal.gastoHora)}</span>}
+              </span>
+            </div>
+            <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+              <span className="font-medium text-foreground">
                 {t.perMonth}
-                <span className="block text-[11px] font-normal leading-tight text-muted-foreground">
-                  {continuo
-                    ? t.continuousOp
-                    : `${t.estimatedOp} · ${String(cfg.horasDia).replace('.', ',')} ${t.hoursPerDay}`}
+                <span className="block text-xs font-normal leading-relaxed text-muted-foreground">
+                  {t.estimatedOp} · {String(estimativaNominal.horasDia).replace('.', ',')} {t.hoursPerDay}
                 </span>
               </span>
-              <span className="shrink-0 whitespace-nowrap text-right font-medium text-foreground">
-                {kwh(kwhMes)}
-                {gastoMes != null && (
-                  <span className="ml-1 text-muted-foreground">· {money(gastoMes)}</span>
-                )}
+              <span className="font-semibold tabular-nums text-foreground">
+                {kwh(estimativaNominal.kwhMes)}
+                {estimativaNominal.gastoMes !== null && <span className="ml-1 font-normal text-muted-foreground">· {money(estimativaNominal.gastoMes)}</span>}
               </span>
             </div>
-          )}
-          <p className="pt-0.5 text-[11px] leading-snug text-muted-foreground">
-            {t.energyEstimateNote}
-            {baseEhPotencia && t.energyPowerNote}
-          </p>
+            <p className="text-xs leading-relaxed text-muted-foreground">{t.energyPowerNote}</p>
+          </div>}
         </div>
       )}
     </div>
@@ -2671,13 +2644,13 @@ function ModelCard({
           )}
         >
           {codigosIndisponiveis ? (
-            <div className="flex h-9 items-center justify-center rounded-md bg-destructive px-3 text-center text-xs font-semibold text-white">
+            <div className="flex min-h-11 items-center justify-center rounded-md bg-muted px-3 text-center text-sm text-muted-foreground">
               {t.noErrorCodes}
             </div>
           ) : (
-            <Button variant="outline" size="sm" onClick={onSelectDetail} className="w-full">
+            <Button variant="outline" size="sm" onClick={onSelectDetail} className="h-auto min-h-11 w-full whitespace-normal text-center">
               <DetalheIcon className="h-4 w-4 shrink-0" />
-              <span className="truncate">{detalhe.label}</span>
+              <span>{detalhe.label}</span>
             </Button>
           )}
 
@@ -2692,15 +2665,20 @@ function ModelCard({
                     sanitizarNomeArquivo(`Manual ${model.name} - ${brandName}.pdf`),
                   )
                 }
-                className="w-full"
+                className="h-auto min-h-11 w-full whitespace-normal text-center"
               >
                 <Download className="h-4 w-4 shrink-0" />
-                <span className="truncate">{t.downloadManual}</span>
+                <span>{t.downloadManual}</span>
               </Button>
             ) : (
-              <div className="flex h-9 items-center justify-center rounded-md bg-destructive px-3 text-center text-xs font-semibold text-white">
-                {t.noManual}
-              </div>
+              <ManufacturerManualLink
+                brandName={brandName}
+                fallback={
+                  <div className="flex min-h-11 items-center justify-center rounded-md bg-muted px-3 text-center text-sm text-muted-foreground">
+                    {t.noManual}
+                  </div>
+                }
+              />
             ))}
 
           {segundoBotao === 'datasheet' &&
@@ -2714,15 +2692,15 @@ function ModelCard({
                     sanitizarNomeArquivo(`Datasheet ${model.name} - ${brandName}.pdf`),
                   )
                 }
-                className="w-full"
+                className="h-auto min-h-11 w-full whitespace-normal text-center"
               >
                 <FileText className="h-4 w-4 shrink-0" />
-                <span className="truncate">
+                <span>
                   {model.manual_type ? rotuloManual(model.manual_type, manualLabels) : 'Datasheet'}
                 </span>
               </Button>
             ) : (
-              <div className="flex h-9 items-center justify-center rounded-md bg-destructive px-3 text-center text-xs font-semibold text-white">
+              <div className="flex min-h-11 items-center justify-center rounded-md bg-muted px-3 text-center text-sm text-muted-foreground">
                 {t.noDatasheet}
               </div>
             ))}
@@ -2842,6 +2820,7 @@ function CodigosErro({
     });
 
   const filtrados = codes.filter((c) => fuzzyIncludesAny([c.code, c.title, c.description], filtro));
+  const reference = getEquipmentCodeReference(model);
 
   return (
     <div className="space-y-6 pb-8">
@@ -2871,8 +2850,9 @@ function CodigosErro({
 
       {/* Campo de busca estilo display */}
       <div className="space-y-2">
-        <p className="text-sm font-medium">{t.displayLabel}</p>
+        <label htmlFor="equipment-code-search" className="text-base font-medium">{t.displayLabel}</label>
         <Input
+          id="equipment-code-search"
           type="text"
           placeholder={t.displayPlaceholder}
           value={filtro}
@@ -2882,12 +2862,15 @@ function CodigosErro({
       </div>
 
       {/* Instruções */}
-      <div className="rounded-xl border border-border bg-muted/40 p-4">
-        <p className="text-sm font-semibold">{t.instructionsTitle}</p>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+      <div>
+        <p className="text-sm leading-relaxed text-muted-foreground">
           {t.instructionsText}
         </p>
       </div>
+
+      {reference && codes.some((code) => code.reference_id === reference.id) && (
+        <EquipmentReferenceNotice reference={reference} />
+      )}
 
       {/* Lista / resultado */}
       {isLoading ? (
@@ -2918,7 +2901,7 @@ function CodigosErro({
                 <span className="rounded-lg bg-primary px-2.5 py-1 text-sm font-bold uppercase tracking-wide text-primary-foreground">
                   {ec.code}
                 </span>
-                {ecTitle && <span className="min-w-0 truncate text-sm font-semibold">{ecTitle}</span>}
+                {ecTitle && <span className="min-w-0 break-words text-base font-semibold">{ecTitle}</span>}
               </div>
 
               {ecDescription && (
@@ -2989,12 +2972,14 @@ function Header({
   /** Ação opcional alinhada à direita (ex: favoritar). */
   action?: ReactNode;
 }) {
+  const { locale } = useAppLocaleContext();
   return (
     <div className={cn('flex gap-3', eyebrow ? 'items-start' : 'items-center')}>
       <Button
         variant="ghost"
         size="icon"
-        className={cn('shrink-0', backDesktopOnly && 'hidden lg:flex')}
+        className={cn('h-11 w-11 shrink-0 hover:bg-destructive hover:text-destructive-foreground', backDesktopOnly && 'hidden lg:flex')}
+        aria-label={MESSAGES[locale].app.os.technicianArea.btnBack}
         onClick={onBack}
       >
         <ArrowLeft className="h-5 w-5" />
@@ -3014,8 +2999,8 @@ function Header({
             </>
           ) : (
             <>
-              <h1 className="text-lg font-semibold tracking-tight truncate lg:text-2xl">{title}</h1>
-              {subtitle && <p className="truncate text-sm text-muted-foreground">{subtitle}</p>}
+              <h1 className="break-words text-xl font-semibold leading-snug tracking-tight lg:text-2xl">{title}</h1>
+              {subtitle && <p className="break-words text-sm text-muted-foreground">{subtitle}</p>}
             </>
           )}
         </div>

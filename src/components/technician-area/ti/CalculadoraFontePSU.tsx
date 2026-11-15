@@ -2,232 +2,139 @@ import { useMemo, useState } from 'react';
 import { Zap } from 'lucide-react';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { Label } from '@/components/ui/label';
-import { NumericInput } from '@/components/ui/numeric-input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { cn } from '@/lib/utils';
+import { NumericInput, parseDecimalInputValue } from '@/components/ui/numeric-input';
+import { formatNumber } from '@/lib/format';
+import { estimatePsu, PSU_PER_UNIT_W } from '@/lib/technicianItCalculations';
 import { ToolDisclaimer } from '../ToolDisclaimer';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 
-// ── Consumo típico por componente (W) ──────────────────────────────────────
-const CPU_OPTIONS = [
-  { label: 'Baixo consumo (35–65 W) — ex.: i3, Ryzen 3', w: 65 },
-  { label: 'Consumo médio (65–95 W) — ex.: i5, Ryzen 5', w: 95 },
-  { label: 'Alto consumo (95–125 W) — ex.: i7, Ryzen 7', w: 125 },
-  { label: 'Muito alto (125–180 W) — ex.: i9, Ryzen 9', w: 180 },
-  { label: 'Extreme / Workstation (> 180 W)', w: 250 },
-];
-
-const GPU_OPTIONS = [
-  { label: 'Sem GPU dedicada (integrado)', w: 0 },
-  { label: 'GPU de entrada (50–80 W) — ex.: GTX 1650, RX 6500', w: 80 },
-  { label: 'GPU intermediária (100–150 W) — ex.: RTX 3060, RX 6600', w: 150 },
-  { label: 'GPU alta (200–250 W) — ex.: RTX 3080, RX 6800 XT', w: 250 },
-  { label: 'GPU topo (300–400 W) — ex.: RTX 4090, RX 7900 XTX', w: 400 },
-];
-
-const MOBO_OPTIONS = [
-  { label: 'Mini-ITX / Micro-ATX', w: 30 },
-  { label: 'ATX padrão', w: 50 },
-  { label: 'EATX / High-end', w: 80 },
-];
-
-const RAM_PER_STICK_W = 5; // W por módulo
-const HDD_W = 10; // W por HDD
-const SSD_W = 3;  // W por SSD (SATA/NVMe)
-const COOLER_W = 10; // W por cooler adicional (já incluso no TDP da CPU; este é extra case fan)
-
-const MARGIN_FACTOR = 1.30; // +30% de folga recomendada
-
-function tierLabel(watt: number): { label: string; color: string } {
-  if (watt <= 350) return { label: '80 Plus Bronze', color: 'hsl(30 90% 50%)' };
-  if (watt <= 550) return { label: '80 Plus Gold', color: 'hsl(45 100% 45%)' };
-  if (watt <= 750) return { label: '80 Plus Gold / Platinum', color: 'hsl(200 80% 45%)' };
-  return { label: '80 Plus Platinum / Titanium', color: 'hsl(262 80% 55%)' };
-}
-
-function roundUpPsu(w: number): number {
-  const tiers = [350, 450, 550, 650, 750, 850, 1000, 1200, 1600];
-  return tiers.find((t) => t >= w) ?? 1600;
-}
+const copy = {
+  'pt-br': { inputNote: 'Informe a potência máxima do componente em watts. Os valores iniciais são apenas exemplos editáveis.', minimum: 'Potência mínima estimada', outsideRange: 'O cálculo excede as faixas desta ferramenta. Não há sugestão de modelo; escolha uma fonte que atenda pelo menos ao mínimo acima e às exigências dos componentes.', empty: 'Preencha as potências para calcular.' },
+  en: { inputNote: 'Enter each component’s maximum power in watts. Initial values are editable examples only.', minimum: 'Estimated minimum power', outsideRange: 'The result exceeds this tool’s size ranges. No model is suggested; choose a PSU that meets at least the minimum above and all component requirements.', empty: 'Enter the power values to calculate.' },
+  es: { inputNote: 'Indique la potencia máxima de cada componente en vatios. Los valores iniciales son solo ejemplos editables.', minimum: 'Potencia mínima estimada', outsideRange: 'El resultado supera las gamas de esta herramienta. No se sugiere un modelo; elija una fuente que cubra al menos el mínimo indicado y los requisitos de los componentes.', empty: 'Complete las potencias para calcular.' },
+  fr: { inputNote: 'Indiquez la puissance maximale de chaque composant en watts. Les valeurs initiales ne sont que des exemples modifiables.', minimum: 'Puissance minimale estimée', outsideRange: 'Le résultat dépasse les plages de cet outil. Aucun modèle n’est proposé ; choisissez une alimentation répondant au minimum indiqué et aux exigences des composants.', empty: 'Renseignez les puissances pour calculer.' },
+};
 
 export function CalculadoraFontePSU() {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.technicianTools.psuCalc;
 
-  const [cpuIdx, setCpuIdx] = useState(1);
-  const [gpuIdx, setGpuIdx] = useState(0);
-  const [moboIdx, setMoboIdx] = useState(1);
+  const extra = copy[locale];
+  const fmt = (value: number) => formatNumber(value, locale, { maximumFractionDigits: 2 });
+  const [cpuW, setCpuW] = useState('95');
+  const [gpuW, setGpuW] = useState('0');
+  const [moboW, setMoboW] = useState('50');
   const [ramSticks, setRamSticks] = useState('2');
   const [hdds, setHdds] = useState('0');
   const [ssds, setSsds] = useState('1');
   const [coolers, setCoolers] = useState('0');
 
-  const { totalW, recW, psuSize, tier } = useMemo(() => {
-    const ram = Math.max(0, Number(ramSticks) || 0);
-    const hdd = Math.max(0, Number(hdds) || 0);
-    const ssd = Math.max(0, Number(ssds) || 0);
-    const fan = Math.max(0, Number(coolers) || 0);
-
-    const totalW =
-      CPU_OPTIONS[cpuIdx].w +
-      GPU_OPTIONS[gpuIdx].w +
-      MOBO_OPTIONS[moboIdx].w +
-      ram * RAM_PER_STICK_W +
-      hdd * HDD_W +
-      ssd * SSD_W +
-      fan * COOLER_W;
-
-    const recW = Math.ceil(totalW * MARGIN_FACTOR);
-    const psuSize = roundUpPsu(recW);
-    const tier = tierLabel(psuSize);
-    return { totalW, recW, psuSize, tier };
-  }, [cpuIdx, gpuIdx, moboIdx, ramSticks, hdds, ssds, coolers]);
+  const result = useMemo(() => {
+    const cpu = parseDecimalInputValue(cpuW);
+    const gpu = parseDecimalInputValue(gpuW);
+    const mobo = parseDecimalInputValue(moboW);
+    if (cpu === null || gpu === null || mobo === null) return null;
+    return estimatePsu({ cpuW: cpu, gpuW: gpu, moboW: mobo,
+      ramSticks: Number(ramSticks), hdds: Number(hdds), ssds: Number(ssds), coolers: Number(coolers) });
+  }, [cpuW, gpuW, moboW, ramSticks, hdds, ssds, coolers]);
 
   return (
     <div className="space-y-4 pb-4">
       <div>
-        <h2 className="text-base font-semibold tracking-tight md:text-xl">{t.title}</h2>
+        <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">{t.title}</h2>
         <p className="text-sm text-muted-foreground md:text-base">{t.subtitle}</p>
       </div>
 
-      <div className="rounded-lg border border-border bg-card p-4 space-y-4">
-        {/* CPU */}
-        <div className="space-y-1.5">
-          <Label className="text-base text-muted-foreground md:text-lg">{t.cpuLabel}</Label>
-          <Select value={String(cpuIdx)} onValueChange={(v) => setCpuIdx(Number(v))}>
-            <SelectTrigger className="h-14 text-lg">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {CPU_OPTIONS.map((o, i) => (
-                <SelectItem key={i} value={String(i)}>{o.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">{t.cpuWattNote.replace('{w}', String(CPU_OPTIONS[cpuIdx].w))}</p>
-        </div>
-
-        {/* GPU */}
-        <div className="space-y-1.5">
-          <Label className="text-base text-muted-foreground md:text-lg">{t.gpuLabel}</Label>
-          <Select value={String(gpuIdx)} onValueChange={(v) => setGpuIdx(Number(v))}>
-            <SelectTrigger className="h-14 text-lg">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {GPU_OPTIONS.map((o, i) => (
-                <SelectItem key={i} value={String(i)}>{o.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {GPU_OPTIONS[gpuIdx].w > 0 && (
-            <p className="text-xs text-muted-foreground">{t.gpuWattNote.replace('{w}', String(GPU_OPTIONS[gpuIdx].w))}</p>
-          )}
-        </div>
-
-        {/* Placa-mãe */}
-        <div className="space-y-1.5">
-          <Label className="text-base text-muted-foreground md:text-lg">{t.moboLabel}</Label>
-          <Select value={String(moboIdx)} onValueChange={(v) => setMoboIdx(Number(v))}>
-            <SelectTrigger className="h-14 text-lg">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {MOBO_OPTIONS.map((o, i) => (
-                <SelectItem key={i} value={String(i)}>{o.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      <div className="space-y-5">
+        <p className="text-sm leading-relaxed text-muted-foreground">{extra.inputNote}</p>
+        <div className="grid gap-4 sm:grid-cols-3">
+          {[
+            { id: 'psu-cpu', label: t.cpuLabel, value: cpuW, set: setCpuW },
+            { id: 'psu-gpu', label: t.gpuLabel, value: gpuW, set: setGpuW },
+            { id: 'psu-mobo', label: t.moboLabel, value: moboW, set: setMoboW },
+          ].map((field) => (
+            <div key={field.id} className="space-y-2">
+              <Label htmlFor={field.id} className="text-base font-medium text-foreground">{field.label}</Label>
+              <div className="relative">
+                <NumericInput id={field.id} decimal value={field.value} onValueChange={field.set} min={0} className="h-14 pr-10 text-lg" />
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">W</span>
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* Contagens */}
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <div className="space-y-1.5">
-            <Label className="text-base text-muted-foreground md:text-lg">{t.ramLabel}</Label>
+            <Label htmlFor="psu-ramSticks" className="text-base font-medium text-foreground">{t.ramLabel}</Label>
             <NumericInput
+              id="psu-ramSticks"
+              min={0}
               value={ramSticks}
               onValueChange={setRamSticks}
               className="h-14 text-lg"
             />
-            <p className="text-xs text-muted-foreground">{t.ramNote.replace('{w}', String(RAM_PER_STICK_W))}</p>
+            <p className="text-xs text-muted-foreground">{t.ramNote.replace('{w}', String(PSU_PER_UNIT_W.ramSticks))}</p>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-base text-muted-foreground md:text-lg">{t.hddLabel}</Label>
+            <Label htmlFor="psu-hdds" className="text-base font-medium text-foreground">{t.hddLabel}</Label>
             <NumericInput
+              id="psu-hdds"
+              min={0}
               value={hdds}
               onValueChange={setHdds}
               className="h-14 text-lg"
             />
-            <p className="text-xs text-muted-foreground">{t.hddNote.replace('{w}', String(HDD_W))}</p>
+            <p className="text-xs text-muted-foreground">{t.hddNote.replace('{w}', String(PSU_PER_UNIT_W.hdds))}</p>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-base text-muted-foreground md:text-lg">{t.ssdLabel}</Label>
+            <Label htmlFor="psu-ssds" className="text-base font-medium text-foreground">{t.ssdLabel}</Label>
             <NumericInput
+              id="psu-ssds"
+              min={0}
               value={ssds}
               onValueChange={setSsds}
               className="h-14 text-lg"
             />
-            <p className="text-xs text-muted-foreground">{t.ssdNote.replace('{w}', String(SSD_W))}</p>
+            <p className="text-xs text-muted-foreground">{t.ssdNote.replace('{w}', String(PSU_PER_UNIT_W.ssds))}</p>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-base text-muted-foreground md:text-lg">{t.coolerLabel}</Label>
+            <Label htmlFor="psu-coolers" className="text-base font-medium text-foreground">{t.coolerLabel}</Label>
             <NumericInput
+              id="psu-coolers"
+              min={0}
               value={coolers}
               onValueChange={setCoolers}
               className="h-14 text-lg"
             />
-            <p className="text-xs text-muted-foreground">{t.coolerNote.replace('{w}', String(COOLER_W))}</p>
+            <p className="text-xs text-muted-foreground">{t.coolerNote.replace('{w}', String(PSU_PER_UNIT_W.coolers))}</p>
           </div>
         </div>
       </div>
 
-      {/* Resultado */}
-      <div className="rounded-lg border border-border bg-background p-5 text-center space-y-3">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          {t.resultLabel}
-        </p>
-        <div>
-          <p className="text-5xl font-bold leading-none text-primary sm:text-7xl">
-            {psuSize}
-            <span className="ml-2 text-2xl font-semibold sm:text-3xl">W</span>
+      {/* Capacidade nominal e eficiência são critérios diferentes. Nenhum
+          selo 80 PLUS é inferido a partir dos watts calculados. */}
+      <div className="space-y-4 rounded-xl bg-muted/40 p-5 text-center" aria-live="polite">
+        {result ? <>
+          <p className="text-sm font-semibold text-muted-foreground">
+            {result.psuSize === null ? extra.minimum : t.resultLabel}
           </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t.resultSuggested}: {psuSize} W
+          <p className="break-all text-4xl font-bold leading-tight tabular-nums text-primary sm:text-6xl">
+            {fmt(result.psuSize ?? result.recW)} <span className="text-2xl font-semibold">W</span>
           </p>
-        </div>
-
-        {/* Grade de detalhes */}
-        <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg bg-muted/40 p-3">
-          <div className="text-center">
-            <p className="text-xs font-medium text-muted-foreground">{t.totalConsumption}</p>
-            <p className="text-lg font-semibold">{totalW} W</p>
-          </div>
-          <div className="text-center">
-            <p className="text-xs font-medium text-muted-foreground">{t.withMargin}</p>
-            <p className="text-lg font-semibold">{recW} W</p>
-          </div>
-          <div className="text-center">
-            <p className="text-xs font-medium text-muted-foreground">{t.efficiency}</p>
-            <p
-              className={cn('text-base font-semibold leading-tight')}
-              style={{ color: tier.color }}
-            >
-              {tier.label}
-            </p>
-          </div>
-        </div>
-
-        <NoticeBanner variant="neutral" icon={Zap}>
-          {t.marginNote}
-        </NoticeBanner>
+          {result.psuSize === null ? (
+            <p className="text-sm leading-relaxed text-foreground">{extra.outsideRange}</p>
+          ) : (
+            <p className="text-sm text-muted-foreground">{t.resultSuggested}: {fmt(result.psuSize)} W</p>
+          )}
+          <dl className="grid grid-cols-2 gap-4 border-t border-border pt-4">
+            <div><dt className="text-sm text-muted-foreground">{t.totalConsumption}</dt><dd className="mt-1 break-words text-xl font-semibold tabular-nums">{fmt(result.totalW)} W</dd></div>
+            <div><dt className="text-sm text-muted-foreground">{t.withMargin}</dt><dd className="mt-1 break-words text-xl font-semibold tabular-nums">{fmt(result.recW)} W</dd></div>
+          </dl>
+        </> : <p className="text-sm text-muted-foreground">{extra.empty}</p>}
       </div>
+      <NoticeBanner variant="neutral" icon={Zap}>{t.marginNote}</NoticeBanner>
 
       <ToolDisclaimer texto={t.disclaimer} />
     </div>

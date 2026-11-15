@@ -46,21 +46,21 @@ export function CicloRefrigeracao() {
   return (
     <div className="space-y-4 pb-4">
       <div>
-        <h2 className="text-base font-semibold tracking-tight md:text-xl">
+        <h2 className="text-2xl font-bold tracking-tight md:text-3xl">
           {t.title}
         </h2>
-        <p className="text-sm text-muted-foreground md:text-base">
+        <p className="mt-1 text-base text-muted-foreground">
           {t.subtitle}
         </p>
       </div>
 
       {/* Toggle de visão: Ilustração (off) x Imagem 2D (on) */}
-      <div className="flex items-center justify-center gap-3">
+      <div className="flex flex-wrap items-center justify-center gap-3">
         <button
           type="button"
           onClick={() => setView('ilustracao')}
           aria-pressed={view === 'ilustracao'}
-          className={`flex items-center gap-1.5 py-1.5 text-sm font-medium transition-colors ${
+          className={`inline-flex min-h-11 items-center gap-1.5 rounded-md px-1 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
             view === 'ilustracao' ? 'text-foreground' : 'text-muted-foreground'
           }`}
         >
@@ -76,7 +76,7 @@ export function CicloRefrigeracao() {
           type="button"
           onClick={() => setView('imagem')}
           aria-pressed={view === 'imagem'}
-          className={`flex items-center gap-1.5 py-1.5 text-sm font-medium transition-colors ${
+          className={`inline-flex min-h-11 items-center gap-1.5 rounded-md px-1 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
             view === 'imagem' ? 'text-foreground' : 'text-muted-foreground'
           }`}
         >
@@ -103,7 +103,7 @@ export function CicloRefrigeracao() {
         <div className="flex items-center gap-2">
           <BookOpen className="h-5 w-5 text-primary shrink-0" />
           <div>
-            <h2 className="text-base font-semibold md:text-xl">{t.glossaryTitle}</h2>
+            <h2 className="text-xl font-semibold md:text-2xl">{t.glossaryTitle}</h2>
             <p className="text-sm text-muted-foreground md:text-base">
               {t.glossarySubtitle}
             </p>
@@ -113,8 +113,8 @@ export function CicloRefrigeracao() {
         <Accordion type="single" collapsible>
           {GLOSSARIO_CICLO.map((entry) => (
             <AccordionItem key={entry.id} value={entry.id} className="last:border-b-0">
-              <AccordionTrigger className="min-w-0 text-left text-sm font-semibold md:text-base">
-                <span className="truncate pr-2">{entry.termo}</span>
+              <AccordionTrigger className="min-h-12 min-w-0 text-left text-base font-semibold">
+                <span className="min-w-0 whitespace-normal pr-2 leading-relaxed">{entry.termo}</span>
               </AccordionTrigger>
               <AccordionContent className="space-y-2">
                 <p className="text-sm text-muted-foreground">{entry.descricao}</p>

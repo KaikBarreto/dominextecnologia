@@ -60,11 +60,11 @@ export function SegmentToolsSwitcher({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="rounded-full transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="inline-flex min-h-11 max-w-full items-center rounded-full transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           {selectedSeg ? (
             <Badge
-              className="cursor-pointer gap-1.5 border-0 text-white lg:px-3 lg:py-1.5 lg:text-sm"
+              className="max-w-full cursor-pointer gap-1.5 border-0 px-3 py-1.5 text-sm text-white"
               style={{ backgroundColor: selectedSeg.color }}
             >
               <selectedSeg.icon className="h-3 w-3 lg:h-3.5 lg:w-3.5" />

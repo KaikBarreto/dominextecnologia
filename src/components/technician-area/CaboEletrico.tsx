@@ -1,5 +1,4 @@
 import { useEffect, useMemo } from 'react';
-import { Zap } from 'lucide-react';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import {
@@ -11,7 +10,6 @@ import {
 } from '@/components/ui/select';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { usePersistedState } from '@/hooks/usePersistedState';
-import { SpecPhotoCard, type Spec } from './SpecPhotoCard';
 import { ToolDisclaimer } from './ToolDisclaimer';
 import {
   CABO,
@@ -44,7 +42,7 @@ export function CaboEletrico() {
   const [distancia, setDistancia] = usePersistedState<string>('tt:state:cabo-eletrico:distancia', '');
 
   // BTUs disponíveis dependem da tensão escolhida.
-  const btusDisponiveis = CABO.BTUS_POR_TENSAO[tensao];
+  const btusDisponiveis = CABO.BTUS_POR_TENSAO[tensao] ?? CABO.BTUS_POR_TENSAO['220'];
 
   const isPersonalizado = btu === PERSONALIZADO;
 
@@ -63,10 +61,13 @@ export function CaboEletrico() {
     return calcularCaboEletrico(b, tensao, d);
   }, [btu, btuPersonalizado, isPersonalizado, tensao, distancia]);
 
+  const btuAtual = isPersonalizado ? num(btuPersonalizado) : num(btu);
+  const foraDaTabela = btuAtual > 0 && (btuAtual < btusDisponiveis[0] || btuAtual > btusDisponiveis[btusDisponiveis.length - 1]);
+
   return (
     <div className="space-y-4 pb-4">
       <div>
-        <h2 className="text-base font-semibold tracking-tight md:text-xl">{t.title}</h2>
+        <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">{t.title}</h2>
         <p className="text-sm text-muted-foreground md:text-base">
           {t.subtitle}
         </p>
@@ -76,11 +77,11 @@ export function CaboEletrico() {
       <div className="rounded-lg border border-border bg-card p-4">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="space-y-1.5">
-            <Label className="text-base text-muted-foreground md:text-lg">
+            <Label htmlFor="cabo-capacidade" className="text-base font-medium text-foreground">
               {t.selectBtu}
             </Label>
             <Select value={btu} onValueChange={setBtu}>
-              <SelectTrigger className="h-14 text-lg md:h-14 md:text-lg">
+              <SelectTrigger id="cabo-capacidade" className="h-14 text-lg md:h-14 md:text-lg">
                 <SelectValue placeholder="BTU" />
               </SelectTrigger>
               <SelectContent>
@@ -95,6 +96,7 @@ export function CaboEletrico() {
             {isPersonalizado && (
               <div className="relative mt-2">
                 <NumericInput
+                  aria-label={t.selectBtu}
                   value={btuPersonalizado}
                   onValueChange={setBtuPersonalizado}
                   placeholder="Ex: 22000"
@@ -108,12 +110,12 @@ export function CaboEletrico() {
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-base text-muted-foreground md:text-lg">{t.selectVoltage}</Label>
+            <Label className="text-base font-medium text-foreground">{t.selectVoltage}</Label>
             <div className="flex h-14 items-center justify-center rounded-lg border border-border bg-background">
               <LabeledSwitch
                 value={tensao}
                 onChange={(v) => setTensao(v as TensaoCaboValue)}
-                off={{ value: '127', label: '110V' }}
+                off={{ value: '127', label: '127V' }}
                 on={{ value: '220', label: '220V' }}
                 size="lg"
                 aria-label="Tensão da rede"
@@ -122,12 +124,13 @@ export function CaboEletrico() {
           </div>
 
           <div className="space-y-1.5 md:col-span-2">
-            <Label className="text-base text-muted-foreground md:text-lg">
+            <Label htmlFor="cabo-distancia" className="text-base font-medium text-foreground">
               {t.distanceLabel}
             </Label>
             <div className="relative">
               <NumericInput
                 decimal
+                id="cabo-distancia"
                 value={distancia}
                 onValueChange={setDistancia}
                 placeholder="Ex: 40"
@@ -143,7 +146,7 @@ export function CaboEletrico() {
 
       {/* Resultado ao vivo — card de destaque */}
       <div className="mx-auto max-w-4xl rounded-lg border border-border bg-background p-5">
-        {resultado ? (
+        {resultado && !resultado.foraDeAlcance ? (
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-6">
             <div className="min-w-0 flex-1 space-y-4">
             <div className="text-center">
@@ -158,7 +161,7 @@ export function CaboEletrico() {
                 <span className="mx-1.5 text-muted-foreground">·</span>
                 {t.breakerPrefix}{' '}
                 <span className="whitespace-nowrap text-primary">
-                  {resultado.tipo} Din C{resultado.disjuntorA}
+                  DIN C{resultado.disjuntorA}
                 </span>
                 <span className="mx-1.5 text-muted-foreground">·</span>
                 {t.voltagePrefix}{' '}
@@ -206,34 +209,11 @@ export function CaboEletrico() {
             )}
             </div>
 
-            <SpecPhotoCard
-              className="lg:order-first lg:w-[22rem] lg:shrink-0"
-              titulo={t.breakerTitle}
-              fotoSrc={
-                resultado.tipo === 'Bipolar'
-                  ? '/images/disjuntores/din-bipolar.png'
-                  : '/images/disjuntores/din-monopolar.png'
-              }
-              fotoAlt={`Disjuntor ${resultado.tipo}`}
-              fallbackIcon={Zap}
-              specs={
-                [
-                  { label: t.specType, value: resultado.tipo },
-                  { label: t.specCurve, value: 'C' },
-                  { label: t.specCurrentIn, value: `${resultado.disjuntorA} A` },
-                  {
-                    label: t.specPoles,
-                    value: `${resultado.tipo === 'Bipolar' ? 2 : 1} (${resultado.tipo})`,
-                  },
-                  { label: t.specVoltage, value: `${tensao}V` },
-                  { label: t.specStandard, value: 'NBR NM 60898' },
-                ] satisfies Spec[]
-              }
-            />
+
           </div>
         ) : (
           <p className="text-center text-sm text-muted-foreground">
-            {t.selectAll}
+            {resultado?.foraDeAlcance ? t.outOfRangeNote : foraDaTabela ? t.outOfTableNote : t.selectAll}
           </p>
         )}
       </div>

@@ -37,7 +37,7 @@ export interface ResultadoContator {
   /** Corrente de emprego = In × FS (A). */
   correnteEmprego: number;
   /** Contator comercial AC-3 recomendado (A). */
-  contatorAC3: number;
+  contatorAC3: number | null;
   /** true quando Ie ultrapassa a maior corrente da linha → consultar especialista. */
   acimaDaLinha: boolean;
   /** Ajuste sugerido do relé térmico (≈ In), em A. */
@@ -59,18 +59,18 @@ export function correnteNominalPorCV(
   rendimento: number = RENDIMENTO_PADRAO,
   cosphi: number = COSPHI_PADRAO,
 ): number | null {
-  if (!cv || cv <= 0 || !tensao || tensao <= 0) return null;
-  if (!rendimento || rendimento <= 0 || !cosphi || cosphi <= 0) return null;
+  if (![cv, tensao, rendimento, cosphi].every(Number.isFinite)) return null;
+  if (cv <= 0 || tensao <= 0 || rendimento <= 0 || rendimento > 1 || cosphi <= 0 || cosphi > 1) return null;
   const potenciaWatts = cv * WATTS_POR_CV;
   const inA = potenciaWatts / (Math.sqrt(3) * tensao * rendimento * cosphi);
-  return Math.round(inA * 100) / 100;
+  return Number.isFinite(inA) && inA > 0 ? inA : null;
 }
 
 /** Menor contator AC-3 cuja corrente é >= a corrente de emprego. */
-function contatorAcimaDe(correnteEmprego: number): { valor: number; acimaDaLinha: boolean } {
+function contatorAcimaDe(correnteEmprego: number): { valor: number | null; acimaDaLinha: boolean } {
   const escolhido = CONTATORES_AC3.find((c) => c >= correnteEmprego);
   if (escolhido === undefined) {
-    return { valor: CONTATORES_AC3[CONTATORES_AC3.length - 1], acimaDaLinha: true };
+    return { valor: null, acimaDaLinha: true };
   }
   return { valor: escolhido, acimaDaLinha: false };
 }
@@ -86,16 +86,19 @@ function contatorAcimaDe(correnteEmprego: number): { valor: number; acimaDaLinha
  * Retorna null para In inválido (estado neutro na UI).
  */
 export function dimensionarContator(correnteNominal: number): ResultadoContator | null {
-  if (!correnteNominal || correnteNominal <= 0) return null;
+  if (!Number.isFinite(correnteNominal) || correnteNominal <= 0) return null;
 
-  const correnteEmprego = Math.round(correnteNominal * FATOR_SERVICO * 100) / 100;
-  const { valor: contatorAC3, acimaDaLinha } = contatorAcimaDe(correnteEmprego);
+  const correnteEmpregoExata = correnteNominal * FATOR_SERVICO;
+  if (!Number.isFinite(correnteEmpregoExata)) return null;
+  // Seleciona pela corrente não arredondada: 9,004 A não cabe em 9 A.
+  const correnteEmprego = correnteEmpregoExata;
+  const { valor: contatorAC3, acimaDaLinha } = contatorAcimaDe(correnteEmpregoExata);
 
   return {
-    correnteNominal: Math.round(correnteNominal * 100) / 100,
+    correnteNominal,
     correnteEmprego,
     contatorAC3,
     acimaDaLinha,
-    releTermico: Math.round(correnteNominal * 100) / 100,
+    releTermico: correnteNominal,
   };
 }

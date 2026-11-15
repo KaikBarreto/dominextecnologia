@@ -907,7 +907,7 @@ describe('QuoteFormDialog — modo de precificação e estrutura do wizard', () 
     }), expect.anything());
   });
 
-  it('oferece o modo manual antes de adicionar e mostra o preço antes dos custos opcionais', async () => {
+  it('no modo manual mantém a lista compacta e abre só a edição solicitada', async () => {
     mount();
     await goPastRecipient();
     expect(q('#quote-manual-pricing')).toBeTruthy();
@@ -916,9 +916,16 @@ describe('QuoteFormDialog — modo de precificação e estrutura do wizard', () 
     click(q('#quote-manual-pricing')!);
     await addServiceItem();
 
+    expect(q('input[aria-label="Preço de Manutenção Preventiva"]')).toBeNull();
+    const serviceButton = q('button[aria-label="Abrir serviço Manutenção Preventiva"]')!;
+    expect(serviceButton).toHaveAttribute('aria-expanded', 'false');
+    expect(serviceButton.textContent).toContain('Preço unit.');
+    expect(serviceButton.textContent).not.toContain('Custo unit.');
+    click(serviceButton);
     const price = q('input[aria-label="Preço de Manutenção Preventiva"]') as HTMLInputElement;
     expect(price).toHaveValue(250);
-    expect(q('button[aria-label="Recolher serviço Manutenção Preventiva"]')).toHaveAttribute('aria-expanded', 'true');
+    expect(q('[aria-label="Modo de preço de Manutenção Preventiva"]')).toBeNull();
+    expect(qAll('h4').some(heading => heading.textContent === 'Preço do serviço')).toBe(false);
     const composition = q('details') as HTMLDetailsElement;
     expect(composition.open).toBe(false);
     expect(composition.querySelector('summary')?.textContent).toContain('opcional');
@@ -931,16 +938,35 @@ describe('QuoteFormDialog — modo de precificação e estrutura do wizard', () 
     });
   });
 
-  it('expande o serviço recém-adicionado e preserva o valor do serviço anterior', async () => {
+  it('restaura o preço cadastrado sem reintroduzir o seletor no orçamento manual', async () => {
     mount();
     await goPastRecipient();
     click(q('#quote-manual-pricing')!);
     await addServiceItem();
+    click(q('button[aria-label="Abrir serviço Manutenção Preventiva"]')!);
+    typeInto(q('input[aria-label="Preço de Manutenção Preventiva"]') as HTMLInputElement, '400');
+    click(findButtonByText('Usar preço cadastrado')!);
+    expect(q('input[aria-label="Preço de Manutenção Preventiva"]')).toHaveValue(250);
+    expect(q('[aria-label="Modo de preço de Manutenção Preventiva"]')).toBeNull();
+    await clickAsync(findButtonByText(tq.saveDraft)!);
+    expect(testState.createMutate.mock.calls[0][0]).toMatchObject({
+      use_bdi: false, total_value: 250,
+      items: [expect.objectContaining({ pricing_mode: 'registered', unit_price: 250 })],
+    });
+  });
+
+  it('mantém novos serviços recolhidos no modo manual e preserva os valores anteriores', async () => {
+    mount();
+    await goPastRecipient();
+    click(q('#quote-manual-pricing')!);
+    await addServiceItem();
+    click(q('button[aria-label="Abrir serviço Manutenção Preventiva"]')!);
     typeInto(q('input[aria-label="Preço de Manutenção Preventiva"]') as HTMLInputElement, '400');
     await addServiceItem();
 
-    expect(qAll('button[aria-label="Recolher serviço Manutenção Preventiva"]')).toHaveLength(1);
-    expect(qAll('button[aria-label="Abrir serviço Manutenção Preventiva"]')).toHaveLength(1);
+    expect(qAll('button[aria-label="Recolher serviço Manutenção Preventiva"]')).toHaveLength(0);
+    expect(qAll('button[aria-label="Abrir serviço Manutenção Preventiva"]')).toHaveLength(2);
+    click(qAll('button[aria-label="Abrir serviço Manutenção Preventiva"]')[1]);
     expect(q('input[aria-label="Preço de Manutenção Preventiva"]')).toHaveValue(250);
     await clickAsync(findButtonByText(tq.saveDraft)!);
     expect(testState.createMutate.mock.calls[0][0]).toMatchObject({

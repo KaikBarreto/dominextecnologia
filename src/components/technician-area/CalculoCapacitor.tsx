@@ -3,23 +3,11 @@ import { AlertTriangle, CircuitBoard, Settings2, Zap } from 'lucide-react';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { usePersistedState } from '@/hooks/usePersistedState';
 import { SpecPhotoCard, type Spec } from './SpecPhotoCard';
 import { ToolDisclaimer } from './ToolDisclaimer';
-import {
-  BTUS_PADRAO,
-  calcularCapacitor,
-  calcularCapacitorPorLRA,
-  formatarNumero,
-} from '@/lib/capacitor';
+import { formatarNumero } from '@/lib/capacitor';
 import {
   correnteNominalPorCV,
   dimensionarContator,
@@ -30,14 +18,8 @@ import {
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 
-/** Valor sentinela do select para o modo de BTU livre. */
-const PERSONALIZADO = 'personalizado';
-
-/** Fase da máquina: monofásico (usa capacitor) ou trifásico (usa contator). */
+/** Fase da máquina. */
 type Fase = 'mono' | 'tri';
-
-/** Modo de cálculo monofásico: estimativa por BTU (atual) ou preciso por LRA. */
-type Modo = 'btu' | 'lra';
 
 /** Modo de entrada trifásico: corrente direta da placa (A) ou potência (CV). */
 type ModoTri = 'corrente' | 'cv';
@@ -66,7 +48,7 @@ export function CalculoCapacitor() {
   return (
     <div className="space-y-4 pb-4">
       <div>
-        <h2 className="text-base font-semibold tracking-tight md:text-xl">{t.title}</h2>
+        <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">{t.title}</h2>
         <p className="text-sm text-muted-foreground md:text-base">
           {fase === 'mono' ? t.subtitleMono : t.subtitleTri}
         </p>
@@ -81,231 +63,44 @@ export function CalculoCapacitor() {
   );
 }
 
-/** Ramo MONOFÁSICO — fluxo original (capacitor por BTU ou LRA). Sem regressão. */
+/** BTU/h e LRA não substituem a especificação de capacitor do fabricante. */
 function RamoMonofasico({ fase, setFase, t }: RamoProps) {
-  // Modo de cálculo. Default: estimativa por BTU (comportamento atual).
-  const [modo, setModo] = usePersistedState<Modo>('tt:state:capacitor:modo', 'btu');
-
-  // Default: primeiro BTU padrão e 220V (mais comum em campo).
-  const [btu, setBtu] = usePersistedState<string>(
-    'tt:state:capacitor:btu',
-    String(BTUS_PADRAO[0] ?? ''),
-  );
-  const [btuPersonalizado, setBtuPersonalizado] = usePersistedState<string>(
-    'tt:state:capacitor:btuPersonalizado',
-    '',
-  );
-  const [tensao, setTensao] = usePersistedState<string>('tt:state:capacitor:tensao', '220');
-
-  // Modo preciso: LRA do compressor (string crua, igual aos demais inputs).
-  const [lra, setLra] = usePersistedState<string>('tt:state:capacitor:lra', '');
-
-  const isPersonalizado = btu === PERSONALIZADO;
-
-  // Cálculo ao vivo (modo BTU): recalcula a cada troca de BTU/tensão.
-  const resultado = useMemo(() => {
-    const b = isPersonalizado ? num(btuPersonalizado) : num(btu);
-    const t = num(tensao);
-    if (!b || !t) return null;
-    return calcularCapacitor(b, t);
-  }, [btu, btuPersonalizado, tensao, isPersonalizado]);
-
-  // Cálculo ao vivo (modo LRA): só µF, a partir do LRA da etiqueta.
-  const lraNum = num(lra);
-  const capacitorLRA = useMemo(() => calcularCapacitorPorLRA(lraNum), [lraNum]);
-
   return (
     <>
-      {/* Card de entrada — linha de controles (Fase + Cálculo) no topo + campos abaixo */}
-      <div className="space-y-4 rounded-lg border border-border bg-card p-4">
-        {/* Dois switches lado a lado, na mesma linha, cada um com seu rótulo */}
-        <div className="grid grid-cols-1 gap-4 border-b border-border pb-4 sm:grid-cols-2">
-          <div className="flex flex-col items-center gap-1.5">
-            <Label className="text-xs uppercase tracking-wide text-muted-foreground">{t.phaseLabel}</Label>
-            <LabeledSwitch
-              value={fase}
-              onChange={(v) => setFase(v)}
-              off={{ value: 'mono', label: t.mono }}
-              on={{ value: 'tri', label: t.tri }}
-              aria-label="Fase da máquina"
-            />
-          </div>
-          <div className="flex flex-col items-center gap-1.5">
-            <Label className="text-xs uppercase tracking-wide text-muted-foreground">{t.calcLabel}</Label>
-            <LabeledSwitch
-              value={modo}
-              onChange={(v) => setModo(v)}
-              off={{ value: 'btu', label: t.calcBtu }}
-              on={{ value: 'lra', label: t.calcLra }}
-              aria-label="Modo de cálculo do capacitor"
-            />
-          </div>
-        </div>
-
-        {modo === 'btu' ? (
-          /* Seleções — grid 2 colunas no desktop, 1 no mobile */
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label className="text-base text-muted-foreground md:text-lg">{t.selectBtu}</Label>
-              <Select value={btu} onValueChange={setBtu}>
-                <SelectTrigger className="h-14 text-lg md:h-14 md:text-lg">
-                  <SelectValue placeholder="BTU" />
-                </SelectTrigger>
-                <SelectContent>
-                  {BTUS_PADRAO.map((b) => (
-                    <SelectItem key={b} value={String(b)}>
-                      {b.toLocaleString('pt-BR')} BTUs
-                    </SelectItem>
-                  ))}
-                  <SelectItem value={PERSONALIZADO}>{t.custom}</SelectItem>
-                </SelectContent>
-              </Select>
-              {isPersonalizado && (
-                <NumericInput
-                  value={btuPersonalizado}
-                  onValueChange={setBtuPersonalizado}
-                  placeholder="Ex: 27000"
-                  className="mt-2 h-14 text-lg md:h-14 md:text-lg"
-                />
-              )}
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-base text-muted-foreground md:text-lg">
-                {t.selectVoltage}
-              </Label>
-              <div className="flex h-14 items-center justify-center rounded-lg border border-border bg-background">
-                <LabeledSwitch
-                  value={tensao}
-                  onChange={setTensao}
-                  off={{ value: '110', label: '110V' }}
-                  on={{ value: '220', label: '220V' }}
-                  size="lg"
-                  aria-label="Tensão da rede"
-                />
-              </div>
-            </div>
-          </div>
-        ) : (
-          /* Entrada LRA */
-          <div className="space-y-1.5">
-            <Label className="text-base text-muted-foreground md:text-lg">
-              {t.lraLabel}
-            </Label>
-            <NumericInput
-              decimal
-              value={lra}
-              onValueChange={setLra}
-              placeholder="Ex: 40"
-              className="h-14 text-lg md:h-14 md:text-lg"
-            />
-            <p className="text-xs text-muted-foreground">
-              {t.lraNote}
-            </p>
-          </div>
-        )}
+      <div className="flex flex-col items-start gap-3">
+        <Label className="text-sm font-medium text-foreground">{t.phaseLabel}</Label>
+        <LabeledSwitch
+          value={fase}
+          onChange={setFase}
+          off={{ value: 'mono', label: t.mono }}
+          on={{ value: 'tri', label: t.tri }}
+          aria-label={t.phaseLabel}
+        />
       </div>
-
-      {/* Resultado ao vivo — card fixo no fim do conteúdo */}
-      {modo === 'btu' ? (
-        <div className="mx-auto max-w-4xl rounded-lg border border-border bg-background p-5">
-          {resultado ? (
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-6">
-              <div className="min-w-0 flex-1 space-y-4">
-                <div className="text-center">
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    {t.resultTitle}
-                  </p>
-                  <p className="mt-2 text-2xl font-semibold leading-tight sm:text-3xl">
-                    {t.resultUse}{' '}
-                    <span className="text-primary">{formatarNumero(resultado.capacitorUF)} µF</span>{' '}
-                    {t.resultRating}
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-lg border border-border bg-muted/30 p-3 text-center">
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      {t.resultAmper}
-                    </p>
-                    <p className="mt-1 text-2xl font-bold leading-none text-primary sm:text-3xl">
-                      {formatarNumero(resultado.amper)}
-                      <span className="ml-1 text-base font-semibold sm:text-lg">A</span>
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-border bg-muted/30 p-3 text-center">
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      {t.resultPower}
-                    </p>
-                    <p className="mt-1 text-2xl font-bold leading-none text-primary sm:text-3xl">
-                      {formatarNumero(resultado.potenciaWatts)}
-                      <span className="ml-1 text-base font-semibold sm:text-lg">watts</span>
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <SpecPhotoCard
-                className="lg:order-first lg:w-[22rem] lg:shrink-0"
-                titulo={t.resultTitle}
-                fotoSrc="/images/capacitores/capacitor.png"
-                fotoAlt="Capacitor permanente"
-                fallbackIcon={CircuitBoard}
-                specs={
-                  [
-                    { label: t.specCapacitance, value: `${formatarNumero(resultado.capacitorUF)} µF` },
-                    { label: t.specVoltage, value: '380/440 VAC' },
-                    { label: t.specType, value: t.specTypePermanent },
-                  ] satisfies Spec[]
-                }
-              />
-            </div>
-          ) : (
-            <p className="text-center text-sm text-muted-foreground">
-              {t.selectBtuAndVoltage}
-            </p>
-          )}
+      <section className="space-y-6 rounded-xl bg-muted/30 p-5 sm:p-6">
+        <div className="flex items-start gap-3">
+          <CircuitBoard className="mt-1 h-6 w-6 shrink-0 text-primary" />
+          <div className="space-y-2">
+            <h3 className="text-xl font-semibold tracking-tight">{t.guidanceTitle}</h3>
+            <p className="max-w-2xl text-base leading-relaxed text-foreground">{t.guidanceDescription}</p>
+          </div>
         </div>
-      ) : (
-        <div className="mx-auto max-w-4xl rounded-lg border border-border bg-background p-5">
-          {capacitorLRA !== null ? (
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-6">
-              <div className="min-w-0 flex-1 space-y-2 text-center">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  {t.resultTitle}
-                </p>
-                <p className="text-2xl font-semibold leading-tight sm:text-3xl">
-                  {t.resultUse}{' '}
-                  <span className="text-primary">{formatarNumero(capacitorLRA)} µF</span> {t.resultRating}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {t.calculatedFromLra.replace('{lra}', formatarNumero(lraNum))}
-                </p>
-              </div>
-
-              <SpecPhotoCard
-                className="lg:order-first lg:w-[22rem] lg:shrink-0"
-                titulo={t.resultTitle}
-                fotoSrc="/images/capacitores/capacitor.png"
-                fotoAlt="Capacitor permanente"
-                fallbackIcon={CircuitBoard}
-                specs={
-                  [
-                    { label: t.specCapacitance, value: `${formatarNumero(capacitorLRA)} µF` },
-                    { label: t.specVoltage, value: '380/440 VAC' },
-                    { label: t.specType, value: t.specTypePermanent },
-                  ] satisfies Spec[]
-                }
-              />
-            </div>
-          ) : (
-            <p className="text-center text-sm text-muted-foreground">
-              {t.enterLra}
-            </p>
-          )}
-        </div>
-      )}
-
+        <dl className="grid gap-6 md:grid-cols-3">
+          <div className="space-y-2">
+            <dt className="text-sm font-semibold">{t.specCapacitance}</dt>
+            <dd className="text-sm leading-relaxed text-muted-foreground">{t.guidanceCapacitance}</dd>
+          </div>
+          <div className="space-y-2">
+            <dt className="text-sm font-semibold">{t.specVoltage}</dt>
+            <dd className="text-sm leading-relaxed text-muted-foreground">{t.guidanceVoltage}</dd>
+          </div>
+          <div className="space-y-2">
+            <dt className="text-sm font-semibold">{t.specType}</dt>
+            <dd className="text-sm leading-relaxed text-muted-foreground">{t.guidanceType}</dd>
+          </div>
+        </dl>
+        <p className="text-sm font-medium">{t.guidanceFooter}</p>
+      </section>
       <ToolDisclaimer texto={t.disclaimer} />
     </>
   );
@@ -353,8 +148,8 @@ function RamoTrifasico({ fase, setFase, t }: RamoProps) {
     return correnteNominalPorCV(
       num(cvStr),
       num(tensaoTri),
-      num(rendimentoStr, RENDIMENTO_PADRAO),
-      num(cosphiStr, COSPHI_PADRAO),
+      num(rendimentoStr),
+      num(cosphiStr),
     );
   }, [modoTri, correnteStr, cvStr, tensaoTri, rendimentoStr, cosphiStr]);
 
@@ -370,7 +165,7 @@ function RamoTrifasico({ fase, setFase, t }: RamoProps) {
         {/* Dois switches lado a lado, na mesma linha, cada um com seu rótulo */}
         <div className="grid grid-cols-1 gap-4 border-b border-border pb-4 sm:grid-cols-2">
           <div className="flex flex-col items-center gap-1.5">
-            <Label className="text-xs uppercase tracking-wide text-muted-foreground">{t.phaseLabel}</Label>
+            <Label className="text-sm font-medium text-foreground">{t.phaseLabel}</Label>
             <LabeledSwitch
               value={fase}
               onChange={(v) => setFase(v)}
@@ -380,7 +175,7 @@ function RamoTrifasico({ fase, setFase, t }: RamoProps) {
             />
           </div>
           <div className="flex flex-col items-center gap-1.5">
-            <Label className="text-xs uppercase tracking-wide text-muted-foreground">{t.entryLabel}</Label>
+            <Label className="text-sm font-medium text-foreground">{t.entryLabel}</Label>
             <LabeledSwitch
               value={modoTri}
               onChange={(v) => setModoTri(v)}
@@ -393,11 +188,12 @@ function RamoTrifasico({ fase, setFase, t }: RamoProps) {
 
         {modoTri === 'corrente' ? (
           <div className="space-y-1.5">
-            <Label className="text-base text-muted-foreground md:text-lg">
+            <Label htmlFor="contator-corrente" className="text-base font-medium text-foreground">
               {t.currentLabel}
             </Label>
             <NumericInput
               decimal
+              id="contator-corrente"
               value={correnteStr}
               onValueChange={setCorrenteStr}
               placeholder="Ex: 2,9"
@@ -411,9 +207,10 @@ function RamoTrifasico({ fase, setFase, t }: RamoProps) {
           <div className="space-y-4">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-1.5">
-                <Label className="text-base text-muted-foreground md:text-lg">{t.powerLabel}</Label>
+                <Label htmlFor="contator-potencia" className="text-base font-medium text-foreground">{t.powerLabel}</Label>
                 <NumericInput
                   decimal
+                  id="contator-potencia"
                   value={cvStr}
                   onValueChange={setCvStr}
                   placeholder="Ex: 1"
@@ -421,7 +218,7 @@ function RamoTrifasico({ fase, setFase, t }: RamoProps) {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-base text-muted-foreground md:text-lg">
+                <Label className="text-base font-medium text-foreground">
                   {t.triVoltageLabel}
                 </Label>
                 <div className="flex h-14 items-center justify-center rounded-lg border border-border bg-background">
@@ -442,7 +239,7 @@ function RamoTrifasico({ fase, setFase, t }: RamoProps) {
               <button
                 type="button"
                 onClick={() => setAvancadoAberto((v) => !v)}
-                className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                className="flex min-h-11 items-center gap-1.5 text-sm font-medium text-foreground transition-colors hover:text-primary"
               >
                 <Settings2 className="h-4 w-4" />
                 {t.advancedParams}
@@ -450,9 +247,10 @@ function RamoTrifasico({ fase, setFase, t }: RamoProps) {
               {avancadoAberto && (
                 <div className="mt-3 grid grid-cols-1 gap-4 rounded-lg border border-border bg-muted/30 p-3 md:grid-cols-2">
                   <div className="space-y-1.5">
-                    <Label className="text-sm text-muted-foreground">{t.efficiency}</Label>
+                    <Label htmlFor="contator-rendimento" className="text-sm font-medium text-foreground">{t.efficiency}</Label>
                     <NumericInput
                       decimal
+                      id="contator-rendimento"
                       value={rendimentoStr}
                       onValueChange={setRendimentoStr}
                       placeholder={String(RENDIMENTO_PADRAO)}
@@ -460,9 +258,10 @@ function RamoTrifasico({ fase, setFase, t }: RamoProps) {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-sm text-muted-foreground">{t.powerFactor}</Label>
+                    <Label htmlFor="contator-cosphi" className="text-sm font-medium text-foreground">{t.powerFactor}</Label>
                     <NumericInput
                       decimal
+                      id="contator-cosphi"
                       value={cosphiStr}
                       onValueChange={setCosphiStr}
                       placeholder={String(COSPHI_PADRAO)}
@@ -489,10 +288,10 @@ function RamoTrifasico({ fase, setFase, t }: RamoProps) {
                   {t.contactor}
                 </p>
                 <p className="mt-2 text-2xl font-semibold leading-tight sm:text-3xl">
-                  {t.contactorOf}{' '}
-                  <span className="whitespace-nowrap text-primary">
-                    {formatarNumero(resultado.contatorAC3)} A
-                  </span>
+                  {resultado.contatorAC3 === null ? t.aboveCommercial : <>
+                    {t.contactorOf}{' '}
+                    <span className="whitespace-nowrap text-primary">{formatarNumero(resultado.contatorAC3)} A</span>
+                  </>}
                 </p>
                 <p className="text-base font-medium leading-tight text-muted-foreground sm:text-lg">
                   {t.categoryAC3}
@@ -541,7 +340,7 @@ function RamoTrifasico({ fase, setFase, t }: RamoProps) {
               fallbackIcon={Zap}
               specs={
                 [
-                  { label: t.triSpec.contactor, value: `${formatarNumero(resultado.contatorAC3)} A AC-3` },
+                  { label: t.triSpec.contactor, value: resultado.contatorAC3 === null ? t.aboveCommercial : `${formatarNumero(resultado.contatorAC3)} A AC-3` },
                   { label: t.triSpec.type, value: t.triSpec.typeTripolar },
                   {
                     label: t.triSpec.thermalRelay,

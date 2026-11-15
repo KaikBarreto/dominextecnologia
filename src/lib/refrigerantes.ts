@@ -3,11 +3,14 @@
  * superaquecimento (SH) e subresfriamento (SC).
  *
  * 100% client-side / offline — apenas interpolação linear sobre tabelas
- * validadas (NIST / fabricantes). Todas as pressões são MANOMÉTRICAS (gauge).
+ * de referência. Fontes rastreáveis estão registradas junto às tabelas
+ * revisadas; as demais são dados legados, sem certificação integral de precisão.
+ * Todas as pressões de uso são MANOMÉTRICAS (gauge).
  *
- * Pontos em passos de 5 °C de -40 a 60 °C.
- * R-404A tem glide, portanto duas curvas: `bubble` (líquido) e `dew` (vapor).
- * Os demais têm curva única, usada igualmente para os dois lados.
+ * Pontos históricos em passos de 5 °C de -40 a 60 °C; R-448A usa diretamente
+ * os pontos de pressão publicados pelo fabricante (intervalos variáveis).
+ * Blends com glide têm curvas `bubble` (líquido) e `dew` (vapor).
+ * A interpolação não extrapola além da faixa de cada tabela.
  */
 
 /** Unidade de pressão de trabalho. */
@@ -176,53 +179,40 @@ const R290: PontoSaturacao[] = [
   { t: 60, bar: 20.15, psi: 292.3 },
 ];
 
-const R404A_BUBBLE: PontoSaturacao[] = [
-  { t: -40, bar: 0.34, psi: 5.0 },
-  { t: -35, bar: 0.68, psi: 9.8 },
-  { t: -30, bar: 1.07, psi: 15.5 },
-  { t: -25, bar: 1.52, psi: 22.0 },
-  { t: -20, bar: 2.03, psi: 29.5 },
-  { t: -15, bar: 2.62, psi: 38.0 },
-  { t: -10, bar: 3.27, psi: 47.5 },
-  { t: -5, bar: 4.01, psi: 58.1 },
-  { t: 0, bar: 4.82, psi: 69.9 },
-  { t: 5, bar: 5.72, psi: 83.0 },
-  { t: 10, bar: 6.71, psi: 97.4 },
-  { t: 15, bar: 7.8, psi: 113.1 },
-  { t: 20, bar: 8.99, psi: 130.4 },
-  { t: 25, bar: 10.28, psi: 149.1 },
-  { t: 30, bar: 11.69, psi: 169.5 },
-  { t: 35, bar: 13.22, psi: 191.7 },
-  { t: 40, bar: 14.87, psi: 215.7 },
-  { t: 45, bar: 16.66, psi: 241.6 },
-  { t: 50, bar: 18.59, psi: 269.6 },
-  { t: 55, bar: 20.68, psi: 299.9 },
-  { t: 60, bar: 22.93, psi: 332.6 },
+/**
+ * R-404A: National Refrigerants Reference Guide, 7ª edição (2020), página 39.
+ * https://refrigerants.com/wp-content/uploads/2020/03/R404A_RefGuid.pdf
+ * Conferido em 15/11/2026. Tuplas: [°F, pressão líquido psia, pressão vapor psia].
+ * A fonte usa pressão ABSOLUTA: converter para gauge subtraindo 1 atm.
+ * O ponto líquido de 125°F foi omitido: a própria publicação contém 384,4 psia,
+ * maior que o ponto seguinte (370,6). Interpolar os vizinhos íntegros, sem corrigir
+ * o número da fonte por suposição. A curva de vapor preserva esse ponto válido.
+ */
+const R404A_PONTOS: [number, number, number][] = [
+  [-60, 11.8, 11.3], [-55, 13.5, 13], [-50, 15.4, 14.9],
+  [-45, 17.6, 16.9], [-40, 19.9, 19.3], [-35, 22.5, 21.8],
+  [-30, 25.4, 24.6], [-25, 28.5, 27.7], [-20, 31.9, 31],
+  [-15, 35.6, 34.7], [-10, 39.7, 38.7], [-5, 44.1, 43],
+  [0, 48.8, 47.7], [5, 54, 52.8], [10, 59.5, 58.3],
+  [15, 65.5, 64.2], [20, 71.9, 70.5], [25, 78.7, 77.3],
+  [30, 86.1, 84.6], [35, 93.9, 92.4], [40, 102.3, 100.7],
+  [45, 111.2, 109.5], [50, 120.7, 118.9], [55, 130.7, 128.9],
+  [60, 141.4, 139.6], [65, 152.8, 150.8], [70, 164.7, 162.8],
+  [75, 177.4, 175.4], [80, 190.8, 188.8], [85, 204.9, 202.8],
+  [90, 219.9, 217.7], [95, 235.6, 233.4], [100, 252.1, 249.9],
+  [105, 269.5, 267.3], [110, 287.8, 285.5], [115, 307, 304.7],
+  [120, 327.2, 324.9], [125, 384.4, 346.1], [130, 370.6, 368.4],
+  [135, 394, 391.8], [140, 418.5, 416.4], [145, 444.3, 442.3],
+  [150, 471.4, 469.6], [155, 500, 498.4],
 ];
-
-const R404A_DEW: PontoSaturacao[] = [
-  { t: -40, bar: 0.3, psi: 4.3 },
-  { t: -35, bar: 0.63, psi: 9.1 },
-  { t: -30, bar: 1.01, psi: 14.7 },
-  { t: -25, bar: 1.46, psi: 21.2 },
-  { t: -20, bar: 1.97, psi: 28.6 },
-  { t: -15, bar: 2.55, psi: 36.9 },
-  { t: -10, bar: 3.2, psi: 46.4 },
-  { t: -5, bar: 3.92, psi: 56.9 },
-  { t: 0, bar: 4.73, psi: 68.6 },
-  { t: 5, bar: 5.62, psi: 81.6 },
-  { t: 10, bar: 6.61, psi: 95.8 },
-  { t: 15, bar: 7.68, psi: 111.4 },
-  { t: 20, bar: 8.86, psi: 128.5 },
-  { t: 25, bar: 10.14, psi: 147.1 },
-  { t: 30, bar: 11.53, psi: 167.3 },
-  { t: 35, bar: 13.04, psi: 189.2 },
-  { t: 40, bar: 14.68, psi: 212.9 },
-  { t: 45, bar: 16.45, psi: 238.6 },
-  { t: 50, bar: 18.37, psi: 266.4 },
-  { t: 55, bar: 20.44, psi: 296.5 },
-  { t: 60, bar: 22.68, psi: 329.0 },
-];
+const R404A_BUBBLE: PontoSaturacao[] = R404A_PONTOS.filter(([f]) => f !== 125).map(([f, absolute]) => {
+  const psi = absolute - 14.695948776;
+  return { t: (f - 32) * 5 / 9, psi, bar: psi / 14.503773773 };
+});
+const R404A_DEW: PontoSaturacao[] = R404A_PONTOS.map(([f, , absolute]) => {
+  const psi = absolute - 14.695948776;
+  return { t: (f - 32) * 5 / 9, psi, bar: psi / 14.503773773 };
+});
 
 const R407C_BUBBLE: PontoSaturacao[] = [
   { t: -40, bar: 0.19, psi: 2.8 },
@@ -416,53 +406,41 @@ const R407A_DEW: PontoSaturacao[] = [
   { t: 60, bar: 25.86, psi: 375.1 },
 ];
 
-const R448A_BUBBLE: PontoSaturacao[] = [
-  { t: -40, bar: 0.26, psi: 3.8 },
-  { t: -35, bar: 0.58, psi: 8.4 },
-  { t: -30, bar: 0.96, psi: 13.9 },
-  { t: -25, bar: 1.41, psi: 20.5 },
-  { t: -20, bar: 1.93, psi: 28 },
-  { t: -15, bar: 2.53, psi: 36.7 },
-  { t: -10, bar: 3.22, psi: 46.7 },
-  { t: -5, bar: 4.01, psi: 58.2 },
-  { t: 0, bar: 4.9, psi: 71.1 },
-  { t: 5, bar: 5.91, psi: 85.7 },
-  { t: 10, bar: 7.05, psi: 102.3 },
-  { t: 15, bar: 8.32, psi: 120.7 },
-  { t: 20, bar: 9.73, psi: 141.1 },
-  { t: 25, bar: 11.29, psi: 163.7 },
-  { t: 30, bar: 13.01, psi: 188.7 },
-  { t: 35, bar: 14.91, psi: 216.3 },
-  { t: 40, bar: 16.98, psi: 246.3 },
-  { t: 45, bar: 19.26, psi: 279.3 },
-  { t: 50, bar: 21.72, psi: 315 },
-  { t: 55, bar: 24.42, psi: 354.2 },
-  { t: 60, bar: 27.32, psi: 396.2 },
+/**
+ * R-448A: tabela primária Solstice N40, ficha técnica 7900001, revisão 05/2026,
+ * página 3. Conferida em 15/11/2026 na auditoria técnica da Área do Técnico.
+ * https://prod-edam.solstice.com/content/dam/honeywell-edam/pmt/oneam/en-us/refrigerants/documents/7900001-ras-tds-solstice-n40-ltr-en.pdf
+ * Tuplas: [pressão manométrica psig, temperatura bubble °F, temperatura dew °F].
+ * A conversão para bar preserva gauge; NÃO subtrair atmosfera de novo.
+ * Abaixo do primeiro ponto da curva, retornar null em vez de extrapolar.
+ */
+const R448A_PONTOS: [number, number, number][] = [
+  [0, -51, -39.9], [1, -48.6, -37.5], [2, -46.2, -35.2],
+  [3, -44, -32.9], [4, -41.9, -30.8], [5, -39.8, -28.8],
+  [6, -37.8, -26.9], [7, -35.9, -25], [8, -34.1, -23.2],
+  [9, -32.4, -21.4], [10, -30.6, -19.7], [11, -29, -18.1],
+  [12, -27.4, -16.5], [13, -25.8, -15], [14, -24.3, -13.5],
+  [16, -21.4, -10.6], [18, -18.6, -7.8], [20, -16, -5.2],
+  [22, -13.5, -2.7], [24, -11, -0.3], [26, -8.7, 2],
+  [28, -6.5, 4.2], [29, -5.4, 5.3], [31, -3.3, 7.4],
+  [34, -0.2, 10.4], [37, 2.7, 13.3], [40, 5.5, 16],
+  [43, 8.2, 18.7], [46, 10.8, 21.2], [49, 13.2, 23.7],
+  [52, 15.6, 26], [55, 17.9, 28.3], [59, 20.9, 31.2],
+  [63, 23.8, 34], [67, 26.5, 36.7], [83, 36.5, 46.6],
+  [101, 46.5, 56.3], [121, 56.2, 65.9], [142, 65.4, 74.9],
+  [154, 70.2, 79.6], [167, 75.1, 84.4], [181, 80.2, 89.3],
+  [196, 85.3, 94.3], [212, 90.5, 99.3], [229, 95.7, 104.3],
+  [246, 100.7, 109.1], [264, 105.6, 113.9], [284, 110.9, 119],
+  [304, 115.9, 123.8], [325, 121, 128.6], [348, 126.2, 133.6],
+  [349, 126.4, 133.8], [372, 131.4, 138.5], [397, 136.6, 143.4],
+  [423, 141.8, 148.3], [450, 146.9, 153],
 ];
-
-const R448A_DEW: PontoSaturacao[] = [
-  { t: -40, bar: -0.06, psi: -0.9 },
-  { t: -35, bar: 0.2, psi: 2.9 },
-  { t: -30, bar: 0.51, psi: 7.4 },
-  { t: -25, bar: 0.88, psi: 12.8 },
-  { t: -20, bar: 1.31, psi: 19 },
-  { t: -15, bar: 1.82, psi: 26.4 },
-  { t: -10, bar: 2.41, psi: 35 },
-  { t: -5, bar: 3.1, psi: 45 },
-  { t: 0, bar: 3.87, psi: 56.1 },
-  { t: 5, bar: 4.76, psi: 69 },
-  { t: 10, bar: 5.76, psi: 83.5 },
-  { t: 15, bar: 6.9, psi: 100.1 },
-  { t: 20, bar: 8.17, psi: 118.5 },
-  { t: 25, bar: 9.6, psi: 139.2 },
-  { t: 30, bar: 11.18, psi: 162.2 },
-  { t: 35, bar: 12.94, psi: 187.7 },
-  { t: 40, bar: 14.89, psi: 216 },
-  { t: 45, bar: 17.04, psi: 247.1 },
-  { t: 50, bar: 19.41, psi: 281.5 },
-  { t: 55, bar: 22.02, psi: 319.4 },
-  { t: 60, bar: 24.88, psi: 360.9 },
-];
+const R448A_BUBBLE: PontoSaturacao[] = R448A_PONTOS.map(([psi, bubble]) => ({
+  t: (bubble - 32) * 5 / 9, psi, bar: psi / 14.503773773,
+}));
+const R448A_DEW: PontoSaturacao[] = R448A_PONTOS.map(([psi, , dew]) => ({
+  t: (dew - 32) * 5 / 9, psi, bar: psi / 14.503773773,
+}));
 
 const R449A_BUBBLE: PontoSaturacao[] = [
   { t: -40, bar: 0.31, psi: 4.5 },
@@ -791,7 +769,8 @@ export type ClassificacaoFaixa = 'baixo' | 'ideal' | 'alto';
 export function classificarFaixa(
   valor: number,
   faixa: { min: number; max: number },
-): ClassificacaoFaixa {
+): ClassificacaoFaixa | null {
+  if (!Number.isFinite(valor) || !Number.isFinite(faixa.min) || !Number.isFinite(faixa.max) || faixa.min > faixa.max) return null;
   if (valor < faixa.min) return 'baixo';
   if (valor > faixa.max) return 'alto';
   return 'ideal';
@@ -819,7 +798,7 @@ export function calcularSuperaquecimento(
   const refrig = getRefrigerante(refrigId);
   const curva: Curva = refrig?.temGlide ? 'dew' : 'unica';
   const tempSat = pressaoParaTempSat(refrigId, pressaoSuccao, unidade, curva);
-  if (tempSat === null || !Number.isFinite(tempSuccaoMedida)) {
+  if (tempSat === null || !Number.isFinite(tempSuccaoMedida) || tempSuccaoMedida < -273.15) {
     return { tempSat, delta: null, classificacao: null };
   }
   const delta = tempSuccaoMedida - tempSat;
@@ -839,7 +818,7 @@ export function calcularSubresfriamento(
   const refrig = getRefrigerante(refrigId);
   const curva: Curva = refrig?.temGlide ? 'bubble' : 'unica';
   const tempSat = pressaoParaTempSat(refrigId, pressaoLiquido, unidade, curva);
-  if (tempSat === null || !Number.isFinite(tempLiquidoMedida)) {
+  if (tempSat === null || !Number.isFinite(tempLiquidoMedida) || tempLiquidoMedida < -273.15) {
     return { tempSat, delta: null, classificacao: null };
   }
   const delta = tempSat - tempLiquidoMedida;

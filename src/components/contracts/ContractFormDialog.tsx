@@ -43,6 +43,7 @@ import {
   START_VISIT_OPTIONS,
   startVisitLabel,
   firstVisitContents,
+  machineChecklistSummary,
   machineCatalogActivities,
   essentialMachineActivities,
   catalogToPlanRow,
@@ -3718,9 +3719,9 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                                     </Button>
                                   </div>
 
-                                  <span className="block text-[11px] text-muted-foreground">
-                                    {cfg ? `${cfg.activities.length} ${t.items.machineChecklistsCount}` : '—'}
-                                    {cfg?.customized && <span className="ml-1 text-info">{t.items.machineCustomized}</span>}
+                                  <span className="block text-sm font-medium leading-relaxed text-foreground">
+                                    {machineChecklistSummary(cfg, t.items)}
+                                    {cfg?.customized && cfg.customTemplateIds.length === 0 && <span className="ml-1 text-info">{t.items.machineCustomized}</span>}
                                   </span>
 
                                   {cfg && !pmocCustomCadence && (
@@ -4575,8 +4576,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                                 • <strong className="text-foreground">{it.item_name}</strong>
                                 {` — ${cfg.scope === 'full' ? t.review.machineScopeAll : t.review.machineScopeAcOnly}`}
                                 {`, ${t.review.machineStartsAt} ${startVisitLabel(cfg.startVisit).toLowerCase()}`}
-                                {`, ${cfg.activities.length} ${t.items.machineChecklistsCount}`}
-                                {cfg.customized ? ` (${t.items.machineCustomized.replace('· ', '')})` : ''}.
+                                {`, ${machineChecklistSummary(cfg, t.items)}`}
+                                {cfg.customized && cfg.customTemplateIds.length === 0 ? ` (${t.items.machineCustomized.replace('· ', '')})` : ''}.
                               </span>
                             );
                           })}
@@ -4792,7 +4793,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                           <div className="min-w-0">
                             <p className="font-medium truncate">{it.item_name}</p>
                             <p className="text-muted-foreground">
-                              {cfg.scope === 'full' ? t.review.normAll : t.review.normAcOnly} · {cfg.activities.length} {t.items.machineChecklistsCount}
+                              {cfg.scope === 'full' ? t.review.normAll : t.review.normAcOnly} · {machineChecklistSummary(cfg, t.items)}
                             </p>
                           </div>
                           <div className="text-right shrink-0">

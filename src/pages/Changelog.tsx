@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.2',
+    date: '15 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      { title: 'Área do Técnico mais fácil de usar', category: 'melhoria', description: 'As ferramentas ganharam busca, navegação mais simples, textos maiores e campos mais claros no computador e no celular. As cores continuam ajudando a identificar cada ferramenta e tipo de conversão.' },
+      { title: 'Conversões e cálculos revisados', category: 'correcao', description: 'Capacidade de refrigeração e potência mecânica ficam separadas. Foram corrigidas trocas de unidade, valores fora das tabelas, pequenas doses e estimativas que poderiam indicar uma opção insuficiente. A consulta de capacitor passa a orientar pela especificação do modelo, sem recomendar uma peça apenas por BTU ou corrente de partida.' },
+      { title: 'Mais referências Samsung e Daikin no catálogo', category: 'melhoria', description: 'Foram acrescentados 28 códigos Daikin e 10 Samsung para as famílias confirmadas nos manuais, com documento de referência no detalhe e acesso pela busca. O catálogo também facilita encontrar os manuais oficiais Daikin e distingue o consumo mensal cadastrado da simulação pela potência elétrica.' },
+      { title: 'Orçamento manual mais direto', category: 'melhoria', description: 'Os serviços ficam recolhidos no modo manual e abrem uma edição compacta de quantidade, preço e descrição. O cálculo com BDI mantém a composição completa, e a escolha entre usar os custos só neste orçamento ou atualizar o cadastro ficou mais clara.' },
+      { title: 'Checklists personalizados aparecem corretamente no PMOC', category: 'correcao', description: 'O resumo mostra os checklists personalizados aplicados ao equipamento ou ao ambiente. Ao reabrir uma seleção somente de personalizados, o sistema preserva essa escolha sem incluir atividades da norma que não foram selecionadas.' },
+    ],
+  },
+  {
     version: '1.41.1',
     date: '15 de novembro de 2026',
     type: 'patch',

@@ -5,10 +5,14 @@
  * O cálculo MEDIDO continua sendo física pura (ver `refrigerantes.ts`):
  *   SH = T_sucção − T_sat(dew);  SC = T_sat(bubble) − T_líquido.
  *
- * O modelo NÃO altera essa medida — ele define a FAIXA-ALVO (usada no selo
- * Ideal/Baixo/Alto) e uma NOTA de campo baseada no manual do fabricante.
- * Quando `alvoSH`/`alvoSC` é null, a UI cai numa faixa genérica de referência
- * e sinaliza que o fabricante não publica o alvo.
+ * O modelo NÃO altera essa medida. Um alvo ou refrigerante automático só
+ * pode ser aplicado quando houver manual oficial rastreável para aquele perfil.
+ * A ausência de fonte não significa que o fabricante não publica um alvo:
+ * significa que este catálogo ainda não o confirmou.
+ *
+ * Revisão de rastreabilidade: 15/11/2026, Codex (auditoria técnica do catálogo).
+ * Os dados históricos sem fonte são preservados privadamente para pesquisa,
+ * mas não alimentam recomendações, notas de campo ou seleção automática de gás.
  */
 
 /** Faixa-alvo [min, max] em °C, ou null quando o fabricante não publica. */
@@ -30,15 +34,25 @@ export interface ModeloSuperaquecimento {
   confianca: ConfiancaModelo;
   /** Seção de agrupamento no select (null/undefined = sem cabeçalho, fica no topo). */
   grupo?: string;
-  /** Fluido refrigerante padrão do modelo (id de REFRIGERANTES). Selecionar o modelo já sugere esse gás. */
+  /** Fluido refrigerante do modelo exato, confirmado no manual oficial. */
   refrigPadrao?: string;
+  /**
+   * Manual oficial que fundamenta alvo/nota/refrigerante deste perfil exato.
+   * Só preencher após conferência técnica do documento e do modelo; uma página
+   * genérica da marca ou um link de busca não confirma estes dados.
+   */
+  fonteUrl?: string;
 }
 
 /** Opção padrão (default) — usada quando a marca não está na lista. */
 export const MODELO_PADRAO_ID = 'padrao';
 
-/** Catálogo de modelos/fabricantes (ordem de exibição: padrão primeiro, depois por popularidade). */
-export const MODELOS_SUPERAQUECIMENTO: ModeloSuperaquecimento[] = [
+/**
+ * Catálogo legado preservado para rastrear IDs e revisar os documentos.
+ * LEGACY_UNVERIFIED: números, notas e gases sem fonte não são dados aprovados
+ * para exibição. Consultar apenas o catálogo público normalizado ou o getter.
+ */
+const MODELOS_LEGADOS_SUPERAQUECIMENTO: ModeloSuperaquecimento[] = [
   {
     id: MODELO_PADRAO_ID,
     label: 'Padrão — Usar esta caso desconheça o modelo',
@@ -149,7 +163,30 @@ export const MODELOS_SUPERAQUECIMENTO: ModeloSuperaquecimento[] = [
   },
 ];
 
-/** Acha um modelo pelo id. */
+/**
+ * Fronteira entre dados legados e recomendações utilizáveis pela interface.
+ * O padrão mantém sua referência explicitamente genérica; os demais perfis
+ * sem manual não expõem alvos, afirmações por marca nem gás automático.
+ */
+function resolverModeloDocumentado(modelo: ModeloSuperaquecimento): ModeloSuperaquecimento {
+  if (modelo.id === MODELO_PADRAO_ID) return { ...modelo, confianca: 'generico', fonteUrl: undefined, refrigPadrao: undefined };
+  if (modelo.fonteUrl?.startsWith('https://')) return { ...modelo };
+  return {
+    id: modelo.id,
+    label: modelo.label,
+    grupo: modelo.grupo,
+    alvoSH: null,
+    alvoSC: null,
+    nota: 'Ainda não há um alvo confirmado neste catálogo para este perfil. Use o manual do modelo exato; a referência exibida é genérica.',
+    confianca: 'generico',
+  };
+}
+
+/** Catálogo público: mantém IDs/labels antigos com recomendações documentadas. */
+export const MODELOS_SUPERAQUECIMENTO: ModeloSuperaquecimento[] = MODELOS_LEGADOS_SUPERAQUECIMENTO.map(resolverModeloDocumentado);
+
+/** Acha o perfil utilizável pela UI, sem divulgar recomendações legadas sem fonte. */
 export function getModeloSuperaquecimento(id: string): ModeloSuperaquecimento | undefined {
-  return MODELOS_SUPERAQUECIMENTO.find((m) => m.id === id);
+  const modelo = MODELOS_LEGADOS_SUPERAQUECIMENTO.find((m) => m.id === id);
+  return modelo ? resolverModeloDocumentado(modelo) : undefined;
 }
