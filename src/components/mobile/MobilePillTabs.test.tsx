@@ -62,8 +62,8 @@ describe('MobilePillTabs underline', () => {
     });
     fireEvent.scroll(tablist);
 
-    expect(tablist).toHaveAttribute('aria-label', 'Abas. Deslize horizontalmente para ver mais opções.');
-    expect(document.querySelector('[title="Mais abas à direita"]')).toBeInTheDocument();
+    expect(tablist).toHaveAttribute('aria-label', 'Abas. Deslize ou use as setas para ver mais opções.');
+    expect(screen.getByRole('button', { name: 'Ver próximas abas' })).toBeInTheDocument();
   });
 
   it('destaca em negrito a aba ativa de nível de tela', () => {

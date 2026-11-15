@@ -145,6 +145,7 @@ function useSegmentNav(selectedSegment: string | null) {
           // Resolve label via toolsRegistry i18n; fallback para o config (pt-br)
           label: (tToolsRegistry as Record<string, { label: string } | undefined>)[t.id]?.label ?? t.label,
           icon: t.icon,
+          accentColor: t.accent,
           locked: false,
         })),
       ];
@@ -161,7 +162,7 @@ interface ShellProps {
   effectiveSegment: string | null;
   isOwnSegment: boolean;
   isLocked: boolean;
-  navItems: { value: string; label: string; icon: React.ComponentType<{ className?: string }>; locked: boolean }[];
+  navItems: { value: string; label: string; icon: React.ComponentType<{ className?: string }>; accentColor?: string; locked: boolean }[];
   activeTab: string;
   /** Largura total (Início / Catálogo) vs. coluna estreita centralizada. */
   isFullWidthTool: boolean;
@@ -278,6 +279,7 @@ function ToolsShell({
               value: t.value,
               label: t.label,
               icon: <t.icon className="h-4 w-4" />,
+              accentColor: t.accentColor,
             }))}
             activeTab={activeTab}
             onTabChange={(v) => onSwitchTab(v)}

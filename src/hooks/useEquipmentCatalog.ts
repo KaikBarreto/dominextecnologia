@@ -1,3 +1,6 @@
+import { withEquipmentAssetReferences } from '@/data/equipmentCatalogAssets';
+import { curatedEquipmentModel, curatedEquipmentModels, mergeCuratedEquipmentModels, type CatalogModelProvenance } from '@/data/curatedEquipmentModels';
+import { readCatalogPages } from '@/lib/catalogPagination';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { getEquipmentCodeReference, mergeEquipmentErrorCodeReferences } from '@/data/equipmentErrorCodeReferences';
@@ -72,6 +75,8 @@ export interface EquipmentModel {
   brand?: Pick<EquipmentBrand, 'id' | 'name' | 'logo_url'> | null;
   /** Hidratado nas queries que fazem join com a categoria (tipo do equipamento). */
   category?: EquipmentModelCategory | null;
+  /** Procedência de modelo conferido no catálogo oficial; não é dado de cliente. */
+  catalog_reference?: CatalogModelProvenance;
 }
 
 /**
@@ -85,6 +90,10 @@ export interface ManualTypeLabels {
   guia: string;
   datasheet: string;
   default: string;
+  aplicacao?: string;
+  catalogo_tecnico?: string;
+  ficha_eletrica?: string;
+  manual?: string;
 }
 
 /**
@@ -110,6 +119,10 @@ export function rotuloManual(
     case 'usuario':    return l.usuario;
     case 'guia':       return l.guia;
     case 'datasheet':  return l.datasheet;
+    case 'aplicacao': return l.aplicacao ?? 'Manual de aplicação';
+    case 'catalogo_tecnico': return l.catalogo_tecnico ?? 'Catálogo técnico';
+    case 'ficha_eletrica': return l.ficha_eletrica ?? 'Ficha elétrica';
+    case 'manual': return l.manual ?? l.default;
     default:           return l.default;
   }
 }
@@ -140,14 +153,13 @@ export function useEquipmentBrands(domain: string = 'ar_condicionado') {
   return useQuery({
     queryKey: ['equipment-catalog', 'brands', domain],
     queryFn: async () => {
-      const { data: modelRows, error: modelErr } = await supabase
+      const modelRows = await readCatalogPages((from, to) => supabase
         .from('equipment_models')
-        .select('brand_id')
-        .eq('domain', domain);
-      if (modelErr) throw modelErr;
+        .select('id, brand_id')
+        .eq('domain', domain).order('id').range(from, to));
 
       const brandIds = Array.from(
-        new Set((modelRows ?? []).map((r) => r.brand_id).filter(Boolean)),
+        new Set([...modelRows.map((r) => r.brand_id), ...curatedEquipmentModels({ domain }).map(model => model.brand_id)].filter(Boolean)),
       );
       if (brandIds.length === 0) return [] as EquipmentBrand[];
 
@@ -189,16 +201,15 @@ export function useEquipmentModelsByBrand(
     queryKey: ['equipment-catalog', 'models-by-brand', brandId, domain],
     enabled: !!brandId,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const data = await readCatalogPages((from, to) => supabase
         .from('equipment_models')
         .select(
           'id, brand_id, category_id, name, code, image_url, manual_url, manual_type, refrigerant, consumo_kwh_mes, potencia_w, domain, compressor_model_id, i18n, created_at, category:equipment_model_categories(id, name, i18n)',
         )
         .eq('brand_id', brandId as string)
         .eq('domain', domain)
-        .order('name', { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as EquipmentModel[];
+        .order('name', { ascending: true }).order('id').range(from, to));
+      return mergeCuratedEquipmentModels(data as EquipmentModel[], { brandId: brandId as string, domain }).map(model => withEquipmentAssetReferences(model));
     },
   });
 }
@@ -217,7 +228,8 @@ export function useEquipmentModel(modelId: string | null | undefined) {
         .eq('id', modelId as string)
         .maybeSingle();
       if (error) throw error;
-      return (data ?? null) as EquipmentModel | null;
+      const model = data ? mergeCuratedEquipmentModels([data as EquipmentModel]).find(entry => entry.id === data.id) : curatedEquipmentModel(modelId);
+      return model ? withEquipmentAssetReferences(model) : null;
     },
   });
 }
@@ -241,7 +253,7 @@ export function useEquipmentModelsByCode(term: string) {
         .order('name', { ascending: true })
         .limit(50);
       if (error) throw error;
-      return (data ?? []) as EquipmentModel[];
+      return mergeCuratedEquipmentModels((data ?? []) as EquipmentModel[], { term: trimmed }).map(model => withEquipmentAssetReferences(model));
     },
   });
 }
@@ -255,15 +267,14 @@ export function useAllModelsWithBrand(domain: string = 'ar_condicionado') {
     queryKey: ['equipment-catalog', 'all-models', domain],
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const data = await readCatalogPages((from, to) => supabase
         .from('equipment_models')
         .select(
           'id, brand_id, category_id, name, code, image_url, manual_url, manual_type, refrigerant, consumo_kwh_mes, potencia_w, domain, compressor_model_id, i18n, created_at, brand:equipment_brands(id, name, logo_url), category:equipment_model_categories(id, name, i18n)',
         )
         .eq('domain', domain)
-        .order('name', { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as EquipmentModel[];
+        .order('name', { ascending: true }).order('id').range(from, to));
+      return mergeCuratedEquipmentModels(data as EquipmentModel[], { domain }).map(model => withEquipmentAssetReferences(model));
     },
   });
 }
@@ -295,28 +306,32 @@ export function useAllErrorCodesWithModel(domain: string = 'ar_condicionado') {
     queryKey: ['equipment-catalog', 'all-error-codes', domain],
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const data = await readCatalogPages((from, to) => supabase
         .from('equipment_error_codes')
         .select(
           'id, model_id, code, title, description, diagnosis, solution, component, i18n, created_at, model:equipment_models!inner(id, name, code, image_url, manual_url, refrigerant, brand_id, domain, brand:equipment_brands(id, name, logo_url))',
         )
         .eq('model.domain', domain)
-        .order('code', { ascending: true })
-        .limit(5000);
-      if (error) throw error;
-      const existing = (data ?? []) as EquipmentErrorCodeWithModel[];
+        .order('code', { ascending: true }).order('id').range(from, to));
+      const existing = ((data ?? []) as EquipmentErrorCodeWithModel[]).map(entry => ({ ...entry, model: entry.model ? withEquipmentAssetReferences(entry.model) : entry.model }));
       // A busca global precisa encontrar os mesmos códigos disponíveis no detalhe.
-      const { data: models, error: modelsError } = await supabase
+      const models: NonNullable<EquipmentErrorCodeWithModel['model']>[] | null = await readCatalogPages<NonNullable<EquipmentErrorCodeWithModel['model']>>((from, to) => supabase
         .from('equipment_models')
         .select('id, name, code, image_url, manual_url, refrigerant, brand_id, domain, brand:equipment_brands(id, name, logo_url)')
-        .eq('domain', domain)
-        .limit(5000);
+        .eq('domain', domain).order('id').range(from, to)).catch(() => null);
       // Falha na leitura auxiliar não deve esconder códigos já cadastrados.
-      if (modelsError) return existing;
+      if (!models) return existing;
       const supplemental: EquipmentErrorCodeWithModel[] = [];
-      for (const model of models ?? []) {
+      const existingByModel = new Map<string, EquipmentErrorCode[]>();
+      for (const entry of existing) {
+        const group = existingByModel.get(entry.model_id) ?? [];
+        group.push(entry);
+        existingByModel.set(entry.model_id, group);
+      }
+      for (const rawModel of mergeCuratedEquipmentModels<NonNullable<EquipmentErrorCodeWithModel['model']>>(models, { domain })) {
+        const model = withEquipmentAssetReferences(rawModel);
         if (!getEquipmentCodeReference(model)) continue;
-        const modelExisting = existing.filter((entry) => entry.model_id === model.id);
+        const modelExisting = existingByModel.get(model.id) ?? [];
         const merged = mergeEquipmentErrorCodeReferences(modelExisting, model);
         supplemental.push(...merged.filter((entry) => !modelExisting.some((saved) => saved.code.toUpperCase().replace(/\s/g, '') === entry.code.toUpperCase().replace(/\s/g, '')))
           .map((entry) => ({ ...entry, model })));
@@ -407,24 +422,21 @@ export function useModelIdsWithErrorCodes(domain: string = 'ar_condicionado') {
     queryKey: ['equipment-catalog', 'model-ids-with-codes', domain],
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
-      const { data: modelRows, error: modelErr } = await supabase
+      const modelRows = await readCatalogPages((from, to) => supabase
         .from('equipment_models')
-        .select('id, code, domain, brand:equipment_brands(name)')
-        .eq('domain', domain);
-      if (modelErr) throw modelErr;
+        .select('id, brand_id, code, domain, brand:equipment_brands(name)')
+        .eq('domain', domain).order('id').range(from, to));
+      const models = mergeCuratedEquipmentModels(modelRows, { domain });
+      if (models.length === 0) return new Set<string>();
 
-      const modelIds = (modelRows ?? []).map((r) => r.id);
-      if (modelIds.length === 0) return new Set<string>();
-
-      const { data: codeRows, error: codeErr } = await supabase
+      const codeRows = await readCatalogPages((from, to) => supabase
         .from('equipment_error_codes')
-        .select('model_id')
-        .in('model_id', modelIds);
-      if (codeErr) throw codeErr;
+        .select('id, model_id, model:equipment_models!inner(domain)')
+        .eq('model.domain', domain).order('id').range(from, to));
 
       return new Set<string>([
         ...(codeRows ?? []).map((r) => r.model_id),
-        ...(modelRows ?? []).filter((model) => getEquipmentCodeReference(model)).map((model) => model.id),
+        ...models.filter((model) => getEquipmentCodeReference(model)).map((model) => model.id),
       ]);
     },
   });
@@ -495,8 +507,9 @@ export function useEquipmentErrorCodes(modelId: string | null | undefined) {
       ]);
       if (error) throw error;
       const existing = (data ?? []) as EquipmentErrorCode[];
-      if (modelError) return existing;
-      return model ? mergeEquipmentErrorCodeReferences(existing, model) : existing;
+      const identity = model ?? curatedEquipmentModel(modelId);
+      if (modelError && !identity) return existing;
+      return identity ? mergeEquipmentErrorCodeReferences(existing, identity) : existing;
     },
   });
 }

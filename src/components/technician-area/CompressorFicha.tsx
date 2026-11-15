@@ -9,7 +9,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
+import { CatalogPhotoCaption, CatalogDocumentReference, CatalogImagePreview } from './CatalogAssetReference';
 import { CatalogImage } from './CatalogImage';
 import { getRefrigerante } from '@/lib/refrigerantes';
 import { idealForeground } from '@/lib/colorContrast';
@@ -216,6 +216,9 @@ export function CompressorFicha({
         </div>
       )}
 
+      <CatalogPhotoCaption model={model} />
+      <CatalogDocumentReference model={model} />
+
       {/* Ficha */}
       {isLoading ? (
         <LoadingBlock />
@@ -307,9 +310,8 @@ export function CompressorFicha({
       )}
 
       {temFoto && (
-        <ImagePreviewModal
-          src={model.image_url!}
-          alt={model.name}
+        <CatalogImagePreview
+          model={model}
           open={viewerOpen}
           onClose={() => setViewerOpen(false)}
         />

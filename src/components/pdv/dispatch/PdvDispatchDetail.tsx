@@ -1,3 +1,4 @@
+import { HorizontalTabBar } from '@/components/ui/HorizontalTabBar';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, ArrowLeft, CheckCircle2, Loader2, PackageCheck, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -73,11 +74,15 @@ export function PdvDispatchDetail({ detail, canDeliver, returnsAccess, afterSale
       <Button variant="outline" size="sm" onClick={onReload}><RefreshCw className="mr-2 h-4 w-4" />Atualizar</Button>
     </header>
 
-    <nav className="flex gap-6 overflow-x-auto border-b" aria-label="Áreas do pedido">
-      <DetailTabButton active={activeTab === 'dispatch'} onClick={() => setDetailTab('dispatch')}>Retirada</DetailTabButton>
-      {canViewReturns && <DetailTabButton active={activeTab === 'returns'} onClick={() => setDetailTab('returns')}>Devoluções</DetailTabButton>}
-      {canViewValues && <DetailTabButton active={activeTab === 'values'} onClick={() => setDetailTab('values')}>Créditos e reembolsos</DetailTabButton>}
-    </nav>
+    <HorizontalTabBar asChild>
+
+      <nav className="flex gap-6 overflow-x-auto border-b" aria-label="Áreas do pedido">
+        <DetailTabButton active={activeTab === 'dispatch'} onClick={() => setDetailTab('dispatch')}>Retirada</DetailTabButton>
+        {canViewReturns && <DetailTabButton active={activeTab === 'returns'} onClick={() => setDetailTab('returns')}>Devoluções</DetailTabButton>}
+        {canViewValues && <DetailTabButton active={activeTab === 'values'} onClick={() => setDetailTab('values')}>Créditos e reembolsos</DetailTabButton>}
+      </nav>
+
+    </HorizontalTabBar>
 
     {activeTab === 'dispatch' && <>
       {hasConflict && <NoticeBanner variant="warning"><AlertTriangle className="mr-2 inline h-4 w-4" />O estoque mudou. Atualize ou reconcilie as reservas antes de entregar.</NoticeBanner>}
@@ -105,5 +110,5 @@ export function PdvDispatchDetail({ detail, canDeliver, returnsAccess, afterSale
 }
 
 function DetailTabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return <button type="button" onClick={onClick} className={`shrink-0 border-b-2 pb-2 text-sm font-semibold ${active ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>{children}</button>;
+  return <button type="button" aria-current={active ? 'page' : undefined} onClick={onClick} className={`shrink-0 border-b-2 pb-2 text-sm font-semibold ${active ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>{children}</button>;
 }

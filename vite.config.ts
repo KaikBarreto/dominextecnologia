@@ -136,6 +136,11 @@ export default defineConfig(({ mode }) => ({
         // paralelo. NÃO inclui react/react-dom/radix aqui (fatiar esses dá TDZ,
         // lição medida acima). Estes dois vendors são folhas sem ciclo com o app.
         manualChunks(id) {
+          // Dados documentais são folhas sem dependências. Separá-los mantém a
+          // tela pequena e cada arquivo dentro do limite de cache offline.
+          if (id.endsWith('/src/data/equipmentCatalogAssets.json')) return 'catalog-assets';
+          if (id.endsWith('/src/data/daikinCatalog.json')) return 'catalog-daikin';
+          if (id.endsWith('/src/data/additionalCatalog.json')) return 'catalog-multibrand';
           if (id.includes("vite/preload-helper")) return "vite-preload-helper";
           if (id.includes("node_modules/@supabase/")) return "vendor-supabase";
           if (id.includes("node_modules/@tanstack/react-query")) return "vendor-react-query";

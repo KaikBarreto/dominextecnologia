@@ -85,9 +85,9 @@ export default function AdminEstatisticas() {
       </div>
 
       <Tabs value={aba} onValueChange={trocarAba}>
-        {/* Pills roláveis no mobile, ancoradas à esquerda. */}
-        <div className="-mx-4 px-4 overflow-x-auto md:mx-0 md:px-0">
-          <TabsList variant="underline" className="w-max">
+        {/* Abas com rolagem e controles compartilhados. */}
+        <div className="-mx-4 min-w-0 px-4 md:mx-0 md:px-0">
+          <TabsList variant="underline" className="w-full">
             <TabsTrigger variant="underline" level="screen" value="sistema" className="gap-1.5">
               <BarChart3 className="h-4 w-4" />
               Sistema

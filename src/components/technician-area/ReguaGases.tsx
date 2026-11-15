@@ -13,6 +13,7 @@ import {
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { RefrigeranteOption } from '@/components/technician-area/RefrigeranteOption';
 import { ToolDisclaimer } from './ToolDisclaimer';
+import { SaturationTableReference } from './SaturationTableReference';
 import { cn } from '@/lib/utils';
 import { converter } from '@/lib/conversoes';
 import {
@@ -502,6 +503,7 @@ function ReguaUnificada({
           )}
         </div>
       </div>
+      {refrig && <SaturationTableReference refrigerantId={refrig.id} />}
     </div>
   );
 }

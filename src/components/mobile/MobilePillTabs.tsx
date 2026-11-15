@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, useCallback, type ReactNode } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { type ReactNode } from 'react';
+import { HorizontalTabBar } from '@/components/ui/HorizontalTabBar';
 import { cn } from '@/lib/utils';
 import { hexToRgbTriplet, idealForeground } from '@/lib/colorContrast';
 
@@ -59,17 +59,9 @@ interface MobilePillTabsProps {
 }
 
 /**
- * Segmented control horizontal scrollável pra trocar de aba no mobile.
- * Pills snap-x com gradient fade nas bordas via mask-image (superfície-agnóstico).
- * Visual app nativo.
+ * Navegação horizontal compartilhada com setas clicáveis quando há overflow.
  *
- * Comportamento de scroll:
- * - Ancora à esquerda por default (scrollLeft = 0 ao montar).
- * - Ao trocar de aba, rola apenas o suficiente para revelar a pill ativa se ela
- *   estiver além da borda direita — nunca corta a borda esquerda.
- * - Fade esquerdo aparece só quando há conteúdo rolado para a esquerda.
- * - Fade direito aparece só quando há conteúdo além da borda direita.
- * - Ambos os fades usam mask-image (funciona sobre qualquer superfície: tela, modal, card).
+ * A aba ativa é revelada sem rolar a página; toque e teclado são preservados.
  */
 export function MobilePillTabs({ tabs, activeTab, onTabChange, className, variant = 'segmented', level = 'section', renderSuffix, actions }: MobilePillTabsProps) {
   // Tamanho/peso da aba por hierarquia. Só vale no underline: as pills
@@ -78,114 +70,22 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className, varian
     variant === 'underline' && level === 'screen'
       ? 'h-11 text-[15px] font-semibold'
       : 'h-9 text-sm font-medium';
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const activeDivRef = useRef<HTMLDivElement>(null);
-  const activeButtonRef = useRef<HTMLButtonElement>(null);
-
-  // Visibilidade dinâmica dos fades: esquerdo = há scroll à esquerda; direito = há scroll à direita.
-  const [showLeft, setShowLeft] = useState(false);
-  const [showRight, setShowRight] = useState(false);
-
-  /** Recalcula quais fades devem aparecer com base na posição atual de scroll. */
-  const updateFades = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const { scrollLeft, clientWidth, scrollWidth } = el;
-    setShowLeft(scrollLeft > 1);
-    setShowRight(scrollLeft + clientWidth < scrollWidth - 1);
-  }, []);
-
-  // Listener de scroll e resize para atualizar fades dinamicamente.
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-
-    el.addEventListener('scroll', updateFades, { passive: true });
-    const ro = new ResizeObserver(updateFades);
-    ro.observe(el);
-
-    // Cálculo inicial após montagem.
-    updateFades();
-
-    return () => {
-      el.removeEventListener('scroll', updateFades);
-      ro.disconnect();
-    };
-  }, [updateFades]);
-
-  // Recalcula fades quando a lista de tabs muda (ex: abas carregadas assincronamente).
-  useEffect(() => {
-    updateFades();
-  }, [tabs, updateFades]);
-
-  // Ao trocar de aba: ancora à esquerda na primeira montagem (scroll = 0).
-  // Nas trocas subsequentes, rola só se a pill ativa estiver ALÉM da borda direita.
-  // Nunca usa scrollIntoView com inline: 'center' para não cortar a borda esquerda.
-  useEffect(() => {
-    const container = scrollRef.current;
-    const activeEl = activeDivRef.current ?? activeButtonRef.current;
-    if (!container || !activeEl) return;
-
-    const containerRect = container.getBoundingClientRect();
-    const activeRect = activeEl.getBoundingClientRect();
-
-    const activeRight = activeRect.right - containerRect.left + container.scrollLeft;
-    const activeLeft = activeRect.left - containerRect.left + container.scrollLeft;
-
-    if (activeLeft < container.scrollLeft) {
-      // Pill ativa está à esquerda da vista — revelar com margem mínima.
-      container.scrollTo({ left: Math.max(0, activeLeft - 12), behavior: 'smooth' });
-    } else if (activeRight > container.scrollLeft + container.clientWidth) {
-      // Pill ativa está além da borda direita — revelar com margem mínima.
-      container.scrollTo({
-        left: activeRight - container.clientWidth + 12,
-        behavior: 'smooth',
-      });
-    }
-    // Caso contrário (pill visível), não mexe no scroll — preserva a âncora atual.
-  }, [activeTab]);
-
-  // Máscara CSS superfície-agnóstica: transparente nas bordas com conteúdo rolável,
-  // opaca no centro. Aplicada dinamicamente conforme a posição de scroll.
-  // Usa a combinação dos dois fades: esquerdo e/ou direito, quando necessário.
-  const maskStyle: React.CSSProperties = (() => {
-    if (showLeft && showRight) {
-      return {
-        WebkitMaskImage:
-          'linear-gradient(to right, transparent 0, black 24px, black calc(100% - 24px), transparent 100%)',
-        maskImage:
-          'linear-gradient(to right, transparent 0, black 24px, black calc(100% - 24px), transparent 100%)',
-      };
-    }
-    if (showLeft) {
-      return {
-        WebkitMaskImage: 'linear-gradient(to right, transparent 0, black 24px)',
-        maskImage: 'linear-gradient(to right, transparent 0, black 24px)',
-      };
-    }
-    if (showRight) {
-      return {
-        WebkitMaskImage: 'linear-gradient(to left, transparent 0, black 24px)',
-        maskImage: 'linear-gradient(to left, transparent 0, black 24px)',
-      };
-    }
-    return {};
-  })();
-
   const comAcoes = variant === 'underline' && !!actions;
-
   const barra = (
-    <div className={cn('relative -mx-3', comAcoes ? 'min-w-0 flex-1' : className)}>
-      <div
-        ref={scrollRef}
-        role="tablist"
-        aria-label={showLeft || showRight ? 'Abas. Deslize horizontalmente para ver mais opções.' : 'Abas'}
-        style={maskStyle}
-        className={cn(
-          'flex touch-manipulation snap-x scroll-px-3 overflow-x-auto overflow-y-hidden overscroll-x-contain px-3 scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden transition-[mask-image] duration-200',
-          variant === 'underline' ? 'items-end gap-1 border-b border-border pb-0' : 'gap-1.5 pb-1',
-        )}
-      >
+    <HorizontalTabBar
+      className={cn(comAcoes ? 'min-w-0 flex-1' : className)}
+      viewportProps={{ role: 'tablist', 'aria-label': 'Abas. Deslize ou use as setas para ver mais opções.', onKeyDown: event => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key) || !(event.target as HTMLElement).closest('[role=tab]')) return;
+        event.preventDefault();
+        const index = tabs.findIndex(tab => tab.value === activeTab);
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+        if (tabs[next]) { onTabChange(tabs[next].value); event.currentTarget.querySelectorAll<HTMLElement>('[role=tab]')[next]?.focus(); }
+      } }}
+      viewportClassName={cn(
+        'flex snap-x snap-proximity',
+        variant === 'underline' ? 'items-end gap-1 border-b border-border' : 'gap-1.5 pb-1',
+      )}
+    >
         {tabs.map((tab) => {
           const isActive = activeTab === tab.value;
           const rgb = hexToRgbTriplet(tab.accentColor);
@@ -216,8 +116,8 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className, varian
               : {}
             : {};
           const accentStyle: React.CSSProperties = variant === 'underline'
-            ? accented && isActive
-              ? { borderColor: `rgb(${rgb})`, color: pillTextColor }
+            ? tab.accentColor && isActive
+              ? { borderColor: tab.accentColor, color: tab.accentColor }
               : {}
             : segmentedAccentStyle;
 
@@ -230,7 +130,7 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className, varian
             return (
               <div
                 key={tab.value}
-                ref={isActive ? activeDivRef : undefined}
+                data-tab-item=""
                 style={accentStyle}
                 className={cn(
                   'snap-start shrink-0 inline-flex items-center transition-colors',
@@ -293,7 +193,7 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className, varian
           return (
             <button
               key={tab.value}
-              ref={isActive ? activeButtonRef : undefined}
+
               type="button"
               role="tab"
               aria-selected={isActive}
@@ -344,26 +244,7 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className, varian
             </button>
           );
         })}
-      </div>
-      {showLeft && (
-        <span
-          aria-hidden="true"
-          title="Mais abas à esquerda"
-          className="pointer-events-none absolute left-1 top-1/2 z-10 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full border border-border/70 bg-background/95 text-foreground/70 shadow-sm md:hidden"
-        >
-          <ChevronLeft className="h-4 w-4" strokeWidth={2.5} />
-        </span>
-      )}
-      {showRight && (
-        <span
-          aria-hidden="true"
-          title="Mais abas à direita"
-          className="pointer-events-none absolute right-1 top-1/2 z-10 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full border border-border/70 bg-background/95 text-foreground/70 shadow-sm md:hidden"
-        >
-          <ChevronRight className="h-4 w-4" strokeWidth={2.5} />
-        </span>
-      )}
-    </div>
+    </HorizontalTabBar>
   );
 
   if (!comAcoes) return barra;
@@ -372,7 +253,7 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className, varian
   // desenhar duas linhas sobrepostas de comprimentos diferentes.
   return (
     <div className={cn('flex items-end gap-3 border-b border-border', className)}>
-      <div className="min-w-0 flex-1 [&>div>div]:border-b-0">{barra}</div>
+      <div className="min-w-0 flex-1 [&_[role=tablist]]:border-b-0">{barra}</div>
       <div className="shrink-0 pb-1.5">{actions}</div>
     </div>
   );

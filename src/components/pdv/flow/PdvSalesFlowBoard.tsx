@@ -1,3 +1,4 @@
+import { HorizontalTabBar } from '@/components/ui/HorizontalTabBar';
 import { useEffect, useMemo, useState } from 'react';
 import { Inbox, Search, X } from 'lucide-react';
 import { EmptyState } from '@/components/mobile/EmptyState';
@@ -74,11 +75,13 @@ export function PdvSalesFlowBoard({ cards, fulfillmentMode, onOpen, formatMoney,
         </div>
       </div>
       <div className="md:hidden">
-        <nav aria-label="Etapas do fluxo" className="flex gap-5 overflow-x-auto border-b border-border">
-          {visibleColumns.map(column => <button key={column.stage} type="button" onClick={() => setMobileStage(column.stage)} aria-current={column.stage === activeColumn?.stage ? 'page' : undefined} className={cn('min-h-11 shrink-0 border-b-2 py-2 text-sm font-semibold', column.stage === activeColumn?.stage ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground')}>
-            {column.label} ({cardsByStage.get(column.stage)?.length ?? 0})
-          </button>)}
-        </nav>
+        <HorizontalTabBar asChild>
+          <nav aria-label="Etapas do fluxo" className="flex gap-5 overflow-x-auto border-b border-border">
+            {visibleColumns.map(column => <button key={column.stage} type="button" onClick={() => setMobileStage(column.stage)} aria-current={column.stage === activeColumn?.stage ? 'page' : undefined} className={cn('min-h-11 shrink-0 border-b-2 py-2 text-sm font-semibold', column.stage === activeColumn?.stage ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground')}>
+              {column.label} ({cardsByStage.get(column.stage)?.length ?? 0})
+            </button>)}
+          </nav>
+        </HorizontalTabBar>
         {activeColumn && <div className="mt-3"><FlowColumnSection column={activeColumn} cards={cardsByStage.get(activeColumn.stage) ?? []} selectedFlowId={selectedFlowId} onOpen={onOpen} formatMoney={formatMoney} /></div>}
       </div>
     </>}

@@ -1,3 +1,4 @@
+import { HorizontalTabBar } from '@/components/ui/HorizontalTabBar';
 import { useEffect, useMemo, useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -281,14 +282,16 @@ export function PartyAccountPanel({
           )}
 
           <div className="px-4 py-4 sm:px-5">
-            <div className="mb-4 flex w-full gap-6 overflow-x-auto border-b" role="tablist" aria-label="Tipo de movimento">
-              <SegmentButton active={segment === 'accounts'} onClick={() => { setSegment('accounts'); setPage(1); }}>
-                Contas
-              </SegmentButton>
-              <SegmentButton active={segment === 'balance'} onClick={() => { setSegment('balance'); setPage(1); }}>
-                Saldo
-              </SegmentButton>
-            </div>
+            <HorizontalTabBar asChild className="mb-4">
+              <div className="flex w-full gap-6 overflow-x-auto border-b" role="tablist" aria-label="Tipo de movimento">
+                <SegmentButton active={segment === 'accounts'} onClick={() => { setSegment('accounts'); setPage(1); }}>
+                  Contas
+                </SegmentButton>
+                <SegmentButton active={segment === 'balance'} onClick={() => { setSegment('balance'); setPage(1); }}>
+                  Saldo
+                </SegmentButton>
+              </div>
+            </HorizontalTabBar>
 
             {entries.length === 0 ? (
               <div className="flex flex-col items-center px-4 py-9 text-center">

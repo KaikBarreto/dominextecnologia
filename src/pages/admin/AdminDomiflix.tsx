@@ -1485,7 +1485,7 @@ export default function AdminDomiflix() {
       </div>
 
       <Tabs defaultValue="series">
-        <div className="mb-6 overflow-x-auto"><TabsList variant="underline" className="w-max min-w-full justify-start">
+        <div className="mb-6 min-w-0"><TabsList variant="underline" className="w-full justify-start">
           <TabsTrigger value="series" className="gap-2">
             <Tv className="w-4 h-4" />
             Módulos ({seriesTitles.length})

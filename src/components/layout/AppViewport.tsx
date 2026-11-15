@@ -59,7 +59,7 @@ export function AppViewport({ mode, sidebar, header, subscriptionNotice, notices
             scrollPosition.current = event.currentTarget.scrollTop;
             onScroll?.(event);
           }}
-          className={compact ? 'min-h-0 flex-1 overflow-x-hidden min-w-0 max-w-full bg-background' : 'contents'}
+          className={compact ? 'min-h-0 flex-1 overflow-x-hidden min-w-0 max-w-full bg-background scroll-pb-[calc(8rem+env(safe-area-inset-bottom))]' : 'contents'}
         >
           <main ref={mainRef} onScroll={(event) => {
             if (!compact) scrollPosition.current = event.currentTarget.scrollTop;

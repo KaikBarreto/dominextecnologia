@@ -1,3 +1,4 @@
+import { HorizontalTabBar } from '@/components/ui/HorizontalTabBar';
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Calculator, Save, CheckCircle2, Loader2, Trash2, Wrench, Plus, Pencil } from 'lucide-react';
@@ -564,26 +565,29 @@ export function ServiceCostsTab({
                   onTabChange={setCostsTab}
                 />
               ) : (
-                <div className="flex gap-1 border-b overflow-x-auto no-scrollbar">
-                  {[
-                    { value: 'mao_de_obra', label: tsc.tabLabor },
-                    { value: 'recursos', label: tsc.tabResources },
-                    { value: 'materiais', label: tsc.tabMaterials },
-                    { value: 'resumo', label: tsc.tabSummary },
-                  ].map((tab) => (
-                    <button
-                      key={tab.value}
-                      type="button"
-                      onClick={() => setCostsTab(tab.value)}
-                      className={cn(
-                        'px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap shrink-0',
-                        costsTab === tab.value ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
-                      )}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
+                <HorizontalTabBar asChild>
+                  <div className="flex gap-1 border-b overflow-x-auto no-scrollbar">
+                    {[
+                      { value: 'mao_de_obra', label: tsc.tabLabor },
+                      { value: 'recursos', label: tsc.tabResources },
+                      { value: 'materiais', label: tsc.tabMaterials },
+                      { value: 'resumo', label: tsc.tabSummary },
+                    ].map((tab) => (
+                      <button
+                        key={tab.value}
+                        aria-current={costsTab === tab.value ? 'page' : undefined}
+                        type="button"
+                        onClick={() => setCostsTab(tab.value)}
+                        className={cn(
+                          'px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap shrink-0',
+                          costsTab === tab.value ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+                        )}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+                </HorizontalTabBar>
               )}
 
               <TabsContent value="mao_de_obra" className="mt-4">

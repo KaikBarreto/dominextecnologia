@@ -47,8 +47,8 @@ describe('tabelas de saturação e SH/SC', () => {
     expect(calcularSuperaquecimento('R-404A', 416.4 - 14.695948776, 'psi', 66).delta).toBeCloseTo(6, 8);
   });
   it('preserva vácuo válido e rejeita leituras sem dados ou fisicamente impossíveis', () => {
-    expect(pressaoParaTempSat('R-134a', -0.5, 'bar', 'unica')).toBe(-40);
-    expect(calcularSuperaquecimento('R-134a', -0.5, 'bar', -35).delta).toBe(5);
+    expect(pressaoParaTempSat('R-134a', 7.4 - 14.695948776, 'psi', 'unica')).toBe(-40);
+    expect(calcularSuperaquecimento('R-134a', 7.4 - 14.695948776, 'psi', -35).delta).toBe(5);
     for (const invalid of [NaN, Infinity, -Infinity]) {
       expect(pressaoParaTempSat('R-22', invalid, 'bar', 'unica')).toBeNull();
       expect(tempParaPressao('R-22', invalid, 'bar', 'unica')).toBeNull();

@@ -2,6 +2,7 @@ import * as React from "react";
 import * as TabsPrimitive from "@radix-ui/react-tabs";
 
 import { cn } from "@/lib/utils";
+import { HorizontalTabBar } from "@/components/ui/HorizontalTabBar";
 
 const Tabs = TabsPrimitive.Root;
 
@@ -16,13 +17,15 @@ export type TabsLevel = "screen" | "section";
 
 type TabsListProps = React.ComponentPropsWithoutRef<typeof TabsPrimitive.List> & {
   variant?: TabsVisualVariant;
+  /** Posicionamento da barra inteira (ex.: sticky), incluindo os controles de rolagem. */
+  wrapperClassName?: string;
 };
 
 const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,
   TabsListProps
->(({ className, variant = "segmented", ...props }, ref) => (
-  <TabsPrimitive.List
+>(({ className, variant = "segmented", wrapperClassName, ...props }, ref) => {
+  const list = <TabsPrimitive.List
     ref={ref}
     className={cn(
       variant === "underline"
@@ -31,8 +34,12 @@ const TabsList = React.forwardRef<
       className,
     )}
     {...props}
-  />
-));
+  />;
+
+  if (variant !== "underline" || props["aria-orientation"] === "vertical") return list;
+
+  return <HorizontalTabBar asChild className={wrapperClassName}>{list}</HorizontalTabBar>;
+});
 TabsList.displayName = TabsPrimitive.List.displayName;
 
 type TabsTriggerProps = React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger> & {

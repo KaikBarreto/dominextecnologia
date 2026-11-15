@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
+import { HorizontalTabBar } from '@/components/ui/HorizontalTabBar';
 import type { ReactNode } from 'react';
 import { portalHeaderStyle } from './portalTheme';
 import { PortalStickyFooter } from './PortalStickyFooter';
@@ -161,60 +162,6 @@ export function PublicPortalShell({
   // Mede a altura do header sticky para o offset da sidebar (espelha TechnicianOS).
   const headerRef = useRef<HTMLDivElement | null>(null);
   const [headerH, setHeaderH] = useState(0);
-
-  // Fade dinâmico nas pills mobile (mask-image nas bordas — padrão MobilePillTabs).
-  const pillsScrollRef = useRef<HTMLDivElement | null>(null);
-  const [pillsShowLeft, setPillsShowLeft] = useState(false);
-  const [pillsShowRight, setPillsShowRight] = useState(false);
-
-  const updatePillsFades = useCallback(() => {
-    const el = pillsScrollRef.current;
-    if (!el) return;
-    const { scrollLeft, clientWidth, scrollWidth } = el;
-    setPillsShowLeft(scrollLeft > 1);
-    setPillsShowRight(scrollLeft + clientWidth < scrollWidth - 1);
-  }, []);
-
-  useEffect(() => {
-    const el = pillsScrollRef.current;
-    if (!el) return;
-    el.addEventListener('scroll', updatePillsFades, { passive: true });
-    const ro = new ResizeObserver(updatePillsFades);
-    ro.observe(el);
-    updatePillsFades();
-    return () => {
-      el.removeEventListener('scroll', updatePillsFades);
-      ro.disconnect();
-    };
-  }, [updatePillsFades]);
-
-  useEffect(() => {
-    updatePillsFades();
-  }, [navSections, updatePillsFades]);
-
-  const pillsMaskStyle: React.CSSProperties = (() => {
-    if (pillsShowLeft && pillsShowRight) {
-      return {
-        WebkitMaskImage:
-          'linear-gradient(to right, transparent 0, black 24px, black calc(100% - 24px), transparent 100%)',
-        maskImage:
-          'linear-gradient(to right, transparent 0, black 24px, black calc(100% - 24px), transparent 100%)',
-      };
-    }
-    if (pillsShowLeft) {
-      return {
-        WebkitMaskImage: 'linear-gradient(to right, transparent 0, black 24px)',
-        maskImage: 'linear-gradient(to right, transparent 0, black 24px)',
-      };
-    }
-    if (pillsShowRight) {
-      return {
-        WebkitMaskImage: 'linear-gradient(to left, transparent 0, black 24px)',
-        maskImage: 'linear-gradient(to left, transparent 0, black 24px)',
-      };
-    }
-    return {};
-  })();
 
   useLayoutEffect(() => {
     const el = headerRef.current;
@@ -420,13 +367,11 @@ export function PublicPortalShell({
           {/* Pilulas de navegacao mobile (visivel so em mobile) */}
           {navSections && navSections.length > 1 && (
             <div className="mb-4 lg:hidden">
-              {/* Wrapper relativo p/ o fade não vazar pra fora da região das pills. */}
-              <div className="relative">
+              <HorizontalTabBar asChild>
                 <div
-                  ref={pillsScrollRef}
-                  style={pillsMaskStyle}
                   role="tablist"
-                  className="flex items-end gap-1 overflow-x-auto border-b border-border pb-0 scrollbar-hide [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden transition-[mask-image] duration-200"
+                  aria-label={navLabel}
+                  className="flex items-end gap-1 overflow-x-auto border-b border-border pb-0 scrollbar-hide [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 >
                   {navSections.map((section) => {
                     const isActive = activeSection === section.value;
@@ -457,7 +402,7 @@ export function PublicPortalShell({
                     );
                   })}
                 </div>
-              </div>
+              </HorizontalTabBar>
             </div>
           )}
 

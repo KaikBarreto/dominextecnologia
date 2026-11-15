@@ -1,3 +1,4 @@
+import { HorizontalTabBar } from '@/components/ui/HorizontalTabBar';
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -522,50 +523,54 @@ export function GoodsFiscalWizard({
       </div>
       <nav
         aria-label="Etapas da nota"
-        className="sticky top-0 z-10 -mx-4 overflow-x-auto border-b bg-background px-4 sm:-mx-10 sm:px-10"
+        className="sticky top-0 z-10 -mx-4 border-b bg-background px-4 sm:-mx-10 sm:px-10"
       >
-        <div className="flex min-w-max gap-1">
-          {(isMobile ? STEPS.slice(0, 2) : STEPS).map((entry) => (
-            <button
-              key={entry.key}
-              type="button"
-              onClick={() => setStep(entry.key)}
-              className={cn(
-                "min-h-14 border-b-[3px] px-4 py-3 text-base font-semibold transition-colors lg:px-6 lg:text-[17px]",
-                entry.key === step
-                  ? "border-foreground text-foreground"
-                  : "border-transparent text-muted-foreground",
-              )}
-            >
-              {entry.label}
-            </button>
-          ))}
-          {isMobile ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className={cn(
-                    "ml-auto flex min-h-14 items-center gap-1 whitespace-nowrap border-b-[3px] px-4 py-3 text-base font-semibold",
-                    !["dados", "itens"].includes(step)
-                      ? "border-foreground text-foreground"
-                      : "border-transparent text-muted-foreground",
-                  )}
-                >
-                  {STEPS.slice(2).find((entry) => entry.key === step)?.label ?? "Mais opções"}
-                  <ChevronDown className="h-4 w-4" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                {STEPS.slice(2).map((entry) => (
-                  <DropdownMenuItem key={entry.key} onSelect={() => setStep(entry.key)} className="text-base">
-                    {entry.label}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : null}
-        </div>
+        <HorizontalTabBar asChild>
+          <div className="flex min-w-0 gap-1">
+            {(isMobile ? STEPS.slice(0, 2) : STEPS).map((entry) => (
+              <button
+                key={entry.key}
+                aria-current={entry.key === step ? 'page' : undefined}
+                type="button"
+                onClick={() => setStep(entry.key)}
+                className={cn(
+                  "min-h-14 shrink-0 whitespace-nowrap border-b-[3px] px-4 py-3 text-base font-semibold transition-colors lg:px-6 lg:text-[17px]",
+                  entry.key === step
+                    ? "border-foreground text-foreground"
+                    : "border-transparent text-muted-foreground",
+                )}
+              >
+                {entry.label}
+              </button>
+            ))}
+            {isMobile ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    aria-current={!["dados", "itens"].includes(step) ? "page" : undefined}
+                    className={cn(
+                      "ml-auto flex min-h-14 shrink-0 items-center gap-1 whitespace-nowrap border-b-[3px] px-4 py-3 text-base font-semibold",
+                      !["dados", "itens"].includes(step)
+                        ? "border-foreground text-foreground"
+                        : "border-transparent text-muted-foreground",
+                    )}
+                  >
+                    {STEPS.slice(2).find((entry) => entry.key === step)?.label ?? "Mais opções"}
+                    <ChevronDown className="h-4 w-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  {STEPS.slice(2).map((entry) => (
+                    <DropdownMenuItem key={entry.key} onSelect={() => setStep(entry.key)} className="text-base">
+                      {entry.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : null}
+          </div>
+        </HorizontalTabBar>
       </nav>
 
       <div className="mx-auto w-full max-w-7xl py-6 sm:py-8">

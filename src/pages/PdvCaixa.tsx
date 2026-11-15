@@ -1,3 +1,4 @@
+import { HorizontalTabBar } from '@/components/ui/HorizontalTabBar';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -944,34 +945,37 @@ function PdvCaixaLegacy() {
       {header}
 
       {openSessions.length > 0 && (
-        <nav
-          aria-label={t.navigation.aria}
-          className="flex gap-2 overflow-x-auto border-b pb-2"
-        >
-          {openSessions.map((openSession, index) => {
-            const openTerminal = terminals.find((item) => item.id === openSession.terminal_id);
-            const operator = openSession.opened_by ? operators[openSession.opened_by] : null;
-            const isActive = openSession.id === session?.id;
-            const isCurrentUser = openSession.opened_by === user?.id;
-            return (
-              <button
-                key={openSession.id}
-                type="button"
-                onClick={() => setFocusedSessionId(openSession.id)}
-                className={cn(
-                  'shrink-0 rounded-md px-3 py-2 text-xs font-semibold transition-colors',
-                  isActive
-                    ? 'bg-foreground text-background'
-                    : 'bg-muted text-muted-foreground hover:text-foreground',
-                )}
-              >
-                #{String(index + 1).padStart(2, '0')} · {openTerminal?.name ?? t.title}
-                {operator ? ` · ${operator}` : ''}
-                {isCurrentUser ? ` (${t.navigation.you})` : ''}
-              </button>
-            );
-          })}
-        </nav>
+        <HorizontalTabBar asChild>
+          <nav
+            aria-label={t.navigation.aria}
+            className="flex gap-2 overflow-x-auto border-b pb-2"
+          >
+            {openSessions.map((openSession, index) => {
+              const openTerminal = terminals.find((item) => item.id === openSession.terminal_id);
+              const operator = openSession.opened_by ? operators[openSession.opened_by] : null;
+              const isActive = openSession.id === session?.id;
+              const isCurrentUser = openSession.opened_by === user?.id;
+              return (
+                <button
+                  key={openSession.id}
+                  aria-current={isActive ? 'page' : undefined}
+                  type="button"
+                  onClick={() => setFocusedSessionId(openSession.id)}
+                  className={cn(
+                    'shrink-0 rounded-md px-3 py-2 text-xs font-semibold transition-colors',
+                    isActive
+                      ? 'bg-foreground text-background'
+                      : 'bg-muted text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  #{String(index + 1).padStart(2, '0')} · {openTerminal?.name ?? t.title}
+                  {operator ? ` · ${operator}` : ''}
+                  {isCurrentUser ? ` (${t.navigation.you})` : ''}
+                </button>
+              );
+            })}
+          </nav>
+        </HorizontalTabBar>
       )}
 
       {!session ? (

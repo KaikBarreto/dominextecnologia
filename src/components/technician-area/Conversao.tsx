@@ -1,3 +1,4 @@
+import { HorizontalTabBar } from '@/components/ui/HorizontalTabBar';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Gauge, Thermometer, Zap, Ruler, ArrowLeftRight, Info, Star } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -55,16 +56,18 @@ export function Conversao({ inicial }: { inicial?: ConversaoInicial }) {
         <h2 className="text-2xl font-bold tracking-tight md:text-3xl">{t.title}</h2>
         <p className="mt-1 text-base text-muted-foreground">{t.subtitle}</p>
       </div>
-      <div className="flex gap-1 overflow-x-auto border-b no-scrollbar" role="tablist" aria-label={t.title}>
-        {ORDEM.map(cat => {
-          const Icon = ICONES[cat];
-          return <button key={cat} id={`${id}-${cat}`} aria-controls={`${id}-panel`} type="button" role="tab" aria-selected={categoria === cat}
-            onClick={() => { setParInicial(undefined); setCategoria(cat); }}
-            className={cn('inline-flex min-h-12 shrink-0 items-center gap-2 border-b-2 px-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-base', categoria === cat ? CORES_CATEGORIA[cat] : 'border-transparent text-muted-foreground hover:text-foreground')}>
-            <Icon className="h-4 w-4" aria-hidden />{labels[cat]}
-          </button>;
-        })}
-      </div>
+      <HorizontalTabBar asChild>
+        <div className="flex gap-1 overflow-x-auto border-b no-scrollbar" role="tablist" aria-label={t.title}>
+          {ORDEM.map(cat => {
+            const Icon = ICONES[cat];
+            return <button key={cat} id={`${id}-${cat}`} aria-controls={`${id}-panel`} type="button" role="tab" aria-selected={categoria === cat}
+              onClick={() => { setParInicial(undefined); setCategoria(cat); }}
+              className={cn('inline-flex min-h-12 shrink-0 items-center gap-2 border-b-2 px-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-base', categoria === cat ? CORES_CATEGORIA[cat] : 'border-transparent text-muted-foreground hover:text-foreground')}>
+              <Icon className="h-4 w-4" aria-hidden />{labels[cat]}
+            </button>;
+          })}
+        </div>
+      </HorizontalTabBar>
       <div id={`${id}-panel`} role="tabpanel" aria-labelledby={`${id}-${categoria}`}>
         <ConversaoNumerica key={`${categoria}:${parInicial?.de ?? ''}:${parInicial?.para ?? ''}:${navegacao}`} categoria={categoria} inicial={parInicial} t={t} atalhos={atalhos} onAtalho={abrirPar} />
       </div>

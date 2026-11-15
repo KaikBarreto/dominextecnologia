@@ -598,7 +598,7 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
     >
       <form id="inventory-material-form" onSubmit={handleSubmit}>
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as InventoryFormTab)}>
-          <TabsList variant="underline" className="sticky top-0 z-10 w-full bg-background">
+          <TabsList variant="underline" wrapperClassName="sticky top-0 z-10 bg-background" className="w-full">
             <TabsTrigger value="basic" variant="underline"><span className="sm:hidden">{ui.basicShort}</span><span className="hidden sm:inline">{ui.basic}</span></TabsTrigger>
             <TabsTrigger value="stock" variant="underline"><span className="sm:hidden">{ui.stockShort}</span><span className="hidden sm:inline">{ui.stock}</span></TabsTrigger>
             <TabsTrigger value="codes" variant="underline"><span className="sm:hidden">{ui.codesShort}</span><span className="hidden sm:inline">{ui.codes}</span></TabsTrigger>

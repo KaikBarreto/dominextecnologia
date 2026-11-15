@@ -832,7 +832,7 @@ export default function ProposalSimulator() {
         </ResponsiveModal>
 
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)}>
-          <TabsList variant="underline" className="mb-6 w-full print:hidden">
+          <TabsList variant="underline" wrapperClassName="mb-6 print:hidden" className="w-full">
             <TabsTrigger variant="underline" value="proposal">Proposta</TabsTrigger>
             <TabsTrigger variant="underline" value="structure">Organograma</TabsTrigger>
             <TabsTrigger variant="underline" value="pricing">Tabela</TabsTrigger>

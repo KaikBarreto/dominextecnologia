@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   ArrowLeft,
+  Download,
   Info,
   KeyRound,
   ListChecks,
@@ -16,10 +17,12 @@ import { Button } from '@/components/ui/button';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import {
   useRemoteConfig,
+  rotuloManual,
   type EquipmentModel,
 } from '@/hooks/useEquipmentCatalog';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { CatalogDocumentReference } from './CatalogAssetReference';
 
 /**
  * Detalhes técnicos de um controle remoto (modos, símbolos, reset/desbloqueio,
@@ -81,10 +84,17 @@ export function RemoteConfig({
         </div>
       )}
 
+      {model.manual_url && <div>
+        <Button asChild className="h-auto min-h-12 w-full whitespace-normal text-base font-semibold">
+          <a href={model.manual_url} target="_blank" rel="noopener noreferrer"><Download className="h-5 w-5 shrink-0" />{rotuloManual(model.manual_type, MESSAGES[locale].app.technicianTools.catalog.manualTypes)}</a>
+        </Button>
+        <CatalogDocumentReference model={model} />
+      </div>}
+
       {isLoading ? (
         <LoadingBlock />
       ) : semConfig ? (
-        <EmptyState
+        !model.manual_url && <EmptyState
           title={t.emptyTitle}
           message={t.emptyMessage}
         />

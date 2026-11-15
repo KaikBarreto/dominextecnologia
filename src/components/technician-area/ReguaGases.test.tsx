@@ -22,9 +22,9 @@ describe('régua de gases: entradas e unidade', () => {
   });
   it('trocar psi/bar converte a pressão medida, enquanto sugestão corrige só a unidade errada', () => {
     render(<ReguaGases />);
-    fireEvent.change(screen.getByLabelText('Pressão em PSI (g)'), { target: { value: '120' } });
+    fireEvent.change(screen.getByLabelText('Pressão em PSI (g)'), { target: { value: '125' } });
     fireEvent.click(screen.getByRole('switch', { name: 'Unidade' }));
-    expect(Number((screen.getByLabelText('Pressão em BAR (g)') as HTMLInputElement).value.replace(',', '.'))).toBeCloseTo(8.2737, 3);
+    expect(Number((screen.getByLabelText('Pressão em BAR (g)') as HTMLInputElement).value.replace(',', '.'))).toBeCloseTo(125 / 14.503773773, 3);
     fireEvent.change(screen.getByLabelText('Pressão em BAR (g)'), { target: { value: '120' } });
     fireEvent.click(within(screen.getByRole('alert')).getByRole('button', { name: 'psi' }));
     expect((screen.getByLabelText('Pressão em PSI (g)') as HTMLInputElement).value).toBe('120');

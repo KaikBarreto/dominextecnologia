@@ -1,3 +1,4 @@
+import { HorizontalTabBar } from '@/components/ui/HorizontalTabBar';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { Calculator, Plus, Trash2 } from 'lucide-react';
 
@@ -226,7 +227,7 @@ export function QuoteServiceCostEditor({ value, onChange, bdiFactor, formatMoney
 
       <Tabs value={activeSection} onValueChange={next => setActiveSection(next as CostSection)}>
         {isMobile ? <MobilePillTabs variant="underline" tabs={tabs} activeTab={activeSection} onTabChange={next => setActiveSection(next as CostSection)} /> : (
-          <div className="flex gap-1 overflow-x-auto border-b no-scrollbar">{tabs.map(tab => <button key={tab.value} type="button" onClick={() => setActiveSection(tab.value)} className={cn('mb-[-1px] shrink-0 whitespace-nowrap border-b-2 px-5 py-3 text-sm font-medium transition-colors', activeSection === tab.value ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground')}>{tab.label}</button>)}</div>
+          <HorizontalTabBar asChild><div className="flex gap-1 overflow-x-auto border-b no-scrollbar">{tabs.map(tab => <button key={tab.value} type="button" aria-current={activeSection === tab.value ? 'page' : undefined} onClick={() => setActiveSection(tab.value)} className={cn('mb-[-1px] shrink-0 whitespace-nowrap border-b-2 px-5 py-3 text-sm font-medium transition-colors', activeSection === tab.value ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground')}>{tab.label}</button>)}</div></HorizontalTabBar>
         )}
 
         <TabsContent value="labor" className="mt-4">

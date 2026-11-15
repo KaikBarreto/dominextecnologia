@@ -1,0 +1,2186 @@
+{
+  "reviewed_at": "2026-11-15",
+  "references": [
+    {
+      "id": "daikin-multi-operation-836",
+      "scope": "CCXS09PVM / CCXS12PVM / CCXS18PVM",
+      "document": "Daikin 836 · Manual de operação",
+      "url": "https://www.daikin.com.br/profissionais/download/force_download/836",
+      "page": 30,
+      "pdfPage": 31,
+      "reviewedAt": "2026-11-15",
+      "codes": [
+        {
+          "code": "00",
+          "title": "Normal",
+          "component": "Sistema"
+        },
+        {
+          "code": "UA",
+          "title": "Falha da combinação de unidades internas - externas",
+          "component": "Sistema"
+        },
+        {
+          "code": "U0",
+          "title": "Falta de refrigerante",
+          "component": "Sistema"
+        },
+        {
+          "code": "U2",
+          "title": "Queda de tensão ou tensão excessiva do circuito principal",
+          "component": "Sistema"
+        },
+        {
+          "code": "U4",
+          "title": "Falha de transmissão (entre a unidade interna e a unidade externas)",
+          "component": "Sistema"
+        },
+        {
+          "code": "A1",
+          "title": "Falha da placa de circuitos impressos interior",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "A3",
+          "title": "Nível anormal de água de drenagem",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "A5",
+          "title": "Controle de alta pressão ou protetor de congelamento",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "A6",
+          "title": "Falha do motor do ventilador",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "C4",
+          "title": "Sensor de temperatura do trocador de calor deficiente",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "C7",
+          "title": "Falha de abertura/fechamento do painel frontal",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "C9",
+          "title": "Sensor de temperatura de ar de sucção defeituoso",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "EA",
+          "title": "Erro da comutação de refrigeração - aquecimento",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E1",
+          "title": "Falha do quadro de circuitos",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E5",
+          "title": "Proteção OL acionada",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E6",
+          "title": "Partida do compressor deficiente",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E7",
+          "title": "Falha do motor do ventilador CC",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E8",
+          "title": "Entrada de sobrecorrente",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "F3",
+          "title": "Controle do tubo de descarga de alta temperatura",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "F6",
+          "title": "Controle de alta pressão (em refrigeração)",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H0",
+          "title": "Falha do sensor",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H6",
+          "title": "Interrupção do funcionamento devido à posição anômala do sensor de detecção",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H8",
+          "title": "Falha do sensor de corrente contínua",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H9",
+          "title": "Sensor de temperatura de ar de sucção defeituoso",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "J3",
+          "title": "Sensor de temperatura do tubo de descarga defeituoso",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "J6",
+          "title": "Sensor de temperatura do trocador de calor deficiente",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "L3",
+          "title": "Falha térmica das peças elétricas",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "L4",
+          "title": "Temperatura alta no dissipador de calor do circuito de inversão",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "L5",
+          "title": "Corrente excessiva de saída",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "P4",
+          "title": "Sensor de temperatura do dissipador de calor do circuito de inversão defeituoso",
+          "component": "Unidade externa"
+        }
+      ],
+      "distributorCopy": false,
+      "conditions": "Tabela literal de autodiagnóstico do manual; não usar como tabela universal de marca.",
+      "context": "operation",
+      "coveredCodes": [
+        "CCXS09PVM",
+        "CCXS12PVM",
+        "CCXS18PVM"
+      ],
+      "pdfSha256": "3843e9e47412fbd33c8968ea3aa47d43082366d4d7d2fada281e4a91a29d1d5f"
+    },
+    {
+      "id": "daikin-multi-operation-837",
+      "scope": "CDXS25KVM / CDXS35KVM / CDXS50KVM / CDXS60KVM / CDKS25KVM / CDKS35KVM / CDKS50KVM / CDKS60KVM",
+      "document": "Daikin 837 · Manual de operação",
+      "url": "https://www.daikin.com.br/profissionais/download/force_download/837",
+      "page": 26,
+      "pdfPage": 27,
+      "reviewedAt": "2026-11-15",
+      "codes": [
+        {
+          "code": "00",
+          "title": "Normal",
+          "component": "Sistema"
+        },
+        {
+          "code": "U0",
+          "title": "Falta de refrigerante",
+          "component": "Sistema"
+        },
+        {
+          "code": "U2",
+          "title": "Queda de tensão ou tensão excessiva do circuito principal",
+          "component": "Sistema"
+        },
+        {
+          "code": "U4",
+          "title": "Falha de transmissão (entre a unidade interior e a unidade exteriores)",
+          "component": "Sistema"
+        },
+        {
+          "code": "A1",
+          "title": "Falha da placa de circuitos impressos interior",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "A5",
+          "title": "Controlo de alta pressão ou protector de congelamento",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "A6",
+          "title": "Falha do motor do ventilador",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "C4",
+          "title": "Sensor de temperatura do trocador de calor deficiente",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "C9",
+          "title": "Sensor de temperatura de ar de sucção defeituoso",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "EA",
+          "title": "Erro da comutação de refrigeração - aquecimento.",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E5",
+          "title": "Proteção OL acionada",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E6",
+          "title": "Partida do compressor deficiente",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E7",
+          "title": "Falha do motor da ventoinha CC",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E8",
+          "title": "Paragem do funcionamento devido à detecção de excesso de corrente de entrada",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "F3",
+          "title": "Controlo do tubo de descarga de alta temperatura",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "F6",
+          "title": "Controlo de alta pressão (em refrigeração)",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H6",
+          "title": "Paragem do funcionamento devido à posição anómala do sensor de detecção",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H8",
+          "title": "Anormalidade ct",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H9",
+          "title": "Sensor de temperatura do ar de sucção defeituoso",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "J3",
+          "title": "Falha do sensor de temperatura do tubo de descarga",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "J6",
+          "title": "Sensor de temperatura do trocador de calor deficiente",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "L4",
+          "title": "Temperatura elevada no dissipador do inversor",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "L5",
+          "title": "Corrente excessiva de saída",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "P4",
+          "title": "Falha do sensor de temperatura do dissipador do inversor",
+          "component": "Unidade externa"
+        }
+      ],
+      "distributorCopy": false,
+      "conditions": "Tabela literal de autodiagnóstico do manual; não usar como tabela universal de marca.",
+      "context": "operation",
+      "coveredCodes": [
+        "CDXS25KVM",
+        "CDXS35KVM",
+        "CDXS50KVM",
+        "CDXS60KVM",
+        "CDKS25KVM",
+        "CDKS35KVM",
+        "CDKS50KVM",
+        "CDKS60KVM"
+      ],
+      "pdfSha256": "c452439b967627fdeacab3c51b8cd9d8b4e353f86b11394da85d3ca432fa742d"
+    },
+    {
+      "id": "daikin-multi-operation-838",
+      "scope": "CTXG25K2VMS / CTXG25K2VMW / CTXG35K2VMS / CTXG35K2VMW / CTXG50K2VMS / CTXG50K2VMW",
+      "document": "Daikin 838 · Manual de operação",
+      "url": "https://www.daikin.com.br/profissionais/download/force_download/838",
+      "page": 40,
+      "pdfPage": 41,
+      "reviewedAt": "2026-11-15",
+      "codes": [
+        {
+          "code": "00",
+          "title": "Normal",
+          "component": "Sistema"
+        },
+        {
+          "code": "U0",
+          "title": "Falta de refrigerante",
+          "component": "Sistema"
+        },
+        {
+          "code": "U2",
+          "title": "Detecção de excesso de voltagem",
+          "component": "Sistema"
+        },
+        {
+          "code": "U4",
+          "title": "Erro de transmissão de sinal (entre unidade interior e unidade exterior)",
+          "component": "Sistema"
+        },
+        {
+          "code": "A1",
+          "title": "Anormalidade na placa de circuito impresso da unidade interior",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "A5",
+          "title": "Protecção contra congelamento ou controlo de corte de pico de aquecimento",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "A6",
+          "title": "Anormalidade do motor (corrente contínua) do ventilador",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "C4",
+          "title": "Anormalidade do termistor do trocador de calor interior",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "C7",
+          "title": "Falha de abrir/fechar do painel frontal",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "C9",
+          "title": "Anormalidade do termistor de temperatura ambiente",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "EA",
+          "title": "Anormalidade da válvula de quatro vias",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E1",
+          "title": "Anormalidade da placa de circuito impresso da unidade exterior",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E5",
+          "title": "Activação de ol (sobrecarga do compressor)",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E6",
+          "title": "Trava do compressor",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E7",
+          "title": "Trava do ventilador de corrente contínua",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "F3",
+          "title": "Controlo de temperatura do cano de descarga",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H0",
+          "title": "Anormalidade do sensor do sistema do compressor",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H6",
+          "title": "Anormalidade do sensor de posição",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H8",
+          "title": "Anormalidade do sensor de voltagem de corrente contínua/corrente",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H9",
+          "title": "Anormalidade do termistor de temperatura exterior",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "J3",
+          "title": "Anormalidade do termistor do cano de descarga",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "J6",
+          "title": "Anormalidade do termistor do trocador de calor exterior",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "L4",
+          "title": "Aumento da temperatura da aleta de radiação",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "L5",
+          "title": "Detecção de excesso de corrente de saída",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "P4",
+          "title": "Anormalidade do termistor da aleta de radiação",
+          "component": "Unidade externa"
+        }
+      ],
+      "distributorCopy": false,
+      "conditions": "Tabela literal de autodiagnóstico do manual; não usar como tabela universal de marca.",
+      "context": "operation",
+      "coveredCodes": [
+        "CTXG25K2VMS",
+        "CTXG25K2VMW",
+        "CTXG35K2VMS",
+        "CTXG35K2VMW",
+        "CTXG50K2VMS",
+        "CTXG50K2VMW"
+      ],
+      "pdfSha256": "7d92cd03dac64b94b6a2bdcad6fc6763692bf1e6d2cddd5d9335a978218bcd4c"
+    },
+    {
+      "id": "daikin-multi-operation-839",
+      "scope": "CTXS09PMVM5 / CTXS12PMVM5",
+      "document": "Daikin 839 · Manual de operação",
+      "url": "https://www.daikin.com.br/profissionais/download/force_download/839",
+      "page": 30,
+      "pdfPage": 31,
+      "reviewedAt": "2026-11-15",
+      "codes": [
+        {
+          "code": "00",
+          "title": "Normal",
+          "component": "Sistema"
+        },
+        {
+          "code": "UA",
+          "title": "Falha da combinação de unidades internas - externas",
+          "component": "Sistema"
+        },
+        {
+          "code": "U0",
+          "title": "Falta de refrigerante",
+          "component": "Sistema"
+        },
+        {
+          "code": "U2",
+          "title": "Queda de tensão ou tensão excessiva do circuito principal",
+          "component": "Sistema"
+        },
+        {
+          "code": "U4",
+          "title": "Falha de transmissão (entre a unidade interna e a unidade externas)",
+          "component": "Sistema"
+        },
+        {
+          "code": "A1",
+          "title": "Falha da placa de circuitos impressos interior",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "A3",
+          "title": "Nível anormal de água de drenagem",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "A5",
+          "title": "Controle de alta pressão ou protetor de congelamento",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "A6",
+          "title": "Falha do motor do ventilador",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "C4",
+          "title": "Sensor de temperatura do trocador de calor deficiente",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "C7",
+          "title": "Falha de abertura/fechamento do painel frontal",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "C9",
+          "title": "Sensor de temperatura de ar de sucção defeituoso",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "EA",
+          "title": "Erro da comutação de refrigeração - aquecimento",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E1",
+          "title": "Falha do quadro de circuitos",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E5",
+          "title": "Proteção OL acionada",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E6",
+          "title": "Partida do compressor deficiente",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E7",
+          "title": "Falha do motor do ventilador CC",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E8",
+          "title": "Entrada de sobrecorrente",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "F3",
+          "title": "Controle do tubo de descarga de alta temperatura",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "F6",
+          "title": "Controle de alta pressão (em refrigeração)",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H0",
+          "title": "Falha do sensor",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H6",
+          "title": "Interrupção do funcionamento devido à posição anômala do sensor de detecção",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H8",
+          "title": "Falha do sensor de corrente contínua",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H9",
+          "title": "Sensor de temperatura de ar de sucção defeituoso",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "J3",
+          "title": "Sensor de temperatura do tubo de descarga defeituoso",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "J6",
+          "title": "Sensor de temperatura do trocador de calor deficiente",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "L3",
+          "title": "Falha térmica das peças elétricas",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "L4",
+          "title": "Temperatura alta no dissipador de calor do circuito de inversão",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "L5",
+          "title": "Corrente excessiva de saída",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "P4",
+          "title": "Sensor de temperatura do dissipador de calor do circuito de inversão defeituoso",
+          "component": "Unidade externa"
+        }
+      ],
+      "distributorCopy": false,
+      "conditions": "Tabela literal de autodiagnóstico do manual; não usar como tabela universal de marca.",
+      "context": "operation",
+      "coveredCodes": [
+        "CTXS09PMVM5",
+        "CTXS12PMVM5"
+      ],
+      "pdfSha256": "f1adf6f0f8b13cf60e8e8abec709349fac7e1424b6a12f57c3d7ccec28744dcf"
+    },
+    {
+      "id": "daikin-multi-operation-840",
+      "scope": "CTXS09PMVM7 / CTXS12PMVM7",
+      "document": "Daikin 840 · Manual de operação",
+      "url": "https://www.daikin.com.br/profissionais/download/force_download/840",
+      "page": 30,
+      "pdfPage": 31,
+      "reviewedAt": "2026-11-15",
+      "codes": [
+        {
+          "code": "00",
+          "title": "Normal",
+          "component": "Sistema"
+        },
+        {
+          "code": "UA",
+          "title": "Falha da combinação de unidades internas - externas",
+          "component": "Sistema"
+        },
+        {
+          "code": "U0",
+          "title": "Falta de refrigerante",
+          "component": "Sistema"
+        },
+        {
+          "code": "U2",
+          "title": "Queda de tensão ou tensão excessiva do circuito principal",
+          "component": "Sistema"
+        },
+        {
+          "code": "U4",
+          "title": "Falha de transmissão (entre a unidade interna e a unidade externas)",
+          "component": "Sistema"
+        },
+        {
+          "code": "A1",
+          "title": "Falha da placa de circuitos impressos interior",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "A3",
+          "title": "Nível anormal de água de drenagem",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "A5",
+          "title": "Controle de alta pressão ou protetor de congelamento",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "A6",
+          "title": "Falha do motor do ventilador",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "C4",
+          "title": "Sensor de temperatura do trocador de calor deficiente",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "C7",
+          "title": "Falha de abertura/fechamento do painel frontal",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "C9",
+          "title": "Sensor de temperatura de ar de sucção defeituoso",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "EA",
+          "title": "Erro da comutação de refrigeração - aquecimento",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E1",
+          "title": "Falha do quadro de circuitos",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E5",
+          "title": "Proteção OL acionada",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E6",
+          "title": "Partida do compressor deficiente",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E7",
+          "title": "Falha do motor do ventilador CC",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E8",
+          "title": "Entrada de sobrecorrente",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "F3",
+          "title": "Controle do tubo de descarga de alta temperatura",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "F6",
+          "title": "Controle de alta pressão (em refrigeração)",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H0",
+          "title": "Falha do sensor",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H6",
+          "title": "Interrupção do funcionamento devido à posição anômala do sensor de detecção",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H8",
+          "title": "Falha do sensor de corrente contínua",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H9",
+          "title": "Sensor de temperatura de ar de sucção defeituoso",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "J3",
+          "title": "Sensor de temperatura do tubo de descarga defeituoso",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "J6",
+          "title": "Sensor de temperatura do trocador de calor deficiente",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "L3",
+          "title": "Falha térmica das peças elétricas",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "L4",
+          "title": "Temperatura alta no dissipador de calor do circuito de inversão",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "L5",
+          "title": "Corrente excessiva de saída",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "P4",
+          "title": "Sensor de temperatura do dissipador de calor do circuito de inversão defeituoso",
+          "component": "Unidade externa"
+        }
+      ],
+      "distributorCopy": false,
+      "conditions": "Tabela literal de autodiagnóstico do manual; não usar como tabela universal de marca.",
+      "context": "operation",
+      "coveredCodes": [
+        "CTXS09PMVM7",
+        "CTXS12PMVM7"
+      ],
+      "pdfSha256": "88cba650ece8054e7c8d299f34510f4561d8db0c4594ee805c428b2c9c327d37"
+    },
+    {
+      "id": "daikin-multi-operation-841",
+      "scope": "CTXS18PMVM5 / CTXS20PMVM5 / CTXS24PMVM5",
+      "document": "Daikin 841 · Manual de operação",
+      "url": "https://www.daikin.com.br/profissionais/download/force_download/841",
+      "page": 31,
+      "pdfPage": 32,
+      "reviewedAt": "2026-11-15",
+      "codes": [
+        {
+          "code": "00",
+          "title": "Normal",
+          "component": "Sistema"
+        },
+        {
+          "code": "UA",
+          "title": "Falha da combinação de unidades internas - externas",
+          "component": "Sistema"
+        },
+        {
+          "code": "U0",
+          "title": "Falta de refrigerante",
+          "component": "Sistema"
+        },
+        {
+          "code": "U2",
+          "title": "Queda de tensão ou tensão excessiva do circuito principal",
+          "component": "Sistema"
+        },
+        {
+          "code": "U4",
+          "title": "Falha de transmissão (entre a unidade interna e a unidade externas)",
+          "component": "Sistema"
+        },
+        {
+          "code": "A1",
+          "title": "Falha da placa de circuitos impressos interior",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "A3",
+          "title": "Nível anormal de água de drenagem",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "A5",
+          "title": "Controle de alta pressão ou protetor de congelamento",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "A6",
+          "title": "Falha do motor do ventilador",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "C4",
+          "title": "Sensor de temperatura do trocador de calor deficiente",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "C7",
+          "title": "Falha de abertura/fechamento do painel frontal",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "C9",
+          "title": "Sensor de temperatura de ar de sucção defeituoso",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "EA",
+          "title": "Erro da comutação de refrigeração - aquecimento",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E1",
+          "title": "Falha do quadro de circuitos",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E5",
+          "title": "Proteção OL acionada",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E6",
+          "title": "Partida do compressor deficiente",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E7",
+          "title": "Falha do motor do ventilador CC",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E8",
+          "title": "Entrada de sobrecorrente",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "F3",
+          "title": "Controle do tubo de descarga de alta temperatura",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "F6",
+          "title": "Controle de alta pressão (em refrigeração)",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H0",
+          "title": "Falha do sensor",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H6",
+          "title": "Interrupção do funcionamento devido à posição anômala do sensor de detecção",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H8",
+          "title": "Falha do sensor de corrente contínua",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H9",
+          "title": "Sensor de temperatura de ar de sucção defeituoso",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "J3",
+          "title": "Sensor de temperatura do tubo de descarga defeituoso",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "J6",
+          "title": "Sensor de temperatura do trocador de calor deficiente",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "L3",
+          "title": "Falha térmica das peças elétricas",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "L4",
+          "title": "Temperatura alta no dissipador de calor do circuito de inversão",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "L5",
+          "title": "Corrente excessiva de saída",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "P4",
+          "title": "Sensor de temperatura do dissipador de calor do circuito de inversão defeituoso",
+          "component": "Unidade externa"
+        }
+      ],
+      "distributorCopy": false,
+      "conditions": "Tabela literal de autodiagnóstico do manual; não usar como tabela universal de marca.",
+      "context": "operation",
+      "coveredCodes": [
+        "CTXS18PMVM5",
+        "CTXS20PMVM5",
+        "CTXS24PMVM5"
+      ],
+      "pdfSha256": "12bf07e1628c1125952100d83ee709cc1360e4f2b8548467e91ff207a6de8623"
+    },
+    {
+      "id": "daikin-multi-operation-843",
+      "scope": "FTKS25KVM / FTKS35KVM / FTXS25KVM / FTXS35KVM",
+      "document": "Daikin 843 · Manual de operação",
+      "url": "https://www.daikin.com.br/profissionais/download/force_download/843",
+      "page": 30,
+      "pdfPage": 31,
+      "reviewedAt": "2026-11-15",
+      "codes": [
+        {
+          "code": "00",
+          "title": "Normal",
+          "component": "Sistema"
+        },
+        {
+          "code": "UA",
+          "title": "Falha da combinação de unidades interiores - exteriores",
+          "component": "Sistema"
+        },
+        {
+          "code": "U0",
+          "title": "Falta de refrigerante",
+          "component": "Sistema"
+        },
+        {
+          "code": "U2",
+          "title": "Queda de tensão ou tensão excessiva do circuito principal",
+          "component": "Sistema"
+        },
+        {
+          "code": "U4",
+          "title": "Falha de transmissão (entre a unidade interior e a unidade exteriores)",
+          "component": "Sistema"
+        },
+        {
+          "code": "A1",
+          "title": "Falha da placa de circuitos impressos interior",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "A5",
+          "title": "Controlo de alta pressão ou protector de congelamento",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "A6",
+          "title": "Falha do motor do ventilador",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "C4",
+          "title": "Sensor de temperatura do trocador de calor deficiente",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "C9",
+          "title": "Sensor de temperatura de ar de sucção defeituoso",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "EA",
+          "title": "Erro da comutação de refrigeração - aquecimento.",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E5",
+          "title": "Proteção OL acionada",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E6",
+          "title": "Partida do compressor deficiente",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E7",
+          "title": "Falha do motor da ventoinha CC",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E8",
+          "title": "Paragem do funcionamento devido à detecção de excesso de corrente de entrada",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "F3",
+          "title": "Controlo do tubo de descarga de alta temperatura",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H6",
+          "title": "Paragem do funcionamento devido à posição anómala do sensor de detecção",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H8",
+          "title": "Anormalidade ct",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H9",
+          "title": "Sensor de temperatura do ar de sucção defeituoso",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "J3",
+          "title": "Falha do sensor de temperatura do tubo de descarga",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "J6",
+          "title": "Sensor de temperatura do trocador de calor deficiente",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "L4",
+          "title": "Temperatura elevada no dissipador do inversor",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "L5",
+          "title": "Corrente excessiva de saída",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "P4",
+          "title": "Falha do sensor de temperatura do dissipador do inversor",
+          "component": "Unidade externa"
+        }
+      ],
+      "distributorCopy": false,
+      "conditions": "Tabela literal de autodiagnóstico do manual; não usar como tabela universal de marca.",
+      "context": "operation",
+      "coveredCodes": [
+        "FTKS25KVM",
+        "FTKS35KVM",
+        "FTXS25KVM",
+        "FTXS35KVM"
+      ],
+      "pdfSha256": "ba8fcdf1289b2c53a1b6819e38b15794fd365ae27664b7f1f40896b6c6f1916d"
+    },
+    {
+      "id": "daikin-multi-operation-844",
+      "scope": "FTKS50KVM / FTKS60KVM / FTKS71KVM / FTXS50KVM / FTXS60KVM / FTXS71KVM",
+      "document": "Daikin 844 · Manual de operação",
+      "url": "https://www.daikin.com.br/profissionais/download/force_download/844",
+      "page": 30,
+      "pdfPage": 31,
+      "reviewedAt": "2026-11-15",
+      "codes": [
+        {
+          "code": "00",
+          "title": "Normal",
+          "component": "Sistema"
+        },
+        {
+          "code": "UA",
+          "title": "Falha da combinação de unidades interiores - exteriores",
+          "component": "Sistema"
+        },
+        {
+          "code": "U0",
+          "title": "Falta de refrigerante",
+          "component": "Sistema"
+        },
+        {
+          "code": "U2",
+          "title": "Queda de tensão ou tensão excessiva do circuito principal",
+          "component": "Sistema"
+        },
+        {
+          "code": "U4",
+          "title": "Falha de transmissão (entre a unidade interior e a unidade exteriores)",
+          "component": "Sistema"
+        },
+        {
+          "code": "A1",
+          "title": "Falha da placa de circuitos impressos interior",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "A5",
+          "title": "Controlo de alta pressão ou protector de congelamento",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "A6",
+          "title": "Falha do motor do ventilador",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "C4",
+          "title": "Sensor de temperatura do trocador de calor deficiente",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "C9",
+          "title": "Sensor de temperatura de ar de sucção defeituoso",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "EA",
+          "title": "Erro da comutação de refrigeração - aquecimento.",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E5",
+          "title": "Proteção OL acionada",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E6",
+          "title": "Partida do compressor deficiente",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E7",
+          "title": "Falha do motor da ventoinha CC",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E8",
+          "title": "Paragem do funcionamento devido à detecção de excesso de corrente de entrada",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "F3",
+          "title": "Controlo do tubo de descarga de alta temperatura",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H6",
+          "title": "Paragem do funcionamento devido à posição anómala do sensor de detecção",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H8",
+          "title": "Anormalidade ct",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H9",
+          "title": "Sensor de temperatura do ar de sucção defeituoso",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "J3",
+          "title": "Falha do sensor de temperatura do tubo de descarga",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "J6",
+          "title": "Sensor de temperatura do trocador de calor deficiente",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "L4",
+          "title": "Temperatura elevada no dissipador do inversor",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "L5",
+          "title": "Corrente excessiva de saída",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "P4",
+          "title": "Falha do sensor de temperatura do dissipador do inversor",
+          "component": "Unidade externa"
+        }
+      ],
+      "distributorCopy": false,
+      "conditions": "Tabela literal de autodiagnóstico do manual; não usar como tabela universal de marca.",
+      "context": "operation",
+      "coveredCodes": [
+        "FTKS50KVM",
+        "FTKS60KVM",
+        "FTKS71KVM",
+        "FTXS50KVM",
+        "FTXS60KVM",
+        "FTXS71KVM"
+      ],
+      "pdfSha256": "f002215fe805cc2b014c72822eb814f0cb26106dd9fe211cd7fbc367e4062d78"
+    },
+    {
+      "id": "daikin-lite-2mxc-r",
+      "scope": "CTXC09RMVM / CTXC12RMVM / 2MXC18RMVM",
+      "document": "Daikin · Operação Multi Split Lite Smart Série 2MXC-R",
+      "url": "https://www.daikin.com.br/profissionais/download/force_download/1143",
+      "page": 17,
+      "pdfPage": 18,
+      "reviewedAt": "2026-11-15",
+      "codes": [
+        {
+          "code": "00",
+          "title": "Funcionamento normal",
+          "component": "Sistema"
+        },
+        {
+          "code": "UA",
+          "title": "Combinação incompatível entre unidade interna e externa",
+          "component": "Sistema"
+        },
+        {
+          "code": "U0",
+          "title": "Falta de refrigerante",
+          "component": "Sistema"
+        },
+        {
+          "code": "U2",
+          "title": "Queda de tensão ou sobretensão no circuito principal",
+          "component": "Sistema"
+        },
+        {
+          "code": "U4",
+          "title": "Falha de comunicação entre unidades",
+          "component": "Sistema"
+        },
+        {
+          "code": "A1",
+          "title": "Falha da placa eletrônica interna",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "A5",
+          "title": "Proteção contra congelamento",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "A6",
+          "title": "Falha do motor do ventilador",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "C4",
+          "title": "Falha do sensor de temperatura do trocador de calor",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "C9",
+          "title": "Falha do sensor de temperatura do ar de sucção",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "EA",
+          "title": "Falha na comutação entre resfriamento e aquecimento",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E1",
+          "title": "Falha da placa eletrônica externa",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E5",
+          "title": "Proteção OL acionada",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E6",
+          "title": "Falha na partida do compressor",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E7",
+          "title": "Falha do motor CC da ventilação",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E8",
+          "title": "Sobrecorrente de entrada",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "F3",
+          "title": "Temperatura elevada no tubo de descarga",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "F6",
+          "title": "Proteção de alta pressão na refrigeração",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "F8",
+          "title": "Parada por temperatura interna anormal do compressor",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H0",
+          "title": "Falha de sensor",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H6",
+          "title": "Parada por falha do sensor de posição",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H8",
+          "title": "Falha do sensor de corrente CC",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H9",
+          "title": "Falha do sensor de temperatura do ar de sucção",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "J3",
+          "title": "Falha do sensor de temperatura do tubo de descarga",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "J6",
+          "title": "Falha do sensor de temperatura do trocador de calor",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "L3",
+          "title": "Aquecimento das peças elétricas",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "L4",
+          "title": "Temperatura elevada no dissipador do inversor",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "L5",
+          "title": "Sobrecorrente de saída",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "P4",
+          "title": "Falha do sensor de temperatura do dissipador do inversor",
+          "component": "Unidade externa"
+        }
+      ],
+      "distributorCopy": false,
+      "conditions": "Tabela original raster conferida visualmente. Brochura1608p8 confirma CTXC09/12RMVM pareados exclusivamente a2MXC18RMVM. Não estenderà nova3MKC/CTKC.",
+      "context": "operation",
+      "coveredCodes": [
+        "CTXC09RMVM",
+        "CTXC12RMVM",
+        "2MXC18RMVM"
+      ],
+      "pdfSha256": "a104be1e91250013bd2ebe54cab5ecb0ce2961f5912f3f98529ce48a342ec161"
+    },
+    {
+      "id": "daikin-multi-ffq-kvl-service",
+      "scope": "FFQ25KVL / FFQ35KVL / FFQ50KVL / FFQ60KVL",
+      "document": "Daikin SiBR121707B · Parte6 · Série FFQ",
+      "url": "https://www.daikin.com.br/profissionais/download/force_download/831",
+      "page": 118,
+      "pdfPage": 17,
+      "reviewedAt": "2026-11-15",
+      "codes": [
+        {
+          "code": "00",
+          "title": "Funcionamento normal",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "A1",
+          "title": "Falha da placa eletrônica interna",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "A3",
+          "title": "Anormalidade no nível de água do dreno",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "A6",
+          "title": "Falha do motor do ventilador",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "AF",
+          "title": "Anormalidade no sistema de drenagem",
+          "component": "Unidade interna",
+          "solution": "O manual indica que o sistema pode continuar operando, mas requer inspeção e reparo conforme o procedimento específico."
+        },
+        {
+          "code": "C4",
+          "title": "Falha do termistor do trocador de calor interno",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "C5",
+          "title": "Falha do segundo termistor do trocador de calor interno",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "C9",
+          "title": "Falha do termistor de temperatura da sala",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "CJ",
+          "title": "Falha do termistor do controle remoto",
+          "component": "Unidade interna",
+          "solution": "O manual indica que o sistema pode continuar operando, mas requer inspeção e reparo conforme o procedimento específico."
+        },
+        {
+          "code": "U5",
+          "title": "Falha de comunicação entre unidade interna e controle remoto",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "U8",
+          "title": "Falha de comunicação entre controles principal e secundário",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "UA",
+          "title": "Configuração de campo incorreta",
+          "component": "Unidade interna"
+        }
+      ],
+      "distributorCopy": false,
+      "conditions": "Tabela4.2 exclusiva FFQ; UA é configuração de campo, não herdar significado da tabelaRA/externas. AF e CJ marcados com inspeção sem parada.",
+      "context": "operation",
+      "coveredCodes": [
+        "FFQ25KVL",
+        "FFQ35KVL",
+        "FFQ50KVL",
+        "FFQ60KVL"
+      ],
+      "pdfSha256": "0a00ce54e0685c7de407178932dd387999a1fefb9d66f970adaf303831dd4511"
+    },
+    {
+      "id": "daikin-advance-n5",
+      "scope": "FTX09N5VL / FTX12N5VL / FTX18N5VL / FTX24N5VL",
+      "document": "Daikin3P362260-2C · AdvanceN5",
+      "url": "https://www.daikin.com.br/profissionais/download/force_download/235",
+      "page": 28,
+      "pdfPage": 29,
+      "reviewedAt": "2026-11-15",
+      "codes": [
+        {
+          "code": "00",
+          "title": "Normal",
+          "component": "Sistema"
+        },
+        {
+          "code": "UA",
+          "title": "Falha da combinação de unidades interiores - exteriores",
+          "component": "Sistema"
+        },
+        {
+          "code": "U0",
+          "title": "Falta de refrigerante",
+          "component": "Sistema"
+        },
+        {
+          "code": "U2",
+          "title": "Queda de tensão ou tensão excessiva do circuito principal",
+          "component": "Sistema"
+        },
+        {
+          "code": "U4",
+          "title": "Falha de transmissão (entre a unidade interior e a unidade exteriores)",
+          "component": "Sistema"
+        },
+        {
+          "code": "A1",
+          "title": "Falha da placa de circuitos impressos interior",
+          "component": "Sistema"
+        },
+        {
+          "code": "A5",
+          "title": "Controle de alta pressão ou protetor de congelamento",
+          "component": "Sistema"
+        },
+        {
+          "code": "A6",
+          "title": "Falha do motor do ventilador",
+          "component": "Sistema"
+        },
+        {
+          "code": "C4",
+          "title": "Sensor de temperatura do trocador de calor deficiente",
+          "component": "Sistema"
+        },
+        {
+          "code": "C9",
+          "title": "Sensor de temperatura de ar de sucção defeituoso",
+          "component": "Sistema"
+        },
+        {
+          "code": "EA",
+          "title": "Erro da comutação de refrigeração - aquecimento",
+          "component": "Sistema"
+        },
+        {
+          "code": "E1",
+          "title": "Falha do quadro de circuitos",
+          "component": "Sistema"
+        },
+        {
+          "code": "E5",
+          "title": "Proteção OL acionada",
+          "component": "Sistema"
+        },
+        {
+          "code": "E6",
+          "title": "Partida do compressor deficiente",
+          "component": "Sistema"
+        },
+        {
+          "code": "E7",
+          "title": "Falha do motor do ventilador CC",
+          "component": "Sistema"
+        },
+        {
+          "code": "E8",
+          "title": "Entrada de sobrecorrente",
+          "component": "Sistema"
+        },
+        {
+          "code": "F3",
+          "title": "Controle do tubo de descarga de alta temperatura",
+          "component": "Sistema"
+        },
+        {
+          "code": "F6",
+          "title": "Controle de alta pressão (em refrigeração)",
+          "component": "Sistema"
+        },
+        {
+          "code": "H0",
+          "title": "Falha do sensor",
+          "component": "Sistema"
+        },
+        {
+          "code": "H6",
+          "title": "Paragem do funcionamento devido à posição anômala do sensor de detecção",
+          "component": "Sistema"
+        },
+        {
+          "code": "H8",
+          "title": "Falha do sensor de corrente contínua",
+          "component": "Sistema"
+        },
+        {
+          "code": "H9",
+          "title": "Sensor de temperatura de ar de sucção defeituoso",
+          "component": "Sistema"
+        },
+        {
+          "code": "J3",
+          "title": "Sensor de temperatura do tubo de descarga defeituoso",
+          "component": "Sistema"
+        },
+        {
+          "code": "J6",
+          "title": "Sensor de temperatura do trocador de calor deficiente",
+          "component": "Sistema"
+        },
+        {
+          "code": "L3",
+          "title": "Falha térmica das peças elétricas",
+          "component": "Sistema"
+        },
+        {
+          "code": "L4",
+          "title": "Temperatura alta no dissipador de calor do circuito de inversão",
+          "component": "Sistema"
+        },
+        {
+          "code": "L5",
+          "title": "Corrente excessiva de saída",
+          "component": "Sistema"
+        },
+        {
+          "code": "P4",
+          "title": "Sensor de temperatura do dissipador de calor do circuito de inversão defeituoso",
+          "component": "Sistema"
+        }
+      ],
+      "distributorCopy": false,
+      "conditions": "Capa do manual confirma os quatro modelos; tabela literal de diagnóstico.",
+      "context": "operation",
+      "coveredCodes": [
+        "FTX09N5VL",
+        "FTX12N5VL",
+        "FTX18N5VL",
+        "FTX24N5VL"
+      ],
+      "pdfSha256": "c3e886678b6b48c417115c1d8e49d22731219b56e1bda718b935a4c66e20020e"
+    },
+    {
+      "id": "daikin-multi-pmvm-outdoor",
+      "scope": "3MXS18PMVM / 3MXS24PMVM / 4MXS28PMVM / 4MXS34PMVM / 5MXS38PMVM",
+      "document": "Daikin SiBR121707B · Unidades externas PMVM",
+      "url": "https://www.daikin.com.br/profissionais/download/force_download/831",
+      "page": 119,
+      "pdfPage": 18,
+      "reviewedAt": "2026-11-15",
+      "codes": [
+        {
+          "code": "00",
+          "title": "Condição normal —",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "UA",
+          "title": "Tensão não especificada (entre a unidade interna e a unidade externa)",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "UH",
+          "title": "Função anti-gelo em outras salas",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "U0",
+          "title": "Falta de refrigerante",
+          "component": "Unidade externa",
+          "solution": "Esta indicação aparece no manual somente com o sistema desligado. Consulte o procedimento de diagnóstico específico."
+        },
+        {
+          "code": "U2",
+          "title": "Detecção de baixa tensão ou detecção de sobretensão",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "U3",
+          "title": "Verificação de erros de fiação não executada",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "A5",
+          "title": "Função anti-gelo",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E1",
+          "title": "Anormalidade da pcb da unidade externa",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E5",
+          "title": "Ativação de ol (sobrecarga do compressor)",
+          "component": "Unidade externa",
+          "solution": "Esta indicação aparece no manual somente com o sistema desligado. Consulte o procedimento de diagnóstico específico."
+        },
+        {
+          "code": "E6",
+          "title": "Bloqueio do compressor",
+          "component": "Unidade externa",
+          "solution": "Esta indicação aparece no manual somente com o sistema desligado. Consulte o procedimento de diagnóstico específico."
+        },
+        {
+          "code": "E7",
+          "title": "Bloqueio do ventilador de cc",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E8",
+          "title": "Detecção de sobrecorrente de entrada",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "EA",
+          "title": "Anormalidade na válvula de quatro vias",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "F3",
+          "title": "Controle de temperatura do cano de descarga",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "F6",
+          "title": "Controle de alta pressão no resfriamento",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "F8",
+          "title": "Desligamento do sistema devido a anormalidade na temperatura interna do compressor",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H0",
+          "title": "Anormalidade do sistema do sensor do compressor",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H6",
+          "title": "Anormalidade no sensor de posição",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H8",
+          "title": "Anormalidade de ct ou relacionada ao mesmo",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "H9",
+          "title": "Anormalidade do termistor de temperatura externa ou relacionada ao mesmo",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "J3",
+          "title": "Anormalidade do termistor do cano de descarga ou relacionada ao mesmo",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "J6",
+          "title": "Anormalidade do termistor do trocador de calor externo ou relacionada ao mesmo",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "J8",
+          "title": "Anormalidade do termistor do tubo de líquido ou relacionada ao mesmo",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "J9",
+          "title": "Anormalidade do termistor do tubo de gás ou relacionada ao mesmo",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "P4",
+          "title": "Anormalidade do termistor da aleta de radiação ou relacionada ao mesmo",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "L3",
+          "title": "Aumento de temperatura na caixa elétrica",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "L4",
+          "title": "Aumento de temperatura na aleta de radiação",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "L5",
+          "title": "Detecção de sobrecorrente de saída",
+          "component": "Unidade externa"
+        }
+      ],
+      "distributorCopy": false,
+      "conditions": "Modelos explícitos em PDFp5/6, diagnóstico externo p18. Não atribuir por marca nem estender a2MXS18PMVM ou sériesK/L antigas. U0/E5/E6 entre parênteses só exibidos com sistema desligado.",
+      "context": "operation",
+      "coveredCodes": [
+        "3MXS18PMVM",
+        "3MXS24PMVM",
+        "4MXS28PMVM",
+        "4MXS34PMVM",
+        "5MXS38PMVM"
+      ],
+      "pdfSha256": "0a00ce54e0685c7de407178932dd387999a1fefb9d66f970adaf303831dd4511"
+    },
+    {
+      "id": "daikin-skyair-fdmqa30-36-r32",
+      "scope": "Somente FDMQA30A5VL / FDMQA36A5VL — tabela do manual de instalação, dependente da configuração interna/externa",
+      "document": "Daikin Manual de instalação FDMQA30/36A5VL",
+      "url": "https://www.leverosintegra.com.br/download/manuais/Daikin/manual-instalacao-duto-skyair-daikin.pdf",
+      "page": 18,
+      "pdfPage": 18,
+      "reviewedAt": "2026-11-15",
+      "codes": [
+        {
+          "code": "A0",
+          "title": "Dispositivo de segurança acionado",
+          "component": "Segurança"
+        },
+        {
+          "code": "A1",
+          "title": "Falha da placa eletrônica interna",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "A3",
+          "title": "Nível anormal na drenagem",
+          "component": "Drenagem"
+        },
+        {
+          "code": "A6",
+          "title": "Motor do ventilador interno sobrecarregado ou travado",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "A8",
+          "title": "Falha de alimentação da placa do ventilador",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "AF",
+          "title": "Falha no umidificador",
+          "component": "Função opcional"
+        },
+        {
+          "code": "AH",
+          "title": "Falha do filtro de ar",
+          "component": "Filtro"
+        },
+        {
+          "code": "AJ",
+          "title": "Configuração de tipo ou capacidade incorreta",
+          "component": "Configuração"
+        },
+        {
+          "code": "C1",
+          "title": "Falha de comunicação entre placas internas",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "C4",
+          "title": "Falha no sensor R2T do trocador",
+          "component": "Sensores"
+        },
+        {
+          "code": "C5",
+          "title": "Falha no sensor R3T do trocador",
+          "component": "Sensores"
+        },
+        {
+          "code": "C6",
+          "title": "Configuração incorreta da placa do ventilador",
+          "component": "Configuração"
+        },
+        {
+          "code": "C9",
+          "title": "Falha do sensor do ar de sucção",
+          "component": "Sensores"
+        },
+        {
+          "code": "CC",
+          "title": "Falha do sensor de umidade",
+          "component": "Sensores"
+        },
+        {
+          "code": "CE",
+          "title": "Falha de detecção de presença ou temperatura do piso",
+          "component": "Sensores"
+        },
+        {
+          "code": "CJ",
+          "title": "Falha do sensor do controle remoto",
+          "component": "Controle remoto"
+        },
+        {
+          "code": "U1",
+          "title": "Sequência de fases invertida",
+          "component": "Alimentação elétrica"
+        },
+        {
+          "code": "UF",
+          "title": "Ligação incorreta entre unidades ou falha das placas",
+          "component": "Comunicação"
+        },
+        {
+          "code": "U5",
+          "title": "Falha de comunicação com o controle remoto",
+          "component": "Comunicação"
+        },
+        {
+          "code": "U8",
+          "title": "Falha de comunicação entre controles principal e secundário",
+          "component": "Comunicação"
+        },
+        {
+          "code": "UA",
+          "title": "Configuração incorreta do sistema múltiplo",
+          "component": "Configuração"
+        },
+        {
+          "code": "UC",
+          "title": "Endereço de controle central duplicado",
+          "component": "Configuração"
+        },
+        {
+          "code": "UE",
+          "title": "Falha de comunicação com o controle central",
+          "component": "Comunicação"
+        },
+        {
+          "code": "UJ",
+          "title": "Falha de comunicação com equipamento periférico",
+          "component": "Comunicação"
+        },
+        {
+          "code": "U0",
+          "title": "Anormalidade no circuito ou temperatura de sucção",
+          "component": "Circuito refrigerante"
+        },
+        {
+          "code": "U2",
+          "title": "Subtensão ou sobretensão detectada",
+          "component": "Alimentação elétrica"
+        },
+        {
+          "code": "U4",
+          "title": "Falha de comunicação entre unidades",
+          "component": "Comunicação"
+        },
+        {
+          "code": "E1",
+          "title": "Falha da placa eletrônica externa",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "E7",
+          "title": "Ventilador externo travado ou com sobrecorrente",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "F3",
+          "title": "Controle da temperatura de descarga",
+          "component": "Circuito refrigerante"
+        },
+        {
+          "code": "H9",
+          "title": "Falha no termistor do ar externo",
+          "component": "Sensores"
+        },
+        {
+          "code": "J3",
+          "title": "Falha no termistor da descarga",
+          "component": "Sensores"
+        },
+        {
+          "code": "J6",
+          "title": "Falha no termistor do trocador",
+          "component": "Sensores"
+        },
+        {
+          "code": "L4",
+          "title": "Superaquecimento ou falha de resfriamento do inversor",
+          "component": "Inversor"
+        },
+        {
+          "code": "L5",
+          "title": "Sobrecorrente instantânea do compressor",
+          "component": "Compressor"
+        },
+        {
+          "code": "L6",
+          "title": "Compressor travado",
+          "component": "Compressor"
+        },
+        {
+          "code": "L8",
+          "title": "Proteção elétrica ou sobrecorrente do compressor",
+          "component": "Compressor"
+        },
+        {
+          "code": "F6",
+          "title": "Controle de alta pressão em resfriamento",
+          "component": "Circuito refrigerante"
+        },
+        {
+          "code": "00",
+          "title": "Funcionamento normal",
+          "component": "Sistema"
+        },
+        {
+          "code": "E5",
+          "title": "Proteção de sobrecarga do compressor acionada",
+          "component": "Compressor"
+        },
+        {
+          "code": "F8",
+          "title": "Parada por temperatura anormal do compressor",
+          "component": "Compressor"
+        },
+        {
+          "code": "H6",
+          "title": "Falha no sensor de posição",
+          "component": "Sensores"
+        },
+        {
+          "code": "L3",
+          "title": "Falha no termistor do reator externo",
+          "component": "Sensores"
+        },
+        {
+          "code": "P4",
+          "title": "Falha no termistor do dissipador",
+          "component": "Sensores"
+        },
+        {
+          "code": "J7",
+          "title": "Falha no termistor do trocador externo",
+          "component": "Sensores"
+        },
+        {
+          "code": "J8",
+          "title": "Falha no sensor da linha de líquido externa",
+          "component": "Sensores"
+        },
+        {
+          "code": "J9",
+          "title": "Falha no sensor da admissão externa",
+          "component": "Sensores"
+        },
+        {
+          "code": "L1",
+          "title": "Falha no sistema do inversor",
+          "component": "Inversor"
+        },
+        {
+          "code": "L9",
+          "title": "Proteção contra parada ou bloqueio do compressor",
+          "component": "Compressor"
+        },
+        {
+          "code": "LC",
+          "title": "Falha de comunicação entre inversores externos",
+          "component": "Comunicação"
+        },
+        {
+          "code": "P1",
+          "title": "Fase aberta na alimentação externa",
+          "component": "Alimentação elétrica"
+        },
+        {
+          "code": "P3",
+          "title": "Falha no sensor de temperatura da placa",
+          "component": "Sensores"
+        },
+        {
+          "code": "P6",
+          "title": "Falha na corrente de saída CC",
+          "component": "Inversor"
+        },
+        {
+          "code": "PJ",
+          "title": "Tipo ou capacidade configurados incorretamente",
+          "component": "Configuração"
+        }
+      ],
+      "distributorCopy": true,
+      "conditions": "A própria tabela ressalva que o código pode variar ou não aparecer conforme o tipo de unidade interna/externa. Não representa confirmação de que toda função opcional exista em cada unidade. U0/L3/L4/L8 consolidados sem criar diagnósticos exclusivos. HO/HS/LS tipográficos não normalizados para H0/H8/L5 por suposição.",
+      "context": "operation",
+      "coveredCodes": [
+        "FDMQA30A5VL",
+        "FDMQA36A5VL"
+      ],
+      "pdfSha256": "2fbaafb02e57d9d50b7163e3e2312567cbf5d97fb196c5f1605c3ba395323436"
+    },
+    {
+      "id": "daikin-vrv-w-iv-commissioning",
+      "scope": "RWEYQ-TYM — indicações durante a verificação inicial/comissionamento",
+      "document": "Daikin VRV IV W — Installation manual RWEYQ-TYM",
+      "url": "https://www.daikin.com.br/static/uploads/conteudos/downloads/230411110922000000.pdf",
+      "page": 16,
+      "pdfPage": 20,
+      "reviewedAt": "2026-11-15",
+      "codes": [
+        {
+          "code": "U1",
+          "title": "Sequência de fases invertida durante o teste inicial",
+          "component": "Alimentação elétrica"
+        },
+        {
+          "code": "U3",
+          "title": "Verificação inicial de operação ainda não concluída",
+          "component": "Comissionamento"
+        },
+        {
+          "code": "U4",
+          "title": "Alimentação de unidade interrompida no teste inicial",
+          "component": "Alimentação elétrica"
+        },
+        {
+          "code": "UA",
+          "title": "Combinação incompatível de unidades VRV/BP",
+          "component": "Configuração"
+        },
+        {
+          "code": "U7",
+          "title": "Conexão incorreta de transmissão entre unidades externas",
+          "component": "Comunicação"
+        },
+        {
+          "code": "HJ",
+          "title": "Bomba de água da fonte térmica parada",
+          "component": "Circuito de água"
+        }
+      ],
+      "distributorCopy": false,
+      "conditions": "Tabela de comissionamento; não aplicar como tabela universal de diagnóstico em operação. Outros códigos desta página admitem múltiplas causas e foram deixados para consulta no original.",
+      "context": "commissioning",
+      "coveredCodes": [
+        "RWEYQ10TYM",
+        "RWEYQ12TYM",
+        "RWEYQ14TYM",
+        "RWEYQ16TYM",
+        "RWEYQ18TYM",
+        "RWEYQ20TYM",
+        "RWEYQ22TYM",
+        "RWEYQ24TYM",
+        "RWEYQ26TYM",
+        "RWEYQ28TYM",
+        "RWEYQ30TYM",
+        "RWEYQ32TYM",
+        "RWEYQ34TYM",
+        "RWEYQ36TYM",
+        "RWEYQ6TYM",
+        "RWEYQ8TYM"
+      ],
+      "pdfSha256": "48ed3dc4a4c496bc6bec6722b4bc40fbe3675df2cca4e90b0017c4eafe3817d2"
+    }
+  ]
+}

@@ -12,6 +12,8 @@ const isIOS = () => {
 interface ImagePreviewModalProps {
   src: string;
   alt?: string;
+  /** Contexto indispensável à identificação da imagem, mantido ao ampliar. */
+  caption?: string;
   open: boolean;
   onClose: () => void;
   /** All images in the gallery for navigation */
@@ -22,7 +24,7 @@ interface ImagePreviewModalProps {
   onNavigate?: (index: number) => void;
 }
 
-export function ImagePreviewModal({ src, alt, open, onClose, images, currentIndex, onNavigate }: ImagePreviewModalProps) {
+export function ImagePreviewModal({ src, alt, caption, open, onClose, images, currentIndex, onNavigate }: ImagePreviewModalProps) {
   const hasGallery = images && images.length > 1 && currentIndex !== undefined && onNavigate;
   // Resolve signed URL pra buckets privados (os-photos, team-photos, etc).
   // Pra URLs públicas ou blob:, devolve o próprio src.
@@ -209,9 +211,10 @@ export function ImagePreviewModal({ src, alt, open, onClose, images, currentInde
       <img
         src={resolvedSrc}
         alt={alt || 'Preview'}
-        className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain"
+        className={`${caption ? 'max-h-[75vh]' : 'max-h-[90vh]'} max-w-[90vw] rounded-lg object-contain`}
         onClick={(e) => e.stopPropagation()}
       />
+      {caption && <p className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-lg bg-black/80 px-4 py-3 text-center text-sm font-medium leading-relaxed text-white" onClick={e => e.stopPropagation()}>{caption}</p>}
     </div>
   );
 

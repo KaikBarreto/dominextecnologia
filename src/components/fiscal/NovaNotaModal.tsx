@@ -1,3 +1,4 @@
+import { HorizontalTabBar } from '@/components/ui/HorizontalTabBar';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -784,23 +785,26 @@ export function NovaNotaModal({
 
   // ---- Abas do stepper ----
   const stepTabs = (
-    <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide border-b border-border">
-      {STEPS.map((step) => (
-        <button
-          key={step.key}
-          type="button"
-          onClick={() => setActiveStep(step.key)}
-          className={`flex items-center whitespace-nowrap px-4 py-3 text-sm border-b-[3px] transition-colors -mb-[1px] ${
-            activeStep === step.key
-              ? 'border-primary text-primary font-bold'
-              : 'border-transparent text-muted-foreground font-semibold hover:text-foreground hover:border-muted-foreground/30'
-          }`}
-        >
-          {(s.tabs as Record<string, string>)[step.key]}
-          {renderStepIndicator(step.key)}
-        </button>
-      ))}
-    </div>
+    <HorizontalTabBar asChild>
+      <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide border-b border-border">
+        {STEPS.map((step) => (
+          <button
+            key={step.key}
+            aria-current={activeStep === step.key ? 'page' : undefined}
+            type="button"
+            onClick={() => setActiveStep(step.key)}
+            className={`flex items-center whitespace-nowrap px-4 py-3 text-sm border-b-[3px] transition-colors -mb-[1px] ${
+              activeStep === step.key
+                ? 'border-primary text-primary font-bold'
+                : 'border-transparent text-muted-foreground font-semibold hover:text-foreground hover:border-muted-foreground/30'
+            }`}
+          >
+            {(s.tabs as Record<string, string>)[step.key]}
+            {renderStepIndicator(step.key)}
+          </button>
+        ))}
+      </div>
+    </HorizontalTabBar>
   );
 
   // ---- Conteúdo das etapas ----

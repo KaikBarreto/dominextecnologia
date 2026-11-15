@@ -1,3 +1,4 @@
+import { HorizontalTabBar } from '@/components/ui/HorizontalTabBar';
 import { useInitialCashSelection } from './useInitialCashSelection';
 import '@/components/pdv/PdvWorkspace.css';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -166,14 +167,18 @@ export function PdvCashV2Page({ cashAccountId, allowNewSessions, userId, canMana
       {requestedCounterQueue && selected === 'home' && cash.openSessions.length > 1 && !ownSession ? <NoticeBanner variant="warning">Escolha o caixa que vai receber os pedidos do balcão.</NoticeBanner> : null}
       {lastClose ? <NoticeBanner variant={lastClose.difference === 0 ? 'success' : 'warning'}>Caixa fechado: esperado {money(lastClose.expectedAmount)}, contado {money(lastClose.countedAmount)} e diferença {money(lastClose.difference)}.</NoticeBanner> : null}
 
-      <nav aria-label="Caixas abertos" className="flex gap-2 overflow-x-auto border-b pb-2">
-        {canManageOthers ? <CashNavButton active={selected === 'home'} icon={<Home className="h-4 w-4" />} onClick={() => { setClosedElsewhereNotice(null); setSelected('home'); if (requestedCounterQueue) { const params = new URLSearchParams(location.search); params.delete('fila'); params.delete('pedido'); params.delete('acao'); navigate({ pathname: location.pathname, search: params.toString() }, { replace: true }); } }}>Início</CashNavButton> : null}
-        {cash.openSessions.map((session) => {
-          const terminal = cash.terminals.find((item) => item.id === session.terminalId);
-          const operator = session.openedBy ? cash.operators[session.openedBy] : null;
-          return <CashNavButton key={session.id} active={selected === session.id} icon={<Banknote className="h-5 w-5" />} subtitle={`${operator ?? 'Operador'}${session.openedBy === userId ? ' (você)' : ''}`} open onClick={() => { setClosedElsewhereNotice(null); setSelected(session.id); }}>{cashDisplayName(terminal)}</CashNavButton>;
-        })}
-      </nav>
+      <HorizontalTabBar asChild>
+
+        <nav aria-label="Caixas abertos" className="flex gap-2 overflow-x-auto border-b pb-2">
+          {canManageOthers ? <CashNavButton active={selected === 'home'} icon={<Home className="h-4 w-4" />} onClick={() => { setClosedElsewhereNotice(null); setSelected('home'); if (requestedCounterQueue) { const params = new URLSearchParams(location.search); params.delete('fila'); params.delete('pedido'); params.delete('acao'); navigate({ pathname: location.pathname, search: params.toString() }, { replace: true }); } }}>Início</CashNavButton> : null}
+          {cash.openSessions.map((session) => {
+            const terminal = cash.terminals.find((item) => item.id === session.terminalId);
+            const operator = session.openedBy ? cash.operators[session.openedBy] : null;
+            return <CashNavButton key={session.id} active={selected === session.id} icon={<Banknote className="h-5 w-5" />} subtitle={`${operator ?? 'Operador'}${session.openedBy === userId ? ' (você)' : ''}`} open onClick={() => { setClosedElsewhereNotice(null); setSelected(session.id); }}>{cashDisplayName(terminal)}</CashNavButton>;
+          })}
+        </nav>
+
+      </HorizontalTabBar>
 
       {selected === 'home' || !focusedSession ? (
         <CashHome sessions={cash.openSessions} terminals={cash.terminals} operators={cash.operators} snapshot={snapshot} canViewTreasury={canViewTreasury} canManageSettings={canManageSettings} canStartOpening={canStartOpening} money={money} dateTime={dateTime} onSelect={(sessionId) => { setClosedElsewhereNotice(null); setSelected(sessionId); }} onSetup={() => setFirstCashSetupOpen(true)} />

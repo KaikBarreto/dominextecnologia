@@ -1,5 +1,6 @@
+import { HorizontalTabBar } from '@/components/ui/HorizontalTabBar';
 import { calcularEnergiaCatalogo } from '@/lib/energiaCatalogo';
-import { useEffect, useMemo, useState, type ReactNode, type ComponentType } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode, type ComponentType } from 'react';
 import {
   Routes,
   Route,
@@ -37,6 +38,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CompressorGlyph, RemoteGlyph } from '@/components/icons/MenuIcons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DataTablePagination } from '@/components/ui/DataTablePagination';
+import { useDataPagination } from '@/hooks/useDataPagination';
+import { catalogCodeMatches, organizeCatalog, withCatalogNavigation } from '@/lib/catalogOrganization';
+import { CatalogCategoryBrowser, CatalogFamilyBrowser } from './CatalogCategoryBrowser';
+import { catalogNavigationCopy } from './catalogNavigationCopy';
 import { Slider } from '@/components/ui/slider';
 import { cn, fuzzyIncludesAny } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -64,6 +71,7 @@ import { CompressorFicha } from './CompressorFicha';
 import { GasDetail } from './GasDetail';
 import { GasBadge } from './GasBadge';
 import { RemoteConfig } from './RemoteConfig';
+import { CatalogPhotoCaption, CatalogDocumentReference, CatalogImagePreview, CatalogModelIdentity, CatalogModelReference } from './CatalogAssetReference';
 import { CatalogImage } from './CatalogImage';
 import { ManufacturerDocuments, ManufacturerManualLink } from './ManufacturerDocuments';
 import { EquipmentReferenceNotice } from './EquipmentReferenceNotice';
@@ -74,7 +82,6 @@ import {
   toggleModeloFavorito,
   useToolHistory,
 } from '@/lib/technicianAreaHistory';
-import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import {
   Carousel,
   CarouselContent,
@@ -296,9 +303,17 @@ function sanitizarNomeArquivo(nome: string): string {
  * Baixa o manual (PDF) salvando com nome legível em vez do UUID do storage.
  * Fallback para window.open se o fetch do blob falhar (ex: CORS).
  */
-async function baixarManual(url: string, nome: string) {
+async function baixarManual(url: string, nome: string, stream = false) {
+  // Originais grandes permanecem no fabricante: abrir diretamente evita baixar
+  // centenas de MB para um blob na memória do celular e não depende de CORS.
+  const storageOrigin = new URL(import.meta.env.VITE_SUPABASE_URL).origin;
+  if (stream || new URL(url, window.location.href).origin !== storageOrigin) {
+    window.open(url, '_blank', 'noopener,noreferrer');
+    return;
+  }
   try {
     const res = await fetch(url);
+    if (!res.ok) throw new Error('Documento indisponível');
     const blob = await res.blob();
     const u = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -309,7 +324,7 @@ async function baixarManual(url: string, nome: string) {
     document.body.removeChild(a);
     URL.revokeObjectURL(u);
   } catch {
-    window.open(url, '_blank');
+    window.open(url, '_blank', 'noopener,noreferrer');
   }
 }
 
@@ -362,29 +377,31 @@ function DomainSelector({
 }) {
   const domainOptions = getDomainOptions(t);
   return (
-    <div className="flex gap-1 border-b overflow-x-auto no-scrollbar">
-      {domainOptions.map((o) => {
-        const Icon = o.icon;
-        const ativo = o.value === value;
-        return (
-          <button
-            key={o.value}
-            type="button"
-            onClick={() => onChange(o.value)}
-            aria-pressed={ativo}
-            className={cn(
-              'flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap shrink-0',
-              ativo
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground',
-            )}
-          >
-            <Icon className="h-4 w-4 shrink-0" />
-            {o.label}
-          </button>
-        );
-      })}
-    </div>
+    <HorizontalTabBar asChild>
+      <div className="flex gap-1 border-b overflow-x-auto no-scrollbar">
+        {domainOptions.map((o) => {
+          const Icon = o.icon;
+          const ativo = o.value === value;
+          return (
+            <button
+              key={o.value}
+              type="button"
+              onClick={() => onChange(o.value)}
+              aria-pressed={ativo}
+              className={cn(
+                'flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap shrink-0',
+                ativo
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <Icon className="h-4 w-4 shrink-0" />
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+    </HorizontalTabBar>
   );
 }
 
@@ -482,6 +499,7 @@ function CatalogoRouted() {
 function CatalogTabScreen() {
   const { catalogTab } = useParams<{ catalogTab: string }>();
   const navigate = useNavigate();
+  const [catalogParams] = useSearchParams();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.technicianTools.catalog;
 
@@ -511,9 +529,9 @@ function CatalogTabScreen() {
           onSelectBrand={(brand) => navigate(`marca/${brandSlug(brand.name)}`)}
           // Modelo abre ninhado sob a marca DO PRÓPRIO modelo (todo modelo tem marca).
           // Veio da busca/grade da subaba → ?from=catalogo pra voltar pra cá.
-          onSelectModelDetail={(model) => navigate(modelPath(tab, model))}
+          onSelectModelDetail={(model) => navigate(withCatalogNavigation(modelPath(tab, model), catalogParams))}
           onSelectModelErrors={(model, initialCode) =>
-            navigate(modelPath(tab, model, { codigo: initialCode }))
+            navigate(withCatalogNavigation(modelPath(tab, model, { codigo: initialCode }), catalogParams))
           }
           t={t}
         />
@@ -532,6 +550,7 @@ function CatalogTabScreen() {
 function CatalogBrandScreen() {
   const { catalogTab, brandSlug: slugParam } = useParams<{ catalogTab: string; brandSlug: string }>();
   const navigate = useNavigate();
+  const [catalogParams] = useSearchParams();
   const catalogBase = useCatalogBase();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.technicianTools.catalog;
@@ -572,6 +591,7 @@ function CatalogBrandScreen() {
 
   return (
     <ModelosList
+      key={brand.id}
       brand={brand}
       domain={domain}
       onBack={() => navigate(tabPath)}
@@ -583,10 +603,10 @@ function CatalogBrandScreen() {
         // Ninhado sob a marca atual (modelo da lista não traz brand hidratado → passamos
         // o nome da marca conhecida). from=marca pra voltar pra esta tela de marca.
         navigate(
-          `${catalogBase}/${tab}/${modelPath(tab, model, {
+          withCatalogNavigation(`${catalogBase}/${tab}/${modelPath(tab, model, {
             brandName: brand.name,
             from: 'marca',
-          })}`,
+          })}`, catalogParams),
         )
       }
       t={t}
@@ -682,7 +702,7 @@ function CatalogModelScreen() {
     : brandSlugParam
       ? `${catalogBase}/${tab}/marca/${encodeURIComponent(brandSlugParam)}`
       : tabPath;
-  const backTo = fromMarca ? brandPath : tabPath;
+  const backTo = withCatalogNavigation(fromMarca ? brandPath : tabPath, searchParams);
   const onBack = () => navigate(backTo);
 
   if (loadingBrands || (brand && loadingModels)) return <LoadingBlock />;
@@ -833,6 +853,7 @@ function CatalogoEmbedded({ modeloInicialId }: { modeloInicialId?: string }) {
   if (view.kind === 'models') {
     return (
       <ModelosList
+        key={view.brand.id}
         brand={view.brand}
         domain={domain}
         onBack={() => setView({ kind: 'brands' })}
@@ -943,6 +964,7 @@ function BrandsList({
   t: TCatalog;
 }) {
   const { locale } = useAppLocaleContext();
+  const [catalogParams, setCatalogParams] = useSearchParams();
   const { data: brands = [], isLoading } = useEquipmentBrands(domain);
 
   // Ordenação compartilhada com o carrossel da tela de modelos (ordenarMarcas):
@@ -965,14 +987,22 @@ function BrandsList({
   // (allErrorCodes é global) ao domínio selecionado.
   const domainModelIds = useMemo(() => new Set(allModels.map((m) => m.id)), [allModels]);
 
-  const [termoRaw, setTermoRaw] = useState('');
-  const [termo, setTermo] = useState('');
+  const [termoRaw, setTermoRaw] = useState(() => catalogParams.get('busca') ?? '');
+  const [termo, setTermo] = useState(() => (catalogParams.get('busca') ?? '').trim());
 
   // Debounce leve da busca.
   useEffect(() => {
-    const id = setTimeout(() => setTermo(termoRaw.trim()), 180);
+    const id = setTimeout(() => {
+      const value = termoRaw.trim();
+      setTermo(value);
+      if ((catalogParams.get('busca') ?? '') !== value) setCatalogParams(current => {
+        const next = new URLSearchParams(current);
+        if (value) next.set('busca', value); else next.delete('busca');
+        return next;
+      }, { replace: true });
+    }, 180);
     return () => clearTimeout(id);
-  }, [termoRaw]);
+  }, [termoRaw, catalogParams, setCatalogParams]);
 
   // Filtros (só valem quando a busca está vazia — busca é universal).
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -1043,7 +1073,7 @@ function BrandsList({
   // Modelos que casam por nome do modelo, código do modelo OU nome da marca.
   const modelHits = useMemo(() => {
     if (!searching) return [];
-    return allModels.filter((m) => fuzzyIncludesAny([m.name, m.code, m.brand?.name], termo));
+    return allModels.filter((m) => catalogCodeMatches(m.code, termo) || fuzzyIncludesAny([m.name, m.code, m.brand?.name, m.catalog_reference?.line], termo));
   }, [allModels, termo, searching]);
 
   // Códigos de erro que casam por code/título/descrição, agrupados por `code`.
@@ -1223,33 +1253,14 @@ function BrandsList({
             {modelHits.length > 0 && (
               <section className="space-y-3">
                 <SectionHeader label={t.sectionCatalog} count={modelHits.length} />
-                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                  {modelHits.map((model) => (
-                    <ModelCard
-                      key={model.id}
-                      model={model}
-                      domain={domain}
-                      brandName={model.brand?.name ?? 'Marca'}
-                      hasErrorCodes={modelIdsWithCodes?.has(model.id) ?? false}
-                      onSelectDetail={() => onSelectModelDetail(model)}
-                      t={t}
-                    />
-                  ))}
-                </div>
+                <CatalogModelGrid key={`search:${domain}:${termo}`} models={modelHits} domain={domain} modelIdsWithCodes={modelIdsWithCodes} onSelectDetail={onSelectModelDetail} t={t} />
               </section>
             )}
 
             {codeGroups.length > 0 && (
               <section className="space-y-3">
                 <SectionHeader label={t.sectionErrorCodes} count={codeGroups.length} />
-                {codeGroups.map((group) => (
-                  <ErrorCodeGroupCard
-                    key={group.code}
-                    group={group}
-                    onSelectMachine={(occ) => onSelectModelErrors(occ.model, group.code)}
-                    t={t}
-                  />
-                ))}
+                <ErrorCodeGroupResults key={`${domain}:${termo}`} groups={codeGroups} onSelectModelErrors={onSelectModelErrors} t={t} />
               </section>
             )}
           </div>
@@ -1266,19 +1277,7 @@ function BrandsList({
         ) : (
           <section className="space-y-3">
             <SectionHeader label={t.sectionCatalog} count={filteredModels.length} />
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-              {filteredModels.map((model) => (
-                <ModelCard
-                  key={model.id}
-                  model={model}
-                  domain={domain}
-                  brandName={model.brand?.name ?? 'Marca'}
-                  hasErrorCodes={modelIdsWithCodes?.has(model.id) ?? false}
-                  onSelectDetail={() => onSelectModelDetail(model)}
-                  t={t}
-                />
-              ))}
-            </div>
+            <CatalogModelGrid key={`filters:${domain}:${selectedBtus}:${selectedTypes}:${selectedGases}`} models={filteredModels} domain={domain} modelIdsWithCodes={modelIdsWithCodes} onSelectDetail={onSelectModelDetail} t={t} />
           </section>
         )
       ) : /* BROWSE NORMAL — grid de marcas */ isLoading ? (
@@ -1334,7 +1333,7 @@ function SectionHeader({ label, count }: { label: string; count: number }) {
       <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
       </h3>
-      <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+      <span className="text-xs font-medium tabular-nums text-muted-foreground">
         {count}
       </span>
     </div>
@@ -1342,81 +1341,44 @@ function SectionHeader({ label, count }: { label: string; count: number }) {
 }
 
 /** Card de um código de erro agrupado, listando as máquinas onde ocorre. */
-function ErrorCodeGroupCard({
-  group,
-  onSelectMachine,
-  t,
-}: {
+function ErrorCodeGroupResults({ groups, onSelectModelErrors, t }: {
+  groups: GroupedErrorCode[];
+  onSelectModelErrors: (model: EquipmentModel, code: string) => void;
+  t: TCatalog;
+}) {
+  const pagination = useDataPagination(groups, 10);
+  const anchor = useRef<HTMLDivElement>(null);
+  const goToPage = (page: number) => { pagination.setPage(page); anchor.current?.scrollIntoView({ block: 'start' }); };
+  return <div ref={anchor} className="scroll-mt-20">
+    {pagination.paginatedItems.map(group => <ErrorCodeGroupCard key={group.code} group={group} onSelectMachine={occ => onSelectModelErrors(occ.model, group.code)} t={t} />)}
+    {pagination.totalPages > 1 && <div className="[&_button]:min-h-11"><DataTablePagination allowAll={false} page={pagination.page} totalPages={pagination.totalPages} totalItems={pagination.totalItems} from={pagination.from} to={pagination.to} pageSize={pagination.pageSize} onPageChange={goToPage} onPageSizeChange={size => { pagination.setPageSize(size); goToPage(1); }} /></div>}
+  </div>;
+}
+
+function ErrorCodeGroupCard({ group, onSelectMachine, t }: {
   group: GroupedErrorCode;
   onSelectMachine: (occ: CodeOccurrence) => void;
   t: TCatalog;
 }) {
-  const LIMIT = 6;
+  const { locale } = useAppLocaleContext();
+  const navigation = catalogNavigationCopy[locale];
   const [expanded, setExpanded] = useState(false);
-  const visiveis = expanded ? group.occurrences : group.occurrences.slice(0, LIMIT);
-  const restantes = group.occurrences.length - LIMIT;
-
-  return (
-    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-      <div className="flex items-center gap-2">
-        <span className="rounded-lg bg-primary px-2.5 py-1 text-sm font-bold uppercase tracking-wide text-primary-foreground">
-          {group.code}
-        </span>
-        {group.title && (
-          <span className="min-w-0 truncate text-sm font-semibold">{group.title}</span>
-        )}
-      </div>
-
-      <p className="mt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {group.occurrences.length === 1 ? t.machine : t.machines}
-      </p>
-      <div className="mt-1.5 flex flex-wrap gap-2">
-        {visiveis.map((occ) => (
-          <button
-            key={occ.errorCodeId}
-            type="button"
-            onClick={() => onSelectMachine(occ)}
-            className={cn(
-              'flex items-center gap-1 rounded-lg border border-border bg-muted/40 px-2.5 py-1.5 text-left text-xs font-medium transition-all',
-              'hover:border-primary/40 hover:bg-muted active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-            )}
-          >
-            <span className="text-muted-foreground">{occ.brandName}</span>
-            <span className="text-foreground">{occ.modelName}</span>
-            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          </button>
-        ))}
-
-        {restantes > 0 && !expanded && (
-          <button
-            type="button"
-            onClick={() => setExpanded(true)}
-            className={cn(
-              'flex items-center gap-1 rounded-lg border border-border bg-muted/40 px-2.5 py-1.5 text-left text-xs font-medium transition-all',
-              'hover:border-primary/40 hover:bg-muted active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-            )}
-          >
-            <span className="text-primary">{t.showMore.replace('{n}', String(restantes))}</span>
-            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-primary" />
-          </button>
-        )}
-
-        {restantes > 0 && expanded && (
-          <button
-            type="button"
-            onClick={() => setExpanded(false)}
-            className={cn(
-              'flex items-center gap-1 rounded-lg border border-border bg-muted/40 px-2.5 py-1.5 text-left text-xs font-medium transition-all',
-              'hover:border-primary/40 hover:bg-muted active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-            )}
-          >
-            <span className="text-primary">{t.showLess}</span>
-            <ChevronUp className="h-3.5 w-3.5 shrink-0 text-primary" />
-          </button>
-        )}
-      </div>
+  const pagination = useDataPagination(group.occurrences, 10);
+  const visible = expanded ? pagination.paginatedItems : group.occurrences.slice(0, 3);
+  return <section className="space-y-4 border-b border-border py-5" aria-label={`${t.sectionErrorCodes}: ${group.code}`}>
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <span className="font-mono text-2xl font-bold uppercase tracking-wide">{group.code}</span>
+      <span className="text-sm tabular-nums text-muted-foreground">{formatNumber(group.occurrences.length, locale)} {group.occurrences.length === 1 ? t.machine.toLowerCase() : t.machines.toLowerCase()}</span>
     </div>
-  );
+    <p className="text-sm leading-relaxed text-muted-foreground">{navigation.groupHelp}</p>
+    <div className="divide-y divide-border">
+      {visible.map(occ => <button key={occ.errorCodeId} type="button" onClick={() => onSelectMachine(occ)} className="group flex min-h-20 w-full items-center justify-between gap-4 py-3 text-left hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <span className="min-w-0"><span className="block text-xs font-medium text-muted-foreground">{occ.brandName}</span><span className="mt-1 block break-words text-base font-semibold">{occ.model.code || occ.modelName}</span><span className="mt-1 block break-words text-sm leading-relaxed text-muted-foreground">{occ.modelName}</span></span><ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
+      </button>)}
+    </div>
+    {group.occurrences.length > 3 && <Button variant="ghost" className="min-h-11" onClick={() => setExpanded(value => !value)}>{expanded ? navigation.lessEquipment : navigation.moreEquipment}{expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</Button>}
+    {expanded && group.occurrences.length > 10 && <div className="[&_button]:min-h-11"><DataTablePagination allowAll={false} page={pagination.page} totalPages={pagination.totalPages} totalItems={pagination.totalItems} from={pagination.from} to={pagination.to} pageSize={pagination.pageSize} onPageChange={pagination.setPage} onPageSizeChange={size => { pagination.setPageSize(size); pagination.setPage(1); }} /></div>}
+  </section>;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1439,6 +1401,9 @@ function ModelosList({
   t: TCatalog;
 }) {
   const { locale } = useAppLocaleContext();
+  const navigation = catalogNavigationCopy[locale];
+  const [catalogParams, setCatalogParams] = useSearchParams();
+  const navigationAnchor = useRef<HTMLDivElement>(null);
   const { data: models = [], isLoading } = useEquipmentModelsByBrand(brand.id, domain);
   const { data: brands = [] } = useEquipmentBrands(domain);
   // IDs com código de erro — usado só na linha branca pra esconder a ação
@@ -1484,12 +1449,20 @@ function ModelosList({
   }, [brand.id, api, brandIndex]);
 
   // Busca local (nome / código / BTU) com debounce leve.
-  const [termoRaw, setTermoRaw] = useState('');
-  const [termo, setTermo] = useState('');
+  const [termoRaw, setTermoRaw] = useState(() => catalogParams.get('busca') ?? '');
+  const [termo, setTermo] = useState(() => (catalogParams.get('busca') ?? '').trim());
   useEffect(() => {
-    const id = setTimeout(() => setTermo(termoRaw.trim()), 180);
+    const id = setTimeout(() => {
+      const value = termoRaw.trim();
+      setTermo(value);
+      if ((catalogParams.get('busca') ?? '') !== value) setCatalogParams(current => {
+        const next = new URLSearchParams(current);
+        if (value) next.set('busca', value); else next.delete('busca');
+        return next;
+      }, { replace: true });
+    }, 180);
     return () => clearTimeout(id);
-  }, [termoRaw]);
+  }, [termoRaw, catalogParams, setCatalogParams]);
 
   // Filtros escopados aos modelos DESTA marca.
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -1540,10 +1513,31 @@ function ModelosList({
     setSelectedGases([]);
   };
 
-  // Lista final: busca + filtros (vazio = todos), ordenada por BTU crescente.
+  const sections = useMemo(() => organizeCatalog(models), [models]);
+  const categoryKey = catalogParams.get('categoria');
+  const familyKey = catalogParams.get('familia');
+  const needsNavigation = models.length > 20 || (sections.length > 1 && models.length > 12);
+  const currentSection = sections.find(section => section.key === categoryKey) ?? (!categoryKey && sections.length === 1 && needsNavigation ? sections[0] : undefined);
+  const currentFamily = currentSection?.families.find(family => family.key === familyKey);
+  const isSearching = termo.length > 0;
+  const overview = needsNavigation && !isSearching && activeFilterCount === 0 && !currentSection && categoryKey !== 'all';
+  const familyOverview = needsNavigation && !isSearching && activeFilterCount === 0 && !!currentSection && currentSection.families.length > 1 && familyKey !== 'all' && !currentFamily;
+  const scopedModels = !isSearching && currentSection ? currentFamily?.models ?? currentSection.models : models;
+  const familyTypes = currentFamily ? [...new Set(currentFamily.models.map(model => model.category?.name).filter((name): name is string => !!name))].sort((a, b) => a.localeCompare(b, locale)) : [];
+  const selectScope = (category?: string, family?: string) => {
+    const next = new URLSearchParams(catalogParams);
+    next.delete('categoria'); next.delete('familia'); next.delete('busca');
+    if (category) next.set('categoria', category);
+    if (family) next.set('familia', family);
+    setTermoRaw(''); setTermo(''); limparFiltros();
+    setCatalogParams(next, { replace: true });
+    requestAnimationFrame(() => navigationAnchor.current?.scrollIntoView({ block: 'start', behavior: 'auto' }));
+  };
+
+  // A busca atravessa categorias; a navegação delimita a lista sem esconder SKUs.
   const modelosVisiveis = useMemo(() => {
-    const filtrados = models.filter((m) => {
-      const buscaOk = fuzzyIncludesAny([m.name, m.code, extrairBtu(m.name)], termo);
+    const filtrados = scopedModels.filter((m) => {
+      const buscaOk = catalogCodeMatches(m.code, termo) || fuzzyIncludesAny([m.name, m.code, extrairBtu(m.name), m.catalog_reference?.line], termo);
       const btuOk =
         selectedBtus.length === 0 || selectedBtus.includes(String(btuNumero(m.name)));
       const tipoOk =
@@ -1552,14 +1546,14 @@ function ModelosList({
       return buscaOk && btuOk && tipoOk && gasOk;
     });
     return ordenarPorBtu(filtrados);
-  }, [models, termo, selectedBtus, selectedTypes, selectedGases, gasFilterEnabled]);
+  }, [scopedModels, termo, selectedBtus, selectedTypes, selectedGases, gasFilterEnabled]);
 
   const semResultado =
     !isLoading && models.length > 0 && modelosVisiveis.length === 0;
 
   return (
     <div className="space-y-6 pb-8">
-      <Header icon={Boxes} title={tituloCatalogo(domain, t)} subtitle={brand.name} onBack={onBack} />
+      <Header icon={Boxes} title={tituloCatalogo(domain, t)} subtitle={`${brand.name} · ${formatNumber(models.length, locale)} ${t.items}`} onBack={onBack} />
 
       {/* Carrossel de marcas: a atual no centro, vizinhas espiando nas laterais.
           Deslizar/tocar numa marca troca a marca ativa (mostra os modelos dela). */}
@@ -1581,7 +1575,7 @@ function ModelosList({
                     className={cn(
                       // Card branco fixo nos 2 temas (proposital) pra logos coloridos
                       // não sumirem no dark mode.
-                      'flex h-28 w-full items-center justify-center rounded-2xl border border-border bg-white p-6 transition-all duration-200',
+                      'flex h-20 w-full items-center justify-center rounded-xl border border-border bg-white p-3 transition-all duration-200',
                       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                       ativo ? 'scale-100 opacity-100 shadow-sm' : 'scale-95 opacity-50',
                     )}
@@ -1593,7 +1587,7 @@ function ModelosList({
                         // Mesmo padrão uniforme da grade de marcas (BrandsList):
                         // logos visualmente parecidas em tamanho, sem distorcer.
                         containerClassName="flex h-16 w-full items-center justify-center"
-                        className="max-h-14 max-w-[72%] object-contain"
+                        className="max-h-10 max-w-[72%] object-contain"
                       />
                     ) : (
                       <span className="text-3xl font-semibold text-neutral-800">{b.name}</span>
@@ -1607,11 +1601,11 @@ function ModelosList({
               laterais; auto-desabilitam na primeira/última marca. */}
           <CarouselPrevious
             aria-label={t.brandPrevious}
-            className="left-1 h-9 w-9 border-border bg-background/80 backdrop-blur disabled:opacity-30"
+            className="left-1 h-11 w-11 border-border bg-background/80 backdrop-blur disabled:opacity-30"
           />
           <CarouselNext
             aria-label={t.brandNext}
-            className="right-1 h-9 w-9 border-border bg-background/80 backdrop-blur disabled:opacity-30"
+            className="right-1 h-11 w-11 border-border bg-background/80 backdrop-blur disabled:opacity-30"
           />
         </Carousel>
       ) : (
@@ -1622,7 +1616,7 @@ function ModelosList({
               src={brand.logo_url}
               alt={brand.name}
               containerClassName="flex h-16 w-full items-center justify-center"
-              className="max-h-14 max-w-[72%] object-contain"
+              className="max-h-10 max-w-[72%] object-contain"
             />
           ) : (
             <span className="text-3xl font-semibold text-neutral-800">{brand.name}</span>
@@ -1638,7 +1632,7 @@ function ModelosList({
             type="text"
             placeholder={t.searchModelPlaceholder}
             value={termoRaw}
-            onChange={(e) => setTermoRaw(e.target.value)}
+            onChange={(e) => { setTermoRaw(e.target.value); limparFiltros(); }}
             className="h-14 pl-10 text-lg"
           />
         </div>
@@ -1710,8 +1704,20 @@ function ModelosList({
         </div>
       </ResponsiveModal>
 
-      <ManufacturerDocuments brandName={brand.name} />
-
+      <div ref={navigationAnchor} className="space-y-5 scroll-mt-20" data-catalog-navigation>
+      {(currentSection || categoryKey === 'all' || isSearching) && <nav aria-label={navigation.browse} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+        <button type="button" className="min-h-11 font-medium underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => selectScope()}>{sections.length === 1 ? navigation.families : navigation.allCategories}</button>
+        {!isSearching && currentSection && <><ChevronRight className="h-4 w-4 text-muted-foreground" /><button type="button" onClick={() => selectScope(currentSection.key)} className="min-h-11 text-muted-foreground hover:text-foreground">{navigation.sections[currentSection.key]}</button></>}
+        {!isSearching && currentFamily && <><ChevronRight className="h-4 w-4 text-muted-foreground" /><span className="font-semibold">{currentFamily.name}</span></>}
+        {isSearching && <><ChevronRight className="h-4 w-4 text-muted-foreground" /><span className="text-muted-foreground">{navigation.searchResults}</span></>}
+      </nav>}
+      {!isSearching && currentFamily && currentFamily.models.length > 20 && familyTypes.length > 1 && <div className="grid max-w-sm gap-2">
+        <label htmlFor="catalog-family-type" className="text-sm font-semibold">{t.filterType}</label>
+        <Select value={selectedTypes.length === 0 ? 'all' : selectedTypes.length === 1 ? selectedTypes[0] : 'multiple'} onValueChange={value => setSelectedTypes(value === 'all' ? [] : [value])}>
+          <SelectTrigger id="catalog-family-type" className="h-12 text-base"><SelectValue /></SelectTrigger>
+          <SelectContent><SelectItem value="all">{t.filterAll}</SelectItem>{selectedTypes.length > 1 && <SelectItem value="multiple" disabled>{t.filterType} ({selectedTypes.length})</SelectItem>}{familyTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent>
+        </Select>
+      </div>}
       {isLoading ? (
         <LoadingBlock />
       ) : models.length === 0 ? (
@@ -1719,26 +1725,20 @@ function ModelosList({
           title={t.emptyModelsTitle}
           message={`Ainda não há modelos da ${brand.name} no catálogo.`}
         />
+      ) : overview ? (
+        <CatalogCategoryBrowser sections={sections} onSelect={key => selectScope(key)} onViewAll={() => selectScope('all')} />
+      ) : familyOverview && currentSection ? (
+        <CatalogFamilyBrowser section={currentSection} onSelect={key => selectScope(currentSection.key, key)} onViewAll={() => selectScope(currentSection.key, 'all')} />
       ) : semResultado ? (
         <EmptyState
           title={t.emptyEquipmentTitle}
           message={t.emptyEquipmentMessage}
         />
       ) : (
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-          {modelosVisiveis.map((model) => (
-            <ModelCard
-              key={model.id}
-              model={model}
-              domain={domain}
-              brandName={brand.name}
-              hasErrorCodes={modelIdsWithCodes?.has(model.id) ?? false}
-              onSelectDetail={() => onSelectDetail(model)}
-              t={t}
-            />
-          ))}
-        </div>
+        <CatalogModelGrid key={`${brand.id}:${categoryKey}:${familyKey}:${termo}:${selectedBtus}:${selectedTypes}:${selectedGases}`} models={modelosVisiveis} domain={domain} brandName={brand.name} modelIdsWithCodes={modelIdsWithCodes} onSelectDetail={onSelectDetail} t={t} />
       )}
+      </div>
+      <ManufacturerDocuments brandName={brand.name} />
     </div>
   );
 }
@@ -1912,7 +1912,7 @@ function RemoteCard({
       )}
 
       <div className="p-4">
-        <p className="text-center text-base font-semibold leading-snug text-foreground">
+        <p className="break-words text-center text-base font-semibold leading-snug text-foreground">
           {model.name}
         </p>
         {/* Badge de marca: fundo saturado + texto branco (pedido do CEO). */}
@@ -1937,9 +1937,8 @@ function RemoteCard({
       </div>
 
       {temFoto && (
-        <ImagePreviewModal
-          src={model.image_url!}
-          alt={model.name}
+        <CatalogImagePreview
+          model={model}
           open={viewerOpen}
           onClose={() => setViewerOpen(false)}
         />
@@ -2337,7 +2336,7 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
   }
 
   return (
-    <div className="mt-3 rounded-xl border border-border bg-muted/40 p-3">
+    <div className="mt-4 border-l-2 border-primary pl-4">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
           <Zap className="h-4 w-4 text-amber-500" />
@@ -2456,6 +2455,63 @@ function detailAction(domain: EquipmentDomain, t: TCatalog): { label: string; ic
   }
 }
 
+function CatalogModelGrid({ models, domain, brandName, modelIdsWithCodes, onSelectDetail, t }: {
+  models: EquipmentModel[];
+  domain: EquipmentDomain;
+  brandName?: string;
+  modelIdsWithCodes?: Set<string>;
+  onSelectDetail: (model: EquipmentModel) => void;
+  t: TCatalog;
+}) {
+  const { locale } = useAppLocaleContext();
+  const navigation = catalogNavigationCopy[locale];
+  const pagination = useDataPagination(models, 10);
+  const [selectedId, setSelectedId] = useState<string | undefined>(() => models.length === 1 ? models[0].id : undefined);
+  const selected = models.find(model => model.id === selectedId);
+  const container = useRef<HTMLDivElement>(null);
+  const preview = useRef<HTMLDivElement>(null);
+  const goToPage = (page: number) => {
+    pagination.setPage(page);
+    container.current?.scrollIntoView({ block: 'start', behavior: 'auto' });
+  };
+  const select = (model: EquipmentModel) => {
+    setSelectedId(model.id);
+    if (window.innerWidth < 1024) requestAnimationFrame(() => preview.current?.scrollIntoView({ block: 'start', behavior: 'auto' }));
+  };
+  return <div ref={container} className="grid min-w-0 gap-6 scroll-mt-20 lg:grid-cols-[minmax(280px,340px)_minmax(0,1fr)] lg:gap-8">
+    <section aria-label={navigation.models} className={cn('min-w-0', selected && 'hidden lg:block')}>
+      <div className="mb-3 flex items-center justify-between gap-3"><h3 className="text-base font-semibold">{navigation.models}</h3><span className="text-sm tabular-nums text-muted-foreground">{formatNumber(models.length, locale)}</span></div>
+      <div className="divide-y divide-border">
+        {pagination.paginatedItems.map(model => {
+          const active = selectedId === model.id;
+          const name = pickI18n(model.i18n, locale, 'name', model.name) ?? model.name;
+          const subtitle = model.code ? name.replace(model.code, '').replace(/^[ ·-]+|[ ·-]+$/g, '') : name;
+          return <button key={model.id} type="button" aria-pressed={active} onClick={() => select(model)} className={cn('flex min-h-20 w-full items-center gap-3 px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', active ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}>
+            {model.image_url && <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-white p-1"><CatalogImage src={model.image_url} alt={model.name} containerClassName="h-full w-full" className="h-full w-full object-contain" /></span>}
+            <span className="min-w-0 flex-1">
+              {!brandName && model.brand?.name && <span className={cn('mb-1 block text-xs font-medium', active ? 'text-primary-foreground/75' : 'text-muted-foreground')}>{model.brand.name}</span>}
+              <span className="block break-words text-sm font-semibold leading-relaxed md:text-base">{model.code || name}</span>
+              <span className={cn('mt-1 block break-words text-xs leading-relaxed', active ? 'text-primary-foreground/75' : 'text-muted-foreground')}>{subtitle}</span>
+            </span>
+            <ChevronRight className="h-4 w-4 shrink-0" />
+          </button>;
+        })}
+      </div>
+      {models.length > 10 && <div className="[&_button]:min-h-11 [&_[role=combobox]]:min-h-11">
+        <DataTablePagination compact allowAll={false} page={pagination.page} totalPages={pagination.totalPages} totalItems={pagination.totalItems} from={pagination.from} to={pagination.to} pageSize={pagination.pageSize} onPageChange={goToPage} onPageSizeChange={size => { pagination.setPageSize(size); pagination.setPage(1); }} />
+      </div>}
+    </section>
+    <div ref={preview} className={cn('min-w-0 scroll-mt-20', !selected && 'hidden lg:block')}>
+      {selected ? <div className="space-y-3 lg:sticky lg:top-4">
+        <Button variant="ghost" className="min-h-11 hover:bg-destructive hover:text-destructive-foreground lg:hidden" onClick={() => { setSelectedId(undefined); container.current?.scrollIntoView({ block: 'start' }); }}><ArrowLeft className="h-4 w-4" />{navigation.backToList}</Button>
+        <ModelCard model={selected} domain={domain} brandName={brandName ?? selected.brand?.name ?? ''} hasErrorCodes={modelIdsWithCodes?.has(selected.id) ?? false} onSelectDetail={() => onSelectDetail(selected)} t={t} />
+      </div> : <div className="flex min-h-80 flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+        <PackageSearch className="h-10 w-10 text-muted-foreground" /><h3 className="text-xl font-semibold">{navigation.chooseModel}</h3><p className="max-w-sm text-sm leading-relaxed text-muted-foreground">{navigation.chooseHelp}</p>
+      </div>}
+    </div>
+  </div>;
+}
+
 function ModelCard({
   model,
   domain,
@@ -2489,6 +2545,7 @@ function ModelCard({
   const subtitulo = brandName;
   const temManual = Boolean(model.manual_url);
   const temFoto = Boolean(model.image_url);
+  const mostraCodigoBadge = Boolean(model.code && !localizedName.toUpperCase().includes(model.code.toUpperCase()));
 
   // Quais badges/segundo botão o domínio mostra.
   // BTU: AC sempre; compressor só quando o nome traz BTU (herméticos não têm — sem
@@ -2498,7 +2555,7 @@ function ModelCard({
 
   // Consumo de energia só faz sentido pra aparelho ligado direto na tomada:
   // AC e linha branca. Compressor e controle remoto não mostram.
-  const mostraConsumo = domain === 'ar_condicionado' || domain === 'linha_branca';
+  const mostraConsumo = (domain === 'ar_condicionado' || domain === 'linha_branca') && (!model.catalog_reference || (model.catalog_reference.unit_kind === 'system' && Boolean(model.potencia_w || model.consumo_kwh_mes)));
 
   // AC e Linha Branca baixam manual; Compressor baixa "Datasheet" (mesma URL).
   const segundoBotao: 'manual' | 'datasheet' | null =
@@ -2521,24 +2578,6 @@ function ModelCard({
   const mostraGasBadge = Boolean(
     mostraGas && model.refrigerant && !model.refrigerant.includes(','),
   );
-
-  // Badge do TIPO de manual: só nos domínios que baixam "manual" (AC + linha
-  // branca), quando há manual e o tipo é conhecido. Datasheet (compressor) já
-  // se identifica no próprio botão. Cor por tipo sinaliza utilidade pro técnico:
-  // instalação/serviço (úteis) em destaque; usuário/guia esmaecidos.
-  const mostraManualBadge = Boolean(
-    segundoBotao === 'manual' && temManual && model.manual_type,
-  );
-  const manualBadgeClass =
-    {
-      instalacao: 'bg-sky-500 text-white',
-      servico: 'bg-amber-500 text-white',
-      usuario: 'bg-muted text-muted-foreground',
-      guia: 'bg-muted text-muted-foreground',
-    }[model.manual_type ?? ''] ?? 'bg-muted text-muted-foreground';
-
-  const temBadges =
-    (mostraBtu && btu) || categoria || mostraGasBadge || model.code || mostraManualBadge;
 
   return (
     <div
@@ -2568,71 +2607,29 @@ function ModelCard({
         </div>
       )}
 
+      <CatalogPhotoCaption model={model} />
+
       {/* CORPO — identificação centralizada (tokens de tema) */}
       <div className="p-4">
-        <p className="text-center text-base font-semibold leading-snug text-foreground">
+        <p className="break-words text-center text-base font-semibold leading-snug text-foreground">
           {localizedName}
         </p>
         {subtitulo && (
           <p className="mt-0.5 text-center text-sm text-muted-foreground">{subtitulo}</p>
         )}
-        {temBadges && (
-          <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
-            {mostraBtu && btu && (
-              <span className="rounded-md bg-sky-500 px-2 py-0.5 text-xs font-semibold text-white">
-                {btu}
-              </span>
-            )}
-            {categoria && (
-              <span className="rounded-md bg-violet-500 px-2 py-0.5 text-xs font-semibold text-white">
-                {categoria}
-              </span>
-            )}
-            {camaraFria && (
-              <span className="inline-flex items-center gap-1 rounded-md bg-cyan-600 px-2 py-0.5 text-xs font-semibold text-white">
-                <Snowflake className="h-3 w-3" />
-                {t.coldRoom}
-              </span>
-            )}
-            {/* Gás: só badge quando UM gás só. Compressores de câmara fria têm
-                lista de gases (vírgula) → badge poluiria o card; a lista completa
-                vira badges coloridos na ficha técnica. */}
-            {mostraGasBadge &&
-              model.refrigerant &&
-              (() => {
-                const cor = getRefrigerante(model.refrigerant)?.cor ?? '#6b7280';
-                return (
-                  <span className="inline-flex items-center gap-1">
-                    <span
-                      className="rounded-md px-2 py-0.5 text-xs font-semibold"
-                      style={{ backgroundColor: cor, color: idealForeground(cor) }}
-                    >
-                      {model.refrigerant}
-                    </span>
-                    <RefrigeranteInflamavel refrigId={model.refrigerant} />
-                  </span>
-                );
-              })()}
-            {model.code && (
-              <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                {t.code} {model.code}
-              </span>
-            )}
-            {mostraManualBadge && (
-              <span
-                className={cn(
-                  'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold',
-                  manualBadgeClass,
-                )}
-              >
-                <FileText className="h-3 w-3 shrink-0" />
-                {rotuloManual(model.manual_type, manualLabels)}
-              </span>
-            )}
-          </div>
-        )}
+        <CatalogModelIdentity reference={model.catalog_reference} />
+        <div className="mt-3 space-y-2 text-sm">
+          {(categoria || (mostraBtu && btu) || camaraFria) && <p className="text-center leading-relaxed text-muted-foreground">{[categoria, mostraBtu ? btu : null, camaraFria ? t.coldRoom : null].filter(Boolean).join(' · ')}</p>}
+          {mostraCodigoBadge && <p className="break-words text-center font-mono font-semibold">{model.code}</p>}
+          {mostraGasBadge && model.refrigerant && <div className="flex items-center justify-center gap-2">
+            <span className="text-muted-foreground">{t.filterRefrigerant}</span>
+            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: getRefrigerante(model.refrigerant)?.cor ?? '#6b7280' }} />{model.refrigerant}<RefrigeranteInflamavel refrigId={model.refrigerant} /></span>
+          </div>}
+        </div>
 
         {mostraConsumo && <ConsumoEnergia model={model} />}
+        <CatalogModelReference reference={model.catalog_reference} />
+        <CatalogDocumentReference model={model} />
 
         {/* Ações diretas — sem modal intermediário (tema normal: outline lê no dark).
             Controle remoto tem só 1 ação (largura cheia); os demais têm 2 botões
@@ -2663,12 +2660,13 @@ function ModelCard({
                   baixarManual(
                     model.manual_url!,
                     sanitizarNomeArquivo(`Manual ${model.name} - ${brandName}.pdf`),
+                    (model.catalog_reference?.document_bytes ?? 0) > 40 * 1024 * 1024,
                   )
                 }
                 className="h-auto min-h-11 w-full whitespace-normal text-center"
               >
                 <Download className="h-4 w-4 shrink-0" />
-                <span>{t.downloadManual}</span>
+                <span>{rotuloManual(model.manual_type, manualLabels)}</span>
               </Button>
             ) : (
               <ManufacturerManualLink
@@ -2690,6 +2688,7 @@ function ModelCard({
                   baixarManual(
                     model.manual_url!,
                     sanitizarNomeArquivo(`Datasheet ${model.name} - ${brandName}.pdf`),
+                    (model.catalog_reference?.document_bytes ?? 0) > 40 * 1024 * 1024,
                   )
                 }
                 className="h-auto min-h-11 w-full whitespace-normal text-center"
@@ -2708,9 +2707,8 @@ function ModelCard({
       </div>
 
       {temFoto && (
-        <ImagePreviewModal
-          src={model.image_url!}
-          alt={model.name}
+        <CatalogImagePreview
+          model={model}
           open={viewerOpen}
           onClose={() => setViewerOpen(false)}
         />
@@ -2919,7 +2917,7 @@ function CodigosErro({
               )}
 
               {ecSolution && (
-                <div className="mt-3 rounded-xl border border-border bg-muted/40 p-3">
+                <div className="mt-4 border-l-2 border-primary pl-4">
                   <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
                     <Wrench className="h-3.5 w-3.5" />
                     {t.solution}
@@ -2931,9 +2929,7 @@ function CodigosErro({
               {ecComponent && (
                 <div className="mt-3 flex items-center gap-1.5">
                   <span className="text-xs font-medium text-muted-foreground">{t.component}</span>
-                  <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-foreground">
-                    {ecComponent}
-                  </span>
+                  <span className="text-sm font-medium text-foreground">{ecComponent}</span>
                 </div>
               )}
             </div>
