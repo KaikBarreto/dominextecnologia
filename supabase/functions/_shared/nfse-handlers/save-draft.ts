@@ -91,6 +91,9 @@ interface DraftBody {
     codigoNbs?: string;
     municipioIncidenciaIbge?: string;
     descricao?: string;
+    documentoResponsabilidadeTecnica?: string;
+    documentoReferencia?: string;
+    pedidoB2b?: string;
     // cTribMun (3 dígitos) — código da prefeitura, complementar ao cTribNac.
     // number aceito porque campo numérico no front manda 101, não "101".
     codigoTributacaoMunicipal?: string | number;
@@ -103,6 +106,11 @@ interface DraftBody {
     valorPis?: number | string;
     valorCofins?: number | string;
     valorCsll?: number | string;
+    valorInss?: number | string;
+    valorIrrf?: number | string;
+    deducoes?: number | string;
+    descontoCondicionado?: number | string;
+    descontoIncondicionado?: number | string;
     percentualTribSn?: number | string;
   };
 }
@@ -213,6 +221,17 @@ function mapBodyToColumns(body: DraftBody): Mapeamento {
     if ("descricao" in servico) {
       cols.descricao_servico = clean(servico.descricao) || null;
     }
+    if ("documentoResponsabilidadeTecnica" in servico) {
+      cols.documento_responsabilidade_tecnica =
+        clean(servico.documentoResponsabilidadeTecnica) || null;
+    }
+    if ("documentoReferencia" in servico) {
+      cols.documento_referencia = clean(servico.documentoReferencia) || null;
+    }
+    if ("pedidoB2b" in servico) {
+      const pedido = clean(servico.pedidoB2b);
+      cols.informacoes_complementares = pedido ? `Pedido: ${pedido}` : null;
+    }
     // cTribMun: override por nota. Só grava o que tem o formato do layout
     // nacional (3 dígitos); qualquer outra coisa vira NULL e a nota herda do
     // tipo de serviço na emissão. Rascunho não é hora de barrar o usuário.
@@ -245,6 +264,21 @@ function mapBodyToColumns(body: DraftBody): Mapeamento {
     if ("valorCsll" in valores) {
       cols.valor_csll = parseNonNegative(valores.valorCsll);
     }
+    if ("valorInss" in valores) {
+      cols.valor_inss = parseNonNegative(valores.valorInss);
+    }
+    if ("valorIrrf" in valores) {
+      cols.valor_irrf = parseNonNegative(valores.valorIrrf);
+    }
+    if ("deducoes" in valores) {
+      cols.deducoes = parseNonNegative(valores.deducoes);
+    }
+    if ("descontoCondicionado" in valores) {
+      cols.desconto_condicionado = parseNonNegative(valores.descontoCondicionado);
+    }
+    if ("descontoIncondicionado" in valores) {
+      cols.desconto_incondicionado = parseNonNegative(valores.descontoIncondicionado);
+    }
     if ("percentualTribSn" in valores) {
       cols.percentual_trib_sn = parseNonNegative(valores.percentualTribSn);
     }
@@ -258,7 +292,19 @@ function mapBodyToColumns(body: DraftBody): Mapeamento {
  * deploy: edge nova + migration ainda não aplicada). Perder um campo opcional é
  * muito melhor que perder o rascunho inteiro.
  */
-const COLUNAS_OPCIONAIS = [COL_CTRIBMUN, COL_SERVICE_TYPE, COL_CREATED_BY];
+const COLUNAS_OPCIONAIS = [
+  COL_CTRIBMUN,
+  COL_SERVICE_TYPE,
+  COL_CREATED_BY,
+  "valor_inss",
+  "valor_irrf",
+  "deducoes",
+  "desconto_condicionado",
+  "desconto_incondicionado",
+  "documento_responsabilidade_tecnica",
+  "documento_referencia",
+  "informacoes_complementares",
+];
 
 // ⚠️ `tomador_avulso` / `intermediario_avulso` NÃO entram na lista acima de
 // propósito. Elas não são "campo opcional": são a ÚNICA identidade do tomador

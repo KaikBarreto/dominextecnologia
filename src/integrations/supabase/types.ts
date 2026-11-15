@@ -8586,14 +8586,23 @@ export type Database = {
           fiscal_cest: string | null
           fiscal_cfop_internal: string | null
           fiscal_cfop_interstate: string | null
+          fiscal_cfop_entry_internal: string | null
+          fiscal_cfop_entry_interstate: string | null
+          fiscal_cfop_exit_internal: string | null
+          fiscal_cfop_exit_interstate: string | null
           fiscal_cofins_cst: string | null
           fiscal_gtin: string | null
           fiscal_ibs_cbs_cst: string | null
           fiscal_icms_code: string | null
+          fiscal_icms_rate: number | null
+          fiscal_icms_reduction_rate: number | null
           fiscal_ipi_cst: string | null
+          fiscal_ipi_rate: number | null
           fiscal_ncm: string | null
           fiscal_origin: string | null
           fiscal_pis_cst: string | null
+          fiscal_pis_rate: number | null
+          fiscal_cofins_rate: number | null
           fiscal_tax_unit: string | null
           group_id: string | null
           id: string
@@ -8629,14 +8638,23 @@ export type Database = {
           fiscal_cest?: string | null
           fiscal_cfop_internal?: string | null
           fiscal_cfop_interstate?: string | null
+          fiscal_cfop_entry_internal?: string | null
+          fiscal_cfop_entry_interstate?: string | null
+          fiscal_cfop_exit_internal?: string | null
+          fiscal_cfop_exit_interstate?: string | null
           fiscal_cofins_cst?: string | null
           fiscal_gtin?: string | null
           fiscal_ibs_cbs_cst?: string | null
           fiscal_icms_code?: string | null
+          fiscal_icms_rate?: number | null
+          fiscal_icms_reduction_rate?: number | null
           fiscal_ipi_cst?: string | null
+          fiscal_ipi_rate?: number | null
           fiscal_ncm?: string | null
           fiscal_origin?: string | null
           fiscal_pis_cst?: string | null
+          fiscal_pis_rate?: number | null
+          fiscal_cofins_rate?: number | null
           fiscal_tax_unit?: string | null
           group_id?: string | null
           id?: string
@@ -8672,14 +8690,23 @@ export type Database = {
           fiscal_cest?: string | null
           fiscal_cfop_internal?: string | null
           fiscal_cfop_interstate?: string | null
+          fiscal_cfop_entry_internal?: string | null
+          fiscal_cfop_entry_interstate?: string | null
+          fiscal_cfop_exit_internal?: string | null
+          fiscal_cfop_exit_interstate?: string | null
           fiscal_cofins_cst?: string | null
           fiscal_gtin?: string | null
           fiscal_ibs_cbs_cst?: string | null
           fiscal_icms_code?: string | null
+          fiscal_icms_rate?: number | null
+          fiscal_icms_reduction_rate?: number | null
           fiscal_ipi_cst?: string | null
+          fiscal_ipi_rate?: number | null
           fiscal_ncm?: string | null
           fiscal_origin?: string | null
           fiscal_pis_cst?: string | null
+          fiscal_pis_rate?: number | null
+          fiscal_cofins_rate?: number | null
           fiscal_tax_unit?: string | null
           group_id?: string | null
           id?: string
@@ -9903,7 +9930,12 @@ export type Database = {
           created_by: string | null
           customer_id: string | null
           data_competencia: string | null
+          deducoes: number | null
+          desconto_condicionado: number | null
+          desconto_incondicionado: number | null
           descricao_servico: string | null
+          documento_referencia: string | null
+          documento_responsabilidade_tecnica: string | null
           emitida_em: string | null
           error_message: string | null
           financial_transaction_id: string | null
@@ -9914,6 +9946,7 @@ export type Database = {
           idempotency_key: string | null
           intermediario_avulso: Json | null
           intermediario_customer_id: string | null
+          informacoes_complementares: string | null
           municipio_incidencia_ibge: string | null
           nfse_auto_job_id: string | null
           numero_nfse: string | null
@@ -9937,6 +9970,8 @@ export type Database = {
           valor_cofins: number | null
           valor_csll: number | null
           valor_iss: number | null
+          valor_inss: number | null
+          valor_irrf: number | null
           valor_pis: number | null
           valor_servico: number | null
           xml_autorizado: string | null
@@ -9954,7 +9989,12 @@ export type Database = {
           created_by?: string | null
           customer_id?: string | null
           data_competencia?: string | null
+          deducoes?: number | null
+          desconto_condicionado?: number | null
+          desconto_incondicionado?: number | null
           descricao_servico?: string | null
+          documento_referencia?: string | null
+          documento_responsabilidade_tecnica?: string | null
           emitida_em?: string | null
           error_message?: string | null
           financial_transaction_id?: string | null
@@ -9965,6 +10005,7 @@ export type Database = {
           idempotency_key?: string | null
           intermediario_avulso?: Json | null
           intermediario_customer_id?: string | null
+          informacoes_complementares?: string | null
           municipio_incidencia_ibge?: string | null
           nfse_auto_job_id?: string | null
           numero_nfse?: string | null
@@ -9988,6 +10029,8 @@ export type Database = {
           valor_cofins?: number | null
           valor_csll?: number | null
           valor_iss?: number | null
+          valor_inss?: number | null
+          valor_irrf?: number | null
           valor_pis?: number | null
           valor_servico?: number | null
           xml_autorizado?: string | null
@@ -10005,7 +10048,12 @@ export type Database = {
           created_by?: string | null
           customer_id?: string | null
           data_competencia?: string | null
+          deducoes?: number | null
+          desconto_condicionado?: number | null
+          desconto_incondicionado?: number | null
           descricao_servico?: string | null
+          documento_referencia?: string | null
+          documento_responsabilidade_tecnica?: string | null
           emitida_em?: string | null
           error_message?: string | null
           financial_transaction_id?: string | null
@@ -10016,6 +10064,7 @@ export type Database = {
           idempotency_key?: string | null
           intermediario_avulso?: Json | null
           intermediario_customer_id?: string | null
+          informacoes_complementares?: string | null
           municipio_incidencia_ibge?: string | null
           nfse_auto_job_id?: string | null
           numero_nfse?: string | null
@@ -10039,6 +10088,8 @@ export type Database = {
           valor_cofins?: number | null
           valor_csll?: number | null
           valor_iss?: number | null
+          valor_inss?: number | null
+          valor_irrf?: number | null
           valor_pis?: number | null
           valor_servico?: number | null
           xml_autorizado?: string | null

@@ -153,6 +153,18 @@ export function EmitirStep({
               <SummaryLine label={s.emitir.fields.codigoNbs} value={servico.codigoNbs} />
             )}
             <SummaryLine label={s.emitir.fields.discriminacao} value={servico.discriminacao || null} multiline />
+            <SummaryLine
+              label={s.servico.referencias.documentoTecnico}
+              value={servico.documentoResponsabilidadeTecnica || null}
+            />
+            <SummaryLine
+              label={s.servico.referencias.documentoReferencia}
+              value={servico.documentoReferencia || null}
+            />
+            <SummaryLine
+              label={s.servico.referencias.pedidoB2b}
+              value={servico.pedidoB2b || null}
+            />
           </Section>
 
           {/* Valores */}
@@ -169,6 +181,24 @@ export function EmitirStep({
               label={s.emitir.fields.issValor}
               value={`${formatMoney(taxes.issValor, currency, locale)} (${issRetidoLabel})`}
             />
+            {valores.deducoes > 0 && (
+              <SummaryLine
+                label={s.valores.ajustes.deducoes}
+                value={formatMoney(valores.deducoes, currency, locale)}
+              />
+            )}
+            {valores.descontoCondicionado > 0 && (
+              <SummaryLine
+                label={s.valores.ajustes.descontoCondicionado}
+                value={formatMoney(valores.descontoCondicionado, currency, locale)}
+              />
+            )}
+            {valores.descontoIncondicionado > 0 && (
+              <SummaryLine
+                label={s.valores.ajustes.descontoIncondicionado}
+                value={formatMoney(valores.descontoIncondicionado, currency, locale)}
+              />
+            )}
             {taxes.totalRetencoesFederais > 0 && (
               <SummaryLine
                 label={s.emitir.fields.retencoesFederais}

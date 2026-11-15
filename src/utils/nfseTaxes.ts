@@ -2,12 +2,8 @@
  * Cálculo de impostos da NFS-e — FONTE ÚNICA da verdade pra prévia de emissão
  * de serviço na Dominex.
  *
- * Espelha a lógica de `EcoSistema/src/utils/nfseTaxes.ts`, restrita aos campos
- * que a emissão aceita hoje. Campos OMITIDOS deliberadamente (não suportados):
- * INSS, IRRF, deduções da base, desconto condicionado, desconto incondicionado.
- *
- * `valorPis/valorCofins/valorCsll` são valores em R$ (não %), pois a emissão
- * recebe o valor absoluto de cada retenção federal.
+ * Espelha a lógica canônica do EcoSistema. Retenções são valores absolutos em
+ * R$; só alíquotas e campos com "percentual" no nome usam porcentagem.
  */
 
 import type { NfseValoresState, NfseTaxResult, TpRetIssqn } from '@/components/fiscal/nova-nota/types';
@@ -28,7 +24,7 @@ const round2 = (v: number): number => Math.round(v * 100) / 100;
  * - Líquido = valorServico − totalRetencoesFederais − (ISS se retido).
  */
 export function calculateNfseTaxes(
-  valores: Pick<NfseValoresState, 'valorServico' | 'aliquotaIssqn' | 'tpRetIssqn' | 'valorPis' | 'valorCofins' | 'valorCsll'>,
+  valores: Pick<NfseValoresState, 'valorServico' | 'aliquotaIssqn' | 'tpRetIssqn' | 'valorPis' | 'valorCofins' | 'valorCsll' | 'valorInss' | 'valorIrrf' | 'deducoes' | 'descontoIncondicionado'>,
 ): NfseTaxResult {
   const {
     valorServico,
@@ -37,17 +33,33 @@ export function calculateNfseTaxes(
     valorPis,
     valorCofins,
     valorCsll,
+    valorInss,
+    valorIrrf,
+    deducoes,
+    descontoIncondicionado,
   } = valores;
 
-  const baseCalculo = Math.max(0, valorServico);
+  const baseCalculo = Math.max(
+    0,
+    valorServico - (deducoes ?? 0) - (descontoIncondicionado ?? 0),
+  );
   const issValor = round2(baseCalculo * (aliquotaIssqn / 100));
   // '1' = não retido; '2' e '3' = retido (pelo tomador / pelo intermediário).
   const issRetido = tpRetIssqn !== '1';
 
-  const totalRetencoesFederais = round2((valorPis ?? 0) + (valorCofins ?? 0) + (valorCsll ?? 0));
+  const totalRetencoesFederais = round2(
+    (valorPis ?? 0) +
+      (valorCofins ?? 0) +
+      (valorCsll ?? 0) +
+      (valorInss ?? 0) +
+      (valorIrrf ?? 0),
+  );
 
   const valorLiquido = round2(
-    valorServico - totalRetencoesFederais - (issRetido ? issValor : 0),
+    valorServico -
+      (descontoIncondicionado ?? 0) -
+      totalRetencoesFederais -
+      (issRetido ? issValor : 0),
   );
 
   return {
