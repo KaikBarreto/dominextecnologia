@@ -725,8 +725,10 @@ export function PdvPreorderDetail({
   const primaryDisabled =
     Boolean(busyAction) ||
     lines.length === 0 ||
-    (canForward && (dirty || !preorder?.target_terminal_id)) ||
-    (canCreateOrder && (dirty || missingPrices > 0));
+    (!shouldSave && (
+      (canForward && (dirty || !preorder?.target_terminal_id)) ||
+      (canCreateOrder && (dirty || missingPrices > 0))
+    ));
 
   async function runPrimaryAction() {
     if (shouldSave) {

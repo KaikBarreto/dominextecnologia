@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { derivePdvAfterSaleAccess, getPdvExchangeOrderCandidates, getPdvVoucherOrderCandidates, isPdvAfterSaleFeatureEnabled, mapPdvAfterSaleError, projectPdvAfterSaleWorkspace, projectPdvVoucherSearch, stablePdvAfterSaleAttempt } from './usePdvAfterSale';
+import { describe, expect, it, vi } from 'vitest';
+vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc: vi.fn() } }));
+import { derivePdvAfterSaleAccess, getPdvExchangeOrderCandidates, getPdvVoucherOrderCandidates, isPdvAfterSaleFeatureEnabled, mapPdvAfterSaleError, projectPdvAfterSaleWorkspace, projectPdvResidualAfterSale, projectPdvVoucherSearch, stablePdvAfterSaleAttempt } from './usePdvAfterSale';
 
 const workspacePayload = {
   order: { order_id: 'order-1', order_number: 1042, customer_id: 'customer-1', status: 'entregue' },
@@ -95,5 +96,47 @@ describe('W5-02 pós-venda', () => {
   it.each(['code=pdv_voucher_customer_inactive', 'CODE=PDV_VOUCHER_CUSTOMER_INACTIVE'])('orienta a revisar o cliente inativo sem expor o detalhe interno (%s)', details => {
     expect(mapPdvAfterSaleError({ code: '23514', details, message: 'public.pdv_guard_voucher_active_customer_v2' }).message)
       .toBe('O cliente deste voucher está inativo. Revise o cadastro antes de continuar.');
+  });
+});
+
+const residualPayload = () => ({ cancellation_id: 'cancel-1', order_id: 'order-1', source_kind: 'order_residual_cancellation_v3', occurred_on: '2026-11-15', reason: 'Desistência', residual_amount: 65, unallocated_amount: 0, financial_status: 'allocated', dispositions: [{ disposition_kind: 'receivable_reduction', amount: 50 }, { disposition_kind: 'customer_credit', amount: 15 }], vouchers: [], refunds: [] });
+describe('projeção separada dos itens não retirados', () => {
+  it('preserva compatibilidade optional/null sem transformar cancelamento em devolução', () => {
+    expect(projectPdvAfterSaleWorkspace(workspacePayload).residualCancellation).toBeNull();
+    expect(projectPdvResidualAfterSale(null, 'order-1')).toBeNull();
+    const result = projectPdvAfterSaleWorkspace({ ...workspacePayload, returns: [], residual_cancellation: residualPayload() });
+    expect(result.returns).toEqual([]);
+    expect(result.residualCancellation).toMatchObject({ reductionAmount: 50, creditedAmount: 15 });
+  });
+  it('não inventa elegibilidade/status/valor emitido no reader antigo', () => {
+    const result = projectPdvResidualAfterSale({ ...residualPayload(), vouchers: [{ voucher_id: 'v1', public_code: 'DV-123', balance: 10, expires_on: null }], refunds: [{ refund_id: 'r1', amount: 5, method: 'pix', status: 'pending' }] }, 'order-1');
+    expect(result?.vouchers[0]).toMatchObject({ status: null, issuedAmount: null, canReverse: false, eligibilityKnown: false });
+    expect(result?.refunds[0]).toMatchObject({ canConfirm: false, canReverse: false, eligibilityKnown: false });
+  });
+  it.each(['pending', 'settled', 'reversed'])('preserva estado real %s e elegibilidade publicada', status => {
+    const refund = { refund_id: 'r1', amount: 15, method: 'pix', status, requested_on: '2026-11-15', can_confirm: status === 'pending', can_reverse: status === 'settled', requires_confirmation_reference: true };
+    expect(projectPdvResidualAfterSale({ ...residualPayload(), refunds: [refund] }, 'order-1')?.refunds[0]).toMatchObject({ status, canConfirm: status === 'pending', canReverse: status === 'settled', eligibilityKnown: true });
+  });
+  it('preserva pendência depois de estorno sem confundir com conclusão financeira', () => {
+    expect(projectPdvResidualAfterSale({ ...residualPayload(), financial_status: 'pending_disposition', unallocated_amount: 15 }, 'order-1')).toMatchObject({ financialStatus: 'pending_disposition', unallocatedAmount: 15 });
+  });
+  it('nega origem cruzada, valores/flags/status inválidos', () => {
+    for (const patch of [{ order_id: 'other' }, { source_kind: 'return' }, { residual_amount: 65.001 }, { unallocated_amount: 1 }, { vouchers: [{ voucher_id: 'v', public_code: 'DV-1', balance: 15, expires_on: null, issued_amount: 15, status: 'active', can_reverse: 'yes' }] }]) expect(() => projectPdvResidualAfterSale({ ...residualPayload(), ...patch }, 'order-1')).toThrow();
+  });
+});
+
+describe('privacidade do histórico residual sem view', () => {
+  it('mascara todos os campos financeiros com null e arrays vazios, sem zero fictício', () => {
+    const result = projectPdvResidualAfterSale({ ...residualPayload(), access_masked: true,
+      residual_amount: null, unallocated_amount: null, financial_plan: null, financial_status: null,
+      dispositions: [], vouchers: [], refunds: [] }, 'order-1');
+    expect(result).toMatchObject({ cancellationId: 'cancel-1', accessMasked: true, residualAmount: null,
+      unallocatedAmount: null, reductionAmount: null, creditedAmount: null, financialStatus: null, vouchers: [], refunds: [] });
+  });
+  it('não reprojeta campos financeiros adicionais de DTO mascarado e rejeita flag ambígua', () => {
+    const masked = projectPdvResidualAfterSale({ ...residualPayload(), access_masked: true,
+      vouchers: [{ public_code: 'SEGREDO', balance: 15 }], financial_plan: { payment: 'SEGREDO' } }, 'order-1');
+    expect(JSON.stringify(masked)).not.toContain('SEGREDO');
+    expect(() => projectPdvResidualAfterSale({ ...residualPayload(), access_masked: 'true' }, 'order-1')).toThrow();
   });
 });

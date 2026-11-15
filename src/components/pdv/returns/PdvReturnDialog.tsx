@@ -44,8 +44,11 @@ export function PdvReturnDialog({ open, onOpenChange, workspace, canBackdate, on
   const [financialMode, setFinancialMode] = useState<FinancialMode>(workspace.receivables.length ? 'reduce' : 'credit');
   const [receivableId, setReceivableId] = useState(workspace.receivables[0]?.id ?? '');
   const [reductionAmount, setReductionAmount] = useState(0);
-  const [completed, setCompleted] = useState(false);
+  const [confirmedSummary, setConfirmedSummary] = useState<{ itemCount: number; total: number } | null>(null);
   const attempt = useRef<PdvStableAttempt | null>(null);
+  const session = useRef<{ open: boolean; orderId: string } | null>(null);
+  const generation = useRef(0);
+  const mounted = useRef(false);
 
   const destinationStocks = useMemo(() => workspace.stocks.filter((stock) => stock.destination === destination), [destination, workspace.stocks]);
   const total = useMemo(() => calculatePdvReturnTotal(workspace.items, quantities), [quantities, workspace.items]);
@@ -56,6 +59,20 @@ export function PdvReturnDialog({ open, onOpenChange, workspace, canBackdate, on
   const creditAmount = financialMode === 'reduce' ? Math.max(0, total - effectiveReduction) : Math.max(0, total - effectiveReduction);
 
   useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      generation.current += 1;
+    };
+  }, []);
+
+  useEffect(() => {
+    // Refetching the same order must preserve both the draft and its confirmed summary.
+    if (session.current?.open === open && session.current.orderId === workspace.orderId) return;
+    session.current = { open, orderId: workspace.orderId };
+    generation.current += 1;
+    setConfirmedSummary(null);
+    attempt.current = null;
     if (!open) return;
     const defaultDestination = workspace.stocks.some((stock) => stock.destination === 'saleable') ? 'saleable' : 'quarantine';
     const defaultStock = workspace.stocks.find((stock) => stock.destination === defaultDestination);
@@ -67,8 +84,6 @@ export function PdvReturnDialog({ open, onOpenChange, workspace, canBackdate, on
     setFinancialMode(workspace.receivables.length ? 'reduce' : 'credit');
     setReceivableId(workspace.receivables[0]?.id ?? '');
     setReductionAmount(0);
-    setCompleted(false);
-    attempt.current = null;
   }, [open, workspace]);
 
   useEffect(() => {
@@ -99,26 +114,35 @@ export function PdvReturnDialog({ open, onOpenChange, workspace, canBackdate, on
   const canSubmit = lines.length > 0 && reason.trim().length > 0 && occurredOn.length === 10 && (!hasMaterial || Boolean(stockId)) && !invalidFinancial;
 
   async function submit() {
+    const submissionGeneration = generation.current;
+    const submittedSummary = { itemCount: lines.length, total };
+    const isCurrentSubmission = () => mounted.current && generation.current === submissionGeneration;
     const payload = { orderId: workspace.orderId, lines, dispositions, occurredOn, reason: reason.trim() };
     const signature = JSON.stringify(payload);
     attempt.current = stablePdvReturnAttempt(attempt.current, signature, () => crypto.randomUUID());
     try {
-      await mutation.mutateAsync({ ...payload, attemptId: attempt.current.id });
-      setCompleted(true);
+      const result = await mutation.mutateAsync({ ...payload, attemptId: attempt.current.id });
+      if (!isCurrentSubmission()) return;
+      setConfirmedSummary({
+        ...submittedSummary,
+        total: typeof result.commercialTotal === 'number' && Number.isFinite(result.commercialTotal) && result.commercialTotal >= 0
+          ? result.commercialTotal : submittedSummary.total,
+      });
       onCompleted?.();
       toast({ title: 'Devolução registrada', description: 'O estoque, o saldo do cliente e o histórico foram atualizados.' });
     } catch (error) {
+      if (!isCurrentSubmission()) return;
       toast({ title: 'Devolução não registrada', description: error instanceof Error ? error.message : 'Tente novamente.', variant: 'destructive' });
     }
   }
 
-  if (completed) {
+  if (confirmedSummary) {
     return <ResponsiveDialog className="pdv-dialog" drawerClassName="pdv-dialog" open={open} onOpenChange={onOpenChange} title="Devolução confirmada" description="O registro comercial foi concluído." footer={<Button className="w-full sm:w-auto" onClick={() => onOpenChange(false)}>Concluir</Button>}>
       <div className="space-y-4 py-3">
         <div className="rounded-xl bg-success p-5 text-success-foreground">
           <CheckCircle2 className="mb-3 h-8 w-8" />
-          <p className="font-semibold">{lines.length} item(ns) devolvido(s)</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums">{money.format(total)}</p>
+          <p className="font-semibold">{confirmedSummary.itemCount} item(ns) devolvido(s)</p>
+          <p className="mt-1 text-2xl font-bold tabular-nums">{money.format(confirmedSummary.total)}</p>
         </div>
         <p className="text-sm text-muted-foreground">Esta devolução não estorna pagamento e não cria reembolso. O valor foi destinado ao saldo escolhido.</p>
       </div>

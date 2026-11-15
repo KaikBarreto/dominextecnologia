@@ -1,9 +1,22 @@
-# DomiLink
+# DomiLink®
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../src/assets/domilink/domilink-logo-reverse.svg">
+  <img src="../../src/assets/domilink/domilink-logo.svg" alt="DomiLink" width="230">
+</picture>
+
 
 DomiLink é a ponte **local** da Dominex entre o PDV web e impressoras, balanças e
-leitores. Esta primeira entrega prioriza um contrato seguro e drivers genéricos. Ela
+leitores. O serviço preserva o contrato seguro e adapta os drivers de impressão e protocolos ASCII do EcoTray. Ela
 não contém emissão fiscal, NFC-e, SAT, certificado ou qualquer reaproveitamento de
 protocolo fiscal em `localhost`.
+
+## Identidade visual
+
+O símbolo aprovado é o **01 Encaixe**, em uma cor, sem o detalhe quadrado verde.
+O nome da marca inclui ®. O kit contém versões horizontal, vertical, só símbolo e
+só texto, em SVG e PNG transparente, organizado por cor em
+`public/brand/domilink/`. No app, abra `/brand/domilink/` para baixar o pacote.
 
 ## Limites de segurança
 
@@ -28,6 +41,15 @@ de rede. Não exponha a porta por proxy, túnel, firewall, Docker publish ou bin
 
 Requer Python 3.9 ou mais recente.
 
+O pacote público de **fontes Python** fica em
+`/downloads/domilink/domilink-fontes-0.1.0.zip`; o SHA-256 está no
+`manifest.json` ao lado do ZIP. Ele não é um instalador nem um binário assinado.
+Extraia tudo e siga `LEIA-ME.txt`: criar venv, instalar dependências com internet,
+rodar `configurar.py --origin https://origem-exata-do-app` e iniciar manualmente.
+A configuração inicial contém somente periféricos virtuais e nunca sobrescreve
+um `config.toml` existente. O ZIP usa uma lista explícita de fontes; não inclui
+`.env`, caches, sessão, configuração real nem o ambiente Python desta máquina.
+
 ```bash
 cd services/domilink
 python3 -m venv .venv
@@ -46,6 +68,8 @@ Extras opcionais:
 python -m pip install -e '.[serial]'
 python -m pip install -e '.[escpos]'
 python -m pip install -e '.[all]'
+# Windows GDI/PDF, após revisar as licenças das dependências:
+python -m pip install -e '.[windows-print]'
 ```
 
 Não há instalação de daemon nesta entrega. Para produção, o empacotamento futuro deve
@@ -89,11 +113,11 @@ revogada. Operações de spooler/serial e sondagem rodam fora do event loop. Cor
 | Categoria | Primeira entrega | Estado |
 | --- | --- | --- |
 | PDF no macOS/Linux | spooler `lp`, fila padrão ou nome configurado | Implementado; validar fila/driver local |
-| PDF no Windows | associação de impressão do sistema | Implementado como baseline; validar aplicativo/driver |
+| PDF no Windows | GDI com raster cinza 288 DPI, fila/cópias e largura EcoTray | Extra `windows-print`; validar driver e licença PyMuPDF |
 | Térmica ESC/POS 58/80 | rede 9100, USB e serial via `python-escpos` | Opcional; depende de perfil e teste físico |
-| Balança serial | linhas ASCII configuráveis, peso em `kg`/`g`, comando de leitura/tara | Opcional; protocolo deve ser homologado |
+| Balança serial | UPX EA-32 tipos 0–3, Toledo ASCII, Filizola ASCII, generic e line legado | Perfis offline testados; sem homologação física |
 | Leitor USB/HID | dispositivo atua como teclado no campo focado do PDV | Sem driver DomiLink; comportamento recomendado |
-| Leitor serial | uma leitura por linha via `pyserial` | Opcional; depende da configuração física |
+| Leitor serial | frames CR/LF/ETX, fragmentação e múltiplas leituras via `pyserial` | Opcional; depende da configuração física |
 | Câmera/QR | responsabilidade do app web/PWA via câmera do dispositivo | Fora do utilitário local |
 | Virtual | impressora, balança e leitor sem hardware | Completo para integração/teste |
 | Fiscal/NFC-e/SAT | nenhuma função | Explicitamente fora do escopo |
@@ -125,7 +149,8 @@ ruff check .
 mypy src
 ```
 
-Os testes não abrem porta, não acessam hardware e não imprimem documentos. Para uma
+Os testes não acessam hardware e não imprimem documentos. O teste PTY abre somente
+uma porta serial virtual do SO; rede e USB usam socket/backend simulados. Para uma
 homologação física futura, use uma bancada separada e registre fabricante, modelo,
 firmware, conexão, driver do SO, perfil, página de código e resultados de timeout/
 reconexão.
@@ -140,4 +165,62 @@ reconexão.
 - **Backup:** não há banco local a copiar. Preserve apenas a configuração local sem
   segredos; documentos temporários do spooler são removidos após o envio.
 - **Limites conhecidos:** fila e jobs ainda são em memória; streaming SSE é por processo;
-  descoberta automática e atualização/empacotamento ficam para uma etapa posterior.
+  descoberta ativa e atualização/empacotamento ficam para uma etapa posterior.
+
+## Drivers reaproveitados do EcoTray
+
+A origem e a comparação entre repositórios estão em
+[sincronização EcoTray](../../docs/integrations/domilink-ecotray.md).
+[Proveniência local](ECOTRAY_PROVENANCE.md) descreve as adaptações e licenças.
+Nenhum arquivo de configuração, segredo, WebSocket aberto ou funcionalidade fiscal
+foi copiado. O HTTP continua restrito a loopback, Origin permitida e token pareado.
+
+Para descobrir portas e filas sem abrir a conexão nem imprimir:
+
+```bash
+domilink --list-ports
+domilink --list-printers
+```
+
+Esses comandos mostram informações locais somente no terminal do operador, sem
+iniciar o servidor. `scale_candidate` é uma heurística de descrição do EcoTray,
+não uma identificação garantida. A escolha de porta e baudrate é explícita no TOML;
+valores frequentes: 9600, 4800, 19200, 2400 e 38400. A descoberta não envia ENQ,
+não varre baudrates e não grava em dispositivos desconhecidos.
+
+O perfil `upx` preserva STX e terminador e solicita peso com ENQ a cada 280 ms.
+`auto` escolhe somente o parser e não envia comandos. `line` mantém o contrato
+antigo (inteiro sem unidade significa kg). Em `generic` e em Filizola sem unidade,
+inteiros significam gramas, inclusive abaixo de 1000; unidade explícita prevalece.
+Os perfis adaptados confirmam `stable: true` somente quando há `ST` explícito;
+sem indicador de estabilidade retornam `false`. Não há suporte a BCD Filizola.
+Tara só é anunciada quando existe `tare_command` configurado conforme o manual.
+
+O leitor serial exige CR, LF ou ETX e preserva scans recebidos em lote. Não retorna
+código parcial/truncado em timeout nem aceita controle interno; GS1 com separador
+ASCII de grupo requer um perfil específico futuro. Leitores USB/HID que atuam como
+teclado continuam independentes do DomiLink.
+
+No Windows, `system-pdf` usa o mesmo caminho raster/GDI do EcoTray e respeita fila,
+cópias, largura imprimível e offsets do driver. Drivers `Generic / Text Only` são
+recusados antes de rasterizar. São aceitas até 100 páginas, até 40 milhões de pixels
+por página; o deadline é verificado entre páginas, sem interromper chamadas nativas
+GDI já em curso. Em macOS/Linux, CUPS continua recebendo PDF diretamente, com
+remoção do temporário também em falha/timeout. Confirmação do spooler significa
+que ele aceitou o documento, não confirmação de papel impresso.
+
+Jobs ativos nunca são descartados por retenção. Após terminar, job e chave de
+idempotência ficam por pelo menos 3600 segundos; atingir `job_retention` devolve
+HTTP 503 `print_queue_full`, com `Retry-After: 30`, sem criar outro trabalho.
+Replay da mesma chave continua aceito com fila cheia. Após expiração da retenção
+ou reinício do processo, a chave deixa de garantir deduplicação; não repetir
+impressões antigas automaticamente. A janela é local ao processo.
+
+O status do job só pode ser consultado pelo pareamento que o criou; rotação de
+token preserva esse escopo. Um novo pareamento não herda jobs da sessão anterior.
+USB ESC/POS usa timeout finito em milissegundos e precisa do extra `escpos`
+(inclui PyUSB) mais backend nativo libusb/driver permitido pelo SO. Serial ESC/POS
+limita também a escrita; o deadline é conferido entre cópias e não cancela uma
+chamada nativa que já está em curso. Falhas nativas viram erros seguros sem
+mensagem do driver. Sondagem verifica somente equipamentos configurados,
+sem enviar conteúdo ou imprimir.

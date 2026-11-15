@@ -422,3 +422,11 @@ verify_jwt = false
 # Authorization: Bearer <CRON_SECRET>; não aceita sessão de usuário.
 [functions.process-notification-deliveries]
 verify_jwt = false
+
+# O handler verifica JWT, empresa, módulo e permissão fiscal.
+[functions.fiscal-goods-document]
+verify_jwt = false
+
+# O handler verifica JWT, empresa, módulo e permissão fiscal.
+[functions.fiscal-goods-settings]
+verify_jwt = false

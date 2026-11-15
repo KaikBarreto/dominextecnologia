@@ -13,7 +13,7 @@ vi.mock('@/hooks/usePdvReturns', () => ({ usePdvReturnsFeature: () => ({ data: t
 vi.mock('@/hooks/usePdvAfterSale', () => ({ usePdvAfterSaleFeature: () => ({ data: true }), derivePdvAfterSaleAccess: () => ({ enabled: true, canView: state.access }) }));
 vi.mock('@/hooks/usePdvOrdersList', () => ({ usePdvOrderWorkspace: () => state.detail }));
 vi.mock('@/hooks/usePdvReceiptSettings', () => ({ usePdvReceiptSettings: () => ({ data: { defaultFormat: '80mm' } }) }));
-vi.mock('@/components/pdv/receipt/PdvOrderReceiptButton', () => ({ openPdvOrderReceipt: vi.fn() }));
+vi.mock('@/components/pdv/receipt/PdvOrderReceiptButton', () => ({ usePdvOrderReceiptOpener: () => ({ open: vi.fn(), isCurrent: () => true }) }));
 vi.mock('@/hooks/usePdvCustomerHistory', () => ({ usePdvCustomerHistory: () => ({ data: { rows: [{ id: 'order-1', number: 27, total: 50, created_at: '2026-11-14T12:00:00Z' }], total: 1 }, isPending: false, isError: false }) }));
 vi.mock('@/hooks/usePdvCustomerPaymentOptions', () => ({ usePdvCustomerPaymentOptions: () => ({ data: { vouchers: [{ id: 'v1', code: 'ATIVO', balance: 50, expiresOn: null }, { id: 'v2', code: 'VENCIDO', balance: 40, expiresOn: '2000-01-01' }] }, isPending: false, isError: false }) }));
 vi.mock('@/components/customers/CustomerAvatar', () => ({ CustomerAvatar: () => <span>Avatar</span> }));

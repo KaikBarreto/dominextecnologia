@@ -87,7 +87,7 @@ export function FinancialMovementSection({ transactions, categories, type, onCre
       )}
 
       <Card className="border-0 shadow-lg">
-        <CardHeader className="border-b bg-muted/30 py-3">
+        <CardHeader className="border-b bg-white py-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base font-semibold">{type === 'income' ? 'Receitas' : 'Despesas'}</CardTitle>
             {/* Botão inline só no desktop. Mobile usa FAB no parent. */}

@@ -1,3 +1,4 @@
+import { FINANCE_PDV_RECONCILIATION_ROOT } from '@/lib/financePdvReconciliation';
 import { useMemo } from 'react';
 import type { QueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
@@ -33,7 +34,8 @@ export function pdvAuthorizedQueryScope(input: {
 
 export function usePdvAuthorizedQueryScope() {
   const { user, profile, permissions, roles, hasPermissionRecord, profileLoading, loading } = useAuth();
-  const companyId = profile?.company_id ?? null;
+  const profileConfirmed = profile?.user_id === user?.id && profile?.is_active === true;
+  const companyId = profileConfirmed ? profile?.company_id ?? null : null;
   const ready = Boolean(user?.id && companyId && !profileLoading && !loading);
   const key = useMemo(() => [...pdvAuthorizedQueryScope({
     companyId,
@@ -57,6 +59,10 @@ export function usePdvAuthorizedQueryScope() {
  */
 export async function invalidatePdvReportCaches(queryClient: QueryClient) {
   await Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['pdv-customer-credit'] }),
+    queryClient.invalidateQueries({ queryKey: ['pdv-customer-payment-options'] }),
+    queryClient.invalidateQueries({ queryKey: ['pdv-supplier-credit'] }),
+    queryClient.invalidateQueries({ queryKey: FINANCE_PDV_RECONCILIATION_ROOT }),
     queryClient.invalidateQueries({ queryKey: PDV_REPORTS_QUERY_ROOT }),
     queryClient.invalidateQueries({ queryKey: MATERIAL_PURCHASE_REPORT_QUERY_KEY }),
     queryClient.invalidateQueries({ queryKey: INVENTORY_ABC_REPORT_QUERY_KEY }),

@@ -38,6 +38,25 @@ describe('invalidação canônica dos relatórios PDV', () => {
     expect(invalidate).toHaveBeenCalledWith({ queryKey: INVENTORY_ABC_REPORT_QUERY_KEY });
   });
 
+  it('atualiza dívida canônica depois dos mesmos eventos de venda, recebimento e devolução', async () => {
+    const client=new QueryClient();
+    const creditKey=['pdv-customer-credit','company-A','user-A','customer-A'];
+    client.setQueryData(creditKey,{creditLimit:1000,debt:30});
+    expect(client.getQueryState(creditKey)?.isInvalidated).toBe(false);
+    await invalidatePdvReportCaches(client);
+    expect(client.getQueryState(creditKey)?.isInvalidated).toBe(true);
+    client.clear();
+  });
+
+  it('atualiza saldo e vouchers usados no pagamento depois do pós-venda', async () => {
+    const client=new QueryClient();
+    const keys=[['pdv-customer-payment-options','customer-A'],['pdv-supplier-credit','supplier-A']];
+    keys.forEach(key=>client.setQueryData(key,{availableCredit:0}));
+    await invalidatePdvReportCaches(client);
+    keys.forEach(key=>expect(client.getQueryState(key)?.isInvalidated).toBe(true));
+    client.clear();
+  });
+
   it('liga todas as mutations financeiras da venda e dos caixas ao helper compartilhado', () => {
     const sale = readFileSync('src/hooks/usePdvSale.ts', 'utf8');
     const legacyCash = readFileSync('src/hooks/usePdvCashRegister.ts', 'utf8');

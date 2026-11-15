@@ -93,8 +93,8 @@ export interface Customer {
   is_service_customer?: boolean;
   is_store_customer?: boolean;
   // Limite de fiado da loja (módulo PDV). `null`/ausente = sem limite definido
-  // (a RPC de venda avisa). O SALDO DEVEDOR nunca vive aqui: é a soma de
-  // `customer_credit_ledger` (ver usePdvCustomerCredit).
+  // (a RPC de venda avisa). O saldo devedor vem do resumo canônico de
+  // recebíveis e créditos no servidor (ver usePdvCustomerCredit).
   credit_limit?: number | null;
   created_at: string;
   updated_at: string;

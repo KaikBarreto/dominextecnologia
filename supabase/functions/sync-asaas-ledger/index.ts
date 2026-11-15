@@ -12,21 +12,8 @@
 //                  - admin_financial_transaction_id = id desse lançamento
 //                NÃO cria lançamento novo (o webhook já criou).
 //
-//   DESCONHECIDO → sem paymentId, ou paymentId que NÃO casa (ex: PIX recebido fora da
-//                cobrança, PIX enviado, transferência, saque). Nesse caso:
-//                  - status = 'pending_categorization'
-//                  - category = other_income (credit) / other_expense (debit)
-//                  - CRIA um lançamento PROVISÓRIO em admin_financial_transactions
-//                    (income/expense conforme direction, category other_income/
-//                    other_expense, asaas_transaction_id = id do movimento, ON CONFLICT
-//                    DO NOTHING) e linka admin_financial_transaction_id.
-//                Assim o movimento aparece no financeiro como "Outras Receitas/Despesas"
-//                até o admin categorizá-lo (Fase C).
-//
-// Idempotência TOTAL (rodar 2x não duplica):
-//   - ledger_asaas.asaas_transaction_id UNIQUE → UPSERT onConflict.
-//   - lançamento provisório por admin_financial_transactions.asaas_transaction_id
-//     (índice UNIQUE parcial) → upsert ignoreDuplicates.
+//   DESCONHECIDO → permanece no ledger para revisão, sem gerar receita provisória.
+// A RPC usa a identidade do movimento para adotar o registro criado pelo webhook.
 //
 // Janela de sincronização (last_sync_at): Dominex NÃO tem tabela genérica de config
 // (não existe app_config/admin_config). Em vez de criar uma tabela só pra um cursor
@@ -37,16 +24,12 @@
 // Auth (regra-lei Dominex #6): super_admin (botão "Sincronizar" da tela) OU cron via
 // header `x-cron-secret` == CRON_SECRET (pronto pra agendamento futuro).
 //
-// Cliente Supabase: service_role (grava ledger_asaas + lançamentos provisórios; o RLS
+// Cliente Supabase: service_role (grava ledger_asaas e tarifas identificadas; o RLS
 // do ledger é admin-only, então a escrita é por service_role).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCors } from "../_shared/cors.ts";
 import { asaas, buildQuery, AsaasConfigError, AsaasApiError } from "../_shared/asaas-client.ts";
-
-// Categorias guarda-chuva (existem em admin_financial_categories).
-const CAT_OTHER_INCOME = "other_income";
-const CAT_OTHER_EXPENSE = "other_expense";
 
 // Lookback padrão quando o ledger está vazio (primeira sincronização).
 const DEFAULT_LOOKBACK_DAYS = 90;
@@ -64,6 +47,7 @@ interface AsaasFinancialTx {
   date?: string;       // "YYYY-MM-DD" (sem hora no extrato)
   paymentId?: string | null;
   transferId?: string | null;
+  billId?: string | null;
   balance?: number;
 }
 
@@ -83,6 +67,30 @@ function asaasDateToIsoBRT(dateStr: string | undefined | null): string {
 /** Direção a partir do sinal do valor do extrato Asaas (negativo = débito/saída). */
 function directionOf(value: number): "credit" | "debit" {
   return Number(value) < 0 ? "debit" : "credit";
+}
+
+function amountsMatch(a: number | string | null | undefined, b: number): boolean {
+  return Math.abs(Number(a) - b) < 0.005;
+}
+
+/**
+ * O paymentId sozinho NÃO identifica a linha: o mesmo pagamento pode ter a
+ * receita e uma ou mais tarifas. Só oferecemos a chave do webhook compatível
+ * com a família do evento do extrato; tipo/direção/valor ainda são validados.
+ */
+function knownWebhookKeys(tx: AsaasFinancialTx, direction: "credit" | "debit"): string[] {
+  if (!tx.paymentId) return [];
+  const event = String(tx.type ?? "").toUpperCase();
+  if (direction === "credit" && ["PAYMENT_RECEIVED", "PAYMENT_CONFIRMED"].includes(event)) {
+    return [tx.paymentId];
+  }
+  if (direction === "debit" && event.includes("ANTICIPATION") && event.endsWith("_FEE")) {
+    return [`${tx.paymentId}_anticipation_fee`];
+  }
+  if (direction === "debit" && event === "PAYMENT_FEE") {
+    return [`${tx.paymentId}_fee`];
+  }
+  return [];
 }
 
 /** Puxa TODO o extrato Asaas no intervalo (paginação por offset). */
@@ -144,7 +152,7 @@ Deno.serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } },
     );
 
-    // ===== Auth: cron (x-cron-secret) OU super_admin =====
+    // ===== Auth: cron (x-cron-secret) OU permissão financeira de lançamento =====
     const cronSecret = (Deno.env.get("CRON_SECRET") || "").trim();
     const providedCron = (req.headers.get("x-cron-secret") || "").trim();
     const isCron = cronSecret.length > 0 && providedCron === cronSecret;
@@ -160,12 +168,15 @@ Deno.serve(async (req) => {
       if (authError || !user) {
         return json({ error: "Token inválido." }, 401);
       }
-      const { data: isSuperAdmin } = await supabase.rpc("has_role", {
+      const { data: canManage, error: permissionError } = await supabase.rpc("can_manage_admin_financial", {
         _user_id: user.id,
-        _role: "super_admin",
       });
-      if (!isSuperAdmin) {
-        return json({ error: "Acesso negado. Apenas o administrador master." }, 403);
+      if (permissionError) {
+        console.error("[sync-asaas-ledger] guarda financeira indisponível:", permissionError.message);
+        return json({ error: "Não foi possível validar a permissão financeira." }, 503);
+      }
+      if (!canManage) {
+        return json({ error: "Permissão de lançamento financeiro necessária." }, 403);
       }
       callerId = user.id;
     }
@@ -181,16 +192,33 @@ Deno.serve(async (req) => {
     // ===== Extrato Asaas =====
     const extract = await fetchAsaasExtract(startDate, finishDate);
 
-    // Pré-carrega os lançamentos do webhook que casam com algum paymentId do extrato.
-    // Conhecido = admin_financial_transactions.asaas_transaction_id IN (paymentId, paymentId+'_fee').
+    // O sync só é fonte para linhas ainda automáticas/pendentes. Uma decisão
+    // humana não pode ser sobrescrita por um replay do mesmo ftn_.
+    const existingLedgerStatus = new Map<string, string>();
+    const extractIds = [...new Set(extract.map((tx) => tx.id).filter(Boolean))];
+    const LEDGER_CHUNK = 100;
+    for (let i = 0; i < extractIds.length; i += LEDGER_CHUNK) {
+      const { data: rows, error } = await supabase
+        .from("ledger_asaas")
+        .select("asaas_transaction_id, status")
+        .in("asaas_transaction_id", extractIds.slice(i, i + LEDGER_CHUNK));
+      if (error) throw new Error(`falha ao pré-carregar ledger: ${error.message}`);
+      for (const row of rows ?? []) {
+        if (row.asaas_transaction_id) existingLedgerStatus.set(row.asaas_transaction_id, String(row.status ?? ""));
+      }
+    }
+
+    // Pré-carrega as possíveis chaves do webhook. A decisão final abaixo também
+    // confere família, direção e valor — paymentId por si só não é suficiente.
     const candidateIds = new Set<string>();
     for (const tx of extract) {
       if (tx.paymentId) {
         candidateIds.add(tx.paymentId);
         candidateIds.add(`${tx.paymentId}_fee`);
+        candidateIds.add(`${tx.paymentId}_anticipation_fee`);
       }
     }
-    const knownByAsaasId = new Map<string, { id: string; category: string | null }>();
+    const knownByAsaasId = new Map<string, { id: string; category: string | null; type: string; amount: number }>();
     if (candidateIds.size > 0) {
       const ids = Array.from(candidateIds);
       // Quebra em lotes pra não estourar limite do .in()
@@ -199,11 +227,16 @@ Deno.serve(async (req) => {
         const slice = ids.slice(i, i + CHUNK);
         const { data: rows } = await supabase
           .from("admin_financial_transactions")
-          .select("id, category, asaas_transaction_id")
+          .select("id, category, type, amount, asaas_transaction_id")
           .in("asaas_transaction_id", slice);
         for (const r of rows ?? []) {
           if (r.asaas_transaction_id) {
-            knownByAsaasId.set(r.asaas_transaction_id, { id: r.id, category: r.category ?? null });
+            knownByAsaasId.set(r.asaas_transaction_id, {
+              id: r.id,
+              category: r.category ?? null,
+              type: r.type,
+              amount: Number(r.amount),
+            });
           }
         }
       }
@@ -213,21 +246,26 @@ Deno.serve(async (req) => {
     let known = 0;
     let unknown = 0;
     let failed = 0;
+    let manuallySkipped = 0;
 
     for (const tx of extract) {
       try {
+        if (existingLedgerStatus.get(tx.id) === "manually_categorized") {
+          manuallySkipped++;
+          continue;
+        }
         const direction = directionOf(tx.value);
         const amount = Math.abs(Number(tx.value));
         const occurredAt = asaasDateToIsoBRT(tx.date);
         const paymentId = tx.paymentId ?? null;
         const description = tx.description ?? null;
 
-        // Tenta casar o movimento com um lançamento do webhook (CONHECIDO).
-        // Casa pelo paymentId direto OU pela variante '_fee' (tarifa do webhook).
-        let matched: { id: string; category: string | null } | undefined;
-        if (paymentId) {
-          matched = knownByAsaasId.get(paymentId) ?? knownByAsaasId.get(`${paymentId}_fee`);
-        }
+        // Tenta casar o movimento com lançamento do webhook. Nunca usa o
+        // paymentId cru para tarifa: isso era o que ligava PAYMENT_FEE à venda.
+        const expectedType = direction === "credit" ? "income" : "expense";
+        const matched = knownWebhookKeys(tx, direction)
+          .map((key) => knownByAsaasId.get(key))
+          .find((candidate) => !!candidate && candidate.type === expectedType && amountsMatch(candidate.amount, amount));
 
         let status: string;
         let category: string | null;
@@ -239,41 +277,11 @@ Deno.serve(async (req) => {
           category = matched.category; // sale / renewal / asaas_fee
           adminTxId = matched.id;
         } else {
-          // ===== DESCONHECIDO: cria lançamento provisório "Outras Receitas/Despesas". =====
+          // Movimentos sem vínculo ficam na revisão. Não cria receita paralela
+          // à venda que o webhook pode estar processando simultaneamente.
           status = "pending_categorization";
-          category = direction === "credit" ? CAT_OTHER_INCOME : CAT_OTHER_EXPENSE;
-
-          const provisional = {
-            type: direction === "credit" ? "income" : "expense",
-            category,
-            amount,
-            description:
-              description ??
-              (direction === "credit" ? "Outras receitas (Asaas)" : "Outras despesas (Asaas)"),
-            transaction_date: occurredAt,
-            asaas_transaction_id: tx.id,
-            reference_type: "asaas_ledger_uncategorized",
-            created_by: callerId, // null quando vem de cron
-          };
-
-          // Idempotente: asaas_transaction_id é UNIQUE parcial → ignora duplicado.
-          const { error: insErr } = await supabase
-            .from("admin_financial_transactions")
-            .upsert(provisional, {
-              onConflict: "asaas_transaction_id",
-              ignoreDuplicates: true,
-            });
-          if (insErr) {
-            console.error(`[sync-asaas-ledger] falha ao criar lançamento provisório ${tx.id}:`, insErr.message);
-          }
-
-          // Recupera o id do lançamento (recém-criado OU pré-existente) pra linkar no ledger.
-          const { data: provRow } = await supabase
-            .from("admin_financial_transactions")
-            .select("id")
-            .eq("asaas_transaction_id", tx.id)
-            .maybeSingle();
-          adminTxId = provRow?.id ?? null;
+          category = null;
+          adminTxId = null;
         }
 
         // ===== Espelha no ledger_asaas (UPSERT idempotente por asaas_transaction_id) =====
@@ -281,6 +289,7 @@ Deno.serve(async (req) => {
           asaas_transaction_id: tx.id,
           asaas_event_type: tx.type ?? "UNKNOWN",
           asaas_payment_id: paymentId,
+          asaas_transfer_id: tx.transferId ?? tx.billId ?? null,
           direction,
           amount,
           occurred_at: occurredAt,
@@ -293,9 +302,7 @@ Deno.serve(async (req) => {
           updated_at: new Date().toISOString(),
         };
 
-        const { error: ledgerErr } = await supabase
-          .from("ledger_asaas")
-          .upsert(ledgerRow, { onConflict: "asaas_transaction_id" });
+        const { error: ledgerErr } = await supabase.rpc("record_admin_asaas_ledger", {p_entries:[ledgerRow],p_source:"sync"});
 
         if (ledgerErr) {
           failed++;
@@ -316,8 +323,9 @@ Deno.serve(async (req) => {
       ok: true,
       imported,
       known,            // movimentos já categorizados pelo webhook (venda/renovação/tarifa)
-      unknown,          // movimentos provisórios (Outras Receitas/Despesas)
+      unknown,          // movimentos sem vínculo, aguardando revisão
       failed,
+      manually_skipped: manuallySkipped,
       total_in_extract: extract.length,
       window: { startDate, finishDate },
       synced_at: new Date().toISOString(),

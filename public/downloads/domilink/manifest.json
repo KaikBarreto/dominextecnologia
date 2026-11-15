@@ -1,0 +1,13 @@
+{
+  "bytes": 93334,
+  "filename": "domilink-fontes-0.1.0.zip",
+  "hardware_validated": false,
+  "kind": "python-source",
+  "name": "DomiLink",
+  "requires_internet_for_install": true,
+  "requires_python": ">=3.9",
+  "sha256": "2ff0abc01a5920a3acc05a809255cfe3d7b03e290c8c5822aea4f704ac979c32",
+  "signed_installer": false,
+  "url": "/downloads/domilink/domilink-fontes-0.1.0.zip",
+  "version": "0.1.0"
+}

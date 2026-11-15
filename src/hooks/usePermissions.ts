@@ -95,6 +95,7 @@ export const SCREEN_PERMISSIONS = [
 // ATENÇÃO: ação continua valendo por conta própria mesmo com a tela desligada
 // (ex.: quem edita OS só pelo link de campo não precisa de `screen:service_orders`).
 export const FUNCTION_PERMISSIONS = [
+  { key: 'fn:emit_fiscal_goods', label: 'Emitir NF-e e NFC-e', description: 'Preparar, emitir, consultar e cancelar notas fiscais de mercadorias, inclusive no caixa. Exige o módulo Notas Fiscais.', group: 'Financeiro', category: 'financeiro', relatedScreen: 'screen:fiscal_notes' },
   { key: 'fn:complete_direct_sale', label: 'Concluir Venda Direta', description: 'Finalizar a venda do carrinho com pagamento, baixa de estoque e entrega imediata.', group: 'PDV e Loja', category: 'pdv', relatedScreen: 'screen:pdv' },
   { key: 'fn:edit_pdv_sales', label: 'Editar Vendas do PDV', description: 'Substituir uma venda já paga com estorno atômico de estoque e financeiro', group: 'PDV e Loja', category: 'pdv', relatedScreen: 'screen:pdv' },
   { key: 'fn:reopen_pdv_cash', label: 'Reabrir Caixa', description: 'Criar uma continuação auditável de um caixa fechado, sem apagar o fechamento anterior.', group: 'PDV e Loja', category: 'pdv', relatedScreen: 'screen:pdv_cash_history' },

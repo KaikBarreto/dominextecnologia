@@ -51,7 +51,9 @@ export function useAsaasBalance() {
     queryFn: async (): Promise<number> => {
       const { data, error } = await supabase.functions.invoke('get-asaas-balance');
       if (error) throw error;
-      return Number((data as { balance?: number })?.balance ?? 0);
+      const balance = (data as { balance?: number })?.balance;
+      if (balance == null || !Number.isFinite(Number(balance))) throw new Error('Saldo indisponível');
+      return Number(balance);
     },
     // Saldo muda devagar; evita martelar a API do Asaas.
     staleTime: 60_000,
@@ -60,28 +62,36 @@ export function useAsaasBalance() {
 }
 
 interface LedgerFilters {
+  direction?: LedgerDirection;
   /** Vazio/undefined = todos os status. */
   status?: LedgerStatus[];
+  page?: number;
+  from?: string;
+  to?: string;
 }
 
 /** Extrato espelhado do Asaas (`ledger_asaas`), mais recente primeiro. */
 export function useLedgerAsaas(filters: LedgerFilters = {}) {
   return useQuery({
     queryKey: [...LEDGER_KEY, filters],
-    queryFn: async (): Promise<LedgerAsaasItem[]> => {
+    refetchInterval:30_000,
+    queryFn: async (): Promise<{ items: LedgerAsaasItem[]; count: number }> => {
       let query = supabase
-        .from('ledger_asaas' as any)
-        .select('*')
-        .order('occurred_at', { ascending: false })
-        .limit(5000);
+        .from('admin_realized_asaas_movements')
+        .select('id,asaas_transaction_id,asaas_event_type,asaas_payment_id,direction,amount,occurred_at,description,category,status,source,admin_financial_transaction_id,company_id,created_at', { count: 'exact' })
+        .order('occurred_at', { ascending: false }).order('id', { ascending: false });
+      if (filters.direction) query=query.eq('direction',filters.direction);
+      if (filters.from) query = query.gte('occurred_at', filters.from+'T00:00:00-03:00');
+      if (filters.to) query = query.lte('occurred_at', filters.to+'T23:59:59.999999-03:00');
 
       if (filters.status?.length) {
         query = query.in('status', filters.status);
       }
 
-      const { data, error } = await query;
+      const page = filters.page ?? 0;
+      const { data, error, count } = await query.range(page*50,page*50+49);
       if (error) throw error;
-      return (data ?? []) as unknown as LedgerAsaasItem[];
+      return {items: (data ?? []) as unknown as LedgerAsaasItem[], count: count ?? 0};
     },
   });
 }
@@ -104,7 +114,8 @@ export function useSyncAsaasLedger() {
         body: opts?.fullSync ? { fullSync: true } : {},
       });
       if (error) throw error;
-      const r = (data ?? {}) as Partial<SyncResult>;
+      const r = (data ?? {}) as Partial<SyncResult> & {failed?: number};
+      if(Number(r.failed ?? 0)>0)throw new Error('A sincronização terminou com movimentos pendentes. Tente novamente.');
       return {
         imported: Number(r.imported ?? 0),
         known: Number(r.known ?? 0),
@@ -114,6 +125,8 @@ export function useSyncAsaasLedger() {
     onSuccess: ({ imported, known, unknown }) => {
       qc.invalidateQueries({ queryKey: LEDGER_KEY });
       qc.invalidateQueries({ queryKey: BALANCE_KEY });
+      qc.invalidateQueries({ queryKey: ['admin-cash-flow'] });
+      qc.invalidateQueries({ queryKey: ['admin-financial-transactions-all'] });
       if (imported === 0) {
         toast.success('Tudo em dia — nenhum lançamento novo no Asaas.');
       } else {
@@ -127,7 +140,11 @@ export function useSyncAsaasLedger() {
       }
     },
     onError: (e: any) => {
-      toast.error(e?.message || 'Não foi possível sincronizar com o Asaas.');
+      qc.invalidateQueries({queryKey:LEDGER_KEY});
+      qc.invalidateQueries({queryKey:BALANCE_KEY});
+      qc.invalidateQueries({queryKey:['admin-financial-transactions-all']});
+      qc.invalidateQueries({queryKey:['admin-cash-flow']});
+      toast.error('Não foi possível concluir toda a sincronização. Confira suas permissões e tente novamente.');
     },
   });
 }
@@ -152,20 +169,9 @@ interface CategorizePayload {
 export function useCategorizeLedgerItem() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ ledgerId, category, adminTransactionId }: CategorizePayload) => {
-      const { error: ledgerErr } = await supabase
-        .from('ledger_asaas' as any)
-        .update({ category, status: 'manually_categorized' })
-        .eq('id', ledgerId);
-      if (ledgerErr) throw ledgerErr;
-
-      if (adminTransactionId) {
-        const { error: txErr } = await supabase
-          .from('admin_financial_transactions' as any)
-          .update({ category })
-          .eq('id', adminTransactionId);
-        if (txErr) throw txErr;
-      }
+    mutationFn: async ({ ledgerId, category }: CategorizePayload) => {
+      const {error} = await supabase.rpc('admin_categorize_ledger', {p_ledger_id: ledgerId, p_category: category});
+      if(error)throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: LEDGER_KEY });
@@ -173,7 +179,18 @@ export function useCategorizeLedgerItem() {
       toast.success('Movimento categorizado.');
     },
     onError: (e: any) => {
-      toast.error(e?.message || 'Não foi possível categorizar o movimento.');
+      toast.error(e?.message?.includes('linked_movement_mismatch') ? 'O lançamento vinculado tem tipo ou valor incompatível. Confira o vínculo antes de classificar.' : 'Não foi possível categorizar. Confira a categoria e suas permissões.');
+    },
+  });
+}
+
+export function useAdminLedgerSummary() {
+  return useQuery({
+    queryKey: [...LEDGER_KEY, 'summary'],
+    queryFn: async (): Promise<{ balance: number; count: number; pending_count: number; last_imported_at: string | null }> => {
+      const { data, error } = await supabase.rpc('admin_ledger_summary');
+      if (error) throw error;
+      return data as unknown as { balance: number; count: number; pending_count: number; last_imported_at: string | null };
     },
   });
 }

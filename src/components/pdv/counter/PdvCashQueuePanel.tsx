@@ -1,3 +1,4 @@
+import { usePdvCustomerCredit } from '@/hooks/usePdvSale';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,7 +15,7 @@ import { useLocaleFormatters } from '@/lib/format/hooks';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { usePdvStageReceiptAuto } from '@/hooks/usePdvStageReceiptAuto';
-import { PdvOrderReceiptButton, openPdvOrderReceipt } from '@/components/pdv/receipt/PdvOrderReceiptButton';
+import { PdvOrderReceiptButton, usePdvOrderReceiptOpener } from '@/components/pdv/receipt/PdvOrderReceiptButton';
 import { useToast } from '@/hooks/use-toast';
 import { getPdvCashQueueCopy } from './pdvCashQueueCopy';
 import type { PdvAppliedVoucher } from '@/lib/pdv/sale-drafts';
@@ -29,8 +30,10 @@ export function PdvCashQueuePanel({ canCover, terminalId, sessionId, cashAccount
   const queue = usePdvCashQueue(sessionId, terminalId, canCover && capability.data?.counterEnabled === true);
   const cover = usePdvCoverOrder();
   const autoReceipt = usePdvStageReceiptAuto();
+  const receiptOpener = usePdvOrderReceiptOpener();
   const [completedOrderId, setCompletedOrderId] = useState<string | null>(null);
   const [selected, setSelected] = useState<PdvCashQueueRow | null>(null);
+  const customerCredit = usePdvCustomerCredit(selected?.customerId ?? null, canCover && capability.data?.counterEnabled === true);
   const [appliedVoucher, setAppliedVoucher] = useState<PdvAppliedVoucher | null>(null);
   const [voucherPickerOpen, setVoucherPickerOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -60,12 +63,13 @@ export function PdvCashQueuePanel({ canCover, terminalId, sessionId, cashAccount
     const signature = JSON.stringify({ orderId: selected.id, payments });
     if (!attempt.current || attempt.current.signature !== signature) attempt.current = { signature, id: crypto.randomUUID() };
     const orderId = selected.id;
-    const receiptAttempt = autoReceipt.prepare('sale');
+    const receiptAttempt = receiptOpener.guardAttempt(autoReceipt.prepare('sale'));
     try {
       const result = await cover.mutateAsync({ orderId, terminalId, cashSessionId: sessionId, cashAccountId, payments, attemptId: attempt.current.id });
+      if (!receiptOpener.isCurrent()) { receiptAttempt.cancel(); return; }
       setCompletedOrderId(orderId);
-      void receiptAttempt.commit(`sale:${orderId}`, (format, options) => openPdvOrderReceipt(orderId, format, { ...options, documentKind: cashierDeliveryEnabled ? 'sale' : 'pickup' }), result.idempotent === true);
-    } catch (error) { receiptAttempt.cancel(); throw error; }
+      void receiptAttempt.commit(`sale:${orderId}`, (format, options) => receiptOpener.open(orderId, format, { ...options, documentKind: cashierDeliveryEnabled ? 'sale' : 'pickup' }), result.idempotent === true);
+    } catch (error) { receiptAttempt.cancel(); if (receiptOpener.isCurrent()) throw error; return; }
     toast({ title: copy.successTitle, description: copy.successDescription });
     setSelected(null); setAppliedVoucher(null); setVoucherPickerOpen(false); attempt.current = null;
   }
@@ -78,7 +82,7 @@ export function PdvCashQueuePanel({ canCover, terminalId, sessionId, cashAccount
         {queue.data.map((order) => <div key={order.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><div className="min-w-0"><p className="font-semibold">Pedido #{order.number}</p><p className="text-sm text-muted-foreground break-words">{order.customerName ?? 'Sem cliente'} · {order.stockName ?? 'Estoque'}</p>{!order.reservationReady && <p className="text-xs font-medium text-muted-foreground">A reserva será validada ao receber.</p>}</div><div className="flex items-center gap-3"><strong className="whitespace-nowrap tabular-nums">{money(order.total)}</strong><Button size="sm" onClick={() => { attempt.current = null; setAppliedVoucher(null); setVoucherPickerOpen(false); setSelected(order); }} disabled={!cashAccountId}>{copy.action}</Button></div></div>)}
       </div>}
     </CardContent>
-    {selected && <PdvPaymentDialog open onOpenChange={(open) => { if (!open) { setSelected(null); setAppliedVoucher(null); setVoucherPickerOpen(false); } }} texts={paymentTexts} total={selected.total} itemCount={1} customerName={selected.customerName} customerId={selected.customerId} appliedVoucher={appliedVoucher} embeddedEditorOpen={voucherPickerOpen} appliedCreditContent={<PdvAppliedVoucherControl enabled customerId={selected.customerId} total={selected.total} value={appliedVoucher} formatCurrency={money} onPickerOpenChange={setVoucherPickerOpen} onChange={(value) => { attempt.current = null; setAppliedVoucher(value); }} />} customerCredit={null} accounts={accounts} canUseBankAccounts={canUseBankAccounts} hasOpenCashSession hasCofreAccount={Boolean(cashAccountId)} onGoToCashPanel={onGoToCashPanel} onConfirm={async (payments) => { await confirm(payments); }} />}
+    {selected && <PdvPaymentDialog open onOpenChange={(open) => { if (!open) { setSelected(null); setAppliedVoucher(null); setVoucherPickerOpen(false); } }} texts={paymentTexts} total={selected.total} itemCount={1} customerName={selected.customerName} customerId={selected.customerId} appliedVoucher={appliedVoucher} embeddedEditorOpen={voucherPickerOpen} appliedCreditContent={<PdvAppliedVoucherControl enabled customerId={selected.customerId} total={selected.total} value={appliedVoucher} formatCurrency={money} onPickerOpenChange={setVoucherPickerOpen} onChange={(value) => { attempt.current = null; setAppliedVoucher(value); }} />} customerCredit={customerCredit.credit} customerCreditPending={customerCredit.isLoading} customerCreditError={customerCredit.isError} customerCreditErrorMessage={customerCredit.errorMessage} onRetryCustomerCredit={() => customerCredit.refetch()} accounts={accounts} canUseBankAccounts={canUseBankAccounts} hasOpenCashSession hasCofreAccount={Boolean(cashAccountId)} onGoToCashPanel={onGoToCashPanel} onConfirm={async (payments) => { await confirm(payments); }} />}
     {cover.isPending && <span className="sr-only"><Loader2 className="animate-spin" />Processando recebimento</span>}
   </Card>;
 }

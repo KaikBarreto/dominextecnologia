@@ -6,8 +6,7 @@ import { Input } from '@/components/ui/input';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { PdvDispatchStatusBadge } from './PdvDispatchStatusBadge';
 import { usePdvStageReceiptAuto } from '@/hooks/usePdvStageReceiptAuto';
-import { usePdvReceiptCompany } from '@/hooks/usePdvReceiptCompany';
-import { PdvDeliveryReceiptButton, openPdvDeliveryReceipt } from './PdvDeliveryReceiptButton';
+import { PdvDeliveryReceiptButton, usePdvDeliveryReceiptOpener } from './PdvDeliveryReceiptButton';
 import { PdvReturnsPanel, type PdvReturnsAccess } from '@/components/pdv/returns/PdvReturnsPanel';
 import { stablePdvAttempt, usePdvCompleteDispatch, type PdvDispatchDetail as Detail } from '@/hooks/usePdvDispatch';
 import { useToast } from '@/hooks/use-toast';
@@ -19,7 +18,7 @@ export function PdvDispatchDetail({ detail, canDeliver, returnsAccess, afterSale
   const { toast } = useToast();
   const mutation = usePdvCompleteDispatch();
   const autoReceipt = usePdvStageReceiptAuto();
-  const receiptCompany = usePdvReceiptCompany();
+  const receiptOpener = usePdvDeliveryReceiptOpener(detail.order.id);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [deliveryId, setDeliveryId] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<'dispatch' | 'returns' | 'values'>('dispatch');
@@ -49,18 +48,21 @@ export function PdvDispatchDetail({ detail, canDeliver, returnsAccess, afterSale
   async function deliver() {
     const signature = JSON.stringify(lines);
     attempt.current = stablePdvAttempt(attempt.current, signature, () => crypto.randomUUID());
-    const receiptAttempt = autoReceipt.prepare('delivery');
+    const receiptAttempt = receiptOpener.guardAttempt(autoReceipt.prepare('delivery'));
     try {
       const result = await mutation.mutateAsync({ orderId: detail.order.id, lines, attemptId: attempt.current.id });
+      if (!receiptOpener.isCurrent()) { receiptAttempt.cancel(); return; }
       const id = typeof result.delivery_id === 'string' ? result.delivery_id : null;
       setDeliveryId(id);
-      if (id) void receiptAttempt.commit(`delivery:${id}`, (format, options) => openPdvDeliveryReceipt(id, format, { ...options, company: receiptCompany }), result.idempotent === true);
+      if (id) void receiptAttempt.commit(`delivery:${id}`, (format, options) => receiptOpener.open(id, format, options), result.idempotent === true);
       else receiptAttempt.cancel();
+      if (!receiptOpener.isCurrent()) return;
       toast({ title: result.status === 'entregue' ? 'Pedido entregue' : 'Retirada parcial registrada', description: 'O estoque e o histórico foram atualizados.' });
       onReload();
       if (result.status === 'entregue') onCompleted?.(id);
     } catch (error) {
       receiptAttempt.cancel();
+      if (!receiptOpener.isCurrent()) return;
       toast({ title: 'Retirada não registrada', description: error instanceof Error ? error.message : 'Tente novamente.', variant: 'destructive' });
     }
   }

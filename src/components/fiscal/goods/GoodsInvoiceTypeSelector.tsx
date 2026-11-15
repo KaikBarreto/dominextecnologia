@@ -76,7 +76,7 @@ export const GoodsInvoiceTypeSelector = memo(
         <Drawer open={open} onOpenChange={onOpenChange}>
           <DrawerContent>
             <DrawerHeader className="text-center">
-              <span className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-black text-white dark:bg-white dark:text-black">
+              <span className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground">
                 <Receipt className="h-7 w-7" />
               </span>
               <DrawerTitle className="text-xl">Nova Nota Fiscal</DrawerTitle>
@@ -102,7 +102,7 @@ export const GoodsInvoiceTypeSelector = memo(
             )}
           >
             <div className="mb-6 text-center">
-              <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-black text-white dark:bg-white dark:text-black">
+              <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground">
                 <Receipt className="h-7 w-7" />
               </span>
               <DialogPrimitive.Title className="text-xl font-bold">Nova Nota Fiscal</DialogPrimitive.Title>

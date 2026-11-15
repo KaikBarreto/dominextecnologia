@@ -12,6 +12,8 @@ export interface AdminFinancialCategory {
   is_system: boolean;
   is_active: boolean;
   sort_order: number;
+  dre_bucket?: string | null;
+  affects_result?: boolean | null;
 }
 
 export function useAdminFinancialCategories() {

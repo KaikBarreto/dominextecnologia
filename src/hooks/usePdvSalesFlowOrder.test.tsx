@@ -8,7 +8,7 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc } }));
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({
     user: { id: "user-1" },
-    profile: { company_id: "company-1" },
+    profile: { company_id: "company-1", user_id: "user-1", is_active: true },
     permissions: ["screen:pdv"],
     roles: ["comercial"],
     hasPermissionRecord: true,

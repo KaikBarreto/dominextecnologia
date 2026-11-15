@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { brtDateOnlyToTimestamp } from '@/lib/date-br';
 
 export type SalespersonRole = 'sdr' | 'closer';
+export type SalespersonPersonType = 'sales' | 'customer_success' | 'support' | 'financial' | 'admin' | 'partner' | 'other';
 
 export interface Salesperson {
   id: string;
@@ -20,6 +21,11 @@ export interface Salesperson {
   daily_goal_meetings_scheduled: number;
   is_active: boolean;
   no_commission: boolean;
+  /** Estado e carimbo usados exclusivamente pelo rodízio de leads self-service. */
+  in_rotation?: boolean;
+  last_lead_assigned_at?: string | null;
+  person_type?: SalespersonPersonType;
+  can_receive_sales?: boolean;
   referral_code: string | null;
   notes: string | null;
   photo_url: string | null;
@@ -36,6 +42,8 @@ export interface SalespersonBasic {
   photo_url: string | null;
   is_active: boolean | null;
   role: SalespersonRole | null;
+  can_receive_sales?: boolean | null;
+  person_type?: SalespersonPersonType | null;
   user_id: string | null;
   /** Metas diárias do diário comercial — não são dado sensível, por isso
    * entraram na view enxuta junto com o resto. */
@@ -183,9 +191,9 @@ export function useSalespeopleBasic(activeOnly = true) {
     queryFn: async () => {
       let q = supabase
         .from('salespeople_basic')
-        .select('id, name, email, photo_url, is_active, role, user_id')
+        .select('id, name, email, photo_url, is_active, role, user_id, can_receive_sales, person_type')
         .order('name');
-      if (activeOnly) q = q.eq('is_active', true);
+      if (activeOnly) q = q.eq('is_active', true).filter('can_receive_sales', 'eq', true);
       const { data, error } = await q;
       if (error) throw error;
       return (data || []) as SalespersonBasic[];
@@ -298,7 +306,8 @@ export function useSaveSalesperson() {
     mutationFn: async (payload: Partial<Salesperson> & { id?: string }) => {
       const { id, ...rest } = payload;
       if (id) {
-        const { data, error } = await supabase.from('salespeople').update(rest).eq('id', id).select().single();
+        // Tipos gerados ainda não conhecem as colunas aditivas desta migration.
+        const { data, error } = await supabase.from('salespeople').update(rest as unknown as never).eq('id', id).select().single();
         if (error) throw error;
         return data;
       }

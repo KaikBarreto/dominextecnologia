@@ -1,3 +1,4 @@
+import { recordWebhookLedger } from "../_shared/admin-webhook-ledger.ts";
 // asaas-webhook
 // -------------
 // Endpoint PÚBLICO chamado pela Asaas (produção) a cada evento de cobrança/recorrência.
@@ -511,7 +512,7 @@ function upgradeRequestIdFromExternalReference(externalReference: unknown): stri
   return match?.[1] ?? null;
 }
 
-type SupabaseClientInstance = ReturnType<typeof createClient>;
+type SupabaseClientInstance = ReturnType<typeof createClient<any>>;
 
 interface UpgradeWebhookPayment {
   id: string;
@@ -1580,32 +1581,7 @@ async function recordUnmatchedPayment(supabase: any, payment: any): Promise<void
   const occurredAt =
     payment.confirmedDate || payment.paymentDate || payment.dateCreated || new Date().toISOString();
 
-  // 1) Ledger pendente de categorização (company_id NULL). ON CONFLICT DO NOTHING via upsert.
-  //
-  // FATAL (pede re-entrega). Esta linha é o ÚNICO lugar onde o dinheiro de um
-  // pagamento sem empresa fica registrado — perdê-la é perder a pista de uma
-  // entrada real de caixa. É idempotente (`ignoreDuplicates` no
-  // asaas_transaction_id UNIQUE) e roda ANTES de qualquer mutex, então a
-  // re-entrega conserta de graça. O `try/catch` que engolia isso foi removido.
-  await applyWrite(
-    "registro do pagamento órfão (ledger_asaas)",
-    supabase.from("ledger_asaas").upsert(
-      {
-        asaas_transaction_id: paymentId,
-        asaas_payment_id: paymentId,
-        direction: "credit",
-        amount: amount >= 0 ? amount : 0,
-        occurred_at: occurredAt,
-        status: "pending_categorization",
-        source: "webhook",
-        company_id: null,
-        description: `Pagamento Asaas não vinculado a empresa (${paymentId})`,
-        raw_payload: payment,
-      },
-      { onConflict: "asaas_transaction_id", ignoreDuplicates: true },
-    ),
-    { rethrow: retryableRethrow("registro do pagamento órfão (ledger_asaas)") },
-  );
+  // O registro financeiro já foi persistido por recordWebhookLedger antes da resolução comercial.
 
   // 2) Alerta ao admin — idempotente: só insere se não existe notificação pro mesmo payment.id.
   //
@@ -1833,6 +1809,8 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const event: string = body?.event ?? "";
     const payment = body?.payment ?? null;
+    const commercialPayment = event === "PAYMENT_RECEIVED" || event === "PAYMENT_CONFIRMED";
+    if (!event.startsWith("RECEIVABLE_ANTICIPATION_")) await recordWebhookLedger(supabase, body, commercialPayment);
     console.log(`[webhook] evento ${event} recebido`);
 
     // ==========================================================
@@ -1982,10 +1960,12 @@ Deno.serve(async (req) => {
 
       if (!antPaymentId) {
         console.log(`[anticipation] ${event} sem pay_* (provável antecipação de parcelamento) — ack sem lançamento.`);
+        await recordWebhookLedger(supabase, body);
         return json({ received: true, anticipation: true, skipped: "sem payment" });
       }
 
       const result = await recordAnticipationFee(supabase, antPaymentId, antStatus);
+      await recordWebhookLedger(supabase, body);
       return json({ received: true, anticipation: true, ...result });
     }
 
@@ -2259,6 +2239,7 @@ Deno.serve(async (req) => {
       const upgradeRequestId = await resolveUpgradeRequestId(supabase, payment);
       if (upgradeRequestId) {
         const result = await processConfirmedUpgradePayment(supabase, payment, upgradeRequestId);
+        await recordWebhookLedger(supabase, body);
         return json({ received: true, ...result });
       }
 
@@ -2267,6 +2248,7 @@ Deno.serve(async (req) => {
         // PROIBIDO órfão silencioso (FM1): registra no ledger + alerta admin (idempotente).
         console.log(`[payment] sem company para ${payment.id} (cascata falhou). Registrando como órfão.`);
         await recordUnmatchedPayment(supabase, payment);
+        await recordWebhookLedger(supabase, body);
         return json({ received: true, matched: false, unmatched_recorded: true });
       }
 
@@ -2279,6 +2261,7 @@ Deno.serve(async (req) => {
         dueDate: payment.dueDate ?? null,
         matchedBy: resolved.matchedBy,
       });
+      await recordWebhookLedger(supabase, body);
       return json({ received: true, ...result });
     }
 

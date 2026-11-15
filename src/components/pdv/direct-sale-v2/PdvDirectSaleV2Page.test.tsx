@@ -92,7 +92,7 @@ vi.mock('@/components/pdv/PdvPaymentDialog', () => ({
 }));
 vi.mock('@/components/pdv/receipt/PdvOrderReceiptButton', () => ({
   PdvOrderReceiptButton: ({ orderId }: { orderId: string }) => <button type="button">comprovante:{orderId}</button>,
-  openPdvOrderReceipt: openReceipt,
+  usePdvOrderReceiptOpener: () => ({ open: openReceipt, isCurrent: () => true, guardAttempt: (attempt: unknown) => attempt }),
 }));
 
 import { PdvDirectSaleV2Page } from '@/components/pdv/direct-sale-v2/PdvDirectSaleV2Page';

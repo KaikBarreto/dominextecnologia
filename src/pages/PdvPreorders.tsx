@@ -41,8 +41,7 @@ import {
 } from "@/components/pdv/preorders/PdvPreorderDetail";
 import { PdvPreorderStatusBadge } from "@/components/pdv/preorders/PdvPreorderStatusBadge";
 import { usePdvStageReceiptAuto } from "@/hooks/usePdvStageReceiptAuto";
-import { usePdvReceiptCompany } from "@/hooks/usePdvReceiptCompany";
-import { PdvPreorderReceiptButton, openPdvPreorderReceipt } from "@/components/pdv/preorders/PdvPreorderReceiptButton";
+import { PdvPreorderReceiptButton, usePdvPreorderReceiptOpener } from "@/components/pdv/preorders/PdvPreorderReceiptButton";
 import { preorderWorkspaceAction } from "@/components/pdv/preorders/preorderWorkspaceAction";
 import { pdvFlowCardDestination } from "@/components/pdv/flow/pdvFlowNavigation";
 import { PdvWorkspaceViewToggle } from "@/components/pdv/flow/PdvWorkspaceViewToggle";
@@ -92,7 +91,7 @@ export default function PdvPreorders() {
   const requestedPreorderId = searchParams.get("orcamento");
   const { toast } = useToast();
   const autoReceipt = usePdvStageReceiptAuto();
-  const receiptCompany = usePdvReceiptCompany();
+  const receiptOpener = usePdvPreorderReceiptOpener();
   const { dateTime, money } = useLocaleFormatters();
   const {
     user,
@@ -383,19 +382,20 @@ export default function PdvPreorders() {
       }}
       onForward={async () => {
         if (!activeId) throw new Error("Orçamento do balcão não selecionado.");
-        const receiptAttempt = autoReceipt.prepare('budget');
+        const receiptAttempt = receiptOpener.guardAttempt(autoReceipt.prepare('budget'));
         try {
         const result = await actions.forward.mutateAsync({
           preorderId: activeId,
           expectedRevision: activeRevision,
           requestId: requestId("forward-preorder"),
         });
-        void receiptAttempt.commit(`budget:${activeId}:${result.revision ?? activeRevision}`, (format, options) => openPdvPreorderReceipt(activeId, { ...options, format, company: receiptCompany, inventory, customerName: detail.data?.preorder.customer_id ? customerName.get(detail.data.preorder.customer_id) : null }), detail.data?.preorder.status === "encaminhado" || ("idempotent" in result && result.idempotent === true));
+        if (!receiptOpener.isCurrent()) { receiptAttempt.cancel(); return result; }
+        void receiptAttempt.commit(`budget:${activeId}:${result.revision ?? activeRevision}`, (format, options) => receiptOpener.open(activeId, { ...options, format, inventory, customerName: detail.data?.preorder.customer_id ? customerName.get(detail.data.preorder.customer_id) : null }), detail.data?.preorder.status === "encaminhado" || ("idempotent" in result && result.idempotent === true));
         toast({ title: "Orçamento enviado ao caixa", description: canCreate ? "Você já pode começar o próximo atendimento." : "Acompanhe o atendimento na lista." });
         await flow.refetch();
         if (canCreate) startNew(); else closeDetail();
         return result;
-        } catch (error) { receiptAttempt.cancel(); throw error; }
+        } catch (error) { receiptAttempt.cancel(); if (receiptOpener.isCurrent()) throw error; return; }
       }}
       onCancel={async () => {
         if (!activeId) throw new Error("Orçamento do balcão não selecionado.");

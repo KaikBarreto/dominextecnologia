@@ -1,8 +1,9 @@
+import { goodsOutcome, sourceFinancialsMatch } from "../_shared/fiscal-goods-policy.ts";
 import {
-  authorizeFiscalManager,
+  authorizeFiscalGoodsIssuer,
   corsHeaders,
   jsonResponse,
-} from "../_shared/fiscal-auth.ts";
+} from "../_shared/fiscal-goods-auth.ts";
 import type { NfseProviderCtx } from "../_shared/nfse-provider.ts";
 import {
   NfeMotorError,
@@ -64,6 +65,10 @@ async function sha256(value: unknown): Promise<string> {
     .join("");
 }
 
+class GoodsDocumentError extends Error {
+  constructor(public code: string, message: string, public status = 422) { super(message); }
+}
+
 interface NormalizedDraft {
   id: string | null;
   model: 55 | 65;
@@ -78,7 +83,7 @@ interface NormalizedDraft {
   notes: string;
 }
 
-function normalizeDraft(raw: unknown): NormalizedDraft {
+export function normalizeDraft(raw: unknown): NormalizedDraft {
   const draft = object(raw);
   const model = Number(draft.model);
   const direction = draft.direction === "entrada" ? "entrada" : "saida";
@@ -120,8 +125,9 @@ function normalizeDraft(raw: unknown): NormalizedDraft {
         municipalityCode: digits(partySource.municipalityCode),
       }
     : null;
+  if (asRows(draft.items).length > 990 || asRows(draft.payments).length > 100)
+    throw new GoodsDocumentError('invalid_draft', 'Revise a quantidade de itens e formas de pagamento da nota.');
   const items = asRows(draft.items)
-    .slice(0, 990)
     .map((item, index) => {
       const quantity = number(item.quantity);
       const unitPrice = number(item.unitPrice);
@@ -158,11 +164,11 @@ function normalizeDraft(raw: unknown): NormalizedDraft {
       };
     });
   const payments = asRows(draft.payments)
-    .slice(0, 20)
     .map((entry) => ({
       method: digits(entry.method).slice(0, 2),
       amount: money(number(entry.amount)),
       change: money(number(entry.change)),
+      deferred: entry.deferred === true,
     }));
   return {
     id: uuid(draft.id),
@@ -194,17 +200,18 @@ function validation(
     (!draft.party || ![11, 14].includes(digits(draft.party.document).length))
   )
     errors.push("Informe o CPF/CNPJ do parceiro.");
+  if (draft.model === 65 && draft.party && ![11,14].includes(digits(draft.party.document).length))
+    errors.push('Informe um CPF/CNPJ válido ou remova a identificação do consumidor.');
   if (
-    draft.model === 55 &&
-    draft.party &&
-    (!text(draft.party.address) ||
+    draft.model === 55 && draft.party &&
+    (!text(draft.party.name) || !text(draft.party.address) ||
       !text(draft.party.neighborhood) ||
       !text(draft.party.city) ||
       !/^[A-Z]{2}$/.test(text(draft.party.state)) ||
       digits(draft.party.municipalityCode).length !== 7)
   )
     errors.push(
-      "Complete o endereço fiscal do parceiro, inclusive município IBGE.",
+      'Complete o endereço fiscal do parceiro, inclusive município IBGE.',
     );
   for (const [index, item] of draft.items.entries()) {
     const prefix = `Item ${index + 1}`;
@@ -222,7 +229,7 @@ function validation(
     if (!/^[0-8]$/.test(digits(item.origin)))
       errors.push(`${prefix}: origem da mercadoria inválida.`);
     const interstate =
-      !!draft.party && text(draft.party.state) !== companyState;
+      draft.model === 55 && !!draft.party && !!text(draft.party.state) && text(draft.party.state) !== companyState;
     const cfop =
       draft.direction === "entrada"
         ? text(interstate ? item.cfopEntryInterstate : item.cfopEntryInternal)
@@ -318,7 +325,7 @@ function tax(
       };
 }
 
-function buildMotorDocument(
+export function buildMotorDocument(
   draft: NormalizedDraft,
   company: JsonObject,
   fiscal: JsonObject,
@@ -344,7 +351,7 @@ function buildMotorDocument(
     const grossValue = money(number(item.quantity) * number(item.unitPrice));
     const netValue = money(grossValue - number(item.discount));
     const interstate =
-      !!draft.party && text(draft.party.state) !== companyState;
+      draft.model === 55 && !!draft.party && !!text(draft.party.state) && text(draft.party.state) !== companyState;
     const cfop =
       draft.direction === "entrada"
         ? text(interstate ? item.cfopEntryInterstate : item.cfopEntryInternal)
@@ -418,7 +425,7 @@ function buildMotorDocument(
         razaoSocial: text(party.name),
         indicadorInscricaoEstadual: digits(party.stateRegistration) ? 1 : 9,
         inscricaoEstadual: digits(party.stateRegistration) || undefined,
-        endereco: {
+        ...((draft.model === 55 || (text(party.address) && text(party.neighborhood) && text(party.city) && text(party.state) && digits(party.municipalityCode).length === 7)) ? { endereco: {
           logradouro: text(party.address),
           numero: text(party.addressNumber) || "S/N",
           complemento: text(party.complement) || undefined,
@@ -427,7 +434,7 @@ function buildMotorDocument(
           descricaoCidade: text(party.city),
           estado: text(party.state),
           cep: digits(party.zipCode),
-        },
+        }} : {}),
       }
     : undefined;
   const issueDate = new Date().toISOString();
@@ -481,9 +488,10 @@ function buildMotorDocument(
         valorAproximadoTributos: 0,
       },
       pagamentos: draft.payments.map((entry) => ({
-        aVista: true,
+        aVista: entry.deferred !== true,
         meio: text(entry.method),
         valor: number(entry.amount),
+        ...(text(entry.method) === '99' ? { descricaoMeio: 'Outros' } : {}),
       })),
       ...(draft.model === 65
         ? {
@@ -501,8 +509,51 @@ function buildMotorDocument(
   };
 }
 
+async function loadGoodsIssuer(auth: Awaited<ReturnType<typeof authorizeFiscalGoodsIssuer>> & { ok: true }): Promise<JsonObject> {
+  const [canonicalResult, settingsResult] = await Promise.all([
+    auth.supabase.from('companies').select('cnpj,name,address,address_number,street_number,complement,neighborhood,city,state,zip_code').eq('id', auth.companyId).maybeSingle(),
+    auth.supabase.from('company_settings').select('name,address,address_number,complement,neighborhood,city,state,zip_code').eq('company_id', auth.companyId).maybeSingle(),
+  ]);
+  if (canonicalResult.error || !canonicalResult.data || settingsResult.error) throw new Error('Não foi possível identificar o emitente desta empresa.');
+  const canonical = object(canonicalResult.data); const settings = object(settingsResult.data);
+  const issuer: JsonObject = { document: digits(canonical.cnpj) };
+  for (const key of ['name','address','address_number','complement','neighborhood','city','state','zip_code']) issuer[key] = text(settings[key]) || text(canonical[key]);
+  issuer.address_number = text(issuer.address_number) || text(canonical.street_number);
+  return issuer;
+}
+
+async function storeGoodsDocument(auth: Awaited<ReturnType<typeof authorizeFiscalGoodsIssuer>> & { ok: true }, table: string, id: string, patch: JsonObject) {
+  const stored = await auth.supabase.from(table).update(patch).eq('id',id).eq('company_id',auth.companyId).select('id').maybeSingle();
+  if (stored.error || !stored.data?.id) throw new GoodsDocumentError('persistence_failed','Não foi possível registrar a operação fiscal com segurança. Consulte esta mesma nota antes de tentar novamente.',503);
+}
+async function storeGoodsEvent(auth: Awaited<ReturnType<typeof authorizeFiscalGoodsIssuer>> & { ok: true }, table: string, event: JsonObject) {
+  const stored = await auth.supabase.from(table).insert(event);
+  if (stored.error) throw new GoodsDocumentError('persistence_failed','Não foi possível registrar toda a evidência fiscal. Consulte esta mesma nota para atualizar os dados.',503);
+}
+
+async function officialArtifacts(auth: Awaited<ReturnType<typeof authorizeFiscalGoodsIssuer>> & { ok: true }, model: 55 | 65, documentId: string, official: JsonObject) {
+  const patch: JsonObject = {};
+  const xml = typeof official.xmlProcessado === 'string' ? official.xmlProcessado : '';
+  const pdf = official[model === 65 ? 'danfceBase64' : 'danfeBase64'];
+  if (xml) {
+    const path = `${auth.companyId}/${model}/${documentId}/processado.xml`;
+    const saved = await auth.supabase.storage.from('fiscal-artifacts').upload(path, new Blob([xml], {type:'application/xml'}), {upsert:true,contentType:'application/xml'});
+    if (saved.error) throw new Error('Não foi possível guardar o XML fiscal confirmado. Consulte esta nota novamente.');
+    patch.processed_xml_path = path;
+  }
+  if (typeof pdf === 'string' && pdf) {
+    const path = `${auth.companyId}/${model}/${documentId}/${model === 65 ? 'danfce' : 'danfe'}.pdf`;
+    const saved = await auth.supabase.storage.from('fiscal-artifacts').upload(path, Uint8Array.from(atob(pdf), c => c.charCodeAt(0)), {upsert:true,contentType:'application/pdf'});
+    if (saved.error) throw new Error('Não foi possível guardar o documento auxiliar. Consulte esta nota novamente.');
+    patch[model === 65 ? 'danfce_pdf_path' : 'danfe_pdf_path'] = path;
+  }
+  const proof = object(official.prova);
+  if (/^[0-9]{15}$/.test(text(proof.protocol))) patch.protocol = text(proof.protocol);
+  return patch;
+}
+
 async function saveDraft(
-  auth: Awaited<ReturnType<typeof authorizeFiscalManager>> & { ok: true },
+  auth: Awaited<ReturnType<typeof authorizeFiscalGoodsIssuer>> & { ok: true },
   draft: NormalizedDraft,
 ) {
   const table = draft.model === 55 ? "nfe_documents" : "nfce_documents";
@@ -521,10 +572,23 @@ async function saveDraft(
       draft.direction === "entrada" ? uuid(draft.party?.id) : null;
   } else {
     common.order_id = draft.sourceType === "pdv_sale" ? draft.sourceId : null;
-    common.uf = text(draft.party?.state) || "SP";
-    common.series = 1;
+    // UF e série do emitente serão resolvidas no servidor antes da preparação.
+    const config = await auth.supabase.from("company_nfce_settings").select("uf,series").eq("company_id", auth.companyId).maybeSingle();
+    if (!config.data?.uf) throw new Error("Configure a UF de emissão nas Configurações Fiscais.");
+    common.uf = config.data.uf;
+    common.series = config.data.series;
+  }
+  if (!draft.id && draft.sourceId) {
+    const existing = await auth.supabase.from(table).select('*')
+      .eq('company_id', auth.companyId).eq('source_type', draft.sourceType).eq('source_id', draft.sourceId).maybeSingle();
+    if (existing.error) throw new Error('Não foi possível consultar a nota vinculada à venda.');
+    if (existing.data) draft.id = text(existing.data.id);
   }
   if (draft.id) {
+    const existing = await auth.supabase.from(table).select('*').eq('id', draft.id).eq('company_id', auth.companyId).maybeSingle();
+    if (existing.error || !existing.data) throw new Error('Nota não encontrada nesta empresa.');
+    if (existing.data.source_type !== draft.sourceType || existing.data.source_id !== draft.sourceId) throw new Error('A origem de uma nota já salva não pode ser alterada.');
+    if (existing.data.status !== 'draft') return object(existing.data);
     const { data, error } = await auth.supabase
       .from(table)
       .update(common)
@@ -542,6 +606,10 @@ async function saveDraft(
     .insert(common)
     .select("*")
     .single();
+  if (error?.code === '23505' && draft.sourceId) {
+    const existing = await auth.supabase.from(table).select('*').eq('company_id', auth.companyId).eq('source_type', draft.sourceType).eq('source_id', draft.sourceId).maybeSingle();
+    if (!existing.error && existing.data) return object(existing.data);
+  }
   if (error || !data)
     throw new Error(
       error?.code === "23505"
@@ -552,17 +620,32 @@ async function saveDraft(
 }
 
 async function assertSourceBelongsToCompany(
-  auth: Awaited<ReturnType<typeof authorizeFiscalManager>> & { ok: true },
+  auth: Awaited<ReturnType<typeof authorizeFiscalGoodsIssuer>> & { ok: true },
   draft: NormalizedDraft,
 ) {
+  const permission = await auth.supabase.rpc('fiscal_goods_user_can_access_source', {
+    p_user_id: auth.userId, p_company_id: auth.companyId, p_source_type: draft.sourceType, p_source_id: draft.sourceId,
+  });
+  if (permission.error || permission.data !== true) throw new GoodsDocumentError('source_forbidden', 'Esta venda ou compra não está disponível para seu acesso fiscal.', 403);
+  if (draft.party?.id) {
+    const partner = await auth.supabase.from(draft.direction === 'entrada' ? 'suppliers' : 'customers').select('id').eq('id', draft.party.id).eq('company_id', auth.companyId).maybeSingle();
+    if (partner.error || !partner.data) throw new Error('Parceiro não encontrado nesta empresa.');
+  }
+  const inventoryIds = [...new Set(draft.items.map(i => i.inventoryId).filter(Boolean))];
+  if (inventoryIds.length) {
+    const inventory = await auth.supabase.from('inventory').select('id').eq('company_id', auth.companyId).in('id', inventoryIds);
+    if (inventory.error || inventory.data?.length !== inventoryIds.length) throw new Error('Um material não está disponível nesta empresa.');
+  }
   if (draft.sourceType === "manual") return;
   if (!draft.sourceId)
     throw new Error("Selecione uma venda ou compra válida para importar.");
 
   if (draft.sourceType === "pdv_sale") {
+    const readiness = await auth.supabase.rpc('fiscal_goods_sale_ready', { p_company: auth.companyId, p_order: draft.sourceId });
+    if (readiness.error || readiness.data !== true) throw new GoodsDocumentError('source_not_ready', 'A venda precisa estar confirmada nesta empresa antes da emissão.', 403);
     const { data } = await auth.supabase
       .from("pdv_orders")
-      .select("id")
+      .select("id,total")
       .eq("id", draft.sourceId)
       .eq("company_id", auth.companyId)
       .neq("status", "cancelado")
@@ -571,6 +654,13 @@ async function assertSourceBelongsToCompany(
       throw new Error(
         "A venda importada não foi encontrada nesta empresa ou foi cancelada.",
       );
+    const [items, payments] = await Promise.all([
+      auth.supabase.from('pdv_order_items').select('id,inventory_id,quantity,unit_price,total,discount_amount').eq('company_id', auth.companyId).eq('order_id', draft.sourceId).order('sort_order',{ascending:true}).order('id',{ascending:true}),
+      auth.supabase.from('pdv_order_payments').select('method,amount,change_amount,contract_version,coverage_status').eq('company_id', auth.companyId).eq('order_id', draft.sourceId),
+    ]);
+    const covered = asRows(payments.data).filter(p => p.contract_version !== 2 || p.coverage_status === 'authorized');
+    if (items.error || payments.error || !sourceFinancialsMatch(draft, number(data.total), asRows(items.data), covered))
+      throw new GoodsDocumentError('source_mismatch', 'Os itens, descontos e pagamentos precisam corresponder à venda concluída. Importe novamente.');
     return;
   }
 
@@ -591,23 +681,7 @@ async function assertSourceBelongsToCompany(
   }
 }
 
-function outcomeStatus(result: JsonObject): {
-  status: string;
-  official: string | null;
-} {
-  const official = text(result.situacaoOficial);
-  const outcome = text(result.outcome);
-  if (official === "autorizada" || outcome === "authorized")
-    return { status: "authorized", official: "autorizada" };
-  if (official === "cancelada" || outcome === "cancelled")
-    return { status: "cancelled", official: "cancelada" };
-  if (official === "denegada" || outcome === "denied" || outcome === "rejected")
-    return { status: "rejected", official: official || "denegada" };
-  return {
-    status: "uncertain",
-    official: official || "aguardando_confirmacao",
-  };
-}
+const outcomeStatus = goodsOutcome;
 
 const documentTable = (model: 55 | 65) =>
   model === 55 ? "nfe_documents" : "nfce_documents";
@@ -615,7 +689,7 @@ const eventTable = (model: 55 | 65) =>
   model === 55 ? "nfe_events" : "nfce_events";
 
 async function fiscalContext(
-  auth: Awaited<ReturnType<typeof authorizeFiscalManager>> & { ok: true },
+  auth: Awaited<ReturnType<typeof authorizeFiscalGoodsIssuer>> & { ok: true },
   audit: string,
 ) {
   const { data, error } = await auth.supabase
@@ -640,7 +714,7 @@ async function fiscalContext(
 }
 
 async function storedSignedXml(
-  auth: Awaited<ReturnType<typeof authorizeFiscalManager>> & { ok: true },
+  auth: Awaited<ReturnType<typeof authorizeFiscalGoodsIssuer>> & { ok: true },
   path: unknown,
 ) {
   const normalizedPath = text(path, 1000);
@@ -653,14 +727,14 @@ async function storedSignedXml(
 }
 
 async function handleDocumentAction(
-  auth: Awaited<ReturnType<typeof authorizeFiscalManager>> & { ok: true },
+  auth: Awaited<ReturnType<typeof authorizeFiscalGoodsIssuer>> & { ok: true },
   body: JsonObject,
   setActive: (
     document: {
       id: string;
       table: "nfe_documents" | "nfce_documents";
       events: "nfe_events" | "nfce_events";
-    },
+    } | null,
     started?: boolean,
   ) => void,
 ) {
@@ -689,6 +763,10 @@ async function handleDocumentAction(
       404,
     );
   const row = object(data);
+  const custody = await auth.supabase.rpc('fiscal_goods_user_can_access_source', {
+    p_user_id: auth.userId, p_company_id: auth.companyId, p_source_type: row.source_type, p_source_id: row.source_id,
+  });
+  if (custody.error || custody.data !== true) return jsonResponse({ error: 'forbidden', message: 'Esta nota não está disponível para seu acesso.' }, 403);
 
   if (action === "artifact") {
     const kind = text(body.kind);
@@ -740,10 +818,10 @@ async function handleDocumentAction(
         ? await consultNfe(ctx, { uf, key, signedXml })
         : await consultNfce(ctx, { uf, key, signedXml });
     const normalized = outcomeStatus(official as JsonObject);
+    const recoveredArtifacts = await officialArtifacts(auth, model, documentId, official as JsonObject);
     const now = new Date().toISOString();
-    await auth.supabase
-      .from(table)
-      .update({
+    await storeGoodsDocument(auth, table, documentId, {
+        ...recoveredArtifacts,
         status: normalized.status,
         official_status: normalized.official,
         official_checked_at: now,
@@ -755,16 +833,12 @@ async function handleDocumentAction(
           normalized.status === "cancelled"
             ? text(row.cancelled_at) || now
             : row.cancelled_at,
-        last_error_code: null,
-        last_error_message: null,
+        last_error_code: normalized.status === 'rejected' ? `sefaz_${text(object(official.resposta).cstat)}` : null,
+        last_error_message: normalized.status === 'rejected' ? 'Documento rejeitado pela SEFAZ. Revise o cadastro fiscal.' : null,
         next_action:
           normalized.status === "uncertain" ? "consultar_sefaz" : null,
-      })
-      .eq("id", documentId)
-      .eq("company_id", auth.companyId);
-    await auth.supabase
-      .from(events)
-      .insert({
+      });
+    await storeGoodsEvent(auth, events, {
         company_id: auth.companyId,
         document_id: documentId,
         event_type: "official_consultation",
@@ -800,16 +874,12 @@ async function handleDocumentAction(
       : await consultNfce(ctx, { uf, key, signedXml });
   const beforeStatus = outcomeStatus(before as JsonObject);
   if (beforeStatus.status === "cancelled") {
-    await auth.supabase
-      .from(table)
-      .update({
+    await storeGoodsDocument(auth, table, documentId, {
         status: "cancelled",
         official_status: "cancelada",
         cancelled_at: new Date().toISOString(),
         official_checked_at: new Date().toISOString(),
-      })
-      .eq("id", documentId)
-      .eq("company_id", auth.companyId);
+      });
     return jsonResponse(
       {
         ok: true,
@@ -833,6 +903,11 @@ async function handleDocumentAction(
       409,
     );
   }
+  const cancellationClaim = await auth.supabase.from(table).update({status:'cancellation_pending',next_action:'consultar_sefaz'})
+    .eq('id',documentId).eq('company_id',auth.companyId).eq('status','authorized').select('id').maybeSingle();
+  if (cancellationClaim.error) throw new Error('Não foi possível iniciar o cancelamento.');
+  if (!cancellationClaim.data) return jsonResponse({ok:true,status:row.status,existing:true},202);
+  setActive({ id: documentId, table, events }, true);
   const operationId = crypto.randomUUID();
   const snapshotHash = await sha256({
     action: "cancel",
@@ -851,14 +926,7 @@ async function handleDocumentAction(
     reason,
     occurredAt: new Date().toISOString(),
   };
-  if (input.cnpj.length !== 14) {
-    const company = await auth.supabase
-      .from("company_settings")
-      .select("document")
-      .eq("company_id", auth.companyId)
-      .maybeSingle();
-    input.cnpj = digits(object(company.data).document);
-  }
+  if (input.cnpj.length !== 14) input.cnpj = digits((await loadGoodsIssuer(auth)).document);
   if (input.cnpj.length !== 14)
     return jsonResponse(
       {
@@ -872,21 +940,18 @@ async function handleDocumentAction(
       ? await prepareNfeCancellation(ctx, input)
       : await prepareNfceCancellation(ctx, input);
   const eventPath = `${auth.companyId}/${model}/${documentId}/cancelamento-assinado.xml`;
-  await auth.supabase.storage
+  const signedCancellation = await auth.supabase.storage
     .from("fiscal-artifacts")
     .upload(
       eventPath,
       new Blob([prepared.xmlAssinado], { type: "application/xml" }),
       { upsert: true, contentType: "application/xml" },
     );
-  await auth.supabase
-    .from(table)
-    .update({
+  if (signedCancellation.error) throw new GoodsDocumentError('persistence_failed','Não foi possível guardar o cancelamento assinado. Consulte esta mesma nota.',503);
+  await storeGoodsDocument(auth, table, documentId, {
       status: "cancellation_pending",
       next_action: "aguardar_cancelamento",
-    })
-    .eq("id", documentId)
-    .eq("company_id", auth.companyId);
+    });
   setActive({ id: documentId, table, events }, true);
   const batchId = String(row.number || 1).slice(-15);
   const result =
@@ -907,31 +972,28 @@ async function handleDocumentAction(
         });
   const normalized = outcomeStatus(result as JsonObject);
   const now = new Date().toISOString();
-  const processedPath = text(result.xmlProcessado)
+  const processedPath = (typeof result.xmlProcessado === "string" ? result.xmlProcessado : "")
     ? `${auth.companyId}/${model}/${documentId}/cancelamento-processado.xml`
     : null;
-  if (processedPath)
-    await auth.supabase.storage
+  if (processedPath) {
+    const cancellationResult = await auth.supabase.storage
       .from("fiscal-artifacts")
       .upload(
         processedPath,
-        new Blob([text(result.xmlProcessado)], { type: "application/xml" }),
+        new Blob([(typeof result.xmlProcessado === "string" ? result.xmlProcessado : "")], { type: "application/xml" }),
         { upsert: true, contentType: "application/xml" },
       );
-  await auth.supabase
-    .from(table)
-    .update({
+    if (cancellationResult.error) throw new GoodsDocumentError('persistence_failed','Não foi possível guardar a confirmação do cancelamento. Consulte esta mesma nota.',503);
+  }
+  await storeGoodsDocument(auth, table, documentId, {
       status: normalized.status,
       official_status: normalized.official,
       cancelled_at: normalized.status === "cancelled" ? now : null,
       official_checked_at: now,
       next_action: normalized.status === "uncertain" ? "consultar_sefaz" : null,
-    })
-    .eq("id", documentId)
-    .eq("company_id", auth.companyId);
-  await auth.supabase
-    .from(events)
-    .insert({
+    });
+  setActive(null);
+  await storeGoodsEvent(auth, events, {
       company_id: auth.companyId,
       document_id: documentId,
       event_type: "cancellation_result",
@@ -962,7 +1024,7 @@ Deno.serve(async (req) => {
       { error: "method_not_allowed", message: "Método não permitido." },
       405,
     );
-  const auth = await authorizeFiscalManager(req);
+  const auth = await authorizeFiscalGoodsIssuer(req);
   if (!auth.ok) return auth.response;
   let activeDocument: {
     id: string;
@@ -983,7 +1045,9 @@ Deno.serve(async (req) => {
         },
       );
     }
-    const draft = normalizeDraft(body.draft);
+    let draft: NormalizedDraft;
+    try { draft = normalizeDraft(body.draft); }
+    catch { throw new GoodsDocumentError('invalid_draft', 'Revise o modelo, a direção e a origem do documento fiscal.'); }
     if (!["save_draft", "emit"].includes(action))
       return jsonResponse(
         { error: "invalid_action", message: "Ação fiscal inválida." },
@@ -991,13 +1055,9 @@ Deno.serve(async (req) => {
       );
     await assertSourceBelongsToCompany(auth, draft);
     let row = await saveDraft(auth, draft);
-    if (action === "save_draft")
-      return jsonResponse({ ok: true, id: row.id, status: "draft" }, 200);
-    activeDocument = {
-      id: text(row.id),
-      table: draft.model === 55 ? "nfe_documents" : "nfce_documents",
-      events: draft.model === 55 ? "nfe_events" : "nfce_events",
-    };
+    if (action === "save_draft" || row.status !== 'draft')
+      return jsonResponse({ ok: true, id: row.id, status: row.status, existing: row.status !== 'draft' }, 200);
+
 
     const [fiscalResult, companyResult, configResult] = await Promise.all([
       auth.supabase
@@ -1005,11 +1065,7 @@ Deno.serve(async (req) => {
         .select("*")
         .eq("company_id", auth.companyId)
         .maybeSingle(),
-      auth.supabase
-        .from("company_settings")
-        .select("*")
-        .eq("company_id", auth.companyId)
-        .maybeSingle(),
+      loadGoodsIssuer(auth),
       auth.supabase
         .from(
           draft.model === 55 ? "company_nfe_settings" : "company_nfce_settings",
@@ -1019,11 +1075,12 @@ Deno.serve(async (req) => {
         .maybeSingle(),
     ]);
     const fiscal = object(fiscalResult.data);
-    const company = object(companyResult.data);
+    const company = object(companyResult);
     const config = object(configResult.data);
     if (
       !fiscal.certificado_ref ||
       !fiscal.certificate_expires_at ||
+      !Number.isFinite(new Date(text(fiscal.certificate_expires_at)).getTime()) ||
       new Date(text(fiscal.certificate_expires_at)).getTime() <= Date.now()
     )
       return jsonResponse(
@@ -1043,6 +1100,8 @@ Deno.serve(async (req) => {
         422,
       );
     const environment = text(fiscal.fiscal_ambiente) === "producao" ? 1 : 2;
+    if (draft.model === 65 && environment === 1 && Deno.env.get('FISCAL_NFCE_PRODUCAO_HABILITADA') !== '1')
+      return jsonResponse({ error: 'production_blocked', message: 'A emissão de NFC-e em produção está bloqueada.' }, 422);
     if (environment === 1 && config.production_approved !== true)
       return jsonResponse(
         {
@@ -1061,6 +1120,8 @@ Deno.serve(async (req) => {
         },
         422,
       );
+    if (digits(company.document).length !== 14 || !text(company.name) || !text(company.address) || !text(company.neighborhood) || !text(company.city) || !/^[A-Z]{2}$/.test(text(company.state)) || digits(company.zip_code).length !== 8 || digits(fiscal.municipio_ibge).length !== 7 || !digits(fiscal.inscricao_estadual))
+      return jsonResponse({error:'issuer_incomplete', message:'Complete CNPJ, endereço, inscrição estadual e município IBGE nas Configurações Fiscais.'},422);
     const errors = validation(
       draft,
       text(company.state).toUpperCase(),
@@ -1072,6 +1133,7 @@ Deno.serve(async (req) => {
         422,
       );
     if (draft.model === 65) {
+      if (text(config.uf).toUpperCase() !== text(company.state).toUpperCase()) return jsonResponse({error:'issuer_incomplete',message:'A UF do credenciamento NFC-e deve corresponder à UF do emitente.'},422);
       const suffix = environment === 1 ? "production" : "homologation";
       if (
         !text(config[`qr_base_url_${suffix}`]) ||
@@ -1088,6 +1150,12 @@ Deno.serve(async (req) => {
       }
     }
 
+    const table = draft.model === 55 ? 'nfe_documents' : 'nfce_documents';
+    const claim = await auth.supabase.from(table).update({ status: 'preparing' })
+      .eq('id', row.id).eq('company_id', auth.companyId).eq('status', 'draft').select('id').maybeSingle();
+    if (claim.error) throw new Error('Não foi possível iniciar a preparação da nota.');
+    if (!claim.data) return jsonResponse({ ok: true, id: row.id, status: 'preparing', existing: true }, 202);
+    activeDocument = { id: text(row.id), table, events: draft.model === 55 ? 'nfe_events' : 'nfce_events' };
     let series = number(row.series);
     let documentNumber = number(row.number);
     if (!documentNumber) {
@@ -1111,11 +1179,8 @@ Deno.serve(async (req) => {
       documentNumber,
     );
     const snapshotHash = await sha256(document);
-    const table = draft.model === 55 ? "nfe_documents" : "nfce_documents";
     const operationId = text(row.operation_id);
-    await auth.supabase
-      .from(table)
-      .update({
+    await storeGoodsDocument(auth, table, text(row.id), {
         status: "preparing",
         environment,
         uf: text(company.state).toUpperCase(),
@@ -1125,9 +1190,7 @@ Deno.serve(async (req) => {
         snapshot: document,
         last_error_code: null,
         last_error_message: null,
-      })
-      .eq("id", row.id)
-      .eq("company_id", auth.companyId);
+      });
     const ctx: NfseProviderCtx = {
       supabase: auth.supabase,
       companyId: auth.companyId,
@@ -1168,16 +1231,13 @@ Deno.serve(async (req) => {
       throw new Error(
         "Não foi possível guardar o XML assinado antes do envio. Nenhuma transmissão foi iniciada.",
       );
-    await auth.supabase
-      .from(table)
-      .update({
+    await storeGoodsDocument(auth, table, text(row.id), {
         status: "signed",
         access_key: prepared.chave,
         signed_xml_path: signedXmlPath,
-      })
-      .eq("id", row.id)
-      .eq("company_id", auth.companyId);
+      });
     const batchId = String(documentNumber).slice(-15);
+    await storeGoodsDocument(auth, table, text(row.id), {status:'transmitting'});
     transmissionStarted = true;
     const official =
       draft.model === 55
@@ -1198,60 +1258,19 @@ Deno.serve(async (req) => {
             signedXml: prepared.xmlAssinado,
           });
     const normalized = outcomeStatus(official as JsonObject);
-    const proof = object(official.prova);
-    const basePath = `${auth.companyId}/${draft.model}/${row.id}`;
-    let xmlPath: string | null = null;
-    let pdfPath: string | null = null;
-    if (text(official.xmlProcessado)) {
-      xmlPath = `${basePath}/processado.xml`;
-      await auth.supabase.storage
-        .from("fiscal-artifacts")
-        .upload(
-          xmlPath,
-          new Blob([text(official.xmlProcessado)], { type: "application/xml" }),
-          { upsert: true, contentType: "application/xml" },
-        );
-    }
-    const officialPayload = official as JsonObject;
-    const pdfBase64 = text(
-      officialPayload[draft.model === 65 ? "danfceBase64" : "danfeBase64"],
-    );
-    if (pdfBase64) {
-      pdfPath = `${basePath}/${draft.model === 65 ? "danfce" : "danfe"}.pdf`;
-      const bytes = Uint8Array.from(atob(pdfBase64), (char) =>
-        char.charCodeAt(0),
-      );
-      await auth.supabase.storage
-        .from("fiscal-artifacts")
-        .upload(pdfPath, bytes, {
-          upsert: true,
-          contentType: "application/pdf",
-        });
-    }
-    await auth.supabase
-      .from(table)
-      .update({
+    const artifacts = await officialArtifacts(auth, draft.model, text(row.id), official as JsonObject);
+    await storeGoodsDocument(auth, table, text(row.id), {
         status: normalized.status,
         official_status: normalized.official,
-        protocol: text(proof.protocol) || null,
-        processed_xml_path: xmlPath,
-        ...(draft.model === 55
-          ? { danfe_pdf_path: pdfPath }
-          : { danfce_pdf_path: pdfPath }),
+        ...artifacts,
         official_checked_at: new Date().toISOString(),
         authorized_at:
           normalized.status === "authorized" ? new Date().toISOString() : null,
-        last_error_message:
-          normalized.status === "rejected"
-            ? text(object(official.resposta).reason) ||
-              "Documento rejeitado pela SEFAZ."
-            : null,
-      })
-      .eq("id", row.id)
-      .eq("company_id", auth.companyId);
-    await auth.supabase
-      .from(draft.model === 55 ? "nfe_events" : "nfce_events")
-      .insert({
+        last_error_code: normalized.status === 'rejected' ? `sefaz_${text(object(official.resposta).cstat)}` : null,
+        last_error_message: normalized.status === 'rejected' ? 'Documento rejeitado pela SEFAZ. Revise o cadastro fiscal.' : null,
+      });
+    activeDocument = null;
+    await storeGoodsEvent(auth, draft.model === 55 ? "nfe_events" : "nfce_events", {
         company_id: auth.companyId,
         document_id: row.id,
         event_type: "authorization_result",
@@ -1281,10 +1300,10 @@ Deno.serve(async (req) => {
   } catch (error) {
     const fiscal =
       error instanceof NfeMotorError || error instanceof NfceMotorError;
-    const code = fiscal ? (error as NfeMotorError).code : "internal_error";
-    const message =
-      (error as Error).message ||
-      "Não foi possível concluir a operação fiscal.";
+    const code = fiscal ? (error as NfeMotorError).code : error instanceof GoodsDocumentError ? error.code : 'internal_error';
+    const message = transmissionStarted || code === 'resultado_incerto'
+      ? 'A confirmação não voltou. Consulte esta mesma nota antes de tentar novamente.'
+      : 'Não foi possível concluir a operação fiscal. Confira o cadastro fiscal e tente novamente.';
     if (activeDocument) {
       const status =
         transmissionStarted || code === "resultado_incerto"
@@ -1319,13 +1338,10 @@ Deno.serve(async (req) => {
         payload: { code, transmissionStarted },
       });
     }
-    console.error("[fiscal-goods-document]", {
-      type: (error as Error).name,
-      message: (error as Error).message,
-    });
+    console.error('[fiscal-goods-document]', { code, transmissionStarted });
     return jsonResponse(
-      { error: code, message },
-      fiscal ? (error as NfeMotorError).status : 500,
+      { error: code, message: error instanceof GoodsDocumentError ? error.message : message },
+      error instanceof GoodsDocumentError ? error.status : fiscal ? (error as NfeMotorError).status : 500,
     );
   }
 });

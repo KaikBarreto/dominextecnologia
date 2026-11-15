@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
-  auth: { user: { id: 'user-1' }, profile: { company_id: 'company-1' }, roles: ['comercial'], permissions: ['screen:pdv'], hasPermissionRecord: true, loading: false, profileLoading: false },
+  auth: { user: { id: 'user-1' }, profile: { company_id: 'company-1', user_id: 'user-1', is_active: true }, roles: ['comercial'], permissions: ['screen:pdv'], hasPermissionRecord: true, loading: false, profileLoading: false },
   rpc: vi.fn(),
 }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => state.auth }));
@@ -19,15 +19,15 @@ function context() {
 describe('saldo autorizado do fornecedor', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    state.auth = { user: { id: 'user-1' }, profile: { company_id: 'company-1' }, roles: ['comercial'], permissions: ['screen:pdv'], hasPermissionRecord: true, loading: false, profileLoading: false };
+    state.auth = { user: { id: 'user-1' }, profile: { company_id: 'company-1', user_id: 'user-1', is_active: true }, roles: ['comercial'], permissions: ['screen:pdv'], hasPermissionRecord: true, loading: false, profileLoading: false };
   });
   it.each(['user', 'company', 'permissions'])('não reaproveita crédito ao trocar %s', async change => {
     state.rpc.mockResolvedValueOnce({ data: { available_credit: 150 }, error: null }).mockResolvedValueOnce({ data: { available_credit: 20 }, error: null });
     const { wrapper, client } = context();
     const { result, rerender } = renderHook(() => usePdvSupplierCredit('supplier-1'), { wrapper });
     await waitFor(() => expect(result.current.data).toBe(150));
-    if (change === 'user') state.auth.user = { id: 'user-2' };
-    if (change === 'company') state.auth.profile = { company_id: 'company-2' };
+    if (change === 'user') { state.auth.user = { id: 'user-2' }; state.auth.profile.user_id = 'user-2'; }
+    if (change === 'company') state.auth.profile = { company_id: 'company-2', user_id: state.auth.user.id, is_active: true };
     if (change === 'permissions') state.auth.permissions = [];
     rerender();
     expect(result.current.data).toBeUndefined();

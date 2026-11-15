@@ -637,6 +637,7 @@ Deno.serve(async (req) => {
         .select('id, name')
         .eq('referral_code', referralCode)
         .eq('is_active', true)
+        .eq('can_receive_sales', true)
         .maybeSingle();
       if (sp?.id) {
         salespersonId = sp.id;
@@ -648,7 +649,7 @@ Deno.serve(async (req) => {
     // Quando o cadastro chega SEM vendedor no link (nenhum closer resolvido via
     // referral_code), o lead é "self-service": marcamos a company com is_self_service
     // e distribuímos o closer pelo rodízio round-robin justo (RPC SECURITY DEFINER
-    // assign_next_lead_salesperson, que só considera vendedores ativos, in_rotation e
+    // assign_next_lead_salesperson, que só considera pessoas ativas, comerciais, em rodízio e
     // com telefone, e carimba last_lead_assigned_at). Se o link JÁ trouxe vendedor,
     // NÃO mexemos: is_self_service fica false e usa-se o vendedor do link.
     //

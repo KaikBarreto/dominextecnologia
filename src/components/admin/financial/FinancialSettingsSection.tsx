@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Plus, Edit, Trash2, Settings2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { ColorPicker } from '@/components/ui/ColorPicker';
+import { Switch } from '@/components/ui/switch';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -19,6 +20,23 @@ import {
   type AdminFinancialCategory,
 } from '@/hooks/useAdminFinancialCategories';
 import { CATEGORY_ICONS, getCategoryIcon, type CategoryIconKey } from '@/components/financial/categoryIcons';
+
+type DreBucket = 'revenue' | 'revenue_reduction' | 'tax' | 'cpv' | 'opex' | 'non_operating';
+const DRE_BUCKET_LABELS: Record<DreBucket, string> = {
+  revenue: 'Receita operacional', revenue_reduction: 'Redutor de receita', tax: 'Impostos e deduções',
+  cpv: 'Custos (CPV)', opex: 'Despesas operacionais', non_operating: 'Não operacional',
+};
+const DRE_OPTIONS_BY_TYPE: Record<'income' | 'expense', DreBucket[]> = {
+  income: ['revenue'],
+  expense: ['revenue_reduction', 'tax', 'cpv', 'opex', 'non_operating'],
+};
+
+function buildCategoryForm(category: AdminFinancialCategory | null, type: 'income' | 'expense' | null): Partial<AdminFinancialCategory> {
+  return category ?? {
+    name: '', label: '', type: type ?? 'income', color: '#10b981', icon: 'Tag', is_active: true, is_system: false,
+    dre_bucket: type === 'expense' ? 'opex' : 'revenue', affects_result: true,
+  };
+}
 
 export function FinancialSettingsSection() {
   const { data: categories = [] } = useAdminFinancialCategories();
@@ -34,7 +52,7 @@ export function FinancialSettingsSection() {
   return (
     <Card className="p-4 lg:p-6 space-y-6">
       <div className="flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-primary/10"><Settings2 className="h-5 w-5 text-primary" /></div>
+        <div className="p-2 rounded-lg bg-white"><Settings2 className="h-5 w-5 text-primary" /></div>
         <div>
           <h2 className="text-lg font-semibold">Categorias Financeiras</h2>
           <p className="text-xs text-muted-foreground">Personalize as categorias usadas em receitas e despesas</p>
@@ -61,7 +79,14 @@ export function FinancialSettingsSection() {
                       <Icon className="h-3 w-3 text-white" />
                     </span>
                     <span className="text-sm truncate">{c.label}</span>
-                    {c.is_system && <Badge variant="secondary" className="text-[9px] h-4">Sistema</Badge>}
+                    {c.is_system && <Badge className="h-4 bg-slate-700 text-[9px] text-white">Sistema</Badge>}
+                    {c.affects_result === false ? (
+                      <Badge className="h-4 bg-slate-700 text-[9px] text-white">Caixa</Badge>
+                    ) : c.dre_bucket ? (
+                      <Badge className="h-4 bg-slate-800 text-[9px] text-white">{DRE_BUCKET_LABELS[c.dre_bucket as DreBucket] ?? 'Grupo DRE'}</Badge>
+                    ) : (
+                      <Badge className="h-4 bg-amber-600 text-[9px] text-white">Classificação pendente</Badge>
+                    )}
                   </div>
                   <div className="flex gap-1 flex-shrink-0">
                     <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditing(c)}>
@@ -96,7 +121,7 @@ export function FinancialSettingsSection() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            <AlertDialogAction className="bg-red-600 text-white hover:bg-red-700"
               onClick={() => { if (deleteId) del.mutate(deleteId); setDeleteId(null); }}>Excluir</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -109,15 +134,13 @@ function CategoryFormModal({ category, type, onClose, onSave }: {
   category: AdminFinancialCategory | null;
   type: 'income' | 'expense' | null;
   onClose: () => void;
-  onSave: (payload: any) => void;
+  onSave: (payload: Partial<AdminFinancialCategory>) => void;
 }) {
   const open = !!(category || type);
-  const initial = category ?? { name: '', label: '', type: type ?? 'income', color: '#10b981', icon: 'Tag', is_active: true, is_system: false };
-  const [form, setForm] = useState(initial);
+  const [form, setForm] = useState<Partial<AdminFinancialCategory>>(() => buildCategoryForm(category, type));
   const iconKeys = Object.keys(CATEGORY_ICONS) as CategoryIconKey[];
 
-  // reset when changing
-  useState(() => { setForm(initial); });
+  useEffect(() => { setForm(buildCategoryForm(category, type)); }, [category, type]);
   if (!open) return null;
 
   const footer = (
@@ -140,10 +163,40 @@ function CategoryFormModal({ category, type, onClose, onSave }: {
             <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value.toLowerCase().replace(/\s+/g, '_') })} disabled={!!category?.is_system} />
           </div>
         </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+          <div className="space-y-1.5">
+            <Label>Grupo no DRE</Label>
+            <Select
+              value={form.affects_result === false ? 'outside_result' : form.dre_bucket ?? 'unclassified'}
+              onValueChange={(value) => {
+                if (value === 'outside_result') setForm({ ...form, dre_bucket: null, affects_result: false });
+                else if (value === 'unclassified') setForm({ ...form, dre_bucket: null, affects_result: true });
+                else setForm({ ...form, dre_bucket: value as DreBucket, affects_result: true });
+              }}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {DRE_OPTIONS_BY_TYPE[(form.type ?? 'income') as 'income' | 'expense'].map((bucket) => (
+                  <SelectItem key={bucket} value={bucket}>{DRE_BUCKET_LABELS[bucket]}</SelectItem>
+                ))}
+                <SelectItem value="unclassified">Sem grupo (visível como pendência)</SelectItem>
+                <SelectItem value="outside_result">Fora do resultado (caixa)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2 pb-2">
+            <Switch checked={form.affects_result !== false} onCheckedChange={(affects_result) => setForm({
+              ...form,
+              affects_result,
+              dre_bucket: affects_result ? form.dre_bucket : null,
+            })} />
+            <Label>Afeta resultado</Label>
+          </div>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label>Tipo</Label>
-            <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v as any })} disabled={!!category}>
+            <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v as 'income' | 'expense' })} disabled={!!category}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="income">Receita</SelectItem>

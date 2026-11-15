@@ -20,7 +20,7 @@ import { usePdvOrderWorkspace } from '@/hooks/usePdvOrdersList';
 import { derivePdvReturnsAccess, usePdvReturnsFeature } from '@/hooks/usePdvReturns';
 import { derivePdvAfterSaleAccess, usePdvAfterSaleFeature } from '@/hooks/usePdvAfterSale';
 import { usePdvReceiptSettings } from '@/hooks/usePdvReceiptSettings';
-import { openPdvOrderReceipt } from '@/components/pdv/receipt/PdvOrderReceiptButton';
+import { usePdvOrderReceiptOpener } from '@/components/pdv/receipt/PdvOrderReceiptButton';
 import { DEFAULT_PDV_RECEIPT_SETTINGS } from '@/lib/pdv/receipt/model';
 import { useToast } from '@/hooks/use-toast';
 import type { PdvCustomerHistoryRow } from '@/hooks/usePdvCustomerHistory';
@@ -76,6 +76,7 @@ function CustomerOrderActions({ order, go, canReceive, canPickup, canReturn, can
   const [menuOpen, setMenuOpen] = useState(false);
   const detail = usePdvOrderWorkspace(menuOpen ? order.id : null);
   const receiptSettings = usePdvReceiptSettings();
+  const receiptOpener = usePdvOrderReceiptOpener(order.id);
   const { toast } = useToast();
   const current = detail.data?.order;
   const confirmed = current && !['rascunho', 'aguardando_pagamento', 'cancelado'].includes(current.commercialStatus);
@@ -85,7 +86,7 @@ function CustomerOrderActions({ order, go, canReceive, canPickup, canReturn, can
   }, [detail.isError, toast]);
   async function receipt() {
     try {
-      await openPdvOrderReceipt(order.id, receiptSettings.data?.defaultFormat ?? DEFAULT_PDV_RECEIPT_SETTINGS.defaultFormat);
+      await receiptOpener.open(order.id, receiptSettings.data?.defaultFormat ?? DEFAULT_PDV_RECEIPT_SETTINGS.defaultFormat);
     } catch {
       toast({ variant: 'destructive', title: 'Não foi possível gerar o comprovante', description: 'Tente novamente pela tela de pedidos.' });
     }

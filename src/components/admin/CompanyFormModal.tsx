@@ -162,6 +162,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         .from('salespeople_basic')
         .select('id, name, email, role')
         .eq('is_active', true)
+        .filter('can_receive_sales', 'eq', true)
         .order('name');
       if (error) throw error;
       return data || [];

@@ -119,6 +119,7 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
         .from('salespeople_basic')
         .select('id, name, referral_code, role')
         .eq('is_active', true)
+        .filter('can_receive_sales', 'eq', true)
         .order('name');
       if (error) throw error;
       return data || [];

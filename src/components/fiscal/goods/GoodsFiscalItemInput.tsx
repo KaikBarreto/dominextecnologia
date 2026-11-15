@@ -1,3 +1,4 @@
+import { useAppLocaleContext } from "@/contexts/AppLocaleContext";
 import { useMemo, useRef, useState } from "react";
 import { HelpCircle, Percent, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -27,11 +28,7 @@ const maskNcm = (value: string) => {
   const raw = digits(value).slice(0, 8);
   return [raw.slice(0, 4), raw.slice(4, 6), raw.slice(6, 8)].filter(Boolean).join(".");
 };
-const interstateCfop = (cfop: string) => {
-  if (cfop.startsWith("1")) return `2${cfop.slice(1)}`;
-  if (cfop.startsWith("5")) return `6${cfop.slice(1)}`;
-  return cfop;
-};
+
 
 export function GoodsFiscalItemInput({
   inventory,
@@ -42,6 +39,7 @@ export function GoodsFiscalItemInput({
   direction: GoodsDirection;
   onAddItem: (item: GoodsFiscalItem) => void;
 }) {
+  const { locale } = useAppLocaleContext();
   const [materialId, setMaterialId] = useState("");
   const [ncm, setNcm] = useState("");
   const [cfop, setCfop] = useState("");
@@ -126,12 +124,12 @@ export function GoodsFiscalItemInput({
       cfopEntryInternal: direction === "entrada" ? fiscalCfop : material.fiscal_cfop_entry_internal,
       cfopEntryInterstate:
         direction === "entrada"
-          ? material.fiscal_cfop_entry_interstate || interstateCfop(fiscalCfop)
+          ? material.fiscal_cfop_entry_interstate
           : material.fiscal_cfop_entry_interstate,
       cfopExitInternal: direction === "saida" ? fiscalCfop : material.fiscal_cfop_exit_internal ?? material.fiscal_cfop_internal,
       cfopExitInterstate:
         direction === "saida"
-          ? material.fiscal_cfop_exit_interstate ?? material.fiscal_cfop_interstate ?? interstateCfop(fiscalCfop)
+          ? material.fiscal_cfop_exit_interstate ?? material.fiscal_cfop_interstate
           : material.fiscal_cfop_exit_interstate ?? material.fiscal_cfop_interstate,
       icmsCode: material.fiscal_icms_code,
       icmsRate: material.fiscal_icms_rate,
@@ -258,10 +256,10 @@ export function GoodsFiscalItemInput({
         <div className="flex items-center justify-between gap-3 border-t border-border/60 pt-3">
           <div>
             <span className="text-xs text-muted-foreground">Total líquido: </span>
-            <span className="font-bold">{formatMoney(net, "BRL")}</span>
-            {discountNumber > 0 ? <p className="text-[11px] text-muted-foreground">Bruto {formatMoney(gross, "BRL")} · Desc. {formatMoney(discountNumber, "BRL")}</p> : null}
+            <span className="font-bold">{formatMoney(net, "BRL", locale)}</span>
+            {discountNumber > 0 ? <p className="text-[11px] text-muted-foreground">Bruto {formatMoney(gross, "BRL", locale)} · Desc. {formatMoney(discountNumber, "BRL", locale)}</p> : null}
           </div>
-          <Button type="button" onClick={add} disabled={!materialId} className="gap-2 bg-black text-white hover:bg-black/85 dark:bg-white dark:text-black">
+          <Button type="button" onClick={add} disabled={!materialId} className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
             <Plus className="h-4 w-4" />Incluir
           </Button>
         </div>

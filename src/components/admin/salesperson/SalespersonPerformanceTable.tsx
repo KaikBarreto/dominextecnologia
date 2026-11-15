@@ -9,6 +9,19 @@ import { SortableTableHead } from '@/components/ui/SortableTableHead';
 import { useTableSort } from '@/hooks/useTableSort';
 import { type Salesperson, type SalespersonSale, type SalespersonAdvance, salesForPerson, commissionForPerson } from '@/hooks/useSalespersonData';
 
+const TEAM_AREA_LABELS: Record<string, string> = {
+  sales: 'Comercial', customer_success: 'Sucesso do Cliente', support: 'Suporte', financial: 'Financeiro',
+  admin: 'Administrativo', partner: 'Sócio / Pró-labore', other: 'Outro',
+};
+
+function rotationStatus(person: Salesperson) {
+  const eligible = Boolean(person.is_active && person.can_receive_sales && person.in_rotation && person.phone?.trim());
+  const lastAssignment = person.last_lead_assigned_at
+    ? new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(person.last_lead_assigned_at))
+    : null;
+  return { eligible, lastAssignment };
+}
+
 interface Props {
   salespeople: Salesperson[];
   sales: SalespersonSale[];
@@ -56,7 +69,7 @@ export function SalespersonPerformanceTable({ salespeople, sales, advances, onEd
       <Table className="min-w-[800px]">
         <TableHeader>
           <TableRow>
-            <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>Vendedor</SortableTableHead>
+            <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>Pessoa</SortableTableHead>
             <SortableTableHead sortKey="_totalSales" sortConfig={sortConfig} onSort={handleSort} className="text-center">Vendas</SortableTableHead>
             <SortableTableHead sortKey="_totalCommission" sortConfig={sortConfig} onSort={handleSort} className="text-right">Comissão</SortableTableHead>
             <SortableTableHead sortKey="_totalAdvances" sortConfig={sortConfig} onSort={handleSort} className="text-right">Vales</SortableTableHead>
@@ -70,11 +83,21 @@ export function SalespersonPerformanceTable({ salespeople, sales, advances, onEd
           {sortedItems.map((p) => {
             const st = { totalSales: p._totalSales, totalCommission: p._totalCommission, totalAdvances: p._totalAdvances, balance: p._balance };
             const pct = p._pct;
+            const canReceiveSales = p.can_receive_sales !== false;
+            const rotation = rotationStatus(p);
             return (
               <TableRow key={p.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/admin/vendedores/${p.id}`)}>
-                <TableCell className="font-medium">{p.name}</TableCell>
-                <TableCell className="text-center">{st.totalSales}</TableCell>
-                <TableCell className="text-right">{fmt(st.totalCommission)}</TableCell>
+                <TableCell>
+                  <p className="font-medium">{p.name}</p>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    <Badge variant="outline" className="text-[10px] font-normal">{TEAM_AREA_LABELS[p.person_type || 'sales'] || 'Outro'}</Badge>
+                    {canReceiveSales && <Badge className="bg-slate-700 text-[10px] font-normal text-white">Recebe vendas</Badge>}
+                    {rotation.eligible && <Badge className="bg-emerald-600 text-[10px] font-normal text-white">Próximo lead</Badge>}
+                  </div>
+                  {rotation.lastAssignment && <p className="mt-1 text-[10px] text-muted-foreground">Último lead: {rotation.lastAssignment}</p>}
+                </TableCell>
+                <TableCell className="text-center">{canReceiveSales ? st.totalSales : '—'}</TableCell>
+                <TableCell className="text-right">{canReceiveSales ? fmt(st.totalCommission) : '—'}</TableCell>
                 <TableCell className="text-right text-destructive">{st.totalAdvances > 0 && '-'}{fmt(st.totalAdvances)}</TableCell>
                 <TableCell className={`text-right font-medium ${st.balance >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>{fmt(st.balance)}</TableCell>
                 <TableCell>

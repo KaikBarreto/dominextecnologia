@@ -47,6 +47,19 @@ async function readError(response: Response): Promise<DomiLinkError> {
   return new DomiLinkError(code, FRIENDLY_ERRORS[code] ?? 'Não foi possível falar com o DomiLink.', response.status);
 }
 
+async function localAccessDenied(): Promise<boolean> {
+  if (!navigator.permissions?.query) return false;
+  // Chromium recente separa loopback da rede local. O nome antigo é fallback
+  // somente quando o navegador não reconhece a permissão específica.
+  for (const name of ['loopback-network', 'local-network-access']) {
+    try {
+      const permission = await navigator.permissions.query({ name } as PermissionDescriptor);
+      return permission.state === 'denied';
+    } catch { /* permissão não suportada: não inferir bloqueio */ }
+  }
+  return false;
+}
+
 async function request<T>(
   path: string,
   options: RequestInit & { token?: string | null; timeoutMs?: number; retryGet?: boolean } = {},
@@ -60,7 +73,16 @@ async function request<T>(
   const execute = async () => {
     const timeout = timeoutSignal(timeoutMs);
     try {
-      const response = await fetch(`${DOMILINK_BASE_URL}${path}`, { ...init, headers, signal: timeout.signal, cache: 'no-store', credentials: 'omit' });
+      let response: Response;
+      try {
+        response = await fetch(`${DOMILINK_BASE_URL}${path}`, { ...init, headers, signal: timeout.signal, cache: 'no-store', credentials: 'omit' });
+      } catch (error) {
+        // Abort/timeout e erros HTTP não comprovam uma permissão negada.
+        if (error instanceof TypeError && !timeout.signal.aborted && await localAccessDenied() && !timeout.signal.aborted) {
+          throw new DomiLinkError('local_access_denied', 'Seu navegador bloqueou a conexão com o DomiLink. Nas configurações deste site, permita o acesso à rede local e tente novamente.');
+        }
+        throw error;
+      }
       if (!response.ok) throw await readError(response);
       if (response.status === 204) return undefined as T;
       return await response.json() as T;
@@ -78,7 +100,7 @@ async function request<T>(
         if (retryError instanceof DomiLinkError) throw retryError;
       }
     }
-    throw new DomiLinkError('offline', 'DomiLink não encontrado neste computador. Abra o utilitário e tente novamente.');
+    throw new DomiLinkError('offline', 'Não foi possível conectar ao DomiLink. Confira se o DomiLink está aberto e se o navegador permite acesso local.');
   }
 }
 

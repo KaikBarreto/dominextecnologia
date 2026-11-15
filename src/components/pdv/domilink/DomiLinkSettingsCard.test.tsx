@@ -22,6 +22,9 @@ describe('DomiLinkSettingsCard', () => {
     expect(screen.getByRole('img', { name: 'DomiLink' })).toBeVisible();
     expect(screen.getByText(/equipamentos podem ser conectados quando você precisar/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/código do DomiLink/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Baixar pacote Python' })).toHaveAttribute('href', '/downloads/domilink/domilink-fontes-0.1.0.zip');
+    expect(screen.getByRole('link', { name: 'Baixar pacote Python' })).toHaveAttribute('download');
+    expect(screen.getByText(/Instalação manual · requer Python 3.9/)).toBeVisible();
   });
 
   it('só habilita pareamento com seis números', () => {

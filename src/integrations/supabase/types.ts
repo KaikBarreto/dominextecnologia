@@ -39,6 +39,14 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_cash_flow_plans: {
+        Row: { id: string; direction: string; description: string; amount: number; due_date: string; status: string; ledger_id: string | null; created_by: string; created_at: string }
+        Insert: { id?: string; direction: string; description: string; amount: number; due_date: string; status?: string; ledger_id?: string | null; created_by?: string; created_at?: string }
+        Update: { direction?: string; description?: string; amount?: number; due_date?: string; status?: string; ledger_id?: string | null }
+        Relationships: []
+      }
+
+
       active_sessions: {
         Row: {
           created_at: string | null
@@ -193,6 +201,9 @@ export type Database = {
       }
       admin_financial_categories: {
         Row: {
+          dre_bucket: string | null
+          affects_result: boolean | null
+
           color: string
           created_at: string
           icon: string | null
@@ -206,6 +217,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          dre_bucket?: string | null
+          affects_result?: boolean | null
+
           color?: string
           created_at?: string
           icon?: string | null
@@ -219,6 +233,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          dre_bucket?: string | null
+          affects_result?: boolean | null
+
           color?: string
           created_at?: string
           icon?: string | null
@@ -235,6 +252,8 @@ export type Database = {
       }
       admin_financial_transactions: {
         Row: {
+          manual_request_id: string | null
+          manual_awaiting_asaas: boolean
           amount: number
           asaas_transaction_id: string | null
           category: string | null
@@ -249,6 +268,8 @@ export type Database = {
           type: string
         }
         Insert: {
+          manual_request_id?: string | null
+          manual_awaiting_asaas?: boolean
           amount?: number
           asaas_transaction_id?: string | null
           category?: string | null
@@ -263,6 +284,8 @@ export type Database = {
           type: string
         }
         Update: {
+          manual_request_id?: string | null
+          manual_awaiting_asaas?: boolean
           amount?: number
           asaas_transaction_id?: string | null
           category?: string | null
@@ -1874,6 +1897,11 @@ export type Database = {
       }
       company_nfce_settings: {
         Row: {
+          after_payment_mode: string
+          default_operation_nature: string
+          include_identified_consumer: boolean
+          open_danfce_after_authorization: boolean
+          automatic_canary_approved: boolean
           access_url_homologation: string | null
           access_url_production: string | null
           approved_at: string | null
@@ -1891,6 +1919,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          after_payment_mode?: string
+          default_operation_nature?: string
+          include_identified_consumer?: boolean
+          open_danfce_after_authorization?: boolean
+          automatic_canary_approved?: boolean
           access_url_homologation?: string | null
           access_url_production?: string | null
           approved_at?: string | null
@@ -1908,6 +1941,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          after_payment_mode?: string
+          default_operation_nature?: string
+          include_identified_consumer?: boolean
+          open_danfce_after_authorization?: boolean
+          automatic_canary_approved?: boolean
           access_url_homologation?: string | null
           access_url_production?: string | null
           approved_at?: string | null
@@ -13224,6 +13262,7 @@ export type Database = {
           daily_goal_contacts: number
           daily_goal_meetings_scheduled: number
           email: string | null
+          can_receive_sales: boolean
           id: string
           in_rotation: boolean
           is_active: boolean
@@ -13234,6 +13273,7 @@ export type Database = {
           notes: string | null
           phone: string | null
           photo_url: string | null
+          person_type: string
           referral_code: string | null
           role: string
           salary: number
@@ -13245,6 +13285,7 @@ export type Database = {
           daily_goal_contacts?: number
           daily_goal_meetings_scheduled?: number
           email?: string | null
+          can_receive_sales?: boolean
           id?: string
           in_rotation?: boolean
           is_active?: boolean
@@ -13255,6 +13296,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           photo_url?: string | null
+          person_type?: string
           referral_code?: string | null
           role?: string
           salary?: number
@@ -13266,6 +13308,7 @@ export type Database = {
           daily_goal_contacts?: number
           daily_goal_meetings_scheduled?: number
           email?: string | null
+          can_receive_sales?: boolean
           id?: string
           in_rotation?: boolean
           is_active?: boolean
@@ -13276,6 +13319,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           photo_url?: string | null
+          person_type?: string
           referral_code?: string | null
           role?: string
           salary?: number
@@ -17829,6 +17873,12 @@ export type Database = {
       }
     }
     Views: {
+      admin_realized_asaas_movements: {
+        Row: Database["public"]["Tables"]["ledger_asaas"]["Row"]
+        Relationships: []
+      }
+
+
       contract_activity_execution: {
         Row: {
           activity_id: string | null
@@ -18015,10 +18065,12 @@ export type Database = {
           daily_goal_contacts: number | null
           daily_goal_meetings_scheduled: number | null
           email: string | null
+          can_receive_sales: boolean | null
           id: string | null
           is_active: boolean | null
           name: string | null
           photo_url: string | null
+          person_type: string | null
           referral_code: string | null
           role: string | null
           user_id: string | null
@@ -18027,10 +18079,12 @@ export type Database = {
           daily_goal_contacts?: number | null
           daily_goal_meetings_scheduled?: number | null
           email?: string | null
+          can_receive_sales?: boolean | null
           id?: string | null
           is_active?: boolean | null
           name?: string | null
           photo_url?: string | null
+          person_type?: string | null
           referral_code?: string | null
           role?: string | null
           user_id?: string | null
@@ -18039,10 +18093,12 @@ export type Database = {
           daily_goal_contacts?: number | null
           daily_goal_meetings_scheduled?: number | null
           email?: string | null
+          can_receive_sales?: boolean | null
           id?: string | null
           is_active?: boolean | null
           name?: string | null
           photo_url?: string | null
+          person_type?: string | null
           referral_code?: string | null
           role?: string | null
           user_id?: string | null
@@ -18051,6 +18107,15 @@ export type Database = {
       }
     }
     Functions: {
+      admin_categorize_ledger: { Args: { p_ledger_id: string; p_category: string }; Returns: undefined }
+      admin_create_financial_movement: {
+        Args: { p_request_id: string; p_type: string; p_category: string; p_amount: number; p_date: string; p_description?: string | null; p_awaiting_asaas?: boolean }
+        Returns: string
+      }
+      admin_cash_flow_report: { Args: { p_start: string; p_end: string }; Returns: Json }
+      admin_ledger_summary: { Args: Record<PropertyKey, never>; Returns: Json }
+
+
       set_customer_whatsapp_route: {
         Args: {
           p_category: string
@@ -20122,8 +20187,32 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      finance_get_pdv_reconciliation_v3: {
+        Args: { p_projection: string; p_from: string; p_to: string; p_limit?: number; p_offset?: number }
+        Returns: Json
+      }
+      finance_get_pdv_reconciliation_entry_v3: {
+        Args: { p_event_key: string; p_projection: string; p_from: string; p_to: string }
+        Returns: Json
+      }
       pdv_fmt_brl: { Args: { p_value: number }; Returns: string }
       pdv_current_actor_can_read_orders_v4: { Args: never; Returns: boolean }
+      pdv_get_order_residual_plan_v3: {
+        Args: { p_order_id: string }
+        Returns: Json
+      }
+      pdv_get_order_residual_cancellation_v3: {
+        Args: { p_order_id: string }
+        Returns: Json
+      }
+      pdv_cancel_order_residual_v3: {
+        Args: { p_order_id: string; p_reason: string; p_dispositions: Json; p_expected_plan_hash: string; p_idempotency_key: string }
+        Returns: Json
+      }
+      pdv_get_customer_credit_summary_v3: {
+        Args: { p_customer_id: string }
+        Returns: { credit_limit: number | null; debt: number }[]
+      }
       pdv_get_customer_payment_options_v3: {
         Args: { p_customer_id: string }
         Returns: Json
