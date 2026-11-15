@@ -1,7 +1,6 @@
 import { useMemo, useState, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,7 +16,7 @@ const money = (value: number) => value.toLocaleString('pt-BR', { style: 'currenc
 const dayLabel = (value: string) => value.slice(0, 10).split('-').reverse().join('/');
 const localDay = (value: Date) => `${value.getFullYear()}-${String(value.getMonth()+1).padStart(2,'0')}-${String(value.getDate()).padStart(2,'0')}`;
 
-export function AdminCashFlowSection({ canManage = false }: { canManage?: boolean }) {
+export function AdminCashFlowSection({ canManage = false, onManageAccounts }: { canManage?: boolean; onManageAccounts: (direction: 'credit'|'debit') => void }) {
   const today = new Date();
   const [start, setStart] = useState(localDay(new Date(today.getFullYear(), today.getMonth(), 1)));
   const [end, setEnd] = useState(localDay(new Date(today.getFullYear(), today.getMonth()+1, 0)));
@@ -32,32 +31,6 @@ export function AdminCashFlowSection({ canManage = false }: { canManage?: boolea
   const [direction, setDirection] = useState('debit');
   const qc = useQueryClient();
   const planRequest = useRef(crypto.randomUUID());
-  const [matching, setMatching] = useState<Plan | null>(null);
-  const candidates = useQuery({
-    queryKey: ['admin-cash-flow-candidates', matching?.id], enabled: !!matching,
-    queryFn: async () => {
-      if (!matching) return [];
-      const external = accounts.data?.some(a => a.id === matching.bank_account_id && a.account_kind === 'external');
-      const from = new Date(matching.due_date+'T12:00:00Z'); from.setDate(from.getDate()-30);
-      const to = new Date(matching.due_date+'T12:00:00Z'); to.setDate(to.getDate()+31);
-      if (external) {
-        const {data,error}=await (supabase as any).from('admin_bank_transactions').select('id,amount,occurred_at').eq('bank_account_id',matching.bank_account_id).eq('amount',matching.direction==='credit'?matching.amount:-matching.amount).gte('occurred_at',from.toISOString()).lt('occurred_at',to.toISOString()).order('occurred_at',{ascending:false}).limit(30);
-        if(error)throw error;
-        return (data??[]).map((row:{id:string;amount:number;occurred_at:string})=>({...row,amount:Math.abs(Number(row.amount)),source:'bank'}));
-      }
-      const {data,error} = await supabase.from('admin_realized_asaas_movements').select('id,amount,occurred_at,direction,asaas_event_type').eq('direction',matching.direction).eq('amount',matching.amount).gte('occurred_at',from.toISOString()).lt('occurred_at',to.toISOString()).order('occurred_at',{ascending:false}).limit(30);
-      if(error)throw error;
-      return (data ?? []).map(row=>({...row,source:"asaas"}));
-    },
-  });
-  const settle = useMutation({
-    mutationFn: async ({planId,ledgerId,bankTransactionId}:{planId:string;ledgerId:string|null;bankTransactionId?:string|null}) => {
-      const {error} = await (supabase as any).from('admin_cash_flow_plans').update({status:ledgerId||bankTransactionId?'settled':'pending',ledger_id:ledgerId,bank_transaction_id:bankTransactionId??null}).eq('id',planId);
-      if(error)throw error;
-    },
-    onSuccess:()=>{setMatching(null);qc.invalidateQueries({queryKey:['admin-cash-flow']});toast.success('Vínculo atualizado.');},
-    onError:()=>toast.error('Não foi possível vincular. Confira o valor e se o movimento já está vinculado a outra previsão.'),
-  });
   const validPeriod = !!start && !!end && start <= end && (Date.parse(end)-Date.parse(start))/86400000 <= 365;
   const accounts = useQuery({ queryKey:['admin-cash-flow-accounts'], queryFn: async () => { const { data, error } = await (supabase as any).from('admin_bank_accounts').select('id,name,provider,account_kind').order('account_kind').order('name'); if(error) throw error; return (data ?? []) as Account[]; } });
   const report = useQuery({
@@ -70,16 +43,11 @@ export function AdminCashFlowSection({ canManage = false }: { canManage?: boolea
   });
   const estimates = useQuery({ queryKey:['admin-subscription-forecast',start,end], enabled: includeEstimates && !accountId && validPeriod, queryFn: async () => { const {data,error}=await (supabase as any).rpc('admin_subscription_forecast',{p_start:start,p_end:end}); if(error) throw error; return data as {days:{day:string;income:number}[]}; } });
   const mutation = useMutation({
-    mutationFn: async (cancelId?: string) => {
-      if (cancelId) {
-        const { error } = await supabase.from('admin_cash_flow_plans').update({ status: 'cancelled' }).eq('id', cancelId).eq('status', 'pending');
-        if (error) throw error;
-      } else {
+    mutationFn: async () => {
         const value = Number(amount.replace(/\./g,'').replace(',','.'));
         if (!description.trim() || !Number.isFinite(value) || value <= 0 || !due) throw new Error('Confira descrição, valor e vencimento.');
         const { error } = await (supabase as any).rpc('admin_create_cash_flow_plan',{p_request_id:planRequest.current,p_bank_account_id:accountId||null,p_direction:direction,p_description:description.trim(),p_amount:value,p_due_date:due});
         if (error) throw error;
-      }
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-cash-flow'] }); setCreating(false); setDescription(''); setAmount(''); planRequest.current=crypto.randomUUID(); toast.success('Previsão atualizada.'); },
     onError: () => toast.error('Não foi possível salvar a previsão. Confira os dados e tente novamente.'),
@@ -129,7 +97,7 @@ export function AdminCashFlowSection({ canManage = false }: { canManage?: boolea
       {includeEstimates && <p className="text-xs text-muted-foreground">Estimativas de próxima renovação: <strong>{money(rows.reduce((total,row)=>total+row.estimate,0))}</strong>. São hipóteses baseadas nas assinaturas ativas, separadas de cobranças emitidas. {estimates.isError?'Não foi possível buscar as estimativas agora.':''}</p>}
       {rows.some(row=>Number(row.balance_adjustment ?? 0)!==0) && <p className="text-xs text-muted-foreground">O saldo inclui ajustes de capital inicial e transferências entre contas. Eles não são contados como receita ou despesa.</p>}
       <div className="rounded-xl border bg-white p-4"><h3 className="mb-3 font-semibold">Evolução do saldo</h3><div className="h-64" role="img" aria-label="Evolução do saldo realizado e projetado no período"><ResponsiveContainer width="100%" height="100%"><LineChart data={rows}><CartesianGrid strokeDasharray="3 3" vertical={false}/><XAxis dataKey="day" tickFormatter={value=>dayLabel(value).slice(0,5)} minTickGap={40}/><YAxis tickFormatter={value=>new Intl.NumberFormat('pt-BR',{notation:'compact'}).format(value)} width={65}/><Tooltip labelFormatter={value=>dayLabel(String(value))} formatter={(value:number)=>money(value)}/><Legend/><Line type="monotone" dataKey="realized" name="Saldo realizado" stroke="#18181b" strokeWidth={2} dot={false} isAnimationActive={false}/>{view==='forecast'&&<Line type="monotone" dataKey="forecast" name="Saldo projetado" stroke="#2563eb" strokeWidth={2} strokeDasharray="6 4" dot={false} isAnimationActive={false}/>}</LineChart></ResponsiveContainer></div></div>
-      {creating && <form className="grid gap-3 rounded-xl border bg-white p-4 sm:grid-cols-2" onSubmit={e=>{e.preventDefault();if(!mutation.isPending)mutation.mutate(undefined);}}>
+      {creating && <form className="grid gap-3 rounded-xl border bg-white p-4 sm:grid-cols-2" onSubmit={e=>{e.preventDefault();if(!mutation.isPending)mutation.mutate();}}>
         <div className="sm:col-span-2"><Label htmlFor="dfc-description">Descrição do compromisso</Label><Input id="dfc-description" required value={description} onChange={e=>setDescription(e.target.value)} placeholder="Ex.: hospedagem do próximo mês"/></div>
         <div><Label htmlFor="dfc-direction">Tipo</Label><select id="dfc-direction" className="flex h-10 w-full rounded-md border bg-white px-3" value={direction} onChange={e=>setDirection(e.target.value)}><option value="debit">Pagamento previsto</option><option value="credit">Recebimento avulso previsto</option></select></div>
         <div><Label htmlFor="dfc-amount">Valor (R$)</Label><Input id="dfc-amount" inputMode="decimal" required value={amount} onChange={e=>setAmount(e.target.value)} placeholder="0,00"/></div>
@@ -138,12 +106,9 @@ export function AdminCashFlowSection({ canManage = false }: { canManage?: boolea
         <div className="flex gap-2 sm:col-span-2"><Button type="submit" disabled={!canManage || mutation.isPending} className="bg-black text-white hover:bg-zinc-800">{mutation.isPending?'Salvando…':'Salvar previsão'}</Button><Button type="button" variant="outline" onClick={()=>setCreating(false)}>Cancelar</Button></div>
       </form>}
       <div className="overflow-x-auto rounded-xl border bg-white"><table className="w-full text-sm"><caption className="sr-only">Movimentações e saldo acumulado</caption><thead><tr className="border-b">{[granularity==='day'?'Data':'Mês','Entradas','Saídas',...(view==='forecast'?['A receber','A pagar',...(includeEstimates?['Renovações estimadas']:[])]:[]),'Transferências / saldo inicial','Saldo realizado',...(view==='forecast'?['Saldo projetado']:[])].map(h=><th key={h} className="whitespace-nowrap p-3 text-right first:text-left">{h}</th>)}</tr></thead><tbody>{displayedRows.map(d=><tr key={d.day} className="border-b last:border-0"><td className="whitespace-nowrap p-3">{granularity==='day'?dayLabel(d.day):d.day.slice(5,7)+'/'+d.day.slice(0,4)}</td>{[d.realized_income,d.realized_expense,...(view==='forecast'?[d.pending_income,d.pending_expense,...(includeEstimates?[d.estimate]:[])]:[]),d.balance_adjustment??0,d.realized,...(view==='forecast'?[d.forecast]:[])].map((value,index)=><td key={index} className="whitespace-nowrap p-3 text-right tabular-nums">{money(Number(value))}</td>)}</tr>)}</tbody></table></div>
-      <div><h3 className="mb-2 font-semibold">Compromissos manuais do período</h3>{!report.data?.plans.length?<p className="text-sm text-muted-foreground">Nenhuma previsão manual neste período.</p>:<ul className="divide-y">{report.data.plans.map(p=><li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-3"><div><span className="font-medium">{p.description}</span><p className="text-sm text-muted-foreground">{dayLabel(p.due_date)} · {p.direction==='credit'?'Entrada':'Saída'} · {money(Number(p.amount))}</p></div>{p.status==='pending'?<div className="flex gap-2"><Button variant="outline" disabled={!canManage} onClick={()=>setMatching(p)}>Vincular ao extrato</Button><Button variant="outline" disabled={!canManage || mutation.isPending} onClick={()=>mutation.mutate(p.id)}>Cancelar previsão</Button></div>:<div className="flex items-center gap-2"><span className="rounded bg-zinc-700 px-2 py-1 text-xs text-white">{p.status==='settled'?'Realizado':'Cancelado'}</span>{p.status==='settled'&&<Button variant="outline" disabled={!canManage || settle.isPending} onClick={()=>settle.mutate({planId:p.id,ledgerId:null})}>Desfazer vínculo</Button>}</div>}</li>)}</ul>}</div>
+      <div><div className="mb-3 flex flex-wrap items-center justify-between gap-3"><h3 className="font-semibold">Contas agendadas no período</h3><div className="flex flex-wrap gap-2"><Button variant="outline" onClick={()=>onManageAccounts('debit')}>Contas a pagar</Button><Button variant="outline" onClick={()=>onManageAccounts('credit')}>Contas a receber</Button></div></div>{!report.data?.plans.length?<p className="text-sm text-muted-foreground">Nenhuma conta agendada neste período.</p>:<ul className="divide-y">{report.data.plans.map(p=><li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-3"><div><span className="font-medium">{p.description}</span><p className="text-sm text-muted-foreground">{dayLabel(p.due_date)} · {p.direction==='credit'?'Entrada':'Saída'} · {money(Number(p.amount))}</p></div><span className="rounded border bg-white px-2 py-1 text-xs">{p.status==='pending'?'Em aberto':p.status==='settled'?'Realizado':'Cancelado'}</span></li>)}</ul>}</div>
       {Number(report.data?.plans_count ?? 0)>500 && <p role="status" className="text-sm">Exibindo os primeiros 500 de {report.data?.plans_count} compromissos. Reduza o período para consultar os demais; os totais incluem todos.</p>}
       <p className="text-xs text-muted-foreground">Realizado: movimentos liquidados Asaas e OFX das contas selecionadas. Projeção: cobranças abertas, cartões na data estimada de crédito e compromissos pendentes; estimativas de renovação entram apenas quando ativadas. Tarifas futuras desconhecidas não são estimadas. Confira os vínculos ao liquidar compromissos.</p>
     </>}
-    <Dialog open={!!matching} onOpenChange={open=>{if(!open)setMatching(null);}}><DialogContent><DialogHeader><DialogTitle>Vincular previsão ao extrato</DialogTitle><DialogDescription>Escolha o movimento de mesmo valor que liquidou este compromisso. A previsão deixa de compor os valores pendentes.</DialogDescription></DialogHeader>
-      {candidates.isLoading?<p role="status">Buscando movimentos…</p>:candidates.isError?<p role="alert">Não foi possível consultar o extrato. Feche e tente novamente.</p>:!candidates.data?.length?<p>Nenhum movimento de mesmo valor encontrado nos 30 dias próximos ao vencimento. Sincronize o extrato e confira a data.</p>:<ul className="max-h-80 divide-y overflow-auto">{candidates.data.map(c=><li key={c.id} className="flex items-center justify-between gap-3 py-3"><span>{dayLabel(c.occurred_at)} · {money(Number(c.amount))}</span><Button disabled={!canManage || settle.isPending} className="bg-black text-white hover:bg-zinc-800" onClick={()=>matching&&settle.mutate({planId:matching.id,ledgerId:c.source==='asaas'?c.id:null,bankTransactionId:c.source==='bank'?c.id:null})}>Vincular</Button></li>)}</ul>}
-    </DialogContent></Dialog>
   </section>;
 }
