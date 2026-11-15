@@ -155,7 +155,7 @@ function renderStructuredReceipt(doc: jsPDF, snapshot: PdvReceiptSnapshot, forma
   // Mesmo bloco do comprovante EcoSistema: título, cliente e operador/data.
   table({
     body: [
-      [{ content: title, colSpan: 2, styles: { fontStyle: 'bold' as const, fontSize: isA4 ? 18 : format === '58mm' ? 11 : 13, halign: 'center' as const, cellPadding: isA4 ? 3 : 2 } }],
+      [{ content: title, colSpan: 2, styles: { fillColor: 0, textColor: 255, lineColor: 0, fontStyle: 'bold' as const, fontSize: isA4 ? 18 : format === '58mm' ? 11 : 13, halign: 'center' as const, cellPadding: isA4 ? 3 : 2 } }],
       ...(!isDelivery && snapshot.order.budgetNumber != null ? [[{ content: `Origem: Orçamento Nº ${snapshot.order.budgetNumber}`, colSpan: 2 }]] : []),
       [{ content: `Cliente: ${snapshot.order.customerName || 'Não informado'}`, colSpan: 2, styles: { fontStyle: 'bold' as const, fontSize: isA4 ? 10 : format === '58mm' ? 8 : 9 } }],
       [`Operador: ${(isDelivery ? snapshot.withdrawal?.operatorName : null) || snapshot.order.operatorName}`, issuedAt],

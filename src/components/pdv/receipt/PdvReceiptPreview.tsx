@@ -68,7 +68,7 @@ export function PdvReceiptPreview({ snapshot, format, className }: PdvReceiptPre
       </header>
 
       <section className="my-3 text-center" style={{ border: '1px solid #828282',fontSize:12 }} data-receipt-metadata>
-        <h4 className="px-1.5 py-2 font-bold uppercase" style={{fontSize:isA4?22:format==='58mm'?16:19,lineHeight:1.2,borderBottom:'1px solid #828282'}}>{isDelivery ? <>{metadata.title}<br />PEDIDO Nº {snapshot.order.number}</> : `${metadata.title} Nº ${snapshot.order.number}`}</h4>
+        <h4 className="bg-black px-1.5 py-2 font-bold uppercase text-white" style={{fontSize:isA4?22:format==='58mm'?16:19,lineHeight:1.2,borderBottom:'1px solid #000'}}>{isDelivery ? <>{metadata.title}<br />PEDIDO Nº {snapshot.order.number}</> : `${metadata.title} Nº ${snapshot.order.number}`}</h4>
         {!isDelivery && snapshot.order.budgetNumber != null && <p className="px-1.5 py-1.5 text-[11px] text-black" style={{borderBottom:'1px solid #828282'}}>Origem: Orçamento Nº {snapshot.order.budgetNumber}</p>}
         <p className="px-1.5 py-1.5 font-bold" style={{ borderBottom: '1px solid #828282' }}>Cliente: {snapshot.order.customerName || 'Não informado'}</p>
         <div className="grid grid-cols-[65%_35%]">

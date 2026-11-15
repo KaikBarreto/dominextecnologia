@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.4";
+export const APP_VERSION = "1.41.5";
 
 export const VERSION_NOTES =
-  "Comprovantes de retirada mais objetivos, sem campo de assinatura nem espaço vazio reservado para ele.";
+  "Título e número dos comprovantes destacados em uma faixa preta com texto branco, facilitando a identificação do documento.";

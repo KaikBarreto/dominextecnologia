@@ -147,8 +147,8 @@ export function buildPdvReceiptLines(
     if (snapshot.company.phone) addText(snapshot.company.phone);
   }
   lines.push(
-    { text: isDelivery ? metadata.title : `${metadata.title} Nº ${snapshot.order.number}`, align: 'center', bold: true, inverse: kind !== "budget", size: kind === "sale" ? 9 : 12 },
-    ...(isDelivery ? [{ text: `${metadata.numberLabel} Nº ${snapshot.order.number}`, align: 'center' as const, bold: true, size: 13, gapAfter: 2 }] : []),
+    { text: isDelivery ? metadata.title : `${metadata.title} Nº ${snapshot.order.number}`, align: 'center', bold: true, inverse: true, size: kind === "sale" ? 9 : 12 },
+    ...(isDelivery ? [{ text: `${metadata.numberLabel} Nº ${snapshot.order.number}`, align: 'center' as const, bold: true, inverse: true, size: 13, gapAfter: 2 }] : []),
     { text: `Data: ${new Date(isDelivery && snapshot.withdrawal ? snapshot.withdrawal.withdrawnAt : snapshot.order.issuedAt).toLocaleString("pt-BR", { timeZone: safeTimeZone(snapshot.company.timeZone) })}`, align: 'center' },
     { text: `Operador: ${(isDelivery ? snapshot.withdrawal?.operatorName : null) || snapshot.order.operatorName}`, align: 'center' },
   );

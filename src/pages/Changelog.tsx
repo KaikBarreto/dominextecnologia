@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.5',
+    date: '15 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Título e número em destaque nos comprovantes',
+        category: 'melhoria',
+        description: 'O título e o número do documento aparecem em uma faixa preta com texto branco, tanto na prévia quanto nos comprovantes térmicos e A4. Os dados do atendimento continuam legíveis logo abaixo.',
+      },
+    ],
+  },
+  {
     version: '1.41.4',
     date: '15 de novembro de 2026',
     type: 'patch',
