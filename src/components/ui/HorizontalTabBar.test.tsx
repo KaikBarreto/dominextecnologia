@@ -33,9 +33,20 @@ describe('navegação de abas com overflow', () => {
     const { rerender } = render(<HorizontalTabBar viewportProps={{ role: 'tablist' }}><button aria-current="page">Primeira</button><button>Outra</button></HorizontalTabBar>);
     const viewport = screen.getByRole('tablist');
     const scroll = vi.fn(); viewport.scrollBy = scroll;
-    viewport.getBoundingClientRect = () => ({ left: 0, right: 200 } as DOMRect);
-    screen.getByText('Outra').getBoundingClientRect = () => ({ left: 400, right: 480 } as DOMRect);
+    viewport.getBoundingClientRect = () => ({ left: 0, right: 200, width: 200 } as DOMRect);
+    screen.getByText('Outra').getBoundingClientRect = () => ({ left: 400, right: 480, width: 80 } as DOMRect);
     rerender(<HorizontalTabBar viewportProps={{ role: 'tablist' }}><button>Primeira</button><button aria-current="page">Outra</button></HorizontalTabBar>);
     await waitFor(() => expect(scroll).toHaveBeenCalledWith(expect.objectContaining({ left: 288 })));
   });
+  it('não desloca para fora uma aba larga já visível com diferença subpixel', async () => {
+    render(<HorizontalTabBar viewportProps={{ role: 'tablist' }}><button aria-current="page">Diluição de Produto</button></HorizontalTabBar>);
+    const viewport = screen.getByRole('tablist');
+    const scroll = vi.fn(); viewport.scrollBy = scroll;
+    viewport.getBoundingClientRect = () => ({ left: 60, right: 260, width: 200 } as DOMRect);
+    screen.getByText('Diluição de Produto').getBoundingClientRect = () => ({ left: 59.625, right: 259.625, width: 200 } as DOMRect);
+    fireEvent.resize(window);
+    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    expect(scroll).not.toHaveBeenCalled();
+  });
+
 });

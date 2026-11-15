@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.5";
+export const APP_VERSION = "1.41.6";
 
 export const VERSION_NOTES =
-  "Título e número dos comprovantes destacados em uma faixa preta com texto branco, facilitando a identificação do documento.";
+  "Catálogo técnico ampliado, referências documentadas para gases e cálculos, abas com setas de navegação e cores das ferramentas mais claras.";

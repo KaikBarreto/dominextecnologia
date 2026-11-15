@@ -31,6 +31,16 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.6',
+    date: '15 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      { title: 'Catálogo técnico ampliado e organizado', category: 'melhoria', description: 'Mais referências Daikin, Midea, Springer, Carrier, LG, Samsung e Gree, com imagens identificadas, documentos e códigos conforme as fontes disponíveis. Categorias, famílias, busca e paginação facilitam encontrar o equipamento e consultar seus detalhes.' },
+      { title: 'Gases e cálculos com referências documentadas', category: 'melhoria', description: 'As tabelas de gases e as orientações de superaquecimento e sub-resfriamento respeitam os modelos, as condições e os limites publicados. As fontes ficam disponíveis para consulta, e equipamentos com carga por peso recebem a orientação correspondente.' },
+      { title: 'Abas mais fáceis de navegar', category: 'melhoria', description: 'As abas horizontais mostram setas clicáveis quando há mais opções fora da área visível, no computador e no celular. Na Área do Técnico, a aba ativa usa a cor da ferramenta no texto, no ícone e no sublinhado.' },
+    ],
+  },
+  {
     version: '1.41.5',
     date: '15 de novembro de 2026',
     type: 'patch',

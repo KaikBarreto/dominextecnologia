@@ -68,11 +68,12 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className, varian
   // segmentadas são seletores compactos e não entram nessa régua.
   const alturaEPeso =
     variant === 'underline' && level === 'screen'
-      ? 'h-11 text-[15px] font-semibold'
-      : 'h-9 text-sm font-medium';
+      ? 'min-h-11 py-2 text-[15px] font-semibold'
+      : variant === 'underline' ? 'min-h-11 py-2 text-sm font-medium' : 'h-9 text-sm font-medium';
   const comAcoes = variant === 'underline' && !!actions;
   const barra = (
     <HorizontalTabBar
+      wrapTabs={variant === 'underline'}
       className={cn(comAcoes ? 'min-w-0 flex-1' : className)}
       viewportProps={{ role: 'tablist', 'aria-label': 'Abas. Deslize ou use as setas para ver mais opções.', onKeyDown: event => {
         if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key) || !(event.target as HTMLElement).closest('[role=tab]')) return;
