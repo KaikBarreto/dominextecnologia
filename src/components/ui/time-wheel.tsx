@@ -168,6 +168,14 @@ function WheelColumn({
   const programmaticRef = useRef(false);
   const rafRef = useRef<number | null>(null);
   const settleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suppressClickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suppressClickRef = useRef(false);
+  const dragRef = useRef<{
+    pointerId: number;
+    startY: number;
+    startScrollTop: number;
+    moved: boolean;
+  } | null>(null);
   // Índice mostrado como "centro" durante o scroll (só p/ estilo/opacidade).
   const centerIndexRef = useRef(selectedIndex);
 
@@ -270,11 +278,80 @@ function WheelColumn({
 
   const handleOptionClick = useCallback(
     (index: number) => {
-      if (disabled) return;
+      // O navegador dispara click no botão que recebeu o pointerdown mesmo
+      // depois de um arraste. Nesse caso a posição final da roleta deve vencer.
+      if (disabled || suppressClickRef.current) return;
       scrollToIndex(index, true);
       onSelect(index);
     },
     [disabled, onSelect, scrollToIndex],
+  );
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (disabled || e.button !== 0) return;
+      const el = scrollRef.current;
+      if (!el) return;
+
+      // Um gesto real pode começar logo após a abertura, enquanto a rolagem de
+      // posicionamento ainda está marcada como programática.
+      programmaticRef.current = false;
+      if (settleRef.current) clearTimeout(settleRef.current);
+      dragRef.current = {
+        pointerId: e.pointerId,
+        startY: e.clientY,
+        startScrollTop: el.scrollTop,
+        moved: false,
+      };
+      el.setPointerCapture?.(e.pointerId);
+    },
+    [disabled],
+  );
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      const drag = dragRef.current;
+      const el = scrollRef.current;
+      if (!drag || !el || drag.pointerId !== e.pointerId) return;
+
+      const delta = drag.startY - e.clientY;
+      if (Math.abs(delta) >= 3) drag.moved = true;
+      if (!drag.moved) return;
+
+      e.preventDefault();
+      const maxScrollTop = Math.max(0, (items.length - 1) * ITEM_HEIGHT);
+      el.scrollTop = Math.max(0, Math.min(maxScrollTop, drag.startScrollTop + delta));
+    },
+    [items.length],
+  );
+
+  const finishPointerDrag = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      const drag = dragRef.current;
+      const el = scrollRef.current;
+      if (!drag || !el || drag.pointerId !== e.pointerId) return;
+
+      dragRef.current = null;
+      if (el.hasPointerCapture?.(e.pointerId)) el.releasePointerCapture(e.pointerId);
+      if (!drag.moved) return;
+
+      e.preventDefault();
+      const index = Math.max(
+        0,
+        Math.min(items.length - 1, Math.round(el.scrollTop / ITEM_HEIGHT)),
+      );
+      centerIndexRef.current = index;
+      applyStyles(index);
+      onSelect(index);
+      scrollToIndex(index, true);
+
+      suppressClickRef.current = true;
+      if (suppressClickTimerRef.current) clearTimeout(suppressClickTimerRef.current);
+      suppressClickTimerRef.current = setTimeout(() => {
+        suppressClickRef.current = false;
+      }, 0);
+    },
+    [applyStyles, items.length, onSelect, scrollToIndex],
   );
 
   const handleKeyDown = useCallback(
@@ -299,6 +376,7 @@ function WheelColumn({
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       if (settleRef.current) clearTimeout(settleRef.current);
+      if (suppressClickTimerRef.current) clearTimeout(suppressClickTimerRef.current);
     };
   }, []);
 
@@ -309,13 +387,17 @@ function WheelColumn({
       aria-label={ariaLabel}
       tabIndex={disabled ? -1 : 0}
       onScroll={handleScroll}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={finishPointerDrag}
+      onPointerCancel={finishPointerDrag}
       // Impede o react-remove-scroll do Dialog/Drawer (onde a roleta abre) de
       // engolir o wheel — sem isto, rolar com o mouse não muda o valor quando a
       // roleta está dentro de um modal. O scroll nativo (overflow-y-auto) + o
       // onScroll acima cuidam da seleção. Mesma técnica do CstCombobox/CFOP.
       onWheel={(e) => e.stopPropagation()}
       onKeyDown={handleKeyDown}
-      className="scrollbar-hide relative snap-y snap-mandatory overflow-y-auto overscroll-contain rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="scrollbar-hide relative touch-none cursor-grab snap-y snap-mandatory overflow-y-auto overscroll-contain rounded-md outline-none active:cursor-grabbing focus-visible:ring-2 focus-visible:ring-ring"
       style={{
         height: ITEM_HEIGHT * visibleItems,
         scrollbarWidth: "none",

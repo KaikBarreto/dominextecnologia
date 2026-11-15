@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.39.44',
+    date: '15 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Arraste para escolher horas e minutos',
+        category: 'melhoria',
+        description: 'Nos seletores de horário, agora é possível segurar e arrastar os números para cima ou para baixo usando mouse ou toque. Clique, roda do mouse e teclado continuam funcionando normalmente.',
+      },
+    ],
+  },
+  {
     version: '1.39.43',
     date: '15 de novembro de 2026',
     type: 'patch',
