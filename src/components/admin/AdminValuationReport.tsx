@@ -31,7 +31,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { adminKpiClass, type AdminKpiTone } from "./adminKpiStyles";
-import { useAdminValuation } from "@/hooks/useAdminValuation";
+import {
+  useAdminValuation,
+  useAdminValuationMonthlyRevenue,
+} from "@/hooks/useAdminValuation";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   ARR_MARKET_REFERENCE,
   DEFAULT_VALUATION_MULTIPLES,
@@ -140,11 +150,18 @@ function Metric(
 }
 export function AdminValuationReport() {
   const valuation = useAdminValuation();
-  const [method, setMethod] = useState<"arr" | "profit">("arr");
+  const [method, setMethod] = useState<"arr" | "profit" | "monthly">("arr");
   const [multiplesByMethod, setMultiplesByMethod] = useState(
     DEFAULT_VALUATION_MULTIPLES,
   );
   const multiples = multiplesByMethod[method];
+  const [monthlySource, setMonthlySource] = useState<
+    "current" | "closed" | "forecast"
+  >("current");
+  const [monthlyForecast, setMonthlyForecast] = useState("");
+  const monthly = useAdminValuationMonthlyRevenue(
+    method === "monthly" && monthlySource === "current",
+  );
   const [mrrAdjustment, setMrrAdjustment] = useState("0");
   const [profitAdjustment, setProfitAdjustment] = useState("0");
   const [growth, setGrowth] = useState("5");
@@ -166,7 +183,17 @@ export function AdminValuationReport() {
   );
   const profitAvailable = (data?.financial.observed_months ?? 0) >= 12 &&
     adjustedProfit != null && adjustedProfit > 0;
-  const basis = method === "arr"
+  const closedMonth = data?.history.at(-1);
+  const monthlyRevenue = monthlySource === "forecast"
+    ? parseValuationNumber(monthlyForecast, 0)
+    : monthlySource === "closed"
+    ? closedMonth?.revenue ?? null
+    : monthly.isError || monthly.isFetching
+    ? null
+    : monthly.data?.revenue ?? null;
+  const basis = method === "monthly"
+    ? monthlyRevenue != null && monthlyRevenue > 0 ? monthlyRevenue * 12 : null
+    : method === "arr"
     ? validMrr && adjustedMrr! > 0 ? adjustedMrr! * 12 : null
     : profitAvailable
     ? adjustedProfit
@@ -182,7 +209,7 @@ export function AdminValuationReport() {
       ? projectValuation(adjustedMrr!, growthValue, churnValue, marginValue)
       : null;
   const future = simulation?.[12];
-  const projectedBasis = future
+  const projectedBasis = method !== "monthly" && future
     ? (method === "arr"
       ? future.mrr * 12
       : future.result > 0
@@ -244,13 +271,18 @@ export function AdminValuationReport() {
         <Button
           variant="outline"
           size="sm"
-          disabled={valuation.isFetching}
-          onClick={() => valuation.refetch()}
+          disabled={valuation.isFetching || monthly.isFetching}
+          onClick={() => {
+            void valuation.refetch();
+            if (
+              method === "monthly" && monthlySource === "current"
+            ) void monthly.refetch();
+          }}
         >
           <RefreshCw
             className={cn(
               "mr-2 h-4 w-4",
-              valuation.isFetching && "animate-spin",
+              (valuation.isFetching || monthly.isFetching) && "animate-spin",
             )}
           />Atualizar dados
         </Button>
@@ -354,13 +386,15 @@ export function AdminValuationReport() {
             <CardDescription>
               {method === "arr"
                 ? "Cenários iniciais de 3×, 5× e 7× ARR. São hipóteses de gestão, não percentis da amostra nem preços garantidos de venda."
+                : method === "monthly"
+                ? "Faturamento de um mês × 12. O cenário base usa 1× esse valor anualizado; você pode ajustar os múltiplos para comparar hipóteses."
                 : "Múltiplos próprios para o resultado operacional em caixa. Não reutilizam os múltiplos de ARR."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div
               aria-label="Método de valuation"
-              className="flex gap-4 border-b"
+              className="flex flex-wrap gap-x-4 border-b"
             >
               <button
                 type="button"
@@ -388,8 +422,153 @@ export function AdminValuationReport() {
               >
                 Por resultado
               </button>
+              <button
+                type="button"
+                aria-pressed={method === "monthly"}
+                onClick={() => setMethod("monthly")}
+                className={cn(
+                  "min-h-11 border-b-2 text-sm font-medium",
+                  method === "monthly"
+                    ? "border-foreground"
+                    : "border-transparent text-muted-foreground",
+                )}
+              >
+                Faturamento mensal × 12
+              </button>
             </div>
-            {method === "arr"
+            {method === "monthly"
+              ? (
+                <div className="space-y-4">
+                  <div className="grid items-start gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor="valuation-monthly-source"
+                        className="text-xs font-medium text-muted-foreground"
+                      >
+                        Faturamento de referência
+                      </label>
+                      <Select
+                        value={monthlySource}
+                        onValueChange={(
+                          value: "current" | "closed" | "forecast",
+                        ) => setMonthlySource(value)}
+                      >
+                        <SelectTrigger
+                          id="valuation-monthly-source"
+                          className="h-10 bg-background"
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="current">
+                            Mês atual · realizado parcial
+                          </SelectItem>
+                          <SelectItem value="closed">
+                            Último mês fechado{closedMonth
+                              ? ` · ${monthLabel(closedMonth.month)}`
+                              : ""}
+                          </SelectItem>
+                          <SelectItem value="forecast">
+                            Previsão informada · simulação
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {monthlySource === "forecast"
+                      ? (
+                        <NumericInput
+                          label="Faturamento mensal previsto"
+                          value={monthlyForecast}
+                          onChange={setMonthlyForecast}
+                          min={0}
+                        />
+                      )
+                      : (
+                        <div className="space-y-1.5">
+                          <p className="text-xs font-medium text-muted-foreground">
+                            Receita realizada no mês
+                          </p>
+                          <p
+                            data-testid="monthly-revenue"
+                            className="flex h-10 items-center text-lg font-bold tabular-nums"
+                          >
+                            {monthlyRevenue == null
+                              ? "—"
+                              : money(monthlyRevenue)}
+                          </p>
+                        </div>
+                      )}
+                  </div>
+                  {monthlySource === "current" && monthly.isFetching
+                    ? (
+                      <p
+                        role="status"
+                        className="text-sm text-muted-foreground"
+                      >
+                        Consultando receita do mês…
+                      </p>
+                    )
+                    : monthlySource === "current" && monthly.isError
+                    ? (
+                      <div
+                        role="alert"
+                        className="flex flex-wrap items-center gap-3 text-sm"
+                      >
+                        <p>Não foi possível consultar a receita do mês.</p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => monthly.refetch()}
+                        >
+                          Tentar novamente
+                        </Button>
+                      </div>
+                    )
+                    : (
+                      <p className="text-xs text-muted-foreground">
+                        {monthlySource === "current" && monthly.data
+                          ? `De ${date(monthly.data.month_start)} até ${
+                            new Date(monthly.data.as_of).toLocaleString(
+                              "pt-BR",
+                              { timeZone: "America/Sao_Paulo" },
+                            )
+                          } (Brasília). Mês em andamento: o valor parcial não é uma previsão do fechamento.`
+                          : monthlySource === "closed"
+                          ? closedMonth
+                            ? `Mês fechado: ${
+                              monthLabel(closedMonth.month)
+                            }. Mesma receita em caixa do histórico abaixo.`
+                            : "Nenhum mês fechado disponível."
+                          : "Previsão informada por você para um mês completo. Não representa receita já realizada e não altera os lançamentos."}
+                      </p>
+                    )}
+                  <div className="border-y py-4">
+                    <p className="text-sm font-medium">Valuation a 12× o mês</p>
+                    <p
+                      data-testid="monthly-annualized"
+                      className="mt-1 text-2xl font-bold tracking-tight tabular-nums"
+                    >
+                      {basis == null ? "—" : money(basis)}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {basis == null
+                        ? "Informe ou selecione uma receita mensal positiva."
+                        : `${money(monthlyRevenue!)} × 12 = ${
+                          money(basis)
+                        }. Nos cenários abaixo, esse valor é multiplicado pela premissa de cada cenário.`}
+                    </p>
+                  </div>
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    Este método usa recebimentos em caixa, incluindo anuais
+                    antecipados, e exclui aportes de sócios. Não é ARR nem
+                    receita por competência: um mês forte pode incluir
+                    pagamentos por serviços dos próximos meses. Os múltiplos são
+                    hipóteses de simulação, sem benchmark de mercado para esta
+                    base.
+                  </p>
+                </div>
+              )
+              : method === "arr"
               ? (
                 <div className="grid items-start gap-3 sm:grid-cols-2">
                   <NumericInput
@@ -522,133 +701,139 @@ export function AdminValuationReport() {
           </CardContent>
         </Card>
       </div>
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <BarChart3 className="h-4 w-4" />Simular os próximos 12 meses
-          </CardTitle>
-          <CardDescription>
-            Premissas ilustrativas. Crescimento antes das perdas e churn de
-            receita são informados separadamente.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid items-start gap-3 sm:grid-cols-3">
-            <NumericInput
-              label="Novas vendas e expansão"
-              value={growth}
-              onChange={setGrowth}
-              suffix="% / mês"
-              min={0}
-              max={100}
-            />
-            <NumericInput
-              label="Churn bruto de receita"
-              value={churn}
-              onChange={setChurn}
-              suffix="% / mês"
-              min={0}
-              max={100}
-            />
-            <NumericInput
-              label="Margem operacional alvo"
-              value={margin}
-              onChange={setMargin}
-              suffix="%"
-              min={-1000}
-              max={100}
-            />
-          </div>
-          {simulation && future
-            ? (
-              <>
-                <div className="grid gap-3 border-y py-3 sm:grid-cols-3">
-                  <div>
-                    <p className="text-xs text-muted-foreground">
-                      MRR no mês 12
-                    </p>
-                    <p className="text-lg font-bold tabular-nums">
-                      {money(future.mrr)}
-                    </p>
+      {method !== "monthly" && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <BarChart3 className="h-4 w-4" />Simular os próximos 12 meses
+            </CardTitle>
+            <CardDescription>
+              Premissas ilustrativas. Crescimento antes das perdas e churn de
+              receita são informados separadamente.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid items-start gap-3 sm:grid-cols-3">
+              <NumericInput
+                label="Novas vendas e expansão"
+                value={growth}
+                onChange={setGrowth}
+                suffix="% / mês"
+                min={0}
+                max={100}
+              />
+              <NumericInput
+                label="Churn bruto de receita"
+                value={churn}
+                onChange={setChurn}
+                suffix="% / mês"
+                min={0}
+                max={100}
+              />
+              <NumericInput
+                label="Margem operacional alvo"
+                value={margin}
+                onChange={setMargin}
+                suffix="%"
+                min={-1000}
+                max={100}
+              />
+            </div>
+            {simulation && future
+              ? (
+                <>
+                  <div className="grid gap-3 border-y py-3 sm:grid-cols-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground">
+                        MRR no mês 12
+                      </p>
+                      <p className="text-lg font-bold tabular-nums">
+                        {money(future.mrr)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">
+                        Resultado anualizado no mês 12
+                      </p>
+                      <p
+                        className={cn(
+                          "text-lg font-bold tabular-nums",
+                          future.result < 0
+                            ? "text-red-600"
+                            : "text-emerald-700",
+                        )}
+                      >
+                        {money(future.result * 12)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">
+                        Valuation base projetado ·{" "}
+                        {method === "arr" ? "ARR" : "resultado"}
+                      </p>
+                      <p className="text-lg font-bold tabular-nums">
+                        {projectedBase == null
+                          ? "Indisponível"
+                          : money(projectedBase)}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">
-                      Resultado anualizado no mês 12
-                    </p>
-                    <p
-                      className={cn(
-                        "text-lg font-bold tabular-nums",
-                        future.result < 0 ? "text-red-600" : "text-emerald-700",
-                      )}
-                    >
-                      {money(future.result * 12)}
-                    </p>
+                  <div
+                    className="h-60 min-w-0"
+                    aria-label="Projeção mensal de MRR e resultado"
+                  >
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ComposedChart data={simulation}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis
+                          dataKey="month"
+                          tickLine={false}
+                          axisLine={false}
+                          fontSize={11}
+                        />
+                        <YAxis
+                          tickFormatter={(v) => `${Math.round(v / 1000)}k`}
+                          width={44}
+                          tickLine={false}
+                          axisLine={false}
+                          fontSize={11}
+                        />
+                        <Tooltip formatter={(value: number) => money(value)} />
+                        <Legend wrapperStyle={{ fontSize: 12 }} />
+                        <Line
+                          dataKey="mrr"
+                          name="MRR simulado"
+                          stroke="#1d4ed8"
+                          strokeWidth={2.5}
+                          dot={false}
+                        />
+                        <Line
+                          dataKey="result"
+                          name="Resultado mensal simulado"
+                          stroke="#047857"
+                          strokeWidth={2}
+                          dot={false}
+                        />
+                      </ComposedChart>
+                    </ResponsiveContainer>
                   </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">
-                      Valuation base projetado ·{" "}
-                      {method === "arr" ? "ARR" : "resultado"}
-                    </p>
-                    <p className="text-lg font-bold tabular-nums">
-                      {projectedBase == null
-                        ? "Indisponível"
-                        : money(projectedBase)}
-                    </p>
-                  </div>
-                </div>
-                <div
-                  className="h-60 min-w-0"
-                  aria-label="Projeção mensal de MRR e resultado"
-                >
-                  <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={simulation}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                      <XAxis
-                        dataKey="month"
-                        tickLine={false}
-                        axisLine={false}
-                        fontSize={11}
-                      />
-                      <YAxis
-                        tickFormatter={(v) => `${Math.round(v / 1000)}k`}
-                        width={44}
-                        tickLine={false}
-                        axisLine={false}
-                        fontSize={11}
-                      />
-                      <Tooltip formatter={(value: number) => money(value)} />
-                      <Legend wrapperStyle={{ fontSize: 12 }} />
-                      <Line
-                        dataKey="mrr"
-                        name="MRR simulado"
-                        stroke="#1d4ed8"
-                        strokeWidth={2.5}
-                        dot={false}
-                      />
-                      <Line
-                        dataKey="result"
-                        name="Resultado mensal simulado"
-                        stroke="#047857"
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                    </ComposedChart>
-                  </ResponsiveContainer>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  A cada mês: MRR × (1 + crescimento) × (1 − churn de receita).
-                  Resultado mensal = MRR × margem. Valores anualizados mostram o
-                  ritmo do mês 12 × 12, não o faturamento acumulado da projeção.
+                  <p className="text-xs text-muted-foreground">
+                    A cada mês: MRR × (1 + crescimento) × (1 − churn de
+                    receita). Resultado mensal = MRR × margem. Valores
+                    anualizados mostram o ritmo do mês 12 × 12, não o
+                    faturamento acumulado da projeção.
+                  </p>
+                </>
+              )
+              : (
+                <p role="alert" className="py-8 text-sm text-destructive">
+                  Revise as premissas e o ajuste de MRR para calcular a
+                  projeção.
                 </p>
-              </>
-            )
-            : (
-              <p role="alert" className="py-8 text-sm text-destructive">
-                Revise as premissas e o ajuste de MRR para calcular a projeção.
-              </p>
-            )}
-        </CardContent>
-      </Card>
+              )}
+          </CardContent>
+        </Card>
+      )}
       <div className="grid items-start gap-5 xl:grid-cols-2">
         <Card className="min-w-0">
           <CardHeader className="pb-3">

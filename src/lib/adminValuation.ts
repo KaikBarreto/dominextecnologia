@@ -13,6 +13,8 @@ export const ARR_MARKET_REFERENCE = {
 export const DEFAULT_VALUATION_MULTIPLES = {
   arr: ["3", "5", "7"],
   profit: ["0,8", "1,2", "1,6"],
+  // Base 1x annualized receipts is exactly 12x the selected monthly revenue.
+  monthly: ["0,8", "1", "1,2"],
 };
 
 export function parseValuationNumber(

@@ -64,7 +64,9 @@ function normalize(raw: any): AdminValuationData {
       arr: requiredNumber(current.arr),
       active_customers: requiredNumber(current.active_customers),
       annual_customers: requiredNumber(current.annual_customers),
-      overdue_active_customers: requiredNumber(current.overdue_active_customers),
+      overdue_active_customers: requiredNumber(
+        current.overdue_active_customers,
+      ),
       top1_pct: current.top1_pct == null
         ? null
         : requiredNumber(current.top1_pct),
@@ -134,6 +136,33 @@ export function useAdminValuation() {
         throw new Error("A resposta da estimativa financeira está incompleta.");
       }
       return normalize(data);
+    },
+    staleTime: 60_000,
+    retry: 1,
+  });
+}
+
+export function useAdminValuationMonthlyRevenue(enabled: boolean) {
+  return useQuery({
+    queryKey: ["admin-valuation-monthly-revenue"],
+    enabled,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc(
+        "admin_valuation_monthly_revenue",
+      );
+      if (error) throw error;
+      if (
+        !/^\d{4}-\d{2}-01$/.test(data?.month_start ?? "") ||
+        !data?.as_of || !Number.isFinite(Date.parse(data.as_of))
+      ) {
+        throw new Error("A receita do mês está incompleta.");
+      }
+      return {
+        month_start: String(data.month_start),
+        as_of: String(data.as_of),
+        revenue: requiredNumber(data.revenue),
+        transaction_count: requiredNumber(data.transaction_count),
+      };
     },
     staleTime: 60_000,
     retry: 1,
