@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,11 @@ const pageSize = 50;
 
 export function FinancialReviewQueue(props: FinancialReviewQueueProps) {
   const invalidPeriod = !!props.from && !!props.to && props.from > props.to;
+  useEffect(() => {
+    if (!invalidPeriod && !props.isLoading && !props.isFetching && !props.isError && props.page > 0 && props.page * pageSize >= props.total) {
+      props.onPageChange(Math.max(0, Math.ceil(props.total / pageSize) - 1));
+    }
+  }, [invalidPeriod, props.isLoading, props.isFetching, props.isError, props.page, props.total, props.onPageChange]);
   const hasPrevious = props.page > 0;
   const hasNext = (props.page + 1) * pageSize < props.total;
   return (

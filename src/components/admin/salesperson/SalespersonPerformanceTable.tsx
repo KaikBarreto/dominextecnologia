@@ -28,11 +28,13 @@ interface Props {
   advances: SalespersonAdvance[];
   onEdit: (s: Salesperson) => void;
   onDelete: (id: string) => void;
+  /** A listagem também é usada no workspace, onde só master pode administrar cadastros. */
+  canManage?: boolean;
 }
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
-export function SalespersonPerformanceTable({ salespeople, sales, advances, onEdit, onDelete }: Props) {
+export function SalespersonPerformanceTable({ salespeople, sales, advances, onEdit, onDelete, canManage = true }: Props) {
   const navigate = useNavigate();
 
   // Pré-calcula stats por vendedor pra permitir ordenação por colunas derivadas
@@ -76,7 +78,7 @@ export function SalespersonPerformanceTable({ salespeople, sales, advances, onEd
             <SortableTableHead sortKey="_balance" sortConfig={sortConfig} onSort={handleSort} className="text-right">Saldo</SortableTableHead>
             <SortableTableHead sortKey="_pct" sortConfig={sortConfig} onSort={handleSort} className="text-center">Meta</SortableTableHead>
             <SortableTableHead sortKey="_isActive" sortConfig={sortConfig} onSort={handleSort}>Status</SortableTableHead>
-            <TableHead className="text-right text-xs uppercase tracking-wider">Ações</TableHead>
+            {canManage && <TableHead className="text-right text-xs uppercase tracking-wider">Ações</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -111,7 +113,7 @@ export function SalespersonPerformanceTable({ salespeople, sales, advances, onEd
                     {p.is_active !== false ? 'Ativo' : 'Inativo'}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                {canManage && <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                   <div className="flex justify-end gap-1">
                     <Button variant="ghost" size="sm" onClick={() => onEdit(p)}>
                       <Pencil className="h-4 w-4" />
@@ -120,7 +122,7 @@ export function SalespersonPerformanceTable({ salespeople, sales, advances, onEd
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
-                </TableCell>
+                </TableCell>}
               </TableRow>
             );
           })}

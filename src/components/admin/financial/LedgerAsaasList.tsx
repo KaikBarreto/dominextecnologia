@@ -52,7 +52,7 @@ export function LedgerAsaasList({ items, categories, onCategorize, canManage = f
         {items.map((it) => {
           const isIncome = it.direction === 'credit';
           const accentColor = isIncome ? '#10b981' : '#ef4444';
-          const pending = canManage && it.status === 'pending_categorization';
+          const pending = canManage && !/ANTICIPATION_(GROSS_CREDIT|DEBIT)|OPENING_BALANCE|RECONCILIATION_ADJUSTMENT/.test(it.asaas_event_type || '');
           const catLabel = labelFor(it.category);
           return (
             <MobileListItem
@@ -115,7 +115,7 @@ export function LedgerAsaasList({ items, categories, onCategorize, canManage = f
         <TableBody>
           {items.map((it) => {
             const isIncome = it.direction === 'credit';
-            const pending = canManage && it.status === 'pending_categorization';
+            const pending = canManage && !/ANTICIPATION_(GROSS_CREDIT|DEBIT)|OPENING_BALANCE|RECONCILIATION_ADJUSTMENT/.test(it.asaas_event_type || '');
             const catLabel = labelFor(it.category);
             return (
               <TableRow key={it.id}>
@@ -154,7 +154,7 @@ export function LedgerAsaasList({ items, categories, onCategorize, canManage = f
                   {pending && (
                     <Button variant="outline" size="sm" className="gap-1.5" onClick={() => onCategorize(it)}>
                       <Tag className="h-3.5 w-3.5" />
-                      Categorizar
+                      Conciliar
                     </Button>
                   )}
                 </TableCell>

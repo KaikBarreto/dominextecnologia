@@ -168,12 +168,14 @@ export function salesForPerson(sales: SalespersonSale[], personId: string): Sale
 
 // ==================== Queries ====================
 
-export function useSalespeople(activeOnly = false) {
+export function useSalespeople(activeOnly = false, onlyId?: string, enabled = true) {
   return useQuery({
-    queryKey: ['salespeople', { activeOnly }],
+    queryKey: ['salespeople', { activeOnly, onlyId: onlyId ?? null }],
+    enabled,
     queryFn: async () => {
       let q = supabase.from('salespeople').select('*').order('name');
       if (activeOnly) q = q.eq('is_active', true);
+      if (onlyId) q = q.eq('id', onlyId);
       const { data, error } = await q;
       if (error) throw error;
       return (data || []) as Salesperson[];
@@ -262,9 +264,10 @@ export function useSalespersonPayments(salespersonId: string | undefined) {
   });
 }
 
-export function useAllSalespersonSales() {
+export function useAllSalespersonSales(enabled = true) {
   return useQuery({
     queryKey: ['all_salesperson_sales'],
+    enabled,
     queryFn: async () => {
       const data = await fetchAllPaginated<SalespersonSale>(() =>
         supabase.from('salesperson_sales').select('*').order('created_at', { ascending: false })
@@ -274,9 +277,10 @@ export function useAllSalespersonSales() {
   });
 }
 
-export function useAllSalespersonAdvances() {
+export function useAllSalespersonAdvances(enabled = true) {
   return useQuery({
     queryKey: ['all_salesperson_advances'],
+    enabled,
     queryFn: async () => {
       const data = await fetchAllPaginated<SalespersonAdvance>(() =>
         supabase.from('salesperson_advances').select('*').order('created_at', { ascending: false })

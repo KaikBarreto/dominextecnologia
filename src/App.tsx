@@ -238,7 +238,6 @@ const AdminBlogEditor = React.lazy(() => import("./pages/admin/AdminBlogEditor")
 const AdminFinancial = React.lazy(() => import("./pages/admin/AdminFinancial"));
 const AdminCRM = React.lazy(() => import("./pages/admin/AdminCRM"));
 const AdminSettings = React.lazy(() => import("./pages/admin/AdminSettings"));
-const AdminSalespeople = React.lazy(() => import("./pages/admin/AdminSalespeople"));
 const AdminSalespersonDetail = React.lazy(() => import("./pages/admin/AdminSalespersonDetail"));
 const AdminAffiliates = React.lazy(() => import("./pages/admin/AdminAffiliates"));
 const AdminAffiliateDetail = React.lazy(() => import("./pages/admin/AdminAffiliateDetail"));
@@ -968,7 +967,7 @@ const AppRoutes = () => (
       <Route path="/admin/health-score" element={<AdminScreenRoute screenKey="admin_health_score"><AdminHealthScore /></AdminScreenRoute>} />
       <Route path="/admin/financeiro" element={<AdminScreenRoute screenKey="admin_financeiro"><AdminFinancial /></AdminScreenRoute>} />
       <Route path="/admin/crm" element={<AdminScreenRoute screenKey="admin_crm"><AdminCRM /></AdminScreenRoute>} />
-      <Route path="/admin/vendedores" element={<AdminScreenRoute screenKey="admin_vendedores"><AdminSalespeople /></AdminScreenRoute>} />
+      <Route path="/admin/vendedores" element={<AdminScreenRoute screenKey="admin_vendedores"><AdminSalespersonDetail /></AdminScreenRoute>} />
       <Route path="/admin/vendedores/:id" element={<AdminScreenRoute screenKey="admin_vendedores"><AdminSalespersonDetail /></AdminScreenRoute>} />
       {/* Programa de Afiliados. Única tela do painel que também abre pra um
           usuário NÃO-admin: o afiliado vinculado (ver AdminScreenRoute). */}

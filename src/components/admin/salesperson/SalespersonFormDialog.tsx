@@ -325,7 +325,7 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
   const footer = (
     <div className="flex gap-2">
       <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">Cancelar</Button>
-      <Button type="submit" form="salesperson-form" disabled={isPending} className="flex-1">
+      <Button type="submit" form="salesperson-form" disabled={isPending} className="flex-1 bg-black text-white hover:bg-zinc-800">
         {isPending ? 'Salvando...' : 'Salvar'}
       </Button>
     </div>

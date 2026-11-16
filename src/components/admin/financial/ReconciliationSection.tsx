@@ -28,7 +28,7 @@ import {
   useSyncAsaasLedger,
 } from "@/hooks/useAsaasReconciliation";
 import { LedgerAsaasList } from "./LedgerAsaasList";
-import { CategorizeLedgerModal } from "./CategorizeLedgerModal";
+import { AdminReconcileMovementDialog } from "../AdminReconcileMovementDialog";
 
 const fmt = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -61,7 +61,6 @@ export function ReconciliationSection(
   const [categorizeItem, setCategorizeItem] = useState<LedgerAsaasItem | null>(
     null,
   );
-  const [modalOpen, setModalOpen] = useState(false);
 
   const { data: categories = [] } = useAdminFinancialCategories();
   const {
@@ -103,7 +102,6 @@ export function ReconciliationSection(
   const openCategorize = (item: LedgerAsaasItem) => {
     if (!canManage) return;
     setCategorizeItem(item);
-    setModalOpen(true);
   };
 
   return (
@@ -152,9 +150,7 @@ export function ReconciliationSection(
               reason: item.direction === "credit"
                 ? "Recebimento sem vínculo"
                 : "Categoria da despesa pendente",
-              actionLabel: item.direction === "credit"
-                ? "Revisar recebimento"
-                : "Classificar despesa",
+              actionLabel: "Conciliar",
             }))}
             total={ledgerPage?.count ?? 0}
             page={page}
@@ -381,11 +377,17 @@ export function ReconciliationSection(
             </div>
           </>
         )}
-      <CategorizeLedgerModal
-        item={categorizeItem}
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-      />
+      {categorizeItem && (
+        <AdminReconcileMovementDialog
+          movement={{
+            ...categorizeItem,
+            source: "asaas",
+            description: categorizeItem.description || "Movimento Asaas",
+          }}
+          canManage={canManage}
+          onClose={() => setCategorizeItem(null)}
+        />
+      )}
     </div>
   );
 }

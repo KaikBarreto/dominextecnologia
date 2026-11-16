@@ -29,6 +29,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+import { AdminReconcileMovementDialog } from "./AdminReconcileMovementDialog";
+
 type Movement = {
   id: string;
   occurred_at: string;
@@ -76,6 +78,7 @@ export function AdminBankReconciliation({
   const [status, setStatus] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [reviewTarget, setReviewTarget] = useState<Movement | null>(null);
   const [selected, setSelected] = useState<Movement | null>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
@@ -83,6 +86,12 @@ export function AdminBankReconciliation({
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [undoOpen, setUndoOpen] = useState(false);
+  function openDetails(m: Movement) {
+    setSelected(m);
+    setItems([]);
+    setRequestId(crypto.randomUUID());
+    setCategory(""); setAmount(""); setDescription("");
+  }
   const movements = useQuery({
     queryKey: ["admin-bank-movements", accountId, page, status, from, to],
     queryFn: async () => {
@@ -104,6 +113,11 @@ export function AdminBankReconciliation({
       return { items: (data ?? []) as Movement[], count: count ?? 0 };
     },
   });
+  useEffect(() => {
+    if (movements.data && !movements.isFetching && !movements.isError && page > 0 && page * 50 >= movements.data.count) {
+      setPage(Math.max(0, Math.ceil(movements.data.count / 50) - 1));
+    }
+  }, [movements.data, movements.isFetching, movements.isError, page]);
   const categories = useQuery({
     queryKey: ["admin-bank-classification-categories"],
     queryFn: async () => {
@@ -136,6 +150,13 @@ export function AdminBankReconciliation({
     : 0;
   const invalidate = () =>
     [
+      "admin-reconcile-candidates",
+      "admin-scheduled-accounts",
+      "admin-finance-workspace-transactions",
+      "admin-account-candidates",
+      "all-admin-transactions",
+      "admin-financial-post-snapshot-transactions",
+      "admin-financial-transactions-dashboard",
       "admin-bank-movements",
       "admin-bank-accounts",
       "admin-cash-flow",
@@ -191,14 +212,17 @@ export function AdminBankReconciliation({
       setSelected(null);
       setUndoOpen(false);
     },
-    onError: () =>
+    onError: (error) =>
       toast.error(
-        "Não foi possível desfazer; o lançamento pode ter sido alterado.",
+        /unreconcile_requires_unsettling|settled_plan|scheduled_account_linked/i.test(String((error as { message?: string })?.message ?? ""))
+          ? "Este movimento baixou uma conta. Reabra a conta em Contas a pagar/receber antes de desfazer a conciliação."
+          : "Não foi possível desfazer; o lançamento pode ter sido alterado.",
       ),
   });
   useEffect(() => {
     setPage(0);
     setSelected(null);
+    setReviewTarget(null);
   }, [accountId]);
   const allocatedDraft = items.reduce(
     (sum, item) => sum + (Number(item.amount) || 0),
@@ -301,7 +325,7 @@ export function AdminBankReconciliation({
             setStatus(e.target.value);
             setPage(0);
           }}
-          className="h-10 rounded-md border bg-white px-3"
+          className="h-10 rounded-md border bg-white text-zinc-900 px-3"
         >
           <option value="">Todos os status</option>
           {Object.entries(statuses).map(([id, label]) => (
@@ -321,7 +345,7 @@ export function AdminBankReconciliation({
         <div role="alert">Não foi possível carregar o extrato. <Button variant="outline" onClick={() => movements.refetch()}>Tentar novamente</Button></div>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-xl border bg-white">
+          <div className="relative overflow-x-auto rounded-xl border bg-white text-zinc-900">
             <table className="w-full text-sm">
               <thead className="border-b text-left text-muted-foreground">
                 <tr>
@@ -354,12 +378,11 @@ export function AdminBankReconciliation({
                         size="sm"
                         variant="outline"
                         onClick={() => {
-                          setSelected(m);
-                          setItems([]);
-                          setRequestId(crypto.randomUUID()); setCategory(""); setAmount(""); setDescription("");
+                          if (canManage && m.reconciliation_status !== "transferred") setReviewTarget(m);
+                          else openDetails(m);
                         }}
                       >
-                        Ver
+                        {canManage && m.reconciliation_status !== "transferred" ? "Conciliar" : "Ver"}
                       </Button>
                     </td>
                   </tr>
@@ -402,6 +425,15 @@ export function AdminBankReconciliation({
           </div>
         </>
       )}
+      {reviewTarget && (
+        <AdminReconcileMovementDialog
+          movement={{ ...reviewTarget, source: "bank", direction: reviewTarget.amount > 0 ? "credit" : "debit", amount: Math.abs(reviewTarget.amount), description: reviewTarget.description || "Movimento bancário" }}
+          canManage={canManage}
+          onClose={() => setReviewTarget(null)}
+          advancedLabel="Vincular lançamento ou ratear"
+          onAdvanced={() => { setReviewTarget(null); openDetails(reviewTarget); }}
+        />
+      )}
       <Sheet
         open={!!selected}
         onOpenChange={(open) => !open && !busy && setSelected(null)}
@@ -423,7 +455,7 @@ export function AdminBankReconciliation({
                 <p className="text-2xl font-bold">{money(remaining)}</p>
               </div>
               {!canManage ? (
-                <p className="rounded-lg border bg-white p-3 text-sm">
+                <p className="rounded-lg border bg-white text-zinc-900 p-3 text-sm">
                   Você tem acesso de leitura. Peça a alguém com permissão
                   financeira para conciliar.
                 </p>
@@ -444,7 +476,7 @@ export function AdminBankReconciliation({
                             type="button"
                             key={c.id}
                             onClick={() => addCandidate(c)}
-                            className="flex w-full justify-between rounded-lg border bg-white p-3 text-left hover:border-slate-900"
+                            className="flex w-full justify-between rounded-lg border bg-white text-zinc-900 p-3 text-left hover:border-slate-900"
                           >
                             <span>
                               {c.description || c.category || "Lançamento"}
@@ -465,14 +497,14 @@ export function AdminBankReconciliation({
                       </div>
                     )}
                   </div>
-                  <div className="rounded-xl border bg-white p-3">
+                  <div className="rounded-xl border bg-white text-zinc-900 p-3">
                     <Label>Nova classificação</Label>
                     <div className="mt-2 grid gap-2">
                       <select
                         aria-label="Categoria da classificação"
                         value={category}
                         onChange={(e) => setCategory(e.target.value)}
-                        className="h-10 rounded-md border bg-white px-3"
+                        className="h-10 rounded-md border bg-white text-zinc-900 px-3"
                       >
                         <option value="">Categoria</option>
                         {compatibleCategories.map((c: any) => (
@@ -492,7 +524,7 @@ export function AdminBankReconciliation({
                         onChange={(e) => setAmount(e.target.value)}
                         aria-label="Valor da classificação" placeholder="Valor"
                       />
-                      <Button type="button" variant="outline" className="bg-white text-black hover:bg-white" onClick={addNew}>
+                      <Button type="button" variant="outline" className="bg-white text-zinc-900 text-black hover:bg-white" onClick={addNew}>
                         Adicionar ao rateio
                       </Button>
                     </div>
@@ -501,7 +533,7 @@ export function AdminBankReconciliation({
                     {items.map((i, index) => (
                       <div
                         key={index}
-                        className="flex items-center justify-between rounded-lg border bg-white p-3 text-sm"
+                        className="flex items-center justify-between rounded-lg border bg-white text-zinc-900 p-3 text-sm"
                       >
                         <span>
                           {i.transaction_id
@@ -559,7 +591,7 @@ export function AdminBankReconciliation({
                               key={`${t.source}-${t.id}`}
                               disabled={busy || Number(selected.allocated_amount) > 0 || selected.reconciliation_status === "transferred"}
                               onClick={() => transfer.mutate(t)}
-                              className="flex w-full justify-between rounded-lg border bg-white p-3 text-left hover:border-slate-900"
+                              className="flex w-full justify-between rounded-lg border bg-white text-zinc-900 p-3 text-left hover:border-slate-900"
                             >
                               <span>
                                 <ArrowLeftRight className="mr-2 inline h-4 w-4" />
