@@ -1,3 +1,4 @@
+import { sanitizeAcquisitionAttribution } from '../_shared/acquisition-attribution.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 import { getCorsHeaders, handleCors } from '../_shared/cors.ts';
 import { provisionAsaasCustomer } from '../_shared/asaas-customer.ts';
@@ -20,38 +21,6 @@ const isValidInternationalPhone = (phone: string): boolean => {
   if (!/^\+?\d+$/.test(sanitized)) return false;
   const digits = sanitized.replace(/\D/g, '');
   return digits.length >= 7 && digits.length <= 15;
-};
-
-const sanitizeAcquisitionTouch = (value: unknown): Record<string, string> | null => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  const raw = value as Record<string, unknown>;
-  const source = trim(raw.source, 200).replace(/[\r\n\t]+/g, ' ');
-  const medium = trim(raw.medium, 100).replace(/[\r\n\t]+/g, ' ');
-  if (!source || !medium) return null;
-  const out: Record<string, string> = { source, medium };
-  const limits: Record<string, number> = {
-    campaign: 200,
-    term: 200,
-    content: 200,
-    referrer_host: 200,
-    page_path: 500,
-    locale: 10,
-    captured_at: 40,
-  };
-  for (const [key, max] of Object.entries(limits)) {
-    const sanitized = trim(raw[key], max).replace(/[\r\n\t]+/g, ' ');
-    if (sanitized) out[key] = sanitized;
-  }
-  return out;
-};
-
-const sanitizeAcquisitionAttribution = (value: unknown): Record<string, unknown> | null => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  const raw = value as Record<string, unknown>;
-  const firstTouch = sanitizeAcquisitionTouch(raw.first_touch);
-  const lastTouch = sanitizeAcquisitionTouch(raw.last_touch);
-  if (!firstTouch || !lastTouch) return null;
-  return { first_touch: firstTouch, last_touch: lastTouch };
 };
 
 const readClientIp = (req: Request): string | null => {

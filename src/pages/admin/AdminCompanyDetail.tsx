@@ -1,3 +1,4 @@
+import { CompanyOriginDetails } from "@/components/admin/CompanyOriginDetails";
 import { CompanyBillingStatus } from "@/components/admin/CompanyBillingStatus";
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -348,7 +349,7 @@ export default function AdminCompanyDetail() {
                   </p>
                 </div>
                 <div>
-                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Origem</span>
+                  <div className="flex items-center justify-between gap-2"><span className="text-xs text-muted-foreground uppercase tracking-wider">Origem</span><CompanyOriginDetails companyId={company.id} origin={company.origin} /></div>
                   <div className="mt-0.5 flex items-center gap-2 min-w-0">
                     <OriginBadge
                       name={company.origin}

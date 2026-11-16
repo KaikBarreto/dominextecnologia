@@ -1,3 +1,4 @@
+import { getAcquisitionAttribution } from "@/lib/acquisitionAttribution";
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -18,7 +19,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { useToast } from '@/hooks/use-toast';
 import { phoneMask, cepMask } from '@/utils/masks';
 import { cn } from '@/lib/utils';
-import { captureUtmParams, getAcquisitionAttribution, resolveCompanyOriginKey, type OriginUtmKey } from '@/lib/whatsapp';
+import { captureUtmParams, resolveCompanyOriginKey, type OriginUtmKey } from '@/lib/whatsapp';
 import { trackSignupConversion } from '@/lib/gtag';
 import logoWhite from '@/assets/logo-horizontal-verde.png';
 import DarkVeil from '@/components/ui/DarkVeil';
