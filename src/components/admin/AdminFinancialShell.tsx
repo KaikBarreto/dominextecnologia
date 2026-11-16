@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import {
   Building2,
+  ChartNoAxesCombined,
   History,
   Inbox,
   LayoutDashboard,
@@ -32,6 +33,7 @@ export const ADMIN_FINANCIAL_SUBSECTIONS = {
   reports: [
     { id: "dre", label: "DRE", icon: PieChart },
     { id: "cashflow", label: "DFC", icon: Wallet },
+    { id: "valuation", label: "Valuation", icon: ChartNoAxesCombined },
   ],
   settings: [
     { id: "settings", label: "Categorias", icon: Settings },

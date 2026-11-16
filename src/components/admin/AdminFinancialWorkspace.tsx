@@ -25,6 +25,7 @@ import { AdminAccountsSection } from "./AdminAccountsSection";
 import { AdminCashFlowSection } from "./AdminCashFlowSection";
 import { AdminBankAccountsSection } from "./AdminBankAccountsSection";
 import { AdminBankReconciliation } from "./AdminBankReconciliation";
+import { AdminValuationReport } from "./AdminValuationReport";
 export function AdminFinancialWorkspace(
   { canManage, onAdvanced, onCommercial, onDifference }: {
     canManage: boolean;
@@ -190,6 +191,8 @@ export function AdminFinancialWorkspace(
             period={period === "custom" ? `${from} a ${to}` : period}
           />
         );
+      case "valuation":
+        return <AdminValuationReport />;
       case "reconciliation":
         return (
           <AdminAsaasReconciliation
