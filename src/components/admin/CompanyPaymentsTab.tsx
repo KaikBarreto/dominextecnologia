@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 import {
   useAdminCompanyPayments,
   mapPaymentRpcError,
@@ -98,6 +99,8 @@ function StatusBadge({ status }: { status: string }) {
 
 export function CompanyPaymentsTab({ companyId, company }: CompanyPaymentsTabProps) {
   const { toast } = useToast();
+  const { hasFunctionAccess } = useAdminPermissions();
+  const canRegisterPayment = hasFunctionAccess('admin_empresas_pagamento');
   const { payments, isLoading, deletePayment } = useAdminCompanyPayments(companyId);
   const [showRegister, setShowRegister] = useState(false);
   const [paymentToDelete, setPaymentToDelete] = useState<UnifiedCompanyPayment | null>(null);
@@ -125,9 +128,11 @@ export function CompanyPaymentsTab({ companyId, company }: CompanyPaymentsTabPro
         <p className="text-sm text-muted-foreground">
           Pagamentos manuais e cobranças do Asaas desta empresa.
         </p>
-        <Button size="sm" className="gap-1.5 shrink-0" onClick={() => setShowRegister(true)}>
-          <Plus className="h-4 w-4" /> Registrar Pagamento
-        </Button>
+        {canRegisterPayment && (
+          <Button size="sm" className="gap-1.5 shrink-0" onClick={() => setShowRegister(true)}>
+            <Plus className="h-4 w-4" /> Registrar Pagamento
+          </Button>
+        )}
       </div>
 
       {isLoading ? (

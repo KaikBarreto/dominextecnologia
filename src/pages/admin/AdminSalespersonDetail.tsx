@@ -1,3 +1,4 @@
+import { CommercialActionQueue } from "@/components/admin/salesperson/CommercialActionQueue";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -90,11 +91,12 @@ export default function AdminSalespersonDetail() {
   const isMobile = useIsMobile();
   const {
     hasMasterAccess,
+    hasFunctionAccess,
     linkedSalespersonId,
     isSalespersonOnly,
     isLoading: permissionsLoading,
   } = useAdminPermissions();
-  const canManage = hasMasterAccess;
+  const canManage = hasMasterAccess || hasFunctionAccess('admin_vendedores_gerenciar');
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("details");
   const [formOpen, setFormOpen] = useState(false);
@@ -317,6 +319,7 @@ export default function AdminSalespersonDetail() {
                 sales={filteredTeamSales}
                 advances={filteredTeamAdvances}
               />
+              <CommercialActionQueue enabled={allowTeamOverview} />
               <SalespersonPerformanceTable
                 salespeople={people}
                 sales={filteredTeamSales}

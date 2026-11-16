@@ -345,7 +345,7 @@ export function useAdminTasks(filters?: TaskFilters, options?: UseAdminTasksOpti
     const channel = supabase
       .channel('admin-tasks')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_tasks' }, () => {
-        qc.invalidateQueries({ queryKey: ['admin-tasks'] });
+        qc.invalidateQueries({ predicate: (query) => ["admin-tasks", "admin-company-next-success-task"].includes(String(query.queryKey[0])) });
         qc.invalidateQueries({ queryKey: ['admin-tasks-count'] });
         qc.invalidateQueries({ queryKey: ['admin-tasks-resolved-count'] });
       })
@@ -374,7 +374,7 @@ export function useAdminTasks(filters?: TaskFilters, options?: UseAdminTasksOpti
       return data;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin-tasks'] });
+      qc.invalidateQueries({ predicate: (query) => ["admin-tasks", "admin-company-next-success-task"].includes(String(query.queryKey[0])) });
       qc.invalidateQueries({ queryKey: ['admin-tasks-count'] });
       qc.invalidateQueries({ queryKey: ['admin-tasks-resolved-count'] });
       toast({ title: 'Tarefa criada!' });
@@ -402,7 +402,7 @@ export function useAdminTasks(filters?: TaskFilters, options?: UseAdminTasksOpti
       if (error) throw error;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin-tasks'] });
+      qc.invalidateQueries({ predicate: (query) => ["admin-tasks", "admin-company-next-success-task"].includes(String(query.queryKey[0])) });
       qc.invalidateQueries({ queryKey: ['admin-tasks-count'] });
       qc.invalidateQueries({ queryKey: ['admin-tasks-resolved-count'] });
     },
@@ -415,7 +415,7 @@ export function useAdminTasks(filters?: TaskFilters, options?: UseAdminTasksOpti
       if (error) throw error;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin-tasks'] });
+      qc.invalidateQueries({ predicate: (query) => ["admin-tasks", "admin-company-next-success-task"].includes(String(query.queryKey[0])) });
       qc.invalidateQueries({ queryKey: ['admin-tasks-count'] });
       qc.invalidateQueries({ queryKey: ['admin-tasks-resolved-count'] });
       toast({ title: 'Tarefa removida!' });

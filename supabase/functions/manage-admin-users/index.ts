@@ -37,9 +37,12 @@ const SALESPERSON_REQUIRED_PERMISSION = 'admin_empresas_acesso';
 const ALLOWED_ADMIN_PERMISSIONS = new Set([
   'admin_dashboard', 'admin_crm', 'admin_empresas', 'admin_health_score',
   'admin_vendedores', 'admin_afiliados', 'admin_financeiro', 'admin_domiflix',
-  'admin_configuracoes', 'admin_usuarios', 'admin_empresas_acesso',
+  'admin_configuracoes', 'admin_usuarios', 'admin_empresas_criar',
+  'admin_empresas_editar', 'admin_empresas_excluir', 'admin_empresas_pagamento',
+  'admin_empresas_acesso',
   'admin_financeiro_lancamentos', 'admin_financeiro_totais',
-  'admin_vendedores_ver_todos',
+  'admin_vendedores_ver_todos', 'admin_vendedores_gerenciar',
+  'admin_crm_criar_lead', 'admin_crm_excluir_lead',
 ]);
 
 /** Mesma forma de resposta das actions antigas (`{ error }` / payload cru). */

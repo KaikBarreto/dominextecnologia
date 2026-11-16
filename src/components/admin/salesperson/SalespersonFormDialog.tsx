@@ -93,7 +93,7 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
   // Buscar usuários admin disponíveis (super_admin ou com admin_permissions) que não estão vinculados a outro vendedor
   const { data: availableUsers = [] } = useQuery({
     queryKey: ['admin-users-for-link', editingSalesperson?.id],
-    enabled: open,
+    enabled: open && hasMasterAccess,
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('manage-admin-users', { body: { action: 'list' } });
       if (error) return [];
@@ -288,7 +288,9 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
         no_commission: formData.no_commission,
         in_rotation: formData.in_rotation,
         notes: formData.notes.trim() || null,
-        user_id: formData.user_id === 'none' ? null : formData.user_id,
+        // Só o master pode vincular uma pessoa a uma conta admin. O banco
+        // também protege este campo para impedir contorno pela API.
+        ...(hasMasterAccess ? { user_id: formData.user_id === 'none' ? null : formData.user_id } : {}),
         role: formData.role,
         person_type: formData.person_type,
         can_receive_sales: formData.can_receive_sales,
@@ -490,19 +492,21 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
             <p className="text-[11px] text-muted-foreground">Define o papel do vendedor no funil. Comissões dividem entre SDR e Closer quando ambos atuam na venda.</p>
           </div>
           )}
-          <div className="sm:col-span-2 space-y-2">
-            <Label>Vincular a usuário admin (opcional)</Label>
-            <Select value={formData.user_id} onValueChange={(v) => setFormData({ ...formData, user_id: v })}>
-              <SelectTrigger><SelectValue placeholder="— Nenhum —" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">— Nenhum —</SelectItem>
-                {availableUsers.map((u) => (
-                  <SelectItem key={u.id} value={u.id}>{u.full_name || u.email}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-[11px] text-muted-foreground">Vendedor vinculado vê apenas os próprios dados (a menos que tenha "ver todos os vendedores").</p>
-          </div>
+          {hasMasterAccess && (
+            <div className="sm:col-span-2 space-y-2">
+              <Label>Vincular a usuário admin (opcional)</Label>
+              <Select value={formData.user_id} onValueChange={(v) => setFormData({ ...formData, user_id: v })}>
+                <SelectTrigger><SelectValue placeholder="— Nenhum —" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">— Nenhum —</SelectItem>
+                  {availableUsers.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>{u.full_name || u.email}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">Vendedor vinculado vê apenas os próprios dados (a menos que tenha "ver todos os vendedores").</p>
+            </div>
+          )}
           <div className="sm:col-span-2 space-y-2">
             <Label htmlFor="sp-notes">Observações</Label>
             <Textarea id="sp-notes" rows={3} value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} />

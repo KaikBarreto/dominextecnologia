@@ -39,12 +39,14 @@ interface CompanyKanbanCardProps {
    * Default true para não regredir o painel master / super_admin.
    */
   canSeeTotals?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
   onEdit: (company: any) => void;
   onDelete: (company: any) => void;
   isDragging?: boolean;
 }
 
-export function CompanyKanbanCard({ company, origins, salespersonMap, canSeeTotals = true, onEdit, onDelete, isDragging = false }: CompanyKanbanCardProps) {
+export function CompanyKanbanCard({ company, origins, salespersonMap, canSeeTotals = true, canEdit = true, canDelete = true, onEdit, onDelete, isDragging = false }: CompanyKanbanCardProps) {
   const navigate = useNavigate();
   // Tooltip do badge de valor personalizado: controlado pra abrir por toque
   // no mobile (hover do Radix continua funcionando via onOpenChange).
@@ -191,18 +193,18 @@ export function CompanyKanbanCard({ company, origins, salespersonMap, canSeeTota
           <RowActionsMenu
             triggerClassName="h-7 w-7"
             actions={[
-              {
+              ...(canEdit ? [{
                 label: 'Editar empresa',
                 icon: Edit,
                 variant: 'edit',
                 onClick: () => onEdit(company),
-              },
-              {
+              }] : []),
+              ...(canDelete ? [{
                 label: 'Excluir empresa',
                 icon: Trash2,
                 variant: 'delete',
                 onClick: () => onDelete(company),
-              },
+              }] : []),
             ]}
           />
         </div>

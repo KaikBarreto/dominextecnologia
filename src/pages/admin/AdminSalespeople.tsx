@@ -32,6 +32,7 @@ import { StatCarousel, type StatCarouselItem } from '@/components/mobile/StatCar
 import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
+import { CommercialActionQueue } from '@/components/admin/salesperson/CommercialActionQueue';
 
 const fmtBRL = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -66,6 +67,7 @@ export default function AdminSalespeople() {
   // então esta variável única cobre a regra do briefing
   // `hasMasterAccess || hasFunctionAccess('admin_vendedores_ver_todos')`.
   const canSeeAll = hasFunctionAccess('admin_vendedores_ver_todos');
+  const canManageTeam = hasFunctionAccess('admin_vendedores_gerenciar');
 
   // Vendedor restrito → redireciona para a própria página de detalhes
   useEffect(() => {
@@ -229,7 +231,7 @@ export default function AdminSalespeople() {
                     icon: <Eye className="h-4 w-4" />,
                     onClick: () => navigate(`/admin/vendedores/${p.id}`),
                   },
-                  ...(canSeeAll
+                  ...(canManageTeam
                     ? [
                         {
                           key: 'edit',
@@ -310,6 +312,7 @@ export default function AdminSalespeople() {
                 sales={filteredSales}
                 advances={filteredAdvances}
               />
+              <CommercialActionQueue enabled={canSeeAll} />
 
               <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -329,7 +332,8 @@ export default function AdminSalespeople() {
                     sales={filteredSales}
                     advances={filteredAdvances}
                     onEdit={handleEdit}
-                    onDelete={setDeleteId}
+                onDelete={setDeleteId}
+                canManage={canManageTeam}
                   />
                 ) : (
                   <div className="rounded-lg border bg-card">
@@ -339,11 +343,11 @@ export default function AdminSalespeople() {
                       description={
                         search
                           ? 'Tente uma busca diferente'
-                          : canSeeAll
+                          : canManageTeam
                               ? 'Clique em "Nova pessoa" para começar'
                             : 'Aguardando cadastro pela coordenação'
                       }
-                      action={!search && canSeeAll ? { label: 'Nova pessoa', onClick: openNew } : undefined}
+                      action={!search && canManageTeam ? { label: 'Nova pessoa', onClick: openNew } : undefined}
                     />
                   </div>
                 )}
@@ -382,7 +386,7 @@ export default function AdminSalespeople() {
                 onPresetChange={setPreset}
                 onRangeChange={setRange}
               />
-              {canSeeAll && activeTab === 'vendedores' && (
+              {canManageTeam && activeTab === 'vendedores' && (
                 <Button onClick={openNew} className="gap-2">
                   <Plus className="h-4 w-4" /> Nova pessoa
                 </Button>
@@ -438,7 +442,7 @@ export default function AdminSalespeople() {
 
       {/* FAB mobile-only — desktop usa botão inline no header. Só na aba
           "Vendedores": na "Atividade Comercial" não existe ação de criar. */}
-      {isMobile && canSeeAll && activeTab === 'vendedores' && (
+      {isMobile && canManageTeam && activeTab === 'vendedores' && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
           label="Pessoa"

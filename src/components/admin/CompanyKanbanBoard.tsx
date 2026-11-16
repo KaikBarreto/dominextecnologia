@@ -22,6 +22,8 @@ interface CompanyKanbanBoardProps {
   salespersonMap?: Map<string, { name: string; photo_url: string | null }>;
   /** Gate financeiro: quando false, oculta somatório R$ por coluna e Valor Mensal dos cards. */
   canSeeTotals?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
   onEdit: (company: any) => void;
   onDelete: (company: any) => void;
 }
@@ -40,7 +42,7 @@ const COLUMNS: CompanyKanbanColumn[] = [
   { id: 'former_customer', title: 'EX-CLIENTES', status: 'inactive', color: 'bg-violet-500' },
 ];
 
-export function CompanyKanbanBoard({ companies, origins, masterUserMap, salespersonMap, canSeeTotals = true, onEdit, onDelete }: CompanyKanbanBoardProps) {
+export function CompanyKanbanBoard({ companies, origins, masterUserMap, salespersonMap, canSeeTotals = true, canEdit = true, canDelete = true, onEdit, onDelete }: CompanyKanbanBoardProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [draggedCompanyId, setDraggedCompanyId] = useState<string | null>(null);
@@ -130,6 +132,7 @@ export function CompanyKanbanBoard({ companies, origins, masterUserMap, salesper
             key={column.id}
             className="min-w-0 w-full"
             onDragOver={(e) => {
+              if (!canEdit) return;
               e.preventDefault();
               const draggedCompany = companies.find((company) => company.id === draggedCompanyId);
               const canDrop = !draggedCompany || canEnterColumn(draggedCompany, column);
@@ -137,7 +140,7 @@ export function CompanyKanbanBoard({ companies, origins, masterUserMap, salesper
               setDragOverColumn(canDrop ? column.id : null);
             }}
             onDragLeave={() => setDragOverColumn(null)}
-            onDrop={(e) => handleDrop(e, column)}
+            onDrop={(e) => { if (canEdit) void handleDrop(e, column); }}
           >
             <div className="mb-4">
               <div className={cn('h-1 w-full rounded-full mb-3 transition-all', column.color, isDragOver && 'h-2')} />
@@ -172,7 +175,7 @@ export function CompanyKanbanBoard({ companies, origins, masterUserMap, salesper
                     colCompanies.map((company) => (
                       <div
                         key={company.id}
-                        draggable
+                        draggable={canEdit}
                         onDragStart={(e) => handleDragStart(e, company)}
                         onDragEnd={() => { setDraggedCompanyId(null); setDragOverColumn(null); }}
                         className={cn('transition-all duration-300 ease-out', draggedCompanyId === company.id && 'opacity-40 scale-95 rotate-1')}
@@ -182,6 +185,8 @@ export function CompanyKanbanBoard({ companies, origins, masterUserMap, salesper
                           origins={origins}
                           salespersonMap={salespersonMap}
                           canSeeTotals={canSeeTotals}
+                          canEdit={canEdit}
+                          canDelete={canDelete}
                           onEdit={onEdit}
                           onDelete={onDelete}
                           isDragging={draggedCompanyId === company.id}

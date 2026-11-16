@@ -27,6 +27,7 @@ import { useCompanyOrigins } from '@/hooks/useCompanyOrigins';
 import { resolveOrigin } from '@/utils/companyOriginCatalog';
 import { ResolvedOriginBadge } from '@/components/admin/OriginBadge';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 import { getSegment } from '@/utils/companySegments';
 import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAvatar';
 import { RegistrarVendaDialog } from '@/components/admin/salesperson/RegistrarVendaDialog';
@@ -102,6 +103,8 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp, initi
   const { origins } = useCompanyOrigins();
   const { deleteLead, updateLead, updateLeadNotes, leads } = useAdminLeads();
   const { user } = useAuth();
+  const { hasFunctionAccess } = useAdminPermissions();
+  const canDeleteLead = hasFunctionAccess('admin_crm_excluir_lead');
 
   const lead = leads.find(l => l.id === leadProp.id) || leadProp;
   // Em instalações com vários funis, usar todas as etapas misturava os estados
@@ -367,9 +370,11 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp, initi
         >
           <Pencil className="h-3.5 w-3.5 mr-1.5" /> Editar
         </Button>
-        <Button size="sm" variant="destructive" onClick={() => setDeleteConfirmOpen(true)}>
-          <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Excluir
-        </Button>
+        {canDeleteLead && (
+          <Button size="sm" variant="destructive" onClick={() => setDeleteConfirmOpen(true)}>
+            <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Excluir
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -770,7 +775,7 @@ export function AdminLeadDetailModal({ open, onOpenChange, lead: leadProp, initi
         onSuccess={handleVendaSuccess}
       />
 
-      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+      <AlertDialog open={canDeleteLead && deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir lead?</AlertDialogTitle>

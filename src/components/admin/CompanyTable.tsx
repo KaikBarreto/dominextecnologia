@@ -40,6 +40,8 @@ interface CompanyTableProps {
    * nenhuma view da tela de Empresas. Default true (super_admin/master).
    */
   canSeeTotals?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
   onEdit: (company: any) => void;
   onRefetch: () => void;
 }
@@ -64,7 +66,7 @@ const PLAN_COLORS: Record<string, string> = {
   enterprise: 'bg-amber-500 hover:bg-amber-600 text-white border-0',
 };
 
-export function CompanyTable({ companies, masterUserMap, origins, salespersonMap, canSeeTotals = true, onEdit, onRefetch }: CompanyTableProps) {
+export function CompanyTable({ companies, masterUserMap, origins, salespersonMap, canSeeTotals = true, canEdit = true, canDelete = true, onEdit, onRefetch }: CompanyTableProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -201,7 +203,7 @@ export function CompanyTable({ companies, masterUserMap, origins, salespersonMap
                       <Select
                         value={company.subscription_status}
                         onValueChange={(value) => updateCompanyMutation.mutate({ id: company.id, field: 'subscription_status', value })}
-                        disabled={updatingField?.id === company.id && updatingField?.field === 'subscription_status'}
+                        disabled={!canEdit || (updatingField?.id === company.id && updatingField?.field === 'subscription_status')}
                       >
                         <SelectTrigger className="w-[140px] h-auto min-h-[2.5rem] border-0 bg-transparent hover:bg-accent py-3">
                           <SelectValue>
@@ -329,18 +331,18 @@ export function CompanyTable({ companies, masterUserMap, origins, salespersonMap
                         )}
                         <RowActionsMenu
                           actions={[
-                            {
+                            ...(canEdit ? [{
                               label: 'Editar empresa',
                               icon: Edit,
                               variant: 'edit',
                               onClick: () => onEdit(company),
-                            },
-                            {
+                            }] : []),
+                            ...(canDelete ? [{
                               label: 'Excluir empresa',
                               icon: Trash2,
                               variant: 'delete',
                               onClick: () => { setCompanyToDelete(company); setConfirmationText(''); setDeleteDialogOpen(true); },
-                            },
+                            }] : []),
                           ]}
                         />
                       </div>

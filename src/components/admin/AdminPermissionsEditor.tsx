@@ -11,7 +11,8 @@ type Props = { value: string[]; onChange: (next: string[]) => void };
 
 const PRESETS = [
   { key: 'financeiro_consulta', label: 'Financeiro (consulta)', permissions: ['admin_financeiro', 'admin_financeiro_totais'] },
-  { key: 'comercial', label: 'Comercial', permissions: ['admin_crm', 'admin_empresas', 'admin_vendedores'] },
+  { key: 'comercial', label: 'Comercial', permissions: ['admin_crm', 'admin_empresas', 'admin_vendedores', 'admin_empresas_criar', 'admin_empresas_editar', 'admin_empresas_pagamento', 'admin_empresas_acesso', 'admin_crm_criar_lead'] },
+  { key: 'equipe', label: 'Equipe', permissions: ['admin_vendedores', 'admin_vendedores_ver_todos', 'admin_vendedores_gerenciar'] },
 ] as const;
 
 export function AdminPermissionsEditor({ value, onChange }: Props) {
@@ -21,9 +22,10 @@ export function AdminPermissionsEditor({ value, onChange }: Props) {
   const normalizedQuery = query.trim().toLocaleLowerCase('pt-BR');
   const toggle = (key: string) => onChange(selected.has(key) ? value.filter((item) => item !== key) : [...value, key]);
   const actionsFor = (screen: string) => ADMIN_FUNCTION_PERMISSIONS.filter((action) =>
-    (screen === 'admin_empresas' && action.key === 'admin_empresas_acesso') ||
+    (screen === 'admin_empresas' && action.key.startsWith('admin_empresas_')) ||
     (screen === 'admin_financeiro' && action.key.startsWith('admin_financeiro_')) ||
-    (screen === 'admin_vendedores' && action.key === 'admin_vendedores_ver_todos'),
+    (screen === 'admin_vendedores' && action.key.startsWith('admin_vendedores_')) ||
+    (screen === 'admin_crm' && action.key.startsWith('admin_crm_')),
   );
   const screens = ADMIN_SCREEN_PERMISSIONS.filter((screen) => !normalizedQuery
     || screen.label.toLocaleLowerCase('pt-BR').includes(normalizedQuery)
