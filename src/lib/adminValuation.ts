@@ -1,3 +1,20 @@
+// Arithmetic mean uses only named company columns with numeric values; workbook summary columns are excluded.
+export const ARR_MARKET_REFERENCE = {
+  date: "2026-10-31",
+  median: 4.97,
+  mean: 6.57,
+  companies: 62,
+  sourceUrl: "https://www.saas-capital.com/the-saas-capital-index/",
+  dataUrl:
+    "https://www.saas-capital.com/wp-content/uploads/2026/11/SaaS-Capital-Index-Downloadable-Data-2026-10-31.xlsx",
+} as const;
+
+// ARR scenarios are management assumptions around the market median, not sample percentiles.
+export const DEFAULT_VALUATION_MULTIPLES = {
+  arr: ["3", "5", "7"],
+  profit: ["0,8", "1,2", "1,6"],
+};
+
 export function parseValuationNumber(
   value: string,
   min = -1e9,

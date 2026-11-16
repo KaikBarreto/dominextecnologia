@@ -32,7 +32,12 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { adminKpiClass, type AdminKpiTone } from "./adminKpiStyles";
 import { useAdminValuation } from "@/hooks/useAdminValuation";
-import { parseValuationNumber, projectValuation } from "@/lib/adminValuation";
+import {
+  ARR_MARKET_REFERENCE,
+  DEFAULT_VALUATION_MULTIPLES,
+  parseValuationNumber,
+  projectValuation,
+} from "@/lib/adminValuation";
 import { cn } from "@/lib/utils";
 
 const money = (n: number) =>
@@ -136,7 +141,10 @@ function Metric(
 export function AdminValuationReport() {
   const valuation = useAdminValuation();
   const [method, setMethod] = useState<"arr" | "profit">("arr");
-  const [multiples, setMultiples] = useState(["0,8", "1,2", "1,6"]);
+  const [multiplesByMethod, setMultiplesByMethod] = useState(
+    DEFAULT_VALUATION_MULTIPLES,
+  );
+  const multiples = multiplesByMethod[method];
   const [mrrAdjustment, setMrrAdjustment] = useState("0");
   const [profitAdjustment, setProfitAdjustment] = useState("0");
   const [growth, setGrowth] = useState("5");
@@ -226,7 +234,7 @@ export function AdminValuationReport() {
         <div>
           <h2 className="text-lg font-bold tracking-tight">Valuation</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Uma faixa para planejar o valor da operação.
+            Uma faixa para planejar o valor do SaaS.
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             Financeiro: {date(data.period_start)} a {date(data.period_end)}{" "}
@@ -277,6 +285,66 @@ export function AdminValuationReport() {
           tone={data.financial.operating_result < 0 ? "rose" : "amber"}
         />
       </div>
+      {method === "arr" && (
+        <aside
+          aria-label="Referência de mercado para ARR"
+          className="rounded-lg border bg-card p-4 sm:p-5"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-semibold">
+                Referência de mercado · SaaS B2B
+              </h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {date(ARR_MARKET_REFERENCE.date)} ·{" "}
+                {ARR_MARKET_REFERENCE.companies}{" "}
+                empresas listadas com dados válidos
+              </p>
+            </div>
+            <dl className="flex flex-wrap gap-6">
+              <div>
+                <dt className="text-xs text-muted-foreground">Mediana</dt>
+                <dd className="text-xl font-bold tabular-nums">
+                  {ARR_MARKET_REFERENCE.median.toLocaleString("pt-BR")}×
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">
+                  Média calculada
+                </dt>
+                <dd className="text-xl font-bold tabular-nums">
+                  {ARR_MARKET_REFERENCE.mean.toLocaleString("pt-BR")}×
+                </dd>
+              </div>
+            </dl>
+          </div>
+          <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+            Valor das ações ÷ receita anualizada corrente. Esta amostra
+            internacional de empresas listadas não determina o múltiplo de um
+            SaaS privado menor e não é um múltiplo de valor da operação (EV).
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Fonte:{" "}
+            <a
+              className="font-medium text-foreground underline underline-offset-2"
+              href={ARR_MARKET_REFERENCE.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              SaaS Capital Index
+            </a>{" "}
+            ·{" "}
+            <a
+              className="font-medium text-foreground underline underline-offset-2"
+              href={ARR_MARKET_REFERENCE.dataUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Planilha de 31/10/2026
+            </a>. Referência datada, sem atualização automática.
+          </p>
+        </aside>
+      )}
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_280px]">
         <Card className="min-w-0">
           <CardHeader className="pb-3">
@@ -284,8 +352,9 @@ export function AdminValuationReport() {
               <Calculator className="h-4 w-4" />Faixa estimada
             </CardTitle>
             <CardDescription>
-              Múltiplos ilustrativos e editáveis. A estimativa não é um preço
-              garantido de venda.
+              {method === "arr"
+                ? "Cenários iniciais de 3×, 5× e 7× ARR. São hipóteses de gestão, não percentis da amostra nem preços garantidos de venda."
+                : "Múltiplos próprios para o resultado operacional em caixa. Não reutilizam os múltiplos de ARR."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -388,9 +457,12 @@ export function AdminValuationReport() {
                     min={0}
                     max={20}
                     onChange={(value) =>
-                      setMultiples((current) =>
-                        current.map((n, j) => j === i ? value : n)
-                      )}
+                      setMultiplesByMethod((current) => ({
+                        ...current,
+                        [method]: current[method].map((n, j) =>
+                          j === i ? value : n
+                        ),
+                      }))}
                   />
                 </div>
               ))}
@@ -399,7 +471,9 @@ export function AdminValuationReport() {
               {basis != null
                 ? `Base de cálculo: ${money(basis)} × múltiplo. `
                 : ""}Não inclui ajuste por caixa excedente e dívidas. As
-              premissas são descartadas ao sair desta aba.
+              premissas são descartadas ao sair desta aba. Ajuste os múltiplos
+              conforme porte, crescimento, retenção e margem da empresa; não há
+              desconto ou prêmio automático por esses fatores.
             </p>
           </CardContent>
         </Card>
@@ -711,9 +785,10 @@ export function AdminValuationReport() {
               {data.warnings.map((warning) => <li key={warning}>{warning}</li>)}
             </ul>
             <p className="mt-3 text-xs text-muted-foreground">
-              Os múltiplos são exemplos ajustáveis, sem benchmark automático de
-              mercado. Para avaliar uma negociação, revise contratos, descontos,
-              custos, caixa excedente e dívidas. Este painel não é um laudo de
+              A referência de mercado é datada e os múltiplos de cada método são
+              premissas independentes e editáveis. Para avaliar uma negociação,
+              revise porte, crescimento, retenção, contratos, descontos, custos,
+              caixa excedente e dívidas. Este painel não é um laudo de
               avaliação.
             </p>
           </details>
