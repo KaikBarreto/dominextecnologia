@@ -1,3 +1,4 @@
+import { DateField } from "@/components/ui/date-field";
 import { useState, useCallback, useEffect } from "react";
 import domiflixLogoDark from "@/assets/domiflix-logo-horizontal-preto.png";
 import domiflixLogoLight from "@/assets/domiflix-logo-horizontal-branco.png";
@@ -760,11 +761,10 @@ function EpisodeFormDialog({
 
           <div className="col-span-2 space-y-1.5">
             <Label htmlFor="domiflix-recorded-at">Data de Gravação</Label>
-            <Input
+            <DateField
               id="domiflix-recorded-at"
-              type="date"
               value={form.recorded_at}
-              onChange={(e) => setForm({ ...form, recorded_at: e.target.value })}
+              onChange={(e) => setForm({ ...form, recorded_at: e })}
             />
           </div>
 
