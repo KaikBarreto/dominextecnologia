@@ -369,11 +369,16 @@ const TELAS_LISTA_FICHA: Record<string, string> = {
  * Chave de TELA de um pathname, pra animação/remontagem de rota.
  *
  * `/clientes` e `/clientes/abc` (em qualquer idioma) devolvem a MESMA chave.
+ * A consulta do catálogo técnico também conserva sua lista, marca e ficha.
  * Qualquer outra rota devolve o próprio pathname, mantendo o comportamento de
  * antes — sub-rotas diferentes continuam ganhando a transição.
  */
 export function appScreenKey(pathname: string): string {
   const key = resolveAppSlug(pathname);
+  // Catálogo, marca e diagnóstico são uma única consulta. Preservar a árvore
+  // permite voltar à busca/prévia sem perder filtros, página ou contexto.
+  // O ownerKey do AppRouteTransition continua descartando a sessão no logout.
+  if (key === 'technicianArea' && splitPath(pathname)[1] === 'catalogo') return 'tela:catalogo';
   return (key && TELAS_LISTA_FICHA[key]) || pathname;
 }
 
