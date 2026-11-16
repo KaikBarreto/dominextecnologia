@@ -9,6 +9,7 @@ import { CreditCard, Building2, TrendingUp, DollarSign, BarChart3, Search } from
 import { ContentLoading } from '@/components/ui/page-loading';
 import { typography } from '@/lib/typography';
 import { cn, fuzzyIncludes } from '@/lib/utils';
+import { adminKpiClass, type AdminKpiTone } from '@/components/admin/adminKpiStyles';
 
 // ---------------------------------------------------------------------------
 // Tipos que espelham o contrato da RPC get_admin_cobrancas_overview()
@@ -92,31 +93,31 @@ export default function AdminCobrancas() {
       title: 'Tenants com Cobranças',
       value: totals.tenants_with_cobrancas,
       icon: Building2,
-      gradient: 'bg-gradient-to-br from-blue-500 to-blue-600',
+      tone: 'blue' as AdminKpiTone,
     },
     {
       title: 'Assinaturas Ativas',
       value: totals.active_subscriptions,
       icon: CreditCard,
-      gradient: 'bg-gradient-to-br from-violet-500 to-violet-600',
+      tone: 'violet' as AdminKpiTone,
     },
     {
       title: 'MRR Total',
       value: formatBRL(totals.mrr_total),
       icon: TrendingUp,
-      gradient: 'bg-gradient-to-br from-emerald-500 to-emerald-600',
+      tone: 'emerald' as AdminKpiTone,
     },
     {
       title: 'Volume 30 dias',
       value: formatBRL(totals.volume_30d),
       icon: BarChart3,
-      gradient: 'bg-gradient-to-br from-amber-500 to-amber-600',
+      tone: 'amber' as AdminKpiTone,
     },
     {
       title: 'Recebido 30 dias',
       value: formatBRL(totals.paid_30d),
       icon: DollarSign,
-      gradient: 'bg-gradient-to-br from-teal-500 to-teal-600',
+      tone: 'cyan' as AdminKpiTone,
     },
   ];
 
@@ -137,7 +138,7 @@ export default function AdminCobrancas() {
           return (
             <Card
               key={card.title}
-              className={cn('border-0 shadow-lg text-white', card.gradient)}
+              className={adminKpiClass(card.tone, 'shadow-lg')}
             >
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-2">

@@ -47,6 +47,7 @@ import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
 import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
+import { adminKpiClass } from '@/components/admin/adminKpiStyles';
 
 type ViewMode = 'kanban' | 'list' | 'agenda';
 
@@ -255,15 +256,15 @@ export function AdminTasksTab() {
 
       {/* Stats */}
       {isMobile ? (
-        <StatCarousel items={statItems} loading={isLoading} />
+        <StatCarousel items={statItems} loading={isLoading} variant="saturated" />
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-          {statItems.map(item => (
-            <div key={item.key} className="rounded-lg border bg-card p-3">
+          {statItems.map((item, index) => (
+            <div key={item.key} className={adminKpiClass(['blue', 'cyan', 'amber', 'rose', 'emerald'][index] as 'blue' | 'cyan' | 'amber' | 'rose' | 'emerald', 'rounded-lg p-3')}>
               <div className="flex items-center gap-2">
-                <span style={{ color: item.accentColor }}>{item.icon}</span>
+                <span className="text-white/80">{item.icon}</span>
                 <div>
-                  <p className="text-xs text-muted-foreground">{item.label}</p>
+                  <p className="text-xs text-white/75">{item.label}</p>
                   <p className="text-lg font-bold">{item.count}</p>
                 </div>
               </div>

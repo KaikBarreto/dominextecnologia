@@ -1,4 +1,5 @@
 import { AirVent, ArrowRight, ChevronRight, Factory, Fan, Layers3, PackageSearch, Refrigerator, Settings2 } from 'lucide-react';
+import { catalogDiscoveryRank } from '@/lib/catalogDiscovery';
 import type { CatalogSection, CatalogSectionKey } from '@/lib/catalogOrganization';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { formatNumber } from '@/lib/format';
@@ -29,10 +30,12 @@ export function CatalogCategoryBrowser({ sections, onSelect, onViewAll }: { sect
 
 export function CatalogFamilyBrowser({ section, onSelect, onViewAll }: { section: CatalogSection; onSelect: (family: string) => void; onViewAll: () => void }) {
   const { locale } = useAppLocaleContext(); const t = catalogNavigationCopy[locale];
+  const rank = (family: CatalogSection['families'][number]) => Math.min(...family.models.map(catalogDiscoveryRank));
+  const families = [...section.families].sort((a, b) => rank(a) - rank(b));
   return <section className="space-y-4" aria-label={t.families}>
     <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-bold md:text-2xl">{t.sections[section.key]}</h2><Button variant="ghost" className="min-h-11" onClick={onViewAll}>{t.categoryModels}<ArrowRight className="h-4 w-4" /></Button></div>
     <div className="grid gap-x-8 md:grid-cols-2">
-      {section.families.map(family => <button key={family.key} type="button" onClick={() => onSelect(family.key)} className="group flex min-h-20 items-center justify-between gap-4 border-b border-border py-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      {families.map(family => <button key={family.key} type="button" onClick={() => onSelect(family.key)} className="group flex min-h-20 items-center justify-between gap-4 border-b border-border py-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
         <span className="min-w-0"><span className="block break-words text-base font-semibold">{family.name}</span><span className="mt-1 block text-sm text-muted-foreground">{formatNumber(family.models.length, locale)} {t.items}</span></span><ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-foreground" />
       </button>)}
     </div>

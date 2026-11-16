@@ -33,6 +33,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { adminKpiClass } from '@/components/admin/adminKpiStyles';
 import { typography } from '@/lib/typography';
 import {
   useAdminInfraMetrics,
@@ -86,31 +87,23 @@ function Metrica({
   tom?: 'default' | 'warning' | 'danger';
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4 space-y-2">
-      <div className="flex items-center gap-2 text-muted-foreground">
+    <div className={adminKpiClass(tom === 'danger' ? 'rose' : tom === 'warning' ? 'amber' : 'blue', 'rounded-xl p-4 space-y-2')}>
+      <div className="flex items-center gap-2 text-white/80">
         <Icon className="h-4 w-4" />
         <span className="text-xs font-medium min-w-0">{label}</span>
       </div>
-      <p
-        className={cn(
-          'text-xl font-bold tabular-nums leading-none',
-          tom === 'danger' && 'text-red-600 dark:text-red-400',
-          tom === 'warning' && 'text-amber-600 dark:text-amber-400',
-        )}
-      >
+      <p className="text-xl font-bold tabular-nums leading-none">
         {valor}
       </p>
       {pct != null && Number.isFinite(pct) && (
         <Progress
           value={Math.min(100, pct)}
           className={cn(
-            'h-1.5',
-            tom === 'danger' && '[&>div]:bg-red-500',
-            tom === 'warning' && '[&>div]:bg-amber-500',
+            'h-1.5 bg-white/25 [&>div]:bg-white',
           )}
         />
       )}
-      {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
+      {hint && <p className="text-[11px] text-white/75">{hint}</p>}
     </div>
   );
 }

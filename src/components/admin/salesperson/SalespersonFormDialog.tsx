@@ -300,7 +300,7 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
           await uploadAndSavePhoto(pendingFileRef.current, (saved as any).id, null);
         } catch (uploadErr) {
           // Vendedor já foi criado — avisa do erro de foto sem reverter o registro.
-          toast.error(getErrorMessage(uploadErr, 'Vendedor criado, mas houve erro ao enviar a foto'));
+          toast.error(getErrorMessage(uploadErr, 'Pessoa cadastrada, mas houve erro ao enviar a foto'));
         }
         pendingFileRef.current = null;
       }
@@ -311,7 +311,7 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
       // 23505 tem mensagem específica de UX (email duplicado) — preserva.
       // Demais erros caem no helper PT-BR.
       if (err?.code === '23505') {
-        toast.error('Já existe um vendedor com este email ou usuário vinculado');
+        toast.error('Já existe uma pessoa com este email ou usuário vinculado');
       } else {
         toast.error(getErrorMessage(err));
       }
@@ -335,7 +335,7 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
-      title={editingSalesperson ? 'Editar Vendedor' : 'Novo Vendedor'}
+      title={editingSalesperson ? 'Editar pessoa' : 'Adicionar pessoa'}
       description="Cadastre a pessoa, sua área e, quando aplicável, sua atuação comercial"
       footer={footer}
     >
@@ -343,7 +343,7 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
         {/* Foto do vendedor */}
         <div className="flex flex-col items-center gap-2">
           <label className="relative cursor-pointer group">
-            <SalespersonAvatar name={formData.name || 'Novo Vendedor'} photoUrl={photoUrl} size="xl" />
+            <SalespersonAvatar name={formData.name || 'Nova pessoa'} photoUrl={photoUrl} size="xl" />
             <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
               {uploading ? (
                 <Loader2 className="h-5 w-5 text-white animate-spin" />
@@ -525,7 +525,7 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
               <Label htmlFor="sp-rotation" className="cursor-pointer">Participa do rodízio de leads</Label>
               <p className="text-xs text-muted-foreground">Distribui leads automaticamente e entra nos números do site. Precisa ter telefone cadastrado para aparecer no rodízio.</p>
               <p className={rotationEligible ? 'text-xs font-medium text-emerald-700' : 'text-xs text-muted-foreground'}>
-                {rotationEligible ? 'Elegível para a próxima distribuição' : 'Não elegível: ative o vendedor, habilite o rodízio e informe telefone.'}
+                {rotationEligible ? 'Elegível para a próxima distribuição' : 'Não elegível: ative a pessoa, habilite vendas e rodízio e informe telefone.'}
               </p>
               {editingSalesperson && (
                 <p className="text-xs text-muted-foreground">Última distribuição: {lastLeadAssignedLabel}</p>

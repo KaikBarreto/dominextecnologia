@@ -1,3 +1,4 @@
+import { adminKpiClass } from "@/components/admin/adminKpiStyles";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -117,6 +118,7 @@ export function AdminAsaasReconciliation(
     pending_categorization: "Pendente",
     partially_categorized: "Parcial",
     manually_categorized: "Classificado",
+    fully_categorized: "Classificado",
     auto_categorized: "Automático",
     reconciled: "Conciliado",
   }[s] || s);
@@ -229,7 +231,7 @@ export function AdminAsaasReconciliation(
                 }].map((item) => (
                   <div
                     key={item.label}
-                    className="rounded-xl border bg-card p-4"
+                    className={adminKpiClass(item.label === "Diferença a investigar" ? (Math.abs(Number(item.value)) > 0.01 ? "rose" : "emerald") : "blue", "rounded-xl border bg-card p-4")}
                   >
                     <p className="text-sm text-muted-foreground">
                       {item.label}

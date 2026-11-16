@@ -39,6 +39,12 @@ export type Database = {
   }
   public: {
     Tables: {
+      catalog_model_favorites: {
+        Row: { user_id: string; company_id: string; model_id: string; is_favorite: boolean; revision: number; last_operation_id: string; updated_at: string }
+        Insert: { user_id: string; company_id: string; model_id: string; is_favorite: boolean; revision: number; last_operation_id: string; updated_at?: string }
+        Update: { user_id?: string; company_id?: string; model_id?: string; is_favorite?: boolean; revision?: number; last_operation_id?: string; updated_at?: string }
+        Relationships: [{ foreignKeyName: "catalog_model_favorites_company_id_fkey"; columns: ["company_id"]; isOneToOne: false; referencedRelation: "companies"; referencedColumns: ["id"] }]
+      }
       admin_cash_flow_plans: {
         Row: { id: string; direction: string; description: string; amount: number; due_date: string; status: string; ledger_id: string | null; created_by: string; created_at: string }
         Insert: { id?: string; direction: string; description: string; amount: number; due_date: string; status?: string; ledger_id?: string | null; created_by?: string; created_at?: string }
@@ -18380,6 +18386,10 @@ export type Database = {
     }
     Functions: {
       admin_categorize_ledger: { Args: { p_ledger_id: string; p_category: string }; Returns: undefined }
+      set_catalog_model_favorite: {
+        Args: { p_company_id: string; p_model_id: string; p_is_favorite: boolean; p_expected_revision: number; p_operation_id: string }
+        Returns: { applied: boolean; model_id: string; is_favorite: boolean; revision: number; last_operation_id: string | null; updated_at: string | null }[]
+      }
       admin_create_financial_movement: {
         Args: { p_request_id: string; p_type: string; p_category: string; p_amount: number; p_date: string; p_description?: string | null; p_awaiting_asaas?: boolean }
         Returns: string

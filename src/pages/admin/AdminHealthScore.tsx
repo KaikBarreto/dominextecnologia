@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { HeartPulse, Activity, AlertTriangle, XCircle, Search, Building2 } from 'lucide-react';
 import { ContentLoading } from '@/components/ui/page-loading';
+import { adminKpiClass, type AdminKpiTone } from '@/components/admin/adminKpiStyles';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import {
   useCompanyHealthScores,
@@ -98,7 +99,7 @@ export default function AdminHealthScore() {
       label: 'Saudável',
       value: stats.healthy,
       icon: HeartPulse,
-      gradient: 'bg-gradient-to-br from-green-500 to-green-600',
+      tone: 'emerald' as AdminKpiTone,
       ring: 'ring-green-400',
     },
     {
@@ -106,7 +107,7 @@ export default function AdminHealthScore() {
       label: 'Atenção',
       value: stats.attention,
       icon: Activity,
-      gradient: 'bg-gradient-to-br from-yellow-500 to-amber-600',
+      tone: 'amber' as AdminKpiTone,
       ring: 'ring-yellow-400',
     },
     {
@@ -114,7 +115,7 @@ export default function AdminHealthScore() {
       label: 'Em Risco',
       value: stats.at_risk,
       icon: AlertTriangle,
-      gradient: 'bg-gradient-to-br from-red-500 to-red-600',
+      tone: 'rose' as AdminKpiTone,
       ring: 'ring-red-400',
     },
     {
@@ -122,7 +123,7 @@ export default function AdminHealthScore() {
       label: 'Inativo',
       value: stats.inactive,
       icon: XCircle,
-      gradient: 'bg-gradient-to-br from-gray-500 to-gray-600',
+      tone: 'slate' as AdminKpiTone,
       ring: 'ring-gray-400',
     },
   ];
@@ -145,8 +146,7 @@ export default function AdminHealthScore() {
             <Card
               key={card.status}
               className={cn(
-                'border-0 shadow-lg cursor-pointer transition-all',
-                card.gradient,
+                adminKpiClass(card.tone, 'shadow-lg cursor-pointer transition-all'),
                 isActive
                   ? `ring-2 ${card.ring} ring-offset-2 ring-offset-background scale-[1.02]`
                   : 'hover:scale-[1.01]',

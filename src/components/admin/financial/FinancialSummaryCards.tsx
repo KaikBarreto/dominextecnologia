@@ -1,3 +1,4 @@
+import { adminKpiClass } from "@/components/admin/adminKpiStyles";
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -24,7 +25,7 @@ export function FinancialSummaryCards({ income, expenses, transactionsCount, onO
     <Card className="overflow-hidden border bg-white shadow-sm">
       <CardContent className="p-6 md:p-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-6 border-b border-border/50">
-          <div className="relative text-center space-y-1 p-4 rounded-xl border bg-white">
+          <div className={adminKpiClass("blue", "relative text-center space-y-1 p-4 rounded-xl")}>
             <button
               type="button"
               onClick={() => refetchBalance()}
@@ -47,7 +48,7 @@ export function FinancialSummaryCards({ income, expenses, transactionsCount, onO
               <p className={cn('text-2xl md:text-3xl font-bold tracking-tight', (asaasBalance ?? 0) >= 0 ? 'text-foreground' : 'text-destructive')}>{fmt(asaasBalance ?? 0)}</p>
             )}
           </div>
-          <div className="text-center space-y-1 p-4 rounded-xl border bg-white">
+          <div className={adminKpiClass("violet", "text-center space-y-1 p-4 rounded-xl")}>
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Transações</span>
             <p className="text-2xl md:text-3xl font-bold tracking-tight">{transactionsCount}</p>
           </div>

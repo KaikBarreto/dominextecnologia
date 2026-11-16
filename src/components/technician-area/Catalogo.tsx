@@ -7,7 +7,6 @@ import {
   Navigate,
   useNavigate,
   useParams,
-  useSearchParams,
 } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -20,7 +19,6 @@ import {
   ChevronDown,
   ChevronUp,
   PackageSearch,
-  Star,
   SlidersHorizontal,
   AirVent,
   Refrigerator,
@@ -37,10 +35,10 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CompressorGlyph, RemoteGlyph } from '@/components/icons/MenuIcons';
 import { Button } from '@/components/ui/button';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
-import { useDataPagination } from '@/hooks/useDataPagination';
 import { catalogCodeMatches, organizeCatalog, withCatalogNavigation } from '@/lib/catalogOrganization';
 import { CatalogCategoryBrowser, CatalogFamilyBrowser } from './CatalogCategoryBrowser';
 import { catalogNavigationCopy } from './catalogNavigationCopy';
@@ -73,15 +71,18 @@ import { GasBadge } from './GasBadge';
 import { RemoteConfig } from './RemoteConfig';
 import { CatalogPhotoCaption, CatalogDocumentReference, CatalogImagePreview, CatalogModelIdentity, CatalogModelReference } from './CatalogAssetReference';
 import { CatalogImage } from './CatalogImage';
+import { CatalogBrandLogo } from './CatalogBrandLogo';
 import { ManufacturerDocuments, ManufacturerManualLink } from './ManufacturerDocuments';
 import { EquipmentReferenceNotice } from './EquipmentReferenceNotice';
 import { getEquipmentCodeReference } from '@/data/equipmentErrorCodeReferences';
-import {
-  registrarModeloRecente,
-  isModeloFavorito,
-  toggleModeloFavorito,
-  useToolHistory,
-} from '@/lib/technicianAreaHistory';
+import { CatalogActivityFeed } from './CatalogActivityFeed';
+import { CatalogFavoriteButton } from './CatalogFavoriteButton';
+import { catalogActivityCopy } from './catalogActivityCopy';
+import { prioritizeCatalogModels } from '@/lib/catalogDiscovery';
+import { useCatalogVisit } from '@/hooks/useCatalogVisit';
+import { useCatalogListState, useCatalogNavigation, useCatalogPagination, useCatalogScrollRestore, useCatalogSearchParams } from './CatalogNavigationContext';
+import { catalogSearchCopy } from './catalogSearchCopy';
+import { CatalogNavigationProvider } from './CatalogNavigationProvider';
 import {
   Carousel,
   CarouselContent,
@@ -471,6 +472,7 @@ function tabToDomain(tab: CatalogTab): EquipmentDomain {
 
 function CatalogoRouted() {
   return (
+    <CatalogNavigationProvider>
     <Routes>
       {/* /catalogo → subaba default. */}
       <Route index element={<Navigate to={DEFAULT_CATALOG_TAB} replace />} />
@@ -492,14 +494,16 @@ function CatalogoRouted() {
       {/* Qualquer rota desconhecida sob catalogo → subaba default. */}
       <Route path="*" element={<Navigate to={DEFAULT_CATALOG_TAB} replace />} />
     </Routes>
+    </CatalogNavigationProvider>
   );
 }
 
 /** Tela 0 — lista da subaba (marcas / controles / gases). */
 function CatalogTabScreen() {
+  const { open } = useCatalogNavigation();
   const { catalogTab } = useParams<{ catalogTab: string }>();
   const navigate = useNavigate();
-  const [catalogParams] = useSearchParams();
+  const [catalogParams] = useCatalogSearchParams();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.technicianTools.catalog;
 
@@ -516,22 +520,22 @@ function CatalogTabScreen() {
       {tab === 'fluido_refrigerante' ? (
         <GasesList
           onSelectGas={(gas) =>
-            navigate(`gas/${encodeURIComponent(gas.code)}`)
+            open(`gas/${encodeURIComponent(gas.code)}`)
           }
           t={t}
         />
       ) : tab === 'controle_remoto' ? (
         // Controle remoto: lista global, sem etapa de marca → URL flat por slug do nome.
-        <RemotesList onSelectDetail={(model) => navigate(`modelo/${slugify(model.name)}`)} t={t} />
+        <RemotesList onSelectDetail={(model) => open(`modelo/${slugify(model.name)}`)} t={t} />
       ) : (
         <BrandsList
           domain={domain}
-          onSelectBrand={(brand) => navigate(`marca/${brandSlug(brand.name)}`)}
+          onSelectBrand={(brand) => open(`marca/${brandSlug(brand.name)}`)}
           // Modelo abre ninhado sob a marca DO PRÓPRIO modelo (todo modelo tem marca).
           // Veio da busca/grade da subaba → ?from=catalogo pra voltar pra cá.
-          onSelectModelDetail={(model) => navigate(withCatalogNavigation(modelPath(tab, model), catalogParams))}
+          onSelectModelDetail={(model) => open(withCatalogNavigation(modelPath(tab, model), catalogParams))}
           onSelectModelErrors={(model, initialCode) =>
-            navigate(withCatalogNavigation(modelPath(tab, model, { codigo: initialCode }), catalogParams))
+            open(withCatalogNavigation(modelPath(tab, model, { codigo: initialCode }), catalogParams))
           }
           t={t}
         />
@@ -548,9 +552,9 @@ function CatalogTabScreen() {
  * dessa marca é que alimenta a lista de modelos (mesma lógica de sempre).
  */
 function CatalogBrandScreen() {
+  const { open, back, replace } = useCatalogNavigation();
   const { catalogTab, brandSlug: slugParam } = useParams<{ catalogTab: string; brandSlug: string }>();
-  const navigate = useNavigate();
-  const [catalogParams] = useSearchParams();
+  const [catalogParams] = useCatalogSearchParams();
   const catalogBase = useCatalogBase();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.technicianTools.catalog;
@@ -594,15 +598,15 @@ function CatalogBrandScreen() {
       key={brand.id}
       brand={brand}
       domain={domain}
-      onBack={() => navigate(tabPath)}
+      onBack={() => back(tabPath)}
       // Trocar de marca no carrossel: replace pra não inflar o history. URL por slug.
       onSelectBrand={(b) =>
-        navigate(`${catalogBase}/${tab}/marca/${brandSlug(b.name)}`, { replace: true })
+        replace(`${catalogBase}/${tab}/marca/${brandSlug(b.name)}`)
       }
       onSelectDetail={(model) =>
         // Ninhado sob a marca atual (modelo da lista não traz brand hidratado → passamos
         // o nome da marca conhecida). from=marca pra voltar pra esta tela de marca.
-        navigate(
+        open(
           withCatalogNavigation(`${catalogBase}/${tab}/${modelPath(tab, model, {
             brandName: brand.name,
             from: 'marca',
@@ -649,13 +653,13 @@ function ModelDetailByDomain({
  * então anexamos a marca encontrada pros componentes de detalhe (header).
  */
 function CatalogModelScreen() {
+  const { back } = useCatalogNavigation();
   const { catalogTab, brandSlug: brandSlugParam, modelSlug } = useParams<{
     catalogTab: string;
     brandSlug: string;
     modelSlug: string;
   }>();
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
+  const [searchParams] = useCatalogSearchParams();
   const catalogBase = useCatalogBase();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.technicianTools.catalog;
@@ -695,7 +699,7 @@ function CatalogModelScreen() {
   }
 
   // Voltar: se veio de uma marca, volta pra ela; senão pra lista da subaba.
-  // Sem navigate(-1) pra não quebrar link direto/colado.
+  // Links colados têm fallback; origem capturada pelo app restaura o histórico.
   const fromMarca = searchParams.get('from') === 'marca';
   const brandPath = brand
     ? `${catalogBase}/${tab}/marca/${brandSlug(brand.name)}`
@@ -703,7 +707,7 @@ function CatalogModelScreen() {
       ? `${catalogBase}/${tab}/marca/${encodeURIComponent(brandSlugParam)}`
       : tabPath;
   const backTo = withCatalogNavigation(fromMarca ? brandPath : tabPath, searchParams);
-  const onBack = () => navigate(backTo);
+  const onBack = () => back(backTo);
 
   if (loadingBrands || (brand && loadingModels)) return <LoadingBlock />;
   if (!model) {
@@ -729,8 +733,8 @@ function CatalogModelScreen() {
  * achamos por `slugify(nome)`. Voltar cai sempre na lista da subaba.
  */
 function CatalogRemoteModelScreen() {
+  const { back } = useCatalogNavigation();
   const { modelSlug } = useParams<{ modelSlug: string }>();
-  const navigate = useNavigate();
   const catalogBase = useCatalogBase();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.technicianTools.catalog;
@@ -754,13 +758,13 @@ function CatalogRemoteModelScreen() {
     );
   }
 
-  return <ModelDetailByDomain model={model} onBack={() => navigate(tabPath)} />;
+  return <ModelDetailByDomain model={model} onBack={() => back(tabPath)} />;
 }
 
 /** Tela 3 — detalhe de um fluido refrigerante (`/catalogo/fluido_refrigerante/gas/:gasCode`). */
 function CatalogGasScreen() {
+  const { back } = useCatalogNavigation();
   const { gasCode } = useParams<{ gasCode: string }>();
-  const navigate = useNavigate();
   const catalogBase = useCatalogBase();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.technicianTools.catalog;
@@ -783,7 +787,7 @@ function CatalogGasScreen() {
       />
     );
   }
-  return <GasDetail gas={gas} onBack={() => navigate(fluidoPath)} />;
+  return <GasDetail gas={gas} onBack={() => back(fluidoPath)} />;
 }
 
 /** Estado vazio amigável DENTRO das Ferramentas (não usa o NotFound global). */
@@ -964,14 +968,14 @@ function BrandsList({
   t: TCatalog;
 }) {
   const { locale } = useAppLocaleContext();
-  const [catalogParams, setCatalogParams] = useSearchParams();
+  const [catalogParams, setCatalogParams] = useCatalogSearchParams();
   const { data: brands = [], isLoading } = useEquipmentBrands(domain);
 
   // Ordenação compartilhada com o carrossel da tela de modelos (ordenarMarcas):
   // no domínio Compressores as marcas mais conhecidas vêm primeiro.
   const brandsOrdenadas = useMemo(() => ordenarMarcas(brands, domain), [brands, domain]);
 
-  const { data: allModels = [], isLoading: loadingModels } = useAllModelsWithBrand(domain);
+  const { data: allModels = [], isLoading: loadingModels, isError: modelsFailed } = useAllModelsWithBrand(domain);
   // Códigos de erro escopados ao domínio ativo (AC, linha branca…). Antes a busca
   // puxava o catálogo inteiro e o PostgREST truncava em ~1000 linhas, sumindo com
   // os códigos de linha branca; escopar por domínio resolve e espelha o AC.
@@ -987,8 +991,8 @@ function BrandsList({
   // (allErrorCodes é global) ao domínio selecionado.
   const domainModelIds = useMemo(() => new Set(allModels.map((m) => m.id)), [allModels]);
 
-  const [termoRaw, setTermoRaw] = useState(() => catalogParams.get('busca') ?? '');
-  const [termo, setTermo] = useState(() => (catalogParams.get('busca') ?? '').trim());
+  const [termoRaw, setTermoRaw] = useCatalogListState('search:raw', () => catalogParams.get('busca') ?? '');
+  const [termo, setTermo] = useCatalogListState('search:applied', () => (catalogParams.get('busca') ?? '').trim());
 
   // Debounce leve da busca.
   useEffect(() => {
@@ -1002,19 +1006,19 @@ function BrandsList({
       }, { replace: true });
     }, 180);
     return () => clearTimeout(id);
-  }, [termoRaw, catalogParams, setCatalogParams]);
+  }, [termoRaw, catalogParams, setCatalogParams, setTermo]);
 
   // Filtros (só valem quando a busca está vazia — busca é universal).
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [selectedBtus, setSelectedBtus] = useState<string[]>([]);
-  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [selectedBtus, setSelectedBtus] = useCatalogListState<string[]>('filter:btu', []);
+  const [selectedTypes, setSelectedTypes] = useCatalogListState<string[]>('filter:type', []);
   // Filtro de gás refrigerante: só no domínio ar_condicionado.
-  const [selectedGases, setSelectedGases] = useState<string[]>([]);
+  const [selectedGases, setSelectedGases] = useCatalogListState<string[]>('filter:gas', []);
   const gasFilterEnabled = domain === 'ar_condicionado';
   // Trocar de domínio limpa a seleção de gás (filtro não existe fora do AC).
   useEffect(() => {
     if (!gasFilterEnabled) setSelectedGases([]);
-  }, [gasFilterEnabled]);
+  }, [gasFilterEnabled, setSelectedGases]);
 
   const searching = termo.length > 0;
 
@@ -1126,6 +1130,7 @@ function BrandsList({
   }, [allErrorCodes, termo, searching, errorSearchEnabled, domainModelIds, domain]);
 
   const loadingSearch = loadingModels || (errorSearchEnabled && loadingCodes);
+  useCatalogScrollRestore(!isLoading && !loadingSearch);
   const nadaEncontrado =
     searching && !loadingSearch && modelHits.length === 0 && codeGroups.length === 0;
 
@@ -1133,7 +1138,7 @@ function BrandsList({
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold tracking-tight md:text-xl">{tituloCatalogo(domain, t)}</h2>
+          <h2 className="text-xl font-semibold tracking-tight md:text-2xl">{tituloCatalogo(domain, t)}</h2>
           <p className="text-sm text-muted-foreground md:text-base">
             {errorSearchEnabled
               ? t.subtitleWithErrors
@@ -1149,16 +1154,31 @@ function BrandsList({
 
       {/* Busca global do catálogo + botão de filtros */}
       <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1 min-w-0">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 lg:grid-cols-[240px_minmax(0,1fr)_auto]">
+          <div className="col-span-2 min-w-0 lg:col-span-1">
+            <SearchableSelect
+              options={brandsOrdenadas.map(brand => ({
+                value: brand.id,
+                label: brand.name,
+                keywords: brand.name.toLowerCase() === 'springer' ? ['Springer Midea'] : [],
+                icon: <CatalogBrandLogo decorative name={brand.name} src={brand.logo_url} className="h-12 w-24 rounded p-1" fallbackClassName="text-sm" />,
+              }))}
+              onValueChange={id => { const brand = brandsOrdenadas.find(item => item.id === id); if (brand) onSelectBrand(brand); }}
+              placeholder={catalogActivityCopy[locale].chooseBrand}
+              searchPlaceholder={catalogActivityCopy[locale].searchBrand}
+              emptyMessage={catalogActivityCopy[locale].noBrand}
+              disabled={isLoading || brandsOrdenadas.length === 0}
+              focusSearchOnOpen
+              className="h-14 w-full text-base"
+              triggerContent={<span className="flex min-w-0 items-center gap-2"><Boxes aria-hidden className="h-5 w-5 shrink-0" />{catalogActivityCopy[locale].chooseBrand}</span>}
+            />
+          </div>
+          <div className="relative min-w-0">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="text"
-              placeholder={
-                errorSearchEnabled
-                  ? t.searchPlaceholderWithErrors
-                  : t.searchPlaceholder
-              }
+              placeholder={errorSearchEnabled ? catalogSearchCopy[locale].errors : catalogSearchCopy[locale].model}
+              aria-label={errorSearchEnabled ? t.searchPlaceholderWithErrors : t.searchPlaceholder}
               value={termoRaw}
               onChange={(e) => setTermoRaw(e.target.value)}
               className="h-14 pl-10 text-lg"
@@ -1179,11 +1199,6 @@ function BrandsList({
             )}
           </Button>
         </div>
-        {!searching && !filtering && (
-          <p className="text-xs text-muted-foreground">
-            {t.searchHintBrowse}
-          </p>
-        )}
       </div>
 
       {/* Painel de filtros */}
@@ -1239,6 +1254,8 @@ function BrandsList({
         </div>
       </ResponsiveModal>
 
+      {!searching && !filtering && !loadingModels && !modelsFailed && <CatalogActivityFeed models={allModels} onOpen={onSelectModelDetail} />}
+
       {/* RESULTADOS DA BUSCA GLOBAL */}
       {searching ? (
         loadingSearch ? (
@@ -1253,7 +1270,7 @@ function BrandsList({
             {modelHits.length > 0 && (
               <section className="space-y-3">
                 <SectionHeader label={t.sectionCatalog} count={modelHits.length} />
-                <CatalogModelGrid key={`search:${domain}:${termo}`} models={modelHits} domain={domain} modelIdsWithCodes={modelIdsWithCodes} onSelectDetail={onSelectModelDetail} t={t} />
+                <CatalogModelGrid contextKey={`search:${domain}:${termo}`} key={`search:${domain}:${termo}`} models={modelHits} domain={domain} modelIdsWithCodes={modelIdsWithCodes} onSelectDetail={onSelectModelDetail} t={t} />
               </section>
             )}
 
@@ -1277,7 +1294,7 @@ function BrandsList({
         ) : (
           <section className="space-y-3">
             <SectionHeader label={t.sectionCatalog} count={filteredModels.length} />
-            <CatalogModelGrid key={`filters:${domain}:${selectedBtus}:${selectedTypes}:${selectedGases}`} models={filteredModels} domain={domain} modelIdsWithCodes={modelIdsWithCodes} onSelectDetail={onSelectModelDetail} t={t} />
+            <CatalogModelGrid contextKey={`filters:${domain}:${selectedBtus}:${selectedTypes}:${selectedGases}`} key={`filters:${domain}:${selectedBtus}:${selectedTypes}:${selectedGases}`} models={filteredModels} domain={domain} modelIdsWithCodes={modelIdsWithCodes} onSelectDetail={onSelectModelDetail} t={t} />
           </section>
         )
       ) : /* BROWSE NORMAL — grid de marcas */ isLoading ? (
@@ -1288,6 +1305,8 @@ function BrandsList({
           message={t.emptyBrandsMessage}
         />
       ) : (
+        <section className="space-y-3" aria-label={catalogActivityCopy[locale].browseBrands}>
+        <h2 className="text-lg font-semibold md:text-xl">{catalogActivityCopy[locale].browseBrands}</h2>
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
           {brandsOrdenadas.map((brand) => (
             <button
@@ -1301,26 +1320,17 @@ function BrandsList({
                 'hover:border-primary/40 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
               )}
             >
-              {brand.logo_url ? (
-                <CatalogImage
-                  src={brand.logo_url}
-                  alt={brand.name}
-                  // Caixa de tamanho UNIFORME pra todas as logos da grade ficarem
-                  // visualmente parecidas (mesma altura/largura máxima), maiores que
-                  // antes. object-contain mantém a proporção sem distorcer.
-                  containerClassName="flex h-16 w-full items-center justify-center"
-                  className="max-h-14 max-w-[72%] object-contain"
-                />
-              ) : (
-                // Cor escura fixa (não text-foreground) pra ficar legível sobre o
-                // card branco também no dark mode.
-                <span className="text-3xl font-semibold leading-tight text-neutral-800">
-                  {brand.name}
-                </span>
-              )}
+              <CatalogBrandLogo
+                name={brand.name}
+                src={brand.logo_url}
+                className="h-16 w-full"
+                imageClassName="max-h-14 max-w-[80%]"
+                fallbackClassName="text-3xl"
+              />
             </button>
           ))}
         </div>
+        </section>
       )}
     </div>
   );
@@ -1346,7 +1356,7 @@ function ErrorCodeGroupResults({ groups, onSelectModelErrors, t }: {
   onSelectModelErrors: (model: EquipmentModel, code: string) => void;
   t: TCatalog;
 }) {
-  const pagination = useDataPagination(groups, 10);
+  const pagination = useCatalogPagination(groups, `errors:${groups.map(group => group.code).join(',')}`);
   const anchor = useRef<HTMLDivElement>(null);
   const goToPage = (page: number) => { pagination.setPage(page); anchor.current?.scrollIntoView({ block: 'start' }); };
   return <div ref={anchor} className="scroll-mt-20">
@@ -1362,8 +1372,8 @@ function ErrorCodeGroupCard({ group, onSelectMachine, t }: {
 }) {
   const { locale } = useAppLocaleContext();
   const navigation = catalogNavigationCopy[locale];
-  const [expanded, setExpanded] = useState(false);
-  const pagination = useDataPagination(group.occurrences, 10);
+  const [expanded, setExpanded] = useCatalogListState(`error:${group.code}:expanded`, false);
+  const pagination = useCatalogPagination(group.occurrences, `error:${group.code}`);
   const visible = expanded ? pagination.paginatedItems : group.occurrences.slice(0, 3);
   return <section className="space-y-4 border-b border-border py-5" aria-label={`${t.sectionErrorCodes}: ${group.code}`}>
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1402,7 +1412,7 @@ function ModelosList({
 }) {
   const { locale } = useAppLocaleContext();
   const navigation = catalogNavigationCopy[locale];
-  const [catalogParams, setCatalogParams] = useSearchParams();
+  const [catalogParams, setCatalogParams] = useCatalogSearchParams();
   const navigationAnchor = useRef<HTMLDivElement>(null);
   const { data: models = [], isLoading } = useEquipmentModelsByBrand(brand.id, domain);
   const { data: brands = [] } = useEquipmentBrands(domain);
@@ -1449,8 +1459,8 @@ function ModelosList({
   }, [brand.id, api, brandIndex]);
 
   // Busca local (nome / código / BTU) com debounce leve.
-  const [termoRaw, setTermoRaw] = useState(() => catalogParams.get('busca') ?? '');
-  const [termo, setTermo] = useState(() => (catalogParams.get('busca') ?? '').trim());
+  const [termoRaw, setTermoRaw] = useCatalogListState('search:raw', () => catalogParams.get('busca') ?? '');
+  const [termo, setTermo] = useCatalogListState('search:applied', () => (catalogParams.get('busca') ?? '').trim());
   useEffect(() => {
     const id = setTimeout(() => {
       const value = termoRaw.trim();
@@ -1462,18 +1472,18 @@ function ModelosList({
       }, { replace: true });
     }, 180);
     return () => clearTimeout(id);
-  }, [termoRaw, catalogParams, setCatalogParams]);
+  }, [termoRaw, catalogParams, setCatalogParams, setTermo]);
 
   // Filtros escopados aos modelos DESTA marca.
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [selectedBtus, setSelectedBtus] = useState<string[]>([]);
-  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [selectedBtus, setSelectedBtus] = useCatalogListState<string[]>('filter:btu', []);
+  const [selectedTypes, setSelectedTypes] = useCatalogListState<string[]>('filter:type', []);
   // Filtro de gás refrigerante: só no domínio ar_condicionado.
-  const [selectedGases, setSelectedGases] = useState<string[]>([]);
+  const [selectedGases, setSelectedGases] = useCatalogListState<string[]>('filter:gas', []);
   const gasFilterEnabled = domain === 'ar_condicionado';
   useEffect(() => {
     if (!gasFilterEnabled) setSelectedGases([]);
-  }, [gasFilterEnabled]);
+  }, [gasFilterEnabled, setSelectedGases]);
 
   // Opções de Potência derivadas dos modelos desta marca (BTU distintos, crescente).
   const btuOptions = useMemo(() => {
@@ -1550,6 +1560,7 @@ function ModelosList({
 
   const semResultado =
     !isLoading && models.length > 0 && modelosVisiveis.length === 0;
+  useCatalogScrollRestore(!isLoading);
 
   return (
     <div className="space-y-6 pb-8">
@@ -1575,23 +1586,18 @@ function ModelosList({
                     className={cn(
                       // Card branco fixo nos 2 temas (proposital) pra logos coloridos
                       // não sumirem no dark mode.
-                      'flex h-20 w-full items-center justify-center rounded-xl border border-border bg-white p-3 transition-all duration-200',
+                      'flex h-24 w-full items-center justify-center rounded-xl border border-border bg-white p-3 transition-all duration-200',
                       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                       ativo ? 'scale-100 opacity-100 shadow-sm' : 'scale-95 opacity-50',
                     )}
                   >
-                    {b.logo_url ? (
-                      <CatalogImage
-                        src={b.logo_url}
-                        alt={b.name}
-                        // Mesmo padrão uniforme da grade de marcas (BrandsList):
-                        // logos visualmente parecidas em tamanho, sem distorcer.
-                        containerClassName="flex h-16 w-full items-center justify-center"
-                        className="max-h-10 max-w-[72%] object-contain"
-                      />
-                    ) : (
-                      <span className="text-3xl font-semibold text-neutral-800">{b.name}</span>
-                    )}
+                    <CatalogBrandLogo
+                      name={b.name}
+                      src={b.logo_url}
+                      className="h-16 w-full"
+                      imageClassName="max-h-16 max-w-[80%]"
+                      fallbackClassName="text-3xl"
+                    />
                   </button>
                 </CarouselItem>
               );
@@ -1611,16 +1617,13 @@ function ModelosList({
       ) : (
         /* Marca única: card estático (carrossel não faz sentido). */
         <div className="flex items-center justify-center rounded-2xl border border-border bg-white p-6">
-          {brand.logo_url ? (
-            <CatalogImage
-              src={brand.logo_url}
-              alt={brand.name}
-              containerClassName="flex h-16 w-full items-center justify-center"
-              className="max-h-10 max-w-[72%] object-contain"
-            />
-          ) : (
-            <span className="text-3xl font-semibold text-neutral-800">{brand.name}</span>
-          )}
+          <CatalogBrandLogo
+            name={brand.name}
+            src={brand.logo_url}
+            className="h-20 w-full"
+            imageClassName="max-h-16 max-w-[80%]"
+            fallbackClassName="text-3xl"
+          />
         </div>
       )}
 
@@ -1630,7 +1633,8 @@ function ModelosList({
           <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
           <Input
             type="text"
-            placeholder={t.searchModelPlaceholder}
+            placeholder={catalogSearchCopy[locale].model}
+            aria-label={t.searchModelPlaceholder}
             value={termoRaw}
             onChange={(e) => { setTermoRaw(e.target.value); limparFiltros(); }}
             className="h-14 pl-10 text-lg"
@@ -1735,7 +1739,7 @@ function ModelosList({
           message={t.emptyEquipmentMessage}
         />
       ) : (
-        <CatalogModelGrid key={`${brand.id}:${categoryKey}:${familyKey}:${termo}:${selectedBtus}:${selectedTypes}:${selectedGases}`} models={modelosVisiveis} domain={domain} brandName={brand.name} modelIdsWithCodes={modelIdsWithCodes} onSelectDetail={onSelectDetail} t={t} />
+        <CatalogModelGrid contextKey={`${brand.id}:${categoryKey}:${familyKey}:${termo}:${selectedBtus}:${selectedTypes}:${selectedGases}`} key={`${brand.id}:${categoryKey}:${familyKey}:${termo}:${selectedBtus}:${selectedTypes}:${selectedGases}`} models={modelosVisiveis} domain={domain} brandName={brand.name} modelIdsWithCodes={modelIdsWithCodes} onSelectDetail={onSelectDetail} t={t} />
       )}
       </div>
       <ManufacturerDocuments brandName={brand.name} />
@@ -1789,14 +1793,15 @@ function RemotesList({
   onSelectDetail: (model: EquipmentModel) => void;
   t: TCatalog;
 }) {
-  const { data: models = [], isLoading } = useAllModelsWithBrand('controle_remoto');
+  const { locale } = useAppLocaleContext();
+  const { data: models = [], isLoading, isError: modelsFailed } = useAllModelsWithBrand('controle_remoto');
 
-  const [termoRaw, setTermoRaw] = useState('');
-  const [termo, setTermo] = useState('');
+  const [termoRaw, setTermoRaw] = useCatalogListState('search:raw', '');
+  const [termo, setTermo] = useCatalogListState('search:applied', '');
   useEffect(() => {
     const id = setTimeout(() => setTermo(termoRaw.trim()), 180);
     return () => clearTimeout(id);
-  }, [termoRaw]);
+  }, [termoRaw, setTermo]);
 
   // Filtra por nome do controle OU nome da marca; ordena por marca, depois nome.
   const visiveis = useMemo(() => {
@@ -1811,12 +1816,13 @@ function RemotesList({
   }, [models, termo]);
 
   const semResultado = !isLoading && models.length > 0 && visiveis.length === 0;
+  useCatalogScrollRestore(!isLoading);
 
   return (
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold tracking-tight md:text-xl">
+          <h2 className="text-xl font-semibold tracking-tight md:text-2xl">
             {tituloCatalogo('controle_remoto', t)}
           </h2>
           <p className="text-sm text-muted-foreground md:text-base">
@@ -1835,12 +1841,15 @@ function RemotesList({
         <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
         <Input
           type="text"
-          placeholder={t.remotesSearchPlaceholder}
+          placeholder={catalogSearchCopy[locale].remote}
+          aria-label={t.remotesSearchPlaceholder}
           value={termoRaw}
           onChange={(e) => setTermoRaw(e.target.value)}
           className="h-14 pl-10 text-lg"
         />
       </div>
+
+      {!termo && !isLoading && !modelsFailed && <CatalogActivityFeed models={models} onOpen={onSelectDetail} />}
 
       {isLoading ? (
         <LoadingBlock />
@@ -1971,14 +1980,15 @@ function gasInflamavel(classeSeguranca: string | null | undefined): boolean {
  * Ordem por `sort` (já vem do hook).
  */
 function GasesList({ onSelectGas, t }: { onSelectGas: (gas: RefrigerantGas) => void; t: TCatalog }) {
+  const { locale } = useAppLocaleContext();
   const { data: gases = [], isLoading } = useRefrigerantGases();
 
-  const [termoRaw, setTermoRaw] = useState('');
-  const [termo, setTermo] = useState('');
+  const [termoRaw, setTermoRaw] = useCatalogListState('search:raw', '');
+  const [termo, setTermo] = useCatalogListState('search:applied', '');
   useEffect(() => {
     const id = setTimeout(() => setTermo(termoRaw.trim()), 180);
     return () => clearTimeout(id);
-  }, [termoRaw]);
+  }, [termoRaw, setTermo]);
 
   // Filtra por code OU name; mantém a ordem de `sort` que veio do hook.
   const visiveis = useMemo(() => {
@@ -1986,6 +1996,7 @@ function GasesList({ onSelectGas, t }: { onSelectGas: (gas: RefrigerantGas) => v
   }, [gases, termo]);
 
   const semResultado = !isLoading && gases.length > 0 && visiveis.length === 0;
+  useCatalogScrollRestore(!isLoading);
 
   // Separa em Puros × Misturas (blends): série 400/500 do código = blend.
   // Respeita a busca (opera sobre `visiveis`) e a ordem de `sort` do hook.
@@ -2003,7 +2014,7 @@ function GasesList({ onSelectGas, t }: { onSelectGas: (gas: RefrigerantGas) => v
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold tracking-tight md:text-xl">
+          <h2 className="text-xl font-semibold tracking-tight md:text-2xl">
             {tituloCatalogo('fluido_refrigerante', t)}
           </h2>
           <p className="text-sm text-muted-foreground md:text-base">
@@ -2022,7 +2033,8 @@ function GasesList({ onSelectGas, t }: { onSelectGas: (gas: RefrigerantGas) => v
         <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
         <Input
           type="text"
-          placeholder={t.fluidsSearchPlaceholder}
+          placeholder={catalogSearchCopy[locale].fluid}
+          aria-label={t.fluidsSearchPlaceholder}
           value={termoRaw}
           onChange={(e) => setTermoRaw(e.target.value)}
           className="h-14 pl-10 text-lg"
@@ -2455,7 +2467,8 @@ function detailAction(domain: EquipmentDomain, t: TCatalog): { label: string; ic
   }
 }
 
-function CatalogModelGrid({ models, domain, brandName, modelIdsWithCodes, onSelectDetail, t }: {
+function CatalogModelGrid({ models, domain, brandName, modelIdsWithCodes, onSelectDetail, t, contextKey }: {
+  contextKey: string;
   models: EquipmentModel[];
   domain: EquipmentDomain;
   brandName?: string;
@@ -2465,8 +2478,9 @@ function CatalogModelGrid({ models, domain, brandName, modelIdsWithCodes, onSele
 }) {
   const { locale } = useAppLocaleContext();
   const navigation = catalogNavigationCopy[locale];
-  const pagination = useDataPagination(models, 10);
-  const [selectedId, setSelectedId] = useState<string | undefined>(() => models.length === 1 ? models[0].id : undefined);
+  const orderedModels = useMemo(() => prioritizeCatalogModels(models), [models]);
+  const pagination = useCatalogPagination(orderedModels, `grid:${contextKey}`);
+  const [selectedId, setSelectedId] = useCatalogListState<string | undefined>(`grid:${contextKey}:selected`, () => models.length === 1 ? models[0].id : undefined);
   const selected = models.find(model => model.id === selectedId);
   const container = useRef<HTMLDivElement>(null);
   const preview = useRef<HTMLDivElement>(null);
@@ -2533,6 +2547,7 @@ function ModelCard({
   hasErrorCodes?: boolean;
   t: TCatalog;
 }) {
+  useCatalogVisit(model.id);
   const { locale } = useAppLocaleContext();
   // Localização via coluna i18n do banco: pt-br sempre usa o campo base.
   const localizedName = pickI18n(model.i18n, locale, 'name', model.name) ?? model.name;
@@ -2609,11 +2624,12 @@ function ModelCard({
 
       <CatalogPhotoCaption model={model} />
 
-      {/* CORPO — identificação centralizada (tokens de tema) */}
+      {/* Identificação e favorito na mesma faixa; tokens acompanham o tema. */}
       <div className="p-4">
-        <p className="break-words text-center text-base font-semibold leading-snug text-foreground">
-          {localizedName}
-        </p>
+        <div className="flex items-start gap-3">
+          <p className="min-w-0 flex-1 break-words text-base font-semibold leading-snug text-foreground">{localizedName}</p>
+          <CatalogFavoriteButton modelId={model.id} />
+        </div>
         {subtitulo && (
           <p className="mt-0.5 text-center text-sm text-muted-foreground">{subtitulo}</p>
         )}
@@ -2798,24 +2814,7 @@ function CodigosErro({
   const brandName = model.brand?.name ?? '';
   const tituloTopo = brandName ? `${model.name} - ${brandName}` : model.name;
 
-  // Registra como recente ao abrir o modelo (uma vez por modelo).
-  useEffect(() => {
-    registrarModeloRecente({
-      modelId: model.id,
-      modelName: model.name,
-      brandName: brandName || 'Marca',
-    });
-  }, [model.id, model.name, brandName]);
-
-  // Estado de favorito (reativo ao toggle via useToolHistory).
-  useToolHistory();
-  const favorito = isModeloFavorito(model.id);
-  const onToggleFavorito = () =>
-    toggleModeloFavorito({
-      modelId: model.id,
-      modelName: model.name,
-      brandName: brandName || 'Marca',
-    });
+  useCatalogVisit(model.id);
 
   const filtrados = codes.filter((c) => fuzzyIncludesAny([c.code, c.title, c.description], filtro));
   const reference = getEquipmentCodeReference(model);
@@ -2827,23 +2826,7 @@ function CodigosErro({
         eyebrow={t.eyebrow}
         title={tituloTopo}
         onBack={onBack}
-        action={
-          <button
-            type="button"
-            aria-pressed={favorito}
-            aria-label={favorito ? t.removeFavorite : t.addFavorite}
-            onClick={onToggleFavorito}
-            className={cn(
-              'flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-all active:scale-95',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-              favorito
-                ? 'border-warning/40 bg-warning/10 text-warning'
-                : 'border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/40',
-            )}
-          >
-            <Star className={cn('h-5 w-5', favorito && 'fill-current')} />
-          </button>
-        }
+        action={<CatalogFavoriteButton modelId={model.id} />}
       />
 
       {/* Campo de busca estilo display */}

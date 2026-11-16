@@ -34,6 +34,7 @@ import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
 import { MobileListItem } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { AdminTasksTab } from '@/components/admin/tasks/AdminTasksTab';
+import { adminKpiClass } from '@/components/admin/adminKpiStyles';
 import { useAdminTasksCount } from '@/hooks/useAdminTasks';
 import { PipelineTabsBar, type PipelineTabItem } from '@/components/crm/PipelineTabsBar';
 import { AdminCrmSettingsDialog, type AdminCrmSettingsSection } from '@/components/admin/AdminCrmSettingsDialog';
@@ -613,13 +614,13 @@ function CrmTab() {
         {/* Stats: mobile = carrossel (Total + Negociação + Ganhos + 1 chip por estágio).
             Desktop = grid 4 cards original (inclui Valor Total). */}
         {isMobile ? (
-          <StatCarousel items={statItems} loading={isLoading || stagesLoading} />
+          <StatCarousel items={statItems} loading={isLoading || stagesLoading} variant="saturated" />
         ) : (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <Card className="border-0 bg-primary text-white"><CardContent className="p-3"><div className="flex items-center gap-2"><Users className="h-4 w-4 text-white/80" /><div><p className="text-xs text-white/75">Total de Leads</p><p className="text-lg font-bold">{filteredLeads.length}</p></div></div></CardContent></Card>
-            <Card className="border-0 bg-info text-white"><CardContent className="p-3"><div className="flex items-center gap-2"><TrendingUp className="h-4 w-4 text-white/80" /><div><p className="text-xs text-white/75">Em Negociação</p><p className="text-lg font-bold">{activeLeads.length}</p></div></div></CardContent></Card>
-            <Card className="border-0 bg-success text-white"><CardContent className="p-3"><div className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-white/80" /><div><p className="text-xs text-white/75">Valor Total</p><p className="text-lg font-bold">{formatCurrency(totalValue)}</p></div></div></CardContent></Card>
-            <Card className="border-0 bg-warning text-white"><CardContent className="p-3"><div className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-white/80" /><div><p className="text-xs text-white/75">Ganhos</p><p className="text-lg font-bold">{wonLeadsCount}</p></div></div></CardContent></Card>
+            <Card className={adminKpiClass('blue')}><CardContent className="p-3"><div className="flex items-center gap-2"><Users className="h-4 w-4 text-white/80" /><div><p className="text-xs text-white/75">Total de Leads</p><p className="text-lg font-bold">{filteredLeads.length}</p></div></div></CardContent></Card>
+            <Card className={adminKpiClass('cyan')}><CardContent className="p-3"><div className="flex items-center gap-2"><TrendingUp className="h-4 w-4 text-white/80" /><div><p className="text-xs text-white/75">Em Negociação</p><p className="text-lg font-bold">{activeLeads.length}</p></div></div></CardContent></Card>
+            <Card className={adminKpiClass('emerald')}><CardContent className="p-3"><div className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-white/80" /><div><p className="text-xs text-white/75">Valor Total</p><p className="text-lg font-bold">{formatCurrency(totalValue)}</p></div></div></CardContent></Card>
+            <Card className={adminKpiClass('amber')}><CardContent className="p-3"><div className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-white/80" /><div><p className="text-xs text-white/75">Ganhos</p><p className="text-lg font-bold">{wonLeadsCount}</p></div></div></CardContent></Card>
           </div>
         )}
 

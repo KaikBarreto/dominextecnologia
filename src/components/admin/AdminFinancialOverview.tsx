@@ -1,3 +1,4 @@
+import { adminKpiClass } from "@/components/admin/adminKpiStyles";
 import { useMemo, useState } from "react";
 import {
   Plus,
@@ -66,7 +67,7 @@ export function AdminFinancialOverview({
   return (
     <div className="space-y-5">
       <div className="grid gap-3 sm:grid-cols-3">
-        <article className="rounded-xl border bg-card p-4">
+        <article className={adminKpiClass("blue", "rounded-xl border bg-card p-4")}>
           <div className="flex items-center justify-between gap-2">
             <span className="flex items-center gap-2 text-sm font-medium">
               <Wallet className="h-4 w-4" />Saldo Asaas
@@ -111,7 +112,7 @@ export function AdminFinancialOverview({
           Icon: TrendingDown,
           color: "bg-red-600",
         }] as const).map(({ type, label, amount, Icon, color }) => (
-          <article key={type} className="rounded-xl border bg-card p-4">
+          <article key={type} className={adminKpiClass(type === "income" ? "emerald" : "rose", "rounded-xl border bg-card p-4")}>
             <span className="flex items-center gap-2 text-sm font-medium">
               <span className={`rounded-lg p-2 text-white ${color}`}>
                 <Icon className="h-4 w-4" />

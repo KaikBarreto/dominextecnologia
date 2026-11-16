@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Pencil, Trash2 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -67,8 +66,8 @@ export function SalespersonPerformanceTable({ salespeople, sales, advances, onEd
   const { sortedItems, sortConfig, handleSort } = useTableSort(rows, 'name', 'asc');
 
   return (
-    <div className="rounded-lg border border-border overflow-x-auto">
-      <Table className="min-w-[800px]">
+    <div className="relative rounded-lg border border-border overflow-x-auto">
+      <Table className="min-w-[1040px]">
         <TableHeader>
           <TableRow>
             <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>Pessoa</SortableTableHead>
@@ -89,13 +88,14 @@ export function SalespersonPerformanceTable({ salespeople, sales, advances, onEd
             const rotation = rotationStatus(p);
             return (
               <TableRow key={p.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/admin/vendedores/${p.id}`)}>
-                <TableCell>
+                <TableCell className="min-w-[220px]">
                   <p className="font-medium">{p.name}</p>
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    <Badge variant="outline" className="text-[10px] font-normal">{TEAM_AREA_LABELS[p.person_type || 'sales'] || 'Outro'}</Badge>
-                    {canReceiveSales && <Badge className="bg-slate-700 text-[10px] font-normal text-white">Recebe vendas</Badge>}
-                    {rotation.eligible && <Badge className="bg-emerald-600 text-[10px] font-normal text-white">Próximo lead</Badge>}
-                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {TEAM_AREA_LABELS[p.person_type || 'sales'] || 'Outro'}
+                    {!canReceiveSales ? " · Vendas desabilitadas" : p.person_type && p.person_type !== "sales" ? " · Também recebe vendas" : ""}
+                  </p>
+                  {rotation.eligible && <p className="mt-1 text-xs text-emerald-700 dark:text-emerald-400">No rodízio</p>}
+                  {p.in_rotation && !rotation.eligible && <p className="mt-1 text-xs text-muted-foreground">Rodízio indisponível</p>}
                   {rotation.lastAssignment && <p className="mt-1 text-[10px] text-muted-foreground">Último lead: {rotation.lastAssignment}</p>}
                 </TableCell>
                 <TableCell className="text-center">{canReceiveSales ? st.totalSales : '—'}</TableCell>
@@ -109,9 +109,9 @@ export function SalespersonPerformanceTable({ salespeople, sales, advances, onEd
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Badge variant={p.is_active !== false ? 'default' : 'secondary'}>
+                  <span className={p.is_active !== false ? 'text-sm' : 'text-sm text-destructive'}>
                     {p.is_active !== false ? 'Ativo' : 'Inativo'}
-                  </Badge>
+                  </span>
                 </TableCell>
                 {canManage && <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                   <div className="flex justify-end gap-1">

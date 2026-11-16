@@ -52,5 +52,5 @@ export function ActivityTotalsCards({ counters, loading }: Props) {
     },
   ];
 
-  return <StatCarousel items={items} loading={loading} />;
+  return <StatCarousel items={items} loading={loading} variant="saturated" />;
 }
