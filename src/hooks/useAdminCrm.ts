@@ -377,7 +377,7 @@ export function useAdminLeads() {
       if (assigneesError) throw assigneesError;
       return data;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-leads'] }); toast({ title: 'Lead criado!' }); },
+    onSuccess: () => { qc.invalidateQueries({ predicate: (query) => ["admin-leads", "admin-commercial-action-queue"].includes(String(query.queryKey[0])) }); toast({ title: 'Lead criado!' }); },
     onError: (e) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(e) }),
   });
 
@@ -451,7 +451,7 @@ export function useAdminLeads() {
       return { id, loggedStageChange: isStageUpdate && shouldLogStageChange(previousStageId, nextStageId) };
     },
     onSuccess: (result) => {
-      qc.invalidateQueries({ queryKey: ['admin-leads'] });
+      qc.invalidateQueries({ predicate: (query) => ["admin-leads", "admin-commercial-action-queue"].includes(String(query.queryKey[0])) });
       qc.invalidateQueries({ queryKey: ['admin-lead', result.id] });
       if (result?.loggedStageChange) {
         qc.invalidateQueries({ queryKey: ['admin-lead-interactions', result.id] });
@@ -478,7 +478,7 @@ export function useAdminLeads() {
       if (error) throw error;
     },
     onSuccess: (_data, variables) => {
-      qc.invalidateQueries({ queryKey: ['admin-leads'] });
+      qc.invalidateQueries({ predicate: (query) => ["admin-leads", "admin-commercial-action-queue"].includes(String(query.queryKey[0])) });
       qc.invalidateQueries({ queryKey: ['admin-lead', variables.id] });
     },
   });
@@ -494,7 +494,7 @@ export function useAdminLeads() {
       if (error) throw error;
     },
     onSuccess: (_data, id) => {
-      qc.invalidateQueries({ queryKey: ['admin-leads'] });
+      qc.invalidateQueries({ predicate: (query) => ["admin-leads", "admin-commercial-action-queue"].includes(String(query.queryKey[0])) });
       qc.removeQueries({ queryKey: ['admin-lead', id] });
       toast({ title: 'Lead removido!' });
     },
@@ -586,7 +586,7 @@ export function useAdminLeadInteractions(leadId?: string) {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'admin_lead_interactions', filter: `lead_id=eq.${leadId}` },
-        () => qc.invalidateQueries({ queryKey: ['admin-lead-interactions', leadId] }),
+        () => qc.invalidateQueries({ predicate: (query) => query.queryKey[0] === 'admin-commercial-action-queue' || (query.queryKey[0] === 'admin-lead-interactions' && query.queryKey[1] === leadId) }),
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -598,7 +598,7 @@ export function useAdminLeadInteractions(leadId?: string) {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-lead-interactions', leadId] }); toast({ title: 'Interação registrada!' }); },
+    onSuccess: () => { qc.invalidateQueries({ predicate: (query) => query.queryKey[0] === 'admin-commercial-action-queue' || (query.queryKey[0] === 'admin-lead-interactions' && query.queryKey[1] === leadId) }); toast({ title: 'Interação registrada!' }); },
     onError: (e) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(e) }),
   });
 
