@@ -15531,6 +15531,102 @@ export type Database = {
         }
         Relationships: []
       }
+      subscription_checkout_attempts: {
+        Row: {
+          amount: number
+          asaas_authorization_id: string | null
+          asaas_payment_id: string | null
+          asaas_subscription_id: string | null
+          authorization_status: string | null
+          billing_cycle: string
+          checkout_status: string
+          company_id: string
+          completed_at: string | null
+          created_at: string
+          due_date: string
+          gateway_correlation_ref: string
+          id: string
+          last_error_code: string | null
+          payment_mode: string
+          pix_conciliation_identifier: string | null
+          pix_copy_paste: string | null
+          pix_end_to_end_identifier: string | null
+          pix_expiration_date: string | null
+          pix_qr_code: string | null
+          pix_qr_code_id: string | null
+          purpose: string
+          subscription_change_request_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          asaas_authorization_id?: string | null
+          asaas_payment_id?: string | null
+          asaas_subscription_id?: string | null
+          authorization_status?: string | null
+          billing_cycle: string
+          checkout_status?: string
+          company_id: string
+          completed_at?: string | null
+          created_at?: string
+          due_date: string
+          gateway_correlation_ref: string
+          id?: string
+          last_error_code?: string | null
+          payment_mode: string
+          pix_conciliation_identifier?: string | null
+          pix_copy_paste?: string | null
+          pix_end_to_end_identifier?: string | null
+          pix_expiration_date?: string | null
+          pix_qr_code?: string | null
+          pix_qr_code_id?: string | null
+          purpose?: string
+          subscription_change_request_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          asaas_authorization_id?: string | null
+          asaas_payment_id?: string | null
+          asaas_subscription_id?: string | null
+          authorization_status?: string | null
+          billing_cycle?: string
+          checkout_status?: string
+          company_id?: string
+          completed_at?: string | null
+          created_at?: string
+          due_date?: string
+          gateway_correlation_ref?: string
+          id?: string
+          last_error_code?: string | null
+          payment_mode?: string
+          pix_conciliation_identifier?: string | null
+          pix_copy_paste?: string | null
+          pix_end_to_end_identifier?: string | null
+          pix_expiration_date?: string | null
+          pix_qr_code?: string | null
+          pix_qr_code_id?: string | null
+          purpose?: string
+          subscription_change_request_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_checkout_attempts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_checkout_attempts_subscription_change_request_id_fkey"
+            columns: ["subscription_change_request_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_change_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscription_payments: {
         Row: {
           amount: number
@@ -18684,6 +18780,17 @@ export type Database = {
           account_id: string
           balance: number
         }[]
+      }
+      claim_subscription_pix_automatic_checkout: {
+        Args: {
+          p_amount: number
+          p_billing_cycle: string
+          p_change_request_id?: string | null
+          p_company_id: string
+          p_due_date: string
+          p_purpose?: string
+        }
+        Returns: Json
       }
       claim_notification_deliveries: {
         Args: { p_limit?: number; p_orphan_minutes?: number }

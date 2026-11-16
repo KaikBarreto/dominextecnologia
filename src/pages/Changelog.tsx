@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.7',
+    date: '16 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Renovações por Pix Automático mais confiáveis',
+        category: 'correcao',
+        description: 'O acesso agora é renovado somente depois da confirmação do pagamento. O fluxo também evita autorizações repetidas e consegue conciliar com segurança pagamentos que cheguem sem a referência habitual.',
+      },
+    ],
+  },
+  {
     version: '1.41.6',
     date: '15 de novembro de 2026',
     type: 'patch',
