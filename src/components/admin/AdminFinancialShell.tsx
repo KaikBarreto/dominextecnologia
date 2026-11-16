@@ -18,15 +18,50 @@ export const ADMIN_FINANCIAL_SECTIONS = [
   { id: "overview", label: "Visão geral", icon: LayoutDashboard },
   { id: "income", label: "Receitas", icon: TrendingUp },
   { id: "expenses", label: "Despesas", icon: TrendingDown },
-  { id: "payables", label: "Contas a pagar", icon: TrendingDown },
-  { id: "receivables", label: "Contas a receber", icon: TrendingUp },
+  { id: "accounts", label: "Contas", icon: Wallet },
   { id: "reconciliation", label: "Conciliação bancária", icon: Inbox },
-  { id: "dre", label: "Resultado (DRE)", icon: PieChart },
-  { id: "cashflow", label: "Fluxo de caixa (DFC)", icon: Wallet },
-  { id: "banks", label: "Contas bancárias", icon: Building2 },
+  { id: "reports", label: "Relatórios", icon: PieChart },
   { id: "history", label: "Histórico", icon: History },
   { id: "settings", label: "Configurações", icon: Settings },
 ] as const;
+export const ADMIN_FINANCIAL_SUBSECTIONS = {
+  accounts: [
+    { id: "payables", label: "A pagar", icon: TrendingDown },
+    { id: "receivables", label: "A receber", icon: TrendingUp },
+  ],
+  reports: [
+    { id: "dre", label: "DRE", icon: PieChart },
+    { id: "cashflow", label: "DFC", icon: Wallet },
+  ],
+  settings: [
+    { id: "settings", label: "Categorias", icon: Settings },
+    { id: "banks", label: "Contas bancárias", icon: Building2 },
+  ],
+} as const;
+
+export function getAdminFinancialSection(page: string) {
+  return Object.entries(ADMIN_FINANCIAL_SUBSECTIONS)
+    .find(([, tabs]) => tabs.some(tab => tab.id === page))?.[0] ?? page;
+}
+
+export function AdminFinancialSubnav({ active, onChange }: {
+  active: string;
+  onChange: (page: string) => void;
+}) {
+  const section = getAdminFinancialSection(active);
+  const tabs = ADMIN_FINANCIAL_SUBSECTIONS[section as keyof typeof ADMIN_FINANCIAL_SUBSECTIONS];
+  if (!tabs) return null;
+  const label = ADMIN_FINANCIAL_SECTIONS.find(item => item.id === section)?.label;
+  return <nav aria-label={`Opções de ${label}`} className="mb-5 flex flex-wrap gap-3 border-b border-border sm:gap-5">
+    {tabs.map(({ id, label, icon: Icon }) => <button
+      key={id} type="button" aria-current={active === id ? "page" : undefined}
+      onClick={() => onChange(id)}
+      className={cn("-mb-px flex min-h-11 items-center gap-1.5 border-b-2 px-1 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring",
+        active === id ? "border-foreground font-semibold text-foreground" : "border-transparent text-muted-foreground hover:border-border hover:text-foreground")}
+    ><Icon className="hidden h-4 w-4 shrink-0 sm:block" aria-hidden="true" />{label}</button>)}
+  </nav>;
+}
+
 export function AdminFinancialShell(
   { active, onChange, periodControl, children }: {
     active: string;
