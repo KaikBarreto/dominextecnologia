@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { createElement } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { TrialExpired } from "@/components/TrialExpired";
@@ -112,11 +112,12 @@ export function decideSubscriptionAccess(
  * `checking`, nunca liberado.
  */
 export function useSubscriptionBlock(): SubscriptionBlockResult {
-  const { user, loading, profileLoading, profile, isAdminUser, linkedAffiliateId, affiliateLoading } = useAuth();
+  const { user, loading, profileLoading, profile, isAdminUser, linkedAffiliateId, affiliateLoading, refreshUserData } = useAuth();
+  const queryClient = useQueryClient();
   const companyId = profile?.company_id;
   const shouldCheck = !!user && !!companyId && !isAdminUser;
 
-  const { data: company, error, isPending, refetch } = useQuery({
+  const { data: company, error, isPending } = useQuery({
     queryKey: ["subscription-gate-status", companyId],
     queryFn: async () => {
       if (!companyId) return null;
@@ -139,7 +140,11 @@ export function useSubscriptionBlock(): SubscriptionBlockResult {
   });
 
   const retry = async () => {
-    await refetch();
+    // Se o timeout ocorreu antes de descobrir o tenant, esta query está
+    // desabilitada e `refetch()` sozinho não resolve nada. Reidrata primeiro o
+    // contexto autenticado e depois invalida toda decisão de assinatura.
+    await refreshUserData();
+    await queryClient.invalidateQueries({ queryKey: ["subscription-gate-status"] });
   };
 
   if (loading || profileLoading) {

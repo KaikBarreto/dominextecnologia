@@ -188,12 +188,11 @@ interface SignaturePadProps {
 export function SignaturePad({ value, onChange, label, disabled }: SignaturePadProps) {
   const [fullscreen, setFullscreen] = useState(false);
   const [inlineDirty, setInlineDirty] = useState(false);
-  // DRAFT compartilhado = desenho EM ANDAMENTO (ainda não confirmado), como
-  // dataURL PNG. É a fonte ÚNICA de conteúdo entre o inline e o fullscreen: os
-  // dois LEEM e ESCREVEM nele, então o que se desenha num reflete no outro ao
-  // ENTRAR e ao SAIR do fullscreen. Só vira assinatura "de verdade" via onChange
-  // no Confirmar; Limpar zera. No estado PREVIEW (value preenchido) o draft fica
-  // null — abrir o fullscreen ali parte do `value`.
+  // DRAFT compartilhado = desenho que continua editável. Cada traço fechado já é
+  // elevado por `commitDraft` para `onChange`, evitando que uma assinatura
+  // VISÍVEL seja ignorada pela validação caso o técnico toque em "Finalizar OS"
+  // antes do antigo botão Confirmar. O draft continua aberto para novos traços;
+  // "Concluir" apenas troca o campo para o preview compacto.
   const [draft, setDraft] = useState<string | null>(null);
   // Chave de RE-SEED do inline. Bumpada quando o fullscreen FECHA pra forçar o
   // inline a remontar partindo do `draft` atualizado (que pode ter ganhado
@@ -201,6 +200,11 @@ export function SignaturePad({ value, onChange, label, disabled }: SignaturePadP
   // forma confiável de "puxar" o desenho do fullscreen de volta é remontá-lo.
   const [inlineSeedKey, setInlineSeedKey] = useState(0);
   const inlinePadRef = useRef<InlineSignaturePadHandle>(null);
+
+  const commitDraft = useCallback((dataUrl: string | null) => {
+    setDraft(dataUrl);
+    onChange(dataUrl);
+  }, [onChange]);
 
   const openFullscreen = () => {
     if (disabled) return;
@@ -221,7 +225,7 @@ export function SignaturePad({ value, onChange, label, disabled }: SignaturePadP
     <div className="space-y-2">
       {label && <p className="text-sm font-medium">{label}</p>}
 
-      {value ? (
+      {value && !inlineDirty && !draft ? (
         <div className="space-y-2">
           <div className="rounded-lg border border-muted-foreground/20 bg-white p-2">
             <img
@@ -262,9 +266,9 @@ export function SignaturePad({ value, onChange, label, disabled }: SignaturePadP
             key={inlineSeedKey}
             ref={inlinePadRef}
             seed={draft ?? value ?? null}
-            onChange={onChange}
+            onChange={commitDraft}
             onDirtyChange={setInlineDirty}
-            onDraftChange={setDraft}
+            onDraftChange={commitDraft}
             disabled={disabled}
           />
           {!disabled && (
@@ -295,22 +299,25 @@ export function SignaturePad({ value, onChange, label, disabled }: SignaturePadP
                   Limpar
                 </Button>
               )}
-              {/* "Confirmar" só aparece quando há traço no canvas. */}
+              {/* O traço já está salvo; esta ação só encerra a edição e mostra o preview. */}
               {inlineDirty && (
                 <Button
                   type="button"
                   onClick={() => {
                     const url = inlinePadRef.current?.getDataUrl() ?? draft;
                     if (url) {
+                      // Reenvio idempotente garante que o último snapshot esteja
+                      // persistido mesmo se o clique vier junto do fim do traço.
                       onChange(url);
                       setDraft(null);
+                      setInlineDirty(false);
                     }
                   }}
                   disabled={disabled}
                   className="min-h-11 min-w-0 flex-1 gap-1.5 whitespace-nowrap px-2.5 !text-xs sm:!text-sm bg-primary text-primary-foreground hover:bg-primary/90"
                 >
                   <Check className="h-4 w-4 shrink-0" />
-                  Confirmar
+                  Concluir
                 </Button>
               )}
             </div>
@@ -321,7 +328,7 @@ export function SignaturePad({ value, onChange, label, disabled }: SignaturePadP
       {fullscreen && (
         <SignatureFullscreen
           value={fullscreenSeed}
-          onDraftChange={setDraft}
+          onDraftChange={commitDraft}
           onConfirm={(dataUrl) => {
             onChange(dataUrl);
             setDraft(null);
@@ -521,8 +528,9 @@ const InlineSignaturePad = forwardRef<InlineSignaturePadHandle, InlinePadProps>(
     onDraftChange?.(null);
     history.reset();
     onDirtyChange?.(false);
-    // value já é null no estado não-assinado; manter por segurança (idempotente).
-    onChange(null);
+    // Quando há draft compartilhado ele já é a fronteira de persistência. No uso
+    // isolado (sem onDraftChange), preserva o contrato direto do pad.
+    if (!onDraftChange) onChange(null);
   };
 
   useImperativeHandle(

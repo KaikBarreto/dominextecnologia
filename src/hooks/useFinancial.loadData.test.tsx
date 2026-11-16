@@ -89,4 +89,44 @@ describe('useFinancial loadData', () => {
     expect(client.getQueryState(['pdv-cash-session-detail', 'session-1'])?.isInvalidated).toBe(true);
     expect(client.getQueryState(['pdv-cofre-balance'])?.isInvalidated).toBe(true);
   });
+
+  it('preserva a associação entre cada ocorrência e o id retornado no lote', async () => {
+    let insertedRows: Array<{ id: string; due_date: string }> = [];
+    const select = vi.fn(async () => ({
+      data: insertedRows.map(({ id }) => ({ id })).reverse(),
+      error: null,
+    }));
+    const insert = vi.fn((rows: Array<{ id: string; due_date: string }>) => {
+      insertedRows = rows;
+      return { select };
+    });
+    from.mockReturnValue({ insert });
+
+    const { Wrapper } = createHarness();
+    const { result } = renderHook(() => useFinancial({ loadData: false }), {
+      wrapper: Wrapper,
+    });
+
+    const ids = await act(async () => result.current.createTransactionsBatch.mutateAsync([
+      {
+        transaction_type: 'entrada',
+        description: 'Mensalidade 1/2',
+        amount: 250,
+        transaction_date: '2026-11-20',
+        due_date: '2026-11-20',
+      },
+      {
+        transaction_type: 'entrada',
+        description: 'Mensalidade 2/2',
+        amount: 250,
+        transaction_date: '2026-12-20',
+        due_date: '2026-12-20',
+      },
+    ]));
+
+    // O mock inverte deliberadamente o RETURNING. O contrato segue a ordem do
+    // input porque os UUIDs foram definidos antes do insert.
+    expect(ids).toEqual(insertedRows.map(({ id }) => id));
+    expect(insertedRows.map(({ due_date }) => due_date)).toEqual(['2026-11-20', '2026-12-20']);
+  });
 });

@@ -38,6 +38,7 @@ import { buildReceivableChargeRequests } from '@/lib/finance-installment-charges
 import { getDocumentStatus } from '@/lib/documentValidation';
 import { useToast } from '@/hooks/use-toast';
 import { todayInTz } from '@/lib/timezone';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 interface ContaFormDialogProps {
   open: boolean;
@@ -49,7 +50,7 @@ interface ContaFormDialogProps {
 type Recurrence = 'unica' | 'mensal' | 'semanal' | 'anual';
 
 export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', editingTransaction }: ContaFormDialogProps) {
-  const { createTransaction, updateTransaction } = useFinancial();
+  const { createTransaction, createTransactionsBatch, updateTransaction } = useFinancial();
   const { locale, timezone } = useAppLocaleContext();
   const fin = MESSAGES[locale].app.finance;
   const t = fin.contaForm;
@@ -298,9 +299,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
         } as any;
         await updateTransaction.mutateAsync(input);
       } else {
-        const transactionIds: string[] = [];
-        for (const occurrence of occurrencePlan) {
-          const input: TransactionInput = {
+        const transactionInputs = occurrencePlan.map((occurrence): TransactionInput => ({
             transaction_type: tipo,
             description: occurrenceCount > 1 ? `${description} (${occurrence.number}/${occurrenceCount})` : description,
             amount: Number(amount),
@@ -319,10 +318,27 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
             account_id: accountId,
             // Recorrência: TODA ocorrência leva o mesmo centro de custo.
             cost_center_id: costCenterId,
-          } as any;
+          }));
 
-          const result = await createTransaction.mutateAsync(input);
-          if (Array.isArray(result?.ids)) transactionIds.push(...result.ids);
+        let transactionIds: string[] = [];
+        if (transactionInputs.length > 1) {
+          try {
+            // Uma série recorrente é uma única intenção do usuário: gravação em
+            // lote evita N viagens, N invalidações e um estado pela metade se
+            // uma ocorrência intermediária falhar.
+            transactionIds = await createTransactionsBatch.mutateAsync(transactionInputs);
+            toast({ title: 'Contas recorrentes criadas com sucesso!' });
+          } catch (error) {
+            toast({
+              variant: 'destructive',
+              title: 'Não foi possível criar as contas recorrentes',
+              description: getErrorMessage(error),
+            });
+            return;
+          }
+        } else {
+          const result = await createTransaction.mutateAsync(transactionInputs[0]);
+          if (Array.isArray(result?.ids)) transactionIds = result.ids;
         }
 
         if (generateOnlineCharges) {

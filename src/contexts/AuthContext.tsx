@@ -52,6 +52,8 @@ interface AuthContextType {
   affiliateLoading: boolean;
   loading: boolean;
   profileLoading: boolean;
+  /** Refaz perfil, papéis e permissões da sessão atual sem liberar gates no intervalo. */
+  refreshUserData: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signInWithGoogle: () => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
@@ -184,9 +186,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Helper: descarta resultado se o usuário trocou enquanto a query estava em vôo.
     const isStillCurrent = () => currentUserIdRef.current === userId;
 
-    // Timeout de 5s envolvendo as 4 queries. Se estourar, segue com o que
-    // conseguiu carregar — estado parcial é melhor que skeleton travado.
-    const TIMEOUT_MS = 5000;
+    // Uma rede móvel lenta pode passar de 5s sem que perfil/tenant estejam
+    // inválidos. Mantemos o gate em `checking` por uma janela maior; ao fim
+    // dela ele continua falhando fechado e oferece uma nova tentativa real.
+    const TIMEOUT_MS = 15000;
     const timeoutPromise = new Promise<'timeout'>((resolve) =>
       setTimeout(() => resolve('timeout'), TIMEOUT_MS)
     );
@@ -286,7 +289,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const result = await Promise.race([fetchAll(), timeoutPromise]);
       if (result === 'timeout') {
-        console.warn('[Auth] fetchUserData timed out after 5s — proceeding with partial state');
+        console.warn('[Auth] fetchUserData timed out after 15s — proceeding with partial state');
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
@@ -300,6 +303,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setAffiliateResolved(true);
       }
     }
+  };
+
+  const refreshUserData = async () => {
+    const userId = currentUserIdRef.current;
+    if (!userId) return;
+    setProfileLoading(true);
+    setAffiliateResolved(false);
+    await fetchUserData(userId);
   };
 
   const signIn = async (email: string, password: string) => {
@@ -461,6 +472,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         affiliateLoading,
         loading,
         profileLoading,
+        refreshUserData,
         signIn,
         signInWithGoogle,
         signUp,
