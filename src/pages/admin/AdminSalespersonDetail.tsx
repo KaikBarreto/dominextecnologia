@@ -290,9 +290,11 @@ export default function AdminSalespersonDetail() {
                                     item.person_type || "sales"
                                   ]}
                                 </Badge>
-                                {item.can_receive_sales !== false && (
+                                {item.can_receive_sales !== false &&
+                                  item.person_type &&
+                                  item.person_type !== "sales" && (
                                   <Badge className="bg-slate-700 text-[10px] font-normal text-white">
-                                    Comercial
+                                    Recebe vendas
                                   </Badge>
                                 )}
                               </div>

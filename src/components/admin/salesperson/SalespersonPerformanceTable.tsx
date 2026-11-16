@@ -67,8 +67,8 @@ export function SalespersonPerformanceTable({ salespeople, sales, advances, onEd
   const { sortedItems, sortConfig, handleSort } = useTableSort(rows, 'name', 'asc');
 
   return (
-    <div className="rounded-lg border border-border overflow-x-auto">
-      <Table className="min-w-[800px]">
+    <div className="relative rounded-lg border border-border overflow-x-auto">
+      <Table className="min-w-[1040px]">
         <TableHeader>
           <TableRow>
             <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>Pessoa</SortableTableHead>
@@ -89,12 +89,12 @@ export function SalespersonPerformanceTable({ salespeople, sales, advances, onEd
             const rotation = rotationStatus(p);
             return (
               <TableRow key={p.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/admin/vendedores/${p.id}`)}>
-                <TableCell>
+                <TableCell className="min-w-[220px]">
                   <p className="font-medium">{p.name}</p>
                   <div className="mt-1 flex flex-wrap gap-1">
-                    <Badge variant="outline" className="text-[10px] font-normal">{TEAM_AREA_LABELS[p.person_type || 'sales'] || 'Outro'}</Badge>
-                    {canReceiveSales && <Badge className="bg-slate-700 text-[10px] font-normal text-white">Recebe vendas</Badge>}
-                    {rotation.eligible && <Badge className="bg-emerald-600 text-[10px] font-normal text-white">Próximo lead</Badge>}
+                    <Badge variant="outline" className="whitespace-nowrap text-[10px] font-normal">{TEAM_AREA_LABELS[p.person_type || 'sales'] || 'Outro'}</Badge>
+                    {canReceiveSales && <Badge className="bg-slate-700 whitespace-nowrap text-[10px] font-normal text-white">Recebe vendas</Badge>}
+                    {rotation.eligible && <Badge className="bg-emerald-600 whitespace-nowrap text-[10px] font-normal text-white">No rodízio</Badge>}
                   </div>
                   {rotation.lastAssignment && <p className="mt-1 text-[10px] text-muted-foreground">Último lead: {rotation.lastAssignment}</p>}
                 </TableCell>
