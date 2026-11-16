@@ -17,7 +17,7 @@ vi.mock('@/hooks/usePdvCounterFlow', () => ({
   usePdvCashQueue: () => ({ data: [{ id: 'order-1', number: 1, customerId: null, customerName: 'Cliente fictício', stockName: 'Estoque', total: 10, reservationReady: true }], refetch: vi.fn() }),
   usePdvCoverOrder: () => ({ mutateAsync: state.cover, isPending: false }),
 }));
-vi.mock('@/components/pdv/PdvAppliedVoucherControl', () => ({ PdvAppliedVoucherControl: () => null }));
+vi.mock('@/components/pdv/PdvAppliedVoucherControl', () => ({ PdvAppliedVoucherControl: () => null, PdvAppliedVouchersControl: () => null }));
 vi.mock('@/components/pdv/PdvPaymentDialog', () => ({ PdvPaymentDialog: ({ onConfirm }: { onConfirm: (payments: unknown[]) => Promise<void> }) => <button onClick={() => void onConfirm([{ method: 'pix', amount: 10 }])}>Confirmar fixture</button> }));
 vi.mock('@/hooks/usePdvReceiptSettings', () => ({ usePdvReceiptSettings: () => ({ data: { stages: { sale: { autoPrint: true, format: '80mm', copies: 1 } } } }) }));
 vi.mock('@/hooks/usePdvOrderReceiptSnapshot', () => ({ fetchPdvOrderReceiptSnapshot: state.fetch }));

@@ -9,6 +9,12 @@ beforeAll(() => Object.defineProperty(Element.prototype, 'scrollIntoView', { con
 afterAll(() => { if (scrollDescriptor) Object.defineProperty(Element.prototype, 'scrollIntoView', scrollDescriptor); else Reflect.deleteProperty(Element.prototype, 'scrollIntoView'); });
 const mocks = vi.hoisted(() => ({ mutate: vi.fn(), toast: vi.fn() }));
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: mocks.toast }) }));
+// Identidade/reload usa o hook real na suíte durable; esta suíte isola controles e ciclo visual.
+vi.mock('@/hooks/usePdvReturnIntent', () => ({
+  usePdvReturnPending: () => ({ pending: false, storageError: null }),
+  usePdvDurableReturn: () => ({ token: { epoch: 'fixture-epoch' }, ready: true, pending: false, busy: false, storageError: null, intent: null, isCurrent: () => true,
+    submit: async (input: object, summary: { itemCount: number; total: number }) => ({ result: await mocks.mutate({ ...input, attemptId: crypto.randomUUID() }), summary }), retry: vi.fn() }),
+}));
 vi.mock('@/hooks/usePdvReturns', async importOriginal => ({ ...await importOriginal<typeof import('@/hooks/usePdvReturns')>(), usePdvCreateReturn: () => ({ mutateAsync: mocks.mutate, isPending: false }) }));
 vi.mock('@/components/ui/responsive-dialog', () => ({ ResponsiveDialog: ({ open, children, footer }: { open: boolean; children: ReactNode; footer?: ReactNode }) => open ? <div role="dialog">{children}{footer}</div> : null }));
 vi.mock('@/components/ui/DatePicker', () => ({ DatePicker: ({ ariaLabel, value, max, disabled }: { ariaLabel: string; value: string; max: string; disabled?: boolean }) => <button type="button" aria-label={ariaLabel} data-max={max} disabled={disabled}>{value}</button> }));

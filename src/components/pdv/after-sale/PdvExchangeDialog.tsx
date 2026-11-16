@@ -1,5 +1,5 @@
 import '@/components/pdv/PdvWorkspace.css';
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Repeat2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,6 +52,7 @@ export function PdvExchangeDialog({
   canApproveCredit,
   getAttempt,
   onCompleted,
+  isCurrent = () => true,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -61,6 +62,7 @@ export function PdvExchangeDialog({
   canApproveCredit: boolean;
   getAttempt: (key: string, signature: string) => PdvAfterSaleAttempt;
   onCompleted: () => void;
+  isCurrent?: () => boolean;
 }) {
   const { toast } = useToast();
   const mutation = usePdvCoverExchange();
@@ -118,7 +120,7 @@ export function PdvExchangeDialog({
   });
   const options =
     normalizedDifference.differenceMethod === "dinheiro"
-      ? workspace.cashOptions.map((item) => ({
+      ? workspace.cashOptions.filter(item => item.sessionId === candidate?.targetCashSessionId).map((item) => ({
           id: item.sessionId,
           label: item.label,
         }))
@@ -131,13 +133,16 @@ export function PdvExchangeDialog({
           }))
         : [];
   const valid = Boolean(
-    candidate && parsedVoucher && parsedCredit && normalizedDifference.valid,
+    candidate?.targetCashSessionId && candidate.targetTerminalId && candidate.targetCashAccountId && candidate.couponRevision !== undefined && parsedVoucher && parsedCredit && normalizedDifference.valid && isCurrent()
+      && (normalizedDifference.differenceMethod !== "dinheiro" || normalizedDifference.cashSessionId === candidate.targetCashSessionId),
   );
   const signature = useMemo(
     () =>
       JSON.stringify({
         returnId: entry.returnId,
         candidateId,
+        targetCashSessionId: candidate?.targetCashSessionId,
+        ...(candidate?.couponRevision && candidate.couponRevision > 0 ? { couponRevision: candidate.couponRevision } : {}),
         voucherId: voucher?.voucherId ?? null,
         voucherAmount: parsedVoucher?.decimal ?? null,
         creditAmount: parsedCredit?.decimal ?? null,
@@ -147,6 +152,8 @@ export function PdvExchangeDialog({
       }),
     [
       candidateId,
+      candidate?.couponRevision,
+      candidate?.targetCashSessionId,
       entry.returnId,
       normalizedDifference.cashSessionId,
       normalizedDifference.differenceAccountId,
@@ -156,11 +163,17 @@ export function PdvExchangeDialog({
       voucher?.voucherId,
     ],
   );
+  const contextSignature = JSON.stringify([open, orderId, entry.returnId, candidateId, candidate?.targetCashSessionId, candidate?.couponRevision, isCurrent()]);
+  const current = useRef<{ signature: string; mounted: boolean } | null>(null);
+  if (!current.current || current.current.signature !== contextSignature) current.current = { signature: contextSignature, mounted: true };
+  const token = current.current;
+  useEffect(() => { token.mounted = true; return () => { token.mounted = false; }; }, [token]);
+  const canComplete = () => open && token.mounted && current.current === token && isCurrent();
   async function submit() {
-    if (!candidate || !parsedVoucher || !parsedCredit || !valid) return;
+    if (!candidate || !parsedVoucher || !parsedCredit || !valid || !canComplete()) return;
     const attempt = getAttempt(`exchange:${entry.returnId}`, signature);
     try {
-      await mutation.mutateAsync({
+      const result = await mutation.mutateAsync({
         orderId,
         returnId: entry.returnId,
         newOrderId: candidate.orderId,
@@ -171,14 +184,21 @@ export function PdvExchangeDialog({
         differenceAccountId: normalizedDifference.differenceAccountId,
         cashSessionId: normalizedDifference.cashSessionId,
         attemptId: attempt.id,
+        targetCashSessionId: candidate.targetCashSessionId,
+        ...(candidate.couponRevision === undefined ? {} : { couponRevision: candidate.couponRevision }),
       });
+      if (!canComplete()) return;
+      const status = result && typeof result === 'object' && 'status' in result ? result.status : null;
       toast({
-        title: "Troca valorizada",
-        description: `O pedido #${candidate.orderNumber} foi ligado à devolução e liberado conforme as coberturas.`,
+        title: "Troca concluída",
+        description: status === 'entregue' ? `Pedido #${candidate.orderNumber} entregue no caixa.`
+          : status === 'liberado_retirada' ? `Pedido #${candidate.orderNumber} liberado para retirada.`
+            : `Troca registrada no pedido #${candidate.orderNumber}. Consulte o pedido para acompanhar a retirada.`,
       });
       onCompleted();
       onOpenChange(false);
     } catch (error) {
+      if (!canComplete()) return;
       toast({
         title: "Troca não concluída",
         description:
@@ -193,8 +213,7 @@ export function PdvExchangeDialog({
         <DialogHeader>
           <DialogTitle>Usar devolução em troca</DialogTitle>
           <DialogDescription>
-            A troca cria um novo pedido. A venda e a devolução originais
-            permanecem no histórico.
+            Use saldo ou voucher da devolução em um pedido do cliente.
           </DialogDescription>
         </DialogHeader>
         <div className="pdv-form-section grid gap-4 py-2 sm:grid-cols-2">
@@ -217,6 +236,9 @@ export function PdvExchangeDialog({
               </SelectContent>
             </Select>
           </div>
+          {candidate && <p className="text-sm sm:col-span-2">{candidate.targetCashSessionId
+            ? `Caixa de destino: ${candidate.targetCashLabel}. Esta abertura receberá o novo pedido, inclusive quando a troca não tiver diferença em dinheiro.`
+            : 'O caixa de destino não possui uma abertura disponível para seu perfil. Atualize o pós-venda antes de concluir a troca.'}</p>}
           <div className="grid gap-2">
             <Label>Voucher</Label>
             <Select
@@ -338,6 +360,7 @@ export function PdvExchangeDialog({
             </>
           )}
         </div>
+        {differenceCents !== null && differenceCents > 0 && differenceMethod === 'fiado' && <p className="text-sm text-muted-foreground">Na troca, o fiado da diferença vence em um mês. Para usar fiado sem vencimento, conclua o novo pedido no caixa.</p>}
         <DialogFooter>
           <Button variant="cancel" onClick={() => onOpenChange(false)}>
             Cancelar

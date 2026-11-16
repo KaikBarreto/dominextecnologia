@@ -1,0 +1,7 @@
+/* Recortes do papel fazem parte do cupom; a faixa continua exclusiva do tipo. */
+.pdv-coupon-ticket {
+  -webkit-mask-image: radial-gradient(circle 6px at 0 50%, transparent 95%, #000 100%), radial-gradient(circle 6px at 100% 50%, transparent 95%, #000 100%);
+  -webkit-mask-composite: source-in;
+  mask-image: radial-gradient(circle 6px at 0 50%, transparent 95%, #000 100%), radial-gradient(circle 6px at 100% 50%, transparent 95%, #000 100%);
+  mask-composite: intersect;
+}

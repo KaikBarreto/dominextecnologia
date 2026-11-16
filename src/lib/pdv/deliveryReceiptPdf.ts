@@ -52,6 +52,7 @@ export function toPdvDeliveryReceiptSnapshot(
   snapshot: PdvDeliveryReceipt,
   options: PdvDeliveryReceiptPdfOptions = {},
 ): PdvReceiptSnapshot {
+  const operatorName = snapshot.operatorName || options.operatorName || 'Não informado';
   return {
     documentKind: 'delivery',
     company: options.company ?? { name: 'Retirada de materiais', whiteLabelEnabled: false },
@@ -59,7 +60,7 @@ export function toPdvDeliveryReceiptSnapshot(
       number: snapshot.order.number,
       issuedAt: snapshot.withdrawnAt,
       customerName: snapshot.customerName,
-      operatorName: options.operatorName || 'Não informado',
+      operatorName,
     },
     items: [],
     totals: { subtotal: 0, discount: 0, total: 0 },
@@ -69,7 +70,7 @@ export function toPdvDeliveryReceiptSnapshot(
       withdrawnAt: snapshot.withdrawnAt,
       stockName: snapshot.stockName,
       receivedBy: options.receivedBy,
-      operatorName: options.operatorName,
+      operatorName,
       items: snapshot.items.map(item => ({ ...item })),
     },
     note: snapshot.notice,

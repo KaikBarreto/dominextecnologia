@@ -1,3 +1,4 @@
+import { safePdvCouponError, PDV_COUPONS_ROOT } from '@/hooks/usePdvCoupons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { invalidatePdvReportCaches } from '@/hooks/pdvReportCache';
@@ -30,6 +31,7 @@ export interface PdvCashQueueRow {
   status: 'aguardando_pagamento';
   createdAt: string;
   reservationReady: boolean;
+  couponRevision?: number;
 }
 
 export interface PdvCoveragePayment {
@@ -37,6 +39,7 @@ export interface PdvCoveragePayment {
   amount: number;
   account_id?: string | null;
   due_date?: string | null;
+  due_date_mode?: 'none';
   reference_id?: string | null;
 }
 
@@ -47,6 +50,7 @@ export interface PdvCoverOrderInput {
   cashAccountId: string;
   payments: PdvCoveragePayment[];
   attemptId: string;
+  couponRevision?: number;
 }
 
 export function buildPdvCoverageRpcArgs(input: PdvCoverOrderInput): Record<string, unknown> {
@@ -55,14 +59,16 @@ export function buildPdvCoverageRpcArgs(input: PdvCoverOrderInput): Record<strin
     p_terminal_id: input.terminalId,
     p_cash_session_id: input.cashSessionId,
     p_cash_account_id: input.cashAccountId,
-    p_payments: input.payments.map(({ method, amount, account_id, due_date, reference_id }) => ({
+    p_payments: input.payments.map(({ method, amount, account_id, due_date, due_date_mode, reference_id }) => ({
       method,
       amount,
       ...(account_id ? { account_id } : {}),
       ...(due_date ? { due_date } : {}),
+      ...(due_date_mode === 'none' ? { due_date_mode } : {}),
       ...(reference_id ? { reference_id } : {}),
     })),
     p_idempotency_key: input.attemptId,
+    ...(input.couponRevision !== undefined ? { p_expected_coupon_revision: input.couponRevision } : {}),
   };
 }
 
@@ -95,6 +101,7 @@ function codeOf(error: RpcError): string {
 export function mapPdvCounterError(error: unknown): Error {
   const raw = record(error) as RpcError;
   const code = codeOf(raw);
+  if (code.startsWith('pdv_coupon_')) return safePdvCouponError(raw);
   const messages: Record<string, string> = {
     pdv_counter_mode_disabled: 'O fluxo de balcão não está ativo nas configurações do PDV.',
     pdv_counter_order_not_coverable: 'Este pedido não está mais aguardando pagamento.',
@@ -104,6 +111,8 @@ export function mapPdvCounterError(error: unknown): Error {
     pdv_counter_reservation_conflict: 'O estoque deste pedido precisa ser reconciliado antes do recebimento.',
     pdv_counter_credit_limit_exceeded: 'O limite disponível do cliente não cobre este pedido.',
     pdv_counter_credit_forbidden: 'Seu perfil não permite aprovar venda no fiado.',
+    pdv_fiado_due_date_invalid: 'Revise o vencimento do fiado.',
+    pdv_fiado_installments_due_required: 'Informe o primeiro vencimento para parcelar o fiado.',
     pdv_counter_voucher_invalid: 'O voucher escolhido venceu, pertence a outro cliente ou não possui saldo suficiente.',
     pdv_counter_customer_balance_insufficient: 'O saldo disponível do cliente não cobre este valor.',
     pdv_counter_stored_value_customer_required: 'Selecione um cliente para usar saldo ou voucher.',
@@ -176,6 +185,7 @@ export function projectPdvCashQueue(payload: unknown): PdvCashQueueRow[] {
       status: 'aguardando_pagamento' as const,
       createdAt: text(value.created_at) ?? '',
       reservationReady: value.reservation_ready === true,
+      couponRevision: typeof value.coupon_revision === 'number' && Number.isSafeInteger(value.coupon_revision) && value.coupon_revision >= 0 ? value.coupon_revision : 0,
     }];
   });
 }
@@ -226,13 +236,14 @@ export function usePdvCashQueue(cashSessionId: string | null, terminalId: string
 export function usePdvCoverOrder() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: PdvCoverOrderInput) => record(await call('pdv_cover_existing_order_v2', buildPdvCoverageRpcArgs(input))),
+    mutationFn: async (input: PdvCoverOrderInput) => record(await call(input.couponRevision === undefined ? 'pdv_cover_existing_order_v2' : 'pdv_cover_existing_order_coupon_v1', buildPdvCoverageRpcArgs(input))),
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: [...ROOT, 'cash-queue'] }),
         queryClient.invalidateQueries({ queryKey: ['pdv-dispatch'] }),
         queryClient.invalidateQueries({ queryKey: ['pdv-cash'] }),
         queryClient.invalidateQueries({ queryKey: ['pdv-orders'] }),
+        queryClient.invalidateQueries({ queryKey: PDV_COUPONS_ROOT }),
         queryClient.invalidateQueries({ queryKey: ['inventory'] }),
         queryClient.invalidateQueries({ queryKey: ['financial-transactions'] }),
         queryClient.invalidateQueries({ queryKey: ['financial-summary'] }),

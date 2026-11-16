@@ -45,11 +45,18 @@ export interface CartLine {
   availableQuantity: number;
 }
 
+export interface PdvCartCoupon {
+  id: string; code: string; discountCents: number; baseSignature: string;
+  eligible: boolean; message?: string;
+}
+
 export interface CartState {
   lines: CartLine[];
   /** Desconto em R$, valor absoluto. Ainda sem regra de teto (Onda 1). */
   discount: number;
   customerId: string | null;
+  /** Intenção promocional; só abate quando a avaliação corresponde aos itens atuais. */
+  coupon?: PdvCartCoupon | null;
 }
 
 export type AddItemFailureReason = 'out_of_stock' | 'insufficient_stock';
@@ -202,21 +209,31 @@ export function clearCart(cart: CartState): CartState {
   return { ...EMPTY_CART, customerId: cart.customerId };
 }
 
+export function cartLineGrossCents(line: Pick<CartLine, 'quantity' | 'unitPrice'>): number {
+  return Math.round((line.quantity * line.unitPrice + Number.EPSILON) * 100);
+}
 export function computeSubtotal(cart: CartState): number {
-  return cart.lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
+  return cart.lines.reduce((sum, line) => sum + cartLineGrossCents(line), 0) / 100;
 }
 
 /** Soma os descontos absolutos das linhas, limitados ao bruto de cada uma. */
 export function computeItemDiscountTotal(cart: CartState): number {
-  return cart.lines.reduce((sum, line) => {
-    const lineGross = line.quantity * line.unitPrice;
-    return sum + clamp(line.discountAmount ?? 0, 0, Math.max(0, lineGross));
-  }, 0);
+  return cart.lines.reduce((sum, line) => sum + clamp(Math.round((line.discountAmount ?? 0) * 100), 0, Math.max(0, cartLineGrossCents(line))), 0) / 100;
 }
 
 /** Total nunca fica negativo, mesmo com desconto maior que o subtotal. */
+export function couponCartSignature(cart: CartState): string {
+  return JSON.stringify([cart.customerId, cart.discount, cart.lines.map(line => [line.inventoryId, line.quantity, line.unitPrice, line.discountAmount]).sort((a, b) => String(a[0]).localeCompare(String(b[0])))]);
+}
+export function confirmedCouponDiscount(cart: CartState): number {
+  const coupon = cart.coupon;
+  return coupon?.eligible && coupon.baseSignature === couponCartSignature(cart) && Number.isSafeInteger(coupon.discountCents) && coupon.discountCents > 0 ? coupon.discountCents / 100 : 0;
+}
+export function couponCartReady(cart: CartState): boolean {
+  return !cart.coupon || confirmedCouponDiscount(cart) > 0;
+}
 export function computeTotal(cart: CartState): number {
-  return Math.max(0, computeSubtotal(cart) - computeItemDiscountTotal(cart) - cart.discount);
+  return Math.max(0, Math.round(computeSubtotal(cart) * 100) - Math.round(computeItemDiscountTotal(cart) * 100) - Math.round(cart.discount * 100) - Math.round(confirmedCouponDiscount(cart) * 100)) / 100;
 }
 
 export function countItems(cart: CartState): number {

@@ -168,6 +168,7 @@ const PdvDispatch = React.lazy(() => import("./pages/PdvDispatch"));
 const PdvCashHistory = React.lazy(() => import("./pages/PdvCashHistory"));
 const PdvReports = React.lazy(() => import("./pages/PdvReports"));
 const PdvSettings = React.lazy(() => import("./pages/PdvSettings"));
+const PdvCoupons = React.lazy(() => import("./pages/PdvCoupons"));
 // Laboratório visual isolado do PDV. A rota só existe no dev server e o
 // conteúdo usa fixtures locais: não consulta dados reais nem passa pelos gates.
 const PdvUiReview = import.meta.env.DEV
@@ -898,6 +899,7 @@ const AppRoutes = () => (
       {localizedAppRoutes('pdvDispatch', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv_dispatch"><PdvDispatchModeRoute><PdvDispatch /></PdvDispatchModeRoute></PermissionRoute></ModuleRoute>)}
       {localizedAppRoutes('pdvCashHistory', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv_cash_history"><PdvCashHistory /></PermissionRoute></ModuleRoute>)}
       {localizedAppRoutes('pdvReports', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv_reports"><PdvReports /></PermissionRoute></ModuleRoute>)}
+      {localizedAppRoutes('pdvCoupons', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv_settings"><PdvCoupons /></PermissionRoute></ModuleRoute>)}
       {localizedAppRoutes('pdvSettings', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv_settings"><PdvSettings /></PermissionRoute></ModuleRoute>)}
       {/* "Financeiro" é um grupo de telas orientadas por tarefa; cada rota tem
           no máximo uma alternância local entre conteúdos irmãos. */}

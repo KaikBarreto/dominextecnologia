@@ -14,8 +14,12 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { todayInTz } from '@/lib/timezone';
 import { isPdvVoucherEligible } from '@/lib/pdv/voucherEligibility';
 
+const NO_EXCLUDED_VOUCHERS: readonly string[] = [];
+
 interface PdvAppliedVoucherControlProps {
   enabled: boolean;
+  excludedVoucherIds?: readonly string[];
+  hideRemaining?: boolean;
   customerId: string | null;
   total: number;
   value: PdvAppliedVoucher | null;
@@ -30,6 +34,8 @@ interface PdvAppliedVoucherControlProps {
  */
 export function PdvAppliedVoucherControl({
   enabled,
+  excludedVoucherIds = NO_EXCLUDED_VOUCHERS,
+  hideRemaining = false,
   customerId,
   total,
   value,
@@ -47,8 +53,8 @@ export function PdvAppliedVoucherControl({
   const wasOpenRef = useRef(false);
 
   const vouchers = useMemo(
-    () => (options.data?.vouchers ?? []).filter((voucher) => isPdvVoucherEligible(voucher, today)),
-    [options.data?.vouchers, today],
+    () => (options.data?.vouchers ?? []).filter((voucher) => isPdvVoucherEligible(voucher, today) && !excludedVoucherIds.includes(voucher.id)),
+    [options.data?.vouchers, today, excludedVoucherIds],
   );
   const selected = vouchers.find((voucher) => voucher.id === voucherId) ?? null;
   const filteredVouchers = useMemo(() => {
@@ -270,7 +276,7 @@ export function PdvAppliedVoucherControl({
               </div>
             </div>
           </div>
-          <div className="flex items-end justify-between border-b pb-3 text-sm font-bold">
+          <div className={cn("flex flex-wrap items-end justify-between gap-2 border-b pb-3 text-sm font-bold", hideRemaining && "hidden")}>
             <span>Restante a pagar</span>
             <span className="text-2xl font-extrabold tabular-nums">{formatCurrency(remaining)}</span>
           </div>
@@ -289,4 +295,30 @@ export function PdvAppliedVoucherControl({
 
     </div>
   );
+}
+
+
+/** Mantém a escolha simples e permite combinar créditos sem trocar o contexto do pedido. */
+export function PdvAppliedVouchersControl({ values, onChange, ...props }: Omit<PdvAppliedVoucherControlProps, 'value' | 'onChange' | 'excludedVoucherIds' | 'hideRemaining'> & {
+  values: readonly PdvAppliedVoucher[];
+  onChange: (values: PdvAppliedVoucher[]) => void;
+}) {
+  const [editing, setEditing] = useState<string | null>(null);
+  const applied = round2(values.reduce((sum, value) => sum + value.amount, 0));
+  return <div className="space-y-3">
+    {values.map(value => <fieldset key={value.voucherId} disabled={editing !== null && editing !== value.voucherId} className="min-w-0">
+      <PdvAppliedVoucherControl {...props} hideRemaining value={value}
+        total={Math.max(0, round2(props.total - applied + value.amount))}
+        excludedVoucherIds={values.filter(item => item.voucherId !== value.voucherId).map(item => item.voucherId)}
+        onPickerOpenChange={open => { setEditing(open ? value.voucherId : null); props.onPickerOpenChange?.(open); }}
+        onChange={next => onChange(next ? values.map(item => item.voucherId === value.voucherId ? next : item) : values.filter(item => item.voucherId !== value.voucherId))} />
+    </fieldset>)}
+    {applied < round2(props.total) && values.length < 30 && <fieldset disabled={editing !== null && editing !== 'add'} className="min-w-0">
+      <PdvAppliedVoucherControl {...props} value={null} total={Math.max(0, round2(props.total - applied))}
+        excludedVoucherIds={values.map(item => item.voucherId)}
+        onPickerOpenChange={open => { setEditing(open ? 'add' : null); props.onPickerOpenChange?.(open); }}
+        onChange={next => { if (next) onChange([...values, next]); }} />
+    </fieldset>}
+    {values.length > 1 && <p className="flex flex-wrap justify-between gap-2 text-sm"><span>Vouchers aplicados: {props.formatCurrency(applied)}</span><strong>Falta receber: {props.formatCurrency(Math.max(0, round2(props.total - applied)))}</strong></p>}
+  </div>;
 }

@@ -424,3 +424,30 @@ describe('PdvPaymentDialog — fechamento real da venda', () => {
   });
 
 });
+
+
+it('finaliza dois vouchers parciais e recebe somente o complemento sem reduzir a venda', async () => {
+  testState.storedValue.data.vouchers = [
+    { id: 'voucher-a', code: 'VA', balance: 50, expiresOn: null },
+    { id: 'voucher-b', code: 'VB', balance: 50, expiresOn: null },
+  ];
+  const props = renderDialog({ appliedVouchers: [
+    { voucherId: 'voucher-a', code: 'VA', amount: 20 },
+    { voucherId: 'voucher-b', code: 'VB', amount: 30 },
+  ] });
+  fireEvent.keyDown(window, { key: 'F9' });
+  await waitFor(() => expect(props.onConfirm).toHaveBeenCalledOnce());
+  expect(props.onConfirm).toHaveBeenCalledWith([
+    { method: 'voucher', amount: 20, reference_id: 'voucher-a' },
+    { method: 'voucher', amount: 30, reference_id: 'voucher-b' },
+    { method: 'dinheiro', amount: 50 },
+  ]);
+});
+
+it('envia fiado sem vencimento explícito pela interação real do operador', async () => {
+  const props = renderDialog();
+  fireEvent.click(screen.getByRole('button', { name: 'Fiado/Saldo' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Sem vencimento' }));
+  fireEvent.keyDown(window, { key: 'F9' });
+  await waitFor(() => expect(props.onConfirm).toHaveBeenCalledWith([{ method: 'fiado', amount: 100, due_date_mode: 'none' }]));
+});

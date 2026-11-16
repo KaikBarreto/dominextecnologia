@@ -57,6 +57,13 @@ export function isDreCashFlowOnlyPdvRole(role: string | null | undefined): boole
   return !!role && DRE_CASH_FLOW_ONLY_PDV_ROLES.has(role);
 }
 
+/** Aquisição é competência no principal e caixa somente no pagamento efetivo. */
+export function isPdvRoleExcludedFromDre(role: string | null | undefined, regime: DreRegime): boolean {
+  return isDreCashFlowOnlyPdvRole(role)
+    || (role === 'pdv_supplier_obligation' && regime === 'caixa')
+    || (role === 'pdv_supplier_payment' && regime === 'competencia');
+}
+
 /** Só o que o motor precisa ler — evita amarrar o módulo ao type completo. */
 export interface DreTransactionLike {
   transaction_date?: string | null;

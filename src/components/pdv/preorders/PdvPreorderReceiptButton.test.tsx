@@ -30,6 +30,15 @@ describe('comprovante do orçamento', () => {
     expect(mocks.open.mock.calls[0][1]).toBe('Orçamento 12 - Cliente exemplo');
   });
 
+  it('mantém no orçamento impresso o cupom salvo e o bruto arredondado por linha', async () => {
+    mocks.fetch.mockResolvedValue({ preorder: { number: 12, updated_at: '2026-11-14T10:00:00Z', discount_amount: 3.33, coupon_discount_amount_v1: 3.33, total: 29.97 }, items: Array.from({ length: 30 }, (_, index) => ({ inventory_id: `item-${index}`, description: 'Item fracionado', quantity: 0.333, unit_price: 3.33, discount_amount: 0 })) });
+    render(<PdvPreorderReceiptButton preorderId="budget-12" />);
+    fireEvent.click(screen.getByRole('button', { name: /gerar comprovante/i }));
+    await waitFor(() => expect(mocks.pdf).toHaveBeenCalled());
+    expect(mocks.pdf.mock.calls[0][0].totals).toEqual({ subtotal: 33.30, discount: 3.33, total: 29.97 });
+    expect(mocks.pdf.mock.calls[0][0].items.every((item: { total: number }) => item.total === 1.11)).toBe(true);
+  });
+
   it('respeita preferência de formato do dispositivo', async () => {
     mocks.device.mockReturnValue('80mm');
     render(<PdvPreorderReceiptButton preorderId="budget-12" />);

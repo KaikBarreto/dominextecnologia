@@ -12,6 +12,12 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock('@/hooks/pdvReportCache', async importOriginal => ({ ...await importOriginal<typeof import('@/hooks/pdvReportCache')>(), usePdvAuthorizedQueryScope: () => mocks.scope }));
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: mocks.toast }) }));
+// Identidade/reload usa o hook real na suíte durable; esta suíte isola controles e ciclo visual.
+vi.mock('@/hooks/usePdvReturnIntent', () => ({
+  usePdvReturnPending: () => ({ pending: false, storageError: null }),
+  usePdvDurableReturn: () => ({ token: { epoch: 'fixture-epoch' }, ready: true, pending: false, busy: false, storageError: null, intent: null, isCurrent: () => true,
+    submit: async (input: object, summary: { itemCount: number; total: number }) => ({ result: await mocks.mutate({ ...input, attemptId: crypto.randomUUID() }), summary }), retry: vi.fn() }),
+}));
 vi.mock('@/components/ui/responsive-dialog', () => ({ ResponsiveDialog: ({ open, title, children, footer }: { open: boolean; title: string; children: ReactNode; footer?: ReactNode }) => open ? <div role="dialog"><h2>{title}</h2>{children}{footer}</div> : null }));
 vi.mock('@/components/ui/DatePicker', () => ({ DatePicker: () => null }));
 vi.mock('./PdvCancelResidualDialog', () => ({ PdvCancelResidualDialog: () => null }));

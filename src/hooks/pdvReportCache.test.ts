@@ -57,6 +57,16 @@ describe('invalidação canônica dos relatórios PDV', () => {
     client.clear();
   });
 
+  it('atualiza saldos, contas, cofre e detalhe legado em todas as variantes de cache', async () => {
+    const client = new QueryClient();
+    const roots = ['financial-summary', 'account-balances', 'financial-accounts', 'pdv-cofre-balance', 'pdv-cash-session-detail'];
+    const keys = roots.flatMap(root => [[root], [root, 'scope', 'empresa-a', 'usuario-a'], [root, 'scope', 'empresa-b', 'usuario-b']]);
+    keys.forEach(key => client.setQueryData(key, { value: 120 }));
+    await invalidatePdvReportCaches(client);
+    keys.forEach(key => expect(client.getQueryState(key)?.isInvalidated).toBe(true));
+    client.clear();
+  });
+
   it('liga todas as mutations financeiras da venda e dos caixas ao helper compartilhado', () => {
     const sale = readFileSync('src/hooks/usePdvSale.ts', 'utf8');
     const legacyCash = readFileSync('src/hooks/usePdvCashRegister.ts', 'utf8');

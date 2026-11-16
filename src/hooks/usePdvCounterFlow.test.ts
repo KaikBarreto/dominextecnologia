@@ -54,3 +54,12 @@ describe('W3 fluxo balcão', () => {
     ] });
   });
 });
+
+
+it('preserva intenção sem vencimento no balcão e linhas de voucher distintas', () => {
+  const payments = [{ method: 'fiado' as const, amount: 40, due_date_mode: 'none' as const },
+    { method: 'voucher' as const, amount: 20, reference_id: 'voucher-1' },
+    { method: 'voucher' as const, amount: 30, reference_id: 'voucher-2' }];
+  expect(buildPdvCoverageRpcArgs({ orderId: 'o', terminalId: 't', cashSessionId: 's', cashAccountId: 'a', attemptId: 'same', payments }).p_payments).toEqual(payments);
+  expect(mapPdvCounterError({ details: 'code=pdv_fiado_installments_due_required' }).message).toBe('Informe o primeiro vencimento para parcelar o fiado.');
+});

@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   auth: { user: { id: 'user-A' }, profile: { user_id: 'user-A', company_id: 'company-A', is_active: true }, permissions: [] as string[], roles: ['comercial'], hasPermissionRecord: true, loading: false, profileLoading: false },
-  rpc: vi.fn(), from: vi.fn(), order: vi.fn(), flags: vi.fn(), flagKeys: vi.fn(), write: vi.fn(), plan: vi.fn(), cancellation: vi.fn(), options: vi.fn(),
+  rpc: vi.fn(), from: vi.fn(), order: vi.fn(), features: vi.fn(), write: vi.fn(), plan: vi.fn(), cancellation: vi.fn(), options: vi.fn(),
 }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => mocks.auth }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc: mocks.rpc, from: mocks.from } }));
@@ -25,13 +25,13 @@ beforeEach(() => {
   vi.clearAllMocks(); clearPdvResidualIntentsForTests();
   mocks.auth = { user: { id: 'user-A' }, profile: { user_id: 'user-A', company_id: 'company-A', is_active: true }, permissions: [...permissions], roles: ['comercial'], hasPermissionRecord: true, loading: false, profileLoading: false };
   mocks.order.mockReset().mockImplementation(async () => ({ data: order(), error: null }));
-  mocks.flags.mockReset().mockResolvedValue({ data: [{ key: 'pdv_after_sale_value_v2', enabled: true, company_allowlist: [] }], error: null });
+  mocks.features.mockReset().mockResolvedValue({ data: { company_id: 'company-A', module_available: true, after_sale: true }, error: null });
   mocks.plan.mockReset().mockImplementation(async () => ({ data: plan(), error: null }));
   mocks.cancellation.mockReset().mockResolvedValue({ data: null, error: null });
   mocks.options.mockReset().mockImplementation(async () => ({ data: options(), error: null }));
   mocks.write.mockReset().mockImplementation(async (_name: string, args: Record<string, unknown>) => ({ data: { ok: true, cancellation_id: 'cancellation-1', order_id: 'order-1', resources: (args.p_dispositions as Array<Record<string, unknown>> ?? []).map(r => ({ ...r, amount: r.amount })) }, error: null }));
-  mocks.rpc.mockImplementation((name: string, args: Record<string, unknown>) => name === 'pdv_get_order_residual_cancellation_v3' ? mocks.cancellation(args) : name === 'pdv_get_order_residual_plan_v3' ? mocks.plan(args) : name === 'pdv_get_after_sale_workspace_v2' ? mocks.options(args) : mocks.write(name, args));
-  mocks.from.mockImplementation((table: string) => { const request = { select: () => request, eq: () => request, in: (...args: unknown[]) => { mocks.flagKeys(...args); return request; }, abortSignal: () => request, maybeSingle: () => mocks.order(), then: (resolve: (value: unknown) => unknown, reject: (reason: unknown) => unknown) => mocks.flags().then(resolve, reject) }; if (!['pdv_orders', 'app_feature_flags'].includes(table)) throw new Error('Tabela inesperada'); return request; });
+  mocks.rpc.mockImplementation((name: string, args: Record<string, unknown>) => name === 'pdv_get_module_features_v3' ? mocks.features(args) : name === 'pdv_get_order_residual_cancellation_v3' ? mocks.cancellation(args) : name === 'pdv_get_order_residual_plan_v3' ? mocks.plan(args) : name === 'pdv_get_after_sale_workspace_v2' ? mocks.options(args) : mocks.write(name, args));
+  mocks.from.mockImplementation((table: string) => { const request = { select: () => request, eq: () => request, abortSignal: () => request, maybeSingle: () => mocks.order() }; if (table !== 'pdv_orders') throw new Error('Tabela inesperada'); return request; });
 });
 
 async function ready() { const ctx = context(); const hook = renderHook(() => usePdvResidualCancellation('order-1', true), { wrapper: ctx.wrapper }); await waitFor(() => expect(hook.result.current.query.data?.mode).toBe('covered')); return { ...hook, ...ctx }; }
@@ -53,18 +53,15 @@ describe('contrato monetário do restante', () => {
 });
 
 describe('leitura e intenção autorizadas', () => {
-  it('respeita o plano autorizado mesmo com a antiga flag de saldos desligada', async () => {
-    mocks.flags.mockResolvedValue({ data: [
-      { key: 'pdv_party_accounts_v2', enabled: false, company_allowlist: [] },
-      { key: 'pdv_after_sale_value_v2', enabled: true, company_allowlist: [] },
-    ], error: null });
+  it('respeita o plano e a disponibilidade canônicos sem consultar flags legadas', async () => {
     const { result } = await ready();
     expect(result.current.query.data).toMatchObject({ canCredit: true, canVoucher: true });
-    expect(mocks.flagKeys).toHaveBeenCalledWith('key', ['pdv_after_sale_value_v2']);
+    expect(mocks.rpc).toHaveBeenCalledWith('pdv_get_module_features_v3', {});
+    expect(mocks.from).toHaveBeenCalledTimes(1);
     expect(mocks.write).not.toHaveBeenCalled();
   });
-  it('mantém vouchers e reembolsos bloqueados quando sua liberação está desligada', async () => {
-    mocks.flags.mockResolvedValue({ data: [{ key: 'pdv_after_sale_value_v2', enabled: false, company_allowlist: [] }], error: null });
+  it('mantém vouchers e reembolsos bloqueados quando a capacidade canônica está indisponível', async () => {
+    mocks.features.mockResolvedValue({ data: { company_id: 'company-A', module_available: false, after_sale: false }, error: null });
     const { result } = await ready();
     expect(result.current.query.data).toMatchObject({ canCredit: true, canVoucher: false, canRefund: false, cash: [], banks: [] });
     expect(mocks.options).not.toHaveBeenCalled();
@@ -82,7 +79,7 @@ describe('leitura e intenção autorizadas', () => {
     await waitFor(() => expect(result.current.query.isError).toBe(true));
     expect(result.current.query.data).toBeUndefined();
     expect(result.current.query.error).toMatchObject({ kind: 'permission' });
-    expect(mocks.flags).not.toHaveBeenCalled();
+    expect(mocks.features).not.toHaveBeenCalled();
     expect(mocks.write).not.toHaveBeenCalled();
   });
   it('preserva V2 para pedido comprovadamente sem pagamentos e sem manage_party_credit', async () => {

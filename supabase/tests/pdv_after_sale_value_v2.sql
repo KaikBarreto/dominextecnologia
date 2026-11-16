@@ -3,7 +3,7 @@
 BEGIN;
 
 DO $contract$
-DECLARE v_fn text; v_src text; v_table text; v_role text; v_privilege text;
+DECLARE v_fn text; v_src text; v_table text; v_role text; v_privilege text; v_credit_statement text;
 BEGIN
   FOREACH v_fn IN ARRAY ARRAY[
     'public.pdv_issue_return_voucher_v2(uuid,numeric,date,text)',
@@ -89,12 +89,15 @@ BEGIN
      OR has_function_privilege('authenticated','public.pdv_cover_exchange_order_core_015_v2(uuid,uuid,uuid,numeric,numeric,text,uuid,uuid,text)','EXECUTE') THEN
     RAISE EXCEPTION 'troca nao usa core protegido pela custodia';
   END IF;
-  SELECT pg_get_functiondef('public.pdv_cover_exchange_order_core_015_v2(uuid,uuid,uuid,numeric,numeric,text,uuid,uuid,text)'::regprocedure) INTO v_src;
+  SELECT pg_get_functiondef(COALESCE(to_regprocedure('public.pdv_cover_exchange_order_target_base_v2(uuid,uuid,uuid,numeric,numeric,text,uuid,uuid,text,integer,uuid)'),to_regprocedure('public.pdv_cover_exchange_order_coupon_base_v1(uuid,uuid,uuid,numeric,numeric,text,uuid,uuid,text,integer)'),to_regprocedure('public.pdv_cover_exchange_order_core_015_v2(uuid,uuid,uuid,numeric,numeric,text,uuid,uuid,text)'))) INTO v_src;
   IF position('pdv_claim_operation_request' in v_src)>=position('v_order.status' in v_src) THEN
     RAISE EXCEPTION 'troca valida estado mutável antes do claim/replay'; END IF;
+  v_credit_statement:=CASE WHEN to_regprocedure('public.pdv_customer_credit_statement_internal_v4(uuid,uuid)') IS NOT NULL
+    THEN 'pdv_customer_credit_statement_internal_v4' ELSE 'pdv_customer_credit_statement_v2' END;
   IF position('ORDER BY customer.id FOR UPDATE' in v_src)=0
+    OR position(v_credit_statement in v_src)=0
     OR position('ORDER BY customer.id FOR UPDATE' in v_src)>=position('pdv_party_available_credit_v2' in v_src)
-    OR position('ORDER BY customer.id FOR UPDATE' in v_src)>=position('pdv_customer_credit_statement_v2' in v_src) THEN
+    OR position('ORDER BY customer.id FOR UPDATE' in v_src)>=position(v_credit_statement in v_src) THEN
     RAISE EXCEPTION 'troca lê saldo/fiado antes do lock canônico do cliente'; END IF;
   SELECT pg_get_functiondef('public.reset_system_step(uuid,text,uuid)'::regprocedure) INTO v_src;
   IF position('PDV_AFTER_SALE_VALUE_RESET_V2' in v_src)=0 THEN RAISE EXCEPTION 'reset não limpa W5-02'; END IF;
@@ -223,14 +226,14 @@ BEGIN
   -- Especiais são rejeitados antes de round/claim e não deixam troca parcial.
   SELECT count(*) INTO facts_before FROM public.pdv_exchanges WHERE company_id=ca;
   blocked:=false;
-  BEGIN PERFORM public.pdv_cover_exchange_order_v2(return_id,cash_test_order,NULL,'NaN'::numeric,0,
-    'dinheiro',cash_account,session_id,'w502-exchange-nan-0001');
+  BEGIN PERFORM public.pdv_cover_exchange_order_coupon_v2(return_id,cash_test_order,NULL,'NaN'::numeric,0,
+    'dinheiro',cash_account,session_id,'w502-exchange-nan-0001',0,session_id);
   EXCEPTION WHEN invalid_parameter_value THEN blocked:=true; END;
   IF NOT blocked OR (SELECT count(*) FROM public.pdv_exchanges WHERE company_id=ca)<>facts_before THEN
     RAISE EXCEPTION 'NaN gerou fato de troca'; END IF;
   blocked:=false;
-  BEGIN PERFORM public.pdv_cover_exchange_order_v2(return_id,cash_test_order,NULL,0,'Infinity'::numeric,
-    'dinheiro',cash_account,session_id,'w502-exchange-infinity-0001');
+  BEGIN PERFORM public.pdv_cover_exchange_order_coupon_v2(return_id,cash_test_order,NULL,0,'Infinity'::numeric,
+    'dinheiro',cash_account,session_id,'w502-exchange-infinity-0001',0,session_id);
   EXCEPTION WHEN invalid_parameter_value THEN blocked:=true; END;
   IF NOT blocked OR EXISTS(SELECT 1 FROM public.pdv_operation_requests request
     WHERE request.company_id=ca AND request.idempotency_key IN('w502-exchange-nan-0001','w502-exchange-infinity-0001')) THEN
@@ -266,7 +269,7 @@ BEGIN
   -- empresa. Em seguida, um voucher exato zera o restante sem gerar receita.
   blocked:=false;
   BEGIN
-    PERFORM public.pdv_apply_voucher_to_order_v2(foreign_customer_order,voucher_id,1,
+    PERFORM public.pdv_cover_existing_order_v2(foreign_customer_order,terminal,session_id,cash_account,jsonb_build_array(jsonb_build_object('method','voucher','reference_id',voucher_id,'amount',1)),
       'w502-voucher-other-customer-0001');
   EXCEPTION WHEN check_violation THEN blocked:=true; END;
   IF NOT blocked OR EXISTS(SELECT 1 FROM public.pdv_order_payments payment
@@ -276,12 +279,12 @@ BEGIN
     'w502-voucher-exact-issue-0001');
   exact_voucher:=(result->>'voucher_id')::uuid;
   SELECT count(*) INTO financial_before FROM public.financial_transactions WHERE company_id=ca;
-  result:=public.pdv_apply_voucher_to_order_v2(exact_voucher_order,exact_voucher,2,
+  result:=public.pdv_cover_existing_order_v2(exact_voucher_order,terminal,session_id,cash_account,jsonb_build_array(jsonb_build_object('method','voucher','reference_id',exact_voucher,'amount',2)),
     'w502-voucher-exact-apply-0001');
-  replay:=public.pdv_apply_voucher_to_order_v2(exact_voucher_order,exact_voucher,2,
+  replay:=public.pdv_cover_existing_order_v2(exact_voucher_order,terminal,session_id,cash_account,jsonb_build_array(jsonb_build_object('method','voucher','reference_id',exact_voucher,'amount',2)),
     'w502-voucher-exact-apply-0001');
-  IF (result->>'remaining_order_amount')::numeric<>0
-    OR (result->>'voucher_balance')::numeric<>0
+  IF (SELECT status FROM public.pdv_orders WHERE id=exact_voucher_order)<>'liberado_retirada'
+    OR public.pdv_voucher_balance_internal_v2(exact_voucher)<>0
     OR replay->>'idempotent'<>'true'
     OR (SELECT count(*) FROM public.pdv_order_payments payment
       WHERE payment.order_id=exact_voucher_order AND payment.method='voucher' AND payment.amount=2)<>1
@@ -343,8 +346,8 @@ BEGIN
   -- deixar claim, pagamento ou exchange parcial.
   PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',uc,'role','authenticated')::text,true);
   blocked:=false;
-  BEGIN PERFORM public.pdv_cover_exchange_order_v2(return_id,cash_test_order,NULL,0,0,'dinheiro',
-    cash_account,session_id,'w502-exchange-foreign-cash-0001');
+  BEGIN PERFORM public.pdv_cover_exchange_order_coupon_v2(return_id,cash_test_order,NULL,0,0,'dinheiro',
+    cash_account,session_id,'w502-exchange-foreign-cash-0001',0,session_id);
   EXCEPTION WHEN insufficient_privilege THEN blocked:=true; END;
   IF NOT blocked OR EXISTS(SELECT 1 FROM public.pdv_order_payments WHERE order_id=cash_test_order)
     OR EXISTS(SELECT 1 FROM public.pdv_operation_requests request
@@ -353,20 +356,20 @@ BEGIN
   PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',ua,'role','authenticated')::text,true);
 
   SELECT status INTO original_status FROM public.pdv_orders WHERE id=original_order;
-  result:=public.pdv_cover_exchange_order_v2(return_id,new_order,voucher_id,20,10,'pix',bank_account,NULL,
-    'w502-exchange-cover-0001');
+  result:=public.pdv_cover_exchange_order_coupon_v2(return_id,new_order,voucher_id,20,10,'pix',bank_account,NULL,
+    'w502-exchange-cover-0001',0,session_id);
   IF (result->>'difference_amount')::numeric<>40 OR public.pdv_voucher_balance_internal_v2(voucher_id)<>20
     OR (SELECT sum(amount) FROM public.pdv_order_payments WHERE order_id=new_order)<>70
     OR (SELECT status FROM public.pdv_orders WHERE id=new_order)<>'liberado_retirada'
     OR (SELECT status FROM public.pdv_orders WHERE id=original_order)<>original_status THEN
     RAISE EXCEPTION 'troca não fechou voucher/crédito/diferença ou alterou venda original: %',result; END IF;
-  replay:=public.pdv_cover_exchange_order_v2(return_id,new_order,voucher_id,20,10,'pix',bank_account,NULL,
-    'w502-exchange-cover-0001');
+  replay:=public.pdv_cover_exchange_order_coupon_v2(return_id,new_order,voucher_id,20,10,'pix',bank_account,NULL,
+    'w502-exchange-cover-0001',0,session_id);
   IF replay->>'idempotent'<>'true' OR replay->>'exchange_id'<>result->>'exchange_id' THEN RAISE EXCEPTION 'retry duplicou troca'; END IF;
   -- Sob o lock do cliente, uma segunda troca enxerga o saldo já consumido.
   blocked:=false;
-  BEGIN PERFORM public.pdv_cover_exchange_order_v2(return_id,credit_race_order,NULL,0,1000,NULL,NULL,NULL,
-    'w502-exchange-credit-race-0001');
+  BEGIN PERFORM public.pdv_cover_exchange_order_coupon_v2(return_id,credit_race_order,NULL,0,1000,NULL,NULL,NULL,
+    'w502-exchange-credit-race-0001',0,session_id);
   EXCEPTION WHEN check_violation THEN blocked:=true; END;
   IF NOT blocked OR EXISTS(SELECT 1 FROM public.pdv_exchanges WHERE new_order_id=credit_race_order) THEN
     RAISE EXCEPTION 'segunda troca excedeu saldo após serialização do cliente'; END IF;
@@ -424,6 +427,10 @@ BEGIN
   -- Smoke real do lifecycle: order_payments saem antes dos livros voucher e
   -- saldo; toda a cadeia W5-02 deve zerar no step PDV sob a GUC autorizada.
   INSERT INTO public.user_roles(user_id,role) VALUES(ua,'admin');
+  -- Escritas comerciais e reset são requisições distintas no app. Confere
+  -- os pares financeiros antes de testar a remoção administrativa das origens.
+  SET CONSTRAINTS ALL IMMEDIATE;
+  SET CONSTRAINTS ALL DEFERRED;
   PERFORM public.reset_system_step(ca,'pdv',audit_id);
   IF EXISTS(SELECT 1 FROM public.pdv_order_payments WHERE company_id=ca)
     OR EXISTS(SELECT 1 FROM public.pdv_voucher_entries WHERE company_id=ca)

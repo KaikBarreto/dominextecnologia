@@ -1,3 +1,4 @@
+vi.mock('@/components/pdv/coupons/PdvCouponControl', () => ({ PdvCouponControl: () => null }));
 import {
   fireEvent,
   render,

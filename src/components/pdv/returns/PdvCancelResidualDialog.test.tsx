@@ -33,6 +33,7 @@ beforeEach(() => {
   mocks.paid = true; mocks.method = 'dinheiro'; mocks.paidAmount = 15; mocks.planError = null; mocks.orderError = false;
   mocks.write.mockReset().mockImplementation(async (name: string, args: Record<string, unknown>) => ({ data: { ok: true, order_id: 'order-1', cancellation_id: 'cancellation-1', resources: name.endsWith('_v3') ? (args.p_dispositions as Array<Record<string, unknown>>).map(r => ({ ...r, status: r.kind === 'refund' ? mocks.method === 'dinheiro' ? 'settled' : 'pending' : undefined })) : [] }, error: null }));
   mocks.rpc.mockImplementation(async (name: string, args: Record<string, unknown>) => {
+    if (name === 'pdv_get_module_features_v3') return { data: { company_id: mocks.auth.profile.company_id, module_available: true, after_sale: true }, error: null };
     if (name === 'pdv_get_order_residual_cancellation_v3') return { data: null, error: null };
     if (name === 'pdv_get_order_residual_plan_v3') return { data: { order_id: 'order-1', customer_id: 'customer-1', plan_hash: 'a'.repeat(64), order_total: 90, delivered_amount: 25, residual_amount: 65, receivable_reduction_amount: 65 - mocks.paidAmount, paid_disposition_amount: mocks.paidAmount, original_payments: mocks.paidAmount ? [{ payment_id: 'payment-1', method: mocks.method, amount: 40, account_id: 'account-1', settlement_transaction_id: 'settlement-1' }] : [], receivable_reductions: [{ payment_id: 'debt-1', receivable_transaction_id: 'receivable-1', amount: 65 - mocks.paidAmount }] }, error: mocks.planError };
     if (name === 'pdv_get_after_sale_workspace_v2') return { data: { order: { order_id: 'order-1', customer_id: 'customer-1' }, capabilities: { issue_voucher: true, request_refund: true, use_bank_accounts: true }, cash_options: [{ session_id: 'session-other', terminal_id: 'terminal-other', account_id: 'wrong', label: 'Outro operador' }, { session_id: 'session-1', terminal_id: 'terminal-1', account_id: 'account-1', label: 'Caixa original' }], account_options: [{ account_id: 'wrong', label: 'Outro banco', methods: ['pix', 'transferencia'] }, { account_id: 'account-1', label: 'Banco original', methods: ['pix', 'transferencia'] }] }, error: null };
@@ -40,8 +41,8 @@ beforeEach(() => {
   });
   mocks.from.mockImplementation((table: string) => { const request = { select: () => request, eq: () => request, in: () => request, abortSignal: () => request,
     maybeSingle: async () => ({ data: mocks.orderError ? null : { id: 'order-1', company_id: mocks.auth.profile.company_id, status: 'retirada_parcial', cash_session_id: 'session-1', terminal_id: 'terminal-1', payments: mocks.paid ? [{ id: 'payment-1' }] : [] }, error: mocks.orderError ? { message: 'SQLSTATE private_table' } : null }),
-    then: (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) => Promise.resolve({ data: ['pdv_party_accounts_v2', 'pdv_after_sale_value_v2'].map(key => ({ key, enabled: true, company_allowlist: [] })), error: null }).then(resolve, reject) };
-    if (!['pdv_orders', 'app_feature_flags'].includes(table)) throw new Error('Tabela inesperada'); return request; });
+  };
+    if (table !== 'pdv_orders') throw new Error('Tabela inesperada'); return request; });
 });
 
 describe('cancelamento do restante para o operador', () => {

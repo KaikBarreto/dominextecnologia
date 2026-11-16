@@ -22,7 +22,12 @@ const CASH_PURCHASE_ERROR_MESSAGES: Record<string, string> = {
   PDV_CASH_PURCHASE_IN_PROGRESS: 'Esta compra ainda está sendo processada. Aguarde e tente novamente.',
   PDV_CASH_PURCHASE_CONTEXT_REUSED: 'Esta compra já foi registrada fora deste caixa.',
   PDV_CASH_PURCHASE_FINANCIAL_MISSING: 'Não foi possível concluir o lançamento financeiro. Nenhum dado foi salvo.',
-  pdv_supplier_credit_insufficient: 'O saldo do fornecedor não cobre o total desta compra.',
+  pdv_supplier_credit_insufficient: 'O saldo do fornecedor não cobre o valor aplicado nesta compra.',
+  pdv_supplier_purchase_access_denied: 'Seu perfil ou o contexto financeiro não permite registrar esta compra.',
+  pdv_supplier_credit_amount_invalid: 'Revise o valor do saldo aplicado nesta compra.',
+  pdv_supplier_payment_invalid: 'Revise a forma, a conta e a data do pagamento complementar.',
+  pdv_supplier_payment_total_invalid: 'Confira os pagamentos e o total desta compra.',
+  pdv_supplier_payment_immutable: 'O pagamento faz parte do histórico da compra. Registre uma compensação.',
   pdv_supplier_credit_in_progress: 'Esta compra ainda está sendo processada. Aguarde e tente novamente.',
   pdv_supplier_credit_supplier_invalid: 'O fornecedor não está disponível nesta empresa.',
   pdv_supplier_credit_financial_missing: 'Não foi possível concluir o financeiro desta compra. Nenhum dado foi salvo.',
@@ -58,6 +63,7 @@ export interface DirectMaterialPurchaseInput {
   description?: string | null;
   notes?: string | null;
   cashContext?: PdvPurchaseCashContext | null;
+  supplierCreditAmount?: number;
 }
 
 type GenericRpcResult = { data: unknown; error: unknown | null };
@@ -128,6 +134,10 @@ export function useDirectMaterialPurchase() {
 
   const registerPurchase = useMutation({
     mutationFn: async (input: DirectMaterialPurchaseInput) => {
+      const credit = input.supplierCreditAmount ?? 0;
+      if (!Number.isFinite(credit) || credit < 0 || (credit > 0 && !input.isPaid)) {
+        throw new Error('Revise o saldo aplicado e o pagamento desta compra.');
+      }
       const args: DirectPurchaseRpcArgs = {
         p_client_request_id: input.clientRequestId,
         p_stock_id: input.stockId,
@@ -143,7 +153,18 @@ export function useDirectMaterialPurchase() {
         p_description: input.description ?? null,
         p_notes: input.notes ?? null,
       };
-      const result = input.paymentMethod === 'saldo_fornecedor'
+      const result = (input.supplierCreditAmount ?? 0) > 0
+        ? await callRpc('pdv_register_direct_purchase_mixed_v4', {
+            p_cash_session_id: input.cashContext?.sessionId ?? null,
+            p_terminal_id: input.cashContext?.terminalId ?? null,
+            p_client_request_id: input.clientRequestId, p_stock_id: input.stockId,
+            p_supplier_id: input.supplierId, p_items: input.items as unknown as Json,
+            p_purchase_date: input.purchaseDate, p_account_id: input.accountId,
+            p_category_id: input.categoryId, p_supplier_credit_amount: input.supplierCreditAmount,
+            p_payment_method: input.paymentMethod ?? null, p_paid_date: input.paidDate ?? null,
+            p_description: input.description ?? null, p_notes: input.notes ?? null,
+          })
+        : input.paymentMethod === 'saldo_fornecedor'
         ? await callRpc('pdv_register_direct_purchase_supplier_credit_v3', {
             p_cash_session_id: input.cashContext?.sessionId ?? null,
             p_terminal_id: input.cashContext?.terminalId ?? null,

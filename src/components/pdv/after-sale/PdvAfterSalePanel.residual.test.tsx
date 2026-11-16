@@ -26,7 +26,7 @@ const payload = () => ({ order: { order_id: 'order-1', order_number: 42, custome
 const refund = (status = 'pending', method = 'pix') => ({ refund_id: 'refund-real', amount: 15, method, status, can_confirm: status === 'pending' && method !== 'dinheiro', can_reverse: status === 'settled', requires_confirmation_reference: method === 'pix' });
 function context() { const client = new QueryClient({ defaultOptions: { queries: { retry: false, placeholderData: keepPreviousData } } }); return ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>; }
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(r => { resolve = r; }); return { resolve, promise }; }
-beforeEach(() => { vi.clearAllMocks(); mocks.auth.profile = { user_id: 'u1', company_id: 'c1', is_active: true }; mocks.auth.loading = false; mocks.rpc.mockImplementation(async () => ({ data: payload(), error: null })); });
+beforeEach(() => { vi.clearAllMocks(); mocks.auth.permissions = ['fn:view_pdv_after_sale']; mocks.auth.profile = { user_id: 'u1', company_id: 'c1', is_active: true }; mocks.auth.loading = false; mocks.rpc.mockImplementation(async () => ({ data: payload(), error: null })); });
 async function panel(data = payload()) { mocks.rpc.mockResolvedValue({ data, error: null }); const onReload = vi.fn(); const view = render(<PdvAfterSalePanel orderId="order-1" access={access} onReload={onReload} />, { wrapper: context() }); await screen.findByRole('article', { name: 'Itens não retirados' }); return { ...view, onReload }; }
 describe('pós-venda residual visível depois do cancelamento', () => {
   it('mantém origem separada, fiado abatido e crédito histórico sem inventar devolução', async () => {
@@ -48,6 +48,18 @@ describe('pós-venda residual visível depois do cancelamento', () => {
   });
   it('estorno mantém pendência financeira explícita sem redestinação fictícia', async () => {
     const data = payload(); data.residual_cancellation.unallocated_amount = 15; data.residual_cancellation.financial_status = 'pending_disposition'; data.residual_cancellation.refunds = [refund('reversed')]; await panel(data); expect(screen.getByText(/aguardando nova destinação/)).toBeInTheDocument(); expect(screen.getByText(/ainda não foi encerrada/)).toBeInTheDocument(); expect(screen.queryByRole('button', { name: /Estornar|Confirmar/ })).toBeNull();
+  });
+  it('oferece novo destino somente ao responsável por saldos e abre a pendência real', async () => {
+    mocks.auth.permissions = ['fn:view_pdv_after_sale', 'fn:manage_party_credit', 'screen:customers'];
+    const data = payload(); data.residual_cancellation.unallocated_amount = 15; data.residual_cancellation.financial_status = 'pending_disposition';
+    const view = await panel(data);
+    mocks.rpc.mockImplementation(async (name: string) => ({ data: name === 'pdv_get_residual_disposition_plan_v4' ? {
+      order_id: 'order-1', cancellation_id: 'cancel-1', customer_id: 'customer1', plan_hash: 'a'.repeat(64), free_amount: 15,
+      capabilities: { customer_credit: true, voucher: false, refund: false }, payments: [{ payment_id: 'p1', method: 'dinheiro', account_id: 'cash', budget_amount: 15, available_amount: 15 }], cash_options: [], bank_options: [],
+    } : data, error: null }));
+    fireEvent.click(screen.getByRole('button', { name: 'Escolher novo destino' }));
+    await screen.findByText('Valor aguardando destino'); expect(screen.getByRole('heading', { name: 'Escolher novo destino' })).toBeInTheDocument();
+    expect(view.onReload).not.toHaveBeenCalled(); expect(screen.getByText(/pendência ainda não foi encerrada/)).toBeInTheDocument();
   });
   it('capabilities e contas indisponíveis bloqueiam ação sem escolher banco de outro contexto', async () => {
     const data = payload(); data.residual_cancellation.refunds = [refund()]; data.account_options = []; await panel(data); expect(screen.queryByRole('button', { name: 'Confirmar reembolso externo' })).toBeNull(); expect(screen.getByText(/conta bancária autorizada/)).toBeInTheDocument();
@@ -72,4 +84,12 @@ it('histórico mascarado não projeta zero, crédito, voucher ou reembolso nem a
   const data = payload(); Object.assign(data.residual_cancellation, { access_masked: true, residual_amount: null, unallocated_amount: null, financial_plan: null, financial_status: null, vouchers: [], refunds: [], dispositions: [] });
   await panel(data); expect(screen.getByText(/Você não tem acesso aos valores e destinos/)).toBeInTheDocument();
   expect(screen.queryByText(/R\$/)).toBeNull(); expect(screen.queryByText('Fiado abatido')).toBeNull(); expect(screen.queryByRole('button', { name: /Estornar|Confirmar/ })).toBeNull();
+});
+
+
+it('explica pedido pendente e estoque disponível quando nenhuma troca pode ser oferecida', async () => {
+  mocks.rpc.mockResolvedValue({ data: { ...payload(), returns: [{ return_id: 'return-stock', occurred_on: '2026-11-16', reason: 'Devolução fictícia', returned_value: 20, allocated_value: 0, unallocated_amount: 20, reallocatable_amount: 20, available_amount: 20, allocatable_value: 20, eligible_payments: [], vouchers: [], refunds: [], exchanges: [] }] }, error: null });
+  render(<PdvAfterSalePanel orderId="order-1" access={access} onReload={vi.fn()} />, { wrapper: context() });
+  expect(await screen.findByText('Para usar em troca, é necessário um pedido do mesmo cliente aguardando pagamento e estoque disponível.')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Usar em troca' })).toBeNull();
 });

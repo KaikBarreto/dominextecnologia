@@ -1,3 +1,5 @@
+import { PdvCouponControl } from '@/components/pdv/coupons/PdvCouponControl';
+import { couponCartReady, confirmedCouponDiscount } from '@/lib/pdv/cart';
 import { usePdvPaymentVoucher } from '@/hooks/usePdvPaymentVoucher';
 import { useGoodsFiscalAccess } from '@/hooks/useGoodsFiscalAccess';
 import { PdvNfceSaleAction } from '@/components/fiscal/goods/PdvNfceSaleAction';
@@ -93,7 +95,7 @@ import { PdvSalePreviewView } from '@/components/pdv/PdvSalePreviewView';
 import { PdvCartPanel } from '@/components/pdv/PdvCartPanel';
 import { PdvSkeleton } from '@/components/pdv/PdvSkeleton';
 import { PdvPaymentDialog } from '@/components/pdv/PdvPaymentDialog';
-import { PdvAppliedVoucherControl } from '@/components/pdv/PdvAppliedVoucherControl';
+import { PdvAppliedVouchersControl } from '@/components/pdv/PdvAppliedVoucherControl';
 import { PdvAdvancedOptionsDialog, type PdvPendingAttachment } from '@/components/pdv/PdvAdvancedOptionsDialog';
 import { PdvOrderSwitcher } from '@/components/pdv/PdvOrderSwitcher';
 import { PdvDraftSyncNotice } from '@/components/pdv/PdvDraftSyncNotice';
@@ -121,7 +123,7 @@ import {
   type PdvCompleteDirectSaleV2Result,
 } from '@/hooks/usePdvDirectSaleV2';
 import type { Customer } from '@/types/database';
-import { hasPdvSaleDraftContent, MAX_PDV_SALE_DRAFTS, setPdvSaleDraftCustomer, type PdvAppliedVoucher, type PdvSaleAttempt, type PdvSaleDraft } from '@/lib/pdv/sale-drafts';
+import { getAppliedVouchers, clampAppliedVouchers, hasPdvSaleDraftContent, MAX_PDV_SALE_DRAFTS, setPdvSaleDraftCustomer, type PdvAppliedVoucher, type PdvSaleAttempt, type PdvSaleDraft } from '@/lib/pdv/sale-drafts';
 import { resolvePdvScannedSelection } from '@/lib/pdv/identifierSelection';
 import { clampStoredValueApplication } from '@/lib/pdv/payment';
 import {
@@ -229,6 +231,7 @@ function cartSignature(
     stock: stockId,
     session: sessionId,
     discount: cart.discount,
+    ...(cart.coupon ? { coupon: [cart.coupon.id, cart.coupon.discountCents, cart.coupon.baseSignature] } : {}),
     customer: cart.customerId,
     notes,
     transactionDate,
@@ -563,16 +566,8 @@ function PdvSaleWorkspace({
         const nextCart = typeof next === 'function' ? next(draft.cart) : next;
         liveCartRef.current = nextCart;
         const nextTotal = computeTotal(nextCart);
-        const nextVoucherAmount = draft.appliedVoucher
-          ? clampStoredValueApplication(nextTotal, draft.appliedVoucher.balance, draft.appliedVoucher.amount)
-          : 0;
-        const appliedVoucher = draft.appliedVoucher && nextVoucherAmount > 0
-          ? {
-              ...draft.appliedVoucher,
-              amount: nextVoucherAmount,
-            }
-          : null;
-        return { cart: nextCart, appliedVoucher };
+        const appliedVouchers = clampAppliedVouchers(getAppliedVouchers(draft), nextTotal);
+        return { cart: nextCart, appliedVoucher: appliedVouchers[0] ?? null, appliedVouchers };
       })(),
       // Alterar qualquer dado material invalida a tentativa anterior deste
       // pedido, mas não toca nas tentativas dos outros rascunhos.
@@ -685,6 +680,7 @@ function PdvSaleWorkspace({
     notes: string;
     transactionDate: string;
     appliedVoucher: PdvAppliedVoucher | null;
+    appliedVouchers?: PdvAppliedVoucher[];
     editDraft: PdvSaleEditDraft | null;
     attachments: PdvPendingAttachment[];
   } | null>(null);
@@ -1274,7 +1270,7 @@ function PdvSaleWorkspace({
 
   const itemCount = cart.lines.length;
   const total = computeTotal(cart);
-  const canPay = cart.lines.length > 0 && total > 0 && !directSaleNeedsReview;
+  const canPay = cart.lines.length > 0 && total > 0 && !directSaleNeedsReview && couponCartReady(cart);
 
   // No v2, terminal, sessão e conta da gaveta vêm juntos da projeção
   // fechada. O hook legado exclui caixas contract_version=2 de propósito.
@@ -1429,6 +1425,7 @@ function PdvSaleWorkspace({
       notes: activeDraft.notes,
       transactionDate: activeDraft.transactionDate,
       appliedVoucher: activeDraft.appliedVoucher ? { ...activeDraft.appliedVoucher } : null,
+      appliedVouchers: getAppliedVouchers(activeDraft).map(value => ({ ...value })),
       editDraft: saleEditDrafts[activeDraft.id] ?? null,
       attachments: [...(attachmentsByDraft[activeDraft.id] ?? [])],
     };
@@ -1550,6 +1547,7 @@ function PdvSaleWorkspace({
               unitPrice: line.unitPrice, discountAmount: line.discountAmount,
             })),
             orderDiscountAmount: paymentCart.discount, notes,
+            couponId: paymentCart.coupon?.id ?? null, couponDiscountCents: Math.round(confirmedCouponDiscount(paymentCart) * 100),
             transactionDate: paymentDate === maxTransactionDate ? null : paymentDate,
             payments,
           });
@@ -1907,10 +1905,11 @@ function PdvSaleWorkspace({
 
   const cartPanelProps = {
     layout: 'workspace' as const,
+    couponContent: isV2 ? <PdvCouponControl cart={cart} disabled={directSaleNeedsReview || paymentOpen} onChange={coupon => setCart(current => ({ ...current, coupon }))} /> : undefined,
     readOnly: directSaleNeedsReview,
     onCloseOrder: activeDraftId ? () => handleDeleteDraft(activeDraftId) : undefined,
     hasOrderContent: Boolean(activeDraft && (hasPdvSaleDraftContent(activeDraft) || pendingAttachments.length > 0 || saleEditDraft)),
-    appliedCreditAmount: activeDraft?.appliedVoucher?.amount ?? 0,
+    appliedCreditAmount: getAppliedVouchers(activeDraft).reduce((sum, value) => sum + value.amount, 0),
     orderSwitcher: undefined,
     cart,
     customers,
@@ -1942,16 +1941,17 @@ function PdvSaleWorkspace({
     advancedOptionsActive: advancedOptionsSummary.length > 0,
     advancedOptionsSummary,
     appliedCreditContent: isV2 && !paymentOpen && activeDraft && activeDraftId ? (
-      <PdvAppliedVoucherControl
+      <PdvAppliedVouchersControl
         key={`${activeDraftId}:${activeDraft.cart.customerId ?? 'sem-cliente'}`}
         enabled
         customerId={activeDraft.cart.customerId}
         total={computeTotal(activeDraft.cart)}
-        value={activeDraft.appliedVoucher}
+        values={getAppliedVouchers(activeDraft)}
         formatCurrency={formatCurrency}
-        onChange={(appliedVoucher) => updateDraft(activeDraftId, (draft) => ({
+        onChange={(appliedVouchers) => updateDraft(activeDraftId, (draft) => ({
           ...draft,
-          appliedVoucher,
+          appliedVoucher: appliedVouchers[0] ?? null,
+          appliedVouchers,
           attempt: isV2 ? draft.attempt : null,
         }))}
       />
@@ -2263,20 +2263,18 @@ function PdvSaleWorkspace({
         customerName={customerName}
         customerId={paymentCart.customerId}
         advancedPaymentsEnabled={isV2}
-        appliedVoucher={paymentOpen
-          ? paymentSnapshotRef.current?.appliedVoucher ?? null
-          : activeDraft?.appliedVoucher ?? null}
+        appliedVouchers={getAppliedVouchers(paymentOpen ? paymentSnapshotRef.current : activeDraft)}
         embeddedEditorOpen={paymentVoucher.pickerOpen}
         appliedCreditContent={isV2 && paymentOpen && paymentVoucher.inScope && paymentSnapshotRef.current ? (
           <fieldset disabled={!paymentVoucher.canEdit} className="min-w-0">
-            <PdvAppliedVoucherControl
+            <PdvAppliedVouchersControl
               key={`${paymentSnapshotRef.current.draftId}:${paymentSnapshotRef.current.cart.customerId ?? 'sem-cliente'}:${paymentVoucher.canEdit}`}
               enabled
               customerId={paymentSnapshotRef.current.cart.customerId}
               total={computeTotal(paymentSnapshotRef.current.cart)}
-              value={paymentSnapshotRef.current.appliedVoucher}
+              values={getAppliedVouchers(paymentSnapshotRef.current)}
               formatCurrency={formatCurrency}
-              onChange={paymentVoucher.onChange}
+              onChange={paymentVoucher.onChanges}
               onPickerOpenChange={paymentVoucher.onPickerOpenChange}
             />
           </fieldset>

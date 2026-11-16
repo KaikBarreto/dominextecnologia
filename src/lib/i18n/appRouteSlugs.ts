@@ -43,6 +43,7 @@ type SegmentTranslations = Partial<Record<LocaleCode, string>>;
 // Traduções SEMÂNTICAS (termo de mercado por idioma), não palavra-a-palavra.
 
 const SEGMENTS: Record<string, SegmentTranslations> = {
+  cupons: { en: 'coupons', es: 'cupones', fr: 'coupons' },
   // Raízes (1º segmento das telas)
   dashboard: { en: 'dashboard', es: 'panel', fr: 'tableau-de-bord' },
   agenda: { en: 'schedule', es: 'agenda', fr: 'agenda' },
@@ -153,6 +154,7 @@ const ROUTES: AppRouteDef[] = [
   { key: 'pdvDispatch', base: '/pdv/expedicao' },
   { key: 'pdvCashHistory', base: '/pdv/caixas' },
   { key: 'pdvReports', base: '/pdv/relatorios' },
+  { key: 'pdvCoupons', base: '/pdv/cupons' },
   { key: 'pdvSettings', base: '/pdv/configuracoes' },
   // Financeiro é um GRUPO: raiz + telas operacionais, cobrança, relatórios e
   // configurações próprias. Todos os segmentos traduzem.

@@ -22,12 +22,18 @@ BEGIN
   SELECT pg_get_functiondef(
     'public.pdv_cover_existing_order_v2(uuid,uuid,uuid,uuid,jsonb,text)'::regprocedure)
     INTO v_src;
+  IF strpos(v_src,'pdv_cover_existing_order_coupon_core_v1')>0 THEN
+    SELECT pg_get_functiondef('public.pdv_cover_existing_order_coupon_core_v1(uuid,uuid,uuid,uuid,jsonb,text)'::regprocedure) INTO v_src;
+  END IF;
   -- O wrapper de custódia delega a mesma orquestração; não exigir a cópia
   -- dos cálculos financeiros/estoque em toda camada de autorização.
   IF strpos(v_src,'pdv_cover_existing_order_core_015_v2')>0 THEN
     SELECT pg_get_functiondef(
       'public.pdv_cover_existing_order_core_015_v2(uuid,uuid,uuid,uuid,jsonb,text)'::regprocedure)
       INTO v_src;
+  END IF;
+  IF strpos(v_src,'pdv_complete_cashier_fulfillment_internal_v1')>0 THEN
+    v_src:=v_src||pg_get_functiondef('public.pdv_complete_cashier_fulfillment_internal_v1(uuid,uuid,uuid,uuid)'::regprocedure);
   END IF;
   IF strpos(v_src,'pdv_cover_existing_order_base_v2')=0
     OR strpos(v_src,'pdv_complete_delivery_internal_v2')=0

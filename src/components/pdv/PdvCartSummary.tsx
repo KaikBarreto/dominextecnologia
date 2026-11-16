@@ -16,6 +16,8 @@ import {
   computeItemDiscountTotal,
   computeSubtotal,
   computeTotal,
+  confirmedCouponDiscount,
+  couponCartReady,
 } from "@/lib/pdv/cart";
 import type { LocaleCode } from "@/lib/i18n/locales";
 import type { Customer } from "@/types/database";
@@ -79,6 +81,7 @@ interface PdvCartSummaryProps {
   showFinalizeAction?: boolean;
   /** Crédito/voucher aplicado depois do total comercial e antes do recebimento. */
   appliedCreditContent?: ReactNode;
+  couponContent?: ReactNode;
   /** O carrinho completo pode posicionar o mesmo seletor acima dos materiais. */
   hideCustomerSelector?: boolean;
   layout?: 'stacked' | 'workspace';
@@ -133,6 +136,7 @@ export function PdvCartSummary({
   showAdvancedOptions = true,
   showFinalizeAction = true,
   appliedCreditContent,
+  couponContent,
   hideCustomerSelector = false,
   layout = 'stacked',
   appliedCreditAmount = 0,
@@ -143,7 +147,7 @@ export function PdvCartSummary({
   const total = computeTotal(cart);
   // Carrinho vazio não abre pagamento: a RPC recusa pedido sem item, então a
   // tela bloqueia o botão em vez de deixar o operador bater no erro.
-  const canPay = canFinalizeOverride ?? (cart.lines.length > 0 && total > 0);
+  const canPay = canFinalizeOverride ?? (cart.lines.length > 0 && total > 0 && couponCartReady(cart));
   const [creditsOpen, setCreditsOpen] = useState(false);
   const reduceMotion = useReducedMotion();
 
@@ -152,6 +156,8 @@ export function PdvCartSummary({
       beforeTotal={<>
       {itemDiscounts > 0 && <div className="sumline"><span>{texts.itemDiscounts}</span><strong>− {formatCurrency(itemDiscounts)}</strong></div>}
       {readOnly ? <div className="sumline"><span>Descontos</span><strong>{formatCurrency(cart.discount)}</strong></div> : <PdvInlineDiscountEditor presentation="preview" variant="order" label="Descontos" baseAmount={Math.max(0, subtotal - itemDiscounts)} discountAmount={cart.discount} formatCurrency={formatCurrency} currencySymbol={currencySymbol} locale={locale} currencyFractionDigits={currencyFractionDigits} texts={texts.discountEditor} onApply={onSetDiscountAmount} />}
+      {couponContent}
+      {confirmedCouponDiscount(cart) > 0 && <div className="sumline"><span>Cupom {cart.coupon?.code}</span><strong>− {formatCurrency(confirmedCouponDiscount(cart))}</strong></div>}
       </>}
       afterTotal={<>
       {(appliedCreditContent || appliedCreditAmount > 0) && <>
@@ -216,6 +222,8 @@ export function PdvCartSummary({
         />
       )}
 
+      {couponContent}
+      {confirmedCouponDiscount(cart) > 0 && <div className="flex flex-wrap justify-between gap-2 text-sm"><span>Cupom {cart.coupon?.code}</span><strong className="tabular-nums">− {formatCurrency(confirmedCouponDiscount(cart))}</strong></div>}
       <div className="flex items-center justify-between border-t border-border pt-2">
         <span className="text-base font-bold">{texts.total}</span>
         <span className="text-2xl font-extrabold tabular-nums">

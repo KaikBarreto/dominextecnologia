@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc: vi.fn() } }));
-import { derivePdvAfterSaleAccess, getPdvExchangeOrderCandidates, getPdvVoucherOrderCandidates, isPdvAfterSaleFeatureEnabled, mapPdvAfterSaleError, projectPdvAfterSaleWorkspace, projectPdvResidualAfterSale, projectPdvVoucherSearch, stablePdvAfterSaleAttempt } from './usePdvAfterSale';
+import { buildPdvExchangeCoverageRpc, derivePdvAfterSaleAccess, getPdvExchangeOrderCandidates, getPdvVoucherOrderCandidates, isPdvAfterSaleFeatureEnabled, mapPdvAfterSaleError, projectPdvAfterSaleWorkspace, projectPdvResidualAfterSale, projectPdvVoucherSearch, stablePdvAfterSaleAttempt } from './usePdvAfterSale';
 
 const workspacePayload = {
   order: { order_id: 'order-1', order_number: 1042, customer_id: 'customer-1', status: 'entregue' },
@@ -54,7 +54,8 @@ describe('W5-02 pós-venda', () => {
 
   it('fecha feature e cada ação sem permissão explícita', () => {
     expect(isPdvAfterSaleFeatureEnabled({ enabled: false, company_allowlist: [] }, 'company-1')).toBe(false);
-    expect(isPdvAfterSaleFeatureEnabled({ enabled: false, company_allowlist: ['company-1'] }, 'company-1')).toBe(true);
+    expect(isPdvAfterSaleFeatureEnabled({ enabled: false, company_allowlist: ['company-1'] }, 'company-1')).toBe(false);
+    expect(isPdvAfterSaleFeatureEnabled({ company_id: 'company-1', module_available: true, after_sale: true }, 'company-1')).toBe(true);
     expect(derivePdvAfterSaleAccess({ featureEnabled: false, privileged: true, hasPermissionRecord: true, permissions: ['*'] }).canView).toBe(false);
     const limited = derivePdvAfterSaleAccess({ featureEnabled: true, privileged: false, hasPermissionRecord: true, permissions: ['fn:view_pdv_after_sale', 'fn:issue_pdv_voucher'] });
     expect(limited).toMatchObject({ canView: true, canIssueVoucher: true, canRequestRefund: false, canCreateExchange: false });
@@ -139,4 +140,47 @@ describe('privacidade do histórico residual sem view', () => {
     expect(JSON.stringify(masked)).not.toContain('SEGREDO');
     expect(() => projectPdvResidualAfterSale({ ...residualPayload(), access_masked: 'true' }, 'order-1')).toThrow();
   });
+});
+
+
+describe('troca com revisão do cupom', () => {
+  const input = { orderId: 'original', returnId: 'return', newOrderId: 'new', voucherId: 'voucher', voucherAmount: '8.00', creditAmount: '0.00', differenceMethod: null, differenceAccountId: null, cashSessionId: null, attemptId: 'same-attempt' };
+  it('nega snapshot antigo sem contexto explícito antes de enviar uma nova troca', () => {
+    expect(() => buildPdvExchangeCoverageRpc(input)).toThrow('confirme o caixa de destino');
+    expect(() => buildPdvExchangeCoverageRpc({ ...input, couponRevision: 0 })).toThrow('confirme o caixa de destino');
+  });
+  it.each([0, 2])('envia o CAS da revisão %s para o writer versionado sem trocar a identidade da tentativa', couponRevision => {
+    const operation = buildPdvExchangeCoverageRpc({ ...input, couponRevision, targetCashSessionId: 'session-1' });
+    expect(operation.name).toBe('pdv_cover_exchange_order_coupon_v2');
+    expect(operation.args).toMatchObject({ p_expected_coupon_revision: couponRevision, p_idempotency_key: 'same-attempt', p_voucher_amount: '8.00' });
+  });
+  it.each([null, '0', -1, 0.5, Infinity, NaN])('recusa revisão malformada %s na leitura, sem promover o número para zero', coupon_revision => {
+    expect(() => projectPdvAfterSaleWorkspace({ ...workspacePayload, exchange_candidates: [{ ...workspacePayload.exchange_candidates[0], coupon_revision }] })).toThrow('conferir o desconto');
+  });
+  it('projeta sessão de destino como snapshot distinto da diferença', () => {
+    const projected = projectPdvAfterSaleWorkspace({ ...workspacePayload, exchange_candidates: [{ ...workspacePayload.exchange_candidates[0], coupon_revision: 0,
+      target_terminal_id: 'terminal-A', target_cash_session_id: 'session-A', target_cash_account_id: 'cash-A', target_cash_label: 'Caixa A' }] });
+    expect(projected.exchangeCandidates[0]).toMatchObject({ targetTerminalId: 'terminal-A', targetCashSessionId: 'session-A', targetCashAccountId: 'cash-A', targetCashLabel: 'Caixa A' });
+    expect(() => projectPdvAfterSaleWorkspace({ ...workspacePayload, exchange_candidates: [{ ...workspacePayload.exchange_candidates[0], target_cash_session_id: 'session-A' }] })).toThrow('conferir o caixa de destino');
+  });
+  it('projeta a mesma revisão finita nos candidatos de troca e de voucher', () => {
+    const projected = projectPdvAfterSaleWorkspace({ ...workspacePayload,
+      exchange_candidates: [{ ...workspacePayload.exchange_candidates[0], coupon_revision: 2 }],
+      order_candidates: [{ ...workspacePayload.order_candidates[0], coupon_revision: 2, can_apply_voucher: false }],
+    });
+    expect(projected.exchangeCandidates[0].couponRevision).toBe(2);
+    expect(projected.orderCandidates[0]).toMatchObject({ couponRevision: 2, canApplyVoucher: false });
+  });
+  it.each(['pdv_coupon_conflict', 'pdv_coupon_ineligible', 'pdv_coupon_order_total_zero', 'pdv_coupon_atomic_coverage_required', 'pdv_coupon_invalid'])('traduz %s sem detalhes internos', code => {
+    const message = mapPdvAfterSaleError({ code: '22023', details: `code=${code}`, message: 'private_sql_table' }).message;
+    expect(message).not.toMatch(/pdv_|private_sql|SQLSTATE/);
+    if (code === 'pdv_coupon_order_total_zero') expect(message).toBe('O desconto precisa deixar um valor a receber. Escolha outro cupom ou remova o cupom para continuar.');
+    if (code === 'pdv_coupon_atomic_coverage_required') expect(message).toContain('finalizar o pagamento no caixa');
+  });
+});
+
+
+it('orienta a conferir o estoque quando a disponibilidade da troca muda', () => {
+  expect(mapPdvAfterSaleError({ code: '23514', details: 'code=pdv_exchange_stock_insufficient', message: 'private_stock_table' }).message)
+    .toBe('O estoque disponível mudou. Confira os materiais do novo pedido antes de concluir a troca.');
 });

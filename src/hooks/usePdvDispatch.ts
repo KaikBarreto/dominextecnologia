@@ -10,7 +10,7 @@ export interface PdvDispatchReservation { id: string; stockId: string; available
 export interface PdvDispatchItem { id: string; description: string; itemType: 'material' | 'service' | 'free_item'; unit: string; orderedQuantity: number; deliveredQuantity: number; remainingQuantity: number; reservations: PdvDispatchReservation[] }
 export interface PdvDispatchOrder { id: string; number: number; status: PdvDispatchStatus; customer: { id: string; name: string } | null; stock: { id: string; name: string } | null }
 export interface PdvDispatchDetail { order: PdvDispatchOrder; items: PdvDispatchItem[] }
-export interface PdvDeliveryReceipt { kind: string; deliveryId: string; withdrawnAt: string; order: { id: string; number: number; status: string }; customerName: string | null; stockName: string | null; items: Array<{ description: string; unit: string; quantity: number; remainingQuantity: number }>; notice: string }
+export interface PdvDeliveryReceipt { kind: string; deliveryId: string; withdrawnAt: string; order: { id: string; number: number; status: string }; customerName: string | null; stockName: string | null; operatorName?: string | null; items: Array<{ description: string; unit: string; quantity: number; remainingQuantity: number }>; notice: string }
 export interface PdvCompleteDispatchInput { orderId: string; lines: Array<{ orderItemId: string; reservationId?: string | null; quantity: number }>; attemptId: string }
 export interface PdvAttempt { signature: string; id: string }
 
@@ -102,7 +102,7 @@ export function projectPdvDispatchDetail(payload: unknown): PdvDispatchDetail {
 
 export function projectPdvDeliveryReceipt(payload: unknown): PdvDeliveryReceipt {
   const v = rec(payload), order = rec(v.order);
-  return { kind: txt(v.kind) ?? 'delivery_receipt', deliveryId: txt(v.delivery_id) ?? '', withdrawnAt: txt(v.withdrawn_at) ?? '', order: { id: txt(order.id) ?? '', number: num(order.number), status: txt(order.status) ?? '' }, customerName: txt(v.customer_name), stockName: txt(v.stock_name), items: Array.isArray(v.items) ? v.items.map((entry) => { const item = rec(entry); return { description: txt(item.description) ?? 'Item', unit: txt(item.unit) ?? 'un', quantity: num(item.quantity), remainingQuantity: num(item.remaining_quantity) }; }) : [], notice: txt(v.notice) ?? 'Comprovante não fiscal de retirada.' };
+  return { kind: txt(v.kind) ?? 'delivery_receipt', deliveryId: txt(v.delivery_id) ?? '', withdrawnAt: txt(v.withdrawn_at) ?? '', order: { id: txt(order.id) ?? '', number: num(order.number), status: txt(order.status) ?? '' }, customerName: txt(v.customer_name), stockName: txt(v.stock_name), operatorName: txt(v.operator_name), items: Array.isArray(v.items) ? v.items.map((entry) => { const item = rec(entry); return { description: txt(item.description) ?? 'Item', unit: txt(item.unit) ?? 'un', quantity: num(item.quantity), remainingQuantity: num(item.remaining_quantity) }; }) : [], notice: txt(v.notice) ?? 'Comprovante não fiscal de retirada.' };
 }
 
 export function usePdvDispatchQueue() { return usePdvDispatchRead(['queue'], async signal => projectPdvDispatchQueue(await call('pdv_list_dispatch_queue_v2', undefined, signal)), 10_000); }

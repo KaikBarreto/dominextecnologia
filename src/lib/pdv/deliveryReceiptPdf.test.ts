@@ -64,6 +64,14 @@ describe('comprovante de retirada paginado', () => {
     expect(snapshot.payments).toEqual([]);
   });
 
+  it('prioriza o responsável registrado na retirada em vez de quem imprime', () => {
+    const receipt = { ...longReceipt(1), operatorName: 'Operadora da retirada' };
+    const snapshot = toPdvDeliveryReceiptSnapshot(receipt, { operatorName: 'Usuário da impressão' });
+    expect(snapshot.order.operatorName).toBe('Operadora da retirada');
+    expect(snapshot.withdrawal?.operatorName).toBe('Operadora da retirada');
+    expect(toPdvDeliveryReceiptSnapshot(longReceipt(1)).order.operatorName).toBe('Não informado');
+  });
+
   it.each(['58mm', '80mm'] as const)('respeita formato explícito %s e mantém A4 como padrão legado', async format => {
     const blob = generatePdvDeliveryReceiptPdf(longReceipt(2), { format, copies: 2 });
     const source = await new Promise<string>((resolve, reject) => {

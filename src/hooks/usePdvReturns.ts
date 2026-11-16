@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { isPdvModuleFeatureEnabled, usePdvModuleFeature } from '@/hooks/usePdvModuleFeatures';
 import { useAuth } from '@/contexts/AuthContext';
 import { parsePdvMoneyText, pdvMoneyDecimalFromCents } from '@/lib/pdv/afterSaleMoney';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -252,10 +253,7 @@ export function projectPdvReturnResult(payload: unknown): PdvReturnMutationResul
 }
 
 export function isPdvReturnsFeatureEnabled(payload: unknown, companyId: string | null | undefined): boolean {
-  const flag = recordOf(payload);
-  if (flag.enabled === true) return true;
-  if (!companyId || !Array.isArray(flag.company_allowlist)) return false;
-  return flag.company_allowlist.includes(companyId);
+  return isPdvModuleFeatureEnabled(payload, companyId, 'returns');
 }
 
 export function derivePdvReturnsAccess(input: { featureEnabled: boolean; privileged: boolean; hasPermissionRecord: boolean; permissions: readonly string[] }): PdvReturnsAccessDecision {
@@ -270,19 +268,7 @@ export function derivePdvReturnsAccess(input: { featureEnabled: boolean; privile
 }
 
 export function usePdvReturnsFeature(companyId: string | null | undefined) {
-  return useQuery({
-    queryKey: [...ROOT, 'feature', companyId],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('app_feature_flags')
-        .select('enabled, company_allowlist')
-        .eq('key', 'pdv_returns_v2')
-        .maybeSingle();
-      if (error) return false;
-      return isPdvReturnsFeatureEnabled(data, companyId);
-    },
-    enabled: Boolean(companyId),
-    staleTime: 60_000,
-  });
+  return usePdvModuleFeature(companyId, 'returns', ROOT);
 }
 
 export function usePdvReturnWorkspace(orderId: string | null, enabled: boolean) {
@@ -305,7 +291,7 @@ export function usePdvReturnWorkspace(orderId: string | null, enabled: boolean) 
   });
 }
 
-async function invalidateReturnConsumers(client: ReturnType<typeof useQueryClient>, orderId: string | null) {
+export async function invalidateReturnConsumers(client: ReturnType<typeof useQueryClient>, orderId: string | null) {
   await Promise.all([
     client.invalidateQueries({ queryKey: ROOT }),
     client.invalidateQueries({ queryKey: ['pdv-dispatch'] }),
@@ -478,14 +464,11 @@ export function usePdvResidualCancellation(orderId: string, open: boolean) {
         if (!o.payments.length) return { mode: 'unpaid', orderId };
         if (!allowed('fn:manage_party_credit')) throw new PdvResidualFault('Para cancelar um restante com pagamento ou fiado, peça a um responsável com permissão para tratar o saldo do cliente.', 'permission');
         const plan = projectPdvResidualPlan(await readRpc('pdv_get_order_residual_plan_v3', { p_order_id: orderId }, signal), orderId);
-        // The authorized plan and writers use the canonical module/subscription
-        // gate. The legacy party-accounts rollout row no longer represents it.
-        const flags = await supabase.from('app_feature_flags').select('key,enabled,company_allowlist').in('key', ['pdv_after_sale_value_v2']).abortSignal(signal);
-        assertCurrent(signal); if (flags.error || !Array.isArray(flags.data)) throw new PdvResidualFault('Não foi possível conferir os destinos financeiros disponíveis. Tente atualizar os dados.');
-        const feature = (key: string) => flags.data.some(f => f.key === key && isPdvReturnsFeatureEnabled(f, companyId));
+        const features = await readRpc('pdv_get_module_features_v3', {}, signal);
+        const afterSaleAvailable = isPdvModuleFeatureEnabled(features, companyId, 'after_sale');
         let cash: PdvResidualCash[] = []; let banks: PdvResidualBank[] = []; let optionsWarning = false;
-        let canVoucher = allowed('fn:issue_pdv_voucher') && feature('pdv_after_sale_value_v2'); let canRefund = false;
-        if (feature('pdv_after_sale_value_v2') && allowed('fn:refund_pdv_return') && allowed('fn:view_pdv_after_sale')) {
+        let canVoucher = allowed('fn:issue_pdv_voucher') && afterSaleAvailable; let canRefund = false;
+        if (afterSaleAvailable && allowed('fn:refund_pdv_return') && allowed('fn:view_pdv_after_sale')) {
           try {
             const w = recordOf(await readRpc('pdv_get_after_sale_workspace_v2', { p_order_id: orderId }, signal)); const order = recordOf(w.order); const caps = recordOf(w.capabilities);
             if (order.order_id !== orderId || order.customer_id !== plan.customerId || !Array.isArray(w.cash_options) || !Array.isArray(w.account_options)) throw invalidResidual();

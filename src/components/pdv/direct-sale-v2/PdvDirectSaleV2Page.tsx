@@ -1,3 +1,5 @@
+import { PdvCouponControl } from '@/components/pdv/coupons/PdvCouponControl';
+import { confirmedCouponDiscount, couponCartReady } from '@/lib/pdv/cart';
 import { PdvPageSkeleton } from '@/components/pdv/loading/PdvPageSkeleton';
 import { canCapturePdvCatalogScan } from '@/lib/pdv/catalogKeyboard';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -7,7 +9,7 @@ import { PdvAdvancedOptionsDialog, type PdvPendingAttachment } from '@/component
 import { PdvCartPanel } from '@/components/pdv/PdvCartPanel';
 import { PdvSalePreviewView } from '@/components/pdv/PdvSalePreviewView';
 import { PdvPaymentDialog } from '@/components/pdv/PdvPaymentDialog';
-import { PdvAppliedVoucherControl } from '@/components/pdv/PdvAppliedVoucherControl';
+import { PdvAppliedVouchersControl } from '@/components/pdv/PdvAppliedVoucherControl';
 import { type PdvGridProduct } from '@/components/pdv/PdvProductCard';
 import { PdvOrderReceiptButton, usePdvOrderReceiptOpener } from '@/components/pdv/receipt/PdvOrderReceiptButton';
 import { Button } from '@/components/ui/button';
@@ -43,7 +45,7 @@ import {
   type CartState,
 } from '@/lib/pdv/cart';
 import { clampStoredValueApplication } from '@/lib/pdv/payment';
-import type { PdvAppliedVoucher } from '@/lib/pdv/sale-drafts';
+import { clampAppliedVouchers, type PdvAppliedVoucher } from '@/lib/pdv/sale-drafts';
 import { readDeviceReceiptFormat } from '@/lib/pdv/receipt/devicePreference';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney, getCurrencySymbol, toBcp47 } from '@/lib/format';
@@ -83,6 +85,7 @@ function saleSignature(
     terminalId,
     customerId: cart.customerId,
     discount: cart.discount,
+    ...(cart.coupon ? { coupon: [cart.coupon.id, cart.coupon.discountCents, cart.coupon.baseSignature] } : {}),
     notes,
     transactionDate,
     payments: canonicalizePdvDirectSalePayments(payments),
@@ -107,7 +110,7 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
   const receiptSettings = usePdvReceiptSettings();
   const identifiers = useInventoryIdentifiers();
   const [cart, setCart] = useState<CartState>(EMPTY_CART);
-  const [appliedVoucher, setAppliedVoucher] = useState<PdvAppliedVoucher | null>(null);
+  const [appliedVouchers, setAppliedVouchers] = useState<PdvAppliedVoucher[]>([]);
   const [search, setSearch] = useState('');
   const [catalogMode, setCatalogMode] = useState<'quick' | 'catalog'>(() =>
     typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches ? 'catalog' : 'quick');
@@ -245,16 +248,12 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
   const cartTotal = computeTotal(cart);
 
   useEffect(() => {
-    setAppliedVoucher((current) => {
-      if (!current) return null;
-      const amount = clampStoredValueApplication(cartTotal, current.balance, current.amount);
-      return amount > 0 ? { ...current, amount } : null;
-    });
+    setAppliedVouchers(current => clampAppliedVouchers(current, cartTotal));
   }, [cartTotal]);
 
   const changeCustomer = useCallback((customerId: string | null) => {
     resetAttempt();
-    setAppliedVoucher(null);
+    setAppliedVouchers([]);
     setCart((current) => setCartCustomer(current, customerId));
   }, [resetAttempt]);
 
@@ -424,6 +423,7 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
         discountAmount: line.discountAmount,
       })),
       orderDiscountAmount: cart.discount,
+        couponId: cart.coupon?.id ?? null, couponDiscountCents: Math.round(confirmedCouponDiscount(cart) * 100),
       notes,
       transactionDate: transactionDate === maxTransactionDate ? null : transactionDate,
       payments,
@@ -442,7 +442,7 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
     });
     setPaymentOpen(false);
     setCart(EMPTY_CART);
-    setAppliedVoucher(null);
+    setAppliedVouchers([]);
     setNotes('');
     setTransactionDate(maxTransactionDate);
     setAttachments([]);
@@ -517,6 +517,7 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
     advancedOptionsTrigger: t.advancedOptions.trigger,
   };
   const requestPayment = () => {
+    if (!couponCartReady(cart)) { toast({ title: 'Confira o cupom promocional antes de receber.' }); return; }
     if (attachmentBusy) {
       toast({ variant: 'destructive', title: 'Aguarde a preparação das fotos.' });
       return;
@@ -525,15 +526,15 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
   };
 
   const appliedCreditContent = (
-    <PdvAppliedVoucherControl
+    <PdvAppliedVouchersControl
       enabled
       customerId={cart.customerId}
       total={cartTotal}
-      value={appliedVoucher}
+      values={appliedVouchers}
       formatCurrency={formatCurrency}
       onChange={(value) => {
         resetAttempt();
-        setAppliedVoucher(value);
+        setAppliedVouchers(value);
       }}
     />
   );
@@ -571,7 +572,7 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
         </NoticeBanner>
       )}
 
-      {catalog.terminals.length > 1 && <Select value={terminalId ?? undefined} onValueChange={value => { setTerminalId(value); setCart(EMPTY_CART); setAppliedVoucher(null); resetAttempt(); }}><SelectTrigger className="w-full sm:w-56"><SelectValue placeholder="Caixa" /></SelectTrigger><SelectContent>{catalog.terminals.map(item => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent></Select>}
+      {catalog.terminals.length > 1 && <Select value={terminalId ?? undefined} onValueChange={value => { setTerminalId(value); setCart(EMPTY_CART); setAppliedVouchers([]); resetAttempt(); }}><SelectTrigger className="w-full sm:w-56"><SelectValue placeholder="Caixa" /></SelectTrigger><SelectContent>{catalog.terminals.map(item => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent></Select>}
       <div data-testid="pdv-direct-sale-v2-layout" className="pdv-preview-sale">
         <PdvSalePreviewView
           mode={catalogMode} onModeChange={setCatalogMode} search={search} onSearchChange={setSearch}
@@ -584,6 +585,7 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
           cart={
           <PdvCartPanel
             cart={cart}
+            couponContent={<PdvCouponControl cart={cart} disabled={paymentOpen} onChange={coupon => updateCart(current => ({ ...current, coupon }))} />}
             customers={customers}
             formatCurrency={formatCurrency}
             currencySymbol={currencySymbol}
@@ -623,7 +625,7 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
         itemCount={cart.lines.length}
         customerName={customerName}
         customerId={cart.customerId}
-        appliedVoucher={appliedVoucher}
+        appliedVouchers={appliedVouchers}
         customerCredit={null}
         accounts={paymentAccounts}
         canUseBankAccounts={paymentAccounts.length > 0}

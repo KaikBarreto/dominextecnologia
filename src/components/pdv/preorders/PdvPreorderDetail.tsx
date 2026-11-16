@@ -1,3 +1,6 @@
+import { PdvCouponControl } from '@/components/pdv/coupons/PdvCouponControl';
+import { couponBaseItems } from '@/lib/pdv/couponCart';
+import { couponCartSignature, confirmedCouponDiscount, couponCartReady, type PdvCartCoupon } from '@/lib/pdv/cart';
 import { canCapturePdvCatalogScan } from '@/lib/pdv/catalogKeyboard';
 import '@/components/pdv/PdvWorkspace.css';
 import { createPortal } from "react-dom";
@@ -141,7 +144,7 @@ interface SavePayload {
 interface ValuePayload {
   header: Pick<
     PdvPreorderSaveHeader,
-    "customer_id" | "notes" | "discount_amount"
+    "customer_id" | "notes" | "discount_amount" | "coupon_id" | "coupon_discount_cents"
   >;
   items: Array<{
     id: string;
@@ -247,6 +250,7 @@ export function PdvPreorderDetail({
   const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [exitDialogOpen, setExitDialogOpen] = useState(false);
+  const [coupon, setCoupon] = useState<PdvCartCoupon | null>(null);
   const [dirty, setDirty] = useState(false);
   const [saved, setSaved] = useState(false);
   const [busyAction, setBusyAction] = useState<string | null>(null);
@@ -259,7 +263,8 @@ export function PdvPreorderDetail({
     setStockId(preorder?.stock_id ?? "none");
     setTargetTerminalId(preorder?.target_terminal_id ?? "none");
     setNotes(preorder?.notes ?? "");
-    setOrderDiscount(inputNumber(preorder?.discount_amount ?? 0));
+    setOrderDiscount(inputNumber((preorder?.discount_amount ?? 0) - (preorder?.coupon_discount_amount_v1 ?? 0)));
+    setCoupon(preorder?.coupon_id ? { id: preorder.coupon_id, code: preorder.coupon_code_v1 ?? 'Aplicado', discountCents: Math.round((preorder.coupon_discount_amount_v1 ?? 0) * 100), eligible: (preorder.coupon_discount_amount_v1 ?? 0) > 0, baseSignature: '__saved__' } : null);
     setLines(detail?.items.map(lineFromDetail) ?? []);
     setDirty(false);
     setSaved(false);
@@ -288,10 +293,6 @@ export function PdvPreorderDetail({
         );
       }, 0),
     [lines],
-  );
-  const total = Math.max(
-    0,
-    calculatedSubtotal - (parseDecimalInputValue(orderDiscount) ?? 0),
   );
   const filteredInventory = useMemo(() => {
     const query = catalogQuery.trim().toLocaleLowerCase("pt-BR");
@@ -434,7 +435,7 @@ export function PdvPreorderDetail({
   }
 
   const cart = useMemo<CartState>(
-    () => ({
+    () => { const base: CartState = {
       customerId: customerId === "none" ? null : customerId,
       discount: parseDecimalInputValue(orderDiscount) ?? 0,
       lines: lines.map((line) => {
@@ -463,9 +464,11 @@ export function PdvPreorderDetail({
           ),
         };
       }),
-    }),
-    [customerId, inventory, lines, orderDiscount, stockId],
+    }; return { ...base, coupon: coupon ? { ...coupon, baseSignature: coupon.baseSignature === '__saved__' ? couponCartSignature(base) : coupon.baseSignature } : null }; },
+    [coupon, customerId, inventory, lines, orderDiscount, stockId],
   );
+  const total = Math.max(0, calculatedSubtotal - cart.discount - confirmedCouponDiscount(cart));
+  const couponItems = useMemo(() => couponBaseItems(cart).map(item => ({ ...item, inventory_id: lines.find(line => line.id === item.id)?.inventoryId ?? null })), [cart, lines]);
 
   const customerRecords = useMemo<Customer[]>(() => customers.map(toPdvCustomerRecord), [customers]);
 
@@ -625,6 +628,7 @@ export function PdvPreorderDetail({
   }
 
   function validate(): string | null {
+    if (missingPrices === 0 && !couponCartReady(cart)) return 'Confira o cupom promocional antes de salvar.';
     if (lines.length === 0) return "Adicione pelo menos um item.";
     if (lines.some((line) => !line.description.trim()))
       return "Informe a descrição de todos os itens.";
@@ -686,6 +690,7 @@ export function PdvPreorderDetail({
               customer_id: customerId === "none" ? null : customerId,
               notes: notes.trim() || null,
               discount_amount: parseDecimalInputValue(orderDiscount) ?? 0,
+              coupon_id: coupon?.id ?? null, coupon_discount_cents: Math.round(confirmedCouponDiscount(cart) * 100),
             },
             items: items.map((item) => ({
               id: item.id,
@@ -701,6 +706,7 @@ export function PdvPreorderDetail({
               operation_mode: "counter",
               notes: notes.trim() || null,
               discount_amount: parseDecimalInputValue(orderDiscount) ?? 0,
+              coupon_id: coupon?.id ?? null, coupon_discount_cents: Math.round(confirmedCouponDiscount(cart) * 100),
             },
             items,
           }),
@@ -725,6 +731,7 @@ export function PdvPreorderDetail({
   const primaryDisabled =
     Boolean(busyAction) ||
     lines.length === 0 ||
+    (missingPrices === 0 && !couponCartReady(cart)) ||
     (!shouldSave && (
       (canForward && (dirty || !preorder?.target_terminal_id)) ||
       (canCreateOrder && (dirty || missingPrices > 0))
@@ -873,6 +880,7 @@ export function PdvPreorderDetail({
 
   const cartPanelProps = {
     cart,
+    couponContent: <PdvCouponControl cart={cart} baseItems={couponItems} disabled={!canEditCommercial || missingPrices > 0 || Boolean(busyAction)} onChange={next => { setCoupon(next); if (next?.id !== coupon?.id || next?.discountCents !== coupon?.discountCents) markDirty(); }} />,
     layout: isEditing ? "workspace" as const : "stacked" as const,
     customers: customerRecords,
     formatCurrency: money,

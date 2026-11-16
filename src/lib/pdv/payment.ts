@@ -94,10 +94,19 @@ export interface SettlePaymentPayload {
   change_amount?: number;
   account_id?: string;
   due_date?: string;
+  /** Intenção explícita; omissão mantém o prazo legado no servidor. */
+  due_date_mode?: 'none';
   reference_id?: string;
 }
 
 /** `Date` → `yyyy-MM-dd` pelos componentes LOCAIS (nunca via UTC, que volta o dia). */
+export function isCivilIsoDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(year, month - 1, day, 12);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+}
+
 function toIsoDate(date: Date): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -238,6 +247,7 @@ export type PaymentIssueCode =
   | 'fiado_sem_cliente'
   /** Fiado sem vencimento. */
   | 'fiado_sem_vencimento'
+  | 'fiado_parcelas_invalidas'
   /** Venda em dinheiro sem caixa aberto. */
   | 'dinheiro_sem_caixa'
   /** Venda em dinheiro sem conta de cofre configurada. */
@@ -247,7 +257,9 @@ export type PaymentIssueCode =
   | 'valor_armazenado_sem_cliente'
   | 'valor_armazenado_sem_referencia'
   | 'saldo_cliente_insuficiente'
-  | 'voucher_insuficiente';
+  | 'voucher_insuficiente'
+  | 'voucher_repetido'
+  | 'limite_pagamentos';
 
 export type PaymentWarningCode =
   /** Cliente sem `credit_limit`: a venda passa, mas sem teto nenhum. */
@@ -318,7 +330,7 @@ export function validatePayments(rows: PaymentRow[], ctx: PaymentContext): Payme
   if (list.length === 0) issues.push({ code: 'sem_pagamento' });
 
   for (const row of list) {
-    if (!(Number(row.amount) > 0)) {
+    if (!Number.isFinite(row.amount) || !(Number(row.amount) > 0)) {
       issues.push({ code: 'valor_invalido', rowId: row.id });
     }
     if (requiresAccount(row.method) && !row.accountId) {
@@ -332,8 +344,15 @@ export function validatePayments(rows: PaymentRow[], ctx: PaymentContext): Payme
         issues.push({ code: 'recebido_menor', rowId: row.id });
       }
     }
-    if (row.method === 'fiado' && !row.dueDate) {
+    if (row.method === 'fiado' && ((!row.dueDate && (row.installmentCount ?? 1) > 1)
+      || (row.dueDate && !isCivilIsoDate(row.dueDate)))) {
       issues.push({ code: 'fiado_sem_vencimento', rowId: row.id });
+    }
+    if (row.method === 'fiado' && (row.installmentCount ?? 1) > Math.round(row.amount * 100)) {
+      issues.push({ code: 'fiado_parcelas_invalidas', rowId: row.id });
+    }
+    if (row.method === 'voucher' && row.referenceId && list.filter(other => other.method === 'voucher' && other.referenceId === row.referenceId).length > 1) {
+      issues.push({ code: 'voucher_repetido', rowId: row.id });
     }
     if (row.method === 'voucher' && !row.referenceId) {
       issues.push({ code: 'valor_armazenado_sem_referencia', rowId: row.id });
@@ -353,6 +372,10 @@ export function validatePayments(rows: PaymentRow[], ctx: PaymentContext): Payme
     ) {
       issues.push({ code: 'voucher_insuficiente', rowId: row.id });
     }
+  }
+
+  if (list.reduce((count, row) => count + (row.method === 'fiado' ? row.installmentCount ?? 1 : 1), 0) > 30) {
+    issues.push({ code: 'limite_pagamentos' });
   }
 
   if ((has(list, 'saldo_cliente') || has(list, 'voucher')) && !ctx.hasCustomer) {
@@ -400,8 +423,10 @@ export function splitFiadoInstallments(
   count: number,
   firstDueDate: string,
 ): Array<{ amount: number; dueDate: string }> {
+  if (!isCivilIsoDate(firstDueDate)) throw new Error('Informe um primeiro vencimento válido.');
   const safeCount = Math.max(1, Math.min(24, Math.floor(count || 1)));
   const totalCents = Math.round(round2(Math.max(0, amount)) * 100);
+  if (totalCents < safeCount) throw new Error('Cada parcela precisa ter pelo menos R$ 0,01.');
   const baseCents = Math.floor(totalCents / safeCount);
   let remainder = totalCents - baseCents * safeCount;
   const [year, month, day] = firstDueDate.split('-').map(Number);
@@ -414,6 +439,9 @@ export function splitFiadoInstallments(
 
 export function toSettlePayload(rows: PaymentRow[]): SettlePaymentPayload[] {
   return (rows || []).flatMap((row) => {
+    if (row.method === 'fiado' && !row.dueDate && (row.installmentCount ?? 1) > 1) {
+      throw new Error('Informe o primeiro vencimento para parcelar o fiado.');
+    }
     if (row.method === 'fiado' && row.dueDate) {
       return splitFiadoInstallments(row.amount, row.installmentCount ?? 1, row.dueDate)
         .map((installment) => ({
@@ -426,7 +454,9 @@ export function toSettlePayload(rows: PaymentRow[]): SettlePaymentPayload[] {
       method: row.method,
       amount: round2(Number(row.amount) || 0),
     };
-    if (row.method === 'dinheiro') {
+    if (row.method === 'fiado') {
+      payload.due_date_mode = 'none';
+    } else if (row.method === 'dinheiro') {
       const change = computeRowChange(row);
       if (change > 0) payload.change_amount = change;
     } else if (requiresAccount(row.method)) {

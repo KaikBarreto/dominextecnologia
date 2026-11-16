@@ -1,8 +1,9 @@
+import './pdv-coupon-ticket.css';
 import { BadgeDollarSign, Check, TicketPercent, Truck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type PdvCouponKind = 'percentage' | 'fixed' | 'shipping';
-export type PdvCouponStatus = 'available' | 'inactive' | 'expired';
+export type PdvCouponStatus = 'available' | 'inactive' | 'expired' | 'scheduled' | 'ineligible';
 
 export interface PdvCouponCardProps {
   code: string;
@@ -47,6 +48,8 @@ const STATUS_LABEL: Record<PdvCouponStatus, string> = {
   available: 'Disponível',
   inactive: 'Inativo',
   expired: 'Vencido',
+  scheduled: 'Agendado',
+  ineligible: 'Não elegível',
 };
 
 function defaultCurrency(value: number) {
@@ -64,11 +67,8 @@ function couponBenefit(
 }
 
 /**
- * Fundação visual de cupom promocional do PDV.
- *
- * Cupom é desconto/regra comercial. Não representa saldo financeiro, não
- * consome voucher e não liquida pedido. A integração transacional pertence a
- * uma entrega separada, com validação no servidor.
+ * Identidade visual do cupom promocional do PDV. A avaliação e o consumo
+ * pertencem ao servidor; o cartão não transforma desconto em saldo financeiro.
  */
 export function PdvCouponCard({
   code,
@@ -104,7 +104,7 @@ export function PdvCouponCard({
       data-state={status}
       onClick={onSelect}
       className={cn(
-        'group relative grid w-full grid-cols-[6px_minmax(0,1fr)_auto] overflow-hidden rounded-xl border-2 text-left shadow-sm transition-[border-color,background-color,box-shadow,transform] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+        'pdv-coupon-ticket group relative grid w-full grid-cols-[6px_minmax(0,1fr)_auto] overflow-hidden rounded-xl border-2 text-left shadow-sm transition-[border-color,background-color,box-shadow,transform] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
         density === 'compact' ? 'min-h-20' : 'min-h-24',
         selected
           ? 'border-primary bg-primary text-primary-foreground shadow-md'

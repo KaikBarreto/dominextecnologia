@@ -235,7 +235,7 @@ export function PartyAccountPanel({
         {canManage && statement && (
           <Button type="button" variant="outline" size="sm" className="h-auto min-h-9 w-full whitespace-normal px-3 sm:w-auto" onClick={() => openAction({ kind: 'post' })}>
             <ArrowDownToLine className="mr-2 h-4 w-4 shrink-0" />
-            {partyType === 'customer' ? 'Registrar crédito ou ajuste' : 'Registrar adiantamento ou ajuste'}
+            {partyType === 'customer' ? 'Registrar crédito ou ajuste' : 'Registrar crédito ou ajuste'}
           </Button>
         )}
       </div>
@@ -339,7 +339,7 @@ export function PartyAccountPanel({
         open={Boolean(action)}
         onOpenChange={(open) => { if (!open && !mutation.isPending) resetAction(); }}
         title={action?.kind === 'post'
-          ? partyType === 'customer' ? 'Registrar crédito ou ajuste' : 'Registrar adiantamento ou ajuste'
+          ? partyType === 'customer' ? 'Registrar crédito ou ajuste' : 'Registrar crédito ou ajuste'
           : action?.kind === 'apply'
             ? partyType === 'customer' ? 'Usar crédito nesta conta' : 'Usar adiantamento nesta conta'
             : action?.kind === 'settle'
@@ -358,8 +358,8 @@ export function PartyAccountPanel({
           : action?.kind === 'reverse'
             ? 'O estorno cria um movimento inverso e mantém o histórico.'
             : partyType === 'customer'
-              ? 'Registre um valor recebido antecipadamente ou corrija o saldo.'
-              : 'Registre um valor pago antecipadamente ao fornecedor ou corrija o saldo.'}
+              ? 'Registre um crédito anterior ou ajuste o saldo. Este registro não movimenta dinheiro no caixa nem no banco.'
+              : 'Registre um crédito anterior do fornecedor ou ajuste o saldo. Este registro não movimenta dinheiro no caixa nem no banco.'}
         className="sm:max-w-lg"
         footer={
           <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -383,7 +383,7 @@ export function PartyAccountPanel({
                 onChange={(event) => setEntryKind(event.target.value as 'credit' | 'adjustment')}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               >
-                <option value="credit">{partyType === 'customer' ? 'Crédito recebido' : 'Adiantamento pago ao fornecedor'}</option>
+                <option value="credit">{partyType === 'customer' ? 'Crédito anterior do cliente' : 'Crédito anterior do fornecedor'}</option>
                 <option value="adjustment">Ajuste manual</option>
               </select>
             </div>

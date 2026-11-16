@@ -34,6 +34,9 @@ import {
 import { useLocaleFormatters } from '@/lib/format/hooks';
 import { pdvCashErrorMessage } from '@/lib/pdv/cash-errors';
 import { round2 } from '@/lib/pdv/cash';
+import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { todayInTz } from '@/lib/timezone';
+import { isPdvVoucherEligible } from '@/lib/pdv/voucherEligibility';
 import { cn } from '@/lib/utils';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { SignedImg } from '@/components/ui/SignedImg';
@@ -92,6 +95,7 @@ export interface PdvPaymentDialogProps {
   advancedPaymentsEnabled?: boolean;
   /** Voucher já escolhido no resumo. Continua settlement no payload, mas não aparece como forma de recebimento. */
   appliedVoucher?: { voucherId: string; code: string; amount: number } | null;
+  appliedVouchers?: readonly { voucherId: string; code: string; amount: number }[];
   /** Ação/linha de voucher para fluxos sem resumo de carrinho, como a fila do caixa. */
   appliedCreditContent?: ReactNode;
   /** Impede finalizar enquanto uma seção embutida, como a escolha de voucher, está em edição. */
@@ -143,7 +147,7 @@ function sortByCanonicalOrder(rows: PaymentRow[]): PaymentRow[] {
 }
 
 /** Seis coberturas no contrato do balcão; o voucher aplicado ocupa uma delas. */
-const MAX_MULTI_ROWS = 6;
+const MAX_MULTI_ROWS = 30;
 
 /** Estados selecionados herdam primary/primary-foreground do tema. */
 const METHOD_META: Record<PdvPaymentMethod, { icon: ComponentType<{ className?: string }> }> = {
@@ -197,6 +201,7 @@ export function PdvPaymentDialog({
   customerId = null,
   advancedPaymentsEnabled = true,
   appliedVoucher = null,
+  appliedVouchers,
   appliedCreditContent,
   embeddedEditorOpen = false,
   customerCredit,
@@ -212,6 +217,9 @@ export function PdvPaymentDialog({
   onConfirm,
 }: PdvPaymentDialogProps) {
   const { money } = useLocaleFormatters();
+  const { timezone } = useAppLocaleContext();
+  const companyToday = todayInTz(timezone);
+  const companyDate = new Date(`${companyToday}T12:00:00`);
   const isCompact = useIsCompact();
   const { expanded, setExpanded } = usePdvCheckoutLayoutPreference();
   const reduceMotion = useReducedMotion();
@@ -246,22 +254,15 @@ export function PdvPaymentDialog({
     return true;
   });
 
-  const appliedVoucherRow = useMemo<PaymentRow | null>(
-    () => appliedVoucher && appliedVoucher.amount > 0
-      ? {
-          id: 'applied-voucher',
-          method: 'voucher',
-          amount: round2(appliedVoucher.amount),
-          tendered: 0,
-          accountId: null,
-          dueDate: null,
-          installmentCount: 1,
-          referenceId: appliedVoucher.voucherId,
-        }
-      : null,
-    [appliedVoucher],
+  const appliedVoucherRows = useMemo<PaymentRow[]>(
+    () => (appliedVouchers ?? (appliedVoucher ? [appliedVoucher] : []))
+      .filter(value => value.amount > 0).map(value => ({
+        id: `applied-voucher-${value.voucherId}`, method: 'voucher', amount: round2(value.amount),
+        tendered: 0, accountId: null, dueDate: null, referenceId: value.voucherId,
+      })),
+    [appliedVouchers, appliedVoucher],
   );
-  const payableTotal = Math.max(0, round2(total - (appliedVoucherRow?.amount ?? 0)));
+  const payableTotal = Math.max(0, round2(total - sumPayments(appliedVoucherRows)));
 
   const methodLabel = (method: PdvPaymentMethod) =>
     EXTRA_METHOD_LABELS[method]
@@ -279,7 +280,7 @@ export function PdvPaymentDialog({
       ? 'dinheiro'
       : (availableMethods.find((candidate) => candidate !== 'dinheiro') ?? 'fiado');
     setRows(payableTotal > 0
-      ? [newPaymentRow(method, payableTotal, { accountId: accounts[0]?.id ?? null })]
+      ? [newPaymentRow(method, payableTotal, { accountId: accounts[0]?.id ?? null, today: companyDate })]
       : []);
     setMultiplePayments(false);
     setServerError(null);
@@ -299,7 +300,7 @@ export function PdvPaymentDialog({
 
   const validation = useMemo(
     () =>
-      validatePayments(appliedVoucherRow ? [appliedVoucherRow, ...rows] : rows, {
+      validatePayments([...appliedVoucherRows, ...rows], {
         total,
         itemCount,
         hasCustomer: !!customerId,
@@ -309,12 +310,12 @@ export function PdvPaymentDialog({
         customerDebt: customerCredit?.debt ?? 0,
         availableCustomerBalance: storedValue.data?.availableCredit ?? null,
         voucherBalances: Object.fromEntries(
-          (storedValue.data?.vouchers ?? []).map((voucher) => [voucher.id, voucher.balance]),
+          (storedValue.data?.vouchers ?? []).filter(voucher => isPdvVoucherEligible(voucher, companyToday)).map((voucher) => [voucher.id, voucher.balance]),
         ),
       }),
     [
       rows,
-      appliedVoucherRow,
+      appliedVoucherRows,
       total,
       itemCount,
       customerId,
@@ -322,6 +323,7 @@ export function PdvPaymentDialog({
       hasCofreAccount,
       customerCredit,
       storedValue.data,
+      companyToday,
     ],
   );
 
@@ -332,6 +334,9 @@ export function PdvPaymentDialog({
       valor_armazenado_sem_referencia: 'Escolha o voucher que será usado.',
       saldo_cliente_insuficiente: 'O saldo do cliente não cobre este valor.',
       voucher_insuficiente: 'O voucher escolhido não cobre este valor.',
+      fiado_parcelas_invalidas: 'Use parcelas com pelo menos R$ 0,01 cada.',
+      voucher_repetido: 'Cada voucher pode ser aplicado uma vez nesta venda.',
+      limite_pagamentos: 'Use no máximo 30 parcelas e formas de pagamento.',
     };
     const base = (texts.issues as Partial<Record<PaymentIssueCode, string>>)[code] ?? extra[code] ?? '';
     if (code === 'falta_valor') return base.replace('{value}', money(Math.max(0, remaining)));
@@ -401,7 +406,7 @@ export function PdvPaymentDialog({
     if (!multiplePayments) {
       setRows((prev) => {
         if (prev[0]?.method === method) return prev;
-        return [newPaymentRow(method, payableTotal, { accountId: accounts[0]?.id ?? null })];
+        return [newPaymentRow(method, payableTotal, { accountId: accounts[0]?.id ?? null, today: companyDate })];
       });
       return;
     }
@@ -428,9 +433,9 @@ export function PdvPaymentDialog({
           };
         });
       }
-      if (prev.length + (appliedVoucherRow ? 1 : 0) >= MAX_MULTI_ROWS) return prev;
+      if (prev.length + appliedVoucherRows.length >= MAX_MULTI_ROWS) return prev;
       const left = computeRemaining(payableTotal, prev);
-      const newRow = newPaymentRow(method, Math.max(0, left), { accountId: accounts[0]?.id ?? null });
+      const newRow = newPaymentRow(method, Math.max(0, left), { accountId: accounts[0]?.id ?? null, today: companyDate });
       return sortByCanonicalOrder([...prev, newRow]);
     });
   }
@@ -450,7 +455,7 @@ export function PdvPaymentDialog({
         const method = sortByCanonicalOrder(prev)[0]?.method
           ?? (canReceiveCash ? 'dinheiro' : (availableMethods[0] ?? 'fiado'));
         return payableTotal > 0
-          ? [newPaymentRow(method, payableTotal, { accountId: accounts[0]?.id ?? null })]
+          ? [newPaymentRow(method, payableTotal, { accountId: accounts[0]?.id ?? null, today: companyDate })]
           : [];
       });
     }
@@ -464,7 +469,7 @@ export function PdvPaymentDialog({
     setSubmitting(true);
     setServerError(null);
     try {
-      await onConfirm(toSettlePayload(appliedVoucherRow ? [appliedVoucherRow, ...rows] : rows));
+      await onConfirm(toSettlePayload([...appliedVoucherRows, ...rows]));
       // Quem fecha o diálogo é a página (ela limpa o carrinho e devolve o foco
       // pra busca no mesmo gesto, pra a tela já estar pronta pro próximo).
     } catch (error) {
@@ -492,7 +497,7 @@ export function PdvPaymentDialog({
   });
 
   const sortedRows = sortByCanonicalOrder(rows);
-  const atMultiCap = multiplePayments && rows.length + (appliedVoucherRow ? 1 : 0) >= MAX_MULTI_ROWS;
+  const atMultiCap = multiplePayments && rows.length + appliedVoucherRows.length >= MAX_MULTI_ROWS;
 
   function paymentFields(row: PaymentRow) {
     const issue = rowIssue(row.id);
@@ -512,7 +517,9 @@ export function PdvPaymentDialog({
         </div>
         {row.method === 'fiado' && <div className="payment-due-field min-w-0 space-y-1">
           <Label htmlFor={`pdv-pay-due-${row.id}`} className="block text-xs text-muted-foreground">{texts.dueDateLabel}</Label>
-          <DatePicker id={`pdv-pay-due-${row.id}`} value={row.dueDate ?? ''} disabled={submitting} className="h-10 min-w-0 px-2 text-[11px] sm:[&>svg]:hidden" onValueChange={(value) => patchRow(row.id, { dueDate: value || null })} />
+          <DatePicker id={`pdv-pay-due-${row.id}`} value={row.dueDate ?? ''} placeholder={(row.installmentCount ?? 1) > 1 ? 'Primeiro vencimento' : 'Sem vencimento'} disabled={submitting} className="h-10 min-w-0 px-2 text-[11px] sm:[&>svg]:hidden" onValueChange={(value) => patchRow(row.id, { dueDate: value || null })} />
+          {(row.installmentCount ?? 1) === 1 && <Button type="button" variant="ghost" size="sm" className="h-auto px-0 text-xs" disabled={submitting} onClick={() => patchRow(row.id, { dueDate: null })}>Sem vencimento</Button>}
+          {!row.dueDate && <p className="text-xs text-muted-foreground">{(row.installmentCount ?? 1) > 1 ? 'Informe o primeiro vencimento para parcelar.' : 'Pagamento sem data de vencimento.'}</p>}
         </div>}
       {requiresAccount(row.method) && <div className="paymentdestination min-w-0 space-y-1">
         <Label htmlFor={`pdv-pay-account-${row.id}`} className="block text-xs text-muted-foreground">{texts.accountLabel}</Label>
@@ -565,7 +572,7 @@ export function PdvPaymentDialog({
 
   const creditSummary = <div className="space-y-3">
     {appliedCreditContent}
-    {!appliedCreditContent && appliedVoucher && <div className="flex items-center gap-2 rounded-md bg-rose-600 px-3 py-2 text-white"><Ticket className="h-4 w-4 shrink-0" /><span className="min-w-0 flex-1"><span className="block text-[10px] font-semibold uppercase tracking-wide">Crédito da loja · Troca e devolução</span><strong className="text-sm">{appliedVoucher.code}</strong></span><strong className="whitespace-nowrap text-sm tabular-nums">− {money(appliedVoucher.amount)}</strong></div>}
+    {!appliedCreditContent && appliedVoucherRows.length > 0 && <div className="flex items-center gap-2 rounded-md bg-rose-600 px-3 py-2 text-white"><Ticket className="h-4 w-4 shrink-0" /><span className="min-w-0 flex-1"><span className="block text-[10px] font-semibold uppercase tracking-wide">Crédito da loja · Troca e devolução</span><strong className="text-sm">{(appliedVouchers ?? (appliedVoucher ? [appliedVoucher] : [])).map(value => value.code).join(' · ')}</strong></span><strong className="whitespace-nowrap text-sm tabular-nums">− {money(sumPayments(appliedVoucherRows))}</strong></div>}
     {balanceAvailable && <section className={cn('overflow-hidden rounded-lg border', balanceRow ? 'border-primary' : 'border-input')}>
       <button type="button" disabled={submitting || (!balanceRow && atMultiCap)} aria-pressed={!!balanceRow} aria-label="Saldo do cliente" onClick={() => clickMethod('saldo_cliente')}
         className={cn('flex min-h-11 w-full items-center gap-2 px-3 py-2 text-left text-sm font-semibold transition-colors', balanceRow ? 'bg-primary text-primary-foreground' : 'bg-background hover:bg-muted')}>
@@ -587,7 +594,7 @@ export function PdvPaymentDialog({
       {summarySubtotal != null && <div className="grid grid-cols-[minmax(0,1fr)_auto_16px] gap-2 text-sm"><span>Subtotal</span><strong className="whitespace-nowrap tabular-nums">{money(summarySubtotal)}</strong><span /></div>}
       {(summaryDiscount ?? 0) > 0 && <PdvCheckoutDisclosure label="Descontos" value={`− ${money(summaryDiscount!)}`}><p className="text-xs text-muted-foreground">Descontos já incluídos no total do pedido.</p></PdvCheckoutDisclosure>}
       <div className="grid grid-cols-[minmax(0,1fr)_auto_16px] gap-2 text-sm"><strong>Total da venda</strong><strong className="whitespace-nowrap tabular-nums">{money(total)}</strong><span /></div>
-      {(appliedCreditContent || appliedVoucher || balanceAvailable || (advancedPaymentsEnabled && customerId)) && <PdvCheckoutDisclosure label="Créditos do cliente" value={appliedVoucher?.amount ? `− ${money(appliedVoucher.amount)}` : undefined} forceOpen={embeddedEditorOpen}>{creditSummary}</PdvCheckoutDisclosure>}
+      {(appliedCreditContent || appliedVoucherRows.length > 0 || balanceAvailable || (advancedPaymentsEnabled && customerId)) && <PdvCheckoutDisclosure label="Créditos do cliente" value={appliedVoucherRows.length > 0 ? `− ${money(sumPayments(appliedVoucherRows))}` : undefined} forceOpen={embeddedEditorOpen}>{creditSummary}</PdvCheckoutDisclosure>}
       <div className="grid grid-cols-[minmax(0,1fr)_auto_16px] items-baseline gap-2 border-t pt-3"><span className="text-sm font-semibold">Valor deste recebimento</span><strong className="whitespace-nowrap text-xl font-bold tabular-nums">{money(payableTotal)}</strong><span /></div>
     </section>
     {!expanded && itemSummary}

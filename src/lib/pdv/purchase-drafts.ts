@@ -1,3 +1,5 @@
+import { round2 } from '@/lib/pdv/cash';
+
 export const MAX_PDV_PURCHASE_DRAFTS = 20;
 
 export interface PdvPurchaseItemDraft {
@@ -26,6 +28,7 @@ export interface PdvPurchaseDraft {
   paidDateTouched: boolean;
   dueDate: string;
   paymentMethod: string;
+  supplierCreditAmount?: number;
   notes: string;
   createdAt: string;
   updatedAt: string;
@@ -118,11 +121,12 @@ export const parsePdvPurchaseNumber = (value: string): number => {
 };
 
 export function pdvPurchaseDraftTotal(draft: PdvPurchaseDraft): number {
-  return draft.items.reduce(
-    (total, item) => total
-      + parsePdvPurchaseNumber(item.quantityText) * parsePdvPurchaseNumber(item.unitPriceText),
-    0,
-  );
+  // Mesmo contrato do core SQL: quantidade 4 casas, preço 2, arredondar
+  // a soma uma única vez. Arredondar cada linha altera compras fracionadas.
+  return round2(draft.items.reduce((total, item) => {
+    const quantity = Math.round(Number((parsePdvPurchaseNumber(item.quantityText) * 10_000).toPrecision(12))) / 10_000;
+    return total + quantity * round2(parsePdvPurchaseNumber(item.unitPriceText));
+  }, 0));
 }
 
 function cloneDraft(draft: PdvPurchaseDraft): PdvPurchaseDraft {
@@ -223,6 +227,8 @@ function sanitizeDraft(value: unknown, defaults: PdvPurchaseDraftDefaults): PdvP
     paidDateTouched: draft.paidDateTouched === true,
     dueDate: typeof draft.dueDate === 'string' ? draft.dueDate : '',
     paymentMethod: typeof draft.paymentMethod === 'string' ? draft.paymentMethod : '',
+    ...(typeof draft.supplierCreditAmount === 'number' && Number.isFinite(draft.supplierCreditAmount) && draft.supplierCreditAmount >= 0
+      ? { supplierCreditAmount: Math.round(draft.supplierCreditAmount * 100) / 100 } : {}),
     notes: typeof draft.notes === 'string' ? draft.notes : '',
     createdAt: typeof draft.createdAt === 'string' ? draft.createdAt : timestamp,
     updatedAt: typeof draft.updatedAt === 'string' ? draft.updatedAt : timestamp,

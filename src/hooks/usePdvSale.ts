@@ -120,6 +120,8 @@ export async function invalidatePdvSaleCaches(queryClient: QueryClient) {
     queryClient.invalidateQueries({ queryKey: ['pdv-cofre-balance'] }),
     queryClient.invalidateQueries({ queryKey: ['pdv-cash-session-detail'] }),
     queryClient.invalidateQueries({ queryKey: ['pdv-customer-credit'] }),
+    queryClient.invalidateQueries({ queryKey: ['pdv-customer-payment-options'] }),
+    queryClient.invalidateQueries({ queryKey: ['party-account-v2'] }),
     invalidatePdvReportCaches(queryClient),
   ]);
 }

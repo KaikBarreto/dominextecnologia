@@ -1,3 +1,4 @@
+import { cartLineGrossCents } from '@/lib/pdv/cart';
 import { PdvReceiptCompanyTooltip } from '@/components/pdv/receipt/PdvReceiptCompanyTooltip';
 import { useState } from "react";
 import { assertPdvReceiptOperationCurrent, usePdvReceiptOperation, withPdvReceiptTarget, type PdvReceiptOperationGuard } from "@/hooks/usePdvReceiptOperation";
@@ -59,14 +60,14 @@ export function toPdvPreorderReceiptSnapshot(detail: PdvPreorderDetail, {
       quantity,
       unitPrice,
       discount,
-      total: Math.max(0, quantity * unitPrice - discount),
+      total: Math.max(0, cartLineGrossCents({ quantity, unitPrice }) - Math.round(discount * 100)) / 100,
       pricePending: item.unit_price == null,
     };
   });
   const subtotal = items.reduce(
-    (sum, item) => sum + item.quantity * item.unitPrice,
+    (sum, item) => sum + cartLineGrossCents(item),
     0,
-  );
+  ) / 100;
   const discount =
     items.reduce((sum, item) => sum + item.discount, 0) +
     Number(detail.preorder.discount_amount || 0);
@@ -85,7 +86,7 @@ export function toPdvPreorderReceiptSnapshot(detail: PdvPreorderDetail, {
     totals: {
       subtotal,
       discount,
-      total: Math.max(0, subtotal - discount),
+      total: detail.preorder.total ?? Math.max(0, Math.round((subtotal - discount) * 100)) / 100,
     },
     payments: [],
     note: detail.preorder.notes,

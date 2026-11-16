@@ -49,7 +49,7 @@ import {
   isPayrollAdvance,
   isFutureCashDate,
   isDreExcludedGroup,
-  isDreCashFlowOnlyPdvRole,
+  isPdvRoleExcludedFromDre,
   classifyDreCategory,
   type DreRegime,
 } from '@/lib/dre-regime';
@@ -343,7 +343,7 @@ export function FinanceDRE({
         // Refund/estorno são somente custódia + DFC. A devolução W5 já
         // recompôs receita/CMV; este corte estrutural vem antes de categoria,
         // regime, layout personalizado, comparativo e exportação.
-        if (isDreCashFlowOnlyPdvRole(t.pdv_financial_role)) continue;
+        if (isPdvRoleExcludedFromDre(t.pdv_financial_role, regime)) continue;
         // Lançamento CANCELADO não é resultado. Quando um funcionário é
         // desativado, o gatilho do banco marca as folhas futuras com
         // `cancelled_at` e DEIXA a linha viva (pra não sumir com o histórico).

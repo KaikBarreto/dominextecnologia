@@ -10650,6 +10650,262 @@ export type Database = {
         }
         Relationships: []
       }
+      pdv_coupons: {
+        Row: {
+          code: string
+          company_id: string
+          created_at: string
+          created_by: string
+          customer_ids: string[]
+          expires_on: string | null
+          id: string
+          inventory_ids: string[]
+          is_active: boolean
+          kind: string
+          max_discount_amount: number | null
+          minimum_amount: number
+          name: string
+          per_customer_limit: number | null
+          revision: number
+          starts_on: string | null
+          updated_at: string
+          usage_limit: number | null
+          value: number
+        }
+        Insert: {
+          code: string
+          company_id: string
+          created_at?: string
+          created_by: string
+          customer_ids?: string[]
+          expires_on?: string | null
+          id?: string
+          inventory_ids?: string[]
+          is_active?: boolean
+          kind: string
+          max_discount_amount?: number | null
+          minimum_amount?: number
+          name: string
+          per_customer_limit?: number | null
+          revision?: number
+          starts_on?: string | null
+          updated_at?: string
+          usage_limit?: number | null
+          value: number
+        }
+        Update: {
+          code?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          customer_ids?: string[]
+          expires_on?: string | null
+          id?: string
+          inventory_ids?: string[]
+          is_active?: boolean
+          kind?: string
+          max_discount_amount?: number | null
+          minimum_amount?: number
+          name?: string
+          per_customer_limit?: number | null
+          revision?: number
+          starts_on?: string | null
+          updated_at?: string
+          usage_limit?: number | null
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdv_coupons_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pdv_coupon_usages: {
+        Row: {
+          allocations: Json
+          company_id: string
+          coupon_id: string
+          created_at: string
+          customer_id: string | null
+          discount_cents: number
+          id: string
+          order_id: string
+          rules_snapshot: Json
+        }
+        Insert: {
+          allocations: Json
+          company_id: string
+          coupon_id: string
+          created_at?: string
+          customer_id?: string | null
+          discount_cents: number
+          id?: string
+          order_id: string
+          rules_snapshot: Json
+        }
+        Update: {
+          allocations?: Json
+          company_id?: string
+          coupon_id?: string
+          created_at?: string
+          customer_id?: string | null
+          discount_cents?: number
+          id?: string
+          order_id?: string
+          rules_snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdv_coupon_usages_company_id_coupon_id_fkey"
+            columns: ["company_id", "coupon_id"]
+            isOneToOne: false
+            referencedRelation: "pdv_coupons"
+            referencedColumns: ["company_id", "id"]
+          },
+          {
+            foreignKeyName: "pdv_coupon_usages_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdv_coupon_usages_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "pdv_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pdv_preorders: {
+        Row: {
+          assigned_to: string | null
+          cancelled_at: string | null
+          company_id: string
+          converted_at: string | null
+          converted_order_id: string | null
+          coupon_code_v1: string | null
+          coupon_discount_amount_v1: number
+          coupon_id: string | null
+          created_at: string
+          created_by: string
+          customer_id: string | null
+          discount_amount: number
+          forwarded_at: string | null
+          id: string
+          notes: string | null
+          number: number
+          operation_mode: string
+          revision: number
+          status: string
+          stock_id: string | null
+          subtotal: number | null
+          target_terminal_id: string | null
+          total: number | null
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          cancelled_at?: string | null
+          company_id: string
+          converted_at?: string | null
+          converted_order_id?: string | null
+          coupon_code_v1?: string | null
+          coupon_discount_amount_v1?: number
+          coupon_id?: string | null
+          created_at?: string
+          created_by?: string
+          customer_id?: string | null
+          discount_amount?: number
+          forwarded_at?: string | null
+          id: string
+          notes?: string | null
+          number: number
+          operation_mode?: string
+          revision?: number
+          status?: string
+          stock_id?: string | null
+          subtotal?: number | null
+          target_terminal_id?: string | null
+          total?: number | null
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          cancelled_at?: string | null
+          company_id?: string
+          converted_at?: string | null
+          converted_order_id?: string | null
+          coupon_code_v1?: string | null
+          coupon_discount_amount_v1?: number
+          coupon_id?: string | null
+          created_at?: string
+          created_by?: string
+          customer_id?: string | null
+          discount_amount?: number
+          forwarded_at?: string | null
+          id?: string
+          notes?: string | null
+          number?: number
+          operation_mode?: string
+          revision?: number
+          status?: string
+          stock_id?: string | null
+          subtotal?: number | null
+          target_terminal_id?: string | null
+          total?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdv_preorders_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdv_preorders_converted_order_id_fkey"
+            columns: ["converted_order_id"]
+            isOneToOne: false
+            referencedRelation: "pdv_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdv_preorders_coupon_company_fk"
+            columns: ["company_id", "coupon_id"]
+            isOneToOne: false
+            referencedRelation: "pdv_coupons"
+            referencedColumns: ["company_id", "id"]
+          },
+          {
+            foreignKeyName: "pdv_preorders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdv_preorders_stock_id_fkey"
+            columns: ["stock_id"]
+            isOneToOne: false
+            referencedRelation: "stocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdv_preorders_target_terminal_id_fkey"
+            columns: ["target_terminal_id"]
+            isOneToOne: false
+            referencedRelation: "pdv_terminals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pdv_barcode_counters: {
         Row: {
           company_id: string
@@ -10931,6 +11187,7 @@ export type Database = {
       }
       pdv_order_items: {
         Row: {
+          coupon_discount_amount_v1: number
           company_id: string
           description: string
           discount_amount: number
@@ -10946,6 +11203,7 @@ export type Database = {
           unit_price: number
         }
         Insert: {
+          coupon_discount_amount_v1?: number
           company_id: string
           description: string
           discount_amount?: number
@@ -10961,6 +11219,7 @@ export type Database = {
           unit_price?: number
         }
         Update: {
+          coupon_discount_amount_v1?: number
           company_id?: string
           description?: string
           discount_amount?: number
@@ -11102,6 +11361,8 @@ export type Database = {
       }
       pdv_orders: {
         Row: {
+          coupon_discount_amount_v1: number
+          coupon_revision_v1: number
           cancelled_at: string | null
           cancelled_by: string | null
           cancelled_reason: string | null
@@ -11130,6 +11391,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          coupon_discount_amount_v1?: number
+          coupon_revision_v1?: number
           cancelled_at?: string | null
           cancelled_by?: string | null
           cancelled_reason?: string | null
@@ -11158,6 +11421,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          coupon_discount_amount_v1?: number
+          coupon_revision_v1?: number
           cancelled_at?: string | null
           cancelled_by?: string | null
           cancelled_reason?: string | null
@@ -11186,6 +11451,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "pdv_orders_coupon_company_fk"
+            columns: ["company_id", "coupon_id"]
+            isOneToOne: false
+            referencedRelation: "pdv_coupons"
+            referencedColumns: ["company_id", "id"]
+          },
           {
             foreignKeyName: "pdv_orders_cash_session_id_fkey"
             columns: ["cash_session_id"]
@@ -20113,6 +20385,343 @@ export type Database = {
         }[]
       }
       reserve_service_order_number: { Args: { p_company_id: string; p_user_id: string; p_request_id: string }; Returns: Json }
+      pdv_after_sale_v2_enabled_internal: {
+        Args: {
+          p_company_id: string
+        }
+        Returns: boolean
+      }
+      pdv_apply_order_coupon_internal_v1: {
+        Args: {
+          p_coupon_id: string
+          p_expected_discount_cents: number
+          p_order_id: string
+        }
+        Returns: Json
+      }
+      pdv_cash_v2_context: {
+        Args: never
+        Returns: { user_id: string; company_id: string }[]
+      }
+      pdv_commit_coupon_internal_v1: {
+        Args: {
+          p_base_items: Json
+          p_coupon_id: string
+          p_expected_discount_cents: number
+          p_order_id: string
+        }
+        Returns: Json
+      }
+      pdv_complete_direct_sale_v2: {
+        Args: {
+          p_cart: Json
+          p_cash_account_id: string
+          p_cash_session_id: string
+          p_customer_id: string
+          p_idempotency_key: string
+          p_payments: Json
+          p_terminal_id: string
+        }
+        Returns: Json
+      }
+      pdv_consume_order_coupon_internal_v1: {
+        Args: {
+          p_order_id: string
+        }
+        Returns: undefined
+      }
+      pdv_counter_context_v2: {
+        Args: {
+          p_action?: string
+          p_require_counter?: boolean
+          p_screen?: string
+        }
+        Returns: { user_id: string; company_id: string; pdv_mode: string }[]
+      }
+      pdv_coupon_company_v1: {
+        Args: {
+          p_manage?: boolean
+        }
+        Returns: string
+      }
+      pdv_coupon_hash_meta_internal_v1: {
+        Args: {
+          p_input: Json
+        }
+        Returns: Json
+      }
+      pdv_cover_existing_order_coupon_v1: {
+        Args: {
+          p_cash_account_id: string
+          p_cash_session_id: string
+          p_expected_coupon_revision: number
+          p_idempotency_key: string
+          p_order_id: string
+          p_payments: Json
+          p_terminal_id: string
+        }
+        Returns: Json
+      }
+      pdv_cover_existing_order_v2: {
+        Args: {
+          p_cash_account_id: string
+          p_cash_session_id: string
+          p_idempotency_key: string
+          p_order_id: string
+          p_payments: Json
+          p_terminal_id: string
+        }
+        Returns: Json
+      }
+      pdv_current_actor_can_read_draft_v3: {
+        Args: {
+          p_cash_session_id: string
+          p_created_by: string
+          p_draft_type: string
+          p_stock_id: string
+          p_terminal_id: string
+          p_company_id: string
+        }
+        Returns: boolean
+      }
+      pdv_evaluate_coupon_internal_v1: {
+        Args: {
+          p_company_id: string
+          p_coupon_id: string
+          p_customer_id: string
+          p_exclude_order_id?: string
+          p_items: Json
+        }
+        Returns: Json
+      }
+      pdv_evaluate_coupon_v1: {
+        Args: {
+          p_coupon_id: string
+          p_customer_id: string
+          p_items: Json
+        }
+        Returns: Json
+      }
+      pdv_get_delivery_receipt_snapshot_v2: {
+        Args: {
+          p_delivery_id: string
+        }
+        Returns: Json
+      }
+      pdv_get_module_features_v3: {
+        Args: never
+        Returns: Json
+      }
+      pdv_get_pending_order_coupon_v1: {
+        Args: {
+          p_cash_account_id: string
+          p_cash_session_id: string
+          p_order_id: string
+          p_terminal_id: string
+        }
+        Returns: Json
+      }
+      pdv_get_residual_disposition_plan_v4: {
+        Args: {
+          p_order_id: string
+        }
+        Returns: Json
+      }
+      pdv_list_coupons_v1: {
+        Args: {
+          p_management?: boolean
+        }
+        Returns: Json
+      }
+      pdv_order_coupon_snapshot_internal_v1: {
+        Args: {
+          p_order_id: string
+        }
+        Returns: Json
+      }
+      pdv_pending_coupon_order_internal_v1: {
+        Args: {
+          p_cash_account_id: string
+          p_cash_session_id: string
+          p_order_id: string
+          p_terminal_id: string
+        }
+        Returns: Database["public"]["Tables"]["pdv_orders"]["Row"]
+      }
+      pdv_preview_preorder_coupon_internal_v1: {
+        Args: {
+          p_coupon_id: string
+          p_expected_discount_cents: number
+          p_preorder_id: string
+        }
+        Returns: undefined
+      }
+      pdv_reallocate_residual_value_v4: {
+        Args: {
+          p_dispositions: Json
+          p_expected_plan_hash: string
+          p_idempotency_key: string
+          p_order_id: string
+          p_reason: string
+        }
+        Returns: Json
+      }
+      pdv_recalc_supplier_purchase_v4: {
+        Args: {
+          p_transaction_id: string
+        }
+        Returns: undefined
+      }
+      pdv_register_direct_purchase_mixed_v4: {
+        Args: {
+          p_supplier_credit_amount: number
+          p_supplier_id: string
+          p_account_id: string
+          p_cash_session_id: string
+          p_category_id: string
+          p_client_request_id: string
+          p_description: string
+          p_items: Json
+          p_notes: string
+          p_paid_date: string
+          p_payment_method: string
+          p_purchase_date: string
+          p_stock_id: string
+          p_terminal_id: string
+        }
+        Returns: Json
+      }
+      pdv_residual_disposition_plan_internal_v4: {
+        Args: {
+          p_order_id: string
+        }
+        Returns: Json
+      }
+      pdv_resolve_fiado_due_date_v4: {
+        Args: {
+          p_fallback: string
+          p_payment: Json
+        }
+        Returns: string
+      }
+      pdv_returns_v2_enabled_internal: {
+        Args: {
+          p_company_id: string
+        }
+        Returns: boolean
+      }
+      pdv_save_coupon_v1: {
+        Args: {
+          p_coupon_id: string
+          p_expected_revision: number
+          p_rules: Json
+        }
+        Returns: Json
+      }
+      pdv_set_pending_order_coupon_v1: {
+        Args: {
+          p_cash_account_id: string
+          p_cash_session_id: string
+          p_coupon_id: string
+          p_expected_discount_cents: number
+          p_expected_revision: number
+          p_order_id: string
+          p_terminal_id: string
+        }
+        Returns: Json
+      }
+      pdv_validate_fiado_dates_v4: {
+        Args: {
+          p_payments: Json
+        }
+        Returns: undefined
+      }
+      pdv_cover_exchange_order_coupon_v1: {
+        Args: {
+          p_cash_session_id: string
+          p_credit_amount: number
+          p_difference_account_id: string
+          p_difference_method: string
+          p_expected_coupon_revision: number
+          p_idempotency_key: string
+          p_new_order_id: string
+          p_return_id: string
+          p_voucher_amount: number
+          p_voucher_id: string
+        }
+        Returns: Json
+      }
+      pdv_cover_exchange_order_coupon_v2: {
+        Args: {
+          p_cash_session_id: string
+          p_credit_amount: number
+          p_difference_account_id: string
+          p_difference_method: string
+          p_expected_coupon_revision: number
+          p_idempotency_key: string
+          p_new_order_id: string
+          p_return_id: string
+          p_target_cash_session_id: string
+          p_voucher_amount: number
+          p_voucher_id: string
+        }
+        Returns: Json
+      }
+      pdv_cover_exchange_order_target_base_v2: {
+        Args: {
+          p_cash_session_id: string
+          p_credit_amount: number
+          p_difference_account_id: string
+          p_difference_method: string
+          p_expected_coupon_revision: number
+          p_idempotency_key: string
+          p_new_order_id: string
+          p_return_id: string
+          p_target_cash_session_id: string
+          p_voucher_amount: number
+          p_voucher_id: string
+        }
+        Returns: Json
+      }
+      pdv_customer_credit_statement_internal_v4: {
+        Args: { p_company_id: string; p_customer_id: string }
+        Returns: {
+          entry_id: string
+          source_type: string
+          amount: number
+          occurred_at: string
+          description: string
+          financial_transaction_id: string | null
+        }[]
+      }
+      pdv_exchange_target_cash_snapshot_internal_v1: {
+        Args: { p_company_id: string; p_order_id: string }
+        Returns: Json
+      }
+      pdv_cover_exchange_order_v2: {
+        Args: {
+          p_cash_session_id: string
+          p_credit_amount: number
+          p_difference_account_id: string
+          p_difference_method: string
+          p_idempotency_key: string
+          p_new_order_id: string
+          p_return_id: string
+          p_voucher_amount: number
+          p_voucher_id: string
+        }
+        Returns: Json
+      }
+      pdv_coupon_checkout_order_internal_v1: {
+        Args: {
+          p_cash_account_id: string
+          p_cash_session_id: string
+          p_idempotency_key: string
+          p_order_id: string
+          p_terminal_id: string
+        }
+        Returns: Database["public"]["Tables"]["pdv_orders"]["Row"]
+      }
       pdv_assert_draft_access: { Args: never; Returns: string }
       pdv_assert_ref_company: {
         Args: {

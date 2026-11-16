@@ -202,7 +202,9 @@ export default function PdvPurchase() {
   }));
 
   const patchDraft = (draftId: string, patch: Partial<PdvPurchaseDraft>) => {
-    updateDraft(draftId, (draft) => ({ ...draft, ...patch }));
+    updateDraft(draftId, (draft) => ({ ...draft, ...patch,
+      ...((patch.supplierId !== undefined && patch.supplierId !== draft.supplierId) || patch.paymentStatus === 'pending' || patch.paymentMethod === 'saldo_fornecedor' ? { supplierCreditAmount: 0 } : {}),
+    }));
   };
 
   const updateItem = (
@@ -263,6 +265,12 @@ export default function PdvPurchase() {
       if (supplierCredit.isLoading) return 'Aguarde a consulta do saldo do fornecedor.';
       if (supplierCredit.isError) return 'Não foi possível confirmar o saldo do fornecedor.';
       if ((supplierCredit.data ?? 0) < total) return 'O saldo do fornecedor não cobre o total desta compra.';
+    }
+    if ((draft.supplierCreditAmount ?? 0) > 0) {
+      if (draft.paymentStatus !== 'paid' || !Number.isFinite(draft.supplierCreditAmount)
+        || (draft.supplierCreditAmount ?? 0) > total) return 'Revise o valor do saldo aplicado nesta compra.';
+      if (!supplierCredit.isSuccess) return 'Consulte o saldo do fornecedor antes de finalizar.';
+      if ((draft.supplierCreditAmount ?? 0) > (supplierCredit.data ?? 0)) return 'O saldo do fornecedor não cobre o valor aplicado.';
     }
     if (draft.paymentStatus === 'pending' && !draft.dueDate) return t.validation.dueDate;
     return '';
@@ -325,6 +333,7 @@ export default function PdvPurchase() {
         paidDate: draft.paymentStatus === 'paid' ? draft.paidDate : null,
         dueDate: draft.paymentStatus === 'pending' ? draft.dueDate : null,
         paymentMethod: draft.paymentStatus === 'paid' ? draft.paymentMethod : null,
+        supplierCreditAmount: draft.paymentStatus === 'paid' ? draft.supplierCreditAmount ?? 0 : 0,
         description: draft.description.trim() || null,
         notes: draft.notes.trim() || null,
         cashContext: submittedCashContext,
@@ -599,6 +608,19 @@ export default function PdvPurchase() {
                     >
                       Use outra forma de pagamento ou tente consultar de novo.
                     </NoticeBanner>
+                  )}
+                  {activeDraft.paymentMethod !== 'saldo_fornecedor' && supplierCredit.isSuccess && (supplierCredit.data ?? 0) > 0 && (
+                    <div className="space-y-2 border-t pt-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <Label htmlFor="purchase-supplier-credit">Saldo do fornecedor</Label>
+                        <span className="text-xs text-muted-foreground">Disponível: {formatCurrency(supplierCredit.data ?? 0)}</span>
+                      </div>
+                      {(activeDraft.supplierCreditAmount ?? 0) > 0 ? <>
+                        <PdvMoneyInput id="purchase-supplier-credit" value={activeDraft.supplierCreditAmount ?? 0} disabled={busy} selectOnFocus onChange={supplierCreditAmount => patchDraft(draftId, { supplierCreditAmount })} />
+                        <p className="text-xs text-muted-foreground">Complemento na forma escolhida: <strong className="text-foreground">{formatCurrency(Math.max(0, pdvPurchaseDraftTotal(activeDraft) - (activeDraft.supplierCreditAmount ?? 0)))}</strong></p>
+                        <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => patchDraft(draftId, { supplierCreditAmount: 0 })}>Remover saldo aplicado</Button>
+                      </> : <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => patchDraft(draftId, { supplierCreditAmount: Math.min(supplierCredit.data ?? 0, pdvPurchaseDraftTotal(activeDraft)) })}>Usar saldo do fornecedor</Button>}
+                    </div>
                   )}
                   {activeDraft.paymentMethod === 'saldo_fornecedor' && supplierCredit.isSuccess && (
                     <NoticeBanner variant="info" title={`Saldo disponível: ${formatCurrency(supplierCredit.data ?? 0)}`}>

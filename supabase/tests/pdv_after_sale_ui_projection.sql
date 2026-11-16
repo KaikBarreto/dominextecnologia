@@ -26,6 +26,13 @@ BEGIN
       AND table_row.relrowsecurity AND table_row.relforcerowsecurity) THEN
     RAISE EXCEPTION 'referências sem FORCE RLS'; END IF;
   SELECT pg_get_functiondef('public.pdv_cover_existing_order_v2(uuid,uuid,uuid,uuid,jsonb,text)'::regprocedure) INTO v_src;
+  -- Cupom acrescenta revisão esperada na entrada; a custódia/replay anterior
+  -- permanece no wrapper original, agora privado e compartilhado pelas entradas.
+  IF to_regprocedure('public.pdv_cover_existing_order_coupon_core_v1(uuid,uuid,uuid,uuid,jsonb,text)') IS NOT NULL THEN
+    IF position('pdv_cover_existing_order_coupon_core_v1' IN v_src)=0 OR has_function_privilege('authenticated','public.pdv_cover_existing_order_coupon_core_v1(uuid,uuid,uuid,uuid,jsonb,text)','EXECUTE') THEN
+      RAISE EXCEPTION 'A cobertura expôs ou contornou o core de custódia'; END IF;
+    v_src:=v_src||pg_get_functiondef('public.pdv_cover_existing_order_coupon_core_v1(uuid,uuid,uuid,uuid,jsonb,text)'::regprocedure);
+  END IF;
   IF position('pdv_cover_existing_order_core_015_v2' in v_src)=0 THEN
     RAISE EXCEPTION 'cobertura publica nao valida custodia antes do core';
   END IF;
@@ -138,12 +145,12 @@ BEGIN
   UPDATE public.user_permissions SET permissions='["screen:pdv","screen:pdv_orders","fn:view_pdv_after_sale","fn:cover_pdv_order"]'::jsonb WHERE user_id=ua;
   PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',ua,'role','authenticated')::text,true);
   workspace:=public.pdv_get_after_sale_workspace_v2(original_order);
-  IF workspace->'capabilities'->>'apply_voucher'<>'true'
+  IF workspace->'capabilities'->>'apply_voucher'<>'false'
     OR workspace->'capabilities'->>'create_exchange'<>'false'
     OR jsonb_array_length(workspace->'exchange_candidates')<>0
     OR NOT EXISTS(SELECT 1 FROM jsonb_array_elements(workspace->'order_candidates') candidate
       WHERE (candidate->>'order_id')::uuid=ordinary_order
-        AND candidate->>'can_apply_voucher'='true' AND candidate->>'can_exchange'='false') THEN
+        AND candidate->>'can_apply_voucher'='false' AND candidate->>'can_exchange'='false') THEN
     RAISE EXCEPTION 'matriz apply/exchange promoveu ou ocultou ação: %',workspace; END IF;
   IF (SELECT (item->>'available_amount')::numeric FROM jsonb_array_elements(workspace->'returns') item
        WHERE (item->>'return_id')::uuid=return_id)<>100
@@ -212,30 +219,36 @@ BEGIN
 
   SELECT count(*) INTO financial_before FROM public.financial_transactions WHERE company_id=ca;
   SELECT count(*) INTO projection_before FROM public.pdv_financial_projection_rows_v2(ca);
-  result:=public.pdv_apply_voucher_to_order_v2(ordinary_order,voucher_id,30,'w502b-apply-0001');
-  IF (result->>'remaining_order_amount')::numeric<>70 OR (result->>'voucher_balance')::numeric<>50 THEN
-    RAISE EXCEPTION 'voucher não aplicou no pedido comum: %',result; END IF;
-  IF (SELECT count(*) FROM public.financial_transactions WHERE company_id=ca)<>financial_before
-    OR (SELECT count(*) FROM public.pdv_financial_projection_rows_v2(ca))<>projection_before THEN
-    RAISE EXCEPTION 'resgate de voucher movimentou DRE/DFC'; END IF;
-  retry:=public.pdv_apply_voucher_to_order_v2(ordinary_order,voucher_id,30,'w502b-apply-0001');
-  IF retry->>'idempotent'<>'true' OR retry->>'voucher_entry_id'<>result->>'voucher_entry_id' THEN
+  -- O checkout único confirma voucher30 + dinheiro70, sem cobertura órfã.
+  result:=public.pdv_cover_existing_order_v2(ordinary_order,terminal,session_id,cash_account,
+    jsonb_build_array(jsonb_build_object('method','voucher','reference_id',voucher_id,'amount',30),jsonb_build_object('method','dinheiro','amount',70)),'w502b-apply-0001');
+  IF public.pdv_voucher_balance_internal_v2(voucher_id)<>50
+    OR (SELECT count(*) FROM public.pdv_order_payments WHERE order_id=ordinary_order AND method='voucher' AND amount=30 AND settlement_transaction_id IS NULL AND financial_account_id IS NULL)<>1
+    OR (SELECT count(*) FROM public.pdv_order_payments WHERE order_id=ordinary_order AND method='dinheiro' AND amount=70 AND settlement_transaction_id IS NOT NULL)<>1
+    OR (SELECT sum(amount) FROM public.pdv_order_payments WHERE order_id=ordinary_order)<>100 THEN
+    RAISE EXCEPTION 'checkout não fechou exatamente voucher30 + dinheiro70: %',result; END IF;
+  IF (SELECT count(*) FROM public.financial_transactions WHERE company_id=ca)<>financial_before+1
+    OR (SELECT count(*) FROM public.pdv_financial_projection_rows_v2(ca))<>projection_before+1
+    OR NOT EXISTS(SELECT 1 FROM public.pdv_order_payments p JOIN public.financial_transactions ft ON ft.id=p.settlement_transaction_id AND ft.company_id=p.company_id WHERE p.order_id=ordinary_order AND p.method='dinheiro' AND ft.amount=70 AND ft.pdv_financial_role='pdv_receivable_settlement') THEN
+    RAISE EXCEPTION 'voucher gerou dinheiro ou liquidação70 não foi projetada'; END IF;
+  retry:=public.pdv_cover_existing_order_v2(ordinary_order,terminal,session_id,cash_account,
+    jsonb_build_array(jsonb_build_object('method','voucher','reference_id',voucher_id,'amount',30),jsonb_build_object('method','dinheiro','amount',70)),'w502b-apply-0001');
+  IF retry->>'idempotent'<>'true' OR retry->>'order_id'<>result->>'order_id'
+    OR (SELECT count(*) FROM public.pdv_voucher_entries WHERE order_id=ordinary_order AND entry_kind='redeem')<>1 THEN
     RAISE EXCEPTION 'retry duplicou resgate'; END IF;
   detail:=NULL;
-  BEGIN PERFORM public.pdv_apply_voucher_to_order_v2(ordinary_order,voucher_id,31,'w502b-apply-0001');
+  BEGIN PERFORM public.pdv_cover_existing_order_v2(ordinary_order,terminal,session_id,cash_account,
+    jsonb_build_array(jsonb_build_object('method','voucher','reference_id',voucher_id,'amount',31),jsonb_build_object('method','dinheiro','amount',69)),'w502b-apply-0001');
   EXCEPTION WHEN OTHERS THEN GET STACKED DIAGNOSTICS detail=PG_EXCEPTION_DETAIL; END;
   IF detail IS NULL THEN RAISE EXCEPTION 'mesma chave aceitou payload diferente'; END IF;
   blocked:=false;
-  BEGIN PERFORM public.pdv_apply_voucher_to_order_v2(race_order,voucher_id,60,'w502b-apply-race-0001');
+  BEGIN PERFORM public.pdv_cover_existing_order_v2(race_order,terminal,session_id,cash_account,
+    jsonb_build_array(jsonb_build_object('method','voucher','reference_id',voucher_id,'amount',60),jsonb_build_object('method','dinheiro','amount',40)),'w502b-apply-race-0001');
   EXCEPTION WHEN check_violation THEN blocked:=true; END;
-  IF NOT blocked OR public.pdv_voucher_balance_internal_v2(voucher_id)<>50 THEN
+  IF NOT blocked OR public.pdv_voucher_balance_internal_v2(voucher_id)<>50
+    OR EXISTS(SELECT 1 FROM public.pdv_order_payments WHERE order_id=race_order) THEN
     RAISE EXCEPTION 'saldo insuficiente/concorrrência lógica falhou'; END IF;
-
-  result:=public.pdv_cover_existing_order_v2(ordinary_order,terminal,session_id,cash_account,
-    '[{"method":"dinheiro","amount":70}]'::jsonb,'w502b-cover-0001');
-  IF result->>'status'<>'liberado_retirada' OR
-    (SELECT sum(amount) FROM public.pdv_order_payments WHERE order_id=ordinary_order)<>100 THEN
-    RAISE EXCEPTION 'cobertura comum não somou voucher + dinheiro'; END IF;
+  IF result->>'status'<>'liberado_retirada' THEN RAISE EXCEPTION 'checkout comum não liberou pedido'; END IF;
 
   SELECT request_id INTO expired_request FROM public.pdv_claim_operation_request(ca,'after_sale.voucher.issue.v2',
     'w502b-expired-fixture-0001',jsonb_build_object('fixture','expired'));
@@ -244,7 +257,7 @@ BEGIN
   INSERT INTO public.pdv_voucher_entries(company_id,voucher_id,entry_kind,amount,operation_request_id,description,created_by)
   VALUES(ca,expired_voucher,'issue',10,expired_request,'Fixture vencido',ua);
   blocked:=false;
-  BEGIN PERFORM public.pdv_apply_voucher_to_order_v2(race_order,expired_voucher,1,'w502b-expired-apply-0001');
+  BEGIN PERFORM public.pdv_cover_existing_order_v2(race_order,terminal,session_id,cash_account,jsonb_build_array(jsonb_build_object('method','voucher','reference_id',expired_voucher,'amount',1),jsonb_build_object('method','dinheiro','amount',99)),'w502b-expired-apply-0001');
   EXCEPTION WHEN check_violation THEN blocked:=true; END;
   IF NOT blocked THEN RAISE EXCEPTION 'voucher vencido foi aceito'; END IF;
 
@@ -259,8 +272,8 @@ BEGIN
   IF NOT blocked THEN RAISE EXCEPTION 'Pix confirmou sem referência externa'; END IF;
   result:=public.pdv_confirm_return_refund_v2(refund_id,bank_account,'E2E-PIX-SECRET-1234','w502b-confirm-0001');
   IF result->>'confirmation_reference_redacted'<>'••••1234' THEN RAISE EXCEPTION 'referência não foi redigida'; END IF;
-  result:=public.pdv_cover_exchange_order_v2(return_id,race_order,voucher_id,10,0,'pix',bank_account,NULL,
-    'w502b-exchange-0001');
+  result:=public.pdv_cover_exchange_order_coupon_v2(return_id,race_order,voucher_id,10,0,'pix',bank_account,NULL,
+    'w502b-exchange-0001',0,session_id);
   IF result->>'ok'<>'true' OR (result->>'difference_amount')::numeric<>90
     OR (SELECT status FROM public.pdv_orders WHERE id=race_order)<>'liberado_retirada' THEN
     RAISE EXCEPTION 'troca com diferença não fechou centavos: %',result; END IF;

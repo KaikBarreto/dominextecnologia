@@ -9,6 +9,7 @@ import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { getRpcErrorMessage } from '@/hooks/useCreditCardBills';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
+import { summarizeFinancialTransactions, type FinancialSummaryTransaction } from '@/lib/financial-summary';
 import { buildInstallmentPlan } from '@/lib/finance-installments';
 import { todayInTz } from '@/lib/timezone';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -391,47 +392,15 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
     queryKey: ['financial-summary'],
     enabled: loadData,
     queryFn: async () => {
-      const data = await fetchAllPaginated<{ transaction_type: string; amount: number; is_paid: boolean; transfer_pair_id: string | null }>(
+      const data = await fetchAllPaginated<FinancialSummaryTransaction>(
         () => supabase
           .from('financial_transactions')
           // `transfer_pair_id` é obrigatório no select: sem ele o filtro de
           // movimento interno abaixo vira no-op silencioso.
-          .select('transaction_type, amount, is_paid, transfer_pair_id')
+          .select('transaction_type, amount, is_paid, transfer_pair_id, pdv_financial_role, amount_received')
       );
       
-      const summary = {
-        totalEntradas: 0,
-        totalSaidas: 0,
-        saldo: 0,
-        aPagar: 0,
-        aReceber: 0,
-      };
-
-      data?.forEach((t) => {
-        // Movimento interno (transferência entre contas e pagamento de fatura de
-        // cartão) não é receita nem despesa: é balanço, não resultado. As duas
-        // pernas do par carregam o mesmo `transfer_pair_id`; somá-las inflaria
-        // Entradas e Saídas com dinheiro que só trocou de bolso. Mesmo critério
-        // ESTRUTURAL usado no DRE — nunca por nome de categoria (texto livre).
-        if (t.transfer_pair_id) return;
-        if (t.transaction_type === 'entrada') {
-          if (t.is_paid) {
-            summary.totalEntradas += Number(t.amount);
-          } else {
-            summary.aReceber += Number(t.amount);
-          }
-        } else {
-          if (t.is_paid) {
-            summary.totalSaidas += Number(t.amount);
-          } else {
-            summary.aPagar += Number(t.amount);
-          }
-        }
-      });
-
-      summary.saldo = summary.totalEntradas - summary.totalSaidas;
-      
-      return summary;
+      return summarizeFinancialTransactions(data ?? []);
     },
   });
 

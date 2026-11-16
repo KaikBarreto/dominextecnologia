@@ -77,3 +77,15 @@ describe('voucher do snapshot congelado do pagamento', () => {
     unmount(); act(() => old.onChange(voucher)); expect(updateDraft).not.toHaveBeenCalled();
   });
 });
+
+
+it('preserva o lote de vouchers no snapshot e não transfere escolha após mudar o escopo', () => {
+  const { result, state, snapshotRef, rerender, updateDraft } = setup();
+  const second = { ...voucher, voucherId: 'voucher-2', code: 'DEV-2', amount: 20 };
+  act(() => result.current.onChanges([voucher, second])); rerender();
+  expect(snapshotRef.current?.appliedVouchers).toEqual([voucher, second]);
+  expect(state.drafts.find(value => value.id === 'draft-a')?.appliedVouchers).toEqual([voucher, second]);
+  expect(state.drafts.find(value => value.id === 'draft-b')?.appliedVouchers).toBeUndefined();
+  const old = result.current; updateDraft.mockClear(); state.scopeKey = 'company-b:user-b:cash-b'; rerender();
+  act(() => old.onChanges([])); expect(updateDraft).not.toHaveBeenCalled();
+});

@@ -1,6 +1,6 @@
 import { useEffect, useReducer, useRef, useState, type MutableRefObject } from 'react';
 import type { CartState } from '@/lib/pdv/cart';
-import type { PdvAppliedVoucher, PdvSaleDraft } from '@/lib/pdv/sale-drafts';
+import { getAppliedVouchers, type PdvAppliedVoucher, type PdvSaleDraft } from '@/lib/pdv/sale-drafts';
 
 export interface PdvPaymentVoucherSnapshot {
   draftId: string;
@@ -9,13 +9,14 @@ export interface PdvPaymentVoucherSnapshot {
   notes: string;
   transactionDate: string;
   appliedVoucher: PdvAppliedVoucher | null;
+  appliedVouchers?: PdvAppliedVoucher[];
 }
 
 function samePaymentDraft(snapshot: PdvPaymentVoucherSnapshot, draft: PdvSaleDraft) {
   return draft.id === snapshot.draftId && draft.stockId === snapshot.stockId
     && draft.notes === snapshot.notes && draft.transactionDate === snapshot.transactionDate
     && JSON.stringify(draft.cart) === JSON.stringify(snapshot.cart)
-    && JSON.stringify(draft.appliedVoucher) === JSON.stringify(snapshot.appliedVoucher);
+    && JSON.stringify(getAppliedVouchers(draft)) === JSON.stringify(getAppliedVouchers(snapshot));
 }
 
 /** O diálogo edita somente o voucher do snapshot aberto, nunca o pedido ativo depois. */
@@ -56,7 +57,7 @@ export function usePdvPaymentVoucher<T extends PdvPaymentVoucherSnapshot>({
       && binding.current === captured && snapshotRef.current === snapshot && captured.scope === scope.current
       && captured.isCurrent());
   }
-  return {
+  const controller = {
     inScope,
     canEdit,
     pickerOpen: canEdit && editing === snapshot,
@@ -69,22 +70,25 @@ export function usePdvPaymentVoucher<T extends PdvPaymentVoucherSnapshot>({
       if (!value) { if (binding.current === captured && editing === snapshot) setEditing(null); return; }
       if (canEdit && stillCurrent()) setEditing(snapshot);
     },
-    onChange(value: PdvAppliedVoucher | null) {
+    onChanges(values: PdvAppliedVoucher[]) {
       if (!canEdit || !stillCurrent() || !snapshot) return;
       const currentDraft = latest.current.drafts.find(draft => draft.id === snapshot.draftId);
       if (!currentDraft || currentDraft.attempt || latest.current.hasAttempt(snapshot.draftId)
         || latest.current.conflictingDraftIds.includes(snapshot.draftId) || !samePaymentDraft(snapshot, currentDraft)) return;
-      const expected = { ...snapshot, appliedVoucher: snapshot.appliedVoucher ? { ...snapshot.appliedVoucher } : null };
-      const next = value ? { ...value } : null;
+      const expected = { ...snapshot, appliedVouchers: getAppliedVouchers(snapshot).map(value => ({ ...value })) };
+      const nextValues = values.map(value => ({ ...value }));
+      const next = nextValues[0] ?? null;
       // O reducer permanece puro e não sobrescreve uma versão divergente que
       // tenha chegado entre o clique e a aplicação do setState do workspace.
       updateDraft(snapshot.draftId, draft => samePaymentDraft(expected, draft) && !draft.attempt
-        ? { ...draft, appliedVoucher: next }
+        ? { ...draft, appliedVoucher: next, appliedVouchers: nextValues }
         : draft);
       snapshot.appliedVoucher = next;
+      snapshot.appliedVouchers = nextValues;
       setEditing(null);
       refresh();
     },
     reset() { binding.current = null; setEditing(null); },
   };
+  return { ...controller, onChange(value: PdvAppliedVoucher | null) { controller.onChanges(value ? [value] : []); } };
 }
