@@ -310,24 +310,28 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
   const { timezone } = useAppLocaleContext();
 
   const invalidateAll = () => {
-    queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
-    queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
-    queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
-    queryClient.invalidateQueries({ queryKey: ['contract-transactions'] });
-    queryClient.invalidateQueries({ queryKey: ['nfse-auto-readiness'] });
-    queryClient.invalidateQueries({ queryKey: ['account-balances'] });
+    // A listagem é a fonte canônica dos relatórios. Devolvemos a Promise dela
+    // para que `mutateAsync` só conclua depois do refetch ativo; assim o modal
+    // não fecha liberando uma exportação com o snapshot anterior à baixa.
+    const transactionsRefetch = queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
+    void queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
+    void queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+    void queryClient.invalidateQueries({ queryKey: ['contract-transactions'] });
+    void queryClient.invalidateQueries({ queryKey: ['nfse-auto-readiness'] });
+    void queryClient.invalidateQueries({ queryKey: ['account-balances'] });
     // Uma transação vinculada a OS muda os selos da lista/quadro/agenda e o
     // estado do diálogo de faturamento. Invalidamos por prefixo porque edição,
     // exclusão e operações em lote podem afetar tanto o vínculo antigo quanto
     // o novo, e reconstruir esses Maps otimisticamente seria incompleto.
-    queryClient.invalidateQueries({ queryKey: [OS_REVENUE_SUMMARY_KEY] });
-    queryClient.invalidateQueries({ queryKey: [OS_BILLING_STATE_KEY] });
-    queryClient.invalidateQueries({ queryKey: [OS_BILLING_FLAGS_KEY] });
+    void queryClient.invalidateQueries({ queryKey: [OS_REVENUE_SUMMARY_KEY] });
+    void queryClient.invalidateQueries({ queryKey: [OS_BILLING_STATE_KEY] });
+    void queryClient.invalidateQueries({ queryKey: [OS_BILLING_FLAGS_KEY] });
     // O Caixa inclui lançamentos financeiros avulsos no turno e o saldo do
     // cofre. Qualquer mutation financeira precisa deixá-los stale também — ao
     // voltar de outra tela, o operador não pode ver o fechamento antigo.
-    queryClient.invalidateQueries({ queryKey: ['pdv-cash-session-detail'] });
-    queryClient.invalidateQueries({ queryKey: ['pdv-cofre-balance'] });
+    void queryClient.invalidateQueries({ queryKey: ['pdv-cash-session-detail'] });
+    void queryClient.invalidateQueries({ queryKey: ['pdv-cofre-balance'] });
+    return transactionsRefetch;
   };
 
   const transactionsQuery = useQuery({
@@ -525,8 +529,8 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
 
       return { ids: [data.id], primary: data as FinancialTransaction };
     },
-    onSuccess: () => {
-      invalidateAll();
+    onSuccess: async () => {
+      await invalidateAll();
       queryClient.invalidateQueries({ queryKey: ['credit-card-bills'] });
       toast({ title: 'Transação criada com sucesso!' });
     },
@@ -558,9 +562,12 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
       const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
       const company_id = await getCurrentUserCompanyId();
 
+      // IDs definidos no cliente preservam a correspondência posicional entre
+      // ocorrência e lançamento. Isso é essencial quando o chamador cria uma
+      // cobrança por vencimento; a ordem de um `RETURNING` SQL não é contrato.
       const payload = rows.map((row) =>
         normalizeOptionalForeignKeys(
-          { ...row, created_by: user?.id, company_id } as any,
+          { ...row, id: crypto.randomUUID(), created_by: user?.id, company_id } as any,
           ['customer_id', 'supplier_id', 'service_order_id', 'contract_id', 'account_id', 'cost_center_id']
         )
       );
@@ -570,10 +577,13 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
         .insert(payload as any)
         .select('id');
       if (error) throw error;
-      return ((data ?? []) as Array<{ id: string }>).map((r) => r.id);
+      if ((data ?? []).length !== payload.length) {
+        throw new Error('Não foi possível confirmar todos os lançamentos recorrentes. Atualize a lista e tente novamente.');
+      }
+      return payload.map((row) => row.id as string);
     },
-    onSuccess: () => {
-      invalidateAll();
+    onSuccess: async () => {
+      await invalidateAll();
     },
   });
 
@@ -613,8 +623,8 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
       if (error) throw error;
       return ids.length;
     },
-    onSuccess: () => {
-      invalidateAll();
+    onSuccess: async () => {
+      await invalidateAll();
     },
   });
 
@@ -693,8 +703,8 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
 
       return ids.length;
     },
-    onSuccess: () => {
-      invalidateAll();
+    onSuccess: async () => {
+      await invalidateAll();
       queryClient.invalidateQueries({ queryKey: ['credit-card-bills'] });
     },
   });
@@ -730,8 +740,8 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
 
       return data;
     },
-    onSuccess: () => {
-      invalidateAll();
+    onSuccess: async () => {
+      await invalidateAll();
       toast({ title: 'Transação atualizada com sucesso!' });
     },
     onError: (error: Error) => {
@@ -831,8 +841,8 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
 
       if (error) throw error;
     },
-    onSuccess: () => {
-      invalidateAll();
+    onSuccess: async () => {
+      await invalidateAll();
       queryClient.invalidateQueries({ queryKey: ['credit-card-bills'] });
       toast({ title: 'Transação excluída com sucesso!' });
     },
@@ -962,8 +972,8 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
 
       return dataRow;
     },
-    onSuccess: () => {
-      invalidateAll();
+    onSuccess: async () => {
+      await invalidateAll();
       toast({ title: 'Recebimento confirmado!' });
     },
     onError: (error: Error) => {
@@ -1043,8 +1053,8 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
       if (!row) throw new Error('A quitação em lote não retornou resultado. Tente de novo.');
       return row;
     },
-    onSuccess: () => {
-      invalidateAll();
+    onSuccess: async () => {
+      await invalidateAll();
     },
     onError: (error: Error) => {
       // A RPC devolve a mensagem pronta pro toast (PT-BR). `getRpcErrorMessage`
@@ -1073,8 +1083,8 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
       if (!row) throw new Error('Não foi possível desfazer o lote. Tente de novo.');
       return row;
     },
-    onSuccess: () => {
-      invalidateAll();
+    onSuccess: async () => {
+      await invalidateAll();
     },
     onError: (error: Error) => {
       toast({

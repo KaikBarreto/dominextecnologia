@@ -812,6 +812,22 @@ export default function Schedule() {
     setPendingScheduleConflict(null);
   };
 
+  // O diálogo de reabertura/reset é compartilhado pelos layouts mobile e
+  // desktop. Mantê-lo em um único fragmento evita que uma nova ramificação da
+  // agenda deixe de montar o overlay enquanto o estado `resetOrder` está ativo.
+  const resetServiceOrderDialog = (
+    <ResetServiceOrderDialog
+      open={!!resetOrder}
+      onOpenChange={(open) => {
+        if (!open && !resetServiceOrder.isPending) setResetOrder(null);
+      }}
+      orderNumber={resetOrder?.order_number}
+      status={resetOrder?.status}
+      isPending={resetServiceOrder.isPending}
+      onConfirm={handleResetConfirm}
+    />
+  );
+
   // Anti-flicker: segura a tela no skeleton enquanto a preferência de view do
   // aparelho atual ainda não carregou — evita renderizar a view errada e "saltar".
   if (isLoading || isPrefsLoading) {
@@ -1167,6 +1183,7 @@ export default function Schedule() {
         {/* "Houve alguma receita nesta OS?" — sobe depois de a OS ser gravada
             como concluída. Renderizado nos DOIS layouts (mobile e desktop). */}
         <OsFinishRevenueDialog {...revenueDialogProps} />
+        {resetServiceOrderDialog}
       </div>
     );
   }
@@ -1330,16 +1347,7 @@ export default function Schedule() {
       />
       {/* "Houve alguma receita nesta OS?" — ver comentário no layout mobile. */}
       <OsFinishRevenueDialog {...revenueDialogProps} />
-      <ResetServiceOrderDialog
-        open={!!resetOrder}
-        onOpenChange={(open) => {
-          if (!open && !resetServiceOrder.isPending) setResetOrder(null);
-        }}
-        orderNumber={resetOrder?.order_number}
-        status={resetOrder?.status}
-        isPending={resetServiceOrder.isPending}
-        onConfirm={handleResetConfirm}
-      />
+      {resetServiceOrderDialog}
     </div>
   );
 }

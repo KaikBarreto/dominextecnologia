@@ -66,7 +66,7 @@ import { calculateEmployeeBalance } from '@/utils/employeeCalculations';
 import { Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useQueryClient } from '@tanstack/react-query';
+import { useIsFetching, useQueryClient } from '@tanstack/react-query';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
@@ -259,6 +259,7 @@ export function FinanceContas({
   }, [payrollEmpMovements, payrollTxn?.employee]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const financialTransactionsFetching = useIsFetching({ queryKey: ['financial-transactions'] });
   const { settings: companySettings } = useCompanySettings();
   const { enabled: whiteLabelEnabled } = useWhiteLabel();
 
@@ -280,7 +281,15 @@ export function FinanceContas({
       // chumbado tinha o mesmo efeito pra empresa em Cuiabá (UTC-4) às 23h15
       // do dia 30, que gravava dia 31.
       setPayDespDate(todayInTz(timezone));
-      setPayDespAccountId(cashBankAccounts[0]?.id ?? '');
+      // A conta já vinculada ao lançamento é a escolha mais segura. O fallback
+      // antigo pegava a primeira conta ativa e podia selecionar por engano o
+      // cofre de custódia do PDV, que o banco corretamente recusa movimentar.
+      const transactionAccountId = t.account_id ?? '';
+      setPayDespAccountId(
+        cashBankAccounts.some((account) => account.id === transactionAccountId)
+          ? transactionAccountId
+          : '',
+      );
       setPayDespMethod('pix');
       setPayDespNotes('');
     }
@@ -1005,7 +1014,17 @@ export function FinanceContas({
       ? 'Contas a Receber'
       : 'Contas a Pagar e Receber';
 
+  const canExportCurrentData = () => {
+    if (!isLoading && financialTransactionsFetching === 0) return true;
+    toast({
+      title: 'Atualizando dados financeiros',
+      description: 'Aguarde a atualização terminar para exportar o relatório completo.',
+    });
+    return false;
+  };
+
   const handleExportPDF = async () => {
+    if (!canExportCurrentData()) return;
     try {
       await generateMovimentacoesReportPdf({
         company: companySettings,
@@ -1022,6 +1041,7 @@ export function FinanceContas({
   };
 
   const handleExportExcel = async () => {
+    if (!canExportCurrentData()) return;
     try {
       await generateMovimentacoesExcel({ title: exportTitle, rows: buildExportRows(), locale, currency, timezone });
     } catch (error) {
@@ -1030,6 +1050,7 @@ export function FinanceContas({
   };
 
   const handleExportCsv = () => {
+    if (!canExportCurrentData()) return;
     try {
       generateMovimentacoesCsv({ title: exportTitle, rows: buildExportRows(), locale, timezone });
     } catch (error) {
@@ -1137,7 +1158,12 @@ export function FinanceContas({
           </ToggleGroup>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-10 w-full shrink-0 gap-2 sm:h-9 sm:w-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isLoading || financialTransactionsFetching > 0}
+                className="h-10 w-full shrink-0 gap-2 sm:h-9 sm:w-auto"
+              >
                 <FileDown className="h-4 w-4" />Exportar<ChevronDown className="ml-auto h-3.5 w-3.5 opacity-60 sm:ml-1" />
               </Button>
             </DropdownMenuTrigger>

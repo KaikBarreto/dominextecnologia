@@ -31,6 +31,33 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.10',
+    date: '16 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Baixas e relatórios financeiros mais confiáveis',
+        category: 'correcao',
+        description: 'A baixa usa a conta vinculada ao lançamento quando ela estiver disponível e pede uma escolha quando não houver conta válida. Relatórios aguardam a atualização dos dados, e contas recorrentes são criadas com mais rapidez sem perder a relação entre vencimentos e cobranças.',
+      },
+      {
+        title: 'Acesso recuperado em conexões lentas',
+        category: 'correcao',
+        description: 'A validação da assinatura tolera melhor redes móveis lentas e a ação de tentar novamente recarrega os dados de acesso antes de consultar a assinatura, mantendo a proteção quando o estado ainda não puder ser confirmado.',
+      },
+      {
+        title: 'Assinatura e vídeo mais seguros na Área do Técnico',
+        category: 'correcao',
+        description: 'A assinatura passa a ser salva ao terminar cada traço, e a OS aguarda gravações pendentes antes de finalizar. No iPhone e no iPad, a câmera nativa evita vídeos com imagem congelada e áudio em reprodução.',
+      },
+      {
+        title: 'Ações mobile corrigidas na agenda e nos formulários',
+        category: 'correcao',
+        description: 'A ação Reabrir OS volta a funcionar na agenda mobile, e botões de saída em telas cheias permanecem abaixo da barra de status do iPhone.',
+      },
+    ],
+  },
+  {
     version: '1.41.9',
     date: '16 de novembro de 2026',
     type: 'patch',

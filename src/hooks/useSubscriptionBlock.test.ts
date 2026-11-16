@@ -1,22 +1,27 @@
 import { createElement, type PropsWithChildren } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { authState, from, single } = vi.hoisted(() => ({
-  authState: {
-    user: null as { id: string } | null,
-    loading: false,
-    profile: null as { company_id: string | null } | null,
-    isAdminUser: false,
-    profileLoading: false,
-    linkedAffiliateId: null as string | null,
-    // `false` = detecção de afiliado já concluiu (o usuário não é afiliado).
-    affiliateLoading: false,
-  },
-  from: vi.fn(),
-  single: vi.fn(),
-}));
+const { authState, from, single, refreshUserData } = vi.hoisted(() => {
+  const refreshUserData = vi.fn(async () => undefined);
+  return {
+    authState: {
+      user: null as { id: string } | null,
+      loading: false,
+      profile: null as { company_id: string | null } | null,
+      isAdminUser: false,
+      profileLoading: false,
+      linkedAffiliateId: null as string | null,
+      // `false` = detecção de afiliado já concluiu (o usuário não é afiliado).
+      affiliateLoading: false,
+      refreshUserData,
+    },
+    from: vi.fn(),
+    single: vi.fn(),
+    refreshUserData,
+  };
+});
 
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => authState,
@@ -143,6 +148,7 @@ describe("useSubscriptionBlock", () => {
     authState.affiliateLoading = false;
     from.mockClear();
     single.mockReset();
+    refreshUserData.mockClear();
   });
 
   it("falha fechado para usuário autenticado sem tenant", () => {
@@ -165,6 +171,20 @@ describe("useSubscriptionBlock", () => {
 
     expect(result.current.status).toBe("checking");
     expect(result.current.blocked).toBe(true);
+    expect(from).not.toHaveBeenCalled();
+  });
+
+  it("refaz a hidratação do perfil ao tentar novamente sem tenant carregado", async () => {
+    authState.user = { id: "usuario" };
+    const { result } = renderHook(() => useSubscriptionBlock(), {
+      wrapper: queryWrapper(),
+    });
+
+    await act(async () => {
+      await result.current.retry();
+    });
+
+    expect(refreshUserData).toHaveBeenCalledTimes(1);
     expect(from).not.toHaveBeenCalled();
   });
 

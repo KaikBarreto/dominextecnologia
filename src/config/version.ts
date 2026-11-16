@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.9";
+export const APP_VERSION = "1.41.10";
 
 export const VERSION_NOTES =
-  "Vouchers somados em uma única linha nos comprovantes, mantendo os demais pagamentos e vencimentos separados.";
+  "Baixas financeiras, assinaturas, vídeos e ações mobile mais confiáveis no uso diário.";

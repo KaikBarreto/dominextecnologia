@@ -194,7 +194,13 @@ export function ResponsiveModal({
           {...(description ? {} : { 'aria-describedby': undefined })}
         >
           {fullScreen ? (
-            <DialogHeader data-fullscreen-header className={cn('flex shrink-0 flex-row items-center gap-3 space-y-0 border-b px-4 py-3 text-left sm:gap-6 sm:px-10 sm:py-5 [@media(max-height:500px)]:py-2', headerActions && 'grid grid-cols-[auto_minmax(0,1fr)] gap-y-1 py-2 sm:flex sm:py-5')}>
+            <DialogHeader
+              data-fullscreen-header
+              className={cn(
+                'flex shrink-0 flex-row items-center gap-3 space-y-0 border-b pb-3 pl-[calc(env(safe-area-inset-left)+1rem)] pr-[calc(env(safe-area-inset-right)+1rem)] pt-[calc(env(safe-area-inset-top)+0.75rem)] text-left sm:gap-6 sm:pb-5 sm:pl-[calc(env(safe-area-inset-left)+2.5rem)] sm:pr-[calc(env(safe-area-inset-right)+2.5rem)] sm:pt-[calc(env(safe-area-inset-top)+1.25rem)] [@media(max-height:500px)]:pb-2 [@media(max-height:500px)]:pt-[calc(env(safe-area-inset-top)+0.5rem)]',
+                headerActions && 'grid grid-cols-[auto_minmax(0,1fr)] gap-y-1 pb-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] sm:flex sm:pb-5 sm:pt-[calc(env(safe-area-inset-top)+1.25rem)]',
+              )}
+            >
               <Button
                 type="button"
                 variant="cancel-ghost"

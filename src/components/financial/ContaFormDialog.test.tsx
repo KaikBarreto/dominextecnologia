@@ -29,6 +29,7 @@ const mocks = vi.hoisted(() => ({
   paymentAccountActive: false,
   customers: [] as Array<Record<string, unknown>>,
   createTransaction: vi.fn(),
+  createTransactionsBatch: vi.fn(),
   createOnlineCharge: vi.fn(),
   toast: vi.fn(),
 }));
@@ -53,6 +54,7 @@ vi.mock('@/contexts/AppLocaleContext', () => ({
 vi.mock('@/hooks/useFinancial', () => ({
   useFinancial: () => ({
     createTransaction: { mutateAsync: mocks.createTransaction, isPending: false },
+    createTransactionsBatch: { mutateAsync: mocks.createTransactionsBatch, isPending: false },
     updateTransaction: { mutateAsync: vi.fn(), isPending: false },
   }),
 }));
@@ -174,6 +176,7 @@ beforeEach(() => {
   mocks.paymentAccountActive = false;
   mocks.customers = [];
   mocks.createTransaction.mockReset();
+  mocks.createTransactionsBatch.mockReset();
   mocks.createOnlineCharge.mockReset();
   mocks.toast.mockReset();
   localStorage.clear();
@@ -304,10 +307,12 @@ describe('ContaFormDialog — contas a receber com cobrança', () => {
       document: '529.982.247-25',
       is_deleted: false,
     }];
-    mocks.createTransaction.mockImplementation(async () => ({
-      ids: [`receivable-${mocks.createTransaction.mock.calls.length}`],
-      primary: null,
-    }));
+    mocks.createTransactionsBatch.mockResolvedValue([
+      'receivable-1',
+      'receivable-2',
+      'receivable-3',
+      'receivable-4',
+    ]);
     mocks.createOnlineCharge.mockResolvedValue({
       orphan: false,
       warning: null,
@@ -343,15 +348,17 @@ describe('ContaFormDialog — contas a receber com cobrança', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
-    expect(mocks.createTransaction).toHaveBeenCalledTimes(4);
-    expect(mocks.createTransaction.mock.calls.map(([input]) => input.amount)).toEqual([250, 250, 250, 250]);
+    expect(mocks.createTransaction).not.toHaveBeenCalled();
+    expect(mocks.createTransactionsBatch).toHaveBeenCalledTimes(1);
+    const recurringInputs = mocks.createTransactionsBatch.mock.calls[0][0];
+    expect(recurringInputs.map((input: { amount: number }) => input.amount)).toEqual([250, 250, 250, 250]);
     expect(mocks.createOnlineCharge).toHaveBeenCalledTimes(4);
     expect(mocks.createOnlineCharge.mock.calls.map(([input]) => ({
       sourceType: input.source_type,
       sourceId: input.source_id,
       value: input.value,
       dueDate: input.due_date,
-    }))).toEqual(mocks.createTransaction.mock.calls.map(([input], index) => ({
+    }))).toEqual(recurringInputs.map((input: { due_date: string }, index: number) => ({
       sourceType: 'receivable',
       sourceId: `receivable-${index + 1}`,
       value: 250,
