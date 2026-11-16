@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { TrendingUp, Target, DollarSign, Wallet } from 'lucide-react';
 import { type Salesperson, type SalespersonSale, type SalespersonAdvance, commissionForPerson } from '@/hooks/useSalespersonData';
+import { adminKpiClass } from '@/components/admin/adminKpiStyles';
 
 interface Props {
   salesperson: Salesperson;
@@ -23,14 +24,14 @@ export function SalespersonDetailStats({ salesperson, sales, advances, totalSale
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      <Card>
+      <Card className={adminKpiClass('violet')}>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Vendas no Período</CardTitle>
-          <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          <TrendingUp className="h-4 w-4" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{periodSalesCount}</div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-white/75">
             {totalSalesCount !== undefined && totalSalesCount !== periodSalesCount
               ? `de ${totalSalesCount} total`
               : `de ${goal} meta`}
@@ -38,36 +39,36 @@ export function SalespersonDetailStats({ salesperson, sales, advances, totalSale
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className={adminKpiClass('cyan')}>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Meta do Mês</CardTitle>
-          <Target className="h-4 w-4 text-muted-foreground" />
+          <Target className="h-4 w-4" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{goalPercent.toFixed(0)}%</div>
-          <Progress value={goalPercent} className="h-2 mt-2" />
+          <Progress value={goalPercent} className="mt-2 h-2 bg-white/25 [&>div]:bg-white" />
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className={adminKpiClass('amber')}>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Comissão no Período</CardTitle>
-          <DollarSign className="h-4 w-4 text-muted-foreground" />
+          <DollarSign className="h-4 w-4" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-emerald-600">{fmt(totalCommission)}</div>
-          <p className="text-xs text-muted-foreground">filtrado pelo período</p>
+          <div className="text-2xl font-bold">{fmt(totalCommission)}</div>
+          <p className="text-xs text-white/75">filtrado pelo período</p>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className={adminKpiClass(balance >= 0 ? 'emerald' : 'rose')}>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Saldo a Receber</CardTitle>
-          <Wallet className="h-4 w-4 text-muted-foreground" />
+          <Wallet className="h-4 w-4" />
         </CardHeader>
         <CardContent>
-          <div className={`text-2xl font-bold ${balance >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>{fmt(balance)}</div>
-          <p className="text-xs text-muted-foreground">salário + comissão − vales</p>
+          <div className="text-2xl font-bold">{fmt(balance)}</div>
+          <p className="text-xs text-white/75">salário + comissão − vales</p>
         </CardContent>
       </Card>
     </div>

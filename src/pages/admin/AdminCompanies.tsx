@@ -525,7 +525,7 @@ export default function AdminCompanies() {
             )}
           </MobileListToolbar>
 
-          <StatCarousel items={statItems} loading={isLoading} />
+          <StatCarousel items={statItems} loading={isLoading} variant="saturated" />
         </>
       ) : (
         // -----------------------------------------------------------------

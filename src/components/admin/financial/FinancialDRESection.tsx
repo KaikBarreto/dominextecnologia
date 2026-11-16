@@ -1,3 +1,4 @@
+import { adminKpiClass } from "@/components/admin/adminKpiStyles";
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
@@ -107,7 +108,7 @@ export function FinancialDRESection({ transactions, categories, periodLabel, com
     <div className="space-y-6">
       {/* Cards de métrica principais */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-        <Card className={cn('relative overflow-hidden border-0 shadow-lg text-white', dre.margem >= 0 ? 'bg-emerald-500' : 'bg-red-500')}>
+        <Card className={adminKpiClass(dre.margem >= 0 ? 'emerald' : 'rose', 'relative overflow-hidden border-0 shadow-lg')}>
           <CardContent className="p-4 lg:p-6">
             <div className="flex items-start justify-between">
               <div className="space-y-1 lg:space-y-2">
@@ -121,7 +122,7 @@ export function FinancialDRESection({ transactions, categories, periodLabel, com
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 shadow-lg bg-blue-500 text-white">
+        <Card className={adminKpiClass("blue", "relative overflow-hidden border-0 shadow-lg")}>
           <CardContent className="p-4 lg:p-6">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1 space-y-1 lg:space-y-2">
@@ -133,7 +134,7 @@ export function FinancialDRESection({ transactions, categories, periodLabel, com
           </CardContent>
         </Card>
 
-        <Card className={cn('relative overflow-hidden border-0 shadow-lg text-white', dre.ebitda >= 0 ? 'bg-emerald-500' : 'bg-red-500')}>
+        <Card className={adminKpiClass(dre.resultadoFinal >= 0 ? 'emerald' : 'rose', 'relative overflow-hidden border-0 shadow-lg')}>
           <CardContent className="p-4 lg:p-6">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1 space-y-1 lg:space-y-2">

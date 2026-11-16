@@ -1,3 +1,4 @@
+import { adminKpiClass } from "@/components/admin/adminKpiStyles";
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -20,5 +21,5 @@ export function AdminBankStatementSummary({ accountId }: { accountId: string }) 
     ['Saldo do extrato', d.statement_balance == null ? 'Não informado' : money(d.statement_balance), d.statement_date ? `OFX de ${date(d.statement_date)}` : 'Importe um OFX com saldo'],
     ['Diferença', d.difference == null ? 'A conferir' : money(d.difference), d.difference == null ? 'Sem saldo bancário para comparar' : Math.abs(d.difference) < 0.005 ? 'Saldo conferido' : 'Revise saldo inicial e período importado'],
   ];
-  return <section className="space-y-3" aria-label="Conferência de saldos bancários"><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{cards.map(([label, value, note]) => <div key={label} className="rounded-xl border bg-white p-4"><p className="text-sm text-muted-foreground">{label}</p><strong className="mt-1 block text-xl tabular-nums">{value}</strong><p className="mt-1 text-xs text-muted-foreground">{note}</p></div>)}</div><p className="text-sm text-muted-foreground">{d.pending_count} movimento(s) aguardando conciliação em todo o extrato. {d.last_imported_at ? `Última importação: ${new Date(d.last_imported_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })} (Brasília).` : 'Nenhum arquivo importado.'}</p></section>;
+  return <section className="space-y-3" aria-label="Conferência de saldos bancários"><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{cards.map(([label, value, note]) => <div key={label} className={adminKpiClass(label === "Diferença" ? (d.difference == null ? "amber" : Math.abs(d.difference) < 0.005 ? "emerald" : "rose") : "blue", "rounded-xl p-4")}><p className="text-sm text-muted-foreground">{label}</p><strong className="mt-1 block text-xl tabular-nums">{value}</strong><p className="mt-1 text-xs text-muted-foreground">{note}</p></div>)}</div><p className="text-sm text-muted-foreground">{d.pending_count} movimento(s) aguardando conciliação em todo o extrato. {d.last_imported_at ? `Última importação: ${new Date(d.last_imported_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })} (Brasília).` : 'Nenhum arquivo importado.'}</p></section>;
 }

@@ -52,6 +52,7 @@ import {
   ListOrdered,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { adminKpiClass } from "@/components/admin/adminKpiStyles";
 import { typography } from "@/lib/typography";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -227,10 +228,10 @@ function HealthCard({
 }) {
   const status = tone === "default" ? null : TONE_STATUS[tone];
   return (
-    <Card className="border shadow-none bg-card">
+    <Card className={adminKpiClass(tone === "good" ? "emerald" : tone === "warning" ? "amber" : tone === "danger" ? "rose" : "blue", "shadow-none")}>
       <CardContent className="p-4 space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-muted-foreground min-w-0">
+          <div className="flex items-center gap-2 text-white/80 min-w-0">
             <Icon className="h-4 w-4 shrink-0" />
             <span className="text-xs font-medium uppercase tracking-wide truncate">{label}</span>
           </div>
@@ -245,10 +246,9 @@ function HealthCard({
             </span>
           )}
         </div>
-        {/* Valor sempre neutro (foreground) — a cor comunica estado no selo, não no número */}
-        <div className="text-2xl font-bold tabular-nums text-foreground">{value}</div>
+        <div className="text-2xl font-bold tabular-nums">{value}</div>
         {children}
-        {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+        {hint && <p className="text-xs text-white/75">{hint}</p>}
       </CardContent>
     </Card>
   );

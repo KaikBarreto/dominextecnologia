@@ -174,7 +174,7 @@ export default function AdminSalespeople() {
           {isLoading ? (
             <StatCarousel items={[]} loading />
           ) : (
-            <StatCarousel items={mobileStats} />
+            <StatCarousel items={mobileStats} variant="saturated" />
           )}
 
           <DateRangeFilter

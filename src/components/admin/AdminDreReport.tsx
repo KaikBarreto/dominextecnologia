@@ -1,3 +1,4 @@
+import { adminKpiClass } from "@/components/admin/adminKpiStyles";
 import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -271,10 +272,10 @@ export function AdminDreReport(
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         {/* Margem operacional */}
         <Card
-          className={cn(
+          className={adminKpiClass(dre.margem >= 0 ? "emerald" : "rose", cn(
             "relative overflow-hidden border-0 shadow-lg text-white",
             dre.margem >= 0 ? "bg-emerald-500" : "bg-red-500",
-          )}
+          ))}
         >
           <CardContent className="p-4 lg:p-6">
             <div className="flex items-start justify-between">
@@ -299,7 +300,7 @@ export function AdminDreReport(
         </Card>
 
         {/* Receita Líquida */}
-        <Card className="relative overflow-hidden border-0 shadow-lg bg-blue-500 text-white">
+        <Card className={adminKpiClass("blue", "relative overflow-hidden border-0 shadow-lg bg-blue-500 text-white")}>
           <CardContent className="p-4 lg:p-6">
             <div className="flex items-start justify-between">
               <div className="space-y-1 lg:space-y-2">
@@ -319,10 +320,10 @@ export function AdminDreReport(
 
         {/* Resultado */}
         <Card
-          className={cn(
+          className={adminKpiClass(dre.resultadoFinal >= 0 ? "emerald" : "rose", cn(
             "relative overflow-hidden border-0 shadow-lg text-white",
             dre.resultadoFinal >= 0 ? "bg-emerald-500" : "bg-red-500",
-          )}
+          ))}
         >
           <CardContent className="p-4 lg:p-6">
             <div className="flex items-start justify-between">
@@ -877,7 +878,7 @@ export function AdminDreReport(
 
       {/* Key Metrics Below DRE - Subtle Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-        <Card className="border shadow-sm bg-background">
+        <Card className={adminKpiClass("violet", "border shadow-sm bg-background")}>
           <CardContent className="p-4 lg:p-6">
             <div className="flex items-start justify-between">
               <div className="space-y-1">
@@ -891,14 +892,14 @@ export function AdminDreReport(
                   Receita acumulada média por cliente
                 </p>
               </div>
-              <div className="p-2 rounded-xl bg-white text-zinc-900">
+              <div className="p-2 rounded-xl bg-black/15">
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border shadow-sm bg-background">
+        <Card className={adminKpiClass("cyan", "border shadow-sm bg-background")}>
           <CardContent className="p-4 lg:p-6">
             <div className="flex items-start justify-between">
               <div className="space-y-1">
@@ -912,14 +913,14 @@ export function AdminDreReport(
                   Mensalidade média
                 </p>
               </div>
-              <div className="p-2 rounded-xl bg-white text-zinc-900">
+              <div className="p-2 rounded-xl bg-black/15">
                 <PieChart className="h-4 w-4 text-muted-foreground" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border shadow-sm bg-background">
+        <Card className={adminKpiClass("blue", "border shadow-sm bg-background")}>
           <CardContent className="p-4 lg:p-6">
             <div className="flex items-start justify-between">
               <div className="space-y-1">
@@ -933,7 +934,7 @@ export function AdminDreReport(
                   Com assinatura ativa
                 </p>
               </div>
-              <div className="p-2 rounded-xl bg-white text-zinc-900">
+              <div className="p-2 rounded-xl bg-black/15">
                 <Users className="h-4 w-4 text-muted-foreground" />
               </div>
             </div>
