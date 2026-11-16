@@ -11,6 +11,8 @@ import {
   Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 export const ADMIN_FINANCIAL_SECTIONS = [
   { id: "overview", label: "Visão geral", icon: LayoutDashboard },
   { id: "income", label: "Receitas", icon: TrendingUp },
@@ -112,50 +114,12 @@ export function AdminFinancialPeriodFilter(
         >
           Período das movimentações
         </label>
-        <select
-          id="admin-finance-period"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="h-10 rounded-lg border bg-background px-3 text-sm"
-        >
-          <option value="today">Hoje</option>
-          <option value="7days">Últimos 7 dias</option>
-          <option value="thisMonth">Este mês</option>
-          <option value="lastMonth">Mês passado</option>
-          <option value="30days">Últimos 30 dias</option>
-          <option value="thisYear">Este ano</option>
-          <option value="allTime">Todo o período</option>
-          <option value="custom">Personalizado</option>
-        </select>
+        <Select value={value} onValueChange={onChange}><SelectTrigger id="admin-finance-period" className="h-10 w-[190px] bg-background"><SelectValue placeholder="Selecione o período" /></SelectTrigger><SelectContent><SelectItem value="today">Hoje</SelectItem><SelectItem value="7days">Últimos 7 dias</SelectItem><SelectItem value="thisMonth">Este mês</SelectItem><SelectItem value="lastMonth">Mês passado</SelectItem><SelectItem value="30days">Últimos 30 dias</SelectItem><SelectItem value="thisYear">Este ano</SelectItem><SelectItem value="allTime">Todo o período</SelectItem><SelectItem value="custom">Personalizado</SelectItem></SelectContent></Select>
       </div>
       {value === "custom" && (
         <>
-          <div>
-            <label className="mb-1 block text-xs" htmlFor="admin-finance-from">
-              De
-            </label>
-            <input
-              className="h-10 max-w-full rounded-lg border bg-background px-2 text-sm"
-              id="admin-finance-from"
-              type="date"
-              value={from}
-              max={to || undefined}
-              onChange={(e) => onCustomChange(e.target.value, to)}
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs" htmlFor="admin-finance-to">
-              Até
-            </label>
-            <input
-              className="h-10 max-w-full rounded-lg border bg-background px-2 text-sm"
-              id="admin-finance-to"
-              type="date"
-              value={to}
-              min={from || undefined}
-              onChange={(e) => onCustomChange(from, e.target.value)}
-            />
-          </div>
+          <div className="w-[150px]"><label className="mb-1 block text-xs" htmlFor="admin-finance-from">De</label><DatePicker id="admin-finance-from" value={from} max={to || undefined} placeholder="dd/mm/aaaa" onValueChange={(next) => onCustomChange(next, to)} /></div>
+          <div className="w-[150px]"><label className="mb-1 block text-xs" htmlFor="admin-finance-to">Até</label><DatePicker id="admin-finance-to" value={to} min={from || undefined} placeholder="dd/mm/aaaa" onValueChange={(next) => onCustomChange(from, next)} /></div>
         </>
       )}
     </div>

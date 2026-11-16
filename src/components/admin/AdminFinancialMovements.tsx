@@ -37,6 +37,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { FinancialTypeBadge, financialAmountClass } from "./FinancialRecordBadges";
+import { AdminCategoryPill } from "./financial/AdminCategoryPill";
 
 interface Props {
   transactions: any[];
@@ -323,18 +325,9 @@ export function AdminFinancialMovements(
                 <tr key={tx.id} className="border-b last:border-0">
                   <td className="p-3 whitespace-nowrap">{dateBrt(tx)}</td>
                   <td className="p-3">{tx.description || "—"}</td>
-                  <td className="p-3">
-                    {labelForCategory(tx.category, index)}
-                  </td>
-                  <td className="p-3">
-                    {tx.type === "income" ? "Receita" : "Despesa"}
-                  </td>
-                  <td
-                    className={"p-3 text-right font-semibold " +
-                      (tx.type === "income"
-                        ? "text-emerald-700"
-                        : "text-red-600")}
-                  >
+                  <td className="p-3"><AdminCategoryPill name={tx.category} categories={categories} size="sm" /></td>
+                  <td className="p-3"><FinancialTypeBadge type={tx.type} /></td>
+                  <td className={"p-3 text-right " + financialAmountClass(tx.type)}>
                     {tx.type === "income" ? "+" : "−"}
                     {currency(tx.amount)}
                   </td>
@@ -357,13 +350,10 @@ export function AdminFinancialMovements(
                 <p className="font-medium">
                   {tx.description || labelForCategory(tx.category, index)}
                 </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {dateBrt(tx)} · {labelForCategory(tx.category, index)}
-                </p>
+                <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground"><span>{dateBrt(tx)}</span><AdminCategoryPill name={tx.category} categories={categories} size="sm" /><FinancialTypeBadge type={tx.type} /></div>
               </div>
               <p
-                className={"font-semibold " +
-                  (tx.type === "income" ? "text-emerald-700" : "text-red-600")}
+                className={financialAmountClass(tx.type)}
               >
                 {tx.type === "income" ? "+" : "−"}
                 {currency(tx.amount)}
