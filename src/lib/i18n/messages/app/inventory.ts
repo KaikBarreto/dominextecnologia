@@ -513,7 +513,7 @@ export const inventory = {
     stockConfigurator: {
       buttonLabel: 'Configurar itens deste local',
       gearIconLabel: 'Configurar itens deste local',
-      dialogTitle: 'Configurar {stock}',
+      dialogTitle: 'Configurar local',
       searchPlaceholder: 'Buscar material...',
       markAll: 'Marcar todos',
       unmarkAll: 'Desmarcar todos',
@@ -1549,7 +1549,7 @@ export const inventory = {
     stockConfigurator: {
       buttonLabel: 'Configure items at this location',
       gearIconLabel: 'Configure items at this location',
-      dialogTitle: 'Configure {stock}',
+      dialogTitle: 'Configure location',
       searchPlaceholder: 'Search material...',
       markAll: 'Select all',
       unmarkAll: 'Deselect all',
@@ -2583,7 +2583,7 @@ export const inventory = {
     stockConfigurator: {
       buttonLabel: 'Configurar ítems de esta ubicación',
       gearIconLabel: 'Configurar ítems de esta ubicación',
-      dialogTitle: 'Configurar {stock}',
+      dialogTitle: 'Configurar local',
       searchPlaceholder: 'Buscar material...',
       markAll: 'Seleccionar todos',
       unmarkAll: 'Deseleccionar todos',
@@ -3617,7 +3617,7 @@ export const inventory = {
     stockConfigurator: {
       buttonLabel: `Configurer les articles de cet emplacement`,
       gearIconLabel: `Configurer les articles de cet emplacement`,
-      dialogTitle: `Configurer {stock}`,
+      dialogTitle: `Configurer l’emplacement`,
       searchPlaceholder: `Rechercher un matériau...`,
       markAll: `Tout sélectionner`,
       unmarkAll: `Tout désélectionner`,

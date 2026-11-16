@@ -27,6 +27,7 @@ import {
   ClipboardList,
   BarChart3,
   ArrowLeft,
+  ArrowUpRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -727,7 +728,7 @@ function InventoryContent({ context }: { context: 'general' | 'store' }) {
   // Botões Importar XML e Configurações — ficam no canto superior direito do header (sempre)
   const headerRightButtons = (
     <div className="flex flex-wrap items-center gap-1.5">
-      {storeContext && <Button variant="outline" onClick={() => navigate('/estoque')}>Abrir gestão completa</Button>}
+      {storeContext && <TooltipProvider delayDuration={200}><Tooltip><TooltipTrigger asChild><Button variant="outline" className="h-9 w-9 shrink-0 sm:w-auto sm:px-3" aria-label="Abrir gestão completa" onClick={() => navigate('/estoque')}><ArrowUpRight className="h-4 w-4" aria-hidden="true" /><span className="hidden sm:inline">Abrir gestão completa</span></Button></TooltipTrigger><TooltipContent>Abrir gestão completa</TooltipContent></Tooltip></TooltipProvider>}
       {!storeContext && canManage && <><Button
         variant="outline"
         className="h-9 w-9 lg:w-auto lg:px-3 shrink-0 rounded-xl gap-1.5"
@@ -789,7 +790,7 @@ function InventoryContent({ context }: { context: 'general' | 'store' }) {
     >
       <MobilePageHeader
         title={storeContext ? 'Estoque da loja' : t.header.title}
-        subtitle={storeContext ? 'Produtos e saldos dos locais de loja autorizados.' : t.header.subtitle}
+        subtitle={storeContext ? 'Produtos e saldos da loja.' : t.header.subtitle}
         icon={Package}
         actions={headerRightButtons}
         compactOnMobile

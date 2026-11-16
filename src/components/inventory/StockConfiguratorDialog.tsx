@@ -287,7 +287,8 @@ export function StockConfiguratorDialog({ open, onOpenChange, stock, onOpenTrans
     <ResponsiveModal
       open={open && canManage}
       onOpenChange={handleOpenChange}
-      title={t.dialogTitle.replace('{stock}', stock.name)}
+      title={t.dialogTitle}
+      description={stock.name}
       className="sm:max-w-[520px]"
       footer={
         activeTab === 'items' ? (
