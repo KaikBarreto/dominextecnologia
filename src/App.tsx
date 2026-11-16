@@ -272,7 +272,7 @@ const LoadingSpinner = () => <PageLoading />;
 // Determine the default authenticated route based on permissions
 function useDefaultRoute() {
   const { hasScreenAccess, isAdminUser, hasAdminScreenAccess, roles, linkedAffiliateId } = useAuth();
-  const { hasScreen } = useCompanyModules();
+  const { hasScreen, businessCore } = useCompanyModules();
 
   // Afiliado externo: roteado ANTES de qualquer checagem de tenant (espelha o
   // `landingRoute.ts` do EcoSistema). Ele não é admin, não tem company_id e
@@ -310,6 +310,7 @@ function useDefaultRoute() {
   // lista por ser o destino histórico do técnico, mas é só uma preferência de
   // ordem; se ela estiver negada, cai pra próxima tela permitida.
   const appCandidates: Array<[string, string]> = [
+    ...(businessCore==='retail' ? [['screen:pdv','/pdv'],['screen:pdv_orders','/pdv/pedidos']] as Array<[string,string]> : []),
     ['screen:schedule', '/agenda'],
     ['screen:service_orders', '/ordens-servico'],
     ['screen:customers', '/clientes'],

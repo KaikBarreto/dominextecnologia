@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
+import { useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { MATERIAL_PURCHASE_REPORT_QUERY_KEY } from '@/hooks/pdvReportCache';
+import { MATERIAL_PURCHASE_REPORT_QUERY_KEY, usePdvAuthorizedQueryScope } from '@/hooks/pdvReportCache';
 
 export { MATERIAL_PURCHASE_REPORT_QUERY_KEY } from '@/hooks/pdvReportCache';
 
@@ -220,6 +221,7 @@ export function projectMaterialPurchaseReportPage(payload: unknown) {
   return {
     rows: page.rows.map(projectMaterialPurchaseReportRow),
     hasMore: page.has_more,
+    totalCount, offset,
   };
 }
 
@@ -231,10 +233,16 @@ export function useMaterialPurchaseReport({
   groupIds,
   createdByIds,
 }: Params) {
-  return useQuery({
-    queryKey: [...MATERIAL_PURCHASE_REPORT_QUERY_KEY, startDate, endDate, stockIds, supplierIds, groupIds, createdByIds],
-    queryFn: async () => {
-      type RpcResult = { data: unknown; error: { message?: string } | null };
+  const scope = usePdvAuthorizedQueryScope();
+  const identity = JSON.stringify([scope.key, startDate, endDate, stockIds, supplierIds, groupIds, createdByIds]);
+  const current = useRef(identity);
+  current.current = identity;
+  const query = useQuery({
+    queryKey: [...MATERIAL_PURCHASE_REPORT_QUERY_KEY, ...scope.key, startDate, endDate, stockIds, supplierIds, groupIds, createdByIds],
+    enabled: scope.ready,
+    queryFn: async ({ signal }) => {
+      if (!scope.ready) throw new Error('Aguarde a confirmação do acesso ao relatório.');
+      type RpcResult = { data: unknown; error: { code?: string } | null };
       const rpc = supabase.rpc.bind(supabase) as unknown as (
         name: string,
         args: Record<string, unknown>,
@@ -242,6 +250,8 @@ export function useMaterialPurchaseReport({
       const rows: unknown[] = [];
       let offset = 0;
       let hasMore = true;
+      let expectedCount: number | undefined;
+      const seen = new Set<string>();
       while (hasMore && offset < 5_000) {
         const { data, error } = await rpc('get_material_purchase_report_v2', {
           p_start_date: startDate || undefined,
@@ -253,15 +263,31 @@ export function useMaterialPurchaseReport({
           p_limit: 500,
           p_offset: offset,
         });
-        if (error) throw error;
+        if (signal.aborted || current.current !== identity) throw new Error('Consulta encerrada.');
+        if (error) throw new Error(error.code === '42501'
+          ? 'Seu perfil não permite consultar este relatório.'
+          : error.code === '22023' ? 'Revise o período e os filtros do relatório.'
+            : 'Não foi possível carregar o relatório de materiais. Tente novamente.');
         const page = projectMaterialPurchaseReportPage(data);
+        if (page.totalCount > 5_000) throw new Error('Escolha um período ou filtros menores para consultar todos os materiais.');
+        expectedCount ??= page.totalCount;
+        if (page.offset !== offset || page.totalCount !== expectedCount || (page.hasMore && page.rows.length === 0)) {
+          throw new MaterialPurchaseReportContractError();
+        }
         const pageRows = page.rows;
+        for (const row of pageRows) {
+          if (seen.has(row.inventory_id)) throw new MaterialPurchaseReportContractError();
+          seen.add(row.inventory_id);
+        }
         rows.push(...pageRows);
         hasMore = page.hasMore;
         offset += pageRows.length;
       }
+      if (hasMore || rows.length !== expectedCount) throw new MaterialPurchaseReportContractError();
       return rows as MaterialPurchaseReportRow[];
     },
     staleTime: 30_000,
+    retry: false,
   });
+  return { ...query, data: scope.ready && !query.isError ? query.data : undefined, isLoading: !scope.ready || query.isLoading };
 }

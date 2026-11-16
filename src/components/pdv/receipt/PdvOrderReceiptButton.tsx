@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useDomiLinkReceiptOutput, type PdvReceiptOutput } from '@/hooks/useDomiLinkReceiptOutput';
 import { assertPdvReceiptOperationCurrent, usePdvReceiptOperation, withPdvReceiptTarget, type PdvReceiptOperationGuard } from '@/hooks/usePdvReceiptOperation';
 import { Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -21,7 +22,7 @@ export function resolvePdvOrderReceiptKind(snapshot: PdvReceiptSnapshot): PdvRec
   return snapshot.fulfillment?.mode === 'retirada' && status && /liberad|aguard|parcial/.test(status) ? 'pickup' : 'sale';
 }
 
-export async function openPdvOrderReceipt(orderId: string, format: PdvReceiptFormat, options?: { target?: Window | null; copies?: 1 | 2 | 3; documentKind?: 'sale' | 'pickup' } & Partial<PdvReceiptOperationGuard>): Promise<void> {
+export async function openPdvOrderReceipt(orderId: string, format: PdvReceiptFormat, options?: { target?: Window | null; copies?: 1 | 2 | 3; documentKind?: 'sale' | 'pickup'; output?: PdvReceiptOutput } & Partial<PdvReceiptOperationGuard>): Promise<void> {
   try { assertPdvReceiptOperationCurrent(options); } catch (error) { options?.target?.close(); throw error; }
   const target = options && 'target' in options ? options.target : openPendingPdfTab('Gerando comprovante não fiscal...');
   await withPdvReceiptTarget(target, options, async () => {
@@ -30,15 +31,17 @@ export async function openPdvOrderReceipt(orderId: string, format: PdvReceiptFor
     const snapshot = await preparePdvReceiptSnapshotLogo({ ...savedSnapshot, documentKind: options?.documentKind ?? resolvePdvOrderReceiptKind(savedSnapshot) });
     assertPdvReceiptOperationCurrent(options);
     const blob = options?.copies ? generatePdvReceiptPdf(snapshot, format, { copies: options.copies }) : generatePdvReceiptPdf(snapshot, format);
-    openPdfInTab(blob, receiptFilename(snapshot, format), target);
+    if (options?.output) await options.output(blob, receiptFilename(snapshot, format), target, options);
+    else openPdfInTab(blob, receiptFilename(snapshot, format), target);
   });
 }
 
 export function usePdvOrderReceiptOpener(entityId?: string | null) {
   const operation = usePdvReceiptOperation(entityId);
+  const output = useDomiLinkReceiptOutput();
   return { ...operation, open: async (orderId: string, format: PdvReceiptFormat, options?: Parameters<typeof openPdvOrderReceipt>[2]) => {
     if (!operation.isCurrent()) { options?.target?.close(); return; }
-    await operation.run(guard => openPdvOrderReceipt(orderId, format, { ...options, ...guard }));
+    await operation.run(guard => openPdvOrderReceipt(orderId, format, { output, ...options, ...guard }));
   } };
 }
 

@@ -1,17 +1,20 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import { PdvNfceSaleAction } from './PdvNfceSaleAction';
-const state = vi.hoisted(() => ({ pending:vi.fn(),allowed:true, scope:'company-a:user-a:emit', loading:false, enabled:true, mode:'ask', docs:[] as Record<string,unknown>[], docsError:false, invoke:vi.fn(), refetch:vi.fn(), wizard:vi.fn() }));
+const state = vi.hoisted(() => ({ pending:vi.fn(),allowed:true, scope:'company-a:user-a:emit', loading:false, enabled:true, mode:'ask', docs:[] as Record<string,unknown>[], docsError:false, readiness:{ready:true,issues:[] as {code:string;message:string;section:string}[]}, readinessError:false,autoDanfce:false, invoke:vi.fn(), refetch:vi.fn(), wizard:vi.fn() }));
+vi.mock('@/contexts/AppLocaleContext',()=>({useAppLocaleContext:()=>({locale:'pt-br'})}));
+vi.mock('react-router-dom',()=>({Link:({to,children,...props}:{to:string;children:ReactNode})=><a href={to} {...props}>{children}</a>}));
+vi.mock('@/hooks/useGoodsFiscalReadiness',()=>({useGoodsFiscalReadiness:()=>({data:state.readiness,isLoading:false,isError:state.readinessError,refetch:state.refetch})}));
 vi.mock('@/utils/openPdfInTab',()=>({openPendingPdfTab:(...args:unknown[])=>state.pending(...args)}));
 vi.mock('@/hooks/useGoodsFiscalAccess',()=>({useGoodsFiscalAccess:()=>({allowed:state.allowed,scopeId:state.scope,isLoading:state.loading})}));
-vi.mock('@/hooks/useGoodsFiscalSettings',()=>({useGoodsFiscalSettings:()=>({settings:{nfce:{enabled:state.enabled,afterPaymentMode:state.mode,defaultOperationNature:'VENDA',includeIdentifiedConsumer:true,openDanfceAfterAuthorization:false}},isLoading:false,isError:false})}));
+vi.mock('@/hooks/useGoodsFiscalSettings',()=>({useGoodsFiscalSettings:()=>({settings:{nfce:{enabled:state.enabled,afterPaymentMode:state.mode,defaultOperationNature:'VENDA',includeIdentifiedConsumer:true,openDanfceAfterAuthorization:state.autoDanfce}},isLoading:false,isError:false})}));
 vi.mock('@/hooks/useGoodsFiscal',()=>({useGoodsFiscalDocuments:()=>({data:state.docs,isLoading:false,isError:state.docsError,refetch:state.refetch}),useGoodsFiscalDocumentAction:()=>({mutateAsync:state.invoke,isPending:false})}));
 vi.mock('@/components/ui/ResponsiveModal',()=>({ResponsiveModal:({open,title,children}:{open:boolean;title:string;children:ReactNode})=>open?<section role="dialog" aria-label={title}>{children}</section>:null}));
 vi.mock('./GoodsFiscalWizard',()=>({GoodsFiscalWizard:(props:Record<string,unknown>)=>{state.wizard(props);return props.open?<div data-testid="fiscal-wizard">Revisar venda {String(props.sourceId)}</div>:null;}}));
 const props={orderId:'sale-a',confirmed:true,promptAfterPayment:true,detailsOpen:false,contextKey:'cash-a'};
 describe('controlador NFC-e pós-venda independente do popover',()=>{
- beforeEach(()=>{vi.clearAllMocks();Object.assign(state,{allowed:true,scope:'company-a:user-a:emit',loading:false,enabled:true,mode:'ask',docs:[],docsError:false});state.pending.mockReturnValue(null);state.invoke.mockResolvedValue({status:'uncertain'});state.refetch.mockResolvedValue({});});
+ beforeEach(()=>{vi.clearAllMocks();Object.assign(state,{allowed:true,scope:'company-a:user-a:emit',loading:false,enabled:true,mode:'ask',docs:[],docsError:false,readiness:{ready:true,issues:[]},readinessError:false,autoDanfce:false});state.pending.mockReturnValue(null);state.invoke.mockResolvedValue({status:'uncertain'});state.refetch.mockResolvedValue({});});
  it('pergunta com menu fechado, sem transmitir; só abre revisão ao aceitar',async()=>{
   render(<PdvNfceSaleAction {...props}/>);
   expect(await screen.findByRole('alertdialog')).toHaveTextContent('Emitir NFC-e desta venda?');
@@ -49,4 +52,47 @@ describe('controlador NFC-e pós-venda independente do popover',()=>{
   state.docs=[{id:'authorized-document',status:'authorized'}];state.invoke.mockResolvedValue({url:'https://artifacts.example.invalid/fictitious.pdf'});const open=vi.spyOn(window,'open').mockImplementation(()=>null);
   render(<PdvNfceSaleAction {...props} promptAfterPayment={false} detailsOpen/>);fireEvent.click(screen.getByRole('button',{name:'DANFC-e'}));await waitFor(()=>expect(state.invoke).toHaveBeenCalledWith(expect.objectContaining({documentId:'authorized-document',action:'artifact',kind:'pdf'})));expect(screen.queryByRole('button',{name:'Emitir NFC-e'})).not.toBeInTheDocument();expect(await screen.findByRole('link',{name:'Abrir DANFC-e'})).toHaveAttribute('href','https://artifacts.example.invalid/fictitious.pdf');open.mockRestore();
  });
+ it('mostra a pendência real e leva às configurações sem perguntar ou transmitir',()=>{
+  state.readiness={ready:false,issues:[{code:'issuer_incomplete',message:'Complete nas Configurações Fiscais: inscrição estadual.',section:'empresa'}]};
+  render(<PdvNfceSaleAction {...props} detailsOpen/>);
+  expect(screen.getByRole('button',{name:'Emitir NFC-e'})).toBeDisabled();
+  expect(screen.getByText(/Complete nas Configurações Fiscais: inscrição estadual/)).toBeInTheDocument();
+  expect(screen.getByRole('link',{name:'Abrir configurações fiscais'})).toHaveAttribute('href','/notas-fiscais/configuracoes');
+  expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();expect(state.invoke).not.toHaveBeenCalled();
+ });
+ it('falha ao conferir pré-requisitos não libera emissão',()=>{
+  state.readinessError=true;state.readiness={ready:false,issues:[]};
+  render(<PdvNfceSaleAction {...props} detailsOpen/>);
+  expect(screen.getByRole('button',{name:'Emitir NFC-e'})).toBeDisabled();
+  expect(screen.getByRole('alert')).toHaveTextContent('Não foi possível conferir');expect(state.invoke).not.toHaveBeenCalled();
+ });
+
+ it('corrige rejeição local pelo mesmo documento sem criar outra nota',async()=>{
+  state.docs=[{id:'local-rejected',status:'rejected',draft_payload:{sourceType:'pdv_sale',sourceId:'sale-a'}}];state.invoke.mockResolvedValue({status:'draft'});
+  render(<PdvNfceSaleAction {...props} promptAfterPayment={false} detailsOpen/>);
+  fireEvent.click(screen.getByRole('button',{name:'Corrigir dados'}));
+  await waitFor(()=>expect(state.invoke).toHaveBeenCalledWith(expect.objectContaining({documentId:'local-rejected',action:'revise'})));
+  expect(await screen.findByTestId('fiscal-wizard')).toBeInTheDocument();
+ });
+ it('continua a nota assinada sem abrir outro formulário ou criar nota nova',async()=>{
+  state.docs=[{id:'signed-document',status:'signed',access_key:'0'.repeat(44)}];state.invoke.mockResolvedValue({status:'uncertain'});
+  render(<PdvNfceSaleAction {...props} promptAfterPayment={false} detailsOpen/>);
+  fireEvent.click(screen.getByRole('button',{name:'Continuar emissão'}));
+  await waitFor(()=>expect(state.invoke).toHaveBeenCalledWith(expect.objectContaining({documentId:'signed-document',action:'resume'})));
+  expect(screen.queryByTestId('fiscal-wizard')).not.toBeInTheDocument();
+ });
+
+ it('abrir DANFC-e após autorização reserva a janela no clique e só navega com autorização confirmada',async()=>{
+  state.autoDanfce=true;const replace=vi.fn();const close=vi.fn();state.pending.mockReturnValue({closed:false,location:{replace},close});state.invoke.mockResolvedValue({url:'https://artifacts.example.invalid/authorized.pdf'});
+  render(<PdvNfceSaleAction {...props} promptAfterPayment={false} detailsOpen/>);
+  const wizard=state.wizard.mock.lastCall![0];act(()=>wizard.onBeforeEmit());expect(state.pending).toHaveBeenCalledOnce();expect(replace).not.toHaveBeenCalled();
+  await act(async()=>{await wizard.onSaved({id:'authorized-id',status:'authorized'});});
+  expect(state.invoke).toHaveBeenCalledWith({model:65,documentId:'authorized-id',action:'artifact',kind:'pdf'});expect(replace).toHaveBeenCalledWith('https://artifacts.example.invalid/authorized.pdf');expect(close).not.toHaveBeenCalled();
+ });
+ it('fecha a janela de espera quando a emissão falha ou fica incerta',async()=>{
+  state.autoDanfce=true;const close=vi.fn();state.pending.mockReturnValue({closed:false,close});render(<PdvNfceSaleAction {...props} promptAfterPayment={false} detailsOpen/>);
+  const wizard=state.wizard.mock.lastCall![0];act(()=>wizard.onBeforeEmit());await act(async()=>{await wizard.onSaved({id:'uncertain-id',status:'uncertain'});});expect(close).toHaveBeenCalledOnce();expect(state.invoke).not.toHaveBeenCalled();
+  act(()=>{wizard.onBeforeEmit();wizard.onEmitFailure();});expect(close).toHaveBeenCalledTimes(2);
+ });
+
 });

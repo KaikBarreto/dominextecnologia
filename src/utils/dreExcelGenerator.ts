@@ -6,6 +6,7 @@ type DreExcelCell = string | number;
 export type DreExcelRowKind =
   | 'title'
   | 'metadata'
+  | 'notice'
   | 'spacer'
   | 'header'
   | 'section'
@@ -308,6 +309,7 @@ function buildDreRows(data: DreReportData, fractionDigits: number): SheetRowsBui
     comparisonFirst,
   );
   const grossRevenue = roundMoney(data.receitaBruta, fractionDigits);
+  if (data.coverageNotice) builder.add([data.coverageNotice], 'notice');
   const comparisonByCode = new Map((data.comparison?.rows ?? []).map((row) => [row.code, row.previous]));
   const comparisonRevenue = roundMoney(comparisonByCode.get('01') ?? 0, fractionDigits);
   const configuredGroups = (data.groups ?? []).filter((group) => group.nature !== 'excluded');
@@ -500,6 +502,13 @@ function currencyNumberFormat(currency: string, fractionDigits: number): string 
 function styleRow(worksheet: ExcelWorksheet, rowNumber: number, kind: DreExcelRowKind, columnCount: number): void {
   const row = worksheet.getRow(rowNumber);
   row.height = kind === 'title' ? 34 : kind === 'header' || kind === 'section' ? 25 : kind === 'spacer' ? 9 : 21;
+  if (kind === 'notice') {
+    worksheet.mergeCells(rowNumber, 1, rowNumber, columnCount);
+    row.height = 54;
+    row.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+    row.getCell(1).font = { name: 'Arial', size: 10, color: { argb: COLORS.slate } };
+    return;
+  }
 
   row.eachCell({ includeEmpty: true }, (cell, columnNumber) => {
     cell.font = { name: 'Arial', size: 10, color: { argb: COLORS.slate } };
@@ -604,6 +613,7 @@ function applySheetLayout(
 
   const moneyFormat = currencyNumberFormat(currency, fractionDigits);
   for (let rowNumber = sheet.headerRow + 1; rowNumber <= sheet.rows.length; rowNumber += 1) {
+    if (sheet.rowKinds[rowNumber - 1] === 'notice') continue;
     for (const columnNumber of sheet.currencyColumns) {
       const cell = worksheet.getCell(rowNumber, columnNumber);
       cell.numFmt = moneyFormat;

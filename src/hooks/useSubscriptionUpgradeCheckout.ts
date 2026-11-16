@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface SubscriptionUpgradeQuote {
+  initial_activation?: boolean;
   id: string;
   company_id: string;
   status: "pending" | "payment_pending" | "applied" | "expired" | "cancelled" | "failed" | "reversed";

@@ -8,10 +8,11 @@ export function useDomiLinkAccess() {
   const { hasScreenAccess, loading, profileLoading } = useAuth();
   const { hasScreen, isLoading } = useCompanyModules();
   const isPending = loading || profileLoading || isLoading;
-  const allowed = !isPending && (
-    (hasScreenAccess('screen:inventory') && hasScreen('screen:inventory'))
-    || (hasScreenAccess('screen:pdv_settings') && hasScreen('screen:pdv_settings'))
-  );
+  // Somente o pareamento deste usuário/computador; não concede Settings geral.
+  const allowed = !isPending && [
+    'screen:inventory', 'screen:pdv_settings', 'screen:pdv',
+    'screen:pdv_preorders', 'screen:pdv_orders', 'screen:pdv_dispatch',
+  ].some(screen => hasScreenAccess(screen) && hasScreen(screen));
 
   return { allowed, isPending };
 }

@@ -1,3 +1,4 @@
+import { hasServiceDocumentLicense } from '../_shared/service-document-license.ts';
 // =============================================================================
 // pmoc-portal-share — Edge function PÚBLICA do Portal do Contrato.
 // =============================================================================
@@ -341,7 +342,8 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "internal_error" }, 500);
     }
 
-    if (hasModule !== true) {
+    const documentCompanyId=String((contract as unknown as {company_id:string}).company_id);
+    if (hasModule !== true || !await hasServiceDocumentLicense(supabase,documentCompanyId,'contract_document')) {
       // Nome da empresa: company_settings.name (fallback companies.name; null).
       let gateCompanyName: string | null = null;
       const { data: gateSettings } = await supabase
@@ -551,6 +553,7 @@ Deno.serve(async (req) => {
         .from("customers")
         .select("name, address, city, state")
         .eq("id", contract.customer_id)
+        .eq("company_id", documentCompanyId)
         .maybeSingle(),
       // RT e saúde do contrato pertencem à VISÃO GERAL: seção protegida/oculta
       // não chega nem a consultar o banco.
@@ -559,6 +562,7 @@ Deno.serve(async (req) => {
             .from("responsible_technicians")
             .select("full_name, cft_crea, modality, registry_number")
             .eq("id", contract.responsible_technician_id)
+            .eq("company_id", documentCompanyId)
             .maybeSingle()
         : Promise.resolve({ data: null } as { data: null }),
       supabase
@@ -600,6 +604,8 @@ Deno.serve(async (req) => {
             .maybeSingle()
         : Promise.resolve({ data: null } as { data: null }),
     ]);
+
+    if (!customer) return notFound();
 
     // Tenant name fallback (company_settings.name pode ser '' por default).
     let tenantName = (companySettings?.name ?? "").trim();

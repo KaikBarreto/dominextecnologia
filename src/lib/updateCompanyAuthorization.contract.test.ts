@@ -13,7 +13,7 @@ const permissionMigration = readFileSync(
 describe('autorizacao da edicao administrativa de empresas', () => {
   it('aceita super-admin ou a permissao granular de empresas', () => {
     expect(edge).toContain("_role: 'super_admin'");
-    expect(edge).toContain("_permission: 'admin_empresas'");
+    expect(edge).toContain("_permission: 'admin_empresas_editar'");
     expect(edge).toContain('!superAdminResult.data && !companyPermissionResult.data');
   });
 

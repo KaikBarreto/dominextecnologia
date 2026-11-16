@@ -1,3 +1,4 @@
+import { resolveBusinessCore } from '../_shared/business-core.ts';
 // create-asaas-payment
 // ---------------------
 // Cria uma cobrança Asaas para a assinatura SaaS de uma empresa (tenant):
@@ -28,7 +29,7 @@ import {
   AsaasApiError,
   assertAsaasConfigured,
 } from "../_shared/asaas-client.ts";
-import { authorizeAsaasCompany } from "../_shared/asaas-auth.ts";
+import { authorizeAsaasCompany, authorizeAsaasCompanyManager } from "../_shared/asaas-auth.ts";
 import { applyWrite, tryWrite, tryWriteReturning, WriteWarnings } from "../_shared/db-write.ts";
 import {
   buildPixAutomaticAuthorizationPayload,
@@ -36,7 +37,7 @@ import {
   pixAutomaticCorrelation,
   type PixAutomaticAuthorizationResponse,
 } from "../_shared/asaas-pix-automatic.ts";
-import { resolveChargeTerms, type ChargeTerms } from "./billing-rules.ts";
+import { canInitializeRetailOffer, resolveChargeTerms, type ChargeTerms } from "./billing-rules.ts";
 
 // A edge usa service_role sem schema gerado no runtime; manter o mesmo tipo
 // inferido por createClient() evita acoplar esta função aos tipos do frontend.
@@ -82,6 +83,7 @@ interface UpgradeChangeRequest {
   amount_due: number;
   target_billing_cycle: "monthly" | "yearly";
   resets_billing_anchor: boolean;
+  initial_activation?: boolean;
 }
 
 function resolveClientIp(req: Request): string | null {
@@ -292,8 +294,8 @@ Deno.serve(async (req) => {
     } = body;
 
     if (!company_id) throw new ValidationError("company_id é obrigatório.");
-    if (!billing_type) throw new ValidationError("Forma de pagamento é obrigatória.");
-    if (!amount || amount <= 0) throw new ValidationError("Valor da cobrança inválido.");
+    if (!["PIX", "CREDIT_CARD", "BOLETO"].includes(billing_type)) throw new ValidationError("Escolha uma forma de pagamento válida.");
+    if (!Number.isFinite(amount) || amount <= 0) throw new ValidationError("Valor da cobrança inválido.");
     if (use_saved_card && (purpose !== "upgrade" || billing_type !== "CREDIT_CARD")) {
       throw new ValidationError("O cartão cadastrado só pode ser usado para pagar um upgrade.");
     }
@@ -316,13 +318,14 @@ Deno.serve(async (req) => {
     // A busca idempotente pode acontecer cedo, mas a reutilização só ocorre
     // DEPOIS da reconciliação server-side abaixo. Uma cobrança antiga nunca pode
     // pular a validação do valor/ciclo atualmente autorizado para a empresa.
-    const { data: existingPending } = await supabase
+    const { data: existingPending, error: existingPendingError } = await supabase
       .from("subscription_payments")
       .select("id, asaas_payment_id, created_at, billing_type, invoice_url, pix_qr_code, pix_copy_paste, pix_expiration_date, due_date, status, amount, subscription_change_request_id")
       .eq("company_id", company_id)
       .in("status", ["PENDING", "CREATED", "ACTIVE", "CREATING", "CREATE_UNKNOWN"])
       .order("created_at", { ascending: false })
       .limit(1);
+    if (existingPendingError) throw new ValidationError("Não foi possível conferir as cobranças existentes. Tente novamente.");
 
     // --- Empresa ---
     const { data: company, error: companyError } = await supabase
@@ -331,7 +334,7 @@ Deno.serve(async (req) => {
       .eq("id", company_id)
       .single();
     if (companyError || !company) throw new ValidationError("Empresa não encontrada.");
-
+    const businessCore = resolveBusinessCore(company.business_core);
     // ===================================================================
     // VALIDAÇÃO SERVER-SIDE DO VALOR — FAIL-CLOSED (reconcilia com a EMPRESA)
     // -------------------------------------------------------------------
@@ -376,7 +379,18 @@ Deno.serve(async (req) => {
             : "Esta cotação de upgrade não está mais disponível.",
         );
       }
-      if (requestRow.status === "pending" && new Date(requestRow.expires_at).getTime() <= Date.now()) {
+      if (requestRow.initial_activation === true) {
+        const manager = await authorizeAsaasCompanyManager(supabase, req.headers.get("Authorization"), company_id);
+        if (!manager.ok) return new Response(JSON.stringify({ error: manager.message }), {
+          status: manager.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+        if (billing_type === 'CREDIT_CARD' && (use_saved_card === true || !/^\d{13,19}$/.test(cardNumberDigits(body)))) {
+          throw new ValidationError('Informe os dados do cartão para a primeira contratação.');
+        }
+      }
+      // A RPC inicial só expira ofertas sem tentativa de gateway. Resultado
+      // incerto permanece congelado, inclusive depois de 48h, até conciliação.
+      if (requestRow.initial_activation !== true && requestRow.status === "pending" && new Date(requestRow.expires_at).getTime() <= Date.now()) {
         await applyWrite(
           "expiração da cotação de upgrade",
           supabase
@@ -398,6 +412,13 @@ Deno.serve(async (req) => {
       ) {
         throw new ValidationError("A mudança para o ciclo anual deve ser paga à vista por Pix ou boleto.");
       }
+      if (requestRow.target_plan_code !== 'personalizado') {
+        const {data: targetPlan, error: targetPlanError} = await supabase.from('subscription_plans')
+          .select('business_core').eq('code',requestRow.target_plan_code).maybeSingle();
+        if (targetPlanError || !targetPlan || targetPlan.business_core !== businessCore) {
+          throw new ValidationError('A mudança de plano não corresponde ao kit da sua empresa. Atualize a cotação.');
+        }
+      }
       upgradeRequest = requestRow as UpgradeChangeRequest;
       const upgradeCycle = requestRow.target_billing_cycle === "yearly" ? "yearly" : "monthly";
       chargeTerms = {
@@ -408,6 +429,15 @@ Deno.serve(async (req) => {
         gatewayAmount: expected,
       };
     } else {
+      if (businessCore === 'retail' && company.business_core_version === 2 && Number(company.ltv) === 0) {
+        const { data: pendingInitial, error: pendingInitialError } = await supabase.from('subscription_change_requests')
+          .select('id').eq('company_id', company_id).eq('initial_activation', true)
+          .in('status', ['pending', 'payment_pending']).limit(1).maybeSingle();
+        if (pendingInitialError || pendingInitial) throw new ValidationError('Já existe uma contratação em andamento. Abra a cotação vigente antes de pagar.');
+      }
+      if (canInitializeRetailOffer(company)) {
+        throw new ValidationError('Confira e confirme a cotação do seu plano antes de seguir para o pagamento.');
+      }
       // Valor efetivo mensal é reconciliado no servidor: preserva custom_price
       // legado e aplica os descontos itemizados ativos sem confiar no client.
       const { data: effectiveValueRaw, error: effectiveValueError } = await supabase.rpc(
@@ -415,7 +445,7 @@ Deno.serve(async (req) => {
         { p_company_id: company_id },
       );
       if (effectiveValueError || !(Number(effectiveValueRaw) > 0)) {
-        throw new ValidationError("Não foi possível calcular a mensalidade vigente. Tente novamente.");
+        throw new ValidationError("Monte e confirme seu plano antes de seguir para o pagamento.");
       }
       const effectiveValue = Number(effectiveValueRaw);
       const hasActiveCustomPrice = effectiveValue !== (Number(company.subscription_value) || 0);
@@ -456,12 +486,14 @@ Deno.serve(async (req) => {
         company.subscription_status === "trial" ||
         company.subscription_status === "pending_payment";
       if (plan_code && company.subscription_plan && plan_code !== company.subscription_plan) {
-        const swapContextOk = isFirstSaleStatus && !hasActiveCustomPrice && plan_code !== "personalizado";
+        const swapContextOk = isFirstSaleStatus && !hasActiveCustomPrice && plan_code !== "personalizado"
+          && !(businessCore === "retail" && company.business_core_version === 2);
         // Preço de catálogo do plano escolhido (necessário pra decidir upgrade x downgrade).
         const { data: newPlanRow } = swapContextOk
           ? await supabase
               .from("subscription_plans")
-              .select("price, max_users")
+              .select("price, max_users, business_core")
+              .eq("business_core", businessCore)
               .eq("code", plan_code)
               .eq("is_active", true)
               .maybeSingle()
@@ -694,7 +726,7 @@ Deno.serve(async (req) => {
     const isFirstSale = company.subscription_status === "testing" ||
       company.subscription_status === "Testando" ||
       company.subscription_status === "trial";
-    const paymentType = upgradeRequest ? "upgrade" : isFirstSale ? "primeira_venda" : "renovacao";
+    const paymentType = upgradeRequest?.initial_activation ? "primeira_venda" : upgradeRequest ? "upgrade" : isFirstSale ? "primeira_venda" : "renovacao";
 
     // --- Vencimento ---
     const subscriptionExpiresAt = upgradeRequest
@@ -785,13 +817,42 @@ Deno.serve(async (req) => {
       }
     }
 
+    // A ativação inicial reivindica a criação antes do POST. Resposta incerta
+    // fica congelada; retries nunca disparam outra cobrança/recorrência.
+    const postCharge = async (path: string, payload: Record<string, unknown>) => {
+      if (upgradeRequest?.initial_activation) {
+        const { data: claimed, error } = await supabase.rpc('claim_initial_subscription_activation_payment', {
+          p_request_id: upgradeRequest.id,
+        });
+        if (error || claimed !== true) throw new ValidationError('Esta contratação já está em andamento ou suas condições mudaram. Atualize a página e aguarde a conciliação antes de tentar novamente.');
+      }
+      try {
+        const result = await asaas.post(path, payload);
+        if (upgradeRequest?.initial_activation) await tryWrite('vínculo da criação inicial', supabase.from('subscription_change_requests')
+          .update({ status: 'payment_pending', payment_creation_state: 'created',
+            ...(path === '/payments' ? { asaas_payment_id: result.id } : {}),
+          }).eq('id', upgradeRequest.id).in('status', ['pending', 'payment_pending']),
+          { warnings, recovery: { change_request_id: upgradeRequest.id, gateway_id: result.id } });
+        return result;
+      } catch (error) {
+        if (upgradeRequest?.initial_activation) {
+          const definitive = error instanceof AsaasApiError && error.status >= 400 && error.status < 500;
+          await tryWrite('estado da criação da primeira cobrança', supabase.from('subscription_change_requests')
+            .update({ payment_creation_state: definitive ? 'failed' : 'unknown' })
+            .eq('id', upgradeRequest.id).eq('payment_creation_state', 'creating'),
+            { recovery: { change_request_id: upgradeRequest.id, gateway_outcome: definitive ? 'failed' : 'unknown' } });
+        }
+        throw error;
+      }
+    };
+
     // ===================================================================
     // UPGRADE: cobranca UNICA. Nunca cria/cancela recorrencia aqui.
     // A recorrencia existente so muda de valor depois que o webhook aplica
     // o upgrade. O externalReference carrega a request para recuperacao mesmo
     // se a gravacao local falhar depois da cobranca nascer no gateway.
     // ===================================================================
-    if (upgradeRequest) {
+    if (upgradeRequest && !(upgradeRequest.initial_activation && billing_type === "CREDIT_CARD")) {
       const externalReference = `upgrade:${upgradeRequest.id}:${company_id}`;
       let newlyTokenizedCard: TokenizedCard | null = null;
       const paymentPayload: Record<string, unknown> = {
@@ -838,7 +899,7 @@ Deno.serve(async (req) => {
         paymentPayload.fine = { value: 2, type: "PERCENTAGE" };
       }
 
-      const payment = await asaas.post(`/payments`, paymentPayload);
+      const payment = await postCharge(`/payments`, paymentPayload);
       if (newlyTokenizedCard) {
         await persistSavedCardToken(supabase, company_id, newlyTokenizedCard);
       }
@@ -882,7 +943,7 @@ Deno.serve(async (req) => {
             payment_method: billing_type.toLowerCase(),
             billing_type,
             billing_cycle: upgradeRequest.target_billing_cycle,
-            type: "upgrade",
+            type: upgradeRequest.initial_activation ? "primeira_venda" : "upgrade",
             pix_qr_code: pixQrCode,
             pix_copy_paste: pixCopyPaste,
             pix_expiration_date: pixExpirationDate,
@@ -907,7 +968,9 @@ Deno.serve(async (req) => {
         "vínculo da cotação com a cobrança de upgrade",
         supabase
           .from("subscription_change_requests")
-          .update({ status: "payment_pending", asaas_payment_id: payment.id })
+          .update({ status: "payment_pending", asaas_payment_id: payment.id,
+            ...(upgradeRequest.initial_activation ? { payment_creation_state: 'created' } : {}),
+          })
           .eq("id", upgradeRequest.id)
           .in("status", ["pending", "payment_pending"])
           .select("id")
@@ -1129,7 +1192,7 @@ Deno.serve(async (req) => {
     // CARTÃO DE CRÉDITO recorrente (subscription)
     // ===================================================================
     if (billing_type === "CREDIT_CARD" && body.card_number) {
-      await cancelExistingSubscriptions(asaasCustomerId!);
+      if (!upgradeRequest?.initial_activation) await cancelExistingSubscriptions(asaasCustomerId!);
 
       // B9: cartão é SEMPRE mensal recorrente, sem desconto anual e sem
       // parcelamento. `resolveChargeTerms` normaliza o ciclo e usa como valor do
@@ -1148,7 +1211,7 @@ Deno.serve(async (req) => {
         value: monthlyCardValue,
         nextDueDate: todayBRT,
         description: description || `Assinatura Dominex - ${company.name}`,
-        externalReference: company_id,
+        externalReference: upgradeRequest?.initial_activation ? `upgrade:${upgradeRequest.id}:${company_id}` : company_id,
       };
       if (newlyTokenizedCard) {
         subscriptionPayload.creditCardToken = newlyTokenizedCard.token;
@@ -1158,7 +1221,7 @@ Deno.serve(async (req) => {
         subscriptionPayload.creditCardHolderInfo = buildCreditCardHolderInfo(body);
         if (clientIp) subscriptionPayload.remoteIp = clientIp;
       }
-      const subscriptionData = await asaas.post(`/subscriptions`, subscriptionPayload);
+      const subscriptionData = await postCharge(`/subscriptions`, subscriptionPayload);
 
       await linkRecurrenceToCompany(supabase, company_id, subscriptionData.id, "credit_card");
       if (newlyTokenizedCard) {
@@ -1195,6 +1258,7 @@ Deno.serve(async (req) => {
             billing_type,
             billing_cycle: "monthly",
             type: paymentType,
+            ...(upgradeRequest?.initial_activation ? { subscription_change_request_id: upgradeRequest.id } : {}),
             invoice_url: subscriptionData.invoiceUrl,
             // Cartão debita HOJE (BRT), igual ao nextDueDate enviado à Asaas.
             due_date: todayBRT,
@@ -1234,7 +1298,7 @@ Deno.serve(async (req) => {
     const payment = await asaas.post(`/payments`, {
       customer: asaasCustomerId,
       billingType: billing_type,
-      value: amount,
+      value: chargeTerms.gatewayAmount,
       dueDate: dueDateStr,
       description: description || `Assinatura Dominex - ${company.name}`,
       externalReference: company_id,
@@ -1280,7 +1344,7 @@ Deno.serve(async (req) => {
           company_id,
           asaas_payment_id: payment.id,
           asaas_customer_id: asaasCustomerId,
-          amount,
+          amount: chargeTerms.gatewayAmount,
           status: payment.status || "PENDING",
           payment_method: billing_type.toLowerCase(),
           billing_type,

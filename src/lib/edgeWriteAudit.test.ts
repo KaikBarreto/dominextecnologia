@@ -196,8 +196,8 @@ describe('change-subscription-plan — valor antes de histórico', () => {
   it('força todos os recursos-base no personalizado sem confiar no payload', () => {
     expect(src).toContain('const CUSTOMER_PORTAL_MODULE = "customer_portal"');
     expect(src).toContain('const BASE_INCLUDED_MODULES = [BASE_MODULE, ...FREE_BASE_MODULES] as const');
-    expect(src).toContain('new Set<string>(BASE_INCLUDED_MODULES)');
-    expect(src).toContain('FREE_BASE_MODULES.every(');
+    expect(src).toContain('new Set<string>(requiredCustomModulesForCore(businessCore,normalizedCustomModules))');
+    expect(src).toContain('requiredCustomModulesForCore(businessCore,normalizedCustomModules).filter(code=>code!==BASE_MODULE).every(');
     expect(src).toContain('!Number.isFinite(basePrice) || basePrice <= 0 || !freeBaseModulesAreValid');
     expect(src).toContain('Os módulos obrigatórios do plano personalizado não estão configurados corretamente.');
   });

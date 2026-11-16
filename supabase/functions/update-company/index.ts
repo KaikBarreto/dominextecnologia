@@ -1,3 +1,5 @@
+import { resolveBusinessCore } from '../_shared/business-core.ts'
+import { loadBusinessCoreBasePrice, requiredCustomModulesForCore, customCommercialModulesForCore } from '../_shared/business-core-pricing.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { canonicalizeCompanyOrigin } from '../_shared/company-origin.ts'
 import { resolveFirstPaidWhatsappTier } from '../_shared/whatsapp-pricing.ts'
@@ -76,11 +78,16 @@ Deno.serve(async (req) => {
     const planCode = typeof body.subscription_plan === 'string' ? body.subscription_plan.trim() : ''
     if (!companyId || !body.name || !planCode) throw new ValidationError('Empresa, nome e plano são obrigatórios.')
 
+    const {data:currentCompany,error:currentCompanyError}=await supabase.from('companies').select('business_core,business_core_version').eq('id',companyId).maybeSingle()
+    if(currentCompanyError||!currentCompany) throw new ValidationError('A empresa não foi encontrada.')
+    const businessCore=resolveBusinessCore(currentCompany.business_core)
+    if(body.business_core!==undefined&&body.business_core!==businessCore) throw new ValidationError('O perfil inicial da empresa não pode ser alterado. Contrate o outro núcleo pelos módulos.')
     const isCustom = planCode === 'personalizado'
     const requested: string[] = Array.isArray(body.modules)
       ? body.modules.filter((code: unknown): code is string => typeof code === 'string').map((code: string) => code.trim()).filter(Boolean)
       : []
-    const targetCodes = isCustom ? [...new Set([...REQUIRED_CUSTOM, ...requested.filter((code) => code !== EXTRA_USER)])] : []
+    const requiredCoreModules=requiredCustomModulesForCore(businessCore,requested)
+    const targetCodes = isCustom ? customCommercialModulesForCore(businessCore,requested) : []
 
     let catalogValue = 0
     let targetMaxUsers = Number(body.max_users) || INCLUDED_USERS
@@ -97,8 +104,14 @@ Deno.serve(async (req) => {
         .in('code', [...targetCodes, EXTRA_USER])
       if (error) throw new Error(`Falha ao consultar catálogo: ${error.message}`)
       const byCode = new Map((rows || []).map((row) => [row.code, Number(row.price) || 0]))
+      if(businessCore==='retail') {
+        const base=await loadBusinessCoreBasePrice(supabase,businessCore)
+        const trialOnly=body.subscription_status==='testing'&&body.plan_locked!==true&&!(Number(body.custom_price)>0)&&!(Number(body.subscription_value)>0)
+        if(base===null&&!trialOnly) throw new ValidationError('Configure o preço da Loja antes de contratar.')
+        byCode.set('basic',base??0)
+      }
       for (const [code, price] of byCode) modulePriceByCode.set(code, price)
-      const missing = REQUIRED_CUSTOM.filter((code) => !byCode.has(code))
+      const missing = requiredCoreModules.filter((code) => !byCode.has(code))
       if (missing.length) throw new ValidationError('Os módulos obrigatórios do plano personalizado não estão disponíveis.')
       validModules = targetCodes.filter((code) => byCode.has(code))
       catalogValue = validModules.reduce((sum, code) => sum + (byCode.get(code) || 0), 0)
@@ -125,11 +138,11 @@ Deno.serve(async (req) => {
     } else {
       const { data: plan, error } = await supabase
         .from('subscription_plans')
-        .select('price, max_users')
-        .eq('code', planCode)
-        .eq('is_active', true)
+        .select('price, max_users, business_core, is_active')
+        .eq('code', planCode).eq('business_core',businessCore)
         .maybeSingle()
-      if (error || !plan || !(Number(plan.price) > 0)) throw new ValidationError('O plano selecionado não está disponível no catálogo.')
+      const trialOnly=businessCore==='retail'&&body.subscription_status==='testing'&&body.plan_locked!==true&&!(Number(body.custom_price)>0)&&!(Number(body.subscription_value)>0)
+      if (error || !plan || ((!plan.is_active || !(Number(plan.price) > 0))&&!trialOnly)) throw new ValidationError('O plano selecionado não está disponível no catálogo.')
       catalogValue = Number(plan.price)
       targetMaxUsers = Number(plan.max_users) || INCLUDED_USERS
     }
@@ -171,7 +184,7 @@ Deno.serve(async (req) => {
           let standardUnitPrice = 0
           if (scopeType === 'module') {
             moduleCode = typeof item.module_code === 'string' ? item.module_code.trim() : ''
-            if (!isCustom || !moduleCode || !validModules.includes(moduleCode) || REQUIRED_CUSTOM.includes(moduleCode)) {
+            if (!isCustom || !moduleCode || !validModules.includes(moduleCode) || requiredCoreModules.includes(moduleCode)) {
               throw new ValidationError('O módulo promocional precisa ser um adicional contratado.')
             }
             standardUnitPrice = modulePriceByCode.get(moduleCode) || 0
@@ -257,7 +270,7 @@ Deno.serve(async (req) => {
       segments,
       segment: segments[0] || null,
       custom_price: negotiatedPrice,
-      custom_price_permanent: negotiatedPrice ? body.custom_price_permanent !== false : true,
+      custom_price_permanent: negotiatedPrice ? body.custom_price_permanent !== false : (Number(currentCompany.business_core_version)<2),
       custom_price_months: negotiatedPrice && body.custom_price_permanent === false
         ? Math.max(1, Number(body.custom_price_months) || 1)
         : null,

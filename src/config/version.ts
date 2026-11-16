@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.10";
+export const APP_VERSION = "1.42.0";
 
 export const VERSION_NOTES =
-  "Baixas financeiras, assinaturas, vídeos e ações mobile mais confiáveis no uso diário.";
+  "Kits Loja e Serviços, conexão de equipamentos no PDV e conferências mais claras nas compras, no financeiro e na preparação fiscal.";

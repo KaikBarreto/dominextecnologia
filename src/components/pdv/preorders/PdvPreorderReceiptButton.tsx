@@ -1,4 +1,5 @@
 import { cartLineGrossCents } from '@/lib/pdv/cart';
+import { useDomiLinkReceiptOutput, type PdvReceiptOutput } from '@/hooks/useDomiLinkReceiptOutput';
 import { PdvReceiptCompanyTooltip } from '@/components/pdv/receipt/PdvReceiptCompanyTooltip';
 import { useState } from "react";
 import { assertPdvReceiptOperationCurrent, usePdvReceiptOperation, withPdvReceiptTarget, type PdvReceiptOperationGuard } from "@/hooks/usePdvReceiptOperation";
@@ -94,7 +95,7 @@ export function toPdvPreorderReceiptSnapshot(detail: PdvPreorderDetail, {
 }
 
 export async function openPdvPreorderReceipt(preorderId: string, {
-  company, customerName, inventory = [], format, target, copies = 1, ...guard
+  company, customerName, inventory = [], format, target, copies = 1, output, ...guard
 }: {
   company: PdvReceiptSnapshot["company"] | null;
   customerName?: string | null;
@@ -102,6 +103,7 @@ export async function openPdvPreorderReceipt(preorderId: string, {
   format: PdvReceiptFormat;
   target?: Window | null;
   copies?: 1 | 2 | 3;
+  output?: PdvReceiptOutput;
 } & Partial<PdvReceiptOperationGuard>) {
   if (!company) { target?.close(); throw new Error(PDV_RECEIPT_COMPANY_PENDING); }
   await withPdvReceiptTarget(target, guard, async () => {
@@ -110,20 +112,20 @@ export async function openPdvPreorderReceipt(preorderId: string, {
   const snapshot = toPdvPreorderReceiptSnapshot(detail, { company, customerName, inventory });
   const prepared = await preparePdvReceiptSnapshotLogo(snapshot);
   assertPdvReceiptOperationCurrent(guard);
-  openPdfInTab(
-    generatePdvReceiptPdf(prepared, format, { copies }),
-    budgetFilename(detail.preorder.number, snapshot.order.customerName),
-    target,
-  );
+  const blob = generatePdvReceiptPdf(prepared, format, { copies });
+  const filename = budgetFilename(detail.preorder.number, snapshot.order.customerName);
+  if (output) await output(blob, filename, target, guard);
+  else openPdfInTab(blob, filename, target);
   });
 }
 
 export function usePdvPreorderReceiptOpener(entityId?: string | null) {
   const operation = usePdvReceiptOperation(entityId);
   const company = usePdvReceiptCompany();
+  const output = useDomiLinkReceiptOutput();
   return { ...operation, ready: operation.ready && Boolean(company), open: async (preorderId: string, options: Omit<Parameters<typeof openPdvPreorderReceipt>[1], 'company'>) => {
     if (!operation.isCurrent()) { options.target?.close(); return; }
-    await operation.run(guard => openPdvPreorderReceipt(preorderId, { ...options, company, ...guard }));
+    await operation.run(guard => openPdvPreorderReceipt(preorderId, { output, ...options, company, ...guard }));
   } };
 }
 

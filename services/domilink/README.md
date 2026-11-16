@@ -41,26 +41,34 @@ de rede. Não exponha a porta por proxy, túnel, firewall, Docker publish ou bin
 
 Requer Python 3.9 ou mais recente.
 
-O pacote público de **fontes Python** fica em
-`/downloads/domilink/domilink-fontes-0.1.0.zip`; o SHA-256 está no
-`manifest.json` ao lado do ZIP. Ele não é um instalador nem um binário assinado.
-Extraia tudo e siga `LEIA-ME.txt`: criar venv, instalar dependências com internet,
-rodar `configurar.py --origin https://origem-exata-do-app` e iniciar manualmente.
-A configuração inicial contém somente periféricos virtuais e nunca sobrescreve
-um `config.toml` existente. O ZIP usa uma lista explícita de fontes; não inclui
-`.env`, caches, sessão, configuração real nem o ambiente Python desta máquina.
+A instalação desta etapa é manual a partir do repositório. Não há download público,
+instalador compilado, GitHub Actions ou atualização automática sendo preparado nesta entrega.
 
 ```bash
 cd services/domilink
 python3 -m venv .venv
 . .venv/bin/activate              # Windows: .venv\Scripts\activate
-python -m pip install -e '.[dev]'
-cp config.example.toml config.toml
+python -m pip install -e '.[all]'
+domilink --init --origin https://app.example.invalid --config config.toml
+domilink --config config.toml --check-config
 domilink --config config.toml
 ```
 
-O terminal mostra o código de pareamento. Para gerar outro, reinicie o processo. O
-exemplo traz somente hardware virtual e permite validar todo o fluxo sem periféricos.
+Troque a origem fictícia pela origem exata do aplicativo (protocolo e domínio,
+sem caminho). `--init` cria somente impressora, balança e leitor virtuais, com
+permissão 0600 onde suportada pelo sistema; recusa sobrescrever configuração existente. Para
+usar hardware, adapte os perfis de `config.example.toml`, selecione a porta/fila
+correta e execute novamente `--check-config`.
+
+O diagnóstico valida o arquivo e as dependências sem iniciar servidor, abrir
+portas seriais, imprimir ou enviar comandos. `requirements_ready` significa
+somente pré-requisitos instalados; `hardware_tested` permanece `false`.
+Um arquivo inválido interrompe o início com orientação, sem traceback nativo.
+
+O terminal mostra o código de pareamento. Em um terminal interativo, digite
+`parear` e pressione Enter para gerar outro sem reiniciar nem perder os trabalhos
+em andamento. Sem terminal interativo, reinicie o processo. O exemplo traz somente
+hardware virtual e permite validar o fluxo sem periféricos.
 
 Extras opcionais:
 
@@ -224,3 +232,30 @@ limita também a escrita; o deadline é conferido entre cópias e não cancela u
 chamada nativa que já está em curso. Falhas nativas viram erros seguros sem
 mensagem do driver. Sondagem verifica somente equipamentos configurados,
 sem enviar conteúdo ou imprimir.
+
+## Uso no app depois de conectar
+
+Em Configurações → Integrações → DomiLink, o operador escolhe o destino dos
+comprovantes: abrir PDF (padrão) ou uma impressora configurada que aceite PDF.
+A preferência pertence ao usuário e à empresa neste computador. Orçamentos,
+pedidos e retiradas enviam o mesmo PDF canônico, com formato e vias da etapa.
+Térmicas usam uma fila do sistema via `system-pdf`; bytes ESC/POS continuam
+disponíveis para integrações específicas e não recebem um PDF incompatível.
+
+Falha ou resposta incerta não repete uma impressão real automaticamente: abre
+o PDF e orienta conferir a fila antes de outra via. Confirmação do spooler não
+comprova papel impresso. Documentos e Base64 não entram em logs.
+
+Com leitor serial configurado, **Ler código** preenche a busca; incluir o produto
+continua uma ação do operador. Leitor USB/HID mantém a captura de teclado nativa,
+sem um segundo listener. No item em kg ou g, **Usar peso** lê uma balança escolhida
+e só preenche quantidade positiva/estável, convertendo a unidade e respeitando
+o disponível na venda. Compras não limitam a entrada ao saldo que já existia.
+Trocar atendimento/caixa/empresa, abrir finalização ou fechar a tela descarta
+respostas pendentes; nenhuma leitura confirma venda ou compra automaticamente.
+
+O atalho **Equipamentos deste computador** abre o mesmo pareamento dentro do
+atendimento, sem sair do carrinho. Operadores autorizados apenas ao caixa,
+orçamentos, pedidos ou retirada podem configurar sua conexão local quando o
+módulo estiver ativo; isso não libera configurações gerais da empresa. Mudar
+usuário/empresa limpa códigos digitados e descarta respostas do contexto anterior.

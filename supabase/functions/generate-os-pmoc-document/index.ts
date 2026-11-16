@@ -1,3 +1,4 @@
+import { hasServiceDocumentLicense } from '../_shared/service-document-license.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   PDFDocument,
@@ -468,6 +469,9 @@ Deno.serve(async (req) => {
     ]);
     if (entitlementResult.data !== true && superResult.data !== true) {
       return failure("subscription_inactive", "A assinatura da empresa precisa estar ativa para emitir documentos.", 403);
+    }
+    if (!await hasServiceDocumentLicense(db,order.company_id,docType,superResult.data===true)) {
+      return failure('module_unavailable','Sua empresa não tem acesso a este documento. Confira os módulos contratados e a validade da assinatura.',403);
     }
     const canManage = superResult.data === true || editResult.data === true || finePermissionResult.data === true;
     const isExecutionTechnician = order.technician_id === userId

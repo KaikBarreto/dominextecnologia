@@ -31,6 +31,58 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.42.0',
+    date: '16 de novembro de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Escolha entre Kit Loja e Kit Serviços',
+        category: 'recurso',
+        description: 'Comece com o kit adequado à sua operação: Loja para vendas no balcão e controle de caixa, ou Serviços para ordens de serviço e agenda. A contratação permite acrescentar o outro kit conforme a necessidade, preservando os valores dos contratos já existentes.',
+      },
+      {
+        title: 'Cadastro e contratação com o kit certo',
+        category: 'melhoria',
+        description: 'Links de contratação e teste podem trazer o kit escolhido ou permitir a escolha no cadastro. Confira os recursos e os valores antes de continuar, com acompanhamento da confirmação do pagamento para liberar o acesso.',
+      },
+      {
+        title: 'Sua contratação continua disponível para consulta',
+        category: 'correcao',
+        description: 'O plano atual permanece visível na assinatura mesmo quando deixa de ser oferecido para novas contratações, facilitando conferir o que sua empresa já contratou.',
+      },
+      {
+        title: 'Equipamentos conectados ao atendimento do PDV',
+        category: 'recurso',
+        description: 'Com o DomiLink configurado no computador, envie comprovantes para a fila de impressão, leia códigos para preencher a busca e use o peso da balança na quantidade de itens compatíveis. As ações são escolhidas pelo operador, e cada equipamento ainda precisa de validação física de compatibilidade.',
+      },
+      {
+        title: 'Conexão local com preferências de cada operador',
+        category: 'melhoria',
+        description: 'Configure e confira a conexão dos equipamentos pelo PDV ou pelas configurações, com preferências separadas por operador e empresa neste computador.',
+      },
+      {
+        title: 'Preparação fiscal com pendências e retomada mais claras',
+        category: 'melhoria',
+        description: 'Confira o que falta na configuração antes de iniciar a NFC-e e acompanhe a situação da mesma nota ao retomar uma tentativa. A emissão real depende da configuração do emitente e da homologação fiscal, e a venda permanece concluída quando há uma pendência fiscal.',
+      },
+      {
+        title: 'Curva ABC e compras com consultas completas',
+        category: 'correcao',
+        description: 'A curva ABC considera todos os itens do período, e a consulta de compras carrega os registros em páginas para evitar resultados incompletos em volumes maiores.',
+      },
+      {
+        title: 'Saídas de dinheiro sem duplicar o crédito do fornecedor',
+        category: 'correcao',
+        description: 'Os gráficos de caixa consideram o pagamento efetivo e sua data, sem contar novamente como saída de dinheiro a parte quitada com crédito do fornecedor.',
+      },
+      {
+        title: 'Limites do resultado financeiro identificados',
+        category: 'melhoria',
+        description: 'O financeiro e os demonstrativos avisam quando os dados do PDV exigem conferência complementar. A conciliação completa do resultado da empresa continua pendente e deve ser considerada antes de fechar o período.',
+      },
+    ],
+  },
+  {
     version: '1.41.10',
     date: '16 de novembro de 2026',
     type: 'patch',

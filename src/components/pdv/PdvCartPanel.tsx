@@ -84,6 +84,7 @@ interface PdvCartPanelProps {
   hasOrderContent?: boolean;
   appliedCreditAmount?: number;
   onSaveQuote?: () => void;
+  weighControl?: (inventoryId: string) => ReactNode;
 }
 
 /** Carrinho canônico, com apresentação de balcão e variante padrão preservada. */
@@ -127,6 +128,7 @@ export function PdvCartPanel({
   hasOrderContent,
   appliedCreditAmount,
   onSaveQuote,
+  weighControl,
 }: PdvCartPanelProps) {
   // Produtos distintos: nunca somar kg + un + l sob o rótulo genérico "itens".
   const itemCount = cart.lines.length;
@@ -278,6 +280,7 @@ export function PdvCartPanel({
                   >
                     <PdvCartLineRow
                       line={line}
+                      weighControl={weighControl?.(line.inventoryId)}
                       quantityReadOnly={quantityReadOnly}
                       onSetUnitPrice={onSetUnitPrice}
                       unitPriceValue={lineUnitPriceValue?.(line.inventoryId)}

@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { buildDreExcelSheets, createDreExcelWorkbook } from './dreExcelGenerator';
-import type { DreReportData } from './dreHtmlGenerator';
+import { generateDreHtml, type DreReportData } from './dreHtmlGenerator';
 
 const report: DreReportData = {
   company: { name: 'Dominex DEMO', document: '00.000.000/0001-00' },
@@ -35,6 +35,25 @@ const report: DreReportData = {
 };
 
 describe('buildDreExcelSheets', () => {
+  it('preserva totais e inclui aviso legível no Excel e escapado no HTML', async () => {
+    const coverageNotice = 'Conferir vendas do PDV e servicos <antes de fechar>.';
+    const data = { ...report, coverageNotice };
+    const sheet = buildDreExcelSheets(data)[0];
+    const noticeIndex = sheet.rows.findIndex(row => row[0] === coverageNotice);
+    expect(noticeIndex).toBeGreaterThanOrEqual(sheet.headerRow);
+    expect(sheet.rowKinds[noticeIndex]).toBe('notice');
+    expect(sheet.rows).toContainEqual(['09 - RESULTADO FINAL', 3_500, 0.35]);
+    const workbook = await createDreExcelWorkbook(data);
+    const notice = workbook.getWorksheet('DRE')!.getCell(noticeIndex + 1, 1);
+    expect(notice.value).toBe(coverageNotice);
+    expect(notice.isMerged).toBe(true);
+    expect(notice.alignment.wrapText).toBe(true);
+    const write = vi.fn();
+    const open = vi.spyOn(window, 'open').mockReturnValue({ document: { write, close: vi.fn() } } as unknown as Window);
+    generateDreHtml(data);
+    expect(write).toHaveBeenCalledWith(expect.stringContaining('Conferir vendas do PDV e servicos &lt;antes de fechar&gt;.'));
+    open.mockRestore();
+  });
   it('mantém totais oficiais e exibe linhas subtrativas sem sinal duplicado', () => {
     const sheets = buildDreExcelSheets(report);
     const dre = sheets[0];

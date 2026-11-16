@@ -1,4 +1,5 @@
 import { PdvReceiptCompanyTooltip } from '@/components/pdv/receipt/PdvReceiptCompanyTooltip';
+import { useDomiLinkReceiptOutput, type PdvReceiptOutput } from '@/hooks/useDomiLinkReceiptOutput';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePdvAuthorizedQueryScope } from '@/hooks/pdvReportCache';
@@ -7,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import { fetchPdvDeliveryReceipt } from '@/hooks/usePdvDispatch';
 import { openPendingPdfTab } from '@/utils/openPdfInTab';
 import { previewPdvDeliveryReceipt, toPdvDeliveryReceiptSnapshot } from '@/lib/pdv/deliveryReceiptPdf';
-import { preparePdvReceiptSnapshotLogo } from '@/lib/pdv/receipt/pdf';
+import { generatePdvReceiptPdf, preparePdvReceiptSnapshotLogo } from '@/lib/pdv/receipt/pdf';
+import { receiptFilename } from '@/lib/pdv/receipt/model';
 import { useToast } from '@/hooks/use-toast';
 import { usePdvReceiptSettings } from '@/hooks/usePdvReceiptSettings';
 import { usePdvReceiptCompany, PDV_RECEIPT_COMPANY_PENDING } from '@/hooks/usePdvReceiptCompany';
@@ -16,7 +18,7 @@ import { resolvePdvReceiptStagePolicy } from '@/lib/pdv/receipt/stagePolicy';
 import type { preparePdvStageReceiptAuto } from '@/lib/pdv/receipt/stageAuto';
 import type { PdvReceiptFormat, PdvReceiptSnapshot } from '@/lib/pdv/receipt/model';
 
-export async function openPdvDeliveryReceipt(deliveryId: string, format: PdvReceiptFormat, options: { company: PdvReceiptSnapshot['company'] | null; target?: Window | null; copies?: 1 | 2 | 3; signal?: AbortSignal; isCurrent?: () => boolean }) {
+export async function openPdvDeliveryReceipt(deliveryId: string, format: PdvReceiptFormat, options: { company: PdvReceiptSnapshot['company'] | null; target?: Window | null; copies?: 1 | 2 | 3; signal?: AbortSignal; isCurrent?: () => boolean; output?: PdvReceiptOutput }) {
   if (!options.company) { options.target?.close(); throw new Error(PDV_RECEIPT_COMPANY_PENDING); }
   const assertCurrent = () => {
     if (options.signal?.aborted || options.isCurrent?.() === false) {
@@ -32,7 +34,8 @@ export async function openPdvDeliveryReceipt(deliveryId: string, format: PdvRece
     assertCurrent();
     const prepared = await preparePdvReceiptSnapshotLogo(toPdvDeliveryReceiptSnapshot(result, { company: options.company }));
     assertCurrent();
-    previewPdvDeliveryReceipt(result, target, { company: prepared.company, format, copies: options.copies });
+    if (options.output) await options.output(generatePdvReceiptPdf(prepared, format, { copies: options.copies }), receiptFilename(prepared, format), target, options);
+    else previewPdvDeliveryReceipt(result, target, { company: prepared.company, format, copies: options.copies });
   } catch (error) { close(); throw error; }
   finally { options.signal?.removeEventListener('abort', close); }
 }
@@ -40,6 +43,7 @@ export async function openPdvDeliveryReceipt(deliveryId: string, format: PdvRece
 /** Captura o contexto no início da operação, inclusive antes do writer confirmar. */
 export function usePdvDeliveryReceiptOpener(entityId?: string | null) {
   const company = usePdvReceiptCompany();
+  const output = useDomiLinkReceiptOutput();
   const scope = usePdvAuthorizedQueryScope();
   const { roles, permissions, hasPermissionRecord } = useAuth();
   const canRead = roles.some(role => ['admin', 'gestor', 'super_admin'].includes(role))
@@ -86,7 +90,7 @@ export function usePdvDeliveryReceiptOpener(entityId?: string | null) {
       const controller = new AbortController();
       pending.current.add(controller);
       try {
-        await openPdvDeliveryReceipt(deliveryId, format, { ...options, company, signal: controller.signal, isCurrent });
+        await openPdvDeliveryReceipt(deliveryId, format, { ...options, company, signal: controller.signal, isCurrent, output });
       } catch (error) {
         // O evento continua confirmado; uma resposta obsoleta não publica PDF nem
         // erro em outra empresa. Falha real no mesmo contexto segue ao chamador.

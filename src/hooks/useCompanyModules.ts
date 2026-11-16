@@ -8,9 +8,11 @@ import {
   getNextSubscriptionValue,
 } from '@/utils/subscriptionPricing';
 import { planAllowsScreen } from '@/lib/subscriptionCatalog';
+import { coreAllowsModule, resolveBusinessCore } from '@/lib/businessCore';
 
 export type ModuleCode =
   | 'basic'
+  | 'service_operations'
   | 'rh'
   | 'crm'
   | 'contracts'
@@ -45,12 +47,14 @@ export type ModuleCode =
 const SCREEN_TO_MODULE_MAP: Record<string, ModuleCode> = {
   // Módulo básico (kit base — incluso em todos os planos pagos)
   'screen:dashboard': 'basic',
-  'screen:schedule': 'basic',
-  'screen:service_orders': 'basic',
-  'screen:quotes': 'basic',
+  'screen:schedule': 'service_operations',
+  'screen:service_orders': 'service_operations',
+  'screen:quotes': 'service_operations',
   'screen:customers': 'basic',
-  'screen:services': 'basic',
-  'screen:equipment': 'basic',
+  'screen:services': 'service_operations',
+  'screen:equipment': 'service_operations',
+  'screen:technician_tools': 'service_operations',
+  'screen:tracking': 'service_operations',
   'screen:inventory': 'basic',
   // Contratos virou módulo PAGO (2026-06): 'Gestão de Contratos e PMOC'. Saiu do
   // basic — sem o módulo `contracts`, a tela de contratos é gateada (upgrade).
@@ -87,6 +91,9 @@ interface CompanyModule {
 }
 
 interface CompanyInfo {
+  id: string;
+  business_core?: string | null;
+  business_core_version?: number | null;
   subscription_status: string | null;
   subscription_expires_at: string | null;
   subscription_plan: string | null;
@@ -111,12 +118,19 @@ export interface SubscriptionPlan {
   is_active: boolean;
 }
 
+function normalizePlan(p:{id:string;code:string;name:string;description:string|null;price:number|null;max_users:number|null;included_modules:unknown;is_active:boolean|null}):SubscriptionPlan {
+  return {id:p.id,code:p.code,name:p.name,description:p.description??null,price:Number(p.price)||0,max_users:p.max_users??0,
+    included_modules:Array.isArray(p.included_modules)?p.included_modules.filter((m):m is ModuleCode=>typeof m==='string'):[],is_active:p.is_active??false};
+}
+
 export function useCompanyModules() {
-  const { profile, hasRole } = useAuth();
-  const companyId = profile?.company_id;
+  const { user, profile, hasRole } = useAuth();
+  const scopeReady=!!user&&profile?.user_id===user.id&&profile?.is_active===true;
+  const companyId=scopeReady?profile?.company_id:undefined;
 
   const { data: modules = [], isLoading: modulesLoading } = useQuery({
     queryKey: ['company-modules', companyId],
+    placeholderData:undefined,
     queryFn: async () => {
       if (!companyId) return [];
       const { data, error } = await supabase
@@ -135,14 +149,15 @@ export function useCompanyModules() {
   // os módulos enquanto a empresa estiver em trial ativo (status === 'testing'
   // e (sem data de expiração OU ainda não expirou)). Após conversão/expiração,
   // o gating volta a usar company_modules + plano normalmente.
-  const { data: company, isLoading: companyLoading } = useQuery({
+  const { data: companyRecord, isLoading: companyLoading } = useQuery({
     queryKey: ['company-modules-info', companyId],
+    placeholderData:undefined,
     queryFn: async () => {
       if (!companyId) return null;
       const { data, error } = await supabase
         .from('companies')
         .select(
-          'subscription_status, subscription_expires_at, subscription_plan, subscription_value, pending_subscription_value, max_users, extra_users, custom_price, custom_price_months, custom_price_payments_made, custom_price_permanent'
+          'id, business_core, business_core_version, subscription_status, subscription_expires_at, subscription_plan, subscription_value, pending_subscription_value, max_users, extra_users, custom_price, custom_price_months, custom_price_payments_made, custom_price_permanent'
         )
         .eq('id', companyId)
         .maybeSingle();
@@ -152,6 +167,9 @@ export function useCompanyModules() {
     enabled: !!companyId,
     staleTime: 5 * 60 * 1000,
   });
+
+  const company=companyRecord?.id===companyId?companyRecord:null;
+  const plan=company?.subscription_plan||'start';
 
   // Lista de planos ativos (start/avancado/master/personalizado).
   // Raramente muda — staleTime alto.
@@ -164,23 +182,32 @@ export function useCompanyModules() {
         .eq('is_active', true)
         .order('price');
       if (error) throw error;
-      return (data || []).map((p) => ({
-        id: p.id,
-        code: p.code,
-        name: p.name,
-        description: p.description ?? null,
-        price: Number(p.price) || 0,
-        max_users: p.max_users ?? 0,
-        included_modules: Array.isArray(p.included_modules)
-          ? (p.included_modules as unknown[]).filter(
-              (m): m is ModuleCode => typeof m === 'string'
-            )
-          : [],
-        is_active: p.is_active ?? false,
-      })) as SubscriptionPlan[];
+      return (data||[]).map(normalizePlan);
     },
+    enabled:scopeReady,
     staleTime: 30 * 60 * 1000,
   });
+
+  // Venda e contrato são leituras diferentes: retirar um plano do catálogo
+  // não remove nome, módulos ou limites de quem já o contratou.
+  const activeContract=allPlans.find(p=>p.code===plan);
+  const {data:contractSnapshot,isLoading:contractLoading}=useQuery({
+    queryKey:['subscription-plans','current-contract',user?.id,companyId,plan],
+    placeholderData:undefined,
+    enabled:scopeReady&&!!company&&!!companyId&&!plansLoading&&!activeContract,
+    queryFn:async()=>{
+      if(!scopeReady||!user||!companyId)return null;
+      const {data,error}=await supabase.from('subscription_plans')
+        .select('id, code, name, description, price, max_users, included_modules, is_active')
+        .eq('code',plan).maybeSingle();
+      if(error)throw error;
+      return {userId:user.id,companyId,code:plan,definition:data?normalizePlan(data):null};
+    },
+    staleTime:5*60*1000,
+  });
+  const currentPlan=scopeReady&&company?(activeContract??(
+    contractSnapshot&&contractSnapshot.userId===user?.id&&contractSnapshot.companyId===companyId&&contractSnapshot.code===plan
+      &&contractSnapshot.definition?.code===plan?contractSnapshot.definition:null)):null;
 
   // Contagem de usuários da empresa. Só usuários ATIVOS (profiles.is_active)
   // ocupam slot: desativar um usuário (reversível) libera espaço sem excluí-lo,
@@ -209,32 +236,33 @@ export function useCompanyModules() {
     return new Date(company.subscription_expires_at).getTime() > Date.now();
   })();
 
-  // Plano atual da empresa (default 'start' quando ausente, igual EcoSistema).
-  const plan = company?.subscription_plan || 'start';
-
   // Conjunto de módulos concedidos pelo PLANO atual (defense-in-depth: além de
   // company_modules, o plano também concede seus included_modules). Memoizado.
   const planModules = useMemo(() => {
     const set = new Set<ModuleCode>();
-    const planDef = allPlans.find((p) => p.code === plan);
-    planDef?.included_modules.forEach((m) => set.add(m));
+    currentPlan?.included_modules.forEach((m) => set.add(m));
     return set;
-  }, [allPlans, plan]);
+  }, [currentPlan]);
+
+  const businessCore = resolveBusinessCore(company?.business_core);
 
   const hasModule = (code: ModuleCode): boolean => {
-    // Super admins sempre têm acesso a tudo.
+    if(!scopeReady)return false;
+    // Super admins ativos sempre têm acesso a tudo.
     if (hasRole('super_admin')) return true;
-    // Trial ativo libera qualquer módulo — benefício de teste, não promessa.
-    // Quando o trial expira ou converte (status muda), cai no gate normal.
-    if (isTrialActive) return true;
-    // Concedido se contratado em company_modules OU incluso no plano atual.
-    if (modules.some((m) => m.module_code === code)) return true;
-    return planModules.has(code);
+    if (!company) return false;
+    return coreAllowsModule(businessCore, code, {
+      trialActive: isTrialActive,
+      coreVersion: company.business_core_version??1,
+      contractedModules: modules.map(module => module.module_code),
+      planModules: [...planModules],
+    });
   };
 
   // Acesso por tela. Tela não-mapeada é liberada (default true), espelhando o
   // EcoSistema. Super_admin e trial caem no `hasModule` (que já libera tudo).
   const hasScreen = (screenId: string): boolean => {
+    if(!scopeReady)return false;
     if (hasRole('super_admin')) return true;
     if (!planAllowsScreen(plan, screenId)) return false;
     const moduleCode = SCREEN_TO_MODULE_MAP[screenId];
@@ -250,7 +278,7 @@ export function useCompanyModules() {
   // extra_users são adicionais. Quando não há plano carregado, usamos o que
   // estiver em companies.max_users como fallback.
   const planMaxUsers =
-    allPlans.find((p) => p.code === plan)?.max_users ?? company?.max_users ?? 0;
+    currentPlan?.max_users ?? company?.max_users ?? 0;
   const extraUsers = company?.extra_users || 0;
   const maxUsers =
     plan === 'personalizado'
@@ -280,12 +308,14 @@ export function useCompanyModules() {
     modules,
     moduleCodes,
     hasModule,
-    isLoading: modulesLoading || companyLoading || plansLoading,
+    isLoading: modulesLoading || companyLoading || plansLoading || contractLoading,
 
     // --- Plano / módulos ---
     plan,
-    allPlans,
+    allPlans:scopeReady?allPlans:[],
+    currentPlan,
     isTrialActive,
+    businessCore,
 
     // --- Telas ---
     hasScreen,

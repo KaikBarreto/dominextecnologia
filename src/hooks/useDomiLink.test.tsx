@@ -161,4 +161,18 @@ describe('isolamento de sessão do DomiLink', () => {
     await act(async () => { pending.resolve({ job: { id: 'job-a', status: 'queued', device_id: 'printer-a' }, replayed: false }); await rejected; });
     expect(client.waitForDomiLinkPrintJob).not.toHaveBeenCalled();
   });
+  it('expiração durante uma leitura limpa o pareamento e pede um novo código', async () => {
+    writeDomiLinkEnabled(true);
+    writeDomiLinkSession('fixture-session', scope);
+    vi.mocked(client.detectDomiLink).mockResolvedValue(health);
+    vi.mocked(client.loadDomiLinkProfile).mockResolvedValue(profile);
+    const { result } = renderHook(() => useDomiLink());
+    await waitFor(() => expect(result.current.status).toBe('connected'));
+    vi.mocked(client.readDomiLinkScale).mockRejectedValue(new client.DomiLinkError('session_expired', 'A conexão expirou.', 401));
+    await act(async () => { await expect(result.current.readScale('scale-a')).rejects.toThrow(/expirou/); });
+    expect(result.current.status).toBe('pairing');
+    expect(result.current.profile).toBeNull();
+    expect(readDomiLinkSession(scope)).toBeNull();
+  });
+
 });

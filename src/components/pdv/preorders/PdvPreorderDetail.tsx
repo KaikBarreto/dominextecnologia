@@ -673,6 +673,11 @@ export function PdvPreorderDetail({
       moveProductFocus(direction);
       return;
     }
+    if (event.key === "Enter" && keyboardProducts.length === 0 && catalogQuery.trim()) {
+      event.preventDefault();
+      void handleBarcode(catalogQuery.trim());
+      return;
+    }
     if (event.key === "Enter" && keyboardProducts.length > 0) {
       event.preventDefault();
       addGridProduct(
@@ -1095,6 +1100,8 @@ export function PdvPreorderDetail({
       )}
 
       <PdvSaleWorkspace
+        hardwareContextKey={JSON.stringify([preorder?.id, draftId, stockId, targetTerminalId])}
+        hardwareBlocked={exitDialogOpen || notesOpen || identifiers.resolve.isPending}
         header={workspaceHeader}
         catalog={{ title: isNew ? "Criar orçamento" : `Orçamento #${preorder?.number}`,
           mode: catalogMode, onModeChange: setCatalogMode, search: catalogQuery,

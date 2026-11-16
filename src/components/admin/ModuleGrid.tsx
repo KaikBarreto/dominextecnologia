@@ -1,18 +1,17 @@
+import { BUSINESS_CORE_BUNDLES } from '@/lib/businessCoreCatalog';
+import { coreIncludesModule, type BusinessCore } from '@/lib/businessCore';
+import { customCommercialModulesForCore, requiredCustomModulesForCore } from '@/lib/businessCorePricing';
 import { Badge } from '@/components/ui/badge';
 import { Check, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { NfseTier } from '@/hooks/useNfseTiers';
 import { usePublicSubscriptionCatalog } from '@/hooks/usePublicSubscriptionPlans';
 import {
-  BASIC_BUNDLE_DESCRIPTION,
-  BASIC_BUNDLE_LABEL,
   CUSTOM_PLAN_INCLUDED_USERS,
   EXTRA_USER_MODULE_CODE,
   FREE_BASE_MODULE_CODES,
   REQUIRED_CUSTOM_MODULE_CODES,
-  isRequiredCustomModule,
   resolveExtraUserPrice,
-  withRequiredCustomModules,
 } from '@/lib/subscriptionCatalog';
 
 /**
@@ -43,8 +42,8 @@ export interface SubscriptionModule {
   sort_order: number | null;
 }
 
-export function useSubscriptionModules() {
-  const { data: catalog, ...query } = usePublicSubscriptionCatalog();
+export function useSubscriptionModules(businessCore:BusinessCore='services') {
+  const { data: catalog, ...query } = usePublicSubscriptionCatalog(businessCore);
   const data: SubscriptionModule[] = (catalog?.allModules ?? []).map((module) => ({
     code: module.code,
     name: module.name,
@@ -58,8 +57,8 @@ export function useSubscriptionModules() {
 }
 
 /** Garante que os módulos base estão sempre presentes na seleção. */
-export function withBaseModules(selected: string[]): string[] {
-  return withRequiredCustomModules(selected);
+export function withBaseModules(selected: string[],businessCore:BusinessCore='services'): string[] {
+  return customCommercialModulesForCore(businessCore,selected);
 }
 
 /**
@@ -75,8 +74,9 @@ export function sumModulesPrice(
   nfseTiers?: NfseTier[],
   nfseTier?: number,
   totalUsers = CUSTOM_PLAN_INCLUDED_USERS,
+  businessCore:BusinessCore='services',
 ): number {
-  const set = new Set(withBaseModules(selected));
+  const set = new Set(withBaseModules(selected,businessCore));
   let price = 0;
   for (const m of modules) {
     if (m.code === EXTRA_USER_MODULE_CODE) continue;
@@ -94,6 +94,7 @@ export function sumModulesPrice(
 }
 
 interface ModuleGridProps {
+  businessCore?:BusinessCore;
   modules: SubscriptionModule[];
   /** Códigos selecionados (deve incluir os base — use withBaseModules). */
   selected: string[];
@@ -103,8 +104,11 @@ interface ModuleGridProps {
   lockedCodes?: string[];
 }
 
-export function ModuleGrid({ modules, selected, onToggle, disabled = false, lockedCodes = [] }: ModuleGridProps) {
-  const gridModules = modules.filter(m => !HIDDEN_MODULE_CODES.includes(m.code));
+export function ModuleGrid({ modules, selected, onToggle, disabled = false, lockedCodes = [], businessCore='services' }: ModuleGridProps) {
+  const hasServices=businessCore==='services'||selected.includes('service_operations');
+  const gridModules = modules.filter(m => !HIDDEN_MODULE_CODES.includes(m.code) && !(m.code!=='basic'&&coreIncludesModule(businessCore,m.code)) && (hasServices||m.code!=='contracts'));
+  const required=requiredCustomModulesForCore(businessCore,selected);
+  const {label:basicLabel,description:basicDescription}=BUSINESS_CORE_BUNDLES[businessCore];
 
   if (gridModules.length === 0) {
     return <p className="text-sm text-muted-foreground">Nenhum módulo disponível no catálogo.</p>;
@@ -113,7 +117,7 @@ export function ModuleGrid({ modules, selected, onToggle, disabled = false, lock
   return (
     <div className="space-y-2">
       {gridModules.map(mod => {
-        const isBase = isRequiredCustomModule(mod.code);
+        const isBase = required.includes(mod.code);
         const isChecked = isBase || selected.includes(mod.code);
         const isPromotionLocked = lockedCodes.includes(mod.code);
         const isLocked = isBase || isPromotionLocked || disabled;
@@ -146,18 +150,18 @@ export function ModuleGrid({ modules, selected, onToggle, disabled = false, lock
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-medium leading-tight flex items-center gap-1.5">
-                  {mod.code === 'basic' ? BASIC_BUNDLE_LABEL : mod.name}
+                  {mod.code === 'basic' ? basicLabel : mod.name}
                   {isLocked && <Lock className="h-3 w-3 text-muted-foreground shrink-0" />}
                 </p>
                 {(mod.description || mod.code === 'basic') && (
                   <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
-                    {mod.code === 'basic' ? BASIC_BUNDLE_DESCRIPTION : mod.description}
+                    {mod.code === 'basic' ? basicDescription : mod.description}
                   </p>
                 )}
               </div>
             </div>
             <Badge variant="outline" className="shrink-0 whitespace-nowrap">
-              {isBase
+              {mod.price==null||!Number.isFinite(mod.price) ? 'Preço não configurado' : isBase
                 ? `R$ ${Number(mod.price || 0).toFixed(0)} · sempre incluso`
                 : `+ R$ ${Number(mod.price || 0).toFixed(0)}`}
             </Badge>

@@ -1,3 +1,5 @@
+import { BusinessCoreSelect } from '@/components/company/BusinessCoreSelect';
+import { resolveBusinessCore, corePlanCode, type BusinessCore } from '@/lib/businessCore';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -113,6 +115,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const isEditing = !!company;
+  const [businessCore,setBusinessCore] = useState<BusinessCore>('services');
   const [activeTab, setActiveTab] = useState<CompanyFormSection>('basic');
   const [copied, setCopied] = useState(false);
   const creationIdempotencyKeyRef = useRef<string | null>(null);
@@ -121,12 +124,11 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
 
   // ========== Queries ==========
   const { data: plans = [] } = useQuery({
-    queryKey: ['subscription-plans-active'],
+    queryKey: ['subscription-plans','admin-company-form'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('subscription_plans')
-        .select('code, name, price, max_users')
-        .eq('is_active', true)
+        .select('code, name, price, max_users, business_core, is_active')
         .order('price', { ascending: true, nullsFirst: false });
       if (error) throw error;
       return data || [];
@@ -170,7 +172,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
   });
 
   // Catálogo de módulos (plano Personalizado).
-  const { data: allModules = [], whatsappPaidTier } = useSubscriptionModules();
+  const { data: allModules = [], whatsappPaidTier } = useSubscriptionModules(businessCore);
 
   // Níveis de NFS-e (preço/limite do módulo de Notas, code `nfe`).
   const { tiers: nfseTiers } = useNfseTiers();
@@ -178,15 +180,15 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
   // Garante a opção "Personalizado" no select de planos, sempre por último
   // (existe linha no banco com price 0; se sumir, faz append client-side).
   const plansWithCustom = useMemo(() => {
-    const standard = plans.filter((p: any) => p.code !== 'personalizado');
+    const standard = plans.filter((p: any) => p.code !== 'personalizado' && (p.business_core || 'services') === businessCore && (p.is_active !== false || businessCore==='retail'));
     const custom = plans.find((p: any) => p.code === 'personalizado')
       ?? { code: 'personalizado', name: 'Personalizado', price: 0, max_users: null };
     return [...standard, custom];
-  }, [plans]);
+  }, [plans,businessCore]);
 
   // Módulos já contratados (edição) — fonte da verdade pra diff no submit.
   const { data: existingModules } = useQuery({
-    queryKey: ['company-modules', company?.id],
+    queryKey: ['company-modules', company?.id, 'admin-codes'],
     enabled: open && !!company?.id,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -267,6 +269,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     if (company) {
       const hasLegacyCustomPrice = Number(company.custom_price) > 0
         && company.pricing_adjustment_source !== 'item_promotions';
+      setBusinessCore(resolveBusinessCore(company.business_core));
       setFormData({
         name: company.name || '',
         cnpj: company.cnpj ? cpfCnpjMask(company.cnpj) : '',
@@ -302,6 +305,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     } else {
       creationIdempotencyKeyRef.current = crypto.randomUUID();
       submitLockRef.current = false;
+      setBusinessCore('services');
       const defaultExpires = format(addDays(new Date(), 7), 'yyyy-MM-dd');
       setFormData({
         name: '', cnpj: '', email: '', phone: '', contact_name: '',
@@ -371,9 +375,9 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
   // Edição: carrega os módulos já contratados na grade.
   useEffect(() => {
     if (open && company && existingModules) {
-      setSelectedModules(withBaseModules(existingModules));
+      setSelectedModules(withBaseModules(existingModules,businessCore));
     }
-  }, [open, company, existingModules]);
+  }, [open, company, existingModules, businessCore]);
 
   // Auto-fill admin email from company email
   useEffect(() => {
@@ -411,7 +415,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
       if (String(users) !== formData.max_users) updateField('max_users', String(users));
       // Preço sugerido = módulos + usuários acima dos 5 inclusos.
       if (!formData.use_custom_price) {
-        updateField('subscription_value', String(sumModulesPrice(allModules, selectedModules, nfseTiers, Number(formData.nfse_tier), users)));
+        updateField('subscription_value', String(sumModulesPrice(allModules, selectedModules, nfseTiers, Number(formData.nfse_tier), users,businessCore)));
       }
       return;
     }
@@ -421,15 +425,15 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
       if (p.price != null && !formData.use_custom_price) updateField('subscription_value', String(p.price));
       if (p.max_users != null) updateField('max_users', String(p.max_users));
     }
-  }, [plans, allModules, selectedModules, nfseTiers, formData.nfse_tier, formData.max_users, updateField, formData.use_custom_price]);
+  }, [plans, allModules, selectedModules, nfseTiers, formData.nfse_tier, formData.max_users, updateField, formData.use_custom_price, businessCore]);
 
   // ========== Nível de NFS-e -> recalcula preço sugerido ==========
   const updateNfseTier = useCallback((value: string) => {
     updateField('nfse_tier', value);
     if (!formData.use_custom_price) {
-      updateField('subscription_value', String(sumModulesPrice(allModules, selectedModules, nfseTiers, Number(value), Number(formData.max_users))));
+      updateField('subscription_value', String(sumModulesPrice(allModules, selectedModules, nfseTiers, Number(value), Number(formData.max_users),businessCore)));
     }
-  }, [allModules, selectedModules, nfseTiers, formData.max_users, formData.use_custom_price, updateField]);
+  }, [allModules, selectedModules, nfseTiers, formData.max_users, formData.use_custom_price, updateField, businessCore]);
 
   // ========== Toggle de módulo (plano Personalizado) ==========
   const handleToggleModule = useCallback((code: string) => {
@@ -444,14 +448,14 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         return prev;
       }
       const next = withBaseModules(
-        removing ? prev.filter(c => c !== code) : [...prev, code],
+        removing ? prev.filter(c => c !== code) : [...prev, code],businessCore,
       );
       if (!formData.use_custom_price) {
-        updateField('subscription_value', String(sumModulesPrice(allModules, next, nfseTiers, Number(formData.nfse_tier), Number(formData.max_users))));
+        updateField('subscription_value', String(sumModulesPrice(allModules, next, nfseTiers, Number(formData.nfse_tier), Number(formData.max_users),businessCore)));
       }
       return next;
     });
-  }, [allModules, nfseTiers, formData.nfse_tier, formData.max_users, formData.use_custom_price, promotions, toast, updateField]);
+  }, [allModules, nfseTiers, formData.nfse_tier, formData.max_users, formData.use_custom_price, promotions, toast, updateField, businessCore]);
 
   const handleMaxUsersChange = useCallback((value: string) => {
     if (hasExtraUsersPromotion) return;
@@ -465,10 +469,11 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
           nfseTiers,
           Number(formData.nfse_tier),
           Number(value),
+          businessCore,
         )),
       );
     }
-  }, [allModules, selectedModules, nfseTiers, formData.nfse_tier, formData.subscription_plan, formData.use_custom_price, hasExtraUsersPromotion, updateField]);
+  }, [allModules, selectedModules, nfseTiers, formData.nfse_tier, formData.subscription_plan, formData.use_custom_price, hasExtraUsersPromotion, updateField, businessCore]);
 
   // Clampa no blur, não na digitação: limpar o campo pra digitar "15" passa por
   // "1", e corrigir a cada tecla sequestraria o que o admin está escrevendo.
@@ -485,6 +490,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
     nfseTiers,
     Number(formData.nfse_tier),
     Number(formData.max_users),
+    businessCore,
   );
   const promotionItems = useMemo<SubscriptionPromotionItem[]>(() => {
     if (!isEditing || !isPersonalizado) return [];
@@ -574,10 +580,10 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
       // pode gravar menos usuários do que a base inclusa do plano.
       const maxUsersToSave = Math.max(minUsers, parseInt(formData.max_users, 10) || minUsers);
       const originalPlanPrice = formData.subscription_plan === 'personalizado'
-        ? sumModulesPrice(allModules, selectedModules, nfseTiers, Number(formData.nfse_tier), maxUsersToSave)
+        ? sumModulesPrice(allModules, selectedModules, nfseTiers, Number(formData.nfse_tier), maxUsersToSave,businessCore)
         : (planObj?.price ?? null);
       const modulesPayload = formData.subscription_plan === 'personalizado'
-        ? withBaseModules(selectedModules)
+        ? withBaseModules(selectedModules,businessCore)
         : null;
       const hasWhatsappAddon = modulesPayload?.includes('whatsapp') ?? false;
       if (hasWhatsappAddon && !whatsappPaidTier) {
@@ -655,6 +661,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
         if (!session.session) throw new Error('Não autenticado');
         const { data, error } = await supabase.functions.invoke('create-company', {
           body: {
+            business_core: businessCore,
             company_name: formData.name,
             company_cnpj: cleanCnpj || null,
             company_email: formData.email || null,
@@ -881,6 +888,15 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
           <div className="min-h-0 overflow-y-auto px-4 py-5 sm:px-6">
           {/* ============ DADOS BÁSICOS ============ */}
           <TabsContent value="basic" className="m-0 space-y-4">
+            <BusinessCoreSelect value={businessCore} disabled={isEditing||mutation.isPending} onChange={core=>{
+              if(core===businessCore)return;
+              creationIdempotencyKeyRef.current=crypto.randomUUID();
+              setSelectedModules(withBaseModules([],core));
+              setBusinessCore(core);
+              updateField('subscription_plan',corePlanCode(core,formData.subscription_plan));
+              updateField('subscription_value','0');
+            }}/>
+            {isEditing&&<p className="text-xs text-muted-foreground">O perfil inicial é preservado. Contrate o outro núcleo na configuração dos módulos.</p>}
             <div className="space-y-2">
               <Label className="flex items-center gap-2"><Building2 className="h-4 w-4" />Nome da Empresa *</Label>
               <Input value={formData.name} onChange={e => updateField('name', e.target.value)} placeholder="Nome da empresa" />
@@ -1079,6 +1095,7 @@ export default function CompanyFormModal({ open, onOpenChange, company, onSucces
                   </span>
                 </div>
                 <ModuleGrid
+                businessCore={businessCore}
                   modules={allModules}
                   selected={selectedModules}
                   onToggle={handleToggleModule}

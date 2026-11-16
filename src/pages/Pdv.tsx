@@ -2128,6 +2128,8 @@ function PdvSaleWorkspace({
 
 
       <PdvSaleEditorLayout
+        hardwareContextKey={JSON.stringify([profile?.company_id, user?.id, activeDraftId, selectedStockId, resolvedV2CashContext.status === 'resolved' ? resolvedV2CashContext.context.sessionId : null])}
+        hardwareBlocked={confirmClearOpen || paymentOpen || advancedOptionsOpen || shortcutHelpOpen || identifiers.resolve.isPending}
         catalog={{
           rowRef: desktopRowRef,
           controlsRef: topControlsRef,

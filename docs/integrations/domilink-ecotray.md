@@ -51,19 +51,17 @@ Esse é um verificador executável local: ele **não monitora outro repositório
 segundo plano** e não publica correções sozinho. Para revisão futura por agentes,
 a regra de rodar a comparação acompanha o domínio no `AGENTS.md`.
 
-## Pacote de fontes para download
+## Instalação manual nesta etapa
 
-`python3 scripts/domilink/build_bundle.py` gera o ZIP determinístico em
-`public/downloads/domilink/domilink-fontes-0.1.0.zip` e o manifest SHA-256.
-A lista permite somente fontes Python, metadados, proveniência, exemplos virtuais
-e instruções de instalação. Configuração real, `.env`, tokens, caches e venv não
-entram. Os scripts incluídos configuram a origem exata sem sobrescrever o arquivo
-do operador e iniciam o serviço manualmente pelo venv.
+O serviço Python pode ser instalado e executado a partir do repositório, sem
+GitHub Actions e sem gerar um baixável. A interface não oferece download.
+Os comandos `domilink --init --origin ... --config config.toml` e
+`domilink --config config.toml --check-config` preparam e conferem a configuração
+antes do pareamento. Veja o [runbook local](../../services/domilink/README.md).
 
-Requer Python 3.9+ e internet para dependências; não é um instalador nem aplicativo
-assinado. PDF Windows é opcional e requer revisão da licença PyMuPDF; USB ESC/POS
-depende de PyUSB e backend nativo do SO. Teste de instalação do pacote, PTY virtual,
-socket/USB simulados e API em memória não homologam equipamento físico.
+O construtor de pacote de fontes permanece como ferramenta de desenvolvimento
+legada, sem execução nesta entrega. Não confundir um ZIP de fontes com instalador
+assinado, instalação concluída ou hardware homologado.
 
 ## Limites das adaptações
 

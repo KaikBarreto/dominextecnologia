@@ -599,7 +599,7 @@ export const DOC_ARTICLES: DocArticle[] = [
 Host: api.dominex.app
 Authorization: Bearer dmx_live_PUBLIC_ID.SECRET
 Accept: application/json` },
-          { type: 'callout', tone: 'info', title: 'Falha fechada', text: 'Chave ausente, inválida, expirada ou revogada retorna 401. Escopo, assinatura ou IP não autorizado retorna 403.' },
+          { type: 'callout', tone: 'info', title: 'Falha fechada', text: 'Chave ausente, inválida, expirada ou revogada retorna 401. Escopo, assinatura, núcleo contratado ou IP não autorizado retorna 403. Tipos de serviço, recursos, disponibilidade e OS exigem Serviços; sem esse núcleo, o código é module_not_contracted. Clientes e CRM mantêm seus requisitos próprios. /capabilities continua acessível, com booking=null e schedule_configured=false sem Serviços.' },
         ],
       },
       {

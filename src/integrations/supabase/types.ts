@@ -20,6 +20,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+
       graphql: {
         Args: {
           extensions?: Json
@@ -1456,6 +1457,8 @@ export type Database = {
       }
       companies: {
         Row: {
+          business_core: string
+          business_core_version: number
           acquisition_attribution: Json | null
           address: string | null
           address_number: string | null
@@ -1527,6 +1530,8 @@ export type Database = {
           zip_code: string | null
         }
         Insert: {
+          business_core?: string
+          business_core_version?: number
           acquisition_attribution?: Json | null
           address?: string | null
           address_number?: string | null
@@ -1598,6 +1603,8 @@ export type Database = {
           zip_code?: string | null
         }
         Update: {
+          business_core?: string
+          business_core_version?: number
           acquisition_attribution?: Json | null
           address?: string | null
           address_number?: string | null
@@ -15610,6 +15617,9 @@ export type Database = {
       }
       subscription_change_requests: {
         Row: {
+          initial_activation: boolean
+          source_company_snapshot: Json | null
+          payment_creation_state: string
           amount_due: number
           applied_at: string | null
           asaas_payment_id: string | null
@@ -15648,6 +15658,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          initial_activation?: boolean
+          source_company_snapshot?: Json | null
+          payment_creation_state?: string
           amount_due: number
           applied_at?: string | null
           asaas_payment_id?: string | null
@@ -15686,6 +15699,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          initial_activation?: boolean
+          source_company_snapshot?: Json | null
+          payment_creation_state?: string
           amount_due?: number
           applied_at?: string | null
           asaas_payment_id?: string | null
@@ -16022,6 +16038,7 @@ export type Database = {
       }
       subscription_plans: {
         Row: {
+          business_core: string
           code: string
           created_at: string | null
           description: string | null
@@ -16035,6 +16052,7 @@ export type Database = {
           price: number
         }
         Insert: {
+          business_core?: string
           code: string
           created_at?: string | null
           description?: string | null
@@ -16048,6 +16066,7 @@ export type Database = {
           price?: number
         }
         Update: {
+          business_core?: string
           code?: string
           created_at?: string | null
           description?: string | null
@@ -18497,6 +18516,14 @@ export type Database = {
       }
     }
     Functions: {
+      create_registration_core_offer_v1: {
+        Args: { p_business_core: string; p_configuration?: Json }
+        Returns: Json
+      }
+      get_public_registration_core_offer_v1: {
+        Args: { p_token: string }
+        Returns: Json
+      }
       stock_can_manage_access_v1: {
         Args: { p_company_id: string }
         Returns: boolean

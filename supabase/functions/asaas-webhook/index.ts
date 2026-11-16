@@ -1,3 +1,5 @@
+import { recordFirstSaleAttribution } from '../_shared/subscription-first-sale-attribution.ts';
+import { parseSubscriptionGatewayPaidAt } from '../_shared/subscription-payment-date.ts';
 import { recordWebhookLedger } from "../_shared/admin-webhook-ledger.ts";
 // asaas-webhook
 // -------------
@@ -289,9 +291,15 @@ async function activatePlanModules(
   try {
     const { data: plan } = await supabase
       .from("subscription_plans")
-      .select("included_modules")
+      .select("included_modules, business_core")
       .eq("code", planCode)
       .maybeSingle();
+    const {data: company, error: companyError} = await supabase.from('companies')
+      .select('business_core').eq('id',companyId).maybeSingle();
+    if (companyError || !company || !plan || (planCode !== 'personalizado' && plan.business_core !== company.business_core)) {
+      console.error('[modules] plano incompatível com o kit da empresa; ativação não executada');
+      return;
+    }
 
     const included: unknown = plan?.included_modules;
     const moduleCodes: string[] = Array.isArray(included)
@@ -524,6 +532,9 @@ interface UpgradeWebhookPayment {
   billingType?: string | null;
   externalReference?: string | null;
   netValue?: number | string | null;
+  paymentDate?: string | null;
+  confirmedDate?: string | null;
+  subscription?: string | null;
 }
 
 async function resolveUpgradeRequestId(
@@ -531,7 +542,23 @@ async function resolveUpgradeRequestId(
   payment: UpgradeWebhookPayment,
 ): Promise<string | null> {
   const fromReference = upgradeRequestIdFromExternalReference(payment?.externalReference);
-  if (fromReference) return fromReference;
+  if (fromReference) {
+    const { data: referenced, error } = await supabase.from('subscription_change_requests')
+      .select('initial_activation,status,asaas_payment_id,company_id').eq('id', fromReference).maybeSingle();
+    if (error || !referenced) throw new RetryableWebhookError('Não foi possível conferir a contratação do pagamento.', error);
+    // A referência da assinatura acompanha todas as faturas. Só a primeira
+    // fatura aplica a oferta; as seguintes entram no processador de renovação.
+    if (referenced.initial_activation && ['applied', 'reversed'].includes(referenced.status)
+      && referenced.asaas_payment_id !== payment.id && payment.subscription) {
+      const { data: recurrenceCompany, error: recurrenceError } = await supabase.from('companies')
+        .select('asaas_subscription_id').eq('id', referenced.company_id).maybeSingle();
+      if (recurrenceError || recurrenceCompany?.asaas_subscription_id !== payment.subscription) {
+        throw new RetryableWebhookError('Não foi possível conferir o vínculo da renovação com a assinatura.', recurrenceError);
+      }
+      return null;
+    }
+    return fromReference;
+  }
   if (!payment?.id) return null;
   const { data, error } = await supabase
     .from("subscription_payments")
@@ -560,11 +587,21 @@ async function processConfirmedUpgradePayment(
   const amount = Number(payment.value || 0);
   if (!(amount > 0)) return { processed: false, type: "upgrade", reason: "valor inválido" };
 
-  const { data: result, error } = await supabase.rpc("apply_subscription_upgrade_payment", {
+  const { data: quote, error: quoteError } = await supabase.from('subscription_change_requests')
+    .select('initial_activation,status,asaas_payment_id').eq('id', requestId).maybeSingle();
+  if (quoteError || !quote) throw new RetryableWebhookError('Não foi possível identificar a contratação confirmada.', quoteError);
+  const initialActivation = quote.initial_activation === true;
+  if (initialActivation && quote.status === 'reversed' && quote.asaas_payment_id === payment.id) {
+    return { processed: false, type: 'primeira_venda', reason: 'pagamento já revertido' };
+  }
+  const paidAt = parseSubscriptionGatewayPaidAt(payment.paymentDate) ?? parseSubscriptionGatewayPaidAt(payment.confirmedDate);
+  const { data: result, error } = await supabase.rpc(initialActivation
+    ? "apply_initial_subscription_activation_payment" : "apply_subscription_upgrade_payment", {
     p_request_id: requestId,
     p_asaas_payment_id: payment.id,
     p_paid_amount: amount,
     p_billing_type: payment.billingType || "PIX",
+    ...(initialActivation ? { p_paid_at: paidAt } : {}),
   });
   if (error) {
     throw new RetryableWebhookError(
@@ -583,6 +620,11 @@ async function processConfirmedUpgradePayment(
       { company_id: result.company_id, payment_id: payment.id, change_request_id: requestId, amount },
     );
     return { processed: false, type: "upgrade", reason: "assinatura de origem mudou" };
+  }
+
+  if (initialActivation) {
+    try { await recordFirstSaleAttribution(supabase, String(result.company_id), payment.id); }
+    catch (error) { throw new RetryableWebhookError('Atribuição da contratação confirmada ainda está pendente.', error); }
   }
 
   const { data: company, error: companyError } = await supabase
@@ -671,7 +713,7 @@ async function processConfirmedUpgradePayment(
     `[upgrade] ${result.already_applied ? "já aplicado" : "aplicado"} ` +
       `company=${company.id} request=${requestId} payment=${payment.id}`,
   );
-  return { processed: !result.already_applied, type: "upgrade" };
+  return { processed: !result.already_applied, type: initialActivation ? "primeira_venda" : "upgrade" };
 }
 
 /**
@@ -1281,153 +1323,14 @@ async function processConfirmedPayment(
     );
   }
 
-  // salesperson_sales — SÓ na primeira venda e SÓ se houver vendedor.
-  // FONTE DA VERDADE DA COMISSÃO (FURO 2): a comissão é criada EXCLUSIVAMENTE aqui no
-  // webhook (gatilho confiável de pagamento). O confirm-sale-payment NÃO cria comissão
-  // — assim não há duplicação. Este bloco já está GATED pelo mutex: processConfirmedPayment
-  // retorna cedo (linha do `if (!ltvClaimed) return`) quando o pagamento já foi processado,
-  // então a comissão também roda no máximo 1x por pagamento.
-  // [AFILIADO ZERA VENDEDOR] Se a empresa veio por um afiliado, a venda é dele e
-  // NÃO gera comissão de vendedor. Mesma guarda server-side da RPC
-  // public.register_manual_company_payment (seção 7), pelo mesmo motivo: sem ela
-  // a mesma venda sai do caixa duas vezes (afiliado + closer/SDR).
-  if (isFirstSale && company.salesperson_id && company.affiliate_id) {
-    console.log(
-      `[afiliado zera vendedor] company ${companyId} tem affiliate_id=${company.affiliate_id}, ` +
-        `sem comissão de vendedor (a venda é remunerada pelo programa de afiliados).`,
-    );
-  }
-
-  if (isFirstSale && company.salesperson_id && !company.affiliate_id) {
-    // Esta leitura é a ÚNICA trava contra comissão em dobro. Com o `error`
-    // descartado, um SELECT recusado devolvia `undefined` — indistinguível de
-    // "não existe" — e o INSERT rodava por cima de uma comissão já paga. Na
-    // dúvida, NÃO paga: o admin é avisado e lança à mão (o inverso, pagar duas
-    // vezes, é dinheiro que sai e não volta).
-    const { data: existingSale, error: existingSaleErr } = await supabase
-      .from("salesperson_sales")
-      .select("id")
-      .eq("company_id", companyId)
-      .limit(1)
-      .maybeSingle();
-
-    if (existingSaleErr) {
-      console.error(
-        `[salesperson] leitura de comissão existente falhou (${companyId}):`,
-        existingSaleErr.message,
-      );
-      warnings.add("comissão do vendedor: não foi possível conferir se já existia — não lançada.");
-      await alertAdmin(
-        supabase,
-        "salesperson_commission_not_recorded",
-        "Comissão não lançada por segurança",
-        `A primeira venda de ${company.name} (${opts.asaasPaymentId}) foi confirmada, mas não deu pra conferir ` +
-          `se a comissão já existia. Nada foi lançado pra não pagar em dobro; confira e lance à mão.`,
-        { company_id: companyId, payment_id: opts.asaasPaymentId, salesperson_id: company.salesperson_id },
-      );
-    } else if (!existingSale) {
-      // REGRA DE COMISSÃO SDR/CLOSER — régua NOVA (CEO 2026-07-16), espelha
-      // calculateCommission de src/hooks/useSalespersonData.ts (fonte da verdade
-      // no painel master) e a RPC register_manual_company_payment.
-      //   - mensal: total = base * 1.00 (100% do que o cliente pagou; ANTES 0.5)
-      //   - anual:  total = base * 0.20 (inalterado)
-      //   - COM SDR → closer 80% / sdr 20% (ANTES 50/50)
-      //   - SEM SDR → 100% closer
-      // Base de comissão = subscription_value mensal (mesmo "valor da venda" que o
-      // closer informa no diálogo Registrar Venda). NÃO multiplicamos por 12 no anual
-      // — o diálogo usa o valor informado direto, então mantemos paridade.
-      //
-      // SDR: companies.sdr_id é capturado na ORIGEM (link de teste/venda ou form do
-      // painel master). Se a empresa tem sdr_id → comissão dividida 80/20; senão,
-      // 100% closer. O closer é SEMPRE company.salesperson_id.
-      const isYearly = company.billing_cycle === "yearly";
-      const totalRate = isYearly ? 0.20 : 1.00;
-      const commissionBase = Number(company.subscription_value || paymentAmount);
-      const total = Math.round(commissionBase * totalRate * 100) / 100;
-
-      const sdrId: string | null = company.sdr_id ?? null;
-      let closerCommission: number;
-      let sdrCommission: number;
-      if (sdrId) {
-        // 80/20 centavo-safe: closer leva 80% arredondado, SDR leva o resto
-        // (total - closer) pra não perder/ganhar 1 centavo no arredondamento.
-        closerCommission = Math.round((total * 0.8) * 100) / 100;
-        sdrCommission = Math.round((total - closerCommission) * 100) / 100;
-      } else {
-        closerCommission = total;
-        sdrCommission = 0;
-      }
-
-      // NÃO-fatal e SEM re-entrega (pós-mutex) — mas com ALERTA obrigatório.
-      // Este webhook é a fonte da verdade EXCLUSIVA da comissão: o
-      // confirm-sale-payment não cria comissão de propósito (pra não duplicar).
-      // Se esta linha não entrar, NÃO existe segundo caminho que a recupere; o
-      // vendedor simplesmente não recebe e ninguém descobre. Por isso o alerta
-      // carrega os valores já calculados, prontos pra lançar à mão.
-      const comissaoOk = await tryWrite(
-        "comissão do vendedor (salesperson_sales)",
-        supabase.from("salesperson_sales").insert({
-          salesperson_id: company.salesperson_id, // closer
-          sdr_id: sdrId,
-          company_id: companyId,
-          customer_name: company.name,
-          customer_origin: company.origin,
-          amount: commissionBase,
-          paid_amount: company.subscription_value ?? paymentAmount,
-          commission_amount: total,
-          closer_commission: closerCommission,
-          sdr_commission: sdrCommission,
-          billing_cycle: isYearly ? "annual" : "monthly",
-          // [LEAD SELF-SERVICE] segura a comissão só quando é lead self-service
-          // ainda não trabalhado (espelha a RPC register_manual_company_payment).
-          status: (!company.is_self_service || company.lead_worked_at)
-            ? "confirmed"
-            : "pending_work",
-        }),
-        {
-          recovery: {
-            company_id: companyId,
-            empresa: company.name,
-            closer_id: company.salesperson_id,
-            sdr_id: sdrId,
-            base: commissionBase,
-            comissao_total: total,
-            closer: closerCommission,
-            sdr: sdrCommission,
-            ciclo: isYearly ? "annual" : "monthly",
-            asaas_payment_id: opts.asaasPaymentId,
-          },
-          warnings,
-        },
-      );
-      if (comissaoOk) {
-        console.log(
-          `[salesperson] venda registrada p/ ${company.name}: comissão total R$ ${total} ` +
-            (sdrId
-              ? `(80/20 → closer R$ ${closerCommission} / sdr R$ ${sdrCommission})`
-              : `(100% closer R$ ${closerCommission})`),
-        );
-      } else {
-        await alertAdmin(
-          supabase,
-          "salesperson_commission_not_recorded",
-          "Comissão de venda não registrada",
-          `A primeira venda de ${company.name} (${opts.asaasPaymentId}) foi confirmada, mas a comissão não ` +
-            `foi gravada. Lance manualmente: total R$ ${total.toFixed(2)}` +
-            (sdrId
-              ? ` (closer R$ ${closerCommission.toFixed(2)} / SDR R$ ${sdrCommission.toFixed(2)}).`
-              : ` (100% do closer).`),
-          {
-            company_id: companyId,
-            payment_id: opts.asaasPaymentId,
-            salesperson_id: company.salesperson_id,
-            sdr_id: sdrId,
-            commission_amount: total,
-            closer_commission: closerCommission,
-            sdr_commission: sdrCommission,
-          },
-        );
-      }
+  if (isFirstSale) {
+    try { await recordFirstSaleAttribution(supabase, companyId, opts.asaasPaymentId); }
+    catch (error) {
+      warnings.add('comissão do vendedor: registro pendente de conciliação.');
+      await alertAdmin(supabase, 'salesperson_commission_not_recorded', 'Comissão de venda não registrada',
+        `A primeira venda de ${company.name} foi confirmada, mas a atribuição precisa de conciliação.`,
+        { company_id: companyId, payment_id: opts.asaasPaymentId });
+      console.error('[first-sale-attribution]', error);
     }
   }
 
@@ -2318,8 +2221,18 @@ Deno.serve(async (req) => {
 
       // Estorno de upgrade nao derruba a assinatura inteira: o entitlement
       // precisa de reversao assistida para nao remover dados/modulos em uso.
-      const isUpgradeReversal = reversedPayment?.type === "upgrade" ||
-        !!reversedPayment?.subscription_change_request_id;
+      let reversedInitialActivation = false;
+      if (reversedPayment?.subscription_change_request_id) {
+        const { data: reversedQuote, error: reversedQuoteError } = await supabase.from('subscription_change_requests')
+          .select('initial_activation,company_id,asaas_payment_id').eq('id', reversedPayment.subscription_change_request_id).maybeSingle();
+        if (reversedQuoteError || !reversedQuote || reversedQuote.company_id !== reversedPayment.company_id
+          || reversedQuote.asaas_payment_id !== payment.id) {
+          throw new RetryableWebhookError('Não foi possível conferir a contratação do pagamento revertido.', reversedQuoteError);
+        }
+        reversedInitialActivation = reversedQuote.initial_activation === true;
+      }
+      const isUpgradeReversal = !reversedInitialActivation && (reversedPayment?.type === "upgrade" ||
+        !!reversedPayment?.subscription_change_request_id);
       const shouldDeactivate = isUpgradeReversal
         ? false
         : shouldDeactivateAfterReversal(reversedPayment, otherPayments);
@@ -2332,7 +2245,7 @@ Deno.serve(async (req) => {
         kind,
       );
 
-      if (isUpgradeReversal && reversedPayment?.subscription_change_request_id) {
+      if ((isUpgradeReversal || reversedInitialActivation) && reversedPayment?.subscription_change_request_id) {
         await applyWrite(
           "marcação do upgrade revertido (subscription_change_requests)",
           supabase

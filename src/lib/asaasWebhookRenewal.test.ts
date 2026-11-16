@@ -26,6 +26,10 @@ const confirmSaleSource = readFileSync(
   'utf8',
 );
 
+const attributionSql = readFileSync(
+  resolve(process.cwd(), 'supabase/migrations/20261116212000_initial_retail_subscription_activation.sql'), 'utf8',
+).split('CREATE FUNCTION public.record_subscription_first_sale_attribution')[1];
+
 /** Trecho do fonte em volta de um rótulo de escrita, pra afirmar sobre o portão usado. */
 function aoRedor(label: string, antes = 400, depois = 1800): string {
   const i = webhookSource.indexOf(label);
@@ -396,34 +400,33 @@ describe('asaas-webhook — a fronteira fatal x não-fatal, no fonte real', () =
     expect(trecho).toContain('abortarDevolvendoMutex');
   });
 
-  it('na dúvida sobre comissão já existente, NÃO paga (pagar em dobro não volta)', () => {
-    // A âncora carrega o `!company.affiliate_id` desde 2026-10-14 (programa de
-    // afiliados): empresa que veio por afiliado não gera comissão de vendedor.
-    const i = webhookSource.indexOf(
-      'if (isFirstSale && company.salesperson_id && !company.affiliate_id)',
-    );
-    // Sem isto, um rename da linha faz `indexOf` devolver -1, o `slice` devolve
-    // string vazia e o teste falha com "expected '' to contain ..." — que parece
-    // regressão da REGRA quando é só a âncora perdida. Falha explícita é melhor.
-    expect(i, 'âncora do bloco de comissão não encontrada no fonte do webhook').toBeGreaterThan(-1);
-    const trecho = webhookSource.slice(i, i + 1600);
-    expect(trecho).toContain('error: existingSaleErr');
-    expect(trecho).toContain('if (existingSaleErr)');
-    expect(trecho).toContain('} else if (!existingSale) {');
+  it('atribuição serializa a empresa e confere pagamento persistido antes da comissão', () => {
+    const lock = attributionSql.indexOf('FOR UPDATE');
+    const payment = attributionSql.indexOf("p.status NOT IN ('CONFIRMED','RECEIVED')");
+    const existing = attributionSql.indexOf('FROM public.salesperson_sales');
+    const insert = attributionSql.indexOf('INSERT INTO public.salesperson_sales');
+    expect(lock).toBeGreaterThan(-1);
+    expect(payment).toBeGreaterThan(lock);
+    expect(existing).toBeGreaterThan(payment);
+    expect(insert).toBeGreaterThan(existing);
+    expect(attributionSql).toContain('first_sale_payment_not_confirmed');
+    expect(attributionSql).toContain('already_recorded');
   });
 
-  it('afiliado zera vendedor: empresa com affiliate_id não gera comissão de vendedor', () => {
-    // Trava a regra criada em 2026-10-14. Sem a guarda `!company.affiliate_id`, a
-    // MESMA venda sai do caixa duas vezes (comissão do afiliado + do closer/SDR).
-    // Mesma guarda server-side existe na RPC register_manual_company_payment.
-    expect(webhookSource).toContain(
-      'if (isFirstSale && company.salesperson_id && !company.affiliate_id)',
-    );
-    // O `affiliate_id` tem que estar no SELECT da company, senão a guarda lê
-    // `undefined` e nunca dispara (falha silenciosa que pagaria em dobro).
-    const colsIdx = webhookSource.indexOf('COMPANY_COLS');
-    expect(colsIdx, 'COMPANY_COLS não encontrado no fonte do webhook').toBeGreaterThan(-1);
-    expect(webhookSource.slice(colsIdx, colsIdx + 600)).toContain('affiliate_id');
+  it('afiliado zera vendedor na fonte canônica da atribuição', () => {
+    expect(attributionSql).toContain('IF c.affiliate_id IS NOT NULL OR c.salesperson_id IS NULL THEN RETURN');
+    expect(attributionSql.indexOf('IF c.affiliate_id')).toBeLessThan(attributionSql.indexOf('INSERT INTO public.salesperson_sales'));
+    expect(webhookSource).toContain('recordFirstSaleAttribution(supabase, companyId, opts.asaasPaymentId)');
+    expect(webhookSource).toContain('recordFirstSaleAttribution(supabase, String(result.company_id), payment.id)');
+  });
+
+  it('falha de atribuição após mutex da venda legada mantém alerta obrigatório', () => {
+    const index = webhookSource.lastIndexOf('if (isFirstSale)');
+    const block = webhookSource.slice(index, index + 800);
+    expect(block).toContain('recordFirstSaleAttribution');
+    expect(block).toContain('catch (error)');
+    expect(block).toContain('salesperson_commission_not_recorded');
+    expect(block).toContain('warnings.add');
   });
 
   it.each([
@@ -431,7 +434,6 @@ describe('asaas-webhook — a fronteira fatal x não-fatal, no fonte real', () =
     ['histórico de pagamento da empresa (company_payments)'],
     ['receita da assinatura (admin_financial_transactions)'],
     ['rastro do pagamento (subscription_payments: paid_at + due_date do ciclo)'],
-    ['comissão do vendedor (salesperson_sales)'],
   ])('pós-mutex é não-fatal e leva linha de recuperação: %s', (label) => {
     const trecho = aoRedor(label, 300, 2000);
     expect(trecho).toContain('tryWrite');
@@ -440,7 +442,6 @@ describe('asaas-webhook — a fronteira fatal x não-fatal, no fonte real', () =
 
   it.each([
     // Dinheiro que NÃO tem segundo caminho de recuperação → alerta humano.
-    ['comissão do vendedor (salesperson_sales)', 'salesperson_commission_not_recorded'],
     ['receita da assinatura (admin_financial_transactions)', 'subscription_income_not_recorded'],
     [
       'rastro do pagamento (subscription_payments: paid_at + due_date do ciclo)',

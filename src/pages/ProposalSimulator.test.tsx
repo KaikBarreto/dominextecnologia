@@ -101,6 +101,14 @@ function revealInstallments() {
 }
 
 describe('ProposalSimulator', () => {
+  it('preserva o núcleo Loja do link e apresenta a base sem funções de OS',()=>{
+    render(<MemoryRouter initialEntries={['/proposta?nucleo=retail&l1=personalizado']}><ProposalSimulator/></MemoryRouter>);
+    expect(screen.getByRole('combobox',{name:'Perfil da empresa'})).toHaveTextContent('Loja');
+    expect(screen.getAllByText('Kit Loja').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Ordens de serviço e agenda')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Portal do cliente e Área do Técnico/)).not.toBeInTheDocument();
+  });
+
   it('preserva todos os cliques rápidos ao aumentar usuários do plano personalizado', async () => {
     render(
       <MemoryRouter initialEntries={['/proposta?l1=personalizado']}>
@@ -118,10 +126,10 @@ describe('ProposalSimulator', () => {
       expect(screen.getByText('7 usuários', { exact: true })).toBeInTheDocument();
     });
     const configuration = screen.getByRole('region', { name: 'Configuração da proposta' });
-    expect(within(configuration).getByText('Kit Básico Dominex')).toBeInTheDocument();
-    expect(within(configuration).getByText(/Área do Técnico™/)).toBeInTheDocument();
+    expect(within(configuration).getByText('Kit Serviços')).toBeInTheDocument();
+    expect(within(configuration).getByText(/Ordens de serviço, agenda, clientes/)).toBeInTheDocument();
     expect(within(configuration).queryByText('Portal do Cliente', { exact: true })).not.toBeInTheDocument();
-    expect(screen.getByText('Área do Técnico™')).toBeInTheDocument();
+    expect(screen.getAllByText(/Área do Técnico™/).length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: 'Remover Portal do Cliente' })).not.toBeInTheDocument();
   });
 
@@ -132,7 +140,7 @@ describe('ProposalSimulator', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('Área do Técnico™')).toBeInTheDocument();
+    expect(screen.getAllByText(/Área do Técnico™/).length).toBeGreaterThan(0);
     expect(screen.queryByText('7 dias grátis, sem cartão')).not.toBeInTheDocument();
   });
 
@@ -203,7 +211,7 @@ describe('ProposalSimulator', () => {
     fireEvent.mouseDown(pricingTab, { button: 0, ctrlKey: false });
 
     const priceTable = screen.getByRole('region', { name: 'Tabela de preços' });
-    expect(within(priceTable).getByRole('row', { name: /^Kit Básico Dominex\b/ })).toHaveTextContent('R$ 197,00/mês');
+    expect(within(priceTable).getByRole('row', { name: /^Kit Serviços\b/ })).toHaveTextContent('R$ 197,00/mês');
     expect(within(priceTable).getByRole('row', { name: /Cobranças/ })).toHaveTextContent('R$ 150,00/mês');
     expect(within(priceTable).getByRole('row', { name: /Emissão de notas fiscais/i })).toHaveTextContent('R$ 150,00/mês');
     expect(within(priceTable).getByRole('row', { name: /White Label/ })).toHaveTextContent('R$ 50,00/mês');

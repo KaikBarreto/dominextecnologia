@@ -4,10 +4,12 @@ import {
   createDomiLinkIdempotencyKey, detectDomiLink, DomiLinkError, loadDomiLinkProfile,
   pairDomiLink, queueDomiLinkTestPrint, readDomiLinkBarcode, readDomiLinkScale,
   revokeDomiLink, waitForDomiLinkPrintJob,
+  tareDomiLinkScale,
 } from '@/lib/domilink/client';
 import {
   clearDomiLinkSession, clearDomiLinkSessionOutsideScope, getDomiLinkSessionRevision,
   readDomiLinkEnabled, readDomiLinkSession, writeDomiLinkEnabled, writeDomiLinkSession,
+  readDomiLinkReceiptPrinter, writeDomiLinkReceiptPrinter,
   type DomiLinkSessionScope,
 } from '@/lib/domilink/storage';
 import type { DomiLinkDevice, DomiLinkProfile, DomiLinkScaleReading } from '@/lib/domilink/types';
@@ -36,6 +38,7 @@ function revokeQuietly(token: string | null) {
 export function useDomiLink() {
   const auth = useAuth();
   const [enabled, setEnabledState] = useState(readDomiLinkEnabled);
+  const [, refreshPreferences] = useState(0);
   const userId = auth.user?.id;
   const profileUserId = auth.profile?.user_id;
   const companyId = auth.profile?.company_id;
@@ -50,6 +53,17 @@ export function useDomiLink() {
   const [state, setState] = useState(() => emptyState(contextKey, contextKey ? 'checking' : 'disabled'));
   const busyId = useRef(0);
   const connectId = useRef(0);
+  useEffect(() => {
+    const changed = () => {
+      const next = readDomiLinkEnabled();
+      if (!next) revokeQuietly(clearDomiLinkSession());
+      setEnabledState(next);
+      refreshPreferences(value => value + 1);
+    };
+    window.addEventListener('domilink:preferences-changed', changed);
+    window.addEventListener('storage', changed);
+    return () => { window.removeEventListener('domilink:preferences-changed', changed); window.removeEventListener('storage', changed); };
+  }, []);
 
   useEffect(() => {
     current.current.mounted = true;
@@ -158,11 +172,16 @@ export function useDomiLink() {
       if (apply) setState((s) => apply(s, result));
       return result;
     } catch (error) {
+      if (operation.valid() && error instanceof DomiLinkError && error.status === 401) {
+        clearDomiLinkSession();
+        setState({ ...emptyState(contextKey, 'pairing'), error: messageOf(error) });
+        throw error;
+      }
       throw operation.valid() ? error : contextChanged();
     } finally {
       if (operation.valid() && busyId.current === id) setState((s) => ({ ...s, busyAction: null }));
     }
-  }, [capture]);
+  }, [capture, contextKey]);
 
   const testPrint = useCallback((device: DomiLinkDevice) => withSession(`print:${device.id}`, async (token, assertCurrent) => {
     const queued = await queueDomiLinkTestPrint(token, device, createDomiLinkIdempotencyKey());
@@ -171,15 +190,23 @@ export function useDomiLink() {
   }), [withSession]);
   const readScale = useCallback((deviceId: string) => withSession(`scale:${deviceId}`, (token) => readDomiLinkScale(token, deviceId), (s, lastScaleReading) => ({ ...s, lastScaleReading })), [withSession]);
   const readBarcode = useCallback((deviceId: string) => withSession(`barcode:${deviceId}`, (token) => readDomiLinkBarcode(token, deviceId), (s, lastBarcode) => ({ ...s, lastBarcode })), [withSession]);
+  const tareScale = useCallback((deviceId: string) => withSession(`tare:${deviceId}`, token => tareDomiLinkScale(token, deviceId), s => ({ ...s, lastScaleReading: null })), [withSession]);
 
   // Mascaramento síncrono: nem um render do contexto novo recebe dados do anterior.
   const visible = state.contextKey === contextKey && contextKey ? state : emptyState(contextKey, contextKey ? 'checking' : 'disabled');
   const profile = visible.profile;
+  const receiptPrinterId = scope ? readDomiLinkReceiptPrinter(scope) : null;
+  const setReceiptPrinter = (deviceId: string | null) => {
+    capture();
+    if (!scope) return;
+    writeDomiLinkReceiptPrinter(scope, deviceId);
+    refreshPreferences(value => value + 1);
+  };
   const devices = useMemo(() => ({
     printers: profile?.devices.filter((device) => device.kind === 'printer') ?? [],
     scales: profile?.devices.filter((device) => device.kind === 'scale') ?? [],
     barcodes: profile?.devices.filter((device) => device.kind === 'barcode') ?? [],
   }), [profile]);
-  return { enabled, setEnabled, status: visible.status, profile, devices, error: visible.error, busyAction: visible.busyAction,
-    lastScaleReading: visible.lastScaleReading, lastBarcode: visible.lastBarcode, retry: connect, pair, disconnect, testPrint, readScale, readBarcode };
+  return { scopeKey, enabled, setEnabled, status: visible.status, profile, devices, error: visible.error, busyAction: visible.busyAction,
+    lastScaleReading: visible.lastScaleReading, lastBarcode: visible.lastBarcode, retry: connect, pair, disconnect, testPrint, readScale, readBarcode, tareScale, receiptPrinterId, setReceiptPrinter };
 }

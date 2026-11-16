@@ -7,6 +7,12 @@ info:
     API REST publica e multi-tenant da Dominex. O contrato usa nomes tecnicos em
     ingles; este documento explica o comportamento em portugues brasileiro.
 
+    Tipos de servico, recursos, disponibilidade e criacao/consulta de OS exigem o
+    nucleo Servicos, alem dos escopos e da assinatura vigente. Sem esse nucleo,
+    essas rotas retornam 403 module_not_contracted. Clientes e CRM preservam seus
+    requisitos proprios. /capabilities continua disponivel, com booking=null e
+    schedule_configured=false quando Servicos nao esta contratado.
+
     A chave e um segredo de servidor. Nao use esta API diretamente em navegador,
     aplicativo mobile distribuido ou qualquer cliente onde o segredo possa ser extraido.
   contact:
@@ -490,7 +496,7 @@ components:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
     Forbidden:
-      description: Escopo, origem ou assinatura nao autoriza a operacao.
+      description: Escopo, origem, assinatura ou nucleo contratado nao autoriza a operacao; module_not_contracted indica ausencia do nucleo Servicos.
       headers:
         X-Request-Id: { $ref: '#/components/headers/RequestId' }
       content:
@@ -569,7 +575,9 @@ components:
           type: array
           items: { $ref: '#/components/schemas/Scope' }
         distribution_mode: { $ref: '#/components/schemas/DistributionMode' }
-        schedule_configured: { type: boolean }
+        schedule_configured:
+          type: boolean
+          description: false quando nao existe configuracao de agenda ou o nucleo Servicos nao esta contratado.
         limits:
           type: object
           additionalProperties: false
@@ -582,6 +590,7 @@ components:
             max_availability_days: { const: 31 }
             max_availability_options: { const: 50 }
         booking:
+          description: Configuracao de agenda; null quando Servicos nao esta contratado.
           oneOf:
             - { $ref: '#/components/schemas/BookingSettings' }
             - { type: 'null' }

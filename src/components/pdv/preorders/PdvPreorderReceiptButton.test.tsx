@@ -21,6 +21,15 @@ describe('comprovante do orçamento', () => {
     mocks.pdf.mockReturnValue(new Blob());
   });
 
+  it('envia o orçamento canônico à saída local sem transformá-lo em pedido', async () => {
+    const output = vi.fn().mockResolvedValue(undefined);
+    await openPdvPreorderReceipt('budget-12', { company: { name: 'Empresa exemplo', whiteLabelEnabled: false }, format: '58mm', output, isCurrent: () => true });
+    expect(output).toHaveBeenCalledOnce();
+    expect(output.mock.calls[0][0]).toBe(mocks.pdf.mock.results[0].value);
+    expect(mocks.pdf.mock.calls[0][0].documentKind).toBe('budget');
+    expect(mocks.open).not.toHaveBeenCalled();
+  });
+
   it('reimprime orçamento convertido como orçamento, sem substituir pelo pedido pago', async () => {
     render(<PdvPreorderReceiptButton preorderId="budget-12" customerName="Cliente exemplo" />);
     fireEvent.click(screen.getByRole('button', { name: /gerar comprovante/i }));

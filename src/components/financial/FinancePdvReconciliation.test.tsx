@@ -18,7 +18,7 @@ describe('conferência opcional na DRE',()=>{
   render(<FinancePdvReconciliation regime="competencia" asOf="2026-11-15"/>);
   expect(screen.queryByText('Resultado parcial do PDV')).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button',{name:'Conferir vendas e compras do PDV'}));
-  expect(screen.getByText('Resultado parcial do PDV')).toBeVisible();expect(screen.getByText(/não substitui o resultado da empresa/)).toBeVisible();
+  expect(screen.getByText('Resultado parcial do PDV')).toBeVisible();expect(screen.getByText(/resultado consolidado da empresa ainda não foi conciliado/)).toBeVisible();
   expect(screen.getByText(/outras receitas e despesas/)).toBeVisible();
  });
  it('respeita início configurado e corte civil de caixa, sem horário ou fuso no filtro',()=>{

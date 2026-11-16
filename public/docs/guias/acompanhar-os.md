@@ -1,5 +1,7 @@
 # Acompanhar uma ordem de serviço
 
+Este fluxo exige o núcleo Serviços, os escopos da chave e assinatura vigente. `403 module_not_contracted` indica que é preciso revisar a contratação; repetir a chamada não libera o núcleo.
+
 Use um dos endpoints:
 
 - `GET /service-orders/{id}`

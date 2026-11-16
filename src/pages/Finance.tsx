@@ -22,6 +22,7 @@ import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { selectFinancialOverviewSources, summarizeFinancialTransactions } from '@/lib/financial-summary';
 import { resolveAppSlug, localizeAppPath } from '@/lib/i18n/appRouteSlugs';
 
 // "Financeiro" é um grupo orientado por tarefa. Configurações financeiras não
@@ -198,8 +199,8 @@ export default function Finance() {
   // Resumo: despesas de cartão entram no mês da fatura; demais itens pagos
   // usam transaction_date e não pagos usam due_date.
   const summaryTransactions = useMemo(
-    () => transactions.filter((t) => isTransactionInDateRange(t, range, 'caixa-misto')),
-    [transactions, range]
+    () => selectFinancialOverviewSources(transactionsWithChildren).filter((t) => isTransactionInDateRange(t, range, 'caixa-misto')),
+    [transactionsWithChildren, range]
   );
 
   // Contas a Pagar/Receber: vencimento individual da parcela, exceto cartões
@@ -210,30 +211,9 @@ export default function Finance() {
   );
 
   const summary = useMemo(() => {
-    const s = { totalEntradas: 0, totalSaidas: 0, saldo: 0, aPagar: 0, aReceber: 0 };
-    summaryTransactions.forEach((t) => {
-      // Movimento interno (transferência entre contas e pagamento de fatura de
-      // cartão) fica fora do resumo: é balanço, não resultado. O par de
-      // lançamentos compartilha `transfer_pair_id` — sem esse corte, transferir
-      // R$ 10.000 de um banco pro outro apareceria como R$ 10.000 de entrada.
-      // Critério estrutural (mesmo do DRE), nunca por nome de categoria.
-      if (t.transfer_pair_id) return;
-      if (t.transaction_type === 'entrada') {
-        if (t.is_paid) {
-          s.totalEntradas += Number(t.amount);
-        } else {
-          s.aReceber += Number(t.amount);
-        }
-      } else {
-        if (t.is_paid) {
-          s.totalSaidas += Number(t.amount);
-        } else {
-          s.aPagar += Number(t.amount);
-        }
-      }
-    });
-    s.saldo = s.totalEntradas - s.totalSaidas;
-    return s;
+    return summarizeFinancialTransactions(summaryTransactions.map(transaction => ({
+      ...transaction, transfer_pair_id: transaction.transfer_pair_id ?? null,
+    })));
   }, [summaryTransactions]);
 
   // Atalhos da Visão Geral (cards "A Pagar"/"A Receber"/contas) → telas próprias.

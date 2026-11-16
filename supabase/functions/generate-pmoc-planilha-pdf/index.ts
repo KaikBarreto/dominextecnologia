@@ -1,3 +1,4 @@
+import { hasServiceDocumentLicense } from '../_shared/service-document-license.ts';
 // =============================================================================
 // generate-pmoc-planilha-pdf — Gera a "Planilha PMOC" (espelha o modelo do
 //                              cliente: identificação + proprietário + RT +
@@ -245,7 +246,7 @@ Deno.serve(async (req) => {
 
     // ---- 3. Resolver tenant + role + permissão de contratos
     const [{ data: profileRow }, { data: rolesRows }, { data: canManage }] = await Promise.all([
-      supabase.from("profiles").select("company_id").eq("user_id", userId).maybeSingle(),
+      supabase.from("profiles").select("company_id,is_active").eq("user_id", userId).maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", userId),
       supabase.rpc("can_manage_contracts", { _user_id: userId }),
     ]);
@@ -310,6 +311,11 @@ Deno.serve(async (req) => {
       );
     }
 
+    const documentCompanyId=String((contract as unknown as {company_id:string}).company_id);
+    if (profileRow?.is_active !== true || !await hasServiceDocumentLicense(supabase,documentCompanyId,'contract_document',isSuperAdmin)) {
+      return jsonResponse(errorBody('module_unavailable','Sua empresa não tem acesso a este documento. Confira os módulos contratados e a validade da assinatura.'),403);
+    }
+
     if (canManage !== true) {
       return jsonResponse(
         errorBody(
@@ -348,6 +354,7 @@ Deno.serve(async (req) => {
         .from("customers")
         .select("name, document, address, city, state")
         .eq("id", contract.customer_id)
+        .eq("company_id", documentCompanyId)
         .maybeSingle(),
       supabase
         .from("company_settings")
@@ -363,6 +370,7 @@ Deno.serve(async (req) => {
             .from("responsible_technicians")
             .select("full_name, cft_crea, modality")
             .eq("id", contract.responsible_technician_id)
+            .eq("company_id", documentCompanyId)
             .maybeSingle()
         : Promise.resolve({ data: null } as { data: null }),
       // Ambientes climatizados do contrato (1→N). Ordem do cadastro.

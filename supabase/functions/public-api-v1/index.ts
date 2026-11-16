@@ -197,6 +197,11 @@ function asRpcProblem(data: unknown, requestId: string): Response | null {
   return apiProblem(status, code, title, detail, requestId);
 }
 
+function serviceOperationsRequired(requestId: string): Response {
+  return apiProblem(403, "module_not_contracted", "Serviços indisponíveis",
+    "Esta operação exige o núcleo Serviços contratado e uma assinatura vigente.", requestId);
+}
+
 function rpcFailure(
   error: { code?: string; message?: string },
   requestId: string,
@@ -271,6 +276,7 @@ function rpcFailure(
     ],
   };
   const normalized = String(error.message ?? "").toLowerCase();
+  if (normalized.includes("public_api_service_operations_required")) return serviceOperationsRequired(requestId);
   for (const [code, [status, title, detail]] of Object.entries(knownCodes)) {
     if (normalized.includes(code)) {
       return apiProblem(status, code, title, detail, requestId);
@@ -1283,23 +1289,40 @@ async function readApiJson(
   }
 }
 
+async function serviceOperationsAccess(ctx: ApiContext): Promise<boolean | Response> {
+  const { data, error } = await ctx.admin.rpc("company_has_module", {
+    p_company_id: ctx.integration.company_id, p_module_code: "service_operations",
+  });
+  if (error || typeof data !== "boolean") return apiProblem(503, "temporarily_unavailable",
+    "Serviço indisponível", "Não foi possível conferir o acesso a Serviços. Tente novamente em instantes.", ctx.requestId);
+  return data;
+}
+
 async function routeRequest(
   req: Request,
   url: URL,
   route: string,
   ctx: ApiContext,
 ): Promise<Response> {
+  const serviceRoute = ["service_types", "booking_resources", "availability", "service_orders_create", "service_orders_get", "service_orders_get_external"].includes(route);
+  let servicesEnabled = false;
+  if (serviceRoute || route === "capabilities") {
+    const access = await serviceOperationsAccess(ctx);
+    if (access instanceof Response) return access;
+    servicesEnabled = access;
+    if (serviceRoute && !servicesEnabled) return serviceOperationsRequired(ctx.requestId);
+  }
   if (route === "capabilities") {
     const [
       { data: settings, error: settingsError },
       { data: companySettings, error: timezoneError },
     ] = await Promise.all([
-      ctx.admin.from("schedule_booking_settings")
+      servicesEnabled ? ctx.admin.from("schedule_booking_settings")
         .select(
           "slot_interval_minutes,minimum_notice_minutes,booking_horizon_days,default_duration_minutes,weekly_hours",
         )
         .eq("company_id", ctx.integration.company_id)
-        .maybeSingle(),
+        .maybeSingle() : Promise.resolve({ data: null, error: null }),
       ctx.admin.from("company_settings").select("timezone").eq(
         "company_id",
         ctx.integration.company_id,
@@ -1337,13 +1360,15 @@ async function routeRequest(
   }
 
   if (route === "service_types") {
-    const { data, error } = await ctx.admin.from("service_types")
-      .select("id,name,description,requires_equipment")
-      .eq("company_id", ctx.integration.company_id)
-      .eq("is_active", true)
-      .order("name");
+    // A RPC revalida o núcleo no banco, inclusive após a checagem da edge.
+    const { data, error } = await ctx.admin.rpc("public_api_get_catalogs", { p_integration_id: ctx.integration.id });
     if (error) return rpcFailure(error, ctx.requestId);
-    return apiJson({ data: data ?? [] }, 200, ctx.requestId);
+    const catalogs = firstRpcRow(data);
+    if (!isPlainObject(catalogs) || !Array.isArray(catalogs.service_types)) return apiProblem(
+      503, "temporarily_unavailable", "Serviço indisponível", "Não foi possível consultar os serviços.", ctx.requestId);
+    return apiJson({ data: catalogs.service_types.map((row: Record<string, unknown>) => ({
+      id: row.id, name: row.name, description: row.description, requires_equipment: row.requires_equipment,
+    })) }, 200, ctx.requestId);
   }
 
   if (route === "booking_resources") {

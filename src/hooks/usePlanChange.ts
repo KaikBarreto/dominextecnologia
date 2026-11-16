@@ -76,8 +76,17 @@ export function usePlanChange() {
       });
       if (error) {
         // A edge devolve { error: "<mensagem PT-BR>" } em falhas de validação/permissão.
-        const ctxMsg = (error as { context?: { error?: string } })?.context?.error;
-        throw new Error(ctxMsg || error.message || 'Não foi possível atualizar o plano.');
+        const context = (error as { context?: unknown }).context;
+        let message: string | undefined;
+        if (context instanceof Response) {
+          try {
+            const body = await context.clone().json();
+            if (typeof body?.error === 'string') message = body.error;
+          } catch { /* Usa a orientação local quando a resposta não contém JSON. */ }
+        } else if (context && typeof context === 'object' && 'error' in context && typeof context.error === 'string') {
+          message = context.error;
+        }
+        throw new Error(message || 'Não foi possível confirmar as condições do plano. Atualize a página e tente novamente.');
       }
       if (data?.error) throw new Error(data.error);
       return data as ChangePlanResult;

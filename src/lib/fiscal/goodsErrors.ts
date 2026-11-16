@@ -1,4 +1,12 @@
 const ERRORS: Record<string, string> = {
+  document_changed: 'A situação fiscal mudou. Consulte esta mesma nota para atualizar os dados antes de continuar.',
+  motor_response_mismatch: 'Não foi possível confirmar a preparação fiscal desta empresa. Nenhuma transmissão foi iniciada.',
+  revision_blocked: 'Esta nota já foi enviada ou ainda está em processamento. Consulte a situação antes de revisar.',
+  resume_blocked: 'Consulte a situação desta mesma nota antes de continuar. Nenhum novo envio foi iniciado.',
+  fiscal_context_changed: 'O ambiente ou a UF mudou desde a preparação. Consulte o suporte antes de continuar.',
+  snapshot_unavailable: 'Não foi possível recuperar os dados fiscais preparados. Nenhum novo envio foi iniciado.',
+  readiness_unavailable: 'Não foi possível conferir a configuração fiscal. Tente novamente.',
+  draft_changed: 'A nota foi alterada em outro atendimento. Abra o rascunho novamente antes de emitir.',
   persistence_failed: 'Não foi possível atualizar os dados fiscais com segurança. Consulte esta mesma nota antes de tentar novamente.',
   unauthorized: 'Sua sessão expirou. Entre novamente.',
   no_company: 'Sua conta precisa estar vinculada a uma empresa ativa.',

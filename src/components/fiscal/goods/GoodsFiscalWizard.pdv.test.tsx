@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
+import type { GoodsFiscalDraft } from '@/hooks/useGoodsFiscal';
 import { GoodsFiscalWizard } from './GoodsFiscalWizard';
 const state=vi.hoisted(()=>({importer:vi.fn(),save:vi.fn()}));
 vi.mock('@/contexts/AppLocaleContext',()=>({useAppLocaleContext:()=>({locale:'pt-br'})}));
@@ -27,4 +28,12 @@ describe('wizard fiscal reutilizado para venda confirmada',()=>{
  it('mantém o formulário manual separado do snapshot da venda',()=>{
   render(<GoodsFiscalWizard model={65} direction="saida" open onOpenChange={vi.fn()}/>);fireEvent.click(screen.getByRole('button',{name:'Faturamento'}));expect(screen.queryByLabelText('Pagamentos da venda confirmada')).not.toBeInTheDocument();expect(screen.getByText('Valor recebido')).toBeVisible();expect(screen.getByText('Troco')).toBeVisible();expect(state.importer).not.toHaveBeenCalled();
  });
+ it('retoma o rascunho manual pelo mesmo ID com itens e anotações preservados',async()=>{
+  const saved={...snapshot,model:65,direction:'saida',sourceType:'manual',sourceId:null,nature:'VENDA SALVA',freightMode:9,notes:'Anotação salva',id:'manual-a'} as GoodsFiscalDraft;
+  render(<GoodsFiscalWizard model={65} direction="saida" open onOpenChange={vi.fn()} documentId="manual-a" initialDraft={saved}/>);
+  fireEvent.click(screen.getByRole('button',{name:'Salvar rascunho'}));
+  await waitFor(()=>expect(state.save).toHaveBeenCalledWith(expect.objectContaining({emit:false,draft:expect.objectContaining({id:'manual-a',sourceType:'manual',sourceId:null,nature:'VENDA SALVA',notes:'Anotação salva',items:saved.items})})));
+  expect(state.importer).not.toHaveBeenCalled();
+ });
+
 });

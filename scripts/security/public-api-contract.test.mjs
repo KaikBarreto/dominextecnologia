@@ -160,3 +160,16 @@ test('edge publica exige proxy autenticado e recebe IP apenas da borda confiavel
   assert.match(publicEdge, /timingSafeEqual\(providedProxySecret, expectedProxySecret\)/);
   assert.doesNotMatch(publicEdge, /const ip = requestIp\(req\)/);
 });
+
+test('contratação de Serviços acompanha banco, edge e documentação sem alterar rotas', async () => {
+  const coreMigration = await readFile(new URL('supabase/migrations/20261116213000_public_api_service_core_entitlement.sql', root), 'utf8');
+  assert.match(coreMigration, /company_has_module\(v_company_id,'service_operations'\) IS NOT TRUE/);
+  assert.match(coreMigration, /'catalogs:read','availability:read','service_orders:create','service_orders:read'/);
+  assert.match(coreMigration, /REVOKE ALL ON FUNCTION public\.public_api_assert_integration\(uuid, text\) FROM PUBLIC, anon, authenticated, service_role/);
+  assert.match(publicEdge, /public_api_get_catalogs/);
+  assert.doesNotMatch(publicEdge, /ctx\.admin\.from\("service_types"\)/);
+  for (const source of [openapiSource, docsContent, publicReference, llmsDocumentation]) {
+    assert.match(source, /module_not_contracted/);
+    assert.match(source, /schedule_configured=false/);
+  }
+});

@@ -1,3 +1,4 @@
+import { usePdvDomiLinkWorkspace } from '@/hooks/usePdvDomiLinkWorkspace';
 import { PdvCouponControl } from '@/components/pdv/coupons/PdvCouponControl';
 import { confirmedCouponDiscount, couponCartReady } from '@/lib/pdv/cart';
 import { PdvPageSkeleton } from '@/components/pdv/loading/PdvPageSkeleton';
@@ -306,6 +307,11 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
       moveProductFocus(direction);
       return;
     }
+    if (event.key === 'Enter' && keyboardProducts.length === 0 && search.trim()) {
+      event.preventDefault();
+      void handleBarcode(search.trim());
+      return;
+    }
     if (event.key === 'Enter' && keyboardProducts.length > 0) {
       event.preventDefault();
       addProduct(keyboardProducts[Math.min(activeProductIndex, keyboardProducts.length - 1)]);
@@ -455,6 +461,14 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
 
   const receiptFormat = readDeviceReceiptFormat() ?? resolvePdvReceiptStagePolicy(receiptSettings.data, 'sale').format;
 
+  const hardware = usePdvDomiLinkWorkspace({
+    identity: cart, contextKey: JSON.stringify([terminalId, session?.id]),
+    blocked: paymentOpen || advancedOpen || directSale.complete.isPending || !catalog,
+    getLine: id => cart.lines.find(line => line.inventoryId === id),
+    onSetQuantity: (id, value) => updateCart(current => setLineQuantity(current, id, value)),
+    onSearchChange: setSearch, searchInputRef,
+  });
+
   if (directSale.catalog.isLoading || !catalog) {
     return (
       <div className="space-y-4">
@@ -581,9 +595,10 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
           products={visibleProducts} disabled={directSale.complete.isPending} activeProductId={activeProductId}
           onProductFocus={id => { const index = keyboardProducts.findIndex(product => product.inventoryId === id); if (index >= 0) setActiveProductIndex(index); }}
           onProductSelect={addProduct} formatCurrency={formatCurrency} onExit={() => window.location.assign('/pdv')}
-          camera={<InventoryIdentifierCameraScanner triggerVariant="icon" onScan={code => void handleBarcode(code)} disabled={paymentOpen || advancedOpen || identifiers.resolve.isPending} />}
+          camera={<><InventoryIdentifierCameraScanner triggerVariant="icon" onScan={code => void handleBarcode(code)} disabled={paymentOpen || advancedOpen || identifiers.resolve.isPending} />{hardware.scannerControl}</>}
           cart={
           <PdvCartPanel
+            weighControl={hardware.weighControl}
             cart={cart}
             couponContent={<PdvCouponControl cart={cart} disabled={paymentOpen} onChange={coupon => updateCart(current => ({ ...current, coupon }))} />}
             customers={customers}
