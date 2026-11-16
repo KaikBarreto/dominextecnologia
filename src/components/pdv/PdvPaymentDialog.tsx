@@ -41,7 +41,7 @@ import { cn } from '@/lib/utils';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { SignedImg } from '@/components/ui/SignedImg';
 import { PixIcon } from '@/components/ui/PixIcon';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { AnimatePresence, motion, useIsPresent, useReducedMotion, type HTMLMotionProps } from 'framer-motion';
 import { PdvCheckoutDisclosure } from './PdvCheckoutDisclosure';
 import { usePdvCheckoutLayoutPreference } from '@/hooks/usePdvCheckoutLayoutPreference';
 import {
@@ -165,6 +165,13 @@ const EXTRA_METHOD_LABELS: Partial<Record<PdvPaymentMethod, string>> = {
   saldo_cliente: 'Saldo do cliente',
   voucher: 'Voucher',
 };
+
+/** A linha de saída continua animada, mas deixa de receber foco ou edição. */
+function AnimatedPaymentFields({ children, ...props }: HTMLMotionProps<'section'>) {
+  const present = useIsPresent();
+  const inertProps = { inert: present ? undefined : '' };
+  return <motion.section {...props} {...inertProps} aria-hidden={present ? undefined : true}>{children}</motion.section>;
+}
 
 /**
  * PAGAMENTO da venda de balcão (F4).
@@ -560,14 +567,14 @@ export function PdvPaymentDialog({
   }
   function renderSelectedPayment(row: PaymentRow) {
     const Icon = METHOD_META[row.method].icon;
-    return <motion.section key={row.id} aria-label={`Pagamento: ${methodLabel(row.method)}`} data-payment-method={row.method}
+    return <AnimatedPaymentFields key={row.id} aria-label={`Pagamento: ${methodLabel(row.method)}`} data-payment-method={row.method}
       initial={reduceMotion ? false : { height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={reduceMotion ? undefined : { height: 0, opacity: 0 }}
       transition={{ duration: reduceMotion ? 0 : 0.34, ease: [0.25, 0.65, 0.25, 1] }} className="payment-active-row overflow-hidden rounded-lg border border-input bg-background">
       <div className="payment-row-content">
         <div className="payment-row-name"><Icon className="h-4 w-4 shrink-0" /><strong>{row.method === 'fiado' ? 'Fiado/Saldo' : methodLabel(row.method)}</strong></div>
         {paymentFields(row)}
       </div>
-    </motion.section>;
+    </AnimatedPaymentFields>;
   }
 
   const creditSummary = <div className="space-y-3">
@@ -578,7 +585,7 @@ export function PdvPaymentDialog({
         className={cn('flex min-h-11 w-full items-center gap-2 px-3 py-2 text-left text-sm font-semibold transition-colors', balanceRow ? 'bg-primary text-primary-foreground' : 'bg-background hover:bg-muted')}>
         <WalletCards className="h-4 w-4" /><span className="flex-1">Saldo do cliente</span><strong className="whitespace-nowrap tabular-nums">{money(storedValue.data?.availableCredit ?? 0)}</strong>{balanceRow && <Check className="h-4 w-4" />}
       </button>
-      <AnimatePresence initial={false}>{balanceRow && <motion.div key={balanceRow.id} initial={reduceMotion ? false : { height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={reduceMotion ? undefined : { height: 0, opacity: 0 }} transition={{ duration: reduceMotion ? 0 : 0.34 }} className="overflow-hidden">{paymentFields(balanceRow)}</motion.div>}</AnimatePresence>
+      <AnimatePresence initial={false}>{balanceRow && <AnimatedPaymentFields key={balanceRow.id} initial={reduceMotion ? false : { height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={reduceMotion ? undefined : { height: 0, opacity: 0 }} transition={{ duration: reduceMotion ? 0 : 0.34 }} className="overflow-hidden">{paymentFields(balanceRow)}</AnimatedPaymentFields>}</AnimatePresence>
     </section>}
   </div>;
 

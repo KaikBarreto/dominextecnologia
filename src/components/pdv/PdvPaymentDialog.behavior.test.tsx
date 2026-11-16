@@ -130,6 +130,17 @@ describe('PdvPaymentDialog — fechamento real da venda', () => {
     testState.storedValue.isError = false;
   });
 
+  it('retira a linha de saída da navegação e da leitura durante a animação', () => {
+    renderDialog();
+    const previous = screen.getByRole('region', { name: 'Pagamento: Dinheiro' });
+    fireEvent.click(screen.getByRole('button', { name: 'Fiado/Saldo' }));
+
+    expect(previous).toHaveAttribute('aria-hidden', 'true');
+    expect(previous).toHaveAttribute('inert');
+    expect(screen.getAllByRole('region', { name: /^Pagamento:/ })).toHaveLength(1);
+    expect(screen.getByRole('region', { name: 'Pagamento: Fiado' })).not.toBe(previous);
+  });
+
   it('envia voucher parcial e somente o restante em dinheiro', async () => {
     testState.storedValue.data.vouchers = [
       { id: 'voucher-1', code: 'DEV-1042', balance: 100, expiresOn: null },

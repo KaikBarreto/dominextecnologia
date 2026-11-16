@@ -20,6 +20,7 @@ interface PdvAppliedVoucherControlProps {
   enabled: boolean;
   excludedVoucherIds?: readonly string[];
   hideRemaining?: boolean;
+  compactApplied?: boolean;
   customerId: string | null;
   total: number;
   value: PdvAppliedVoucher | null;
@@ -36,6 +37,7 @@ export function PdvAppliedVoucherControl({
   enabled,
   excludedVoucherIds = NO_EXCLUDED_VOUCHERS,
   hideRemaining = false,
+  compactApplied = false,
   customerId,
   total,
   value,
@@ -244,33 +246,33 @@ export function PdvAppliedVoucherControl({
         </section>
       ) : value ? (
         <>
-          <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-800 px-4 pb-3 pt-10 text-white shadow-sm">
+          <div className={cn('relative overflow-hidden rounded-xl bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-800 px-4 pb-3 pt-10 text-white shadow-sm', compactApplied && 'px-3 pb-2 pt-8')}>
             <span aria-hidden="true" className="absolute -left-2 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-background" />
             <span aria-hidden="true" className="absolute -right-2 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-background" />
-            <div className="absolute inset-x-0 top-0 flex h-7 items-center justify-between bg-rose-600 px-4 text-[10px] font-bold uppercase tracking-[0.12em] text-white">
-              <span className="flex items-center gap-1.5"><Ticket className="h-3.5 w-3.5" />Troca e devolução</span>
+            <div className={cn('absolute inset-x-0 top-0 flex h-7 items-center justify-between bg-rose-600 px-4 text-[10px] font-bold uppercase tracking-[0.12em] text-white', compactApplied && 'h-6 gap-2 px-3 tracking-[0.04em]')}>
+              <span className="flex min-w-0 items-center gap-1.5"><Ticket className="h-3.5 w-3.5 shrink-0" /><span>Troca e devolução</span></span>
               <button
                 type="button"
-                className="h-7 px-1 text-[10px] font-bold uppercase text-white underline decoration-white/60 underline-offset-2 hover:decoration-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                className={cn('h-7 shrink-0 px-1 text-[10px] font-bold uppercase text-white underline decoration-white/60 underline-offset-2 hover:decoration-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white', compactApplied && 'h-6 px-0')}
                 onClick={openPicker}
               >
                 Alterar
               </button>
             </div>
-            <div className="flex items-center justify-between gap-3">
+            <div className={cn('flex items-center justify-between gap-3', compactApplied && 'flex-col items-stretch gap-1.5')}>
               <div className="min-w-0">
-                <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/65">
+                <span className={cn('text-[10px] font-bold uppercase tracking-[0.12em] text-white/65', compactApplied && 'sr-only')}>
                   Crédito da loja
                 </span>
-                <p className="mt-0.5 truncate font-mono text-base font-bold tracking-wide">{value.code}</p>
+                <p className={cn('mt-0.5 truncate font-mono text-base font-bold tracking-wide', compactApplied && 'mt-0 text-xs tracking-normal')}>{value.code}</p>
                 {value.expiresOn ? <p className="mt-0.5 flex items-center gap-1 text-[11px] text-white/70"><CalendarDays className="h-3 w-3" />Válido até {new Date(`${value.expiresOn}T12:00:00`).toLocaleDateString('pt-BR')}</p> : <p className="mt-0.5 text-[11px] text-white/70">Sem data de validade</p>}
               </div>
-              <div className="flex shrink-0 items-center gap-2 text-right">
-                <div>
-                  <p className="text-[10px] font-medium uppercase tracking-wide text-white/65">Crédito usado</p>
-                  <p className="mt-0.5 text-lg font-extrabold tabular-nums">− {formatCurrency(value.amount)}</p>
+              <div className={cn('flex shrink-0 items-center gap-2 text-right', compactApplied && 'justify-between text-left')}>
+                <div className={compactApplied ? 'min-w-0' : undefined}>
+                  <p className={cn('text-[10px] font-medium uppercase tracking-wide text-white/65', compactApplied && 'sr-only')}>Crédito usado</p>
+                  <p className={cn('mt-0.5 text-lg font-extrabold tabular-nums', compactApplied && 'mt-0 break-words text-base')}>− {formatCurrency(value.amount)}</p>
                 </div>
-                <button type="button" className="flex h-9 w-9 items-center justify-center rounded-md text-white hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label="Remover voucher" onClick={() => onChange(null)}>
+                <button type="button" className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-white hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white', compactApplied && 'h-7 w-7')} aria-label="Remover voucher" onClick={() => onChange(null)}>
                   <X className="h-4 w-4" />
                 </button>
               </div>
@@ -299,20 +301,22 @@ export function PdvAppliedVoucherControl({
 
 
 /** Mantém a escolha simples e permite combinar créditos sem trocar o contexto do pedido. */
-export function PdvAppliedVouchersControl({ values, onChange, ...props }: Omit<PdvAppliedVoucherControlProps, 'value' | 'onChange' | 'excludedVoucherIds' | 'hideRemaining'> & {
+export function PdvAppliedVouchersControl({ values, onChange, ...props }: Omit<PdvAppliedVoucherControlProps, 'value' | 'onChange' | 'excludedVoucherIds' | 'hideRemaining' | 'compactApplied'> & {
   values: readonly PdvAppliedVoucher[];
   onChange: (values: PdvAppliedVoucher[]) => void;
 }) {
   const [editing, setEditing] = useState<string | null>(null);
   const applied = round2(values.reduce((sum, value) => sum + value.amount, 0));
   return <div className="space-y-3">
-    {values.map(value => <fieldset key={value.voucherId} disabled={editing !== null && editing !== value.voucherId} className="min-w-0">
-      <PdvAppliedVoucherControl {...props} hideRemaining value={value}
+    {values.length > 0 && <div className="grid items-start gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 13rem), 1fr))' }}>
+    {values.map(value => <fieldset key={value.voucherId} disabled={editing !== null && editing !== value.voucherId} className={cn('min-w-0', editing === value.voucherId && 'col-span-full')}>
+      <PdvAppliedVoucherControl {...props} hideRemaining compactApplied value={value}
         total={Math.max(0, round2(props.total - applied + value.amount))}
         excludedVoucherIds={values.filter(item => item.voucherId !== value.voucherId).map(item => item.voucherId)}
         onPickerOpenChange={open => { setEditing(open ? value.voucherId : null); props.onPickerOpenChange?.(open); }}
         onChange={next => onChange(next ? values.map(item => item.voucherId === value.voucherId ? next : item) : values.filter(item => item.voucherId !== value.voucherId))} />
     </fieldset>)}
+    </div>}
     {applied < round2(props.total) && values.length < 30 && <fieldset disabled={editing !== null && editing !== 'add'} className="min-w-0">
       <PdvAppliedVoucherControl {...props} value={null} total={Math.max(0, round2(props.total - applied))}
         excludedVoucherIds={values.map(item => item.voucherId)}

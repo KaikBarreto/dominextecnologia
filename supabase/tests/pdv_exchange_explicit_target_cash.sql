@@ -98,7 +98,8 @@ BEGIN
  IF NOT blocked THEN RAISE EXCEPTION 'Sessão de outro terminal foi aceita';END IF;EXECUTE 'RESET ROLE';
  IF EXISTS(SELECT 1 FROM public.pdv_order_payments WHERE order_id=pending_target) OR EXISTS(SELECT 1 FROM public.pdv_operation_requests WHERE company_id=c AND idempotency_key IN('exchange309-old-fresh','exchange309-preapply-fresh','exchange309-other-terminal')) THEN RAISE EXCEPTION 'Negação deixou fatos financeiros';END IF;
  -- Recurso histórico sintético aponta para troca real já executada; não cria dinheiro.
- payload:=jsonb_build_object('return_id',source_return,'new_order_id',first_target,'voucher_id',voucher,'voucher_amount',10,'credit_amount',0,'difference_method',NULL,'difference_account_id',NULL,'cash_session_id',NULL);
+ -- O hash histórico serializa valores numeric(14,2), como o writer original.
+ payload:=jsonb_build_object('return_id',source_return,'new_order_id',first_target,'voucher_id',voucher,'voucher_amount',10::numeric(14,2),'credit_amount',0::numeric(14,2),'difference_method',NULL,'difference_account_id',NULL,'cash_session_id',NULL);
  INSERT INTO public.pdv_operation_requests(company_id,operation_type,idempotency_key,payload_hash,status,resource_type,resource_id,result,created_by,completed_at)
  VALUES(c,'after_sale.exchange.cover.v2',legacy_key,public.pdv_operation_payload_hash(payload),'completed','pdv_exchange',(first_result->>'exchange_id')::uuid,first_result,a,now());
  EXECUTE 'SET LOCAL ROLE authenticated';replay:=public.pdv_cover_exchange_order_v2(source_return,first_target,voucher,10,0,NULL,NULL,NULL,legacy_key);EXECUTE 'RESET ROLE';
@@ -119,7 +120,11 @@ BEGIN
   IF NOT blocked THEN RAISE EXCEPTION 'Replay ignorou revogação de estoque';END IF;EXECUTE 'RESET ROLE';RAISE EXCEPTION 'rollback_stock' USING ERRCODE='P3092';
  EXCEPTION WHEN SQLSTATE 'P3092' THEN NULL;END;
  BEGIN
-  UPDATE public.profiles SET is_active=false WHERE user_id=a;EXECUTE 'SET LOCAL ROLE authenticated';blocked:=false;BEGIN PERFORM public.pdv_cover_exchange_order_coupon_v2(source_return,first_target,voucher,10,0,NULL,NULL,NULL,'exchange309-cover-1',0,session_a);EXCEPTION WHEN insufficient_privilege THEN blocked:=true;END;
+  -- A preparação usa o canal administrativo autorizado; a negativa usa o ator revogado.
+  PERFORM set_config('request.jwt.claims','{"role":"service_role"}',true);
+  UPDATE public.profiles SET is_active=false WHERE user_id=a;
+  PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',a,'role','authenticated')::text,true);
+  EXECUTE 'SET LOCAL ROLE authenticated';blocked:=false;BEGIN PERFORM public.pdv_cover_exchange_order_coupon_v2(source_return,first_target,voucher,10,0,NULL,NULL,NULL,'exchange309-cover-1',0,session_a);EXCEPTION WHEN insufficient_privilege THEN blocked:=true;END;
   IF NOT blocked THEN RAISE EXCEPTION 'Replay ignorou perfil revogado';END IF;EXECUTE 'RESET ROLE';RAISE EXCEPTION 'rollback_profile' USING ERRCODE='P3093';
  EXCEPTION WHEN SQLSTATE 'P3093' THEN NULL;END;
  BEGIN

@@ -38,6 +38,7 @@ import { buildPdvPurchaseCashPath } from './pdvPurchaseContext';
 import { cn } from '@/lib/utils';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { resolveCashHomeAvailability } from './cashHomeAvailability';
+import { usePdvReceivingTarget } from '@/hooks/usePdvReceivingTarget';
 
 interface Props {
   cashAccountId: string | null;
@@ -76,34 +77,47 @@ export function PdvCashV2Page({ cashAccountId, allowNewSessions, userId, canMana
   const queueSectionRef = useRef<HTMLDivElement | null>(null);
 
   const ownSession = cash.openSessions.find((session) => session.openedBy === userId) ?? null;
-  const focusedSession = selected === 'home' ? null : cash.openSessions.find((session) => session.id === selected) ?? null;
-  const detail = usePdvCashSessionDetailV2(focusedSession?.id ?? null);
   const requestedCounterQueue = useMemo(
     () => new URLSearchParams(location.search).get('fila') === '1',
     [location.search],
   );
+  const requestedOrderId = useMemo(() => requestedCounterQueue ? new URLSearchParams(location.search).get('pedido') : null, [location.search, requestedCounterQueue]);
+  const receivingTarget = usePdvReceivingTarget({
+    orderId: requestedOrderId, enabled: canCoverPdvOrders,
+    cashReady: cash.authorizationReady && !cash.isLoading && !cash.isError,
+    sessions: cash.openSessions, terminals: cash.terminals,
+  });
+  const ownerKey = userId ? `${userId}:${cash.authorizationScopeKey}` : null;
+  const selection = useInitialCashSelection({
+    ownerKey,
+    ready: cash.authorizationReady && !cash.isLoading && !cash.isError,
+    ownSessionId: ownSession?.id ?? null,
+    onSelect: setSelected,
+    requestedTarget: requestedOrderId !== null ? { key: `${location.key}:${requestedOrderId}`, status: receivingTarget.status === 'none' ? 'unavailable' : receivingTarget.status, sessionId: receivingTarget.sessionId } : null,
+  });
+  const receivingUnresolved = requestedOrderId !== null && receivingTarget.status !== 'ready';
+  const focusedSession = !selection.ready || receivingUnresolved || selected === 'home' ? null : cash.openSessions.find((session) => session.id === selected) ?? null;
+  const detail = usePdvCashSessionDetailV2(focusedSession?.id ?? null);
 
   useEffect(() => {
     try { if (localStorage.getItem(VALUES_VISIBLE_KEY) === '0') setValuesVisible(false); } catch { /* opcional */ }
   }, []);
-  useInitialCashSelection({
-    ownerKey: userId ? `${userId}:${cash.authorizationScopeKey}` : null,
-    ready: cash.authorizationReady && !cash.isLoading && !cash.isError,
-    ownSessionId: ownSession?.id ?? null,
-    onSelect: setSelected,
-  });
   useEffect(() => {
-    if (cash.isLoading || cash.isError) return;
+    setOpenDialog(false); setFirstCashSetupOpen(false); setEventKind(null);
+    setCloseDialog(false); setLastClose(null); setClosedElsewhereNotice(null);
+  }, [selection.epoch]);
+  useEffect(() => {
+    if (!selection.ready || cash.isLoading || cash.isError) return;
     if (selected !== 'home' && !cash.openSessions.some((session) => session.id === selected)) {
       setClosedElsewhereNotice('O caixa selecionado foi fechado ou deixou de estar disponível. Escolha outro caixa para continuar.');
       setSelected(canManageOthers ? 'home' : (ownSession?.id ?? 'home'));
     }
-  }, [canManageOthers, cash.isLoading, cash.isError, cash.openSessions, ownSession?.id, selected]);
+  }, [canManageOthers, cash.isLoading, cash.isError, cash.openSessions, ownSession?.id, selected, selection.ready]);
   useEffect(() => {
-    if (!requestedCounterQueue || selected !== 'home') return;
+    if (requestedOrderId !== null || !selection.ready || !requestedCounterQueue || selected !== 'home') return;
     const target = ownSession ?? (cash.openSessions.length === 1 ? cash.openSessions[0] : null);
     if (target) setSelected(target.id);
-  }, [cash.openSessions, ownSession, requestedCounterQueue, selected]);
+  }, [cash.openSessions, ownSession, requestedCounterQueue, requestedOrderId, selected, selection.ready]);
   useEffect(() => {
     if (!requestedCounterQueue || !focusedSession) return;
     const frame = window.requestAnimationFrame(() => queueSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
@@ -154,8 +168,22 @@ export function PdvCashV2Page({ cashAccountId, allowNewSessions, userId, canMana
     });
   }
 
+  function chooseCash(sessionId: string) {
+    setClosedElsewhereNotice(null); setSelected(sessionId);
+    if (requestedCounterQueue) {
+      const params = new URLSearchParams(location.search);
+      params.delete('fila'); params.delete('pedido'); params.delete('acao');
+      navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
+    }
+  }
+
   if (cash.isLoading) return <div className="space-y-5"><PageHeader title="Caixa" subtitle="Carregando os caixas abertos" icon={Banknote} /><PdvPageSkeleton variant="cash" label="Carregando caixas abertos" /></div>;
   if (cash.isError) return <CashLoadError onRetry={() => void cash.refetch()} />;
+  if (requestedOrderId !== null && (receivingTarget.status === 'unavailable' || selection.targetChanged)) return <div className="pdv-workspace space-y-5" data-pdv-ui>
+    <PageHeader title="Caixa" icon={Banknote} />
+    <Card><CardContent className="space-y-3 p-6"><h2 className="font-semibold">Não foi possível abrir este recebimento</h2><p className="text-sm text-muted-foreground">O pedido ou o caixa de destino não está disponível para o seu acesso. Volte aos pedidos e confira o atendimento.</p><div className="flex flex-wrap gap-2"><Button onClick={() => navigate(localizeAppPath('/pdv/pedidos', locale))}>Voltar aos pedidos</Button><Button variant="outline" onClick={() => { void receivingTarget.refetch(); void cash.refetch(); }}>Tentar novamente</Button></div></CardContent></Card>
+  </div>;
+  if (!selection.ready || receivingUnresolved) return <div className="space-y-5"><PageHeader title="Caixa" subtitle={requestedOrderId !== null ? 'Conferindo o caixa deste pedido' : 'Carregando os caixas abertos'} icon={Banknote} /><PdvPageSkeleton variant="cash" label={requestedOrderId !== null ? 'Conferindo o caixa deste pedido' : 'Carregando caixas abertos'} /></div>;
 
   return (
     <div className="pdv-workspace space-y-5 pb-8" data-pdv-ui>
@@ -170,18 +198,18 @@ export function PdvCashV2Page({ cashAccountId, allowNewSessions, userId, canMana
       <HorizontalTabBar asChild>
 
         <nav aria-label="Caixas abertos" className="flex gap-2 overflow-x-auto border-b pb-2">
-          {canManageOthers ? <CashNavButton active={selected === 'home'} icon={<Home className="h-4 w-4" />} onClick={() => { setClosedElsewhereNotice(null); setSelected('home'); if (requestedCounterQueue) { const params = new URLSearchParams(location.search); params.delete('fila'); params.delete('pedido'); params.delete('acao'); navigate({ pathname: location.pathname, search: params.toString() }, { replace: true }); } }}>Início</CashNavButton> : null}
+          {canManageOthers ? <CashNavButton active={selected === 'home'} icon={<Home className="h-4 w-4" />} onClick={() => chooseCash('home')}>Início</CashNavButton> : null}
           {cash.openSessions.map((session) => {
             const terminal = cash.terminals.find((item) => item.id === session.terminalId);
             const operator = session.openedBy ? cash.operators[session.openedBy] : null;
-            return <CashNavButton key={session.id} active={selected === session.id} icon={<Banknote className="h-5 w-5" />} subtitle={`${operator ?? 'Operador'}${session.openedBy === userId ? ' (você)' : ''}`} open onClick={() => { setClosedElsewhereNotice(null); setSelected(session.id); }}>{cashDisplayName(terminal)}</CashNavButton>;
+            return <CashNavButton key={session.id} active={selected === session.id} icon={<Banknote className="h-5 w-5" />} subtitle={`${operator ?? 'Operador'}${session.openedBy === userId ? ' (você)' : ''}`} open onClick={() => chooseCash(session.id)}>{cashDisplayName(terminal)}</CashNavButton>;
           })}
         </nav>
 
       </HorizontalTabBar>
 
       {selected === 'home' || !focusedSession ? (
-        <CashHome sessions={cash.openSessions} terminals={cash.terminals} operators={cash.operators} snapshot={snapshot} canViewTreasury={canViewTreasury} canManageSettings={canManageSettings} canStartOpening={canStartOpening} money={money} dateTime={dateTime} onSelect={(sessionId) => { setClosedElsewhereNotice(null); setSelected(sessionId); }} onSetup={() => setFirstCashSetupOpen(true)} />
+        <CashHome sessions={cash.openSessions} terminals={cash.terminals} operators={cash.operators} snapshot={snapshot} canViewTreasury={canViewTreasury} canManageSettings={canManageSettings} canStartOpening={canStartOpening} money={money} dateTime={dateTime} onSelect={chooseCash} onSetup={() => setFirstCashSetupOpen(true)} />
       ) : (
         <div className="space-y-6">
             <PdvCashIndicators

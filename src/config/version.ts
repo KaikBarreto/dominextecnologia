@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.6";
+export const APP_VERSION = "1.41.7";
 
 export const VERSION_NOTES =
-  "Catálogo técnico ampliado, referências documentadas para gases e cálculos, abas com setas de navegação e cores das ferramentas mais claras.";
+  "Cupons promocionais com regras de uso, recebimento com vários vouchers, fiado sem vencimento e compras com crédito parcial de fornecedor, com melhorias nas trocas, devoluções e no acompanhamento financeiro.";

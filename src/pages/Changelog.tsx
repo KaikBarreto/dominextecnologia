@@ -31,6 +31,53 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.7',
+    date: '16 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cupons promocionais com regras de uso',
+        category: 'recurso',
+        description: 'Gerencie cupons com desconto em valor ou percentual, vigência e limites de utilização. Defina clientes e produtos participantes e confira o desconto no atendimento, incluindo pedidos ainda pendentes.',
+      },
+      {
+        title: 'Vários vouchers na mesma compra',
+        category: 'melhoria',
+        description: 'Aproveite os créditos de mais de um voucher no recebimento, conferindo o saldo e o valor usado em cada um. Vouchers continuam separados dos cupons promocionais.',
+      },
+      {
+        title: 'Fiado com vencimento opcional',
+        category: 'melhoria',
+        description: 'Escolha uma data de vencimento ou registre explicitamente a venda sem vencimento, conforme a negociação com o cliente.',
+      },
+      {
+        title: 'Crédito parcial do fornecedor na compra',
+        category: 'melhoria',
+        description: 'Use parte do crédito disponível na compra e confira os valores pagos e em aberto. O resumo financeiro e os demonstrativos acompanham esses cenários com maior precisão.',
+      },
+      {
+        title: 'Trocas com atendimento e estoque coordenados',
+        category: 'melhoria',
+        description: 'Confira os produtos da troca e o caixa que atenderá o novo pedido, com acompanhamento dos valores envolvidos e das permissões de cada operador.',
+      },
+      {
+        title: 'Novo destino para o saldo liberado',
+        category: 'melhoria',
+        description: 'O saldo disponível de um cancelamento pode receber um novo destino, com conferência dos pagamentos de origem e das permissões para crédito do cliente, voucher ou devolução do dinheiro.',
+      },
+      {
+        title: 'Devolução e retirada mais confiáveis',
+        category: 'correcao',
+        description: 'A confirmação da devolução permanece ao alternar o tamanho da tela, e repetir uma solicitação já concluída conserva a mesma operação. Comprovantes identificam o operador da retirada e respeitam o contexto do caixa.',
+      },
+      {
+        title: 'Recursos disponíveis conforme o acesso ao módulo',
+        category: 'melhoria',
+        description: 'Empresas com o PDV contratado e ativo acessam os recursos incluídos conforme a assinatura e as permissões do usuário, sem depender de liberações individuais.',
+      },
+    ],
+  },
+  {
     version: '1.41.6',
     date: '15 de novembro de 2026',
     type: 'patch',
