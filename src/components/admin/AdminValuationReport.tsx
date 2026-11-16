@@ -56,6 +56,8 @@ const money = (n: number) =>
     currency: "BRL",
     maximumFractionDigits: 0,
   });
+const exactMoney = (n: number) =>
+  n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const pct = (n: number | null) =>
   n == null
     ? "Indisponível"
@@ -494,7 +496,7 @@ export function AdminValuationReport() {
                           >
                             {monthlyRevenue == null
                               ? "—"
-                              : money(monthlyRevenue)}
+                              : exactMoney(monthlyRevenue)}
                           </p>
                         </div>
                       )}
@@ -553,8 +555,8 @@ export function AdminValuationReport() {
                     <p className="mt-1 text-xs text-muted-foreground">
                       {basis == null
                         ? "Informe ou selecione uma receita mensal positiva."
-                        : `${money(monthlyRevenue!)} × 12 = ${
-                          money(basis)
+                        : `${exactMoney(monthlyRevenue!)} × 12 = ${
+                          exactMoney(basis)
                         }. Nos cenários abaixo, esse valor é multiplicado pela premissa de cada cenário.`}
                     </p>
                   </div>
