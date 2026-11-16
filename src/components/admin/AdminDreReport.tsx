@@ -269,7 +269,7 @@ export function AdminDreReport(
     <div className="space-y-6">
       {/* Metric Cards - Dashboard Style */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-        {/* Margem de Lucro */}
+        {/* Margem operacional */}
         <Card
           className={cn(
             "relative overflow-hidden border-0 shadow-lg text-white",
@@ -280,7 +280,7 @@ export function AdminDreReport(
             <div className="flex items-start justify-between">
               <div className="space-y-1 lg:space-y-2">
                 <p className="text-xs lg:text-sm font-medium text-white/80">
-                  Margem de Lucro
+                  Margem operacional
                 </p>
                 <p className="text-lg lg:text-2xl font-bold tracking-tight">
                   {dre.margem.toFixed(1)}%
@@ -882,13 +882,13 @@ export function AdminDreReport(
             <div className="flex items-start justify-between">
               <div className="space-y-1">
                 <p className="text-xs lg:text-sm font-medium text-muted-foreground">
-                  ARPU
+                  LTV médio
                 </p>
                 <p className="text-lg lg:text-2xl font-bold text-foreground">
                   {formatCurrencyBR(ltvMetrics.averageLtv)}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Valor médio por cliente
+                  Receita acumulada média por cliente
                 </p>
               </div>
               <div className="p-2 rounded-xl bg-white text-zinc-900">
