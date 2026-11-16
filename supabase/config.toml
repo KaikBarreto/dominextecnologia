@@ -440,3 +440,7 @@ verify_jwt = false
 # O handler verifica JWT, empresa, módulo e permissão fiscal.
 [functions.fiscal-goods-settings]
 verify_jwt = false
+
+# Validação de JWT, permissão financeira e escopo de empresa dentro do handler.
+[functions.admin-company-billing-status]
+verify_jwt = false

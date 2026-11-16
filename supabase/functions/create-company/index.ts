@@ -145,7 +145,7 @@ Deno.serve(async (req) => {
       }),
       supabaseAdmin.rpc('has_admin_permission', {
         _user_id: caller.id,
-        _permission: 'admin_empresas',
+        _permission: 'admin_empresas_criar',
       }),
     ])
     if (superAdminResult.error || companyPermissionResult.error) {

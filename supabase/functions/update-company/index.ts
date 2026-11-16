@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
       }),
       supabase.rpc('has_admin_permission', {
         _user_id: auth.user.id,
-        _permission: 'admin_empresas',
+        _permission: 'admin_empresas_editar',
       }),
     ])
     if (superAdminResult.error || companyPermissionResult.error) {
@@ -201,14 +201,14 @@ Deno.serve(async (req) => {
       : undefined
 
     if (sanitizedPromotions) {
-      const scopeKeys = sanitizedPromotions.map((promotion) =>
+      const scopeKeys = sanitizedPromotions.map((promotion: { scope_type: string; module_code: string | null }) =>
         promotion.scope_type === 'module' ? `module:${promotion.module_code}` : 'extra_users',
       )
       if (new Set(scopeKeys).size !== scopeKeys.length) {
         throw new ValidationError('Existe mais de uma condição promocional para o mesmo adicional.')
       }
       const totalDiscount = sanitizedPromotions.reduce(
-        (sum, promotion) => sum + (promotion.standard_unit_price - promotion.promotional_unit_price) * promotion.quantity,
+        (sum: number, promotion: { standard_unit_price: number; promotional_unit_price: number; quantity: number }) => sum + (promotion.standard_unit_price - promotion.promotional_unit_price) * promotion.quantity,
         0,
       )
       if (catalogValue - totalDiscount <= 0) {

@@ -1,3 +1,4 @@
+import { CompanyBillingStatus } from "@/components/admin/CompanyBillingStatus";
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -126,9 +127,9 @@ export default function AdminCompanyDetail() {
   const asaasSubscriptionId = company?.asaas_subscription_id ?? null;
   const hasRecurrence = !!asaasSubscriptionId;
   const recurrenceLabel = (() => {
-    if (!asaasSubscriptionId) return 'Sem recorrência automática';
-    if (asaasSubscriptionId.startsWith('sub_')) return 'Cartão recorrente ativo';
-    return 'Pix Automático ativo';
+    if (!asaasSubscriptionId) return 'Sem recorrência vinculada';
+    if (asaasSubscriptionId.startsWith('sub_')) return 'Recorrência cadastrada';
+    return 'Autorização Pix cadastrada';
   })();
 
   // ===== Módulos do Plano (empresa arbitrária vista no admin) =====
@@ -282,7 +283,7 @@ export default function AdminCompanyDetail() {
             variant="underline"
             tabs={[
               { value: 'info', label: 'Informações' },
-              { value: 'plano', label: 'Plano e Histórico' },
+              { value: 'plano', label: 'Plano e cobrança' },
               { value: 'atividade', label: 'Atividade' },
               { value: 'sucesso', label: 'Sucesso' },
             ]}
@@ -292,7 +293,7 @@ export default function AdminCompanyDetail() {
         ) : (
           <TabsList variant="underline">
             <TabsTrigger variant="underline" value="info">Informações</TabsTrigger>
-            <TabsTrigger variant="underline" value="plano">Plano e Histórico</TabsTrigger>
+            <TabsTrigger variant="underline" value="plano">Plano e cobrança</TabsTrigger>
             <TabsTrigger variant="underline" value="atividade">Atividade</TabsTrigger>
             <TabsTrigger variant="underline" value="sucesso">Sucesso</TabsTrigger>
           </TabsList>
@@ -496,7 +497,7 @@ export default function AdminCompanyDetail() {
               <span className="text-xs text-muted-foreground uppercase tracking-wider">Recorrência</span>
               <div className="flex flex-wrap items-center gap-2 mt-1">
                 {hasRecurrence ? (
-                  <Badge className="text-xs text-white border-0 bg-emerald-500 hover:bg-emerald-500 gap-1">
+                  <Badge className="text-xs text-white border-0 bg-slate-600 hover:bg-slate-600 gap-1">
                     <RefreshCw className="h-3 w-3" />
                     {recurrenceLabel}
                   </Badge>
@@ -670,6 +671,7 @@ export default function AdminCompanyDetail() {
         </TabsContent>
 
         <TabsContent value="plano" className="mt-4">
+          <CompanyBillingStatus companyId={id!} />
           <SubscriptionHistoryTab companyId={id!} />
         </TabsContent>
 
