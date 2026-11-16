@@ -1,5 +1,5 @@
 import type { PdvReceiptFormat, PdvReceiptSnapshot } from "./model";
-import { formatReceiptMoney, getPdvReceiptApproval, getPdvReceiptCoverageLines, getPdvReceiptDocumentMetadata, getPdvReceiptNote, getPdvReceiptWithdrawalItems } from "./model";
+import { formatReceiptMoney, toReceiptCents, getPdvReceiptApproval, getPdvReceiptCoverageLines, getPdvReceiptDocumentMetadata, getPdvReceiptNote, getPdvReceiptWithdrawalItems } from "./model";
 import { safeTimeZone } from "@/lib/timezone";
 
 export interface PdvReceiptLine {
@@ -11,7 +11,7 @@ export interface PdvReceiptLine {
   gapAfter?: number;
 }
 
-/** Mantém cada cobertura persistida separada, com vocabulário legível no documento. */
+/** Resume vouchers no documento sem alterar os pagamentos persistidos. */
 export function getPdvReceiptPaymentRows(snapshot: PdvReceiptSnapshot) {
   const kind = snapshot.documentKind ?? 'sale';
   if (kind !== 'sale' && kind !== 'pickup') return [];
@@ -19,17 +19,31 @@ export function getPdvReceiptPaymentRows(snapshot: PdvReceiptSnapshot) {
     dinheiro: 'Dinheiro', cash: 'Dinheiro', pix: 'Pix', transferencia: 'Transferência',
     debito: 'Cartão de débito', cartao_debito: 'Cartão de débito', 'cartao de debito': 'Cartão de débito',
     credito: 'Cartão de crédito', cartao_credito: 'Cartão de crédito', 'cartao de credito': 'Cartão de crédito',
-    fiado: 'Fiado', saldo_cliente: 'Saldo do cliente', saldo: 'Saldo do cliente', voucher: 'Voucher',
+    fiado: 'Fiado', saldo_cliente: 'Saldo do cliente', saldo: 'Saldo do cliente', voucher: 'Vouchers',
   };
-  return snapshot.payments.filter(payment => Number.isFinite(payment.amount) && payment.amount > 0).map(payment => {
+  const rows: Array<{ label: string; amount: number; text: string; due: string | null }> = [];
+  let voucherRow: (typeof rows)[number] | undefined;
+  let voucherCents = 0;
+  for (const payment of snapshot.payments.filter(payment => Number.isFinite(payment.amount) && payment.amount > 0)) {
     const key = payment.method.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     const label = labels[key] ?? 'Outro meio';
-    return {
+    if (key === 'voucher') {
+      voucherCents += toReceiptCents(payment.amount);
+      if (!voucherRow) {
+        voucherRow = { label, amount: 0, text: '', due: null };
+        rows.push(voucherRow);
+      }
+      voucherRow.amount = voucherCents / 100;
+      voucherRow.text = `${label}: ${formatReceiptMoney(voucherRow.amount)}`;
+      continue;
+    }
+    rows.push({
       label, amount: payment.amount,
       text: `${label}: ${formatReceiptMoney(payment.amount)}`,
       due: payment.dueDate ? `Vence ${new Date(`${payment.dueDate}T12:00:00`).toLocaleDateString('pt-BR')}` : key === 'fiado' ? 'Sem vencimento' : null,
-    };
-  });
+    });
+  }
+  return rows;
 }
 
 export type PdvReceiptLogoPlacement = "stacked" | "inline";

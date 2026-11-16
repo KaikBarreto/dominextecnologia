@@ -12,6 +12,32 @@ import {
 import { formatReceiptMoney, toReceiptCents } from "./model";
 
 describe("comprovante não fiscal", () => {
+  it('soma vouchers em uma linha sem misturar outros meios ou alterar o histórico', () => {
+    const snapshot = {...PDV_RECEIPT_PREVIEW_FIXTURE, payments: [
+      {method:'Voucher',amount:5}, {method:'dinheiro',amount:71},
+      {method:' voucher ',amount:5}, {method:'fiado',amount:20,dueDate:'2026-12-07'},
+      {method:'fiado',amount:30}, {method:'voucher',amount:0},
+      {method:'voucher',amount:Number.NaN},
+    ]};
+    const original = structuredClone(snapshot.payments);
+    const rows = getPdvReceiptPaymentRows(snapshot);
+    expect(rows.map(row => [row.label,row.amount])).toEqual([
+      ['Vouchers',10], ['Dinheiro',71], ['Fiado',20], ['Fiado',30],
+    ]);
+    expect(rows[2].due).toBe('Vence 07/12/2026');
+    expect(rows[3].due).toBe('Sem vencimento');
+    expect(snapshot.payments).toEqual(original);
+  });
+
+  it('soma os vouchers em centavos e mantém uma única linha também para um voucher', () => {
+    const snapshot = {...PDV_RECEIPT_PREVIEW_FIXTURE, payments: [{method:'voucher',amount:0.1},{method:'voucher',amount:0.2}]};
+    expect(getPdvReceiptPaymentRows(snapshot)).toEqual([
+      {label:'Vouchers',amount:0.3,text:`Vouchers: ${formatReceiptMoney(0.3)}`,due:null},
+    ]);
+    expect(getPdvReceiptPaymentRows({...snapshot,payments:[{method:'voucher',amount:5}]}))
+      .toMatchObject([{label:'Vouchers',amount:5}]);
+  });
+
   it("arredonda valores em centavos sem erro binário", () => {
     expect(toReceiptCents(10.005)).toBe(1001);
     expect(formatReceiptMoney(0.1 + 0.2)).toContain("0,30");

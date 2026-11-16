@@ -40,6 +40,17 @@ async function readPdfStructure(blob: Blob) {
 }
 
 describe('generatePdvReceiptPdf', () => {
+  it.each(['58mm', '80mm', 'a4'] as const)('imprime vouchers somados em uma linha em %s', async format => {
+    const snapshot = {...PDV_RECEIPT_PREVIEW_FIXTURE, payments: [
+      {method:'voucher',amount:5}, {method:'dinheiro',amount:170}, {method:'voucher',amount:10},
+    ]};
+    const content = await readPdfContent(generatePdvReceiptPdf(snapshot, format));
+    expect(content.match(/Vouchers:/g)).toHaveLength(1);
+    expect(content).toContain(`Vouchers: ${formatReceiptMoney(15)}`);
+    expect(content).toContain(`Dinheiro: ${formatReceiptMoney(170)}`);
+    expect(content).not.toContain('Voucher:');
+  });
+
   it.each(['58mm', '80mm', 'a4'] as const)('mede cada linha com a fonte real e reserva sua altura em %s', (format) => {
     const snapshot = { ...PDV_RECEIPT_PREVIEW_FIXTURE, note: 'Observação muito longa para testar a quebra real da fonte proporcional. '.repeat(15) };
     const rows = planPdvReceiptPdfRows(snapshot, format);

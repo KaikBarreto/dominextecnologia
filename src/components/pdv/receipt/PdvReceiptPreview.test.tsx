@@ -4,6 +4,18 @@ import { PdvReceiptPreview } from './PdvReceiptPreview';
 import { getPdvReceiptPreviewFixture, PDV_RECEIPT_PREVIEW_FIXTURE } from '@/lib/pdv/receipt/fixture';
 
 describe('PdvReceiptPreview', () => {
+  it.each(['58mm', '80mm', 'a4'] as const)('mostra o total dos vouchers em uma linha em %s', format => {
+    const snapshot = {...PDV_RECEIPT_PREVIEW_FIXTURE, payments: [
+      {method:'voucher',amount:5}, {method:'dinheiro',amount:170}, {method:'voucher',amount:10},
+    ]};
+    render(<PdvReceiptPreview snapshot={snapshot} format={format} />);
+    const payments = screen.getByRole('region', {name:'Formas de pagamento'});
+    expect(payments).toHaveTextContent('Vouchers: R$ 15,00');
+    expect(payments).toHaveTextContent('Dinheiro: R$ 170,00');
+    expect(screen.getAllByText(/Vouchers:/)).toHaveLength(1);
+    expect(screen.queryByText(/Voucher:/)).not.toBeInTheDocument();
+  });
+
   it('mostra dados operacionais sem subtítulo ou status de retirada', () => {
     render(<PdvReceiptPreview snapshot={PDV_RECEIPT_PREVIEW_FIXTURE} format="80mm" />);
     const preview = screen.getByLabelText('Prévia do comprovante 80mm');

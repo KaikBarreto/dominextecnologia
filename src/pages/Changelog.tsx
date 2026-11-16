@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.9',
+    date: '16 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Vouchers somados em uma linha no comprovante',
+        category: 'correcao',
+        description: 'A prévia e o PDF dos comprovantes mostram o total dos vouchers em uma única linha Vouchers. Os demais meios de pagamento e os vencimentos do fiado continuam separados, sem alterar os pagamentos ou o histórico da venda.',
+      },
+    ],
+  },
+  {
     version: '1.41.8',
     date: '16 de novembro de 2026',
     type: 'patch',
