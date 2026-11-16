@@ -155,6 +155,7 @@ const ROUTES: AppRouteDef[] = [
   { key: 'pdvCashHistory', base: '/pdv/caixas' },
   { key: 'pdvReports', base: '/pdv/relatorios' },
   { key: 'pdvCoupons', base: '/pdv/cupons' },
+  { key: 'pdvStock', base: '/pdv/estoque' },
   { key: 'pdvSettings', base: '/pdv/configuracoes' },
   // Financeiro é um GRUPO: raiz + telas operacionais, cobrança, relatórios e
   // configurações próprias. Todos os segmentos traduzem.

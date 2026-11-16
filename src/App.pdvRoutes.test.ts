@@ -93,7 +93,7 @@ describe('elementos das rotas do PDV', () => {
 });
 
 describe('gate das rotas do PDV', () => {
-  const PDV_ROUTE_KEYS = ['pdv', 'pdvSale', 'pdvCashHistory', 'pdvReports', 'pdvSettings'] as const;
+  const PDV_ROUTE_KEYS = ['pdv', 'pdvSale', 'pdvCashHistory', 'pdvReports', 'pdvSettings', 'pdvStock'] as const;
 
   it('toda rota do PDV está embrulhada no ModuleRoute moduleKey="pdv"', () => {
     for (const key of PDV_ROUTE_KEYS) {
@@ -136,6 +136,23 @@ describe('gate das rotas do PDV', () => {
       // Procura o USO como gate (não a menção em comentário, que é legítima).
       expect(source).not.toContain('screenKey="screen:pdv_sale"');
     }
+  });
+});
+
+describe('estoque único acessível pelo PDV', () => {
+  it('reutiliza Inventory com contexto da loja e preserva permissão própria de estoque', () => {
+    const route = routeLine('pdvStock');
+    expect(route).toContain('<Inventory context="store" />');
+    expect(route).toContain('<PermissionRoute screenKey="screen:inventory">');
+    expect(route).not.toContain('screen:service_orders');
+    expect(routeLine('inventory')).toContain('<Inventory />');
+  });
+
+  it('registra o atalho da loja nos quatro idiomas sem alterar a rota geral', () => {
+    expect(localizedTemplatesFor('pdvStock')).toEqual(expect.arrayContaining([
+      '/pdv/estoque', '/pos/inventory', '/pos/inventario', '/pos/stock',
+    ]));
+    expect(localizedTemplatesFor('inventory')).toContain('/estoque');
   });
 });
 

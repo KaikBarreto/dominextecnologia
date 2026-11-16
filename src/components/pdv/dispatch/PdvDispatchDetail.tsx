@@ -88,7 +88,7 @@ export function PdvDispatchDetail({ detail, canDeliver, returnsAccess, afterSale
 
     {activeTab === 'dispatch' && <>
       {hasConflict && <NoticeBanner variant="warning"><AlertTriangle className="mr-2 inline h-4 w-4" />O estoque mudou. Atualize ou reconcilie as reservas antes de entregar.</NoticeBanner>}
-      {deliveryId && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-success p-4 text-success-foreground"><span className="flex items-center gap-2 font-semibold"><CheckCircle2 className="h-5 w-5" />Retirada registrada</span><PdvDeliveryReceiptButton deliveryId={deliveryId} /></div>}
+      {deliveryId && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-success p-4 text-success-foreground [&_button]:text-foreground [&_button:disabled]:opacity-70"><span className="flex items-center gap-2 font-semibold"><CheckCircle2 className="h-5 w-5" />Retirada registrada</span><PdvDeliveryReceiptButton deliveryId={deliveryId} /></div>}
 
       <section aria-label="Itens da retirada" className="divide-y rounded-xl border">
       {detail.items.map((item) => {

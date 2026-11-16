@@ -91,7 +91,7 @@ import {
   type PdvGridItemRect,
 } from '@/lib/pdv/keyboard';
 import type { PdvGridProduct } from '@/components/pdv/PdvProductCard';
-import { PdvSalePreviewView } from '@/components/pdv/PdvSalePreviewView';
+import { PdvSaleWorkspace as PdvSaleEditorLayout } from '@/components/pdv/PdvSaleWorkspace';
 import { PdvCartPanel } from '@/components/pdv/PdvCartPanel';
 import { PdvSkeleton } from '@/components/pdv/PdvSkeleton';
 import { PdvPaymentDialog } from '@/components/pdv/PdvPaymentDialog';
@@ -1797,24 +1797,6 @@ function PdvSaleWorkspace({
   // pedido têm rolagem própria; não reservamos mais uma tabela na coluna esquerda.
   const desktopRowRef = useRef<HTMLDivElement>(null);
   const topControlsRef = useRef<HTMLDivElement>(null);
-  const [desktopCompositionHeight, setDesktopCompositionHeight] = useState<number | null>(null);
-  useLayoutEffect(() => {
-    if (isMobileCart) { setDesktopCompositionHeight(null); return; }
-    const row = desktopRowRef.current;
-    if (!row) return;
-    const recompute = () => {
-      const height = window.visualViewport?.height ?? window.innerHeight;
-      const available = Math.floor(height - row.getBoundingClientRect().top - 52 - 24);
-      // Em janelas muito baixas, rolar a página preserva os controles e valores.
-      setDesktopCompositionHeight(available >= 400 ? available : null);
-    };
-    recompute();
-    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(recompute);
-    if (topControlsRef.current) observer?.observe(topControlsRef.current);
-    window.addEventListener('resize', recompute);
-    window.visualViewport?.addEventListener('resize', recompute);
-    return () => { observer?.disconnect(); window.removeEventListener('resize', recompute); window.visualViewport?.removeEventListener('resize', recompute); };
-  }, [isMobileCart, isLoadingPdv, catalogMode, categoryTabs.length, hasOpenCashSession, syncIssue, localPersistenceIssue, draftConflicts.length]);
 
   function handleConfirmClearCart() {
     if (!activeDraftId) return;
@@ -2145,89 +2127,43 @@ function PdvSaleWorkspace({
       )}
 
 
-      <PdvSalePreviewView
-        rowRef={desktopRowRef}
-        controlsRef={topControlsRef}
-        gridRef={gridRef}
-        searchInputRef={searchInputRef}
-        mode={catalogMode}
-        onModeChange={mode => { setCatalogMode(mode); if (mode === 'quick') setActiveCategory('all'); }}
-        search={search}
-        onSearchChange={setSearch}
-        onSearchKeyDown={handleSearchKeyDown}
-        onSearchConfirm={handleSearchEnter}
-        onGridKeyDown={handleGridKeyDown}
-        products={visibleProducts}
-        disabled={directSaleNeedsReview || createOrder.isPending || settleOrder.isPending || replaceOrder.isPending || directSale.complete.isPending}
-        catalogLoading={isLoadingPdv}
-        activeProductId={activeProductId}
-        keyboardHighlight={catalogKeyboardActive}
-        onProductFocus={id => { const index = keyboardProducts.findIndex(product => product.inventoryId === id); if (index >= 0) setActiveProductIndex(index); setCatalogKeyboardActive(true); }}
-        onProductSelect={handleProductSelect}
-        formatCurrency={formatCurrency}
-        onExit={() => navigate(PDV_PANEL_PATH)}
-        style={desktopCompositionHeight != null ? { height: desktopCompositionHeight } : undefined}
-        camera={isV2 ? <InventoryIdentifierCameraScanner triggerVariant="icon" onScan={code => { void handleBarcodeScan(code); }} disabled={directSaleNeedsReview || confirmClearOpen || paymentOpen || advancedOptionsOpen || shortcutHelpOpen || identifiers.resolve.isPending} /> : undefined}
-        filters={<>
+      <PdvSaleEditorLayout
+        catalog={{
+          rowRef: desktopRowRef,
+          controlsRef: topControlsRef,
+          gridRef: gridRef,
+          searchInputRef: searchInputRef,
+          mode: catalogMode,
+          onModeChange: mode => { setCatalogMode(mode); if (mode === 'quick') setActiveCategory('all'); },
+          search: search,
+          onSearchChange: setSearch,
+          onSearchKeyDown: handleSearchKeyDown,
+          onSearchConfirm: handleSearchEnter,
+          onGridKeyDown: handleGridKeyDown,
+          products: visibleProducts,
+          disabled: directSaleNeedsReview || createOrder.isPending || settleOrder.isPending || replaceOrder.isPending || directSale.complete.isPending,
+          catalogLoading: isLoadingPdv,
+          activeProductId: activeProductId,
+          keyboardHighlight: catalogKeyboardActive,
+          onProductFocus: id => { const index = keyboardProducts.findIndex(product => product.inventoryId === id); if (index >= 0) setActiveProductIndex(index); setCatalogKeyboardActive(true); },
+          onProductSelect: handleProductSelect,
+          formatCurrency: formatCurrency,
+          onExit: () => navigate(PDV_PANEL_PATH),
+          camera: isV2 ? <InventoryIdentifierCameraScanner triggerVariant="icon" onScan={code => { void handleBarcodeScan(code); }} disabled={directSaleNeedsReview || confirmClearOpen || paymentOpen || advancedOptionsOpen || shortcutHelpOpen || identifiers.resolve.isPending} /> : undefined,
+          filters: <>
           {pdvStocks.length > 1 && <Select value={selectedStockId ?? undefined} onValueChange={setSelectedStockId} disabled={isV2 && resolvedV2CashContext.status === 'resolved'}><SelectTrigger className="h-10 w-48"><SelectValue placeholder={t.stock.locationLabel} /></SelectTrigger><SelectContent>{pdvStocks.map(stock => <SelectItem key={stock.id} value={stock.id}>{stock.name}</SelectItem>)}</SelectContent></Select>}
           {categoryTabs.map(tab => <button type="button" key={tab.value} className={'chip ' + (activeCategory === tab.value ? 'active' : '')} onClick={() => setActiveCategory(tab.value)}>{tab.label}</button>)}
-        </>}
-        cart={!isMobileCart ? <PdvCartPanel {...cartPanelProps} /> : null}
-      />
-
-      {/* Barra fixa + drawer do carrinho (mobile) */}
-      {isMobileCart && (
-        <>
-          {createPortal(
-            <button
-              type="button"
-              onClick={() => setCartDrawerOpen(true)}
-              className="fixed inset-x-0 z-40 flex items-center justify-between gap-3 rounded-t-xl border-t border-border bg-primary px-4 py-3 text-primary-foreground shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-              // Portal pro <body>: `MobileTabletShell` envolve o `<Outlet />` com
-              // `MobilePullToRefresh`, que aplica `transform: translateY(...)` no
-              // wrapper do conteúdo (mesmo com valor 0, parado) — isso cria um
-              // containing block novo pra qualquer `position: fixed` descendente,
-              // e aí o `bottom` deixa de ser relativo à viewport e passa a ser
-              // relativo ao fim do conteúdo da página (medido: barra aparecia a
-              // ~6000px do topo). Mesma causa e mesmo remédio já documentados em
-              // `FABButton.tsx`. Sem o portal, no mobile o carrinho simplesmente
-              // não aparece: toca no produto e nada acontece na tela.
-              //
-              // Offset medido (não é mais o "96px" copiado sem medir do FAB):
-              // `MobileBottomNav` ocupa 98px do rodapé da viewport (medido em
-              // devtools, 844px de altura). 96px deixava a barra colada/atrás do
-              // nav. 104px dá ~6px de respiro real acima do nav.
-              style={{ bottom: 'calc(104px + env(safe-area-inset-bottom))' }}
-            >
-              <span className="flex items-center gap-2 text-sm font-semibold">
-                <ShoppingCart className="h-4 w-4" />
-                {/* key={itemCount}: reinicia a animação de entrada a cada mudança
-                    de quantidade, pra dar um retorno visual imediato ao operador
-                    de que o toque no produto bipou mesmo (sem precisar de toast
-                    a cada item, que seria ruído em venda rápida de balcão). */}
-                <span key={itemCount} className="animate-in zoom-in-90 duration-200">
-                  {itemCount === 1
-                    ? t.cart.itemsCountOne
-                    : t.cart.itemsCount.replace('{count}', String(itemCount))}
-                </span>
-              </span>
-              <span key={total} className="animate-in zoom-in-90 duration-200 text-lg font-extrabold tabular-nums">
-                {formatCurrency(total)}
-              </span>
-            </button>,
-            document.body,
-          )}
-
-          <Drawer open={cartDrawerOpen} onOpenChange={setCartDrawerOpen}>
-            <DrawerContent className="pdv-preview-sale flex max-h-[85dvh] flex-col">
-              <DrawerHeader className="sr-only">
-                <DrawerTitle>{t.cart.title}</DrawerTitle>
-              </DrawerHeader>
-              <PdvCartPanel {...cartPanelProps} className="flex-1 overflow-hidden" />
-            </DrawerContent>
-          </Drawer>
         </>
-      )}
+        }}
+        cart={cartPanelProps}
+        mobile={isMobileCart}
+        drawerOpen={cartDrawerOpen}
+        onDrawerOpenChange={setCartDrawerOpen}
+        itemCount={itemCount}
+        itemCountLabel={itemCount === 1 ? t.cart.itemsCountOne : t.cart.itemsCount.replace('{count}', String(itemCount))}
+        formattedTotal={formatCurrency(total)}
+        drawerTitle={t.cart.title}
+      />
 
       <PdvShortcutHelpDialog
         open={shortcutHelpOpen}

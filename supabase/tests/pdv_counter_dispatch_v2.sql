@@ -108,7 +108,8 @@ BEGIN
     (u,'["screen:pdv","screen:pdv_orders","screen:pdv_dispatch","screen:pdv_settings","fn:manage_pdv_settings","fn:value_pdv_preorder","fn:convert_pdv_preorder","fn:cover_pdv_order","fn:deliver_pdv_order","fn:use_bank_accounts","fn:approve_pdv_credit"]',true),
     (u_denied,'["screen:pdv"]',true),
     (u_stock_denied,'["screen:pdv","screen:pdv_orders","screen:pdv_dispatch","fn:cover_pdv_order","fn:deliver_pdv_order"]',true);
-  INSERT INTO public.company_modules(company_id,module_code) VALUES(c,'pdv');
+  -- O outro tenant também é uma loja válida; o teste negativo é de tenant, não de ausência do módulo.
+  INSERT INTO public.company_modules(company_id,module_code) VALUES(c,'pdv'),(c_other,'pdv');
   INSERT INTO public.financial_accounts(id,company_id,name,type,initial_balance,is_active)
   VALUES(cash_account,c,'Cofre Balcão','caixa',1000,true),
         (bank_account,c,'Banco Balcão','banco',500,true);

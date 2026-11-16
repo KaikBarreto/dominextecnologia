@@ -7,6 +7,7 @@ import type { LocaleCode } from '@/lib/i18n/locales';
 import { PDV_RECEIPT_COMPANY_QUERY_ROOT } from '@/lib/pdv/receipt/cacheKeys';
 
 export interface CompanySettings {
+  pdv_default_stock_id?: string | null;
   id: string;
   company_id?: string | null;
   /** Modo operacional do PDV; ausente/desconhecido falha fechado nos menus avançados. */

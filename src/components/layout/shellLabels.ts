@@ -46,6 +46,7 @@ const TITLE_TO_KEY: Record<string, keyof ShellMenu> = {
   PDV: 'pdv',
   Caixa: 'pdvCashier',
   'Histórico de Caixa': 'pdvCashHistory',
+  'Estoque da loja': 'pdvStock',
   'Relatórios da Loja': 'pdvReports',
   'Cupons promocionais': 'pdvCoupons',
   'Configurações do PDV': 'pdvSettings',

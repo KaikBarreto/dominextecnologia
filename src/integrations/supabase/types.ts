@@ -2258,6 +2258,8 @@ export type Database = {
       }
       company_settings: {
         Row: {
+          pdv_default_stock_id: string | null
+          pdv_stock_settings_revision: number
           address: string | null
           address_number: string | null
           cash_flow_overdue_window_days: number
@@ -2316,6 +2318,8 @@ export type Database = {
           zip_code: string | null
         }
         Insert: {
+          pdv_default_stock_id?: string | null
+          pdv_stock_settings_revision?: number
           address?: string | null
           address_number?: string | null
           cash_flow_overdue_window_days?: number
@@ -2374,6 +2378,8 @@ export type Database = {
           zip_code?: string | null
         }
         Update: {
+          pdv_default_stock_id?: string | null
+          pdv_stock_settings_revision?: number
           address?: string | null
           address_number?: string | null
           cash_flow_overdue_window_days?: number
@@ -2432,6 +2438,13 @@ export type Database = {
           zip_code?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "company_settings_pdv_default_stock_id_fkey"
+            columns: ["pdv_default_stock_id"]
+            isOneToOne: false
+            referencedRelation: "stocks"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "company_settings_company_id_fkey"
             columns: ["company_id"]
@@ -11510,6 +11523,7 @@ export type Database = {
       }
       pdv_terminals: {
         Row: {
+          stock_binding_mode: string
           company_id: string
           created_at: string
           id: string
@@ -11520,6 +11534,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          stock_binding_mode?: string
           company_id: string
           created_at?: string
           id?: string
@@ -11530,6 +11545,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          stock_binding_mode?: string
           company_id?: string
           created_at?: string
           id?: string
@@ -18481,6 +18497,76 @@ export type Database = {
       }
     }
     Functions: {
+      stock_can_manage_access_v1: {
+        Args: { p_company_id: string }
+        Returns: boolean
+      }
+      pdv_can_manage_stock_v3: {
+        Args: {
+          p_company_id: string
+        }
+        Returns: boolean
+      }
+      pdv_set_store_stock_v1: {
+        Args: {
+          p_stock_id: string
+          p_expected_revision: number
+        }
+        Returns: Json
+      }
+      pdv_create_store_stock_v1: {
+        Args: {
+          p_name: string
+          p_expected_revision: number
+        }
+        Returns: Json
+      }
+      pdv_save_cash_terminal_v3: {
+        Args: {
+          p_terminal_id: string
+          p_name: string
+          p_stock_id: string
+          p_is_active: boolean
+          p_sort_order: number
+          p_stock_binding_mode: string
+        }
+        Returns: Json
+      }
+      pdv_save_cash_terminal_base_016_v2: {
+        Args: {
+          p_terminal_id: string
+          p_name: string
+          p_stock_id: string
+          p_is_active: boolean
+          p_sort_order: number
+        }
+        Returns: Json
+      }
+      pdv_store_stock_projection_internal_v1: {
+        Args: {
+          p_company_id: string
+        }
+        Returns: Json
+      }
+      pdv_lock_stock_settings_internal_v1: {
+        Args: {
+          p_company_id: string
+        }
+        Returns: undefined
+      }
+      pdv_assert_terminal_stock_idle_internal_v1: {
+        Args: {
+          p_company_id: string
+          p_terminal_id: string
+        }
+        Returns: undefined
+      }
+      pdv_assert_store_stock_manager_internal_v1: {
+        Args: {
+          p_actor_id: string
+        }
+        Returns: undefined
+      }
       admin_categorize_ledger: { Args: { p_ledger_id: string; p_category: string }; Returns: undefined }
       set_catalog_model_favorite: {
         Args: { p_company_id: string; p_model_id: string; p_is_favorite: boolean; p_expected_revision: number; p_operation_id: string }

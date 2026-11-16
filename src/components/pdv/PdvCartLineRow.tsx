@@ -1,3 +1,4 @@
+import { NumericInput } from "@/components/ui/numeric-input";
 import { Trash2 } from "lucide-react";
 import { PdvQuantityStepper } from "@/components/pdv/PdvQuantityStepper";
 import {
@@ -34,6 +35,10 @@ interface PdvCartLineRowProps {
   onConfirmQuantityEdit?: () => void;
   /** Mantém a mesma linha visual, mas sem controles em estados concluídos/cancelados. */
   readOnly?: boolean;
+  quantityReadOnly?: boolean;
+  onSetUnitPrice?: (id: string, value: string) => void;
+  unitPriceValue?: string;
+  onEditDescription?: (id: string) => void;
   density?: 'default' | 'preview';
 }
 
@@ -62,6 +67,7 @@ export function PdvCartLineRow({
   onRemove,
   onConfirmQuantityEdit,
   readOnly = false,
+  quantityReadOnly = false, onSetUnitPrice, unitPriceValue, onEditDescription,
   density = 'default',
 }: PdvCartLineRowProps) {
   const [discountOpen, setDiscountOpen] = useState(false);
@@ -73,8 +79,8 @@ export function PdvCartLineRow({
   const lineTotal = lineGross - lineDiscount;
 
   if (density === 'preview') return <div className="cartitem" data-cart-item={line.inventoryId}>
-    <div className="row between" style={{ alignItems: 'flex-start' }}><span className="cartthumbnail"><PdvProductImagePreview iconOnlyFallback imageUrl={line.imageUrl} name={line.name} fallbackLabel={noPhotoLabel} openLabel={openPhotoLabel} viewerDescription={photoViewerDescription} className="h-8 w-8 shrink-0 object-contain" /></span><div className="grow"><strong>{line.name}</strong><small>{formatCurrency(line.unitPrice)} / {line.unit || 'un'}</small></div><div style={{ textAlign: 'right' }}>{lineDiscount > 0 && <small className="oldprice">{formatCurrency(lineGross)}</small>}<strong className="cartitemtotal amount">{formatCurrency(lineTotal)}</strong></div></div>
-    <div className="row between itemcontrols">{readOnly ? <span>{line.quantity} {line.unit}</span> : <PdvQuantityStepper size="sm" className="qty" quantity={line.quantity} availableQuantity={line.availableQuantity} step={inventoryQuantityStep(line.unit)} onIncrement={delta => onIncrement(line.inventoryId, delta)} onSetQuantity={quantity => onSetQuantity(line.inventoryId, quantity)} onConfirmEdit={onConfirmQuantityEdit} decrementAriaLabel={'Diminuir ' + line.name} incrementAriaLabel={'Aumentar ' + line.name} editAriaLabel={quantityEditLabel} />}{!readOnly && <div className="row" style={{ gap: 2 }}><button type="button" className={'itemdiscount ' + (lineDiscount > 0 ? 'hasdiscount' : '')} aria-label={'Desconto em ' + line.name} aria-expanded={discountOpen} onClick={() => { setDiscountOpen(current => !current); onDiscountEditingChange?.(!discountOpen); }}><Percent />{lineDiscount > 0 ? formatCurrency(lineDiscount) : 'Desconto'}</button><button type="button" className="iconbtn negative removeitem" onClick={() => onRemove(line.inventoryId)} aria-label={removeLabel}><Trash2 /></button></div>}</div>
+    <div className="row between" style={{ alignItems: 'flex-start' }}><span className="cartthumbnail"><PdvProductImagePreview iconOnlyFallback imageUrl={line.imageUrl} name={line.name} fallbackLabel={noPhotoLabel} openLabel={openPhotoLabel} viewerDescription={photoViewerDescription} className="h-8 w-8 shrink-0 object-contain" /></span><div className="grow"><strong>{onEditDescription ? <button type="button" className="text-left" onClick={() => onEditDescription(line.inventoryId)}>{line.name}</button> : line.name}</strong><small>{onSetUnitPrice && !readOnly ? <NumericInput aria-label="Preço unitário" decimal maxDecimals={2} value={unitPriceValue ?? String(line.unitPrice)} onValueChange={value => onSetUnitPrice(line.inventoryId, value)} placeholder="Pendente" className="h-7 w-28 text-xs" /> : unitPriceValue === "" ? "Preço pendente" : formatCurrency(line.unitPrice)} / {line.unit || 'un'}</small></div><div style={{ textAlign: 'right' }}>{lineDiscount > 0 && <small className="oldprice">{formatCurrency(lineGross)}</small>}<strong className="cartitemtotal amount">{formatCurrency(lineTotal)}</strong></div></div>
+    <div className="row between itemcontrols">{readOnly || quantityReadOnly ? <span>{line.quantity} {line.unit}</span> : <PdvQuantityStepper size="sm" className="qty" quantity={line.quantity} availableQuantity={line.availableQuantity} step={inventoryQuantityStep(line.unit)} onIncrement={delta => onIncrement(line.inventoryId, delta)} onSetQuantity={quantity => onSetQuantity(line.inventoryId, quantity)} onConfirmEdit={onConfirmQuantityEdit} decrementAriaLabel={'Diminuir ' + line.name} incrementAriaLabel={'Aumentar ' + line.name} editAriaLabel={quantityEditLabel} />}{!readOnly && <div className="row" style={{ gap: 2 }}><button type="button" className={'itemdiscount ' + (lineDiscount > 0 ? 'hasdiscount' : '')} aria-label={'Desconto em ' + line.name} aria-expanded={discountOpen} onClick={() => { setDiscountOpen(current => !current); onDiscountEditingChange?.(!discountOpen); }}><Percent />{lineDiscount > 0 ? formatCurrency(lineDiscount) : 'Desconto'}</button>{!quantityReadOnly && <button type="button" className="iconbtn negative removeitem" onClick={() => onRemove(line.inventoryId)} aria-label={removeLabel}><Trash2 /></button>}</div>}</div>
     {!readOnly && <PdvInlineDiscountEditor variant="line" presentation="preview" hideTrigger open={discountOpen} label={discountLabel} baseAmount={lineGross} discountAmount={lineDiscount} formatCurrency={formatCurrency} currencySymbol={currencySymbol} locale={locale} currencyFractionDigits={currencyFractionDigits} texts={discountEditorTexts} onApply={amount => onSetLineDiscount(line.inventoryId, amount)} onEditingChange={editing => { setDiscountOpen(editing); onDiscountEditingChange?.(editing); }} />}
   </div>;
 

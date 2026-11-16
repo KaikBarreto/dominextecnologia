@@ -5,13 +5,13 @@ import PdvDispatch from './PdvDispatch';
 
 const mocks = vi.hoisted(() => ({
   auth: { user: { id: 'user-1' }, profile: { user_id: 'user-1', company_id: 'company-1', is_active: true }, roles: ['estoque'], permissions: ['screen:pdv_dispatch', 'fn:deliver_pdv_order'], hasPermissionRecord: true, loading: false, profileLoading: false },
-  complete: vi.fn(), fetch: vi.fn(), preview: vi.fn(), toast: vi.fn(), close: vi.fn(), pending: vi.fn(), refetch: vi.fn(), detailReady: false,
+  complete: vi.fn(), fetch: vi.fn(), preview: vi.fn(), toast: vi.fn(), close: vi.fn(), pending: vi.fn(), refetch: vi.fn(), detailReady: false, mobile: false,
 }));
 const queue = [{ id: 'same-order', number: 11, recipientName: 'Cliente fictício', stockId: 'stock-1', stockName: 'Estoque fictício', status: 'liberado_retirada', releasedAt: '', remainingItems: 1 }];
 const detail = { order: { id: 'same-order', number: 11, status: 'liberado_retirada', customer: null, stock: null }, items: [{ id: 'line-1', description: 'Serviço fictício', itemType: 'service', unit: 'un', orderedQuantity: 1, deliveredQuantity: 0, remainingQuantity: 1, reservations: [] }] };
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc: vi.fn() } }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ ...mocks.auth, isAdminOrGestor: () => false, hasPermission: (permission: string) => mocks.auth.permissions.includes(permission), hasScreenAccess: (permission: string) => mocks.auth.permissions.includes(permission) }) }));
-vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => false }));
+vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => mocks.mobile }));
 vi.mock('@/hooks/usePdvDispatch', () => ({
   usePdvCompleteDispatch: () => ({ mutateAsync: mocks.complete, isPending: false }), fetchPdvDeliveryReceipt: mocks.fetch,
   usePdvDispatchQueue: () => ({ data: queue, refetch: mocks.refetch }), usePdvDispatchHistory: () => ({ data: [], refetch: mocks.refetch }),
@@ -34,9 +34,41 @@ function renderPage() { return <MemoryRouter><PdvDispatch /></MemoryRouter>; }
 
 describe('retirada rápida captura o contexto antes de ler o pedido', () => {
   beforeEach(() => {
-    vi.clearAllMocks(); mocks.detailReady = false;
+    vi.clearAllMocks(); mocks.detailReady = false; mocks.mobile = false;
     mocks.auth = { user: { id: 'user-1' }, profile: { user_id: 'user-1', company_id: 'company-1', is_active: true }, roles: ['estoque'], permissions: ['screen:pdv_dispatch', 'fn:deliver_pdv_order'], hasPermissionRecord: true, loading: false, profileLoading: false };
     mocks.pending.mockImplementation(() => ({ close: mocks.close, closed: false }));
+  });
+
+  it('abre o detalhe contextual sem substituir o quadro nem registrar retirada', async () => {
+    mocks.detailReady = true;
+    render(renderPage());
+    const board = screen.getByRole('region', { name: 'Kanban da expedição' });
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir Pedido #11' }));
+
+    expect(screen.getByRole('dialog', { name: 'Detalhes da retirada' })).toBeInTheDocument();
+    expect(board).toBeInTheDocument();
+    expect(board).toHaveTextContent('Aguardando retirada');
+    expect(board).toHaveTextContent('Retirada parcial');
+    expect(mocks.complete).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Fechar retirada' }));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Detalhes da retirada' })).not.toBeInTheDocument());
+    expect(screen.getByRole('region', { name: 'Kanban da expedição' })).toBe(board);
+    expect(mocks.complete).not.toHaveBeenCalled();
+  });
+
+  it('mantém o quadro ao abrir e fechar a retirada no celular', async () => {
+    mocks.mobile = true;
+    mocks.detailReady = true;
+    render(renderPage());
+    fireEvent.click(screen.getByRole('button', { name: 'Kanban' }));
+    const board = screen.getByRole('region', { name: 'Kanban da expedição' });
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir Pedido #11' }));
+    expect(screen.getByRole('dialog', { name: 'Detalhes da retirada' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Fechar retirada' }));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Detalhes da retirada' })).not.toBeInTheDocument());
+    expect(screen.getByRole('region', { name: 'Kanban da expedição' })).toBe(board);
+    expect(mocks.complete).not.toHaveBeenCalled();
   });
 
   it('não dispara writer do clique de A quando o mesmo ID termina de carregar no contexto B', async () => {

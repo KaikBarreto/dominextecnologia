@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { useStockManagement } from '@/hooks/useStocks';
 
 export type InventoryItem = Tables<'inventory'>;
 export type InventoryItemInsert = TablesInsert<'inventory'>;
@@ -35,15 +36,18 @@ const inventorySecurityRpc = supabase.rpc as unknown as (
 export function useInventory() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { scope, ready, companyId } = useStockManagement();
 
-  const { data: items = [], isLoading, error } = useQuery({
-    queryKey: ['inventory'],
+  const { data: inventoryData = [], isLoading, error } = useQuery({
+    queryKey: ['inventory', ...scope],
+    enabled: ready,
     queryFn: async () => {
       const result: InventoryItem[] = [];
       for (let offset = 0; ; offset += INVENTORY_PAGE_SIZE) {
         const { data, error } = await supabase
           .from('inventory')
           .select('*')
+          .eq('company_id', companyId!)
           // Materiais alocados a clientes têm catálogo e saldo próprios. Eles só
           // aparecem na ficha/OS daquele cliente, nunca no estoque da prestadora.
           .is('customer_id', null)
@@ -57,6 +61,7 @@ export function useInventory() {
       }
     },
   });
+  const items = ready ? inventoryData : [];
 
   // Saldos por estoque — fonte de verdade do novo modelo multi-depósito.
   // Consultado separado pra não poluir a query principal e ser invalidado
@@ -68,14 +73,16 @@ export function useInventory() {
   // de presença (InventoryFormDialog, StockConfiguratorDialog) usam esse sinal
   // pra nunca hidratar um checkbox em cima do default permissivo de
   // `getPresenceForStock` antes dos levels reais chegarem.
-  const { data: stockLevels = [], isSuccess: stockLevelsLoaded } = useQuery({
-    queryKey: ['inventory-stock-levels'],
+  const { data: levelData = [], isSuccess: levelsLoaded, error: stockLevelsError } = useQuery({
+    queryKey: ['inventory-stock-levels', ...scope],
+    enabled: ready,
     queryFn: async () => {
       const result: InventoryStockLevel[] = [];
       for (let offset = 0; ; offset += INVENTORY_PAGE_SIZE) {
         const { data, error } = await supabase
           .from('inventory_stock_levels')
           .select('*')
+          .eq('company_id', companyId!)
           .order('id')
           .range(offset, offset + INVENTORY_PAGE_SIZE - 1);
         if (error) throw error;
@@ -85,6 +92,8 @@ export function useInventory() {
       }
     },
   });
+  const stockLevels = ready ? levelData : [];
+  const stockLevelsLoaded = ready && levelsLoaded;
 
   /**
    * Retorna a quantidade de um material em um estoque específico.
@@ -164,6 +173,7 @@ export function useInventory() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory-stock-levels'] });
+      queryClient.invalidateQueries({ queryKey: ['accessible-inventory-ids'] });
     },
     onError: (error) => {
       toast({ title: 'Erro ao atualizar mínimo', description: getErrorMessage(error), variant: 'destructive' });
@@ -228,6 +238,7 @@ export function useInventory() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory-stock-levels'] });
+      queryClient.invalidateQueries({ queryKey: ['accessible-inventory-ids'] });
     },
     // Não mostra toast aqui — a UI deve tratar presence_has_balance especificamente
     onError: (error: Error) => {
@@ -418,6 +429,7 @@ export function useInventory() {
     items,
     stockLevels,
     stockLevelsLoaded,
+    stockLevelsError,
     isLoading,
     error,
     createItem,

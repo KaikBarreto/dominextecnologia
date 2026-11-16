@@ -36,6 +36,26 @@ export const changelog: ChangelogEntry[] = [
     type: 'patch',
     changes: [
       {
+        title: 'Estoque da loja integrado ao PDV',
+        category: 'recurso',
+        description: 'Configure o estoque padrão da loja e escolha quais terminais devem herdar essa configuração. Os atendimentos usam o contexto da loja, preservando as escolhas específicas já existentes.',
+      },
+      {
+        title: 'Gestão de locais no estoque da loja',
+        category: 'melhoria',
+        description: 'Gerencie os locais de estoque pelo contexto da loja, com acesso conforme as permissões do usuário e proteção dos cadastros e materiais já existentes.',
+      },
+      {
+        title: 'Orçamentos em abas e edição consistente',
+        category: 'melhoria',
+        description: 'Alterne entre orçamentos em abas e use o mesmo editor dos atendimentos do PDV, com apresentação consistente dos itens, do resumo e dos cupons.',
+      },
+      {
+        title: 'Cadastro de materiais de clientes corrigido',
+        category: 'correcao',
+        description: 'A criação de materiais no estoque de clientes volta a funcionar, mantendo as validações de acesso e de vínculo do cadastro.',
+      },
+      {
         title: 'Cupons promocionais com regras de uso',
         category: 'recurso',
         description: 'Gerencie cupons com desconto em valor ou percentual, vigência e limites de utilização. Defina clientes e produtos participantes e confira o desconto no atendimento, incluindo pedidos ainda pendentes.',

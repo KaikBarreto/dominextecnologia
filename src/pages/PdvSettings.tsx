@@ -26,6 +26,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { DomiLinkDeviceShortcut } from '@/components/settings/domilink/DomiLinkDeviceShortcut';
 import { PdvWorkflowIllustration } from '@/components/pdv/settings/PdvWorkflowIllustration';
+import { PdvStoreStockSettings } from '@/components/pdv/settings/PdvStoreStockSettings';
 import { PdvTerminalSettings } from '@/components/pdv/settings/PdvTerminalSettings';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import '@/components/pdv/pdv-preview-sale.css';
@@ -123,6 +124,7 @@ export default function PdvSettings() {
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3"><p className="text-xs text-muted-foreground">{canManageWorkflow ? 'A mudança vale para todos os caixas.' : 'Seu perfil pode consultar, mas não alterar o fluxo.'}</p><Button type="button" variant="outline" onClick={() => void saveWorkflow()} disabled={!canManageWorkflow || workflow.save.isPending || workflow.isError}>{workflow.save.isPending ? 'Salvando...' : 'Salvar fluxo'}</Button></div>
           </div>
 
+          <PdvStoreStockSettings canManage={canManageWorkflow} />
 </section>}
         {tab === 'cash' && <section className="max-w-5xl space-y-7 rounded-lg border border-border bg-card p-5 sm:p-7" aria-label="Caixas e dinheiro"><PdvCashAccountSettings canManage={canManageWorkflow} /><PdvTerminalSettings canManage={canManageWorkflow} /></section>}
         {tab === 'receipts' && <div className="grid items-start gap-7 xl:grid-cols-[minmax(0,1fr)_minmax(300px,440px)]">

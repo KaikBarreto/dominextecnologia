@@ -900,6 +900,7 @@ const AppRoutes = () => (
       {localizedAppRoutes('pdvCashHistory', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv_cash_history"><PdvCashHistory /></PermissionRoute></ModuleRoute>)}
       {localizedAppRoutes('pdvReports', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv_reports"><PdvReports /></PermissionRoute></ModuleRoute>)}
       {localizedAppRoutes('pdvCoupons', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv_settings"><PdvCoupons /></PermissionRoute></ModuleRoute>)}
+      {localizedAppRoutes('pdvStock', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:inventory"><Inventory context="store" /></PermissionRoute></ModuleRoute>)}
       {localizedAppRoutes('pdvSettings', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv_settings"><PdvSettings /></PermissionRoute></ModuleRoute>)}
       {/* "Financeiro" é um grupo de telas orientadas por tarefa; cada rota tem
           no máximo uma alternância local entre conteúdos irmãos. */}

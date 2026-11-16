@@ -78,6 +78,7 @@ interface PdvCartSummaryProps {
   finalizeIcon?: ReactNode;
   hideFinalizeShortcut?: boolean;
   showAdvancedOptions?: boolean;
+  allowReadOnlyAdvancedOptions?: boolean;
   showFinalizeAction?: boolean;
   /** Crédito/voucher aplicado depois do total comercial e antes do recebimento. */
   appliedCreditContent?: ReactNode;
@@ -134,6 +135,7 @@ export function PdvCartSummary({
   finalizeIcon,
   hideFinalizeShortcut = false,
   showAdvancedOptions = true,
+  allowReadOnlyAdvancedOptions = false,
   showFinalizeAction = true,
   appliedCreditContent,
   couponContent,
@@ -167,9 +169,9 @@ export function PdvCartSummary({
       </>}
     />
     <PdvCartWorkspaceFooter>
-      {showFinalizeAction && <button type="button" className="btn primary" disabled={!canPay || readOnly} onClick={onRequestPayment}>{finalizeIcon ?? <ArrowRight />}{hideFinalizeShortcut ? (texts.finalizeLabel || texts.paymentLabel) : 'Receber agora'}</button>}
+      {showFinalizeAction && <button type="button" className="btn primary" disabled={!canPay || (readOnly && canFinalizeOverride !== true)} onClick={onRequestPayment}>{finalizeIcon ?? <ArrowRight />}{hideFinalizeShortcut ? (texts.finalizeLabel || texts.paymentLabel) : 'Receber agora'}</button>}
       {onSaveQuote && <button type="button" className="btn ghost" disabled={!cart.lines.length || readOnly} onClick={onSaveQuote}>Salvar orçamento</button>}
-      {showAdvancedOptions && <button type="button" className="btn ghost" disabled={readOnly} onClick={onOpenAdvancedOptions}><SlidersHorizontal />{advancedOptionsSummary || texts.advancedOptionsTrigger}</button>}
+      {showAdvancedOptions && <button type="button" className="btn ghost" disabled={readOnly && !allowReadOnlyAdvancedOptions} onClick={onOpenAdvancedOptions}><SlidersHorizontal />{advancedOptionsSummary || texts.advancedOptionsTrigger}</button>}
       <small>{hideFinalizeShortcut ? 'Orçamento ainda não confirma pagamento.' : 'F4 para receber · Créditos preservam o valor da venda'}</small>
     </PdvCartWorkspaceFooter>
   </>;

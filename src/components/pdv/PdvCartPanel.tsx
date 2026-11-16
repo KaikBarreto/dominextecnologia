@@ -66,10 +66,15 @@ interface PdvCartPanelProps {
   texts: PdvCartPanelTexts;
   className?: string;
   readOnly?: boolean;
+  quantityReadOnly?: boolean;
+  onSetUnitPrice?: (id: string, value: string) => void;
+  lineUnitPriceValue?: (id: string) => string;
+  onEditLineDescription?: (id: string) => void;
   canFinalizeOverride?: boolean;
   finalizeIcon?: ReactNode;
   hideFinalizeShortcut?: boolean;
   showAdvancedOptions?: boolean;
+  allowReadOnlyAdvancedOptions?: boolean;
   showFinalizeAction?: boolean;
   appliedCreditContent?: ReactNode;
   couponContent?: ReactNode;
@@ -108,10 +113,12 @@ export function PdvCartPanel({
   texts,
   className,
   readOnly = false,
+  quantityReadOnly = false, onSetUnitPrice, lineUnitPriceValue, onEditLineDescription,
   canFinalizeOverride,
   finalizeIcon,
   hideFinalizeShortcut = false,
   showAdvancedOptions = true,
+  allowReadOnlyAdvancedOptions = false,
   showFinalizeAction = true,
   appliedCreditContent,
   couponContent,
@@ -140,7 +147,7 @@ export function PdvCartPanel({
   return (
     <div className={cn("flex h-full min-h-0 flex-col", className)} data-testid={layout === 'workspace' ? 'pdv-cart-workspace' : undefined}>
       {orderSwitcher && <div className="shrink-0">{orderSwitcher}</div>}
-      {layout === 'workspace' ? <PdvCartWorkspaceHeader title={texts.title} personSelector={<PdvCartCustomerSelector cart={cart} customers={customers} texts={texts} onCustomerChange={onCustomerChange} readOnly={readOnly} compact />} disabled={readOnly} closeLabel={onCloseOrder ? 'Fechar atendimento atual' : texts.clearCart} onClose={() => { if (!onCloseOrder) { onRequestClearCart(); return; } if (hasOrderContent ?? cart.lines.length > 0) setCloseAction(() => onCloseOrder); else onCloseOrder(); }} /> : <div className="flex items-center justify-between border-b border-border px-4 py-3">
+      {layout === 'workspace' ? <PdvCartWorkspaceHeader title={texts.title} personSelector={<PdvCartCustomerSelector cart={cart} customers={customers} texts={texts} onCustomerChange={onCustomerChange} readOnly={readOnly} compact />} disabled={readOnly && !onCloseOrder} closeLabel={onCloseOrder ? 'Fechar atendimento atual' : texts.clearCart} onClose={() => { if (!onCloseOrder) { onRequestClearCart(); return; } if (hasOrderContent ?? cart.lines.length > 0) setCloseAction(() => onCloseOrder); else onCloseOrder(); }} /> : <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
@@ -271,6 +278,10 @@ export function PdvCartPanel({
                   >
                     <PdvCartLineRow
                       line={line}
+                      quantityReadOnly={quantityReadOnly}
+                      onSetUnitPrice={onSetUnitPrice}
+                      unitPriceValue={lineUnitPriceValue?.(line.inventoryId)}
+                      onEditDescription={onEditLineDescription}
                       formatCurrency={formatCurrency}
                       noPhotoLabel={texts.noPhoto}
                       openPhotoLabel={texts.openProductPhoto}
@@ -330,6 +341,7 @@ export function PdvCartPanel({
         finalizeIcon={finalizeIcon}
         hideFinalizeShortcut={hideFinalizeShortcut}
         showAdvancedOptions={showAdvancedOptions}
+        allowReadOnlyAdvancedOptions={allowReadOnlyAdvancedOptions}
         showFinalizeAction={showFinalizeAction}
         appliedCreditContent={appliedCreditContent}
         couponContent={couponContent}

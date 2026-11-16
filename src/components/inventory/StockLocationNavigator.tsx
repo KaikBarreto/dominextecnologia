@@ -31,7 +31,7 @@ interface StockLocationNavigatorProps {
   selectedId: string;
   labels: StockLocationNavigatorLabels;
   onSelect: (id: string) => void;
-  onConfigure: (id: string) => void;
+  onConfigure?: (id: string) => void;
   className?: string;
 }
 
@@ -166,7 +166,7 @@ export function StockLocationNavigator({
                         {renderSummary(item.itemCount, item.lowStockCount, selected)}
                       </span>
                     </button>
-                    <button
+                    {onConfigure && <button
                       type="button"
                       aria-label={`${labels.configure}: ${item.name}`}
                       onClick={() => onConfigure(item.id)}
@@ -178,7 +178,7 @@ export function StockLocationNavigator({
                       )}
                     >
                       <Settings className="h-4 w-4" aria-hidden="true" />
-                    </button>
+                    </button>}
                   </div>
                 );
               })}

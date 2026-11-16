@@ -156,6 +156,7 @@ const tenantMenuItems: MenuItem[] = [
       { title: 'Orçamentos', icon: ClipboardList, path: '/pdv/pre-pedidos', screenKeys: ['screen:pdv', 'screen:pdv_orders'], moduleKey: 'pdv', requiresPdvCounter: true },
       { title: 'Pedidos', icon: ListOrdered, path: '/pdv/pedidos', screenKey: 'screen:pdv_orders', moduleKey: 'pdv' },
       { title: 'Expedição', icon: PackageCheck, path: '/pdv/expedicao', screenKey: 'screen:pdv_dispatch', moduleKey: 'pdv', requiresPdvCounter: true },
+      { title: 'Estoque da loja', icon: Package, path: '/pdv/estoque', screenKey: 'screen:inventory', moduleKey: 'pdv' },
       { title: 'Histórico de Caixa', icon: HistoryIcon, path: '/pdv/caixas', screenKey: 'screen:pdv_cash_history', moduleKey: 'pdv' },
       { title: 'Relatórios da Loja', icon: BarChart3, path: '/pdv/relatorios', screenKey: 'screen:pdv_reports', moduleKey: 'pdv' },
       { title: 'Cupons promocionais', icon: TicketPercent, path: '/pdv/cupons', screenKey: 'screen:pdv_settings', moduleKey: 'pdv' },
