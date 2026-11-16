@@ -29,7 +29,13 @@ import {
   assertAsaasConfigured,
 } from "../_shared/asaas-client.ts";
 import { authorizeAsaasCompany } from "../_shared/asaas-auth.ts";
-import { applyWrite, tryWriteReturning, WriteWarnings } from "../_shared/db-write.ts";
+import { applyWrite, tryWrite, tryWriteReturning, WriteWarnings } from "../_shared/db-write.ts";
+import {
+  buildPixAutomaticAuthorizationPayload,
+  pixAutomaticCheckoutStatus,
+  pixAutomaticCorrelation,
+  type PixAutomaticAuthorizationResponse,
+} from "../_shared/asaas-pix-automatic.ts";
 import { resolveChargeTerms, type ChargeTerms } from "./billing-rules.ts";
 
 // A edge usa service_role sem schema gerado no runtime; manter o mesmo tipo
@@ -122,14 +128,6 @@ interface TokenizedCard {
   token: string;
   last4: string;
   brand: string;
-}
-
-interface PixAutomaticAuthorization {
-  id: string;
-  status?: string;
-  encodedImage?: string;
-  payload?: string;
-  immediateQrCode?: { expirationDate?: string };
 }
 
 async function tokenizeCard(
@@ -322,7 +320,7 @@ Deno.serve(async (req) => {
       .from("subscription_payments")
       .select("id, asaas_payment_id, created_at, billing_type, invoice_url, pix_qr_code, pix_copy_paste, pix_expiration_date, due_date, status, amount, subscription_change_request_id")
       .eq("company_id", company_id)
-      .eq("status", "PENDING")
+      .in("status", ["PENDING", "CREATED", "ACTIVE", "CREATING", "CREATE_UNKNOWN"])
       .order("created_at", { ascending: false })
       .limit(1);
 
@@ -543,7 +541,6 @@ Deno.serve(async (req) => {
 
     // A partir daqui, payload e persistência usam somente o ciclo normalizado.
     // Em especial, CREDIT_CARD nunca propaga `yearly` controlado pelo cliente.
-    const asaasCycle = chargeTerms.asaasCycle;
     const cycleForDb = chargeTerms.billingCycle;
 
     // ========== IDEMPOTÊNCIA: reusar cobrança PENDING < 30min ==========
@@ -951,191 +948,176 @@ Deno.serve(async (req) => {
     // ===================================================================
     if (billing_type === "PIX" && pix_recurring) {
       const asaasFrequency = chargeTerms.pixAutomaticFrequency;
-      await cancelExistingSubscriptions(asaasCustomerId!);
-
-      const contractId = `DMX-${company_id.substring(0, 8)}-${Date.now().toString(36)}`.substring(0, 35);
-      const authorizationPayload = {
-        frequency: asaasFrequency,
-        contractId,
-        startDate: dueDateStr,
-        customerId: asaasCustomerId,
-        value: amount,
-        description: `Dominex - ${company.name}`.substring(0, 35),
-        immediateQrCode: {
-          expirationSeconds: 86400,
-          originalValue: amount,
+      const { data: claimRaw, error: claimError } = await supabase.rpc(
+        "claim_subscription_pix_automatic_checkout",
+        {
+          p_company_id: company_id,
+          p_amount: chargeTerms.expectedAmount,
+          p_billing_cycle: cycleForDb,
+          p_due_date: dueDateStr,
+          p_purpose: purpose || (paymentType === "primeira_venda" ? "first_sale" : "renewal"),
+          p_change_request_id: change_request_id ?? null,
         },
-      };
-
-      let authData: PixAutomaticAuthorization;
-      try {
-        authData = await asaas.post(`/pix/automatic/authorizations`, authorizationPayload);
-      } catch (e) {
-        // ---- Fallback: subscription PIX padrão ----
-        console.log("Pix Automático indisponível, usando subscription PIX padrão:", (e as Error).message);
-        const subscriptionData = await asaas.post(`/subscriptions`, {
-          customer: asaasCustomerId,
-          billingType: "PIX",
-          cycle: asaasCycle,
-          value: amount,
-          nextDueDate: dueDateStr,
-          description: description || `Assinatura Dominex - ${company.name}`,
-          externalReference: company_id,
-        });
-
-        await linkRecurrenceToCompany(supabase, company_id, subscriptionData.id, "pix");
-
-        // Busca primeiro payment real (pay_*) da subscription pro QR Code.
-        let firstPaymentId: string | null = null;
-        let pixQrCode: string | null = null;
-        let pixCopyPaste: string | null = null;
-        let pixExpirationDate: string | null = null;
-        try {
-          const paymentsData = await asaas.get(`/subscriptions/${subscriptionData.id}/payments`);
-          if (paymentsData?.data?.length > 0) {
-            firstPaymentId = paymentsData.data[0].id;
-            const pixData = await asaas.get(`/payments/${firstPaymentId}/pixQrCode`);
-            pixQrCode = pixData.encodedImage ?? null;
-            pixCopyPaste = pixData.payload ?? null;
-            const exp = new Date();
-            exp.setHours(exp.getHours() + 24);
-            pixExpirationDate = exp.toISOString();
-          }
-        } catch (err) {
-          console.error("Erro ao buscar QR Code do fallback PIX:", err);
+      );
+      if (claimError || !claimRaw?.attempt?.id) {
+        if (claimError?.message?.includes("pix_automatic_checkout_already_in_progress")) {
+          throw new ValidationError(
+            "Já existe um consentimento Pix Automático em andamento para esta empresa.",
+          );
         }
+        console.error("[pix-auto] falha ao reservar checkout:", claimError?.message ?? "sem tentativa");
+        throw new Error("Não foi possível preparar o Pix Automático.");
+      }
 
-        // NÃO-FATAL: a cobrança JÁ existe na Asaas. Sem esta linha o `local_payment_id`
-        // volta vazio e o webhook precisa materializar a linha quando o PAYMENT_*
-        // chegar. Falhar alto aqui faria o cliente tentar de novo e gerar uma
-        // SEGUNDA cobrança — cobrar duas vezes é pior que reconciliar depois.
-        const savedPayment = await tryWriteReturning<{ id: string }>(
-          "registro local da cobrança PIX de fallback (subscription_payments)",
-          supabase
-            .from("subscription_payments")
-            .insert({
-              company_id,
-              asaas_payment_id: firstPaymentId,
-              asaas_customer_id: asaasCustomerId,
-              amount,
-              status: "PENDING",
-              payment_method: "pix",
-              billing_type: "PIX",
-              billing_cycle: cycleForDb,
-              type: paymentType,
-              pix_qr_code: pixQrCode,
-              pix_copy_paste: pixCopyPaste,
-              pix_expiration_date: pixExpirationDate,
-              invoice_url: subscriptionData.invoiceUrl,
-              due_date: dueDateStr,
-            })
-            .select()
-            .single(),
-          {
-            warnings,
-            recovery: {
-              company_id,
-              asaas_payment_id: firstPaymentId ?? "-",
-              asaas_subscription_id: subscriptionData.id,
-              amount,
-              billing_type: "PIX",
-            },
-          },
-        );
-
+      const attempt = claimRaw.attempt as Record<string, any>;
+      const shouldCreate = claimRaw.should_create === true;
+      if (!shouldCreate) {
+        if (attempt.checkout_status === "CREATE_UNKNOWN" || attempt.checkout_status === "CREATING") {
+          return new Response(
+            JSON.stringify({
+              error: "O consentimento anterior ainda está sendo conciliado. Aguarde alguns instantes.",
+              code: "PIX_AUTOMATIC_RECONCILING",
+            }),
+            { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
         return new Response(
           JSON.stringify({
             success: true,
-            payment_id: firstPaymentId,
-            status: "PENDING",
-            invoice_url: subscriptionData.invoiceUrl,
-            pix_qr_code: pixQrCode,
-            pix_copy_paste: pixCopyPaste,
-            pix_expiration_date: pixExpirationDate,
-            due_date: dueDateStr,
-            local_payment_id: savedPayment?.id,
-            ...warnings.toBody(),
-            subscription_id: subscriptionData.id,
+            payment_id: attempt.asaas_authorization_id,
+            status: attempt.authorization_status || attempt.checkout_status,
+            pix_qr_code: attempt.pix_qr_code,
+            pix_copy_paste: attempt.pix_copy_paste,
+            pix_expiration_date: attempt.pix_expiration_date,
+            due_date: attempt.due_date,
+            checkout_attempt_id: attempt.id,
+            authorization_id: attempt.asaas_authorization_id,
+            subscription_id: attempt.asaas_subscription_id,
             is_recurring: true,
-            pix_automatic: false,
-            fallback: true,
+            pix_automatic: true,
+            reused_existing: true,
           }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
 
-      // ---- Pix Automático criado ----
-      const pixQrCode = authData.encodedImage || null;
-      const pixCopyPaste = authData.payload || null;
+      const authorizationPayload = buildPixAutomaticAuthorizationPayload({
+        frequency: asaasFrequency,
+        contractId: attempt.gateway_correlation_ref,
+        startDate: dueDateStr,
+        customerId: asaasCustomerId!,
+        value: chargeTerms.expectedAmount,
+        description: `Dominex - ${company.name}`,
+      });
+
+      let authData: PixAutomaticAuthorizationResponse;
+      try {
+        authData = await asaas.post(`/pix/automatic/authorizations`, authorizationPayload);
+      } catch (e) {
+        const definitiveFailure = e instanceof AsaasApiError && e.status >= 400 && e.status < 500;
+        await tryWrite(
+          "estado da tentativa Pix Automático após falha no gateway",
+          supabase
+            .from("subscription_checkout_attempts")
+            .update({
+              checkout_status: definitiveFailure ? "FAILED" : "CREATE_UNKNOWN",
+              last_error_code: definitiveFailure ? `HTTP_${e.status}` : "GATEWAY_UNKNOWN",
+            })
+            .eq("id", attempt.id)
+            .eq("checkout_status", "CREATING"),
+          {
+            warnings,
+            recovery: {
+              checkout_attempt_id: attempt.id,
+              target_status: definitiveFailure ? "FAILED" : "CREATE_UNKNOWN",
+            },
+          },
+        );
+        // Timeout/5xx pode ter criado a autorização remotamente. Não fazemos
+        // fallback nem novo POST: a tentativa fica bloqueada para reconciliação.
+        throw e;
+      }
+
+      const correlation = pixAutomaticCorrelation(authData);
       const pixExpirationDate = authData.immediateQrCode?.expirationDate
         ? new Date(authData.immediateQrCode.expirationDate).toISOString()
         : (() => { const d = new Date(); d.setHours(d.getHours() + 24); return d.toISOString(); })();
 
-      // Grava o id da AUTORIZAÇÃO de Pix Automático. ⚠️ É UUID, não `aut_*` (provado
-      // em 2026-09-19 na autorização real 01cf93fd-6634-43c4-894b-5bfeef52c1dc).
-      // Quem lê esta coluna deve identificar `sub_` positivamente e tratar todo o
-      // resto como autorização — ver cancel-asaas-subscription.
-      await linkRecurrenceToCompany(supabase, company_id, authData.id, "pix");
+      const { data: savedAttempt, error: saveAttemptError } = await supabase
+        .from("subscription_checkout_attempts")
+        .update({
+          checkout_status: pixAutomaticCheckoutStatus(correlation.authorizationStatus),
+          authorization_status: correlation.authorizationStatus,
+          asaas_authorization_id: correlation.authorizationId,
+          asaas_subscription_id: correlation.subscriptionId,
+          pix_conciliation_identifier: correlation.conciliationIdentifier,
+          pix_end_to_end_identifier: correlation.endToEndIdentifier,
+          pix_qr_code: correlation.qrCode,
+          pix_copy_paste: correlation.copyPaste,
+          pix_expiration_date: pixExpirationDate,
+          last_error_code: null,
+        })
+        .eq("id", attempt.id)
+        .eq("checkout_status", "CREATING")
+        .select("id")
+        .maybeSingle();
 
-      // Busca primeiro payment real (pay_*) da authorization — o webhook chega com pay_*.
-      let realFirstPaymentId: string | null = null;
-      try {
-        const subPayments = await asaas.get(`/payments`, buildQuery({ subscription: authData.id, limit: 1, order: "ASC" }));
-        if (subPayments?.data?.length > 0) realFirstPaymentId = subPayments.data[0].id;
-      } catch (e) {
-        console.log(`[pix-auto] sem payment ainda para auth ${authData.id}:`, (e as Error).message);
+      if (saveAttemptError || !savedAttempt?.id) {
+        console.error("[pix-auto] autorização criada, mas a correlação local falhou", {
+          attempt_id: attempt.id,
+          authorization_id: correlation.authorizationId,
+          error: saveAttemptError?.message ?? "sem linha",
+        });
+        try {
+          await asaas.delete(
+            `/pix/automatic/authorizations/${encodeURIComponent(correlation.authorizationId)}`,
+          );
+          await tryWrite(
+            "encerramento da tentativa Pix Automático revogada",
+            supabase
+              .from("subscription_checkout_attempts")
+              .update({ checkout_status: "FAILED", last_error_code: "LOCAL_UPDATE_FAILED" })
+              .eq("id", attempt.id),
+            {
+              warnings,
+              recovery: { checkout_attempt_id: attempt.id, target_status: "FAILED" },
+            },
+          );
+        } catch {
+          await tryWrite(
+            "quarentena da tentativa Pix Automático sem rollback confirmado",
+            supabase
+              .from("subscription_checkout_attempts")
+              .update({ checkout_status: "CREATE_UNKNOWN", last_error_code: "LOCAL_UPDATE_FAILED" })
+              .eq("id", attempt.id),
+            {
+              warnings,
+              recovery: { checkout_attempt_id: attempt.id, target_status: "CREATE_UNKNOWN" },
+            },
+          );
+        }
+        throw new Error("A autorização não pôde ser concluída com segurança.");
       }
 
-      const savedAsaasPaymentId = realFirstPaymentId || authData.id;
-      // NÃO-FATAL: a cobrança JÁ existe na Asaas. Sem esta linha o `local_payment_id`
-      // volta vazio e o webhook precisa materializar a linha quando o PAYMENT_*
-      // chegar. Falhar alto aqui faria o cliente tentar de novo e gerar uma
-      // SEGUNDA cobrança — cobrar duas vezes é pior que reconciliar depois.
-      const savedPayment = await tryWriteReturning<{ id: string }>(
-        "registro local da cobrança do Pix Automático (subscription_payments)",
-        supabase
-          .from("subscription_payments")
-          .insert({
-            company_id,
-            asaas_payment_id: savedAsaasPaymentId,
-            asaas_customer_id: asaasCustomerId,
-            amount,
-            status: "PENDING",
-            payment_method: "pix",
-            billing_type: "PIX",
-            billing_cycle: cycleForDb,
-            type: paymentType,
-            pix_qr_code: pixQrCode,
-            pix_copy_paste: pixCopyPaste,
-            pix_expiration_date: pixExpirationDate,
-            due_date: dueDateStr,
-          })
-          .select()
-          .single(),
-        {
-          warnings,
-          recovery: {
-            company_id,
-            asaas_payment_id: savedAsaasPaymentId,
-            asaas_authorization_id: authData.id,
-            amount,
-            billing_type: "PIX",
-          },
-        },
+      await linkRecurrenceToCompany(
+        supabase,
+        company_id,
+        correlation.subscriptionId || correlation.authorizationId,
+        "pix",
       );
 
       return new Response(
         JSON.stringify({
           success: true,
-          payment_id: authData.id,
-          status: authData.status || "PENDING",
-          pix_qr_code: pixQrCode,
-          pix_copy_paste: pixCopyPaste,
+          payment_id: correlation.authorizationId,
+          status: correlation.authorizationStatus,
+          pix_qr_code: correlation.qrCode,
+          pix_copy_paste: correlation.copyPaste,
           pix_expiration_date: pixExpirationDate,
           due_date: dueDateStr,
-          local_payment_id: savedPayment?.id,
-          ...warnings.toBody(),
-          authorization_id: authData.id,
+          checkout_attempt_id: attempt.id,
+          authorization_id: correlation.authorizationId,
+          subscription_id: correlation.subscriptionId,
           is_recurring: true,
           pix_automatic: true,
         }),

@@ -85,6 +85,10 @@ import {
 import { resolveNfseRepricedRenewalAmount } from "../_shared/nfse-base-reprice.ts";
 import { syncCompanySubscriptionPrice } from "../_shared/company-subscription-price-sync.ts";
 import {
+  paymentPixCorrelationCandidates,
+  pixAutomaticCheckoutStatus,
+} from "../_shared/asaas-pix-automatic.ts";
+import {
   invoiceStatusFromEvent,
   safeInvoiceErrorMessage,
 } from "../_shared/subscription-nfse.ts";
@@ -1467,9 +1471,110 @@ function digitsOnly(v: unknown): string {
 async function resolveCompany(
   supabase: any,
   payment: any,
-): Promise<{ company: any; matchedBy: string } | null> {
+): Promise<{ company: any; matchedBy: string; checkoutAttemptId?: string } | null> {
+  const companyById = async (companyId: string, matchedBy: string, checkoutAttemptId?: string) => {
+    const { data, error } = await supabase
+      .from("companies")
+      .select(COMPANY_COLS)
+      .eq("id", companyId)
+      .maybeSingle();
+    if (error) {
+      throw new RetryableWebhookError(
+        `resolveCompany por ${matchedBy} falhou: ${error.message}`,
+        error,
+      );
+    }
+    return data ? { company: data, matchedBy, checkoutAttemptId } : null;
+  };
+
+  // 0) O pay_* ja pode ter sido correlacionado/materializado localmente.
+  if (payment.id) {
+    const { data: localPayment, error: localPaymentError } = await supabase
+      .from("subscription_payments")
+      .select("company_id")
+      .eq("asaas_payment_id", payment.id)
+      .maybeSingle();
+    if (localPaymentError) {
+      throw new RetryableWebhookError(
+        `resolveCompany por asaas_payment_id falhou: ${localPaymentError.message}`,
+        localPaymentError,
+      );
+    }
+    if (localPayment?.company_id) {
+      const resolved = await companyById(localPayment.company_id, "asaas_payment_id");
+      if (resolved) return resolved;
+    }
+
+    const { data: attemptByPayment, error: attemptByPaymentError } = await supabase
+      .from("subscription_checkout_attempts")
+      .select("id, company_id")
+      .eq("asaas_payment_id", payment.id)
+      .maybeSingle();
+    if (attemptByPaymentError) {
+      throw new RetryableWebhookError(
+        `resolveCompany por checkout payment falhou: ${attemptByPaymentError.message}`,
+        attemptByPaymentError,
+      );
+    }
+    if (attemptByPayment?.company_id) {
+      const resolved = await companyById(
+        attemptByPayment.company_id,
+        "checkout_asaas_payment_id",
+        attemptByPayment.id,
+      );
+      if (resolved) return resolved;
+    }
+  }
+
+  // 0b) O primeiro Pix do consentimento pode vir sem subscription/externalReference
+  // e com um customer pagador temporario. A chave exata do QR e a ponte segura.
+  for (const correlation of paymentPixCorrelationCandidates(payment)) {
+    for (const column of [
+      "pix_conciliation_identifier",
+      "pix_qr_code_id",
+      "pix_end_to_end_identifier",
+    ]) {
+      const { data: attempt, error } = await supabase
+        .from("subscription_checkout_attempts")
+        .select("id, company_id")
+        .eq(column, correlation)
+        .maybeSingle();
+      if (error) {
+        throw new RetryableWebhookError(
+          `resolveCompany por ${column} falhou: ${error.message}`,
+          error,
+        );
+      }
+      if (attempt?.company_id) {
+        const resolved = await companyById(attempt.company_id, column, attempt.id);
+        if (resolved) return resolved;
+      }
+    }
+  }
+
   // 1) por subscription/authorization id
   if (payment.subscription) {
+    const { data: attempt, error: attemptError } = await supabase
+      .from("subscription_checkout_attempts")
+      .select("id, company_id")
+      .or(
+        `asaas_subscription_id.eq.${payment.subscription},asaas_authorization_id.eq.${payment.subscription}`,
+      )
+      .maybeSingle();
+    if (attemptError) {
+      throw new RetryableWebhookError(
+        `resolveCompany por checkout subscription falhou: ${attemptError.message}`,
+        attemptError,
+      );
+    }
+    if (attempt?.company_id) {
+      const resolved = await companyById(
+        attempt.company_id,
+        "checkout_subscription",
+        attempt.id,
+      );
+      if (resolved) return resolved;
+    }
     const { data, error } = await supabase
       .from("companies")
       .select(COMPANY_COLS)
@@ -1563,6 +1668,57 @@ async function resolveCompany(
     }
   }
   return null;
+}
+
+async function linkCheckoutAttemptPayment(
+  supabase: any,
+  attemptId: string | undefined,
+  payment: any,
+): Promise<boolean> {
+  if (!attemptId || typeof payment?.id !== "string" || !payment.id.startsWith("pay_")) {
+    return true;
+  }
+  const { data: attempt, error } = await supabase
+    .from("subscription_checkout_attempts")
+    .select("id, amount, asaas_payment_id")
+    .eq("id", attemptId)
+    .maybeSingle();
+  if (error) {
+    throw new RetryableWebhookError(
+      `leitura da tentativa de checkout falhou (${attemptId}): ${error.message}`,
+      error,
+    );
+  }
+  if (!attempt) return false;
+  if (attempt.asaas_payment_id && attempt.asaas_payment_id !== payment.id) {
+    console.error("[pix-auto] tentativa ja vinculada a outro pay_*", {
+      attempt_id: attemptId,
+      incoming_payment_id: payment.id,
+    });
+    return false;
+  }
+  if (Math.abs(Number(attempt.amount) - Number(payment.value || 0)) > 0.02) {
+    console.error("[pix-auto] valor do pagamento diverge da tentativa", {
+      attempt_id: attemptId,
+      payment_id: payment.id,
+    });
+    return false;
+  }
+
+  await applyWrite(
+    "vinculo do pay_* a tentativa Pix Automatico",
+    supabase
+      .from("subscription_checkout_attempts")
+      .update({
+        asaas_payment_id: payment.id,
+        ...(typeof payment.pixQrCodeId === "string"
+          ? { pix_qr_code_id: payment.pixQrCodeId }
+          : {}),
+      })
+      .eq("id", attemptId),
+    { rethrow: retryableRethrow("vinculo do pay_* a tentativa Pix Automatico") },
+  );
+  return true;
 }
 
 /**
@@ -1889,54 +2045,83 @@ Deno.serve(async (req) => {
     // nada de crédito de LTV. Só confirmamos o recebimento (200) pra não ficar
     // silenciosamente ignorado — paridade com o EcoSistema.
     // ==========================================================
-    if (event === "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_CREATED") {
+    if (event.startsWith("PIX_AUTOMATIC_RECURRING_AUTHORIZATION_")) {
       const authorization = body.pixAutomatic || body.authorization || body;
       const authId: string | undefined =
         authorization?.id || authorization?.authorizationId;
-      console.log(
-        `[pix-auto] autorização CRIADA (informativo) authId=${authId ?? "n/d"} — sem processamento financeiro`,
-      );
-      return json({ received: true, informational: true });
-    }
-
-    // ==========================================================
-    // PIX AUTOMÁTICO — autorização ATIVADA (apenas confirma a recorrência)
-    // ----------------------------------------------------------
-    // FM2-b (idempotência): este evento NÃO move dinheiro. Ele só sinaliza que
-    // o cliente autorizou o débito automático Pix. O dinheiro/renovação SEMPRE
-    // chega depois via PAYMENT_RECEIVED/PAYMENT_CONFIRMED com o pay_* REAL — a
-    // empresa tem asaas_subscription_id=aut_* (e asaas_customer_id), então esses
-    // eventos resolvem a company pela cascata (subscription → customer).
-    //
-    // Por que NÃO processamos aqui: o handler antigo usava o authId (aut_*) como
-    // fallback de asaas_payment_id e chamava processConfirmedPayment. Isso CEGAVA
-    // o mutex credit_ltv_once_for_payment (que casa por asaas_payment_id): o aut_*
-    // creditava LTV/estendia vencimento, e quando o pay_* real chegava ele creditava
-    // DE NOVO (chave diferente) → renovação dupla. Agora: log + 200, ZERO efeito
-    // financeiro, e NUNCA gravamos aut_* em subscription_payments.asaas_payment_id.
-    // A 1ª ativação da assinatura acontece no 1º PAYMENT_RECEIVED desse aut_*.
-    // ==========================================================
-    if (event === "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_ACTIVATED") {
-      const authorization = body.pixAutomatic || body.authorization || body;
-      const authId: string | undefined =
-        authorization?.id || authorization?.authorizationId;
-
       if (!authId) {
         return json({ received: true, ignored: "sem authorizationId" });
       }
 
-      const { data: companyByAuth } = await supabase
-        .from("companies")
-        .select("id, name")
-        .eq("asaas_subscription_id", authId)
+      const contractId = typeof authorization?.contractId === "string"
+        ? authorization.contractId
+        : null;
+      let { data: attempt, error: attemptError } = await supabase
+        .from("subscription_checkout_attempts")
+        .select("id, company_id")
+        .eq("asaas_authorization_id", authId)
         .maybeSingle();
+      if (!attempt?.id && !attemptError && contractId) {
+        const byContract = await supabase
+          .from("subscription_checkout_attempts")
+          .select("id, company_id")
+          .eq("gateway_correlation_ref", contractId)
+          .maybeSingle();
+        attempt = byContract.data;
+        attemptError = byContract.error;
+      }
+      if (attemptError) {
+        throw new RetryableWebhookError(
+          `correlacao da autorizacao Pix falhou: ${attemptError.message}`,
+          attemptError,
+        );
+      }
+
+      const eventStatus = event.replace("PIX_AUTOMATIC_RECURRING_AUTHORIZATION_", "");
+      const checkoutStatus = pixAutomaticCheckoutStatus(eventStatus);
+      if (attempt?.id) {
+        await applyWrite(
+          "atualizacao da autorizacao Pix Automatico",
+          supabase
+            .from("subscription_checkout_attempts")
+            .update({
+              checkout_status: checkoutStatus,
+              authorization_status: authorization?.status || eventStatus,
+              asaas_authorization_id: authId,
+              asaas_subscription_id: authorization?.subscriptionId || null,
+              pix_end_to_end_identifier: authorization?.endToEndIdentifier || null,
+              pix_conciliation_identifier:
+                authorization?.immediateQrCode?.conciliationIdentifier || null,
+            })
+            .eq("id", attempt.id),
+          { rethrow: retryableRethrow("atualizacao da autorizacao Pix Automatico") },
+        );
+
+        if (checkoutStatus === "ACTIVE") {
+          await applyWrite(
+            "vinculo da recorrencia Pix Automatico ativa",
+            supabase
+              .from("companies")
+              .update({
+                asaas_subscription_id: authorization?.subscriptionId || authId,
+                payment_method: "pix",
+              })
+              .eq("id", attempt.company_id),
+            { rethrow: retryableRethrow("vinculo da recorrencia Pix Automatico ativa") },
+          );
+        }
+      }
 
       console.log(
-        `[pix-auto] autorização ATIVADA (confirmação de recorrência) authId=${authId} ` +
-          `company=${companyByAuth?.name ?? "n/d"} — SEM processamento financeiro ` +
-          `(dinheiro vem nos PAYMENT_RECEIVED/CONFIRMED com pay_* real)`,
+        `[pix-auto] autorização ${checkoutStatus} authId=${authId} ` +
+          `attempt=${attempt?.id ?? "n/d"} — SEM processamento financeiro`,
       );
-      return json({ received: true, authorization_confirmed: true, matched: !!companyByAuth });
+      return json({
+        received: true,
+        authorization_status: checkoutStatus,
+        matched: !!attempt?.id,
+        informational: true,
+      });
     }
 
     // ==========================================================
@@ -1983,6 +2168,18 @@ Deno.serve(async (req) => {
     // ---------- PAYMENT_CREATED: linka pay_* à subscription_payments ----------
     if (event === "PAYMENT_CREATED") {
       const resolved = await resolveCompany(supabase, payment);
+      if (resolved?.checkoutAttemptId) {
+        const linked = await linkCheckoutAttemptPayment(
+          supabase,
+          resolved.checkoutAttemptId,
+          payment,
+        );
+        if (!linked) {
+          await recordUnmatchedPayment(supabase, payment);
+          await recordWebhookLedger(supabase, body);
+          return json({ received: true, matched: false, quarantined: true });
+        }
+      }
       const repricedAmount = resolved?.company
         ? await syncNfseBaseRepriceRenewal(supabase, resolved.company, payment)
         : null;
@@ -2252,6 +2449,19 @@ Deno.serve(async (req) => {
         return json({ received: true, matched: false, unmatched_recorded: true });
       }
 
+      if (resolved.checkoutAttemptId) {
+        const linked = await linkCheckoutAttemptPayment(
+          supabase,
+          resolved.checkoutAttemptId,
+          payment,
+        );
+        if (!linked) {
+          await recordUnmatchedPayment(supabase, payment);
+          await recordWebhookLedger(supabase, body);
+          return json({ received: true, matched: false, quarantined: true });
+        }
+      }
+
       const result = await processConfirmedPayment(supabase, resolved.company, {
         asaasPaymentId: payment.id,
         amount: Number(payment.value || 0),
@@ -2261,6 +2471,24 @@ Deno.serve(async (req) => {
         dueDate: payment.dueDate ?? null,
         matchedBy: resolved.matchedBy,
       });
+      if (resolved.checkoutAttemptId) {
+        await tryWrite(
+          "conclusao da tentativa Pix Automatico",
+          supabase
+            .from("subscription_checkout_attempts")
+            .update({
+              checkout_status: "COMPLETED",
+              completed_at: new Date().toISOString(),
+            })
+            .eq("id", resolved.checkoutAttemptId),
+          {
+            recovery: {
+              checkout_attempt_id: resolved.checkoutAttemptId,
+              asaas_payment_id: payment.id,
+            },
+          },
+        );
+      }
       await recordWebhookLedger(supabase, body);
       return json({ received: true, ...result });
     }

@@ -22,6 +22,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCors } from "../_shared/cors.ts";
 import { asaas, AsaasConfigError, AsaasApiError } from "../_shared/asaas-client.ts";
 import { authorizeAsaasCompany } from "../_shared/asaas-auth.ts";
+import {
+  isPaidAsaasPaymentStatus,
+  pixAutomaticCheckoutStatus,
+} from "../_shared/asaas-pix-automatic.ts";
 
 class ValidationError extends Error {}
 
@@ -52,12 +56,19 @@ Deno.serve(async (req) => {
       .select("company_id")
       .eq("asaas_payment_id", payment_id)
       .maybeSingle();
+    const { data: ownerAttempt } = ownerPayment
+      ? { data: null }
+      : await supabase
+          .from("subscription_checkout_attempts")
+          .select("id, company_id, asaas_authorization_id")
+          .eq("asaas_authorization_id", payment_id)
+          .maybeSingle();
 
     // --- Auth: própria empresa OU super_admin ---
     const auth = await authorizeAsaasCompany(
       supabase,
       req.headers.get("Authorization"),
-      ownerPayment?.company_id ?? null,
+      ownerPayment?.company_id ?? ownerAttempt?.company_id ?? null,
     );
     if (!auth.ok) {
       return new Response(
@@ -66,7 +77,7 @@ Deno.serve(async (req) => {
       );
     }
     // Pagamento desconhecido: só super_admin pode sondar (evita oracle cross-tenant).
-    if (!ownerPayment && !auth.isSuperAdmin) {
+    if (!ownerPayment && !ownerAttempt && !auth.isSuperAdmin) {
       return new Response(
         JSON.stringify({ error: "Você não tem permissão para esta empresa." }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -82,8 +93,22 @@ Deno.serve(async (req) => {
     if (isPixAutomaticAuth) {
       try {
         const authData = await asaas.get(`/pix/automatic/authorizations/${payment_id}`);
-        const isPaid = authData.status === "ACTIVATED" || authData.status === "CONFIRMED";
-        asaasStatus = isPaid ? "CONFIRMED" : (authData.status || "PENDING");
+        // Consentimento ativo não é prova de movimentação financeira. O checkout
+        // só fica pago quando existir um pay_* RECEIVED/CONFIRMED no webhook.
+        asaasStatus = pixAutomaticCheckoutStatus(authData.status);
+        if (ownerAttempt?.id) {
+          await supabase
+            .from("subscription_checkout_attempts")
+            .update({
+              checkout_status: asaasStatus,
+              authorization_status: authData.status || asaasStatus,
+              asaas_subscription_id: authData.subscriptionId || null,
+              pix_end_to_end_identifier: authData.endToEndIdentifier || null,
+              pix_conciliation_identifier:
+                authData.immediateQrCode?.conciliationIdentifier || null,
+            })
+            .eq("id", ownerAttempt.id);
+        }
       } catch (e) {
         // Pix Automático depende de webhook; se a consulta falhar, devolve PENDING.
         console.error("Falha ao consultar autorização Pix Automático:", (e as Error).message);
@@ -98,7 +123,7 @@ Deno.serve(async (req) => {
       invoiceUrl = payment.invoiceUrl ?? null;
     }
 
-    const isPaid = asaasStatus === "RECEIVED" || asaasStatus === "CONFIRMED";
+    const isPaid = isPixAutomaticAuth ? false : isPaidAsaasPaymentStatus(asaasStatus);
 
     // Atualiza o status local (sem renovar assinatura — isso é do webhook).
     const { data: localPayment } = await supabase
@@ -119,7 +144,13 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ status: asaasStatus, is_paid: isPaid, invoice_url: invoiceUrl }),
+      JSON.stringify({
+        status: asaasStatus,
+        authorization_status: isPixAutomaticAuth ? asaasStatus : null,
+        payment_status: isPixAutomaticAuth ? null : asaasStatus,
+        is_paid: isPaid,
+        invoice_url: invoiceUrl,
+      }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error: unknown) {

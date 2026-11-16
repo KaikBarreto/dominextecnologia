@@ -166,7 +166,7 @@ export function AdminFinancialOverview({
           <div
             role="group"
             aria-label="Tipo de distribuição"
-            className="flex gap-1"
+            className="inline-flex gap-1 rounded-xl border bg-background p-1 shadow-sm"
           >
             {(["income", "expense"] as const).map((type) => (
               <Button
@@ -175,8 +175,8 @@ export function AdminFinancialOverview({
                 variant="ghost"
                 aria-pressed={chartType === type}
                 className={chartType === type
-                  ? "bg-black text-white hover:bg-zinc-800 hover:text-white"
-                  : ""}
+                  ? type === "income" ? "bg-emerald-700 text-white hover:bg-emerald-800 hover:text-white" : "bg-rose-700 text-white hover:bg-rose-800 hover:text-white"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"}
                 onClick={() => setChartType(type)}
               >
                 {type === "income" ? "Receitas" : "Despesas"}

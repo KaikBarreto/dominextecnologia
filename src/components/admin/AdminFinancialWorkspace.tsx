@@ -12,6 +12,8 @@ import {
 import {
   AdminFinancialPeriodFilter,
   AdminFinancialShell,
+  AdminFinancialSubnav,
+  getAdminFinancialSection,
 } from "./AdminFinancialShell";
 import { AdminFinancialOverview } from "./AdminFinancialOverview";
 import { AdminFinancialMovements } from "./AdminFinancialMovements";
@@ -32,6 +34,12 @@ export function AdminFinancialWorkspace(
   },
 ) {
   const [active, setActive] = useState("overview");
+  const [lastTabs, setLastTabs] = useState<Record<string, string>>({ accounts: "payables", reports: "dre", settings: "settings" });
+  const selectPage = (page: string) => {
+    setActive(page);
+    const section = getAdminFinancialSection(page);
+    setLastTabs(current => ({ ...current, [section]: page }));
+  };
   const [period, setPeriod] = useState("thisMonth");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -118,7 +126,7 @@ export function AdminFinancialWorkspace(
             canManage={canManage}
             onRefresh={() => gateway.refetch()}
             onCreate={create}
-            onNavigate={setActive}
+            onNavigate={selectPage}
           >
             <AdminFinancialMovements
               transactions={transactions.slice(0, 10)}
@@ -169,7 +177,7 @@ export function AdminFinancialWorkspace(
           <AdminCashFlowSection
             canManage={canManage}
             onManageAccounts={(d) =>
-              setActive(d === "debit" ? "payables" : "receivables")}
+              selectPage(d === "debit" ? "payables" : "receivables")}
           />
         );
       case "dre":
@@ -207,10 +215,10 @@ export function AdminFinancialWorkspace(
   return (
     <>
       <AdminFinancialShell
-        active={active}
-        onChange={setActive}
+        active={getAdminFinancialSection(active)}
+        onChange={section => selectPage(lastTabs[section] ?? section)}
         periodControl={
-          <AdminFinancialPeriodFilter
+          ["overview", "income", "expenses", "history", "dre"].includes(active) && <AdminFinancialPeriodFilter
             value={period}
             onChange={setPeriod}
             from={from}
@@ -222,6 +230,7 @@ export function AdminFinancialWorkspace(
           />
         }
       >
+        <AdminFinancialSubnav active={active} onChange={selectPage} />
         {content()}
       </AdminFinancialShell>
       <AdminFinancialMovementForm

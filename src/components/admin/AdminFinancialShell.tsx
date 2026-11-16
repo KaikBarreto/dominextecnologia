@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import {
   Building2,
   History,
@@ -11,19 +11,57 @@ import {
   Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DateRangeFilter, type DatePreset } from "@/components/ui/DateRangeFilter";
+import { format } from "date-fns";
+import { getAdminFinancialRange } from "@/lib/adminFinancialDates";
 export const ADMIN_FINANCIAL_SECTIONS = [
   { id: "overview", label: "Visão geral", icon: LayoutDashboard },
   { id: "income", label: "Receitas", icon: TrendingUp },
   { id: "expenses", label: "Despesas", icon: TrendingDown },
-  { id: "payables", label: "Contas a pagar", icon: TrendingDown },
-  { id: "receivables", label: "Contas a receber", icon: TrendingUp },
+  { id: "accounts", label: "Contas", icon: Wallet },
   { id: "reconciliation", label: "Conciliação bancária", icon: Inbox },
-  { id: "dre", label: "Resultado (DRE)", icon: PieChart },
-  { id: "cashflow", label: "Fluxo de caixa (DFC)", icon: Wallet },
-  { id: "banks", label: "Contas bancárias", icon: Building2 },
+  { id: "reports", label: "Relatórios", icon: PieChart },
   { id: "history", label: "Histórico", icon: History },
   { id: "settings", label: "Configurações", icon: Settings },
 ] as const;
+export const ADMIN_FINANCIAL_SUBSECTIONS = {
+  accounts: [
+    { id: "payables", label: "A pagar", icon: TrendingDown },
+    { id: "receivables", label: "A receber", icon: TrendingUp },
+  ],
+  reports: [
+    { id: "dre", label: "DRE", icon: PieChart },
+    { id: "cashflow", label: "DFC", icon: Wallet },
+  ],
+  settings: [
+    { id: "settings", label: "Categorias", icon: Settings },
+    { id: "banks", label: "Contas bancárias", icon: Building2 },
+  ],
+} as const;
+
+export function getAdminFinancialSection(page: string) {
+  return Object.entries(ADMIN_FINANCIAL_SUBSECTIONS)
+    .find(([, tabs]) => tabs.some(tab => tab.id === page))?.[0] ?? page;
+}
+
+export function AdminFinancialSubnav({ active, onChange }: {
+  active: string;
+  onChange: (page: string) => void;
+}) {
+  const section = getAdminFinancialSection(active);
+  const tabs = ADMIN_FINANCIAL_SUBSECTIONS[section as keyof typeof ADMIN_FINANCIAL_SUBSECTIONS];
+  if (!tabs) return null;
+  const label = ADMIN_FINANCIAL_SECTIONS.find(item => item.id === section)?.label;
+  return <nav aria-label={`Opções de ${label}`} className="mb-5 flex flex-wrap gap-3 border-b border-border sm:gap-5">
+    {tabs.map(({ id, label, icon: Icon }) => <button
+      key={id} type="button" aria-current={active === id ? "page" : undefined}
+      onClick={() => onChange(id)}
+      className={cn("-mb-px flex min-h-11 items-center gap-1.5 border-b-2 px-1 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring",
+        active === id ? "border-foreground font-semibold text-foreground" : "border-transparent text-muted-foreground hover:border-border hover:text-foreground")}
+    ><Icon className="hidden h-4 w-4 shrink-0 sm:block" aria-hidden="true" />{label}</button>)}
+  </nav>;
+}
+
 export function AdminFinancialShell(
   { active, onChange, periodControl, children }: {
     active: string;
@@ -72,10 +110,10 @@ export function AdminFinancialShell(
               aria-current={active === id ? "page" : undefined}
               onClick={() => onChange(id)}
               className={cn(
-                "flex min-h-11 shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring",
+                "flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-3 py-2 text-left text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring",
                 active === id
-                  ? "bg-black text-white"
-                  : "bg-background text-foreground hover:bg-black hover:text-white",
+                  ? "border-foreground text-foreground font-semibold"
+                  : "border-transparent text-muted-foreground hover:border-border hover:text-foreground",
               )}
             >
               <Icon className="h-4 w-4 shrink-0" />
@@ -103,61 +141,29 @@ export function AdminFinancialPeriodFilter(
     onCustomChange: (from: string, to: string) => void;
   },
 ) {
-  return (
-    <div className="flex flex-wrap items-end gap-2">
-      <div>
-        <label
-          className="mb-1 block text-xs font-medium"
-          htmlFor="admin-finance-period"
-        >
-          Período das movimentações
-        </label>
-        <select
-          id="admin-finance-period"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="h-10 rounded-lg border bg-background px-3 text-sm"
-        >
-          <option value="today">Hoje</option>
-          <option value="7days">Últimos 7 dias</option>
-          <option value="thisMonth">Este mês</option>
-          <option value="lastMonth">Mês passado</option>
-          <option value="30days">Últimos 30 dias</option>
-          <option value="thisYear">Este ano</option>
-          <option value="allTime">Todo o período</option>
-          <option value="custom">Personalizado</option>
-        </select>
-      </div>
-      {value === "custom" && (
-        <>
-          <div>
-            <label className="mb-1 block text-xs" htmlFor="admin-finance-from">
-              De
-            </label>
-            <input
-              className="h-10 max-w-full rounded-lg border bg-background px-2 text-sm"
-              id="admin-finance-from"
-              type="date"
-              value={from}
-              max={to || undefined}
-              onChange={(e) => onCustomChange(e.target.value, to)}
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs" htmlFor="admin-finance-to">
-              Até
-            </label>
-            <input
-              className="h-10 max-w-full rounded-lg border bg-background px-2 text-sm"
-              id="admin-finance-to"
-              type="date"
-              value={to}
-              min={from || undefined}
-              onChange={(e) => onCustomChange(from, e.target.value)}
-            />
-          </div>
-        </>
-      )}
-    </div>
-  );
+  const presets: Record<string, DatePreset> = { allTime: "all", today: "today", "7days": "last7", thisMonth: "this_month", lastMonth: "last_month", "30days": "last30", thisYear: "this_year", custom: "custom" };
+  return <div className="min-w-0 [&>div]:max-w-full [&>div]:flex-wrap"><DateRangeFilter
+    preset={presets[value] ?? "all"}
+    value={{ from: from ? new Date(from + "T12:00:00") : undefined, to: to ? new Date(to + "T12:00:00") : undefined }}
+    onPresetChange={next => onChange(Object.keys(presets).find(key => presets[key] === next) ?? "allTime")}
+    onRangeChange={next => onCustomChange(next.from ? format(next.from, "yyyy-MM-dd") : "", next.to ? format(next.to, "yyyy-MM-dd") : "")}
+  /></div>;
+}
+
+export function AdminFinancialDateFilter({ from, to, onChange }: {
+  from: string;
+  to: string;
+  onChange: (from: string, to: string) => void;
+}) {
+  const [preset, setPreset] = useState(from || to ? "custom" : "allTime");
+  return <AdminFinancialPeriodFilter
+    value={preset} from={from} to={to}
+    onChange={next => {
+      setPreset(next);
+      if (next === "custom") return;
+      const range = getAdminFinancialRange(next);
+      onChange(range.from ? format(range.from, "yyyy-MM-dd") : "", range.to ? format(range.to, "yyyy-MM-dd") : "");
+    }}
+    onCustomChange={(start, end) => { setPreset("custom"); onChange(start, end); }}
+  />;
 }

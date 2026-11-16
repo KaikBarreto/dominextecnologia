@@ -4,8 +4,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AdminFinancialDateFilter } from "./AdminFinancialShell";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAdminFinancialCategories } from "@/hooks/useAdminFinancialCategories";
 import {
   fetchAdminAsaasPage,
@@ -15,6 +16,10 @@ import {
 } from "@/lib/adminFinancialAdapter";
 import { FinancialReviewQueue } from "./FinancialReviewQueue";
 import { AdminReconcileMovementDialog } from "./AdminReconcileMovementDialog";
+import { FinancialStatusBadge, financialAmountClass } from "./FinancialRecordBadges";
+import { AdminCategoryPill } from "./financial/AdminCategoryPill";
+import { cn } from "@/lib/utils";
+import { isTechnicalFinancialMovement } from "@/lib/adminFinancialReview";
 const money = (v: number) =>
   Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 export function AdminAsaasReconciliation(
@@ -112,16 +117,6 @@ export function AdminAsaasReconciliation(
     setter(value);
     setPage(0);
   };
-  const statusLabel = (
-    s: string,
-  ) => ({
-    pending_categorization: "Pendente",
-    partially_categorized: "Parcial",
-    manually_categorized: "Classificado",
-    fully_categorized: "Classificado",
-    auto_categorized: "Automático",
-    reconciled: "Conciliado",
-  }[s] || s);
   const open = (row: any) => {
     if (canManage) setSelected(row);
   };
@@ -130,7 +125,7 @@ export function AdminAsaasReconciliation(
       <div
         role="group"
         aria-label="Visão da conciliação"
-        className="flex flex-wrap gap-1 border-b pb-3"
+        className="flex flex-wrap gap-5 border-b border-border"
       >
         {[{ id: "review", label: "Para revisar" }, {
           id: "extract",
@@ -141,8 +136,8 @@ export function AdminAsaasReconciliation(
             variant="ghost"
             aria-pressed={view === tab.id}
             className={view === tab.id
-              ? "bg-black text-white hover:bg-zinc-800 hover:text-white"
-              : ""}
+              ? "-mb-px rounded-none border-b-2 border-foreground bg-transparent px-1 font-semibold text-foreground shadow-none hover:bg-transparent hover:text-foreground"
+              : "-mb-px rounded-none border-b-2 border-transparent bg-transparent px-1 text-muted-foreground shadow-none hover:border-border hover:bg-transparent hover:text-foreground"}
             onClick={() => {
               setView(tab.id);
               setPage(0);
@@ -259,52 +254,18 @@ export function AdminAsaasReconciliation(
               )}
             </section>
             <div className="flex flex-wrap items-end gap-3">
-              <div>
-                <Label htmlFor="asaas-from">De</Label>
-                <Input
-                  id="asaas-from"
-                  type="date"
-                  value={from}
-                  onChange={(e) => reset(setFrom)(e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="asaas-to">Até</Label>
-                <Input
-                  id="asaas-to"
-                  type="date"
-                  min={from}
-                  value={to}
-                  onChange={(e) => reset(setTo)(e.target.value)}
-                />
-              </div>
+              <AdminFinancialDateFilter from={from} to={to} onChange={(start, end) => {
+                setFrom(start);
+                setTo(end);
+                setPage(0);
+              }} />
               <div>
                 <Label htmlFor="asaas-direction">Direção</Label>
-                <select
-                  id="asaas-direction"
-                  className="block h-10 rounded-lg border bg-background px-3 text-sm"
-                  value={direction}
-                  onChange={(e) => reset(setDirection)(e.target.value)}
-                >
-                  <option value="all">Todas</option>
-                  <option value="credit">Entradas</option>
-                  <option value="debit">Saídas</option>
-                </select>
+                <Select value={direction} onValueChange={reset(setDirection)}><SelectTrigger id="asaas-direction" className="mt-1 w-[150px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todas</SelectItem><SelectItem value="credit">Entradas</SelectItem><SelectItem value="debit">Saídas</SelectItem></SelectContent></Select>
               </div>
               <div>
                 <Label htmlFor="asaas-status">Status</Label>
-                <select
-                  id="asaas-status"
-                  className="block h-10 rounded-lg border bg-background px-3 text-sm"
-                  value={status}
-                  onChange={(e) => reset(setStatus)(e.target.value)}
-                >
-                  <option value="">Todos</option>
-                  <option value="pending_categorization">Pendentes</option>
-                  <option value="partially_categorized">Parciais</option>
-                  <option value="manually_categorized">Classificados</option>
-                  <option value="auto_categorized">Automáticos</option>
-                </select>
+                <Select value={status || "all"} onValueChange={(next) => reset(setStatus)(next === "all" ? "" : next)}><SelectTrigger id="asaas-status" className="mt-1 w-[170px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todos</SelectItem><SelectItem value="pending_categorization">Pendentes</SelectItem><SelectItem value="partially_categorized">Parciais</SelectItem><SelectItem value="manually_categorized">Classificados</SelectItem><SelectItem value="auto_categorized">Automáticos</SelectItem></SelectContent></Select>
               </div>
             </div>
             {from && to && from > to
@@ -338,8 +299,9 @@ export function AdminAsaasReconciliation(
                         </tr>
                       </thead>
                       <tbody>
-                        {(rows.data?.items ?? []).map((row) => (
-                          <tr key={row.id} className="border-b last:border-0">
+                        {(rows.data?.items ?? []).map((row) => {
+                          const technical = isTechnicalFinancialMovement(row.asaas_event_type);
+                          return <tr key={row.id} className="border-b last:border-0">
                             <td className="whitespace-nowrap p-3">
                               {new Date(row.occurred_at).toLocaleDateString(
                                 "pt-BR",
@@ -350,43 +312,27 @@ export function AdminAsaasReconciliation(
                               <p className="break-words font-medium">
                                 {row.description}
                               </p>
-                              <p className="mt-1 text-xs text-muted-foreground">
-                                {row.categories.map((name) =>
-                                  categories.data?.find((c) =>
-                                    c.name === name
-                                  )?.label || name
-                                ).join(" · ") || "Sem classificação"}
-                              </p>
+                              <div className="mt-1 flex flex-wrap gap-1">{row.categories.length ? row.categories.map((name) => <AdminCategoryPill key={name} name={name} categories={categories.data ?? []} size="sm" />) : <span className="text-xs text-muted-foreground">Sem categoria</span>}</div>
                             </td>
                             <td className="p-3">
-                              <span
-                                className={`inline-block whitespace-nowrap rounded-full px-2 py-1 text-xs text-white ${
-                                  row.status === "pending_categorization" ||
-                                    row.status === "partially_categorized"
-                                    ? "bg-amber-700"
-                                    : "bg-zinc-800"
-                                }`}
-                              >
-                                {statusLabel(row.status)}
-                              </span>
+                              <FinancialStatusBadge status={technical ? "technical" : row.status} />
                             </td>
-                            <td className="whitespace-nowrap p-3 text-right font-semibold tabular-nums">
+                            <td className={cn("whitespace-nowrap p-3 text-right", financialAmountClass(row.direction))}>
                               {row.direction === "debit" ? "−" : "+"}
                               {money(Number(row.amount))}
                             </td>
                             <td className="p-3">
-                              <Button
+                              {technical ? <span className="text-xs font-semibold text-muted-foreground">Automático</span> : <Button
                                 variant="outline"
                                 size="sm"
                                 disabled={!canManage}
-                                onClick={() =>
-                                  open(row)}
+                                onClick={() => open(row)}
                               >
                                 Conciliar
-                              </Button>
+                              </Button>}
                             </td>
                           </tr>
-                        ))}
+                        })}
                         {!rows.data?.items.length && (
                           <tr>
                             <td

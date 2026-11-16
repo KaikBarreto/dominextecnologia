@@ -423,6 +423,16 @@ verify_jwt = false
 [functions.process-notification-deliveries]
 verify_jwt = false
 
+# Diagnóstico/reparo do webhook master. Chamado por pg_cron com x-cron-secret;
+# o handler valida CRON_SECRET fail-closed e não aceita sessão de tenant.
+[functions.admin-asaas-webhook-health]
+verify_jwt = false
+
+# Reparo interno de pagamento órfão com prova Pix exata; autenticação por
+# x-cron-secret dentro do handler.
+[functions.admin-asaas-reconcile-payment]
+verify_jwt = false
+
 # O handler verifica JWT, empresa, módulo e permissão fiscal.
 [functions.fiscal-goods-document]
 verify_jwt = false

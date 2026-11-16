@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { ADMIN_REVIEW_EVENT_FILTER } from "@/lib/adminFinancialReview";
 import { generateAdminDreHtml } from "@/utils/adminDreHtmlGenerator";
 export async function fetchAdminDreComparison(
   bounds: { periodStartIso: string; periodEndExclusiveIso: string },
@@ -83,7 +84,8 @@ export async function fetchAdminAsaasPage(
     filters.page * 50,
     filters.page * 50 + 49,
   );
-  if (filters.view === "review") q = q.eq("status", "pending_categorization");
+  if (filters.view === "review") q = q.eq("status", "pending_categorization")
+    .or(ADMIN_REVIEW_EVENT_FILTER);
   else if (filters.status) q = q.eq("status", filters.status);
   if (filters.direction !== "all") q = q.eq("direction", filters.direction);
   if (filters.from) q = q.gte("occurred_at", filters.from + "T00:00:00-03:00");

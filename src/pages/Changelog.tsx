@@ -31,7 +31,7 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
-    version: '1.41.7',
+    version: '1.41.8',
     date: '16 de novembro de 2026',
     type: 'patch',
     changes: [
@@ -71,9 +71,26 @@ export const changelog: ChangelogEntry[] = [
         description: 'A confirmação da devolução permanece ao alternar o tamanho da tela, e repetir uma solicitação já concluída conserva a mesma operação. Comprovantes identificam o operador da retirada e respeitam o contexto do caixa.',
       },
       {
+        title: 'Receber abre o atendimento correto',
+        category: 'correcao',
+        description: 'A ação Receber leva ao atendimento selecionado e conserva o contexto do caixa, com conferência das permissões antes de continuar.',
+      },
+      {
         title: 'Recursos disponíveis conforme o acesso ao módulo',
         category: 'melhoria',
         description: 'Empresas com o PDV contratado e ativo acessam os recursos incluídos conforme a assinatura e as permissões do usuário, sem depender de liberações individuais.',
+      },
+    ],
+  },
+  {
+    version: '1.41.7',
+    date: '16 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Renovações por Pix Automático mais confiáveis',
+        category: 'correcao',
+        description: 'O acesso agora é renovado somente depois da confirmação do pagamento. O fluxo também evita autorizações repetidas e consegue conciliar com segurança pagamentos que cheguem sem a referência habitual.',
       },
     ],
   },

@@ -453,7 +453,6 @@ describe('asaas-webhook — a fronteira fatal x não-fatal, no fonte real', () =
 
   it.each([
     // Idempotente + nada reivindicado → FATAL, porque a re-entrega conserta.
-    ['registro do pagamento órfão (ledger_asaas)'],
     ['vínculo da cobrança à assinatura (subscription_payments)'],
     ['marcação de inadimplência (subscription_payments)'],
     ['desativação da empresa inadimplente (companies)'],
@@ -461,6 +460,14 @@ describe('asaas-webhook — a fronteira fatal x não-fatal, no fonte real', () =
     const trecho = aoRedor(label, 300, 900);
     expect(trecho).toContain('applyWrite');
     expect(trecho).toContain('retryableRethrow');
+  });
+
+  it('pagamento órfão já está preservado no ledger antes da resolução comercial', () => {
+    const handler = webhookSource.indexOf('Deno.serve(async (req) =>');
+    const resolver = webhookSource.indexOf('const resolved = await resolveCompany', handler);
+    const ledger = webhookSource.indexOf('await recordWebhookLedger(supabase, body, commercialPayment)', handler);
+    expect(ledger).toBeGreaterThan(handler);
+    expect(ledger).toBeLessThan(resolver);
   });
 
   it('o alerta de pagamento órfão é a exceção consciente: o ledger é fatal, o aviso não', () => {
@@ -488,7 +495,9 @@ describe('asaas-webhook — a fronteira fatal x não-fatal, no fonte real', () =
     const inicio = webhookSource.indexOf('async function resolveCompany');
     const fim = webhookSource.indexOf('async function recordUnmatchedPayment', inicio);
     const trecho = webhookSource.slice(inicio, fim);
-    expect(trecho.match(/new RetryableWebhookError/g)).toHaveLength(4);
+    expect((trecho.match(/new RetryableWebhookError/g) ?? []).length).toBeGreaterThanOrEqual(4);
+    expect(trecho).toContain('resolveCompany por asaas_payment_id falhou');
+    expect(trecho).toContain('resolveCompany por ${column} falhou');
     expect(trecho).toContain('resolveCompany por subscription falhou');
     expect(trecho).toContain('resolveCompany por externalReference falhou');
     expect(trecho).toContain('resolveCompany por customer falhou');

@@ -1,3 +1,4 @@
+import { DateField } from "@/components/ui/date-field";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -336,8 +337,8 @@ export function AdminBankReconciliation({
         </select>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 sm:max-w-md">
-        <div><Label htmlFor="bank-filter-from">De</Label><Input id="bank-filter-from" aria-label="Data inicial" type="date" value={from} onChange={(e) => { setFrom(e.target.value); setPage(0); }} /></div>
-        <div><Label htmlFor="bank-filter-to">Até</Label><Input id="bank-filter-to" aria-label="Data final" type="date" value={to} onChange={(e) => { setTo(e.target.value); setPage(0); }} /></div>
+        <div><Label htmlFor="bank-filter-from">De</Label><DateField id="bank-filter-from" value={from} onChange={(e) => { setFrom(e); setPage(0); }} /></div>
+        <div><Label htmlFor="bank-filter-to">Até</Label><DateField id="bank-filter-to" value={to} onChange={(e) => { setTo(e); setPage(0); }} /></div>
       </div>
       {movements.isLoading ? (
         <p role="status">Carregando extrato…</p>

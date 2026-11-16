@@ -1,8 +1,10 @@
 import { useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { AdminFinancialDateFilter } from "./AdminFinancialShell";
+import { ArrowDownLeft, ArrowUpRight, CheckCircle2, ListFilter } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { financialAmountClass } from "./FinancialRecordBadges";
 
 export type ReviewRow = {
   id: string;
@@ -62,11 +64,11 @@ export function FinancialReviewQueue(props: FinancialReviewQueueProps) {
         <div>
           <h2 className="text-lg font-semibold">Revisão financeira</h2>
           <p className="text-sm text-muted-foreground">
-            Vendas e renovações identificadas são conciliadas automaticamente.
-            Revise aqui os recebimentos sem vínculo e as despesas.
+            Apenas recebimentos e pagamentos que precisam da sua conferência.
+            Movimentos automáticos ficam no extrato da conta.
           </p>
         </div>
-        <p className="text-sm tabular-nums text-muted-foreground">
+        <p className="shrink-0 whitespace-nowrap text-sm tabular-nums text-muted-foreground">
           {props.isLoading
             ? "Carregando pendências..."
             : props.isError || invalidPeriod
@@ -76,56 +78,37 @@ export function FinancialReviewQueue(props: FinancialReviewQueueProps) {
       </div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div
-          className="inline-flex w-fit rounded-lg border p-1"
+          className="inline-flex max-w-full items-center gap-1 rounded-xl border border-border bg-background p-1"
           role="group"
           aria-label="Tipo de movimento"
         >
           {(
             [
-              ["all", "Todos"],
-              ["credit", "Recebimentos"],
-              ["debit", "Despesas"],
+              ["all", "Todos", ListFilter],
+              ["credit", "Recebimentos", ArrowDownLeft],
+              ["debit", "Despesas", ArrowUpRight],
             ] as const
-          ).map(([value, label]) => (
+          ).map(([value, label, Icon]) => (
             <Button
               key={value}
               type="button"
               aria-pressed={props.direction === value}
               size="sm"
               variant={props.direction === value ? "default" : "ghost"}
-              className={props.direction === value
-                ? "bg-slate-950 text-white hover:bg-slate-800"
-                : ""}
+              className={cn("gap-1.5 rounded-lg px-2 text-xs sm:px-3 sm:text-sm", props.direction === value
+                ? "bg-black text-white shadow-sm hover:bg-zinc-800 hover:text-white"
+                : "text-muted-foreground hover:text-foreground")}
               onClick={() => props.onDirectionChange(value)}
             >
+              <Icon className="hidden h-4 w-4 shrink-0 sm:block" aria-hidden="true" />
               {label}
             </Button>
           ))}
         </div>
-        <div className="flex flex-wrap gap-2">
-          <div>
-            <Label htmlFor="financial-review-from">De</Label>
-            <Input
-              id="financial-review-from"
-              aria-label="Data inicial"
-              type="date"
-              max={props.to || undefined}
-              value={props.from}
-              onChange={(event) => props.onFromChange(event.target.value)}
-            />
-          </div>
-          <div>
-            <Label htmlFor="financial-review-to">Até</Label>
-            <Input
-              id="financial-review-to"
-              aria-label="Data final"
-              type="date"
-              min={props.from || undefined}
-              value={props.to}
-              onChange={(event) => props.onToChange(event.target.value)}
-            />
-          </div>
-        </div>
+        <AdminFinancialDateFilter from={props.from} to={props.to} onChange={(from, to) => {
+          props.onFromChange(from);
+          props.onToChange(to);
+        }} />
       </div>
       {invalidPeriod
         ? (
@@ -158,9 +141,11 @@ export function FinancialReviewQueue(props: FinancialReviewQueueProps) {
         )
         : !props.rows.length
         ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">
-            Nenhuma pendência neste filtro.
-          </p>
+          <div className="flex flex-col items-center gap-2 py-12 text-center">
+            <CheckCircle2 className="h-7 w-7 text-emerald-700 dark:text-emerald-400" aria-hidden="true" />
+            <p className="font-semibold">Nenhuma pendência neste filtro</p>
+            <p className="max-w-sm text-sm text-muted-foreground">Os movimentos já conciliados e automáticos continuam disponíveis no extrato da conta.</p>
+          </div>
         )
         : (
           <>
@@ -187,8 +172,8 @@ export function FinancialReviewQueue(props: FinancialReviewQueueProps) {
                       <td className="py-3 pr-3 text-muted-foreground">
                         {row.reason}
                       </td>
-                      <td className="py-3 pr-3 text-right font-medium tabular-nums">
-                        {row.direction === "debit" ? "-" : ""}
+                      <td className={cn("whitespace-nowrap py-3 pr-3 text-right", financialAmountClass(row.direction))}>
+                        {row.direction === "debit" ? "−" : "+"}
                         {money(Math.abs(row.amount))}
                       </td>
                       <td className="py-3 text-right">
@@ -238,8 +223,8 @@ export function FinancialReviewQueue(props: FinancialReviewQueueProps) {
                         {dateBrt(row.occurredAt)} · {row.reason}
                       </p>
                     </div>
-                    <p className="shrink-0 font-medium tabular-nums">
-                      {row.direction === "debit" ? "-" : ""}
+                    <p className={cn("shrink-0", financialAmountClass(row.direction))}>
+                      {row.direction === "debit" ? "−" : "+"}
                       {money(Math.abs(row.amount))}
                     </p>
                   </div>

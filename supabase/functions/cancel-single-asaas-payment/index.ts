@@ -112,6 +112,14 @@ Deno.serve(async (req) => {
     // Pix Automático/assinatura: o id que o checkout devolve é o da AUTORIZAÇÃO,
     // gravado em companies.asaas_subscription_id (a linha local pode ter o pay_*).
     let ownerCompanyId: string | null = localRow?.company_id ?? null;
+    const { data: checkoutAttempt } = ownerCompanyId
+      ? { data: null }
+      : await supabase
+          .from("subscription_checkout_attempts")
+          .select("id, company_id")
+          .eq("asaas_authorization_id", payment_id)
+          .maybeSingle();
+    ownerCompanyId = ownerCompanyId ?? checkoutAttempt?.company_id ?? null;
     if (!ownerCompanyId) {
       const { data: subCompany } = await supabase
         .from("companies")
@@ -165,6 +173,18 @@ Deno.serve(async (req) => {
           `[cancel-single] cancelada na Asaas, mas falhou ao refletir localmente ${payment_id}:`,
           reflectError,
         );
+      }
+      if (checkoutAttempt?.id) {
+        const { error: attemptError } = await supabase
+          .from("subscription_checkout_attempts")
+          .update({ checkout_status: "CANCELLED", authorization_status: "CANCELLED" })
+          .eq("id", checkoutAttempt.id);
+        if (attemptError) {
+          console.error(
+            `[cancel-single] autorização cancelada, mas a tentativa ${checkoutAttempt.id} não foi atualizada:`,
+            attemptError,
+          );
+        }
       }
     };
 

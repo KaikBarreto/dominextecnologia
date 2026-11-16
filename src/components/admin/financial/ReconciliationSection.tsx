@@ -1,3 +1,4 @@
+import { DateField } from "@/components/ui/date-field";
 import { FinancialReviewQueue } from "@/components/admin/FinancialReviewQueue";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -300,25 +301,23 @@ export function ReconciliationSection(
                 <div className="flex flex-wrap items-end gap-3">
                   <div>
                     <Label htmlFor="ledger-from">De</Label>
-                    <Input
+                    <DateField
                       id="ledger-from"
-                      type="date"
                       value={from}
                       onChange={(e) => {
-                        setFrom(e.target.value);
+                        setFrom(e);
                         setPage(0);
                       }}
                     />
                   </div>
                   <div>
                     <Label htmlFor="ledger-to">Até</Label>
-                    <Input
+                    <DateField
                       id="ledger-to"
-                      type="date"
                       value={to}
                       min={from}
                       onChange={(e) => {
-                        setTo(e.target.value);
+                        setTo(e);
                         setPage(0);
                       }}
                     />
