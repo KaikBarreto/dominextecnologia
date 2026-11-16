@@ -20,4 +20,6 @@ BEGIN
  END IF;
  EXECUTE replace(definition,anchor,replacement);
 END $customer_stock_record_shape$;
+-- A rotina só é executada por triggers existentes, nunca pela API.
+REVOKE ALL ON FUNCTION public.guard_customer_scoped_stock_write() FROM PUBLIC,anon,authenticated,service_role;
 COMMIT;
