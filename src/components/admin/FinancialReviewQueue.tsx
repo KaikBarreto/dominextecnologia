@@ -95,12 +95,12 @@ export function FinancialReviewQueue(props: FinancialReviewQueueProps) {
               aria-pressed={props.direction === value}
               size="sm"
               variant={props.direction === value ? "default" : "ghost"}
-              className={cn("gap-1.5 rounded-lg px-3 text-xs sm:text-sm", props.direction === value
+              className={cn("gap-1.5 rounded-lg px-2 text-xs sm:px-3 sm:text-sm", props.direction === value
                 ? "bg-black text-white shadow-sm hover:bg-zinc-800 hover:text-white"
                 : "text-muted-foreground hover:text-foreground")}
               onClick={() => props.onDirectionChange(value)}
             >
-              <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <Icon className="hidden h-4 w-4 shrink-0 sm:block" aria-hidden="true" />
               {label}
             </Button>
           ))}
