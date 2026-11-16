@@ -1,18 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  Activity,
   ArrowLeft,
   LayoutDashboard,
-  Mail,
   Pencil,
-  Phone,
   Plus,
   Search,
   Trash2,
   UserRound,
   Users,
 } from "lucide-react";
+import { formatBRL } from "@/utils/currency";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -281,23 +279,10 @@ export default function AdminSalespersonDetail() {
                               <div className="truncate text-sm font-semibold">
                                 {item.name}
                               </div>
-                              <div className="mt-1 flex flex-wrap gap-1">
-                                <Badge
-                                  variant="outline"
-                                  className="text-[10px] font-normal"
-                                >
-                                  {TEAM_AREA_LABELS[
-                                    item.person_type || "sales"
-                                  ]}
-                                </Badge>
-                                {item.can_receive_sales !== false &&
-                                  item.person_type &&
-                                  item.person_type !== "sales" && (
-                                  <Badge className="bg-slate-700 text-[10px] font-normal text-white">
-                                    Recebe vendas
-                                  </Badge>
-                                )}
-                              </div>
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                {TEAM_AREA_LABELS[item.person_type || "sales"]}
+                                {item.is_active === false && " · Inativo"}
+                              </p>
                             </div>
                           </div>
                         </button>
@@ -379,15 +364,15 @@ export default function AdminSalespersonDetail() {
                     <h1 className="truncate text-2xl font-bold tracking-tight lg:text-3xl">
                       {person.name}
                     </h1>
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      <Badge variant="outline">
+                    <div className="mt-1 flex items-center gap-2">
+                      <p className="text-sm text-muted-foreground">
                         {TEAM_AREA_LABELS[person.person_type || "sales"]}
-                      </Badge>
-                      <Badge
-                        variant={person.is_active ? "default" : "secondary"}
-                      >
-                        {person.is_active ? "Ativo" : "Inativo"}
-                      </Badge>
+                      </p>
+                      {person.is_active === false && (
+                        <Badge className="border-0 bg-red-600 text-white hover:bg-red-600">
+                          Inativo
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -452,50 +437,127 @@ export default function AdminSalespersonDetail() {
                     <CardHeader>
                       <CardTitle>Dados da pessoa</CardTitle>
                     </CardHeader>
-                    <CardContent className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-                      <div className="flex gap-3">
-                        <Mail className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                    <CardContent>
+                      <dl className="grid gap-x-8 gap-y-6 sm:grid-cols-2 xl:grid-cols-3">
                         <div>
-                          <p className="text-xs text-muted-foreground">
+                          <dt className="text-xs text-muted-foreground">
                             E-mail
-                          </p>
-                          <p className="break-all text-sm font-medium">
+                          </dt>
+                          <dd className="mt-1 break-words text-sm font-medium">
                             {person.email || "Não informado"}
-                          </p>
+                          </dd>
                         </div>
-                      </div>
-                      <div className="flex gap-3">
-                        <Phone className="mt-0.5 h-4 w-4 text-muted-foreground" />
                         <div>
-                          <p className="text-xs text-muted-foreground">
+                          <dt className="text-xs text-muted-foreground">
                             Telefone
-                          </p>
-                          <p className="text-sm font-medium">
+                          </dt>
+                          <dd className="mt-1 break-words text-sm font-medium">
                             {person.phone || "Não informado"}
-                          </p>
+                          </dd>
                         </div>
-                      </div>
-                      <div className="flex gap-3">
-                        <Activity className="mt-0.5 h-4 w-4 text-muted-foreground" />
                         <div>
-                          <p className="text-xs text-muted-foreground">
-                            Rodízio de leads
-                          </p>
-                          <p className="text-sm font-medium">
-                            {person.in_rotation
-                              ? "Participa do rodízio"
-                              : "Fora do rodízio"}
-                          </p>
+                          <dt className="text-xs text-muted-foreground">
+                            Situação
+                          </dt>
+                          <dd className="mt-1 break-words text-sm font-medium">
+                            {person.is_active !== false ? "Ativo" : "Inativo"}
+                          </dd>
                         </div>
-                      </div>
-                      <div className="sm:col-span-2 xl:col-span-3">
-                        <p className="text-xs text-muted-foreground">
-                          Observações
-                        </p>
-                        <p className="mt-1 whitespace-pre-wrap text-sm font-medium">
-                          {person.notes || "Sem observações"}
-                        </p>
-                      </div>
+                        <div>
+                          <dt className="text-xs text-muted-foreground">
+                            Valor fixo mensal
+                          </dt>
+                          <dd className="mt-1 break-words text-sm font-medium">
+                            {`R$ ${formatBRL(Number(person.salary) || 0)}`}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs text-muted-foreground">
+                            Comissão sobre vendas
+                          </dt>
+                          <dd className="mt-1 break-words text-sm font-medium">
+                            {person.can_receive_sales === false
+                              ? "Não se aplica"
+                              : person.no_commission
+                              ? "Não gera comissão"
+                              : "Habilitada"}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs text-muted-foreground">
+                            Meta mensal
+                          </dt>
+                          <dd className="mt-1 break-words text-sm font-medium">
+                            {person.can_receive_sales !== false
+                              ? `${person.monthly_goal || 30} vendas`
+                              : "Não se aplica"}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs text-muted-foreground">
+                            Recebe vendas
+                          </dt>
+                          <dd className="mt-1 break-words text-sm font-medium">
+                            {person.can_receive_sales !== false ? "Sim" : "Não"}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs text-muted-foreground">
+                            Papel comercial
+                          </dt>
+                          <dd className="mt-1 break-words text-sm font-medium">
+                            {person.can_receive_sales === false
+                              ? "Não se aplica"
+                              : person.role === "sdr"
+                              ? "SDR"
+                              : "Closer"}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs text-muted-foreground">
+                            Rodízio de leads
+                          </dt>
+                          <dd className="mt-1 break-words text-sm font-medium">
+                            {!person.in_rotation
+                              ? "Fora do rodízio"
+                              : person.is_active &&
+                                  person.can_receive_sales !== false &&
+                                  person.phone?.trim()
+                              ? "Elegível para distribuição"
+                              : "Configurado, mas indisponível"}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs text-muted-foreground">
+                            Meta diária de contatos
+                          </dt>
+                          <dd className="mt-1 break-words text-sm font-medium">
+                            {person.can_receive_sales !== false
+                              ? String(person.daily_goal_contacts ?? 200)
+                              : "Não se aplica"}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs text-muted-foreground">
+                            Meta diária de reuniões
+                          </dt>
+                          <dd className="mt-1 break-words text-sm font-medium">
+                            {person.can_receive_sales !== false
+                              ? String(
+                                person.daily_goal_meetings_scheduled ?? 5,
+                              )
+                              : "Não se aplica"}
+                          </dd>
+                        </div>
+                        <div className="sm:col-span-2 xl:col-span-3">
+                          <dt className="text-xs text-muted-foreground">
+                            Observações
+                          </dt>
+                          <dd className="mt-1 whitespace-pre-wrap text-sm font-medium">
+                            {person.notes || "Sem observações"}
+                          </dd>
+                        </div>
+                      </dl>
                     </CardContent>
                   </Card>
                 </TabsContent>
