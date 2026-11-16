@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { DateField } from "@/components/ui/date-field";
+import { AdminFinancialDateFilter } from "./AdminFinancialShell";
 import { ArrowDownLeft, ArrowUpRight, CheckCircle2, ListFilter } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { financialAmountClass } from "./FinancialRecordBadges";
@@ -105,15 +105,10 @@ export function FinancialReviewQueue(props: FinancialReviewQueueProps) {
             </Button>
           ))}
         </div>
-        <div className="space-y-2">
-        <div className="grid grid-cols-2 gap-3 sm:w-auto">
-          <DateField id="financial-review-from" label="De" max={props.to || undefined}
-            value={props.from} onChange={props.onFromChange} className="min-w-0 sm:w-40" />
-          <DateField id="financial-review-to" label="Até" min={props.from || undefined}
-            value={props.to} onChange={props.onToChange} className="min-w-0 sm:w-40" />
-        </div>
-        {(props.from || props.to) && <Button type="button" variant="ghost" size="sm" className="h-7 px-0 text-xs" onClick={() => { props.onFromChange(""); props.onToChange(""); }}>Limpar datas</Button>}
-        </div>
+        <AdminFinancialDateFilter from={props.from} to={props.to} onChange={(from, to) => {
+          props.onFromChange(from);
+          props.onToChange(to);
+        }} />
       </div>
       {invalidPeriod
         ? (

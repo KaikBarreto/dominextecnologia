@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import {
   Building2,
   History,
@@ -11,8 +11,9 @@ import {
   Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DatePicker } from "@/components/ui/DatePicker";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DateRangeFilter, type DatePreset } from "@/components/ui/DateRangeFilter";
+import { format } from "date-fns";
+import { getAdminFinancialRange } from "@/lib/adminFinancialDates";
 export const ADMIN_FINANCIAL_SECTIONS = [
   { id: "overview", label: "Visão geral", icon: LayoutDashboard },
   { id: "income", label: "Receitas", icon: TrendingUp },
@@ -74,10 +75,10 @@ export function AdminFinancialShell(
               aria-current={active === id ? "page" : undefined}
               onClick={() => onChange(id)}
               className={cn(
-                "flex min-h-11 shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring",
+                "flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-3 py-2 text-left text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring",
                 active === id
-                  ? "bg-black text-white"
-                  : "bg-background text-foreground hover:bg-black hover:text-white",
+                  ? "border-foreground text-foreground font-semibold"
+                  : "border-transparent text-muted-foreground hover:border-border hover:text-foreground",
               )}
             >
               <Icon className="h-4 w-4 shrink-0" />
@@ -105,23 +106,29 @@ export function AdminFinancialPeriodFilter(
     onCustomChange: (from: string, to: string) => void;
   },
 ) {
-  return (
-    <div className="flex flex-wrap items-end gap-2">
-      <div>
-        <label
-          className="mb-1 block text-xs font-medium"
-          htmlFor="admin-finance-period"
-        >
-          Período das movimentações
-        </label>
-        <Select value={value} onValueChange={onChange}><SelectTrigger id="admin-finance-period" className="h-10 w-[190px] bg-background"><SelectValue placeholder="Selecione o período" /></SelectTrigger><SelectContent><SelectItem value="today">Hoje</SelectItem><SelectItem value="7days">Últimos 7 dias</SelectItem><SelectItem value="thisMonth">Este mês</SelectItem><SelectItem value="lastMonth">Mês passado</SelectItem><SelectItem value="30days">Últimos 30 dias</SelectItem><SelectItem value="thisYear">Este ano</SelectItem><SelectItem value="allTime">Todo o período</SelectItem><SelectItem value="custom">Personalizado</SelectItem></SelectContent></Select>
-      </div>
-      {value === "custom" && (
-        <>
-          <div className="w-[150px]"><label className="mb-1 block text-xs" htmlFor="admin-finance-from">De</label><DatePicker id="admin-finance-from" value={from} max={to || undefined} placeholder="dd/mm/aaaa" onValueChange={(next) => onCustomChange(next, to)} /></div>
-          <div className="w-[150px]"><label className="mb-1 block text-xs" htmlFor="admin-finance-to">Até</label><DatePicker id="admin-finance-to" value={to} min={from || undefined} placeholder="dd/mm/aaaa" onValueChange={(next) => onCustomChange(from, next)} /></div>
-        </>
-      )}
-    </div>
-  );
+  const presets: Record<string, DatePreset> = { allTime: "all", today: "today", "7days": "last7", thisMonth: "this_month", lastMonth: "last_month", "30days": "last30", thisYear: "this_year", custom: "custom" };
+  return <div className="min-w-0 [&>div]:max-w-full [&>div]:flex-wrap"><DateRangeFilter
+    preset={presets[value] ?? "all"}
+    value={{ from: from ? new Date(from + "T12:00:00") : undefined, to: to ? new Date(to + "T12:00:00") : undefined }}
+    onPresetChange={next => onChange(Object.keys(presets).find(key => presets[key] === next) ?? "allTime")}
+    onRangeChange={next => onCustomChange(next.from ? format(next.from, "yyyy-MM-dd") : "", next.to ? format(next.to, "yyyy-MM-dd") : "")}
+  /></div>;
+}
+
+export function AdminFinancialDateFilter({ from, to, onChange }: {
+  from: string;
+  to: string;
+  onChange: (from: string, to: string) => void;
+}) {
+  const [preset, setPreset] = useState(from || to ? "custom" : "allTime");
+  return <AdminFinancialPeriodFilter
+    value={preset} from={from} to={to}
+    onChange={next => {
+      setPreset(next);
+      if (next === "custom") return;
+      const range = getAdminFinancialRange(next);
+      onChange(range.from ? format(range.from, "yyyy-MM-dd") : "", range.to ? format(range.to, "yyyy-MM-dd") : "");
+    }}
+    onCustomChange={(start, end) => { setPreset("custom"); onChange(start, end); }}
+  />;
 }

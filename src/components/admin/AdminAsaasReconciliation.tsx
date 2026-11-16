@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { DatePicker } from "@/components/ui/DatePicker";
+import { AdminFinancialDateFilter } from "./AdminFinancialShell";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAdminFinancialCategories } from "@/hooks/useAdminFinancialCategories";
 import {
@@ -125,7 +125,7 @@ export function AdminAsaasReconciliation(
       <div
         role="group"
         aria-label="Visão da conciliação"
-        className="inline-flex flex-wrap gap-1 rounded-xl border bg-background p-1 shadow-sm"
+        className="flex flex-wrap gap-5 border-b border-border"
       >
         {[{ id: "review", label: "Para revisar" }, {
           id: "extract",
@@ -136,8 +136,8 @@ export function AdminAsaasReconciliation(
             variant="ghost"
             aria-pressed={view === tab.id}
             className={view === tab.id
-              ? "bg-black text-white shadow-sm hover:bg-zinc-800 hover:text-white"
-              : "text-muted-foreground hover:bg-background hover:text-foreground"}
+              ? "-mb-px rounded-none border-b-2 border-foreground bg-transparent px-1 font-semibold text-foreground shadow-none hover:bg-transparent hover:text-foreground"
+              : "-mb-px rounded-none border-b-2 border-transparent bg-transparent px-1 text-muted-foreground shadow-none hover:border-border hover:bg-transparent hover:text-foreground"}
             onClick={() => {
               setView(tab.id);
               setPage(0);
@@ -254,8 +254,11 @@ export function AdminAsaasReconciliation(
               )}
             </section>
             <div className="flex flex-wrap items-end gap-3">
-              <div className="w-[150px]"><Label htmlFor="asaas-from">De</Label><DatePicker id="asaas-from" value={from} max={to || undefined} placeholder="dd/mm/aaaa" onValueChange={reset(setFrom)} /></div>
-              <div className="w-[150px]"><Label htmlFor="asaas-to">Até</Label><DatePicker id="asaas-to" value={to} min={from || undefined} placeholder="dd/mm/aaaa" onValueChange={reset(setTo)} /></div>
+              <AdminFinancialDateFilter from={from} to={to} onChange={(start, end) => {
+                setFrom(start);
+                setTo(end);
+                setPage(0);
+              }} />
               <div>
                 <Label htmlFor="asaas-direction">Direção</Label>
                 <Select value={direction} onValueChange={reset(setDirection)}><SelectTrigger id="asaas-direction" className="mt-1 w-[150px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todas</SelectItem><SelectItem value="credit">Entradas</SelectItem><SelectItem value="debit">Saídas</SelectItem></SelectContent></Select>

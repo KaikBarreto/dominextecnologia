@@ -210,7 +210,7 @@ export function AdminFinancialWorkspace(
         active={active}
         onChange={setActive}
         periodControl={
-          <AdminFinancialPeriodFilter
+          ["overview", "income", "expenses", "history", "dre"].includes(active) && <AdminFinancialPeriodFilter
             value={period}
             onChange={setPeriod}
             from={from}
