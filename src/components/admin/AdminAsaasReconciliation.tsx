@@ -117,6 +117,7 @@ export function AdminAsaasReconciliation(
     pending_categorization: "Pendente",
     partially_categorized: "Parcial",
     manually_categorized: "Classificado",
+    fully_categorized: "Classificado",
     auto_categorized: "Automático",
     reconciled: "Conciliado",
   }[s] || s);
