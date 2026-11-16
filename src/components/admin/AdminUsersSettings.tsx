@@ -218,18 +218,20 @@ function CreateUserModal({
   });
 
   const footer = (
-    <div className="flex gap-2">
-      <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">Cancelar</Button>
-      <Button onClick={() => create.mutate()} disabled={create.isPending} className="flex-1">
-        {create.isPending ? 'Criando...' : 'Criar'}
+    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">Cancelar</Button>
+      <Button onClick={() => create.mutate()} disabled={create.isPending} className="w-full sm:w-auto">
+        {create.isPending ? 'Criando...' : 'Criar usuário'}
       </Button>
     </div>
   );
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Novo usuário admin" description="Crie um acesso ao painel administrativo" footer={footer}>
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <ResponsiveModal open={open} onOpenChange={onOpenChange} title="Novo usuário admin" description="Crie um acesso ao painel administrativo" footer={footer} className="sm:max-w-5xl" drawerClassName="max-h-[92dvh]">
+      <div className="grid min-h-0 gap-0 lg:grid-cols-[minmax(16rem,19rem)_minmax(0,1fr)] lg:divide-x lg:divide-border">
+        <div className="space-y-5 py-2 lg:sticky lg:top-0 lg:self-start lg:pr-6">
+          <h3 className="text-sm font-semibold">Dados do usuário</h3>
+        <div className="grid grid-cols-1 gap-5">
           <div className="space-y-1.5"><Label>Nome</Label><Input value={fullName} onChange={(e) => setFullName(e.target.value)} /></div>
           <div className="space-y-1.5"><Label>Email*</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
         </div>
@@ -250,7 +252,11 @@ function CreateUserModal({
             </SelectContent>
           </Select>
         </div>
-        <PermissionsPicker selected={selected} onChange={setSelected} />
+        </div>
+        <div className="mt-5 min-w-0 space-y-4 border-t pt-5 lg:mt-0 lg:border-t-0 lg:py-2 lg:pl-6">
+          <h3 className="text-sm font-semibold">Permissões de acesso</h3>
+          <PermissionsPicker selected={selected} onChange={setSelected} />
+        </div>
       </div>
     </ResponsiveModal>
   );
@@ -307,17 +313,23 @@ function EditPermissionsModal({
   });
 
   const footer = (
-    <div className="flex gap-2">
-      <Button type="button" variant="outline" onClick={onClose} className="flex-1">Cancelar</Button>
-      <Button onClick={() => save.mutate()} disabled={save.isPending} className="flex-1">
-        {save.isPending ? 'Salvando...' : 'Salvar'}
+    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <Button type="button" variant="outline" onClick={onClose} className="w-full sm:w-auto">Cancelar</Button>
+      <Button onClick={() => save.mutate()} disabled={save.isPending} className="w-full sm:w-auto">
+        {save.isPending ? 'Salvando...' : 'Salvar permissões'}
       </Button>
     </div>
   );
 
   return (
-    <ResponsiveModal open={!!user} onOpenChange={(o) => !o && onClose()} title="Editar permissões" description={user?.email ?? ''} footer={footer}>
-      <div className="space-y-4">
+    <ResponsiveModal open={!!user} onOpenChange={(o) => !o && onClose()} title="Editar permissões" description="Organize as telas e ações disponíveis para este usuário." footer={footer} className="sm:max-w-5xl" drawerClassName="max-h-[92dvh]">
+      <div className="grid min-h-0 gap-0 lg:grid-cols-[minmax(16rem,19rem)_minmax(0,1fr)] lg:divide-x lg:divide-border">
+        <div className="space-y-5 py-2 lg:sticky lg:top-0 lg:self-start lg:pr-6">
+          <h3 className="text-sm font-semibold">Dados do usuário</h3>
+          <dl className="space-y-4 text-sm">
+            <div><dt className="text-muted-foreground">Nome</dt><dd className="mt-1 break-words font-medium">{user?.full_name || "Não informado"}</dd></div>
+            <div><dt className="text-muted-foreground">Email</dt><dd className="mt-1 break-all font-medium">{user?.email}</dd></div>
+          </dl>
         <div className="space-y-1.5">
           <Label>Vincular a vendedor</Label>
           <Select value={linkSalesperson} onValueChange={handleSalespersonLink}>
@@ -328,7 +340,11 @@ function EditPermissionsModal({
             </SelectContent>
           </Select>
         </div>
-        <PermissionsPicker selected={selected} onChange={setSelected} />
+        </div>
+        <div className="mt-5 min-w-0 space-y-4 border-t pt-5 lg:mt-0 lg:border-t-0 lg:py-2 lg:pl-6">
+          <h3 className="text-sm font-semibold">Permissões de acesso</h3>
+          <PermissionsPicker selected={selected} onChange={setSelected} />
+        </div>
       </div>
     </ResponsiveModal>
   );
