@@ -62,6 +62,7 @@ function Status({ lesson }: { lesson: Lesson }) {
 
 export function CompanyLearningCatalog({ companyId }: { companyId: string }) {
   const catalogueRef = useRef<HTMLElement>(null);
+  const [userSearch, setUserSearch] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
   const [pathId, setPathId] = useState("all");
   const [moduleId, setModuleId] = useState("all");
@@ -78,7 +79,7 @@ export function CompanyLearningCatalog({ companyId }: { companyId: string }) {
     queryKey: ["admin-company-learning-catalog", companyId, userId, pathId, moduleId, debouncedSearch, status, page],
     enabled: !!companyId,
     staleTime: 60_000,
-    placeholderData: (previous, previousQuery) => previousQuery?.queryKey[1] === companyId && previousQuery.queryKey[2] === userId ? previous : undefined,
+    placeholderData: (previous, previousQuery) => previousQuery?.queryKey[1] === companyId ? previous : undefined,
     queryFn: async (): Promise<Catalogue> => {
       const { data, error } = await supabase.rpc("admin_company_learning_catalog" as any, {
         p_company_id: companyId, p_user_id: userId,
@@ -91,28 +92,42 @@ export function CompanyLearningCatalog({ companyId }: { companyId: string }) {
     },
   });
   const data = query.data;
-  const selectedUser = data?.users.find(user => user.id === data.selectedUserId);
+  const selectedUser = data?.users.find(user => user.id === (userId ?? data.selectedUserId));
   const pages = Math.max(1, Math.ceil((data?.total ?? 0) / PAGE_SIZE));
   const clearFilters = () => { setSearch(""); setDebouncedSearch(""); setPathId("all"); setModuleId("all"); setStatus("all"); setPage(1); };
 
   const changePage = (nextPage: number) => { setPage(nextPage); catalogueRef.current?.scrollIntoView({ block: "start", behavior: "instant" }); };
 
-  return <section ref={catalogueRef} className="min-w-0 scroll-mt-24 space-y-5" aria-label="Catálogo de aprendizado por usuário">
-    <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
-      <div className="min-w-0">
-        <img src={learningLogo} alt="DomiFlix" className="mb-3 h-7 w-auto max-w-[160px] object-contain object-left dark:hidden" />
-        <img src={learningLogoDark} alt="DomiFlix" className="mb-3 hidden h-7 w-auto max-w-[160px] object-contain object-left dark:block" />
-        <h3 className="text-lg font-semibold">O que cada pessoa assistiu</h3>
-        <p className="mt-1 text-sm text-muted-foreground">Explore as aulas publicadas e acompanhe o progresso individual.</p>
+  return <section ref={catalogueRef} className="min-w-0 scroll-mt-24 space-y-3" aria-label="Catálogo de aprendizado por usuário">
+    <div className="flex items-center gap-3 border-b pb-3">
+      <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
+        <img src={learningLogo} alt="DomiFlix" className="h-5 w-auto max-w-[160px] object-contain object-left dark:hidden" />
+        <img src={learningLogoDark} alt="DomiFlix" className="hidden h-5 w-auto max-w-[160px] object-contain object-left dark:block" />
+        <h3 className="text-sm font-semibold">O que cada pessoa assistiu</h3>
       </div>
-      <div className="w-full space-y-2 lg:w-80 lg:shrink-0">
+    </div>
+    <div className="grid min-w-0 gap-4 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-5">
+      <aside className="hidden min-w-0 space-y-3 lg:block lg:border-r lg:pr-4" aria-label="Usuários da empresa">
+        <div className="flex items-center justify-between"><h4 className="text-sm font-semibold">Usuários</h4><span className="text-xs text-muted-foreground">{data?.users.length ?? "—"}</span></div>
+        <Input aria-label="Buscar usuário" placeholder="Buscar usuário..." value={userSearch} onChange={event => setUserSearch(event.target.value)} className="h-9" />
+        <div className="max-h-[65vh] space-y-1 overflow-y-auto">
+          {data?.users.filter(user => `${user.name} ${user.email || ""}`.toLocaleLowerCase("pt-BR").includes(userSearch.toLocaleLowerCase("pt-BR"))).map(user => <button key={user.id} type="button" aria-pressed={user.id === (userId ?? data.selectedUserId)} onClick={() => { setUserId(user.id); setPage(1); setDetail(null); }} className={cn("w-full rounded-lg px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", user.id === (userId ?? data.selectedUserId) ? "bg-primary text-primary-foreground" : "hover:bg-muted")}>
+            <span className="block break-words text-sm font-medium">{user.name}</span>
+            {user.email && <span className="mt-0.5 block truncate text-xs opacity-70" title={user.email}>{user.email}</span>}
+            {!user.active && <span className="mt-1 block text-xs opacity-70">Inativo</span>}
+          </button>)}
+          {query.isLoading && !data && <Skeleton className="h-28 w-full" />}
+          {data && !data.users.some(user => `${user.name} ${user.email || ""}`.toLocaleLowerCase("pt-BR").includes(userSearch.toLocaleLowerCase("pt-BR"))) && <p className="py-3 text-xs text-muted-foreground">Nenhum usuário encontrado.</p>}
+        </div>
+      </aside>
+      <div className="min-w-0 space-y-3">
+      <div className="w-full space-y-2 lg:hidden">
         <Label htmlFor={`learning-user-${companyId}`}>Usuário da empresa</Label>
         <Select value={userId ?? data?.selectedUserId ?? ""} onValueChange={value => { setUserId(value); setPage(1); setDetail(null); }} disabled={!data?.users.length}>
           <SelectTrigger id={`learning-user-${companyId}`} className="w-full [&>span]:truncate"><SelectValue placeholder={query.isLoading ? "Carregando usuários..." : "Nenhum usuário"} /></SelectTrigger>
           <SelectContent>{data?.users.map(user => <SelectItem key={user.id} value={user.id}>{user.name}{!user.active ? " (inativo)" : ""}{data.users.filter(other => other.name === user.name).length > 1 && user.email ? ` · ${user.email}` : ""}</SelectItem>)}</SelectContent>
         </Select>
       </div>
-    </div>
 
     {query.isError ? <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-5"><p className="text-sm">Não foi possível carregar o catálogo e o progresso.</p><Button variant="outline" onClick={() => void query.refetch()}>Tentar novamente</Button></div> : <>
       <Tabs value={pathId} onValueChange={value => { setPathId(value); setModuleId("all"); setPage(1); }}>
@@ -121,7 +136,7 @@ export function CompanyLearningCatalog({ companyId }: { companyId: string }) {
           {data?.paths.map(path => <TabsTrigger key={path.id} value={path.id} variant="underline">{path.title}</TabsTrigger>)}
         </TabsList>
       </Tabs>
-      <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_220px_190px]">
+      <div className="grid min-w-0 gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_180px_160px]">
         <div className="relative min-w-0 sm:col-span-2 xl:col-span-1"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input aria-label="Buscar conteúdo" placeholder="Buscar aula ou módulo..." value={search} maxLength={200} onChange={event => setSearch(event.target.value)} className="pl-9" /></div>
         <Select value={moduleId} onValueChange={value => { setModuleId(value); setPage(1); }}><SelectTrigger aria-label="Filtrar módulo" className="min-w-0 [&>span]:truncate"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todos os módulos</SelectItem>{data?.modules.map(module => <SelectItem key={module.id} value={module.id}>{module.title}</SelectItem>)}</SelectContent></Select>
         <Select value={status} onValueChange={value => { setStatus(value as LearningStatus | "all"); setPage(1); }}><SelectTrigger aria-label="Filtrar visualização"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todos os status</SelectItem>{Object.entries(STATUS).map(([key, state]) => <SelectItem key={key} value={key}>{state.label}</SelectItem>)}</SelectContent></Select>
@@ -130,19 +145,21 @@ export function CompanyLearningCatalog({ companyId }: { companyId: string }) {
         <p className="flex min-w-0 items-center gap-2"><UserRound className="h-4 w-4 shrink-0 text-muted-foreground" /><span className="break-words font-medium">{selectedUser.name}</span></p>
         <p className="text-xs text-muted-foreground"><strong className="text-foreground">{data.summary.completed}</strong> concluídos · <strong className="text-foreground">{data.summary.in_progress}</strong> em andamento · <strong className="text-foreground">{data.summary.not_started}</strong> não iniciados</p>
       </div>}
-      {query.isLoading || query.isPlaceholderData ? <div role="status" aria-label="Carregando catálogo" className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">{Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-64 rounded-xl" />)}</div> : !selectedUser ? <div className="rounded-xl border border-dashed px-6 py-12 text-center"><UserRound className="mx-auto mb-3 h-7 w-7 text-muted-foreground" /><p className="font-medium">Nenhum usuário nesta empresa</p><p className="mt-1 text-sm text-muted-foreground">O acompanhamento ficará disponível quando houver um usuário vinculado.</p></div> : !data?.rows.length ? <div className="rounded-xl border border-dashed px-6 py-12 text-center"><Search className="mx-auto mb-3 h-7 w-7 text-muted-foreground" /><p className="font-medium">Nenhuma aula neste filtro</p><p className="mt-1 text-sm text-muted-foreground">Busque outro conteúdo ou ajuste os filtros de visualização.</p><Button variant="outline" className="mt-4" onClick={clearFilters}>Limpar filtros</Button></div> : <>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      {query.isLoading || query.isPlaceholderData ? <div role="status" aria-label="Carregando catálogo" className="space-y-2">{Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-24 rounded-lg" />)}</div> : !selectedUser ? <div className="rounded-xl border border-dashed px-6 py-12 text-center"><UserRound className="mx-auto mb-3 h-7 w-7 text-muted-foreground" /><p className="font-medium">Nenhum usuário nesta empresa</p><p className="mt-1 text-sm text-muted-foreground">O acompanhamento ficará disponível quando houver um usuário vinculado.</p></div> : !data?.rows.length ? <div className="rounded-xl border border-dashed px-6 py-12 text-center"><Search className="mx-auto mb-3 h-7 w-7 text-muted-foreground" /><p className="font-medium">Nenhuma aula neste filtro</p><p className="mt-1 text-sm text-muted-foreground">Busque outro conteúdo ou ajuste os filtros de visualização.</p><Button variant="outline" className="mt-4" onClick={clearFilters}>Limpar filtros</Button></div> : <>
+        <div className="space-y-2">
           {data.rows.map(lesson => {
             const percent = percentage(lesson);
-            return <button key={lesson.id} type="button" onClick={() => setDetail(lesson)} aria-label={`Ver detalhes: ${lesson.title}`} className="group flex min-w-0 flex-col overflow-hidden rounded-xl border bg-background text-left transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <div className="relative w-full"><Cover lesson={lesson} /><div className="absolute bottom-3 left-3"><Status lesson={lesson} /></div></div>
-              <div className="flex w-full flex-1 flex-col gap-3 p-4">
-                <div><p className="mb-1 text-xs text-muted-foreground">{lesson.module_title}{lesson.season_title ? ` · ${lesson.season_title}` : ""}</p><h4 className="text-sm font-semibold leading-snug">{lesson.title}</h4></div>
-                <div className="mt-auto space-y-2">
-                  <div className="flex flex-wrap justify-between gap-x-2 gap-y-1 text-xs tabular-nums"><span>{lesson.status === "not_started" ? "Sem reprodução registrada" : lesson.completed && lesson.progress_seconds <= 1 ? "Concluído sem posição salva" : `${time(lesson.progress_seconds)}${lesson.duration_seconds > 0 ? ` de ${time(lesson.duration_seconds)}` : " registrados"}`}</span>{percent !== null && <span className="font-semibold">{percent}%</span>}</div>
-                  <Progress value={percent ?? 0} aria-label={`Conclusão de ${lesson.title}`} aria-valuenow={percent ?? 0} className="h-1.5 bg-zinc-200 dark:bg-zinc-700" />
-                  <p className="text-xs text-muted-foreground">{lesson.last_watched_at ? `Último registro: ${lastViewed(lesson.last_watched_at)}` : "Ainda não começou esta aula"}</p>
-                </div>
+            return <button key={lesson.id} type="button" onClick={() => setDetail(lesson)} aria-label={`Ver detalhes: ${lesson.title}`} className="group grid w-full min-w-0 grid-cols-[72px_minmax(0,1fr)] items-center gap-x-3 gap-y-2 border-b py-3 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:grid-cols-[96px_minmax(0,1fr)_150px]">
+              <Cover lesson={lesson} className="w-full rounded-md" />
+              <div className="min-w-0 space-y-1.5">
+                <p className="text-xs text-muted-foreground">{lesson.module_title}{lesson.season_title ? ` · ${lesson.season_title}` : ""}</p>
+                <h4 className="text-sm font-semibold leading-snug">{lesson.title}</h4>
+                <Status lesson={lesson} />
+              </div>
+              <div className="col-start-2 min-w-0 space-y-1.5 sm:col-start-auto">
+                <div className="flex flex-wrap justify-between gap-1 text-xs tabular-nums"><span>{lesson.status === "not_started" ? "Não iniciado" : lesson.completed && lesson.progress_seconds <= 1 ? "Sem posição salva" : `${time(lesson.progress_seconds)}${lesson.duration_seconds > 0 ? ` / ${time(lesson.duration_seconds)}` : " registrados"}`}</span>{percent !== null && <span className="font-semibold">{percent}%</span>}</div>
+                <Progress value={percent ?? 0} aria-label={`Conclusão de ${lesson.title}`} aria-valuenow={percent ?? 0} className="h-1 bg-zinc-200 dark:bg-zinc-700" />
+                <p className="text-[11px] text-muted-foreground">{lesson.last_watched_at ? lastViewed(lesson.last_watched_at) : "Sem visualização"}</p>
               </div>
             </button>;
           })}
@@ -151,6 +168,8 @@ export function CompanyLearningCatalog({ companyId }: { companyId: string }) {
       </>}
     </>}
     <p className="text-xs leading-relaxed text-muted-foreground">O catálogo inclui todas as aulas publicadas, inclusive conteúdos opcionais. O progresso mostra a posição salva pelo player; abrir uma aula sem reproduzir não conta como início.</p>
+      </div>
+    </div>
     <LearningDialog open={!!detail} onOpenChange={open => !open && setDetail(null)} title={detail?.title || "Detalhes da aula"} description={detail?.module_title} className="sm:max-w-2xl" footer={<div className="flex justify-end"><Button variant="outline" className="w-full sm:w-auto" onClick={() => setDetail(null)}>Fechar</Button></div>}>
       {detail && <div className="space-y-4 pb-2"><Cover lesson={detail} className="rounded-lg" /><div className="flex flex-wrap items-center justify-between gap-2"><Status lesson={detail} /><p className="text-sm font-medium">{selectedUser?.name}</p></div>{detail.description && <p className="whitespace-pre-line text-sm text-muted-foreground">{detail.description}</p>}<dl className="grid gap-4 text-sm sm:grid-cols-2"><div><dt className="text-muted-foreground">Posição registrada</dt><dd className="mt-1 font-semibold tabular-nums">{detail.status === "not_started" ? "Não iniciado" : detail.completed && detail.progress_seconds <= 1 ? "Indisponível neste registro" : time(detail.progress_seconds)}</dd></div><div><dt className="text-muted-foreground">Duração</dt><dd className="mt-1 font-semibold tabular-nums">{detail.duration_seconds > 0 ? time(detail.duration_seconds) : detail.estimated_minutes ? `Aprox. ${detail.estimated_minutes} min` : "Não informada"}</dd></div><div><dt className="text-muted-foreground">Último registro</dt><dd className="mt-1 font-medium">{lastViewed(detail.last_watched_at)}</dd></div><div><dt className="text-muted-foreground">Na trilha deste usuário</dt><dd className="mt-1 font-medium">{detail.required_for_user ? "Obrigatória no onboarding" : "Conteúdo complementar"}</dd></div></dl><Progress value={percentage(detail) ?? 0} aria-label="Conclusão da aula" aria-valuenow={percentage(detail) ?? 0} className="h-2 bg-zinc-200 dark:bg-zinc-700" /></div>}
     </LearningDialog>
