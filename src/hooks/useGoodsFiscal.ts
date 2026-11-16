@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { GOODS_FISCAL_ROOT, useGoodsFiscalAccess } from "@/hooks/useGoodsFiscalAccess";
 import { goodsFiscalError } from "@/lib/fiscal/goodsErrors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -221,11 +221,16 @@ export function useGoodsFiscalSources(direction: GoodsDirection, query: string, 
 // Respostas de uma identidade anterior nunca são entregues ao formulário atual.
 function useFiscalGuard() {
   const access = useGoodsFiscalAccess();
-  const current = useRef(access); current.current = access;
+  const current = useRef({access,epoch:0});
+  if (current.current.access.scopeId !== access.scopeId || current.current.access.allowed !== access.allowed) current.current={access,epoch:current.current.epoch+1};
+  else current.current.access=access;
+  const mounted=useRef(true);
+  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;current.current.epoch++;};},[]);
   return () => {
-    const before = current.current;
-    if (!before.allowed) throw new Error('Você não tem acesso à emissão fiscal.');
-    return () => { if (!current.current.allowed || current.current.scopeId !== before.scopeId) throw new Error('Seu contexto de acesso mudou. Abra a nota novamente.'); };
+    const before=current.current;
+    const epoch=before.epoch;
+    if (!mounted.current || !before.access.allowed) throw new Error('Você não tem acesso à emissão fiscal.');
+    return () => { if (!mounted.current || !current.current.access.allowed || current.current.epoch !== epoch) throw new Error('Seu contexto de acesso mudou. Abra a nota novamente.'); };
   };
 }
 export function useGoodsFiscalSourceImport() {
@@ -280,7 +285,7 @@ export function useSaveGoodsFiscalDocument() {
 }
 export function useGoodsFiscalDocumentAction() {
   const client = useQueryClient(); const guard = useFiscalGuard();
-  return useMutation({ mutationFn: async (input: { model: GoodsModel; documentId: string; action: 'consult' | 'artifact' | 'cancel'; kind?: 'xml' | 'pdf'; reason?: string }) => {
+  return useMutation({ mutationFn: async (input: { model: GoodsModel; documentId: string; action: 'consult' | 'artifact' | 'cancel' | 'revise' | 'resume'; kind?: 'xml' | 'pdf'; reason?: string }) => {
     const assertCurrent = guard(); const result = await invokeGoods(input); assertCurrent(); return result;
   }, onSettled: () => client.invalidateQueries({ queryKey: GOODS_FISCAL_ROOT }), retry: false });
 }

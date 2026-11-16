@@ -119,7 +119,7 @@ interface PaymentData {
 }
 
 interface CheckoutLayoutProps {
-  checkoutMode?: "sale" | "renewal" | "upgrade";
+  checkoutMode?: "sale" | "renewal" | "upgrade" | "activation";
   planName: string;
   planPrice: number;
   finalPrice: number;
@@ -279,6 +279,8 @@ export function CheckoutLayout({
   const isPixMethodSelected = paymentMethod === "pix";
   const isBoletoMethodSelected = paymentMethod === "boleto";
   const isUpgrade = checkoutMode === "upgrade";
+  const isActivation = checkoutMode === "activation";
+  const isOneOff = isUpgrade || (isActivation && paymentMethod !== 'card');
   const hasSavedCard = isUpgrade && allowCardPayment && /^\d{4}$/.test(savedCardLast4 ?? "") &&
     typeof onPayWithSavedCard === "function";
 
@@ -355,7 +357,7 @@ export function CheckoutLayout({
               )}
               <div>
                 <p className="text-xs text-gray-400 uppercase tracking-widest">
-                  {isUpgrade ? "Resumo do upgrade" : t.subscriptionSummaryLabel}
+                  {isActivation ? "Resumo da contratação" : isUpgrade ? "Resumo do upgrade" : t.subscriptionSummaryLabel}
                 </p>
                 <h2 className="text-2xl font-bold mt-1">{planName}</h2>
                 {isUpgrade && currentPlanName && (
@@ -380,11 +382,15 @@ export function CheckoutLayout({
                   </span>
                   {/* Cartão = sempre cobrança mensal recorrente, independente do
                       toggle anual (B9 revisado). PIX/boleto seguem o ciclo. */}
-                  {!isUpgrade && (
+                  {!isOneOff && (
                     <span className="text-gray-400">{paymentMethod === "card" ? t.billingMonthly : billingCycle === "yearly" ? t.billingYearly : t.billingMonthly}</span>
                   )}
                 </div>
-                {isUpgrade ? (
+                {isActivation ? (
+                  <p className="text-sm text-gray-400">{paymentMethod === 'card'
+                    ? 'Cobrança mensal recorrente no cartão. O plano será liberado após a confirmação do primeiro pagamento.'
+                    : `Pagamento pelo primeiro ${billingCycle === 'yearly' ? 'ano' : 'mês'}. O plano será liberado após a confirmação.`}</p>
+                ) : isUpgrade ? (
                   <p className="text-sm text-gray-400">
                     Você paga somente pelo período restante. O plano será liberado após a confirmação.
                   </p>
@@ -405,7 +411,8 @@ export function CheckoutLayout({
               </div>
 
               <div className="space-y-3">
-                {nextDueDate && (
+                {isActivation && <p className="text-sm text-gray-400">A vigência começa na confirmação do pagamento.</p>}
+                {!isActivation && nextDueDate && (
                   <div className="flex items-center gap-2.5 text-sm bg-white/5 rounded-lg px-3 py-2.5">
                     <Calendar className="h-4 w-4 text-emerald-400 shrink-0" />
                     <span>
@@ -485,9 +492,9 @@ export function CheckoutLayout({
             ) : (
               <>
                 <div>
-                  <h2 className="text-xl font-semibold">{isUpgrade ? "Confirme seu upgrade" : t.paymentTitle}</h2>
+                  <h2 className="text-xl font-semibold">{isActivation ? "Confirme sua contratação" : isUpgrade ? "Confirme seu upgrade" : t.paymentTitle}</h2>
                   <p className="text-sm text-muted-foreground mt-0.5">
-                    {isUpgrade ? "Escolha como pagar o ajuste proporcional deste ciclo." : t.paymentSubtitle}
+                    {isActivation ? "Escolha como pagar o primeiro período do seu plano." : isUpgrade ? "Escolha como pagar o ajuste proporcional deste ciclo." : t.paymentSubtitle}
                   </p>
                 </div>
 
@@ -605,13 +612,13 @@ export function CheckoutLayout({
                           <CreditCardIcon className="h-6 w-6" />
                           <div className="flex flex-col items-start sm:items-center">
                             <span className="text-sm font-bold">{t.methodCardTitle}</span>
-                            <span className={cn("text-xs transition-colors", isCardMethodSelected ? "text-white/80" : "text-muted-foreground group-hover:text-white/80")}>{t.methodCardSubtitle}</span>
+                            <span className={cn("text-xs transition-colors", isCardMethodSelected ? "text-white/80" : "text-muted-foreground group-hover:text-white/80")}>{isOneOff ? 'Pagamento único' : t.methodCardSubtitle}</span>
                           </div>
                           <span className={cn(
                             "absolute -bottom-2 left-1/2 -translate-x-1/2 text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none hidden sm:inline-flex",
                             isCardMethodSelected ? "bg-white/90 text-slate-900 backdrop-blur-sm border border-white/70 shadow-sm" : "bg-primary text-primary-foreground"
                           )}>
-                            {t.methodCardBadge}
+                            {isOneOff ? 'À vista' : t.methodCardBadge}
                           </span>
                         </Button>}
 
@@ -712,6 +719,8 @@ export function CheckoutLayout({
                 {paymentMethod === "card" && !paymentData && (
                   <CardPaymentForm
                     amount={finalPrice}
+                    submitLabel={isOneOff ? `Pagar R$ ${finalPrice.toFixed(2).replace('.', ',')}` : undefined}
+                    billingNotice={isOneOff ? 'Esta cobrança é única e não ativa débito recorrente no cartão.' : undefined}
                     isLoading={isCreatingPayment}
                     onSubmit={(cardData) => onCreatePayment("card", cardData)}
                     onBack={onClearPayment}

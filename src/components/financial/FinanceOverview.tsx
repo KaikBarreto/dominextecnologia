@@ -56,12 +56,14 @@ import {
 import { EmptyState } from '@/components/mobile/EmptyState';
 import type { DateRange } from '@/components/ui/DateRangeFilter';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
+import { FinancePdvCoverageNotice } from './FinancePdvCoverageNotice';
 import { useCanManageFinanceTransactions } from '@/hooks/useCanManageFinanceTransactions';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney, getCurrencySymbol } from '@/lib/format';
 import { todayInTz } from '@/lib/timezone';
+import { getDreEffectiveDate } from '@/lib/dre-regime';
 import { cn } from '@/lib/utils';
 import type { FinancialTransaction } from '@/types/database';
 
@@ -185,7 +187,9 @@ export function FinanceOverview({
     [transactions],
   );
   const realizedTransactions = useMemo(
-    () => resultTransactions.filter((transaction) => transaction.is_paid),
+    // A obrigação pode ser quitada com saldo do fornecedor; somente o
+    // pagamento efetivo movimenta dinheiro e entra nestes gráficos de caixa.
+    () => resultTransactions.filter((transaction) => transaction.is_paid && (transaction as FinancialTransaction & { pdv_financial_role?: string }).pdv_financial_role !== 'pdv_supplier_obligation'),
     [resultTransactions],
   );
 
@@ -253,7 +257,7 @@ export function FinanceOverview({
     }
 
     realizedTransactions.forEach((transaction) => {
-      const rawDate = transaction.transaction_date?.substring(0, 10);
+      const rawDate = getDreEffectiveDate(transaction, 'caixa')?.substring(0, 10);
       if (!rawDate) return;
       const transactionDate = parseISO(rawDate);
       const periodStart = useWeeklyCashFlow
@@ -392,7 +396,7 @@ export function FinanceOverview({
   const balanceEvolutionData = useMemo(() => {
     const daily = new Map<string, number>();
     realizedTransactions.forEach((transaction) => {
-      const date = transaction.transaction_date?.substring(0, 10);
+      const date = getDreEffectiveDate(transaction, 'caixa')?.substring(0, 10);
       if (!date) return;
       const signedAmount = Number(transaction.amount) * (transaction.transaction_type === 'entrada' ? 1 : -1);
       daily.set(date, (daily.get(date) || 0) + signedAmount);
@@ -464,6 +468,7 @@ export function FinanceOverview({
 
   return (
     <div className="space-y-4">
+      <FinancePdvCoverageNotice transactions={transactions} />
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-12 xl:grid-flow-row-dense" aria-label="Resumo financeiro">
         <Card className="relative overflow-hidden border-0 bg-foreground text-background shadow-sm md:col-span-2 xl:col-span-5 xl:row-span-2">
           <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-background/5" />

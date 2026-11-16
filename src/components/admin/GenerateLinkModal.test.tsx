@@ -27,6 +27,9 @@ const { EMPTY_ARRAY, QUERY_RESULT } = vi.hoisted(() => {
   return { EMPTY_ARRAY, QUERY_RESULT: { data: EMPTY_ARRAY } };
 });
 
+vi.mock('@/hooks/useRegistrationCoreOffer',()=>({
+  useCreateRegistrationCoreOffer:()=>({isPending:false,mutateAsync:async()=> '00000000-0000-4000-8000-000000000001'}),
+}));
 vi.mock('@tanstack/react-query', () => ({
   useQuery: () => QUERY_RESULT,
 }));
@@ -185,6 +188,8 @@ describe('GenerateLinkModal — snapshot do link gerado', () => {
     const saleLink = generatedLinkInput()?.value;
     expect(saleLink).toBeTruthy();
     expect(new URL(saleLink!).searchParams.get('tipo')).toBe('venda');
+    expect(new URL(saleLink!).searchParams.get('nucleo')).toBe('services');
+    expect(new URL(saleLink!).searchParams.get('oferta')).toBe('00000000-0000-4000-8000-000000000001');
     expect(document.body.textContent).toContain('Tipo: Venda direta');
 
     click(q('#teste')!.closest('div')!);

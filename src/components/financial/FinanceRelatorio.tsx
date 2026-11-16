@@ -123,7 +123,7 @@ export function FinanceRelatorio({
   if (section === 'relatorio') {
     return (
       <FinanceOverview
-        transactions={transactions}
+        transactions={overviewTransactions}
         projectionTransactions={overviewTransactions}
         dateRange={dateRange}
         summary={summary}

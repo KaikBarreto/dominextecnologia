@@ -50,7 +50,7 @@ export function FinancePdvReconciliation({range,regime,startDate,asOf}:{range?:D
   return <Collapsible open={open && sameScope} onOpenChange={setOpen} className="border-b border-border pb-4">
     <CollapsibleTrigger asChild><Button variant="ghost" className="w-full justify-between whitespace-normal text-left" aria-label="Conferir vendas e compras do PDV">Conferir vendas e compras do PDV<ChevronDown className="h-4 w-4 shrink-0" /></Button></CollapsibleTrigger>
     <CollapsibleContent className="space-y-4 pt-4">
-      <p className="text-sm text-muted-foreground">Compare os movimentos permitidos para seu perfil: vendas entregues do PDV e compras diretas de estoque no mesmo período. Esta conferência não substitui o resultado da empresa mostrado abaixo.</p>
+      <p className="text-sm text-muted-foreground">Compare os movimentos permitidos para seu perfil: vendas entregues do PDV e compras diretas de estoque no mesmo período. Esta conferência mostra um resultado parcial do PDV; o resultado consolidado da empresa ainda não foi conciliado.</p>
       {from>to && <p role="status" className="text-sm text-muted-foreground">Não há dias desse período dentro da vigência do relatório.</p>}
       {query.isLoading && <p role="status" className="text-sm">Carregando conferência…</p>}
       {query.isError && <div role="alert" className="flex flex-wrap items-center gap-2 text-sm"><span>{query.error.message}</span><Button size="sm" variant="outline" onClick={()=>void query.refetch()}><RefreshCw className="h-4 w-4" />Tentar novamente</Button></div>}

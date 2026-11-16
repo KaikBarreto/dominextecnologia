@@ -17,7 +17,7 @@ const idempotencyMigration = readFileSync(
 describe('autorizacao da criacao administrativa de empresas', () => {
   it('aceita super-admin ou a permissao granular de empresas', () => {
     expect(edge).toContain("_role: 'super_admin'");
-    expect(edge).toContain("_permission: 'admin_empresas'");
+    expect(edge).toContain("_permission: 'admin_empresas_criar'");
     expect(edge).toContain('!superAdminResult.data && !companyPermissionResult.data');
   });
 
@@ -25,7 +25,7 @@ describe('autorizacao da criacao administrativa de empresas', () => {
     expect(edge).toContain('superAdminResult.error || companyPermissionResult.error');
     expect(edge).toContain('Não foi possível validar sua permissão para criar empresas. Tente novamente.');
     expect(edge).toContain("return json({ error: 'Não foi possível validar sua permissão para criar empresas. Tente novamente.' }, 503)");
-    expect(edge.indexOf("_permission: 'admin_empresas'")).toBeLessThan(edge.indexOf('const body = await req.json()'));
+    expect(edge.indexOf("_permission: 'admin_empresas_criar'")).toBeLessThan(edge.indexOf('const body = await req.json()'));
   });
 
   it('nao devolve codigos internos de autorizacao para a interface', () => {

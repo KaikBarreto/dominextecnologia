@@ -1,3 +1,4 @@
+vi.mock('@/hooks/usePdvDomiLinkWorkspace', () => ({ usePdvDomiLinkWorkspace: () => ({ scannerControl: null, weighControl: undefined, capture: () => () => true }) }));
 vi.mock('@/components/pdv/coupons/PdvCouponControl', () => ({ PdvCouponControl: () => null }));
 import {
   fireEvent,

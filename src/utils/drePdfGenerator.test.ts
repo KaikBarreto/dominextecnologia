@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { inflateSync } from 'node:zlib';
 import { buildDrePdf, type DrePdfData } from './drePdfGenerator';
 
 const makeData = (periodLabels: string[], detailCount = 8): DrePdfData => ({
@@ -38,6 +39,13 @@ const makeData = (periodLabels: string[], detailCount = 8): DrePdfData => ({
 });
 
 describe('buildDrePdf', () => {
+  it('leva o limite de conciliação ao PDF sem substituir valores do demonstrativo', async () => {
+    const document = await buildDrePdf({ ...makeData(['Novembro de 2026']), coverageNotice: 'Resultado da empresa pendente de conferencia do PDV.' });
+    const text = [...document.output().matchAll(/stream\r?\n([\s\S]*?)\r?\nendstream/g)]
+      .map(match => inflateSync(Buffer.from(match[1], 'latin1')).toString('latin1')).join('\n');
+    expect(text).toContain('Resultado da empresa pendente de conferencia do PDV.');
+    expect(text).toContain('Resultado Final');
+  });
   it('usa A4 retrato sem comparação e paisagem com até três comparações', async () => {
     const portrait = await buildDrePdf(makeData(['Outubro de 2026']));
     expect(portrait.internal.pageSize.getHeight()).toBeGreaterThan(portrait.internal.pageSize.getWidth());

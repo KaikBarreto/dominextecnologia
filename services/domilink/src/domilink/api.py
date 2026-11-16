@@ -5,6 +5,7 @@ import base64
 import binascii
 import json
 import logging
+import re
 from collections.abc import Mapping
 from dataclasses import asdict
 from typing import Any, AsyncIterator, Dict, Optional
@@ -275,7 +276,7 @@ def create_app(
             ) from exc
         if payload.format == "pdf" and (
             not content.startswith(b"%PDF-")
-            or b"/Type /Page " not in content
+            or re.search(rb"/Type\s*/Page(?=[\s/>])", content) is None
             or not content.rstrip().endswith(b"%%EOF")
         ):
             raise HTTPException(

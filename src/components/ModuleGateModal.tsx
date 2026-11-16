@@ -108,7 +108,11 @@ export function ModuleGateModal({
 export const MODULE_INFO: Record<string, { name: string; description: string }> = {
   basic: {
     name: 'Módulo Básico',
-    description: 'OS, Agenda, Dashboard, Orçamentos, Serviços, Mapa, Clientes, Equipamentos, Estoque e Financeiro completo',
+    description: 'Seu kit de Loja ou Serviços, com clientes, estoque e financeiro completo',
+  },
+  service_operations: {
+    name: 'Kit Serviços',
+    description: 'Ordens de serviço, agenda, equipamentos, serviços e orçamentos de prestação de serviços integrados à sua loja',
   },
   contracts: {
     name: 'Gestão de Contratos e PMOC',
@@ -124,7 +128,7 @@ export const MODULE_INFO: Record<string, { name: string; description: string }> 
   },
   nfe: {
     name: 'Emissão de Notas Fiscais',
-    description: 'Emissão de NFS-e (nota fiscal de serviço) integrada ao sistema',
+    description: 'NF-e e NFC-e para produtos e NFS-e para serviços, conforme a configuração fiscal da empresa',
   },
   finance_advanced: {
     name: 'Financeiro completo',

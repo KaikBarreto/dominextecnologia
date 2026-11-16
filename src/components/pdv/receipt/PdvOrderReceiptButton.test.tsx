@@ -37,6 +37,14 @@ describe('PdvOrderReceiptButton', () => {
     mocks.openPending.mockReturnValue(null);
   });
 
+  it('encaminha o mesmo PDF autorizado para a saída local, sem abrir outra via', async () => {
+    const output = vi.fn().mockResolvedValue(undefined);
+    await openPdvOrderReceipt('pedido-1042', '80mm', { output, isCurrent: () => true });
+    expect(output).toHaveBeenCalledOnce();
+    expect(output.mock.calls[0][0]).toBe(mocks.generatePdf.mock.results[0].value);
+    expect(mocks.openPdf).not.toHaveBeenCalled();
+  });
+
   it('consulta o snapshot imutável pelo pedido e apenas abre o PDF', async () => {
     render(<PdvOrderReceiptButton orderId="pedido-1042" format="80mm" />);
 

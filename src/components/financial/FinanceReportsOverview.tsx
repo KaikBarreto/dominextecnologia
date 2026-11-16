@@ -21,6 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
+import { FinancePdvCoverageNotice } from './FinancePdvCoverageNotice';
 import { useCostCenters } from '@/hooks/useCostCenters';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -182,6 +183,7 @@ export function FinanceReportsOverview({
 
   return (
     <section className="space-y-5 sm:space-y-6" aria-labelledby="finance-reports-overview-title">
+      <FinancePdvCoverageNotice transactions={transactions} />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 id="finance-reports-overview-title" className="text-lg font-semibold">Visão geral dos relatórios</h2>
@@ -351,7 +353,7 @@ function InsightKpi({
           <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           {label}
         </p>
-        <p className="mt-1 truncate text-xl font-bold tabular-nums sm:text-3xl" title={fullValue ?? value}>{value}</p>
+        <p className="mt-1 break-words text-xl font-bold tabular-nums sm:text-3xl" title={fullValue ?? value}>{value}</p>
       </CardContent>
     </Card>
   );

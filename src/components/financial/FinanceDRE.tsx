@@ -1,4 +1,6 @@
 import { FinancePdvReconciliation } from './FinancePdvReconciliation';
+import { FinancePdvCoverageNotice } from './FinancePdvCoverageNotice';
+import { FINANCE_PDV_COVERAGE_NOTE, hasPdvFinancialSources } from '@/lib/finance-pdv-coverage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -1277,6 +1279,7 @@ export function FinanceDRE({
       logo_url: settings?.logo_url || undefined,
     },
     period: periodLabel,
+    coverageNotice: hasPdvFinancialSources(rawTransactions) ? FINANCE_PDV_COVERAGE_NOTE : undefined,
     regime,
     receitaBruta: dre.receitaBruta,
     receitaCategories,
@@ -1381,6 +1384,7 @@ export function FinanceDRE({
           periodLabels: [periodLabel, ...comparisonPeriodLabels],
           regime,
           currency,
+          coverageNotice: data.coverageNotice,
           rows,
         };
         await generateDrePdf(pdfData);
@@ -1763,6 +1767,7 @@ export function FinanceDRE({
 
   return (
     <div className="space-y-5 sm:space-y-6">
+      <FinancePdvCoverageNotice transactions={rawTransactions} />
       {/* Filtro por centro de custo — corta o conjunto ANTES de qualquer soma,
           então demonstrativo e quebra por centro respondem juntos a ele.
           Só aparece pra quem usa centro de custo. */}

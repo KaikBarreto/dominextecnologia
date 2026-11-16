@@ -1,4 +1,6 @@
-import { useEffect, useCallback, useState } from "react";
+import { useAuth } from '@/contexts/AuthContext';
+import { useCompanyModules } from '@/hooks/useCompanyModules';
+import { useEffect, useCallback, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 
 export interface ShortcutConfig {
@@ -29,10 +31,19 @@ export const DEFAULT_SHORTCUTS: ShortcutConfig[] = [
   { id: "goto_profile", label: "Perfil", description: "Abrir perfil do usuário", defaultKey: "shift+p", action: "/perfil", category: "general" },
 ];
 
+const SHORTCUT_SCREENS:Record<string,string>={goto_dashboard:'screen:dashboard',goto_os:'screen:service_orders',goto_agenda:'screen:schedule',goto_clients:'screen:customers',goto_equipment:'screen:equipment',goto_crm:'screen:crm',goto_finance:'screen:finance',goto_inventory:'screen:inventory',goto_quotes:'screen:quotes',goto_contracts:'screen:contracts',goto_settings:'screen:settings'};
+
 const STORAGE_KEY = "dominex-shortcuts-enabled";
 
 export function useKeyboardShortcuts(listenToEvents: boolean = true) {
   const navigate = useNavigate();
+  const {hasScreenAccess}=useAuth();
+  const {hasScreen}=useCompanyModules();
+
+  const shortcuts=useMemo(()=>DEFAULT_SHORTCUTS.filter(shortcut=>{
+    const screen=SHORTCUT_SCREENS[shortcut.id];
+    return !screen||(hasScreenAccess(screen)&&hasScreen(screen));
+  }),[hasScreenAccess,hasScreen]);
 
   const [shortcutsEnabled, setShortcutsEnabled] = useState(() => {
     try {
@@ -84,7 +95,7 @@ export function useKeyboardShortcuts(listenToEvents: boolean = true) {
 
       const key = e.key.toLowerCase();
 
-      for (const shortcut of DEFAULT_SHORTCUTS) {
+      for (const shortcut of shortcuts) {
         const keyParts = shortcut.defaultKey.toLowerCase().split("+");
 
         const matched = keyParts.every(k => {
@@ -106,10 +117,10 @@ export function useKeyboardShortcuts(listenToEvents: boolean = true) {
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [listenToEvents, shortcutsEnabled, navigate]);
+  }, [listenToEvents, shortcutsEnabled, navigate,shortcuts]);
 
   return {
-    shortcuts: DEFAULT_SHORTCUTS,
+    shortcuts,
     shortcutsEnabled,
     toggleShortcuts,
     getShortcutKey,

@@ -40,6 +40,7 @@ export default function Billing() {
   const {
     modules,
     allPlans,
+    currentPlan,
     effectiveValue: modulesEffectiveValue,
     plan: currentPlanCode,
     isLoading: companyModulesLoading,
@@ -52,13 +53,15 @@ export default function Billing() {
   const [deepLink] = useState(() => ({
     addModule: searchParams.get('addModule'),
     addUsers: searchParams.get('addUsers') === '1',
+    configure: searchParams.get('configurar') === '1',
   }));
-  const wantsDeepLink = !!deepLink.addModule || deepLink.addUsers;
+  const wantsDeepLink = !!deepLink.addModule || deepLink.addUsers || deepLink.configure;
 
   const clearDeepLinkParams = () => {
     const next = new URLSearchParams(searchParams);
     next.delete('addModule');
     next.delete('addUsers');
+    next.delete('configurar');
     setSearchParams(next, { replace: true });
   };
 
@@ -165,7 +168,7 @@ export default function Billing() {
     && Number(company.custom_price) > 0;
   const planDisplayName = hasPermanentCustomPrice
     ? 'Personalizado'
-    : allPlans.find((p) => p.code === currentPlanCode)?.name
+    : currentPlan?.name || allPlans.find((p) => p.code === currentPlanCode)?.name
       || (currentPlanCode === 'personalizado' ? 'Personalizado' : currentPlanCode);
 
   const fmtBRL = (v: number) =>
@@ -260,7 +263,7 @@ export default function Billing() {
           GRID TOPO (plano+pagamento fundido ESQ | AccountUsageCard DIR)
           Só exibido fora do trial.
           ══════════════════════════════════════════════════════════════════ */}
-      {!isTesting && (
+      {(!isTesting || wantsDeepLink) && (
         <div className="grid gap-4 md:gap-5 lg:grid-cols-2 items-stretch">
           {/* Coluna esquerda — Plano + Pagamento fundidos */}
           <Card className="flex flex-col border-0 shadow-none bg-transparent">

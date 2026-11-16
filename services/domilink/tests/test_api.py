@@ -12,13 +12,13 @@ from domilink.config import Settings
 from domilink.security import SessionManager
 
 
-def valid_test_pdf() -> bytes:
+def valid_test_pdf(page_separator: bytes = b" ") -> bytes:
     stream = b"BT /F1 12 Tf 20 50 Td (Teste DomiLink) Tj ET\n"
     objects = [
         b"<< /Type /Catalog /Pages 2 0 R >>",
         b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
         (
-            b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 100] "
+            b"<< /Type /Page" + page_separator + b"/Parent 2 0 R /MediaBox [0 0 200 100] "
             b"/Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>"
         ),
         b"<< /Length " + str(len(stream)).encode() + b" >>\nstream\n" + stream + b"endstream",
@@ -37,6 +37,25 @@ def valid_test_pdf() -> bytes:
         f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n".encode()
     )
     return bytes(document)
+
+
+@pytest.mark.parametrize("separator", [b"\n", b"\r\n", b"\t", b" "])
+def test_canonical_pdf_page_whitespace_is_accepted(
+    paired_client: tuple[TestClient, dict[str, str]], separator: bytes
+) -> None:
+    client, headers = paired_client
+    payload = {
+        "device_id": "printer", "format": "pdf",
+        "content_base64": base64.b64encode(valid_test_pdf(separator)).decode(),
+    }
+    response = client.post(
+        "/v1/print/jobs", json=payload,
+        headers={**headers, "Idempotency-Key": "canonical-pdf-page"},
+    )
+    assert response.status_code == 202
+    assert client.get(
+        f"/v1/print/jobs/{response.json()['job']['id']}", headers=headers
+    ).json()["job"]["status"] == "completed"
 
 
 def test_origin_and_preflight_are_restricted(settings: Settings) -> None:

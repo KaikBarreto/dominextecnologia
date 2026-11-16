@@ -7,6 +7,13 @@ export interface FinancialSummaryTransaction {
   amount_received?: number | null;
 }
 
+/** A lista mostra raízes, mas o pagamento monetário de fornecedor é uma filha. */
+export function selectFinancialOverviewSources<T extends {
+  id: string; parent_transaction_id?: string | null; pdv_financial_role?: string | null;
+}>(rows: readonly T[]): T[] {
+  return rows.filter(row => !row.parent_transaction_id || row.pdv_financial_role === 'pdv_supplier_payment');
+}
+
 /** Principal de aquisição informa pendência; dinheiro pertence ao pagamento. */
 export function summarizeFinancialTransactions(rows: readonly FinancialSummaryTransaction[]) {
   let entradas = 0, saidas = 0, pagar = 0, receber = 0;

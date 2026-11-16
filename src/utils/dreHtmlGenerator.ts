@@ -80,6 +80,8 @@ export interface DreExportComparison {
 }
 
 export interface DreReportData {
+  /** Limite da conciliação que deve acompanhar o documento exportado. */
+  coverageNotice?: string;
   company: DreExportCompany;
   period: string;
   receitaBruta: number;
@@ -294,6 +296,7 @@ export const generateDreHtml = (data: DreReportData) => {
       <h1 class="title">${escapeHtml(t.title)}</h1>
       <p class="subtitle">${escapeHtml(t.period)}: ${data.period} | ${escapeHtml(t.generatedAt)}: ${generatedDate}</p>
       <p class="subtitle">${escapeHtml(t.regime)}: <strong>${escapeHtml(regimeLabel)}</strong>. ${escapeHtml(regime === 'caixa' ? t.regimeCashHint : t.regimeAccrualHint)}</p>
+      ${data.coverageNotice ? `<p class="subtitle">${escapeHtml(data.coverageNotice)}</p>` : ''}
     </div>
 
     <div class="dre-container">

@@ -174,6 +174,8 @@ interface GoodsFiscalWizardProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSaved?: (result?: Record<string, unknown>) => void;
+  onBeforeEmit?: () => void;
+  onEmitFailure?: () => void;
   sourceType?: Exclude<GoodsSourceType, 'manual'>;
   sourceId?: string | null;
   documentId?: string | null;
@@ -184,9 +186,9 @@ interface GoodsFiscalWizardProps {
 export function GoodsFiscalWizard(props: GoodsFiscalWizardProps) {
   const access = useGoodsFiscalAccess();
   if (!props.open || !access.allowed) return null;
-  return <GoodsFiscalWizardContent key={`${access.scopeId}:${props.model}:${props.direction}:${props.sourceId ?? 'manual'}`} {...props} />;
+  return <GoodsFiscalWizardContent key={`${access.scopeId}:${props.model}:${props.direction}:${props.sourceId ?? 'manual'}:${props.documentId ?? 'new'}`} {...props} />;
 }
-function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSaved, sourceType, sourceId, documentId, initialDraft, initialNature, includeIdentifiedConsumer = true }: GoodsFiscalWizardProps) {
+function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSaved, onBeforeEmit, onEmitFailure, sourceType, sourceId, documentId, initialDraft, initialNature, includeIdentifiedConsumer = true }: GoodsFiscalWizardProps) {
   const { locale } = useAppLocaleContext();
   const [step, setStep] = useState<Step>("dados");
   const [draft, setDraft] = useState<GoodsFiscalDraft>(() => newDraft(model, direction));
@@ -235,7 +237,12 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
     setSelectedSource(null);
     setSelectedPartyId("");
     if (initialNature) setDraft(current => ({ ...current, nature: initialNature }));
-  }, [open, model, direction, initialNature]);
+    const saved = openingDocument.current.draft;
+    if (!sourceId && saved?.sourceType === 'manual' && saved.model === model && saved.direction === direction && Array.isArray(saved.items) && Array.isArray(saved.payments)) {
+      setDraft({...saved,id:openingDocument.current.id ?? saved.id ?? null});
+      setSelectedPartyId(saved.party?.id ?? '');
+    }
+  }, [open, model, direction, initialNature, sourceId]);
 
   useEffect(() => {
     if (!open || !sourceId || !sourceType) return;
@@ -437,6 +444,7 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
       }
     }
     try {
+      if (emit) onBeforeEmit?.();
       const response = await saver.mutateAsync({
         draft,
         emit,
@@ -449,6 +457,7 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
       onSaved?.(response);
       if (emit) onOpenChange(false);
     } catch (error) {
+      if (emit) onEmitFailure?.();
       toast.error((error as Error).message);
     }
   };

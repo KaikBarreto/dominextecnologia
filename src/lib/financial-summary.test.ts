@@ -1,11 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { summarizeFinancialTransactions, type FinancialSummaryTransaction } from './financial-summary';
+import { selectFinancialOverviewSources, summarizeFinancialTransactions, type FinancialSummaryTransaction } from './financial-summary';
 import { calculateDfc, type DfcTransaction } from './dfc';
 import { isPdvRoleExcludedFromDre } from './dre-regime';
 const principal: FinancialSummaryTransaction = { transaction_type: 'saida', amount: 100, amount_received: 100,
   is_paid: true, transfer_pair_id: null, pdv_financial_role: 'pdv_supplier_obligation' };
 const child = { ...principal, amount: 60, pdv_financial_role: 'pdv_supplier_payment' };
 describe('fontes de valor na compra com crédito do fornecedor', () => {
+  it('alimenta o resumo real com pagamento filho preservando a regra das demais raízes', () => {
+    const rows = [
+      { ...principal, id: 'obrigacao', parent_transaction_id: null },
+      { ...child, id: 'dinheiro', parent_transaction_id: 'obrigacao' },
+      { ...child, id: 'outra-filha', parent_transaction_id: 'outra-mae', pdv_financial_role: null },
+      { ...principal, id: 'raiz-antiga', amount: 10, pdv_financial_role: null },
+    ];
+    const selected = selectFinancialOverviewSources(rows);
+    expect(selected.map(row => row.id)).toEqual(['obrigacao', 'dinheiro', 'raiz-antiga']);
+    expect(summarizeFinancialTransactions(selected)).toMatchObject({ totalSaidas: 70, saldo: -70, aPagar: 0 });
+  });
   it('compra 100, saldo 40 e dinheiro 60 mantêm dinheiro 60 e pendência zero', () => {
     expect(summarizeFinancialTransactions([principal, child])).toEqual({ totalEntradas: 0, totalSaidas: 60, saldo: -60, aPagar: 0, aReceber: 0 });
   });

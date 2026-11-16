@@ -4,8 +4,8 @@ import type { FinancialTransaction } from '@/types/database';
 
 const transaction = (
   id: string,
-  overrides: Partial<FinancialTransaction> = {},
-): FinancialTransaction => ({
+  overrides: Partial<FinancialTransaction> & { pdv_financial_role?: string } = {},
+): FinancialTransaction & { pdv_financial_role?: string } => ({
   id,
   transaction_type: 'entrada',
   description: id,
@@ -20,6 +20,24 @@ const transaction = (
 });
 
 describe('buildFinanceReportOverview', () => {
+  it.each(['competencia', 'caixa'] as const)('concilia fornecedor e reembolso com a DRE em %s sem contar crédito como pagamento', regime => {
+    const result = buildFinanceReportOverview({
+      transactions: [
+        transaction('venda', { amount: 200 }),
+        transaction('compra', { transaction_type: 'saida', amount: 100, category: 'Materiais', pdv_financial_role: 'pdv_supplier_obligation' }),
+        transaction('pagamento', { transaction_type: 'saida', amount: 60, category: 'Materiais', pdv_financial_role: 'pdv_supplier_payment', parent_transaction_id: 'compra' }),
+        transaction('reembolso', { transaction_type: 'saida', amount: 25, pdv_financial_role: 'pdv_refund' }),
+        transaction('estorno-reembolso', { amount: 10, pdv_financial_role: 'pdv_refund_reversal' }),
+      ],
+      regime, today: '2026-09-28',
+    });
+    const expense = regime === 'competencia' ? 100 : 60;
+    expect(result.totals.grossRevenue).toBe(200);
+    expect(result.totals.expenses).toBe(expense);
+    expect(result.totals.result).toBe(200 - expense);
+    expect(result.monthly).toEqual([{ key: '2026-09', revenue: 200, expense }]);
+    expect(result.costCenters.reduce((sum, row) => sum + row.result, 0)).toBe(200 - expense);
+  });
   it('faz KPIs, categorias, meses e centros fecharem no mesmo conjunto em centavos', () => {
     const transactions = [
       transaction('receita', { amount: 1000.1, cost_center_id: 'obra-a' }),

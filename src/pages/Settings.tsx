@@ -155,6 +155,7 @@ function AdministrativeSettings() {
 
   const { hasScreenAccess, hasRole, hasPermission, hasPermissionRecord, isAdminOrGestor } = useAuth();
   const { hasModule } = useCompanyModules();
+  const hasServiceOperations=hasModule('service_operations');
   const { companyId } = useUserCompany();
   // Gate da Zona de Perigo: admin do tenant OR super_admin Auctus.
   // Backend rechecka via RPC SECURITY DEFINER (regra-lei #1 — filtro client é UX).
@@ -460,7 +461,7 @@ function AdministrativeSettings() {
   const whiteLabelLogoInk = useLogoInk(whiteLabelLogoUrl);
 
   useEffect(() => {
-    if (!socialEditorOpen || !currentBrandLogo) {
+    if (!hasServiceOperations || !socialEditorOpen || !currentBrandLogo) {
       setSocialDraftFile(null);
       setSocialDraftUrl(null);
       setSocialPreviewLoading(false);
@@ -496,7 +497,7 @@ function AdministrativeSettings() {
       window.clearTimeout(timer);
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [currentBrandLogo, socialBackgroundColor, socialBackgroundMode, socialCompactSafeArea, socialEditorOpen, socialLogoScale, wlColor]);
+  }, [hasServiceOperations,currentBrandLogo, socialBackgroundColor, socialBackgroundMode, socialCompactSafeArea, socialEditorOpen, socialLogoScale, wlColor]);
 
   const persistOsSocialImage = async (
     file: File,
@@ -1115,7 +1116,7 @@ function AdministrativeSettings() {
                     <Separator className="opacity-50" />
 
                     {/* A imagem social da OS é um recurso exclusivo do White Label. */}
-                    <div className="space-y-5 rounded-2xl bg-muted/25 p-4 sm:p-5">
+                    {hasServiceOperations && <div className="space-y-5 rounded-2xl bg-muted/25 p-4 sm:p-5">
                       <div className="space-y-1">
                         <h4 className="flex items-center gap-2 text-sm font-semibold text-foreground">
                           <Image className="h-4 w-4 text-primary" />
@@ -1360,7 +1361,7 @@ function AdministrativeSettings() {
                           </div>
                         </div>
                       )}
-                    </div>
+                    </div>}
 
                     <Separator className="opacity-50" />
 
@@ -1733,7 +1734,7 @@ function AdministrativeSettings() {
               <CardDescription>{t.usability.cardDescription}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {usabilitySections.map((section, sIdx) => (
+              {usabilitySections.filter(section=>hasServiceOperations||(!section.items.some(item=>['autoSaveOS','showHolidays'].includes(item.key)))).map(section=>({...section,items:section.items.filter(item=>hasServiceOperations||item.key!=='showEquipmentPhotos')})).map((section, sIdx) => (
                 <div key={section.title}>
                   {sIdx > 0 && <Separator className="my-6" />}
 
@@ -1788,7 +1789,7 @@ function AdministrativeSettings() {
           </Card>
 
           {/* Orçamento e OS → Financeiro (decisão da EMPRESA, salva no servidor) */}
-          <Card>
+          {hasServiceOperations && <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Receipt className="h-5 w-5 text-primary" />
@@ -1863,7 +1864,7 @@ function AdministrativeSettings() {
                 )}
               </div>
             </CardContent>
-          </Card>
+          </Card>}
 
           {/* Movimentações financeiras (preferência PESSOAL do usuário, salva
               em user_preferences — NÃO é company_settings nem localStorage,

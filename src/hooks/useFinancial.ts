@@ -1,10 +1,11 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePdvAuthorizedQueryScope } from '@/hooks/pdvReportCache';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { getRpcErrorMessage } from '@/hooks/useCreditCardBills';
@@ -304,6 +305,11 @@ interface UseFinancialOptions {
 export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
   const { toast } = useToast();
   const { user } = useAuth();
+  const scope = usePdvAuthorizedQueryScope();
+  const readIdentity = JSON.stringify([scope.key, loadData]);
+  const currentRead = useRef(readIdentity);
+  currentRead.current = readIdentity;
+  const canRead = loadData && scope.ready;
   const queryClient = useQueryClient();
   // Fuso DA EMPRESA (company_settings.timezone). É ele que define o "hoje" das
   // datas financeiras, nunca o fuso do aparelho nem Brasília chumbado.
@@ -331,9 +337,10 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
   };
 
   const transactionsQuery = useQuery({
-    queryKey: ['financial-transactions'],
-    enabled: loadData,
-    queryFn: async () => {
+    queryKey: ['financial-transactions', ...scope.key, loadData],
+    enabled: canRead,
+    queryFn: async ({ signal }) => {
+      if (!canRead) throw new Error('Aguarde a confirmação do acesso ao financeiro.');
       const data = await fetchAllPaginated<FinancialTransaction & { customer: any; supplier: any; account: any; employee: any }>(
         () => supabase
           .from('financial_transactions')
@@ -354,6 +361,8 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
           // usa `transactionsWithChildren`.
           .order('transaction_date', { ascending: false })
       );
+
+      if (signal.aborted || currentRead.current !== readIdentity) throw new Error('Consulta encerrada.');
 
       // O FK de created_by aponta pra auth.users, então não dá pra embutir
       // profiles no .select() do PostgREST. Resolvemos o criador em lote:
@@ -381,6 +390,8 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
         });
       }
 
+      if (signal.aborted || currentRead.current !== readIdentity) throw new Error('Consulta encerrada.');
+
       return (data || []).map((t) => ({
         ...t,
         creator: t.created_by ? creatorsMap.get(t.created_by) ?? null : null,
@@ -389,9 +400,10 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
   });
 
   const summaryQuery = useQuery({
-    queryKey: ['financial-summary'],
-    enabled: loadData,
-    queryFn: async () => {
+    queryKey: ['financial-summary', ...scope.key, loadData],
+    enabled: canRead,
+    queryFn: async ({ signal }) => {
+      if (!canRead) throw new Error('Aguarde a confirmação do acesso ao financeiro.');
       const data = await fetchAllPaginated<FinancialSummaryTransaction>(
         () => supabase
           .from('financial_transactions')
@@ -399,6 +411,7 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
           // movimento interno abaixo vira no-op silencioso.
           .select('transaction_type, amount, is_paid, transfer_pair_id, pdv_financial_role, amount_received')
       );
+      if (signal.aborted || currentRead.current !== readIdentity) throw new Error('Consulta encerrada.');
       
       return summarizeFinancialTransactions(data ?? []);
     },
@@ -1089,7 +1102,7 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
   // recebimento parcial, CMV legado). É o conjunto que o DRE precisa pra fechar
   // o resultado — a tarifa da maquininha é despesa de verdade e não existe em
   // nenhuma outra linha.
-  const transactionsWithChildren = transactionsQuery.data ?? EMPTY_TRANSACTIONS;
+  const transactionsWithChildren = canRead ? transactionsQuery.data ?? EMPTY_TRANSACTIONS : EMPTY_TRANSACTIONS;
 
   // Padrão das LISTAGENS: só as raízes. A filha aparece dentro do detalhe da
   // mãe (diálogo de transações relacionadas), nunca como linha solta. Este é o
@@ -1110,10 +1123,10 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
      * evento de caixa da mãe, que segue no banco com o valor cheio.
      */
     transactionsWithChildren,
-    summary: summaryQuery.data ?? { totalEntradas: 0, totalSaidas: 0, saldo: 0, aPagar: 0, aReceber: 0 },
-    isLoading: loadData && (transactionsQuery.isLoading || summaryQuery.isLoading),
-    error: transactionsQuery.error || summaryQuery.error,
-    refetch: () => Promise.all([transactionsQuery.refetch(), summaryQuery.refetch()]),
+    summary: canRead && summaryQuery.data ? summaryQuery.data : { totalEntradas: 0, totalSaidas: 0, saldo: 0, aPagar: 0, aReceber: 0 },
+    isLoading: loadData && (!scope.ready || transactionsQuery.isLoading || summaryQuery.isLoading),
+    error: canRead ? transactionsQuery.error || summaryQuery.error : null,
+    refetch: () => canRead ? Promise.all([transactionsQuery.refetch(), summaryQuery.refetch()]) : Promise.resolve([]),
     createTransaction,
     /** Série de REPETIÇÃO (N lançamentos do mesmo valor) num insert só. */
     createTransactionsBatch,

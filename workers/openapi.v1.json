@@ -4,7 +4,7 @@
     "title": "Dominex Public API",
     "version": "1.0.0",
     "summary": "Operacao de campo e CRM para integracoes server-to-server.",
-    "description": "API REST publica e multi-tenant da Dominex. O contrato usa nomes tecnicos em\ningles; este documento explica o comportamento em portugues brasileiro.\n\nA chave e um segredo de servidor. Nao use esta API diretamente em navegador,\naplicativo mobile distribuido ou qualquer cliente onde o segredo possa ser extraido.\n",
+    "description": "API REST publica e multi-tenant da Dominex. O contrato usa nomes tecnicos em\ningles; este documento explica o comportamento em portugues brasileiro.\n\nTipos de servico, recursos, disponibilidade e criacao/consulta de OS exigem o\nnucleo Servicos, alem dos escopos e da assinatura vigente. Sem esse nucleo,\nessas rotas retornam 403 module_not_contracted. Clientes e CRM preservam seus\nrequisitos proprios. /capabilities continua disponivel, com booking=null e\nschedule_configured=false quando Servicos nao esta contratado.\n\nA chave e um segredo de servidor. Nao use esta API diretamente em navegador,\naplicativo mobile distribuido ou qualquer cliente onde o segredo possa ser extraido.\n",
     "contact": {
       "name": "Dominex Tecnologia",
       "url": "https://www.dominex.app"
@@ -1000,7 +1000,7 @@
         }
       },
       "Forbidden": {
-        "description": "Escopo, origem ou assinatura nao autoriza a operacao.",
+        "description": "Escopo, origem, assinatura ou nucleo contratado nao autoriza a operacao; module_not_contracted indica ausencia do nucleo Servicos.",
         "headers": {
           "X-Request-Id": {
             "$ref": "#/components/headers/RequestId"
@@ -1183,7 +1183,8 @@
             "$ref": "#/components/schemas/DistributionMode"
           },
           "schedule_configured": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "false quando nao existe configuracao de agenda ou o nucleo Servicos nao esta contratado."
           },
           "limits": {
             "type": "object",
@@ -1218,6 +1219,7 @@
             }
           },
           "booking": {
+            "description": "Configuracao de agenda; null quando Servicos nao esta contratado.",
             "oneOf": [
               {
                 "$ref": "#/components/schemas/BookingSettings"

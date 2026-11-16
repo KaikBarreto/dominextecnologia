@@ -88,4 +88,11 @@ describe('autorização e isolamento da ponte fiscal',()=>{
   const result=projectGoodsSnapshot({sourceType:'pdv_sale',sourceId:'sale',items:[{icmsRate:0,pisRate:0,cofinsRate:0,quantity:1,unitPrice:10,total:8,discount:2}],payments:[{method:'01',amount:10,change:2}],party:null});
   expect(result.items[0]).toMatchObject({icmsRate:0,pisRate:0,cofinsRate:0,ncm:null,discount:2});expect(result.payments).toEqual([{method:'01',amount:10,change:2,deferred:false}]);expect(result.party).toBeNull();
  });
+ it('importação atrasada não retorna depois que a tela desmonta',async()=>{
+  let complete!:(v:unknown)=>void;state.rpc.mockImplementation((name:string)=>name==='fiscal_can_emit_goods'?Promise.resolve({data:true,error:null}):new Promise(resolve=>{complete=resolve;}));
+  const {result,unmount}=renderHook(()=>({access:useGoodsFiscalAccess(),importer:useGoodsFiscalSourceImport()}),{wrapper:Wrapper});await waitFor(()=>expect(result.current.access.allowed).toBe(true));
+  let pending!:Promise<unknown>;act(()=>{pending=result.current.importer.mutateAsync({sourceType:'pdv_sale',sourceId:'sale-a'});});await waitFor(()=>expect(complete).toBeDefined());unmount();
+  await act(async()=>{complete({data:{sourceType:'pdv_sale',sourceId:'sale-a',items:[]},error:null});await expect(pending).rejects.toThrow('contexto de acesso mudou');});
+ });
+
 });

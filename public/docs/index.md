@@ -59,3 +59,5 @@ imutável de origem. Implemente timeout, retries limitados, Retry-After em 429,
 erros application/problem+json e redaction de Authorization e dados pessoais.
 Adicione testes de duplicidade, concorrência, conflito de agenda e timeout.
 ```
+
+Tipos de serviço, recursos, disponibilidade e OS exigem o núcleo Serviços além dos escopos da chave. Sem o núcleo, a API retorna `403 module_not_contracted`. Clientes e CRM mantêm seus requisitos próprios; consulte a [referência](https://www.dominex.app/docs/api/referencia).
