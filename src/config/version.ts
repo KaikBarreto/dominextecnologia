@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.17";
+export const APP_VERSION = "1.41.18";
 
 export const VERSION_NOTES =
-  "O preenchimento inteligente do financeiro agora também pode selecionar a conta e a forma de pagamento mais usadas, sem trocar escolhas feitas manualmente.";
+  "Agora você pode aprovar um orçamento sem gerar lançamento financeiro e deixar o faturamento para a finalização da ordem de serviço.";

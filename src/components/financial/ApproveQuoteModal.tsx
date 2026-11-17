@@ -33,12 +33,13 @@ import { buildAccountOptions } from '@/components/financial/accountSelectOptions
  * não é receber; tem que virar conta a receber pra ele dar baixa conforme o
  * dinheiro entra.
  *
- * Dois modos, com o padrão vindo de `company_settings.quote_approval_revenue_mode`:
+ * Três modos, com o padrão vindo de `company_settings.quote_approval_revenue_mode`:
+ * - `apenas_aprovar` — muda o status sem criar lançamento financeiro.
  * - `recebido`    — igual ao fluxo antigo (receita paga + tarifa do recebimento).
  * - `a_receber`   — gera N parcelas PENDENTES. Sem tarifa: tarifa é fato do
  *                   recebimento e será informada na baixa de cada parcela.
  */
-export type ApproveQuoteMode = 'recebido' | 'a_receber';
+export type ApproveQuoteMode = 'apenas_aprovar' | 'recebido' | 'a_receber';
 
 export interface ApproveQuoteResult {
   mode: ApproveQuoteMode;
@@ -127,7 +128,7 @@ export function ApproveQuoteModal({
   // hora: o banco recusa (RLS pede `can_manage_system`) e o erro chegava sem
   // explicação. Mesmo critério do CostCenterSelect.
   const canManageFinanceSettings = useCanManageFinanceSettings();
-  // Os dois modos ('recebido' e 'a_receber') são sempre RECEITA — cartão de
+  // Os dois modos financeiros ('recebido' e 'a_receber') são sempre RECEITA — cartão de
   // crédito não é conta de destino de recebimento, nunca aparece aqui.
   const activeAccounts = useMemo(() => filterAccountsForReceivable(accounts), [accounts]);
   const { activeCostCenters } = useCostCenters();
@@ -206,15 +207,17 @@ export function ApproveQuoteModal({
   const fee = parseDecimal(feeAmount);
   const liquid = amount - fee;
 
+  const isOnlyApproval = mode === 'apenas_aprovar';
   const isReceivable = mode === 'a_receber';
+  const isReceived = mode === 'recebido';
 
   // Sanidade da tarifa contra o valor da venda — achado real de produção:
   // uma tarifa de R$ 6.600,00 sobre venda de R$ 795,24 (830%) foi aceita sem
   // aviso porque nada comparava os dois valores. Só se aplica no modo "Já
   // recebi" (único que tem tarifa nesta tela).
   const feeSanity = useMemo(() => evaluateFeeSanity(fee, amount), [fee, amount]);
-  const feeBlocked = !isReceivable && feeSanity.level === 'bloqueia';
-  const feeWarning = !isReceivable && feeSanity.level === 'alerta';
+  const feeBlocked = isReceived && feeSanity.level === 'bloqueia';
+  const feeWarning = isReceived && feeSanity.level === 'alerta';
 
   // Preview das parcelas — MESMO motor da gravação (datas com clamp de fim de
   // mês, sobra do rateio na última). O que o cliente vê aqui é exatamente o
@@ -224,12 +227,18 @@ export function ApproveQuoteModal({
     [isReceivable, firstDueDate, amount, installments],
   );
 
-  const canSubmit = isReceivable
-    ? !!firstDueDate && installments >= 1
-    : !!accountId && !feeBlocked;
+  const canSubmit = isOnlyApproval
+    ? true
+    : isReceivable
+      ? !!firstDueDate && installments >= 1
+      : !!accountId && !feeBlocked;
 
   const handleSubmit = async () => {
     if (!canSubmit || isSubmitting) return;
+    if (isOnlyApproval) {
+      await onConfirm({ mode: 'apenas_aprovar' });
+      return;
+    }
     if (isReceivable) {
       await onConfirm({
         mode: 'a_receber',
@@ -264,7 +273,11 @@ export function ApproveQuoteModal({
       >
         {isSubmitting
           ? t.confirmingLabel
-          : isReceivable ? t.confirmReceivableLabel : t.confirmReceivedLabel}
+          : isOnlyApproval
+            ? t.confirmOnlyApproveLabel
+            : isReceivable
+              ? t.confirmReceivableLabel
+              : t.confirmReceivedLabel}
       </Button>
     </div>
   );
@@ -281,8 +294,9 @@ export function ApproveQuoteModal({
         <div className="space-y-4">
           {/* Seletor de modo — pills saturadas (a selecionada vai na cor, com
               texto branco; nunca outline dessaturado). */}
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             {([
+              { value: 'apenas_aprovar' as const, label: t.modeOnlyApproveLabel },
               { value: 'recebido' as const, label: t.modeReceivedLabel },
               { value: 'a_receber' as const, label: t.modeReceivableLabel },
             ]).map((opt) => (
@@ -304,11 +318,15 @@ export function ApproveQuoteModal({
           </div>
           <p className="text-xs text-muted-foreground flex items-start gap-1.5">
             <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-            {isReceivable ? t.modeReceivableHint : t.modeReceivedHint}
+            {isOnlyApproval
+              ? t.modeOnlyApproveHint
+              : isReceivable
+                ? t.modeReceivableHint
+                : t.modeReceivedHint}
           </p>
 
           {/* ─────────────────────────── MODO "JÁ RECEBI" ─────────────────── */}
-          {!isReceivable && (
+          {isReceived && (
             <>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
@@ -498,20 +516,22 @@ export function ApproveQuoteModal({
             </>
           )}
 
-          {/* Centro de custo — vale nos DOIS modos (já recebi / vou receber
-              depois), por isso fica fora dos blocos. Sempre opcional; some da
-              tela quando a empresa não usa centro de custo. */}
-          {activeCostCenters.length > 0 && (
+          {/* Centro de custo — vale nos DOIS modos financeiros (já recebi / vou
+              receber depois), por isso fica fora dos blocos. Sempre opcional;
+              some no modo sem financeiro e quando a empresa não usa o recurso. */}
+          {!isOnlyApproval && activeCostCenters.length > 0 && (
             <div>
               <Label>{fin.costCenters.fieldLabel}</Label>
               <CostCenterSelect value={costCenterId} onValueChange={setCostCenterId} />
             </div>
           )}
 
-          <div>
-            <Label>{t.observationLabel}</Label>
-            <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
-          </div>
+          {!isOnlyApproval && (
+            <div>
+              <Label>{t.observationLabel}</Label>
+              <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
+            </div>
+          )}
         </div>
       </ResponsiveModal>
 

@@ -1001,7 +1001,7 @@ function QuotesList({
         onOpenChange={(v) => { if (!v) setApprovingQuote(null); }}
         quoteNumber={approvingQuote?.quote_number ?? null}
         amount={getQuoteCommercialTotal(approvingQuote)}
-        defaultMode={companySettings?.quote_approval_revenue_mode ?? 'a_receber'}
+        defaultMode={companySettings?.quote_approval_revenue_mode ?? 'apenas_aprovar'}
         defaultInstallments={approvingQuote?.receivable_installments ?? undefined}
         defaultFirstDueDate={approvingQuote?.receivable_first_due_date ?? null}
         isSubmitting={isApproving}

@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.18',
+    date: '17 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Aprove o orçamento sem antecipar o faturamento',
+        category: 'correcao',
+        description: 'Na aprovação interna, escolha entre apenas aprovar, gerar uma conta a receber ou registrar o valor como recebido. Quando o faturamento fica para o fim do serviço, a ordem de serviço evita sugerir uma cobrança duplicada.',
+      },
+    ],
+  },
+  {
     version: '1.41.16',
     date: '17 de novembro de 2026',
     type: 'patch',

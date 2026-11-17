@@ -13,7 +13,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { normalizeCompanySegments } from '@/utils/companySegments';
@@ -750,12 +749,12 @@ function AdministrativeSettings() {
   };
 
   // Mesmo padrão do os_stock_consumption_enabled acima: decisão da EMPRESA, no
-  // servidor. O Switch/LabeledSwitch é controlado por `settings?.<campo>` (não
+  // servidor. O controle é alimentado por `settings?.<campo>` (não
   // por estado local) porque o optimistic update do useCompanySettings já
   // reverte o cache sozinho no erro. Não duplicar tratamento de erro aqui.
-  const handleChangeQuoteApprovalMode = (mode: 'recebido' | 'a_receber') => {
+  const handleChangeQuoteApprovalMode = (mode: 'apenas_aprovar' | 'recebido' | 'a_receber') => {
     updateSettings.mutate(
-      { quote_approval_revenue_mode: mode } as any,
+      { quote_approval_revenue_mode: mode },
       { onSuccess: () => toast({ title: t.usability.preferenceSaved }) }
     );
   };
@@ -1808,21 +1807,33 @@ function AdministrativeSettings() {
                   // controle nunca mentir sobre o estado real.
                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />
                 ) : (
-                  <LabeledSwitch<'recebido' | 'a_receber'>
-                    className="shrink-0 self-start sm:self-auto"
-                    value={settings?.quote_approval_revenue_mode === 'recebido' ? 'recebido' : 'a_receber'}
-                    onChange={handleChangeQuoteApprovalMode}
-                    off={{ value: 'recebido', label: t.usability.quoteFinance.modeReceived }}
-                    on={{ value: 'a_receber', label: t.usability.quoteFinance.modeReceivable }}
+                  <Select
+                    value={settings?.quote_approval_revenue_mode ?? 'apenas_aprovar'}
+                    onValueChange={(value) => handleChangeQuoteApprovalMode(
+                      value as 'apenas_aprovar' | 'recebido' | 'a_receber',
+                    )}
                     disabled={!canSaveSettings || updateSettings.isPending}
-                    aria-label={t.usability.quoteFinance.modeTitle}
-                  />
+                  >
+                    <SelectTrigger
+                      className="w-full shrink-0 sm:w-[220px]"
+                      aria-label={t.usability.quoteFinance.modeTitle}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="apenas_aprovar">{t.usability.quoteFinance.modeOnlyApprove}</SelectItem>
+                      <SelectItem value="a_receber">{t.usability.quoteFinance.modeReceivable}</SelectItem>
+                      <SelectItem value="recebido">{t.usability.quoteFinance.modeReceived}</SelectItem>
+                    </SelectContent>
+                  </Select>
                 )}
               </div>
               <p className="text-xs text-muted-foreground pb-1">
                 {settings?.quote_approval_revenue_mode === 'recebido'
                   ? t.usability.quoteFinance.modeReceivedHint
-                  : t.usability.quoteFinance.modeReceivableHint}
+                  : settings?.quote_approval_revenue_mode === 'a_receber'
+                    ? t.usability.quoteFinance.modeReceivableHint
+                    : t.usability.quoteFinance.modeOnlyApproveHint}
               </p>
 
               <Separator className="opacity-50" />

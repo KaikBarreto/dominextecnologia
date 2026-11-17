@@ -96,13 +96,13 @@ export interface CompanySettings {
   // (aba Usabilidade → card "Orçamento, OS e financeiro").
   os_finish_revenue_prompt_enabled?: boolean;
   // Aprovação de orçamento → financeiro. `quote_approval_revenue_mode` só
-  // escolhe a opção PRE-MARCADA no modal interno ('recebido' = entra paga,
-  // comportamento antigo; 'a_receber' = entra pendente, com vencimento) — o
-  // operador troca em 1 clique. `quote_public_approval_creates_receivable`
+  // escolhe a opção PRE-MARCADA no modal interno ('apenas_aprovar' = não cria
+  // financeiro; 'recebido' = entra paga; 'a_receber' = entra pendente) — o
+  // operador pode trocar por orçamento. `quote_public_approval_creates_receivable`
   // liga a geração automática do a receber quando quem aprova é o CLIENTE
   // FINAL pelo link público da proposta; default false preserva o
   // comportamento de hoje (aprovar pelo link só muda o status).
-  quote_approval_revenue_mode?: 'recebido' | 'a_receber' | null;
+  quote_approval_revenue_mode?: 'apenas_aprovar' | 'recebido' | 'a_receber' | null;
   quote_public_approval_creates_receivable?: boolean | null;
   created_at: string;
   updated_at: string;

@@ -23,10 +23,10 @@ interface ApproveQuoteParams {
 /** Devolvido pela mutation pra o toast saber o que dizer. */
 interface ApproveQuoteOutcome {
   mode: ApproveQuoteResult['mode'];
-  /** Quantas linhas de receita foram criadas (1 no modo 'recebido'). */
+  /** Quantas linhas de receita foram criadas (0 no modo 'apenas_aprovar'). */
   count: number;
-  /** Id da linha-âncora (a receita, ou a 1a parcela). */
-  primaryId: string;
+  /** Id da linha-âncora (a receita, ou a 1a parcela). Null sem financeiro. */
+  primaryId: string | null;
 }
 
 /**
@@ -202,9 +202,10 @@ export function useQuoteConversion() {
   });
 
   /**
-   * Aprova o orçamento em UM de dois modos (o padrão vem de
+   * Aprova o orçamento em um de três modos (o padrão vem de
    * `company_settings.quote_approval_revenue_mode`):
    *
+   * - `apenas_aprovar` — muda apenas o status comercial; sem financeiro.
    * - `recebido`  — comportamento histórico: receita já PAGA (entra no saldo da
    *                 conta na hora) + a despesa da tarifa do recebimento como
    *                 linha filha.
@@ -223,6 +224,30 @@ export function useQuoteConversion() {
       if (!user?.id) throw new Error('Usuário não autenticado');
       if (quote.financial_generated_at) {
         throw new Error('Lançamentos financeiros já foram gerados para este orçamento');
+      }
+
+      // Aprovação comercial sem antecipar o fato financeiro. Os filtros
+      // adicionais tornam a operação concorrente segura: se outro usuário
+      // faturou ou converteu o orçamento enquanto o modal estava aberto, a
+      // atualização afeta zero linhas e não apaga nem mascara o novo estado.
+      if (approval.mode === 'apenas_aprovar') {
+        const { data: approved, error: approvalError } = await supabase
+          .from('quotes')
+          .update({ status: 'aprovado' })
+          .eq('id', quote.id)
+          .in('status', ['rascunho', 'enviado'])
+          .is('financial_generated_at', null)
+          .is('financial_transaction_id', null)
+          .is('converted_to_os_id', null)
+          .select('id')
+          .maybeSingle();
+
+        if (approvalError) throw approvalError;
+        if (!approved) {
+          throw new Error('O orçamento foi alterado. Atualize a tela antes de aprovar novamente.');
+        }
+
+        return { mode: 'apenas_aprovar', count: 0, primaryId: null };
       }
 
       const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
@@ -386,11 +411,13 @@ export function useQuoteConversion() {
     },
     onSuccess: (outcome) => {
       invalidateAll();
-      const description = outcome.mode === 'recebido'
-        ? tq.revenuePosted
-        : outcome.count > 1
-          ? tq.receivableMulti.replace('{count}', String(outcome.count))
-          : tq.receivableSingle;
+      const description = outcome.mode === 'apenas_aprovar'
+        ? tq.approvedOnly
+        : outcome.mode === 'recebido'
+          ? tq.revenuePosted
+          : outcome.count > 1
+            ? tq.receivableMulti.replace('{count}', String(outcome.count))
+            : tq.receivableSingle;
       toast({ title: tq.approvedTitle, description });
     },
     onError: (e: any) => {
