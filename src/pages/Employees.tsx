@@ -854,7 +854,7 @@ export default function Employees() {
               type: 'vale_residual',
               amount: remainingVales,
               balance_after: sal - remainingVales,
-              description: 'Vales não descontados no pagamento',
+              description: 'Vales/Adiantamentos não descontados no pagamento',
               created_by: user?.id,
             } as any);
             if (valeError) {

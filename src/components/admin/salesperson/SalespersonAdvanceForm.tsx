@@ -52,7 +52,7 @@ export function SalespersonAdvanceForm({ salespersonId, salespersonName }: Props
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
-          <Wallet className="h-4 w-4" /> Registrar Vale
+          <Wallet className="h-4 w-4" /> Registrar Vale/Adiantamento
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -75,7 +75,7 @@ export function SalespersonAdvanceForm({ salespersonId, salespersonName }: Props
               onChange={(e) => setData({ ...data, description: e.target.value })} placeholder="Motivo do vale..." />
           </div>
           <Button type="submit" variant="destructive" className="w-full" disabled={createAdvance.isPending}>
-            {createAdvance.isPending ? 'Registrando...' : 'Registrar Vale'}
+            {createAdvance.isPending ? 'Registrando...' : 'Registrar Vale/Adiantamento'}
           </Button>
         </form>
       </CardContent>

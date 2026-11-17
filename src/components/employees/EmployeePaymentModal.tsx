@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Switch } from '@/components/ui/switch';
 import { BalanceSummary } from '@/utils/employeeCalculations';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { currencyMask, parseCurrency } from '@/utils/employeeCalculations';
@@ -14,13 +15,17 @@ import { centsFromPastedAmount } from '@/lib/money-paste-mask';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { calculatePayrollDeductions, type PayrollResult } from '@/utils/payrollDeductions';
-import { calculateEmployeeCost, defaultCostInput } from '@/utils/employeeCostProvisions';
 import type { HoleriteSnapshot } from '@/utils/holeriteHtmlGenerator';
 import { CostCenterSelect } from '@/components/financial/CostCenterSelect';
 import { useCostCenters } from '@/hooks/useCostCenters';
 import { CategorySelectField } from '@/components/financial/CategorySelectField';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { formatMoney } from '@/lib/format';
+import { hasPayrollTables } from '@/utils/payrollTables';
+import {
+  PayrollAdjustmentsEditor,
+  type PayrollAdjustmentDraft,
+} from '@/components/employees/PayrollAdjustmentsEditor';
 
 export interface PaymentPayload {
   valeDiscount: number;
@@ -53,6 +58,13 @@ export interface PaymentPayload {
  * bater o NOME, em vez de usar o motor de papel único daquele arquivo.
  */
 const PJ_LABOR_CATEGORY_SEED_NAME = 'CSP - Mão de Obra Avulsa';
+
+const EMPTY_PAYROLL_RESULT: PayrollResult = {
+  inss: 0, irrf: 0, vt: 0, baseINSS: 0, baseIRRF: 0,
+  inssEffectiveRate: 0, inssMarginalRate: 0, irrfBeforeReduction: 0,
+  irrfReduction: 0, irrfDeductionType: 'legal', irrfDeductionAmount: 0,
+  totalDescontosLegais: 0,
+};
 
 const normalizeCategoryName = (value: string | null | undefined): string =>
   (value ?? '').trim().toLocaleLowerCase('pt-BR');
@@ -153,6 +165,11 @@ export function EmployeePaymentModal({
   const [accountId, setAccountId] = useState('');
   const [costCenterId, setCostCenterId] = useState<string | null>(null);
   const [description, setDescription] = useState('');
+  const [extraEarnings, setExtraEarnings] = useState<PayrollAdjustmentDraft[]>([]);
+  const [extraDeductions, setExtraDeductions] = useState<PayrollAdjustmentDraft[]>([]);
+  const [inssOverrideEnabled, setInssOverrideEnabled] = useState(false);
+  const [inssOverrideStr, setInssOverrideStr] = useState('');
+  const [inssOverrideReason, setInssOverrideReason] = useState('');
   const [payMode, setPayMode] = useState<'informal' | 'clt' | 'pj'>('informal');
   const [pjAmountStr, setPjAmountStr] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState('');
@@ -166,7 +183,14 @@ export function EmployeePaymentModal({
   // PJ/MEI é travado em 'pj' — não faz sentido pagar prestador em modo
   // informal/CLT (folha/encargos não existem pra esse regime).
   useEffect(() => {
-    if (open) setPayMode(employeeRegime ?? 'informal');
+    if (open) {
+      setPayMode(employeeRegime ?? 'informal');
+      setExtraEarnings([]);
+      setExtraDeductions([]);
+      setInssOverrideEnabled(false);
+      setInssOverrideStr('');
+      setInssOverrideReason('');
+    }
   }, [open, employeeRegime]);
 
   // Valor combinado PJ: pré-preenchido pelo contrato vigente quando a
@@ -201,11 +225,12 @@ export function EmployeePaymentModal({
   }, [open, payMode, financialCategories]);
 
   // Competência = mês/ano da DATA DO PAGAMENTO (nunca new Date() na geração).
-  const { competencia, competenceYear } = useMemo(() => {
+  const { competencia, competenceYear, competenceMonth } = useMemo(() => {
     const payDate = paymentDate ? new Date(paymentDate) : new Date();
     return {
       competencia: `${String(payDate.getMonth() + 1).padStart(2, '0')}/${payDate.getFullYear()}`,
       competenceYear: payDate.getFullYear(),
+      competenceMonth: payDate.getMonth() + 1,
     };
   }, [paymentDate]);
 
@@ -256,37 +281,67 @@ export function EmployeePaymentModal({
   const subtotal = salary + balance.totalBonus - balance.totalVales - balance.totalFaltas;
   const toPay = subtotal + (balance.totalVales - valeDiscount);
   const remainingVales = balance.totalVales - valeDiscount;
+  const isClt = payMode === 'clt';
+  const isPj = payMode === 'pj';
 
   // --- Cálculo CLT (delegado aos motores puros) ---
-  const grossBase = salary + balance.totalBonus;
+  const proventosExtras = extraEarnings
+    .map((item) => ({
+      label: item.label.trim(),
+      valor: Math.max(0, parseCurrency(item.amountInput)),
+      incideEncargos: Boolean(item.incideEncargos),
+    }))
+    .filter((item) => item.label && item.valor > 0);
+  const descontosExtras = extraDeductions
+    .map((item) => ({ label: item.label.trim(), valor: Math.max(0, parseCurrency(item.amountInput)) }))
+    .filter((item) => item.label && item.valor > 0);
+  const totalProventosExtras = proventosExtras.reduce((total, item) => total + item.valor, 0);
+  const proventosExtrasTributaveis = proventosExtras.reduce(
+    (total, item) => total + (item.incideEncargos ? item.valor : 0),
+    0,
+  );
+  const totalDescontosExtras = descontosExtras.reduce((total, item) => total + item.valor, 0);
+  const rubricaPendente = [...extraEarnings, ...extraDeductions].some(
+    (item) => parseCurrency(item.amountInput) > 0 && !item.label.trim(),
+  );
+  const grossBase = salary + balance.totalBonus + proventosExtrasTributaveis;
+  const totalProventos = salary + balance.totalBonus + totalProventosExtras;
+  const tableAvailable = hasPayrollTables(competenceYear, competenceMonth);
   const ded: PayrollResult = useMemo(
-    () => calculatePayrollDeductions({
+    () => tableAvailable ? calculatePayrollDeductions({
       grossBase,
       salary,
       dependentsCount: dependentsCount ?? 0,
       vtEnabled: vtEnabled ?? false,
       vtMonthlyValue: vtMonthlyValue ?? 0,
       competenceYear,
-    }),
-    [grossBase, salary, dependentsCount, vtEnabled, vtMonthlyValue, competenceYear],
+      competenceMonth,
+    }) : EMPTY_PAYROLL_RESULT,
+    [grossBase, salary, dependentsCount, vtEnabled, vtMonthlyValue, competenceYear, competenceMonth, tableAvailable],
   );
 
-  // Base FGTS e valor FGTS (informativo) via motor de custo. ATENÇÃO: aqui só
-  // consumimos `baseEncargos` e `fgts` — ambos INDEPENDEM do regime tributário
-  // (FGTS é 8% da base para qualquer regime). Por isso o `regime: 'simples'`
-  // fixo do defaultCostInput é irrelevante. Se um dia ler outro campo de `custo`
-  // (ex.: inssPatronal), revisar o regime passado aqui.
-  const custo = useMemo(
-    () => calculateEmployeeCost({ ...defaultCostInput, baseSalary: salary }),
-    [salary],
-  );
-  const baseFGTS = custo.baseEncargos;
-  const fgtsMes = custo.fgts;
+  useEffect(() => {
+    if (!open || inssOverrideEnabled || !tableAvailable) return;
+    setInssOverrideStr(currencyMask(String(Math.round(ded.inss * 100)), currency, locale));
+  }, [open, inssOverrideEnabled, tableAvailable, ded.inss, currency, locale]);
+
+  const inssCalculado = ded.inss;
+  const inssFinal = inssOverrideEnabled ? Math.max(0, parseCurrency(inssOverrideStr)) : inssCalculado;
+  const dedAjustado: PayrollResult = {
+    ...ded,
+    inss: inssFinal,
+    totalDescontosLegais: inssFinal + ded.irrf + ded.vt,
+  };
+
+  const baseFGTS = grossBase;
+  const fgtsMes = Math.round(baseFGTS * 0.08 * 100) / 100;
 
   // Líquido CLT = bruto − descontos legais − faltas − vales, arredondado.
   const cltLiquido = useMemo(
-    () => Math.round((grossBase - ded.totalDescontosLegais - balance.totalFaltas - valeDiscount) * 100) / 100,
-    [grossBase, ded.totalDescontosLegais, balance.totalFaltas, valeDiscount],
+    () => tableAvailable
+      ? Math.round((totalProventos - dedAjustado.totalDescontosLegais - balance.totalFaltas - valeDiscount - totalDescontosExtras) * 100) / 100
+      : Number.NaN,
+    [tableAvailable, totalProventos, dedAjustado.totalDescontosLegais, balance.totalFaltas, valeDiscount, totalDescontosExtras],
   );
 
   // PJ: valor combinado digitado (sem balance/vale/falta — não existe pra PJ).
@@ -307,16 +362,23 @@ export function EmployeePaymentModal({
   const negativo = amountToPay < 0;
   // PJ exige categoria escolhida (nunca grava lançamento sem nome de categoria
   // real da empresa) — mesma régua do `accountId`, que já bloqueia sem conta.
-  const canSubmit = !negativo && amountToPay > 0 && !!accountId && !isPending && (payMode !== 'pj' || !!pjCategoryName);
+  const ajusteInssPendente = isClt && inssOverrideEnabled && !inssOverrideReason.trim();
+  const canSubmit = Number.isFinite(amountToPay) && !negativo && amountToPay > 0 && !!accountId
+    && !isPending && !rubricaPendente && !ajusteInssPendente
+    && (payMode !== 'pj' || !!pjCategoryName);
 
   const handleConfirm = () => {
-    if (negativo) return; // guard também no submit, não só no disabled
+    if (!canSubmit) return;
     const snapshot: HoleriteSnapshot | undefined = payMode === 'clt' ? {
       mode: 'clt',
       competencia,
       proventos: { salary, adicional: 0, bonus: balance.totalBonus },
-      descontos: { inss: ded.inss, irrf: ded.irrf, vt: ded.vt, faltas: balance.totalFaltas, vales: valeDiscount },
-      bases: { inss: ded.baseINSS, irrf: ded.baseIRRF, fgts: baseFGTS, fgtsValor: fgtsMes },
+      descontos: { inss: dedAjustado.inss, irrf: dedAjustado.irrf, vt: dedAjustado.vt, faltas: balance.totalFaltas, vales: valeDiscount },
+      bases: { inss: dedAjustado.baseINSS, irrf: dedAjustado.baseIRRF, fgts: baseFGTS, fgtsValor: fgtsMes },
+      proventosExtras,
+      descontosExtras,
+      inssCalculado,
+      motivoAjusteInss: inssOverrideEnabled ? inssOverrideReason.trim() : null,
       liquido: cltLiquido,
     } : undefined;
     onSubmit({
@@ -339,9 +401,24 @@ export function EmployeePaymentModal({
           {t.negativeNet}
         </p>
       )}
+      {isClt && !tableAvailable && (
+        <p className="text-xs text-destructive font-medium text-right">
+          Não há tabela oficial cadastrada para {competencia}.
+        </p>
+      )}
+      {rubricaPendente && (
+        <p className="text-xs text-destructive font-medium text-right">{t.adjustments.missingName}</p>
+      )}
+      {ajusteInssPendente && (
+        <p className="text-xs text-destructive font-medium text-right">{t.adjustments.missingInssReason}</p>
+      )}
       <div className="flex justify-end gap-2">
         <Button variant="outline" onClick={() => onOpenChange(false)}>{t.cancelLabel}</Button>
-        <Button onClick={handleConfirm} disabled={!canSubmit}>
+        <Button
+          onClick={handleConfirm}
+          disabled={!canSubmit}
+          className="bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90"
+        >
           {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {t.confirmLabel}
         </Button>
@@ -349,8 +426,6 @@ export function EmployeePaymentModal({
     </div>
   );
 
-  const isClt = payMode === 'clt';
-  const isPj = payMode === 'pj';
   // PJ/MEI é travado no modo 'pj' — folha/encargos CLT não fazem sentido pra
   // um contrato de prestação de serviço.
   const availableModes = employeeRegime === 'pj' ? (['pj'] as const) : (['informal', 'clt'] as const);
@@ -361,7 +436,7 @@ export function EmployeePaymentModal({
       onOpenChange={handleOpenChange}
       title={`${t.titlePrefix} ${employeeName}`}
       footer={footer}
-      className="sm:max-w-4xl"
+      className="sm:max-w-6xl"
     >
       <div className="p-1">
         {financialTransactionId && (
@@ -370,7 +445,7 @@ export function EmployeePaymentModal({
           </NoticeBanner>
         )}
 
-        <div className="grid gap-4 md:grid-cols-[1fr_320px]">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
           {/* ===================== FORM (esquerda) ===================== */}
           <div className="space-y-4">
             {/* Seletor de modo (Informal/CLT, ou travado em PJ/MEI) */}
@@ -393,6 +468,54 @@ export function EmployeePaymentModal({
                 ))}
               </div>
             </div>
+
+            {isClt && (
+              <>
+                <PayrollAdjustmentsEditor
+                  earnings={extraEarnings}
+                  deductions={extraDeductions}
+                  onEarningsChange={setExtraEarnings}
+                  onDeductionsChange={setExtraDeductions}
+                  onAmountChange={maskCurrency}
+                  copy={t.adjustments}
+                />
+                <section className="space-y-3 rounded-xl border bg-muted/20 p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <Label htmlFor="dominex-override-inss">{t.adjustments.inssOverride}</Label>
+                      <p className="text-xs text-muted-foreground">
+                        {t.adjustments.calculatedInss.replace('{value}', fmt(inssCalculado))}
+                      </p>
+                    </div>
+                    <Switch
+                      id="dominex-override-inss"
+                      checked={inssOverrideEnabled}
+                      onCheckedChange={setInssOverrideEnabled}
+                    />
+                  </div>
+                  {inssOverrideEnabled && (
+                    <div className="grid gap-3 sm:grid-cols-[160px_minmax(0,1fr)]">
+                      <Input
+                        value={inssOverrideStr}
+                        onChange={(event) => setInssOverrideStr(maskCurrency(event.target.value))}
+                        inputMode="decimal"
+                        placeholder={t.adjustments.amountPlaceholder}
+                      />
+                      <div className="space-y-1.5">
+                        <Label htmlFor="dominex-inss-reason">{t.adjustments.inssReason}</Label>
+                        <Input
+                          id="dominex-inss-reason"
+                          value={inssOverrideReason}
+                          onChange={(event) => setInssOverrideReason(event.target.value)}
+                          placeholder={t.adjustments.inssReasonPlaceholder}
+                          maxLength={120}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </section>
+              </>
+            )}
 
             {/* Valor combinado + nota fiscal — só no modo PJ/MEI */}
             {isPj && (
@@ -507,7 +630,7 @@ export function EmployeePaymentModal({
           </div>
 
           {/* ===================== RESUMO (direita / aside) ===================== */}
-          <aside className="space-y-3 md:border-l md:pl-4">
+          <aside className="order-first space-y-3 self-start lg:order-last lg:sticky lg:top-0 lg:border-l lg:pl-6">
             {isPj ? (
               <>
                 <div className="rounded-lg bg-muted border border-border p-4 text-center">
@@ -540,9 +663,14 @@ export function EmployeePaymentModal({
                       <span>{fmt(balance.totalBonus)}</span>
                     </div>
                   )}
+                  {proventosExtras.map((item, index) => (
+                    <div key={`${item.label}-${index}`} className="flex justify-between text-green-600">
+                      <span>{item.label}</span><span>{fmt(item.valor)}</span>
+                    </div>
+                  ))}
                   <div className="border-t pt-2 flex justify-between font-medium">
                     <span>{t.cltSummary.totalProventos}</span>
-                    <span>{fmt(grossBase)}</span>
+                    <span>{fmt(totalProventos)}</span>
                   </div>
                 </div>
 
@@ -551,16 +679,16 @@ export function EmployeePaymentModal({
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t.cltSummary.descontos}</p>
                   <div className="flex justify-between text-destructive">
                     <span>INSS</span>
-                    <span>{fmt(ded.inss)}</span>
+                    <span>{fmt(dedAjustado.inss)}</span>
                   </div>
                   <div className="flex justify-between text-destructive">
                     <span>IRRF</span>
-                    <span>{fmt(ded.irrf)}</span>
+                    <span>{fmt(dedAjustado.irrf)}</span>
                   </div>
-                  {ded.vt > 0 && (
+                  {dedAjustado.vt > 0 && (
                     <div className="flex justify-between text-destructive">
                       <span>{t.cltSummary.vt}</span>
-                      <span>{fmt(ded.vt)}</span>
+                      <span>{fmt(dedAjustado.vt)}</span>
                     </div>
                   )}
                   {balance.totalFaltas > 0 && (
@@ -575,6 +703,11 @@ export function EmployeePaymentModal({
                       <span>{fmt(valeDiscount)}</span>
                     </div>
                   )}
+                  {descontosExtras.map((item, index) => (
+                    <div key={`${item.label}-${index}`} className="flex justify-between text-destructive">
+                      <span>{item.label}</span><span>{fmt(item.valor)}</span>
+                    </div>
+                  ))}
                 </div>
 
                 {/* LÍQUIDO (destaque) */}
@@ -590,11 +723,11 @@ export function EmployeePaymentModal({
                   <p className="font-semibold uppercase tracking-wide">{t.cltSummary.bases}</p>
                   <div className="flex justify-between">
                     <span>Base INSS</span>
-                    <span>{fmt(ded.baseINSS)}</span>
+                    <span>{fmt(dedAjustado.baseINSS)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Base IRRF</span>
-                    <span>{fmt(ded.baseIRRF)}</span>
+                    <span>{fmt(dedAjustado.baseIRRF)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Base FGTS</span>

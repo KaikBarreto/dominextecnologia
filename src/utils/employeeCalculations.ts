@@ -140,7 +140,7 @@ export function recalculateBalances(movements: EmployeeMovement[], salary: numbe
 
 export function formatMovementType(type: string): string {
   const map: Record<string, string> = {
-    vale: 'Vale', vale_residual: 'Saldo de vale', bonus: 'Bônus', falta: 'Falta',
+    vale: 'Vale/Adiantamento', vale_residual: 'Saldo de Vale/Adiantamento', bonus: 'Bônus', falta: 'Falta',
     falta_banco: 'Falta (BH)',
     pagamento: 'Pagamento', ajuste: 'Ajuste',
     recebimento: 'Recebimento',

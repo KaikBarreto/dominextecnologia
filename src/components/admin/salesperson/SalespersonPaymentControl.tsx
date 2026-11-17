@@ -160,7 +160,7 @@ export function SalespersonPaymentControl({ salesperson, allSales, allAdvances, 
           <span className="text-emerald-600">+{fmt(data.totalCommission)}</span>
         </div>
         <div className="flex justify-between text-sm">
-          <span>Vales:</span>
+          <span>Vales/Adiantamentos:</span>
           <span className="text-destructive">-{fmt(data.totalAdvances)}</span>
         </div>
         <div className="border-t pt-3 flex justify-between font-bold">
