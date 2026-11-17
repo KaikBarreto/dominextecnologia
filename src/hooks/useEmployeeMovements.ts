@@ -81,7 +81,7 @@ export function useEmployeeMovements(employeeId?: string) {
       qc.invalidateQueries({ queryKey: ['financial-summary'] });
       qc.invalidateQueries({ queryKey: ['dashboard-stats'] });
       qc.invalidateQueries({ queryKey: ['account-balances'] });
-      toast({ title: 'Vale registrado!' });
+      toast({ title: 'Vale/Adiantamento registrado!' });
     },
     onError: (e: Error) => toast({
       variant: 'destructive',

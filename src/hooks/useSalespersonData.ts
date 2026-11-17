@@ -453,7 +453,7 @@ export function useCreateAdvance() {
       qc.invalidateQueries({ queryKey: ['salesperson_advances'] });
       qc.invalidateQueries({ queryKey: ['all_salesperson_advances'] });
       invalidateAdminFinancials(qc);
-      toast.success('Vale registrado');
+      toast.success('Vale/Adiantamento registrado');
     },
     onError: (e: any) => toast.error(e?.message || 'Erro ao registrar vale'),
   });
@@ -477,7 +477,7 @@ export function useDeleteAdvance() {
       qc.invalidateQueries({ queryKey: ['salesperson_advances'] });
       qc.invalidateQueries({ queryKey: ['all_salesperson_advances'] });
       invalidateAdminFinancials(qc);
-      toast.success('Vale removido');
+      toast.success('Vale/Adiantamento removido');
     },
     onError: (e: any) => toast.error(e?.message || 'Erro ao remover vale'),
   });

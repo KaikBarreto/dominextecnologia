@@ -403,7 +403,7 @@ export default function AdminSalespersonDetail() {
                         { value: "overview", label: "Visão geral" },
                         { value: "activity", label: "Atividade" },
                         { value: "sales", label: "Vendas" },
-                        { value: "advances", label: "Vales" },
+                        { value: "advances", label: "Vales/Adiantamentos" },
                         { value: "payment", label: "Pagamento" },
                       ]}
                       activeTab={activeTab}

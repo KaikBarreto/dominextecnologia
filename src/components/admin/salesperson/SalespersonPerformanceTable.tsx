@@ -73,7 +73,7 @@ export function SalespersonPerformanceTable({ salespeople, sales, advances, onEd
             <SortableTableHead sortKey="name" sortConfig={sortConfig} onSort={handleSort}>Pessoa</SortableTableHead>
             <SortableTableHead sortKey="_totalSales" sortConfig={sortConfig} onSort={handleSort} className="text-center">Vendas</SortableTableHead>
             <SortableTableHead sortKey="_totalCommission" sortConfig={sortConfig} onSort={handleSort} className="text-right">Comissão</SortableTableHead>
-            <SortableTableHead sortKey="_totalAdvances" sortConfig={sortConfig} onSort={handleSort} className="text-right">Vales</SortableTableHead>
+            <SortableTableHead sortKey="_totalAdvances" sortConfig={sortConfig} onSort={handleSort} className="text-right">Vales/Adiantamentos</SortableTableHead>
             <SortableTableHead sortKey="_balance" sortConfig={sortConfig} onSort={handleSort} className="text-right">Saldo</SortableTableHead>
             <SortableTableHead sortKey="_pct" sortConfig={sortConfig} onSort={handleSort} className="text-center">Meta</SortableTableHead>
             <SortableTableHead sortKey="_isActive" sortConfig={sortConfig} onSort={handleSort}>Status</SortableTableHead>
