@@ -60,21 +60,29 @@ export function PayrollAdjustmentsEditor({
     onChange: (next: PayrollAdjustmentDraft[]) => void,
     type: 'earning' | 'deduction',
   ) => (
-    <div className="space-y-3">
+    <div className="space-y-2.5">
       {items.length === 0 && (
-        <p className="py-2 text-xs text-muted-foreground">
+        <p className="py-1 text-xs text-muted-foreground">
           {type === 'earning' ? copy.emptyEarnings : copy.emptyDeductions}
         </p>
+      )}
+      {items.length > 0 && (
+        <div className="grid grid-cols-[minmax(0,1fr)_6.75rem_2.25rem] gap-2 px-1 text-[11px] font-medium text-muted-foreground">
+          <span>{copy.descriptionLabel}</span>
+          <span>{copy.amountLabel}</span>
+          <span />
+        </div>
       )}
       {items.map((item) => {
         const descriptionId = `${type}-description-${item.id}`;
         const amountId = `${type}-amount-${item.id}`;
         return (
-          <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
-          <div className="col-span-2 space-y-1.5">
-            <Label htmlFor={descriptionId} className="text-xs text-muted-foreground">{copy.descriptionLabel}</Label>
+          <div key={item.id} className="space-y-1.5">
+            <div className="grid grid-cols-[minmax(0,1fr)_6.75rem_2.25rem] items-center gap-2">
             <Input
               id={descriptionId}
+              aria-label={copy.descriptionLabel}
+              className="h-9 px-2"
               value={item.label}
               onChange={(event) => onChange(items.map((current) => current.id === item.id
                 ? { ...current, label: event.target.value }
@@ -82,11 +90,10 @@ export function PayrollAdjustmentsEditor({
               placeholder={type === 'earning' ? copy.earningPlaceholder : copy.deductionPlaceholder}
               maxLength={60}
             />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor={amountId} className="text-xs text-muted-foreground">{copy.amountLabel}</Label>
             <Input
               id={amountId}
+              aria-label={copy.amountLabel}
+              className="h-9 px-2"
               value={item.amountInput}
               onChange={(event) => onChange(items.map((current) => current.id === item.id
                 ? { ...current, amountInput: onAmountChange(event.target.value) }
@@ -94,19 +101,19 @@ export function PayrollAdjustmentsEditor({
               inputMode="decimal"
               placeholder={copy.amountPlaceholder}
             />
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="mt-6"
-            aria-label={copy.remove}
-            onClick={() => onChange(items.filter((current) => current.id !== item.id))}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-          {type === 'earning' && (
-            <div className="col-span-2 flex items-center gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 text-muted-foreground hover:text-destructive"
+                aria-label={copy.remove}
+                onClick={() => onChange(items.filter((current) => current.id !== item.id))}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+            {type === 'earning' && (
+              <div className="flex items-center gap-2 px-1">
               <Switch
                 id={`legal-bases-${item.id}`}
                 checked={Boolean(item.incideEncargos)}
@@ -114,11 +121,11 @@ export function PayrollAdjustmentsEditor({
                   ? { ...current, incideEncargos: checked }
                   : current))}
               />
-              <Label htmlFor={`legal-bases-${item.id}`} className="text-xs font-normal text-muted-foreground">
+              <Label htmlFor={`legal-bases-${item.id}`} className="text-xs font-normal normal-case tracking-normal text-muted-foreground">
                 {copy.legalBases}
               </Label>
-            </div>
-          )}
+              </div>
+            )}
           </div>
         );
       })}
@@ -126,7 +133,7 @@ export function PayrollAdjustmentsEditor({
         type="button"
         variant="ghost"
         size="sm"
-        className="h-9 w-full justify-start px-0 text-muted-foreground hover:bg-transparent hover:text-foreground"
+        className="h-8 w-full justify-start px-0 text-muted-foreground hover:bg-transparent hover:text-foreground"
         onClick={() => onChange([...items, makeDraft(type === 'earning')])}
       >
         <Plus className="mr-2 h-4 w-4" />
@@ -141,10 +148,9 @@ export function PayrollAdjustmentsEditor({
         <h3 className="text-base font-semibold text-foreground">{copy.title}</h3>
         <p className="text-sm text-muted-foreground">{copy.description}</p>
       </div>
-      <div className="grid gap-5 xl:grid-cols-2 xl:divide-x xl:divide-border">
-        <div className="space-y-2 xl:pr-5">
-          <Label className="text-emerald-700 dark:text-emerald-400">{copy.earnings}</Label>
-          <div className="flex flex-wrap gap-2" aria-label={copy.earnings}>
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-2" aria-label={copy.earnings}>
+          <span className="mr-1 text-xs font-medium text-muted-foreground">Adicionar rápido</span>
             {copy.earningPresets.map((preset) => {
               const active = earnings.some((item) => item.label === preset);
               return (
@@ -155,8 +161,8 @@ export function PayrollAdjustmentsEditor({
                   size="sm"
                   aria-pressed={active}
                   className={active
-                    ? "h-8 rounded-full bg-primary px-3 text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
-                    : "h-8 rounded-full bg-muted px-3 text-muted-foreground hover:bg-muted/80 hover:text-foreground"}
+                    ? "h-7 rounded-full bg-primary px-2.5 text-xs text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
+                    : "h-7 rounded-full bg-muted px-2.5 text-xs text-muted-foreground hover:bg-muted/80 hover:text-foreground"}
                   onClick={() => {
                     if (!active) onEarningsChange([...earnings, makeDraft(true, preset)]);
                   }}
@@ -165,12 +171,16 @@ export function PayrollAdjustmentsEditor({
                 </Button>
               );
             })}
-          </div>
-          <p className="text-xs leading-relaxed text-muted-foreground">{copy.presetsHelp}</p>
+        </div>
+        <p className="text-xs text-muted-foreground">{copy.presetsHelp}</p>
+      </div>
+      <div className="grid gap-6 xl:grid-cols-2">
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-foreground">{copy.earnings}</p>
           {renderRows(earnings, onEarningsChange, 'earning')}
         </div>
-        <div className="space-y-2 xl:pl-5">
-          <Label className="text-red-700 dark:text-red-400">{copy.deductions}</Label>
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-foreground">{copy.deductions}</p>
           {renderRows(deductions, onDeductionsChange, 'deduction')}
         </div>
       </div>
