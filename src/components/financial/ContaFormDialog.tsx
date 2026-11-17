@@ -497,8 +497,9 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
             <Label>{t.descriptionLabel}</Label>
             <FinancialSmartDescription id="smart-bill-description" value={description} onChange={setDescription} placeholder={t.descriptionPlaceholder}
               enabled={open && !isEditing} context="bill" direction={tipo}
-              values={{ category, customer_id: customerId, supplier_id: supplierId, cost_center_id: costCenterId }}
-              onPatch={patch => { if ('category' in patch) setCategory(patch.category || ''); if ('customer_id' in patch) setCustomerId(patch.customer_id || ''); if ('supplier_id' in patch) setSupplierId(patch.supplier_id || ''); if ('cost_center_id' in patch) setCostCenterId(patch.cost_center_id || null); }}
+              values={{ category, customer_id: customerId, supplier_id: supplierId, cost_center_id: costCenterId, account_id: accountId }}
+              replaceableKeys={['account_id']} allowedValues={{ account_id: accountsForTipo.map(account => account.id) }}
+              onPatch={patch => { if ('category' in patch) setCategory(patch.category || ''); if ('customer_id' in patch) setCustomerId(patch.customer_id || ''); if ('supplier_id' in patch) setSupplierId(patch.supplier_id || ''); if ('cost_center_id' in patch) setCostCenterId(patch.cost_center_id || null); if ('account_id' in patch) setAccountId(patch.account_id || ''); }}
               onApplied={() => document.getElementById('smart-bill-due')?.focus()} />
           </div>
 

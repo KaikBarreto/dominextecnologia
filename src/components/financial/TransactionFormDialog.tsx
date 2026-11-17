@@ -1652,8 +1652,9 @@ export function TransactionFormDialog({
               <FormLabel>{tf.descriptionLabel}</FormLabel>
               <FinancialSmartDescription id="smart-movement-description" value={field.value || ''} onChange={field.onChange} multiline placeholder={tf.descriptionPlaceholder}
                 enabled={open && !isEditing && !draft.showResumePrompt} context="movement" direction={transactionType}
-                values={{ category: form.watch('category'), customer_id: form.watch('customer_id'), supplier_id: form.watch('supplier_id'), cost_center_id: form.watch('cost_center_id') }}
-                onPatch={patch => { for (const [key, value] of Object.entries(patch)) form.setValue(key as 'category' | 'customer_id' | 'supplier_id' | 'cost_center_id', value || undefined, { shouldDirty: true, shouldValidate: true }); }}
+                values={{ category: form.watch('category'), customer_id: form.watch('customer_id'), supplier_id: form.watch('supplier_id'), cost_center_id: form.watch('cost_center_id'), account_id: watchedAccountId, payment_method: watchedPaymentMethod }}
+                replaceableKeys={['account_id', 'payment_method']} allowedValues={{ account_id: accountOptions.map(account => account.value) }}
+                onPatch={patch => { for (const [key, value] of Object.entries(patch)) form.setValue(key as 'category' | 'customer_id' | 'supplier_id' | 'cost_center_id' | 'account_id' | 'payment_method', value || undefined, { shouldDirty: true, shouldValidate: true }); }}
                 onApplied={() => document.getElementById('smart-movement-date')?.focus()} />
               <FormMessage />
             </FormItem>

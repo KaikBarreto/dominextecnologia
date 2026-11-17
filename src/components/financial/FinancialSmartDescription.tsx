@@ -10,6 +10,7 @@ type Props = {
   value: string; onChange: (value: string) => void; id?: string; placeholder?: string; multiline?: boolean;
   enabled: boolean; disabled?: boolean; scope?: 'tenant' | 'admin'; context: 'bill' | 'movement'; direction: 'entrada' | 'saida';
   values: SmartFillValues; onPatch: (patch: SmartFillValues) => void; onApplied: () => void;
+  replaceableKeys?: string[]; allowedValues?: Record<string, string[]>;
 };
 export function FinancialSmartDescription(props: Props) {
   const { locale } = useAppLocaleContext();
@@ -34,9 +35,13 @@ export function FinancialSmartDescription(props: Props) {
   const selected = Math.min(active, patterns.length - 1);
   function apply(pattern: FinancialPattern) {
     const before: SmartFillValues = {}, after: SmartFillValues = {};
+    const accountIsAllowed = !pattern.account_id || !props.allowedValues?.account_id || props.allowedValues.account_id.includes(pattern.account_id);
     for (const key of Object.keys(props.values)) {
       const value = pattern[key as keyof FinancialPattern];
-      if (!props.values[key] && !manual.current.has(key) && typeof value === 'string' && value) {
+      const replaceable = props.replaceableKeys?.includes(key) && !manual.current.has(key);
+      const allowed = !props.allowedValues?.[key] || (typeof value === 'string' && props.allowedValues[key].includes(value));
+      const coupledPaymentAllowed = key !== 'payment_method' || accountIsAllowed;
+      if ((!props.values[key] || replaceable) && !manual.current.has(key) && allowed && coupledPaymentAllowed && typeof value === 'string' && value) {
         before[key] = props.values[key]; after[key] = value;
       }
     }
@@ -65,7 +70,13 @@ export function FinancialSmartDescription(props: Props) {
       {patterns.map((pattern, index) => <li id={`${listId}-${index}`} key={`${pattern.description}-${index}`} role="option" aria-selected={selected === index}
         className={`flex flex-wrap items-center justify-between gap-2 rounded px-2 py-1.5 ${selected === index ? 'bg-muted' : ''}`}>
         <div className="min-w-0 text-sm"><p className="break-words font-medium">{pattern.description}</p>
-          <p className="break-words text-xs text-muted-foreground">{[pattern.party_label || pattern.counterparty, pattern.category_label, pattern.cost_center_label].filter(Boolean).join(' · ')}</p>
+          <p className="break-words text-xs text-muted-foreground">{[
+            pattern.party_label || pattern.counterparty,
+            pattern.category_label,
+            pattern.cost_center_label,
+            pattern.account_label,
+            pattern.payment_method === 'pix' ? 'Pix' : pattern.payment_method === 'transferencia' ? 'Transferência' : pattern.payment_method === 'boleto' ? 'Boleto' : pattern.payment_method === 'cheque' ? 'Cheque' : pattern.payment_method === 'dinheiro' ? 'Dinheiro' : pattern.payment_method === 'cartao_debito' ? 'Cartão de débito' : pattern.payment_method === 'cartao_credito' ? 'Cartão de crédito' : null,
+          ].filter(Boolean).join(' · ')}</p>
           <p className="text-xs text-muted-foreground">{copy.used.replace('{count}', String(pattern.uses))} · {new Date(pattern.last_used).toLocaleDateString(locale, { month: 'long', year: 'numeric', timeZone: 'UTC' })}</p>
         </div>
         <Button type="button" size="sm" variant="outline" onMouseDown={event => event.preventDefault()} onClick={() => apply(pattern)}>{copy.apply}</Button>

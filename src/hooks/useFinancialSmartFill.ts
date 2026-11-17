@@ -5,6 +5,7 @@ export type FinancialPattern = {
   description: string; category?: string; category_label?: string;
   customer_id?: string; supplier_id?: string; cost_center_id?: string;
   party_label?: string; cost_center_label?: string; counterparty?: string;
+  account_id?: string; account_label?: string; payment_method?: string;
   uses: number; last_used: string;
 };
 export type SmartFillValues = Record<string, string | null | undefined>;
