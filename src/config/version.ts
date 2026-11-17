@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.16";
+export const APP_VERSION = "1.41.17";
 
 export const VERSION_NOTES =
-  "Correção no histórico de ordens de serviço exibido para cada equipamento no Portal do Cliente.";
+  "O preenchimento inteligente do financeiro agora também pode selecionar a conta e a forma de pagamento mais usadas, sem trocar escolhas feitas manualmente.";
