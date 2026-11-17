@@ -122,15 +122,15 @@ export function PayrollAdjustmentsEditor({
   return (
     <section className="space-y-4 border-b pb-5">
       <div>
-        <h3 className="text-sm font-semibold">{copy.title}</h3>
-        <p className="text-xs text-muted-foreground">{copy.description}</p>
+        <h3 className="text-base font-semibold text-foreground">{copy.title}</h3>
+        <p className="text-sm text-muted-foreground">{copy.description}</p>
       </div>
       <div className="grid gap-5 xl:grid-cols-2 xl:divide-x xl:divide-border">
-        <div className="space-y-2 xl:pl-5">
+        <div className="space-y-2 xl:pr-5">
           <Label className="text-emerald-700 dark:text-emerald-400">{copy.earnings}</Label>
           {renderRows(earnings, onEarningsChange, 'earning')}
         </div>
-        <div className="space-y-2">
+        <div className="space-y-2 xl:pl-5">
           <Label className="text-red-700 dark:text-red-400">{copy.deductions}</Label>
           {renderRows(deductions, onDeductionsChange, 'deduction')}
         </div>

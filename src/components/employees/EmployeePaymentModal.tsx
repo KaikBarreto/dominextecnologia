@@ -469,6 +469,36 @@ export function EmployeePaymentModal({
               </div>
             </div>
 
+            {!isPj && balance.totalVales > 0 && (
+              <section className="space-y-3 rounded-lg bg-amber-50 px-4 py-4 dark:bg-amber-950/20">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <Label className="text-base font-semibold normal-case tracking-normal text-foreground">
+                      {t.advanceDiscount.label}
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      {t.advanceDiscount.info.replace('{total}', fmt(balance.totalVales))}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-amber-600 px-2.5 py-1 text-xs font-semibold text-white">
+                    {fmt(balance.totalVales)}
+                  </span>
+                </div>
+                <Input
+                  value={valeDiscountStr}
+                  onChange={e => setValeDiscountStr(maskCurrency(e.target.value))}
+                  onPaste={handleValeDiscountPaste}
+                  placeholder={fmt(balance.totalVales)}
+                  className="h-12 text-lg font-semibold"
+                />
+                {remainingVales > 0 && (
+                  <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                    {t.advanceDiscount.remaining.replace('{value}', fmt(remainingVales))}
+                  </p>
+                )}
+              </section>
+            )}
+
             {isClt && (
               <>
                 <PayrollAdjustmentsEditor
@@ -479,11 +509,13 @@ export function EmployeePaymentModal({
                   onAmountChange={maskCurrency}
                   copy={t.adjustments}
                 />
-                <section className="space-y-3 border-b pb-5">
+                <section className="space-y-4 border-b pb-5">
                   <div className="flex items-center justify-between gap-4">
                     <div>
-                      <Label htmlFor="dominex-override-inss">{t.adjustments.inssOverride}</Label>
-                      <p className="text-xs text-muted-foreground">
+                      <Label htmlFor="dominex-override-inss" className="text-base font-semibold normal-case tracking-normal text-foreground">
+                        {t.adjustments.inssOverride}
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
                         {t.adjustments.calculatedInss.replace('{value}', fmt(inssCalculado))}
                       </p>
                     </div>
@@ -553,25 +585,6 @@ export function EmployeePaymentModal({
               </div>
             )}
 
-            {/* Vale Discount */}
-            {!isPj && balance.totalVales > 0 && (
-              <div className="space-y-2">
-                <Label>{t.advanceDiscount.label}</Label>
-                <Input
-                  value={valeDiscountStr}
-                  onChange={e => setValeDiscountStr(maskCurrency(e.target.value))}
-                  onPaste={handleValeDiscountPaste}
-                  placeholder={fmt(balance.totalVales)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  {t.advanceDiscount.info.replace('{total}', fmt(balance.totalVales))}
-                  {remainingVales > 0 && (
-                    <span className="text-amber-600 font-medium"> • {t.advanceDiscount.remaining.replace('{value}', fmt(remainingVales))}</span>
-                  )}
-                </p>
-              </div>
-            )}
-
             {/* Account Selection */}
             {activeAccounts.length > 0 && (
               <div className="space-y-2">
@@ -630,7 +643,7 @@ export function EmployeePaymentModal({
           </div>
 
           {/* ===================== RESUMO (direita / aside) ===================== */}
-          <aside className="order-first space-y-4 self-start rounded-xl border bg-muted/30 p-5 lg:order-last lg:sticky lg:top-0">
+          <aside className="order-first space-y-4 self-start rounded-xl border bg-muted/50 p-5 shadow-sm lg:order-last lg:sticky lg:top-0">
             {isPj ? (
               <>
                 <div className="text-center">
