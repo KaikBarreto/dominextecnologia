@@ -68,6 +68,7 @@ import { formatOSNumber } from '@/lib/osNumber';
 import { PortalDocumentsSection, type PortalDocumentItem } from '@/components/portal/PortalDocumentsSection';
 import { PortalUnlockCard } from '@/components/portal/PortalUnlockCard';
 import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
+import { serviceOrderBelongsToEquipment } from '@/lib/customerPortalEquipmentHistory';
 
 interface PortalLabel {
   id: string;
@@ -131,6 +132,8 @@ interface ServiceOrder {
   scheduled_date: string | null;
   created_at: string;
   os_type: string;
+  equipment_id?: string | null;
+  equipment_ids?: string[];
   // Campos entregues pelo dev-database (contrato de dados)
   service_type_name: string | null;
   technician_name: string | null;
@@ -742,7 +745,7 @@ function CustomerPortalContent({
     setEqSubTab('overview');
   };
   const equipmentOrders = selectedEquipment
-    ? serviceOrders.filter((os) => (os as unknown as { equipment_id?: string }).equipment_id === selectedEquipment)
+    ? serviceOrders.filter((os) => serviceOrderBelongsToEquipment(os, selectedEquipment))
     : [];
 
   const formatFieldValue = (value: unknown, fieldType: string): string => {

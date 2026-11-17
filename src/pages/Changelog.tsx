@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.16',
+    date: '17 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Histórico dos equipamentos corrigido',
+        category: 'correcao',
+        description: 'O Portal do Cliente volta a mostrar em cada equipamento todas as ordens de serviço vinculadas, inclusive quando o atendimento inclui vários equipamentos.',
+      },
+    ],
+  },
+  {
     version: '1.41.15',
     date: '17 de novembro de 2026',
     type: 'patch',
