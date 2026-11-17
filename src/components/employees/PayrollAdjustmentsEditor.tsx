@@ -58,12 +58,12 @@ export function PayrollAdjustmentsEditor({
   ) => (
     <div className="space-y-3">
       {items.length === 0 && (
-        <p className="rounded-lg border border-dashed px-3 py-4 text-center text-xs text-muted-foreground">
+        <p className="py-2 text-xs text-muted-foreground">
           {type === 'earning' ? copy.emptyEarnings : copy.emptyDeductions}
         </p>
       )}
       {items.map((item) => (
-        <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 rounded-lg border bg-background p-3">
+        <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
           <Input
             className="col-span-2"
             value={item.label}
@@ -108,9 +108,9 @@ export function PayrollAdjustmentsEditor({
       ))}
       <Button
         type="button"
-        variant="outline"
+        variant="ghost"
         size="sm"
-        className="w-full border-dashed"
+        className="h-9 w-full justify-start px-0 text-muted-foreground hover:bg-transparent hover:text-foreground"
         onClick={() => onChange([...items, makeDraft(type === 'earning')])}
       >
         <Plus className="mr-2 h-4 w-4" />
@@ -120,13 +120,13 @@ export function PayrollAdjustmentsEditor({
   );
 
   return (
-    <section className="space-y-4 rounded-xl border bg-muted/20 p-4">
+    <section className="space-y-4 border-b pb-5">
       <div>
         <h3 className="text-sm font-semibold">{copy.title}</h3>
         <p className="text-xs text-muted-foreground">{copy.description}</p>
       </div>
-      <div className="grid gap-4 xl:grid-cols-2">
-        <div className="space-y-2">
+      <div className="grid gap-5 xl:grid-cols-2 xl:divide-x xl:divide-border">
+        <div className="space-y-2 xl:pl-5">
           <Label className="text-emerald-700 dark:text-emerald-400">{copy.earnings}</Label>
           {renderRows(earnings, onEarningsChange, 'earning')}
         </div>

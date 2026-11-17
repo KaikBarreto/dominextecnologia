@@ -479,7 +479,7 @@ export function EmployeePaymentModal({
                   onAmountChange={maskCurrency}
                   copy={t.adjustments}
                 />
-                <section className="space-y-3 rounded-xl border bg-muted/20 p-4">
+                <section className="space-y-3 border-b pb-5">
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <Label htmlFor="dominex-override-inss">{t.adjustments.inssOverride}</Label>
@@ -630,17 +630,17 @@ export function EmployeePaymentModal({
           </div>
 
           {/* ===================== RESUMO (direita / aside) ===================== */}
-          <aside className="order-first space-y-3 self-start lg:order-last lg:sticky lg:top-0 lg:border-l lg:pl-6">
+          <aside className="order-first space-y-4 self-start rounded-xl border bg-muted/30 p-5 lg:order-last lg:sticky lg:top-0">
             {isPj ? (
               <>
-                <div className="rounded-lg bg-muted border border-border p-4 text-center">
+                <div className="text-center">
                   <p className="text-sm text-muted-foreground mb-1">{t.amountToPay.label}</p>
                   <p className={`text-2xl font-bold ${amountToPay >= 0 ? 'text-success' : 'text-destructive'}`}>
                     {fmt(amountToPay)}
                   </p>
                 </div>
                 {invoiceNumber.trim() && (
-                  <div className="rounded-lg border p-4 space-y-2 text-sm">
+                  <div className="border-t pt-4 space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">{t.pj.invoiceNumberLabel}</span>
                       <span className="font-medium">{invoiceNumber.trim()}</span>
@@ -651,7 +651,7 @@ export function EmployeePaymentModal({
             ) : isClt ? (
               <>
                 {/* PROVENTOS */}
-                <div className="rounded-lg border p-4 space-y-2 text-sm">
+                <div className="space-y-2 text-sm">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t.cltSummary.proventos}</p>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">{t.summary.salary}</span>
@@ -675,7 +675,7 @@ export function EmployeePaymentModal({
                 </div>
 
                 {/* DESCONTOS */}
-                <div className="rounded-lg border p-4 space-y-2 text-sm">
+                <div className="border-t pt-4 space-y-2 text-sm">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t.cltSummary.descontos}</p>
                   <div className="flex justify-between text-destructive">
                     <span>INSS</span>
@@ -711,7 +711,7 @@ export function EmployeePaymentModal({
                 </div>
 
                 {/* LÍQUIDO (destaque) */}
-                <div className="rounded-lg bg-muted border border-border p-4 text-center">
+                <div className="border-t pt-4 text-center">
                   <p className="text-sm text-muted-foreground mb-1">{t.cltSummary.liquido}</p>
                   <p className={`text-2xl font-bold ${cltLiquido >= 0 ? 'text-success' : 'text-destructive'}`}>
                     {fmt(cltLiquido)}
@@ -719,7 +719,7 @@ export function EmployeePaymentModal({
                 </div>
 
                 {/* BASES (informativo) */}
-                <div className="rounded-lg border p-4 space-y-1.5 text-xs text-muted-foreground">
+                <div className="border-t pt-4 space-y-1.5 text-xs text-muted-foreground">
                   <p className="font-semibold uppercase tracking-wide">{t.cltSummary.bases}</p>
                   <div className="flex justify-between">
                     <span>Base INSS</span>
@@ -742,7 +742,7 @@ export function EmployeePaymentModal({
             ) : (
               <>
                 {/* Resumo INFORMAL (mantém o atual) */}
-                <div className="rounded-lg border p-4 space-y-2 text-sm">
+                <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">{t.summary.salary}</span>
                     <span className="font-medium">{fmt(salary)}</span>
@@ -778,7 +778,7 @@ export function EmployeePaymentModal({
                 </div>
 
                 {/* Amount to Pay */}
-                <div className="rounded-lg bg-muted border border-border p-4 text-center">
+                <div className="border-t pt-4 text-center">
                   <p className="text-sm text-muted-foreground mb-1">{t.amountToPay.label}</p>
                   <p className={`text-2xl font-bold ${toPay >= 0 ? 'text-success' : 'text-destructive'}`}>
                     {fmt(toPay)}
