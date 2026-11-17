@@ -1,3 +1,4 @@
+import { FinancialSmartDescription } from '@/components/financial/FinancialSmartDescription';
 import { useState, useEffect, useMemo } from 'react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
@@ -299,8 +300,13 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
         } as any;
         await updateTransaction.mutateAsync(input);
       } else {
+        const recurrenceGroupId = occurrenceCount > 1 ? crypto.randomUUID() : undefined;
         const transactionInputs = occurrencePlan.map((occurrence): TransactionInput => ({
             transaction_type: tipo,
+            installment_group_id: recurrenceGroupId,
+            recurrence_base_amount: recurrenceGroupId ? Number(amount) : undefined,
+            installment_number: recurrenceGroupId ? occurrence.number : undefined,
+            installment_total: recurrenceGroupId ? occurrenceCount : undefined,
             description: occurrenceCount > 1 ? `${description} (${occurrence.number}/${occurrenceCount})` : description,
             amount: Number(amount),
             transaction_date: occurrence.date,
@@ -487,6 +493,32 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
             </div>
           </div>
 
+          <div className="space-y-1.5 lg:col-span-2">
+            <Label>{t.descriptionLabel}</Label>
+            <FinancialSmartDescription id="smart-bill-description" value={description} onChange={setDescription} placeholder={t.descriptionPlaceholder}
+              enabled={open && !isEditing} context="bill" direction={tipo}
+              values={{ category, customer_id: customerId, supplier_id: supplierId, cost_center_id: costCenterId }}
+              onPatch={patch => { if ('category' in patch) setCategory(patch.category || ''); if ('customer_id' in patch) setCustomerId(patch.customer_id || ''); if ('supplier_id' in patch) setSupplierId(patch.supplier_id || ''); if ('cost_center_id' in patch) setCostCenterId(patch.cost_center_id || null); }}
+              onApplied={() => document.getElementById('smart-bill-due')?.focus()} />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>{t.dueDateLabel}</Label>
+            <DatePicker id="smart-bill-due" value={dueDate} onValueChange={setDueDate} />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>{t.amountLabel}</Label>
+            <Input
+              id="conta-amount"
+              inputMode="numeric"
+              value={amountDisplay}
+              onChange={handleAmountChange}
+              onPaste={handleAmountPaste}
+              placeholder={t.amountPlaceholder}
+            />
+          </div>
+
           <div className="space-y-1.5">
             <Label>{t.categoryLabel}</Label>
             <CategorySelectField
@@ -498,10 +530,6 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
             />
           </div>
 
-          <div className="space-y-1.5 lg:col-span-2">
-            <Label>{t.descriptionLabel}</Label>
-            <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t.descriptionPlaceholder} />
-          </div>
 
           {/* Vínculo principal: Cliente em conta a receber; Fornecedor em
               conta a pagar. O outro vínculo continua em Mais detalhes. */}
@@ -538,21 +566,6 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
         {/* ── Seção 2: Dinheiro ────────────────────────────────────────────
             Quanto, quando vence e de qual conta/caixa. */}
         <ModalFormSection title={t.sections.money}>
-          <div className="space-y-1.5">
-            <Label>{t.amountLabel}</Label>
-            <Input
-              id="conta-amount"
-              inputMode="numeric"
-              value={amountDisplay}
-              onChange={handleAmountChange}
-              onPaste={handleAmountPaste}
-              placeholder={t.amountPlaceholder}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>{t.dueDateLabel}</Label>
-            <DatePicker value={dueDate} onValueChange={setDueDate} />
-          </div>
 
           {/* Account selector — required. Em recebimento (entrada), cartão de
               crédito nunca aparece: é conta de saída, não destino de receita. */}
@@ -588,7 +601,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
         {/* ── Seção 3: Mais detalhes ───────────────────────────────────────
             Opcionais: vínculo secundário, centro de custo e observações. */}
         <ModalFormSection
-          key={`conta-more-details-${tipo}`}
+          key={`conta-more-details-${tipo}-${!!costCenterId}-${!!secondaryPartyId}`}
           title={t.sections.moreDetails}
           collapsible
           defaultOpen={isEditing || !!secondaryPartyId || !!costCenterId || !!notes.trim()}

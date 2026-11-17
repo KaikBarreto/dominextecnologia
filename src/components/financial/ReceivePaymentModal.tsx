@@ -3,6 +3,8 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DatePicker } from '@/components/ui/DatePicker';
+import { Switch } from '@/components/ui/switch';
+import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -32,6 +34,8 @@ export interface ReceivePaymentResult {
   amount_received?: number;
   /** Novo vencimento do saldo restante (YYYY-MM-DD). Só vem preenchido em recebimento parcial. */
   new_due_date?: string;
+  occurrence_amount?: number;
+  update_future_occurrences?: boolean;
 }
 
 // Sem campo de centro de custo aqui: DECISÃO DELIBERADA, não esquecimento
@@ -50,6 +54,8 @@ interface ReceivePaymentModalProps {
   amountReceived?: number;
   /** Habilita o fluxo de recebimento parcial. Default false (mantém comportamento atual). */
   allowPartial?: boolean;
+  allowOccurrenceAdjustment?: boolean;
+  hasRecurringSeries?: boolean;
   /** Total de parcelas da transação. Se > 1, o campo "Valor recebido" fica desabilitado (regra: parcelado não usa parcial). */
   installmentTotal?: number;
   /** Vencimento atual da conta — usado pra calcular default do "novo vencimento" (atual + 30 dias). */
@@ -110,6 +116,8 @@ export function ReceivePaymentModal({
   open, onOpenChange, amount,
   amountReceived = 0,
   allowPartial = false,
+  allowOccurrenceAdjustment = false,
+  hasRecurringSeries = false,
   installmentTotal = 1,
   currentDueDate,
   liveCharge,
@@ -121,6 +129,17 @@ export function ReceivePaymentModal({
   const { locale, currency, timezone } = useAppLocaleContext();
   const fmt = (value: number) => formatMoney(value, currency, locale);
   const t = MESSAGES[locale].app.finance.receivePayment;
+  const occurrenceCopy = MESSAGES[locale].app.finance.occurrenceAmount;
+  const [occurrenceAmount, setOccurrenceAmount] = useState(amount.toFixed(2));
+  const [updateFuture, setUpdateFuture] = useState(false);
+  const [partialMode, setPartialMode] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const busy = isSubmitting || saving;
+  const occurrenceValue = Number(occurrenceAmount);
+  const adjustingOccurrence = allowOccurrenceAdjustment && !partialMode;
+  const occurrenceChanged = adjustingOccurrence && Math.abs(occurrenceValue - amount) >= 0.005;
+  const occurrenceInvalid = adjustingOccurrence && (!Number.isFinite(occurrenceValue) || occurrenceValue <= 0 || Math.abs(occurrenceValue * 100 - Math.round(occurrenceValue * 100)) > 0.00001);
+  const actualAmount = adjustingOccurrence ? occurrenceValue : amount;
   const { accounts } = useFinancialAccounts();
   // Quem não gerencia configuração não vê o "+" de criar conta/categoria na
   // hora: o banco recusa (RLS pede `can_manage_system`) e o erro chegava sem
@@ -158,9 +177,9 @@ export function ReceivePaymentModal({
   const modalTitle = title ?? t.defaultTitle;
 
   // Saldo que falta receber (total - já recebido).
-  const restante = useMemo(() => Math.max(0, Number((amount - amountReceived).toFixed(2))), [amount, amountReceived]);
+  const restante = useMemo(() => Math.max(0, Number((actualAmount - amountReceived).toFixed(2))), [actualAmount, amountReceived]);
   const isParcelada = (installmentTotal ?? 1) > 1;
-  const partialEnabled = allowPartial && !isParcelada;
+  const partialEnabled = allowPartial && !isParcelada && (!allowOccurrenceAdjustment || partialMode);
 
   const [accountId, setAccountId] = useState<string>('');
   // Quick-create de conta bancária inline.
@@ -181,23 +200,31 @@ export function ReceivePaymentModal({
 
   useEffect(() => {
     if (open) {
+      setOccurrenceAmount(amount.toFixed(2));
+      setUpdateFuture(false);
+      setPartialMode(false);
+    }
+  }, [open, amount]);
+
+  useEffect(() => {
+    if (open) {
       setMethod(defaultMethod);
       setPaidDate(todayInTz(timezone));
       setFeeAmount('');
       setNotes('');
       // Default = o que falta receber (formatado pt-BR).
-      setValorRecebidoStr(restante.toFixed(2).replace('.', ','));
+      setValorRecebidoStr(Math.max(0, amount - amountReceived).toFixed(2).replace('.', ','));
       // Default = vencimento atual + 30 dias.
       setNovoVencimento(addDaysISO(currentDueDate, 30, timezone));
       if (!accountId && activeAccounts[0]) setAccountId(activeAccounts[0].id);
     }
-  }, [open, defaultMethod, restante, currentDueDate, timezone]); // eslint-disable-line
+  }, [open, defaultMethod, amount, amountReceived, currentDueDate, timezone]); // eslint-disable-line
 
   const valorRecebido = useMemo(() => parseDecimal(valorRecebidoStr), [valorRecebidoStr]);
   const fee = parseDecimal(feeAmount);
-  const liquid = valorRecebido - fee;
   // No fluxo legado (allowPartial=false): valor recebido = amount inteiro.
-  const valorEfetivo = partialEnabled ? valorRecebido : amount;
+  const valorEfetivo = partialEnabled ? valorRecebido : actualAmount;
+  const liquid = valorEfetivo - fee;
   const restanteApos = Math.max(0, Number((restante - valorEfetivo).toFixed(2)));
   const isPartial = partialEnabled && valorEfetivo > 0 && valorEfetivo < restante;
 
@@ -215,35 +242,42 @@ export function ReceivePaymentModal({
   const paidDateInvalid = !isPaidDateAllowedInTz(paidDate, timezone);
 
   const handleSubmit = async () => {
-    if (!accountId) return;
-    if (valorInvalido) return;
+    if (!accountId || busy) return;
+    if (valorInvalido || occurrenceInvalid) return;
     if (novoVencimentoInvalido) return;
     if (paidDateInvalid) return;
 
-    await onConfirm({
-      account_id: accountId,
-      payment_method: method,
-      paid_date: paidDate,
-      fee_amount: fee,
-      notes: notes.trim() || undefined,
-      // Só envia amount_received se o fluxo parcial estiver habilitado E o valor diferir do restante.
-      // Quando = restante, deixa undefined pro hook usar o caminho de quitação total (UPDATE direto na mãe).
-      amount_received: partialEnabled && valorEfetivo < restante ? valorEfetivo : undefined,
-      new_due_date: isPartial ? novoVencimento : undefined,
-    });
+    setSaving(true);
+    try {
+      await onConfirm({
+        account_id: accountId,
+        payment_method: method,
+        paid_date: paidDate,
+        fee_amount: fee,
+        notes: notes.trim() || undefined,
+        // Só envia amount_received se o fluxo parcial estiver habilitado E o valor diferir do restante.
+        // Quando = restante, deixa undefined pro hook usar o caminho de quitação total (UPDATE direto na mãe).
+        amount_received: partialEnabled && valorEfetivo < restante ? valorEfetivo : undefined,
+        new_due_date: isPartial ? novoVencimento : undefined,
+        occurrence_amount: occurrenceChanged ? occurrenceValue : undefined,
+        update_future_occurrences: occurrenceChanged && hasRecurringSeries && updateFuture,
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const footer = (
     <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-      <Button className="w-full sm:w-auto" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+      <Button className="w-full sm:w-auto" variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
         {t.cancelLabel}
       </Button>
       <Button
         onClick={handleSubmit}
-        disabled={!accountId || isSubmitting || valorInvalido || novoVencimentoInvalido || paidDateInvalid}
+        disabled={!accountId || busy || valorInvalido || occurrenceInvalid || novoVencimentoInvalido || paidDateInvalid}
         className="w-full bg-success text-white hover:bg-success/90 sm:w-auto"
       >
-        {isSubmitting ? t.confirmingLabel : t.confirmLabel}
+        {busy ? t.confirmingLabel : t.confirmLabel}
       </Button>
     </div>
   );
@@ -252,7 +286,7 @@ export function ReceivePaymentModal({
     <>
     <ResponsiveModal
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={value => { if (!busy) onOpenChange(value); }}
       title={modalTitle}
       description={description ?? `Valor: ${fmt(amount)}`}
       footer={footer}
@@ -264,6 +298,26 @@ export function ReceivePaymentModal({
           <NoticeBanner variant="warning" title={t.liveChargeWarning.title}>
             {t.liveChargeWarning.body.replace('{amount}', fmt(liveCharge.value))}
           </NoticeBanner>
+        )}
+
+        {allowOccurrenceAdjustment && allowPartial && !isParcelada && (
+          <LabeledSwitch disabled={busy} value={partialMode ? 'partial' : 'full'} onChange={v => { setPartialMode(v === 'partial'); setUpdateFuture(false); }}
+            off={{ value: 'full', label: occurrenceCopy.full }} on={{ value: 'partial', label: occurrenceCopy.partial }} />
+        )}
+        {adjustingOccurrence && (
+          <div className="space-y-2">
+            <Label htmlFor="receive-occurrence-amount">{occurrenceCopy.label}</Label>
+            <Input id="receive-occurrence-amount" type="number" inputMode="decimal" min="0.01" step="0.01"
+              value={occurrenceAmount} disabled={busy} onChange={e => { setOccurrenceAmount(e.target.value); setUpdateFuture(false); }} />
+            {occurrenceInvalid ? <p role="alert" className="text-xs text-destructive">{occurrenceCopy.invalid}</p> : occurrenceChanged && <>
+              <p className="text-sm">{occurrenceCopy.scheduled}: {fmt(amount)} · {occurrenceCopy.realized}: {fmt(occurrenceValue)}</p>
+              <p className="text-xs text-muted-foreground">{updateFuture ? occurrenceCopy.futureHint : occurrenceCopy.onlyThis}</p>
+              {hasRecurringSeries && <div className="flex items-center gap-3">
+                <Switch id="receive-update-future" checked={updateFuture} disabled={busy} onCheckedChange={setUpdateFuture} />
+                <Label htmlFor="receive-update-future">{occurrenceCopy.updateFuture}</Label>
+              </div>}
+            </>}
+          </div>
         )}
 
         {/* Valor recebido — primeiro campo lógico, só renderiza quando parcial habilitado */}

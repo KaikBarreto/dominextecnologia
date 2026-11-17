@@ -2,6 +2,7 @@ import { Fragment, useState, useMemo, useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -47,6 +48,15 @@ import { useCostCenters } from '@/hooks/useCostCenters';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { filterByCostCenters, NO_COST_CENTER } from '@/lib/cost-center-breakdown';
 import { CreditCardInvoiceRow } from './CreditCardInvoiceRow';
+
+function canAdjustManualOccurrence(transaction: FinancialTransaction | null): boolean {
+  if (!transaction) return false;
+  const row = transaction as FinancialTransaction & { origin?: string; payroll_kind?: string; cancelled_at?: string };
+  return !row.is_paid && !row.paid_date && !row.cancelled_at && !row.amount_received
+    && !row.parent_transaction_id && !row.payment_group_id && !row.transfer_pair_id
+    && !row.bill_id && !row.credit_card_bill_date && !row.employee_id && !row.payroll_kind
+    && !row.contract_id && !row.service_order_id && row.origin !== 'pdv';
+}
 
 /** Parse a YYYY-MM-DD string as a local date (avoids UTC-offset shift) */
 function parseLocalDate(dateStr: string): Date {
@@ -189,6 +199,13 @@ export function FinanceContas({
   const [payDespDate, setPayDespDate] = useState('');
   const [payDespMethod, setPayDespMethod] = useState('pix');
   const [payDespNotes, setPayDespNotes] = useState('');
+  const [payDespAmount, setPayDespAmount] = useState('');
+  const [payDespUpdateFuture, setPayDespUpdateFuture] = useState(false);
+  const [payDespSubmitting, setPayDespSubmitting] = useState(false);
+  const payDespCanAdjust = canAdjustManualOccurrence(payingDespesaTxn);
+  const payDespActual = Number(payDespAmount);
+  const payDespAmountChanged = payDespCanAdjust && Math.abs(payDespActual - Number(payingDespesaTxn?.amount ?? 0)) >= 0.005;
+  const payDespAmountInvalid = payDespCanAdjust && (!Number.isFinite(payDespActual) || payDespActual <= 0 || Math.abs(payDespActual * 100 - Math.round(payDespActual * 100)) > 0.00001);
   const [payDespAccountFormOpen, setPayDespAccountFormOpen] = useState(false);
   const [payDespAccountInitialName, setPayDespAccountInitialName] = useState('');
   const [payDespAccountQuery, setPayDespAccountQuery] = useState('');
@@ -292,6 +309,8 @@ export function FinanceContas({
       );
       setPayDespMethod('pix');
       setPayDespNotes('');
+      setPayDespAmount(Number(t.amount).toFixed(2));
+      setPayDespUpdateFuture(false);
     }
   };
 
@@ -1871,6 +1890,8 @@ export function FinanceContas({
         amount={Number(receivingTxn?.amount ?? 0)}
         amountReceived={Number((receivingTxn as any)?.amount_received ?? 0)}
         allowPartial
+        allowOccurrenceAdjustment={canAdjustManualOccurrence(receivingTxn) && !receivingLiveCharge}
+        hasRecurringSeries={!!receivingTxn?.installment_group_id}
         installmentTotal={receivingTxn?.installment_total ?? 1}
         currentDueDate={receivingTxn?.due_date}
         title={fin.accounts.payroll.receiveTitle}
@@ -1898,6 +1919,9 @@ export function FinanceContas({
             customer_id: (receivingTxn as any).customer_id,
             amountReceived: payment.amount_received,
             newDueDate: payment.new_due_date,
+            occurrenceAmount: payment.occurrence_amount,
+            expectedOccurrenceAmount: Number(receivingTxn.amount),
+            updateFutureOccurrences: payment.update_future_occurrences,
           });
           setReceivingTxn(null);
           // Com cobrança viva, pergunta o que fazer com ela: cobrar só o que
@@ -1924,25 +1948,33 @@ export function FinanceContas({
       {/* Modal: confirmar pagamento de despesa */}
       <ResponsiveModal
         open={!!payingDespesaTxn}
-        onOpenChange={(v) => { if (!v) setPayingDespesaTxn(null); }}
+        onOpenChange={(v) => { if (!v && !payDespSubmitting) setPayingDespesaTxn(null); }}
         title={fin.accounts.payExpenseModal.title}
         description={payingDespesaTxn ? `${payingDespesaTxn.description} — ${fmt(Number(payingDespesaTxn.amount))}` : undefined}
         footer={
           <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={() => setPayingDespesaTxn(null)} className="min-h-11 rounded-xl">{fin.accounts.actions.cancel}</Button>
+            <Button variant="outline" disabled={payDespSubmitting} onClick={() => setPayingDespesaTxn(null)} className="min-h-11 rounded-xl">{fin.accounts.actions.cancel}</Button>
             <Button
-              disabled={!payDespAccountId || !payDespDate || !isPaidDateAllowedInTz(payDespDate, timezone)}
+              disabled={payDespSubmitting || payDespAmountInvalid || !payDespAccountId || !payDespDate || !isPaidDateAllowedInTz(payDespDate, timezone)}
               className="min-h-11 rounded-xl"
               onClick={async () => {
                 if (!payingDespesaTxn || !payDespAccountId) return;
-                await onMarkAsPaid({
-                  id: payingDespesaTxn.id,
-                  account_id: payDespAccountId,
-                  payment_method: payDespMethod,
-                  paid_date: payDespDate,
-                  notes: payDespNotes.trim() || undefined,
-                });
-                setPayingDespesaTxn(null);
+                setPayDespSubmitting(true);
+                try {
+                  await onMarkAsPaid({
+                    id: payingDespesaTxn.id,
+                    account_id: payDespAccountId,
+                    payment_method: payDespMethod,
+                    paid_date: payDespDate,
+                    notes: payDespNotes.trim() || undefined,
+                    occurrenceAmount: payDespAmountChanged ? payDespActual : undefined,
+                    expectedOccurrenceAmount: Number(payingDespesaTxn.amount),
+                    updateFutureOccurrences: payDespAmountChanged && !!payingDespesaTxn.installment_group_id && payDespUpdateFuture,
+                  });
+                  setPayingDespesaTxn(null);
+                } finally {
+                  setPayDespSubmitting(false);
+                }
               }}
             >
               {fin.accounts.actions.confirm}
@@ -1951,6 +1983,20 @@ export function FinanceContas({
         }
       >
         <div className="space-y-4">
+          {payDespCanAdjust && <div className="space-y-2">
+            <Label htmlFor="pay-occurrence-amount">{fin.occurrenceAmount.label}</Label>
+            <Input id="pay-occurrence-amount" type="number" inputMode="decimal" min="0.01" step="0.01"
+              value={payDespAmount} disabled={payDespSubmitting}
+              onChange={e => { setPayDespAmount(e.target.value); setPayDespUpdateFuture(false); }} />
+            {payDespAmountInvalid ? <p role="alert" className="text-xs text-destructive">{fin.occurrenceAmount.invalid}</p> : payDespAmountChanged && <>
+              <p className="text-sm">{fin.occurrenceAmount.scheduled}: {fmt(Number(payingDespesaTxn.amount))} · {fin.occurrenceAmount.realized}: {fmt(payDespActual)}</p>
+              <p className="text-xs text-muted-foreground">{payDespUpdateFuture ? fin.occurrenceAmount.futureHint : fin.occurrenceAmount.onlyThis}</p>
+              {payingDespesaTxn.installment_group_id && <div className="flex items-center gap-3">
+                <Switch id="pay-update-future" checked={payDespUpdateFuture} onCheckedChange={setPayDespUpdateFuture} disabled={payDespSubmitting} />
+                <Label htmlFor="pay-update-future">{fin.occurrenceAmount.updateFuture}</Label>
+              </div>}
+            </>}
+          </div>}
           <div className="space-y-1.5">
             <Label>{fin.accounts.payExpenseModal.paidWith}</Label>
             <div className="flex items-center h-10 rounded-md border border-input bg-background ring-offset-background focus-within:border-ring focus-within:ring-1 focus-within:ring-ring focus-within:ring-offset-0">

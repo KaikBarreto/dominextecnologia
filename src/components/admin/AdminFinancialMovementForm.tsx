@@ -1,3 +1,4 @@
+import { FinancialSmartDescription } from '@/components/financial/FinancialSmartDescription';
 import { AdminCategoryPill } from "@/components/admin/financial/AdminCategoryPill";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -420,53 +421,13 @@ export function AdminFinancialMovementForm(
               <TrendingDown className="h-4 w-4" />Despesa
             </button>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="movement-category">Categoria</Label>
-            <Select
-              value={category}
-              onValueChange={setCategory}
-              disabled={!canManage || save.isPending || checkingDuplicates}
-            >
-              <SelectTrigger
-                id="movement-category"
-                className={cn(showErrors && !category && "border-destructive")}
-              >
-                <SelectValue placeholder="Selecione uma categoria">{selected && <AdminCategoryPill name={selected.name} categories={[selected]} />}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {allowedCategories.map((item) => (
-                  <SelectItem value={item.name} key={item.id}><AdminCategoryPill name={item.name} categories={[item]} /></SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="movement-amount">Valor (R$)</Label>
-            <Input
-              id="movement-amount"
-              disabled={!canManage || save.isPending || checkingDuplicates}
-              inputMode="decimal"
-              value={amount}
-              onChange={(event) => setAmount(event.target.value)}
-              placeholder="0,00"
-              className={cn(
-                "text-lg font-medium",
-                showErrors &&
-                  (!Number.isFinite(parsedAmount) || parsedAmount <= 0) &&
-                  "border-destructive",
-              )}
-            />
-          </div>
+
           <div className="space-y-2">
             <Label htmlFor="movement-description">Descrição</Label>
-            <Textarea
-              id="movement-description"
-              disabled={!canManage || save.isPending || checkingDuplicates}
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              placeholder="Descrição da movimentação"
-              rows={2}
-            />
+            <FinancialSmartDescription id="movement-description" value={description} onChange={setDescription} multiline placeholder="Descrição da movimentação"
+              enabled={open && !isEditing && canManage} disabled={!canManage || save.isPending || checkingDuplicates}
+              scope="admin" context="movement" direction={type==='income'?'entrada':'saida'} values={{category}}
+              onPatch={patch=>{if('category' in patch)setCategory(patch.category||'');}} onApplied={()=>document.getElementById('movement-date')?.focus()} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="movement-date">Data</Label>
@@ -494,6 +455,44 @@ export function AdminFinancialMovementForm(
               </PopoverContent>
             </Popover>
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="movement-amount">Valor (R$)</Label>
+            <Input
+              id="movement-amount"
+              disabled={!canManage || save.isPending || checkingDuplicates}
+              inputMode="decimal"
+              value={amount}
+              onChange={(event) => setAmount(event.target.value)}
+              placeholder="0,00"
+              className={cn(
+                "text-lg font-medium",
+                showErrors &&
+                  (!Number.isFinite(parsedAmount) || parsedAmount <= 0) &&
+                  "border-destructive",
+              )}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="movement-category">Categoria</Label>
+            <Select
+              value={category}
+              onValueChange={setCategory}
+              disabled={!canManage || save.isPending || checkingDuplicates}
+            >
+              <SelectTrigger
+                id="movement-category"
+                className={cn(showErrors && !category && "border-destructive")}
+              >
+                <SelectValue placeholder="Selecione uma categoria">{selected && <AdminCategoryPill name={selected.name} categories={[selected]} />}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {allowedCategories.map((item) => (
+                  <SelectItem value={item.name} key={item.id}><AdminCategoryPill name={item.name} categories={[item]} /></SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
         </form>
       </ResponsiveDialog>
     </>

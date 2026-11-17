@@ -66,6 +66,10 @@ export interface TransactionInput {
   payment_method?: string;
   receipt_url?: string;
   installment_count?: number;
+  installment_group_id?: string;
+  recurrence_base_amount?: number;
+  installment_number?: number;
+  installment_total?: number;
   account_id?: string | null;
   /**
    * Centro de custo (obra/projeto/setor). SEMPRE opcional. Em parcelamento,
@@ -880,6 +884,9 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
     amountReceived?: number;
     /** Novo vencimento do saldo restante (YYYY-MM-DD). Só usado em recebimento parcial. */
     newDueDate?: string;
+    occurrenceAmount?: number;
+    expectedOccurrenceAmount?: number;
+    updateFutureOccurrences?: boolean;
   }
 
   const markAsPaid = useMutation({
@@ -892,6 +899,32 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
       // baixa às 23h15 do dia 30 tem que gravar dia 30, não 31 (que é o dia que
       // já virou em São Paulo).
       const paidDate = cfg.paid_date || todayInTz(timezone);
+
+      if (cfg.occurrenceAmount !== undefined) {
+        if (cfg.amountReceived !== undefined) {
+          throw new Error('O ajuste de valor e o recebimento parcial devem ser confirmados separadamente.');
+        }
+        const { data: current, error: currentError } = await supabase
+          .from('financial_transactions').select('amount, company_id').eq('id', cfg.id).single();
+        if (currentError) throw currentError;
+        const feeCategory = cfg.fee_amount > 0
+          ? await resolveSystemCategoryNameFresh(queryClient, current.company_id, 'receipt_fee')
+          : undefined;
+        const { data, error } = await (supabase as any).rpc('settle_financial_occurrence', {
+          p_id: cfg.id,
+          p_expected_amount: cfg.expectedOccurrenceAmount ?? current.amount,
+          p_occurrence_amount: cfg.occurrenceAmount,
+          p_account_id: cfg.account_id,
+          p_payment_method: cfg.payment_method || undefined,
+          p_paid_date: paidDate,
+          p_update_future: cfg.updateFutureOccurrences ?? false,
+          p_fee_amount: cfg.fee_amount ?? 0,
+          p_fee_category: feeCategory,
+          p_notes: cfg.notes,
+        });
+        if (error) throw error;
+        return data;
+      }
 
       // Buscar a mãe pra calcular se é parcial e usar dados (company_id, due_date, customer_id, amount).
       const { data: parent, error: parentErr } = await supabase
@@ -989,8 +1022,15 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
       await invalidateAll();
       toast({ title: 'Recebimento confirmado!' });
     },
-    onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao atualizar transação', description: getErrorMessage(error) });
+    onError: (error: Error, params: string | MarkAsPaidParams) => {
+      let description = getErrorMessage(error);
+      if (typeof params !== 'string' && params.occurrenceAmount !== undefined) {
+        const message = getRpcErrorMessage(error);
+        description = /\b[a-z0-9]+_[a-z0-9_]+\b/i.test(message)
+          ? 'Não foi possível ajustar esta conta. Confira os vínculos e tente novamente.'
+          : message;
+      }
+      toast({ variant: 'destructive', title: 'Erro ao atualizar transação', description });
     },
   });
 

@@ -1,3 +1,4 @@
+import { FinancialSmartDescription } from '@/components/financial/FinancialSmartDescription';
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -1643,6 +1644,70 @@ export function TransactionFormDialog({
             </FormItem>
           )} />
 
+          {/* Description — sobe pra cá (era mostrada mais abaixo): a ordem
+              "tipo, categoria, descrição, cliente, fornecedor" é a leitura
+              natural de "o que é" o lançamento. */}
+          <FormField control={form.control} name="description" render={({ field }) => (
+            <FormItem className="lg:col-span-2">
+              <FormLabel>{tf.descriptionLabel}</FormLabel>
+              <FinancialSmartDescription id="smart-movement-description" value={field.value || ''} onChange={field.onChange} multiline placeholder={tf.descriptionPlaceholder}
+                enabled={open && !isEditing && !draft.showResumePrompt} context="movement" direction={transactionType}
+                values={{ category: form.watch('category'), customer_id: form.watch('customer_id'), supplier_id: form.watch('supplier_id'), cost_center_id: form.watch('cost_center_id') }}
+                onPatch={patch => { for (const [key, value] of Object.entries(patch)) form.setValue(key as 'category' | 'customer_id' | 'supplier_id' | 'cost_center_id', value || undefined, { shouldDirty: true, shouldValidate: true }); }}
+                onApplied={() => document.getElementById('smart-movement-date')?.focus()} />
+              <FormMessage />
+            </FormItem>
+          )} />
+
+          {/* Data do lançamento — quando o FATO aconteceu (a venda, a compra,
+              o serviço). Antes era só "Data", sem explicação nenhuma — e
+              convivia sem contraste com "Data do pagamento" logo abaixo,
+              então ninguém sabia pra que servia cada uma. */}
+          <FormField control={form.control} name="transaction_date" render={({ field }) => (
+            <FormItem>
+              <FormLabel>{tf.dateLabel}</FormLabel>
+              <FormControl>
+                <DatePicker
+                  id="smart-movement-date"
+                  value={field.value ?? ''}
+                  onValueChange={field.onChange}
+                  min={dateInputMin}
+                  max={dateInputMax}
+                  placeholder={tf.datePlaceholder}
+                />
+              </FormControl>
+              <p className="text-xs text-muted-foreground">{tf.dateHint}</p>
+              <FormMessage />
+            </FormItem>
+          )} />
+
+          {/* Amount */}
+          <FormField control={form.control} name="amount" render={({ field }) => {
+            const handleCurrencyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+              const raw = e.target.value.replace(/\D/g, '');
+              field.onChange(parseInt(raw || '0', 10) / 100);
+            };
+            // Colar um valor pronto (ex. "4.550" de planilha) NÃO passa pela
+            // regra de centavos comum: daria R$ 45,50 (100x menor). Ver
+            // `money-paste-mask.ts`.
+            const handleCurrencyPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+              const cents = readPastedCents(e);
+              if (cents != null) field.onChange(cents / 100);
+            };
+            const displayValue = field.value
+              ? field.value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+              : '';
+            return (
+              <FormItem>
+                <FormLabel>{tf.amountLabel}</FormLabel>
+                <FormControl>
+                  <Input placeholder={tf.amountPlaceholder} value={displayValue} onChange={handleCurrencyChange} onPaste={handleCurrencyPaste} inputMode="numeric" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            );
+          }} />
+
           {/* Classificação é um único grupo visual, sem caixa/borda intermediária:
               Categoria e Centro de custo começam na mesma linha no desktop e
               empilham no mobile. Se a raiz tiver filhas, Subcategoria cresce
@@ -1725,17 +1790,6 @@ export function TransactionFormDialog({
             </div>
           </fieldset>
 
-          {/* Description — sobe pra cá (era mostrada mais abaixo): a ordem
-              "tipo, categoria, descrição, cliente, fornecedor" é a leitura
-              natural de "o que é" o lançamento. */}
-          <FormField control={form.control} name="description" render={({ field }) => (
-            <FormItem className="lg:col-span-2">
-              <FormLabel>{tf.descriptionLabel}</FormLabel>
-              <FormControl><Textarea placeholder={tf.descriptionPlaceholder} rows={2} {...field} /></FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
-
           {/* Vínculo principal (Cliente em receita, Fornecedor em despesa) e
               Ordem de serviço dividem a MESMA linha, meia a meia, igual
               Categoria/Centro de custo logo acima. Antes cada um esticava a
@@ -1754,33 +1808,6 @@ export function TransactionFormDialog({
               pagamento, as duas datas (lançamento e pagamento) e "já foi
               pago". */}
           <ModalFormSection title={tf.sections.money}>
-          {/* Amount */}
-          <FormField control={form.control} name="amount" render={({ field }) => {
-            const handleCurrencyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-              const raw = e.target.value.replace(/\D/g, '');
-              field.onChange(parseInt(raw || '0', 10) / 100);
-            };
-            // Colar um valor pronto (ex. "4.550" de planilha) NÃO passa pela
-            // regra de centavos comum: daria R$ 45,50 (100x menor). Ver
-            // `money-paste-mask.ts`.
-            const handleCurrencyPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
-              const cents = readPastedCents(e);
-              if (cents != null) field.onChange(cents / 100);
-            };
-            const displayValue = field.value
-              ? field.value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-              : '';
-            return (
-              <FormItem>
-                <FormLabel>{tf.amountLabel}</FormLabel>
-                <FormControl>
-                  <Input placeholder={tf.amountPlaceholder} value={displayValue} onChange={handleCurrencyChange} onPaste={handleCurrencyPaste} inputMode="numeric" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            );
-          }} />
-
           {/* Account */}
           {accounts.length === 0 ? (
             <NoticeBanner variant="warning" title={tf.noAccountTitle} className="lg:col-span-2">
@@ -1844,27 +1871,6 @@ export function TransactionFormDialog({
                   <SelectItem value="cheque">{tf.paymentMethods.cheque}</SelectItem>
                 </SelectContent>
               </Select>
-              <FormMessage />
-            </FormItem>
-          )} />
-
-          {/* Data do lançamento — quando o FATO aconteceu (a venda, a compra,
-              o serviço). Antes era só "Data", sem explicação nenhuma — e
-              convivia sem contraste com "Data do pagamento" logo abaixo,
-              então ninguém sabia pra que servia cada uma. */}
-          <FormField control={form.control} name="transaction_date" render={({ field }) => (
-            <FormItem>
-              <FormLabel>{tf.dateLabel}</FormLabel>
-              <FormControl>
-                <DatePicker
-                  value={field.value ?? ''}
-                  onValueChange={field.onChange}
-                  min={dateInputMin}
-                  max={dateInputMax}
-                  placeholder={tf.datePlaceholder}
-                />
-              </FormControl>
-              <p className="text-xs text-muted-foreground">{tf.dateHint}</p>
               <FormMessage />
             </FormItem>
           )} />

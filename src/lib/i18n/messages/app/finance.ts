@@ -5,6 +5,26 @@
 // NÃO se traduz. Só chrome/UI. Moeda segue a da empresa (formatMoney).
 export const finance = {
   'pt-br': {
+    smartFill: {
+      loading: 'Buscando padrões…',
+      patterns: 'Padrões do histórico',
+      used: 'Usado {count} vezes',
+      apply: 'Preencher campos',
+      applied: 'Campos preenchidos. Confira antes de salvar.',
+      undo: 'Desfazer preenchimento',
+      available: '{count} padrões disponíveis. Use as setas para escolher e Enter ou Tab para preencher.',
+    },
+    occurrenceAmount: {
+      label: 'Valor desta ocorrência',
+      scheduled: 'Valor previsto',
+      realized: 'Valor realizado',
+      updateFuture: 'Atualizar o valor previsto das próximas contas',
+      onlyThis: 'O ajuste vale somente para esta ocorrência.',
+      futureHint: 'As próximas contas abertas que ainda têm o valor previsto anterior serão atualizadas. Contas já ajustadas serão preservadas.',
+      full: 'Recebimento total',
+      partial: 'Recebimento parcial',
+      invalid: 'Informe um valor positivo com até duas casas decimais.',
+    },
     page: {
       title: 'Financeiro',
       subtitles: {
@@ -2037,6 +2057,26 @@ export const finance = {
 
   // ─── ENGLISH ──────────────────────────────────────────────────────────────
   en: {
+    smartFill: {
+      loading: 'Finding patterns…',
+      patterns: 'History patterns',
+      used: 'Used {count} times',
+      apply: 'Fill fields',
+      applied: 'Fields filled. Review before saving.',
+      undo: 'Undo filling',
+      available: '{count} patterns available. Use arrows to choose and Enter or Tab to fill.',
+    },
+    occurrenceAmount: {
+      label: 'Amount for this occurrence',
+      scheduled: 'Scheduled amount',
+      realized: 'Actual amount',
+      updateFuture: 'Update the scheduled amount of upcoming accounts',
+      onlyThis: 'This adjustment applies only to this occurrence.',
+      futureHint: 'Upcoming open accounts still using the previous scheduled amount will be updated. Individually adjusted accounts will be preserved.',
+      full: 'Full receipt',
+      partial: 'Partial receipt',
+      invalid: 'Enter a positive amount with up to two decimal places.',
+    },
     page: {
       title: 'Finance',
       subtitles: {
@@ -3964,6 +4004,26 @@ export const finance = {
 
   // ─── ESPAÑOL ──────────────────────────────────────────────────────────────
   es: {
+    smartFill: {
+      loading: 'Buscando patrones…',
+      patterns: 'Patrones del historial',
+      used: 'Usado {count} veces',
+      apply: 'Rellenar campos',
+      applied: 'Campos completados. Revise antes de guardar.',
+      undo: 'Deshacer',
+      available: '{count} patrones disponibles. Use las flechas y Enter o Tab para aplicar.',
+    },
+    occurrenceAmount: {
+      label: 'Valor de esta ocurrencia',
+      scheduled: 'Valor previsto',
+      realized: 'Valor realizado',
+      updateFuture: 'Actualizar el valor previsto de las próximas cuentas',
+      onlyThis: 'El ajuste se aplica solo a esta ocurrencia.',
+      futureHint: 'Se actualizarán las próximas cuentas abiertas que aún tengan el valor previsto anterior. Se conservarán las cuentas ya ajustadas.',
+      full: 'Cobro total',
+      partial: 'Cobro parcial',
+      invalid: 'Ingrese un valor positivo con hasta dos decimales.',
+    },
     page: {
       title: 'Finanzas',
       subtitles: {
@@ -5892,6 +5952,26 @@ export const finance = {
 
   // ─── FRANÇAIS ─────────────────────────────────────────────────────────────
   fr: {
+    smartFill: {
+      loading: 'Recherche de modèles…',
+      patterns: 'Modèles de l’historique',
+      used: 'Utilisé {count} fois',
+      apply: 'Remplir les champs',
+      applied: 'Champs remplis. Vérifiez avant d’enregistrer.',
+      undo: 'Annuler le remplissage',
+      available: '{count} modèles disponibles. Utilisez les flèches et Entrée ou Tab pour remplir.',
+    },
+    occurrenceAmount: {
+      label: 'Montant de cette échéance',
+      scheduled: 'Montant prévu',
+      realized: 'Montant réalisé',
+      updateFuture: 'Actualiser le montant prévu des prochaines échéances',
+      onlyThis: 'Cet ajustement concerne uniquement cette échéance.',
+      futureHint: 'Les prochaines échéances ouvertes utilisant encore le montant prévu précédent seront actualisées. Les échéances déjà ajustées seront conservées.',
+      full: 'Encaissement total',
+      partial: 'Encaissement partiel',
+      invalid: 'Saisissez un montant positif avec au plus deux décimales.',
+    },
     page: {
       title: 'Finances',
       subtitles: {

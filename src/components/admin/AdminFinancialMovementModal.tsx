@@ -1,3 +1,4 @@
+import { FinancialSmartDescription } from '@/components/financial/FinancialSmartDescription';
 import { useState, useEffect, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -157,6 +158,41 @@ export function AdminFinancialMovementModal({ open, onOpenChange, defaultType = 
           </div>
         </div>
 
+
+        <div className="space-y-2">
+          <Label>Descrição</Label>
+          <FinancialSmartDescription id="smart-admin-modal-description" value={description} onChange={setDescription} multiline placeholder="Descrição"
+            enabled={open && !isEditing} disabled={isPending} scope="admin" context="movement" direction={type==='income'?'entrada':'saida'}
+            values={{category}} onPatch={patch=>{if('category' in patch)setCategory(patch.category||'');}} onApplied={()=>document.getElementById('smart-admin-modal-date')?.focus()} />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Data</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button id="smart-admin-modal-date" variant="outline" className={cn('w-full justify-start text-left font-normal', !date && 'text-muted-foreground')}>
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {date ? format(date, 'dd/MM/yyyy', { locale: ptBR }) : 'Selecione'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} initialFocus locale={ptBR} />
+            </PopoverContent>
+          </Popover>
+        </div>        <div className="space-y-2">
+          <Label>Valor (R$)</Label>
+          <Input
+            placeholder="0,00"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            inputMode="decimal"
+            className={cn('text-lg font-medium', showErrors && amountInvalid && 'border-destructive focus-visible:ring-destructive')}
+          />
+          {showErrors && amountInvalid && (
+            <p className="text-xs text-destructive">Informe um valor maior que zero</p>
+          )}
+        </div>
+
         <div className="space-y-2">
           <Label>Categoria</Label>
           <Select value={category} onValueChange={setCategory}>
@@ -194,39 +230,7 @@ export function AdminFinancialMovementModal({ open, onOpenChange, defaultType = 
           )}
         </div>
 
-        <div className="space-y-2">
-          <Label>Valor (R$)</Label>
-          <Input
-            placeholder="0,00"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            inputMode="decimal"
-            className={cn('text-lg font-medium', showErrors && amountInvalid && 'border-destructive focus-visible:ring-destructive')}
-          />
-          {showErrors && amountInvalid && (
-            <p className="text-xs text-destructive">Informe um valor maior que zero</p>
-          )}
-        </div>
 
-        <div className="space-y-2">
-          <Label>Descrição</Label>
-          <Textarea placeholder="Descrição" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
-        </div>
-
-        <div className="space-y-2">
-          <Label>Data</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className={cn('w-full justify-start text-left font-normal', !date && 'text-muted-foreground')}>
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {date ? format(date, 'dd/MM/yyyy', { locale: ptBR }) : 'Selecione'}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} initialFocus locale={ptBR} />
-            </PopoverContent>
-          </Popover>
-        </div>
       </form>
     </ResponsiveModal>
   );
