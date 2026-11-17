@@ -65,7 +65,7 @@ export function FinancialSmartDescription(props: Props) {
   };
   return <div className="space-y-2">
     {props.multiline ? <Textarea {...inputProps} rows={2} ref={node => { input.current = node; }} /> : <Input {...inputProps} ref={node => { input.current = node; }} />}
-    {loading && <p role="status" className="text-xs text-muted-foreground">{copy.loading}</p>}
+    {loading && <span role="status" className="sr-only">{copy.loading}</span>}
     {visible && <ul id={listId} role="listbox" aria-label={copy.patterns} className="space-y-1 rounded-md border p-2">
       {patterns.map((pattern, index) => <li id={`${listId}-${index}`} key={`${pattern.description}-${index}`} role="option" aria-selected={selected === index}
         className={`flex flex-wrap items-center justify-between gap-2 rounded px-2 py-1.5 ${selected === index ? 'bg-muted' : ''}`}>

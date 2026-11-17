@@ -7,7 +7,7 @@ import { DatePicker } from '@/components/ui/DatePicker';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useFinancial, type TransactionInput } from '@/hooks/useFinancial';
+import { useFinancial, type FinancialSeriesScope, type TransactionInput } from '@/hooks/useFinancial';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { CustomerSelectField } from '@/components/customers/CustomerSelectField';
 import { SupplierSelectField } from '@/components/financial/SupplierSelectField';
@@ -46,12 +46,13 @@ interface ContaFormDialogProps {
   onOpenChange: (open: boolean) => void;
   defaultType?: TransactionType;
   editingTransaction?: FinancialTransaction | null;
+  editScope?: FinancialSeriesScope;
 }
 
 type Recurrence = 'unica' | 'mensal' | 'semanal' | 'anual';
 
-export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', editingTransaction }: ContaFormDialogProps) {
-  const { createTransaction, createTransactionsBatch, updateTransaction } = useFinancial();
+export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', editingTransaction, editScope = 'single' }: ContaFormDialogProps) {
+  const { createTransaction, createTransactionsBatch, updateTransaction, updateInstallmentGroup } = useFinancial();
   const { locale, timezone } = useAppLocaleContext();
   const fin = MESSAGES[locale].app.finance;
   const t = fin.contaForm;
@@ -83,6 +84,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
   const [customerId, setCustomerId] = useState('');
   const [supplierId, setSupplierId] = useState('');
   const [accountId, setAccountId] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('');
   // Centro de custo é SEMPRE opcional: `null` = nenhum.
   const [costCenterId, setCostCenterId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -96,7 +98,11 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
     if (open) {
       if (editingTransaction) {
         setTipo(editingTransaction.transaction_type);
-        setDescription(editingTransaction.description);
+        setDescription(
+          editingTransaction.installment_group_id
+            ? editingTransaction.description.replace(/\s*\((?:parcela\s+)?\d+\/\d+\)\s*$/i, '')
+            : editingTransaction.description,
+        );
         setAmount(String(editingTransaction.amount));
         setCategory(editingTransaction.category || '');
         setDueDate(editingTransaction.due_date || format(new Date(), 'yyyy-MM-dd'));
@@ -105,6 +111,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
         setCustomerId(editingTransaction.customer_id || '');
         setSupplierId((editingTransaction as any).supplier_id || '');
         setAccountId((editingTransaction as any).account_id || '');
+        setPaymentMethod(editingTransaction.payment_method || '');
         setCostCenterId(editingTransaction.cost_center_id ?? null);
         setGenerateOnlineCharges(false);
         setRecurrence('unica');
@@ -125,6 +132,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
         setCustomerId('');
         setSupplierId('');
         setAccountId(localStorage.getItem('fin_last_account_id') || '');
+        setPaymentMethod('');
         setCostCenterId(null);
         setGenerateOnlineCharges(false);
       }
@@ -296,9 +304,15 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
           customer_id: customerId || undefined,
           supplier_id: supplierId || undefined,
           account_id: accountId,
+          payment_method: paymentMethod || undefined,
           cost_center_id: costCenterId,
         } as any;
-        await updateTransaction.mutateAsync(input);
+        if (editingTransaction.installment_group_id) {
+          const { id, ...values } = input;
+          await updateInstallmentGroup.mutateAsync({ id, scope: editScope, values });
+        } else {
+          await updateTransaction.mutateAsync(input);
+        }
       } else {
         const recurrenceGroupId = occurrenceCount > 1 ? crypto.randomUUID() : undefined;
         const transactionInputs = occurrencePlan.map((occurrence): TransactionInput => ({
@@ -322,6 +336,7 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
             customer_id: customerId || undefined,
             supplier_id: supplierId || undefined,
             account_id: accountId,
+            payment_method: paymentMethod || undefined,
             // Recorrência: TODA ocorrência leva o mesmo centro de custo.
             cost_center_id: costCenterId,
           }));
@@ -497,10 +512,10 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
             <Label>{t.descriptionLabel}</Label>
             <FinancialSmartDescription id="smart-bill-description" value={description} onChange={setDescription} placeholder={t.descriptionPlaceholder}
               enabled={open && !isEditing} context="bill" direction={tipo}
-              values={{ category, customer_id: customerId, supplier_id: supplierId, cost_center_id: costCenterId, account_id: accountId }}
-              replaceableKeys={['account_id']} allowedValues={{ account_id: accountsForTipo.map(account => account.id) }}
-              onPatch={patch => { if ('category' in patch) setCategory(patch.category || ''); if ('customer_id' in patch) setCustomerId(patch.customer_id || ''); if ('supplier_id' in patch) setSupplierId(patch.supplier_id || ''); if ('cost_center_id' in patch) setCostCenterId(patch.cost_center_id || null); if ('account_id' in patch) setAccountId(patch.account_id || ''); }}
-              onApplied={() => document.getElementById('smart-bill-due')?.focus()} />
+              values={{ category, customer_id: customerId, supplier_id: supplierId, cost_center_id: costCenterId, account_id: accountId, payment_method: paymentMethod }}
+              replaceableKeys={['account_id', 'payment_method']} allowedValues={{ account_id: accountsForTipo.map(account => account.id), payment_method: ['pix', 'transferencia', 'boleto', 'cheque', 'dinheiro', 'cartao_debito', 'cartao_credito'] }}
+              onPatch={patch => { if ('category' in patch) setCategory(patch.category || ''); if ('customer_id' in patch) setCustomerId(patch.customer_id || ''); if ('supplier_id' in patch) setSupplierId(patch.supplier_id || ''); if ('cost_center_id' in patch) setCostCenterId(patch.cost_center_id || null); if ('account_id' in patch) setAccountId(patch.account_id || ''); if ('payment_method' in patch) setPaymentMethod(patch.payment_method || ''); }}
+              onApplied={() => document.getElementById('conta-amount')?.focus()} />
           </div>
 
           <div className="space-y-1.5">
@@ -597,6 +612,22 @@ export function ContaFormDialog({ open, onOpenChange, defaultType = 'saida', edi
               </Select>
             </div>
           )}
+          <div className="space-y-1.5 lg:col-span-2">
+            <Label>Forma de pagamento prevista</Label>
+            <Select value={paymentMethod || '__none__'} onValueChange={(value) => setPaymentMethod(value === '__none__' ? '' : value)}>
+              <SelectTrigger><SelectValue placeholder="Não definida" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Não definida</SelectItem>
+                <SelectItem value="pix">Pix</SelectItem>
+                <SelectItem value="transferencia">Transferência</SelectItem>
+                <SelectItem value="boleto">Boleto</SelectItem>
+                <SelectItem value="cheque">Cheque</SelectItem>
+                <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                <SelectItem value="cartao_debito">Cartão de débito</SelectItem>
+                <SelectItem value="cartao_credito">Cartão de crédito</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </ModalFormSection>
 
         {/* ── Seção 3: Mais detalhes ───────────────────────────────────────

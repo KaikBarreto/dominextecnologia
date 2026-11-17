@@ -236,12 +236,10 @@ export function FinancialTransactionDetailsPanel({
         <DetailItem label="Última atualização" value={transaction.updated_at ? new Date(transaction.updated_at).toLocaleString('pt-BR') : 'Não informado'} />
       </div>
 
-      {(transaction.notes || transaction.cancelled_reason) && (
-        <div className="mt-3 rounded-xl bg-background/70 px-3 py-2.5">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Observações</p>
-          <p className="mt-1 whitespace-pre-wrap text-sm">{transaction.cancelled_reason || transaction.notes}</p>
-        </div>
-      )}
+      <div className="mt-3 rounded-xl bg-background/70 px-3 py-2.5">
+        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Observações</p>
+        <p className="mt-1 whitespace-pre-wrap text-sm">{transaction.cancelled_reason || transaction.notes || 'Nenhuma observação informada.'}</p>
+      </div>
 
       <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
         <div className="rounded-xl bg-background/70 p-3">

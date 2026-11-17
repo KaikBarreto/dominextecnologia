@@ -91,6 +91,8 @@ export interface TransactionInput {
   installmentPlan?: Array<{ date: string; amount: number }>;
 }
 
+export type FinancialSeriesScope = 'single' | 'future' | 'all_pending';
+
 /**
  * Monta as linhas de um PARCELAMENTO. Puro de propósito (sem Supabase, sem
  * React): é o ponto onde uma parcela pode nascer diferente das irmãs, e isso
@@ -766,6 +768,42 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
     },
   });
 
+  const updateInstallmentGroup = useMutation({
+    mutationFn: async ({ id, scope, values }: { id: string; scope: FinancialSeriesScope; values: TransactionInput }) => {
+      const { data, error } = await (supabase as any).rpc('update_financial_installment_group', {
+        p_id: id,
+        p_scope: scope,
+        p_values: values,
+      });
+      if (error) throw error;
+      return data as { updated: number; group_id: string };
+    },
+    onSuccess: async () => {
+      await invalidateAll();
+      toast({ title: 'Parcelas atualizadas com sucesso!' });
+    },
+    onError: (error: Error) => {
+      toast({ variant: 'destructive', title: 'Erro ao atualizar parcelas', description: getRpcErrorMessage(error) });
+    },
+  });
+
+  const deleteInstallmentGroup = useMutation({
+    mutationFn: async ({ id, scope }: { id: string; scope: FinancialSeriesScope }) => {
+      const { data, error } = await (supabase as any).rpc('delete_financial_installment_group', {
+        p_id: id,
+        p_scope: scope,
+      });
+      if (error) throw error;
+      return data as { deleted: number; skipped: number; group_id: string };
+    },
+    onSuccess: async () => {
+      await invalidateAll();
+    },
+    onError: (error: Error) => {
+      toast({ variant: 'destructive', title: 'Erro ao excluir parcelas', description: getRpcErrorMessage(error) });
+    },
+  });
+
   const deleteTransaction = useMutation({
     mutationFn: async (id: string) => {
       // Fetch the transaction before deleting so we can react to its category/amount
@@ -1181,9 +1219,11 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
     /** Série de REPETIÇÃO (N lançamentos do mesmo valor) num insert só. */
     createTransactionsBatch,
     updateTransaction,
+    updateInstallmentGroup,
     /** Edição em massa (valor / conta / categoria) dos ids selecionados. */
     updateTransactionsBatch,
     deleteTransaction,
+    deleteInstallmentGroup,
     /** Exclusão em massa dos ids selecionados, com as cascatas do delete individual. */
     deleteTransactionsBatch,
     markAsPaid,

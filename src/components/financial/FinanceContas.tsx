@@ -67,7 +67,7 @@ import { AccountFormDialog } from './AccountFormDialog';
 import { ReceivePaymentModal } from './ReceivePaymentModal';
 import { ReceivableDetailModal } from './ReceivableDetailModal';
 import type { TransactionType } from '@/types/database';
-import { useFinancial } from '@/hooks/useFinancial';
+import { useFinancial, type FinancialSeriesScope } from '@/hooks/useFinancial';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { EmployeePaymentModal, PaymentPayload } from '@/components/employees/EmployeePaymentModal';
@@ -189,6 +189,8 @@ export function FinanceContas({
   const [search, setSearch] = useState('');
   const [contaFormOpen, setContaFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | null>(null);
+  const [editingScope, setEditingScope] = useState<FinancialSeriesScope>('single');
+  const [seriesAction, setSeriesAction] = useState<{ transaction: FinancialTransaction; action: 'edit' | 'delete' } | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [receivingTxn, setReceivingTxn] = useState<PayrollTxn | null>(null);
   const [payingDespesaTxn, setPayingDespesaTxn] = useState<FinancialTransaction | null>(null);
@@ -235,7 +237,7 @@ export function FinanceContas({
   const { locale, currency, timezone } = useAppLocaleContext();
   const fin = MESSAGES[locale].app.finance;
   const fmt = (v: number) => formatMoney(v, currency, locale);
-  const { deleteTransaction, payTransactionsBatch } = useFinancial();
+  const { deleteTransaction, deleteInstallmentGroup, payTransactionsBatch } = useFinancial();
   const { hasPermission, isAdminOrGestor, hasPermissionRecord } = useAuth();
   // Quem não gerencia configuração não vê o "+" de criar conta/categoria na
   // hora: o banco recusa (RLS pede `can_manage_system`) e o erro chegava sem
@@ -908,8 +910,44 @@ export function FinanceContas({
 
   const handleEdit = (t: FinancialTransaction) => {
     if (!canManageFinanceTransactions) return;
+    if (t.installment_group_id && canAdjustManualOccurrence(t)) {
+      setSeriesAction({ transaction: t, action: 'edit' });
+      return;
+    }
+    setEditingScope('single');
     setEditingTransaction(t);
     setContaFormOpen(true);
+  };
+
+  const requestDelete = (t: FinancialTransaction) => {
+    if (t.installment_group_id && canAdjustManualOccurrence(t)) {
+      setSeriesAction({ transaction: t, action: 'delete' });
+      return;
+    }
+    setDeletingId(t.id);
+  };
+
+  const handleSeriesScope = async (scope: FinancialSeriesScope) => {
+    if (!seriesAction) return;
+    const { transaction, action } = seriesAction;
+    setSeriesAction(null);
+    if (action === 'edit') {
+      setEditingScope(scope);
+      setEditingTransaction(transaction);
+      setContaFormOpen(true);
+      return;
+    }
+    try {
+      const result = await deleteInstallmentGroup.mutateAsync({ id: transaction.id, scope });
+      if (result.deleted > 0) {
+        toast({ title: result.deleted === 1 ? 'Parcela excluída' : `${result.deleted} parcelas excluídas` });
+      }
+      if (result.skipped > 0) {
+        toast({ title: `${result.skipped} parcela${result.skipped === 1 ? ' foi mantida' : 's foram mantidas'}`, description: 'Contas pagas ou vinculadas permanecem no histórico.' });
+      }
+    } catch {
+      // O mutation exibe a mensagem segura retornada pelo banco.
+    }
   };
 
   const toggleRowDetails = (transactionId: string) => {
@@ -1440,7 +1478,7 @@ export function FinanceContas({
                   label: fin.accounts.actions.delete,
                   icon: <Trash2 className="h-4 w-4" />,
                   variant: 'destructive' as const,
-                  onClick: () => setDeletingId(t.id),
+                  onClick: () => requestDelete(t),
                 }] : []),
               ];
               const statusColor =
@@ -1677,7 +1715,7 @@ export function FinanceContas({
                           <span className="text-muted-foreground text-xs">{fin.accounts.table.noDueDate}</span>
                         )}
                       </TableCell>
-                      <TableCell onClick={(event) => event.stopPropagation()}>
+                      <TableCell>
                         <div className="flex flex-col gap-0.5">
                           {receiptBreakdown ? (
                             <>
@@ -1714,7 +1752,7 @@ export function FinanceContas({
                           <Badge className="bg-slate-500 text-white">{fin.accounts.status.pending}</Badge>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
                         <RowActionsMenu
                           actions={[
                             {
@@ -1749,7 +1787,7 @@ export function FinanceContas({
                               label: fin.accounts.actions.delete,
                               icon: Trash2,
                               variant: 'delete',
-                              onClick: () => setDeletingId(t.id),
+                              onClick: () => requestDelete(t),
                               hidden: !canDeleteFinance,
                             },
                           ] satisfies RowAction[]}
@@ -1846,7 +1884,26 @@ export function FinanceContas({
         onOpenChange={handleCloseForm}
         defaultType={contaDefaultType}
         editingTransaction={editingTransaction}
+        editScope={editingScope}
       />
+
+      <AlertDialog open={!!seriesAction} onOpenChange={(open) => !open && setSeriesAction(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{seriesAction?.action === 'delete' ? 'Excluir parcelas' : 'Editar parcelas'}</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta conta faz parte de uma série. Escolha quais parcelas pendentes devem ser alteradas.
+              {seriesAction?.action === 'delete' && ' Parcelas pagas ou vinculadas serão preservadas.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex flex-col gap-2 py-2">
+            <Button variant="outline" onClick={() => handleSeriesScope('single')}>Só esta parcela</Button>
+            <Button variant={seriesAction?.action === 'delete' ? 'destructive' : 'default'} onClick={() => handleSeriesScope('future')}>Esta e as próximas pendentes</Button>
+            <Button variant={seriesAction?.action === 'delete' ? 'destructive' : 'default'} onClick={() => handleSeriesScope('all_pending')}>Todas as parcelas pendentes</Button>
+          </div>
+          <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel></AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={!!deletingId} onOpenChange={() => setDeletingId(null)}>
         <AlertDialogContent>
