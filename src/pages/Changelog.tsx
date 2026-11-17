@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.13',
+    date: '17 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Baixa de contas recorrentes pelo valor real',
+        category: 'recurso',
+        description: 'Ao pagar ou receber uma conta recorrente, informe o valor daquele mês. Por padrão, as próximas mantêm o valor previsto; se quiser, atualize somente as próximas contas ainda abertas.',
+      },
+      {
+        title: 'Contas e lançamentos preenchidos com menos digitação',
+        category: 'melhoria',
+        description: 'Comece pela descrição e use uma sugestão baseada no histórico da sua empresa para preencher categoria, cliente ou fornecedor e centro de custo. Depois, continue direto pela data e pelo valor, inclusive usando o teclado.',
+      },
+    ],
+  },
+  {
     version: '1.41.12',
     date: '17 de novembro de 2026',
     type: 'patch',

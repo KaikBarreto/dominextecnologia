@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.12";
+export const APP_VERSION = "1.41.13";
 
 export const VERSION_NOTES =
-  "Cobranças parceladas direto no Asaas, com prévia das parcelas e melhorias nas telas de cobranças e assinaturas.";
+  "Baixa de contas recorrentes pelo valor real e preenchimento financeiro mais rápido com sugestões do histórico da empresa.";
