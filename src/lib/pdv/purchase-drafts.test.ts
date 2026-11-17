@@ -9,6 +9,8 @@ import {
   selectPdvPurchaseDraft,
   updatePdvPurchaseDraft,
   pdvPurchaseDraftStorageKey,
+  setPdvPurchaseDraftFinalAmount,
+  setPdvPurchaseItemFinalAmount,
   MAX_PDV_PURCHASE_DRAFTS,
 } from '@/lib/pdv/purchase-drafts';
 
@@ -54,6 +56,29 @@ describe('rascunhos simultâneos da compra PDV', () => {
     }));
     expect(pdvPurchaseDraftTotal(workspace.drafts[0])).toBe(25.5);
     expect(hasPdvPurchaseDraftContent(workspace.drafts[0])).toBe(true);
+  });
+
+  it('edita o valor final de um material recalculando seu custo unitário', () => {
+    const draft = {
+      ...createPdvPurchaseWorkspace(defaults).drafts[0],
+      items: [{ id: 'i1', inventoryId: 'item', quantityText: '2', unitPriceText: '10' }],
+    };
+    const result = setPdvPurchaseItemFinalAmount(draft, 'i1', 18);
+    expect(result.items[0].unitPriceText).toBe('9');
+    expect(pdvPurchaseDraftTotal(result)).toBe(18);
+  });
+
+  it('edita o total da compra rateando o custo entre os materiais', () => {
+    const draft = {
+      ...createPdvPurchaseWorkspace(defaults).drafts[0],
+      items: [
+        { id: 'i1', inventoryId: 'item-1', quantityText: '2', unitPriceText: '10' },
+        { id: 'i2', inventoryId: 'item-2', quantityText: '1', unitPriceText: '20' },
+      ],
+    };
+    const result = setPdvPurchaseDraftFinalAmount(draft, 36);
+    expect(pdvPurchaseDraftTotal(result)).toBe(36);
+    expect(result.items.map(item => item.unitPriceText)).toEqual(['9', '18']);
   });
 
   it('falha fechado para storage inválido e descarta shape corrompido', () => {

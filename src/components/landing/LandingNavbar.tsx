@@ -182,7 +182,7 @@ const SOLUTION_LINKS: SolutionLink[] = [
     tagline: 'Pix, boleto, cartão e recorrência ligados ao financeiro.',
   },
   {
-    label: 'PDV & Loja',
+    label: 'PDV (Loja)',
     slug: '/pdv-e-loja',
     icon: ShoppingCart,
     tagline: 'Venda, caixa, fiado e estoque na mesma operação.',

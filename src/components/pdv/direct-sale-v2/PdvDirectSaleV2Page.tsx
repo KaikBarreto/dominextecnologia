@@ -40,7 +40,9 @@ import {
   incrementLineQuantity,
   removeItem,
   setCartCustomer,
+  setCartFinalAmount,
   setDiscount,
+  setLineFinalAmount,
   setLineDiscount,
   setLineQuantity,
   type CartState,
@@ -610,6 +612,8 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
             onIncrement={(id, delta) => updateCart((current) => incrementLineQuantity(current, id, delta))}
             onSetQuantity={(id, quantity) => updateCart((current) => setLineQuantity(current, id, quantity))}
             onSetLineDiscount={(id, value) => updateCart((current) => setLineDiscount(current, id, value))}
+            onSetLineFinalAmount={(id, value, mode) => updateCart((current) => setLineFinalAmount(current, id, value, mode, currencyFractionDigits))}
+            onSetCartFinalAmount={(value, mode) => updateCart((current) => setCartFinalAmount(current, value, mode, currencyFractionDigits))}
             onRemove={(id) => updateCart((current) => removeItem(current, id))}
             onCustomerChange={changeCustomer}
             onRequestClearCart={() => updateCart((current) => clearCart(current))}

@@ -442,6 +442,9 @@ export default function PdvPreorders() {
         disabled={actions.save.isPending || actions.value.isPending || actions.assignTerminal.isPending || actions.forward.isPending || actions.convert.isPending || actions.cancel.isPending}
       />}
       onCloseOrder={requestCloseWorkspaceTab}
+      modePreferenceKey={user?.id && profile?.company_id
+        ? `pdv:value-adjustment-mode:${profile.company_id}:${user.id}`
+        : undefined}
       draftId={draftId ?? undefined}
       preferredStockId={preferredStockId}
       inventory={inventory}

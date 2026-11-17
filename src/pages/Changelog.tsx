@@ -31,6 +31,28 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.14',
+    date: '17 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ajuste o valor direto no item ou no pedido',
+        category: 'recurso',
+        description: 'Na venda e no orçamento, clique no valor para informar o preço final. Em cada item, escolha entre usar um preço apenas naquele pedido ou mostrar a diferença como desconto ao cliente. No total do pedido, toda redução é registrada como desconto.',
+      },
+      {
+        title: 'Compras com custo final editável',
+        category: 'melhoria',
+        description: 'Na compra, altere diretamente o valor de um material ou o total da operação. O sistema recalcula os custos daquele atendimento antes da confirmação.',
+      },
+      {
+        title: 'PDV agora aparece como PDV (Loja)',
+        category: 'melhoria',
+        description: 'Menus, contratação, proposta e áreas administrativas usam o nome PDV (Loja), deixando mais claro onde ficam as vendas e a operação de balcão.',
+      },
+    ],
+  },
+  {
     version: '1.41.13',
     date: '17 de novembro de 2026',
     type: 'patch',

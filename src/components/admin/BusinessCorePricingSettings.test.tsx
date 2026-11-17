@@ -21,7 +21,7 @@ describe('preços dos kits',()=>{
     expect(screen.getByLabelText('Preço do plano Essencial').tagName).toBe('OUTPUT');
     expect(screen.getByRole('button',{name:'Salvar preços'})).toBeDisabled();
     fireEvent.mouseDown(screen.getByRole('tab',{name:'Loja'}),{button:0,ctrlKey:false});
-    expect(await screen.findByText(/A Loja já inclui PDV/)).toBeInTheDocument();
+    expect(await screen.findByText(/A Loja já inclui o PDV \(Loja\)/)).toBeInTheDocument();
     expect(screen.getByLabelText('Preço mensal do kit')).toHaveTextContent('R$ 197,00');
   });
   it('salva o adicional compartilhado com os valores anteriores para impedir edição perdida',async()=>{
@@ -44,7 +44,7 @@ describe('preços dos kits',()=>{
   it('não disponibiliza adicional com preço zero',async()=>{
     render(<BusinessCorePricingSettings/>);
     fireEvent.mouseDown(screen.getByRole('tab',{name:'Loja'}),{button:0,ctrlKey:false});
-    expect(await screen.findByText(/A Loja já inclui PDV/)).toBeInTheDocument();
+    expect(await screen.findByText(/A Loja já inclui o PDV \(Loja\)/)).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Preço mensal do adicional'),{target:{value:'0'}});
     expect(screen.getByRole('alert')).toHaveTextContent('maior que zero');
     expect(screen.getByRole('button',{name:'Salvar preços'})).toBeDisabled();

@@ -201,6 +201,66 @@ export function setLineDiscount(
   };
 }
 
+export type PdvValueAdjustmentMode = 'price' | 'discount';
+
+function roundCurrency(value: number, fractionDigits = 2): number {
+  const scale = 10 ** fractionDigits;
+  return Math.round((Number(value) || 0) * scale) / scale;
+}
+
+/**
+ * Define por quanto a linha deve ficar. Em `price`, troca somente o preço desta
+ * operação e remove o desconto da linha. Em `discount`, mantém o preço e
+ * calcula a diferença que será apresentada como desconto.
+ */
+export function setLineFinalAmount(
+  cart: CartState,
+  inventoryId: string,
+  finalAmount: number,
+  mode: PdvValueAdjustmentMode,
+  fractionDigits = 2,
+): CartState {
+  const target = Math.max(0, roundCurrency(finalAmount, fractionDigits));
+  return {
+    ...cart,
+    lines: cart.lines.map((line) => {
+      if (line.inventoryId !== inventoryId || line.quantity <= 0) return line;
+      const gross = line.quantity * line.unitPrice;
+      if (mode === 'discount' && target <= gross) {
+        return {
+          ...line,
+          discountAmount: roundCurrency(gross - target, fractionDigits),
+        };
+      }
+      return {
+        ...line,
+        unitPrice: roundCurrency(target / line.quantity, fractionDigits),
+        discountAmount: 0,
+      };
+    }),
+  };
+}
+
+/** Define o total final como desconto geral, respeitando itens e cupom. */
+export function setCartFinalAmount(
+  cart: CartState,
+  finalAmount: number,
+  mode: PdvValueAdjustmentMode,
+  fractionDigits = 2,
+): CartState {
+  const target = Math.max(0, roundCurrency(finalAmount, fractionDigits));
+  // Alterar o carrinho invalida a assinatura do cupom atual. O novo desconto
+  // geral, portanto, parte do valor dos itens para manter o total digitado.
+  const commercialBase = Math.max(0, computeSubtotal(cart) - computeItemDiscountTotal(cart));
+  if (mode === 'discount' && target <= commercialBase) {
+    return {
+      ...cart,
+      discount: roundCurrency(commercialBase - target, fractionDigits),
+    };
+  }
+  return cart;
+}
+
 export function setCartCustomer(cart: CartState, customerId: string | null): CartState {
   return { ...cart, customerId };
 }

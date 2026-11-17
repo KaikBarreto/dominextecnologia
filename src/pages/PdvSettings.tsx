@@ -109,7 +109,7 @@ export default function PdvSettings() {
 
   return (
     <div className={cn('pdv-workspace pdv-preview-page space-y-6', isMobile && 'pb-24 space-y-4')} data-pdv-ui data-testid="pdv-settings-workspace">
-      <PageHeader title="Configurações do PDV" subtitle="Escolha como sua loja trabalha." icon={Settings} actions={canManageWorkflow ? (tab === 'receipts' ? <Button onClick={() => void saveReceipt()} disabled={settings.save.isPending || settings.isLoading || settings.isError}><Save className="h-4 w-4" />{settings.save.isPending ? 'Salvando...' : 'Salvar comprovante'}</Button> : undefined) : undefined} />
+      <PageHeader title="Configurações do PDV (Loja)" subtitle="Escolha como sua loja trabalha." icon={Settings} actions={canManageWorkflow ? (tab === 'receipts' ? <Button onClick={() => void saveReceipt()} disabled={settings.save.isPending || settings.isLoading || settings.isError}><Save className="h-4 w-4" />{settings.save.isPending ? 'Salvando...' : 'Salvar comprovante'}</Button> : undefined) : undefined} />
       <MobilePillTabs variant="underline" level="screen" activeTab={tab} onTabChange={setTab} tabs={[{ value: 'operation', label: 'Operação' }, { value: 'cash', label: 'Caixas e dinheiro' }, { value: 'receipts', label: 'Comprovantes' }, { value: 'devices', label: 'Equipamentos' }]} />
       {settings.isError && <NoticeBanner variant="warning" onClick={() => void settings.refetch()} action="Tentar novamente">Não foi possível carregar a configuração da empresa. Salvar ficará bloqueado até recarregar.</NoticeBanner>}
       {workflow.isError && <NoticeBanner variant="warning" onClick={() => void workflow.refetch()} action="Tentar novamente">Não foi possível carregar o modo de operação. Salvar ficará bloqueado até recarregar.</NoticeBanner>}

@@ -962,7 +962,7 @@ export const settings = {
           },
         },
         pdv: {
-          label: 'PDV e Loja',
+          label: 'PDV (Loja)',
           delete_pdv: {
             title: 'Vendas, caixa e fiado',
             description: 'Remove as vendas do PDV, o histórico de caixa (abertura, fechamento, sangria e suprimento), os terminais cadastrados e o fiado dos clientes. A numeração dos cupons volta a começar do 1.',
@@ -983,7 +983,7 @@ export const settings = {
         stock: 'Estoque de Materiais',
         materials: 'Cadastro de Materiais',
         customers: 'Clientes',
-        pdv: 'PDV, Caixa e Fiado',
+        pdv: 'PDV (Loja), Caixa e Fiado',
       },
     },
 

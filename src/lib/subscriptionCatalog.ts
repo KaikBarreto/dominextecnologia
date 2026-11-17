@@ -2,11 +2,17 @@ export const BASE_SUBSCRIPTION_MODULE_CODE = 'basic';
 export const CUSTOMER_PORTAL_MODULE_CODE = 'customer_portal';
 export const EXTRA_USER_MODULE_CODE = 'extra_user';
 export const WHATSAPP_MODULE_CODE = 'whatsapp';
+export const PDV_MODULE_DISPLAY_NAME = 'PDV (Loja)';
 export const CUSTOM_PLAN_INCLUDED_USERS = 5;
 export const EXCEPTION_PLAN_CODE = 'excecao';
 // Código preservado no banco para gates e snapshots antigos, mas nunca
 // vendido separadamente: o Financeiro Avançado agora pertence à base.
 export const RETIRED_PROPOSAL_MODULE_CODES = ['finance_advanced'] as const;
+
+/** Nome comercial canônico sem alterar o código técnico `pdv`. */
+export function subscriptionModuleDisplayName(code: string, fallback: string): string {
+  return code === 'pdv' ? PDV_MODULE_DISPLAY_NAME : fallback;
+}
 
 const EXCEPTION_RESTRICTED_SCREENS = new Set([
   'screen:quotes',
@@ -62,7 +68,8 @@ export function buildCommercialModuleFeatures(
   const hasBasicBundle = moduleCodes.some((code) => isRequiredCustomModule(code));
   const addOns = moduleCodes.flatMap((code) => {
     if (isRequiredCustomModule(code) || code === EXTRA_USER_MODULE_CODE) return [];
-    const name = catalogNames.get(code);
+    const catalogName = catalogNames.get(code);
+    const name = catalogName ? subscriptionModuleDisplayName(code, catalogName) : null;
     return name ? [name] : [];
   });
 

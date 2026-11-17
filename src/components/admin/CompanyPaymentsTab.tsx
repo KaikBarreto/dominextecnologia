@@ -48,6 +48,7 @@ import {
 import { RegisterCompanyPaymentModal } from '@/components/admin/RegisterCompanyPaymentModal';
 import type { Database } from '@/integrations/supabase/types';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { subscriptionModuleDisplayName } from '@/lib/subscriptionCatalog';
 
 interface CompanyPaymentsTabProps {
   companyId: string;
@@ -339,7 +340,7 @@ function PaymentDetailPanel({ companyId, payment }: { companyId: string; payment
                   {modules.map((module) => (
                     <div key={module.code} className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
                       <div className="min-w-0">
-                        <p className="font-medium">{module.name || module.code}</p>
+                        <p className="font-medium">{subscriptionModuleDisplayName(module.code, module.name || module.code)}</p>
                         {(module.quantity || 1) > 1 && <p className="text-xs text-muted-foreground">Quantidade: {module.quantity}</p>}
                       </div>
                       {module.unit_price != null && <span className="shrink-0 text-muted-foreground">{money(module.unit_price)}</span>}
@@ -359,7 +360,7 @@ function PaymentDetailPanel({ companyId, payment }: { companyId: string; payment
                     <div key={`${promotion.scope_type}-${promotion.module_code || index}`} className="rounded-xl border border-success/30 bg-success/5 p-3">
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="font-medium">{promotion.module_name || promotion.module_code || 'Assinatura'}</p>
+                          <p className="font-medium">{promotion.module_code ? subscriptionModuleDisplayName(promotion.module_code, promotion.module_name || promotion.module_code) : 'Assinatura'}</p>
                           <p className="mt-0.5 text-xs text-muted-foreground">Ciclo {promotion.cycle_number} de {promotion.billing_cycles}</p>
                         </div>
                         <Badge variant="outline" className="border-success text-success">-{money(promotion.discount)}</Badge>

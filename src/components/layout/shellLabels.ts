@@ -43,13 +43,13 @@ const TITLE_TO_KEY: Record<string, keyof ShellMenu> = {
   // propósito: 'Relatórios' já pertence ao Financeiro e 'Configurações' não é
   // item de menu, então os rótulos do PDV nasceram como 'Relatórios da Loja' e
   // 'Configurações do PDV' pra cada um ter a SUA tradução.
-  PDV: 'pdv',
+  'PDV (Loja)': 'pdv',
   Caixa: 'pdvCashier',
   'Histórico de Caixa': 'pdvCashHistory',
   'Estoque da loja': 'pdvStock',
   'Relatórios da Loja': 'pdvReports',
   'Cupons promocionais': 'pdvCoupons',
-  'Configurações do PDV': 'pdvSettings',
+  'Configurações do PDV (Loja)': 'pdvSettings',
   CRM: 'crm',
   'Visão Geral': 'financeOverview',
   'Movimentações Financeiras': 'financeMovements',

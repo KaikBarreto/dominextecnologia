@@ -18,6 +18,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import type { PdvValueAdjustmentMode } from '@/components/pdv/PdvInlineValueEditor';
 
 export interface PdvCartPanelTexts extends PdvCartSummaryTexts {
   title: string;
@@ -49,6 +50,9 @@ interface PdvCartPanelProps {
   onIncrement: (inventoryId: string, delta: number) => void;
   onSetQuantity: (inventoryId: string, quantity: number) => void;
   onSetLineDiscount: (inventoryId: string, discountAmount: number) => void;
+  onSetLineFinalAmount: (inventoryId: string, finalAmount: number, mode: PdvValueAdjustmentMode) => void;
+  onSetCartFinalAmount: (finalAmount: number, mode: PdvValueAdjustmentMode) => void;
+  modePreferenceKey?: string;
   onRemove: (inventoryId: string) => void;
   onCustomerChange: (id: string | null) => void;
   onRequestClearCart: () => void;
@@ -100,6 +104,9 @@ export function PdvCartPanel({
   onIncrement,
   onSetQuantity,
   onSetLineDiscount,
+  onSetLineFinalAmount,
+  onSetCartFinalAmount,
+  modePreferenceKey,
   onRemove,
   onCustomerChange,
   onRequestClearCart,
@@ -301,6 +308,8 @@ export function PdvCartPanel({
                       onIncrement={onIncrement}
                       onSetQuantity={onSetQuantity}
                       onSetLineDiscount={onSetLineDiscount}
+                      onSetLineFinalAmount={onSetLineFinalAmount}
+                      modePreferenceKey={modePreferenceKey}
                       onDiscountEditingChange={(editing) =>
                         setEditingLineDiscount((current) =>
                           editing
@@ -331,6 +340,7 @@ export function PdvCartPanel({
         locale={locale}
         currencyFractionDigits={currencyFractionDigits}
         onSetDiscountAmount={onSetDiscountAmount}
+        onSetCartFinalAmount={onSetCartFinalAmount}
         onCustomerChange={onCustomerChange}
         onRequestPayment={onRequestPayment}
         cashClosed={cashClosed}

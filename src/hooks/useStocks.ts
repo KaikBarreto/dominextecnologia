@@ -41,7 +41,7 @@ export function getStockManagementError(error: unknown): string {
   if (/stock_name_invalid/.test(message)) return 'Informe um nome de 2 a 80 caracteres para o local.';
   if (/stock_(management|access)_denied/.test(message)) return 'Você não tem permissão para alterar este local.';
   if (/stock_access_user_invalid/.test(message)) return 'Uma das pessoas selecionadas não está ativa nesta empresa. Atualize a lista e tente novamente.';
-  if (/stock_pdv_module_required/.test(message)) return 'O módulo PDV precisa estar ativo para criar ou alterar um local de loja.';
+  if (/stock_pdv_module_required/.test(message)) return 'O módulo PDV (Loja) precisa estar ativo para criar ou alterar um local de loja.';
   if (/stock_scope_immutable/.test(message)) return 'O local deve permanecer vinculado à empresa e ao cliente de origem.';
   if (/stock.*(in_use|has_balance|referenced|protected)|saldo|vinculad|principal|último/i.test(message)) {
     return 'Este local possui saldo, histórico, vínculos ou uma configuração principal. Transfira o saldo e revise os vínculos antes de excluir; o histórico deve ser preservado.';

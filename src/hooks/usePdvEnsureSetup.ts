@@ -57,7 +57,7 @@ function safeSetupError(error: RpcError): Error {
     return new Error('Cadastre um local de estoque para preparar o primeiro caixa.');
   }
   if (detail.includes('pdv_setup_module_denied')) {
-    return new Error('O módulo PDV não está disponível para esta empresa.');
+    return new Error('O módulo PDV (Loja) não está disponível para esta empresa.');
   }
   if (detail.includes('pdv_setup_subscription_denied') || detail.includes('pdv_setup_entitlement_denied')) {
     return new Error('A assinatura da empresa não permite preparar o PDV agora.');

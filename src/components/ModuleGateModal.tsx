@@ -143,7 +143,7 @@ export const MODULE_INFO: Record<string, { name: string; description: string }> 
     description: 'Área exclusiva para o cliente acompanhar OS e equipamentos',
   },
   pdv: {
-    name: 'PDV e Loja',
+    name: 'PDV (Loja)',
     description: 'Caixa de balcão com controle do dinheiro, venda de peças por código de barras, fiado na ficha do cliente e o resultado da loja separado do serviço',
   },
   white_label: {

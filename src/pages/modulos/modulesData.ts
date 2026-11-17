@@ -1516,7 +1516,7 @@ export const MODULES: Record<string, ModuleIdentity> = {
   },
   pdv: {
     slug: 'pdv-e-loja',
-    navLabel: 'PDV & Loja',
+    navLabel: 'PDV (Loja)',
     icon: ShoppingCart,
   },
 };
@@ -1545,5 +1545,5 @@ export const MODULE_NAV_LINKS: ModuleNavLink[] = [
   { label: 'Área do Técnico™', slug: 'area-do-tecnico', icon: Wrench },
   { label: 'WhatsApp integrado', slug: 'integracao-whatsapp', icon: MessageCircleMore },
   { label: 'Cobranças', slug: 'cobrancas-automaticas', icon: BadgeDollarSign },
-  { label: 'PDV & Loja', slug: 'pdv-e-loja', icon: ShoppingCart },
+  { label: 'PDV (Loja)', slug: 'pdv-e-loja', icon: ShoppingCart },
 ];

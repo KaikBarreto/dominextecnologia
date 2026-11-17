@@ -1435,7 +1435,7 @@ const ptBr: ModuleContentMap = {
     metaDescription:
       'PDV e loja com venda rápida, leitor de código de barras, pagamento misto, fiado, abertura e fechamento de caixa, estoque e financeiro integrados.',
     hero: {
-      eyebrow: 'PDV & Loja',
+      eyebrow: 'PDV (Loja)',
       h1: 'PDV para vender no balcão sem separar loja e serviço',
       h1Highlight: 'PDV',
       subtitle:

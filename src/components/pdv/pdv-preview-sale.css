@@ -80,6 +80,13 @@
 .pdv-preview-sale [data-testid="pdv-cart-workspace"]:has(.itemeditor) .cartsummary>:not(.total){display:none}
 .pdv-preview-sale [data-testid="pdv-cart-workspace"]:has(.itemeditor) .cartsummary{max-height:70px}
 .pdv-preview-sale [data-testid="pdv-cart-workspace"]:has(.itemeditor) .cartbody{min-height:220px}
+.pdv-preview-sale input.pdv-inline-value-input:focus-visible{outline:none}
+.pdv-preview-sale svg.pdv-inline-value-pencil{width:10px;height:10px}
+.pdv-preview-sale svg.pdv-value-mode-icon{width:12px;height:12px}
+.pdv-preview-sale svg.pdv-value-mode-help{width:14px;height:14px}
+.pdv-preview-sale .cartfooter .btn.primary{background:hsl(var(--foreground));border-color:hsl(var(--foreground));color:hsl(var(--background))}
+.pdv-preview-sale .cartfooter .btn.primary:hover{opacity:.92}
+.pdv-preview-sale :where(input,select,textarea,[role="combobox"]):focus-visible{outline:none!important;box-shadow:none!important;border-color:hsl(var(--ring))!important}
 @media (max-width: 800px) {
   .pdv-preview-sale[data-vaul-drawer] [data-testid="pdv-cart-workspace"] { min-height: 0; height: 100%; }
   .pdv-preview-sale[data-vaul-drawer] .cartbody { flex: 1; min-height: 100px; overflow-y: auto; }

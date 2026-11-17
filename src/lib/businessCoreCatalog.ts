@@ -8,8 +8,8 @@ export const BUSINESS_CORE_BUNDLES = {
   },
   retail: {
     label: 'Kit Loja',
-    description: 'PDV, caixa, orçamentos de balcão, pedidos, retirada, produtos, clientes, fornecedores e financeiro.',
-    features: ['PDV e controle de caixa', 'Orçamentos de balcão, pedidos e retirada', 'Produtos, estoque, clientes e fornecedores', 'Financeiro completo'],
+    description: 'PDV (Loja), caixa, orçamentos de balcão, pedidos, retirada, produtos, clientes, fornecedores e financeiro.',
+    features: ['PDV (Loja) e controle de caixa', 'Orçamentos de balcão, pedidos e retirada', 'Produtos, estoque, clientes e fornecedores', 'Financeiro completo'],
   },
 } as const;
 
@@ -34,7 +34,7 @@ export function corePlanFeatures(core: BusinessCore, planCode: string) {
   const code = planCode.replace(/^retail_/, '');
   if (code === 'excecao') return core === 'services'
     ? ['Ordens de serviço e rastreamento', 'Agenda e tarefas', 'Clientes e equipamentos', 'Sem orçamentos, Portal do Cliente e financeiro']
-    : ['PDV e controle de caixa', 'Produtos, estoque, clientes e fornecedores', 'Sem financeiro'];
+    : ['PDV (Loja) e controle de caixa', 'Produtos, estoque, clientes e fornecedores', 'Sem financeiro'];
   return [
     ...BUSINESS_CORE_BUNDLES[core].features,
     ...(['avancado', 'master'].includes(code) ? [

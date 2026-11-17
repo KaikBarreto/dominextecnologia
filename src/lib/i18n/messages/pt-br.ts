@@ -96,7 +96,7 @@ export const ptBr = {
     'area-do-tecnico': 'Área do Técnico™',
     'integracao-whatsapp': 'WhatsApp integrado',
     'cobrancas-automaticas': 'Cobranças',
-    'pdv-e-loja': 'PDV & Loja',
+    'pdv-e-loja': 'PDV (Loja)',
   },
 
   // ── Nomes exibidos dos segmentos no menu/rodapé/home, pelo slug ───────────
@@ -360,7 +360,7 @@ export const ptBr = {
             'Gere cobranças avulsas ou recorrentes, compartilhe o link de pagamento e mantenha o recebimento conciliado com o financeiro.',
         },
         {
-          title: 'PDV, caixa e loja',
+          title: 'PDV (Loja), caixa e operação de balcão',
           description:
             'Venda no balcão com código de barras, pagamento misto, fiado, baixa de estoque e controle do turno de caixa na mesma operação.',
         },

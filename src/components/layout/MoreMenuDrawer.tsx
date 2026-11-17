@@ -118,7 +118,7 @@ const tenantMenuItems: MenuItem[] = [
   // modo balcão — ver comentário no sidebar.
   // "Caixa" (/pdv) é o PAINEL; a venda (/pdv/venda) é sub-tela sem item de menu.
   {
-    title: 'PDV',
+    title: 'PDV (Loja)',
     icon: Store,
     moduleKey: 'pdv',
     children: [
@@ -130,7 +130,7 @@ const tenantMenuItems: MenuItem[] = [
       { title: 'Histórico de Caixa', icon: HistoryIcon, path: '/pdv/caixas', screenKey: 'screen:pdv_cash_history', moduleKey: 'pdv' },
       { title: 'Relatórios da Loja', icon: BarChart3, path: '/pdv/relatorios', screenKey: 'screen:pdv_reports', moduleKey: 'pdv' },
       { title: 'Cupons promocionais', icon: TicketPercent, path: '/pdv/cupons', screenKey: 'screen:pdv_settings', moduleKey: 'pdv' },
-      { title: 'Configurações do PDV', icon: SettingsIcon, path: '/pdv/configuracoes', screenKey: 'screen:pdv_settings', moduleKey: 'pdv' },
+      { title: 'Configurações do PDV (Loja)', icon: SettingsIcon, path: '/pdv/configuracoes', screenKey: 'screen:pdv_settings', moduleKey: 'pdv' },
     ],
   },
   // Os dois são quadros Kanban e andam juntos (um projeto AGRUPA funis), mas

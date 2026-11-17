@@ -110,7 +110,7 @@ export const pdv = {
         finalizeShortcut: 'F9',
       },
       shortcuts: {
-        open: 'Atalhos', title: 'Atalhos do PDV',
+        open: 'Atalhos', title: 'Atalhos do PDV (Loja)',
         description: 'Use o teclado para operar a venda sem interromper o atendimento.',
         close: 'Fechar', search: 'Focar busca de produtos', customer: 'Selecionar cliente',
         payment: 'Abrir pagamento', switchOrder: 'Pedido anterior ou próximo',
@@ -199,7 +199,7 @@ export const pdv = {
         cashClosedAction: 'Abrir o caixa',
         cofreMissingTitle: 'Conta do cofre não configurada',
         cofreMissingDescription:
-          'Escolha a conta do cofre em Configurações do PDV antes de receber em dinheiro.',
+          'Escolha a conta do cofre em Configurações do PDV (Loja) antes de receber em dinheiro.',
         confirm: 'Finalizar Venda',
         submitting: 'Finalizando...',
         cancel: 'Voltar',
@@ -217,7 +217,7 @@ export const pdv = {
           fiado_sem_vencimento: 'Informe o vencimento do fiado.',
           dinheiro_sem_caixa: 'Abra o caixa antes de receber em dinheiro.',
           cofre_nao_configurado:
-            'Escolha a conta do cofre em Configurações do PDV antes de receber em dinheiro.',
+            'Escolha a conta do cofre em Configurações do PDV (Loja) antes de receber em dinheiro.',
           fiado_acima_do_limite:
             '{name} já deve {debt} e o limite é {limit}. Esta venda no fiado ({value}) passaria do limite.',
         },
@@ -280,7 +280,7 @@ export const pdv = {
       },
       noTerminal: {
         title: 'Nenhum caixa cadastrado',
-        description: 'Cadastre o caixa da loja em Configurações do PDV para abrir o turno e vender no balcão.',
+        description: 'Cadastre o caixa da loja em Configurações do PDV (Loja) para abrir o turno e vender no balcão.',
       },
       closed: {
         title: 'Caixa fechado',
@@ -301,7 +301,7 @@ export const pdv = {
         show: 'Mostrar valores',
         cofreAvailable: 'Disponível no cofre',
         cofreReserved: 'Reservado em caixa aberto',
-        cofreMissing: 'Escolha a conta do cofre em Configurações do PDV.',
+        cofreMissing: 'Escolha a conta do cofre em Configurações do PDV (Loja).',
         strictOff: 'Controle estrito de dinheiro desligado nesta empresa.',
         close: 'Fechar caixa',
       },
@@ -477,7 +477,7 @@ export const pdv = {
         cofreRule: 'Abrir o caixa não move dinheiro. O valor fica reservado no cofre e volta a ficar disponível quando você fechar.',
         cofreAvailable: 'Disponível no cofre: {value}',
         cofreLimitHidden: 'O valor informado ultrapassa o disponível no cofre. Informe um valor menor ou peça ajuda a quem gerencia as contas bancárias.',
-        cofreMissing: 'Escolha a conta do cofre em Configurações do PDV antes de abrir o caixa.',
+        cofreMissing: 'Escolha a conta do cofre em Configurações do PDV (Loja) antes de abrir o caixa.',
         strictOff: 'O controle estrito de dinheiro está desligado, então o valor de abertura não é conferido contra o cofre.',
         lastClosedHint: 'O último caixa fechou com {value} na gaveta.',
         reduce: 'Abrir com valor menor',
@@ -562,7 +562,7 @@ export const pdv = {
       },
     },
     settings: {
-      title: 'Configurações do PDV',
+      title: 'Configurações do PDV (Loja)',
       subtitle: 'Caixas da loja, cofre, etiquetas e modo de operação',
       tabs: {
         terminals: 'Caixas da loja',
@@ -585,7 +585,7 @@ export const pdv = {
     comingSoon: {
       title: 'Esta tela está chegando',
       description:
-        'O módulo PDV e Loja já está liberado para a sua empresa. Esta tela entra em funcionamento na próxima atualização do sistema.',
+        'O módulo PDV (Loja) já está liberado para a sua empresa. Esta tela entra em funcionamento na próxima atualização do sistema.',
     },
   },
 

@@ -72,6 +72,8 @@ import {
   incrementLineQuantity,
   removeItem,
   setDiscount,
+  setCartFinalAmount,
+  setLineFinalAmount,
   setLineDiscount,
   setLineQuantity,
   computeTotal,
@@ -1899,12 +1901,19 @@ function PdvSaleWorkspace({
     currencySymbol,
     locale,
     currencyFractionDigits,
+    modePreferenceKey: user?.id && profile?.company_id
+      ? `pdv:value-adjustment-mode:${profile.company_id}:${user.id}`
+      : undefined,
     onSetDiscountAmount: (discountAmount: number) =>
       setCart((prev) => setDiscount(prev, discountAmount)),
     onIncrement: (id: string, delta: number) => setCart((prev) => incrementLineQuantity(prev, id, delta)),
     onSetQuantity: (id: string, quantity: number) => setCart((prev) => setLineQuantity(prev, id, quantity)),
     onSetLineDiscount: (id: string, discountAmount: number) =>
       setCart((prev) => setLineDiscount(prev, id, discountAmount)),
+    onSetLineFinalAmount: (id: string, finalAmount: number, mode: 'price' | 'discount') =>
+      setCart((prev) => setLineFinalAmount(prev, id, finalAmount, mode, currencyFractionDigits)),
+    onSetCartFinalAmount: (finalAmount: number, mode: 'price' | 'discount') =>
+      setCart((prev) => setCartFinalAmount(prev, finalAmount, mode, currencyFractionDigits)),
     onRemove: handleRemoveCartLine,
     onCustomerChange: (id: string | null) => updateActiveDraft((draft) => {
       const next = setPdvSaleDraftCustomer(draft, id);

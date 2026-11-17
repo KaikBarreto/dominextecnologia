@@ -9,6 +9,7 @@ import {
   WHATSAPP_MODULE_CODE,
   resolveExtraUserPrice,
   resolveProposalWhatsappPrice,
+  subscriptionModuleDisplayName,
 } from '@/lib/subscriptionCatalog';
 
 export interface PublicSubscriptionPlan {
@@ -92,7 +93,7 @@ export function usePublicSubscriptionCatalog(businessCore: BusinessCore = 'servi
         return {
           id: module.id,
           code: module.code,
-          name: module.name,
+          name: subscriptionModuleDisplayName(module.code, module.name),
           description: module.description ?? null,
           price: module.code === BASE_SUBSCRIPTION_MODULE_CODE && businessCore === 'retail'
             ? (retailBasePrice ?? Number.NaN)

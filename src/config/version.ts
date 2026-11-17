@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.13";
+export const APP_VERSION = "1.41.14";
 
 export const VERSION_NOTES =
-  "Baixa de contas recorrentes pelo valor real e preenchimento financeiro mais rápido com sugestões do histórico da empresa.";
+  "Edição direta de valores por item ou no pedido, com escolha entre preço negociado e desconto visível, no PDV (Loja).";

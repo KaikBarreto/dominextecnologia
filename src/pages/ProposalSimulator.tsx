@@ -105,6 +105,7 @@ const MODULE_LABELS: Record<string, string> = {
   white_label: 'White Label',
   whatsapp: 'Integração com o WhatsApp',
   cobrancas: 'Cobranças',
+  pdv: 'PDV (Loja)',
 };
 
 const PLAN_ACCENTS: Record<string, { icon: typeof Zap; className: string }> = {

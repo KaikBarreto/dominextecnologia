@@ -405,7 +405,7 @@ export function mapPdvCashV2Error(error: unknown): Error {
   const byCode: Record<string, string> = {
     PDV_AUTH_REQUIRED: 'Sua sessão expirou. Entre novamente para continuar.',
     PDV_SUBSCRIPTION_INACTIVE: 'A assinatura da empresa não permite operar o caixa agora.',
-    PDV_MODULE_INACTIVE: 'O módulo PDV e Loja não está ativo nesta empresa.',
+    PDV_MODULE_INACTIVE: 'O módulo PDV (Loja) não está ativo nesta empresa.',
     PDV_SCREEN_FORBIDDEN: 'Você não tem permissão para operar o caixa.',
     PDV_TREASURY_ACCOUNT_NOT_CONFIGURED: 'Configure a conta do cofre antes de abrir o caixa.',
     PDV_TREASURY_AVAILABLE_INSUFFICIENT: 'O cofre não possui dinheiro disponível para esse valor.',

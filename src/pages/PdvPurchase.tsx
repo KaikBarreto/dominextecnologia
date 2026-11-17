@@ -36,6 +36,7 @@ import { PdvCartWorkspaceHeader, PdvCartWorkspaceTotals, PdvCartWorkspaceFooter 
 import { PdvSalePreviewView } from '@/components/pdv/PdvSalePreviewView';
 import type { PdvGridProduct } from '@/components/pdv/PdvProductCard';
 import { PdvMoneyInput } from '@/components/pdv/caixa/PdvMoneyInput';
+import { PdvInlineValueEditor } from '@/components/pdv/PdvInlineValueEditor';
 import { SignedImg } from '@/components/ui/SignedImg';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
@@ -66,6 +67,8 @@ import {
   MAX_PDV_PURCHASE_DRAFTS,
   parsePdvPurchaseNumber,
   pdvPurchaseDraftTotal,
+  setPdvPurchaseDraftFinalAmount,
+  setPdvPurchaseItemFinalAmount,
   type PdvPurchaseDraft,
   type PdvPurchasePaymentStatus,
 } from '@/lib/pdv/purchase-drafts';
@@ -109,6 +112,7 @@ export default function PdvPurchase() {
   const cashMode = parsedCashContext.kind !== 'absent';
   const confirmedCashContext = parsedCashContext.kind === 'present' ? cashContextQuery.data ?? null : null;
   const submittingDraftIdRef = useRef<string | null>(null);
+  const [editingItemValueId, setEditingItemValueId] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
@@ -571,13 +575,13 @@ export default function PdvPurchase() {
     <PdvCartWorkspaceHeader title="Compra atual" closeLabel="Fechar compra atual" disabled={busy} onClose={() => { if (hasPdvPurchaseDraftContent(activeDraft)) setCloseDraftOpen(true); else deleteDraft(draftId); }} personSelector={supplierSelector(`purchase-supplier-${draftId}`)} />
     <div className="cartlistcaption"><span>{selectedItems.length} {selectedItems.length === 1 ? 'material' : 'materiais'}</span><span className="text-[10px] text-muted-foreground">Custo de compra</span></div>
     <div className="cartbody" ref={cartItemsRef}>
-      {selectedItems.map(item => { const material = inventory.find(candidate => candidate.id === item.inventoryId), quantity = parsePdvPurchaseNumber(item.quantityText), unitPrice = parsePdvPurchaseNumber(item.unitPriceText); return <div className="cartitem" key={item.id} data-purchase-item-id={item.id} data-purchase-inventory-id={item.inventoryId}>
-        <div className="row"><div className="cartthumbnail">{material?.image_url ? <SignedImg src={material.image_url} alt="" className="h-full w-full object-contain" fallbackLabel="" /> : <Package />}</div><div className="grow"><strong>{material?.sku && <span className="productcode">{material.sku} · </span>}{material?.name ?? 'Material'}</strong><small className="purchase-item-unit">{material?.unit ?? 'un'}</small></div><strong className="amount">{formatCurrency(quantity * unitPrice)}</strong></div>
+      {selectedItems.map(item => { const material = inventory.find(candidate => candidate.id === item.inventoryId), quantity = parsePdvPurchaseNumber(item.quantityText), unitPrice = parsePdvPurchaseNumber(item.unitPriceText), editingItemValue = editingItemValueId === item.id; return <div className="cartitem" key={item.id} data-purchase-item-id={item.id} data-purchase-inventory-id={item.inventoryId}>
+        <div className={cn('row', editingItemValue && 'flex-wrap')}><div className="cartthumbnail">{material?.image_url ? <SignedImg src={material.image_url} alt="" className="h-full w-full object-contain" fallbackLabel="" /> : <Package />}</div><div className="grow"><strong>{material?.sku && <span className="productcode">{material.sku} · </span>}{material?.name ?? 'Material'}</strong><small className="purchase-item-unit">{material?.unit ?? 'un'}</small></div><div className={cn(editingItemValue && 'w-full min-w-0 pt-1')}><PdvInlineValueEditor label={`valor de ${material?.name ?? 'material'}`} value={quantity * unitPrice} baseAmount={quantity * unitPrice} formatCurrency={formatCurrency} adjustmentPolicy="price" disabled={busy || quantity <= 0} onApply={value => updateDraft(draftId, draft => setPdvPurchaseItemFinalAmount(draft, item.id, value))} onEditingChange={editing => setEditingItemValueId(editing ? item.id : null)} className="amount font-bold" /></div></div>
         <div className="row between itemcontrols"><div className="qty"><button type="button" disabled={busy || quantity <= 0} aria-label={`Diminuir ${material?.name ?? 'quantidade'}`} onClick={() => updateItem(draftId, item.id, { quantityText: String(Math.max(0, quantity - 1)) })}><Minus /></button><NumericInput ref={node => { if (node) quantityInputRefs.current.set(item.id, node); else quantityInputRefs.current.delete(item.id); }} value={item.quantityText} decimal maxDecimals={4} disabled={busy} onValueChange={quantityText => updateItem(draftId, item.id, { quantityText })} aria-label={`Quantidade de ${material?.name ?? 'material'}`} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); focusMaterialSearch(); } }} /><button type="button" disabled={busy} aria-label={`Aumentar ${material?.name ?? 'quantidade'}`} onClick={() => updateItem(draftId, item.id, { quantityText: String(quantity + 1) })}><Plus /></button></div><label className="purchase-unit-price"><span>Custo unitário</span><PdvMoneyInput id={`purchase-unit-cost-${item.id}`} value={unitPrice} disabled={busy} selectOnFocus onChange={value => updateItem(draftId, item.id, { unitPriceText: String(value) })} onEnter={focusMaterialSearch} /></label>{hardware.weighControl?.(item.id)}<button type="button" className="iconbtn negative removeitem" disabled={busy} aria-label={`${t.items.remove}: ${material?.name ?? 'material'}`} onClick={() => updateDraft(draftId, draft => { const remaining = draft.items.filter(candidate => candidate.id !== item.id); return { ...draft, items: remaining.length ? remaining : [createPdvPurchaseItem()] }; })}><Trash2 /></button></div>
       </div>; })}
       {!selectedItems.length && <div className="empty"><Package className="mx-auto mb-3 h-8 w-8" />Escolha os materiais que chegaram à loja.</div>}
     </div>
-    <PdvCartWorkspaceTotals subtotalLabel="Subtotal" subtotal={formatCurrency(total)} totalLabel="Total da compra" total={formatCurrency(total)} amountLabel="Valor da compra" amount={formatCurrency(total)} afterTotal={activeDraft.supplierId && (supplierCredit.data ?? 0) > 0 ? <button type="button" className="benefitbtn" onClick={openFinancialReview}><span>Saldo do fornecedor</span><span>{formatCurrency(supplierCredit.data ?? 0)}<ChevronDown /></span></button> : null} />
+    <PdvCartWorkspaceTotals subtotalLabel="Subtotal" subtotal={formatCurrency(total)} totalLabel="Total da compra" total={<PdvInlineValueEditor label="total da compra" value={total} baseAmount={total} formatCurrency={formatCurrency} adjustmentPolicy="price" disabled={busy || !selectedItems.length} onApply={value => updateDraft(draftId, draft => setPdvPurchaseDraftFinalAmount(draft, value))} className="font-bold" />} amountLabel="Valor da compra" amount={formatCurrency(total)} afterTotal={activeDraft.supplierId && (supplierCredit.data ?? 0) > 0 ? <button type="button" className="benefitbtn" onClick={openFinancialReview}><span>Saldo do fornecedor</span><span>{formatCurrency(supplierCredit.data ?? 0)}<ChevronDown /></span></button> : null} />
     <PdvCartWorkspaceFooter><button type="button" className="btn primary" disabled={busy || !selectedItems.length || total <= 0 || eligibleAccounts.length === 0} onClick={openFinancialReview}><ArrowRight />{busy ? tw.finalizing : 'Conferir compra'}</button><button type="button" className="btn ghost" disabled={busy} onClick={openFinancialReview}><SlidersHorizontal />Fornecedor, data e pagamento</button><small>F9 para conferir · O estoque muda só ao confirmar.</small></PdvCartWorkspaceFooter>
   </div>;
 

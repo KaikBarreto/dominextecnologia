@@ -288,7 +288,7 @@ describe('PdvPaymentDialog — fechamento real da venda', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Dinheiro' }));
     fireEvent.keyDown(window, { key: 'F9' });
 
-    expect(screen.getAllByText(/Escolha a conta do cofre em Configurações do PDV antes de receber em dinheiro/)).toHaveLength(2);
+    expect(screen.getAllByText(/Escolha a conta do cofre em Configurações do PDV \(Loja\) antes de receber em dinheiro/)).toHaveLength(2);
     expect(props.onConfirm).not.toHaveBeenCalled();
   });
 

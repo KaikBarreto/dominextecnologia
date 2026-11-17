@@ -148,7 +148,7 @@ const tenantMenuItems: MenuItem[] = [
   // de menu pra ela — daria dois caminhos pro mesmo fluxo e deixaria vender com
   // o caixa fechado como se fosse normal.
   {
-    title: 'PDV',
+    title: 'PDV (Loja)',
     icon: Store,
     moduleKey: 'pdv',
     children: [
@@ -160,7 +160,7 @@ const tenantMenuItems: MenuItem[] = [
       { title: 'Histórico de Caixa', icon: HistoryIcon, path: '/pdv/caixas', screenKey: 'screen:pdv_cash_history', moduleKey: 'pdv' },
       { title: 'Relatórios da Loja', icon: BarChart3, path: '/pdv/relatorios', screenKey: 'screen:pdv_reports', moduleKey: 'pdv' },
       { title: 'Cupons promocionais', icon: TicketPercent, path: '/pdv/cupons', screenKey: 'screen:pdv_settings', moduleKey: 'pdv' },
-      { title: 'Configurações do PDV', icon: SettingsIcon, path: '/pdv/configuracoes', screenKey: 'screen:pdv_settings', moduleKey: 'pdv' },
+      { title: 'Configurações do PDV (Loja)', icon: SettingsIcon, path: '/pdv/configuracoes', screenKey: 'screen:pdv_settings', moduleKey: 'pdv' },
     ],
   },
   // Os dois são quadros Kanban e andam juntos (um projeto AGRUPA funis), mas

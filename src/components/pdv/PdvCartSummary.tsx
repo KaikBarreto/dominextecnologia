@@ -22,6 +22,7 @@ import {
 import type { LocaleCode } from "@/lib/i18n/locales";
 import type { Customer } from "@/types/database";
 import { cn } from "@/lib/utils";
+import { PdvInlineValueEditor, type PdvValueAdjustmentMode } from '@/components/pdv/PdvInlineValueEditor';
 
 export interface PdvCartSummaryTexts {
   customerLabel: string;
@@ -58,6 +59,7 @@ interface PdvCartSummaryProps {
   locale?: LocaleCode;
   currencyFractionDigits?: number;
   onSetDiscountAmount: (discountAmount: number) => void;
+  onSetCartFinalAmount: (finalAmount: number, mode: PdvValueAdjustmentMode) => void;
   onCustomerChange: (id: string | null) => void;
   /** Abre o diálogo de pagamento (F4 e F9 caem aqui). */
   onRequestPayment: () => void;
@@ -121,6 +123,7 @@ export function PdvCartSummary({
   locale = "pt-br",
   currencyFractionDigits = 2,
   onSetDiscountAmount,
+  onSetCartFinalAmount,
   onCustomerChange,
   onRequestPayment,
   cashClosed,
@@ -147,6 +150,7 @@ export function PdvCartSummary({
   const subtotal = computeSubtotal(cart);
   const itemDiscounts = computeItemDiscountTotal(cart);
   const total = computeTotal(cart);
+  const totalAdjustmentBase = Math.max(0, subtotal - itemDiscounts);
   // Carrinho vazio não abre pagamento: a RPC recusa pedido sem item, então a
   // tela bloqueia o botão em vez de deixar o operador bater no erro.
   const canPay = canFinalizeOverride ?? (cart.lines.length > 0 && total > 0 && couponCartReady(cart));
@@ -154,7 +158,7 @@ export function PdvCartSummary({
   const reduceMotion = useReducedMotion();
 
   if (layout === 'workspace') return <>
-    <PdvCartWorkspaceTotals className={className} subtotalLabel={texts.subtotal} subtotal={formatCurrency(subtotal)} totalLabel={texts.total} total={formatCurrency(total)} amountLabel={texts.amountDue ?? 'Restante a receber'} amount={formatCurrency(Math.max(0, total - appliedCreditAmount))}
+    <PdvCartWorkspaceTotals className={className} subtotalLabel={texts.subtotal} subtotal={formatCurrency(subtotal)} totalLabel={texts.total} total={<PdvInlineValueEditor label={texts.total} value={total} baseAmount={totalAdjustmentBase} adjustmentPolicy="discount" formatCurrency={formatCurrency} disabled={readOnly || cart.lines.length === 0} onApply={onSetCartFinalAmount} className="font-bold" />} amountLabel={texts.amountDue ?? 'Restante a receber'} amount={formatCurrency(Math.max(0, total - appliedCreditAmount))}
       beforeTotal={<>
       {itemDiscounts > 0 && <div className="sumline"><span>{texts.itemDiscounts}</span><strong>− {formatCurrency(itemDiscounts)}</strong></div>}
       {readOnly ? <div className="sumline"><span>Descontos</span><strong>{formatCurrency(cart.discount)}</strong></div> : <PdvInlineDiscountEditor presentation="preview" variant="order" label="Descontos" baseAmount={Math.max(0, subtotal - itemDiscounts)} discountAmount={cart.discount} formatCurrency={formatCurrency} currencySymbol={currencySymbol} locale={locale} currencyFractionDigits={currencyFractionDigits} texts={texts.discountEditor} onApply={onSetDiscountAmount} />}
@@ -228,9 +232,9 @@ export function PdvCartSummary({
       {confirmedCouponDiscount(cart) > 0 && <div className="flex flex-wrap justify-between gap-2 text-sm"><span>Cupom {cart.coupon?.code}</span><strong className="tabular-nums">− {formatCurrency(confirmedCouponDiscount(cart))}</strong></div>}
       <div className="flex items-center justify-between border-t border-border pt-2">
         <span className="text-base font-bold">{texts.total}</span>
-        <span className="text-2xl font-extrabold tabular-nums">
-          {formatCurrency(total)}
-        </span>
+        <div className="flex min-w-0 flex-1 justify-end">
+          <PdvInlineValueEditor label={texts.total} value={total} baseAmount={totalAdjustmentBase} adjustmentPolicy="discount" formatCurrency={formatCurrency} disabled={readOnly || cart.lines.length === 0} onApply={onSetCartFinalAmount} className="text-2xl font-extrabold" />
+        </div>
       </div>
 
       {appliedCreditContent}

@@ -1,6 +1,6 @@
 import { PdvCouponControl } from '@/components/pdv/coupons/PdvCouponControl';
 import { couponBaseItems } from '@/lib/pdv/couponCart';
-import { couponCartSignature, confirmedCouponDiscount, couponCartReady, type PdvCartCoupon } from '@/lib/pdv/cart';
+import { couponCartSignature, confirmedCouponDiscount, couponCartReady, setCartFinalAmount, setLineFinalAmount, type PdvCartCoupon } from '@/lib/pdv/cart';
 import { canCapturePdvCatalogScan } from '@/lib/pdv/catalogKeyboard';
 import '@/components/pdv/PdvWorkspace.css';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -190,6 +190,7 @@ interface Props {
   onEditorSnapshotChange?: (snapshot: PdvPreorderEditorSnapshot, summary?: {total: number; hasMissingPrices: boolean}) => void;
   workspaceHeader?: ReactNode;
   onCloseOrder?: () => void;
+  modePreferenceKey?: string;
   draftId?: string;
   preferredStockId?: string | null;
   inventory: PdvPreorderCatalogItem[];
@@ -242,7 +243,7 @@ function newLine(itemType: "service" | "free_item"): EditableLine {
 
 export function PdvPreorderDetail({
   detail,
-  editorSnapshot, onEditorSnapshotChange, workspaceHeader, onCloseOrder,
+  editorSnapshot, onEditorSnapshotChange, workspaceHeader, onCloseOrder, modePreferenceKey,
   draftId,
   preferredStockId,
   inventory,
@@ -625,6 +626,24 @@ export function PdvPreorderDetail({
     updateLine(lineId, { discountAmount: inputNumber(amount) });
   }
 
+  function setCartLineFinalAmount(lineId: string, amount: number, mode: 'price' | 'discount') {
+    if (!canEditCommercial) return;
+    const adjusted = setLineFinalAmount(cart, lineId, amount, mode);
+    const line = adjusted.lines.find((candidate) => candidate.inventoryId === lineId);
+    if (!line) return;
+    updateLine(lineId, {
+      unitPrice: inputNumber(line.unitPrice),
+      discountAmount: inputNumber(line.discountAmount),
+    });
+  }
+
+  function setCartTotalFinalAmount(amount: number, mode: 'price' | 'discount') {
+    if (!canEditCommercial) return;
+    const adjusted = setCartFinalAmount(cart, amount, mode);
+    setOrderDiscount(inputNumber(adjusted.discount));
+    markDirty();
+  }
+
   async function handleBarcode(code: string) {
     if (!isEditing) return;
     try {
@@ -972,6 +991,7 @@ export function PdvPreorderDetail({
     formatCurrency: money,
     currencySymbol,
     locale,
+    modePreferenceKey,
     onSetDiscountAmount: (amount: number) => {
       setOrderDiscount(inputNumber(amount));
       markDirty();
@@ -979,6 +999,8 @@ export function PdvPreorderDetail({
     onIncrement: incrementCartLine,
     onSetQuantity: setCartQuantity,
     onSetLineDiscount: setCartLineDiscount,
+    onSetLineFinalAmount: setCartLineFinalAmount,
+    onSetCartFinalAmount: setCartTotalFinalAmount,
     onRemove: removeLine,
     onCustomerChange: (id: string | null) => {
       setCustomerId(id ?? "none");

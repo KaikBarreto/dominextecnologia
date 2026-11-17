@@ -16,7 +16,7 @@ export function PdvCartWorkspaceTotals({ subtotalLabel, subtotal, totalLabel, to
   return <div className={cn('cartsummary', className)}>
     <div className="sumline"><span>{subtotalLabel}</span><strong>{subtotal}</strong></div>
     {beforeTotal}
-    <div className="sumline" style={{ marginTop: 13 }}><strong>{totalLabel}</strong><strong>{total}</strong></div>
+    <div className="sumline" style={{ marginTop: 13 }}><strong>{totalLabel}</strong><div className="flex min-w-0 flex-1 justify-end">{total}</div></div>
     {afterTotal}
     <div className="total"><span style={{ fontSize: 12 }}>{amountLabel}</span><strong className="amount">{amount}</strong></div>
   </div>;

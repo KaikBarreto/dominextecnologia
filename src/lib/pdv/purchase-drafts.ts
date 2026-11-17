@@ -129,6 +129,54 @@ export function pdvPurchaseDraftTotal(draft: PdvPurchaseDraft): number {
   }, 0));
 }
 
+export function setPdvPurchaseItemFinalAmount(
+  draft: PdvPurchaseDraft,
+  itemId: string,
+  finalAmount: number,
+): PdvPurchaseDraft {
+  const target = Math.max(0, round2(finalAmount));
+  return {
+    ...draft,
+    items: draft.items.map((item) => {
+      if (item.id !== itemId) return item;
+      const quantity = parsePdvPurchaseNumber(item.quantityText);
+      if (quantity <= 0) return item;
+      return { ...item, unitPriceText: String(round2(target / quantity)) };
+    }),
+  };
+}
+
+export function setPdvPurchaseDraftFinalAmount(
+  draft: PdvPurchaseDraft,
+  finalAmount: number,
+): PdvPurchaseDraft {
+  const target = Math.max(0, round2(finalAmount));
+  const pricedItems = draft.items.filter((item) => parsePdvPurchaseNumber(item.quantityText) > 0);
+  if (pricedItems.length === 0) return draft;
+  const currentTotal = pdvPurchaseDraftTotal(draft);
+  const quantityTotal = pricedItems.reduce((sum, item) => sum + parsePdvPurchaseNumber(item.quantityText), 0);
+  let remaining = target;
+  let adjustedIndex = 0;
+  return {
+    ...draft,
+    items: draft.items.map((item) => {
+      const quantity = parsePdvPurchaseNumber(item.quantityText);
+      if (quantity <= 0) return item;
+      const isLast = adjustedIndex === pricedItems.length - 1;
+      const currentLine = quantity * parsePdvPurchaseNumber(item.unitPriceText);
+      const share = isLast
+        ? remaining
+        : round2(currentTotal > 0
+          ? target * (currentLine / currentTotal)
+          : target * (quantity / quantityTotal));
+      const unitPrice = round2(Math.max(0, share) / quantity);
+      remaining = round2(remaining - unitPrice * quantity);
+      adjustedIndex += 1;
+      return { ...item, unitPriceText: String(unitPrice) };
+    }),
+  };
+}
+
 function cloneDraft(draft: PdvPurchaseDraft): PdvPurchaseDraft {
   return { ...draft, items: draft.items.map((item) => ({ ...item })) };
 }
