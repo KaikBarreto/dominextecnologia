@@ -1,8 +1,27 @@
-import { useState } from 'react';
-import { CreditCard, ExternalLink, Plus, Receipt, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import {
+  AlertTriangle,
+  CalendarDays,
+  ChevronRight,
+  CreditCard,
+  ExternalLink,
+  Layers3,
+  Plus,
+  Receipt,
+  Tag,
+  Trash2,
+  Users,
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,11 +37,13 @@ import { useToast } from '@/hooks/use-toast';
 import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 import {
   useAdminCompanyPayments,
+  useAdminCompanyPaymentDetail,
   mapPaymentRpcError,
   type UnifiedCompanyPayment,
 } from '@/hooks/useAdminCompanyPayments';
 import { RegisterCompanyPaymentModal } from '@/components/admin/RegisterCompanyPaymentModal';
 import type { Database } from '@/integrations/supabase/types';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface CompanyPaymentsTabProps {
   companyId: string;
@@ -77,10 +98,6 @@ function getMethodLabel(payment: UnifiedCompanyPayment): string {
   return labels[method.toUpperCase()] || method;
 }
 
-function isPaid(status: string): boolean {
-  return status === 'RECEIVED' || status === 'CONFIRMED';
-}
-
 function StatusBadge({ status }: { status: string }) {
   switch (status) {
     case 'RECEIVED':
@@ -97,13 +114,210 @@ function StatusBadge({ status }: { status: string }) {
   }
 }
 
+function money(value: number | null | undefined): string {
+  return Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function cycleLabel(cycle: string | null | undefined): string {
+  const normalized = (cycle || '').toLowerCase();
+  if (['yearly', 'annual', 'anual'].includes(normalized)) return 'Anual à vista';
+  if (['monthly', 'mensal'].includes(normalized)) return 'Mensal';
+  return cycle || 'Não identificado';
+}
+
+function planLabel(code: string | null | undefined): string {
+  if (!code) return 'Plano não identificado';
+  return code.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function PaymentDetailPanel({ companyId, payment }: { companyId: string; payment: UnifiedCompanyPayment }) {
+  const { data, isLoading, isError, refetch } = useAdminCompanyPaymentDetail(companyId, payment);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4 p-5">
+        <Skeleton className="h-7 w-40" />
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-28 w-full" />
+      </div>
+    );
+  }
+
+  if (isError || !data) {
+    return (
+      <div className="flex min-h-64 flex-col items-center justify-center gap-3 p-6 text-center">
+        <AlertTriangle className="h-7 w-7 text-destructive" />
+        <div>
+          <p className="font-medium">Não foi possível carregar o detalhe</p>
+          <p className="mt-1 text-sm text-muted-foreground">O resumo do pagamento continua disponível.</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => refetch()}>Tentar novamente</Button>
+      </div>
+    );
+  }
+
+  const snapshot = data.snapshot || {};
+  const modules = snapshot.modules || [];
+  const promotions = snapshot.promotions || [];
+  const unavailable = data.quality === 'legacy_unavailable';
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="border-b bg-muted/25 p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Valor pago</p>
+            <p className="mt-1 text-3xl font-bold tracking-tight">{money(payment.amount)}</p>
+          </div>
+          <StatusBadge status={payment.status} />
+        </div>
+        <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <CalendarDays className="h-4 w-4" /> {formatPaymentDate(payment.date)}
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <CreditCard className="h-4 w-4" /> {getMethodLabel(payment)}
+          </span>
+        </div>
+      </div>
+
+      <div className="flex-1 space-y-5 overflow-y-auto p-5">
+        {unavailable ? (
+          <div className="rounded-xl border border-dashed bg-muted/25 p-5">
+            <p className="font-medium">Detalhamento histórico indisponível</p>
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+              Este pagamento é anterior ao registro da composição da assinatura. O valor, a data e a forma
+              de pagamento são confiáveis; módulos e usuários não serão estimados pela configuração atual.
+            </p>
+          </div>
+        ) : (
+          <>
+            <section>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cobrança</p>
+              <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl border p-3">
+                  <p className="text-xs text-muted-foreground">Plano</p>
+                  <p className="mt-1 font-semibold">{snapshot.plan?.label || planLabel(snapshot.plan?.code)}</p>
+                </div>
+                <div className="rounded-xl border p-3">
+                  <p className="text-xs text-muted-foreground">Ciclo</p>
+                  <p className="mt-1 font-semibold">
+                    {snapshot.installment
+                      ? `Parcela ${snapshot.installment.number}/${snapshot.installment.total} do anual`
+                      : cycleLabel(snapshot.billing_cycle)}
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            {snapshot.users && (
+              <section className="rounded-xl border p-4">
+                <div className="flex items-center gap-2"><Users className="h-4 w-4" /><p className="font-semibold">Usuários</p></div>
+                <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                  <div><p className="text-muted-foreground">Limite contratado</p><p className="font-medium">{snapshot.users.limit ?? '—'}</p></div>
+                  <div><p className="text-muted-foreground">Adicionais</p><p className="font-medium">{snapshot.users.extra ?? 0}</p></div>
+                </div>
+              </section>
+            )}
+
+            <section>
+              <div className="flex items-center gap-2"><Layers3 className="h-4 w-4" /><p className="font-semibold">Módulos incluídos</p></div>
+              {modules.length > 0 ? (
+                <div className="mt-2 divide-y rounded-xl border">
+                  {modules.map((module) => (
+                    <div key={module.code} className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
+                      <div className="min-w-0">
+                        <p className="font-medium">{module.name || module.code}</p>
+                        {(module.quantity || 1) > 1 && <p className="text-xs text-muted-foreground">Quantidade: {module.quantity}</p>}
+                      </div>
+                      {module.unit_price != null && <span className="shrink-0 text-muted-foreground">{money(module.unit_price)}</span>}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-2 rounded-xl border border-dashed p-3 text-sm text-muted-foreground">Nenhum módulo individual foi registrado para esta cobrança.</p>
+              )}
+            </section>
+
+            {promotions.length > 0 && (
+              <section>
+                <div className="flex items-center gap-2"><Tag className="h-4 w-4" /><p className="font-semibold">Promoção aplicada</p></div>
+                <div className="mt-2 space-y-2">
+                  {promotions.map((promotion, index) => (
+                    <div key={`${promotion.scope_type}-${promotion.module_code || index}`} className="rounded-xl border border-success/30 bg-success/5 p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-medium">{promotion.module_name || promotion.module_code || 'Assinatura'}</p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">Ciclo {promotion.cycle_number} de {promotion.billing_cycles}</p>
+                        </div>
+                        <Badge variant="outline" className="border-success text-success">-{money(promotion.discount)}</Badge>
+                      </div>
+                      <p className="mt-2 text-sm">
+                        <span className="text-muted-foreground line-through">{money(promotion.standard_unit_price)}</span>
+                        <span className="ml-2 font-semibold">{money(promotion.promotional_unit_price)}</span>
+                        {promotion.quantity > 1 ? ` × ${promotion.quantity}` : ''}
+                      </p>
+                      {promotion.reason && <p className="mt-1 text-xs text-muted-foreground">{promotion.reason}</p>}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+          </>
+        )}
+
+        {data.quality === 'partial' && (
+          <div className="rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm">
+            Este pagamento possui apenas os detalhes históricos que puderam ser comprovados.
+          </div>
+        )}
+
+        {payment.notes && (
+          <section>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Observações</p>
+            <p className="mt-2 whitespace-pre-wrap rounded-xl border p-3 text-sm">{payment.notes}</p>
+          </section>
+        )}
+
+        {payment.invoiceUrl && (
+          <Button asChild variant="outline" className="w-full gap-2">
+            <a href={payment.invoiceUrl} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="h-4 w-4" /> Abrir fatura no Asaas
+            </a>
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function CompanyPaymentsTab({ companyId, company }: CompanyPaymentsTabProps) {
   const { toast } = useToast();
   const { hasFunctionAccess } = useAdminPermissions();
   const canRegisterPayment = hasFunctionAccess('admin_empresas_pagamento');
   const { payments, isLoading, deletePayment } = useAdminCompanyPayments(companyId);
+  const isMobile = useIsMobile();
   const [showRegister, setShowRegister] = useState(false);
   const [paymentToDelete, setPaymentToDelete] = useState<UnifiedCompanyPayment | null>(null);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
+
+  useEffect(() => {
+    if (payments.length === 0) {
+      setSelectedKey(null);
+      return;
+    }
+    if (!selectedKey || !payments.some((payment) => `${payment.source}-${payment.id}` === selectedKey)) {
+      setSelectedKey(`${payments[0].source}-${payments[0].id}`);
+    }
+  }, [payments, selectedKey]);
+
+  const selectedPayment = payments.find((payment) => `${payment.source}-${payment.id}` === selectedKey) || payments[0];
+
+  const selectPayment = (payment: UnifiedCompanyPayment) => {
+    setSelectedKey(`${payment.source}-${payment.id}`);
+    if (isMobile) setMobileDetailOpen(true);
+  };
 
   const handleConfirmDelete = () => {
     if (!paymentToDelete) return;
@@ -150,81 +364,74 @@ export function CompanyPaymentsTab({ companyId, company }: CompanyPaymentsTabPro
           </p>
         </div>
       ) : (
-        <div className="space-y-2 md:space-y-3">
-          {payments.map((payment) => {
-            const paid = isPaid(payment.status);
-            const cancelled = payment.status === 'CANCELLED';
-            return (
-              <div
-                key={`${payment.source}-${payment.id}`}
-                className={cn(
-                  'flex flex-col gap-3 rounded-lg border bg-card p-3 transition-colors hover:bg-muted/50 sm:flex-row sm:items-center sm:justify-between md:p-4',
-                  cancelled && 'opacity-60',
-                )}
-              >
-                {/* Esquerda: ícone + tipo + valor + meta */}
-                <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center md:gap-4">
-                  <div
-                    className={cn(
-                      'shrink-0 rounded-lg p-2',
-                      paid ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground',
-                    )}
-                  >
-                    <CreditCard className="h-4 w-4 md:h-5 md:w-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-semibold md:text-base">{getTypeLabel(payment)}</p>
-                      <span className="sm:hidden">
-                        <StatusBadge status={payment.status} />
-                      </span>
-                    </div>
-                    <p className="mt-0.5 text-base font-bold md:text-lg">
-                      {payment.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                    </p>
-                    <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-                      <p className="text-xs text-muted-foreground">{formatPaymentDate(payment.date)}</p>
-                      <span className="text-xs text-muted-foreground">•</span>
-                      <p className="text-xs text-muted-foreground">{getMethodLabel(payment)}</p>
-                    </div>
-                    {payment.notes && (
-                      <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{payment.notes}</p>
-                    )}
-                    {payment.source === 'asaas' && payment.invoiceUrl && (
-                      <a
-                        href={payment.invoiceUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-                      >
-                        <ExternalLink className="h-3 w-3" /> Ver fatura
-                      </a>
-                    )}
-                  </div>
-                </div>
-
-                {/* Direita: status (desktop) + excluir (só manual) */}
-                <div className="flex shrink-0 items-center gap-2 pl-11 sm:pl-0 md:gap-3">
-                  <span className="hidden sm:inline-flex">
-                    <StatusBadge status={payment.status} />
-                  </span>
-                  {payment.source === 'manual' && (
-                    <Button
-                      variant="destructive-ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      title="Excluir pagamento"
-                      disabled={deletePayment.isPending}
-                      onClick={() => setPaymentToDelete(payment)}
+        <div className="grid overflow-hidden rounded-2xl border bg-card lg:grid-cols-[minmax(300px,0.85fr)_minmax(0,1.65fr)]">
+          <div className="border-r-0 lg:border-r">
+            <div className="border-b bg-muted/25 px-4 py-3">
+              <p className="font-semibold">Pagamentos</p>
+              <p className="text-xs text-muted-foreground">{payments.length} registro{payments.length === 1 ? '' : 's'}</p>
+            </div>
+            <div className="max-h-[680px] space-y-1 overflow-y-auto p-2">
+              {payments.map((payment) => {
+                const key = `${payment.source}-${payment.id}`;
+                const active = key === `${selectedPayment?.source}-${selectedPayment?.id}`;
+                const cancelled = payment.status === 'CANCELLED';
+                return (
+                  <div key={key} className={cn('group relative', cancelled && 'opacity-60')}>
+                    <button
+                      type="button"
+                      onClick={() => selectPayment(payment)}
+                      className={cn(
+                        'w-full rounded-xl border border-transparent px-3 py-3 pr-10 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                        active && 'border-foreground/20 bg-foreground/[0.04]',
+                      )}
+                      aria-pressed={active}
                     >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+                      <div className="flex items-center justify-between gap-2">
+                        <StatusBadge status={payment.status} />
+                        <span className="text-base font-bold">{money(payment.amount)}</span>
+                      </div>
+                      <p className="mt-2 truncate text-sm font-medium">{getTypeLabel(payment)}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {formatPaymentDate(payment.date)} • {getMethodLabel(payment)}
+                      </p>
+                      <ChevronRight className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    </button>
+                    {payment.source === 'manual' && (
+                      <Button
+                        variant="destructive-ghost"
+                        size="icon"
+                        className="absolute bottom-2 right-2 z-10 h-8 w-8 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 lg:focus:opacity-100"
+                        title="Excluir pagamento"
+                        disabled={deletePayment.isPending}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setPaymentToDelete(payment);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div className="hidden min-h-[560px] lg:block">
+            <PaymentDetailPanel companyId={companyId} payment={selectedPayment} />
+          </div>
         </div>
+      )}
+
+      {selectedPayment && (
+        <Sheet open={mobileDetailOpen} onOpenChange={setMobileDetailOpen}>
+          <SheetContent side="right" className="w-full max-w-none p-0 sm:max-w-none lg:hidden">
+            <SheetHeader className="sr-only">
+              <SheetTitle>Detalhe do pagamento</SheetTitle>
+              <SheetDescription>Composição histórica do pagamento selecionado.</SheetDescription>
+            </SheetHeader>
+            <PaymentDetailPanel companyId={companyId} payment={selectedPayment} />
+          </SheetContent>
+        </Sheet>
       )}
 
       {/* Confirmação de exclusão (só pagamento manual) */}

@@ -28,6 +28,40 @@ export interface UnifiedCompanyPayment {
   notes: string | null;
 }
 
+export interface AdminPaymentDetailResponse {
+  payment_source: 'manual' | 'asaas';
+  payment_id: string;
+  company_id: string;
+  quality: 'exact' | 'partial' | 'legacy_unavailable';
+  captured_at: string;
+  snapshot: {
+    plan?: { code?: string | null; label?: string | null } | null;
+    billing_cycle?: string | null;
+    users?: { limit?: number | null; extra?: number | null; extra_unit_price?: number | null } | null;
+    modules?: Array<{ code: string; name: string; quantity?: number | null; unit_price?: number | null }>;
+    promotions?: Array<{
+      scope_type: string;
+      module_code?: string | null;
+      module_name?: string | null;
+      quantity: number;
+      standard_unit_price: number;
+      promotional_unit_price: number;
+      discount: number;
+      billing_cycles: number;
+      cycle_number: number;
+      reason?: string | null;
+    }>;
+    installment?: { number: number; total: number; new_expires_at?: string | null } | null;
+    amounts?: { paid?: number | null; subscription?: number | null; base?: number | null; discount?: number | null };
+    change?: { kind?: string | null; credit_amount?: number | null; amount_due?: number | null } | null;
+  };
+}
+
+const getAdminPaymentDetail = supabase.rpc as unknown as (
+  functionName: 'get_admin_payment_detail',
+  args: { p_company_id: string; p_payment_source: 'manual' | 'asaas'; p_payment_id: string },
+) => Promise<{ data: AdminPaymentDetailResponse | null; error: unknown }>;
+
 export interface RegisterCompanyPaymentInput {
   amount: number;
   /** 'YYYY-MM-DD' */
@@ -63,6 +97,25 @@ function toSortableDate(value: string | null): number {
   if (!value) return 0;
   const ms = new Date(value).getTime();
   return Number.isNaN(ms) ? 0 : ms;
+}
+
+export function useAdminCompanyPaymentDetail(
+  companyId: string,
+  payment: Pick<UnifiedCompanyPayment, 'id' | 'source'>,
+) {
+  return useQuery({
+    queryKey: ['admin-payment-detail', companyId, payment.source, payment.id],
+    queryFn: async (): Promise<AdminPaymentDetailResponse> => {
+      const { data, error } = await getAdminPaymentDetail('get_admin_payment_detail', {
+        p_company_id: companyId,
+        p_payment_source: payment.source,
+        p_payment_id: payment.id,
+      });
+      if (error) throw error;
+      if (!data) throw new Error('payment_detail_not_found');
+      return data;
+    },
+  });
 }
 
 export function useAdminCompanyPayments(companyId: string | undefined) {
