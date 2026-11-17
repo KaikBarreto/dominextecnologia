@@ -42,8 +42,15 @@ vi.mock('@/contexts/AppLocaleContext', () => ({
 
 const CUSTOMER = { id: 'cust-1', name: 'Cliente Um', document: '11144477735', email: '', phone: '', celular: '' };
 
+const customerQueryState = vi.hoisted(() => ({
+  customers: [] as Array<{ id: string; name: string; document: string; email: string; phone: string; celular: string }>,
+  isLoading: false,
+  isError: false,
+  refetch: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock('@/hooks/useCustomers', () => ({
-  useCustomers: () => ({ customers: [CUSTOMER] }),
+  useCustomers: () => customerQueryState,
 }));
 
 vi.mock('@/hooks/useCostCenters', () => ({
@@ -223,6 +230,10 @@ function expandNetSummary() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  customerQueryState.customers = [CUSTOMER];
+  customerQueryState.isLoading = false;
+  customerQueryState.isError = false;
+  customerQueryState.refetch.mockResolvedValue(undefined);
   subscriptionAccountState.defaultFinePercent = 2;
   subscriptionAccountState.defaultInterestPercent = 1;
   createMutateAsync.mockResolvedValue(undefined);
@@ -234,6 +245,38 @@ beforeEach(() => {
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
+});
+
+describe('SubscriptionDialog — carregamento de clientes', () => {
+  it('não confunde carregamento com lista vazia', () => {
+    customerQueryState.customers = [];
+    customerQueryState.isLoading = true;
+    mount();
+
+    expect(text()).toContain('Carregando clientes…');
+    expect(text()).not.toContain('Nenhum cliente cadastrado');
+  });
+
+  it('mostra erro com nova tentativa antes do vazio definitivo', async () => {
+    customerQueryState.customers = [];
+    customerQueryState.isError = true;
+    mount();
+
+    expect(text()).toContain('Não foi possível carregar os clientes');
+    expect(text()).not.toContain('Nenhum cliente cadastrado');
+    await act(async () => {
+      click(buttonByText('Tentar novamente'));
+    });
+    expect(customerQueryState.refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('mostra o vazio definitivo somente após uma consulta concluída sem clientes', () => {
+    customerQueryState.customers = [];
+    mount();
+
+    expect(text()).toContain('Nenhum cliente cadastrado');
+    expect(text()).not.toContain('Não foi possível carregar os clientes');
+  });
 });
 
 afterEach(() => {

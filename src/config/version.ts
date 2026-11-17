@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.11";
+export const APP_VERSION = "1.41.12";
 
 export const VERSION_NOTES =
-  "Kits Loja e Serviços, conexão de equipamentos no PDV e conferências mais claras nas compras, no financeiro e na preparação fiscal.";
+  "Cobranças parceladas direto no Asaas, com prévia das parcelas e melhorias nas telas de cobranças e assinaturas.";

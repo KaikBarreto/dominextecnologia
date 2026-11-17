@@ -16363,10 +16363,118 @@ export type Database = {
           },
         ]
       }
+      tenant_charge_batches: {
+        Row: {
+          billing_type: string
+          category: string | null
+          client_request_id: string
+          company_id: string
+          cost_center_id: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          description: string | null
+          discount_days: number
+          discount_percent: number
+          finance_account_id: string | null
+          fine_type: string
+          fine_value: number
+          first_due_date: string
+          id: string
+          installment_count: number
+          interest_percent: number
+          payload_hash: string
+          post_to_finance: boolean
+          status: string
+          total_value: number
+          updated_at: string
+        }
+        Insert: {
+          billing_type: string
+          category?: string | null
+          client_request_id: string
+          company_id: string
+          cost_center_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          description?: string | null
+          discount_days?: number
+          discount_percent?: number
+          finance_account_id?: string | null
+          fine_type?: string
+          fine_value?: number
+          first_due_date: string
+          id?: string
+          installment_count: number
+          interest_percent?: number
+          payload_hash: string
+          post_to_finance?: boolean
+          status?: string
+          total_value: number
+          updated_at?: string
+        }
+        Update: {
+          billing_type?: string
+          category?: string | null
+          client_request_id?: string
+          company_id?: string
+          cost_center_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          description?: string | null
+          discount_days?: number
+          discount_percent?: number
+          finance_account_id?: string | null
+          fine_type?: string
+          fine_value?: number
+          first_due_date?: string
+          id?: string
+          installment_count?: number
+          interest_percent?: number
+          payload_hash?: string
+          post_to_finance?: boolean
+          status?: string
+          total_value?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_charge_batches_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_charge_batches_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_charge_batches_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_charge_batches_finance_account_id_fkey"
+            columns: ["finance_account_id"]
+            isOneToOne: false
+            referencedRelation: "financial_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_charges: {
         Row: {
           asaas_installment_id: string | null
           asaas_payment_id: string | null
+          batch_id: string | null
           billing_type: string | null
           boleto_url: string | null
           company_id: string
@@ -16378,7 +16486,11 @@ export type Database = {
           finance_sync_checked_at: string | null
           finance_sync_error: string | null
           finance_sync_status: string | null
+          gateway_creation_claim_token: string | null
+          gateway_creation_claimed_at: string | null
           id: string
+          installment_number: number | null
+          installment_total: number | null
           invoice_url: string | null
           net_value: number | null
           payment_date: string | null
@@ -16395,6 +16507,7 @@ export type Database = {
         Insert: {
           asaas_installment_id?: string | null
           asaas_payment_id?: string | null
+          batch_id?: string | null
           billing_type?: string | null
           boleto_url?: string | null
           company_id: string
@@ -16406,7 +16519,11 @@ export type Database = {
           finance_sync_checked_at?: string | null
           finance_sync_error?: string | null
           finance_sync_status?: string | null
+          gateway_creation_claim_token?: string | null
+          gateway_creation_claimed_at?: string | null
           id?: string
+          installment_number?: number | null
+          installment_total?: number | null
           invoice_url?: string | null
           net_value?: number | null
           payment_date?: string | null
@@ -16423,6 +16540,7 @@ export type Database = {
         Update: {
           asaas_installment_id?: string | null
           asaas_payment_id?: string | null
+          batch_id?: string | null
           billing_type?: string | null
           boleto_url?: string | null
           company_id?: string
@@ -16434,7 +16552,11 @@ export type Database = {
           finance_sync_checked_at?: string | null
           finance_sync_error?: string | null
           finance_sync_status?: string | null
+          gateway_creation_claim_token?: string | null
+          gateway_creation_claimed_at?: string | null
           id?: string
+          installment_number?: number | null
+          installment_total?: number | null
           invoice_url?: string | null
           net_value?: number | null
           payment_date?: string | null
@@ -16449,6 +16571,13 @@ export type Database = {
           value?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "tenant_charges_batch_company_fkey"
+            columns: ["batch_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_charge_batches"
+            referencedColumns: ["id", "company_id"]
+          },
           {
             foreignKeyName: "tenant_charges_company_id_fkey"
             columns: ["company_id"]

@@ -32,7 +32,7 @@ import { useCostCenters } from '@/hooks/useCostCenters';
 import { BrandedQRCode } from '@/components/BrandedQRCode';
 import { useBrandedQrConfig } from '@/hooks/useBrandedQrConfig';
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
-import { Loader2, Copy, Check, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, Calculator, UserCog, ChevronRight } from 'lucide-react';
+import { Loader2, Copy, Check, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, Calculator, UserCog, ChevronRight, ExternalLink, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useCustomers, type CustomerInput } from '@/hooks/useCustomers';
 import { useCustomerContacts } from '@/hooks/useCustomerContacts';
@@ -47,6 +47,8 @@ import {
   CreateChargeApiError,
   type TenantChargeBillingType,
   type CreateChargeResult,
+  type CreateInstallmentBatchInput,
+  type CreateInstallmentBatchResult,
 } from '@/hooks/useTenantCharges';
 import { useTenantPaymentAccount } from '@/hooks/useTenantPaymentAccount';
 import { useTenantFees } from '@/hooks/useTenantCardFees';
@@ -65,6 +67,8 @@ import { getDocumentStatus } from '@/lib/documentValidation';
 import { buildWhatsAppLink } from '@/utils/shareLinks';
 import { formatBRL } from '@/utils/currency';
 import { readPastedCents } from '@/lib/money-paste-mask';
+import { buildInstallmentPlan } from '@/lib/finance-installments';
+import { todayInTz } from '@/lib/timezone';
 
 interface ChargeDialogProps {
   open: boolean;
@@ -151,25 +155,37 @@ function parseDecimalInput(v: string): number {
   return parseFloat(v.replace(',', '.'));
 }
 
-/** Data de hoje em ISO (yyyy-mm-dd) no fuso local, sem virar o dia por UTC. */
-function todayISO(): string {
-  const d = new Date();
-  const off = d.getTimezoneOffset() * 60000;
-  return new Date(d.getTime() - off).toISOString().slice(0, 10);
-}
-
 /**
  * Quantos dias faltam de hoje até `iso` (yyyy-mm-dd). Comparação dia-a-dia em
  * UTC a partir dos componentes da data local — nunca vira o dia por fuso.
  * Nunca negativo (vencimento no passado conta como hoje).
  */
-function daysFromToday(iso: string): number {
+function daysFromToday(iso: string, todayIso: string): number {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso ?? '');
-  if (!m) return 0;
+  const todayMatch = /^(\d{4})-(\d{2})-(\d{2})/.exec(todayIso ?? '');
+  if (!m || !todayMatch) return 0;
   const target = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  const now = new Date();
-  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const today = Date.UTC(Number(todayMatch[1]), Number(todayMatch[2]) - 1, Number(todayMatch[3]));
   return Math.max(0, Math.round((target - today) / 86400000));
+}
+
+function createClientRequestId(): string {
+  if (typeof globalThis.crypto?.randomUUID === 'function') return globalThis.crypto.randomUUID();
+  // WebViews antigos podem não expor randomUUID, mas a edge exige UUID v4.
+  // getRandomValues continua sendo a fonte preferida; Math.random é apenas o
+  // último fallback para ambientes de teste/legados sem Web Crypto.
+  const bytes = new Uint8Array(16);
+  if (typeof globalThis.crypto?.getRandomValues === 'function') {
+    globalThis.crypto.getRandomValues(bytes);
+  } else {
+    for (let index = 0; index < bytes.length; index += 1) {
+      bytes[index] = Math.floor(Math.random() * 256);
+    }
+  }
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
 /** Meio de pagamento da cobrança → meio entendido pelo simulador de taxas. */
@@ -187,6 +203,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
   const [osVinculada, setOsVinculada] = useState('');
   const { serviceOrders: osOptions } = useServiceOrderOptions(open && !source, null);
   const { locale, timezone, countryCode } = useAppLocaleContext();
+  const today = useMemo(() => todayInTz(timezone), [timezone]);
   const t = MESSAGES[locale].app.charges.cobrar;
   const fin = MESSAGES[locale].app.finance;
   const { toast } = useToast();
@@ -208,7 +225,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
   const tLinked = isReceivableBalance ? t.receivableBalance : t.contractInstallment;
 
   const { customers, updateCustomer } = useCustomers();
-  const { create } = useTenantCharges();
+  const { create, createInstallmentBatch } = useTenantCharges();
   const { activeCostCenters } = useCostCenters();
   const paymentAccount = useTenantPaymentAccount();
   // Personalização do QR (logo do tenant white-label + estilo/cor das settings).
@@ -248,7 +265,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
   // Estado do formulário
   const [customerId, setCustomerId] = useState(presetCustomerId ?? '');
   const [amount, setAmount] = useState(0); // em reais (número), máscara de centavos
-  const [dueDate, setDueDate] = useState(todayISO());
+  const [dueDate, setDueDate] = useState(() => todayInTz(timezone));
   const [description, setDescription] = useState('');
   // Categoria do recebível gerado no Financeiro. Vazia = usa o default da conta.
   const [category, setCategory] = useState('');
@@ -341,7 +358,12 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
 
   // Resultado (link gerado) — resultado normalizado da mutation
   const [result, setResult] = useState<CreateChargeResult | null>(null);
+  const [batchResult, setBatchResult] = useState<CreateInstallmentBatchResult | null>(null);
+  // O mesmo payload (inclusive client_request_id) é reenviado no retry. Não
+  // reconstruir a partir do formulário evita mudar o hash e duplicar cobranças.
+  const batchInputRef = useRef<CreateInstallmentBatchInput | null>(null);
   const [copied, setCopied] = useState(false);
+  const [copiedInstallment, setCopiedInstallment] = useState<number | null>(null);
 
   // Helper derivado do resultado normalizado
   const isOrphan = result?.orphan === true;
@@ -500,7 +522,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
     // "Nova cobrança" a partir de uma origem (parcela/orçamento) volta pro
     // valor da origem, nunca pra zero — no caso da parcela o valor é travado.
     setAmount(presetAmount != null && presetAmount > 0 ? presetAmount : 0);
-    setDueDate(presetDueDate || todayISO());
+    setDueDate(presetDueDate || today);
     setDescription(presetDescription ?? defaultDescription ?? '');
     setCategory('');
     setCostCenterId(null);
@@ -520,7 +542,10 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
     setDiscountPercent(defaultDiscountPercent != null ? String(defaultDiscountPercent) : '');
     setDiscountDays(defaultDiscountDays != null ? String(defaultDiscountDays) : '');
     setResult(null);
+    setBatchResult(null);
+    batchInputRef.current = null;
     setCopied(false);
+    setCopiedInstallment(null);
   };
 
   // URL exibida no bloco de resultado — checkout próprio no caso normal,
@@ -570,7 +595,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
   // Fórmula ÚNICA do front: src/lib/asaasFeeSimulator.ts (o mesmo helper do
   // Simulador de venda em Ajustes). O número contratual continua sendo o do
   // edge `tenant-asaas-create-charge`, que recalcula com a taxa real.
-  const dueDays = useMemo(() => daysFromToday(dueDate), [dueDate]);
+  const dueDays = useMemo(() => daysFromToday(dueDate, today), [dueDate, today]);
 
   const simulatorMethod: SimulatorMethod | null =
     method === 'UNDEFINED' ? null : METHOD_TO_SIMULATOR[method];
@@ -719,11 +744,33 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
     ? fineAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     : '';
 
-  // Opções de parcelas (1..defaultMaxInstallments).
+  // Cartão respeita o limite configurado na conta. Pix, boleto e "cliente
+  // escolhe" geram cobranças mensais independentes e usam o limite da edge.
   const installmentOptions = useMemo(() => {
-    const max = Math.max(1, defaultMaxInstallments ?? 1);
+    const max = method === 'CREDIT_CARD'
+      ? Math.max(1, defaultMaxInstallments ?? 1)
+      : 12;
     return Array.from({ length: max }, (_, i) => i + 1);
-  }, [defaultMaxInstallments]);
+  }, [defaultMaxInstallments, method]);
+
+  const canCreateInstallmentBatch = !source && !osVinculada && method !== 'CREDIT_CARD';
+  const isInstallmentBatch = canCreateInstallmentBatch && installmentCount > 1;
+  const installmentPlan = useMemo(
+    () => isInstallmentBatch && dueDate && amount > 0
+      ? buildInstallmentPlan(dueDate, amount, installmentCount)
+      : [],
+    [amount, dueDate, installmentCount, isInstallmentBatch],
+  );
+  const batchHasInstallmentBelowMinimum = installmentPlan.some((row) => row.amount < 5);
+
+  // Escolher uma OS transforma a cobrança em fluxo de origem. O backend do
+  // lote é deliberadamente avulso; volta para 1x para não sugerir um recurso
+  // que seria recusado no servidor.
+  useEffect(() => {
+    if ((source || osVinculada) && method !== 'CREDIT_CARD' && installmentCount > 1) {
+      setInstallmentCount(1);
+    }
+  }, [installmentCount, method, osVinculada, source]);
 
   const handleSubmit = async () => {
     // Todo campo obrigatório mora na aba Cobrança: ao falhar, leva o usuário
@@ -761,7 +808,62 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
     const parsedDiscount = parseDecimalInput(discountPercent);
     const parsedDiscountDays = parseInt(discountDays, 10);
 
+    if (isInstallmentBatch && batchHasInstallmentBelowMinimum) {
+      setActiveTab(TAB_PAGAMENTO);
+      toast({
+        variant: 'destructive',
+        title: t.installments.minimumTitle,
+        description: t.installments.minimumDescription,
+      });
+      return;
+    }
+
     try {
+      if (isInstallmentBatch) {
+        const payloadWithoutId: Omit<CreateInstallmentBatchInput, 'client_request_id'> = {
+          customer_id: customerId,
+          total_value: amount,
+          installment_count: installmentCount,
+          first_due_date: dueDate,
+          billing_type: method as Exclude<TenantChargeBillingType, 'CREDIT_CARD'>,
+          description: description.trim() || undefined,
+          category: category.trim() || undefined,
+          cost_center_id: costCenterId,
+          fine_type: fineType === 'FIXED' ? 'FIXED' : undefined,
+          fine_value: fineType === 'FIXED' ? fineAmount : undefined,
+          fine_percent: fineType === 'FIXED' || isNaN(parsedFine) ? undefined : parsedFine,
+          interest_percent: isNaN(parsedInterest) ? undefined : parsedInterest,
+          discount_percent: isNaN(parsedDiscount) ? undefined : parsedDiscount,
+          discount_days: isNaN(parsedDiscountDays) ? undefined : parsedDiscountDays,
+          post_to_finance: postToFinance,
+        };
+        const previousPayload = batchInputRef.current;
+        const previousWithoutId = previousPayload
+          ? { ...previousPayload, client_request_id: undefined }
+          : null;
+        const sameRequest = previousWithoutId != null
+          && JSON.stringify(previousWithoutId) === JSON.stringify({ ...payloadWithoutId, client_request_id: undefined });
+        const batchInput: CreateInstallmentBatchInput = {
+          ...payloadWithoutId,
+          client_request_id: sameRequest && previousPayload
+            ? previousPayload.client_request_id
+            : createClientRequestId(),
+        };
+        batchInputRef.current = batchInput;
+        const nextBatchResult = await createInstallmentBatch.mutateAsync(batchInput);
+        setBatchResult(nextBatchResult);
+        setResult(null);
+        toast({
+          title: nextBatchResult.completed
+            ? t.installments.batchSuccessTitle
+            : t.installments.batchPartialTitle,
+          description: nextBatchResult.completed
+            ? t.installments.batchSuccessDescription(nextBatchResult.total)
+            : t.installments.batchPartialDescription(nextBatchResult.total - nextBatchResult.failed, nextBatchResult.failed),
+        });
+        return;
+      }
+
       const chargeResult = await create.mutateAsync({
         customer_id: customerId,
         // Valor ORIGINAL — o repasse de taxa (quando cliente paga) é calculado
@@ -854,6 +956,47 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
     }
   };
 
+  const getBatchChargeUrl = (item: CreateInstallmentBatchResult['installments'][number]) => {
+    if (!item.charge) return '';
+    if (item.charge.public_short_code) return buildCheckoutUrl(item.charge.public_short_code);
+    return item.charge.invoice_url ?? '';
+  };
+
+  const handleCopyInstallment = async (number: number, url: string) => {
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedInstallment(number);
+      toast({ title: t.success.copied });
+      setTimeout(() => setCopiedInstallment(null), 2000);
+    } catch {
+      toast({ variant: 'destructive', title: t.copyFallback });
+    }
+  };
+
+  const handleRetryInstallmentBatch = async () => {
+    const batchInput = batchInputRef.current;
+    if (!batchInput) return;
+    try {
+      const nextBatchResult = await createInstallmentBatch.mutateAsync(batchInput);
+      setBatchResult(nextBatchResult);
+      toast({
+        title: nextBatchResult.completed
+          ? t.installments.batchSuccessTitle
+          : t.installments.batchPartialTitle,
+        description: nextBatchResult.completed
+          ? t.installments.batchSuccessDescription(nextBatchResult.total)
+          : t.installments.batchPartialDescription(nextBatchResult.total - nextBatchResult.failed, nextBatchResult.failed),
+      });
+    } catch (err) {
+      toast({
+        variant: 'destructive',
+        title: t.installments.retryErrorTitle,
+        description: err instanceof Error ? err.message : t.error,
+      });
+    }
+  };
+
   const handleSendWhatsapp = async () => {
     if (!result) return;
     const recipientCopy = WHATSAPP_RECIPIENT_COPY[locale];
@@ -938,10 +1081,11 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
   const netLoading = amount > 0 && feesLoading && !tenantFees;
   const netFeesUnavailable = amount > 0 && !feesLoading && !tenantFees;
   const netHasDetail = amount > 0 && !!tenantFees && (!!simulation || !!multiSimulation);
+  const isSubmitting = create.isPending || createInstallmentBatch.isPending;
 
-  const footer = !result ? (
+  const footer = !result && !batchResult ? (
     <div className="space-y-2">
-      {amount > 0 && (
+      {amount > 0 && !isInstallmentBatch && (
         <div className="overflow-hidden rounded-md border border-border bg-muted/40">
           {netLoading && (
             <div className="flex items-center gap-2 px-3 py-2">
@@ -1260,14 +1404,14 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
           resto continua com o atalho de gerar agora, em botão secundário, pra
           não trocar um incômodo por três cliques obrigatórios. */}
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-        <Button variant="outline" onClick={() => handleClose(false)} disabled={create.isPending}>
+        <Button variant="outline" onClick={() => handleClose(false)} disabled={isSubmitting}>
           {t.cancel}
         </Button>
         {!isLastTab && (
           <Button
             variant="ghost"
             onClick={handleSubmit}
-            disabled={create.isPending || !customerId || !amount || amount <= 0 || documentBlocked}
+            disabled={isSubmitting || !customerId || !amount || amount <= 0 || documentBlocked}
           >
             {t.submitNow}
           </Button>
@@ -1276,11 +1420,11 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
           onClick={isLastTab ? handleSubmit : goToNextTab}
           disabled={
             isLastTab
-              ? create.isPending || !customerId || !amount || amount <= 0 || documentBlocked
-              : create.isPending
+              ? isSubmitting || !customerId || !amount || amount <= 0 || documentBlocked
+              : isSubmitting
           }
         >
-          {create.isPending ? (
+          {isSubmitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               {t.submitting}
@@ -1307,7 +1451,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
       footer={footer}
     >
       <div className="space-y-4 pb-1">
-        {!result ? (
+        {!result && !batchResult ? (
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ChargeTabKey)} className="space-y-4">
             <MobilePillTabs
               variant="underline"
@@ -1441,7 +1585,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                   htmlFor="charge-amount"
                   className={cn('text-sm font-medium', showAmountError && 'text-destructive')}
                 >
-                  {t.fields.value}
+                  {isInstallmentBatch ? t.fields.totalValue : t.fields.value}
                 </Label>
                 {isLinkedToExistingEntry ? (
                   // Valor TRAVADO: a edge exige que a cobrança valha
@@ -1483,7 +1627,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                 <DatePicker
                   id="charge-due"
                   value={dueDate}
-                  min={todayISO()}
+                  min={today}
                   onValueChange={setDueDate}
                   className={showDueDateError ? 'border-destructive ring-1 ring-destructive' : undefined}
                 />
@@ -1493,7 +1637,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                     por Regime de Competência) é a data de HOJE, porque é hoje
                     que a venda está sendo registrada. */}
                 <p className="text-xs text-muted-foreground">
-                  {t.fields.dueDateAccrualHint.replace('{date}', formatDate(todayISO(), locale, timezone))}
+                  {t.fields.dueDateAccrualHint.replace('{date}', formatDate(today, locale, timezone))}
                 </p>
               </div>
 
@@ -1519,9 +1663,15 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
             <TabsContent value={TAB_PAGAMENTO} className="space-y-4">
               {/* Forma de pagamento — só meios habilitados na conta */}
               <div className="space-y-2">
-                <Label className="text-sm font-medium">{t.fields.method}</Label>
-                <Select value={method} onValueChange={(v) => setMethod(v as BillingMethod)}>
-                  <SelectTrigger>
+                <Label htmlFor="charge-method" className="text-sm font-medium">{t.fields.method}</Label>
+                <Select
+                  value={method}
+                  onValueChange={(v) => {
+                    setMethod(v as BillingMethod);
+                    setInstallmentCount(1);
+                  }}
+                >
+                  <SelectTrigger id="charge-method">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1540,18 +1690,21 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                 )}
               </div>
 
-              {/* Parcelas — só visível quando cartão selecionado e há mais de 1 parcela */}
-              {method === 'CREDIT_CARD' && installmentOptions.length > 1 && (
+              {/* Cartão usa o parcelamento do próprio pagamento. Nos outros
+                  meios, somente a cobrança avulsa gera N cobranças mensais. */}
+              {((method === 'CREDIT_CARD' && installmentOptions.length > 1) || canCreateInstallmentBatch) && (
                 <div className="space-y-2">
                   <div className="flex items-baseline justify-between gap-2">
-                    <Label className="text-sm font-medium">{t.installments.label}</Label>
-                    <span className="text-xs text-muted-foreground">{t.installments.hint}</span>
+                    <Label htmlFor="charge-installments" className="text-sm font-medium">{t.installments.label}</Label>
+                    <span className="text-right text-xs text-muted-foreground">
+                      {method === 'CREDIT_CARD' ? t.installments.cardHint : t.installments.batchHint}
+                    </span>
                   </div>
                   <Select
                     value={String(installmentCount)}
                     onValueChange={(v) => setInstallmentCount(Number(v))}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="charge-installments">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1562,6 +1715,36 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                       ))}
                     </SelectContent>
                   </Select>
+
+                  {isInstallmentBatch && installmentPlan.length > 0 && (
+                    <div className="space-y-1 border-l-2 border-primary/40 pl-3 text-xs">
+                      <p className="font-medium tabular-nums text-foreground">
+                        {t.installments.batchPreviewSummary(installmentCount, money(amount))}
+                      </p>
+                      <p className="tabular-nums text-muted-foreground">
+                        {installmentPlan[0].amount === installmentPlan[installmentPlan.length - 1].amount
+                          ? t.installments.batchPreviewEqual(
+                              installmentCount,
+                              money(installmentPlan[0].amount),
+                            )
+                          : t.installments.batchPreviewRemainder(
+                              installmentCount - 1,
+                              money(installmentPlan[0].amount),
+                              money(installmentPlan[installmentPlan.length - 1].amount),
+                            )}
+                      </p>
+                      <p className="text-muted-foreground">
+                        {t.installments.batchPreviewDates(
+                          formatDate(installmentPlan[0].date, locale, timezone),
+                          formatDate(installmentPlan[installmentPlan.length - 1].date, locale, timezone),
+                        )}
+                      </p>
+                      <p className="text-muted-foreground">{t.installments.batchFeesHint}</p>
+                      {batchHasInstallmentBelowMinimum && (
+                        <p className="font-medium text-destructive">{t.installments.minimumDescription}</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1770,6 +1953,141 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
             </TabsContent>
             )}
           </Tabs>
+        ) : batchResult ? (
+          /* ── Resultado do lote: compacto, com recuperação das falhas ───── */
+          <div className="space-y-4">
+            <div className={cn(
+              'flex items-center gap-2',
+              batchResult.completed ? 'text-emerald-600' : 'text-amber-600',
+            )}>
+              {batchResult.completed
+                ? <CheckCircle2 className="h-5 w-5 shrink-0" />
+                : <AlertTriangle className="h-5 w-5 shrink-0" />}
+              <p className="text-sm font-semibold">
+                {batchResult.completed
+                  ? t.installments.batchSuccessTitle
+                  : t.installments.batchPartialTitle}
+              </p>
+            </div>
+
+            <p className="text-sm text-muted-foreground">
+              {batchResult.completed
+                ? t.installments.batchSuccessDescription(batchResult.total)
+                : t.installments.batchPartialDescription(
+                    batchResult.total - batchResult.failed,
+                    batchResult.failed,
+                  )}
+            </p>
+
+            {!batchResult.completed && (
+              <NoticeBanner variant="warning" title={t.installments.batchPartialNoticeTitle}>
+                {t.installments.batchPartialNotice}
+              </NoticeBanner>
+            )}
+
+            <div className="max-h-[42vh] divide-y divide-border overflow-y-auto rounded-md border border-border">
+              {batchResult.installments.map((item) => {
+                const planned = installmentPlan.find((row) => row.number === item.number);
+                const url = getBatchChargeUrl(item);
+                const itemValue = item.charge?.value ?? planned?.amount ?? 0;
+                const itemDate = item.charge?.due_date ?? planned?.date ?? null;
+                return (
+                  <div key={item.number} className="space-y-1.5 px-3 py-2.5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground">
+                          {t.installments.batchItem(item.number, batchResult.total)}
+                        </p>
+                        <p className="text-xs tabular-nums text-muted-foreground">
+                          {money(itemValue)}
+                          {itemDate ? ` · ${formatDate(itemDate, locale, timezone)}` : ''}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <span className={cn(
+                          'mr-1 text-xs font-medium',
+                          item.status === 'failed' ? 'text-destructive' : 'text-emerald-600',
+                        )}>
+                          {item.status === 'failed'
+                            ? t.installments.batchStatusFailed
+                            : item.status === 'existing'
+                              ? t.installments.batchStatusExisting
+                              : t.installments.batchStatusCreated}
+                        </span>
+                        {url && (
+                          <>
+                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8" asChild>
+                              <a
+                                href={url}
+                                target="_blank"
+                                rel="noreferrer"
+                                aria-label={t.installments.openInstallment(item.number)}
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </a>
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => handleCopyInstallment(item.number, url)}
+                              aria-label={t.installments.copyInstallment(item.number)}
+                            >
+                              {copiedInstallment === item.number
+                                ? <Check className="h-4 w-4 text-emerald-600" />
+                                : <Copy className="h-4 w-4" />}
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    {item.error && (
+                      <p className="text-xs leading-snug text-destructive">{item.error}</p>
+                    )}
+                    {item.charge?.financeWarning && (
+                      <p className="text-xs leading-snug text-amber-700 dark:text-amber-400">
+                        {item.charge.financeWarning}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:flex-wrap">
+              {batchResult.failed > 0 && (
+                <Button
+                  type="button"
+                  onClick={handleRetryInstallmentBatch}
+                  disabled={createInstallmentBatch.isPending}
+                >
+                  {createInstallmentBatch.isPending
+                    ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    : <RefreshCw className="mr-2 h-4 w-4" />}
+                  {createInstallmentBatch.isPending
+                    ? t.installments.retrying
+                    : t.installments.retryFailed(batchResult.failed)}
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={resetForm}
+                disabled={createInstallmentBatch.isPending}
+              >
+                {t.success.newCharge}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => handleClose(false)}
+                disabled={createInstallmentBatch.isPending}
+              >
+                {t.success.close}
+              </Button>
+            </div>
+          </div>
         ) : (
           /* ── Sucesso: link + copiar + WhatsApp ─────────────────────────── */
           <div className="space-y-4">

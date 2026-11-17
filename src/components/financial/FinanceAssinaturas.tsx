@@ -149,6 +149,10 @@ const LIST_COPY = {
     filters: 'Filtros',
     sort: 'Ordenar',
     search: 'Buscar por cliente ou descrição…',
+    searchAria: 'Buscar assinaturas por cliente ou descrição',
+    noResultsTitle: 'Nenhuma assinatura encontrada',
+    noResultsDescription: 'Ajuste a busca ou os filtros para encontrar uma assinatura.',
+    clearFilters: 'Limpar busca e filtros',
     dueAsc: 'Vencimento mais próximo',
     dueDesc: 'Vencimento mais distante',
     valueDesc: 'Maior valor',
@@ -168,6 +172,10 @@ const LIST_COPY = {
     filters: 'Filters',
     sort: 'Sort',
     search: 'Search by customer or description…',
+    searchAria: 'Search subscriptions by customer or description',
+    noResultsTitle: 'No subscriptions found',
+    noResultsDescription: 'Adjust your search or filters to find a subscription.',
+    clearFilters: 'Clear search and filters',
     dueAsc: 'Nearest due date',
     dueDesc: 'Farthest due date',
     valueDesc: 'Highest amount',
@@ -187,6 +195,10 @@ const LIST_COPY = {
     filters: 'Filtros',
     sort: 'Ordenar',
     search: 'Buscar por cliente o descripción…',
+    searchAria: 'Buscar suscripciones por cliente o descripción',
+    noResultsTitle: 'No se encontraron suscripciones',
+    noResultsDescription: 'Ajusta la búsqueda o los filtros para encontrar una suscripción.',
+    clearFilters: 'Limpiar búsqueda y filtros',
     dueAsc: 'Vencimiento más próximo',
     dueDesc: 'Vencimiento más lejano',
     valueDesc: 'Mayor valor',
@@ -206,6 +218,10 @@ const LIST_COPY = {
     filters: 'Filtres',
     sort: 'Trier',
     search: 'Rechercher par client ou description…',
+    searchAria: 'Rechercher des abonnements par client ou description',
+    noResultsTitle: 'Aucun abonnement trouvé',
+    noResultsDescription: 'Modifiez la recherche ou les filtres pour trouver un abonnement.',
+    clearFilters: 'Effacer la recherche et les filtres',
     dueAsc: 'Échéance la plus proche',
     dueDesc: 'Échéance la plus éloignée',
     valueDesc: 'Montant le plus élevé',
@@ -880,6 +896,7 @@ export function FinanceAssinaturas() {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             className="h-10 pl-9"
+            aria-label={listCopy.searchAria}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder={listCopy.search}
@@ -980,7 +997,21 @@ export function FinanceAssinaturas() {
         </div>
       ) : visibleSubs.length === 0 ? (
         <div className="rounded-xl border border-border bg-card">
-          {showArchived ? (
+          {search.trim() ? (
+            <EmptyState
+              icon={<Search className="h-full w-full" />}
+              title={listCopy.noResultsTitle}
+              description={listCopy.noResultsDescription}
+              action={{
+                label: listCopy.clearFilters,
+                onClick: () => {
+                  setSearch('');
+                  setShowArchived(false);
+                  setShowCancelled(false);
+                },
+              }}
+            />
+          ) : showArchived ? (
             <EmptyState
               icon={<Archive className="h-full w-full" />}
               title={t.emptyArchived.title}
@@ -996,7 +1027,9 @@ export function FinanceAssinaturas() {
                   ? t.empty.description
                   : t.emptyAllCancelled.description(cancelledCount)
               }
-              action={{ label: t.newButton, onClick: () => setDialogOpen(true) }}
+              action={subscriptions.length === 0
+                ? { label: t.newButton, onClick: () => setDialogOpen(true) }
+                : { label: t.showCancelled(cancelledCount), onClick: () => setShowCancelled(true) }}
             />
           )}
         </div>

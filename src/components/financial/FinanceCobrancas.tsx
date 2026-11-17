@@ -92,6 +92,12 @@ const LIST_COPY = {
     retry: 'Tentar novamente',
     retrying: 'Tentando novamente…',
     actions: 'Ações da cobrança',
+    searchAria: 'Buscar cobranças por cliente ou contato',
+    noResultsTitle: 'Nenhuma cobrança encontrada',
+    noResultsDescription: 'Ajuste a busca ou os filtros para encontrar uma cobrança.',
+    clearFilters: 'Limpar busca e filtros',
+    copyFailed: 'Não foi possível copiar o link',
+    selectCharge: (customer: string) => `Selecionar cobrança de ${customer}`,
   },
   en: {
     filters: 'Filters',
@@ -108,6 +114,12 @@ const LIST_COPY = {
     retry: 'Try again',
     retrying: 'Trying again…',
     actions: 'Charge actions',
+    searchAria: 'Search charges by customer or contact',
+    noResultsTitle: 'No charges found',
+    noResultsDescription: 'Adjust your search or filters to find a charge.',
+    clearFilters: 'Clear search and filters',
+    copyFailed: 'Could not copy the link',
+    selectCharge: (customer: string) => `Select charge for ${customer}`,
   },
   es: {
     filters: 'Filtros',
@@ -124,6 +136,12 @@ const LIST_COPY = {
     retry: 'Intentar de nuevo',
     retrying: 'Intentando de nuevo…',
     actions: 'Acciones del cobro',
+    searchAria: 'Buscar cobros por cliente o contacto',
+    noResultsTitle: 'No se encontraron cobros',
+    noResultsDescription: 'Ajusta la búsqueda o los filtros para encontrar un cobro.',
+    clearFilters: 'Limpiar búsqueda y filtros',
+    copyFailed: 'No se pudo copiar el enlace',
+    selectCharge: (customer: string) => `Seleccionar cobro de ${customer}`,
   },
   fr: {
     filters: 'Filtres',
@@ -140,6 +158,12 @@ const LIST_COPY = {
     retry: 'Réessayer',
     retrying: 'Nouvelle tentative…',
     actions: 'Actions de l’encaissement',
+    searchAria: 'Rechercher des encaissements par client ou contact',
+    noResultsTitle: 'Aucun encaissement trouvé',
+    noResultsDescription: 'Modifiez la recherche ou les filtres pour trouver un encaissement.',
+    clearFilters: 'Effacer la recherche et les filtres',
+    copyFailed: 'Impossible de copier le lien',
+    selectCharge: (customer: string) => `Sélectionner l’encaissement de ${customer}`,
   },
 } as const;
 
@@ -367,7 +391,7 @@ export function FinanceCobrancas() {
       await navigator.clipboard.writeText(url);
       toast({ title: t.actions.linkCopied });
     } catch {
-      toast({ variant: 'destructive', title: t.actions.linkCopied });
+      toast({ variant: 'destructive', title: listCopy.copyFailed });
     }
   };
 
@@ -514,7 +538,7 @@ export function FinanceCobrancas() {
               <span className="col-start-2 row-start-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20 sm:row-span-2 sm:h-10 sm:w-10">
                 {icon}
               </span>
-              <p className={cn('col-span-2 row-start-2 min-w-0 truncate font-bold text-white sm:col-span-1 sm:col-start-1 sm:mt-1 sm:text-xl', cardValueSizeClass)}>
+              <p className={cn('col-span-2 row-start-2 min-w-0 whitespace-nowrap font-bold text-white sm:col-span-1 sm:col-start-1 sm:mt-1 sm:text-xl', cardValueSizeClass)}>
                 {formatBRL(value)}
               </p>
             </div>
@@ -528,6 +552,7 @@ export function FinanceCobrancas() {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             className="h-10 pl-9"
+            aria-label={listCopy.searchAria}
             placeholder={t.filters.searchPlaceholder}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -620,9 +645,17 @@ export function FinanceCobrancas() {
         <div className="rounded-xl border border-border bg-card">
           <EmptyState
             icon={<DollarSign className="h-full w-full" />}
-            title={t.empty.title}
-            description={t.empty.description}
-            action={{ label: t.newButton, onClick: () => setDialogOpen(true) }}
+            title={charges.length === 0 ? t.empty.title : listCopy.noResultsTitle}
+            description={charges.length === 0 ? t.empty.description : listCopy.noResultsDescription}
+            action={charges.length === 0
+              ? { label: t.newButton, onClick: () => setDialogOpen(true) }
+              : {
+                  label: listCopy.clearFilters,
+                  onClick: () => {
+                    setSearch('');
+                    setStatusFilter('all');
+                  },
+                }}
           />
         </div>
       ) : (
@@ -656,7 +689,7 @@ export function FinanceCobrancas() {
                       <Checkbox
                         checked={selectedIds.has(charge.id)}
                         onCheckedChange={() => toggleSelectRow(charge.id)}
-                        aria-label={t.selection.selectRowAria}
+                        aria-label={listCopy.selectCharge(customerName)}
                       />
                     </td>
                     <td className="px-4 py-3 font-medium">{customerName}</td>
@@ -696,7 +729,7 @@ export function FinanceCobrancas() {
                         className="mt-1 shrink-0"
                         checked={selectedIds.has(charge.id)}
                         onCheckedChange={() => toggleSelectRow(charge.id)}
-                        aria-label={t.selection.selectRowAria}
+                        aria-label={listCopy.selectCharge(customerName)}
                       />
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-medium text-foreground">{customerName}</p>

@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.12',
+    date: '17 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cobranças parceladas direto no Asaas',
+        category: 'recurso',
+        description: 'Informe o valor total e gere de 2 a 12 cobranças mensais por Pix, boleto ou escolha do cliente. Confira o valor e os vencimentos antes de gerar, e tente novamente somente as parcelas pendentes quando houver uma falha.',
+      },
+      {
+        title: 'Cobranças e assinaturas mais claras',
+        category: 'melhoria',
+        description: 'Busca, filtros e estados sem resultado agora orientam melhor o próximo passo. O cadastro de assinaturas também diferencia carregamento, falha de conexão e ausência de clientes.',
+      },
+    ],
+  },
+  {
     version: '1.41.11',
     date: '16 de novembro de 2026',
     type: 'patch',

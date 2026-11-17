@@ -30,6 +30,7 @@ class ResizeObserverStub {
 const {
   toastSpy,
   createMutateAsync,
+  createBatchMutateAsync,
   updateCustomerMutateAsync,
   routeRefetch,
   contactsRefetch,
@@ -37,6 +38,7 @@ const {
 } = vi.hoisted(() => ({
   toastSpy: vi.fn(),
   createMutateAsync: vi.fn(),
+  createBatchMutateAsync: vi.fn(),
   updateCustomerMutateAsync: vi.fn(),
   routeRefetch: vi.fn(),
   contactsRefetch: vi.fn(),
@@ -113,9 +115,25 @@ vi.mock('@/hooks/useServiceOrderOptions', () => ({
   useServiceOrderOptions: () => ({ serviceOrders: [], isLoading: false }),
 }));
 
+vi.mock('@/components/service-orders/ServiceOrderSelectField', () => ({
+  ServiceOrderSelectField: (props: { value?: string; onValueChange: (value: string) => void }) => (
+    <select
+      data-testid="service-order-select"
+      value={props.value}
+      onChange={(event: React.ChangeEvent<HTMLSelectElement>) => props.onValueChange(event.target.value)}
+    >
+      <option value="">Sem ordem de serviço</option>
+      <option value="os-1">OS #1</option>
+    </select>
+  ),
+}));
+
 
 vi.mock('@/hooks/useTenantCharges', () => ({
-  useTenantCharges: () => ({ create: { mutateAsync: createMutateAsync, isPending: false } }),
+  useTenantCharges: () => ({
+    create: { mutateAsync: createMutateAsync, isPending: false },
+    createInstallmentBatch: { mutateAsync: createBatchMutateAsync, isPending: false },
+  }),
   buildCheckoutUrl: (code: string) => `https://www.dominex.app/pagar/${code}`,
 }));
 
@@ -238,13 +256,13 @@ import { ChargeDialog } from './ChargeDialog';
 let container: HTMLDivElement;
 let root: Root;
 
-function mount() {
-  renderDialog(true);
+function mount(props: Partial<React.ComponentProps<typeof ChargeDialog>> = {}) {
+  renderDialog(true, props);
 }
 
-function renderDialog(open: boolean) {
+function renderDialog(open: boolean, props: Partial<React.ComponentProps<typeof ChargeDialog>> = {}) {
   act(() => {
-    root.render(<ChargeDialog open={open} onOpenChange={() => {}} />);
+    root.render(<ChargeDialog open={open} onOpenChange={() => {}} {...props} />);
   });
 }
 
@@ -279,6 +297,14 @@ function selectValue(select: HTMLSelectElement, value: string) {
     setter.call(select, value);
     select.dispatchEvent(new Event('change', { bubbles: true }));
   });
+}
+function chooseRadixOption(triggerSelector: string, label: string) {
+  const trigger = q(triggerSelector) as HTMLButtonElement;
+  act(() => trigger.click());
+  const option = Array.from(document.querySelectorAll('[role="option"]'))
+    .find((item) => item.textContent?.trim() === label) as HTMLElement | undefined;
+  expect(option).toBeTruthy();
+  act(() => option!.click());
 }
 /** O resumo do rodapé começa fechado: só a linha do líquido fica visível. */
 function expandNetSummary() {
@@ -415,8 +441,9 @@ describe('ChargeDialog — reorganização em abas', () => {
     mount();
     click(pillByLabel('Pagamento'));
     expect(text()).toContain('Único meio de pagamento habilitado nesta conta');
-    // Sem cartão, parcelas e "quem paga a taxa" não fazem sentido e não aparecem.
-    expect(text()).not.toContain('Parcelas');
+    // No fluxo avulso, Pix pode gerar cobranças mensais independentes.
+    expect(text()).toContain('Parcelas');
+    expect(text()).toContain('Uma cobrança por mês');
     expect(text()).not.toContain('Quem paga a taxa do cartão?');
   });
 
@@ -646,6 +673,200 @@ describe('ChargeDialog — resumo de quanto o cliente paga', () => {
     setInputValue(q('#adv-discount') as HTMLInputElement, '5');
     expect(text()).toContain('Pagando até o vencimento');
     expect(text()).toContain('950,00');
+  });
+});
+
+describe('ChargeDialog — parcelamento avulso em cobranças mensais', () => {
+  const completedBatch = (count: number) => ({
+    ok: true,
+    batch_id: 'batch-1',
+    total: count,
+    created: count,
+    failed: 0,
+    completed: true,
+    installments: [],
+  });
+
+  it.each([
+    ['Boleto', 'BOLETO'],
+    ['Pix', 'PIX'],
+    ['Cliente escolhe', 'UNDEFINED'],
+  ])('gera 10x via lote para %s, tratando o valor informado como total', async (methodLabel, billingType) => {
+    createBatchMutateAsync.mockResolvedValue(completedBatch(10));
+    mount();
+    selectValue(q('[data-testid="customer-select"]') as HTMLSelectElement, CUSTOMER_OK.id);
+    setInputValue(q('#charge-amount') as HTMLInputElement, '100001'); // R$ 1.000,01
+    setInputValue(q('#charge-due') as HTMLInputElement, '2027-05-31');
+    click(pillByLabel('Pagamento'));
+    chooseRadixOption('#charge-method', methodLabel);
+    chooseRadixOption('#charge-installments', '10x');
+
+    // O rateio preserva os centavos no último vencimento e o passo mensal
+    // faz clamp: 31/05 + 9 meses = 29/02/2028 (ano bissexto).
+    expect(text()).toContain('10 cobranças mensais');
+    expect(text()).toContain('9x de');
+    expect(text()).toContain('100,00');
+    expect(text()).toContain('100,01');
+    expect(text()).toContain('31/05/2027');
+    expect(text()).toContain('29/02/2028');
+    expect(text()).toContain('As taxas são aplicadas em cada cobrança');
+    // Uma taxa fixa sobre o total seria falsa: no lote a Asaas cobra por link.
+    expect(text()).not.toContain('Resumo do recebimento');
+
+    await act(async () => {
+      buttonByText('Gerar agora')!.click();
+      await Promise.resolve();
+    });
+
+    expect(createBatchMutateAsync).toHaveBeenCalledTimes(1);
+    expect(createMutateAsync).not.toHaveBeenCalled();
+    expect(createBatchMutateAsync.mock.calls[0][0]).toEqual(expect.objectContaining({
+      customer_id: CUSTOMER_OK.id,
+      total_value: 1000.01,
+      installment_count: 10,
+      first_due_date: '2027-05-31',
+      billing_type: billingType,
+      client_request_id: expect.stringMatching(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+      ),
+    }));
+  });
+
+  it('impede parcela abaixo de R$ 5,00 antes de chamar a edge', () => {
+    mount();
+    selectValue(q('[data-testid="customer-select"]') as HTMLSelectElement, CUSTOMER_OK.id);
+    setInputValue(q('#charge-amount') as HTMLInputElement, '4999'); // R$ 49,99 / 10
+    click(pillByLabel('Pagamento'));
+    chooseRadixOption('#charge-installments', '10x');
+
+    expect(text()).toContain('Cada parcela precisa ter pelo menos R$ 5,00');
+    click(buttonByText('Gerar agora'));
+
+    expect(createBatchMutateAsync).not.toHaveBeenCalled();
+    expect(toastSpy).toHaveBeenCalledWith(expect.objectContaining({
+      variant: 'destructive',
+      title: 'Valor por parcela muito baixo',
+    }));
+  });
+
+  it('mantém cartão no endpoint atual com installment_count', async () => {
+    createMutateAsync.mockResolvedValue({
+      orphan: false,
+      charge: { financeWarning: null, public_short_code: 'card-10x', value: 1000 },
+    });
+    mount();
+    selectValue(q('[data-testid="customer-select"]') as HTMLSelectElement, CUSTOMER_OK.id);
+    setInputValue(q('#charge-amount') as HTMLInputElement, '100000');
+    click(pillByLabel('Pagamento'));
+    chooseRadixOption('#charge-method', 'Cartão de crédito');
+    chooseRadixOption('#charge-installments', '10x');
+
+    await act(async () => {
+      buttonByText('Gerar agora')!.click();
+      await Promise.resolve();
+    });
+
+    expect(createBatchMutateAsync).not.toHaveBeenCalled();
+    expect(createMutateAsync).toHaveBeenCalledWith(expect.objectContaining({
+      billing_type: 'CREDIT_CARD',
+      installment_count: 10,
+    }));
+  });
+
+  it.each(['quote', 'contract_installment', 'service_order', 'receivable'] as const)(
+    'não oferece lote quando a cobrança vem de %s',
+    (sourceType) => {
+      mount({
+        presetCustomerId: CUSTOMER_OK.id,
+        presetAmount: 100,
+        source: { type: sourceType, id: 'source-1' },
+      });
+      click(pillByLabel('Pagamento'));
+      expect(q('#charge-installments')).toBeNull();
+    },
+  );
+
+  it('remove o lote quando uma OS é vinculada na nova cobrança', () => {
+    mount();
+    selectValue(q('[data-testid="service-order-select"]') as HTMLSelectElement, 'os-1');
+    click(pillByLabel('Pagamento'));
+    expect(q('#charge-installments')).toBeNull();
+  });
+
+  it('em resultado parcial, tenta somente as pendentes com o mesmo client_request_id e payload', async () => {
+    const partial = {
+      ok: true,
+      batch_id: 'batch-retry',
+      total: 2,
+      created: 1,
+      failed: 1,
+      completed: false,
+      installments: [
+        {
+          number: 1,
+          status: 'created',
+          charge: { public_short_code: 'p1', value: 50, due_date: '2027-01-31', financeWarning: null },
+          error: null,
+        },
+        { number: 2, status: 'failed', charge: null, error: 'Falha temporária ao gerar.' },
+      ],
+    };
+    const recovered = {
+      ...partial,
+      created: 1,
+      failed: 0,
+      completed: true,
+      installments: [
+        { ...partial.installments[0], status: 'existing' },
+        {
+          number: 2,
+          status: 'created',
+          charge: { public_short_code: 'p2', value: 50, due_date: '2027-02-28', financeWarning: null },
+          error: null,
+        },
+      ],
+    };
+    createBatchMutateAsync
+      .mockResolvedValueOnce(partial)
+      .mockResolvedValueOnce(recovered);
+
+    mount();
+    selectValue(q('[data-testid="customer-select"]') as HTMLSelectElement, CUSTOMER_OK.id);
+    setInputValue(q('#charge-amount') as HTMLInputElement, '10000');
+    setInputValue(q('#charge-due') as HTMLInputElement, '2027-01-31');
+    click(pillByLabel('Pagamento'));
+    chooseRadixOption('#charge-installments', '2x');
+
+    await act(async () => {
+      buttonByText('Gerar agora')!.click();
+      await Promise.resolve();
+    });
+    expect(text()).toContain('Algumas parcelas não foram geradas');
+    expect(text()).toContain('Falha temporária ao gerar.');
+
+    const firstPayload = createBatchMutateAsync.mock.calls[0][0];
+    await act(async () => {
+      buttonByText('Tentar novamente (1)')!.click();
+      await Promise.resolve();
+    });
+
+    expect(createBatchMutateAsync).toHaveBeenCalledTimes(2);
+    expect(createBatchMutateAsync.mock.calls[1][0]).toBe(firstPayload);
+    expect(createBatchMutateAsync.mock.calls[1][0].client_request_id).toBe(firstPayload.client_request_id);
+    expect(text()).toContain('Parcelas geradas');
+    expect(text()).toContain('Já gerada');
+  });
+
+  it('calcula hoje pelo fuso da empresa, não pelo dia local do navegador', () => {
+    vi.useFakeTimers();
+    try {
+      // Em Lisboa já é 17/11, mas em São Paulo ainda é 16/11.
+      vi.setSystemTime(new Date('2026-11-17T01:00:00.000Z'));
+      mount();
+      expect((q('#charge-due') as HTMLInputElement).value).toBe('2026-11-16');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
