@@ -6,7 +6,7 @@ interface AdminCategoryPillProps {
   /** Nome técnico da categoria (admin_financial_categories.name). */
   name: string;
   /** Lista de categorias já carregada via useAdminFinancialCategories. */
-  categories: AdminFinancialCategory[];
+  categories: readonly Pick<AdminFinancialCategory, 'name' | 'label' | 'color' | 'icon'>[];
   /** Compacta a pílula (ícone menor) — usada no <Select>. */
   size?: 'sm' | 'md';
   className?: string;

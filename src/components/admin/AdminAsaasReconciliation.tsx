@@ -312,6 +312,7 @@ export function AdminAsaasReconciliation(
                               <p className="break-words font-medium">
                                 {row.description}
                               </p>
+                              {row.bank_description && row.bank_description !== row.description && <p className="mt-1 break-words text-xs text-muted-foreground">No extrato bancário: {row.bank_description}</p>}
                               <div className="mt-1 flex flex-wrap gap-1">{row.categories.length ? row.categories.map((name) => <AdminCategoryPill key={name} name={name} categories={categories.data ?? []} size="sm" />) : <span className="text-xs text-muted-foreground">Sem categoria</span>}</div>
                             </td>
                             <td className="p-3">

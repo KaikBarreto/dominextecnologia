@@ -1,3 +1,5 @@
+import { AdminCategoryPill } from "@/components/admin/financial/AdminCategoryPill";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useEffect, useRef, useState } from "react";
 import {
   keepPreviousData,
@@ -34,6 +36,7 @@ export type ReconcileMovement = {
   amount: number;
   occurred_at: string;
   description: string;
+  bank_description?: string;
 };
 type Candidate = {
   id: string;
@@ -192,9 +195,6 @@ export function AdminReconcileMovementDialog(
     !(hasClassification &&
       (Number(classification?.remaining_amount) > 0 ||
         classification?.category_ids.length !== 1));
-  const existingCategoryLabels = (categories.data ?? []).filter((c) =>
-    classification?.category_ids.includes(c.id)
-  ).map((c) => c.label).join(", ");
   const categoryConflict = hasClassification && !!selected?.category_id &&
     !classification?.category_ids.includes(selected.category_id);
   const alreadySettled = (matches.data?.already_settled.length ?? 0) > 0;
@@ -329,6 +329,7 @@ export function AdminReconcileMovementDialog(
           <p className="mt-2 break-words text-sm">
             {movement.description || "Movimento bancário"}
           </p>
+          {movement.bank_description && movement.bank_description !== movement.description && <p className="mt-1 text-sm">No extrato bancário: {movement.bank_description}</p>}
           <p className="mt-1 text-xs">
             {new Date(movement.occurred_at).toLocaleDateString("pt-BR", {
               timeZone: "America/Sao_Paulo",
@@ -368,17 +369,23 @@ export function AdminReconcileMovementDialog(
                 </div>
               )}
               {hasClassification && (
-                <p className="text-sm text-muted-foreground">
-                  Já classificado:{" "}
-                  {accountMoney(Number(classification!.classified_amount))}
-                  {existingCategoryLabels
-                    ? ` · ${existingCategoryLabels}`
-                    : ""}. {Number(classification!.remaining_amount) > 0
-                    ? `Restam ${
-                      accountMoney(Number(classification!.remaining_amount))
-                    } para classificar.`
-                    : "A classificação existente será preservada."}
-                </p>
+                <section aria-label="Lançamento existente" className="space-y-2 border-b pb-4">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <h3 className="font-semibold">{outgoing ? "Despesa já registrada no financeiro" : "Receita já registrada no financeiro"}</h3>
+                    <strong className="tabular-nums">{accountMoney(Number(classification!.classified_amount))}</strong>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(categories.data ?? []).filter(c => classification!.category_ids.includes(c.id)).map(c => (
+                      <AdminCategoryPill key={c.id} name={c.name} categories={[c]} />
+                    ))}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {Number(classification!.remaining_amount) > 0
+                      ? `Este valor já está contabilizado. Ainda faltam ${accountMoney(Number(classification!.remaining_amount))} para classificar; complete apenas essa diferença.`
+                      : "O valor total deste movimento já está contabilizado. Criar outro lançamento duplicaria a receita ou despesa."}
+                  </p>
+                  {!alreadySettled && canSettle && <p className="text-sm text-muted-foreground">Se este pagamento corresponde a uma conta agendada, use a opção de baixar conta abaixo. Ela vincula o pagamento existente, sem lançar o valor novamente.</p>}
+                </section>
               )}
               {!canManage && (
                 <p role="status" className="text-sm">
@@ -422,13 +429,13 @@ export function AdminReconcileMovementDialog(
                     />
                     <Choice
                       icon={FilePlus2}
-                      title={outgoing ? "Nova despesa" : "Nova receita"}
+                      title={hasClassification ? (outgoing ? "Despesa já registrada" : "Receita já registrada") : (outgoing ? "Nova despesa" : "Nova receita")}
                       detail={classification?.can_create
                         ? "Registrar categoria e descrição usando este movimento."
                         : classification?.reason ===
                             "neutral_movement_not_reconcilable"
                         ? "Este movimento ajusta o caixa e não deve gerar receita ou despesa."
-                        : "Este movimento já possui lançamento; confira a classificação."}
+                        : "Não é necessário criar outro lançamento para este mesmo movimento."}
                       disabled={!canManage || !classification?.can_create ||
                         isDivergent}
                       onClick={() => changeStep("create")}
@@ -588,19 +595,12 @@ export function AdminReconcileMovementDialog(
                               <Label htmlFor="reconcile-category">
                                 Categoria *
                               </Label>
-                              <select
-                                id="reconcile-category"
-                                className="h-10 w-full rounded-md border bg-white px-3 text-sm text-zinc-900"
-                                value={category}
-                                onChange={(e) => setCategory(e.target.value)}
-                              >
-                                <option value="">Selecione a categoria</option>
+                              <Select value={category} onValueChange={value => setCategory(value)}><SelectTrigger id="reconcile-category" className="h-10 w-full rounded-md border bg-white px-3 text-sm text-zinc-900"><SelectValue placeholder="Selecione a categoria" /></SelectTrigger><SelectContent className="max-w-[calc(100vw-2rem)]">
+
                                 {options.map((c) => (
-                                  <option key={c.id} value={c.id}>
-                                    {c.label}
-                                  </option>
+                                  <SelectItem key={c.id} value={c.id}><AdminCategoryPill name={c.name} categories={[c]} /></SelectItem>
                                 ))}
-                              </select>
+                              </SelectContent></Select>
                               {categories.isError && (
                                 <p
                                   role="alert"

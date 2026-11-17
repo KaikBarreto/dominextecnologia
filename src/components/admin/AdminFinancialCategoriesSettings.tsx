@@ -1,3 +1,4 @@
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Tag, Trash2 } from "lucide-react";
@@ -257,21 +258,15 @@ export function AdminFinancialCategoriesSettings(
             {form.affects_result && (
               <div>
                 <Label htmlFor="admin-category-dre">Seção no DRE</Label>
-                <select
-                  id="admin-category-dre"
-                  className="h-10 w-full rounded-lg border bg-background px-3 text-sm"
-                  value={form.dre_bucket}
-                  onChange={(e) =>
-                    setForm({ ...form, dre_bucket: e.target.value })}
-                >
+                <Select value={form.dre_bucket} onValueChange={value => setForm({ ...form, dre_bucket: value })}><SelectTrigger id="admin-category-dre" className="h-10 w-full rounded-lg border bg-background px-3 text-sm"><SelectValue /></SelectTrigger><SelectContent className="max-w-[calc(100vw-2rem)]">
                   {Object.entries(buckets).filter(([key]) =>
                     form.type === "income"
                       ? key === "revenue"
                       : key !== "revenue"
                   ).map(([key, label]) => (
-                    <option key={key} value={key}>{label}</option>
+                    <SelectItem key={key} value={key}>{label}</SelectItem>
                   ))}
-                </select>
+                </SelectContent></Select>
                 <p className="mt-2 text-xs text-muted-foreground">
                   Distribuição de lucros deve permanecer em Não operacional.
                 </p>

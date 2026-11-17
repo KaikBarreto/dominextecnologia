@@ -278,9 +278,7 @@ export function AdminFinancialMovements(
             {categories.filter((item) => !type || item.type === type).map((
               item,
             ) => (
-              <SelectItem key={item.id} value={item.name}>
-                {item.label}
-              </SelectItem>
+              <SelectItem key={item.id} value={item.name}><AdminCategoryPill name={item.name} categories={[item]} /></SelectItem>
             ))}
           </SelectContent>
         </Select>

@@ -1,3 +1,5 @@
+import { AdminCategoryPill } from "@/components/admin/financial/AdminCategoryPill";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DateField } from "@/components/ui/date-field";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -124,7 +126,7 @@ export function AdminBankReconciliation({
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("admin_financial_categories")
-        .select("name,label,type")
+        .select("name,label,type,color,icon")
         .order("name");
       if (error) throw error;
       return data ?? [];
@@ -319,22 +321,17 @@ export function AdminBankReconciliation({
             alterado por esta tela.
           </p>
         </div>
-        <select
-          aria-label="Filtrar status"
-          value={status}
-          onChange={(e) => {
-            setStatus(e.target.value);
+        <Select value={(status) || "__all__"} onValueChange={value => {
+            setStatus((value === "__all__" ? "" : value));
             setPage(0);
-          }}
-          className="h-10 rounded-md border bg-white text-zinc-900 px-3"
-        >
-          <option value="">Todos os status</option>
+          }}><SelectTrigger aria-label="Filtrar status" className="h-10 rounded-md border bg-white text-zinc-900 px-3"><SelectValue /></SelectTrigger><SelectContent className="max-w-[calc(100vw-2rem)]">
+          <SelectItem value="__all__">Todos os status</SelectItem>
           {Object.entries(statuses).map(([id, label]) => (
-            <option key={id} value={id}>
+            <SelectItem key={id} value={id}>
               {label}
-            </option>
+            </SelectItem>
           ))}
-        </select>
+        </SelectContent></Select>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 sm:max-w-md">
         <div><Label htmlFor="bank-filter-from">De</Label><DateField id="bank-filter-from" value={from} onChange={(e) => { setFrom(e); setPage(0); }} /></div>
@@ -501,19 +498,12 @@ export function AdminBankReconciliation({
                   <div className="rounded-xl border bg-white text-zinc-900 p-3">
                     <Label>Nova classificação</Label>
                     <div className="mt-2 grid gap-2">
-                      <select
-                        aria-label="Categoria da classificação"
-                        value={category}
-                        onChange={(e) => setCategory(e.target.value)}
-                        className="h-10 rounded-md border bg-white text-zinc-900 px-3"
-                      >
-                        <option value="">Categoria</option>
+                      <Select value={category} onValueChange={value => setCategory(value)}><SelectTrigger aria-label="Categoria da classificação" className="h-10 rounded-md border bg-white text-zinc-900 px-3"><SelectValue placeholder="Categoria" /></SelectTrigger><SelectContent className="max-w-[calc(100vw-2rem)]">
+
                         {compatibleCategories.map((c: any) => (
-                          <option key={c.name} value={c.name}>
-                            {c.label || c.name}
-                          </option>
+                          <SelectItem key={c.name} value={c.name}><AdminCategoryPill name={c.name} categories={[c]} /></SelectItem>
                         ))}
-                      </select>
+                      </SelectContent></Select>
                       <Input
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}

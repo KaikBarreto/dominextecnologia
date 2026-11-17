@@ -98,16 +98,37 @@ export async function fetchAdminAsaasPage(
   }
   const { data, error, count } = await q;
   if (error) throw error;
+  const rows = data ?? [];
+  const transactionIds = [...new Set(rows.map(r => r.admin_financial_transaction_id).filter((id): id is string => Boolean(id)))];
+  const legacyIds = [...new Set(rows.filter(r => !r.admin_financial_transaction_id).map(r => r.asaas_transaction_id).filter((id): id is string => Boolean(id)))];
+  type LinkedDescription = { id: string; asaas_transaction_id: string | null; description: string | null };
+  const loadDescriptions = async (column: "id" | "asaas_transaction_id", ids: string[]): Promise<LinkedDescription[]> => {
+    if (!ids.length) return [];
+    const { data, error } = await (supabase as any).from("admin_financial_transactions")
+      .select("id,asaas_transaction_id,description").in(column, ids);
+    if (error) throw error;
+    return data ?? [];
+  };
+  const transactions = (await Promise.all([
+    loadDescriptions("id", transactionIds),
+    loadDescriptions("asaas_transaction_id", legacyIds),
+  ])).flat();
   return {
     count: count ?? 0,
-    items: (data ?? []).map((r) => ({
-      ...r,
-      source: "asaas" as const,
-      description: r.description || "Movimento Asaas",
-      categories: r.category ? [r.category] : [],
-      divergent: false,
-      original: r,
-    })),
+    items: rows.map((r) => {
+      const parts = transactions.filter(t => r.admin_financial_transaction_id ? t.id === r.admin_financial_transaction_id : !!r.asaas_transaction_id && t.asaas_transaction_id === r.asaas_transaction_id);
+      const descriptions = [...new Set(parts.map(t => t.description?.trim()).filter(Boolean))];
+      const bankDescription = r.description || "Movimento Asaas";
+      return {
+        ...r,
+        source: "asaas" as const,
+        description: descriptions.join(" · ") || bankDescription,
+        bank_description: bankDescription,
+        categories: r.category ? [r.category] : [],
+        divergent: false,
+        original: r,
+      };
+    }),
   };
 }
 

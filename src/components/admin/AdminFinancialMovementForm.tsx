@@ -1,3 +1,4 @@
+import { AdminCategoryPill } from "@/components/admin/financial/AdminCategoryPill";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarIcon, Circle, TrendingDown, TrendingUp } from "lucide-react";
@@ -430,29 +431,11 @@ export function AdminFinancialMovementForm(
                 id="movement-category"
                 className={cn(showErrors && !category && "border-destructive")}
               >
-                <SelectValue placeholder="Selecione uma categoria">
-                  {selected && (
-                    <span className="inline-flex items-center gap-2">
-                      <span
-                        className="h-3 w-3 rounded-full"
-                        style={{ background: selected.color }}
-                      />
-                      {selected.label}
-                    </span>
-                  )}
-                </SelectValue>
+                <SelectValue placeholder="Selecione uma categoria">{selected && <AdminCategoryPill name={selected.name} categories={[selected]} />}</SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {allowedCategories.map((item) => (
-                  <SelectItem value={item.name} key={item.id}>
-                    <span className="inline-flex items-center gap-2">
-                      <Circle
-                        className="h-4 w-4 fill-current"
-                        style={{ color: item.color }}
-                      />
-                      {item.label}
-                    </span>
-                  </SelectItem>
+                  <SelectItem value={item.name} key={item.id}><AdminCategoryPill name={item.name} categories={[item]} /></SelectItem>
                 ))}
               </SelectContent>
             </Select>
