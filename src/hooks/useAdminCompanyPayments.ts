@@ -143,10 +143,14 @@ interface SaleFiscal {
   error?: string | null;
 }
 
-const getAdminPaymentDetail = supabase.rpc as unknown as (
+const getAdminPaymentDetail = (
   functionName: 'get_admin_payment_detail',
   args: { p_company_id: string; p_payment_source: 'manual' | 'asaas'; p_payment_id: string },
-) => Promise<{ data: AdminPaymentDetailResponse | null; error: unknown }>;
+): Promise<{ data: AdminPaymentDetailResponse | null; error: unknown }> =>
+  supabase.rpc(functionName, args) as unknown as Promise<{
+    data: AdminPaymentDetailResponse | null;
+    error: unknown;
+  }>;
 
 export interface RegisterCompanyPaymentInput {
   amount: number;
