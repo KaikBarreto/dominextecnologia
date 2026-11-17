@@ -53,6 +53,16 @@ const FINANCIAL_ERROR_MESSAGES: Record<string, string> = {
 };
 
 /**
+ * Regras internas do escopo da OS. A mensagem do banco é útil para proteger a
+ * integridade, mas não deve expor SQLSTATE nem pedir que o operador entenda as
+ * junctions de serviço/equipamento.
+ */
+const SERVICE_ORDER_SCOPE_ERROR_MESSAGES: Record<string, string> = {
+  'serviço do equipamento não pertence a esta ordem de serviço':
+    'Os serviços desta OS foram atualizados em outro fluxo. Reabra a OS para carregar os dados atuais e tente novamente.',
+};
+
+/**
  * Mapeamento por código SQLSTATE / código PostgREST.
  *
  * Match por código é mais confiável que substring porque:
@@ -424,7 +434,28 @@ export function getErrorMessage(error: unknown, fallback = DEFAULT_MESSAGE) {
     if (financialCode) return FINANCIAL_ERROR_MESSAGES[financialCode];
   }
 
-  // 3) SQLSTATE / PostgREST code — mais confiável que substring genérica.
+  // 3) Regra de domínio do escopo da OS: precisa ser resolvida antes do código
+  // P0001 e nunca pode expor detalhes da estrutura interna ao usuário.
+  if (error) {
+    const scopeHaystack = error instanceof Error
+      ? error.message
+      : typeof error === 'string'
+        ? error
+        : typeof error === 'object'
+          ? [
+              (error as ErrorLike).message,
+              (error as ErrorLike).details,
+              (error as ErrorLike).hint,
+              (error as ErrorLike).code,
+            ].filter((value): value is string => typeof value === 'string').join(' | ')
+          : '';
+    const normalized = scopeHaystack.toLowerCase();
+    const scopeCode = Object.keys(SERVICE_ORDER_SCOPE_ERROR_MESSAGES)
+      .find((code) => normalized.includes(code));
+    if (scopeCode) return SERVICE_ORDER_SCOPE_ERROR_MESSAGES[scopeCode];
+  }
+
+  // 4) SQLSTATE / PostgREST code — mais confiável que substring genérica.
   //    Erros do Supabase tipicamente vêm como { code, message, details, hint }.
   if (error && typeof error === 'object') {
     const code = (error as ErrorLike).code;
@@ -433,7 +464,7 @@ export function getErrorMessage(error: unknown, fallback = DEFAULT_MESSAGE) {
     }
   }
 
-  // 4) Extrai texto cru pra substring match (cobertura legada).
+  // 5) Extrai texto cru pra substring match (cobertura legada).
   let raw = '';
 
   if (error instanceof Error) {
@@ -451,7 +482,7 @@ export function getErrorMessage(error: unknown, fallback = DEFAULT_MESSAGE) {
   const mapped = DATABASE_ERROR_MAP.find((item) => item.test(message));
   if (mapped) return mapped.text;
 
-  // 5) Se a mensagem crua parece técnica (inglês de banco), prefere fallback PT-BR.
+  // 6) Se a mensagem crua parece técnica (inglês de banco), prefere fallback PT-BR.
   //    Heurística simples: contém termos sentinela de erro técnico não mapeado.
   if (raw && looksTechnicalEnglish(raw)) {
     return fallback;

@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.14";
+export const APP_VERSION = "1.41.15";
 
 export const VERSION_NOTES =
-  "Edição direta de valores por item ou no pedido, com escolha entre preço negociado e desconto visível, no PDV (Loja).";
+  "Correção no vínculo de serviços e equipamentos ao planejar visitas geradas por contratos.";

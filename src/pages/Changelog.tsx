@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.15',
+    date: '17 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Planejamento de visitas de contrato corrigido',
+        category: 'correcao',
+        description: 'Visitas geradas por contratos agora mantêm corretamente os serviços vinculados aos equipamentos. Ao ajustar uma ocorrência, o salvamento deixa de ser bloqueado por uma inconsistência criada na geração da OS.',
+      },
+    ],
+  },
+  {
     version: '1.41.14',
     date: '17 de novembro de 2026',
     type: 'patch',
