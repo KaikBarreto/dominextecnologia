@@ -55,6 +55,92 @@ export interface AdminPaymentDetailResponse {
     amounts?: { paid?: number | null; subscription?: number | null; base?: number | null; discount?: number | null };
     change?: { kind?: string | null; credit_amount?: number | null; amount_due?: number | null } | null;
   };
+  sale?: AdminSaleDetail | null;
+}
+
+export interface AdminSaleDetail {
+  is_sale: true;
+  payment: {
+    id: string;
+    source: 'manual' | 'asaas';
+    type?: string | null;
+    amount: number;
+    payment_date?: string | null;
+    created_at?: string | null;
+    payment_method?: string | null;
+    origin?: string | null;
+    asaas_payment_id?: string | null;
+    status?: string | null;
+    due_date?: string | null;
+    paid_at?: string | null;
+    registered_by?: { id: string; name?: string | null } | null;
+    fiscal?: SaleFiscal | null;
+  };
+  commercial_match_quality: 'date_amount' | 'unique_company_sale' | 'ambiguous' | 'none';
+  commercial_candidate_count: number;
+  commercial?: {
+    id: string;
+    seller: { id: string; name: string };
+    sdr?: { id: string; name: string } | null;
+    customer_origin?: string | null;
+    commission_base?: number | null;
+    paid_amount?: number | null;
+    commission_amount?: number | null;
+    seller_commission?: number | null;
+    sdr_commission?: number | null;
+    billing_cycle?: string | null;
+    status?: string | null;
+    released_at?: string | null;
+    created_at?: string | null;
+    registered_by?: { id: string; name?: string | null } | null;
+  } | null;
+  affiliate_commission?: {
+    id: string;
+    affiliate: { id: string; name: string };
+    kind: string;
+    base_amount: number;
+    pct_applied: number;
+    commission_amount: number;
+    reference_month?: string | null;
+    status: string;
+    affiliate_payment_id?: string | null;
+    created_at?: string | null;
+  } | null;
+  financial_match_quality: 'exact_reference' | 'legacy_unique_date_amount' | 'ambiguous' | 'none';
+  financial_transaction?: {
+    id: string;
+    category?: string | null;
+    amount: number;
+    description?: string | null;
+    notes?: string | null;
+    transaction_date?: string | null;
+    asaas_transaction_id?: string | null;
+    created_at?: string | null;
+    registered_by?: { id: string; name?: string | null } | null;
+  } | null;
+  processor?: {
+    id: string;
+    asaas_payment_id?: string | null;
+    status?: string | null;
+    amount?: number | null;
+    billing_type?: string | null;
+    billing_cycle?: string | null;
+    payment_method?: string | null;
+    due_date?: string | null;
+    paid_at?: string | null;
+    invoice_url?: string | null;
+    created_at?: string | null;
+    fiscal?: SaleFiscal | null;
+  } | null;
+}
+
+interface SaleFiscal {
+  status?: string | null;
+  number?: string | null;
+  invoice_id?: string | null;
+  pdf_url?: string | null;
+  xml_url?: string | null;
+  error?: string | null;
 }
 
 const getAdminPaymentDetail = supabase.rpc as unknown as (
@@ -132,7 +218,7 @@ export function useAdminCompanyPayments(companyId: string | undefined) {
           .order('payment_date', { ascending: false }),
         supabase
           .from('subscription_payments')
-          .select('id, amount, status, billing_type, due_date, paid_at, invoice_url, type, payment_method, created_at, asaas_payment_id')
+          .select('id, amount, status, billing_type, due_date, paid_at, invoice_url, type, payment_method, created_at, asaas_payment_id, pix_expiration_date')
           .eq('company_id', companyId!)
           .order('created_at', { ascending: false }),
       ]);
@@ -159,6 +245,41 @@ export function useAdminCompanyPayments(companyId: string | undefined) {
         notes: p.notes,
       }));
 
+      const paymentDay = (value: string | null | undefined) => (value || '').slice(0, 10);
+      const paidCandidates = [
+        ...manual.map((p) => ({
+          id: p.id,
+          asaasPaymentId: p.asaas_payment_id,
+          amount: Number(p.amount) || 0,
+          day: paymentDay(p.payment_date),
+        })),
+        ...asaas
+          .filter((p) => ['RECEIVED', 'CONFIRMED'].includes((p.status || '').toUpperCase()))
+          .map((p) => ({
+            id: p.id,
+            asaasPaymentId: p.asaas_payment_id,
+            amount: Number(p.amount) || 0,
+            day: paymentDay(p.due_date ?? p.paid_at ?? p.created_at),
+          })),
+      ];
+
+      const presentationStatus = (payment: (typeof asaas)[number]): string => {
+        const rawStatus = (payment.status || 'PENDING').toUpperCase();
+        if (!['PENDING', 'CREATED', 'OVERDUE'].includes(rawStatus)) return rawStatus;
+        const referenceDay = paymentDay(payment.due_date ?? payment.created_at);
+        const replaced = paidCandidates.some((paid) =>
+          paid.id !== payment.id
+          && paid.asaasPaymentId !== payment.asaas_payment_id
+          && Math.abs(paid.amount - (Number(payment.amount) || 0)) <= 0.01
+          && paid.day === referenceDay
+        );
+        if (replaced) return 'SUPERSEDED';
+        if (payment.billing_type?.toUpperCase() === 'PIX'
+          && payment.pix_expiration_date
+          && new Date(payment.pix_expiration_date).getTime() < Date.now()) return 'EXPIRED';
+        return rawStatus;
+      };
+
       const asaasItems: UnifiedCompanyPayment[] = asaas
         .filter((p) => {
           const status = (p.status || '').toUpperCase();
@@ -172,7 +293,7 @@ export function useAdminCompanyPayments(companyId: string | undefined) {
           source: 'asaas' as const,
           type: p.type,
           amount: Number(p.amount) || 0,
-          status: (p.status || '').toUpperCase(),
+          status: presentationStatus(p),
           paymentMethod: p.payment_method || p.billing_type,
           date: p.paid_at ?? p.due_date ?? p.created_at,
           invoiceUrl: p.invoice_url,

@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
 import {
   AlertTriangle,
+  BadgeDollarSign,
+  BriefcaseBusiness,
   CalendarDays,
   ChevronRight,
   CreditCard,
   ExternalLink,
   Layers3,
+  Landmark,
   Plus,
   Receipt,
   Tag,
@@ -39,6 +42,7 @@ import {
   useAdminCompanyPayments,
   useAdminCompanyPaymentDetail,
   mapPaymentRpcError,
+  type AdminSaleDetail,
   type UnifiedCompanyPayment,
 } from '@/hooks/useAdminCompanyPayments';
 import { RegisterCompanyPaymentModal } from '@/components/admin/RegisterCompanyPaymentModal';
@@ -109,6 +113,10 @@ function StatusBadge({ status }: { status: string }) {
       return <Badge className="bg-destructive text-destructive-foreground border-0 hover:bg-destructive">Vencido</Badge>;
     case 'CANCELLED':
       return <Badge className="bg-muted text-muted-foreground border-0 hover:bg-muted">Cancelado</Badge>;
+    case 'SUPERSEDED':
+      return <Badge className="bg-muted text-muted-foreground border-0 hover:bg-muted">Substituído</Badge>;
+    case 'EXPIRED':
+      return <Badge className="bg-muted text-muted-foreground border-0 hover:bg-muted">Expirado</Badge>;
     default:
       return <Badge variant="secondary">{status}</Badge>;
   }
@@ -128,6 +136,108 @@ function cycleLabel(cycle: string | null | undefined): string {
 function planLabel(code: string | null | undefined): string {
   if (!code) return 'Plano não identificado';
   return code.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function commercialStatusLabel(value: string | null | undefined): string {
+  const labels: Record<string, string> = {
+    confirmed: 'Confirmada', pending_work: 'Aguardando trabalho comercial',
+    pending: 'Pendente', paid: 'Paga', voided: 'Estornada',
+  };
+  return labels[(value || '').toLowerCase()] || value || '—';
+}
+
+function SaleDetailSection({ sale }: { sale: AdminSaleDetail }) {
+  const commercial = sale.commercial;
+  const affiliate = sale.affiliate_commission;
+  const financial = sale.financial_transaction;
+  const processor = sale.processor;
+  const fiscal = sale.payment.fiscal || processor?.fiscal;
+  const traceIds = [
+    ['Pagamento', sale.payment.id], ['Venda comercial', commercial?.id],
+    ['Lançamento financeiro', financial?.id], ['Comissão de afiliado', affiliate?.id],
+    ['Asaas', processor?.asaas_payment_id || sale.payment.asaas_payment_id],
+  ].filter((entry): entry is [string, string] => Boolean(entry[1]));
+
+  return (
+    <section className="overflow-hidden rounded-2xl border border-primary/20 bg-primary/[0.025]">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-primary/15 px-4 py-3">
+        <div className="flex items-center gap-2"><BriefcaseBusiness className="h-4 w-4 text-primary" /><p className="font-semibold">Detalhes da venda</p></div>
+        <Badge variant="outline" className="border-primary/30 text-primary">Primeira venda</Badge>
+      </div>
+      <div className="space-y-5 p-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div><p className="text-xs text-muted-foreground">Origem comercial</p><p className="mt-1 font-medium">{commercial?.customer_origin || sale.payment.origin || 'Não informada'}</p></div>
+          <div><p className="text-xs text-muted-foreground">Venda registrada em</p><p className="mt-1 font-medium">{formatPaymentDate(commercial?.created_at || sale.payment.payment_date || null)}</p></div>
+          <div><p className="text-xs text-muted-foreground">Registrada por</p><p className="mt-1 font-medium">{commercial?.registered_by?.name || sale.payment.registered_by?.name || 'Não identificado'}</p></div>
+        </div>
+
+        {commercial ? (
+          <div className="rounded-xl border bg-background p-4">
+            <div className="flex items-center gap-2"><BadgeDollarSign className="h-4 w-4" /><p className="font-semibold">Comercial e comissão</p></div>
+            <div className="mt-3 grid gap-x-4 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+              <div><p className="text-muted-foreground">Closer / vendedor</p><p className="font-medium">{commercial.seller.name}</p></div>
+              {commercial.sdr && <div><p className="text-muted-foreground">SDR</p><p className="font-medium">{commercial.sdr.name}</p></div>}
+              <div><p className="text-muted-foreground">Ciclo vendido</p><p className="font-medium">{cycleLabel(commercial.billing_cycle)}</p></div>
+              <div><p className="text-muted-foreground">Valor recebido</p><p className="font-medium">{money(commercial.paid_amount)}</p></div>
+              <div><p className="text-muted-foreground">Base da comissão</p><p className="font-medium">{money(commercial.commission_base)}</p></div>
+              <div><p className="text-muted-foreground">Comissão total</p><p className="font-medium">{money(commercial.commission_amount)}</p></div>
+              {commercial.seller_commission != null && <div><p className="text-muted-foreground">Comissão do closer</p><p className="font-medium">{money(commercial.seller_commission)}</p></div>}
+              {commercial.sdr_commission != null && <div><p className="text-muted-foreground">Comissão do SDR</p><p className="font-medium">{money(commercial.sdr_commission)}</p></div>}
+              <div><p className="text-muted-foreground">Status da comissão</p><p className="font-medium">{commercialStatusLabel(commercial.status)}</p></div>
+              {commercial.released_at && <div><p className="text-muted-foreground">Liberada em</p><p className="font-medium">{formatPaymentDate(commercial.released_at)}</p></div>}
+            </div>
+          </div>
+        ) : sale.commercial_match_quality === 'ambiguous' ? (
+          <div className="rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm">Existem {sale.commercial_candidate_count} registros comerciais possíveis nesta empresa; nenhum vendedor foi atribuído sem prova suficiente.</div>
+        ) : (
+          <p className="rounded-xl border border-dashed p-3 text-sm text-muted-foreground">Esta venda não gerou registro de comissão comercial.</p>
+        )}
+
+        {affiliate && (
+          <div className="rounded-xl border bg-background p-4">
+            <p className="font-semibold">Afiliado</p>
+            <div className="mt-3 grid gap-x-4 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+              <div><p className="text-muted-foreground">Afiliado responsável</p><p className="font-medium">{affiliate.affiliate.name}</p></div>
+              <div><p className="text-muted-foreground">Base</p><p className="font-medium">{money(affiliate.base_amount)}</p></div>
+              <div><p className="text-muted-foreground">Percentual</p><p className="font-medium">{Number(affiliate.pct_applied).toLocaleString('pt-BR')}%</p></div>
+              <div><p className="text-muted-foreground">Comissão</p><p className="font-medium">{money(affiliate.commission_amount)}</p></div>
+              <div><p className="text-muted-foreground">Tipo</p><p className="font-medium">{affiliate.kind === 'first' ? 'Primeira venda' : 'Recorrente'}</p></div>
+              <div><p className="text-muted-foreground">Status</p><p className="font-medium">{commercialStatusLabel(affiliate.status)}</p></div>
+            </div>
+          </div>
+        )}
+
+        {(financial || processor) && (
+          <div className="rounded-xl border bg-background p-4">
+            <div className="flex items-center gap-2"><Landmark className="h-4 w-4" /><p className="font-semibold">Recebimento e financeiro</p></div>
+            <div className="mt-3 grid gap-x-4 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+              {processor && <><div><p className="text-muted-foreground">Status no Asaas</p><p className="font-medium">{processor.status || '—'}</p></div><div><p className="text-muted-foreground">Vencimento</p><p className="font-medium">{formatPaymentDate(processor.due_date || null)}</p></div><div><p className="text-muted-foreground">Recebido no Asaas</p><p className="font-medium">{formatPaymentDate(processor.paid_at || null)}</p></div></>}
+              {financial && <><div><p className="text-muted-foreground">Descrição financeira</p><p className="font-medium">{financial.description || 'Venda'}</p></div><div><p className="text-muted-foreground">Data do lançamento</p><p className="font-medium">{formatPaymentDate(financial.transaction_date || null)}</p></div><div><p className="text-muted-foreground">Registrado por</p><p className="font-medium">{financial.registered_by?.name || 'Não identificado'}</p></div></>}
+            </div>
+            {processor?.invoice_url && <Button asChild variant="outline" size="sm" className="mt-4"><a href={processor.invoice_url} target="_blank" rel="noopener noreferrer">Abrir cobrança no Asaas</a></Button>}
+          </div>
+        )}
+
+        {fiscal && Object.values(fiscal).some(Boolean) && (
+          <div className="rounded-xl border bg-background p-4">
+            <p className="font-semibold">Nota fiscal</p>
+            <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2"><div><p className="text-muted-foreground">Status</p><p className="font-medium">{fiscal.status || 'Não emitida'}</p></div><div><p className="text-muted-foreground">Número</p><p className="font-medium">{fiscal.number || '—'}</p></div></div>
+            <div className="mt-3 flex flex-wrap gap-2">{fiscal.pdf_url && <Button asChild variant="outline" size="sm"><a href={fiscal.pdf_url} target="_blank" rel="noopener noreferrer">Baixar PDF</a></Button>}{fiscal.xml_url && <Button asChild variant="outline" size="sm"><a href={fiscal.xml_url} target="_blank" rel="noopener noreferrer">Baixar XML</a></Button>}</div>
+            {fiscal.error && <p className="mt-3 text-sm text-destructive">{fiscal.error}</p>}
+          </div>
+        )}
+
+        <details className="rounded-xl border bg-background px-4 py-3 text-sm">
+          <summary className="cursor-pointer font-medium">Rastreabilidade técnica</summary>
+          <dl className="mt-3 space-y-2">
+            {traceIds.map(([label, value]) => <div key={label} className="grid gap-1 sm:grid-cols-[150px_1fr]"><dt className="text-muted-foreground">{label}</dt><dd className="break-all font-mono text-xs">{value}</dd></div>)}
+            <div className="grid gap-1 sm:grid-cols-[150px_1fr]"><dt className="text-muted-foreground">Vínculo comercial</dt><dd>{sale.commercial_match_quality}</dd></div>
+            <div className="grid gap-1 sm:grid-cols-[150px_1fr]"><dt className="text-muted-foreground">Vínculo financeiro</dt><dd>{sale.financial_match_quality}</dd></div>
+          </dl>
+        </details>
+      </div>
+    </section>
+  );
 }
 
 function PaymentDetailPanel({ companyId, payment }: { companyId: string; payment: UnifiedCompanyPayment }) {
@@ -182,6 +292,8 @@ function PaymentDetailPanel({ companyId, payment }: { companyId: string; payment
       </div>
 
       <div className="flex-1 space-y-5 overflow-y-auto p-5">
+        {data.sale && <SaleDetailSection sale={data.sale} />}
+
         {unavailable ? (
           <div className="rounded-xl border border-dashed bg-muted/25 p-5">
             <p className="font-medium">Detalhamento histórico indisponível</p>

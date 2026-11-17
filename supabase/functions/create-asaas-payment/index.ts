@@ -629,15 +629,42 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Mudança de modo recorrente → invalida a antiga pra não ser reusada.
-      if (recurringMismatch && minutesAgo < 30) {
+      // Fora da janela de reuso (ou mudou método/valor/modo), a cobrança
+      // anterior do MESMO contexto precisa ser excluída no Asaas antes de uma
+      // nova nascer. Fail-closed: se o provedor não confirmar, não duplicamos.
+      if (!changeRequestMismatch) {
+        const providerId = String(existing.asaas_payment_id || '');
+        if (!providerId) {
+          throw new ValidationError('Cobrança anterior sem identificador no Asaas. Fale com o suporte antes de gerar outra.');
+        }
+        const deletePath = providerId.startsWith('pay_')
+          ? `/payments/${providerId}`
+          : providerId.startsWith('aut_')
+          ? `/pix/automatic/authorizations/${providerId}`
+          : providerId.startsWith('sub_')
+          ? `/subscriptions/${providerId}`
+          : null;
+        if (!deletePath) {
+          throw new ValidationError('Cobrança anterior com identificador desconhecido. Fale com o suporte antes de gerar outra.');
+        }
+
+        try {
+          await asaas.delete(deletePath);
+        } catch (error) {
+          if (!(error instanceof AsaasApiError && error.status === 404)) {
+            console.error(`[superseded] Asaas recusou DELETE ${deletePath}:`, error);
+            throw new ValidationError('Não foi possível substituir a cobrança anterior. Tente novamente em instantes.');
+          }
+        }
+
         await applyWrite(
-          "invalidação da cobrança anterior (subscription_payments CANCELLED)",
+          'invalidação da cobrança anterior (subscription_payments CANCELLED)',
           supabase
-            .from("subscription_payments")
-            .update({ status: "CANCELLED" })
-            .eq("id", existing.id),
+            .from('subscription_payments')
+            .update({ status: 'CANCELLED', updated_at: new Date().toISOString() })
+            .eq('id', existing.id),
         );
+        console.log(`[superseded] cobrança anterior ${providerId} cancelada antes da regeneração.`);
       }
     }
 

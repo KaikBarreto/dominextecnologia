@@ -2068,6 +2068,22 @@ Deno.serve(async (req) => {
     const status = String(payment.status || "").toUpperCase();
     const isBeingPaid = status === "RECEIVED" || status === "CONFIRMED";
 
+    // A Asaas envia PAYMENT_DELETED com `payment.status=PENDING` e
+    // `deleted=true`. Espelhar o status cru ressuscita localmente a cobrança
+    // que acabamos de substituir. Exclusão no provedor é CANCELLED no histórico.
+    if (event === "PAYMENT_DELETED" || payment.deleted === true) {
+      await applyWrite(
+        "cancelamento da cobrança excluída (subscription_payments)",
+        supabase
+          .from("subscription_payments")
+          .update({ status: "CANCELLED", updated_at: new Date().toISOString() })
+          .eq("asaas_payment_id", payment.id),
+        { rethrow: retryableRethrow("cancelamento da cobrança excluída") },
+      );
+      await recordWebhookLedger(supabase, body);
+      return json({ received: true, cancelled: true });
+    }
+
     // ---------- PAYMENT_CREATED: linka pay_* à subscription_payments ----------
     if (event === "PAYMENT_CREATED") {
       const resolved = await resolveCompany(supabase, payment);

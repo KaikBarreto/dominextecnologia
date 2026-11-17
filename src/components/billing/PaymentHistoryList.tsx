@@ -102,6 +102,10 @@ function StatusBadge({ status, t }: { status: string; t: ReturnType<typeof usePa
       return <Badge className="bg-destructive text-destructive-foreground border-0 hover:bg-destructive">{t.statusOverdue}</Badge>;
     case 'CANCELLED':
       return <Badge className="bg-muted text-muted-foreground border-0 hover:bg-muted">{t.statusCancelled}</Badge>;
+    case 'SUPERSEDED':
+      return <Badge className="bg-muted text-muted-foreground border-0 hover:bg-muted">Substituído</Badge>;
+    case 'EXPIRED':
+      return <Badge className="bg-muted text-muted-foreground border-0 hover:bg-muted">Expirado</Badge>;
     default:
       return <Badge variant="secondary">{status}</Badge>;
   }

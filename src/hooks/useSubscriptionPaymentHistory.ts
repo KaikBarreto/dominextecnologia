@@ -49,6 +49,7 @@ export interface SubscriptionPaymentHistoryItem {
   nfseNumber: string | null;
   nfseError: string | null;
   nfseRequestedAt: string | null;
+  pixExpirationDate: string | null;
 }
 
 interface UseSubscriptionPaymentHistoryOptions {
@@ -86,17 +87,32 @@ export function useSubscriptionPaymentHistory(
       const { data, error } = await supabase
         .from('subscription_payments')
         .select(
-          'id, amount, status, billing_type, billing_cycle, type, created_at, paid_at, due_date, invoice_url, nfse_status, nfse_invoice_id, nfse_pdf_url, nfse_xml_url, nfse_number, nfse_error, nfse_requested_at',
+          'id, amount, status, billing_type, billing_cycle, type, created_at, paid_at, due_date, invoice_url, pix_expiration_date, nfse_status, nfse_invoice_id, nfse_pdf_url, nfse_xml_url, nfse_number, nfse_error, nfse_requested_at',
         )
         .eq('company_id', companyId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      return (data || []).map((p) => ({
+      const rows = data || [];
+      const paidRows = rows.filter((p) => ['RECEIVED', 'CONFIRMED'].includes((p.status || '').toUpperCase()));
+      return rows.map((p) => {
+        const rawStatus = (p.status || 'PENDING').toUpperCase();
+        const referenceDay = (p.due_date || p.created_at || '').slice(0, 10);
+        const replaced = ['PENDING', 'CREATED', 'OVERDUE'].includes(rawStatus) && paidRows.some((paid) =>
+          paid.id !== p.id
+          && Math.abs(Number(paid.amount) - Number(p.amount)) <= 0.01
+          && (paid.due_date || paid.paid_at || paid.created_at || '').slice(0, 10) === referenceDay
+        );
+        const expired = !replaced
+          && ['PENDING', 'CREATED'].includes(rawStatus)
+          && p.billing_type?.toUpperCase() === 'PIX'
+          && p.pix_expiration_date
+          && new Date(p.pix_expiration_date).getTime() < Date.now();
+        return {
         id: p.id,
         amount: Number(p.amount),
-        status: p.status,
+        status: replaced ? 'SUPERSEDED' : expired ? 'EXPIRED' : rawStatus,
         billingType: p.billing_type,
         billingCycle: p.billing_cycle,
         type: p.type,
@@ -112,7 +128,9 @@ export function useSubscriptionPaymentHistory(
         nfseNumber: p.nfse_number,
         nfseError: p.nfse_error,
         nfseRequestedAt: p.nfse_requested_at,
-      }));
+        pixExpirationDate: p.pix_expiration_date,
+      };
+      });
     },
     refetchInterval: (query) => {
       const payments = query.state.data as SubscriptionPaymentHistoryItem[] | undefined;
