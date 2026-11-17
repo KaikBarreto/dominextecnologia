@@ -63,8 +63,9 @@ export function PayrollAdjustmentsEditor({
         </p>
       )}
       {items.map((item) => (
-        <div key={item.id} className="grid gap-2 rounded-lg border bg-background p-3 sm:grid-cols-[minmax(0,1fr)_140px_auto]">
+        <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 rounded-lg border bg-background p-3">
           <Input
+            className="col-span-2"
             value={item.label}
             onChange={(event) => onChange(items.map((current) => current.id === item.id
               ? { ...current, label: event.target.value }
@@ -90,7 +91,7 @@ export function PayrollAdjustmentsEditor({
             <Trash2 className="h-4 w-4" />
           </Button>
           {type === 'earning' && (
-            <div className="flex items-center gap-2 sm:col-span-3">
+            <div className="col-span-2 flex items-center gap-2">
               <Switch
                 id={`legal-bases-${item.id}`}
                 checked={Boolean(item.incideEncargos)}
