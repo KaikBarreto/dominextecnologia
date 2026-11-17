@@ -135,11 +135,13 @@ export function buildHoleriteData(
   ];
 
   const totalProventosExtras = (s.proventosExtras ?? []).reduce(
-    (total, item) => total + Math.max(0, item.valor || 0),
+    (total, item) =>
+      total + (item.label.trim() && Number.isFinite(item.valor) && item.valor > 0 ? item.valor : 0),
     0,
   );
   const totalDescontosExtras = (s.descontosExtras ?? []).reduce(
-    (total, item) => total + Math.max(0, item.valor || 0),
+    (total, item) =>
+      total + (item.label.trim() && Number.isFinite(item.valor) && item.valor > 0 ? item.valor : 0),
     0,
   );
 
@@ -154,10 +156,12 @@ export function buildHoleriteData(
       `${String(new Date().getMonth() + 1).padStart(2, "0")}/${new Date().getFullYear()}`,
     proventos,
     descontos,
-    totalProventos:
-      s.proventos.salary + s.proventos.adicional + s.proventos.bonus + totalProventosExtras,
-    totalDescontos:
-      s.descontos.inss + s.descontos.irrf + s.descontos.vt + s.descontos.faltas + s.descontos.vales + totalDescontosExtras,
+    totalProventos: Math.round((
+      s.proventos.salary + s.proventos.adicional + s.proventos.bonus + totalProventosExtras
+    ) * 100) / 100,
+    totalDescontos: Math.round((
+      s.descontos.inss + s.descontos.irrf + s.descontos.vt + s.descontos.faltas + s.descontos.vales + totalDescontosExtras
+    ) * 100) / 100,
     liquido: s.liquido,
     baseINSS: s.bases.inss,
     baseIRRF: s.bases.irrf,

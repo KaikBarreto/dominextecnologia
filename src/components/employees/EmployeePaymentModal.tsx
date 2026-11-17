@@ -26,6 +26,7 @@ import {
   PayrollAdjustmentsEditor,
   type PayrollAdjustmentDraft,
 } from '@/components/employees/PayrollAdjustmentsEditor';
+import { clampAdvanceDiscount } from '@/utils/payrollPayment';
 
 export interface PaymentPayload {
   valeDiscount: number;
@@ -274,7 +275,7 @@ export function EmployeePaymentModal({
   const valeDiscount = useMemo(() => {
     if (!valeDiscountStr) return balance.totalVales;
     const parsed = parseCurrency(valeDiscountStr);
-    return Math.min(parsed, balance.totalVales);
+    return clampAdvanceDiscount(parsed, balance.totalVales);
   }, [valeDiscountStr, balance.totalVales]);
 
   // --- Cálculo INFORMAL (comportamento atual, byte-a-byte) ---
@@ -473,7 +474,7 @@ export function EmployeePaymentModal({
               <section className="space-y-3 rounded-lg bg-amber-50 px-4 py-4 dark:bg-amber-950/20">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
-                    <Label className="text-base font-semibold normal-case tracking-normal text-foreground">
+                    <Label htmlFor="dominex-advance-discount" className="text-base font-semibold normal-case tracking-normal text-foreground">
                       {t.advanceDiscount.label}
                     </Label>
                     <p className="text-sm text-muted-foreground">
@@ -485,9 +486,17 @@ export function EmployeePaymentModal({
                   </span>
                 </div>
                 <Input
+                  id="dominex-advance-discount"
                   value={valeDiscountStr}
                   onChange={e => setValeDiscountStr(maskCurrency(e.target.value))}
                   onPaste={handleValeDiscountPaste}
+                  onBlur={() => {
+                    const parsed = parseCurrency(valeDiscountStr);
+                    const capped = clampAdvanceDiscount(parsed, balance.totalVales);
+                    if (parsed !== capped) {
+                      setValeDiscountStr(maskCurrency(String(Math.round(capped * 100))));
+                    }
+                  }}
                   placeholder={fmt(balance.totalVales)}
                   className="h-12 text-lg font-semibold"
                 />

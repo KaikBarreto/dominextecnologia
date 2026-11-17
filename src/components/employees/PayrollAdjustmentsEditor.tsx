@@ -21,6 +21,10 @@ interface AdjustmentCopy {
   earningPlaceholder: string;
   deductionPlaceholder: string;
   amountPlaceholder: string;
+  descriptionLabel: string;
+  amountLabel: string;
+  presetsHelp: string;
+  earningPresets: readonly string[];
   legalBases: string;
   addEarning: string;
   addDeduction: string;
@@ -36,9 +40,9 @@ interface Props {
   copy: AdjustmentCopy;
 }
 
-const makeDraft = (incideEncargos = false): PayrollAdjustmentDraft => ({
+const makeDraft = (incideEncargos = false, label = ''): PayrollAdjustmentDraft => ({
   id: crypto.randomUUID(),
-  label: '',
+  label,
   amountInput: '',
   incideEncargos,
 });
@@ -62,29 +66,40 @@ export function PayrollAdjustmentsEditor({
           {type === 'earning' ? copy.emptyEarnings : copy.emptyDeductions}
         </p>
       )}
-      {items.map((item) => (
-        <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
-          <Input
-            className="col-span-2"
-            value={item.label}
-            onChange={(event) => onChange(items.map((current) => current.id === item.id
-              ? { ...current, label: event.target.value }
-              : current))}
-            placeholder={type === 'earning' ? copy.earningPlaceholder : copy.deductionPlaceholder}
-            maxLength={60}
-          />
-          <Input
-            value={item.amountInput}
-            onChange={(event) => onChange(items.map((current) => current.id === item.id
-              ? { ...current, amountInput: onAmountChange(event.target.value) }
-              : current))}
-            inputMode="decimal"
-            placeholder={copy.amountPlaceholder}
-          />
+      {items.map((item) => {
+        const descriptionId = `${type}-description-${item.id}`;
+        const amountId = `${type}-amount-${item.id}`;
+        return (
+          <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+          <div className="col-span-2 space-y-1.5">
+            <Label htmlFor={descriptionId} className="text-xs text-muted-foreground">{copy.descriptionLabel}</Label>
+            <Input
+              id={descriptionId}
+              value={item.label}
+              onChange={(event) => onChange(items.map((current) => current.id === item.id
+                ? { ...current, label: event.target.value }
+                : current))}
+              placeholder={type === 'earning' ? copy.earningPlaceholder : copy.deductionPlaceholder}
+              maxLength={60}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={amountId} className="text-xs text-muted-foreground">{copy.amountLabel}</Label>
+            <Input
+              id={amountId}
+              value={item.amountInput}
+              onChange={(event) => onChange(items.map((current) => current.id === item.id
+                ? { ...current, amountInput: onAmountChange(event.target.value) }
+                : current))}
+              inputMode="decimal"
+              placeholder={copy.amountPlaceholder}
+            />
+          </div>
           <Button
             type="button"
             variant="ghost"
             size="icon"
+            className="mt-6"
             aria-label={copy.remove}
             onClick={() => onChange(items.filter((current) => current.id !== item.id))}
           >
@@ -104,8 +119,9 @@ export function PayrollAdjustmentsEditor({
               </Label>
             </div>
           )}
-        </div>
-      ))}
+          </div>
+        );
+      })}
       <Button
         type="button"
         variant="ghost"
@@ -128,6 +144,29 @@ export function PayrollAdjustmentsEditor({
       <div className="grid gap-5 xl:grid-cols-2 xl:divide-x xl:divide-border">
         <div className="space-y-2 xl:pr-5">
           <Label className="text-emerald-700 dark:text-emerald-400">{copy.earnings}</Label>
+          <div className="flex flex-wrap gap-2" aria-label={copy.earnings}>
+            {copy.earningPresets.map((preset) => {
+              const active = earnings.some((item) => item.label === preset);
+              return (
+                <Button
+                  key={preset}
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  aria-pressed={active}
+                  className={active
+                    ? "h-8 rounded-full bg-primary px-3 text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
+                    : "h-8 rounded-full bg-muted px-3 text-muted-foreground hover:bg-muted/80 hover:text-foreground"}
+                  onClick={() => {
+                    if (!active) onEarningsChange([...earnings, makeDraft(true, preset)]);
+                  }}
+                >
+                  {preset}
+                </Button>
+              );
+            })}
+          </div>
+          <p className="text-xs leading-relaxed text-muted-foreground">{copy.presetsHelp}</p>
           {renderRows(earnings, onEarningsChange, 'earning')}
         </div>
         <div className="space-y-2 xl:pl-5">
