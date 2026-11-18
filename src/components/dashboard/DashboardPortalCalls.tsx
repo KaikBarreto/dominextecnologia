@@ -55,10 +55,11 @@ const DATE_FNS_LOCALE_MAP = {
 
 interface DashboardPortalCallsProps {
   items: ServiceOrder[];
+  totalCount?: number;
   isLoading: boolean;
 }
 
-export function DashboardPortalCalls({ items, isLoading }: DashboardPortalCallsProps) {
+export function DashboardPortalCalls({ items, totalCount = items.length, isLoading }: DashboardPortalCallsProps) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { locale } = useAppLocaleContext();
@@ -109,9 +110,9 @@ export function DashboardPortalCalls({ items, isLoading }: DashboardPortalCallsP
               <Megaphone className="h-5 w-5 text-muted-foreground" />
               {tc.title}
             </CardTitle>
-            {items.length > 0 && (
+            {totalCount > 0 && (
               <Badge className="bg-primary text-primary-foreground text-xs">
-                {items.length}
+                {totalCount}
               </Badge>
             )}
           </div>
@@ -167,7 +168,7 @@ export function DashboardPortalCalls({ items, isLoading }: DashboardPortalCallsP
                     />
                   );
                 })}
-                {items.length > 5 && (
+                {totalCount > 5 && (
                   <button
                     onClick={navigateToCalls}
                     className="w-full text-center text-xs text-primary font-medium min-h-11 py-2.5 hover:bg-muted/40 active:bg-muted/60 flex items-center justify-center gap-1"
@@ -210,7 +211,7 @@ export function DashboardPortalCalls({ items, isLoading }: DashboardPortalCallsP
                     </div>
                   );
                 })}
-                {items.length > 5 && (
+                {totalCount > 5 && (
                   <button
                     onClick={navigateToCalls}
                     className="w-full text-center text-xs text-primary font-medium min-h-11 py-2 hover:underline flex items-center justify-center gap-1"

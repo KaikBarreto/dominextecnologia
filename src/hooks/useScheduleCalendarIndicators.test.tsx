@@ -9,6 +9,10 @@ vi.mock('@/integrations/supabase/client', () => ({
   supabase: { rpc },
 }));
 
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({ profile: { company_id: 'empresa-1' } }),
+}));
+
 import { useScheduleCalendarIndicators } from './useScheduleCalendarIndicators';
 
 function wrapper() {

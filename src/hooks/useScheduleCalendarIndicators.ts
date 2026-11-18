@@ -2,6 +2,7 @@ import { endOfMonth, endOfWeek, format, startOfMonth, startOfWeek } from 'date-f
 import { useQuery } from '@tanstack/react-query';
 
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface ScheduleCalendarIndicator {
   date: string;
@@ -39,19 +40,22 @@ export function useScheduleCalendarIndicators({
   excludeServiceOrderId,
   enabled = true,
 }: UseScheduleCalendarIndicatorsOptions) {
+  const { profile } = useAuth();
+  const companyId = profile?.company_id ?? null;
   const startDate = format(startOfWeek(startOfMonth(month)), 'yyyy-MM-dd');
   const endDate = format(endOfWeek(endOfMonth(month)), 'yyyy-MM-dd');
 
   return useQuery({
     queryKey: [
       ...SCHEDULE_CALENDAR_INDICATORS_KEY,
+      companyId,
       startDate,
       endDate,
       customerId ?? null,
       [...equipmentIds].sort(),
       excludeServiceOrderId ?? null,
     ],
-    enabled,
+    enabled: enabled && !!companyId,
     staleTime: 60_000,
     queryFn: async (): Promise<ScheduleCalendarIndicator[]> => {
       const { data, error } = await supabase.rpc('get_schedule_calendar_indicators', {

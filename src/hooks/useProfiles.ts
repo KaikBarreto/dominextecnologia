@@ -2,18 +2,21 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Profile } from '@/types/database';
+import { fetchAllPaginated } from '@/utils/supabasePagination';
 
 export function useProfiles() {
+  const { profile } = useAuth();
+  const companyId = profile?.company_id ?? null;
+
   return useQuery({
-    queryKey: ['profiles'],
+    queryKey: ['profiles', companyId],
+    enabled: !!companyId,
     queryFn: async () => {
-      const { data, error } = await supabase
+      return fetchAllPaginated<Profile>(() => supabase
         .from('profiles')
         .select('*')
-        .order('full_name');
-      
-      if (error) throw error;
-      return data as Profile[];
+        .order('full_name')
+        .order('user_id'));
     },
   });
 }

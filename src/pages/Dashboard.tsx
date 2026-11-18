@@ -52,7 +52,6 @@ export default function Dashboard() {
   const { profile, user } = useAuth();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.dashboard;
-  const { data: stats, isLoading } = useDashboardStats();
   // Posições GPS AO VIVO dos técnicos (carga inicial + canal realtime, compartilhado
   // com o Mapa ao Vivo). Substitui o antigo posicionamento no endereço do cliente.
   const { technicians: liveLocations } = useLiveTechnicianLocations();
@@ -60,7 +59,8 @@ export default function Dashboard() {
 
   const { preset, range, setPreset, setRange } = useDateRangeFilter('this_month');
 
-  const start = range.from ?? startOfMonth(new Date());
+  const isAllTime = preset === 'all';
+  const start = range.from ?? (isAllTime ? new Date(2000, 0, 1) : startOfMonth(new Date()));
   const end = range.to ?? endOfMonth(new Date());
 
   const prevRange = useMemo(() => {
@@ -68,16 +68,24 @@ export default function Dashboard() {
     return { start: subDays(start, diff), end: subDays(start, 1) };
   }, [start, end]);
 
+  const { data: stats, isLoading } = useDashboardStats({
+    startDate: format(start, 'yyyy-MM-dd'),
+    endDate: format(end, 'yyyy-MM-dd'),
+    previousStartDate: format(prevRange.start, 'yyyy-MM-dd'),
+    previousEndDate: format(prevRange.end, 'yyyy-MM-dd'),
+    allTime: isAllTime,
+  });
+
   // Filtered OS
   const filteredOS = useMemo(() => {
     if (!stats?.allOS) return [];
-    return filterByRange(stats.allOS, 'scheduled_date', start, end);
-  }, [stats?.allOS, start, end]);
+    return isAllTime ? stats.allOS : filterByRange(stats.allOS, 'scheduled_date', start, end);
+  }, [stats?.allOS, start, end, isAllTime]);
 
   const prevFilteredOS = useMemo(() => {
-    if (!stats?.allOS) return [];
+    if (!stats?.allOS || isAllTime) return [];
     return filterByRange(stats.allOS, 'scheduled_date', prevRange.start, prevRange.end);
-  }, [stats?.allOS, prevRange]);
+  }, [stats?.allOS, prevRange, isAllTime]);
 
   // Status counts
   const statusCounts = useMemo(() => {
@@ -399,10 +407,18 @@ export default function Dashboard() {
             <DashboardOSByType data={osByType} isLoading={isLoading} />
           </div>
           <div className="order-7 lg:order-none">
-            <DashboardCriticalOS items={criticalOS} isLoading={isLoading} />
+            <DashboardCriticalOS
+              items={criticalOS}
+              totalCount={stats?.criticalOSCount}
+              isLoading={isLoading}
+            />
           </div>
           <div className="order-8 lg:order-none">
-            <DashboardPortalCalls items={stats?.portalCalls ?? []} isLoading={isLoading} />
+            <DashboardPortalCalls
+              items={stats?.portalCalls ?? []}
+              totalCount={stats?.portalCallsCount}
+              isLoading={isLoading}
+            />
           </div>
         </div>
       </div>

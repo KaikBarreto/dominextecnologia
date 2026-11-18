@@ -54,6 +54,8 @@ interface FilterButtonProps {
   iconOnly?: boolean;
   /** Renderiza como ação sem fundo/borda dentro de um campo de busca. */
   embedded?: boolean;
+  /** Notifica abertura/fechamento para permitir carregar opções sob demanda. */
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function FilterButton({
@@ -64,6 +66,7 @@ export function FilterButton({
   className,
   iconOnly = false,
   embedded = false,
+  onOpenChange,
 }: FilterButtonProps) {
   const isMobile = useIsMobile();
   const { locale } = useAppLocaleContext();
@@ -73,7 +76,13 @@ export function FilterButton({
   const hasActive = activeCount > 0;
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <Sheet
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        onOpenChange?.(nextOpen);
+      }}
+    >
       <SheetTrigger asChild>
         {embedded ? (
           <SearchFieldAction

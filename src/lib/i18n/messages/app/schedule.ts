@@ -15,6 +15,10 @@ export const schedule = {
       subtitle: 'Visualize e gerencie os agendamentos de ordens de serviço',
       subtitleMobile: 'Gerencie suas tarefas e compromissos',
     },
+    loadError: {
+      title: 'Não foi possível carregar a agenda',
+      description: 'Verifique sua conexão e tente novamente.',
+    },
     nav: {
       prevAriaLabel: 'Anterior',
       nextAriaLabel: 'Próximo',
@@ -202,6 +206,10 @@ export const schedule = {
   },
 
   en: {
+    loadError: {
+      title: 'The schedule could not be loaded',
+      description: 'Check your connection and try again.',
+    },
     header: {
       title: 'Schedule',
       subtitle: 'View and manage service order appointments',
@@ -391,6 +399,10 @@ export const schedule = {
   },
 
   es: {
+    loadError: {
+      title: 'No se pudo cargar la agenda',
+      description: 'Comprueba tu conexión e inténtalo de nuevo.',
+    },
     header: {
       title: 'Agenda',
       subtitle: 'Visualice y gestione las citas de órdenes de servicio',
@@ -580,6 +592,10 @@ export const schedule = {
   },
 
   fr: {
+    loadError: {
+      title: `Impossible de charger l'agenda`,
+      description: 'Vérifiez votre connexion et réessayez.',
+    },
     header: {
       title: 'Agenda',
       subtitle: 'Visualisez et gérez les rendez-vous des ordres de service',

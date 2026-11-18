@@ -20,7 +20,15 @@ export interface CriticalOS {
   osType: string;
 }
 
-export function DashboardCriticalOS({ items, isLoading }: { items: CriticalOS[]; isLoading: boolean }) {
+export function DashboardCriticalOS({
+  items,
+  totalCount = items.length,
+  isLoading,
+}: {
+  items: CriticalOS[];
+  totalCount?: number;
+  isLoading: boolean;
+}) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { locale } = useAppLocaleContext();
@@ -37,8 +45,8 @@ export function DashboardCriticalOS({ items, isLoading }: { items: CriticalOS[];
               <AlertTriangle className="h-5 w-5 text-muted-foreground" />
               {t.title}
             </CardTitle>
-            {items.length > 0 && (
-              <Badge variant="destructive" className="text-xs">{items.length}</Badge>
+            {totalCount > 0 && (
+              <Badge variant="destructive" className="text-xs">{totalCount}</Badge>
             )}
           </div>
         </CardHeader>
@@ -71,7 +79,7 @@ export function DashboardCriticalOS({ items, isLoading }: { items: CriticalOS[];
                     }
                   />
                 ))}
-                {items.length > 5 && (
+                {totalCount > 5 && (
                   <button
                     onClick={() => navigate('/ordens-servico')}
                     className="w-full text-center text-xs text-primary font-medium min-h-11 py-2.5 hover:bg-muted/40 active:bg-muted/60 flex items-center justify-center gap-1"
@@ -115,7 +123,7 @@ export function DashboardCriticalOS({ items, isLoading }: { items: CriticalOS[];
                     )}
                   </div>
                 ))}
-                {items.length > 5 && (
+                {totalCount > 5 && (
                   <button
                     onClick={() => navigate('/ordens-servico')}
                     className="w-full text-center text-xs text-primary font-medium min-h-11 py-2 hover:underline flex items-center justify-center gap-1"

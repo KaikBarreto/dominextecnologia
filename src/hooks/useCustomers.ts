@@ -5,7 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
-import type { TablesUpdate } from '@/integrations/supabase/types';
+import type { TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
 
 export interface CustomerInput {
   name: string;
@@ -44,13 +44,14 @@ export interface CustomerInput {
   is_store_customer?: boolean;
 }
 
-export function useCustomers() {
+export function useCustomers(options: { enabled?: boolean } = {}) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
+  const companyId = profile?.company_id ?? null;
 
   const customersQuery = useQuery({
-    queryKey: ['customers', user?.id ?? 'anon'],
+    queryKey: ['customers', companyId, user?.id ?? 'anon'],
     queryFn: async () => {
       const data = await fetchAllPaginated<Customer>(
         () => supabase
@@ -58,10 +59,11 @@ export function useCustomers() {
           .select('*')
           .eq('is_deleted', false)
           .order('name')
+          .order('id')
       );
       return data;
     },
-    enabled: !loading,
+    enabled: !loading && !!companyId && options.enabled !== false,
     retry: 3,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
   });
@@ -72,7 +74,7 @@ export function useCustomers() {
       const company_id = await getCurrentUserCompanyId();
       const { data, error } = await supabase
         .from('customers')
-        .insert({ ...input, company_id } as any)
+        .insert({ ...input, company_id } as TablesInsert<'customers'>)
         .select()
         .single();
       
@@ -113,7 +115,7 @@ export function useCustomers() {
     mutationFn: async (id: string) => {
       const { error } = await supabase
         .from('customers')
-        .update({ is_deleted: true, deleted_at: new Date().toISOString() } as any)
+        .update({ is_deleted: true, deleted_at: new Date().toISOString() } as TablesUpdate<'customers'>)
         .eq('id', id);
       
       if (error) throw error;

@@ -51,6 +51,8 @@ interface ScheduleHeaderProps {
   // Tarefa x OS (E5) — filtra por entry_type
   entryTypeFilter: string[];
   onEntryTypeFilterChange: (val: string[]) => void;
+  filtersEnabled?: boolean;
+  onFiltersOpenChange?: (open: boolean) => void;
 }
 
 export function ScheduleHeader({
@@ -76,9 +78,11 @@ export function ScheduleHeader({
   onStatusFilterChange,
   entryTypeFilter,
   onEntryTypeFilterChange,
+  filtersEnabled = true,
+  onFiltersOpenChange,
 }: ScheduleHeaderProps) {
   const { locale } = useAppLocaleContext();
-  const { labelsFor } = usePartyLabels();
+  const { labelsFor } = usePartyLabels('party', { enabled: filtersEnabled });
   const t = MESSAGES[locale].app.os.scheduleHeader;
   const statusOptions: { value: OsStatus; label: string }[] = [
     { value: 'pendente', label: t.statusPendente },
@@ -167,6 +171,7 @@ export function ScheduleHeader({
           <FilterButton
             activeCount={activeFilterCount}
             onClear={clearAllFilters}
+            onOpenChange={onFiltersOpenChange}
           >
             <FilterCheckboxGroup
               label={t.filterTechnician}
