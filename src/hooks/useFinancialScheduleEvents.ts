@@ -1,148 +1,252 @@
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { useFinancial } from '@/hooks/useFinancial';
+
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery } from '@tanstack/react-query';
-import { useAllCreditCardBills } from '@/hooks/useCreditCardBills';
-import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
+import type { ScheduleOrdersWindow } from '@/hooks/useScheduleOrders';
+import type { ServiceOrder } from '@/types/database';
+import { fetchAllPaginated } from '@/utils/supabasePagination';
+
+type FinancialScheduleEvent = ServiceOrder & {
+  customer: NonNullable<ServiceOrder['customer']>;
+  equipment: null;
+  _realFinancialId?: string;
+  _isFinancialEvent: true;
+  _isCardBillEvent?: boolean;
+  _billId?: string;
+  _financialType: 'entrada' | 'saida';
+  _contractId: string | null;
+  _installmentGroupId: string | null;
+  _assignee_user_ids: string[];
+  _assignees: [];
+};
 
 /**
- * Returns financial transactions (unpaid contas) as pseudo-ServiceOrders (entry_type: 'tarefa')
- * so they can be displayed in the schedule calendar.
- * Only returns data if user has 'fn:view_financial_schedule' permission.
- * Respects the contract-level `show_billing_in_schedule` toggle.
+ * Vencimentos financeiros exibidos como tarefas na Agenda.
+ *
+ * Diferente do hook financeiro geral, esta consulta traz apenas a janela civil
+ * que já está na tela. Assim a Agenda não baixa o histórico contábil, o resumo
+ * financeiro e todas as faturas antes de mostrar o calendário.
  */
-export function useFinancialScheduleEvents() {
-  const { hasPermission, hasRole } = useAuth();
+export function useFinancialScheduleEvents(window: ScheduleOrdersWindow) {
+  const { hasPermission, hasRole, profile } = useAuth();
   const canView = hasPermission('fn:view_financial_schedule') || hasRole('admin');
+  const companyId = profile?.company_id ?? null;
 
-  const { transactions } = useFinancial();
-  const { bills } = useAllCreditCardBills();
-  const { accounts } = useFinancialAccounts();
-
-  // Fetch contracts with billing visibility disabled + billing responsible ids
-  const { data: contractsData = [] } = useQuery({
-    queryKey: ['contracts-billing-config'],
-    enabled: canView,
+  const query = useQuery({
+    queryKey: ['financial-schedule-events', companyId, window.startDate, window.endDate],
+    enabled: canView && !!companyId && !!window.startDate && !!window.endDate,
     queryFn: async () => {
-      const { data } = await supabase
-        .from('contracts')
-        .select('id, show_billing_in_schedule, billing_responsible_ids');
-      return data || [];
+      const [transactions, bills] = await Promise.all([
+        fetchAllPaginated(() => supabase
+          .from('financial_transactions')
+          .select(`
+            id,
+            customer_id,
+            transaction_type,
+            amount,
+            description,
+            due_date,
+            created_at,
+            contract_id,
+            installment_group_id,
+            credit_card_bill_date,
+            billing_reminder_resolved_at,
+            customer:customers(id, name)
+          `)
+          .eq('is_paid', false)
+          .is('parent_transaction_id', null)
+          .is('cancelled_at', null)
+          .is('credit_card_bill_date', null)
+          .gte('due_date', window.startDate)
+          .lte('due_date', window.endDate)
+          .order('id')),
+        fetchAllPaginated(() => supabase
+          .from('credit_card_bills')
+          .select('id, account_id, reference_month, due_date, status, amount_paid')
+          .neq('status', 'paid')
+          .gte('due_date', window.startDate)
+          .lte('due_date', window.endDate)
+          .order('id')),
+      ]);
+
+      const contractIds = [...new Set(
+        transactions.map((transaction) => transaction.contract_id).filter((id): id is string => !!id),
+      )];
+      const accountIds = [...new Set(bills.map((bill) => bill.account_id))];
+      const referenceMonths = [...new Set(bills.map((bill) => bill.reference_month))];
+
+      const accountChunks: string[][] = [];
+      for (let index = 0; index < accountIds.length; index += 100) {
+        accountChunks.push(accountIds.slice(index, index + 100));
+      }
+
+      const billTransactionPromise = (async () => {
+        if (accountChunks.length === 0 || referenceMonths.length === 0) return [];
+
+        const rows: Array<{
+          id: string;
+          account_id: string | null;
+          credit_card_bill_date: string | null;
+          amount: number;
+        }> = [];
+        for (let index = 0; index < accountChunks.length; index += 4) {
+          const batch = await Promise.all(
+            accountChunks.slice(index, index + 4).map((ids) => fetchAllPaginated(() => supabase
+              .from('financial_transactions')
+              .select('id, account_id, credit_card_bill_date, amount')
+              .eq('transaction_type', 'saida')
+              .is('cancelled_at', null)
+              .in('account_id', ids)
+              .in('credit_card_bill_date', referenceMonths)
+              .order('id'))),
+          );
+          rows.push(...batch.flat());
+        }
+        return rows;
+      })();
+
+      const [contracts, accounts, billTransactions] = await Promise.all([
+        contractIds.length > 0
+          ? fetchAllPaginated(() => supabase
+              .from('contracts')
+              .select('id, show_billing_in_schedule, billing_responsible_ids')
+              .in('id', contractIds)
+              .order('id'))
+          : Promise.resolve([]),
+        accountIds.length > 0
+          ? fetchAllPaginated(() => supabase
+              .from('financial_accounts')
+              .select('id, name')
+              .in('id', accountIds)
+              .order('id'))
+          : Promise.resolve([]),
+        billTransactionPromise,
+      ]);
+
+      return {
+        transactions,
+        bills,
+        billTransactions,
+        contracts,
+        accounts,
+      };
     },
-    staleTime: 60_000,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    placeholderData: keepPreviousData,
   });
 
-  const hiddenContractIds = useMemo(() => 
-    contractsData.filter(c => c.show_billing_in_schedule === false).map(c => c.id),
-    [contractsData]
-  );
-
-  const contractBillingMap = useMemo(() => {
-    const map: Record<string, string[]> = {};
-    for (const c of contractsData) {
-      if (c.billing_responsible_ids && (c.billing_responsible_ids as string[]).length > 0) {
-        map[c.id] = c.billing_responsible_ids as string[];
-      }
-    }
-    return map;
-  }, [contractsData]);
-
   const financialEvents = useMemo(() => {
-    if (!canView) return [];
+    if (!canView || !query.data) return [];
 
-    const transactionEvents = transactions
-      .filter((t) => {
-        if (t.is_paid || !t.due_date) return false;
-        // Despesas de cartão NÃO aparecem item-a-item: a fatura agregada (abaixo)
-        // é o item que vence e é pago. Regra: despesa de cartão nasce is_paid=false
-        // e quem fica paga é a fatura (credit_card_bills).
-        if ((t as any).credit_card_bill_date) return false;
-        // Hide billing from contracts that have the toggle disabled
-        if (t.contract_id && hiddenContractIds.includes(t.contract_id)) return false;
+    const hiddenContractIds = new Set(
+      query.data.contracts
+        .filter((contract) => contract.show_billing_in_schedule === false)
+        .map((contract) => contract.id),
+    );
+    const contractBillingMap = new Map<string, string[]>();
+    for (const contract of query.data.contracts) {
+      const responsibleIds = Array.isArray(contract.billing_responsible_ids)
+        ? contract.billing_responsible_ids.filter((id): id is string => typeof id === 'string')
+        : [];
+      if (responsibleIds.length > 0) contractBillingMap.set(contract.id, responsibleIds);
+    }
+
+    const transactionEvents = query.data.transactions
+      .filter((transaction) => {
+        if (!transaction.due_date || transaction.credit_card_bill_date) return false;
+        if (transaction.contract_id && hiddenContractIds.has(transaction.contract_id)) return false;
         return true;
       })
-      .map((t) => {
-        const isReceivable = t.transaction_type === 'entrada';
-        const amount = Number(t.amount || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        
-        // Get billing responsible ids from contract if available
-        const billingIds = t.contract_id ? (contractBillingMap[t.contract_id] || []) : [];
-        
-        return {
-          id: `fin-${t.id}`,
-          _realFinancialId: t.id,
-          order_number: 0,
-          customer_id: t.customer_id || '',
-          os_type: 'visita_tecnica',
-          entry_type: 'tarefa',
-          task_title: `${isReceivable ? 'A Receber' : 'A Pagar'}: ${t.description} — ${amount}`,
-          status: (t as any).billing_reminder_resolved_at ? 'concluida' : 'pendente',
-          scheduled_date: t.due_date!,
-          scheduled_time: '08:00',
-          description: `${isReceivable ? 'A Receber' : 'A Pagar'}: ${t.description} — ${amount}`,
-          created_at: t.created_at,
-          updated_at: t.created_at,
-          customer: {
-            id: t.customer_id,
-            name: (t as any).customer?.name || (isReceivable ? 'A Receber' : 'A Pagar'),
-          },
-          equipment: null,
-          _isFinancialEvent: true,
-          _financialType: t.transaction_type,
-          _contractId: t.contract_id || null,
-          _installmentGroupId: t.installment_group_id || null,
-          _assignee_user_ids: billingIds,
-          _assignees: [],
-          service_type: null,
-        } as any;
-      });
-
-    // Faturas de cartão em aberto → 1 item por fatura, no vencimento da fatura.
-    const accountNameById: Record<string, string> = {};
-    for (const acc of accounts) accountNameById[acc.id] = acc.name;
-
-    const billEvents = bills
-      .filter((bill) => {
-        if (bill.status === 'paid') return false;
-        const owed = Number(bill.total_amount ?? 0) - Number(bill.amount_paid ?? 0);
-        return owed > 0;
-      })
-      .map((bill) => {
-        const owed = Number(bill.total_amount ?? 0) - Number(bill.amount_paid ?? 0);
-        const amount = owed.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        const cardName = accountNameById[bill.account_id] || 'Cartão';
-        const label = `A Pagar: Fatura ${cardName} — ${amount}`;
+      .map((transaction) => {
+        const isReceivable = transaction.transaction_type === 'entrada';
+        const amount = Number(transaction.amount || 0).toLocaleString('pt-BR', {
+          style: 'currency',
+          currency: 'BRL',
+        });
+        const label = `${isReceivable ? 'A Receber' : 'A Pagar'}: ${transaction.description} — ${amount}`;
 
         return {
-          id: `bill-${bill.id}`,
+          id: `fin-${transaction.id}`,
+          _realFinancialId: transaction.id,
           order_number: 0,
-          customer_id: '',
+          customer_id: transaction.customer_id || '',
           os_type: 'visita_tecnica',
           entry_type: 'tarefa',
           task_title: label,
-          status: 'pendente',
-          scheduled_date: bill.due_date,
+          status: transaction.billing_reminder_resolved_at ? 'concluida' : 'pendente',
+          scheduled_date: transaction.due_date,
           scheduled_time: '08:00',
           description: label,
-          created_at: bill.due_date,
-          updated_at: bill.due_date,
-          customer: { id: '', name: 'A Pagar' },
+          created_at: transaction.created_at,
+          updated_at: transaction.created_at,
+          customer: transaction.customer ?? {
+            id: transaction.customer_id,
+            name: isReceivable ? 'A Receber' : 'A Pagar',
+          },
           equipment: null,
           _isFinancialEvent: true,
-          _isCardBillEvent: true,
-          _billId: bill.id,
-          _financialType: 'saida',
-          _contractId: null,
-          _installmentGroupId: null,
-          _assignee_user_ids: [],
+          _financialType: transaction.transaction_type,
+          _contractId: transaction.contract_id || null,
+          _installmentGroupId: transaction.installment_group_id || null,
+          _assignee_user_ids: transaction.contract_id
+            ? contractBillingMap.get(transaction.contract_id) ?? []
+            : [],
           _assignees: [],
           service_type: null,
-        } as any;
+        } as unknown as FinancialScheduleEvent;
       });
 
-    return [...transactionEvents, ...billEvents];
-  }, [canView, transactions, hiddenContractIds, contractBillingMap, bills, accounts]);
+    const accountNameById = new Map(query.data.accounts.map((account) => [account.id, account.name]));
+    const totalByBillKey = new Map<string, number>();
+    for (const transaction of query.data.billTransactions) {
+      if (!transaction.account_id || !transaction.credit_card_bill_date) continue;
+      const key = `${transaction.account_id}__${transaction.credit_card_bill_date}`;
+      totalByBillKey.set(key, (totalByBillKey.get(key) ?? 0) + Number(transaction.amount || 0));
+    }
 
-  return { financialEvents, canView };
+    const billEvents = query.data.bills.flatMap((bill) => {
+      const total = totalByBillKey.get(`${bill.account_id}__${bill.reference_month}`) ?? 0;
+      const owed = total - Number(bill.amount_paid ?? 0);
+      if (owed <= 0) return [];
+      const amount = owed.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      const cardName = accountNameById.get(bill.account_id) || 'Cartão';
+      const label = `A Pagar: Fatura ${cardName} — ${amount}`;
+
+      return [{
+        id: `bill-${bill.id}`,
+        order_number: 0,
+        customer_id: '',
+        os_type: 'visita_tecnica',
+        entry_type: 'tarefa',
+        task_title: label,
+        status: 'pendente',
+        scheduled_date: bill.due_date,
+        scheduled_time: '08:00',
+        description: label,
+        created_at: bill.due_date,
+        updated_at: bill.due_date,
+        customer: { id: '', name: 'A Pagar' },
+        equipment: null,
+        _isFinancialEvent: true,
+        _isCardBillEvent: true,
+        _billId: bill.id,
+        _financialType: 'saida',
+        _contractId: null,
+        _installmentGroupId: null,
+        _assignee_user_ids: [],
+        _assignees: [],
+        service_type: null,
+      } as unknown as FinancialScheduleEvent];
+    });
+
+    return [...transactionEvents, ...billEvents];
+  }, [canView, query.data]);
+
+  return {
+    financialEvents,
+    canView,
+    isLoading: query.isLoading,
+  };
 }

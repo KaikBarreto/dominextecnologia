@@ -1,8 +1,10 @@
+import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { fetchAllPaginated } from '@/utils/supabasePagination';
 
 export interface Team {
   id: string;
@@ -40,36 +42,45 @@ export interface TeamInput {
 
 export function useTeams() {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const companyId = profile?.company_id ?? null;
   const queryClient = useQueryClient();
 
   const teamsQuery = useQuery({
-    queryKey: ['teams'],
+    queryKey: ['teams', companyId],
+    enabled: !!companyId,
     queryFn: async () => {
-      const { data, error } = await supabase
+      return fetchAllPaginated<Team>(() => supabase
         .from('teams')
         .select('*')
-        .order('name');
-      if (error) throw error;
-      return data as Team[];
+        .order('name')
+        .order('id'));
     },
   });
 
   const membersQuery = useQuery({
-    queryKey: ['team-members'],
+    queryKey: ['team-members', companyId],
+    enabled: !!companyId,
     queryFn: async () => {
-      const { data, error } = await supabase
+      return fetchAllPaginated<TeamMember>(() => supabase
         .from('team_members')
-        .select('*');
-      if (error) throw error;
-      return data as TeamMember[];
+        .select('*')
+        .order('id'));
     },
   });
 
-  const teamsWithMembers: TeamWithMembers[] = (teamsQuery.data ?? []).map(team => ({
-    ...team,
-    members: (membersQuery.data ?? []).filter(m => m.team_id === team.id),
-  }));
+  const teamsWithMembers = useMemo<TeamWithMembers[]>(() => {
+    const membersByTeam = new Map<string, TeamMember[]>();
+    for (const member of membersQuery.data ?? []) {
+      const members = membersByTeam.get(member.team_id) ?? [];
+      members.push(member);
+      membersByTeam.set(member.team_id, members);
+    }
+    return (teamsQuery.data ?? []).map((team) => ({
+      ...team,
+      members: membersByTeam.get(team.id) ?? [],
+    }));
+  }, [membersQuery.data, teamsQuery.data]);
 
   const createTeam = useMutation({
     mutationFn: async (input: TeamInput) => {

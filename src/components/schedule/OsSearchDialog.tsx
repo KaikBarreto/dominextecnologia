@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { getDateFnsLocale } from '@/lib/format';
 import type { LocaleCode } from '@/lib/i18n/locales';
-import { Search as SearchIcon, User as UserIcon, Calendar as CalendarIcon } from 'lucide-react';
+import { Search as SearchIcon, User as UserIcon, Calendar as CalendarIcon, Loader2 } from 'lucide-react';
 
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Input } from '@/components/ui/input';
@@ -17,7 +17,7 @@ import { MESSAGES } from '@/lib/i18n/messages';
 /**
  * Modal de busca paginada de OS / tarefas dentro da Agenda.
  *
- * - Busca client-side em cima dos dados já carregados (PWA offline-friendly).
+ * - Busca client-side sobre o histórico carregado sob demanda ao abrir o modal.
  * - Casa por: número da OS, nome do cliente, descrição, título de tarefa,
  *   técnico atribuído, tipo de serviço.
  * - Paginação simples (10 por página, com "Carregar mais").
@@ -32,11 +32,8 @@ const PAGE_SIZE = 10;
 export type AgendaSearchOrder = ServiceOrder & {
   customer?: { name?: string | null; phone?: string | null; celular?: string | null } | null;
   equipment?: { name?: string | null } | null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   _assignees?: { id: string; name: string }[];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   service_type?: { name?: string | null; color?: string | null } | null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   _isFinancialEvent?: boolean;
 };
 
@@ -44,6 +41,8 @@ export interface OsSearchDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   orders: AgendaSearchOrder[];
+  isLoading?: boolean;
+  hasError?: boolean;
   onSelect: (order: AgendaSearchOrder) => void;
 }
 
@@ -88,7 +87,7 @@ function formatScheduledDate(date: string | null | undefined, noDateLabel: strin
   }
 }
 
-export function OsSearchDialog({ open, onOpenChange, orders, onSelect }: OsSearchDialogProps) {
+export function OsSearchDialog({ open, onOpenChange, orders, isLoading = false, hasError = false, onSelect }: OsSearchDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.os.osSearch;
   const [query, setQuery] = useState('');
@@ -175,14 +174,26 @@ export function OsSearchDialog({ open, onOpenChange, orders, onSelect }: OsSearc
 
         {/* Lista de resultados */}
         <div className="space-y-2 min-h-[120px]">
-          {visibleResults.length === 0 && (
+          {isLoading && (
+            <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              {t.loadingHistory}
+            </div>
+          )}
+          {!isLoading && hasError && (
+            <div className="flex flex-col items-center justify-center py-10 text-center text-sm text-destructive">
+              <SearchIcon className="mb-2 h-6 w-6 opacity-60" />
+              {t.historyError}
+            </div>
+          )}
+          {!isLoading && !hasError && visibleResults.length === 0 && (
             <div className="flex flex-col items-center justify-center py-10 text-center text-sm text-muted-foreground">
               <SearchIcon className="h-6 w-6 mb-2 opacity-60" />
               {query.trim() ? t.emptyNoResults : t.emptyTyping}
             </div>
           )}
 
-          {visibleResults.map((order) => {
+          {!isLoading && !hasError && visibleResults.map((order) => {
             const statusBadge = getStatusBadgeClass(order.status, order.scheduled_date);
             const taskTitle = (order as unknown as { task_title?: string }).task_title;
             const isTask = (order as unknown as { entry_type?: string }).entry_type === 'tarefa';

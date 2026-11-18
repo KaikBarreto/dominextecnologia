@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, format, getYear, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from 'date-fns';
+import { addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, format, getYear } from 'date-fns';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { ChevronLeft, ChevronRight, Plus, PauseCircle, Calendar as CalendarIcon, List as ListIcon, Search as SearchIcon } from 'lucide-react';
@@ -20,6 +20,7 @@ import { ScheduleSkeleton } from '@/components/schedule/ScheduleSkeleton';
 import { EntryTypeSelectorDialog } from '@/components/schedule/EntryTypeSelectorDialog';
 import { TaskFormDialog, type TaskFormData } from '@/components/schedule/TaskFormDialog';
 import { useServiceOrders, ServiceOrderInput } from '@/hooks/useServiceOrders';
+import { useScheduleOrders } from '@/hooks/useScheduleOrders';
 import { useTaskSubmit } from '@/hooks/useTaskSubmit';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useCustomers } from '@/hooks/useCustomers';
@@ -61,6 +62,7 @@ import {
   normalizeServiceOrderSchedulePlan,
   shiftSchedulePlanToStart,
 } from '@/lib/serviceOrderSchedule';
+import { getScheduleVisibleWindow } from '@/lib/scheduleVisibleWindow';
 
 type PendingScheduleConflict =
   | {
@@ -90,10 +92,10 @@ type SchedulableOrder = ServiceOrder & {
 };
 
 export default function Schedule() {
-  const { serviceOrders, isLoading, createServiceOrder, updateServiceOrder, rescheduleServiceOrder, deleteServiceOrder, resetServiceOrder } = useServiceOrders();
   const { data: allProfiles = [] } = useProfiles();
-  const { customers } = useCustomers();
-  const { labelsFor } = usePartyLabels();
+  const [filterOptionsEnabled, setFilterOptionsEnabled] = useState(false);
+  const { customers } = useCustomers({ enabled: filterOptionsEnabled });
+  const { labelsFor } = usePartyLabels('party', { enabled: filterOptionsEnabled });
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const { teamsWithMembers } = useTeams();
@@ -151,6 +153,36 @@ export default function Schedule() {
   // e continua reagindo ao resize que cruza o breakpoint, que troca o slot.
   const hidratadoPara = useRef<'mobile' | 'desktop' | null>(null);
 
+  // Busca histórica é deliberadamente sob demanda. A abertura da Agenda usa a
+  // RPC recortada pela janela visível; o histórico completo só é baixado se a
+  // pessoa abrir a busca global.
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+
+  const preferredPeriod = scheduleViewMode?.[scheduleDevice]?.split('::')[0];
+  const preferredViewMode = (['month', 'week', 'day'] as ViewMode[]).includes(preferredPeriod as ViewMode)
+    ? preferredPeriod as ViewMode
+    : viewMode;
+  const queryViewMode = hidratadoPara.current === scheduleDevice ? viewMode : preferredViewMode;
+  const scheduleWindow = useMemo(
+    () => getScheduleVisibleWindow(currentDate, queryViewMode),
+    [currentDate, queryViewMode],
+  );
+  const {
+    serviceOrders,
+    isLoading,
+    error: scheduleError,
+  } = useScheduleOrders(scheduleWindow, { enabled: !isPrefsLoading });
+  const {
+    serviceOrders: searchServiceOrders,
+    isLoading: isSearchLoading,
+    error: searchError,
+    createServiceOrder,
+    updateServiceOrder,
+    rescheduleServiceOrder,
+    deleteServiceOrder,
+    resetServiceOrder,
+  } = useServiceOrders({ enabled: isSearchModalOpen });
+
   // Hidrata o viewMode+displayMode a partir da preferência salva do aparelho
   // atual. Também reage ao redimensionamento que cruza o breakpoint (celular ↔
   // computador): ao trocar de slot lógico, relê a preferência daquele aparelho.
@@ -204,15 +236,23 @@ export default function Schedule() {
   const queryClient = useQueryClient();
   const { submitTask } = useTaskSubmit();
 
+  const lastScheduleError = useRef<unknown>(null);
+  useEffect(() => {
+    if (!scheduleError || lastScheduleError.current === scheduleError) return;
+    lastScheduleError.current = scheduleError;
+    toast({
+      variant: 'destructive',
+      title: t.loadError.title,
+      description: t.loadError.description,
+    });
+  }, [scheduleError, t.loadError.description, t.loadError.title, toast]);
+
   // Filters — multi-select (vazio = todos)
   const [technicianFilter, setTechnicianFilter] = useState<string[]>([]);
   const [customerFilter, setCustomerFilter] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   // Tarefa x OS (E5) — valores 'os' | 'tarefa', vazio = todos
   const [entryTypeFilter, setEntryTypeFilter] = useState<string[]>([]);
-
-  // Busca modal paginada (desktop e mobile) — ResponsiveModal com 10/página
-  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
   // Get team IDs the current user belongs to
   const myTeamIds = useMemo(() => {
@@ -225,7 +265,7 @@ export default function Schedule() {
   // Check if current user has technician role (only filter for tecnico role)
   const isTechnician = hasRole('tecnico');
 
-  const { financialEvents } = useFinancialScheduleEvents();
+  const { financialEvents } = useFinancialScheduleEvents(scheduleWindow);
 
   // Holidays
   const showHolidays = useMemo(() => {
@@ -362,19 +402,7 @@ export default function Schedule() {
   // Usado só pela legenda (ScheduleLegend), pra mostrar apenas os tipos de
   // serviço que aparecem na tela agora — não o catálogo inteiro cadastrado.
   const visibleRangeOrders = useMemo(() => {
-    let startKey: string;
-    let endKey: string;
-    if (viewMode === 'month') {
-      const gridStart = startOfWeek(startOfMonth(currentDate), { weekStartsOn: 0 });
-      const gridEnd = endOfWeek(endOfMonth(currentDate), { weekStartsOn: 0 });
-      startKey = format(gridStart, 'yyyy-MM-dd');
-      endKey = format(gridEnd, 'yyyy-MM-dd');
-    } else if (viewMode === 'week') {
-      startKey = format(startOfWeek(currentDate, { weekStartsOn: 0 }), 'yyyy-MM-dd');
-      endKey = format(endOfWeek(currentDate, { weekStartsOn: 0 }), 'yyyy-MM-dd');
-    } else {
-      startKey = endKey = format(currentDate, 'yyyy-MM-dd');
-    }
+    const { startDate: startKey, endDate: endKey } = getScheduleVisibleWindow(currentDate, viewMode);
     return filteredOrders.filter((o) => !!o.scheduled_date && o.scheduled_date >= startKey && o.scheduled_date <= endKey);
   }, [filteredOrders, viewMode, currentDate]);
 
@@ -383,7 +411,7 @@ export default function Schedule() {
   // filtros de navegação (técnico/cliente/status), sem expandir retomadas e sem
   // financialEvents. O modal tem busca textual própria e pagina os resultados.
   const searchableOrders = useMemo(() => {
-    return serviceOrders
+    return searchServiceOrders
       .filter((order) => {
         // Visibilidade de TAREFAS: sem acesso total, só aparece pra quem é responsável.
         if ((order as any).entry_type === 'tarefa' && !canViewAllSchedule) {
@@ -406,7 +434,7 @@ export default function Schedule() {
         const { assignees, team } = getAssignees(order);
         return { ...order, _assignees: assignees, _team: team };
       });
-  }, [serviceOrders, isTechnician, user?.id, myTeamIds, canViewAllSchedule, getAssignees]);
+  }, [searchServiceOrders, isTechnician, user?.id, myTeamIds, canViewAllSchedule, getAssignees]);
 
   const handlePrev = () => {
     if (viewMode === 'month') setCurrentDate(subMonths(currentDate, 1));
@@ -958,6 +986,9 @@ export default function Schedule() {
             triggerLabel={t.filters.filters}
             activeCount={activeFilterCount}
             onClear={clearFilters}
+            onOpenChange={(open) => {
+              if (open) setFilterOptionsEnabled(true);
+            }}
           >
             <div className="space-y-4">
               <FilterCheckboxGroup
@@ -1178,6 +1209,8 @@ export default function Schedule() {
           open={isSearchModalOpen}
           onOpenChange={setIsSearchModalOpen}
           orders={searchableOrders as any}
+          isLoading={isSearchLoading}
+          hasError={!!searchError}
           onSelect={(order) => handleSearchResultSelect(order as any)}
         />
         {/* "Houve alguma receita nesta OS?" — sobe depois de a OS ser gravada
@@ -1221,6 +1254,10 @@ export default function Schedule() {
         onStatusFilterChange={setStatusFilter}
         entryTypeFilter={entryTypeFilter}
         onEntryTypeFilterChange={setEntryTypeFilter}
+        filtersEnabled={filterOptionsEnabled}
+        onFiltersOpenChange={(open) => {
+          if (open) setFilterOptionsEnabled(true);
+        }}
       />
 
       <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0 mt-4">
@@ -1331,6 +1368,8 @@ export default function Schedule() {
         open={isSearchModalOpen}
         onOpenChange={setIsSearchModalOpen}
         orders={searchableOrders as any}
+        isLoading={isSearchLoading}
+        hasError={!!searchError}
         onSelect={(order) => handleSearchResultSelect(order as any)}
       />
       <ScheduleConflictDialog

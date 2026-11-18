@@ -16,6 +16,7 @@ interface FilterSheetProps {
   onApply?: () => void;
   /** Classe extra no botão de gatilho (ex: alinhar altura com os vizinhos da toolbar). */
   triggerClassName?: string;
+  onOpenChange?: (open: boolean) => void;
 }
 
 /**
@@ -28,6 +29,7 @@ export function FilterSheet({
   onClear,
   onApply,
   triggerClassName,
+  onOpenChange,
 }: FilterSheetProps) {
   const isMobile = useIsMobile();
   const { locale } = useAppLocaleContext();
@@ -49,7 +51,13 @@ export function FilterSheet({
   };
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <Sheet
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        onOpenChange?.(nextOpen);
+      }}
+    >
       <SheetTrigger asChild>
         <Button variant="outline" size="sm" className={cn('gap-2 h-9', triggerClassName)}>
           <SlidersHorizontal className="h-4 w-4" />

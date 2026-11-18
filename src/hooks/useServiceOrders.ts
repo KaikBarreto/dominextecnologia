@@ -26,6 +26,7 @@ import {
 import type { ServiceOrderBudgetItem, ServiceOrderBudgetPricing } from '@/lib/serviceOrderBudget';
 import { normalizeServiceOrderSchedulePlan } from '@/lib/serviceOrderSchedule';
 import { SERVICE_ORDER_OPTIONS_KEY } from '@/hooks/useServiceOrderOptions';
+import { fetchAllPaginated } from '@/utils/supabasePagination';
 
 export interface ServiceOrderEquipmentItem {
   equipment_id?: string;
@@ -188,23 +189,21 @@ export interface ResetServiceOrderInput {
   clearResponses: boolean;
 }
 
-export function useServiceOrders() {
+export function useServiceOrders(options: { enabled?: boolean } = {}) {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const companyId = profile?.company_id ?? null;
   const queryClient = useQueryClient();
   const { locale, timezone } = useAppLocaleContext();
 
   const serviceOrdersQuery = useQuery({
-    queryKey: ['service-orders'],
+    queryKey: ['service-orders', 'all', companyId],
+    enabled: options.enabled !== false && !!companyId,
     queryFn: async () => {
-      // Fetch all service orders (paginated to avoid 1000 row limit)
-      let allData: any[] = [];
-      let from = 0;
-      const pageSize = 1000;
-      while (true) {
-        // A FK explicita no embed de service_types evita ambiguidade com a
-        // relacao N:N criada por service_order_service_types.
-        const { data, error } = await supabase
+      // A FK explicita no embed de service_types evita ambiguidade com a
+      // relacao N:N criada por service_order_service_types. A paginação
+      // compartilhada impede truncamento silencioso no limite de 1.000 linhas.
+      const allData = await fetchAllPaginated<any>(() => supabase
           .from('service_orders')
           .select(`
             *,
@@ -215,35 +214,31 @@ export function useServiceOrders() {
             contract:contracts(id, name, is_pmoc)
           `)
           .order('created_at', { ascending: false })
-          .range(from, from + pageSize - 1);
-        
-        if (error) throw error;
-        allData = allData.concat(data || []);
-        if (!data || data.length < pageSize) break;
-        from += pageSize;
-      }
+          .order('id'));
 
-      // Fetch all assignees with pagination (Supabase has 1000 row default limit)
+      // Busca os responsáveis por lotes curtos para não estourar a URL. Quatro
+      // lotes rodam em paralelo: elimina o N+1 sequencial sem abrir dezenas de
+      // conexões de uma vez em tenants grandes.
       const orderIds = allData.map((o: any) => o.id);
-      let allAssignees: any[] = [];
+      const allAssignees: Array<{ service_order_id: string; user_id: string }> = [];
       if (orderIds.length > 0) {
-        // Paginate in chunks to avoid both URL length issues and the 1000 row limit
-        const chunkSize = 200; // chunk of order IDs per query
-        for (let i = 0; i < orderIds.length; i += chunkSize) {
-          const chunk = orderIds.slice(i, i + chunkSize);
-          let aFrom = 0;
-          const aPageSize = 1000;
-          while (true) {
-            const { data: assignees, error: aErr } = await supabase
+        const chunks: string[][] = [];
+        for (let index = 0; index < orderIds.length; index += 200) {
+          chunks.push(orderIds.slice(index, index + 200));
+        }
+        for (let index = 0; index < chunks.length; index += 4) {
+          const batch = await Promise.all(
+            chunks.slice(index, index + 4).map((chunk) => fetchAllPaginated<{
+              service_order_id: string;
+              user_id: string;
+            }>(() => supabase
               .from('service_order_assignees')
               .select('service_order_id, user_id')
               .in('service_order_id', chunk)
-              .range(aFrom, aFrom + aPageSize - 1);
-            if (aErr) break;
-            allAssignees = allAssignees.concat(assignees || []);
-            if (!assignees || assignees.length < aPageSize) break;
-            aFrom += aPageSize;
-          }
+              .order('service_order_id')
+              .order('user_id'))),
+          );
+          allAssignees.push(...batch.flat());
         }
       }
 
@@ -266,11 +261,16 @@ export function useServiceOrders() {
         // `email` em profiles é populado por trigger a partir de auth.users (migration
         // aplicada em paralelo). Cast pra `any` no campo pra não quebrar tsc enquanto
         // o types.ts ainda não foi regenerado — comportamento estável após regen.
-        const { data: profiles } = await supabase
+        const profileChunks: string[][] = [];
+        for (let index = 0; index < createdByIds.length; index += 200) {
+          profileChunks.push(createdByIds.slice(index, index + 200) as string[]);
+        }
+        const profiles = (await Promise.all(profileChunks.map((ids) => fetchAllPaginated<any>(() => supabase
           .from('profiles')
           .select('user_id, full_name, avatar_url, email' as any)
-          .in('user_id', createdByIds);
-        (profiles || []).forEach((p: any) => {
+          .in('user_id', ids)
+          .order('user_id'))))).flat();
+        profiles.forEach((p: any) => {
           profileMap.set(p.user_id, {
             full_name: p.full_name,
             avatar_url: p.avatar_url,
@@ -292,6 +292,7 @@ export function useServiceOrders() {
 
       return allData as unknown as (ServiceOrder & { customer: any; equipment: any; form_template: any; _assignee_user_ids?: string[] })[];
     },
+    staleTime: 60_000,
   });
 
   const createServiceOrder = useMutation({

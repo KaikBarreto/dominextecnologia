@@ -25,6 +25,7 @@ import {
   normalizePermissionText,
   type PermissionSearchGroup,
 } from './permissionSearch';
+import { getAgnosticPermissionPresetDisplay } from '@/lib/permissionPresetDisplay';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Editor de permissões (compartilhado entre "Editar Usuário" e "Cargos").
@@ -296,12 +297,13 @@ export function PermissionsEditor({
             )}
             {presets.map(preset => {
               const active = activePresetId === preset.id;
+              const display = getAgnosticPermissionPresetDisplay(preset.name, preset.description);
               return (
                 <button
                   key={preset.id}
                   type="button"
                   onClick={() => applyPreset(preset)}
-                  title={preset.description || undefined}
+                  title={display.description || undefined}
                   aria-pressed={active}
                   className={cn(
                     'inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
@@ -311,7 +313,7 @@ export function PermissionsEditor({
                   )}
                 >
                   {active && <Check className="h-3.5 w-3.5" />}
-                  {preset.name}
+                  {display.name}
                 </button>
               );
             })}

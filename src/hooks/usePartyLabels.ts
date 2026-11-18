@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { fetchAllPaginated } from '@/utils/supabasePagination';
 
 export type PartyLabelScope = 'party' | 'equipment' | 'all';
 export type PartyLabelEntity = 'customer' | 'supplier' | 'equipment';
@@ -31,7 +32,10 @@ type PartyLabelInput = Pick<PartyLabel, 'name' | 'color'> & Partial<Pick<PartyLa
 const consumerKeys = ['party-labels', 'customers', 'suppliers', 'equipment'];
 const EMPTY_LABELS: PartyLabel[] = [];
 
-export function usePartyLabels(scope: Exclude<PartyLabelScope, 'all'> = 'party') {
+export function usePartyLabels(
+  scope: Exclude<PartyLabelScope, 'all'> = 'party',
+  options: { enabled?: boolean } = {},
+) {
   const { profile } = useAuth();
   const companyId = profile?.company_id ?? null;
   const queryClient = useQueryClient();
@@ -39,29 +43,46 @@ export function usePartyLabels(scope: Exclude<PartyLabelScope, 'all'> = 'party')
 
   const query = useQuery({
     queryKey: ['party-labels', companyId, scope],
-    enabled: !!companyId,
+    enabled: !!companyId && options.enabled !== false,
     queryFn: async () => {
       if (!companyId) return { labels: [] as PartyLabel[], assignments: [] as PartyLabelAssignment[] };
-      const labelsResult = await supabase.from('party_labels').select('*').eq('company_id', companyId).in('scope', [scope, 'all']).order('name');
-      if (labelsResult.error) throw labelsResult.error;
+      const labels = await fetchAllPaginated<PartyLabel>(() => supabase
+        .from('party_labels')
+        .select('*')
+        .eq('company_id', companyId)
+        .in('scope', [scope, 'all'])
+        .order('name')
+        .order('id'));
       const assignments: PartyLabelAssignment[] = [];
       if (scope === 'party') {
-        const [customersResult, suppliersResult] = await Promise.all([
-          supabase.from('customer_label_assignments').select('customer_id,label_id,position').eq('company_id', companyId),
-          supabase.from('supplier_label_assignments').select('supplier_id,label_id,position').eq('company_id', companyId),
+        const [customerAssignments, supplierAssignments] = await Promise.all([
+          fetchAllPaginated<{ customer_id: string; label_id: string; position: number }>(() => supabase
+            .from('customer_label_assignments')
+            .select('customer_id,label_id,position')
+            .eq('company_id', companyId)
+            .order('customer_id')
+            .order('label_id')),
+          fetchAllPaginated<{ supplier_id: string; label_id: string; position: number }>(() => supabase
+            .from('supplier_label_assignments')
+            .select('supplier_id,label_id,position')
+            .eq('company_id', companyId)
+            .order('supplier_id')
+            .order('label_id')),
         ]);
-        if (customersResult.error) throw customersResult.error;
-        if (suppliersResult.error) throw suppliersResult.error;
-        for (const row of customersResult.data ?? []) assignments.push({ entityType: 'customer', entityId: row.customer_id, labelId: row.label_id, position: row.position });
-        for (const row of suppliersResult.data ?? []) assignments.push({ entityType: 'supplier', entityId: row.supplier_id, labelId: row.label_id, position: row.position });
+        for (const row of customerAssignments) assignments.push({ entityType: 'customer', entityId: row.customer_id, labelId: row.label_id, position: row.position });
+        for (const row of supplierAssignments) assignments.push({ entityType: 'supplier', entityId: row.supplier_id, labelId: row.label_id, position: row.position });
       } else {
-        const equipmentResult = await supabase.from('equipment_label_assignments').select('equipment_id,label_id,position').eq('company_id', companyId);
-        if (equipmentResult.error) throw equipmentResult.error;
-        for (const row of equipmentResult.data ?? []) {
+        const equipmentAssignments = await fetchAllPaginated<{ equipment_id: string; label_id: string; position: number }>(() => supabase
+          .from('equipment_label_assignments')
+          .select('equipment_id,label_id,position')
+          .eq('company_id', companyId)
+          .order('equipment_id')
+          .order('label_id'));
+        for (const row of equipmentAssignments) {
           assignments.push({ entityType: 'equipment', entityId: row.equipment_id, labelId: row.label_id, position: row.position });
         }
       }
-      return { labels: (labelsResult.data ?? []) as PartyLabel[], assignments };
+      return { labels, assignments };
     },
   });
 
