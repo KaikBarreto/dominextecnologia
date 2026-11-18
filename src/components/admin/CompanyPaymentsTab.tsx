@@ -18,6 +18,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Sheet,
   SheetContent,
@@ -42,6 +43,7 @@ import {
   useAdminCompanyPayments,
   useAdminCompanyPaymentDetail,
   mapPaymentRpcError,
+  type AdminPaymentDetailResponse,
   type AdminSaleDetail,
   type UnifiedCompanyPayment,
 } from '@/hooks/useAdminCompanyPayments';
@@ -147,7 +149,13 @@ function commercialStatusLabel(value: string | null | undefined): string {
   return labels[(value || '').toLowerCase()] || value || '—';
 }
 
-function SaleDetailSection({ sale }: { sale: AdminSaleDetail }) {
+function SaleDetailSection({
+  sale,
+  view,
+}: {
+  sale: AdminSaleDetail;
+  view: 'commercial' | 'financial' | 'technical';
+}) {
   const commercial = sale.commercial;
   const affiliate = sale.affiliate_commission;
   const financial = sale.financial_transaction;
@@ -160,22 +168,23 @@ function SaleDetailSection({ sale }: { sale: AdminSaleDetail }) {
   ].filter((entry): entry is [string, string] => Boolean(entry[1]));
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-primary/20 bg-primary/[0.025]">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-primary/15 px-4 py-3">
+    <section className="space-y-6">
+      {view === 'commercial' && <>
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2"><BriefcaseBusiness className="h-4 w-4 text-primary" /><p className="font-semibold">Detalhes da venda</p></div>
         <Badge variant="outline" className="border-primary/30 text-primary">Primeira venda</Badge>
       </div>
-      <div className="space-y-5 p-4">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="space-y-6">
+        <div className="grid gap-x-6 gap-y-4 border-b pb-6 sm:grid-cols-2 lg:grid-cols-3">
           <div><p className="text-xs text-muted-foreground">Origem comercial</p><p className="mt-1 font-medium">{commercial?.customer_origin || sale.payment.origin || 'Não informada'}</p></div>
           <div><p className="text-xs text-muted-foreground">Venda registrada em</p><p className="mt-1 font-medium">{formatPaymentDate(commercial?.created_at || sale.payment.payment_date || null)}</p></div>
           <div><p className="text-xs text-muted-foreground">Registrada por</p><p className="mt-1 font-medium">{commercial?.registered_by?.name || sale.payment.registered_by?.name || 'Não identificado'}</p></div>
         </div>
 
         {commercial ? (
-          <div className="rounded-xl border bg-background p-4">
+          <div>
             <div className="flex items-center gap-2"><BadgeDollarSign className="h-4 w-4" /><p className="font-semibold">Comercial e comissão</p></div>
-            <div className="mt-3 grid gap-x-4 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-4 grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
               <div><p className="text-muted-foreground">Closer / vendedor</p><p className="font-medium">{commercial.seller.name}</p></div>
               {commercial.sdr && <div><p className="text-muted-foreground">SDR</p><p className="font-medium">{commercial.sdr.name}</p></div>}
               <div><p className="text-muted-foreground">Ciclo vendido</p><p className="font-medium">{cycleLabel(commercial.billing_cycle)}</p></div>
@@ -189,15 +198,15 @@ function SaleDetailSection({ sale }: { sale: AdminSaleDetail }) {
             </div>
           </div>
         ) : sale.commercial_match_quality === 'ambiguous' ? (
-          <div className="rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm">Existem {sale.commercial_candidate_count} registros comerciais possíveis nesta empresa; nenhum vendedor foi atribuído sem prova suficiente.</div>
+          <div className="rounded-lg bg-warning/10 px-4 py-3 text-sm">Existem {sale.commercial_candidate_count} registros comerciais possíveis nesta empresa; nenhum vendedor foi atribuído sem prova suficiente.</div>
         ) : (
-          <p className="rounded-xl border border-dashed p-3 text-sm text-muted-foreground">Esta venda não gerou registro de comissão comercial.</p>
+          <p className="text-sm text-muted-foreground">Esta venda não gerou registro de comissão comercial.</p>
         )}
 
         {affiliate && (
-          <div className="rounded-xl border bg-background p-4">
+          <div className="border-t pt-6">
             <p className="font-semibold">Afiliado</p>
-            <div className="mt-3 grid gap-x-4 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-4 grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
               <div><p className="text-muted-foreground">Afiliado responsável</p><p className="font-medium">{affiliate.affiliate.name}</p></div>
               <div><p className="text-muted-foreground">Base</p><p className="font-medium">{money(affiliate.base_amount)}</p></div>
               <div><p className="text-muted-foreground">Percentual</p><p className="font-medium">{Number(affiliate.pct_applied).toLocaleString('pt-BR')}%</p></div>
@@ -207,37 +216,132 @@ function SaleDetailSection({ sale }: { sale: AdminSaleDetail }) {
             </div>
           </div>
         )}
+      </div>
+      </>}
 
-        {(financial || processor) && (
-          <div className="rounded-xl border bg-background p-4">
+      {view === 'financial' && <div className="space-y-6">
+        {(financial || processor) ? (
+          <div>
             <div className="flex items-center gap-2"><Landmark className="h-4 w-4" /><p className="font-semibold">Recebimento e financeiro</p></div>
-            <div className="mt-3 grid gap-x-4 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-4 grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
               {processor && <><div><p className="text-muted-foreground">Status no Asaas</p><p className="font-medium">{processor.status || '—'}</p></div><div><p className="text-muted-foreground">Vencimento</p><p className="font-medium">{formatPaymentDate(processor.due_date || null)}</p></div><div><p className="text-muted-foreground">Recebido no Asaas</p><p className="font-medium">{formatPaymentDate(processor.paid_at || null)}</p></div></>}
               {financial && <><div><p className="text-muted-foreground">Descrição financeira</p><p className="font-medium">{financial.description || 'Venda'}</p></div><div><p className="text-muted-foreground">Data do lançamento</p><p className="font-medium">{formatPaymentDate(financial.transaction_date || null)}</p></div><div><p className="text-muted-foreground">Registrado por</p><p className="font-medium">{financial.registered_by?.name || 'Não identificado'}</p></div></>}
             </div>
             {processor?.invoice_url && <Button asChild variant="outline" size="sm" className="mt-4"><a href={processor.invoice_url} target="_blank" rel="noopener noreferrer">Abrir cobrança no Asaas</a></Button>}
           </div>
-        )}
+        ) : <p className="text-sm text-muted-foreground">Nenhum lançamento financeiro vinculado a esta venda.</p>}
 
-        {fiscal && Object.values(fiscal).some(Boolean) && (
-          <div className="rounded-xl border bg-background p-4">
-            <p className="font-semibold">Nota fiscal</p>
-            <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2"><div><p className="text-muted-foreground">Status</p><p className="font-medium">{fiscal.status || 'Não emitida'}</p></div><div><p className="text-muted-foreground">Número</p><p className="font-medium">{fiscal.number || '—'}</p></div></div>
-            <div className="mt-3 flex flex-wrap gap-2">{fiscal.pdf_url && <Button asChild variant="outline" size="sm"><a href={fiscal.pdf_url} target="_blank" rel="noopener noreferrer">Baixar PDF</a></Button>}{fiscal.xml_url && <Button asChild variant="outline" size="sm"><a href={fiscal.xml_url} target="_blank" rel="noopener noreferrer">Baixar XML</a></Button>}</div>
+        <div className="border-t pt-6">
+          <div className="flex items-center gap-2"><Receipt className="h-4 w-4" /><p className="font-semibold">Nota fiscal</p></div>
+          {fiscal && Object.values(fiscal).some(Boolean) ? <>
+            <div className="mt-4 grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2"><div><p className="text-muted-foreground">Status</p><p className="font-medium">{fiscal.status || 'Não emitida'}</p></div><div><p className="text-muted-foreground">Número</p><p className="font-medium">{fiscal.number || '—'}</p></div></div>
+            <div className="mt-4 flex flex-wrap gap-2">{fiscal.pdf_url && <Button asChild variant="outline" size="sm"><a href={fiscal.pdf_url} target="_blank" rel="noopener noreferrer">Baixar PDF</a></Button>}{fiscal.xml_url && <Button asChild variant="outline" size="sm"><a href={fiscal.xml_url} target="_blank" rel="noopener noreferrer">Baixar XML</a></Button>}</div>
             {fiscal.error && <p className="mt-3 text-sm text-destructive">{fiscal.error}</p>}
-          </div>
-        )}
+          </> : <p className="mt-3 text-sm text-muted-foreground">Nenhuma nota fiscal vinculada a este pagamento.</p>}
+        </div>
+      </div>}
 
-        <details className="rounded-xl border bg-background px-4 py-3 text-sm">
-          <summary className="cursor-pointer font-medium">Rastreabilidade técnica</summary>
-          <dl className="mt-3 space-y-2">
-            {traceIds.map(([label, value]) => <div key={label} className="grid gap-1 sm:grid-cols-[150px_1fr]"><dt className="text-muted-foreground">{label}</dt><dd className="break-all font-mono text-xs">{value}</dd></div>)}
-            <div className="grid gap-1 sm:grid-cols-[150px_1fr]"><dt className="text-muted-foreground">Vínculo comercial</dt><dd>{sale.commercial_match_quality}</dd></div>
-            <div className="grid gap-1 sm:grid-cols-[150px_1fr]"><dt className="text-muted-foreground">Vínculo financeiro</dt><dd>{sale.financial_match_quality}</dd></div>
+      {view === 'technical' && (
+        <div className="text-sm">
+          <p className="font-semibold">Rastreabilidade técnica</p>
+          <dl className="mt-4 divide-y">
+            {traceIds.map(([label, value]) => <div key={label} className="grid gap-1 py-3 first:pt-0 sm:grid-cols-[150px_1fr]"><dt className="text-muted-foreground">{label}</dt><dd className="break-all font-mono text-xs">{value}</dd></div>)}
+            <div className="grid gap-1 py-3 sm:grid-cols-[150px_1fr]"><dt className="text-muted-foreground">Vínculo comercial</dt><dd>{sale.commercial_match_quality}</dd></div>
+            <div className="grid gap-1 py-3 sm:grid-cols-[150px_1fr]"><dt className="text-muted-foreground">Vínculo financeiro</dt><dd>{sale.financial_match_quality}</dd></div>
           </dl>
-        </details>
-      </div>
+        </div>
+      )}
     </section>
+  );
+}
+
+function ContractCompositionSection({
+  detail,
+  payment,
+}: {
+  detail: AdminPaymentDetailResponse;
+  payment: UnifiedCompanyPayment;
+}) {
+  const snapshot = detail.snapshot || {};
+  const modules = snapshot.modules || [];
+  const promotions = snapshot.promotions || [];
+  const unavailable = detail.quality === 'legacy_unavailable';
+  const hasPlan = Boolean(snapshot.plan?.label || snapshot.plan?.code);
+  const hasCycle = Boolean(snapshot.installment || snapshot.billing_cycle);
+
+  if (unavailable) {
+    return (
+      <div className="rounded-xl bg-muted/40 p-5">
+        <p className="font-medium">Composição não registrada nessa época</p>
+        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+          O valor, a data e a forma de pagamento são confiáveis. Módulos, usuários e promoções não são
+          preenchidos com a configuração atual para evitar mostrar uma informação incorreta.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <section>
+        <div className="flex items-center gap-2"><Receipt className="h-4 w-4 text-primary" /><h3 className="font-semibold">O que foi contratado</h3></div>
+        <div className="mt-4 grid gap-x-6 gap-y-4 border-b pb-6 text-sm sm:grid-cols-2 lg:grid-cols-3">
+          {hasPlan && <div><p className="text-muted-foreground">Plano</p><p className="mt-1 font-medium">{snapshot.plan?.label || planLabel(snapshot.plan?.code)}</p></div>}
+          {hasCycle && <div><p className="text-muted-foreground">Ciclo</p><p className="mt-1 font-medium">{snapshot.installment ? `Parcela ${snapshot.installment.number}/${snapshot.installment.total} do anual` : cycleLabel(snapshot.billing_cycle)}</p></div>}
+          <div><p className="text-muted-foreground">Valor pago</p><p className="mt-1 font-medium">{money(snapshot.amounts?.paid ?? payment.amount)}</p></div>
+          {snapshot.amounts?.base != null && <div><p className="text-muted-foreground">Valor-base</p><p className="mt-1 font-medium">{money(snapshot.amounts.base)}</p></div>}
+          {snapshot.amounts?.subscription != null && <div><p className="text-muted-foreground">Valor da assinatura</p><p className="mt-1 font-medium">{money(snapshot.amounts.subscription)}</p></div>}
+          {snapshot.amounts?.discount != null && snapshot.amounts.discount > 0 && <div><p className="text-muted-foreground">Desconto aplicado</p><p className="mt-1 font-medium text-success">-{money(snapshot.amounts.discount)}</p></div>}
+        </div>
+      </section>
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(180px,0.7fr)_minmax(260px,1.3fr)]">
+        <section>
+          <div className="flex items-center gap-2"><Users className="h-4 w-4" /><p className="font-semibold">Usuários</p></div>
+          {snapshot.users ? (
+            <dl className="mt-4 space-y-3 text-sm">
+              <div className="flex items-center justify-between gap-4"><dt className="text-muted-foreground">Limite contratado</dt><dd className="font-medium">{snapshot.users.limit ?? '—'}</dd></div>
+              <div className="flex items-center justify-between gap-4"><dt className="text-muted-foreground">Adicionais</dt><dd className="font-medium">{snapshot.users.extra ?? 0}{snapshot.users.extra_unit_price != null ? ` × ${money(snapshot.users.extra_unit_price)}` : ''}</dd></div>
+            </dl>
+          ) : <p className="mt-3 text-sm text-muted-foreground">Sem registro histórico de usuários.</p>}
+        </section>
+
+        <section className="lg:border-l lg:pl-6">
+          <div className="flex items-center gap-2"><Layers3 className="h-4 w-4" /><p className="font-semibold">Módulos incluídos</p></div>
+          {modules.length > 0 ? (
+            <div className="mt-3 divide-y">
+              {modules.map((module) => (
+                <div key={module.code} className="flex items-center justify-between gap-3 py-2.5 text-sm first:pt-0">
+                  <div className="min-w-0"><p className="font-medium">{subscriptionModuleDisplayName(module.code, module.name || module.code)}</p>{(module.quantity || 1) > 1 && <p className="text-xs text-muted-foreground">Quantidade: {module.quantity}</p>}</div>
+                  {module.unit_price != null && <span className="shrink-0 text-muted-foreground">{money(module.unit_price)}</span>}
+                </div>
+              ))}
+            </div>
+          ) : <p className="mt-3 text-sm text-muted-foreground">Nenhum módulo individual registrado.</p>}
+        </section>
+      </div>
+
+      <section className="border-t pt-6">
+        <div className="flex items-center gap-2"><Tag className="h-4 w-4" /><p className="font-semibold">Promoções</p></div>
+        {promotions.length > 0 ? (
+          <div className="mt-3 space-y-3">
+            {promotions.map((promotion, index) => (
+              <div key={`${promotion.scope_type}-${promotion.module_code || index}`} className="rounded-lg bg-success/5 px-4 py-3">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div><p className="font-medium">{promotion.module_name || promotion.module_code || 'Assinatura'}</p><p className="mt-0.5 text-xs text-muted-foreground">Ciclo {promotion.cycle_number} de {promotion.billing_cycles}</p></div>
+                  <span className="text-sm font-semibold text-success">Economia de {money(promotion.discount)}</span>
+                </div>
+                <p className="mt-2 text-sm"><span className="text-muted-foreground line-through">{money(promotion.standard_unit_price)}</span><span className="ml-2 font-semibold">{money(promotion.promotional_unit_price)}</span>{promotion.quantity > 1 ? ` × ${promotion.quantity}` : ''}</p>
+                {promotion.reason && <p className="mt-1 text-xs text-muted-foreground">{promotion.reason}</p>}
+              </div>
+            ))}
+          </div>
+        ) : <p className="mt-3 text-sm text-muted-foreground">{detail.quality === 'partial' ? 'Sem registro histórico de promoção para esta cobrança.' : 'Nenhuma promoção aplicada nesta cobrança.'}</p>}
+      </section>
+
+      {detail.quality === 'partial' && <div className="rounded-lg bg-warning/10 px-4 py-3 text-sm">Histórico parcial: exibimos apenas os itens comprovados pelos registros da época.</div>}
+      {payment.notes && <section className="border-t pt-6"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Observações</p><p className="mt-2 whitespace-pre-wrap text-sm">{payment.notes}</p></section>}
+    </div>
   );
 }
 
@@ -267,14 +371,9 @@ function PaymentDetailPanel({ companyId, payment }: { companyId: string; payment
     );
   }
 
-  const snapshot = data.snapshot || {};
-  const modules = snapshot.modules || [];
-  const promotions = snapshot.promotions || [];
-  const unavailable = data.quality === 'legacy_unavailable';
-
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b bg-muted/25 p-5">
+      <div className="border-b p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Valor pago</p>
@@ -292,114 +391,32 @@ function PaymentDetailPanel({ companyId, payment }: { companyId: string; payment
         </div>
       </div>
 
-      <div className="flex-1 space-y-5 overflow-y-auto p-5">
-        {data.sale && <SaleDetailSection sale={data.sale} />}
-
-        {unavailable ? (
-          <div className="rounded-xl border border-dashed bg-muted/25 p-5">
-            <p className="font-medium">Detalhamento histórico indisponível</p>
-            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-              Este pagamento é anterior ao registro da composição da assinatura. O valor, a data e a forma
-              de pagamento são confiáveis; módulos e usuários não serão estimados pela configuração atual.
-            </p>
-          </div>
-        ) : (
-          <>
-            <section>
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cobrança</p>
-              <div className="mt-2 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border p-3">
-                  <p className="text-xs text-muted-foreground">Plano</p>
-                  <p className="mt-1 font-semibold">{snapshot.plan?.label || planLabel(snapshot.plan?.code)}</p>
-                </div>
-                <div className="rounded-xl border p-3">
-                  <p className="text-xs text-muted-foreground">Ciclo</p>
-                  <p className="mt-1 font-semibold">
-                    {snapshot.installment
-                      ? `Parcela ${snapshot.installment.number}/${snapshot.installment.total} do anual`
-                      : cycleLabel(snapshot.billing_cycle)}
-                  </p>
-                </div>
-              </div>
-            </section>
-
-            {snapshot.users && (
-              <section className="rounded-xl border p-4">
-                <div className="flex items-center gap-2"><Users className="h-4 w-4" /><p className="font-semibold">Usuários</p></div>
-                <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                  <div><p className="text-muted-foreground">Limite contratado</p><p className="font-medium">{snapshot.users.limit ?? '—'}</p></div>
-                  <div><p className="text-muted-foreground">Adicionais</p><p className="font-medium">{snapshot.users.extra ?? 0}</p></div>
-                </div>
-              </section>
+      <Tabs defaultValue="charge" className="flex min-h-0 flex-1 flex-col">
+        <div className="px-5 pt-4">
+          <TabsList variant="underline" className="w-full">
+            <TabsTrigger value="charge" variant="underline" level="section">Cobrança</TabsTrigger>
+            {data.sale && <TabsTrigger value="sale" variant="underline" level="section">Venda</TabsTrigger>}
+            <TabsTrigger value="financial" variant="underline" level="section">Financeiro e nota</TabsTrigger>
+            <TabsTrigger value="technical" variant="underline" level="section">Dados técnicos</TabsTrigger>
+          </TabsList>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <TabsContent value="charge" className="m-0 p-5"><ContractCompositionSection detail={data} payment={payment} /></TabsContent>
+          {data.sale && <TabsContent value="sale" className="m-0 p-5"><SaleDetailSection sale={data.sale} view="commercial" /></TabsContent>}
+          <TabsContent value="financial" className="m-0 space-y-6 p-5">
+            {data.sale ? <SaleDetailSection sale={data.sale} view="financial" /> : <p className="text-sm text-muted-foreground">Nenhum detalhe financeiro adicional vinculado.</p>}
+            {payment.invoiceUrl && <Button asChild variant="outline" className="gap-2"><a href={payment.invoiceUrl} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" /> Abrir fatura no Asaas</a></Button>}
+          </TabsContent>
+          <TabsContent value="technical" className="m-0 p-5">
+            {data.sale ? <SaleDetailSection sale={data.sale} view="technical" /> : (
+              <dl className="divide-y text-sm">
+                <div className="grid gap-1 py-3 first:pt-0 sm:grid-cols-[150px_1fr]"><dt className="text-muted-foreground">Pagamento</dt><dd className="break-all font-mono text-xs">{payment.id}</dd></div>
+                <div className="grid gap-1 py-3 sm:grid-cols-[150px_1fr]"><dt className="text-muted-foreground">Origem</dt><dd>{payment.source === 'asaas' ? 'Asaas' : 'Manual'}</dd></div>
+              </dl>
             )}
-
-            <section>
-              <div className="flex items-center gap-2"><Layers3 className="h-4 w-4" /><p className="font-semibold">Módulos incluídos</p></div>
-              {modules.length > 0 ? (
-                <div className="mt-2 divide-y rounded-xl border">
-                  {modules.map((module) => (
-                    <div key={module.code} className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
-                      <div className="min-w-0">
-                        <p className="font-medium">{subscriptionModuleDisplayName(module.code, module.name || module.code)}</p>
-                        {(module.quantity || 1) > 1 && <p className="text-xs text-muted-foreground">Quantidade: {module.quantity}</p>}
-                      </div>
-                      {module.unit_price != null && <span className="shrink-0 text-muted-foreground">{money(module.unit_price)}</span>}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="mt-2 rounded-xl border border-dashed p-3 text-sm text-muted-foreground">Nenhum módulo individual foi registrado para esta cobrança.</p>
-              )}
-            </section>
-
-            {promotions.length > 0 && (
-              <section>
-                <div className="flex items-center gap-2"><Tag className="h-4 w-4" /><p className="font-semibold">Promoção aplicada</p></div>
-                <div className="mt-2 space-y-2">
-                  {promotions.map((promotion, index) => (
-                    <div key={`${promotion.scope_type}-${promotion.module_code || index}`} className="rounded-xl border border-success/30 bg-success/5 p-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="font-medium">{promotion.module_code ? subscriptionModuleDisplayName(promotion.module_code, promotion.module_name || promotion.module_code) : 'Assinatura'}</p>
-                          <p className="mt-0.5 text-xs text-muted-foreground">Ciclo {promotion.cycle_number} de {promotion.billing_cycles}</p>
-                        </div>
-                        <Badge variant="outline" className="border-success text-success">-{money(promotion.discount)}</Badge>
-                      </div>
-                      <p className="mt-2 text-sm">
-                        <span className="text-muted-foreground line-through">{money(promotion.standard_unit_price)}</span>
-                        <span className="ml-2 font-semibold">{money(promotion.promotional_unit_price)}</span>
-                        {promotion.quantity > 1 ? ` × ${promotion.quantity}` : ''}
-                      </p>
-                      {promotion.reason && <p className="mt-1 text-xs text-muted-foreground">{promotion.reason}</p>}
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-          </>
-        )}
-
-        {data.quality === 'partial' && (
-          <div className="rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm">
-            Este pagamento possui apenas os detalhes históricos que puderam ser comprovados.
-          </div>
-        )}
-
-        {payment.notes && (
-          <section>
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Observações</p>
-            <p className="mt-2 whitespace-pre-wrap rounded-xl border p-3 text-sm">{payment.notes}</p>
-          </section>
-        )}
-
-        {payment.invoiceUrl && (
-          <Button asChild variant="outline" className="w-full gap-2">
-            <a href={payment.invoiceUrl} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-4 w-4" /> Abrir fatura no Asaas
-            </a>
-          </Button>
-        )}
-      </div>
+          </TabsContent>
+        </div>
+      </Tabs>
     </div>
   );
 }
