@@ -115,6 +115,17 @@ export interface PdvCloseResult {
   avisos: string[];
 }
 
+export function assertPdvCancellationResult(
+  result: Record<string, unknown> | null,
+): Record<string, unknown> {
+  if (result?.status !== 'cancelado' || result.cancelado !== true) {
+    throw new Error(
+      'A venda não foi cancelada. Atualize a tela e tente novamente pelo pedido.',
+    );
+  }
+  return result;
+}
+
 /**
  * Retorno de `pdv_revert_cash_movement()`.
  *
@@ -480,16 +491,21 @@ export function usePdvCashRegister(focusedSessionId: string | null = null) {
         p_reason: vars.reason ?? null,
       });
       if (error) throw error;
-      return data as unknown as Record<string, unknown>;
+      return assertPdvCancellationResult(
+        data as unknown as Record<string, unknown> | null,
+      );
     },
-    onSuccess: () => {
-      invalidateCash();
+    onSuccess: async () => {
       // O estorno mexe em estoque e em fiado, não só em dinheiro: as telas de
       // Estoque e o limite do cliente têm que reagir junto.
-      queryClient.invalidateQueries({ queryKey: ['inventory'] });
-      queryClient.invalidateQueries({ queryKey: ['inventory-stock-levels'] });
-      queryClient.invalidateQueries({ queryKey: ['inventory-movements'] });
-      queryClient.invalidateQueries({ queryKey: ['pdv-customer-credit'] });
+      await Promise.all([
+        invalidateCash(),
+        queryClient.invalidateQueries({ queryKey: ['inventory'] }),
+        queryClient.invalidateQueries({ queryKey: ['accessible-inventory-ids'] }),
+        queryClient.invalidateQueries({ queryKey: ['inventory-stock-levels'] }),
+        queryClient.invalidateQueries({ queryKey: ['inventory-movements'] }),
+        queryClient.invalidateQueries({ queryKey: ['pdv-customer-credit'] }),
+      ]);
     },
   });
 

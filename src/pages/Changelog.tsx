@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.19',
+    date: '18 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Busca completa em estoques grandes',
+        category: 'correcao',
+        description: 'A busca do estoque volta a encontrar todos os produtos, mesmo quando a empresa possui mais de mil itens cadastrados.',
+      },
+      {
+        title: 'Correção segura de vendas pelo caixa',
+        category: 'correcao',
+        description: 'No histórico do caixa, a venda pode ser aberta diretamente no fluxo correto de devolução e pós-venda. A confirmação só aparece depois que a operação é realmente concluída e as informações relacionadas são atualizadas.',
+      },
+    ],
+  },
+  {
     version: '1.41.18',
     date: '17 de novembro de 2026',
     type: 'patch',

@@ -2,6 +2,13 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useStockManagement } from '@/hooks/useStocks';
+import { fetchAllPaginated } from '@/utils/supabasePagination';
+
+export async function fetchAccessibleInventoryIds(): Promise<string[]> {
+  return fetchAllPaginated<string>(() =>
+    supabase.rpc('get_accessible_inventory_ids'),
+  );
+}
 
 /**
  * Retorna os IDs de itens de inventário que o usuário atual pode enxergar,
@@ -19,11 +26,7 @@ export function useAccessibleInventoryIds() {
   const { data: rawIds = [], isLoading, error } = useQuery({
     queryKey: ['accessible-inventory-ids', ...scope],
     enabled: ready,
-    queryFn: async (): Promise<string[]> => {
-      const { data, error } = await supabase.rpc('get_accessible_inventory_ids');
-      if (error) throw error;
-      return (data ?? []) as string[];
-    },
+    queryFn: fetchAccessibleInventoryIds,
     staleTime: 30_000,
   });
 
