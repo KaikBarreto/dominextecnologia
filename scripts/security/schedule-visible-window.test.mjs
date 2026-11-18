@@ -7,6 +7,10 @@ const migrationUrl = new URL(
   import.meta.url,
 );
 const hookUrl = new URL('../../src/hooks/useScheduleOrders.ts', import.meta.url);
+const preferenceMigrationUrl = new URL(
+  '../../supabase/migrations/20261118213000_user_preferences_schedule_display_mode.sql',
+  import.meta.url,
+);
 
 test('RPC da Agenda limita período, exige usuário e preserva RLS', async () => {
   const sql = await readFile(migrationUrl, 'utf8');
@@ -38,4 +42,12 @@ test('cliente pagina a RPC e não perde eventos acima do limite de 1.000 linhas'
   assert.match(source, /const SCHEDULE_PAGE_SIZE = 1000/);
   assert.match(source, /\.range\(from, from \+ SCHEDULE_PAGE_SIZE - 1\)/);
   assert.match(source, /if \(page\.length < SCHEDULE_PAGE_SIZE\) break/);
+});
+
+test('preferência da Agenda aceita calendário e lista por dispositivo', async () => {
+  const sql = await readFile(preferenceMigrationUrl, 'utf8');
+
+  assert.match(sql, /schedule_view_mode_mobile ~ '\^\(day\|week\|month\)\(::list\)\?\$'/);
+  assert.match(sql, /schedule_view_mode_desktop ~ '\^\(day\|week\|month\)\(::list\)\?\$'/);
+  assert.doesNotMatch(sql, /DISABLE ROW LEVEL SECURITY/i);
 });

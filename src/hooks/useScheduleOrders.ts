@@ -57,6 +57,12 @@ export function useScheduleOrders(
     staleTime: 30_000,
     gcTime: 5 * 60_000,
     placeholderData: keepPreviousData,
+    // Oscilações curtas de rede não podem fazer a Agenda parecer vazia. A
+    // consulta é idempotente e recortada pela janela visível, então repetir é
+    // seguro e barato. Erros persistentes continuam chegando ao estado de erro.
+    retry: 5,
+    retryDelay: (attempt) => Math.min(1_000 * 2 ** attempt, 5_000),
+    refetchOnReconnect: 'always',
   });
 
   return {
@@ -64,5 +70,6 @@ export function useScheduleOrders(
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     error: query.error,
+    refetch: query.refetch,
   };
 }

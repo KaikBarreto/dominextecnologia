@@ -35,6 +35,7 @@ import { useTouchDragDrop } from '@/hooks/useTouchDragDrop';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrderFormDialog';
 import { Button } from '@/components/ui/button';
+import { ToastAction } from '@/components/ui/toast';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { cn } from '@/lib/utils';
 import type { ServiceOrder, ServiceOrderScheduleSlot } from '@/types/database';
@@ -171,6 +172,7 @@ export default function Schedule() {
     serviceOrders,
     isLoading,
     error: scheduleError,
+    refetch: refetchSchedule,
   } = useScheduleOrders(scheduleWindow, { enabled: !isPrefsLoading });
   const {
     serviceOrders: searchServiceOrders,
@@ -244,8 +246,13 @@ export default function Schedule() {
       variant: 'destructive',
       title: t.loadError.title,
       description: t.loadError.description,
+      action: (
+        <ToastAction altText={t.loadError.retry} onClick={() => void refetchSchedule()}>
+          {t.loadError.retry}
+        </ToastAction>
+      ),
     });
-  }, [scheduleError, t.loadError.description, t.loadError.title, toast]);
+  }, [refetchSchedule, scheduleError, t.loadError.description, t.loadError.retry, t.loadError.title, toast]);
 
   // Filters — multi-select (vazio = todos)
   const [technicianFilter, setTechnicianFilter] = useState<string[]>([]);

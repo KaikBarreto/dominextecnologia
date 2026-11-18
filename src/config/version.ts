@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.22";
+export const APP_VERSION = "1.41.23";
 
 export const VERSION_NOTES =
-  "Agenda e painel agora carregam somente os dados necessários para o período exibido, com histórico e filtros disponíveis sob demanda.";
+  "A Agenda se recupera automaticamente de oscilações curtas e mantém corretamente a visualização escolhida em cada aparelho.";

@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.23',
+    date: '18 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Agenda mais resistente a oscilações',
+        category: 'correcao',
+        description: 'Se houver uma falha temporária de conexão, a Agenda tenta carregar novamente sem fazer os compromissos parecerem ausentes. O aviso também oferece uma ação direta para tentar de novo.',
+      },
+      {
+        title: 'Visualização da Agenda permanece salva',
+        category: 'correcao',
+        description: 'A escolha entre Calendário e Lista passa a ser mantida corretamente no celular e no computador depois de atualizar ou reabrir o sistema.',
+      },
+    ],
+  },
+  {
     version: '1.41.22',
     date: '18 de novembro de 2026',
     type: 'patch',

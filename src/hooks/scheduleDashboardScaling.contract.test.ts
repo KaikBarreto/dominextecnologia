@@ -37,4 +37,17 @@ describe('contrato de escala da Agenda e do Dashboard', () => {
     expect(serviceOrdersSource).toContain('fetchAllPaginated');
     expect(serviceOrdersSource).toContain('chunks.slice(index, index + 4)');
   });
+
+  it('recupera automaticamente a Agenda após uma oscilação curta', async () => {
+    const [hookSource, scheduleSource] = await Promise.all([
+      readSource('./useScheduleOrders.ts'),
+      readSource('../pages/Schedule.tsx'),
+    ]);
+
+    expect(hookSource).toContain('retry: 5');
+    expect(hookSource).toContain("refetchOnReconnect: 'always'");
+    expect(hookSource).toContain('refetch: query.refetch');
+    expect(scheduleSource).toContain('<ToastAction');
+    expect(scheduleSource).toContain('refetchSchedule()');
+  });
 });
