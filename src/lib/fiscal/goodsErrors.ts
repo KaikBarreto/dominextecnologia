@@ -34,6 +34,6 @@ export function goodsFiscalError(payload: unknown, fallback = 'Não foi possíve
   const row = payload && typeof payload === 'object' ? payload as Record<string, unknown> : {};
   const code = String(row.error ?? row.code ?? '');
   if (ERRORS[code]) return ERRORS[code];
-  if (code === 'validation_failed' && typeof row.message === 'string' && !/SQLSTATE|constraint|public\.|rpc|supabase|token|certificate_ref|235\d\d|42\w{3}/i.test(row.message)) return row.message.slice(0, 1500);
+  if (['validation_failed','dados_invalidos','certificado_invalido','documento_rejeitado'].includes(code) && typeof row.message === 'string' && !/SQLSTATE|constraint|public\.|rpc|supabase|token|certificate_ref|235\d\d|42\w{3}/i.test(row.message)) return row.message.slice(0, 1500);
   return fallback;
 }

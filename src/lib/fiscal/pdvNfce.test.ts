@@ -23,6 +23,8 @@ describe('ponte NFC-e e venda confirmada', () => {
   it('fallback de validação bloqueia detalhes de banco', () => {
     expect(goodsFiscalError({error:'validation_failed',message:'constraint nfce_documents SQLSTATE 23505'})).not.toContain('23505');
     expect(goodsFiscalError({error:'validation_failed',message:'Item 1: NCM precisa ter 8 dígitos.'})).toContain('NCM');
+    expect(goodsFiscalError({error:'dados_invalidos',message:'Item 1: informe o cBenef do Paraná.'})).toContain('cBenef');
+    expect(goodsFiscalError({error:'dados_invalidos',message:'SQLSTATE 42501 public.secret'})).not.toContain('42501');
   });
   const sourceItems = [{id:'item-a',inventory_id:'material-a',quantity:2,unit_price:10,total:18}];
   const sourcePayments = [{method:'dinheiro',amount:18,change_amount:2}];

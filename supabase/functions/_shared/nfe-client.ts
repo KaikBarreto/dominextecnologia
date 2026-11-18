@@ -62,12 +62,19 @@ async function callMotor<T>(path: string, body: unknown): Promise<T> {
     );
   const payload = (await response.json().catch(() => ({}))) as {
     erro?: { codigo?: string; mensagem?: string; orientacao?: unknown };
+    detail?: string | Array<{ msg?: string }>;
   };
+  const detailMessage = typeof payload.detail === "string"
+    ? clean(payload.detail)
+    : Array.isArray(payload.detail)
+    ? payload.detail.map((item) => clean(item?.msg)).filter(Boolean).slice(0, 3).join("; ")
+    : "";
   throw new NfeMotorError(
     clean(payload.erro?.mensagem) ||
+      detailMessage ||
       "Não foi possível concluir a operação com a NF-e.",
     response.status,
-    clean(payload.erro?.codigo) || "erro_fiscal",
+    clean(payload.erro?.codigo) || (detailMessage ? "dados_invalidos" : "erro_fiscal"),
     payload.erro?.orientacao,
   );
 }

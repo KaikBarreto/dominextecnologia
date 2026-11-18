@@ -36,6 +36,19 @@ const number = (value: unknown) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 const money = (value: number) => Math.round(value * 100) / 100;
+const SAFE_FISCAL_MESSAGE_CODES = new Set([
+  "dados_invalidos",
+  "certificado_invalido",
+  "documento_rejeitado",
+]);
+function safeFiscalMessage(error: NfeMotorError | NfceMotorError): string | null {
+  const message = text(error.message, 1500);
+  if (!SAFE_FISCAL_MESSAGE_CODES.has(error.code) || !message) return null;
+  if (/SQLSTATE|constraint|public\.|rpc|supabase|token|certificate_ref|235\d\d|42\w{3}/i.test(message)) {
+    return null;
+  }
+  return message;
+}
 const uuid = (value: unknown) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     text(value),
@@ -1278,6 +1291,8 @@ Deno.serve(async (req) => {
     const code = fiscal ? (error as NfeMotorError).code : error instanceof GoodsDocumentError ? error.code : 'internal_error';
     const message = transmissionStarted || code === 'resultado_incerto'
       ? 'A confirmação não voltou. Consulte esta mesma nota antes de tentar novamente.'
+      : fiscal && safeFiscalMessage(error as NfeMotorError)
+      ? safeFiscalMessage(error as NfeMotorError)!
       : 'Não foi possível concluir a operação fiscal. Confira o cadastro fiscal e tente novamente.';
     if (activeDocument) {
       const status = activeDocument.fence.status==='cancellation_pending' ? 'cancellation_pending' :
