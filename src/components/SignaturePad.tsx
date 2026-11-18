@@ -371,6 +371,8 @@ const InlineSignaturePad = forwardRef<InlineSignaturePadHandle, InlinePadProps>(
 ) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isDrawingRef = useRef(false);
+  const activePointerIdRef = useRef<number | null>(null);
+  const resizePendingRef = useRef(false);
   const hasDrawnRef = useRef(false);
   // Snapshot inicial (draft compartilhado) com que o canvas é semeado UMA vez.
   // Capturado na montagem pra não reagir a mudanças de prop durante o desenho —
@@ -407,6 +409,11 @@ const InlineSignaturePad = forwardRef<InlineSignaturePadHandle, InlinePadProps>(
     // undo/redo mudam o conteúdo → ressincroniza o draft compartilhado.
     onDraftChange?.(hasContent ? capture() : null);
   });
+  // `history` é um objeto novo a cada render, mas esta função é estável. Usá-la
+  // diretamente evita reinstalar o ResizeObserver quando o primeiro movimento
+  // do dedo atualiza o estado do pai (no iOS isso redimensionava/limpava o canvas
+  // no meio do traço).
+  const getCurrentHistorySnapshot = history.current;
 
   // Semeia o histórico com o draft inicial UMA vez (snapshot-base). Assim o
   // Desfazer volta a ele e o getDataUrl/draft já refletem o que veio do inline
@@ -434,10 +441,27 @@ const InlineSignaturePad = forwardRef<InlineSignaturePadHandle, InlinePadProps>(
     const rect = canvas.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return;
 
-    const prev = hasDrawnRef.current ? history.current() ?? canvas.toDataURL('image/png') : seedRef.current;
+    const nextWidth = Math.round(rect.width * 2);
+    const nextHeight = Math.round(rect.height * 2);
+    if (canvas.width === nextWidth && canvas.height === nextHeight) {
+      resizePendingRef.current = false;
+      return;
+    }
+    // Safari/iOS pode alterar a viewport enquanto o dedo está apoiado. Mudar
+    // width/height do canvas nesse momento apaga os pixels e o caminho ativo.
+    // Adiamos o resize até o pointerup, preservando o traço inteiro.
+    if (isDrawingRef.current) {
+      resizePendingRef.current = true;
+      return;
+    }
+    resizePendingRef.current = false;
 
-    canvas.width = rect.width * 2;
-    canvas.height = rect.height * 2;
+    const prev = hasDrawnRef.current
+      ? getCurrentHistorySnapshot() ?? canvas.toDataURL('image/png')
+      : seedRef.current;
+
+    canvas.width = nextWidth;
+    canvas.height = nextHeight;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.scale(2, 2);
@@ -451,8 +475,7 @@ const InlineSignaturePad = forwardRef<InlineSignaturePadHandle, InlinePadProps>(
       img.onload = () => ctx.drawImage(img, 0, 0, rect.width, rect.height);
       img.src = prev;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [history]);
+  }, [getCurrentHistorySnapshot]);
 
   useEffect(() => {
     const raf = requestAnimationFrame(setupCanvas);
@@ -467,32 +490,39 @@ const InlineSignaturePad = forwardRef<InlineSignaturePadHandle, InlinePadProps>(
     };
   }, [setupCanvas]);
 
-  const getPos = (e: React.TouchEvent | React.MouseEvent) => {
+  const getPos = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
-    if ('touches' in e) {
-      return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
-    }
     return {
-      x: (e as React.MouseEvent).clientX - rect.left,
-      y: (e as React.MouseEvent).clientY - rect.top,
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
     };
   };
 
-  const startDraw = (e: React.TouchEvent | React.MouseEvent) => {
-    if (disabled) return;
+  const startDraw = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (disabled || e.isPrimary === false || activePointerIdRef.current != null) return;
     e.preventDefault();
     const ctx = canvasRef.current?.getContext('2d');
     if (!ctx) return;
+    activePointerIdRef.current = e.pointerId;
+    try {
+      canvasRef.current?.setPointerCapture?.(e.pointerId);
+    } catch {
+      // O capture é uma melhoria; o desenho ainda funciona sem ele.
+    }
     const pos = getPos(e);
     ctx.beginPath();
     ctx.moveTo(pos.x, pos.y);
     isDrawingRef.current = true;
   };
 
-  const draw = (e: React.TouchEvent | React.MouseEvent) => {
-    if (!isDrawingRef.current || disabled) return;
+  const draw = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (
+      !isDrawingRef.current
+      || disabled
+      || (activePointerIdRef.current != null && e.pointerId !== activePointerIdRef.current)
+    ) return;
     e.preventDefault();
     const ctx = canvasRef.current?.getContext('2d');
     if (!ctx) return;
@@ -506,14 +536,30 @@ const InlineSignaturePad = forwardRef<InlineSignaturePadHandle, InlinePadProps>(
     }
   };
 
-  const endDraw = () => {
+  const endDraw = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!isDrawingRef.current) return;
+    if (activePointerIdRef.current != null && e.pointerId !== activePointerIdRef.current) return;
     // NÃO comita aqui — o desenho fica só no canvas local até "Confirmar".
     isDrawingRef.current = false;
+    activePointerIdRef.current = null;
+    try {
+      canvasRef.current?.releasePointerCapture?.(e.pointerId);
+    } catch {
+      // Pode já ter sido liberado pelo navegador em pointercancel.
+    }
     // Fecha o traço → empilha o estado atual no histórico (habilita Desfazer).
     history.pushSnapshot();
     // Eleva o traço fechado pro draft compartilhado (reflete no fullscreen).
     onDraftChange?.(capture());
+    if (resizePendingRef.current) requestAnimationFrame(setupCanvas);
+  };
+
+  const endDrawWithoutCapture = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    // Com capture ativo, sair visualmente do elemento não encerra o traço. Se o
+    // navegador recusou o capture, pointerleave é o fallback que impede o pad de
+    // ficar preso para sempre esperando um pointerup que ocorrerá fora dele.
+    if (!canvas?.hasPointerCapture?.(e.pointerId)) endDraw(e);
   };
 
   const clear = () => {
@@ -550,14 +596,13 @@ const InlineSignaturePad = forwardRef<InlineSignaturePadHandle, InlinePadProps>(
         <canvas
           ref={canvasRef}
           className="h-36 w-full touch-none rounded-lg border-2 border-dashed border-black/20 bg-white"
-          style={{ cursor: disabled ? 'not-allowed' : 'crosshair' }}
-          onMouseDown={startDraw}
-          onMouseMove={draw}
-          onMouseUp={endDraw}
-          onMouseLeave={endDraw}
-          onTouchStart={startDraw}
-          onTouchMove={draw}
-          onTouchEnd={endDraw}
+          style={{ cursor: disabled ? 'not-allowed' : 'crosshair', touchAction: 'none' }}
+          onPointerDown={startDraw}
+          onPointerMove={draw}
+          onPointerUp={endDraw}
+          onPointerCancel={endDraw}
+          onPointerLeave={endDrawWithoutCapture}
+          onLostPointerCapture={endDraw}
         />
         <UndoRedoControls
           canUndo={history.canUndo}
@@ -589,6 +634,8 @@ function SignatureFullscreen({ value, onDraftChange, onConfirm, onCancel }: Full
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const isDrawingRef = useRef(false);
+  const activePointerIdRef = useRef<number | null>(null);
+  const resizePendingRef = useRef(false);
   const hasDrawnRef = useRef(false);
   const initialValueRef = useRef(value);
 
@@ -628,6 +675,7 @@ function SignatureFullscreen({ value, onDraftChange, onConfirm, onCancel }: Full
     // inline ao fechar).
     onDraftChange?.(hasContent ? capture() : null);
   });
+  const getCurrentHistorySnapshot = history.current;
 
   // Semeia o histórico com o valor inicial (traço em andamento vindo do inline,
   // ou assinatura já existente) UMA vez. Usa o dataURL do seed diretamente como
@@ -696,15 +744,27 @@ function SignatureFullscreen({ value, onDraftChange, onConfirm, onCancel }: Full
     const h = canvas.clientHeight;
     if (w === 0 || h === 0) return;
 
+    const nextWidth = Math.round(w * 2);
+    const nextHeight = Math.round(h * 2);
+    if (canvas.width === nextWidth && canvas.height === nextHeight) {
+      resizePendingRef.current = false;
+      return;
+    }
+    if (isDrawingRef.current) {
+      resizePendingRef.current = true;
+      return;
+    }
+    resizePendingRef.current = false;
+
     // Preserva o conteúdo atual antes de redimensionar (resize limpa o canvas).
     // Prioriza o ESTADO ATUAL do histórico (reflete undo/redo) sobre o pixel cru
     // do canvas; cai no seed inicial se nada foi desenhado ainda.
     const prev = hasDrawnRef.current
-      ? history.current() ?? canvas.toDataURL('image/png')
+      ? getCurrentHistorySnapshot() ?? canvas.toDataURL('image/png')
       : initialValueRef.current;
 
-    canvas.width = w * 2;
-    canvas.height = h * 2;
+    canvas.width = nextWidth;
+    canvas.height = nextHeight;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.scale(2, 2);
@@ -720,7 +780,7 @@ function SignatureFullscreen({ value, onDraftChange, onConfirm, onCancel }: Full
       };
       img.src = prev;
     }
-  }, [history]);
+  }, [getCurrentHistorySnapshot]);
 
   useEffect(() => {
     // Primeiro setup após montar (e após o fullscreen request começar).
@@ -744,19 +804,11 @@ function SignatureFullscreen({ value, onDraftChange, onConfirm, onCancel }: Full
     };
   }, [setupCanvas]);
 
-  const getPos = (e: React.TouchEvent | React.MouseEvent) => {
+  const getPos = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
 
-    let clientX: number;
-    let clientY: number;
-    if ('touches' in e) {
-      clientX = e.touches[0].clientX;
-      clientY = e.touches[0].clientY;
-    } else {
-      clientX = (e as React.MouseEvent).clientX;
-      clientY = (e as React.MouseEvent).clientY;
-    }
+    const { clientX, clientY } = e;
 
     const rect = canvas.getBoundingClientRect();
     // Centro visual do canvas (rect já é a caixa axis-aligned, mesmo rotacionado:
@@ -788,18 +840,28 @@ function SignatureFullscreen({ value, onDraftChange, onConfirm, onCancel }: Full
     return { x: dx + logicalW / 2, y: dy + logicalH / 2 };
   };
 
-  const startDraw = (e: React.TouchEvent | React.MouseEvent) => {
+  const startDraw = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e.isPrimary === false || activePointerIdRef.current != null) return;
     e.preventDefault();
     const ctx = canvasRef.current?.getContext('2d');
     if (!ctx) return;
+    activePointerIdRef.current = e.pointerId;
+    try {
+      canvasRef.current?.setPointerCapture?.(e.pointerId);
+    } catch {
+      // O capture é uma melhoria; o desenho ainda funciona sem ele.
+    }
     const pos = getPos(e);
     ctx.beginPath();
     ctx.moveTo(pos.x, pos.y);
     isDrawingRef.current = true;
   };
 
-  const draw = (e: React.TouchEvent | React.MouseEvent) => {
-    if (!isDrawingRef.current) return;
+  const draw = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (
+      !isDrawingRef.current
+      || (activePointerIdRef.current != null && e.pointerId !== activePointerIdRef.current)
+    ) return;
     e.preventDefault();
     const ctx = canvasRef.current?.getContext('2d');
     if (!ctx) return;
@@ -809,13 +871,26 @@ function SignatureFullscreen({ value, onDraftChange, onConfirm, onCancel }: Full
     hasDrawnRef.current = true;
   };
 
-  const endDraw = () => {
+  const endDraw = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!isDrawingRef.current) return;
+    if (activePointerIdRef.current != null && e.pointerId !== activePointerIdRef.current) return;
     isDrawingRef.current = false;
+    activePointerIdRef.current = null;
+    try {
+      canvasRef.current?.releasePointerCapture?.(e.pointerId);
+    } catch {
+      // Pode já ter sido liberado pelo navegador em pointercancel.
+    }
     // Fecha o traço → empilha no histórico (habilita Desfazer).
     history.pushSnapshot();
     // Eleva o traço fechado pro draft compartilhado (reflete no inline ao fechar).
     onDraftChange?.(capture());
+    if (resizePendingRef.current) requestAnimationFrame(setupCanvas);
+  };
+
+  const endDrawWithoutCapture = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas?.hasPointerCapture?.(e.pointerId)) endDraw(e);
   };
 
   const clear = () => {
@@ -899,13 +974,13 @@ function SignatureFullscreen({ value, onDraftChange, onConfirm, onCancel }: Full
           <canvas
             ref={canvasRef}
             className="h-full w-full touch-none rounded-lg border-2 border-dashed border-black/20 bg-white cursor-crosshair"
-            onMouseDown={startDraw}
-            onMouseMove={draw}
-            onMouseUp={endDraw}
-            onMouseLeave={endDraw}
-            onTouchStart={startDraw}
-            onTouchMove={draw}
-            onTouchEnd={endDraw}
+            style={{ touchAction: 'none' }}
+            onPointerDown={startDraw}
+            onPointerMove={draw}
+            onPointerUp={endDraw}
+            onPointerCancel={endDraw}
+            onPointerLeave={endDrawWithoutCapture}
+            onLostPointerCapture={endDraw}
           />
           {/* right-5/top-5 (12px do p-3 + ~8px) deixa os botões DENTRO da área
               branca do canvas, no canto superior direito. */}

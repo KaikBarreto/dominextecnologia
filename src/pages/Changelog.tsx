@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.25',
+    date: '18 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Assinatura completa nos checklists da OS',
+        category: 'correcao',
+        description: 'Ao colher uma assinatura pelo celular, todos os traços agora permanecem visíveis e são salvos na ordem correta, mesmo quando a conexão demora um pouco.',
+      },
+    ],
+  },
+  {
     version: '1.41.24',
     date: '18 de novembro de 2026',
     type: 'patch',
