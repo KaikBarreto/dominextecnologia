@@ -1,0 +1,8 @@
+/sw.js
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+  CDN-Cache-Control: no-store
+  Service-Worker-Allowed: /
+
+/sw-origin-guard.js
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+  CDN-Cache-Control: no-store

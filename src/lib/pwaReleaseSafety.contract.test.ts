@@ -31,6 +31,11 @@ describe('contrato de atualização segura do PWA', () => {
       expect.objectContaining({ key: 'Cache-Control', value: expect.stringContaining('no-store') }),
       expect.objectContaining({ key: 'Service-Worker-Allowed', value: '/' }),
     ]));
+
+    const cloudflareHeaders = readRootFile('public/_headers');
+    expect(cloudflareHeaders).toContain('/sw.js');
+    expect(cloudflareHeaders).toContain('Cache-Control: no-store');
+    expect(cloudflareHeaders).toContain('Service-Worker-Allowed: /');
   });
 
   it('recupera a origem antiga antes de carregar o React', () => {
