@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.23";
+export const APP_VERSION = "1.41.24";
 
 export const VERSION_NOTES =
-  "A Agenda se recupera automaticamente de oscilações curtas e mantém corretamente a visualização escolhida em cada aparelho.";
+  "A Agenda aguarda a sessão segura antes de carregar e os avisos agora mostram título, explicação e ação sem comprimir o texto.";

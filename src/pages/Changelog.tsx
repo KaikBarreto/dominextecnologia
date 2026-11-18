@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.24',
+    date: '18 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Agenda recuperada após atualizar ou retomar o sistema',
+        category: 'correcao',
+        description: 'A Agenda agora aguarda a sessão segura ficar pronta antes de buscar os compromissos, evitando avisos de conexão ao atualizar a versão ou voltar ao aplicativo.',
+      },
+      {
+        title: 'Avisos mais fáceis de ler',
+        category: 'melhoria',
+        description: 'Os avisos do Dominex e do EcoSistema passam a mostrar o título acima da explicação, usando toda a largura disponível. A ação aparece abaixo sem espremer o texto.',
+      },
+    ],
+  },
+  {
     version: '1.41.23',
     date: '18 de novembro de 2026',
     type: 'patch',

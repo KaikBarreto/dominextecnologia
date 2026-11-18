@@ -22,19 +22,75 @@ interface ScheduleRpcBuilder extends PromiseLike<ScheduleRpcResult> {
 }
 
 const SCHEDULE_PAGE_SIZE = 1000;
+const SCHEDULE_SESSION_UNAVAILABLE = 'schedule_session_unavailable';
+
+type ScheduleReadError = Error & {
+  code?: string;
+  status?: number;
+  cause?: unknown;
+};
+
+function sessionUnavailableError(cause?: unknown): ScheduleReadError {
+  const error = new Error('Sua sessão está sendo restabelecida. Tente novamente em instantes.') as ScheduleReadError;
+  error.code = SCHEDULE_SESSION_UNAVAILABLE;
+  if (cause) error.cause = cause;
+  return error;
+}
+
+async function ensureScheduleSession(expectedUserId: string) {
+  const current = await supabase.auth.getSession();
+  if (current.error) throw sessionUnavailableError(current.error);
+  if (current.data.session?.access_token && current.data.session.user.id === expectedUserId) return;
+
+  // Em retomadas do PWA ou logo após uma atualização, o AuthContext pode já
+  // conhecer o usuário enquanto o cliente ainda restaura/renova o JWT. Uma
+  // única renovação fecha essa janela sem jamais consultar como anon.
+  const refreshed = await supabase.auth.refreshSession();
+  if (
+    refreshed.error
+    || !refreshed.data.session?.access_token
+    || refreshed.data.session.user.id !== expectedUserId
+  ) {
+    throw sessionUnavailableError(refreshed.error);
+  }
+}
+
+export function shouldRetryScheduleRead(failureCount: number, rawError: unknown) {
+  if (failureCount >= 2) return false;
+
+  const error = rawError as ScheduleReadError | null;
+  const code = error?.code ?? '';
+  const message = error?.message?.toLowerCase() ?? '';
+  if (code === SCHEDULE_SESSION_UNAVAILABLE || code === '42501') return false;
+
+  return (
+    !code
+    || code.startsWith('PGRST')
+    || /fetch|network|connection|timeout|tempo limite|temporar/.test(message)
+    || (typeof error?.status === 'number' && error.status >= 500)
+  );
+}
 
 export function useScheduleOrders(
   window: ScheduleOrdersWindow,
   options: { enabled?: boolean } = {},
 ) {
-  const { profile } = useAuth();
+  const { profile, session } = useAuth();
   const companyId = profile?.company_id ?? null;
-  const enabled = options.enabled !== false && !!companyId && !!window.startDate && !!window.endDate;
+  const sessionUserId = session?.user.id ?? null;
+  const profileBelongsToSession = !!sessionUserId && profile?.user_id === sessionUserId;
+  const enabled = options.enabled !== false
+    && !!companyId
+    && profileBelongsToSession
+    && !!window.startDate
+    && !!window.endDate;
 
   const query = useQuery({
-    queryKey: ['service-orders', 'schedule-window', companyId, window.startDate, window.endDate],
+    queryKey: ['service-orders', 'schedule-window', companyId, sessionUserId, window.startDate, window.endDate],
     enabled,
     queryFn: async () => {
+      await ensureScheduleSession(sessionUserId!);
+
       const rpc = supabase.rpc as unknown as (
         name: string,
         args: { p_start_date: string; p_end_date: string },
@@ -57,10 +113,10 @@ export function useScheduleOrders(
     staleTime: 30_000,
     gcTime: 5 * 60_000,
     placeholderData: keepPreviousData,
-    // Oscilações curtas de rede não podem fazer a Agenda parecer vazia. A
-    // consulta é idempotente e recortada pela janela visível, então repetir é
-    // seguro e barato. Erros persistentes continuam chegando ao estado de erro.
-    retry: 5,
+    // Repete apenas falhas transitórias e limita a duas novas tentativas. Isso
+    // recupera oscilações curtas sem criar uma tempestade de consultas quando
+    // a API inteira estiver indisponível.
+    retry: shouldRetryScheduleRead,
     retryDelay: (attempt) => Math.min(1_000 * 2 ** attempt, 5_000),
     refetchOnReconnect: 'always',
   });
