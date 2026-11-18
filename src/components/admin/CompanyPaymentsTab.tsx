@@ -348,7 +348,7 @@ function ContractCompositionSection({
 
           {hasUnexplainedAmount && (
             <div className="flex items-start justify-between gap-4 bg-warning/10 px-3 py-3">
-              <div><p className="font-medium">Parte sem detalhamento histórico</p><p className="mt-0.5 text-xs text-muted-foreground">O pagamento é confirmado, mas o item que explica esta diferença não foi preservado no snapshot antigo.</p></div>
+              <div><p className="font-medium">{unexplainedAmount < 0 ? 'Desconto ou ajuste sem registro histórico' : 'Parte sem detalhamento histórico'}</p><p className="mt-0.5 text-xs text-muted-foreground">{unexplainedAmount < 0 ? 'O cliente pagou menos que a soma identificada, mas a condição comercial da época não foi preservada.' : 'O pagamento é confirmado, mas o item que explica esta diferença não foi preservado no snapshot antigo.'}</p></div>
               <span className="shrink-0 font-semibold tabular-nums">{money(unexplainedAmount)}</span>
             </div>
           )}
