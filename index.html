@@ -2,6 +2,25 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      // Recuperação anterior ao React para instalações antigas abertas em
+      // dominex.app. Primeiro remove SW/caches desta origem e só então troca
+      // para o host canônico. O limite garante navegação mesmo se uma API do
+      // Safari ficar pendurada em modo privado.
+      (function(){
+        if(location.hostname!=='dominex.app')return;
+        document.documentElement.style.visibility='hidden';
+        var target='https://www.dominex.app'+location.pathname+location.search+location.hash;
+        var jobs=[];
+        try{
+          if('caches'in window)jobs.push(caches.keys().then(function(keys){return Promise.allSettled(keys.map(function(key){return caches.delete(key)}))}));
+          if('serviceWorker'in navigator)jobs.push(navigator.serviceWorker.getRegistrations().then(function(registrations){return Promise.allSettled(registrations.map(function(registration){return registration.unregister()}))}));
+        }catch(_){}
+        var cleanup=Promise.allSettled(jobs);
+        var deadline=new Promise(function(resolve){setTimeout(resolve,1500)});
+        Promise.race([cleanup,deadline]).then(function(){location.replace(target)});
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content, viewport-fit=cover" />
     <title>Dominex | Sistema de Ordem de Serviço, PMOC e Gestão para Refrigeração e Equipes de Campo</title>
     <meta name="description" content="Sistema de ordem de serviço digital, PMOC e gestão para refrigeração, climatização e equipes de campo. App do técnico em campo. Teste grátis 7 dias, sem cartão.">

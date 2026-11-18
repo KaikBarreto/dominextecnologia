@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
+import { APP_VERSION } from "./src/config/version";
 
 // https://vitejs.dev/config/
 // Páginas estáticas servidas fora da SPA: cada uma é um public/<pasta>/index.html
@@ -43,7 +44,7 @@ export default defineConfig(({ mode }) => ({
         // os eventos de Web Push. O script importado participa da verificação
         // de atualização do service worker sem migrar toda a PWA para um SW
         // customizado (reduz risco nos fluxos offline já estabilizados).
-        importScripts: ["/push-sw.js"],
+        importScripts: ["/sw-origin-guard.js", "/push-sw.js"],
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,otf}"],
         // Páginas estáticas servidas fora da SPA (public/<pasta>/index.html) não
@@ -53,6 +54,10 @@ export default defineConfig(({ mode }) => ({
         // mão e separadas, e é exatamente assim que a próxima página nasce
         // quebrada, lembrando de uma lista e esquecendo a outra.
         globIgnores: [
+          // `/index.html` redireciona para `/` no host de produção. Precachear
+          // a URL redirecionada faz o Safari rejeitar a navegação controlada
+          // pelo SW. O shell canônico `/` entra abaixo como entrada explícita.
+          "**/index.html",
           ...PAGINAS_ESTATICAS.map((pasta) => `**/${pasta}/**`),
           // Reconhecimento facial e opcional. Nem a biblioteca pesada nem os
           // pesos do modelo podem atrasar a instalacao/atualizacao do PWA ou
@@ -60,7 +65,10 @@ export default defineConfig(({ mode }) => ({
           "**/face-api.esm-*.js",
           "**/models/face-api/**",
         ],
-        navigateFallback: "/index.html",
+        additionalManifestEntries: [
+          { url: "/", revision: `dominex-${APP_VERSION}` },
+        ],
+        navigateFallback: "/",
         navigateFallbackDenylist: [
           /^\/~oauth/,
           ...PAGINAS_ESTATICAS.map((pasta) => new RegExp(`^/${pasta}`)),

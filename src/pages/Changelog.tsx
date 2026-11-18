@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.27',
+    date: '18 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Atualização do sistema sem tela de erro',
+        category: 'correcao',
+        description: 'O aplicativo agora troca de versão usando uma página direta, recupera automaticamente instalações antigas e mantém a tela atual quando a internet ainda não estiver pronta para recarregar.',
+      },
+      {
+        title: 'Agenda protegida contra carregamento infinito',
+        category: 'correcao',
+        description: 'As consultas da Agenda agora possuem tempo máximo de resposta e usam uma alternativa segura quando a consulta principal não conclui.',
+      },
+    ],
+  },
+  {
     version: '1.41.26',
     date: '18 de novembro de 2026',
     type: 'patch',

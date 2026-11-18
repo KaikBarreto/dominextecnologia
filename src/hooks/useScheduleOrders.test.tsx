@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   getSession: vi.fn(),
   refreshSession: vi.fn(),
   rpc: vi.fn(),
+  abortSignal: vi.fn(),
   range: vi.fn(),
 }));
 
@@ -24,7 +25,12 @@ import { shouldRetryScheduleRead, useScheduleOrders } from './useScheduleOrders'
 describe('useScheduleOrders', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.rpc.mockReturnValue({ range: mocks.range });
+    const rpcBuilder = {
+      abortSignal: mocks.abortSignal,
+      range: mocks.range,
+    };
+    mocks.rpc.mockReturnValue(rpcBuilder);
+    mocks.abortSignal.mockReturnValue(rpcBuilder);
     mocks.range.mockResolvedValue({ data: [], error: null });
   });
 

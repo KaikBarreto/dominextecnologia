@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   rpc: vi.fn(),
+  abortSignal: vi.fn(),
   range: vi.fn(),
   from: vi.fn(),
   getSession: vi.fn(),
@@ -21,12 +22,17 @@ vi.mock('@/utils/supabasePagination', () => ({
   fetchAllPaginated: mocks.fetchAllPaginated,
 }));
 
-import { fetchScheduleOrders } from './useScheduleOrders';
+import { fetchScheduleOrders, withScheduleRequestTimeout } from './useScheduleOrders';
 
 describe('fetchScheduleOrders', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.rpc.mockReturnValue({ range: mocks.range });
+    const rpcBuilder = {
+      abortSignal: mocks.abortSignal,
+      range: mocks.range,
+    };
+    mocks.rpc.mockReturnValue(rpcBuilder);
+    mocks.abortSignal.mockReturnValue(rpcBuilder);
     mocks.from.mockReturnValue({});
     mocks.getSession.mockResolvedValue({
       data: { session: { access_token: 'token', user: { id: 'user-1' } } },
@@ -64,5 +70,25 @@ describe('fetchScheduleOrders', () => {
     });
     expect(mocks.fetchAllPaginated).toHaveBeenCalledTimes(4);
     expect(mocks.refreshSession).not.toHaveBeenCalled();
+  });
+});
+
+describe('withScheduleRequestTimeout', () => {
+  it('aborta e encerra uma consulta que nao responde', async () => {
+    vi.useFakeTimers();
+    let capturedSignal: AbortSignal | undefined;
+
+    const pending = withScheduleRequestTimeout((signal) => {
+      capturedSignal = signal;
+      return new Promise<never>(() => {});
+    }, 50);
+
+    const assertion = expect(pending).rejects.toMatchObject({
+      code: 'schedule_request_timeout',
+    });
+    await vi.advanceTimersByTimeAsync(50);
+    await assertion;
+    expect(capturedSignal?.aborted).toBe(true);
+    vi.useRealTimers();
   });
 });
