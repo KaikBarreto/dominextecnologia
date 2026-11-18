@@ -263,11 +263,26 @@ function ContractCompositionSection({
   payment: UnifiedCompanyPayment;
 }) {
   const snapshot = detail.snapshot || {};
-  const modules = snapshot.modules || [];
+  const modules = (snapshot.modules || []).filter((module) => module.code !== 'extra_user');
   const promotions = snapshot.promotions || [];
   const unavailable = detail.quality === 'legacy_unavailable';
   const hasPlan = Boolean(snapshot.plan?.label || snapshot.plan?.code);
   const hasCycle = Boolean(snapshot.installment || snapshot.billing_cycle);
+  const paidAmount = Number(snapshot.amounts?.paid ?? payment.amount);
+  const moduleTotal = modules.reduce(
+    (total, module) => total + Number(module.unit_price || 0) * Number(module.quantity || 1),
+    0,
+  );
+  const allModulesPriced = modules.length > 0 && modules.every((module) => module.unit_price != null);
+  const extraUsers = Number(snapshot.users?.extra || 0);
+  const extraUserPrice = snapshot.users?.extra_unit_price;
+  const extraUsersTotal = extraUserPrice == null ? 0 : extraUsers * Number(extraUserPrice);
+  const discount = Number(snapshot.amounts?.discount || 0);
+  const identifiedTotal = moduleTotal + extraUsersTotal - discount;
+  const isAnnual = ['yearly', 'annual', 'anual'].includes((snapshot.billing_cycle || '').toLowerCase());
+  const canCompareWithPaid = allModulesPriced && !isAnnual && !snapshot.installment;
+  const unexplainedAmount = canCompareWithPaid ? paidAmount - identifiedTotal : 0;
+  const hasUnexplainedAmount = Math.abs(unexplainedAmount) >= 0.01;
 
   if (unavailable) {
     return (
@@ -284,42 +299,63 @@ function ContractCompositionSection({
   return (
     <div className="space-y-6">
       <section>
-        <div className="flex items-center gap-2"><Receipt className="h-4 w-4 text-primary" /><h3 className="font-semibold">O que foi contratado</h3></div>
+        <div className="flex items-center gap-2"><Receipt className="h-4 w-4 text-primary" /><h3 className="font-semibold">O que formou este pagamento</h3></div>
         <div className="mt-4 grid gap-x-6 gap-y-4 border-b pb-6 text-sm sm:grid-cols-2 lg:grid-cols-3">
           {hasPlan && <div><p className="text-muted-foreground">Plano</p><p className="mt-1 font-medium">{snapshot.plan?.label || planLabel(snapshot.plan?.code)}</p></div>}
           {hasCycle && <div><p className="text-muted-foreground">Ciclo</p><p className="mt-1 font-medium">{snapshot.installment ? `Parcela ${snapshot.installment.number}/${snapshot.installment.total} do anual` : cycleLabel(snapshot.billing_cycle)}</p></div>}
-          <div><p className="text-muted-foreground">Valor pago</p><p className="mt-1 font-medium">{money(snapshot.amounts?.paid ?? payment.amount)}</p></div>
-          {snapshot.amounts?.base != null && <div><p className="text-muted-foreground">Valor-base</p><p className="mt-1 font-medium">{money(snapshot.amounts.base)}</p></div>}
-          {snapshot.amounts?.subscription != null && <div><p className="text-muted-foreground">Valor da assinatura</p><p className="mt-1 font-medium">{money(snapshot.amounts.subscription)}</p></div>}
-          {snapshot.amounts?.discount != null && snapshot.amounts.discount > 0 && <div><p className="text-muted-foreground">Desconto aplicado</p><p className="mt-1 font-medium text-success">-{money(snapshot.amounts.discount)}</p></div>}
+          <div><p className="text-muted-foreground">Total pago</p><p className="mt-1 text-base font-semibold tabular-nums">{money(paidAmount)}</p></div>
+          {discount > 0 && snapshot.amounts?.base != null && <div><p className="text-muted-foreground">Preço cheio antes do desconto</p><p className="mt-1 font-medium tabular-nums">{money(snapshot.amounts.base)}</p></div>}
+          {isAnnual && snapshot.amounts?.subscription != null && <div><p className="text-muted-foreground">Valor do período</p><p className="mt-1 font-medium tabular-nums">{money(snapshot.amounts.subscription)}</p></div>}
         </div>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(180px,0.7fr)_minmax(260px,1.3fr)]">
-        <section>
-          <div className="flex items-center gap-2"><Users className="h-4 w-4" /><p className="font-semibold">Usuários</p></div>
-          {snapshot.users ? (
-            <dl className="mt-4 space-y-3 text-sm">
-              <div className="flex items-center justify-between gap-4"><dt className="text-muted-foreground">Limite contratado</dt><dd className="font-medium">{snapshot.users.limit ?? '—'}</dd></div>
-              <div className="flex items-center justify-between gap-4"><dt className="text-muted-foreground">Adicionais</dt><dd className="font-medium">{snapshot.users.extra ?? 0}{snapshot.users.extra_unit_price != null ? ` × ${money(snapshot.users.extra_unit_price)}` : ''}</dd></div>
-            </dl>
-          ) : <p className="mt-3 text-sm text-muted-foreground">Sem registro histórico de usuários.</p>}
-        </section>
-
-        <section className="lg:border-l lg:pl-6">
-          <div className="flex items-center gap-2"><Layers3 className="h-4 w-4" /><p className="font-semibold">Módulos incluídos</p></div>
-          {modules.length > 0 ? (
-            <div className="mt-3 divide-y">
-              {modules.map((module) => (
-                <div key={module.code} className="flex items-center justify-between gap-3 py-2.5 text-sm first:pt-0">
-                  <div className="min-w-0"><p className="font-medium">{subscriptionModuleDisplayName(module.code, module.name || module.code)}</p>{(module.quantity || 1) > 1 && <p className="text-xs text-muted-foreground">Quantidade: {module.quantity}</p>}</div>
-                  {module.unit_price != null && <span className="shrink-0 text-muted-foreground">{money(module.unit_price)}</span>}
+      <section aria-labelledby="payment-breakdown-title">
+        <div className="flex items-center gap-2"><Layers3 className="h-4 w-4" /><p id="payment-breakdown-title" className="font-semibold">Composição do valor</p></div>
+        <div className="mt-3 divide-y text-sm">
+          {modules.map((module) => {
+            const quantity = Number(module.quantity || 1);
+            const lineTotal = module.unit_price == null ? null : Number(module.unit_price) * quantity;
+            return (
+              <div key={module.code} className="flex items-start justify-between gap-4 py-3 first:pt-0">
+                <div className="min-w-0">
+                  <p className="font-medium">{subscriptionModuleDisplayName(module.code, module.name || module.code)}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {module.price_detail || (quantity > 1 ? `${quantity} × ${money(module.unit_price)}` : 'Módulo mensal')}
+                  </p>
                 </div>
-              ))}
+                <span className="shrink-0 font-medium tabular-nums">{lineTotal == null ? '—' : money(lineTotal)}</span>
+              </div>
+            );
+          })}
+
+          <div className="flex items-start justify-between gap-4 py-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2"><Users className="h-4 w-4" /><p className="font-medium">Usuários adicionais</p></div>
+              {snapshot.users ? (
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {extraUsers > 0 && extraUserPrice != null
+                    ? `${extraUsers} × ${money(extraUserPrice)} por mês${snapshot.users.limit != null ? ` · limite total ${snapshot.users.limit}` : ''}`
+                    : `Nenhum adicional cobrado${snapshot.users.limit != null ? ` · limite total ${snapshot.users.limit}` : ''}`}
+                </p>
+              ) : <p className="mt-0.5 text-xs text-muted-foreground">Sem evidência histórica de cobrança adicional por usuário.</p>}
             </div>
-          ) : <p className="mt-3 text-sm text-muted-foreground">Nenhum módulo individual registrado.</p>}
-        </section>
-      </div>
+            <span className="shrink-0 font-medium tabular-nums">{snapshot.users && extraUserPrice != null ? money(extraUsersTotal) : '—'}</span>
+          </div>
+
+          {discount > 0 && <div className="flex items-center justify-between gap-4 py-3 text-success"><div className="flex items-center gap-2"><Tag className="h-4 w-4" /><span className="font-medium">Descontos e promoções</span></div><span className="font-semibold tabular-nums">-{money(discount)}</span></div>}
+
+          {allModulesPriced && <div className="flex items-center justify-between gap-4 py-3"><span className="font-medium">{isAnnual || snapshot.installment ? 'Composição mensal identificada' : 'Total identificado'}</span><span className="font-semibold tabular-nums">{money(identifiedTotal)}</span></div>}
+
+          {hasUnexplainedAmount && (
+            <div className="flex items-start justify-between gap-4 bg-warning/10 px-3 py-3">
+              <div><p className="font-medium">Parte sem detalhamento histórico</p><p className="mt-0.5 text-xs text-muted-foreground">O pagamento é confirmado, mas o item que explica esta diferença não foi preservado no snapshot antigo.</p></div>
+              <span className="shrink-0 font-semibold tabular-nums">{money(unexplainedAmount)}</span>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between gap-4 pt-4 text-base"><span className="font-semibold">Total pago</span><span className="font-bold tabular-nums">{money(paidAmount)}</span></div>
+        </div>
+      </section>
 
       <section className="border-t pt-6">
         <div className="flex items-center gap-2"><Tag className="h-4 w-4" /><p className="font-semibold">Promoções</p></div>
@@ -339,7 +375,7 @@ function ContractCompositionSection({
         ) : <p className="mt-3 text-sm text-muted-foreground">{detail.quality === 'partial' ? 'Sem registro histórico de promoção para esta cobrança.' : 'Nenhuma promoção aplicada nesta cobrança.'}</p>}
       </section>
 
-      {detail.quality === 'partial' && <div className="rounded-lg bg-warning/10 px-4 py-3 text-sm">Histórico parcial: exibimos apenas os itens comprovados pelos registros da época.</div>}
+      {detail.quality === 'partial' && <div className="rounded-lg bg-warning/10 px-4 py-3 text-sm">Composição reconstruída pelo histórico e pelo catálogo. Itens sem prova suficiente aparecem como diferença, nunca como módulo inventado.</div>}
       {payment.notes && <section className="border-t pt-6"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Observações</p><p className="mt-2 whitespace-pre-wrap text-sm">{payment.notes}</p></section>}
     </div>
   );

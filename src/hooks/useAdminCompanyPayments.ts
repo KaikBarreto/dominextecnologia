@@ -38,7 +38,13 @@ export interface AdminPaymentDetailResponse {
     plan?: { code?: string | null; label?: string | null } | null;
     billing_cycle?: string | null;
     users?: { limit?: number | null; extra?: number | null; extra_unit_price?: number | null } | null;
-    modules?: Array<{ code: string; name: string; quantity?: number | null; unit_price?: number | null }>;
+    modules?: Array<{
+      code: string;
+      name: string;
+      quantity?: number | null;
+      unit_price?: number | null;
+      price_detail?: string | null;
+    }>;
     promotions?: Array<{
       scope_type: string;
       module_code?: string | null;
