@@ -25,6 +25,10 @@ BEGIN
   IF p_values ? 'transaction_type' AND p_values->>'transaction_type' NOT IN ('entrada','saida') THEN
     RAISE EXCEPTION 'Tipo de conta inválido.';
   END IF;
+  IF p_values ? 'payment_method' AND nullif(p_values->>'payment_method','') IS NOT NULL
+    AND p_values->>'payment_method' NOT IN ('pix','transferencia','boleto','cheque','dinheiro','cartao_debito','cartao_credito') THEN
+    RAISE EXCEPTION 'Forma de pagamento inválida.';
+  END IF;
 
   base_description:=regexp_replace(
     trim(coalesce(nullif(p_values->>'description',''),anchor.description)),
@@ -45,8 +49,11 @@ BEGIN
     supplier_id=CASE WHEN p_values ? 'supplier_id' THEN nullif(p_values->>'supplier_id','')::uuid ELSE t.supplier_id END,
     contract_id=CASE WHEN p_values ? 'contract_id' THEN nullif(p_values->>'contract_id','')::uuid ELSE t.contract_id END,
     account_id=CASE WHEN p_values ? 'account_id' THEN nullif(p_values->>'account_id','')::uuid ELSE t.account_id END,
+    payment_method=CASE WHEN p_values ? 'payment_method' THEN nullif(p_values->>'payment_method','') ELSE t.payment_method END,
     cost_center_id=CASE WHEN p_values ? 'cost_center_id' THEN nullif(p_values->>'cost_center_id','')::uuid ELSE t.cost_center_id END,
-    due_date=CASE WHEN p_values ? 'due_date' THEN coalesce(t.due_date,(p_values->>'due_date')::date)+due_delta ELSE t.due_date END,
+    due_date=CASE WHEN p_values ? 'due_date'
+      THEN CASE WHEN t.due_date IS NULL THEN (p_values->>'due_date')::date ELSE t.due_date+due_delta END
+      ELSE t.due_date END,
     transaction_date=CASE WHEN p_values ? 'due_date' THEN t.transaction_date+due_delta ELSE t.transaction_date END,
     updated_at=now()
   WHERE t.company_id=anchor.company_id
