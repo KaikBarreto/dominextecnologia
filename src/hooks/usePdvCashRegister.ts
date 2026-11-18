@@ -14,6 +14,7 @@ import { useEffect, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { invalidatePdvReportCaches } from '@/hooks/pdvReportCache';
+import { invalidatePdvOrderCancellationCaches } from '@/hooks/pdvOrderCancellationCache';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
 import type { FinancialTransaction } from '@/types/database';
@@ -489,16 +490,7 @@ export function usePdvCashRegister(focusedSessionId: string | null = null) {
       );
     },
     onSuccess: async () => {
-      // O estorno mexe em estoque e em fiado, não só em dinheiro: as telas de
-      // Estoque e o limite do cliente têm que reagir junto.
-      await Promise.all([
-        invalidateCash(),
-        queryClient.invalidateQueries({ queryKey: ['inventory'] }),
-        queryClient.invalidateQueries({ queryKey: ['accessible-inventory-ids'] }),
-        queryClient.invalidateQueries({ queryKey: ['inventory-stock-levels'] }),
-        queryClient.invalidateQueries({ queryKey: ['inventory-movements'] }),
-        queryClient.invalidateQueries({ queryKey: ['pdv-customer-credit'] }),
-      ]);
+      await invalidatePdvOrderCancellationCaches(queryClient);
     },
   });
 

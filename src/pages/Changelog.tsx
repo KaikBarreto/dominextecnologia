@@ -31,6 +31,28 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.26',
+    date: '18 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Agenda continua disponível durante falhas de consulta',
+        category: 'correcao',
+        description: 'Se a consulta principal ficar indisponível, a Agenda usa uma leitura alternativa segura e limitada ao período visível para manter as ordens de serviço acessíveis.',
+      },
+      {
+        title: 'Atualização de materiais mais segura',
+        category: 'correcao',
+        description: 'Uma falha temporária ao salvar deixa de exibir mensagens técnicas e passa a recarregar material, saldo e movimentações sem repetir automaticamente ajustes de estoque.',
+      },
+      {
+        title: 'Cancelamento do PDV sincronizado',
+        category: 'correcao',
+        description: 'Ao cancelar um pedido, as telas de pedidos, caixa, estoque, financeiro, expedição e relatórios passam a refletir o cancelamento juntas, preservando o histórico para conferência.',
+      },
+    ],
+  },
+  {
     version: '1.41.25',
     date: '18 de novembro de 2026',
     type: 'patch',

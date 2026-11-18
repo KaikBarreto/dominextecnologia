@@ -3,6 +3,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import type { ServiceOrder } from '@/types/database';
+import { fetchAllPaginated } from '@/utils/supabasePagination';
 
 export interface ScheduleOrdersWindow {
   startDate: string;
@@ -23,6 +24,14 @@ interface ScheduleRpcBuilder extends PromiseLike<ScheduleRpcResult> {
 
 const SCHEDULE_PAGE_SIZE = 1000;
 const SCHEDULE_SESSION_UNAVAILABLE = 'schedule_session_unavailable';
+const SCHEDULE_RELATIONS_SELECT = `
+  *,
+  customer:customers(id, name, phone, celular, email, document, address, address_number, complement, neighborhood, city, state, zip_code, company_name, customer_type),
+  equipment:equipment(id, name, brand, model),
+  form_template:form_templates(id, name),
+  service_type:service_types!service_orders_service_type_id_fkey(id, name, color, number_prefix),
+  contract:contracts(id, name, is_pmoc)
+`;
 
 type ScheduleReadError = Error & {
   code?: string;
@@ -53,6 +62,146 @@ async function ensureScheduleSession(expectedUserId: string) {
   ) {
     throw sessionUnavailableError(refreshed.error);
   }
+}
+
+function shiftIsoDate(value: string, days: number) {
+  const date = new Date(`${value}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function isFallbackVisibleOrder(order: ScheduleOrder, window: ScheduleOrdersWindow, today: string) {
+  const scheduledDate = order.scheduled_date ?? '';
+  if (scheduledDate >= window.startDate && scheduledDate <= window.endDate) return true;
+
+  const schedulePlan = Array.isArray(order.schedule_plan) ? order.schedule_plan : [];
+  if (schedulePlan.some((slot) => {
+    const date = slot && typeof slot === 'object' && 'date' in slot
+      ? String(slot.date ?? '')
+      : '';
+    return date >= window.startDate && date <= window.endDate;
+  })) return true;
+
+  const resumedDate = order.resumed_at?.slice(0, 10) ?? '';
+  return (
+    window.startDate <= today
+    && ['pendente', 'a_caminho', 'em_andamento'].includes(order.status)
+    && !!resumedDate
+    && scheduledDate < resumedDate
+    && resumedDate <= window.endDate
+  );
+}
+
+/**
+ * Continuidade operacional da Agenda. A leitura permanece recortada no
+ * servidor, paginada e sujeita às mesmas policies RLS das tabelas.
+ */
+export async function fetchScheduleOrdersFallback(window: ScheduleOrdersWindow) {
+  const today = new Date().toISOString().slice(0, 10);
+  const multiDayStart = shiftIsoDate(window.startDate, -31);
+  const endExclusive = shiftIsoDate(window.endDate, 1);
+
+  const primaryPromise = fetchAllPaginated<ScheduleOrder>(() => supabase
+    .from('service_orders')
+    .select(SCHEDULE_RELATIONS_SELECT)
+    .gte('scheduled_date', window.startDate)
+    .lte('scheduled_date', window.endDate)
+    .order('scheduled_date')
+    .order('id'));
+
+  const multiDayPromise = fetchAllPaginated<ScheduleOrder>(() => supabase
+    .from('service_orders')
+    .select(SCHEDULE_RELATIONS_SELECT)
+    .gt('scheduled_days', 1)
+    .gte('scheduled_date', multiDayStart)
+    .lte('scheduled_date', window.endDate)
+    .order('scheduled_date')
+    .order('id'));
+
+  const resumedPromise = window.startDate <= today
+    ? fetchAllPaginated<ScheduleOrder>(() => supabase
+      .from('service_orders')
+      .select(SCHEDULE_RELATIONS_SELECT)
+      .in('status', ['pendente', 'a_caminho', 'em_andamento'])
+      .not('resumed_at', 'is', null)
+      .lt('resumed_at', endExclusive)
+      .order('resumed_at')
+      .order('id'))
+    : Promise.resolve([] as ScheduleOrder[]);
+
+  const candidates = (await Promise.all([
+    primaryPromise,
+    multiDayPromise,
+    resumedPromise,
+  ])).flat();
+  const orders = [...new Map(
+    candidates
+      .filter((order) => isFallbackVisibleOrder(order, window, today))
+      .map((order) => [order.id, order]),
+  ).values()];
+
+  if (orders.length === 0) return orders;
+
+  const assigneeMap = new Map<string, string[]>();
+  try {
+    for (let index = 0; index < orders.length; index += 200) {
+      const ids = orders.slice(index, index + 200).map((order) => order.id);
+      const rows = await fetchAllPaginated<{ service_order_id: string; user_id: string }>(() => supabase
+        .from('service_order_assignees')
+        .select('service_order_id, user_id')
+        .in('service_order_id', ids)
+        .order('service_order_id')
+        .order('user_id'));
+      for (const row of rows) {
+        const assignees = assigneeMap.get(row.service_order_id) ?? [];
+        assignees.push(row.user_id);
+        assigneeMap.set(row.service_order_id, assignees);
+      }
+    }
+  } catch (error) {
+    const diagnostic = error as { code?: string; message?: string };
+    console.warn('[Agenda] Responsáveis não puderam ser agregados no fallback.', {
+      code: diagnostic?.code ?? 'unknown',
+      message: diagnostic?.message?.slice(0, 160) ?? 'Erro sem mensagem',
+    });
+  }
+
+  return orders.map((order) => ({
+    ...order,
+    _assignee_user_ids: assigneeMap.get(order.id) ?? [],
+  }));
+}
+
+export async function fetchScheduleOrders(
+  window: ScheduleOrdersWindow,
+  expectedUserId: string,
+) {
+  await ensureScheduleSession(expectedUserId);
+
+  const rpc = supabase.rpc as unknown as (
+    name: string,
+    args: { p_start_date: string; p_end_date: string },
+  ) => ScheduleRpcBuilder;
+
+  const entries: ScheduleOrder[] = [];
+  for (let from = 0; ; from += SCHEDULE_PAGE_SIZE) {
+    const { data, error } = await rpc('schedule_visible_entries_v1', {
+      p_start_date: window.startDate,
+      p_end_date: window.endDate,
+    }).range(from, from + SCHEDULE_PAGE_SIZE - 1);
+
+    if (error) {
+      console.warn('[Agenda] Consulta principal indisponível; usando leitura recortada.', {
+        code: (error as { code?: string }).code ?? 'unknown',
+        message: error.message?.slice(0, 160) ?? 'Erro sem mensagem',
+      });
+      return fetchScheduleOrdersFallback(window);
+    }
+    const page = data ?? [];
+    entries.push(...page.map((row) => row.entry));
+    if (page.length < SCHEDULE_PAGE_SIZE) break;
+  }
+  return entries;
 }
 
 export function shouldRetryScheduleRead(failureCount: number, rawError: unknown) {
@@ -88,28 +237,7 @@ export function useScheduleOrders(
   const query = useQuery({
     queryKey: ['service-orders', 'schedule-window', companyId, sessionUserId, window.startDate, window.endDate],
     enabled,
-    queryFn: async () => {
-      await ensureScheduleSession(sessionUserId!);
-
-      const rpc = supabase.rpc as unknown as (
-        name: string,
-        args: { p_start_date: string; p_end_date: string },
-      ) => ScheduleRpcBuilder;
-
-      const entries: ScheduleOrder[] = [];
-      for (let from = 0; ; from += SCHEDULE_PAGE_SIZE) {
-        const { data, error } = await rpc('schedule_visible_entries_v1', {
-          p_start_date: window.startDate,
-          p_end_date: window.endDate,
-        }).range(from, from + SCHEDULE_PAGE_SIZE - 1);
-
-        if (error) throw error;
-        const page = data ?? [];
-        entries.push(...page.map((row) => row.entry));
-        if (page.length < SCHEDULE_PAGE_SIZE) break;
-      }
-      return entries;
-    },
+    queryFn: () => fetchScheduleOrders(window, sessionUserId!),
     staleTime: 30_000,
     gcTime: 5 * 60_000,
     placeholderData: keepPreviousData,

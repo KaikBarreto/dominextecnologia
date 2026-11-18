@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.25";
+export const APP_VERSION = "1.41.26";
 
 export const VERSION_NOTES =
-  "Assinaturas em checklists da OS agora preservam todos os traços no celular e continuam seguras durante o salvamento.";
+  "Agenda mais resiliente, atualização segura de materiais e cancelamentos do PDV sincronizados em todas as telas.";

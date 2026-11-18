@@ -75,9 +75,10 @@ describe('invalidação canônica dos relatórios PDV', () => {
     // createOrder ainda é só rascunho; settle e replace são os dois writers
     // que materializam fatos comerciais.
     expect(sale.match(/onSuccess: invalidateAfterSale/g)).toHaveLength(2);
-    // abertura, fechamento, movimento, reversão e cancelamento.
+    // abertura, fechamento, movimento e reversão usam o helper do caixa;
+    // cancelamento usa o helper mais amplo de projeções do pedido.
     expect(legacyCash.match(/onSuccess: invalidateCash/g)).toHaveLength(4);
-    expect(legacyCash).toMatch(/const cancelOrder[\s\S]*?invalidateCash\(\)/);
+    expect(legacyCash).toMatch(/const cancelOrder[\s\S]*?invalidatePdvOrderCancellationCaches\(queryClient\)/);
     // abertura, suprimento/sangria e fechamento v2.
     expect(cashV2.match(/onSuccess: invalidate,/g)).toHaveLength(3);
   });

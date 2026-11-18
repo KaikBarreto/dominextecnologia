@@ -2,7 +2,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
-import { getErrorMessage } from '@/utils/errorMessages';
+import {
+  getErrorMessage,
+  getSanitizedErrorDiagnostic,
+  isInternalRuntimeError,
+  isResetRuntimeError,
+} from '@/utils/errorMessages';
 import { useStockManagement } from '@/hooks/useStocks';
 
 export type InventoryItem = Tables<'inventory'>;
@@ -32,6 +37,35 @@ const inventorySecurityRpc = supabase.rpc as unknown as (
   fn: string,
   args: Record<string, unknown>,
 ) => PromiseLike<InventorySecurityRpcResult>;
+
+export type InventoryUpdateFailureKind = 'supabase' | 'runtime' | 'runtime-reset';
+
+export function classifyInventoryUpdateFailure(error: unknown): InventoryUpdateFailureKind {
+  if (isResetRuntimeError(error)) return 'runtime-reset';
+  if (isInternalRuntimeError(error)) return 'runtime';
+  return 'supabase';
+}
+
+const INVENTORY_READ_QUERY_KEYS = [
+  ['inventory'],
+  ['inventory-stock-levels'],
+  ['inventory-movements'],
+] as const;
+
+/**
+ * Depois de uma falha ambígua, consulta novamente somente as fontes de leitura.
+ * Não repete update nem RPC de movimento: uma etapa pode já ter sido gravada e
+ * uma nova tentativa automática duplicaria o Kardex.
+ */
+export async function reconcileInventoryReads(
+  queryClient: Pick<ReturnType<typeof useQueryClient>, 'invalidateQueries'>,
+): Promise<void> {
+  await Promise.allSettled(
+    INVENTORY_READ_QUERY_KEYS.map((queryKey) =>
+      queryClient.invalidateQueries({ queryKey: [...queryKey] }),
+    ),
+  );
+}
 
 export function useInventory() {
   const { toast } = useToast();
@@ -368,7 +402,25 @@ export function useInventory() {
       queryClient.invalidateQueries({ queryKey: ['inventory-movements'] });
       toast({ title: 'Item atualizado com sucesso!' });
     },
-    onError: (error) => {
+    onError: async (error) => {
+      const failureKind = classifyInventoryUpdateFailure(error);
+      if (failureKind !== 'supabase') {
+        console.error('[Estoque] Falha de runtime ao atualizar material', {
+          kind: failureKind,
+          diagnostic: getSanitizedErrorDiagnostic(error),
+        });
+
+        await reconcileInventoryReads(queryClient);
+        toast({
+          title: 'Não foi possível confirmar a atualização',
+          description: failureKind === 'runtime-reset'
+            ? 'Atualize a versão do Dominex e confira o material, o saldo e o Kardex antes de tentar novamente.'
+            : 'Atualizamos os dados exibidos. Confira o material e o saldo antes de tentar novamente.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
       toast({ title: 'Erro ao atualizar item', description: getErrorMessage(error), variant: 'destructive' });
     },
   });

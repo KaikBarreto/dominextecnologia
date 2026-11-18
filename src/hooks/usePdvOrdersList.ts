@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { usePdvAuthorizedQueryScope } from '@/hooks/pdvReportCache';
-import { invalidatePdvCashRegisterCaches } from '@/hooks/usePdvCashRegister';
+import { invalidatePdvOrderCancellationCaches } from '@/hooks/pdvOrderCancellationCache';
 import { assertPdvCancellationResult, mapPdvOrderCancellationError } from '@/lib/pdv/orderCancellation';
 
 export type PdvOrderPaymentStatus = 'aguardando' | 'parcial' | 'pago' | 'fiado_aprovado' | 'reembolso_parcial' | 'reembolsado' | 'cancelado';
@@ -159,15 +159,7 @@ export function usePdvCancelOrder() {
       return assertPdvCancellationResult(data as Record<string, unknown> | null);
     },
     onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['pdv', 'orders-workspace'] }),
-        invalidatePdvCashRegisterCaches(queryClient),
-        queryClient.invalidateQueries({ queryKey: ['inventory'] }),
-        queryClient.invalidateQueries({ queryKey: ['accessible-inventory-ids'] }),
-        queryClient.invalidateQueries({ queryKey: ['inventory-stock-levels'] }),
-        queryClient.invalidateQueries({ queryKey: ['inventory-movements'] }),
-        queryClient.invalidateQueries({ queryKey: ['pdv-customer-credit'] }),
-      ]);
+      await invalidatePdvOrderCancellationCaches(queryClient);
     },
   });
 }
