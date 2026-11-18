@@ -9,6 +9,7 @@ import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -170,7 +171,7 @@ function makeTransactionSchema(
       .refine((val) => isYearInAcceptableRange(val ?? '', currentYear), { message: v.dateYearRange }),
     notes: z.string().optional(),
     payment_method: z.string().optional(),
-    installment_count: z.coerce.number().min(1).default(1),
+    installment_count: z.coerce.number().int().min(1).max(60).default(1),
     account_id: z.string().min(1, v.accountRequired),
     // Cliente é SEMPRE opcional aqui: nem toda receita/despesa tem dono.
     customer_id: z.string().optional(),
@@ -2087,15 +2088,21 @@ export function TransactionFormDialog({
                 <FormField control={form.control} name="installment_count" render={({ field }) => (
                   <FormItem>
                     <FormLabel>{tf.installmentsLabel}</FormLabel>
-                    <Select onValueChange={(v) => field.onChange(parseInt(v))} value={String(field.value || 1)}>
-                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                      <SelectContent>
-                        <SelectItem value="1">{tf.installmentSingle}</SelectItem>
-                        {[2,3,4,5,6,7,8,9,10,11,12].map((n) => (
-                          <SelectItem key={n} value={String(n)}>{n}x</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <NumericInput
+                        id="transaction-installment-count"
+                        aria-label={tf.installmentsLabel}
+                        value={field.value == null ? '' : String(field.value)}
+                        onValueChange={(value) => field.onChange(
+                          value === '' ? '' : Math.min(60, Math.max(1, Number(value))),
+                        )}
+                        onBlur={() => {
+                          field.onBlur();
+                          if (!field.value) field.onChange(1);
+                        }}
+                      />
+                    </FormControl>
+                    <p className="text-xs text-muted-foreground">Digite de 1 a 60 parcelas.</p>
                     <FormMessage />
                   </FormItem>
                 )} />
