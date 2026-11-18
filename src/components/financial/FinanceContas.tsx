@@ -637,13 +637,6 @@ export function FinanceContas({
     ));
   }, [baseFiltered, filter, today, categoryLookup]);
 
-  // Resumo da categoria ativa: total + quantidade de lancamentos.
-  const categorySummary = useMemo(() => {
-    if (categoryFilter.length === 0) return null;
-    const total = filtered.reduce((s, t) => s + Number(t.amount), 0);
-    return { total, count: filtered.length };
-  }, [filtered, categoryFilter]);
-
   // Centros ofertados: ativos + qualquer um já usado nas contas da tela (mesmo
   // desativado depois) — senão a conta antiga ficaria sem como ser filtrada.
   const availableCostCenters = useMemo(() => {
@@ -664,12 +657,25 @@ export function FinanceContas({
     }));
   }, [costCenters, baseFiltered, fin.costCenters.inactiveSuffix]);
 
-  // Resumo do centro de custo ativo: total + quantidade (espelha o de categoria).
-  const costCenterSummary = useMemo(() => {
-    if (costCenterFilter.length === 0) return null;
-    const total = filtered.reduce((s, t) => s + Number(t.amount), 0);
-    return { total, count: filtered.length };
-  }, [filtered, costCenterFilter]);
+  // Resumo do RESULTADO filtrado, antes da paginação. Assim a soma não muda ao
+  // trocar de página e responde exatamente à pergunta "quanto dá o que filtrei?".
+  // `amount_received` cobre baixas parciais; contas quitadas usam o valor cheio.
+  const filteredResultSummary = useMemo(() => filtered.reduce((summary, transaction) => {
+    const amount = Number(transaction.amount) || 0;
+    const partialAmount = Math.max(0, Number(transaction.amount_received ?? 0) || 0);
+    const settledAmount = transaction.is_paid ? amount : Math.min(amount, partialAmount);
+    return {
+      count: summary.count + 1,
+      total: summary.total + amount,
+      settled: summary.settled + settledAmount,
+      open: summary.open + Math.max(0, amount - settledAmount),
+    };
+  }, { count: 0, total: 0, settled: 0, open: 0 }), [filtered]);
+
+  const hasActiveResultFilter = searchActive
+    || filter !== 'todas'
+    || categoryFilter.length > 0
+    || costCenterFilter.length > 0;
 
   // Ordem operacional padrão, igual no desktop e no mobile: vencidas primeiro,
   // depois pendentes e só então pagas/recebidas. Dentro dos grupos, o helper
@@ -1294,14 +1300,49 @@ export function FinanceContas({
         ))}
       </section>
 
-      {(categorySummary || costCenterSummary || (filter !== 'todas' && !searchActive)) && (
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <SlidersHorizontal className="h-3.5 w-3.5" />
-          {filter !== 'todas' && <Badge variant="secondary">{filters.find((item) => item.key === filter)?.label}</Badge>}
-          {categorySummary && <Badge variant="secondary">{categoryFilter.length} categoria(s) · {fmt(categorySummary.total)}</Badge>}
-          {costCenterSummary && <Badge variant="secondary">{costCenterFilter.length} centro(s) · {fmt(costCenterSummary.total)}</Badge>}
-          <button type="button" className="font-medium text-primary hover:underline" onClick={resetFilters}>Limpar filtros</button>
-        </div>
+      {hasActiveResultFilter && filteredResultSummary.count > 0 && (
+        <section
+          className="space-y-3 border-y border-border/70 bg-muted/20 px-3 py-3 sm:flex sm:items-center sm:justify-between sm:gap-5 sm:space-y-0"
+          aria-label="Resumo dos resultados filtrados"
+          aria-live="polite"
+        >
+          <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" />
+            {searchActive && <Badge variant="secondary" className="max-w-full truncate">Busca: {search.trim()}</Badge>}
+            {filter !== 'todas' && <Badge variant="secondary">{filters.find((item) => item.key === filter)?.label}</Badge>}
+            {categoryFilter.length > 0 && <Badge variant="secondary">{categoryFilter.length} categoria(s)</Badge>}
+            {costCenterFilter.length > 0 && <Badge variant="secondary">{costCenterFilter.length} centro(s)</Badge>}
+            <button type="button" className="font-medium text-primary hover:underline" onClick={resetFilters}>Limpar filtros</button>
+          </div>
+
+          <dl className="grid grid-cols-2 gap-x-5 gap-y-2 text-xs sm:flex sm:shrink-0 sm:items-center sm:gap-0 sm:divide-x sm:divide-border">
+            <div className="sm:px-4 sm:first:pl-0">
+              <dt className="text-muted-foreground">Resultados</dt>
+              <dd className="font-semibold tabular-nums text-foreground">
+                {filteredResultSummary.count} {filteredResultSummary.count === 1 ? 'conta' : 'contas'}
+              </dd>
+            </div>
+            <div className="sm:px-4">
+              <dt className="text-muted-foreground">Soma dos valores</dt>
+              <dd className="font-semibold tabular-nums text-foreground">{fmt(filteredResultSummary.total)}</dd>
+            </div>
+            <div className="sm:px-4">
+              <dt className="text-muted-foreground">
+                {subTab === 'pagar' ? 'Pago' : subTab === 'receber' ? 'Recebido' : 'Pago/recebido'}
+              </dt>
+              <dd className="font-semibold tabular-nums text-success">{fmt(filteredResultSummary.settled)}</dd>
+            </div>
+            <div className="sm:px-4 sm:last:pr-0">
+              <dt className="text-muted-foreground">Em aberto</dt>
+              <dd className={cn(
+                'font-semibold tabular-nums',
+                filteredResultSummary.open > 0 ? 'text-warning' : 'text-muted-foreground',
+              )}>
+                {fmt(filteredResultSummary.open)}
+              </dd>
+            </div>
+          </dl>
+        </section>
       )}
 
       {/* Bloco "Faturas de Cartão" — só aparece em subTab='pagar' quando há faturas
