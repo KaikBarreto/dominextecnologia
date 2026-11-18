@@ -49,7 +49,10 @@ describe('tela geral de Pedidos do PDV', () => {
     expect(menu).toContain('ariaLabel={`Ações do pedido ${props.orderNumber}`}');
     expect(menu).toContain("label: 'Ver pedido e histórico'");
     expect(menu).toContain("label: 'Gerar comprovante'");
+    expect(menu).toContain("label: 'Cancelar pedido'");
+    expect(menu).toContain("variant: 'delete'");
     expect(menu).toContain('hidden: !props.canGenerateReceipt');
+    expect(page).toContain('<PdvOrderCancelDialog');
     expect(page).toContain('list.data?.canFilterCash');
     expect(page).not.toContain('<PdvOrderReceiptButton');
   });

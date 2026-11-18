@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.21',
+    date: '18 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cancelamento correto na tela de Pedidos',
+        category: 'correcao',
+        description: 'Pedidos finalizados agora têm uma ação própria de cancelamento, com confirmação clara e atualização do estoque, dos valores relacionados e das telas da loja. O pedido permanece identificado como cancelado para manter o histórico.',
+      },
+      {
+        title: 'Relatório de serviço mais claro',
+        category: 'melhoria',
+        description: 'O cabeçalho do relatório agora identifica o nome do serviço de forma explícita. Respostas que combinam texto, fotos e vídeo passam a aparecer corretamente conforme o conteúdo enviado.',
+      },
+    ],
+  },
+  {
     version: '1.41.20',
     date: '18 de novembro de 2026',
     type: 'patch',

@@ -21095,6 +21095,10 @@ export type Database = {
         Args: { p_order_id: string; p_reason: string }
         Returns: Json
       }
+      pdv_cancel_order_v2: {
+        Args: { p_order_id: string; p_reason: string }
+        Returns: Json
+      }
       pdv_cash_movement: {
         Args: {
           p_amount: number

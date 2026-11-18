@@ -1,4 +1,4 @@
-import { Banknote, Eye, PackageCheck, Printer, ReceiptText, RotateCcw, UserRound, WalletCards } from 'lucide-react';
+import { Banknote, Eye, PackageCheck, Printer, ReceiptText, RotateCcw, Trash2, UserRound, WalletCards } from 'lucide-react';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 
 /** Menus de pedidos compartilham destinos reais; quem chama aplica as permissões. */
@@ -14,6 +14,7 @@ export interface PdvOrderActionsMenuProps {
   onValues?: () => void;
   onCustomer?: () => void;
   onFiscal?: () => void;
+  onCancel?: () => void;
   triggerClassName?: string;
   onOpenChange?: (open: boolean) => void;
 }
@@ -33,6 +34,7 @@ export function PdvOrderActionsMenu(props: PdvOrderActionsMenuProps) {
       { label: 'Devoluções e itens não retirados', icon: RotateCcw, onClick: () => props.onReturns?.(), hidden: !props.onReturns },
       { label: 'Trocas, créditos e reembolsos', icon: WalletCards, onClick: () => props.onValues?.(), hidden: !props.onValues },
       { label: 'Saldo e histórico do cliente', icon: UserRound, onClick: () => props.onCustomer?.(), hidden: !props.onCustomer },
+      { label: 'Cancelar pedido', icon: Trash2, onClick: () => props.onCancel?.(), hidden: !props.onCancel, variant: 'delete' },
     ]}
   />;
 }

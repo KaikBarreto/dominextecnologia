@@ -17,6 +17,9 @@ import { invalidatePdvReportCaches } from '@/hooks/pdvReportCache';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
 import type { FinancialTransaction } from '@/types/database';
+import { assertPdvCancellationResult } from '@/lib/pdv/orderCancellation';
+
+export { assertPdvCancellationResult } from '@/lib/pdv/orderCancellation';
 
 export interface PdvTerminal {
   id: string;
@@ -113,17 +116,6 @@ export interface PdvCloseResult {
   aberto_em: string;
   fechado_em: string;
   avisos: string[];
-}
-
-export function assertPdvCancellationResult(
-  result: Record<string, unknown> | null,
-): Record<string, unknown> {
-  if (result?.status !== 'cancelado' || result.cancelado !== true) {
-    throw new Error(
-      'A venda não foi cancelada. Atualize a tela e tente novamente pelo pedido.',
-    );
-  }
-  return result;
 }
 
 /**
@@ -283,6 +275,7 @@ export async function invalidatePdvCashRegisterCaches(queryClient: QueryClient) 
     queryClient.invalidateQueries({ queryKey: ['pdv-cash-session-operators'] }),
     queryClient.invalidateQueries({ queryKey: SESSION_KEYS.cofre }),
     queryClient.invalidateQueries({ queryKey: ['pdv-cash-session-detail'] }),
+    queryClient.invalidateQueries({ queryKey: ['pdv-cash-sessions-v2'] }),
     queryClient.invalidateQueries({ queryKey: ['financial-accounts'] }),
     queryClient.invalidateQueries({ queryKey: ['account-balances'] }),
     queryClient.invalidateQueries({ queryKey: ['financial-transactions'] }),
@@ -486,7 +479,7 @@ export function usePdvCashRegister(focusedSessionId: string | null = null) {
    */
   const cancelOrder = useMutation({
     mutationFn: async (vars: { orderId: string; reason?: string | null }) => {
-      const { data, error } = await supabase.rpc('pdv_cancel_order', {
+      const { data, error } = await supabase.rpc('pdv_cancel_order_v2', {
         p_order_id: vars.orderId,
         p_reason: vars.reason ?? null,
       });

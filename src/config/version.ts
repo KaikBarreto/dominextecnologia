@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.20";
+export const APP_VERSION = "1.41.21";
 
 export const VERSION_NOTES =
-  "A compensação de devoluções volta a concluir corretamente a recomposição de estoque e crédito do cliente.";
+  "Pedidos finalizados agora podem ser cancelados pela tela de Pedidos com os estornos relacionados, e o relatório de serviço identifica claramente o nome do serviço e todas as mídias enviadas.";

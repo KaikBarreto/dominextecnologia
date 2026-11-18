@@ -11,7 +11,7 @@ vi.mock('@/contexts/AuthContext',()=>({useAuth:()=>({roles:[],permissions:[],has
 vi.mock('@/contexts/AppLocaleContext',()=>({useAppLocaleContext:()=>({locale:'pt-br'})}));
 vi.mock('@/hooks/usePdvCounterFlow',()=>({usePdvCounterCapability:()=>({data:{counterEnabled:state.counterEnabled,fulfillmentMode:state.mode}})}));
 vi.mock('@/hooks/usePdvSalesFlow',()=>({usePdvSalesFlow:()=>{state.flow();return {data:[],isLoading:false,isError:false};}}));
-vi.mock('@/hooks/use-mobile',()=>({useIsMobile:()=>state.mobile}));
+vi.mock('@/hooks/use-mobile',()=>({useIsMobile:()=>state.mobile,useIsCompact:()=>state.mobile}));
 vi.mock('@/hooks/use-toast',()=>({useToast:()=>({toast:vi.fn()})}));
 vi.mock('@/lib/format/hooks',()=>({useLocaleFormatters:()=>({money:(v:number)=>`R$ ${v.toFixed(2)}`,dateTime:(v:string)=>v})}));
 vi.mock('@/hooks/usePdvReturns',()=>({usePdvReturnsFeature:()=>({data:state.returnsEnabled}),derivePdvReturnsAccess:()=>({enabled:state.returnsEnabled,canReturn:state.returnsEnabled,canCancelResidual:state.returnsEnabled})}));
@@ -26,6 +26,7 @@ vi.mock('@/hooks/usePdvOrdersList',()=>({
  pdvOrderStatusLabel:(_kind:string,value:string)=>value==='pago'?'Pagamento concluído':value,
  usePdvOrdersList:()=>({isLoading:state.listLoading,data:state.listLoading?undefined:{rows:[{...state.order,itemCount:1,updatedAt:state.order.createdAt}],total:1},refetch:vi.fn()}),
  usePdvOrderWorkspace:()=>({isLoading:state.detailLoading,data:state.detailLoading?undefined:{order:state.order,items:[{id:'item-1',description:'Tubo de cobre',quantity:1,unitPrice:80,total:80,deliveredQuantity:0}],timeline:[{kind:'created',label:'Pedido criado',at:state.order.createdAt}] } satisfies PdvOrderWorkspaceDetail,refetch:vi.fn()}),
+ usePdvCancelOrder:()=>({mutateAsync:vi.fn(),isPending:false}),
 }));
 import PdvOrders from './PdvOrders';
 function LocationProbe(){const location=useLocation();return <output data-testid="location">{location.pathname+location.search}</output>}
