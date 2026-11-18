@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.21";
+export const APP_VERSION = "1.41.22";
 
 export const VERSION_NOTES =
-  "Pedidos finalizados agora podem ser cancelados pela tela de Pedidos com os estornos relacionados, e o relatório de serviço identifica claramente o nome do serviço e todas as mídias enviadas.";
+  "Agenda e painel agora carregam somente os dados necessários para o período exibido, com histórico e filtros disponíveis sob demanda.";

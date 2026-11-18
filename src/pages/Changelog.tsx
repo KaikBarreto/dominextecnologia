@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.22',
+    date: '18 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Agenda e painel carregam mais rápido',
+        category: 'melhoria',
+        description: 'A Agenda busca primeiro somente o período que está na tela, enquanto histórico e filtros adicionais são carregados quando necessários. O painel inicial também consulta apenas os dados do período escolhido, reduzindo o volume da primeira abertura.',
+      },
+      {
+        title: 'Sugestões de acesso para qualquer segmento',
+        category: 'melhoria',
+        description: 'Os atalhos de permissões agora usam nomes neutros e fáceis de entender, sem depender do segmento de refrigeração.',
+      },
+    ],
+  },
+  {
     version: '1.41.21',
     date: '18 de novembro de 2026',
     type: 'patch',
