@@ -359,6 +359,17 @@ BEGIN
           IF NOT EXISTS(SELECT 1 FROM public.pdv_refunds r WHERE r.id=legacy_refund
             AND r.commercial_return_id=source_return AND r.residual_cancellation_id IS NULL) THEN
             RAISE EXCEPTION 'Origem legada de devolução foi trocada por residual'; END IF;
+          EXECUTE 'SET LOCAL ROLE authenticated';
+          credit_result:=public.pdv_reverse_commercial_return_v2(source_return,
+            'Compensação da devolução real','res1513-legacy-return-reverse-commercial');
+          EXECUTE 'RESET ROLE';
+          IF NOT EXISTS(SELECT 1 FROM public.pdv_commercial_returns r
+              WHERE r.id=(credit_result->>'return_id')::uuid
+                AND r.reversal_of_id=source_return
+                AND r.event_kind='reversal')
+            OR public.pdv_party_available_credit_v2(company,'customer',customer)<>15 THEN
+            RAISE EXCEPTION 'Compensação da devolução real não recompôs estoque/crédito';
+          END IF;
           RAISE EXCEPTION 'rollback_legacy_return_compatibility' USING ERRCODE='P1530';
         EXCEPTION WHEN SQLSTATE 'P1530' THEN NULL;
         END;

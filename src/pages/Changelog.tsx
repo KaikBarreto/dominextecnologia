@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.20',
+    date: '18 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Compensação de devoluções corrigida',
+        category: 'correcao',
+        description: 'Ao desfazer uma devolução, a recomposição do estoque e do crédito do cliente volta a ser concluída com segurança e permanece registrada no histórico.',
+      },
+    ],
+  },
+  {
     version: '1.41.19',
     date: '18 de novembro de 2026',
     type: 'patch',
