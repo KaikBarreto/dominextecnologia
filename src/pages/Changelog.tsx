@@ -31,9 +31,9 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
-    version: '1.42.0',
+    version: '1.41.31',
     date: '19 de novembro de 2026',
-    type: 'minor',
+    type: 'patch',
     changes: [
       {
         title: 'Aviso de WhatsApp ao abrir uma OS',
