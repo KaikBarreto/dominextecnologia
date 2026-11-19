@@ -1,12 +1,41 @@
-export type WhatsappTemplateStyle = 'automatic' | 'objective' | 'cordial' | 'detailed';
+import {
+  normalizeWhatsappCustomTemplate,
+  renderWhatsappTemplate,
+  resolveWhatsappTemplate,
+  stripWhatsappContactNoticeLines,
+  type WhatsappTemplateValues,
+} from './whatsappMessageTemplates';
 
-export type WhatsappOsEventKey = 'scheduled_reminder' | 'a_caminho' | 'em_andamento' | 'concluida';
+/**
+ * `custom` = texto escrito pelo cliente no editor, guardado em `customText`.
+ * Os outros quatro são os modelos prontos do sistema.
+ */
+export type WhatsappTemplateStyle = 'automatic' | 'objective' | 'cordial' | 'detailed' | 'custom';
+
+/**
+ * `criada` é o aviso de OS aberta. O nome é em português (como os demais
+ * status de OS) de propósito: `created` já é a chave do aviso de cobrança
+ * gerada e as duas convivem nos mesmos dicionários de tela.
+ */
+export type WhatsappOsEventKey =
+  | 'criada'
+  | 'scheduled_reminder'
+  | 'a_caminho'
+  | 'em_andamento'
+  | 'concluida';
 export type WhatsappBillingEventKey = 'created' | 'before_due' | 'due_today' | 'after_due';
 export type WhatsappOsReminderTiming = 'day_before' | 'same_day';
 
 export interface WhatsappAutomationRule {
   enabled: boolean;
   template: WhatsappTemplateStyle;
+  /**
+   * Texto personalizado, no formato do WhatsApp (`*negrito*`, `_itálico_`,
+   * `~riscado~`) com variáveis `{{os.numero}}`. Só existe quando é válido; fica
+   * guardado mesmo se o cliente voltar para um modelo pronto, para ele não
+   * perder o que escreveu.
+   */
+  customText?: string;
 }
 
 export interface WhatsappOsScheduledReminderRule extends WhatsappAutomationRule {
@@ -14,6 +43,7 @@ export interface WhatsappOsScheduledReminderRule extends WhatsappAutomationRule 
 }
 
 export interface WhatsappOsEventRules {
+  criada: WhatsappAutomationRule;
   scheduled_reminder: WhatsappOsScheduledReminderRule;
   a_caminho: WhatsappAutomationRule;
   em_andamento: WhatsappAutomationRule;
@@ -102,6 +132,8 @@ export const DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES: WhatsappAutomationPreferen
   os: {
     includeLink: true,
     events: {
+      // Nasce desligado: é o cliente que decide avisar na abertura da OS.
+      criada: { enabled: false, template: 'automatic' },
       scheduled_reminder: { enabled: false, template: 'automatic', timing: 'day_before' },
       a_caminho: { enabled: true, template: 'automatic' },
       em_andamento: { enabled: true, template: 'automatic' },
@@ -129,6 +161,7 @@ const TEMPLATE_STYLES: WhatsappTemplateStyle[] = [
   'objective',
   'cordial',
   'detailed',
+  'custom',
 ];
 
 const OS_REMINDER_TIMINGS: WhatsappOsReminderTiming[] = ['day_before', 'same_day'];
@@ -241,9 +274,14 @@ function normalizeHumanBehavior(
 
 function normalizeRule(value: unknown, fallback: WhatsappAutomationRule): WhatsappAutomationRule {
   const input = isRecord(value) ? value : {};
+  const customText = normalizeWhatsappCustomTemplate(input.customText);
+  const template = readTemplate(input.template, fallback.template);
   return {
     enabled: readBoolean(input.enabled, fallback.enabled),
-    template: readTemplate(input.template, fallback.template),
+    // "Personalizada" sem texto válido não existe: volta para o modelo padrão
+    // em vez de deixar o aviso apontando para um texto vazio.
+    template: template === 'custom' && !customText ? fallback.template : template,
+    ...(customText ? { customText } : {}),
   };
 }
 
@@ -268,6 +306,7 @@ export function normalizeWhatsappAutomationPreferences(
     os: {
       includeLink: readBoolean(os.includeLink, defaults.os.includeLink),
       events: {
+        criada: normalizeRule(osEvents.criada, defaults.os.events.criada),
         scheduled_reminder: {
           ...normalizeRule(osEvents.scheduled_reminder, defaults.os.events.scheduled_reminder),
           timing: readOsReminderTiming(
@@ -325,6 +364,7 @@ interface PreviewFixture {
   customer: string;
   technician: string;
   service: string;
+  equipment: string;
   osNumber: string;
   osLink: string;
   amount: string;
@@ -339,6 +379,7 @@ export const WHATSAPP_PREVIEW_FIXTURE: PreviewFixture = {
   customer: 'Mariana',
   technician: 'Carlos',
   service: 'Manutenção preventiva',
+  equipment: 'Split 12.000 BTUs da sala',
   osNumber: '#1048',
   osLink: 'https://www.dominex.app/os/1048',
   amount: 'R$ 480,00',
@@ -348,115 +389,83 @@ export const WHATSAPP_PREVIEW_FIXTURE: PreviewFixture = {
   paymentLink: 'https://www.dominex.app/pagar/8F2K9Q',
 };
 
-function resolveStyle(style: WhatsappTemplateStyle): Exclude<WhatsappTemplateStyle, 'automatic'> {
-  return style === 'automatic' ? 'cordial' : style;
+/** Valores ilustrativos da prévia, no mesmo formato que o enviador monta. */
+export function buildWhatsappPreviewValues(
+  preferences: WhatsappAutomationPreferences,
+  fixture: PreviewFixture = WHATSAPP_PREVIEW_FIXTURE,
+  companyValues: WhatsappTemplateValues = {},
+): WhatsappTemplateValues {
+  // Dado real da empresa vence o ilustrativo: a prévia mostra o nome que o
+  // cliente final vai ler de verdade.
+  const realCompanyValues = Object.fromEntries(
+    Object.entries(companyValues).filter(([, value]) => String(value ?? '').trim().length > 0),
+  );
+  return {
+    'empresa.cnpj': '12.345.678/0001-90',
+    'empresa.telefone': '(62) 3333-4444',
+    'destinatario.nome': fixture.customer,
+    'cliente.nome': fixture.customer,
+    'empresa.nome': fixture.company,
+    'aviso.cliente': '',
+    'os.numero': fixture.osNumber,
+    'os.agendamento': `${fixture.scheduledDate}, às ${fixture.scheduledTime}`,
+    'os.data': fixture.scheduledDate,
+    'os.horario': fixture.scheduledTime,
+    'os.servico': fixture.service,
+    'os.tecnico': fixture.technician,
+    'os.equipamentos': fixture.equipment,
+    'os.link': fixture.osLink,
+    'cobranca.valor': fixture.amount,
+    'cobranca.vencimento': fixture.dueDate,
+    'cobranca.link': fixture.paymentLink,
+    'cobranca.dias_antes': preferences.billing.daysBeforeDue,
+    'cobranca.dias_depois': preferences.billing.daysAfterDue,
+    ...realCompanyValues,
+  };
 }
 
-function buildOsPreview(
-  key: WhatsappOsEventKey,
-  style: WhatsappTemplateStyle,
-  preferences: WhatsappAutomationPreferences['os'],
-  fixture: PreviewFixture,
+/**
+ * Texto (ainda com as variáveis) que vale para um aviso: o personalizado ou o
+ * modelo pronto. "Automático" aparece como cordial; no envio real o sistema
+ * alterna entre os três modelos.
+ */
+export function resolveWhatsappEventTemplate(
+  event: WhatsappAutomationEvent,
+  preferences: WhatsappAutomationPreferences,
+  choice?: WhatsappTemplateStyle,
 ): string {
-  const resolved = resolveStyle(style);
-  if (key === 'scheduled_reminder') {
-    const action = {
-      objective: `Lembrete: sua visita da OS ${fixture.osNumber} está agendada para ${fixture.scheduledDate}, às ${fixture.scheduledTime}.`,
-      cordial: `Passando para lembrar que sua visita da OS ${fixture.osNumber} está agendada para ${fixture.scheduledDate}, às ${fixture.scheduledTime}.`,
-      detailed: `Sua visita para ${fixture.service}, referente à OS ${fixture.osNumber}, está agendada para ${fixture.scheduledDate}, às ${fixture.scheduledTime}.`,
-    }[resolved];
-
-    return [
-      `Olá, ${fixture.customer}!`,
-      '',
-      action,
-      preferences.includeLink ? `*Acompanhe a OS:* ${fixture.osLink}` : '',
-    ].filter(Boolean).join('\n');
-  }
-
-  const action = {
-    a_caminho: {
-      objective: `O técnico ${fixture.technician} está a caminho para atender a OS ${fixture.osNumber}.`,
-      cordial: `Boas notícias: o técnico ${fixture.technician} já está a caminho para atender você na OS ${fixture.osNumber}.`,
-      detailed: `O técnico ${fixture.technician} iniciou o deslocamento para o serviço de ${fixture.service}, referente à OS ${fixture.osNumber}.`,
+  const rule = event.domain === 'os'
+    ? preferences.os.events[event.key]
+    : preferences.billing.events[event.key];
+  const effectiveChoice = choice ?? rule.template;
+  const template = resolveWhatsappTemplate({
+    domain: event.domain,
+    event: event.key,
+    choice: effectiveChoice,
+    customText: rule.customText,
+    automaticStyle: 'cordial',
+    options: {
+      includeOsLink: preferences.os.includeLink,
+      includeAmount: preferences.billing.includeAmount,
+      includePaymentLink: preferences.billing.includePaymentLink,
     },
-    em_andamento: {
-      objective: `O atendimento da OS ${fixture.osNumber} foi iniciado.`,
-      cordial: `Seu atendimento começou. O técnico ${fixture.technician} já está realizando o serviço da OS ${fixture.osNumber}.`,
-      detailed: `O técnico ${fixture.technician} iniciou o serviço de ${fixture.service}, referente à OS ${fixture.osNumber}.`,
-    },
-    concluida: {
-      objective: `A OS ${fixture.osNumber} foi concluída.`,
-      cordial: `Seu atendimento foi concluído com sucesso. Agradecemos pela confiança na nossa equipe!`,
-      detailed: `O serviço de ${fixture.service}, referente à OS ${fixture.osNumber}, foi concluído pelo técnico ${fixture.technician}.`,
-    },
-  }[key][resolved];
-
-  return [`Olá, ${fixture.customer}!`, '', action, preferences.includeLink ? `*Acompanhe a OS:* ${fixture.osLink}` : '']
-    .filter(Boolean)
-    .join('\n');
-}
-
-function buildBillingPreview(
-  key: WhatsappBillingEventKey,
-  style: WhatsappTemplateStyle,
-  preferences: WhatsappAutomationPreferences['billing'],
-  fixture: PreviewFixture,
-): string {
-  const resolved = resolveStyle(style);
-  const company = `*${fixture.company}*`;
-  const opening = {
-    created: {
-      objective: `Você recebeu uma nova cobrança da ${company}.`,
-      cordial: `Passando para avisar que você recebeu uma nova cobrança da ${company}.`,
-      detailed: `Uma nova cobrança da ${company} foi gerada para você.`,
-    },
-    before_due: {
-      objective: `Uma cobrança da ${company} vence em ${preferences.daysBeforeDue} dias.`,
-      cordial: `A ${company} lembra que sua cobrança vence em ${preferences.daysBeforeDue} dias.`,
-      detailed: `Você possui uma cobrança da ${company} com vencimento em ${preferences.daysBeforeDue} dias.`,
-    },
-    due_today: {
-      objective: `Uma cobrança da ${company} vence hoje.`,
-      cordial: `A ${company} lembra que sua cobrança vence hoje.`,
-      detailed: `Você possui uma cobrança da ${company} com vencimento hoje.`,
-    },
-    after_due: {
-      objective: `Uma cobrança da ${company} venceu há ${preferences.daysAfterDue} dias.`,
-      cordial: `A ${company} lembra que sua cobrança venceu há ${preferences.daysAfterDue} dias.`,
-      detailed: `Você possui uma cobrança da ${company} vencida há ${preferences.daysAfterDue} dias.`,
-    },
-  }[key][resolved];
-
-  const details = [
-    preferences.includeAmount ? `*Valor:* ${fixture.amount}` : null,
-    `*Vencimento:* ${fixture.dueDate}`,
-    preferences.includePaymentLink ? `*Pagar agora:* ${fixture.paymentLink}` : null,
-  ].filter((line): line is string => Boolean(line));
-
-  return [
-    `Olá, ${fixture.customer}!`,
-    '',
-    opening,
-    '',
-    ...details,
-    '',
-    'Se você já realizou o pagamento, desconsidere esta mensagem.',
-    '',
-    'Em caso de dúvida, fale com a nossa equipe por aqui.',
-  ].join('\n');
+  }) ?? '';
+  // O modelo pronto carrega uma linha que só aparece quando o aviso vai para um
+  // contato do cliente. Na tela ela só confunde; no envio a identificação
+  // continua entrando sozinha, inclusive no texto personalizado.
+  return effectiveChoice === 'custom' && rule.customText
+    ? template
+    : stripWhatsappContactNoticeLines(template);
 }
 
 export function buildWhatsappMessagePreview(
   event: WhatsappAutomationEvent,
   preferences: WhatsappAutomationPreferences,
   fixture: PreviewFixture = WHATSAPP_PREVIEW_FIXTURE,
+  companyValues: WhatsappTemplateValues = {},
 ): string {
-  if (event.domain === 'os') {
-    const rule = preferences.os.events[event.key];
-    return buildOsPreview(event.key, rule.template, preferences.os, fixture);
-  }
-
-  const rule = preferences.billing.events[event.key];
-  return buildBillingPreview(event.key, rule.template, preferences.billing, fixture);
+  return renderWhatsappTemplate(
+    resolveWhatsappEventTemplate(event, preferences),
+    buildWhatsappPreviewValues(preferences, fixture, companyValues),
+  );
 }

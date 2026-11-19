@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.42.0',
+    date: '19 de novembro de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Aviso de WhatsApp ao abrir uma OS',
+        category: 'recurso',
+        description: 'Novo aviso opcional: quando uma OS é criada, o cliente recebe uma mensagem dizendo que o atendimento já está sendo cuidado, com a data prevista e o lembrete de que ela pode mudar. Vem desligado, e você liga em Configurações, Integrações, WhatsApp, Automações. OS geradas por contrato, por recorrência ou por importação não disparam o aviso, para evitar envio em massa.',
+      },
+      {
+        title: 'Mensagens de WhatsApp editáveis',
+        category: 'recurso',
+        description: 'Agora dá para escrever o texto de cada aviso, de OS e de cobrança, com negrito, itálico, riscado e lista, e inserir etiquetas que viram os dados reais na hora do envio, como nome do cliente, data e horário da visita, tipo de serviço, equipamentos, link e os dados da sua empresa. Clicando em uma etiqueta você troca por outra ou remove. Os modelos prontos continuam disponíveis, já aparecem com as etiquetas e servem de ponto de partida.',
+      },
+    ],
+  },
+  {
     version: '1.41.30',
     date: '19 de novembro de 2026',
     type: 'patch',

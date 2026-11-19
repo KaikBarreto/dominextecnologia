@@ -4,6 +4,7 @@ import {
   buildWhatsappMessagePreview,
   countEnabledWhatsappAutomations,
   normalizeWhatsappAutomationPreferences,
+  resolveWhatsappEventTemplate,
 } from './whatsappAutomation';
 
 describe('whatsappAutomation', () => {
@@ -197,5 +198,47 @@ describe('whatsappAutomation', () => {
 
     expect(preview).toContain('agendada para 28/10/2026, às 09:00');
     expect(preview).not.toContain('Acompanhe a OS');
+  });
+
+  it('aviso de OS criada nasce desligado e aceita texto personalizado', () => {
+    const defaults = DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES;
+    expect(defaults.os.events.criada).toEqual({ enabled: false, template: 'automatic' });
+
+    const normalized = normalizeWhatsappAutomationPreferences({
+      os: {
+        events: {
+          criada: { enabled: true, template: 'custom', customText: '  Oi {{cliente.nome}}  ' },
+          a_caminho: { enabled: true, template: 'custom', customText: '   ' },
+        },
+      },
+    });
+    expect(normalized.os.events.criada).toEqual({
+      enabled: true,
+      template: 'custom',
+      customText: 'Oi {{cliente.nome}}',
+    });
+    // "Personalizada" sem texto não existe: volta para o modelo padrão.
+    expect(normalized.os.events.a_caminho).toEqual({ enabled: true, template: 'automatic' });
+    expect(buildWhatsappMessagePreview({ domain: 'os', key: 'criada' }, normalized)).toBe('Oi Mariana');
+  });
+
+  it('o editor recebe o modelo pronto com variáveis e sem a linha interna de contato', () => {
+    const template = resolveWhatsappEventTemplate(
+      { domain: 'billing', key: 'created' },
+      DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES,
+      'detailed',
+    );
+    expect(template).toContain('Olá, {{destinatario.nome}}!');
+    expect(template).toContain('*Valor:* {{cobranca.valor}}');
+    expect(template).toContain('*Pagar agora:* {{cobranca.link}}');
+    expect(template).not.toContain('aviso.cliente');
+    expect(template).not.toMatch(/\n{3,}/);
+
+    const osTemplate = resolveWhatsappEventTemplate(
+      { domain: 'os', key: 'criada' },
+      DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES,
+    );
+    expect(osTemplate).toContain('{{os.agendamento}}');
+    expect(osTemplate).not.toContain('aviso.cliente');
   });
 });

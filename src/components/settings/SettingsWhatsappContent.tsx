@@ -27,6 +27,7 @@ import { DomiLinkIntegrationContent } from '@/components/settings/domilink/DomiL
 import { DomiLinkSymbol } from '@/components/pdv/domilink/DomiLinkBrand';
 import { SettingsAsaasContent } from '@/components/settings/SettingsAsaasContent';
 import { SettingsAsaasSimulator } from '@/components/settings/SettingsAsaasSimulator';
+import { useWhatsappCompanyIdentity } from '@/hooks/useWhatsappCompanyIdentity';
 import { WhatsappAutomationSettings } from '@/components/settings/whatsapp/WhatsappAutomationSettings';
 import { WhatsappProtectionSettings } from '@/components/settings/whatsapp/WhatsappProtectionSettings';
 import { SettingsPublicApiContent } from '@/components/settings/SettingsPublicApiContent';
@@ -217,6 +218,7 @@ function WhatsappContent() {
   const { hasModule, isLoading: modulesLoading } = useCompanyModules();
   const { settings, isLoading, update } = useWhatsappSettings();
   const whatsappConnections = useWhatsappConnections();
+  const companyIdentity = useWhatsappCompanyIdentity();
   const [requestedSection, setRequestedSection] = useState<WhatsappSection | null>(null);
 
   const persistedPreferences = useMemo(
@@ -334,6 +336,7 @@ function WhatsappContent() {
             isSaving={update.isPending}
             isDirty={isDirty}
             readOnly={readOnly}
+            companyValues={companyIdentity}
             onEnabledChange={setEnabled}
             onPreferencesChange={setPreferences}
             onSave={handleSave}

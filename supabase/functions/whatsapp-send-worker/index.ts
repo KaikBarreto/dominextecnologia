@@ -11,6 +11,14 @@ import {
   setInstanceWebhook,
   typingDelayMs,
 } from "../_shared/evolution-client.ts";
+import {
+  formatWhatsappEquipmentNames,
+  listWhatsappTemplateTokens,
+  renderWhatsappTemplate,
+  resolveWhatsappCompanyValues,
+  resolveWhatsappTemplate,
+  sanitizeWhatsappTextValue,
+} from "../_shared/whatsapp-message-templates.ts";
 
 const WARMUP_DAILY_CAP = [20, 30, 40, 60, 80, 100, 120, 150, 180, 220, 260, 300, 350, 400];
 const MAX_PER_HOUR = 60;
@@ -37,7 +45,12 @@ type Job = {
 };
 
 type SettingsData = { automation_preferences: unknown };
-type RegionalSettingsData = { country_code: string; timezone: string | null };
+type RegionalSettingsData = {
+  country_code: string;
+  timezone: string | null;
+  document?: string | null;
+  phone?: string | null;
+};
 type CustomerData = { name: string };
 type CustomerContactData = {
   id: string;
@@ -45,7 +58,8 @@ type CustomerContactData = {
   name: string;
   phone: string | null;
 };
-type CompanyData = { name: string };
+type CompanyData = { name: string; cnpj?: string | null; phone?: string | null };
+type CompanyValues = ReturnType<typeof resolveWhatsappCompanyValues>;
 type WebhookConnection = {
   id: string;
   company_id: string;
@@ -189,14 +203,6 @@ function dateBr(value: string | null): string {
   if (!value) return "não informado";
   const [year, month, day] = value.slice(0, 10).split("-");
   return year && month && day ? `${day}/${month}/${year}` : value;
-}
-
-function whatsappPlainText(value: string | null | undefined, fallback: string): string {
-  const sanitized = (value ?? "")
-    .replace(/[\r\n*_~`]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  return sanitized || fallback;
 }
 
 function pref<T>(record: unknown, path: string[], fallback: T): T {
@@ -410,7 +416,14 @@ async function validateFinalDispatchState(
   if (job.source_type === "tenant_charge" && !["PENDING", "OVERDUE"].includes(String(source.status))) {
     return { status: "skip", code: "source_obsolete", message: "A cobrança já não está pendente." };
   }
-  if (job.source_type === "service_order" && job.event_key !== "os.scheduled_reminder") {
+  if (job.event_key === "os.criada") {
+    // O aviso de abertura só faz sentido enquanto a OS ainda está por
+    // acontecer. Se já foi cancelada, ou o técnico já saiu/atendeu, os outros
+    // avisos contam a história e este chegaria atrasado.
+    if (!["agendada", "pendente"].includes(String(source.status))) {
+      return { status: "skip", code: "source_obsolete", message: "A ordem de serviço mudou de situação antes do aviso de abertura." };
+    }
+  } else if (job.source_type === "service_order" && job.event_key !== "os.scheduled_reminder") {
     const expectedStatus: Record<string, string> = {
       "os.a_caminho": "a_caminho",
       "os.em_andamento": "em_andamento",
@@ -825,82 +838,108 @@ async function goodbyePresence(instanceName: string, phone: string): Promise<voi
   }
 }
 
+async function loadOsEquipmentNames(
+  supabase: SupabaseClient,
+  job: Job,
+  legacyEquipmentId: string | null,
+): Promise<string> {
+  const { data: links, error: linksError } = await supabase
+    .from("service_order_equipment")
+    .select("equipment_id, equipment_position")
+    .eq("service_order_id", job.source_id)
+    .order("equipment_position", { ascending: true });
+  if (linksError) throw new Error(`Não foi possível consultar os equipamentos da OS: ${linksError.message}`);
+
+  const ids: string[] = [];
+  for (const link of links ?? []) {
+    if (link.equipment_id && !ids.includes(link.equipment_id)) ids.push(link.equipment_id);
+  }
+  if (legacyEquipmentId && !ids.includes(legacyEquipmentId)) ids.push(legacyEquipmentId);
+  if (ids.length === 0) return "";
+
+  const { data: equipments, error: equipmentError } = await supabase
+    .from("equipment")
+    .select("id, name")
+    .eq("company_id", job.company_id)
+    .in("id", ids);
+  if (equipmentError) throw new Error(`Não foi possível consultar os equipamentos da OS: ${equipmentError.message}`);
+
+  const nameById = new Map((equipments ?? []).map((row) => [row.id as string, String(row.name ?? "")]));
+  return formatWhatsappEquipmentNames(ids.map((id) => nameById.get(id) ?? ""));
+}
+
+// Os TEXTOS dos avisos vivem em `_shared/whatsapp-message-templates.ts`, o mesmo
+// arquivo que a tela usa na prévia e no editor. Aqui só se buscam os dados da OS
+// ou da cobrança e se entregam os valores das variáveis.
 async function buildOsMessage(
   supabase: SupabaseClient,
   job: Job,
   settings: SettingsData,
   customer: CustomerData,
+  companyValues: CompanyValues,
   recipientName: string,
 ) {
   const { data: os, error: osError } = await supabase
     .from("service_orders")
-    .select("id, company_id, order_number, public_short_code, technician_id, service_type_id, scheduled_date, scheduled_time, schedule_plan")
+    .select("id, company_id, order_number, public_short_code, technician_id, service_type_id, equipment_id, scheduled_date, scheduled_time, schedule_plan")
     .eq("id", job.source_id)
     .eq("company_id", job.company_id)
     .maybeSingle();
   if (osError) throw new Error(`Não foi possível consultar a OS: ${osError.message}`);
   if (!os) return null;
 
-  const [technicianResult, serviceResult] = await Promise.all([
-    os.technician_id
+  const key = job.event_key.split(".")[1] ?? "";
+  const template = resolveWhatsappTemplate({
+    domain: "os",
+    event: key,
+    choice: pref(settings.automation_preferences, ["os", "events", key, "template"], "automatic"),
+    customText: pref<unknown>(settings.automation_preferences, ["os", "events", key, "customText"], null),
+    automaticStyle: pickStyle("automatic"),
+    options: { includeOsLink: pref(settings.automation_preferences, ["os", "includeLink"], true) },
+  });
+  if (!template) return null;
+
+  // Só consulta o que o texto realmente usa.
+  const tokens = listWhatsappTemplateTokens(template);
+  const [technicianResult, serviceResult, equipmentNames] = await Promise.all([
+    tokens.includes("os.tecnico") && os.technician_id
       ? supabase.from("profiles").select("full_name").eq("user_id", os.technician_id).eq("company_id", job.company_id).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
-    os.service_type_id
+    tokens.includes("os.servico") && os.service_type_id
       ? supabase.from("service_types").select("name").eq("id", os.service_type_id).eq("company_id", job.company_id).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
+    tokens.includes("os.equipamentos")
+      ? loadOsEquipmentNames(supabase, job, os.equipment_id ?? null)
+      : Promise.resolve(""),
   ]);
   const auxiliaryError = technicianResult.error || serviceResult.error;
   if (auxiliaryError) {
     throw new Error(`Não foi possível consultar os detalhes da OS: ${auxiliaryError.message}`);
   }
-  const key = job.event_key.split(".")[1] as "scheduled_reminder" | "a_caminho" | "em_andamento" | "concluida";
-  const style = pickStyle(pref(settings.automation_preferences, ["os", "events", key, "template"], "automatic"));
-  const technician = technicianResult.data?.full_name ?? "nosso técnico";
-  const service = serviceResult.data?.name ?? "seu atendimento";
-  const order = os.order_number ? `#${os.order_number}` : "";
+
   const firstJourney = Array.isArray(os.schedule_plan) && os.schedule_plan.length > 0
     ? os.schedule_plan[0] as Record<string, unknown>
     : null;
   const scheduledDate = typeof firstJourney?.date === "string" ? firstJourney.date : os.scheduled_date;
   const scheduledTime = typeof firstJourney?.time === "string" ? firstJourney.time : os.scheduled_time;
-  const reminderDate = dateBr(scheduledDate);
-  const reminderTime = scheduledTime ? String(scheduledTime).slice(0, 5) : "horário não informado";
-  const actions = {
-    scheduled_reminder: {
-      objective: `Lembrete: sua visita da OS ${order} está agendada para ${reminderDate}, às ${reminderTime}.`,
-      cordial: `Passando para lembrar que sua visita da OS ${order} está agendada para ${reminderDate}, às ${reminderTime}.`,
-      detailed: `Sua visita para ${service}, referente à OS ${order}, está agendada para ${reminderDate}, às ${reminderTime}.`,
-    },
-    a_caminho: {
-      objective: `O técnico ${technician} está a caminho para atender a OS ${order}.`,
-      cordial: `Boas notícias: o técnico ${technician} já está a caminho para atender você na OS ${order}.`,
-      detailed: `O técnico ${technician} iniciou o deslocamento para o serviço de ${service}, referente à OS ${order}.`,
-    },
-    em_andamento: {
-      objective: `O atendimento da OS ${order} foi iniciado.`,
-      cordial: `Seu atendimento começou. O técnico ${technician} já está realizando o serviço da OS ${order}.`,
-      detailed: `O técnico ${technician} iniciou o serviço de ${service}, referente à OS ${order}.`,
-    },
-    concluida: {
-      objective: `A OS ${order} foi concluída.`,
-      cordial: "Seu atendimento foi concluído com sucesso. Agradecemos pela confiança na nossa equipe!",
-      detailed: `O serviço de ${service}, referente à OS ${order}, foi concluído pelo técnico ${technician}.`,
-    },
-  }[key];
-  if (!actions) return null;
+  const visitDate = scheduledDate ? dateBr(scheduledDate) : null;
+  const visitTime = scheduledTime ? String(scheduledTime).slice(0, 5) : null;
+  const segment = os.public_short_code || os.id;
 
-  const greetingName = whatsappPlainText(recipientName, customer.name);
-  const customerName = whatsappPlainText(customer.name, "cliente");
-  const lines = [`Olá, ${greetingName}!`, ""];
-  if (recipientKind(job) === "customer_contact") {
-    lines.push(`Aviso referente a *${customerName}*.`, "");
-  }
-  lines.push(actions[style]);
-  if (pref(settings.automation_preferences, ["os", "includeLink"], true)) {
-    const segment = os.public_short_code || os.id;
-    lines.push("", `*Acompanhe a OS:* https://www.dominex.app/os-tecnico/${segment}?modo=cliente`);
-  }
-  return lines.join("\n");
+  return renderWhatsappTemplate(template, {
+    "destinatario.nome": sanitizeWhatsappTextValue(recipientName) || customer.name,
+    "cliente.nome": customer.name,
+    ...companyValues,
+    "aviso.cliente": recipientKind(job) === "customer_contact" ? customer.name || "cliente" : null,
+    "os.numero": os.order_number ? `#${os.order_number}` : null,
+    "os.agendamento": visitDate ? (visitTime ? `${visitDate}, às ${visitTime}` : visitDate) : null,
+    "os.data": visitDate,
+    "os.horario": visitTime,
+    "os.servico": serviceResult.data?.name ?? null,
+    "os.tecnico": technicianResult.data?.full_name ?? null,
+    "os.equipamentos": equipmentNames,
+    "os.link": `https://www.dominex.app/os-tecnico/${segment}?modo=cliente`,
+  });
 }
 
 async function buildBillingMessage(
@@ -908,7 +947,7 @@ async function buildBillingMessage(
   job: Job,
   settings: SettingsData,
   customer: CustomerData,
-  company: CompanyData,
+  companyValues: CompanyValues,
   recipientName: string,
 ) {
   const { data: charge, error: chargeError } = await supabase
@@ -920,56 +959,33 @@ async function buildBillingMessage(
   if (chargeError) throw new Error(`Não foi possível consultar a cobrança: ${chargeError.message}`);
   if (!charge || !["PENDING", "OVERDUE"].includes(charge.status)) return null;
 
-  const key = job.event_key.split(".")[1] as "created" | "before_due" | "due_today" | "after_due";
-  const style = pickStyle(pref(settings.automation_preferences, ["billing", "events", key, "template"], "automatic"));
-  const before = pref(settings.automation_preferences, ["billing", "daysBeforeDue"], 3);
-  const after = pref(settings.automation_preferences, ["billing", "daysAfterDue"], 2);
-  const companyName = `*${whatsappPlainText(company.name, "Sua empresa")}*`;
-  const openings = {
-    created: {
-      objective: `Você recebeu uma nova cobrança da ${companyName}.`,
-      cordial: `Passando para avisar que você recebeu uma nova cobrança da ${companyName}.`,
-      detailed: `Uma nova cobrança da ${companyName} foi gerada para você.`,
+  const key = job.event_key.split(".")[1] ?? "";
+  const template = resolveWhatsappTemplate({
+    domain: "billing",
+    event: key,
+    choice: pref(settings.automation_preferences, ["billing", "events", key, "template"], "automatic"),
+    customText: pref<unknown>(settings.automation_preferences, ["billing", "events", key, "customText"], null),
+    automaticStyle: pickStyle("automatic"),
+    options: {
+      includeAmount: pref(settings.automation_preferences, ["billing", "includeAmount"], true),
+      includePaymentLink: pref(settings.automation_preferences, ["billing", "includePaymentLink"], true),
     },
-    before_due: {
-      objective: `Uma cobrança da ${companyName} vence em ${before} dias.`,
-      cordial: `A ${companyName} lembra que sua cobrança vence em ${before} dias.`,
-      detailed: `Você possui uma cobrança da ${companyName} com vencimento em ${before} dias.`,
-    },
-    due_today: {
-      objective: `Uma cobrança da ${companyName} vence hoje.`,
-      cordial: `A ${companyName} lembra que sua cobrança vence hoje.`,
-      detailed: `Você possui uma cobrança da ${companyName} com vencimento hoje.`,
-    },
-    after_due: {
-      objective: `Uma cobrança da ${companyName} venceu há ${after} dias.`,
-      cordial: `A ${companyName} lembra que sua cobrança venceu há ${after} dias.`,
-      detailed: `Você possui uma cobrança da ${companyName} vencida há ${after} dias.`,
-    },
-  }[key];
-  if (!openings) return null;
+  });
+  if (!template) return null;
 
-  const details = [
-    recipientKind(job) === "customer_contact"
-      ? `*Cliente:* ${whatsappPlainText(customer.name, "cliente")}`
+  return renderWhatsappTemplate(template, {
+    "destinatario.nome": sanitizeWhatsappTextValue(recipientName) || customer.name,
+    "cliente.nome": customer.name,
+    ...companyValues,
+    "aviso.cliente": recipientKind(job) === "customer_contact" ? customer.name || "cliente" : null,
+    "cobranca.valor": money(charge.value),
+    "cobranca.vencimento": charge.due_date ? dateBr(charge.due_date) : null,
+    "cobranca.link": charge.public_short_code
+      ? `https://www.dominex.app/pagar/${charge.public_short_code}`
       : null,
-    pref(settings.automation_preferences, ["billing", "includeAmount"], true) ? `*Valor:* ${money(charge.value)}` : null,
-    `*Vencimento:* ${dateBr(charge.due_date)}`,
-    pref(settings.automation_preferences, ["billing", "includePaymentLink"], true) && charge.public_short_code
-      ? `*Pagar agora:* https://www.dominex.app/pagar/${charge.public_short_code}`
-      : null,
-  ].filter(Boolean);
-  return [
-    `Olá, ${whatsappPlainText(recipientName, customer.name)}!`,
-    "",
-    openings[style],
-    "",
-    ...details,
-    "",
-    "Se você já realizou o pagamento, desconsidere esta mensagem.",
-    "",
-    "Em caso de dúvida, fale com a nossa equipe por aqui.",
-  ].join("\n");
+    "cobranca.dias_antes": pref(settings.automation_preferences, ["billing", "daysBeforeDue"], 3),
+    "cobranca.dias_depois": pref(settings.automation_preferences, ["billing", "daysAfterDue"], 2),
+  });
 }
 
 async function validateScheduledReminderBeforeSend(
@@ -1074,9 +1090,9 @@ async function processJob(supabase: SupabaseClient, job: Job) {
         .eq("customer_id", job.customer_id)
         .maybeSingle()
       : Promise.resolve({ data: null, error: null }),
-    supabase.from("companies").select("name").eq("id", job.company_id).maybeSingle(),
+    supabase.from("companies").select("name, cnpj, phone").eq("id", job.company_id).maybeSingle(),
     supabase.rpc("company_has_module", { p_company_id: job.company_id, p_module_code: "whatsapp" }),
-    supabase.from("company_settings").select("country_code, timezone").eq("company_id", job.company_id).maybeSingle(),
+    supabase.from("company_settings").select("country_code, timezone, document, phone").eq("company_id", job.company_id).maybeSingle(),
   ]);
 
   const initialReadError = [
@@ -1379,10 +1395,17 @@ async function processJob(supabase: SupabaseClient, job: Job) {
     }
   }
 
+  const companyValues = resolveWhatsappCompanyValues({
+    name: company?.name,
+    cnpj: (company as CompanyData | null)?.cnpj,
+    phone: (company as CompanyData | null)?.phone,
+    settingsDocument: regionalSettings?.document,
+    settingsPhone: regionalSettings?.phone,
+  });
   let text: string | null;
   try {
     if (job.source_type === "service_order") {
-      text = await buildOsMessage(supabase, job, settings, customer, recipientName);
+      text = await buildOsMessage(supabase, job, settings, customer, companyValues, recipientName);
     } else {
       // O nome identifica o remetente antes do link de pagamento. Sem ele, não
       // enviamos uma cobrança genérica que possa parecer fraude ao cliente.
@@ -1395,7 +1418,7 @@ async function processJob(supabase: SupabaseClient, job: Job) {
           new Date(Date.now() + 300 * 1000),
         );
       }
-      text = await buildBillingMessage(supabase, job, settings, customer, company, recipientName);
+      text = await buildBillingMessage(supabase, job, settings, customer, companyValues, recipientName);
     }
   } catch (error) {
     console.error("[whatsapp-send-worker] source query failed", {
