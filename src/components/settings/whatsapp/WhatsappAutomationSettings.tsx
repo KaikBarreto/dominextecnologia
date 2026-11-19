@@ -80,6 +80,7 @@ const COPY = {
     amount: 'Valor',
     paymentLink: 'Link de pagamento',
     beforeDays: 'Quantos dias antes',
+    createdHint: 'Se o vencimento estiver a mais de 10 dias, o aviso não sai na criação. O cliente é avisado pelo lembrete "Antes do vencimento", para não confundir a próxima mensalidade com a atual.',
     afterDays: 'Quantos dias depois',
     days: 'dias',
     preview: 'Prévia da mensagem',
@@ -112,6 +113,7 @@ const COPY = {
     eventEnabled: 'Send this message', template: 'Message template', templateHint: 'Final texts will be linked to templates approved by the provider.',
     templates: { automatic: 'Automatic rotation · recommended', objective: 'Objective', cordial: 'Friendly', detailed: 'Detailed' },
     osLink: 'Include work order tracking link', billingContent: 'Charge information', amount: 'Amount', paymentLink: 'Payment link',
+    createdHint: 'If the due date is more than 10 days away, no message is sent on creation. The customer is notified by the "Before due date" reminder, so the next installment is not mistaken for the current one.',
     beforeDays: 'Days before', afterDays: 'Days after', days: 'days', preview: 'Message preview', previewHint: 'Illustrative data — no message will be sent at this stage.',
     messageLanguageHint: 'Automatic messages are currently sent in Brazilian Portuguese.',
     active: 'Active', inactive: 'Inactive', companyPreview: 'Your company', illustrativePreview: 'Illustrative preview',
@@ -132,6 +134,7 @@ const COPY = {
     eventEnabled: 'Enviar este mensaje', template: 'Modelo del mensaje', templateHint: 'Los textos finales se vincularán a plantillas aprobadas por el proveedor.',
     templates: { automatic: 'Rotación automática · recomendada', objective: 'Objetiva', cordial: 'Cordial', detailed: 'Detallada' },
     osLink: 'Incluir enlace de seguimiento de la orden', billingContent: 'Información del cobro', amount: 'Importe', paymentLink: 'Enlace de pago',
+    createdHint: 'Si el vencimiento está a más de 10 días, el aviso no se envía al crear el cobro. El cliente recibe el recordatorio "Antes del vencimiento", para no confundir la próxima cuota con la actual.',
     beforeDays: 'Cuántos días antes', afterDays: 'Cuántos días después', days: 'días', preview: 'Vista previa', previewHint: 'Datos ilustrativos — no se enviará ningún mensaje en esta etapa.',
     messageLanguageHint: 'Los mensajes automáticos se envían actualmente en portugués de Brasil.',
     active: 'Activa', inactive: 'Inactiva', companyPreview: 'Tu empresa', illustrativePreview: 'Vista previa ilustrativa',
@@ -153,6 +156,7 @@ const COPY = {
     eventEnabled: 'Envoyer ce message', template: 'Modèle du message', templateHint: 'Les textes finaux seront liés aux modèles approuvés par le fournisseur.',
     templates: { automatic: 'Rotation automatique · recommandée', objective: 'Direct', cordial: 'Cordial', detailed: 'Détaillé' },
     osLink: 'Inclure le lien de suivi du bon', billingContent: 'Informations de facturation', amount: 'Montant', paymentLink: 'Lien de paiement',
+    createdHint: 'Si l’échéance est dans plus de 10 jours, aucun message n’est envoyé à la création. Le client reçoit le rappel « Avant l’échéance », pour ne pas confondre la prochaine mensualité avec l’actuelle.',
     beforeDays: 'Jours avant', afterDays: 'Jours après', days: 'jours', preview: 'Aperçu du message', previewHint: 'Données illustratives — aucun message ne sera envoyé à ce stade.',
     messageLanguageHint: 'Les messages automatiques sont actuellement envoyés en portugais du Brésil.',
     active: 'Active', inactive: 'Inactive', companyPreview: 'Votre entreprise', illustrativePreview: 'Aperçu illustratif',
@@ -469,6 +473,10 @@ export function WhatsappAutomationSettings({
                 </>
               ) : (
                 <>
+                  {selected.key === 'created' && (
+                    <p className="text-xs text-muted-foreground">{copy.createdHint}</p>
+                  )}
+
                   {(selected.key === 'before_due' || selected.key === 'after_due') && (
                     <div className="space-y-2">
                       <Label htmlFor="whatsapp-offset-days">

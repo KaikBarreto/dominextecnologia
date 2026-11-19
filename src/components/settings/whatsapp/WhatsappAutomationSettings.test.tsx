@@ -181,6 +181,8 @@ describe('WhatsappAutomationSettings', () => {
     expect(billingTab?.getAttribute('aria-disabled')).not.toBe('true');
     act(() => billingTab?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
     expect(container.textContent).toContain('Cobrança gerada');
+    // Regra do servidor: vencimento a mais de 10 dias não avisa na criação.
+    expect(container.textContent).toContain('a mais de 10 dias, o aviso não sai na criação');
 
     const billingSwitch = container.querySelector('[aria-label="Enviar esta mensagem: Cobrança gerada"]');
     expect(billingSwitch).toHaveProperty('disabled', true);

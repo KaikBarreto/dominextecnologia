@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.30',
+    date: '19 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Lembretes automáticos de WhatsApp voltaram a ser enviados',
+        category: 'correcao',
+        description: 'Os lembretes de cobrança antes do vencimento, no dia e após o vencimento, e o lembrete de visita agendada voltaram a sair. Desde 15 de novembro eles não estavam sendo enviados, mesmo ligados nas configurações. Os lembretes que deixaram de sair nesse período não são reenviados.',
+      },
+      {
+        title: 'Aviso de nova cobrança só perto do vencimento',
+        category: 'melhoria',
+        description: 'Cobranças com vencimento a mais de 10 dias, como as mensalidades de assinatura geradas com antecedência, não disparam mais o aviso de nova cobrança no WhatsApp. O cliente é avisado pelo lembrete antes do vencimento, o que evita pagar a próxima mensalidade no lugar da atual.',
+      },
+    ],
+  },
+  {
     version: '1.41.29',
     date: '19 de novembro de 2026',
     type: 'patch',
