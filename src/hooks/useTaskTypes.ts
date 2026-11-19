@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getCurrentUserCompanyId } from '@/hooks/useUserCompany';
 import { getErrorMessage } from '@/utils/errorMessages';
 
 export interface TaskType {
@@ -30,7 +31,6 @@ export function useTaskTypes() {
     queryKey: ['task-types'],
     queryFn: async () => {
       // Defense-in-depth: filtra pela própria empresa no client (RLS continua a fronteira)
-      const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
       const companyId = await getCurrentUserCompanyId();
       const { data, error } = await supabase
         .from('task_types' as any)
@@ -44,9 +44,12 @@ export function useTaskTypes() {
 
   const createTaskType = useMutation({
     mutationFn: async (input: TaskTypeInput) => {
+      // A empresa vai explícita, pelo mesmo motivo do cadastro de serviço: a
+      // trava de módulos confere o registro antes de o banco preenchê-la.
+      const company_id = await getCurrentUserCompanyId();
       const { data, error } = await supabase
         .from('task_types' as any)
-        .insert(input as any)
+        .insert({ ...input, company_id } as any)
         .select()
         .single();
       if (error) throw error;

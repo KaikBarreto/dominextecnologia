@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.29',
+    date: '19 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cadastro de serviços e de tipos de tarefa voltou a salvar',
+        category: 'correcao',
+        description: 'Criar um serviço novo, pelo orçamento ou pelo catálogo, e criar um tipo de tarefa voltaram a funcionar. Desde 17 de novembro o sistema recusava esses cadastros com aviso de falta de permissão, mesmo para administradores. O que foi tentado nesse período não ficou salvo e precisa ser cadastrado de novo.',
+      },
+    ],
+  },
+  {
     version: '1.41.28',
     date: '19 de novembro de 2026',
     type: 'patch',
