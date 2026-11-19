@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   createCrmCardItemId,
@@ -33,6 +34,7 @@ export function LeadChecklistsSection({ leadId, admin = false }: LeadChecklistsS
     if (!checklistTitle) return;
     save([...checklists, {
       id: createCrmCardItemId(),
+      name: checklistTitle,
       title: checklistTitle,
       templateId: template?.id ?? null,
       items: template?.items.map((item) => ({ ...item, id: createCrmCardItemId(), done: false })) ?? [],
@@ -83,15 +85,20 @@ export function LeadChecklistsSection({ leadId, admin = false }: LeadChecklistsS
           <div key={checklist.id} className="space-y-3 rounded-xl bg-muted/30 p-3 sm:p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <p className="font-medium">{checklist.title}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-medium">{checklist.title}</p>
+                  {checklist.automation_rule_id && <Badge variant="secondary">Automático</Badge>}
+                </div>
                 <div className="mt-2 flex items-center gap-2">
                   <span className="w-9 text-xs text-muted-foreground">{progress}%</span>
                   <Progress value={progress} className="h-2" />
                 </div>
               </div>
-              <Button type="button" size="icon" variant="destructive-ghost" className="h-8 w-8" aria-label={`Excluir ${checklist.title}`} onClick={() => save(checklists.filter((item) => item.id !== checklist.id))}>
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
+              {!checklist.automation_rule_id && (
+                <Button type="button" size="icon" variant="destructive-ghost" className="h-8 w-8" aria-label={`Excluir ${checklist.title}`} onClick={() => save(checklists.filter((item) => item.id !== checklist.id))}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              )}
             </div>
             <div className="space-y-1">
               {checklist.items.map((item) => (

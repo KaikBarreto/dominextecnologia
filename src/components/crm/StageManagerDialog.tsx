@@ -25,6 +25,9 @@ import { cn } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { CrmStageAutomationDialog } from '@/components/crm/CrmStageAutomationDialog';
+import { useCrmAutomationRules } from '@/hooks/useCrmStageAutomations';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { countCrmStageRequirements } from '@/lib/crmAutomation';
 
 interface StageManagerDialogProps {
   /** Renderiza o CRUD dentro de uma tela de configurações, sem abrir outro modal. */
@@ -69,6 +72,25 @@ export function StageManagerDialog({
     () => (pipelineId ? allStages.filter((s) => s.pipeline_id === pipelineId) : allStages),
     [allStages, pipelineId],
   );
+  const isMobile = useIsMobile();
+  // Quantas automações cada etapa tem: sem isso a pessoa precisa abrir etapa
+  // por etapa pra descobrir onde já existe regra configurada.
+  const { rules: automationRules } = useCrmAutomationRules(pipelineId);
+  const automationsByStage = useMemo(() => {
+    const map = new Map<string, number>();
+    automationRules.forEach((rule) => map.set(rule.trigger_stage_id, (map.get(rule.trigger_stage_id) ?? 0) + 1));
+    return map;
+  }, [automationRules]);
+  const stageSummary = (stage: CrmStage) => {
+    const requirements = countCrmStageRequirements(stage.requirements);
+    const automations = automationsByStage.get(stage.id) ?? 0;
+    const plural = (count: number, one: string, many: string) =>
+      count === 1 ? one : many.replace('{count}', String(count));
+    return [
+      requirements > 0 ? plural(requirements, t.stages.rulesCountOne, t.stages.rulesCountMany) : null,
+      automations > 0 ? plural(automations, t.stages.automationsCountOne, t.stages.automationsCountMany) : null,
+    ].filter(Boolean).join(' · ');
+  };
   const dialogTitle = pipelineName
     ? t.stages.titleWithPipeline.replace('{pipeline}', pipelineName)
     : t.stages.title;
@@ -181,7 +203,7 @@ export function StageManagerDialog({
 
     if (isEditing) {
       return (
-        <div className="flex flex-col gap-3 p-3 rounded-lg border bg-muted/30">
+        <div className="flex flex-col gap-3 border-b border-border/60 bg-muted/30 p-3 last:border-b-0">
           <div className="flex items-center gap-2">
             <Input
               value={name}
@@ -289,9 +311,9 @@ export function StageManagerDialog({
         onDragLeave={handleDragLeave}
         onDrop={(e) => handleDrop(e, stage.id)}
         className={cn(
-          'flex items-center gap-2 p-2 rounded-lg border bg-card transition-all group',
+          'group flex items-center gap-2 border-b border-border/60 px-3 py-2 transition-colors last:border-b-0',
           isDragging && 'opacity-50',
-          isDragOver && 'border-primary border-2 bg-primary/5',
+          isDragOver && 'bg-primary/5 ring-2 ring-inset ring-primary',
           !isDragging && !isDragOver && 'hover:bg-muted/30',
         )}
       >
@@ -304,20 +326,32 @@ export function StageManagerDialog({
           {stage.icon && <IconPreview name={stage.icon} className="h-3 w-3" />}
           {stage.name}
         </Badge>
-        <div className="flex-1 flex items-center gap-2">
-          {stage.is_won && <Trophy className="h-3.5 w-3.5 text-success" />}
-          {stage.is_lost && <XCircle className="h-3.5 w-3.5 text-destructive" />}
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          {stage.is_won && <Trophy className="h-3.5 w-3.5 shrink-0 text-success" />}
+          {stage.is_lost && <XCircle className="h-3.5 w-3.5 shrink-0 text-destructive" />}
+          {stageSummary(stage) && (
+            <span className="min-w-0 truncate text-xs text-muted-foreground">{stageSummary(stage)}</span>
+          )}
         </div>
-        {/* Menu SEMPRE visível no toque: `opacity-0 + group-hover` escondia
-            editar/excluir por completo no celular, onde hover não existe. No
-            desktop segue aparecendo só no hover, como antes. */}
-        <div className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+        {/* Regras e automações é a ação principal da etapa: no computador fica
+            à vista, com rótulo. Escondida num menu que só aparecia no hover,
+            ninguém descobria que a etapa aceita automação. */}
+        {!isMobile && (
+          <Button variant="ghost" size="sm" className="shrink-0" onClick={() => setConfiguringStage(stage)}>
+            <SlidersHorizontal className="mr-1.5 h-4 w-4" />
+            {t.stages.configureAction}
+          </Button>
+        )}
+        {/* Menu SEMPRE visível: `opacity-0 + group-hover` escondia editar e
+            excluir por completo no toque, onde hover não existe. */}
+        <div className="shrink-0">
           <RowActionsMenu
             actions={[
               {
-                label: 'Configurar regras e automações',
+                label: t.stages.configureAction,
                 icon: SlidersHorizontal,
                 variant: 'edit',
+                hidden: !isMobile,
                 onClick: () => setConfiguringStage(stage),
               },
               {
@@ -348,12 +382,19 @@ export function StageManagerDialog({
             <h2 className="text-xl font-semibold">{dialogTitle}</h2>
             <p className="text-sm text-muted-foreground mt-1">Crie, ordene e personalize as colunas deste funil.</p>
           </div>}
-          <div className="space-y-4">
-            {!showCreateForm ? (
-              <Button variant="outline" onClick={() => setShowCreateForm(true)} className="gap-2">
-                <Plus className="h-4 w-4" /> Novo estágio
-              </Button>
-            ) : (
+          <div className="space-y-3">
+            {compact && (
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-semibold">{t.stages.sectionTitle}</h4>
+                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-semibold tabular-nums text-muted-foreground">{stages.length}</span>
+                {!showCreateForm && (
+                  <Button variant="outline" size="sm" onClick={() => setShowCreateForm(true)} className="ml-auto gap-1.5">
+                    <Plus className="h-4 w-4" /> Novo estágio
+                  </Button>
+                )}
+              </div>
+            )}
+            {showCreateForm ? (
               <div className="space-y-3 rounded-xl bg-muted/35 p-3 sm:p-4">
                 <div className="flex items-center justify-between gap-2">
                   <Label className="text-sm font-medium">{t.stages.newStageLabel}</Label>
@@ -371,8 +412,24 @@ export function StageManagerDialog({
                   <Button onClick={handleCreateStage} disabled={!newStage.name.trim() || !pipelineId || createStage.isPending} className="gap-2 sm:justify-self-end"><Plus className="h-4 w-4" /> Adicionar estágio</Button>
                 </div>
               </div>
+            ) : !compact ? (
+              <Button variant="outline" onClick={() => setShowCreateForm(true)} className="gap-2">
+                <Plus className="h-4 w-4" /> Novo estágio
+              </Button>
+            ) : null}
+            {stages.length === 0 ? (
+              <div className="rounded-xl border border-dashed px-4 py-8 text-center">
+                <p className="font-medium">{t.stages.emptyTitle}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{t.stages.emptyDesc}</p>
+              </div>
+            ) : (
+              <>
+                <div className="overflow-hidden rounded-xl border bg-card">
+                  {stages.map((stage) => <EditableRow key={stage.id} stage={stage} />)}
+                </div>
+                {stages.length > 1 && <p className="text-xs text-muted-foreground">{t.stages.dragHint}</p>}
+              </>
             )}
-            <div className="space-y-2"><p className="text-xs text-muted-foreground">{t.stages.dragHint}</p>{stages.map((stage) => <EditableRow key={stage.id} stage={stage} />)}</div>
           </div>
         </section>
       ) : (
@@ -432,11 +489,13 @@ export function StageManagerDialog({
             </div>
           </div>
           )}
-          <div className="space-y-2 max-h-[400px] overflow-y-auto">
-            <p className="text-xs text-muted-foreground mb-2">{t.stages.dragHint}</p>
-            {stages.map((stage) => (
-              <EditableRow key={stage.id} stage={stage} />
-            ))}
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">{t.stages.dragHint}</p>
+            <div className="max-h-[400px] overflow-y-auto rounded-xl border bg-card">
+              {stages.map((stage) => (
+                <EditableRow key={stage.id} stage={stage} />
+              ))}
+            </div>
           </div>
         </div>
       </ResponsiveModal>
@@ -465,6 +524,7 @@ export function StageManagerDialog({
           open
           onOpenChange={(next) => { if (!next) setConfiguringStage(null); }}
           stage={configuringStage}
+          initialTab="rules"
         />
       )}
     </>

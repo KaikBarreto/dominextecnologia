@@ -12,10 +12,12 @@ export interface CrmStageRequirements {
   fieldRules?: Array<{ key: string; label?: string; operator: 'filled' | 'checked' | 'equals' | 'url'; value?: string }>;
 }
 
-export type CrmAutomationTriggerType = 'stage_enter' | 'task_completed' | 'checklist_completed' | 'all_completed';
+export type CrmAutomationTriggerType = 'stage_enter' | 'task_completed' | 'checklist_completed' | 'all_completed' | 'business_event';
 export type CrmAutomationActionType = 'create_task' | 'apply_checklist' | 'set_due' | 'assign_user' | 'add_label' | 'move_card' | 'copy_card';
 
 export interface CrmAutomationAction {
+  /** Identidade estável da ação para idempotência mesmo quando a regra é reordenada. */
+  id?: string;
   action: CrmAutomationActionType;
   config: Record<string, unknown>;
 }

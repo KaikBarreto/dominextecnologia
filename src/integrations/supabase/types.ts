@@ -13147,6 +13147,7 @@ export type Database = {
           include_gifts: boolean
           km_cost: number
           last_viewed_at: string | null
+          lead_id: string | null
           notes: string | null
           profit_rate: number
           proposal_template_id: string | null
@@ -13193,6 +13194,7 @@ export type Database = {
           include_gifts?: boolean
           km_cost?: number
           last_viewed_at?: string | null
+          lead_id?: string | null
           notes?: string | null
           profit_rate?: number
           proposal_template_id?: string | null
@@ -13239,6 +13241,7 @@ export type Database = {
           include_gifts?: boolean
           km_cost?: number
           last_viewed_at?: string | null
+          lead_id?: string | null
           notes?: string | null
           profit_rate?: number
           proposal_template_id?: string | null
@@ -13297,6 +13300,13 @@ export type Database = {
             columns: ["financial_transaction_id"]
             isOneToOne: false
             referencedRelation: "financial_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
           {
@@ -14940,6 +14950,7 @@ export type Database = {
           contract_visit_customized_at: string | null
           created_at: string
           created_by: string | null
+          crm_automation_action_key: string | null
           crm_automation_rule_id: string | null
           crm_checklist_id: string | null
           customer_id: string | null
@@ -15032,6 +15043,7 @@ export type Database = {
           contract_visit_customized_at?: string | null
           created_at?: string
           created_by?: string | null
+          crm_automation_action_key?: string | null
           crm_automation_rule_id?: string | null
           crm_checklist_id?: string | null
           customer_id?: string | null
@@ -15124,6 +15136,7 @@ export type Database = {
           contract_visit_customized_at?: string | null
           created_at?: string
           created_by?: string | null
+          crm_automation_action_key?: string | null
           crm_automation_rule_id?: string | null
           crm_checklist_id?: string | null
           customer_id?: string | null
@@ -19500,6 +19513,17 @@ export type Database = {
         }
         Returns: Json
       }
+      create_reserved_quote_from_lead: {
+        Args: {
+          p_company_id: string
+          p_items: Json
+          p_lead_id: string
+          p_quote: Json
+          p_reservation_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       create_tenant_charge_receivable: {
         Args: {
           p_account_id?: string
@@ -19878,6 +19902,7 @@ export type Database = {
           contract_visit_customized_at: string | null
           created_at: string
           created_by: string | null
+          crm_automation_action_key: string | null
           crm_automation_rule_id: string | null
           crm_checklist_id: string | null
           customer_id: string | null

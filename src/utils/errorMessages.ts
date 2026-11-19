@@ -525,7 +525,16 @@ export function getErrorMessage(error: unknown, fallback = DEFAULT_MESSAGE) {
     if (scopeCode) return SERVICE_ORDER_SCOPE_ERROR_MESSAGES[scopeCode];
   }
 
-  // 4) SQLSTATE / PostgREST code — mais confiável que substring genérica.
+  // 4) Requisitos de saída do CRM: a mensagem já é uma orientação em PT-BR,
+  // mas hint e SQLSTATE são diagnóstico interno e não podem aparecer no toast.
+  if (error && typeof error === 'object') {
+    const crmError = error as ErrorLike;
+    if (crmError.hint?.toLowerCase().includes('stage_requirements_pending')) {
+      return crmError.message?.trim() || 'Conclua os requisitos desta etapa antes de mover a oportunidade.';
+    }
+  }
+
+  // 5) SQLSTATE / PostgREST code — mais confiável que substring genérica.
   //    Erros do Supabase tipicamente vêm como { code, message, details, hint }.
   if (error && typeof error === 'object') {
     const code = (error as ErrorLike).code;
@@ -534,7 +543,7 @@ export function getErrorMessage(error: unknown, fallback = DEFAULT_MESSAGE) {
     }
   }
 
-  // 5) Extrai texto cru pra substring match (cobertura legada).
+  // 6) Extrai texto cru pra substring match (cobertura legada).
   const raw = extractErrorText(error);
 
   if (isInternalRuntimeError(error)) return RUNTIME_INTERNAL_MESSAGE;
@@ -543,7 +552,7 @@ export function getErrorMessage(error: unknown, fallback = DEFAULT_MESSAGE) {
   const mapped = DATABASE_ERROR_MAP.find((item) => item.test(message));
   if (mapped) return mapped.text;
 
-  // 6) Se a mensagem crua parece técnica (inglês de banco), prefere fallback PT-BR.
+  // 7) Se a mensagem crua parece técnica (inglês de banco), prefere fallback PT-BR.
   //    Heurística simples: contém termos sentinela de erro técnico não mapeado.
   if (raw && looksTechnicalEnglish(raw)) {
     return fallback;

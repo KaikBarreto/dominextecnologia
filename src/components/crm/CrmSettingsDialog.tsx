@@ -52,8 +52,7 @@ export function CrmSettingsDialog({
         <div className="min-h-[520px] rounded-2xl bg-card p-1 sm:p-5">
           {section === 'pipelines' && (
             <PipelineManagerDialog
-              embedded
-              initialExpandedPipelineId={pipelineId}
+              initialPipelineId={pipelineId}
               onCreated={onPipelineCreated}
             />
           )}

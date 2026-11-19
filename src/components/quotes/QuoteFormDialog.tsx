@@ -266,6 +266,20 @@ interface QuoteFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   quote?: Quote | null;
+  sourceLeadId?: string | null;
+  defaultCustomerId?: string | null;
+  defaultProspectName?: string | null;
+  defaultProspectPhone?: string | null;
+  defaultProspectEmail?: string | null;
+  onSaved?: (quoteId: string) => void;
+}
+
+/** O card que abriu o wizard é a fonte canônica do novo orçamento. */
+export function resolveQuoteDraftLeadId(
+  draftLeadId: string | null | undefined,
+  sourceLeadId: string | null | undefined,
+) {
+  return sourceLeadId ?? draftLeadId ?? '';
 }
 
 // STEPS é construído dentro do componente (locale-aware) — ver buildSteps() abaixo.
@@ -493,7 +507,17 @@ function readQuoteBdiPreference(key: string | null): boolean {
   }
 }
 
-export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogProps) {
+export function QuoteFormDialog({
+  open,
+  onOpenChange,
+  quote,
+  sourceLeadId = null,
+  defaultCustomerId = null,
+  defaultProspectName = null,
+  defaultProspectPhone = null,
+  defaultProspectEmail = null,
+  onSaved,
+}: QuoteFormDialogProps) {
   const { locale, currency } = useAppLocaleContext();
   const tq = MESSAGES[locale].app.crm.quotes;
   const stepLabels: Record<typeof locale, Record<StepKey, string>> = {
@@ -543,6 +567,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
 
   // ── Customer ──
   const [customerMode, setCustomerMode] = useState<'existing' | 'prospect'>('existing');
+  const [leadId, setLeadId] = useState(sourceLeadId ?? '');
   const [customerId, setCustomerId] = useState('');
   const [prospectName, setProspectName] = useState('');
   const [prospectPhone, setProspectPhone] = useState('');
@@ -620,6 +645,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
 
   type QuoteDraft = {
     numberRequestId?: string;
+    leadId?: string;
     customerMode: string; customerId: string; prospectName: string; prospectPhone: string; prospectEmail: string;
     distanceKm: number; discountType: string; discountValue: number; includeGifts: boolean;
     validUntil: string; notes: string; terms: string; proposalTemplateId: string;
@@ -647,6 +673,9 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   });
   const isNumberRequestId = (value: unknown): value is string => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
   const recoveryNumberId = draft.draftData?.numberRequestId;
+  const draftLeadContextChanged = Boolean(
+    sourceLeadId && draft.draftData && draft.draftData.leadId !== sourceLeadId,
+  );
   const numberReservation = useQuoteNumberReservation({
     companyId: profile?.company_id,
     userId: user?.id ?? profile?.user_id,
@@ -658,6 +687,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   const requiresNumber = !isEditing && !draftQuoteId && !!profile?.company_id && !!(user?.id ?? profile?.user_id);
   const currentDraft = useMemo<QuoteDraft>(() => ({
     numberRequestId,
+    leadId,
     customerMode, customerId, prospectName, prospectPhone, prospectEmail,
     distanceKm, discountType, discountValue, includeGifts,
     validUntil, notes, terms, proposalTemplateId,
@@ -666,7 +696,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     showLaborCostInProposal, showInputsCostInProposal,
     items, taxRate, adminRate, profitRate, kmCost: kmCostCfg,
     cardDiscountRate: cardDiscountRateCfg, cardInstallments: cardInstallmentsCfg,
-  }), [numberRequestId, customerMode, customerId, prospectName, prospectPhone, prospectEmail, distanceKm, discountType, discountValue, includeGifts, validUntil, notes, terms, proposalTemplateId, receivableInstallments, receivableFirstDueDate, useBdi, displacementPricingMode, manualDisplacementPrice, showLaborCostInProposal, showInputsCostInProposal, items, taxRate, adminRate, profitRate, kmCostCfg, cardDiscountRateCfg, cardInstallmentsCfg]);
+  }), [numberRequestId, leadId, customerMode, customerId, prospectName, prospectPhone, prospectEmail, distanceKm, discountType, discountValue, includeGifts, validUntil, notes, terms, proposalTemplateId, receivableInstallments, receivableFirstDueDate, useBdi, displacementPricingMode, manualDisplacementPrice, showLaborCostInProposal, showInputsCostInProposal, items, taxRate, adminRate, profitRate, kmCostCfg, cardDiscountRateCfg, cardInstallmentsCfg]);
   const startNewDraftIfNeeded = (patch: Partial<QuoteDraft>) => {
     if (!draftScopeChanged && draft.showResumePrompt) draft.startNewDraft({ ...currentDraft, ...patch });
   };
@@ -681,6 +711,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
 
   const applyQuoteDraft = (d: QuoteDraft) => {
     if (isNumberRequestId(d.numberRequestId)) setNumberRequestId(d.numberRequestId.toLowerCase());
+    setLeadId(resolveQuoteDraftLeadId(d.leadId, sourceLeadId));
     setCustomerMode(d.customerMode === 'prospect' ? 'prospect' : 'existing');
     setCustomerId(d.customerId || '');
     setProspectName(d.prospectName || '');
@@ -725,10 +756,12 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       cardInstallments: false,
     };
     setCustomerMode('existing');
-    setCustomerId('');
-    setProspectName('');
-    setProspectPhone('');
-    setProspectEmail('');
+    setLeadId(sourceLeadId ?? '');
+    setCustomerId(defaultCustomerId ?? '');
+    setCustomerMode(defaultCustomerId ? 'existing' : defaultProspectName ? 'prospect' : 'existing');
+    setProspectName(defaultProspectName ?? '');
+    setProspectPhone(defaultProspectPhone ?? '');
+    setProspectEmail(defaultProspectEmail ?? '');
     setDistanceKm(0);
     setDiscountType('valor');
     setDiscountValue(0);
@@ -756,7 +789,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     setKmCostCfg(Number(pricing?.km_cost ?? 1));
     setCardDiscountRateCfg(Number(pricing?.card_discount_rate ?? 6));
     setCardInstallmentsCfg(Number(pricing?.card_installments ?? 10));
-  }, [templates, pricing, bdiPreferenceKey]);
+  }, [templates, pricing, bdiPreferenceKey, sourceLeadId, defaultCustomerId, defaultProspectName, defaultProspectPhone, defaultProspectEmail]);
 
   useEffect(() => {
     if (draftScopeRef.current === draftScopeKey) return;
@@ -826,6 +859,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     if (!open) return;
 
     if (quote) {
+      setLeadId(quote.lead_id || '');
       setCustomerId(quote.customer_id || '');
       setCustomerMode(quote.customer_id ? 'existing' : 'prospect');
       setProspectName(quote.prospect_name ?? '');
@@ -910,6 +944,9 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
       );
     } else if (!isEditing && draft.hasDraft && draft.draftData) {
       // O usuário escolhe retomar o preenchimento pelo aviso flutuante.
+      // Mesmo antes dessa escolha, o contexto explícito do card prevalece:
+      // salvar sem interagir com o aviso nunca pode usar outro lead.
+      if (sourceLeadId) setLeadId(sourceLeadId);
     } else {
       resetQuoteForm();
     }
@@ -1292,6 +1329,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
   // ── Build payload (shared by submit + draft) ──
   const buildPayload = (status?: string): QuoteInput => ({
     ...(!isEditing && numberReservation.reservation ? { number_reservation_id: numberReservation.reservation.id } : {}),
+    lead_id: leadId || undefined,
     customer_id: customerMode === 'existing' ? customerId : undefined,
     prospect_name: customerMode === 'prospect' ? prospectName : undefined,
     prospect_phone: customerMode === 'prospect' ? prospectPhone : undefined,
@@ -1361,7 +1399,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     }),
   });
 
-  const finishSavedQuote = async (session: number) => {
+  const finishSavedQuote = async (session: number, savedQuoteId: string) => {
     if (formSessionRef.current.generation !== session) return;
     setFinishingQuote(true);
     const snapshots = items
@@ -1381,6 +1419,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     }
     if (formSessionRef.current.generation !== session) return;
     if (!isEditing) await draft.clearDraft();
+    onSaved?.(savedQuoteId);
     if (formSessionRef.current.generation === session) onOpenChange(false);
   };
 
@@ -1397,9 +1436,9 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     // atualiza a MESMA linha — nunca duplica.
     const targetId = quote?.id ?? draftQuoteId;
     if (targetId) {
-      updateQuote.mutate({ ...payload, id: targetId }, { onSuccess: () => { void finishSavedQuote(session); } });
+      updateQuote.mutate({ ...payload, id: targetId }, { onSuccess: () => { void finishSavedQuote(session, targetId); } });
     } else {
-      createQuote.mutate(payload, { onSuccess: () => { void finishSavedQuote(session); } });
+      createQuote.mutate(payload, { onSuccess: (created: { id: string }) => { void finishSavedQuote(session, created.id); } });
     }
   };
 
@@ -1414,7 +1453,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
     const targetId = quote?.id ?? draftQuoteId;
     if (targetId) {
       updateQuote.mutate({ ...payload, id: targetId }, {
-        onSuccess: () => { if (formSessionRef.current.generation === session) { setSavingDraft(false); void finishSavedQuote(session); } },
+        onSuccess: () => { if (formSessionRef.current.generation === session) { setSavingDraft(false); void finishSavedQuote(session, targetId); } },
         onError: () => { if (formSessionRef.current.generation === session) setSavingDraft(false); },
       });
     } else {
@@ -1423,7 +1462,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
           if (formSessionRef.current.generation !== session) return;
           if (created?.id) setDraftQuoteId(created.id);
           setSavingDraft(false);
-          void finishSavedQuote(session);
+          if (created?.id) void finishSavedQuote(session, created.id);
         },
         onError: () => { if (formSessionRef.current.generation === session) setSavingDraft(false); },
       });
@@ -2548,6 +2587,7 @@ export function QuoteFormDialog({ open, onOpenChange, quote }: QuoteFormDialogPr
         floatingNotice={!isEditing && !draftQuoteId && draft.showResumePrompt ? (
           <DraftResumeNotice
             hasConflict={draft.syncIssue === 'conflict'}
+            contextChanged={draftLeadContextChanged}
             persistence={draft.persistence}
             expiresAt={draft.expiresAt}
             onResume={() => {

@@ -19,7 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   User, Phone, Mail, Calendar, DollarSign, TrendingUp,
   MessageSquare, Clock, Plus, Send, Edit, Trash2, X, Wrench, CalendarPlus,
-  UserX, UserPlus, CheckCircle2, Circle, Repeat, Loader2, AlertTriangle, Workflow,
+  UserX, UserPlus, CheckCircle2, Circle, Repeat, Loader2, AlertTriangle, Workflow, FileText, Eye,
 } from 'lucide-react';
 import {
   useLeadInteractions,
@@ -55,6 +55,11 @@ import { LeadLabelsSection } from '@/components/crm/LeadLabelsSection';
 import { LeadChecklistsSection } from '@/components/crm/LeadChecklistsSection';
 import { CrmActivityFeed } from '@/components/crm/CrmActivityFeed';
 import { phoneMask } from '@/utils/masks';
+import { QuoteFormDialog } from '@/components/quotes/QuoteFormDialog';
+import { QuoteViewDialog } from '@/components/quotes/QuoteViewDialog';
+import { getQuoteStatusLabels, STATUS_COLORS, useQuotes, type Quote } from '@/hooks/useQuotes';
+import { getQuoteCommercialTotal } from '@/lib/quote-commercial-total';
+import { useCompanyModules } from '@/hooks/useCompanyModules';
 
 const DATE_FNS_LOCALES: Record<LocaleCode, Locale> = {
   'pt-br': ptBR,
@@ -107,7 +112,8 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
   const { interactions, isLoading: loadingInteractions, createInteraction } = useLeadInteractions(lead?.id || null);
   const { deleteLead, claimLead, updateLeadNotes } = useLeads();
 
-  const { user, isAdminOrGestor, hasPermission } = useAuth();
+  const { user, isAdminOrGestor, hasPermission, hasScreenAccess } = useAuth();
+  const { hasScreen, isLoading: modulesLoading } = useCompanyModules();
   const { createServiceOrder, serviceOrders, deleteServiceOrder, updateServiceOrder } = useServiceOrders();
   const { submitTask } = useTaskSubmit();
   const { data: profiles = [] } = useProfiles();
@@ -117,6 +123,13 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
   // o mesmo padrão aqui até a permissão dedicada existir.
   const canCreateOS = isAdminOrGestor() || hasPermission('fn:create_os');
   const canCreateTask = canCreateOS;
+  const canUseQuotes = !modulesLoading && hasScreenAccess('screen:quotes') && hasScreen('screen:quotes');
+  const {
+    quotes,
+    isLoading: loadingQuotes,
+    error: quotesError,
+    refetch: refetchQuotes,
+  } = useQuotes({ enabled: canUseQuotes });
 
   const [newInteraction, setNewInteraction] = useState({
     type: '',
@@ -127,6 +140,10 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
   const [isAddingInteraction, setIsAddingInteraction] = useState(false);
   const [osFormOpen, setOsFormOpen] = useState(false);
   const [taskFormOpen, setTaskFormOpen] = useState(false);
+  const [quoteFormOpen, setQuoteFormOpen] = useState(false);
+  const [viewQuote, setViewQuote] = useState<Quote | null>(null);
+  const quoteOverlayOpen = canUseQuotes && quoteFormOpen;
+  const quoteViewOpen = canUseQuotes && Boolean(viewQuote);
   // `null` = criando; preenchido = editando esta tarefa (aba Tarefas do card).
   const [editingTask, setEditingTask] = useState<any | null>(null);
   const [creatingTask, setCreatingTask] = useState(false);
@@ -151,6 +168,11 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
       return a.scheduled_date.localeCompare(b.scheduled_date);
     });
   }, [leadTasks]);
+  const leadQuotes = useMemo(
+    () => quotes.filter((quote) => quote.lead_id === lead?.id),
+    [quotes, lead?.id],
+  );
+  const quoteStatusLabels = getQuoteStatusLabels(locale);
   const profileMap = useMemo(
     () => new Map(profiles.map((p) => [p.user_id, p])),
     [profiles],
@@ -418,7 +440,10 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
 
   return (
     <>
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open && !quoteOverlayOpen && !quoteViewOpen}
+      onOpenChange={onOpenChange}
+    >
       <DialogContent className="max-h-[92vh] w-[calc(100vw-1rem)] overflow-hidden flex flex-col sm:max-w-6xl">
         <DialogHeader className="flex-shrink-0">
           {/* pr-28 reserva espaço pro botão "FECHAR" (absolute, ModalCloseButton em
@@ -586,8 +611,8 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
               </div>
             )}
 
-            {/* Atalhos: gerar OS ou Tarefa já com os dados desta oportunidade */}
-            {(canCreateOS || canCreateTask) && (
+            {/* Atalhos: gerar OS, orçamento ou tarefa já com os dados desta oportunidade */}
+            {(canCreateOS || canCreateTask || canUseQuotes) && (
               <div className="flex flex-wrap gap-2">
                 {canCreateOS && (
                   <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => setOsFormOpen(true)}>
@@ -605,6 +630,12 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
                   >
                     <CalendarPlus className="h-4 w-4" />
                     {t.detail.createTask}
+                  </Button>
+                )}
+                {canUseQuotes && (
+                  <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => setQuoteFormOpen(true)}>
+                    <FileText className="h-4 w-4" />
+                    {t.detail.createQuote}
                   </Button>
                 )}
               </div>
@@ -761,6 +792,57 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
               <p>{t.detail.updatedAt} {formatDistanceToNow(new Date(lead.updated_at), { addSuffix: true, locale: dfLocale })}</p>
             </div>
             <LeadLabelsSection leadId={lead.id} />
+            {canUseQuotes && (
+              <section className="space-y-3" aria-label={t.detail.quotesTitle}>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <FileText className="h-4 w-4" /> {t.detail.quotesTitle}
+                  </h3>
+                  <Button type="button" variant="ghost" size="sm" className="h-8 gap-1.5" onClick={() => setQuoteFormOpen(true)}>
+                    <Plus className="h-3.5 w-3.5" /> {t.detail.createQuote}
+                  </Button>
+                </div>
+                {loadingQuotes ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
+                    <Loader2 className="h-4 w-4 animate-spin" /> {t.detail.quotesLoading}
+                  </div>
+                ) : quotesError ? (
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive" role="alert">
+                    <span>{t.detail.quotesError}</span>
+                    <Button type="button" variant="outline" size="sm" onClick={() => void refetchQuotes()}>
+                      {t.detail.quotesRetry}
+                    </Button>
+                  </div>
+                ) : leadQuotes.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">{t.detail.quotesEmpty}</p>
+                ) : (
+                  <div className="space-y-2">
+                    {leadQuotes.map((quote) => (
+                      <button
+                        key={quote.id}
+                        type="button"
+                        className="flex w-full items-center gap-3 rounded-xl border bg-card p-3 text-left transition-colors hover:bg-muted/40"
+                        onClick={() => setViewQuote(quote)}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-medium">#{quote.quote_number}</p>
+                            <Badge className={cn('border-0', STATUS_COLORS[quote.status] ?? 'bg-muted text-muted-foreground')}>
+                              {quoteStatusLabels[quote.status] ?? quote.status}
+                            </Badge>
+                          </div>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {format(new Date(quote.created_at), 'dd/MM/yyyy', { locale: dfLocale })}
+                          </p>
+                        </div>
+                        <span className="shrink-0 font-semibold tabular-nums">{formatCurrency(getQuoteCommercialTotal(quote))}</span>
+                        <Eye className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
             <LeadChecklistsSection leadId={lead.id} />
               </div>
               <CrmActivityFeed
@@ -1091,6 +1173,26 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
         }
       }}
     />
+
+    {canUseQuotes && (
+      <QuoteFormDialog
+        open={quoteOverlayOpen}
+        onOpenChange={setQuoteFormOpen}
+        sourceLeadId={lead.id}
+        defaultCustomerId={lead.customer_id}
+        defaultProspectName={lead.customer_id ? null : lead.title}
+        defaultProspectPhone={lead.customer_id ? null : lead.customers?.celular || lead.customers?.phone}
+        defaultProspectEmail={lead.customer_id ? null : lead.customers?.email}
+      />
+    )}
+
+    {viewQuote && canUseQuotes && (
+      <QuoteViewDialog
+        open={quoteViewOpen}
+        onOpenChange={(next) => { if (!next) setViewQuote(null); }}
+        quote={viewQuote}
+      />
+    )}
     </>
   );
 }

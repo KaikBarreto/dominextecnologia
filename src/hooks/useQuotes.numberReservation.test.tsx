@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useQuotes, type QuoteInput } from './useQuotes';
 
-const state = vi.hoisted(() => ({ rpc: vi.fn(), from: vi.fn(), toast: vi.fn() }));
+const state = vi.hoisted(() => ({ rpc: vi.fn(), from: vi.fn(), insert: vi.fn(), toast: vi.fn() }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc: state.rpc, from: state.from } }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'user-a' } }) }));
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: state.toast }) }));
@@ -20,7 +20,13 @@ function mount() {
 }
 beforeEach(() => {
   vi.clearAllMocks();
-  state.from.mockImplementation(() => ({ select: () => ({ order: async () => ({ data: [], error: null }) }) }));
+  state.insert.mockImplementation((payload) => ({
+    select: () => ({ single: async () => ({ data: { id: 'quote-copy', ...payload }, error: null }) }),
+  }));
+  state.from.mockImplementation(() => ({
+    select: () => ({ order: async () => ({ data: [], error: null }) }),
+    insert: state.insert,
+  }));
   state.rpc.mockResolvedValue({ data: { id: 'quote-a', quote_number: 731 }, error: null });
 });
 describe('criação com número reservado', () => {
@@ -40,6 +46,17 @@ describe('criação com número reservado', () => {
     expect(args.p_items[0]).not.toHaveProperty('quote_id');
     expect(state.from.mock.calls.every(([table]) => table === 'quotes')).toBe(true);
   });
+  it('usa o wrapper atômico quando o orçamento nasce dentro de uma oportunidade', async () => {
+    const { result } = mount();
+    await act(async () => {
+      await result.current.createQuote.mutateAsync({ ...payload, lead_id: 'lead-a' });
+    });
+    expect(state.rpc).toHaveBeenCalledWith('create_reserved_quote_from_lead', expect.objectContaining({
+      p_lead_id: 'lead-a',
+      p_reservation_id: 'reservation-a',
+    }));
+    expect(state.rpc.mock.calls[0][1].p_quote).not.toHaveProperty('lead_id');
+  });
   it('traduz conflito antes de chegar à mensagem de erro da tela', async () => {
     state.rpc.mockResolvedValue({ data: null, error: { code: 'QNR03', message: 'SQLSTATE constraint quote_number_reservations' } });
     const { result, client } = mount();
@@ -56,5 +73,15 @@ describe('criação com número reservado', () => {
     const invalidate = vi.spyOn(client, 'invalidateQueries');
     await act(async () => { await expect(result.current.createQuote.mutateAsync(payload)).rejects.toThrow('Seus dados foram mantidos'); });
     expect(invalidate).not.toHaveBeenCalled();
+  });
+
+  it('preserva a oportunidade ao duplicar para manter o orçamento e o evento no card', async () => {
+    const { result } = mount();
+    await act(async () => {
+      await result.current.duplicateQuote.mutateAsync({
+        id: 'quote-source', lead_id: 'lead-a', status: 'rascunho', quote_items: [],
+      } as any);
+    });
+    expect(state.insert).toHaveBeenCalledWith(expect.objectContaining({ lead_id: 'lead-a' }));
   });
 });

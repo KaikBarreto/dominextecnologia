@@ -6,9 +6,8 @@ import type { CrmAutomationRule, CrmAutomationRuleInput } from '@/types/crmAutom
 
 const rulesKey = (pipelineId?: string | null) => ['crm-automation-rules', pipelineId] as const;
 
-export function useCrmStageAutomations(pipelineId?: string | null) {
-  const queryClient = useQueryClient();
-  const rulesQuery = useQuery({
+function useRulesQuery(pipelineId?: string | null) {
+  return useQuery({
     queryKey: rulesKey(pipelineId),
     enabled: Boolean(pipelineId),
     queryFn: async () => {
@@ -17,6 +16,21 @@ export function useCrmStageAutomations(pipelineId?: string | null) {
       return (data ?? []) as unknown as CrmAutomationRule[];
     },
   });
+}
+
+/**
+ * Só a relação de automações do funil, no MESMO cache do editor. Serve pra
+ * lista de etapas mostrar quantas automações cada uma tem sem carregar
+ * usuários, etiquetas e modelos que só o editor usa.
+ */
+export function useCrmAutomationRules(pipelineId?: string | null) {
+  const rulesQuery = useRulesQuery(pipelineId);
+  return { rules: rulesQuery.data ?? [] };
+}
+
+export function useCrmStageAutomations(pipelineId?: string | null) {
+  const queryClient = useQueryClient();
+  const rulesQuery = useRulesQuery(pipelineId);
   const resourcesQuery = useQuery({
     queryKey: ['crm-automation-resources'],
     queryFn: async () => {

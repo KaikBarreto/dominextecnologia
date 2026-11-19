@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.27";
+export const APP_VERSION = "1.41.28";
 
 export const VERSION_NOTES =
-  "Atualização do sistema sem tela de erro e Agenda protegida contra carregamento infinito.";
+  "Crie orçamentos de dentro da oportunidade no CRM, automatize o follow-up e configure funis em lista e detalhes.";

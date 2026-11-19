@@ -141,7 +141,7 @@ vi.mock('@/components/ui/SearchableSelect', () => ({
   },
 }));
 
-import { QuoteFormDialog, buildMaterialItem, calculateItemPrice, calculateMixedQuotePricing, calculateQuoteCommercialTotal } from './QuoteFormDialog';
+import { QuoteFormDialog, buildMaterialItem, calculateItemPrice, calculateMixedQuotePricing, calculateQuoteCommercialTotal, resolveQuoteDraftLeadId } from './QuoteFormDialog';
 import { BDISummaryCard } from './BDISummaryCard';
 import { calculateCommercialPaymentOptions } from '@/lib/quote-commercial-total';
 import { calculateBDI } from '@/hooks/useBDICalculator';
@@ -150,6 +150,20 @@ import { OverlayCoordinatorProvider } from '@/contexts/OverlayCoordinatorContext
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
 const tq = MESSAGES['pt-br'].app.crm.quotes;
+
+describe('resolveQuoteDraftLeadId', () => {
+  it('mantém a oportunidade que abriu o wizard ao retomar rascunho de outro card', () => {
+    expect(resolveQuoteDraftLeadId('lead-a', 'lead-b')).toBe('lead-b');
+  });
+
+  it('associa rascunho legado sem lead ao card atual', () => {
+    expect(resolveQuoteDraftLeadId(undefined, 'lead-b')).toBe('lead-b');
+  });
+
+  it('preserva o contexto do rascunho quando o wizard veio da tela geral', () => {
+    expect(resolveQuoteDraftLeadId('lead-a', null)).toBe('lead-a');
+  });
+});
 
 let container: HTMLDivElement;
 let root: Root;
@@ -1266,7 +1280,7 @@ describe('QuoteFormDialog — modo de precificação e estrutura do wizard', () 
     await clickAsync(findButtonByText(tq.recipientProspect)!);
     typeInto(q(`input[placeholder="${tq.recipientNamePlaceholder}"]`) as HTMLInputElement, 'Outro orçamento em criação');
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 550)); });
-    await act(async () => { previousSuccess(); });
+    await act(async () => { previousSuccess({ id: 'quote-created-earlier' }); });
     expect(JSON.parse(sessionStorage.getItem('form-draft:quote-form')!)).toMatchObject({ prospectName: 'Outro orçamento em criação' });
   });
 });

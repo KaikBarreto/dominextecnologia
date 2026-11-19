@@ -27,8 +27,14 @@ export interface CrmLeadChecklistItem extends CrmChecklistTemplateItem {
 
 export interface CrmLeadChecklist {
   id: string;
+  /** Nome canônico persistido e consumido pelas regras/automações SQL. */
+  name: string;
+  /** Alias de apresentação mantido por compatibilidade com a UI legada. */
   title: string;
   templateId?: string | null;
+  automation_rule_id?: string | null;
+  automation_action_key?: string | null;
+  linked_task_id?: string | null;
   items: CrmLeadChecklistItem[];
 }
 
@@ -81,7 +87,9 @@ export function normalizeCrmLeadChecklists(value: unknown): CrmLeadChecklist[] {
   return value.flatMap((checklist) => {
     if (!checklist || typeof checklist !== 'object') return [];
     const candidate = checklist as Record<string, unknown>;
-    const title = typeof candidate.title === 'string' ? candidate.title.trim() : '';
+    const storedTitle = typeof candidate.title === 'string' ? candidate.title.trim() : '';
+    const storedName = typeof candidate.name === 'string' ? candidate.name.trim() : '';
+    const title = storedTitle || storedName;
     if (!title) return [];
     const rawItems = Array.isArray(candidate.items) ? candidate.items : [];
     const items = rawItems.flatMap((item) => {
@@ -97,8 +105,25 @@ export function normalizeCrmLeadChecklists(value: unknown): CrmLeadChecklist[] {
     });
     return [{
       id: typeof candidate.id === 'string' && candidate.id ? candidate.id : createCrmCardItemId(),
+      // Checklists manuais antigos tinham apenas `title`; automações usam
+      // `name`. Persistimos os dois para que UI, requisitos e triggers leiam o
+      // mesmo snapshot sem apagar o formato legado ao editar um item.
+      name: storedName || title,
       title,
-      templateId: typeof candidate.templateId === 'string' ? candidate.templateId : null,
+      templateId: typeof candidate.templateId === 'string'
+        ? candidate.templateId
+        : typeof candidate.template_id === 'string'
+          ? candidate.template_id
+          : null,
+      automation_rule_id: typeof candidate.automation_rule_id === 'string'
+        ? candidate.automation_rule_id
+        : null,
+      automation_action_key: typeof candidate.automation_action_key === 'string'
+        ? candidate.automation_action_key
+        : null,
+      linked_task_id: typeof candidate.linked_task_id === 'string'
+        ? candidate.linked_task_id
+        : null,
       items,
     }];
   });
@@ -206,7 +231,10 @@ export function useCrmChecklistTemplates(admin = false) {
       const { error } = await supabase.from(table).update({ name: name.trim(), items }).eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+      toast({ title: 'Modelo de checklist salvo' });
+    },
     onError: (error) => toast({ variant: 'destructive', title: 'Não foi possível atualizar o modelo', description: getErrorMessage(error) }),
   });
 

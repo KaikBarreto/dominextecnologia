@@ -31,6 +31,33 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.28',
+    date: '19 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Orçamento criado de dentro da oportunidade',
+        category: 'recurso',
+        description: 'O cartão da oportunidade no CRM ganhou o botão Criar orçamento. O orçamento abre em tela cheia já ligado à oportunidade, você volta para o cartão ao terminar e ele fica listado na área Orçamentos do próprio cartão.',
+      },
+      {
+        title: 'Automação ao criar um orçamento',
+        category: 'recurso',
+        description: 'As automações das etapas do funil agora podem começar quando um orçamento é criado no cartão. Dá para gerar a tarefa de follow-up, aplicar checklist, definir responsável, prazo e etiqueta sem trabalho manual, e já existe um modelo pronto de follow-up para começar.',
+      },
+      {
+        title: 'Configurações do CRM em lista e detalhes',
+        category: 'melhoria',
+        description: 'Funis, modelos de checklist e automações passam a mostrar a lista de um lado e o item escolhido do outro, sem abrir e fechar blocos. Cada etapa mostra quantas regras e automações possui, com o acesso sempre à vista.',
+      },
+      {
+        title: 'Edição mais segura de regras e modelos',
+        category: 'melhoria',
+        description: 'O sistema pede confirmação antes de excluir uma automação ou um modelo de checklist e avisa quando existe alteração ainda não salva. Nos modelos, agora dá para corrigir o texto de um item e mudar a ordem sem refazer a lista.',
+      },
+    ],
+  },
+  {
     version: '1.41.27',
     date: '18 de novembro de 2026',
     type: 'patch',
