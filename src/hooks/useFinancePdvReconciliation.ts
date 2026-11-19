@@ -4,6 +4,7 @@ import {supabase} from '@/integrations/supabase/client';
 import {useAuth} from '@/contexts/AuthContext';
 import {useCompanyModules} from '@/hooks/useCompanyModules';
 import {usePdvAuthorizedQueryScope} from '@/hooks/pdvReportCache';
+import {hasPdvExplicitPermission} from '@/components/pdv/caixa-v2/pdvCashAccess';
 import {FINANCE_PDV_RECONCILIATION_ROOT,loadFinancePdvExport,parseFinancePdvEntry,parseFinancePdvReconciliation,type FinancePdvProjection} from '@/lib/financePdvReconciliation';
 export {FINANCE_PDV_RECONCILIATION_ROOT} from '@/lib/financePdvReconciliation';
 type RpcResult = {data:unknown;error:{code?:string}|null};
@@ -16,7 +17,8 @@ export function financePdvReadError(error: {code?:string}|null) {
 }
 export function useFinancePdvReconciliationAccess() {
   const auth = useAuth(), modules = useCompanyModules(), scope = usePdvAuthorizedQueryScope();
-  const explicit = (permission:string) => auth.roles.includes('super_admin') || auth.hasPermissionRecord && (auth.permissions.includes('*') || auth.permissions.includes(permission));
+  // Mesma trava do servidor (finance_pdv_reconciliation_context_v3): admin da empresa entra como Acesso Total; demais só com '*' ou chave nominal.
+  const explicit = (permission:string) => hasPdvExplicitPermission(auth, permission);
   const allowed = scope.ready && auth.profile?.user_id === auth.user?.id && auth.profile?.is_active === true && !modules.isLoading && modules.hasModule('pdv')
     && ['screen:finance','fn:view_finance_totals','fn:operate_other_pdv_cash'].every(explicit);
   return {allowed,scopeKey:JSON.stringify([...scope.key,allowed])};

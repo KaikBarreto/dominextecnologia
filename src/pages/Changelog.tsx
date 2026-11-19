@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.32',
+    date: '19 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Exportação do caixa da loja em PDF e Excel',
+        category: 'recurso',
+        description: 'No Histórico de Caixa, cada caixa fechado ganhou a ação Exportar, e o topo da tela ganhou um botão para exportar de uma vez os caixas de um período. O arquivo traz todas as vendas e movimentações, em qualquer forma de pagamento, com cliente, vendedor, quem lançou e os itens de cada venda. Dá para filtrar por tipo de movimentação e por forma de pagamento, incluir as vendas canceladas e escolher entre PDF e Excel.',
+      },
+      {
+        title: 'Administrador enxerga os caixas de todos os operadores',
+        category: 'correcao',
+        description: 'Quem é administrador da empresa agora vê e confere o caixa aberto por qualquer operador da loja, e também a conferência entre o Financeiro e a loja, sem precisar marcar permissões uma a uma. Antes, em alguns cadastros, o administrador só via os próprios caixas.',
+      },
+    ],
+  },
+  {
     version: '1.41.31',
     date: '19 de novembro de 2026',
     type: 'patch',

@@ -7,7 +7,7 @@ vi.mock('@/integrations/supabase/client',()=>({supabase:{rpc:mocks.rpc}}));
 vi.mock('@/contexts/AuthContext',()=>({useAuth:()=>mocks.auth}));
 vi.mock('@/hooks/useCompanyModules',()=>({useCompanyModules:()=>({isLoading:false,hasModule:()=>mocks.module})}));
 vi.mock('@/hooks/pdvReportCache',()=>({usePdvAuthorizedQueryScope:()=>({ready:true,key:[mocks.scope]})}));
-import {useFinancePdvReconciliation,useFinancePdvReconciliationEntry} from './useFinancePdvReconciliation';
+import {useFinancePdvReconciliation,useFinancePdvReconciliationAccess,useFinancePdvReconciliationEntry} from './useFinancePdvReconciliation';
 const report=()=>({snapshot:'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',scope:'company_shadow',coverage_status:'incomplete',company_result:null,company_cash_flow:null,projection:'dre_competence',from:'2026-11-14',to:'2026-11-15',total_count:0,limit:50,offset:0,has_more:false,entries:[],commercial:{revenue:65,cmv:30,expense:0,result:35,cash_flow:0},acquisitions:{amount:422,fully_paid_amount:22,count:2}});
 const input={from:'2026-11-14',to:'2026-11-15',projection:'dre_competence' as const,enabled:true};
 let client:QueryClient;
@@ -27,6 +27,24 @@ describe('conferência financeira autorizada',()=>{
   if(scenario==='mismatched-profile')(mocks.auth.profile as Record<string,unknown>).user_id='old-user';
   const {result}=renderHook(()=>useFinancePdvReconciliation(input),{wrapper});
   expect(result.current.allowed).toBe(false);expect(result.current.data).toBeUndefined();expect(mocks.rpc).not.toHaveBeenCalled();
+ });
+ it('admin da empresa entra como Acesso Total, mesmo sem cadastro de permissões',()=>{
+  mocks.auth.roles=['admin'];mocks.auth.permissions=[];mocks.auth.hasPermissionRecord=false;
+  const {result}=renderHook(()=>useFinancePdvReconciliationAccess(),{wrapper});
+  expect(result.current.allowed).toBe(true);
+ });
+ it.each([
+  ['gestor sem a chave de outro caixa',{roles:['gestor'],permissions:['screen:finance','fn:view_finance_totals'],hasPermissionRecord:true}],
+  ['gestor sem cadastro',{roles:['gestor'],permissions:[],hasPermissionRecord:false}],
+  ['usuário sem cadastro',{roles:['comercial'],permissions:['*'],hasPermissionRecord:false}],
+ ])('barra %s',(_label,patch)=>{
+  Object.assign(mocks.auth,patch);
+  const {result}=renderHook(()=>useFinancePdvReconciliationAccess(),{wrapper});
+  expect(result.current.allowed).toBe(false);
+ });
+ it('scopeKey muda quando o acesso muda',()=>{
+  const {result,rerender}=renderHook(()=>useFinancePdvReconciliationAccess(),{wrapper});const before=result.current.scopeKey;
+  mocks.auth.permissions=['screen:finance'];rerender();expect(result.current.allowed).toBe(false);expect(result.current.scopeKey).not.toBe(before);
  });
  it('mascara dados já carregados no mesmo render de revogação',async()=>{
   mocks.rpc.mockResolvedValue({data:report(),error:null});const {result,rerender}=renderHook(()=>useFinancePdvReconciliation(input),{wrapper});

@@ -12,7 +12,7 @@ function escapeHtml(value: unknown): string {
     .split("'").join('&#039;');
 }
 
-const kindLabels: Record<string, string> = {
+export const kindLabels: Record<string, string> = {
   opening: 'Abertura',
   cash_receipt: 'Recebimento em dinheiro',
   cash_payment: 'Pagamento em dinheiro',

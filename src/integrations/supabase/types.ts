@@ -20783,6 +20783,19 @@ export type Database = {
         }
         Returns: Json
       }
+      pdv_cash_export_period_v1: {
+        Args: {
+          p_from: string
+          p_operator_id?: string
+          p_terminal_id?: string
+          p_to: string
+        }
+        Returns: Json
+      }
+      pdv_cash_session_export_v1: {
+        Args: { p_session_id: string }
+        Returns: Json
+      }
       pdv_cash_v2_context: {
         Args: never
         Returns: { user_id: string; company_id: string }[]
