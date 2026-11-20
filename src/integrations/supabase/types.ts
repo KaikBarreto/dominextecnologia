@@ -19811,6 +19811,14 @@ export type Database = {
           inserted_count: number
         }[]
       }
+      finance_delete_pdv_transaction_v1: {
+        Args: { p_reason: string; p_transaction_id: string }
+        Returns: Json
+      }
+      finance_pdv_transaction_undo_plan_v1: {
+        Args: { p_transaction_id: string }
+        Returns: Json
+      }
       finalize_bank_reconciliation: {
         Args: { p_import_id: string }
         Returns: Json

@@ -31,6 +31,33 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.33',
+    date: '20 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cancelar uma venda da loja desfaz tudo',
+        category: 'correcao',
+        description: 'Ao cancelar uma venda da loja, o dinheiro também sai: o recebimento deixa de contar no financeiro, o valor em dinheiro sai da gaveta do caixa aberto e o pagamento no cartão é desfeito junto com a taxa. Antes, o produto voltava para o estoque, mas o valor da venda continuava contando como recebido.',
+      },
+      {
+        title: 'Excluir pelo Financeiro um lançamento que veio da loja',
+        category: 'melhoria',
+        description: 'Quem tem acesso a todos os caixas pode excluir pelo Financeiro um lançamento de venda da loja. A exclusão cancela a venda inteira e mostra antes o que vai acontecer: o produto volta para o estoque, o dinheiro sai da gaveta e, se o caixa daquele dia já foi fechado, o fechamento continua como foi.',
+      },
+      {
+        title: 'Excluir um lançamento manual com o caixa da loja aberto',
+        category: 'correcao',
+        description: 'Uma entrada lançada à mão na conta do caixa agora pode ser excluída mesmo com o caixa da loja aberto. Antes, o sistema recusava a exclusão com uma mensagem que pedia para escolher outra conta.',
+      },
+      {
+        title: 'Avisos mais claros no caixa e nas vendas da loja',
+        category: 'melhoria',
+        description: 'Quando o sistema não deixa usar o dinheiro reservado para o caixa aberto, ou não deixa cancelar uma venda, o aviso agora explica o motivo e o que fazer. As vendas da loja também deixaram de mostrar um texto técnico nas observações do lançamento.',
+      },
+    ],
+  },
+  {
     version: '1.41.32',
     date: '19 de novembro de 2026',
     type: 'patch',

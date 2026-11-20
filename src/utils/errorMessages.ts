@@ -118,8 +118,13 @@ const SCHEDULE_ERROR_MESSAGES: Record<string, string> = {
  * código sozinho só diz que uma regra foi violada e não orienta o operador.
  */
 const FINANCIAL_ERROR_MESSAGES: Record<string, string> = {
+  // A trava só barra o que tira dinheiro do cofre enquanto há caixa do PDV
+  // aberto contando com ele. Vale para pagar, transferir ou lançar saída, então
+  // a mensagem não pode falar só em "registrar o pagamento".
   pdv_treasury_custody_reserved:
-    'Esta conta é reservada à custódia do caixa do PDV. Selecione outra conta bancária ou caixa para registrar o pagamento.',
+    'Esse dinheiro está separado para o caixa do PDV que está aberto. Use outra conta ou feche o caixa antes de continuar.',
+  pdv_custody_financial_immutable:
+    'Este lançamento foi criado pelo caixa do PDV e não pode ser editado nem excluído aqui. Para desfazer, cancele a venda ou registre o estorno no próprio PDV.',
 };
 
 /**

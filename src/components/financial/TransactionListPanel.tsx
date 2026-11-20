@@ -35,6 +35,8 @@ import { getRpcErrorMessage } from '@/hooks/useCreditCardBills';
 import { RowActionsMenu, type RowAction } from '@/components/ui/RowActionsMenu';
 import { RelatedTransactionsDialog } from './RelatedTransactionsDialog';
 import { findRelatedTransactions, deleteTransactionCascade } from '@/hooks/useRelatedTransactions';
+import { isPdvFinancialRow } from '@/hooks/useFinancePdvUndo';
+import { FinancePdvUndoDialog } from './FinancePdvUndoDialog';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -296,6 +298,8 @@ export function TransactionListPanel({
   // um balde explícito pra lançamento SEM centro — sem ele, filtrar esconderia
   // esses lançamentos e ninguém entenderia por que a lista encolheu.
   const [costCenterFilter, setCostCenterFilter] = useState<string[]>([]);
+  // Lançamento do PDV: excluir desfaz a origem inteira (ver FinancePdvUndoDialog).
+  const [pdvUndoId, setPdvUndoId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<{ txn: FinancialTransaction; related: FinancialTransaction[]; linkedQuote: any } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   // Lotes de pagamento abertos (mostrando as contas de dentro).
@@ -641,6 +645,10 @@ export function TransactionListPanel({
   const requestDelete = async (id: string) => {
     const txn = transactions.find((t) => t.id === id);
     if (!txn) return;
+    if (isPdvFinancialRow(txn)) {
+      setPdvUndoId(id);
+      return;
+    }
     const { related, linkedQuote } = await findRelatedTransactions(id);
     if (related.length === 0 && !linkedQuote) {
       // Plain delete
@@ -712,7 +720,17 @@ export function TransactionListPanel({
   };
 
   const handleBulkDelete = async () => {
-    for (const id of selectedIds) await onDelete(id);
+    // Em lote não dá pra mostrar o que cada venda do PDV vai desfazer, então
+    // elas ficam de fora e o usuário exclui uma por uma.
+    let skippedPdv = 0;
+    for (const id of selectedIds) {
+      const txn = transactions.find((t) => t.id === id);
+      if (txn && isPdvFinancialRow(txn)) { skippedPdv += 1; continue; }
+      await onDelete(id);
+    }
+    if (skippedPdv > 0) {
+      toast({ title: fin.pdvUndo.batchSkipped.replace('{count}', String(skippedPdv)) });
+    }
     setSelectedIds(new Set()); setBulkDeleteOpen(false);
   };
   const toggleSelect = (id: string) => {
@@ -1745,6 +1763,8 @@ export function TransactionListPanel({
           </CardContent>
         </Card>
       )}
+
+      <FinancePdvUndoDialog transactionId={pdvUndoId} onClose={() => setPdvUndoId(null)} />
 
       <RelatedTransactionsDialog
         open={!!pendingDelete}

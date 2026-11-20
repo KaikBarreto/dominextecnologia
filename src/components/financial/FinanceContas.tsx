@@ -48,6 +48,8 @@ import { useCostCenters } from '@/hooks/useCostCenters';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { filterByCostCenters, NO_COST_CENTER } from '@/lib/cost-center-breakdown';
 import { CreditCardInvoiceRow } from './CreditCardInvoiceRow';
+import { FinancePdvUndoDialog } from './FinancePdvUndoDialog';
+import { isPdvFinancialRow } from '@/hooks/useFinancePdvUndo';
 
 function canAdjustManualOccurrence(transaction: FinancialTransaction | null): boolean {
   if (!transaction) return false;
@@ -192,6 +194,9 @@ export function FinanceContas({
   const [editingScope, setEditingScope] = useState<FinancialSeriesScope>('single');
   const [seriesAction, setSeriesAction] = useState<{ transaction: FinancialTransaction; action: 'edit' | 'delete' } | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  // Lançamento que veio do PDV não passa pelo DELETE comum: excluir desfaz a
+  // origem inteira (venda cancelada, estoque e gaveta de volta).
+  const [pdvUndoId, setPdvUndoId] = useState<string | null>(null);
   const [receivingTxn, setReceivingTxn] = useState<PayrollTxn | null>(null);
   const [payingDespesaTxn, setPayingDespesaTxn] = useState<FinancialTransaction | null>(null);
   const [payrollTxn, setPayrollTxn] = useState<PayrollTxn | null>(null);
@@ -926,6 +931,10 @@ export function FinanceContas({
   };
 
   const requestDelete = (t: FinancialTransaction) => {
+    if (isPdvFinancialRow(t)) {
+      setPdvUndoId(t.id);
+      return;
+    }
     if (t.installment_group_id && canAdjustManualOccurrence(t)) {
       setSeriesAction({ transaction: t, action: 'delete' });
       return;
@@ -1945,6 +1954,8 @@ export function FinanceContas({
           <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <FinancePdvUndoDialog transactionId={pdvUndoId} onClose={() => setPdvUndoId(null)} />
 
       <AlertDialog open={!!deletingId} onOpenChange={() => setDeletingId(null)}>
         <AlertDialogContent>

@@ -5,6 +5,35 @@
 // NÃO se traduz. Só chrome/UI. Moeda segue a da empresa (formatMoney).
 export const finance = {
   'pt-br': {
+    pdvUndo: {
+      titleSale: 'Excluir lançamento da venda nº {number} do PDV?',
+      titleOther: 'Excluir lançamento do PDV?',
+      introSale: 'Este lançamento veio de uma venda do PDV. Excluir cancela a venda inteira, como se ela nunca tivesse acontecido:',
+      introOther: 'Ao excluir este lançamento:',
+      effects: {
+        stock_returned: 'Os produtos voltam para o estoque.',
+        finance_cancelled: 'Todos os recebimentos desta venda deixam de contar no financeiro.',
+        drawer_returned: 'O dinheiro sai da gaveta do caixa aberto.',
+        closed_session_kept: 'O caixa desta venda já foi fechado. A sobra ou falta daquele dia continua como foi registrada.',
+        customer_debt_cancelled: 'O valor que o cliente ficou devendo nesta venda é cancelado.',
+        card_cancelled: 'O pagamento no cartão é desfeito, com a taxa, e não entra mais no financeiro.',
+        finance_deleted: 'O lançamento é apagado do financeiro.',
+      },
+      reasonLabel: 'Motivo',
+      reasonPlaceholder: 'Ex.: venda lançada em duplicidade',
+      confirmSale: 'Cancelar venda e excluir',
+      confirmOther: 'Excluir',
+      back: 'Voltar',
+      close: 'Fechar',
+      loading: 'Conferindo o que será desfeito…',
+      blockedTitle: 'Não dá para excluir este lançamento',
+      alreadyDone: 'Esta venda já foi cancelada. Atualize a tela.',
+      successSale: 'Venda nº {number} cancelada e lançamento excluído.',
+      successCash: 'Movimento desfeito. O dinheiro voltou para a gaveta.',
+      successDeleted: 'Lançamento excluído.',
+      errorTitle: 'Erro ao excluir lançamento',
+      batchSkipped: '{count} lançamento(s) do PDV ficaram de fora. Exclua um por um para ver o que será desfeito.',
+    },
     smartFill: {
       loading: 'Buscando padrões…',
       patterns: 'Padrões do histórico',
@@ -2061,6 +2090,35 @@ export const finance = {
 
   // ─── ENGLISH ──────────────────────────────────────────────────────────────
   en: {
+    pdvUndo: {
+      titleSale: 'Delete the entry from POS sale #{number}?',
+      titleOther: 'Delete this POS entry?',
+      introSale: 'This entry came from a POS sale. Deleting it cancels the whole sale, as if it never happened:',
+      introOther: 'Deleting this entry will:',
+      effects: {
+        stock_returned: 'Products go back to stock.',
+        finance_cancelled: 'All payments from this sale stop counting in finance.',
+        drawer_returned: 'The cash leaves the open register drawer.',
+        closed_session_kept: 'The register for this sale is already closed. That day\'s overage or shortage stays as recorded.',
+        customer_debt_cancelled: 'The amount the customer still owed on this sale is cancelled.',
+        card_cancelled: 'The card payment is undone, along with its fee, and no longer counts in finance.',
+        finance_deleted: 'The entry is removed from finance.',
+      },
+      reasonLabel: 'Reason',
+      reasonPlaceholder: 'E.g.: sale entered twice',
+      confirmSale: 'Cancel sale and delete',
+      confirmOther: 'Delete',
+      back: 'Back',
+      close: 'Close',
+      loading: 'Checking what will be undone…',
+      blockedTitle: 'This entry cannot be deleted',
+      alreadyDone: 'This sale was already cancelled. Refresh the page.',
+      successSale: 'Sale #{number} cancelled and entry deleted.',
+      successCash: 'Movement undone. The cash went back to the drawer.',
+      successDeleted: 'Entry deleted.',
+      errorTitle: 'Error deleting entry',
+      batchSkipped: '{count} POS entr(ies) were skipped. Delete them one by one to see what will be undone.',
+    },
     smartFill: {
       loading: 'Finding patterns…',
       patterns: 'History patterns',
@@ -4012,6 +4070,35 @@ export const finance = {
 
   // ─── ESPAÑOL ──────────────────────────────────────────────────────────────
   es: {
+    pdvUndo: {
+      titleSale: '¿Eliminar el registro de la venta nº {number} del PDV?',
+      titleOther: '¿Eliminar registro del PDV?',
+      introSale: 'Este registro vino de una venta del PDV. Eliminarlo cancela la venta completa, como si nunca hubiera ocurrido:',
+      introOther: 'Al eliminar este registro:',
+      effects: {
+        stock_returned: 'Los productos vuelven al stock.',
+        finance_cancelled: 'Todos los cobros de esta venta dejan de contar en finanzas.',
+        drawer_returned: 'El dinero sale del cajón de la caja abierta.',
+        closed_session_kept: 'La caja de esta venta ya fue cerrada. El sobrante o faltante de ese día se mantiene como se registró.',
+        customer_debt_cancelled: 'Se cancela el monto que el cliente quedó debiendo en esta venta.',
+        card_cancelled: 'El pago con tarjeta se deshace, junto con su comisión, y deja de contar en finanzas.',
+        finance_deleted: 'El registro se elimina de finanzas.',
+      },
+      reasonLabel: 'Motivo',
+      reasonPlaceholder: 'Ej.: venta registrada dos veces',
+      confirmSale: 'Cancelar venta y eliminar',
+      confirmOther: 'Eliminar',
+      back: 'Volver',
+      close: 'Cerrar',
+      loading: 'Verificando lo que se deshará…',
+      blockedTitle: 'No se puede eliminar este registro',
+      alreadyDone: 'Esta venta ya fue cancelada. Actualice la pantalla.',
+      successSale: 'Venta nº {number} cancelada y registro eliminado.',
+      successCash: 'Movimiento deshecho. El dinero volvió al cajón.',
+      successDeleted: 'Registro eliminado.',
+      errorTitle: 'Error al eliminar el registro',
+      batchSkipped: '{count} registro(s) del PDV quedaron fuera. Elimínelos uno por uno para ver lo que se deshará.',
+    },
     smartFill: {
       loading: 'Buscando patrones…',
       patterns: 'Patrones del historial',
@@ -5964,6 +6051,35 @@ export const finance = {
 
   // ─── FRANÇAIS ─────────────────────────────────────────────────────────────
   fr: {
+    pdvUndo: {
+      titleSale: `Supprimer l'écriture de la vente n° {number} du point de vente ?`,
+      titleOther: `Supprimer l'écriture du point de vente ?`,
+      introSale: `Cette écriture provient d'une vente du point de vente. La supprimer annule toute la vente, comme si elle n'avait jamais eu lieu :`,
+      introOther: `En supprimant cette écriture :`,
+      effects: {
+        stock_returned: 'Les produits reviennent en stock.',
+        finance_cancelled: `Tous les encaissements de cette vente ne comptent plus dans les finances.`,
+        drawer_returned: `L'argent sort du tiroir de la caisse ouverte.`,
+        closed_session_kept: `La caisse de cette vente est déjà fermée. L'excédent ou le manque de ce jour reste tel qu'il a été enregistré.`,
+        customer_debt_cancelled: 'Le montant que le client devait sur cette vente est annulé.',
+        card_cancelled: `Le paiement par carte est annulé, avec ses frais, et ne compte plus dans les finances.`,
+        finance_deleted: `L'écriture est supprimée des finances.`,
+      },
+      reasonLabel: 'Motif',
+      reasonPlaceholder: 'Ex. : vente saisie deux fois',
+      confirmSale: 'Annuler la vente et supprimer',
+      confirmOther: 'Supprimer',
+      back: 'Retour',
+      close: 'Fermer',
+      loading: 'Vérification de ce qui sera annulé…',
+      blockedTitle: 'Impossible de supprimer cette écriture',
+      alreadyDone: `Cette vente a déjà été annulée. Actualisez l'écran.`,
+      successSale: 'Vente n° {number} annulée et écriture supprimée.',
+      successCash: `Mouvement annulé. L'argent est revenu dans le tiroir.`,
+      successDeleted: 'Écriture supprimée.',
+      errorTitle: `Erreur lors de la suppression de l'écriture`,
+      batchSkipped: `{count} écriture(s) du point de vente ont été ignorées. Supprimez-les une par une pour voir ce qui sera annulé.`,
+    },
     smartFill: {
       loading: 'Recherche de modèles…',
       patterns: 'Modèles de l’historique',

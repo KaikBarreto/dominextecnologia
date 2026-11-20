@@ -9,7 +9,7 @@ describe('getErrorMessage — financeiro', () => {
       message: 'new row violates check constraint',
       details: 'PDV_TREASURY_CUSTODY_RESERVED',
     })).toBe(
-      'Esta conta é reservada à custódia do caixa do PDV. Selecione outra conta bancária ou caixa para registrar o pagamento.',
+      'Esse dinheiro está separado para o caixa do PDV que está aberto. Use outra conta ou feche o caixa antes de continuar.',
     );
   });
 
@@ -19,5 +19,17 @@ describe('getErrorMessage — financeiro', () => {
       message: 'check violation',
       hint: 'PDV_TREASURY_CUSTODY_RESERVED',
     })).not.toContain('23514');
+  });
+
+  it('explica o lançamento imutável do caixa sem falar em custódia', () => {
+    const message = getErrorMessage({
+      code: '55000',
+      message: 'Este lançamento pertence à custódia do caixa e não pode ser alterado ou excluído. Registre uma reversão.',
+      details: 'PDV_CUSTODY_FINANCIAL_IMMUTABLE',
+    });
+    expect(message).toBe(
+      'Este lançamento foi criado pelo caixa do PDV e não pode ser editado nem excluído aqui. Para desfazer, cancele a venda ou registre o estorno no próprio PDV.',
+    );
+    expect(message).not.toContain('custódia');
   });
 });

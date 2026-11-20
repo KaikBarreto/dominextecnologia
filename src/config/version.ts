@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.32";
+export const APP_VERSION = "1.41.33";
 
 export const VERSION_NOTES =
-  "O Histórico de Caixa da loja agora exporta em PDF e Excel todas as vendas e movimentações de cada caixa, com filtros, e o administrador da empresa passa a enxergar os caixas de todos os operadores.";
+  "Cancelar uma venda da loja agora desfaz tudo, inclusive o dinheiro da gaveta e o pagamento no cartão, e quem tem acesso a todos os caixas pode excluir pelo Financeiro um lançamento que veio da loja, cancelando a venda inteira.";
