@@ -73,6 +73,12 @@ import {
   getQuoteApprovalRevertErrorCode,
 } from '@/lib/quote-approval-revert';
 
+/** Número do orçamento antes da numeração por empresa, quando houver. */
+function legacyQuoteNumberOf(quote: unknown): string {
+  const legacy = (quote as { legacy_quote_number?: number | null }).legacy_quote_number;
+  return legacy != null ? String(legacy) : '';
+}
+
 // Tabs are built dynamically using i18n inside the Quotes component.
 const ALL_SIDEBAR_TAB_KEYS = [
   { value: 'quotes', labelKey: 'tabQuotes' as const, icon: FileText },
@@ -371,6 +377,8 @@ function QuotesList({
           fuzzyIncludes(q.customers?.name, search) ||
           fuzzyIncludes(q.prospect_name, search) ||
           fuzzyIncludes(String(q.quote_number), search) ||
+          // Número de antes da numeração por empresa (proposta já enviada).
+          fuzzyIncludes(legacyQuoteNumberOf(q), search) ||
           // Idem OS: telefone só com 6+ dígitos, pra não competir com o nº do
           // orçamento.
           fuzzyIncludesPhone(customer?.phone, search) ||

@@ -117,3 +117,32 @@ export function useServiceOrderNumberReservation(options: Options) {
     retry,
   };
 }
+
+/** O rascunho local (sessionStorage) ainda guarda esta reserva? */
+export function draftHoldsServiceOrderNumber(draftKey: string, requestId: string): boolean {
+  try {
+    const raw = sessionStorage.getItem(`form-draft:${draftKey}`);
+    const saved = raw ? JSON.parse(raw)?._numberReservationId : null;
+    return typeof saved === 'string' && saved.toLowerCase() === requestId.toLowerCase();
+  } catch {
+    // Sem conseguir ler o rascunho, não devolve: é melhor segurar o número.
+    return true;
+  }
+}
+
+/**
+ * Devolve o número de um formulário de OS fechado sem salvar e sem rascunho.
+ *
+ * Sem isso, o número reservado ao abrir o formulário ficava preso até a
+ * reserva vencer e a numeração da empresa pulava. É "melhor esforço": o
+ * servidor ignora reserva já usada, já devolvida ou de outro usuário, e falha
+ * de rede aqui só adia a devolução para o vencimento da reserva.
+ */
+export function releaseServiceOrderNumber(requestId: string | null | undefined): void {
+  const id = normalizeId(requestId);
+  if (!id) return;
+  void supabase
+    .rpc('release_service_order_number', { p_request_id: id })
+    .then(() => undefined, () => undefined);
+}
+

@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { useServiceOrderNumberReservation } from '@/hooks/useServiceOrderNumberReservation';
+import { useServiceOrderNumberReservation, draftHoldsServiceOrderNumber, releaseServiceOrderNumber } from '@/hooks/useServiceOrderNumberReservation';
 import { normalizeServiceOrderNumberError } from '@/lib/service-order-number-errors';
 import { DocumentNumberStatus } from '@/components/ui/DocumentNumberStatus';
 import { FullscreenWizard, FullscreenWizardAction, FullscreenWizardNotice } from '@/components/ui/FullscreenWizard';
@@ -302,6 +302,18 @@ export function ServiceOrderFormDialog({
     isOpen: open, isEditing, enabled: numberSession.active && numberSession.scope === numberScope,
   });
   const requiresNumber = !isEditing && !!numberScope;
+  // Formulário fechado sem salvar e sem rascunho devolve o número reservado,
+  // para a numeração da empresa não pular. Com rascunho guardado, o número
+  // continua reservado para a retomada.
+  const releaseOnCloseRef = useRef({ open, requestId: numberSession.requestId, draftKey: osDraftKey, isEditing });
+  useEffect(() => {
+    const previous = releaseOnCloseRef.current;
+    releaseOnCloseRef.current = { open, requestId: numberSession.requestId, draftKey: osDraftKey, isEditing };
+    if (!previous.open || open || previous.isEditing) return;
+    if (!draftHoldsServiceOrderNumber(previous.draftKey, previous.requestId)) {
+      releaseServiceOrderNumber(previous.requestId);
+    }
+  }, [open, numberSession.requestId, osDraftKey, isEditing]);
   const formSessionRef = useRef({ open, recordId: serviceOrder?.id, scope: numberScope, generation: 0 });
   if (formSessionRef.current.open !== open || formSessionRef.current.recordId !== serviceOrder?.id || formSessionRef.current.scope !== numberScope) {
     formSessionRef.current = { open, recordId: serviceOrder?.id, scope: numberScope, generation: formSessionRef.current.generation + 1 };

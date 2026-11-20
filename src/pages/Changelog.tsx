@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.36',
+    date: '20 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Numeração de OS e de orçamento em sequência, por empresa',
+        category: 'melhoria',
+        description: 'As ordens de serviço e os orçamentos agora seguem uma numeração própria da sua empresa, em sequência, a partir do 1. As OS e os orçamentos que já existiam foram reorganizados nessa ordem. Quem tem um documento ou uma mensagem com o número anterior continua encontrando pela busca, e o detalhe da OS mostra o número anterior ao lado do novo.',
+      },
+      {
+        title: 'Resumo do caixa da loja depois de uma venda cancelada',
+        category: 'correcao',
+        description: 'No resumo do caixa, o valor de uma venda em dinheiro cancelada deixa de aparecer em recebimentos em dinheiro. A posição da gaveta e os caixas já fechados não mudam.',
+      },
+    ],
+  },
+  {
     version: '1.41.35',
     date: '20 de novembro de 2026',
     type: 'patch',

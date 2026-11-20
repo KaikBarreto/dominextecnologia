@@ -13155,6 +13155,7 @@ export type Database = {
           prospect_name: string | null
           prospect_phone: string | null
           quote_number: number
+          legacy_quote_number: number | null
           receivable_first_due_date: string | null
           receivable_installments: number
           show_inputs_cost_in_proposal: boolean
@@ -13202,6 +13203,7 @@ export type Database = {
           prospect_name?: string | null
           prospect_phone?: string | null
           quote_number?: number
+          legacy_quote_number?: number | null
           receivable_first_due_date?: string | null
           receivable_installments?: number
           show_inputs_cost_in_proposal?: boolean
@@ -13249,6 +13251,7 @@ export type Database = {
           prospect_name?: string | null
           prospect_phone?: string | null
           quote_number?: number
+          legacy_quote_number?: number | null
           receivable_first_due_date?: string | null
           receivable_installments?: number
           show_inputs_cost_in_proposal?: boolean
@@ -14970,6 +14973,7 @@ export type Database = {
           lead_id: string | null
           notes: string | null
           order_number: number
+          legacy_order_number: number | null
           origin: string
           os_type: Database["public"]["Enums"]["os_type"]
           partial_finish: boolean
@@ -15063,6 +15067,7 @@ export type Database = {
           lead_id?: string | null
           notes?: string | null
           order_number?: number
+          legacy_order_number?: number | null
           origin?: string
           os_type?: Database["public"]["Enums"]["os_type"]
           partial_finish?: boolean
@@ -15156,6 +15161,7 @@ export type Database = {
           lead_id?: string | null
           notes?: string | null
           order_number?: number
+          legacy_order_number?: number | null
           origin?: string
           os_type?: Database["public"]["Enums"]["os_type"]
           partial_finish?: boolean
@@ -20777,6 +20783,8 @@ export type Database = {
         }[]
       }
       reserve_service_order_number: { Args: { p_company_id: string; p_user_id: string; p_request_id: string }; Returns: Json }
+      release_quote_number: { Args: { p_request_id: string }; Returns: boolean }
+      release_service_order_number: { Args: { p_request_id: string }; Returns: boolean }
       pdv_after_sale_v2_enabled_internal: {
         Args: {
           p_company_id: string

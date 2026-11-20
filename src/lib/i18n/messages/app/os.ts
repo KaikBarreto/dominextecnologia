@@ -411,6 +411,7 @@ export const os = {
 
       // Cabeçalho da OS
       osPrefix: 'OS #',
+      legacyNumber: 'antes nº {number}',
 
       // Seções / cards
       sectionCustomer: 'Cliente',
@@ -2270,6 +2271,7 @@ export const os = {
       titleFallback: 'Work order details',
       osNotFound: 'Work order not found',
       osPrefix: 'WO #',
+      legacyNumber: 'formerly #{number}',
       sectionCustomer: 'Customer',
       sectionEquipment: 'Equipment',
       sectionCheckin: 'Check-in / Check-out',
@@ -4033,6 +4035,7 @@ export const os = {
       titleFallback: 'Detalles de la orden',
       osNotFound: 'Orden no encontrada',
       osPrefix: 'OT #',
+      legacyNumber: 'antes nº {number}',
       sectionCustomer: 'Cliente',
       sectionEquipment: 'Equipo',
       sectionCheckin: 'Check-in / Check-out',
@@ -5796,6 +5799,7 @@ export const os = {
       titleFallback: 'Détails du bon',
       osNotFound: 'Bon non trouvé',
       osPrefix: 'BT #',
+      legacyNumber: 'ancien n° {number}',
       sectionCustomer: 'Client',
       sectionEquipment: 'Équipement',
       sectionCheckin: 'Check-in / Check-out',

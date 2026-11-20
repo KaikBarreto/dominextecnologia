@@ -234,11 +234,16 @@ export default function ServiceOrders() {
       return ordersOnly.filter((os) => {
         const osCode = getOsCode(os);
         const orderNum = formatOSNumberDigits(os.order_number);
+        // Número de antes da numeração por empresa: quem tem um PDF ou uma
+        // mensagem antiga ainda acha a OS digitando o número que está lá.
+        const legacyNumber = (os as { legacy_order_number?: number | null }).legacy_order_number;
+        const legacyNum = legacyNumber != null ? String(legacyNumber) : '';
         return (
           fuzzyIncludes(os.customer?.name, searchTerm) ||
           fuzzyIncludes(osCode, searchTerm) ||
           fuzzyIncludes(osCode, searchTermNoLeadingZeros) ||
           fuzzyIncludes(orderNum, searchTermNoLeadingZeros) ||
+          (legacyNum !== '' && fuzzyIncludes(legacyNum, searchTermNoLeadingZeros)) ||
           fuzzyIncludes((os as any).service_type?.name, searchTerm) ||
           fuzzyIncludes((os as any).equipment?.name, searchTerm) ||
           fuzzyIncludes(os.description, searchTerm) ||

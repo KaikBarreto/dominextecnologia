@@ -824,6 +824,14 @@ export function ServiceOrderViewDialog({ open, onOpenChange, serviceOrderId, onE
     <span className="flex flex-wrap items-center gap-2">
       <Eye className="h-5 w-5 shrink-0" />
       <span>{tv.osPrefix}{formatOSNumberDigits(serviceOrder.order_number)}</span>
+      {/* A numeração passou a ser por empresa (1.41.36). O número antigo fica
+          visível para quem tem um PDF ou uma mensagem enviada antes da troca. */}
+      {(serviceOrder as { legacy_order_number?: number | null }).legacy_order_number != null
+        && (serviceOrder as { legacy_order_number?: number | null }).legacy_order_number !== serviceOrder.order_number && (
+        <span className="text-xs font-normal text-muted-foreground">
+          {tv.legacyNumber.replace('{number}', String((serviceOrder as { legacy_order_number?: number | null }).legacy_order_number))}
+        </span>
+      )}
       <Badge variant="outline" className={`${statusColors[serviceOrder.status]} border`}>
         {getOsStatusLabel(serviceOrder.status, (serviceOrder as any).partial_finish)}
       </Badge>
