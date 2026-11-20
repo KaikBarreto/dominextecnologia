@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.33";
+export const APP_VERSION = "1.41.34";
 
 export const VERSION_NOTES =
-  "Cancelar uma venda da loja agora desfaz tudo, inclusive o dinheiro da gaveta e o pagamento no cartão, e quem tem acesso a todos os caixas pode excluir pelo Financeiro um lançamento que veio da loja, cancelando a venda inteira.";
+  "Ao excluir os últimos equipamentos cadastrados, os códigos deles voltam a ficar disponíveis, então quem excluiu os equipamentos de teste recomeça a numeração do 0001.";

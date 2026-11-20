@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.34',
+    date: '20 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Código do equipamento volta a ficar disponível ao excluir',
+        category: 'melhoria',
+        description: 'Ao excluir os últimos equipamentos cadastrados, os códigos deles voltam a ficar disponíveis para os próximos. Quem cadastrou equipamentos de teste e excluiu tudo recomeça a numeração do 0001. Um código abaixo de um equipamento que ainda existe continua sem ser reaproveitado, para não misturar equipamentos diferentes.',
+      },
+    ],
+  },
+  {
     version: '1.41.33',
     date: '20 de novembro de 2026',
     type: 'patch',
