@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.34";
+export const APP_VERSION = "1.41.35";
 
 export const VERSION_NOTES =
-  "Ao excluir os últimos equipamentos cadastrados, os códigos deles voltam a ficar disponíveis, então quem excluiu os equipamentos de teste recomeça a numeração do 0001.";
+  "Cada pergunta do checklist passa a ter uma única resposta, então o relatório da OS não mostra mais itens repetidos, e a liquidação de cartão de venda da loja já entregue volta a funcionar.";

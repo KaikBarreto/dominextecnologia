@@ -10,6 +10,7 @@ import { NumericInput } from '@/components/ui/numeric-input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
+import { writeFormResponse } from '@/hooks/formResponseWrite';
 import { OsPhotoField } from '@/components/technician/OsPhotoField';
 import { OsVideoField } from '@/components/technician/OsVideoField';
 import { useToast } from '@/hooks/use-toast';
@@ -430,48 +431,19 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
       const { data: userData } = await supabase.auth.getUser();
       const respondedBy = userData?.user?.id ?? null;
 
-      // Build query to find existing response scoped to this equipment
-      let existingQuery = supabase
-        .from('form_responses')
-        .select('id')
-        .eq('service_order_id', serviceOrderId)
-        .eq('question_id', questionId);
-      
-      if (equipmentId) {
-        existingQuery = existingQuery.eq('equipment_id', equipmentId);
-      } else {
-        existingQuery = existingQuery.is('equipment_id', null);
-      }
-
-      const { data: existing } = await existingQuery.single();
-
-      if (existing) {
-        const { error } = await supabase
-          .from('form_responses')
-          .update({
-            response_value: value,
-            response_photo_url: nextResponse.response_photo_url,
-            response_video_url: nextResponse.response_video_url,
-            responded_at: respondedAt,
-            responded_by: respondedBy,
-          })
-          .eq('id', existing.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('form_responses')
-          .insert({
-            service_order_id: serviceOrderId,
-            question_id: questionId,
-            response_value: value,
-            response_photo_url: nextResponse.response_photo_url,
-            response_video_url: nextResponse.response_video_url,
-            equipment_id: equipmentId || null,
-            responded_at: respondedAt,
-            responded_by: respondedBy,
-          });
-        if (error) throw error;
-      }
+      // Uma linha por (OS, pergunta, equipamento). A regra de procurar, atualizar
+      // ou inserir mora em `writeFormResponse`, que nunca insere quando a busca
+      // falha (era isso que duplicava a resposta).
+      await writeFormResponse(
+        { serviceOrderId, questionId, equipmentId: equipmentId || null },
+        {
+          response_value: value,
+          response_photo_url: nextResponse.response_photo_url,
+          response_video_url: nextResponse.response_video_url,
+          responded_at: respondedAt,
+          responded_by: respondedBy,
+        },
+      );
       persistedResponsesRef.current = {
         ...persistedResponsesRef.current,
         [questionId]: nextResponse,

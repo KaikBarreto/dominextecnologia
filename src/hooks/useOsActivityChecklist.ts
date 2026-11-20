@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { writeFormResponse } from '@/hooks/formResponseWrite';
 import type { FormQuestion } from '@/types/database';
 
 /**
@@ -504,44 +505,22 @@ export function useOsActivityChecklist(serviceOrderId: string | undefined) {
       formResponseSaveVersionsRef.current.set(queueKey, version);
 
       const persist = async () => {
-        // Procura a linha existente pra essa tripla (equipment_id pode ser null).
-        let q = supabase
-          .from('form_responses')
-          .select('id')
-          .eq('service_order_id', serviceOrderId)
-          .eq('question_id', questionId);
-        q = equipmentId ? q.eq('equipment_id', equipmentId) : q.is('equipment_id', null);
-        const { data: existing } = await q.maybeSingle();
-
         const respondedAt = new Date().toISOString();
         const { data: userData } = await supabase.auth.getUser();
         const respondedBy = userData?.user?.id ?? null;
 
-        if (existing) {
-          const { error } = await supabase
-            .from('form_responses')
-            .update({
-              response_value: next.response_value,
-              response_photo_url: next.response_photo_url,
-              response_video_url: next.response_video_url,
-              responded_at: respondedAt,
-              responded_by: respondedBy,
-            } as any)
-            .eq('id', (existing as any).id);
-          if (error) throw error;
-        } else {
-          const { error } = await supabase.from('form_responses').insert({
-            service_order_id: serviceOrderId,
-            equipment_id: equipmentId,
-            question_id: questionId,
+        // Uma linha por (OS, pergunta, equipamento). `writeFormResponse` nunca
+        // insere quando a busca falha, que era o que duplicava a resposta.
+        await writeFormResponse(
+          { serviceOrderId, questionId, equipmentId },
+          {
             response_value: next.response_value,
             response_photo_url: next.response_photo_url,
             response_video_url: next.response_video_url,
             responded_at: respondedAt,
             responded_by: respondedBy,
-          } as any);
-          if (error) throw error;
-        }
+          },
+        );
 
         if (isActiveScope()) {
           persistedFormResponsesRef.current = {

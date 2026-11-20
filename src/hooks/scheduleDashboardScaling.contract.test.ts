@@ -44,7 +44,9 @@ describe('contrato de escala da Agenda e do Dashboard', () => {
       readSource('../pages/Schedule.tsx'),
     ]);
 
-    expect(hookSource).toContain('retry: 5');
+    // A recuperação é seletiva desde a 1.41.24: só repete falha de rede ou do
+    // servidor, e no máximo duas vezes (comportamento coberto em useScheduleOrders.test.tsx).
+    expect(hookSource).toContain('retry: shouldRetryScheduleRead');
     expect(hookSource).toContain("refetchOnReconnect: 'always'");
     expect(hookSource).toContain('refetch: query.refetch');
     expect(scheduleSource).toContain('<ToastAction');

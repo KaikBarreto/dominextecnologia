@@ -10,7 +10,9 @@ vi.mock('@/integrations/supabase/client', () => {
   const responseQuery = {
     eq: vi.fn(() => responseQuery),
     is: vi.fn(() => responseQuery),
-    maybeSingle: vi.fn(async () => ({ data: { id: 'response-1' }, error: null })),
+    // A gravação procura a linha mais recente da tripla (`writeFormResponse`).
+    order: vi.fn(() => responseQuery),
+    limit: vi.fn(async () => ({ data: [{ id: 'response-1' }], error: null })),
   };
   const activityQuery = {
     eq: vi.fn(() => activityQuery),

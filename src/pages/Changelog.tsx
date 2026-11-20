@@ -31,6 +31,28 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.35',
+    date: '20 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Resposta de checklist repetida no relatório da OS',
+        category: 'correcao',
+        description: 'Em alguns casos, quando a internet oscilava durante o preenchimento, a mesma pergunta do checklist ficava gravada mais de uma vez e aparecia repetida no relatório da OS, como se fossem itens a mais. Agora cada pergunta tem uma única resposta, e as OS que já tinham respostas repetidas foram corrigidas, mantendo o texto e as fotos.',
+      },
+      {
+        title: 'Liquidação de cartão em venda da loja já entregue',
+        category: 'correcao',
+        description: 'A liquidação do cartão de uma venda da loja que já tinha sido entregue era recusada. Agora ela é registrada normalmente, com o valor e a taxa.',
+      },
+      {
+        title: 'Cancelamento de venda identificado na exportação do caixa',
+        category: 'melhoria',
+        description: 'Na exportação do caixa em PDF e Excel, a devolução do dinheiro de uma venda cancelada agora aparece com a descrição e a forma de pagamento, como já aparecia na tela.',
+      },
+    ],
+  },
+  {
     version: '1.41.34',
     date: '20 de novembro de 2026',
     type: 'patch',
