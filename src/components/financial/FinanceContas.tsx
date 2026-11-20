@@ -49,6 +49,7 @@ import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { filterByCostCenters, NO_COST_CENTER } from '@/lib/cost-center-breakdown';
 import { CreditCardInvoiceRow } from './CreditCardInvoiceRow';
 import { FinancePdvUndoDialog } from './FinancePdvUndoDialog';
+import { PaidMarker } from './PaidMarker';
 import { isPdvFinancialRow } from '@/hooks/useFinancePdvUndo';
 
 function canAdjustManualOccurrence(transaction: FinancialTransaction | null): boolean {
@@ -1620,7 +1621,9 @@ export function FinanceContas({
                         </div>
                         <div className="flex flex-wrap items-center gap-1.5">
                           {status === 'paga' ? (
-                            <Badge className="bg-success text-white text-[10px] px-1.5 py-0">{fin.accounts.status.paid}</Badge>
+                            <PaidMarker transaction={t} inline>
+                              <Badge className="bg-success text-white text-[10px] px-1.5 py-0">{fin.accounts.status.paid}</Badge>
+                            </PaidMarker>
                           ) : status === 'vencida' ? (
                             <Badge className="bg-destructive text-white text-[10px] px-1.5 py-0">{fin.accounts.status.overdue}</Badge>
                           ) : status === 'parcial' ? (
@@ -1793,7 +1796,9 @@ export function FinanceContas({
                       </TableCell>
                       <TableCell>
                         {status === 'paga' ? (
-                          <Badge className="bg-success text-white">{fin.accounts.status.paid}</Badge>
+                          <PaidMarker transaction={t}>
+                            <Badge className="bg-success text-white">{fin.accounts.status.paid}</Badge>
+                          </PaidMarker>
                         ) : status === 'vencida' ? (
                           <Badge className="bg-destructive text-white">{fin.accounts.status.overdue}</Badge>
                         ) : status === 'parcial' ? (

@@ -7788,6 +7788,8 @@ export type Database = {
           notes: string | null
           origin: string
           paid_date: string | null
+          paid_marked_at: string | null
+          paid_marked_by: string | null
           parent_transaction_id: string | null
           payment_group_id: string | null
           payment_method: string | null
@@ -7833,6 +7835,8 @@ export type Database = {
           notes?: string | null
           origin?: string
           paid_date?: string | null
+          paid_marked_at?: string | null
+          paid_marked_by?: string | null
           parent_transaction_id?: string | null
           payment_group_id?: string | null
           payment_method?: string | null
@@ -7878,6 +7882,8 @@ export type Database = {
           notes?: string | null
           origin?: string
           paid_date?: string | null
+          paid_marked_at?: string | null
+          paid_marked_by?: string | null
           parent_transaction_id?: string | null
           payment_group_id?: string | null
           payment_method?: string | null

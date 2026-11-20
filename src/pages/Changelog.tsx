@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.37',
+    date: '20 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'O sistema registra quem deu baixa em cada conta',
+        category: 'melhoria',
+        description: 'Ao marcar uma conta como paga ou recebida, o sistema passa a guardar quem fez a baixa e quando. No Contas a Pagar e a Receber, o selo Pago mostra essa informação. Vale para as baixas feitas a partir de agora, as anteriores não tinham esse registro.',
+      },
+    ],
+  },
+  {
     version: '1.41.36',
     date: '20 de novembro de 2026',
     type: 'patch',

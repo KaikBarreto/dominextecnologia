@@ -5,6 +5,11 @@
 // NÃO se traduz. Só chrome/UI. Moeda segue a da empresa (formatMoney).
 export const finance = {
   'pt-br': {
+    paidMarker: {
+      by: 'Baixa por {name} em {when}',
+      system: 'Baixa registrada em {when}',
+      inlineBy: 'por {name}',
+    },
     pdvUndo: {
       titleSale: 'Excluir lançamento da venda nº {number} do PDV?',
       titleOther: 'Excluir lançamento do PDV?',
@@ -2090,6 +2095,11 @@ export const finance = {
 
   // ─── ENGLISH ──────────────────────────────────────────────────────────────
   en: {
+    paidMarker: {
+      by: 'Marked as paid by {name} on {when}',
+      system: 'Marked as paid on {when}',
+      inlineBy: 'by {name}',
+    },
     pdvUndo: {
       titleSale: 'Delete the entry from POS sale #{number}?',
       titleOther: 'Delete this POS entry?',
@@ -4070,6 +4080,11 @@ export const finance = {
 
   // ─── ESPAÑOL ──────────────────────────────────────────────────────────────
   es: {
+    paidMarker: {
+      by: 'Marcado como pagado por {name} el {when}',
+      system: 'Marcado como pagado el {when}',
+      inlineBy: 'por {name}',
+    },
     pdvUndo: {
       titleSale: '¿Eliminar el registro de la venta nº {number} del PDV?',
       titleOther: '¿Eliminar registro del PDV?',
@@ -6051,6 +6066,11 @@ export const finance = {
 
   // ─── FRANÇAIS ─────────────────────────────────────────────────────────────
   fr: {
+    paidMarker: {
+      by: 'Marqué comme payé par {name} le {when}',
+      system: 'Marqué comme payé le {when}',
+      inlineBy: 'par {name}',
+    },
     pdvUndo: {
       titleSale: `Supprimer l'écriture de la vente n° {number} du point de vente ?`,
       titleOther: `Supprimer l'écriture du point de vente ?`,

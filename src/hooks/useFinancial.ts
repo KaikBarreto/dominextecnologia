@@ -46,6 +46,8 @@ export type TransactionWithRelations = FinancialTransaction & {
   account: any;
   employee: any;
   creator: TransactionCreator | null;
+  /** Quem marcou como pago/recebido. `null` em baixa antiga ou feita pelo sistema. */
+  settledBy: TransactionCreator | null;
 };
 
 export interface TransactionInput {
@@ -380,7 +382,8 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
       const creatorIds = [
         ...new Set(
           (data || [])
-            .map((t) => t.created_by)
+            // Inclui quem deu baixa: mesma consulta em lote, sem ida extra ao banco.
+            .flatMap((t) => [t.created_by, (t as { paid_marked_by?: string | null }).paid_marked_by])
             .filter((v): v is string => !!v),
         ),
       ];
@@ -405,6 +408,9 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
       return (data || []).map((t) => ({
         ...t,
         creator: t.created_by ? creatorsMap.get(t.created_by) ?? null : null,
+        settledBy: (t as { paid_marked_by?: string | null }).paid_marked_by
+          ? creatorsMap.get((t as { paid_marked_by?: string | null }).paid_marked_by as string) ?? null
+          : null,
       })) as TransactionWithRelations[];
     },
   });
