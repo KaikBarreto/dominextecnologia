@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.39',
+    date: '21 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Fechamento de caixa mostra todas as vendas',
+        category: 'melhoria',
+        description: 'O relatório de fechamento de caixa ganhou o quadro Vendas deste caixa, com todas as vendas feitas nele, seja em dinheiro, Pix, cartão, fiado ou vale. Você vê quanto entrou em cada forma de pagamento e a lista das vendas com número, horário e valor. A conta da gaveta continua a mesma, porque só o dinheiro entra nela.',
+      },
+    ],
+  },
+  {
     version: '1.41.38',
     date: '21 de novembro de 2026',
     type: 'patch',
