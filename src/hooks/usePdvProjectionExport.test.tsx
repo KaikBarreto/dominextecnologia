@@ -18,7 +18,7 @@ function page(offset: number, total = 501, extra: Record<string, unknown> = {}) 
     availability_status: 'not_calculated_for_partial_projection',
     entries: Array.from({ length: Math.min(500, total - offset) }, (_, index) => ({
       event_id: `event-${offset + index}`, event_date: '2026-11-07', source_type: 'delivery_v2',
-      revenue: 1, cmv: null, expense: 0, cash_flow: 0,
+      revenue: 1, cmv: null, expense: 0, cash_flow: 0, order_number: null, item_count: 1, details: [],
     })), ...extra,
   }, error: null };
 }
@@ -48,7 +48,7 @@ describe('exportação integral e autorizada do período PDV', () => {
     expect(entries).toHaveLength(501);
     expect(entries[0].cmv).toBeNull();
     expect(entries[500].eventId).toBe('event-500');
-    expect(mocks.rpc).toHaveBeenNthCalledWith(2, 'pdv_partial_projection_report_v3', {
+    expect(mocks.rpc).toHaveBeenNthCalledWith(2, 'pdv_partial_projection_report_v4', {
       p_projection: params.projection, p_from: params.from, p_to: params.to, p_limit: 500, p_offset: 500,
     });
     expect(result.current.isPending).toBe(false);
@@ -100,7 +100,7 @@ describe('exportação integral e autorizada do período PDV', () => {
   it.each([
     ['quantidade', () => page(500, 502)],
     ['totais', () => page(500, 501, { revenue: 200 })],
-    ['duplicidade', () => page(500, 501, { entries: [{ event_id: 'event-0', event_date: '2026-11-07', source_type: 'delivery_v2', revenue: 1, cmv: null, expense: 0, cash_flow: 0 }] })],
+    ['duplicidade', () => page(500, 501, { entries: [{ event_id: 'event-0', event_date: '2026-11-07', source_type: 'delivery_v2', revenue: 1, cmv: null, expense: 0, cash_flow: 0, order_number: null, item_count: 1, details: [] }] })],
   ] as const)('rejeita conjunto alterado em %s em vez de confiar na primeira página', async (_, changed) => {
     mocks.rpc.mockResolvedValueOnce(page(0)).mockResolvedValueOnce(changed());
     const complete = vi.fn();

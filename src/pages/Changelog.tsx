@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.38',
+    date: '21 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Relatório da Loja com uma linha por venda',
+        category: 'melhoria',
+        description: 'No Resumo dos relatórios da Loja, cada venda agora aparece numa linha só, com o número da venda e o total, em ordem. Antes, uma venda com vários produtos aparecia repetida, uma vez por produto. Clique na venda para ver os produtos, a quantidade e o valor de cada um. A contagem das páginas passou a contar vendas, e as devoluções ganharam nome próprio. A planilha exportada continua detalhada por produto, agora com o número da venda numa coluna. No Histórico, abrir uma venda leva direto ao pedido dela. Nenhum valor mudou.',
+      },
+    ],
+  },
+  {
     version: '1.41.37',
     date: '20 de novembro de 2026',
     type: 'patch',

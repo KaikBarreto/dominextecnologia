@@ -6,6 +6,7 @@ import { PdvReportsWorkspace } from './PdvReportsWorkspace';
 const mocks = vi.hoisted(() => ({ rpc: vi.fn(), createUrl: vi.fn(), revokeUrl: vi.fn(), click: vi.fn(), mobile: false }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc: mocks.rpc } }));
 vi.mock('@/hooks/pdvReportCache', () => ({ PDV_REPORTS_QUERY_ROOT: ['pdv', 'reports-v2'], invalidatePdvReportCaches: vi.fn(), usePdvAuthorizedQueryScope: () => ({ key: ['fixture-company', 'fixture-user', 'reports'], ready: true }) }));
+vi.mock('@/hooks/usePdvCounterFlow', () => ({ usePdvWorkflowSettings: () => ({ data: { pdvMode: 'simples', fulfillmentMode: 'cashier' } }) }));
 vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => mocks.mobile }));
 vi.mock('@/contexts/AppLocaleContext', () => ({ useAppLocaleContext: () => ({ timezone: 'America/Sao_Paulo' }) }));
 vi.mock('@/lib/format/hooks', () => ({ useLocaleFormatters: () => ({ money: (value: number) => `R$ ${value}`, date: (value: string) => value }) }));
@@ -21,7 +22,7 @@ function page(offset: number, history = false) {
     event_id: `event-${offset + index}`, event_type: 'delivery', event_date: '2026-11-07',
     cash_session_id: null, cash_session_label: 'Caixa fictício', label: `Evento ${offset + index}`, amount: null, direction: null, deep_link: '',
   } : {
-    event_id: `event-${offset + index}`, event_date: '2026-11-07', source_type: 'delivery_v2', revenue: 1, cmv: null, expense: 0, cash_flow: 0,
+    event_id: `event-${offset + index}`, event_date: '2026-11-07', source_type: 'delivery_v2', revenue: 1, cmv: null, expense: 0, cash_flow: 0, order_number: null, item_count: 1, details: [],
   });
   return { data: {
     scope: history ? 'pdv_global_history' : 'pdv_partial', projection: 'dre_competence', from: '2026-11-01', to: '2026-11-07',
@@ -87,6 +88,27 @@ describe('arquivo CSV completo na UI real de relatórios', () => {
     expect(content).toContain(`"'${description}"`);
     expect(content).toContain(';"Saída";-12.5');
     expect(content).not.toContain("'-12.5");
+  });
+
+  it('Resumo exporta uma linha por produto, com despesa e fluxo da venda só na primeira linha', async () => {
+    const payload = page(500);
+    payload.data.total_count = 2; payload.data.offset = 0;
+    payload.data.entries = [
+      { event_id: 'g1', event_date: '2026-11-07', source_type: 'delivery_v2', order_number: 42, item_count: 2, revenue: 100, cmv: 10, expense: 5, cash_flow: 7,
+        details: [{ description: 'Capacitor', quantity: 2, revenue: 60, cmv: null }, { description: 'Contator', quantity: 1, revenue: 40, cmv: 10 }] },
+      { event_id: 'g2', event_date: '2026-11-07', source_type: 'pdv_card_fee', order_number: null, item_count: 1, revenue: 0, cmv: 0, expense: 3, cash_flow: 0, details: [] },
+    ] as unknown as typeof payload.data.entries;
+    mocks.rpc.mockResolvedValueOnce(payload);
+    mount(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Exportar CSV' }));
+    await waitFor(() => expect(mocks.click).toHaveBeenCalledOnce());
+    const lines = (await blobText(mocks.createUrl.mock.calls[0][0])).replace(/^﻿/, '').split('\n');
+    expect(lines[0]).toBe('"Data";"Origem";"Venda";"Item";"Quantidade";"Receita";"Custo dos materiais";"Despesa";"Fluxo"');
+    expect(lines.slice(1)).toEqual([
+      '"2026-11-07";"Venda 42";42;"Capacitor";2;60;;5;7',
+      '"2026-11-07";"Venda 42";42;"Contator";1;40;10;;',
+      '"2026-11-07";"Taxa de cartão";;;;0;0;3;0',
+    ]);
   });
 
 });

@@ -14,11 +14,23 @@ export type PdvProjectionKind = 'dre_competence' | 'dre_cash' | 'dfc';
 export interface PdvProjectionEntry {
   eventId: string;
   eventDate: string;
+  sourceType: string;
   sourceLabel: string;
+  /** Número da venda/pedido quando a entrada é um grupo de entrega; null nos demais eventos. */
+  orderNumber: number | null;
+  itemCount: number;
   revenue: number;
   cmv: number | null;
   expense: number;
   cashFlow: number;
+  details: PdvProjectionDetail[];
+}
+
+export interface PdvProjectionDetail {
+  description: string;
+  quantity: number;
+  revenue: number;
+  cmv: number | null;
 }
 
 export interface PdvPartialProjection {
@@ -132,13 +144,27 @@ const SOURCE_LABELS: Record<string, string> = {
   pdv_receivable_settlement: 'Recebimento do PDV',
   pdv_receivable_reversal: 'Estorno de recebimento',
   pdv_refund: 'Reembolso',
+  pdv_refund_reversal: 'Estorno de reembolso',
   pdv_supplier_payment: 'Pagamento a fornecedor',
-  legacy_financial: 'Movimento legado do PDV',
+  commercial_return_v2: 'Devolução',
+  commercial_return_reversal_v2: 'Estorno de devolução',
+  inventory_acquisition: 'Compra de estoque',
+  legacy_financial: 'Lançamento financeiro do PDV',
 };
 
 export function pdvProjectionSourceLabel(value: unknown): string {
   const source = textOf(value);
   return source ? SOURCE_LABELS[source] ?? 'Outro evento do PDV' : 'Outro evento do PDV';
+}
+
+/**
+ * A expedição só existe no balcão com expedição. Fora dele, o link de retirada
+ * levaria ao redirecionamento do guard, então abrimos o pedido na lista de pedidos.
+ */
+export function resolvePdvHistoryDeepLink(deepLink: string, dispatchAvailable: boolean): string {
+  if (dispatchAvailable) return deepLink;
+  const match = /^\/pdv\/expedicao(?=$|[?#])(.*)$/.exec(deepLink);
+  return match ? `/pdv/pedidos${match[1]}` : deepLink;
 }
 
 function pageMeta(root: Record<string, unknown>, rowCount: number) {
@@ -207,14 +233,34 @@ export function projectPdvPartialProjection(payload: unknown): PdvPartialProject
       const row = recordOf(entry);
       const eventId = textOf(row.event_id);
       if (!eventId) throw new PdvReportContractError();
+      const orderNumber = nullableFiniteNumber(row.order_number);
+      const itemCount = finiteNumber(row.item_count);
+      if (!Number.isInteger(itemCount) || itemCount < 1 || !Array.isArray(row.details)) {
+        throw new PdvReportContractError();
+      }
+      const details = row.details.map((raw): PdvProjectionDetail => {
+        const detail = recordOf(raw);
+        const description = textOf(detail.description);
+        if (!description) throw new PdvReportContractError();
+        return {
+          description,
+          quantity: finiteNumber(detail.quantity),
+          revenue: finiteNumber(detail.revenue),
+          cmv: nullableFiniteNumber(detail.cmv),
+        };
+      });
       return {
         eventId,
         eventDate: civilDate(row.event_date),
+        sourceType: textOf(row.source_type) ?? '',
         sourceLabel: pdvProjectionSourceLabel(row.source_type),
+        orderNumber,
+        itemCount,
         revenue: finiteNumber(row.revenue),
         cmv: nullableFiniteNumber(row.cmv),
         expense: finiteNumber(row.expense),
         cashFlow: finiteNumber(row.cash_flow),
+        details,
       };
     }),
   };
@@ -303,7 +349,7 @@ export function usePdvPartialProjection(params: {
   const scope = usePdvAuthorizedQueryScope();
   return useQuery({
     queryKey: [...PDV_REPORTS_QUERY_ROOT, ...scope.key, 'projection', projection, from, to, limit, offset],
-    queryFn: async () => projectPdvPartialProjection(await call('pdv_partial_projection_report_v3', {
+    queryFn: async () => projectPdvPartialProjection(await call('pdv_partial_projection_report_v4', {
       p_projection: projection,
       p_from: from,
       p_to: to,
@@ -358,7 +404,7 @@ async function collectPdvExport<T>(
 /** Só publica o conjunto completo; paginação e autorização permanecem no servidor. */
 export function fetchPdvProjectionExport(params: ProjectionExportParams, isCurrent: () => boolean) {
   return collectPdvExport(async (offset) => {
-    const page = projectPdvPartialProjection(await call('pdv_partial_projection_report_v3', {
+    const page = projectPdvPartialProjection(await call('pdv_partial_projection_report_v4', {
       p_projection: params.projection, p_from: params.from, p_to: params.to,
       p_limit: PDV_EXPORT_PAGE_SIZE, p_offset: offset,
     }));

@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { format, subDays } from "date-fns";
 import {
   ArrowRight,
   BarChart3,
+  ChevronDown,
   FileText,
   History,
   Loader2,
@@ -47,9 +48,12 @@ import {
   usePdvPartialProjection,
   usePdvProjectionExport,
   usePdvHistoryExport,
+  resolvePdvHistoryDeepLink,
   type PdvHistoryEventType,
+  type PdvProjectionEntry,
   type PdvProjectionKind,
 } from "@/hooks/usePdvReportsV2";
+import { usePdvWorkflowSettings } from "@/hooks/usePdvCounterFlow";
 import { PdvCardSettlementsPanel } from "@/components/pdv/reports/PdvCardSettlementsPanel";
 import { csvCell as safeCsvTextCell } from "@/utils/movimentacoesCsvGenerator";
 
@@ -87,14 +91,27 @@ function downloadCsv(name: string, rows: Array<Array<string | number | null>>) {
   URL.revokeObjectURL(url);
 }
 
+function entryLabel(entry: PdvProjectionEntry, pdvMode: string | undefined): string {
+  if (entry.orderNumber == null) return entry.sourceLabel;
+  if (pdvMode === "simples") return `Venda ${entry.orderNumber}`;
+  if (pdvMode === "balcao") return `Retirada do pedido ${entry.orderNumber}`;
+  return `Pedido ${entry.orderNumber}`;
+}
+
+function itemsText(count: number) {
+  return `${count} ${count === 1 ? "item" : "itens"}`;
+}
+
 function Pagination({
   offset,
   total,
   onOffset,
+  label = "itens",
 }: {
   offset: number;
   total: number;
   onOffset: (value: number) => void;
+  label?: string;
 }) {
   const page = Math.floor(offset / PAGE_SIZE) + 1;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -102,7 +119,7 @@ function Pagination({
     <div className="flex flex-col gap-2 border-t pt-3 text-xs sm:flex-row sm:items-center sm:justify-between">
       <span className="text-muted-foreground">
         Mostrando {total === 0 ? 0 : offset + 1}–
-        {Math.min(offset + PAGE_SIZE, total)} de {total} itens
+        {Math.min(offset + PAGE_SIZE, total)} de {total} {label}
       </span>
       <div className="flex items-center gap-2">
         <Button
@@ -134,6 +151,15 @@ export function PdvReportsWorkspace() {
   const navigate = useNavigate();
   const { timezone } = useAppLocaleContext();
   const { money, date } = useLocaleFormatters();
+  const workflow = usePdvWorkflowSettings();
+  const pdvMode = workflow.data?.pdvMode;
+  const dispatchAvailable = pdvMode === "balcao" && workflow.data?.fulfillmentMode === "dispatch";
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggleExpanded = (id: string) => setExpanded((current) => {
+    const next = new Set(current);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
   const [tab, setTab] = useState<ReportTab>("summary");
   const [projection, setProjection] =
     useState<PdvProjectionKind>("dre_competence");
@@ -176,6 +202,7 @@ export function PdvReportsWorkspace() {
     setProjectionOffset(0);
     setHistoryOffset(0);
   }, [from, to]);
+  useEffect(() => { setExpanded(new Set()); }, [projection, projectionOffset, from, to]);
   const historyEntries = historyReport.data?.entries ?? [];
 
   const tabs = [
@@ -329,15 +356,21 @@ export function PdvReportsWorkspace() {
               disabled={projectionExport.isPending || !projectionExport.ready}
               onClick={() => void projectionExport.exportEntries((entries) =>
                 downloadCsv(`recorte-pdv-${from}-${to}.csv`, [
-                  ["Data", "Origem", "Receita", "Custo dos materiais", "Despesa", "Fluxo"],
-                  ...entries.map((entry) => [
-                    entry.eventDate,
-                    entry.sourceLabel,
-                    entry.revenue,
-                    entry.cmv,
-                    entry.expense,
-                    entry.cashFlow,
-                  ]),
+                  ["Data", "Origem", "Venda", "Item", "Quantidade", "Receita", "Custo dos materiais", "Despesa", "Fluxo"],
+                  // Planilha detalhada: uma linha por produto, com o número da venda para reagrupar.
+                  // Despesa e Fluxo do grupo saem só na primeira linha, senão a soma duplica.
+                  ...entries.flatMap((entry) => {
+                    const origin = entryLabel(entry, pdvMode);
+                    if (entry.details.length === 0) {
+                      return [[entry.eventDate, origin, entry.orderNumber, null, null, entry.revenue, entry.cmv, entry.expense, entry.cashFlow]];
+                    }
+                    return entry.details.map((detail, index) => [
+                      entry.eventDate, origin, entry.orderNumber, detail.description, detail.quantity,
+                      detail.revenue, detail.cmv,
+                      index === 0 ? entry.expense : null,
+                      index === 0 ? entry.cashFlow : null,
+                    ]);
+                  }),
                 ]))}
             >
               {projectionExport.isPending && <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" />}
@@ -353,31 +386,58 @@ export function PdvReportsWorkspace() {
             />
           ) : isMobile ? (
             <div className="space-y-2">
-              {projectionReport.data.entries.map((entry) => (
-                <Card key={entry.eventId}>
-                  <CardContent className="space-y-2 p-3">
-                    <div className="flex justify-between gap-3">
-                      <b>{entry.sourceLabel}</b>
-                      <span className="text-xs text-muted-foreground">
-                        {date(entry.eventDate)}
-                      </span>
+              {projectionReport.data.entries.map((entry) => {
+                const label = entryLabel(entry, pdvMode);
+                const canExpand = entry.details.length > 0;
+                const open = canExpand && expanded.has(entry.eventId);
+                const header = (
+                  <>
+                    <div className="flex min-w-0 flex-1 flex-col gap-1">
+                      <div className="flex justify-between gap-3">
+                        <b className="min-w-0 break-words text-left">{label}</b>
+                        <span className="shrink-0 text-xs text-muted-foreground">{date(entry.eventDate)}</span>
+                      </div>
+                      {entry.itemCount > 1 && (
+                        <span className="text-left text-xs text-muted-foreground">{itemsText(entry.itemCount)}</span>
+                      )}
+                      <div className="grid grid-cols-2 gap-2 text-left text-xs">
+                        <span>Receita <b className="block">{money(entry.revenue)}</b></span>
+                        <span>Custo dos materiais <b className="block">{entry.cmv == null ? "Indisponível" : money(entry.cmv)}</b></span>
+                      </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <span>
-                        Receita <b className="block">{money(entry.revenue)}</b>
-                      </span>
-                      <span>
-                        CMV{" "}
-                        <b className="block">
-                          {entry.cmv == null
-                            ? "Indisponível"
-                            : money(entry.cmv)}
-                        </b>
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    {canExpand && <ChevronDown aria-hidden="true" className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />}
+                  </>
+                );
+                return (
+                  <Card key={entry.eventId}>
+                    <CardContent className="p-0">
+                      {canExpand ? (
+                        <button
+                          type="button"
+                          aria-expanded={open}
+                          aria-label={`${open ? "Recolher" : "Ver"} itens de ${label}`}
+                          onClick={() => toggleExpanded(entry.eventId)}
+                          className="flex min-h-[44px] w-full items-center gap-2 p-3"
+                        >
+                          {header}
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-2 p-3">{header}</div>
+                      )}
+                      {open && (
+                        <ul className="space-y-2 border-t bg-muted/30 p-3">
+                          {entry.details.map((detail, index) => (
+                            <li key={index} className="flex justify-between gap-3 text-xs">
+                              <span className="min-w-0 break-words">{detail.quantity} x {detail.description}</span>
+                              <b className="shrink-0 tabular-nums">{money(detail.revenue)}</b>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           ) : (
             <Card>
@@ -394,26 +454,53 @@ export function PdvReportsWorkspace() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {projectionReport.data.entries.map((entry) => (
-                      <TableRow key={entry.eventId}>
-                        <TableCell>{date(entry.eventDate)}</TableCell>
-                        <TableCell>{entry.sourceLabel}</TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {money(entry.revenue)}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {entry.cmv == null
-                            ? "Indisponível"
-                            : money(entry.cmv)}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {money(entry.expense)}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {money(entry.cashFlow)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {projectionReport.data.entries.map((entry) => {
+                      const label = entryLabel(entry, pdvMode);
+                      const canExpand = entry.details.length > 0;
+                      const open = canExpand && expanded.has(entry.eventId);
+                      return (
+                        <Fragment key={entry.eventId}>
+                          <TableRow>
+                            <TableCell>{date(entry.eventDate)}</TableCell>
+                            <TableCell>
+                              {canExpand ? (
+                                <button
+                                  type="button"
+                                  aria-expanded={open}
+                                  aria-label={`${open ? "Recolher" : "Ver"} itens de ${label}`}
+                                  onClick={() => toggleExpanded(entry.eventId)}
+                                  className="flex items-center gap-2 text-left hover:underline"
+                                >
+                                  <ChevronDown aria-hidden="true" className={`h-4 w-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
+                                  <span>{label}</span>
+                                  {entry.itemCount > 1 && <span className="text-xs text-muted-foreground">({itemsText(entry.itemCount)})</span>}
+                                </button>
+                              ) : (
+                                <span>{label}</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">{money(entry.revenue)}</TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {entry.cmv == null ? "Indisponível" : money(entry.cmv)}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">{money(entry.expense)}</TableCell>
+                            <TableCell className="text-right tabular-nums">{money(entry.cashFlow)}</TableCell>
+                          </TableRow>
+                          {open && entry.details.map((detail, index) => (
+                            <TableRow key={`${entry.eventId}-${index}`} className="bg-muted/30 text-sm">
+                              <TableCell />
+                              <TableCell className="pl-10">{detail.quantity} x {detail.description}</TableCell>
+                              <TableCell className="text-right tabular-nums">{money(detail.revenue)}</TableCell>
+                              <TableCell className="text-right tabular-nums">
+                                {detail.cmv == null ? "Indisponível" : money(detail.cmv)}
+                              </TableCell>
+                              <TableCell />
+                              <TableCell />
+                            </TableRow>
+                          ))}
+                        </Fragment>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -423,6 +510,7 @@ export function PdvReportsWorkspace() {
             offset={projectionOffset}
             total={projectionReport.data.totalCount}
             onOffset={setProjectionOffset}
+            label="registros"
           />
         </section>
       )}
@@ -469,7 +557,7 @@ export function PdvReportsWorkspace() {
               description="Mude o período, o caixa ou o tipo."
             />
           ) : (
-            !isMobile ? <div className="overflow-hidden rounded-lg border bg-card"><Table className="pdv-history-table min-w-[760px]"><TableHeader><TableRow><TableHead>Data</TableHead><TableHead>Tipo</TableHead><TableHead>Caixa</TableHead><TableHead>Descrição</TableHead><TableHead className="text-right">Valor</TableHead><TableHead><span className="sr-only">Ações</span></TableHead></TableRow></TableHeader><TableBody>{historyEntries.map(entry => <TableRow key={`${entry.eventType}-${entry.eventId}`}><TableCell className="whitespace-nowrap">{date(entry.eventDate)}</TableCell><TableCell><span className={`whitespace-nowrap rounded px-2 py-1 text-[11px] font-semibold text-white ${EVENT_TONES[entry.eventType]}`}>{EVENT_LABELS[entry.eventType]}</span></TableCell><TableCell>{entry.cashSessionLabel}</TableCell><TableCell>{entry.label}</TableCell><TableCell className="whitespace-nowrap text-right font-semibold tabular-nums">{entry.amount == null ? 'Valor restrito' : money(entry.amount)}</TableCell><TableCell>{entry.deepLink && <RowActionsMenu triggerVariant="plain" ariaLabel={`Ações de ${entry.label}`} actions={[{ label: 'Abrir', icon: ArrowRight, onClick: () => navigate(entry.deepLink!) }]} />}</TableCell></TableRow>)}</TableBody></Table></div> : <div className="space-y-2">
+            !isMobile ? <div className="overflow-hidden rounded-lg border bg-card"><Table className="pdv-history-table min-w-[760px]"><TableHeader><TableRow><TableHead>Data</TableHead><TableHead>Tipo</TableHead><TableHead>Caixa</TableHead><TableHead>Descrição</TableHead><TableHead className="text-right">Valor</TableHead><TableHead><span className="sr-only">Ações</span></TableHead></TableRow></TableHeader><TableBody>{historyEntries.map(entry => <TableRow key={`${entry.eventType}-${entry.eventId}`}><TableCell className="whitespace-nowrap">{date(entry.eventDate)}</TableCell><TableCell><span className={`whitespace-nowrap rounded px-2 py-1 text-[11px] font-semibold text-white ${EVENT_TONES[entry.eventType]}`}>{EVENT_LABELS[entry.eventType]}</span></TableCell><TableCell>{entry.cashSessionLabel}</TableCell><TableCell>{entry.label}</TableCell><TableCell className="whitespace-nowrap text-right font-semibold tabular-nums">{entry.amount == null ? 'Valor restrito' : money(entry.amount)}</TableCell><TableCell>{entry.deepLink && <RowActionsMenu triggerVariant="plain" ariaLabel={`Ações de ${entry.label}`} actions={[{ label: 'Abrir', icon: ArrowRight, onClick: () => navigate(resolvePdvHistoryDeepLink(entry.deepLink, dispatchAvailable)) }]} />}</TableCell></TableRow>)}</TableBody></Table></div> : <div className="space-y-2">
               {historyEntries.map((entry) => (
                 <Card key={`${entry.eventType}-${entry.eventId}`}>
                   <CardContent className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center">
@@ -503,7 +591,7 @@ export function PdvReportsWorkspace() {
                       )}
                       {entry.deepLink && (
                         <Button asChild variant="ghost" size="sm">
-                          <Link to={entry.deepLink}>Abrir</Link>
+                          <Link to={resolvePdvHistoryDeepLink(entry.deepLink, dispatchAvailable)}>Abrir</Link>
                         </Button>
                       )}
                     </div>
