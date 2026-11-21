@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Database, Tables } from '@/integrations/supabase/types';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 export type Compra = Tables<'compras'>;
 export type CompraMaterial = Tables<'compra_materiais'>;
@@ -239,8 +240,12 @@ export function useCompras() {
         notes: input.notes ?? null,
       };
       if (input.stockId !== undefined) patch.stock_id = input.stockId;
-      const { error: uErr } = await supabase.from('compras').update(patch).eq('id', id);
-      if (uErr) throw uErr;
+      // A compra primeiro, conferindo: RLS barrando não dá erro, só altera zero
+      // linhas, e aí não podemos apagar e regravar os materiais.
+      assertRowsAffected(
+        await supabase.from('compras').update(patch, { count: 'exact' }).eq('id', id),
+        'update',
+      );
       const { error: dErr } = await supabase
         .from('compra_materiais')
         .delete()
@@ -262,8 +267,11 @@ export function useCompras() {
   // ---- Mudar status (concluir / cancelar / reabrir) ----
   const setStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: CompraStatus }) => {
-      const { error } = await supabase.from('compras').update({ status }).eq('id', id);
-      if (error) throw error;
+      // RLS barrando não dá erro, só altera zero linhas: conferir.
+      assertRowsAffected(
+        await supabase.from('compras').update({ status }, { count: 'exact' }).eq('id', id),
+        'update',
+      );
       return { id, status };
     },
     onSuccess: (res) => {
@@ -293,11 +301,14 @@ export function useCompras() {
     { compraMaterialId: string; cotacaoId: string | null }
   >({
     mutationFn: async ({ compraMaterialId, cotacaoId }) => {
-      const { error } = await supabase
-        .from('compra_materiais')
-        .update({ chosen_cotacao_id: cotacaoId })
-        .eq('id', compraMaterialId);
-      if (error) throw error;
+      // RLS barrando não dá erro, só altera zero linhas: conferir.
+      assertRowsAffected(
+        await supabase
+          .from('compra_materiais')
+          .update({ chosen_cotacao_id: cotacaoId }, { count: 'exact' })
+          .eq('id', compraMaterialId),
+        'update',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['compras'] });
@@ -315,8 +326,11 @@ export function useCompras() {
   // ---- Excluir compra (CASCADE remove materiais, cotações e preços) ----
   const deleteCompra = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('compras').delete().eq('id', id);
-      if (error) throw error;
+      // RLS barrando não dá erro, só apaga zero linhas: conferir.
+      assertRowsAffected(
+        await supabase.from('compras').delete({ count: 'exact' }).eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['compras'] });

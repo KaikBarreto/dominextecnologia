@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { computeBillDate, computeBillDates } from '@/hooks/useCreditCardBills';
@@ -72,17 +73,27 @@ export function useRecalculateBills() {
       }
 
       // 4. Aplicar updates em chunks (Supabase recomenda <= 100 por request)
+      //    Cada update é conferido: a permissão pode barrar sem erro (0 linhas).
+      //    Recalcular é idempotente, então em falha o usuário pode rodar de novo.
       const CHUNK = 100;
+      let updatedRows = 0;
       for (let i = 0; i < toUpdate.length; i += CHUNK) {
         const chunk = toUpdate.slice(i, i + CHUNK);
-        await Promise.all(
+        const results = await Promise.all(
           chunk.map(({ id, newBillDate }) =>
             supabase
               .from('financial_transactions')
-              .update({ credit_card_bill_date: newBillDate })
+              .update({ credit_card_bill_date: newBillDate }, { count: 'exact' })
               .eq('id', id)
           )
         );
+        for (const result of results) {
+          if (result.error) throw result.error;
+          updatedRows += result.count ?? 0;
+        }
+      }
+      if (toUpdate.length > 0) {
+        assertRowsAffected({ error: null, count: updatedRows }, 'update', undefined, toUpdate.length);
       }
 
       // 5. Garantir/atualizar a row em credit_card_bills para cada mês tocado.

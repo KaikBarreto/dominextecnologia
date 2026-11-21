@@ -11,6 +11,7 @@ import {
   shouldLogStageChange,
   buildStageChangeDescription,
 } from '@/lib/leadStageHistory';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 /**
  * Um responsável da oportunidade (Onda C do overhaul de CRM). `is_primary`
@@ -406,12 +407,13 @@ export function useLeads() {
 
   const deleteLead = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('leads')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('leads')
+          .delete({ count: 'exact' })
+          .eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });

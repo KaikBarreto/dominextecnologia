@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { fuzzyIncludes, cn } from '@/lib/utils';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import {
   Plus,
   Filter,
@@ -246,8 +247,10 @@ export default function AdminCompanies() {
   // Toggle bloquear/desbloquear (mobile) — alterna entre 'active' e 'inactive'.
   const toggleStatusMutation = useMutation({
     mutationFn: async ({ id, newStatus }: { id: string; newStatus: 'active' | 'inactive' }) => {
-      const { error } = await supabase.from('companies').update({ subscription_status: newStatus }).eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('companies').update({ subscription_status: newStatus }, { count: 'exact' }).eq('id', id),
+        'update',
+      );
     },
     onSuccess: (_data, vars) => {
       toast({

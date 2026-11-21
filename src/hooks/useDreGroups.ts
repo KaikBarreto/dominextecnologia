@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 export type DreGroupNature =
   | 'revenue'
@@ -196,17 +197,21 @@ export function useDreGroups() {
         throw new Error('A ordenação contém um grupo DRE inválido.');
       }
 
+      // Cada linha conferida: RLS barrando não dá erro, só altera zero linhas.
       for (const [index, id] of orderedIds.entries()) {
-        const { error } = await supabase
-          .from('dre_groups')
-          .update({ sort_order: (index + 1) * 10 })
-          .eq('id', id)
-          .eq('company_id', companyId);
-
-        if (error) throw error;
+        assertRowsAffected(
+          await supabase
+            .from('dre_groups')
+            .update({ sort_order: (index + 1) * 10 }, { count: 'exact' })
+            .eq('id', id)
+            .eq('company_id', companyId),
+          'update',
+          'Não foi possível salvar a nova ordem: você não tem permissão para esta ação ou algum grupo já não existe. Atualize a tela e tente de novo.',
+        );
       }
     },
-    onSuccess: invalidate,
+    // onSettled: se parou no meio, a lista volta a mostrar a ordem real.
+    onSettled: invalidate,
     onError: (error: unknown) => {
       toast({
         variant: 'destructive',

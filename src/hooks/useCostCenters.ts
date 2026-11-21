@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 export interface CostCenter {
   id: string;
@@ -187,8 +188,11 @@ export function useCostCenters() {
 
   const deleteCostCenter = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('cost_centers').delete().eq('id', id);
-      if (error) throw error;
+      // RLS barrando o delete não dá erro, só apaga zero linhas: conferir.
+      assertRowsAffected(
+        await supabase.from('cost_centers').delete({ count: 'exact' }).eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => {
       invalidate();

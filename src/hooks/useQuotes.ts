@@ -14,6 +14,7 @@ import {
   QuoteApprovalRevertError,
   normalizeQuoteApprovalRevertErrorCode,
 } from '@/lib/quote-approval-revert';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 export interface QuoteItem {
   id?: string;
@@ -308,12 +309,13 @@ export function useQuotes(options: { enabled?: boolean } = {}) {
         'proposal_template_id',
       ]);
 
-      const { error } = await supabase
-        .from('quotes')
-        .update(sanitizedQuoteData as any)
-        .eq('id', id);
-
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('quotes')
+          .update(sanitizedQuoteData as any, { count: 'exact' })
+          .eq('id', id),
+        'update',
+      );
 
       // Replace items
       await supabase.from('quote_items').delete().eq('quote_id', id);
@@ -337,12 +339,13 @@ export function useQuotes(options: { enabled?: boolean } = {}) {
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase
-        .from('quotes')
-        .update({ status })
-        .eq('id', id);
-
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('quotes')
+          .update({ status }, { count: 'exact' })
+          .eq('id', id),
+        'update',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
@@ -385,8 +388,10 @@ export function useQuotes(options: { enabled?: boolean } = {}) {
 
   const deleteQuote = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('quotes').delete().eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('quotes').delete({ count: 'exact' }).eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['quotes'] });

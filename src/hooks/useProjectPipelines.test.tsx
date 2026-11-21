@@ -47,7 +47,7 @@ vi.mock('@/integrations/supabase/client', () => ({
           delete: () => ({
             eq: (_col: string, id: string) => {
               pipelineDelete(id);
-              return Promise.resolve({ error: null });
+              return Promise.resolve({ error: null, count: 1 });
             },
           }),
         };

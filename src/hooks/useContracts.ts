@@ -18,6 +18,7 @@ import {
   type VisitInput,
 } from '@/components/contracts/visitScheduleEngine';
 import type { ServiceOrderScheduleSlot } from '@/types/database';
+import { allOrNothingDeleteError, assertRowsAffected } from '@/lib/supabaseMutation';
 
 export interface Contract {
   id: string;
@@ -2474,11 +2475,13 @@ export function useContracts() {
    */
   const updateContractFinanceRule = useMutation({
     mutationFn: async (input: { contractId: string; rule: ContractFinanceRule }) => {
-      const { error } = await supabase
-        .from('contracts')
-        .update(input.rule as any)
-        .eq('id', input.contractId);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('contracts')
+          .update(input.rule as any, { count: 'exact' })
+          .eq('id', input.contractId),
+        'update',
+      );
       return input.rule;
     },
     onSuccess: () => {
@@ -2506,11 +2509,13 @@ export function useContracts() {
    */
   const updateContractNfseAutoRule = useMutation({
     mutationFn: async (input: { contractId: string; rule: ContractNfseAutoRule }) => {
-      const { error } = await supabase
-        .from('contracts')
-        .update(input.rule as any)
-        .eq('id', input.contractId);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('contracts')
+          .update(input.rule as any, { count: 'exact' })
+          .eq('id', input.contractId),
+        'update',
+      );
       return input.rule;
     },
     onSuccess: () => {
@@ -2558,8 +2563,10 @@ export function useContracts() {
 
   const updateContractStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase.from('contracts').update({ status } as any).eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('contracts').update({ status } as any, { count: 'exact' }).eq('id', id),
+        'update',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
@@ -2695,8 +2702,10 @@ export function useContracts() {
       // (sem campo de contrato) — nesse caso `payload` fica vazio e um update({})
       // é inútil/arriscado (PostgREST/RLS). Itens+plano+visitas seguem normais.
       if (Object.keys(payload).length > 0) {
-        const { error: updErr } = await supabase.from('contracts').update(payload).eq('id', id);
-        if (updErr) throw updErr;
+        assertRowsAffected(
+          await supabase.from('contracts').update(payload, { count: 'exact' }).eq('id', id),
+          'update',
+        );
       }
 
       // 1.5) Propagar os responsáveis pela execução para as OSs ainda NÃO
@@ -3527,11 +3536,13 @@ export function useContracts() {
       const newHorizon = (current.horizon_months as number) + extraMonths;
 
       // Estende o horizonte do contrato.
-      const { error: updErr } = await supabase
-        .from('contracts')
-        .update({ horizon_months: newHorizon } as any)
-        .eq('id', id);
-      if (updErr) throw updErr;
+      assertRowsAffected(
+        await supabase
+          .from('contracts')
+          .update({ horizon_months: newHorizon } as any, { count: 'exact' })
+          .eq('id', id),
+        'update',
+      );
 
       // A renovacao segue a referencia imutavel do contrato, nao a data
       // operacional reagendada. Antecipar/adiar uma visita individual nao pode
@@ -3704,11 +3715,13 @@ export function useContracts() {
    */
   const setPortalDocumentsReleased = useMutation({
     mutationFn: async ({ contractId, released }: { contractId: string; released: boolean }) => {
-      const { error } = await supabase
-        .from('contracts')
-        .update({ portal_documents_released: released } as any)
-        .eq('id', contractId);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('contracts')
+          .update({ portal_documents_released: released } as any, { count: 'exact' })
+          .eq('id', contractId),
+        'update',
+      );
       return { contractId, released };
     },
     onSuccess: ({ contractId, released }) => {
@@ -3728,91 +3741,25 @@ export function useContracts() {
   });
 
   const executeDeleteContract = async (id: string): Promise<{ deletedOsCount: number; unlinkedOsCount: number; preservedTxCount: number; deletedTxCount: number }> => {
+    // "Hoje" pelo relógio do aparelho, como sempre foi: separa OS futuras
+    // (apagadas) das passadas (mantidas no histórico como avulsas).
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
-    // Fonte única: service_orders do contrato (a tabela-sombra de ocorrências
-    // foi aposentada). Futuras (scheduled_date >= hoje) são apagadas; passadas
-    // são desvinculadas pra continuarem no histórico como OS avulsas.
-    const { data: contractOss } = await supabase
-      .from('service_orders')
-      .select('id, scheduled_date')
-      .eq('contract_id', id);
-
-    const futureOsIds = (contractOss || [])
-      .filter(o => (o.scheduled_date ?? '') >= todayStr)
-      .map(o => o.id)
-      .filter(Boolean) as string[];
-
-    const pastOsIds = (contractOss || [])
-      .filter(o => (o.scheduled_date ?? '') < todayStr)
-      .map(o => o.id)
-      .filter(Boolean) as string[];
-
-    const deletedOsCount = futureOsIds.length;
-    const unlinkedOsCount = pastOsIds.length;
-
-    // Transações financeiras do contrato: ESPELHA o tratamento das OS.
-    // Receita realizada (is_paid=true) NUNCA pode ser destruída por exclusão de
-    // contrato — os relatórios de faturamento contam por is_paid+transaction_date,
-    // não por contract_id. Então preservamos as pagas DESVINCULANDO (contract_id=null)
-    // e apagamos só as cobranças não realizadas (em aberto / agendadas).
-    // is_paid=NULL é tratado como NÃO realizado (cobrança futura) → apagável.
-    const { data: contractTxs } = await supabase
-      .from('financial_transactions')
-      .select('id, is_paid')
-      .eq('contract_id', id);
-
-    const paidTxIds = (contractTxs || [])
-      .filter(t => t.is_paid === true)
-      .map(t => t.id)
-      .filter(Boolean) as string[];
-
-    const unpaidTxIds = (contractTxs || [])
-      .filter(t => t.is_paid !== true)
-      .map(t => t.id)
-      .filter(Boolean) as string[];
-
-    const preservedTxCount = paidTxIds.length;
-    const deletedTxCount = unpaidTxIds.length;
-
-    // Preserva (desvincula) recebimentos já realizados → ficam no caixa como avulsos
-    if (paidTxIds.length > 0) {
-      await supabase.from('financial_transactions').update({ contract_id: null } as any).in('id', paidTxIds);
-    }
-    // Apaga só as cobranças não realizadas
-    if (unpaidTxIds.length > 0) {
-      await supabase.from('financial_transactions').delete().in('id', unpaidTxIds);
-    }
-
-    // Delete related records
-    await supabase.from('contract_items').delete().eq('contract_id', id);
-    // Ambientes climatizados do contrato (multi-ambiente PMOC).
-    await supabase.from('contract_environments').delete().eq('contract_id', id);
-
-    // Delete future linked service orders (and their junction rows)
-    if (futureOsIds.length > 0) {
-      await supabase.from('service_order_assignees').delete().in('service_order_id', futureOsIds);
-      await supabase.from('service_order_equipment').delete().in('service_order_id', futureOsIds);
-      await supabase.from('form_responses').delete().in('service_order_id', futureOsIds);
-      await supabase.from('os_photos').delete().in('service_order_id', futureOsIds);
-      await supabase.from('service_ratings').delete().in('service_order_id', futureOsIds);
-      await supabase.from('service_orders').delete().in('id', futureOsIds);
-    }
-
-    // Unlink past OS from this contract so they remain as standalone records
-    if (pastOsIds.length > 0) {
-      await supabase.from('service_orders').update({
-        contract_id: null,
-        contract_reference_date: null,
-        contract_visit_customized_at: null,
-      } as any).in('id', pastOsIds);
-    }
-
-    const { error } = await supabase.from('contracts').delete().eq('id', id);
-    if (error) throw error;
-
-    return { deletedOsCount, unlinkedOsCount, preservedTxCount, deletedTxCount };
+    // Tudo ou nada no banco (delete_contract_cascade): cobranças em aberto,
+    // itens, ambientes e OS futuras são apagados; recebimentos já realizados e
+    // OS passadas são preservados e desvinculados. Tudo numa transação só,
+    // respeitando a permissão de quem chama: se algo for barrado, nada muda.
+    const { data, error } = await supabase.rpc('delete_contract_cascade', { p_contract_id: id, p_today: todayStr });
+    if (error) throw allOrNothingDeleteError(error);
+    const result = (data ?? {}) as Record<string, unknown>;
+    const count = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) ? value : 0);
+    return {
+      deletedOsCount: count(result.deleted_os_count),
+      unlinkedOsCount: count(result.unlinked_os_count),
+      preservedTxCount: count(result.preserved_tx_count),
+      deletedTxCount: count(result.deleted_tx_count),
+    };
   };
 
   const deleteContractMutation = useMutation({

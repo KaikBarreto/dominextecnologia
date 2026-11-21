@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { buildStorageFilePath } from '@/utils/storagePath';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { tenantFileOptions } from '@/utils/tenantStorage';
 
 export interface EquipmentAttachment {
@@ -134,8 +135,7 @@ export function useEquipmentAttachments(equipmentId?: string) {
 
   const deleteAttachment = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('equipment_attachments').delete().eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(await supabase.from('equipment_attachments').delete({ count: 'exact' }).eq('id', id), 'delete');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['equipment-attachments', equipmentId] });

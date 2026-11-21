@@ -23,6 +23,7 @@ import { EquipmentFormDialog } from './EquipmentFormDialog';
 import { EquipmentSettingsDialog } from './EquipmentSettingsDialog';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
@@ -228,12 +229,12 @@ export function EquipmentPanel() {
 
   const handleDelete = async () => {
     if (equipmentToDelete) {
-      const { error } = await supabase.from('equipment').delete().eq('id', equipmentToDelete.id);
-      if (error) {
-        toast({ variant: 'destructive', title: tCustDetail.equipDeleteError, description: getErrorMessage(error) });
-      } else {
+      try {
+        assertRowsAffected(await supabase.from('equipment').delete({ count: 'exact' }).eq('id', equipmentToDelete.id), 'delete');
         queryClient.invalidateQueries({ queryKey: ['equipment'] });
         toast({ title: tCustDetail.equipDeleted });
+      } catch (error) {
+        toast({ variant: 'destructive', title: tCustDetail.equipDeleteError, description: getErrorMessage(error) });
       }
       setEquipmentToDelete(null);
       setDeleteDialogOpen(false);

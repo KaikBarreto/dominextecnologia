@@ -11587,6 +11587,7 @@ export type Database = {
       }
       permission_presets: {
         Row: {
+          company_id: string
           created_at: string
           description: string | null
           id: string
@@ -11595,6 +11596,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          company_id?: string
           created_at?: string
           description?: string | null
           id?: string
@@ -11603,6 +11605,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          company_id?: string
           created_at?: string
           description?: string | null
           id?: string
@@ -11610,7 +11613,15 @@ export type Database = {
           permissions?: Json
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "permission_presets_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pmoc_activity_catalog: {
         Row: {
@@ -19312,6 +19323,7 @@ export type Database = {
       }
       can_manage_system: { Args: { _user_id: string }; Returns: boolean }
       can_manage_users: { Args: { _user_id: string }; Returns: boolean }
+      can_manage_employees: { Args: { _user_id: string }; Returns: boolean }
       can_use_bank_accounts: { Args: { _user_id: string }; Returns: boolean }
       cash_flow_opening_balances: {
         Args: { p_today: string }
@@ -19652,6 +19664,10 @@ export type Database = {
         Args: { p_payment_id: string }
         Returns: undefined
       }
+      delete_contract_cascade: {
+        Args: { p_contract_id: string; p_today?: string }
+        Returns: Json
+      }
       delete_employee_face_templates: {
         Args: { p_employee_id: string }
         Returns: number
@@ -19659,6 +19675,14 @@ export type Database = {
       delete_employee_vale: {
         Args: { p_movement_id: string }
         Returns: boolean
+      }
+      delete_service_order_cascade: {
+        Args: { p_service_order_id: string }
+        Returns: Json
+      }
+      delete_team_cascade: {
+        Args: { p_team_id: string }
+        Returns: Json
       }
       delete_tenant_charge_local: {
         Args: { p_charge_id: string; p_company_id: string }
@@ -20012,6 +20036,10 @@ export type Database = {
           p_to?: string
         }
         Returns: Json
+      }
+      get_blog_post_like: {
+        Args: { p_post_id: string; p_session_id: string }
+        Returns: boolean
       }
       get_bank_reconciliation_state: {
         Args: { p_import_id: string }
@@ -22309,6 +22337,10 @@ export type Database = {
           p_deleted_by: string
           p_subscription_id: string
         }
+        Returns: Json
+      }
+      toggle_blog_post_like: {
+        Args: { p_post_id: string; p_session_id: string }
         Returns: Json
       }
       transfer_stock_between: {

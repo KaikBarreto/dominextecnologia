@@ -4,6 +4,7 @@ import type { ServiceOrder, ServiceOrderScheduleSlot, OsStatus, OsType } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { allOrNothingDeleteError, assertRowsAffected } from '@/lib/supabaseMutation';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { normalizeServiceOrderNumberError } from '@/lib/service-order-number-errors';
 import {
@@ -781,49 +782,11 @@ export function useServiceOrders(options: { enabled?: boolean } = {}) {
 
   const deleteServiceOrder = useMutation({
     mutationFn: async (id: string) => {
-      // Clear FK references in other tables
-      await supabase
-        .from('service_order_equipment')
-        .delete()
-        .eq('service_order_id', id);
-
-      // Delete form responses
-      await supabase
-        .from('form_responses')
-        .delete()
-        .eq('service_order_id', id);
-
-      // Delete OS photos
-      await supabase
-        .from('os_photos')
-        .delete()
-        .eq('service_order_id', id);
-
-      // Delete service ratings
-      await supabase
-        .from('service_ratings')
-        .delete()
-        .eq('service_order_id', id);
-
-      // Delete inventory movements
-      await supabase
-        .from('inventory_movements')
-        .delete()
-        .eq('service_order_id', id);
-
-      // Delete PMOC schedules references
-      await supabase
-        .from('pmoc_schedules')
-        .update({ service_order_id: null })
-        .eq('service_order_id', id);
-
-      // Now delete the OS
-      const { error } = await supabase
-        .from('service_orders')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
+      // Tudo ou nada no banco (delete_service_order_cascade): apaga equipamentos,
+      // respostas, fotos, avaliações e a OS numa transação só, respeitando a
+      // permissão de quem chama. Se algo for barrado, nada é apagado.
+      const { error } = await supabase.rpc('delete_service_order_cascade', { p_service_order_id: id });
+      if (error) throw allOrNothingDeleteError(error);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });

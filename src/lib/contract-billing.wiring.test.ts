@@ -61,6 +61,6 @@ describe('o hook carrega os TRÊS campos, não só a flag', () => {
     // O tipo do input é `{ contractId, rule: ContractFinanceRule }`: não dá pra
     // mandar a flag sem o resto sem mudar a assinatura.
     expect(hook).toContain('rule: ContractFinanceRule');
-    expect(hook).toContain(".update(input.rule as any)");
+    expect(hook).toContain(".update(input.rule as any, { count: 'exact' })");
   });
 });

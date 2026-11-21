@@ -98,9 +98,13 @@ export interface BlogPostProps {
   initialAlternates?: BlogPostAlternate[];
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function getSessionId() {
   let id = localStorage.getItem('blog_session_id');
-  if (!id) {
+  // A curtida passa por função no banco que só aceita uuid: um id antigo em
+  // outro formato é trocado por um novo.
+  if (!id || !UUID_PATTERN.test(id)) {
     id = crypto.randomUUID();
     localStorage.setItem('blog_session_id', id);
   }
@@ -179,14 +183,11 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
   const { data: userLike } = useQuery({
     queryKey: ['blog-post-like', post?.id, sessionId],
     queryFn: async () => {
-      if (!post?.id) return null;
-      const { data } = await supabase
-        .from('blog_post_likes')
-        .select('id')
-        .eq('post_id', post.id)
-        .eq('session_id', sessionId)
-        .maybeSingle();
-      return data;
+      if (!post?.id) return false;
+      // A tabela de curtidas é fechada ao público: a consulta passa pela função.
+      const { data, error } = await supabase.rpc('get_blog_post_like', { p_post_id: post.id, p_session_id: sessionId });
+      if (error) return false;
+      return data === true;
     },
     enabled: !!post?.id,
   });
@@ -225,11 +226,10 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
   const toggleLikeMutation = useMutation({
     mutationFn: async () => {
       if (!post?.id) return;
-      if (userLike) {
-        await supabase.from('blog_post_likes').delete().eq('id', userLike.id);
-      } else {
-        await supabase.from('blog_post_likes').insert({ post_id: post.id, session_id: sessionId });
-      }
+      // Curtir e descurtir é uma função só no banco: só a própria sessão mexe
+      // na própria curtida, e apenas em post publicado.
+      const { error } = await supabase.rpc('toggle_blog_post_like', { p_post_id: post.id, p_session_id: sessionId });
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['blog-post-like', post?.id] });
@@ -445,7 +445,7 @@ export default function BlogPost({ initialPost, initialAlternates }: BlogPostPro
   }
 
   const catColor = categoryColors.find((c) => c.name === post.category)?.color || 'hsl(160 100% 39%)';
-  const hasLiked = !!userLike;
+  const hasLiked = userLike === true;
 
   return (
     // O artigo compartilha o mesmo header e a mesma preferência de tema do site.

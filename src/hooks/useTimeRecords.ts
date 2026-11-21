@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { dateInTz, timeInTz, todayInTz } from '@/lib/timezone';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { MESSAGES } from '@/lib/i18n/messages';
 import type { LocaleCode } from '@/lib/i18n/locales';
 
@@ -364,23 +365,13 @@ export function useTimeRecord(userId: string | undefined) {
         supabase.from('employees').select('id').eq('user_id', userId).maybeSingle(),
       ]);
       
-      let companyId = profile?.company_id;
+      const companyId = profile?.company_id;
       const employeeId = linkedEmployee?.id || null;
 
-      // Fallback: look up company_id via any profile
-      if (!companyId) {
-        const { data: anyProfile } = await supabase
-          .from('profiles')
-          .select('company_id')
-          .not('company_id', 'is', null)
-          .limit(1)
-          .single();
-        companyId = anyProfile?.company_id;
-        if (companyId) {
-          await supabase.from('profiles').update({ company_id: companyId }).eq('user_id', userId);
-        }
-      }
-
+      // Sem empresa no próprio perfil, a batida para aqui. NUNCA "adotar" a
+      // empresa de outro perfil visível: para o super_admin (que vê todos os
+      // perfis) isso o vinculava para sempre a uma empresa aleatória, e o
+      // white-label e as políticas por empresa passariam a tratá-lo como dela.
       if (!companyId) throw new Error('Empresa não encontrada. Contate o administrador para vincular sua conta.');
 
       // Selfie da batida: `photo_url` guarda o PATH do Storage, NÃO uma URL.
@@ -706,8 +697,11 @@ export function useTimeSettings() {
       if (!profile?.company_id) throw new Error('Empresa não encontrada');
 
       if (settings?.id) {
-        const { error } = await supabase.from('time_settings').update({ ...values, updated_at: new Date().toISOString() }).eq('id', settings.id);
-        if (error) throw error;
+        // RLS barrando não dá erro, só altera zero linhas: conferir.
+        assertRowsAffected(
+          await supabase.from('time_settings').update({ ...values, updated_at: new Date().toISOString() }, { count: 'exact' }).eq('id', settings.id),
+          'update',
+        );
       } else {
         const { error } = await supabase.from('time_settings').insert({ ...values, company_id: profile.company_id } as any);
         if (error) throw error;
@@ -809,19 +803,23 @@ export function usePunchMutations() {
       const newDate = dateInTz(recordedAt, timezone);
       const oldDate = record.date;
 
-      const { error } = await supabase
-        .from('time_records')
-        .update({
-          recorded_at: recordedAt,
-          date: newDate,
-          type,
-          notes,
-          edited_at: new Date().toISOString(),
-          edited_by: user?.id ?? null,
-          original_recorded_at: record.original_recorded_at ?? record.recorded_at,
-        })
-        .eq('id', record.id);
-      if (error) throw error;
+      // Conferir antes de recomputar o espelho: RLS barrando não dá erro, só
+      // altera zero linhas.
+      assertRowsAffected(
+        await supabase
+          .from('time_records')
+          .update({
+            recorded_at: recordedAt,
+            date: newDate,
+            type,
+            notes,
+            edited_at: new Date().toISOString(),
+            edited_by: user?.id ?? null,
+            original_recorded_at: record.original_recorded_at ?? record.recorded_at,
+          }, { count: 'exact' })
+          .eq('id', record.id),
+        'update',
+      );
 
       // Recomputa o dia novo E o antigo quando a edição atravessa a virada do
       // dia — recomputar só o novo deixa o espelho do dia antigo com saldo
@@ -849,15 +847,19 @@ export function usePunchMutations() {
     mutationFn: async (record: TimeRecord) => {
       if (!record.employee_id) throw new Error('Batida sem funcionário vinculado');
 
-      const { error } = await supabase
-        .from('time_records')
-        .update({
-          is_valid: false,
-          invalidated_at: new Date().toISOString(),
-          invalidated_by: user?.id ?? null,
-        })
-        .eq('id', record.id);
-      if (error) throw error;
+      // Excluir batida é invalidar (update). Conferir antes de recomputar: RLS
+      // barrando não dá erro, só altera zero linhas.
+      assertRowsAffected(
+        await supabase
+          .from('time_records')
+          .update({
+            is_valid: false,
+            invalidated_at: new Date().toISOString(),
+            invalidated_by: user?.id ?? null,
+          }, { count: 'exact' })
+          .eq('id', record.id),
+        'delete',
+      );
 
       const { error: recomputeError } = await supabase.rpc('recompute_time_sheet', {
         p_company_id: record.company_id,

@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Tag, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { assertRowsAffected, NoRowsAffectedError } from "@/lib/supabaseMutation";
 import { useAdminFinancialCategories } from "@/hooks/useAdminFinancialCategories";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import { Button } from "@/components/ui/button";
@@ -38,9 +39,15 @@ export function AdminFinancialCategoriesSettings(
       };
       let request;
       if (form.id) {
-        request = (supabase as any).from("admin_financial_categories").update(
-          payload,
-        ).eq("id", form.id);
+        // RLS barrando não dá erro, só altera zero linhas: conferir.
+        assertRowsAffected(
+          await (supabase as any).from("admin_financial_categories").update(
+            payload,
+            { count: "exact" },
+          ).eq("id", form.id),
+          "update",
+        );
+        return;
       } else {request = (supabase as any).from("admin_financial_categories")
           .insert({
             ...payload,
@@ -59,9 +66,11 @@ export function AdminFinancialCategoriesSettings(
       void qc.invalidateQueries({ queryKey: ["admin-financial-categories"] });
       toast.success("Categoria salva.");
     },
-    onError: () =>
+    onError: (e) =>
       toast.error(
-        "Não foi possível salvar a categoria. Confira os dados e tente novamente.",
+        e instanceof NoRowsAffectedError
+          ? e.message
+          : "Não foi possível salvar a categoria. Confira os dados e tente novamente.",
       ),
   });
   const remove = useMutation({
@@ -80,10 +89,14 @@ export function AdminFinancialCategoriesSettings(
           "Categoria usada em lançamentos. Preserve o histórico e edite apenas o nome ou a apresentação.",
         );
       }
-      const { error } = await (supabase as any).from(
-        "admin_financial_categories",
-      ).delete().eq("id", deleting.id).eq("is_system", false);
-      if (error) throw error;
+      // RLS barrando (ou categoria que virou de sistema) não dá erro, só apaga
+      // zero linhas: conferir.
+      assertRowsAffected(
+        await (supabase as any).from(
+          "admin_financial_categories",
+        ).delete({ count: "exact" }).eq("id", deleting.id).eq("is_system", false),
+        "delete",
+      );
     },
     onSuccess: () => {
       setDeleting(null);
@@ -92,7 +105,7 @@ export function AdminFinancialCategoriesSettings(
     },
     onError: (e) =>
       toast.error(
-        e.message.includes("Categoria usada")
+        e.message.includes("Categoria usada") || e instanceof NoRowsAffectedError
           ? e.message
           : "Não foi possível excluir. A categoria pode estar vinculada a uma conta ou lançamento.",
       ),

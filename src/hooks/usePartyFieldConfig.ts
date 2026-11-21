@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 export type PartyEntityType = 'customer' | 'supplier';
 export type PartyFieldType = 'text' | 'number' | 'date' | 'select' | 'boolean';
@@ -85,13 +86,15 @@ export function usePartyFieldConfig(entityType: PartyEntityType) {
   const deleteField = useMutation({
     mutationFn: async (id: string) => {
       if (!companyId) throw new Error('Usuário sem empresa associada.');
-      const { error } = await supabase
-        .from('party_field_config')
-        .delete()
-        .eq('id', id)
-        .eq('company_id', companyId)
-        .eq('entity_type', entityType);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('party_field_config')
+          .delete({ count: 'exact' })
+          .eq('id', id)
+          .eq('company_id', companyId)
+          .eq('entity_type', entityType),
+        'delete',
+      );
     },
     onSuccess: () => { invalidate(); toast({ title: 'Campo removido!' }); },
     onError: (error) => toast({ variant: 'destructive', title: 'Erro ao remover campo', description: getErrorMessage(error) }),

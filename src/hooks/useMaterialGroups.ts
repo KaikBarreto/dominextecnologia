@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 export type MaterialGroup = Tables<'material_groups'>;
 export type MaterialGroupInsert = TablesInsert<'material_groups'>;
@@ -57,8 +58,7 @@ export function useMaterialGroups() {
 
   const updateGroup = useMutation({
     mutationFn: async ({ id, ...updates }: { id: string } & Partial<MaterialGroupUpdate>) => {
-      const { error } = await supabase.from('material_groups').update(updates).eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(await supabase.from('material_groups').update(updates, { count: 'exact' }).eq('id', id), 'update');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['material-groups'] });
@@ -71,8 +71,7 @@ export function useMaterialGroups() {
 
   const deleteGroup = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('material_groups').delete().eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(await supabase.from('material_groups').delete({ count: 'exact' }).eq('id', id), 'delete');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['material-groups'] });
@@ -88,11 +87,13 @@ export function useMaterialGroups() {
     mutationFn: async (orderedIds: string[]) => {
       const updates = orderedIds.map((id, idx) => ({ id, sort_order: idx + 1 }));
       for (const upd of updates) {
-        const { error } = await supabase
-          .from('material_groups')
-          .update({ sort_order: upd.sort_order })
-          .eq('id', upd.id);
-        if (error) throw error;
+        assertRowsAffected(
+          await supabase
+            .from('material_groups')
+            .update({ sort_order: upd.sort_order }, { count: 'exact' })
+            .eq('id', upd.id),
+          'update',
+        );
       }
     },
     onSuccess: () => {

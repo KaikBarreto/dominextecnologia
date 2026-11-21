@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { sanitizeStorageFileName } from '@/utils/storagePath';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 export interface ContractAttachment {
   id: string;
@@ -115,11 +116,13 @@ export function useContractAttachments(contractId?: string) {
   // ── Mutation: renomear (UPDATE display_name) ───────────────────────────────
   const rename = useMutation({
     mutationFn: async ({ id, displayName }: { id: string; displayName: string }) => {
-      const { error } = await supabase
-        .from('contract_attachments')
-        .update({ display_name: displayName.trim() })
-        .eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('contract_attachments')
+          .update({ display_name: displayName.trim() }, { count: 'exact' })
+          .eq('id', id),
+        'update',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contract-attachments', contractId] });
@@ -142,11 +145,13 @@ export function useContractAttachments(contractId?: string) {
       id: string;
       storagePath: string;
     }) => {
-      const { error } = await supabase
-        .from('contract_attachments')
-        .delete()
-        .eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('contract_attachments')
+          .delete({ count: 'exact' })
+          .eq('id', id),
+        'delete',
+      );
 
       // Bucket privado — remove o arquivo físico (best-effort)
       await supabase.storage.from(BUCKET).remove([storagePath]).catch(() => {});

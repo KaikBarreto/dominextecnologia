@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMemo } from 'react';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import type { CostResource } from './useCostResources';
 
 export interface ServiceCostResource {
@@ -166,13 +167,14 @@ export function useServiceCostResources(
     mutationFn: async (resourceId: string) => {
       if (!serviceId) throw new Error('Serviço não selecionado');
 
-      const { error } = await supabase
-        .from('service_cost_resources')
-        .delete()
-        .eq('service_id', serviceId)
-        .eq('resource_id', resourceId);
-
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('service_cost_resources')
+          .delete({ count: 'exact' })
+          .eq('service_id', serviceId)
+          .eq('resource_id', resourceId),
+        'delete',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-cost-resources', companyId, serviceId] });
@@ -185,13 +187,14 @@ export function useServiceCostResources(
     mutationFn: async (input: { resourceId: string; overrideValue: number | null }) => {
       if (!serviceId) throw new Error('Serviço não selecionado');
 
-      const { error } = await supabase
-        .from('service_cost_resources')
-        .update({ override_value: input.overrideValue })
-        .eq('service_id', serviceId)
-        .eq('resource_id', input.resourceId);
-
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('service_cost_resources')
+          .update({ override_value: input.overrideValue }, { count: 'exact' })
+          .eq('service_id', serviceId)
+          .eq('resource_id', input.resourceId),
+        'update',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-cost-resources', companyId, serviceId] });
@@ -225,12 +228,13 @@ export function useServiceCostResources(
   // Remove gift from service
   const removeGift = useMutation({
     mutationFn: async (giftId: string) => {
-      const { error } = await supabase
-        .from('service_gifts')
-        .delete()
-        .eq('id', giftId);
-
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('service_gifts')
+          .delete({ count: 'exact' })
+          .eq('id', giftId),
+        'delete',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-gifts', companyId, serviceId] });

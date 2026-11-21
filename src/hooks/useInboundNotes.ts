@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserCompany } from '@/hooks/useUserCompany';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 /**
  * Fronteira do Supabase para NOTAS DESTINADAS (NF-e / NFS-e RECEBIDAS pelo
@@ -256,8 +257,14 @@ export function useInboundNfe() {
         financial_transaction_id: input.financial_transaction_id,
       };
       if (input.supplier_id !== undefined) payload.supplier_id = input.supplier_id;
-      const { error } = await supabase.from('inbound_nfe' as any).update(payload).eq('id', input.id);
-      if (error) throw new Error(getErrorMessage(error, 'Não foi possível vincular a nota ao lançamento.'));
+      try {
+        assertRowsAffected(
+          await supabase.from('inbound_nfe' as any).update(payload, { count: 'exact' }).eq('id', input.id),
+          'update',
+        );
+      } catch (error) {
+        throw new Error(getErrorMessage(error, 'Não foi possível vincular a nota ao lançamento.'));
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: listKey });
@@ -369,8 +376,14 @@ export function useInboundNfse() {
         financial_transaction_id: input.financial_transaction_id,
       };
       if (input.supplier_id !== undefined) payload.supplier_id = input.supplier_id;
-      const { error } = await supabase.from('inbound_nfse' as any).update(payload).eq('id', input.id);
-      if (error) throw new Error(getErrorMessage(error, 'Não foi possível vincular a nota ao lançamento.'));
+      try {
+        assertRowsAffected(
+          await supabase.from('inbound_nfse' as any).update(payload, { count: 'exact' }).eq('id', input.id),
+          'update',
+        );
+      } catch (error) {
+        throw new Error(getErrorMessage(error, 'Não foi possível vincular a nota ao lançamento.'));
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: listKey });

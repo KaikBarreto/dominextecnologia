@@ -98,6 +98,7 @@ import { isUuid, extractShortCode, buildSlugSegment } from '@/utils/prettyLinks'
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { cn } from '@/lib/utils';
 import { SpeedDialFAB, type SpeedDialAction } from '@/components/mobile/SpeedDialFAB';
 import { OsEquipmentSidebar, OsActionFooter, type OsSidebarItem, type OsSidebarStatus } from '@/components/technician/OsDesktopShell';
@@ -1813,17 +1814,18 @@ function TechnicianOSInner() {
       // carimba auth.uid() como rede de segurança se vier null.
       const checkInAuthorId = currentUser?.id ?? null;
 
-      const { error } = await supabase
-        .from('service_orders')
-        .update({
-          check_in_time: now,
-          check_in_location: location,
-          check_in_by: checkInAuthorId,
-          status: 'em_andamento',
-        })
-        .eq('id', resolvedOsId);
-
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('service_orders')
+          .update({
+            check_in_time: now,
+            check_in_location: location,
+            check_in_by: checkInAuthorId,
+            status: 'em_andamento',
+          }, { count: 'exact' })
+          .eq('id', resolvedOsId),
+        'update',
+      );
 
       if (resolvedOsId) {
         recordLocationEvent(resolvedOsId, location.lat, location.lng, 'check_in');
@@ -2055,12 +2057,13 @@ function TechnicianOSInner() {
         updateData.pmoc_conformity_status = checklistRollup;
       }
 
-      const { error } = await supabase
-        .from('service_orders')
-        .update(updateData)
-        .eq('id', resolvedOsId);
-
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('service_orders')
+          .update(updateData, { count: 'exact' })
+          .eq('id', resolvedOsId),
+        'update',
+      );
 
       // Instrumentação MVP — fire-and-forget, não bloqueia UX
       trackUsage('os_completion', { os_id: resolvedOsId });
@@ -3386,11 +3389,13 @@ function TechnicianOSInner() {
   // rodapé de ações fixo (desktop) — mesma lógica, sem duplicar.
   const handlePauseOS = async () => {
     try {
-      const { error } = await supabase
-        .from('service_orders')
-        .update({ status: 'pausada' } as any)
-        .eq('id', resolvedOsId);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('service_orders')
+          .update({ status: 'pausada' } as any, { count: 'exact' })
+          .eq('id', resolvedOsId),
+        'update',
+      );
       setServiceOrder((prev) => prev ? { ...prev, status: 'pausada' as OsStatus } : null);
       toast({ title: tFlow.toastPauseDone });
     } catch (error: any) {
@@ -3399,11 +3404,13 @@ function TechnicianOSInner() {
   };
   const handleResumeOS = async () => {
     try {
-      const { error } = await supabase
-        .from('service_orders')
-        .update({ status: 'em_andamento' })
-        .eq('id', resolvedOsId);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('service_orders')
+          .update({ status: 'em_andamento' }, { count: 'exact' })
+          .eq('id', resolvedOsId),
+        'update',
+      );
       setServiceOrder((prev) => prev ? { ...prev, status: 'em_andamento' as OsStatus } : null);
       toast({ title: tFlow.toastResumeDone });
     } catch (error: any) {
@@ -3419,11 +3426,13 @@ function TechnicianOSInner() {
     if (hasPendingFormSaves) return;
     setFinishingPartial(true);
     try {
-      const { error } = await supabase
-        .from('service_orders')
-        .update({ status: 'pausada', partial_finish: true } as any)
-        .eq('id', resolvedOsId);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('service_orders')
+          .update({ status: 'pausada', partial_finish: true } as any, { count: 'exact' })
+          .eq('id', resolvedOsId),
+        'update',
+      );
       setServiceOrder((prev) => prev ? { ...prev, status: 'pausada' as OsStatus, partial_finish: true } as any : null);
       setPartialConfirmOpen(false);
       toast({ title: tFlow.toastPartialDone });
@@ -3566,12 +3575,13 @@ function TechnicianOSInner() {
         await recordLocationEvent(resolvedOsId, location.lat, location.lng, 'en_route');
       }
 
-      const { error } = await supabase
-        .from('service_orders')
-        .update({ status: 'a_caminho' })
-        .eq('id', resolvedOsId);
-
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('service_orders')
+          .update({ status: 'a_caminho' }, { count: 'exact' })
+          .eq('id', resolvedOsId),
+        'update',
+      );
 
       setServiceOrder((prev) => prev ? { ...prev, status: 'a_caminho' as OsStatus } : null);
       toast({ title: tFlow.toastEnRouteDone });

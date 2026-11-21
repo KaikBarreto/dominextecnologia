@@ -28,6 +28,8 @@ import { usePartyLabels } from '@/hooks/usePartyLabels';
 import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
 import { useTeams } from '@/hooks/useTeams';
 import { useAuth } from '@/contexts/AuthContext';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
+import { getErrorMessage } from '@/utils/errorMessages';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { canSeeAllTasks, isMyTask } from '@/lib/taskVisibility';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
@@ -525,7 +527,13 @@ export default function Schedule() {
     if ((summaryOrder as any)?._isFinancialEvent) {
       const realId = (summaryOrder as any)?._realFinancialId;
       if (realId) {
-        supabase.from('financial_transactions').delete().eq('id', realId).then(() => {
+        supabase.from('financial_transactions').delete({ count: 'exact' }).eq('id', realId).then((result) => {
+          try {
+            assertRowsAffected(result, 'delete');
+          } catch (err) {
+            toast({ variant: 'destructive', title: 'Erro ao excluir transação financeira', description: getErrorMessage(err) });
+            return;
+          }
           queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
           toast({ title: 'Transação financeira excluída' });
         });
@@ -542,7 +550,7 @@ export default function Schedule() {
     const contractId = order._contractId;
     const installmentGroupId = order._installmentGroupId;
     
-    let query = supabase.from('financial_transactions').delete();
+    let query = supabase.from('financial_transactions').delete({ count: 'exact' });
     if (installmentGroupId) {
       query = query.eq('installment_group_id', installmentGroupId);
     } else if (contractId) {
@@ -553,7 +561,12 @@ export default function Schedule() {
       if (realId) query = query.eq('id', realId);
     }
     
-    await query;
+    try {
+      assertRowsAffected(await query, 'delete');
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Erro ao excluir transações financeiras', description: getErrorMessage(err) });
+      return;
+    }
     queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
     toast({ title: 'Transações financeiras excluídas' });
     setSummaryOrder(null);

@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Tables } from '@/integrations/supabase/types';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import type { CompraMaterial } from '@/hooks/useCompras';
 
 export type CompraCotacao = Tables<'compra_cotacoes'>;
@@ -168,6 +169,17 @@ export function useCompraCotacoes(compraId: string | null) {
       prices: { compra_material_id: string; unit_price: number }[];
     }) => {
       if (!companyId) throw new Error('Usuário sem empresa associada. Contate o administrador.');
+      // Toca a cotação PRIMEIRO (atualiza updated_at), conferindo: se a RLS
+      // barra a cotação, o update não dá erro, só altera zero linhas. Parar
+      // aqui evita mexer nos preços de uma cotação que o usuário não pode editar.
+      assertRowsAffected(
+        await supabase
+          .from('compra_cotacoes')
+          .update({ updated_at: new Date().toISOString() }, { count: 'exact' })
+          .eq('id', cotacaoId),
+        'update',
+        'Não foi possível salvar os preços: você não tem permissão para editar esta cotação ou ela já não existe. Atualize a tela e tente de novo.',
+      );
       // Replace simples: apaga os preços atuais da cotação e regrava os válidos.
       const { error: dErr } = await supabase
         .from('compra_cotacao_precos')
@@ -186,11 +198,6 @@ export function useCompraCotacoes(compraId: string | null) {
         );
         if (iErr) throw iErr;
       }
-      // Toca a cotação pra atualizar updated_at.
-      await supabase
-        .from('compra_cotacoes')
-        .update({ updated_at: new Date().toISOString() })
-        .eq('id', cotacaoId);
       return { cotacaoId };
     },
     onSuccess: () => {
@@ -206,14 +213,17 @@ export function useCompraCotacoes(compraId: string | null) {
   // ---- Aceitar / Recusar (não mexe em outras cotações nem no estoque) ----
   const decideCotacao = useMutation({
     mutationFn: async ({ cotacaoId, status }: { cotacaoId: string; status: CotacaoStatus }) => {
-      const { error } = await supabase
-        .from('compra_cotacoes')
-        .update({
-          status,
-          decided_at: status === 'pendente' ? null : new Date().toISOString(),
-        })
-        .eq('id', cotacaoId);
-      if (error) throw error;
+      // RLS barrando não dá erro, só altera zero linhas: conferir.
+      assertRowsAffected(
+        await supabase
+          .from('compra_cotacoes')
+          .update({
+            status,
+            decided_at: status === 'pendente' ? null : new Date().toISOString(),
+          }, { count: 'exact' })
+          .eq('id', cotacaoId),
+        'update',
+      );
       return { cotacaoId, status };
     },
     onSuccess: (res) => {
@@ -233,8 +243,11 @@ export function useCompraCotacoes(compraId: string | null) {
   // ---- Excluir cotação (CASCADE remove os preços) ----
   const deleteCotacao = useMutation({
     mutationFn: async (cotacaoId: string) => {
-      const { error } = await supabase.from('compra_cotacoes').delete().eq('id', cotacaoId);
-      if (error) throw error;
+      // RLS barrando não dá erro, só apaga zero linhas: conferir.
+      assertRowsAffected(
+        await supabase.from('compra_cotacoes').delete({ count: 'exact' }).eq('id', cotacaoId),
+        'delete',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['compra-cotacoes', compraId] });

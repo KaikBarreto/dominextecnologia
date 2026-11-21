@@ -18,9 +18,9 @@ vi.mock('@/integrations/supabase/client', () => ({
     }
     if (table === 'cost_resources') return { update: (updates: Record<string, unknown>) => ({
       eq(column: string, value: string) { state.filters.push([column, value]); return this; },
-      then(resolve: (value: { error: null }) => unknown) {
+      then(resolve: (value: { error: null; count: number }) => unknown) {
         state.rows = state.rows.map(row => ({ ...row, name: String(updates.name ?? row.name), hourly_rate: 80 }));
-        return Promise.resolve({ error: null }).then(resolve);
+        return Promise.resolve({ error: null, count: 1 }).then(resolve);
       },
     }) };
     if (table === 'cost_resource_items') return {

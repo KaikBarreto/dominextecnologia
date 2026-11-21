@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { EMPTY_PROCESS_GRAPH, type ProcessGraph, type ProcessMeta } from '@/lib/flowchart/types';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 /**
  * Processo (Fluxograma) — mesma ideia do organograma (`useOrgCharts`), gravado
@@ -124,8 +125,10 @@ export function useProcesses() {
 
   const renameProcess = useMutation({
     mutationFn: async ({ id, name }: { id: string; name: string }) => {
-      const { error } = await supabase.from('processes').update({ name } as any).eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('processes').update({ name } as any, { count: 'exact' }).eq('id', id),
+        'update',
+      );
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['processes'] }),
     onError: (e: Error) =>
@@ -134,8 +137,10 @@ export function useProcesses() {
 
   const deleteProcess = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('processes').delete().eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('processes').delete({ count: 'exact' }).eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['processes'] }),
     onError: (e: Error) =>
@@ -146,11 +151,13 @@ export function useProcesses() {
   // invalidate (invalidate faz o canvas piscar).
   const saveGraph = useMutation({
     mutationFn: async ({ id, graph }: { id: string; graph: ProcessGraph }) => {
-      const { error } = await supabase
-        .from('processes')
-        .update({ data: graph as any } as any)
-        .eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('processes')
+          .update({ data: graph as any } as any, { count: 'exact' })
+          .eq('id', id),
+        'update',
+      );
     },
     onSuccess: (_res, { id, graph }) => {
       qc.setQueryData<Process[]>(['processes'], (prev) =>
@@ -164,11 +171,13 @@ export function useProcesses() {
   // Auto-save do cabeçalho (meta/SIPOC). Mesmo padrão otimista do saveGraph.
   const saveMeta = useMutation({
     mutationFn: async ({ id, meta }: { id: string; meta: ProcessMeta }) => {
-      const { error } = await supabase
-        .from('processes')
-        .update({ meta: meta as any } as any)
-        .eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('processes')
+          .update({ meta: meta as any } as any, { count: 'exact' })
+          .eq('id', id),
+        'update',
+      );
     },
     onSuccess: (_res, { id, meta }) => {
       qc.setQueryData<Process[]>(['processes'], (prev) =>

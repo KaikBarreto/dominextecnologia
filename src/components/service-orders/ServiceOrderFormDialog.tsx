@@ -32,6 +32,7 @@ import { usePartyLabels } from '@/hooks/usePartyLabels';
 import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
 import { useActiveCompanyProfiles } from '@/hooks/useProfiles';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { useFormTemplates } from '@/hooks/useFormTemplates';
 import { useServiceTypes } from '@/hooks/useServiceTypes';
 import { useTeams } from '@/hooks/useTeams';
@@ -1172,10 +1173,13 @@ export function ServiceOrderFormDialog({
               const newOsDate = new Date(new Date(os.scheduled_date + 'T12:00:00').getTime() + diffDays * 24 * 60 * 60 * 1000);
               const formattedDate = newOsDate.toISOString().split('T')[0];
 
-              await supabase
-                .from('service_orders')
-                .update({ scheduled_date: formattedDate })
-                .eq('id', os.id);
+              assertRowsAffected(
+                await supabase
+                  .from('service_orders')
+                  .update({ scheduled_date: formattedDate }, { count: 'exact' })
+                  .eq('id', os.id),
+                'update',
+              );
             }
             editToast({ title: t.toastFutureAdjusted.replace('{n}', String(futureOrders.length)) });
           }
@@ -1265,10 +1269,13 @@ export function ServiceOrderFormDialog({
             ] as any);
 
             for (const os of futureOrders) {
-              await supabase
-                .from('service_orders')
-                .update(updatePayload as any)
-                .eq('id', os.id);
+              assertRowsAffected(
+                await supabase
+                  .from('service_orders')
+                  .update(updatePayload as any, { count: 'exact' })
+                  .eq('id', os.id),
+                'update',
+              );
 
               if (cleanedData.assignee_user_ids) {
                 await supabase.from('service_order_assignees').delete().eq('service_order_id', os.id);

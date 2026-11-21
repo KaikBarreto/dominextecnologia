@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { parsePublicFormQuestions, type PublicFormQuestion, type PublicFormQuestionType } from '@/lib/publicFormQuestions';
 
 /**
@@ -125,8 +126,7 @@ export function usePublicFormQuestions(formId: string | null | undefined) {
 
   const deleteQuestion = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('public_form_questions').delete().eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(await supabase.from('public_form_questions').delete({ count: 'exact' }).eq('id', id), 'delete');
     },
     onSuccess: () => {
       invalidate();
@@ -142,11 +142,10 @@ export function usePublicFormQuestions(formId: string | null | undefined) {
     mutationFn: async (orderedIds: string[]) => {
       const results = await Promise.all(
         orderedIds.map((id, index) =>
-          supabase.from('public_form_questions').update({ position: index } as any).eq('id', id),
+          supabase.from('public_form_questions').update({ position: index } as any, { count: 'exact' }).eq('id', id),
         ),
       );
-      const failed = results.find((result) => result.error);
-      if (failed?.error) throw failed.error;
+      results.forEach((result) => assertRowsAffected(result, 'update'));
     },
     onSuccess: () => invalidate(),
     onError: (error: Error) => {
@@ -175,8 +174,12 @@ export function usePublicFormQuestions(formId: string | null | undefined) {
       const removedIds = (existing ?? []).map((row) => row.id).filter((id) => !keepIds.has(id));
 
       if (removedIds.length > 0) {
-        const { error } = await supabase.from('public_form_questions').delete().in('id', removedIds);
-        if (error) throw error;
+        assertRowsAffected(
+          await supabase.from('public_form_questions').delete({ count: 'exact' }).in('id', removedIds),
+          'delete',
+          undefined,
+          removedIds.length,
+        );
       }
 
       if (questions.length > 0) {

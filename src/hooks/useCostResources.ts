@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMemo } from 'react';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 export type CostResourceCategory = 'vehicle' | 'tool' | 'gift' | 'epi' | 'other';
 
@@ -184,13 +185,14 @@ export function useCostResources() {
       const { id, items, ...updates } = input;
 
       if (Object.keys(updates).length > 0) {
-        const { error } = await supabase
-          .from('cost_resources')
-          .update(updates)
-          .eq('id', id)
-          .eq('company_id', companyId);
-
-        if (error) throw error;
+        assertRowsAffected(
+          await supabase
+            .from('cost_resources')
+            .update(updates, { count: 'exact' })
+            .eq('id', id)
+            .eq('company_id', companyId),
+          'update',
+        );
       }
 
       if (items !== undefined) {
@@ -237,12 +239,13 @@ export function useCostResources() {
   // Delete resource
   const deleteResource = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('cost_resources')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('cost_resources')
+          .delete({ count: 'exact' })
+          .eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => {
       toast({ title: 'Recurso excluído!' });

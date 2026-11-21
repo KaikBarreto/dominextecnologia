@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { FormTemplate, FormQuestion } from '@/types/database';
 import { CheckSquare, Type, Hash, Camera, Video, ListChecks, ShieldCheck, LucideIcon } from 'lucide-react';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 export interface FormTemplateInsert {
   name: string;
@@ -244,12 +245,13 @@ export function useFormTemplates() {
 
   const deleteQuestion = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('form_questions')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('form_questions')
+          .delete({ count: 'exact' })
+          .eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['form-templates'] });
@@ -263,9 +265,10 @@ export function useFormTemplates() {
   const reorderQuestions = useMutation({
     mutationFn: async (orderedIds: string[]) => {
       const updates = orderedIds.map((id, index) =>
-        supabase.from('form_questions').update({ position: index }).eq('id', id)
+        supabase.from('form_questions').update({ position: index }, { count: 'exact' }).eq('id', id)
       );
-      await Promise.all(updates);
+      const results = await Promise.all(updates);
+      results.forEach((result) => assertRowsAffected(result, 'update'));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['form-templates'] });

@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 /**
  * Gravação única de uma resposta de checklist.
@@ -71,11 +72,14 @@ async function findLatestId(client: FormResponseClient, key: FormResponseKey): P
 }
 
 async function updateById(client: FormResponseClient, id: string, values: FormResponseValues) {
-  const { error } = (await client
+  // A linha acabou de ser encontrada: 0 linhas afetadas significa que a
+  // permissão barrou o UPDATE (o PostgREST não devolve erro nesse caso). Sobe
+  // o erro para a fila do chamador manter a pergunta pendente.
+  const result = (await client
     .from('form_responses')
-    .update(values)
-    .eq('id', id)) as QueryResult<unknown>;
-  if (error) throw error;
+    .update(values, { count: 'exact' })
+    .eq('id', id)) as QueryResult<unknown> & { count?: number | null };
+  assertRowsAffected({ error: result.error, count: result.count ?? null }, 'update');
 }
 
 export async function writeFormResponse(

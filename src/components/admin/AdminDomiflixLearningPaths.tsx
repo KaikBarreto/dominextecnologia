@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BookOpen, Pencil, Plus, ShieldCheck, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { assertRowsAffected } from "@/lib/supabaseMutation";
 import { slugify } from "@/lib/slugify";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,8 +47,7 @@ function OnboardingGateControl({ path }: { path: LearningPath }) {
   const toggle = useMutation({
     mutationFn: async (checked: boolean) => {
       if (checked && !introLesson) throw new Error("Publique primeiro uma aula básica com vídeo");
-      const { error } = await supabase.from("domiflix_learning_paths" as any).update({ intro_gate_enabled_at: checked ? new Date().toISOString() : null } as any).eq("id", path.id);
-      if (error) throw error;
+      assertRowsAffected(await supabase.from("domiflix_learning_paths" as any).update({ intro_gate_enabled_at: checked ? new Date().toISOString() : null } as any, { count: "exact" }).eq("id", path.id), "update");
     },
     onSuccess: (_, checked) => { queryClient.invalidateQueries({ queryKey: ["domiflix-learning-paths-admin"] }); queryClient.invalidateQueries({ queryKey: ["domiflix-learning-status"] }); toast.success(checked ? "Vídeo obrigatório ativado para novos clientes" : "Bloqueio de primeiro acesso desativado"); },
     onError: (error: Error) => toast.error(error.message),
@@ -62,7 +62,7 @@ export function AdminDomiflixLearningPaths() {
   const [form, setForm] = useState(emptyForm);
   const [uploading, setUploading] = useState(false);
   const { data: paths = [], isLoading } = useQuery({ queryKey: ["domiflix-learning-paths-admin"], queryFn: async () => { const { data, error } = await supabase.from("domiflix_learning_paths" as any).select("id, slug, title, description, cover_url, is_onboarding, is_active, order_index, intro_gate_enabled_at").order("order_index"); if (error) throw error; return (data ?? []) as unknown as LearningPath[]; } });
-  const save = useMutation({ mutationFn: async () => { const payload = { ...form, title: form.title.trim(), description: form.description.trim() || null, cover_url: form.cover_url.trim() || null }; if (!payload.title) throw new Error("Informe o nome do curso"); if (!payload.cover_url) throw new Error("Adicione uma capa própria para esta trilha"); const result = editing ? await supabase.from("domiflix_learning_paths" as any).update(payload as any).eq("id", editing.id) : await supabase.from("domiflix_learning_paths" as any).insert({ ...payload, slug: slugify(payload.title), is_onboarding: false } as any); if (result.error) throw result.error; }, onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["domiflix-learning-paths-admin"] }); queryClient.invalidateQueries({ queryKey: ["domiflix-learning-status"] }); toast.success(editing ? "Curso atualizado" : "Curso criado"); setOpen(false); }, onError: (error: Error) => toast.error(error.message) });
+  const save = useMutation({ mutationFn: async () => { const payload = { ...form, title: form.title.trim(), description: form.description.trim() || null, cover_url: form.cover_url.trim() || null }; if (!payload.title) throw new Error("Informe o nome do curso"); if (!payload.cover_url) throw new Error("Adicione uma capa própria para esta trilha"); if (editing) { assertRowsAffected(await supabase.from("domiflix_learning_paths" as any).update(payload as any, { count: "exact" }).eq("id", editing.id), "update"); return; } const result = await supabase.from("domiflix_learning_paths" as any).insert({ ...payload, slug: slugify(payload.title), is_onboarding: false } as any); if (result.error) throw result.error; }, onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["domiflix-learning-paths-admin"] }); queryClient.invalidateQueries({ queryKey: ["domiflix-learning-status"] }); toast.success(editing ? "Curso atualizado" : "Curso criado"); setOpen(false); }, onError: (error: Error) => toast.error(error.message) });
   function create() { setEditing(null); setForm(emptyForm); setOpen(true); }
   function edit(path: LearningPath) { setEditing(path); setForm({ title: path.title, description: path.description ?? "", cover_url: path.cover_url ?? "", is_active: path.is_active, order_index: path.order_index }); setOpen(true); }
   async function handleCover(file: File) { setUploading(true); try { const url = await uploadCover(file); setForm((current) => ({ ...current, cover_url: url })); } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível enviar a capa"); } finally { setUploading(false); } }

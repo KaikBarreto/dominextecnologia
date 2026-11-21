@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 export interface CustomerContact {
   id: string;
@@ -62,8 +63,7 @@ export function useCustomerContacts(customerId?: string) {
 
   const deleteContact = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('customer_contacts').delete().eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(await supabase.from('customer_contacts').delete({ count: 'exact' }).eq('id', id), 'delete');
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['customer-contacts', customerId] }),
   });

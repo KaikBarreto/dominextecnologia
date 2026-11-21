@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 /**
  * Tipo mínimo de uma transação do financeiro admin (tabela
@@ -52,11 +53,14 @@ export function useUpdateAdminFinancialTransaction() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, type, category, amount, description, transaction_date }: UpdatePayload) => {
-      const { error } = await supabase
-        .from('admin_financial_transactions')
-        .update({ type, category, amount, description, transaction_date })
-        .eq('id', id);
-      if (error) throw error;
+      // RLS barrando não dá erro, só altera zero linhas: conferir.
+      assertRowsAffected(
+        await supabase
+          .from('admin_financial_transactions')
+          .update({ type, category, amount, description, transaction_date }, { count: 'exact' })
+          .eq('id', id),
+        'update',
+      );
     },
     onSuccess: () => {
       invalidateAdminTransactions(queryClient);
@@ -74,11 +78,14 @@ export function useDeleteAdminFinancialTransaction() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('admin_financial_transactions')
-        .delete()
-        .eq('id', id);
-      if (error) throw error;
+      // RLS barrando não dá erro, só apaga zero linhas: conferir.
+      assertRowsAffected(
+        await supabase
+          .from('admin_financial_transactions')
+          .delete({ count: 'exact' })
+          .eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => {
       invalidateAdminTransactions(queryClient);

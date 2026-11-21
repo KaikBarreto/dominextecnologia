@@ -29,6 +29,7 @@ import { ViewModeToggle } from '@/components/ui/ViewModeToggle';
 import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
 import { useViewMode } from '@/hooks/useViewMode';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { EmployeeFormDialog } from '@/components/employees/EmployeeFormDialog';
 import { EmployeeMovementModal } from '@/components/employees/EmployeeMovementModal';
 import { EmployeePaymentModal, PaymentPayload } from '@/components/employees/EmployeePaymentModal';
@@ -116,14 +117,26 @@ async function insertTransactionTolerant(payload: Record<string, any>) {
   return { error };
 }
 
-async function updateTransactionTolerant(id: string, payload: Record<string, any>) {
-  const { error } = await supabase.from('financial_transactions').update(payload as any).eq('id', id);
-  if (error && 'accrual_amount' in payload && isMissingAccrualColumn(error)) {
+// Quitar a folha é a ação principal: RLS barrando o update não dá erro, só
+// altera zero linhas. Zero linhas volta como erro (NoRowsAffectedError).
+async function updateTransactionTolerant(id: string, payload: Record<string, any>): Promise<{ error: unknown }> {
+  const counted = async (values: Record<string, any>) => {
+    const result = await supabase.from('financial_transactions').update(values as any, { count: 'exact' }).eq('id', id);
+    try {
+      assertRowsAffected(result, 'update', 'Não foi possível quitar a folha pendente: você não tem permissão para alterar este lançamento ou ele já não existe. Confira o Financeiro.');
+      return { error: null };
+    } catch (error) {
+      return { error };
+    }
+  };
+  const first = await counted(payload);
+  const firstError = first.error as { code?: string; message?: string } | null;
+  if (firstError && 'accrual_amount' in payload && isMissingAccrualColumn(firstError)) {
     console.warn('[folha] accrual_amount ausente no schema — quitando sem o valor de competência.');
     const { accrual_amount: _drop, ...rest } = payload;
-    return await supabase.from('financial_transactions').update(rest as any).eq('id', id);
+    return await counted(rest);
   }
-  return { error };
+  return first;
 }
 
 export default function Employees() {
@@ -894,6 +907,7 @@ export default function Employees() {
             });
             if (payErr) {
               console.error('Erro ao quitar folha pendente:', payErr);
+              toast({ variant: 'destructive', title: t.toasts.errorPaymentFlow, description: getErrorMessage(payErr) });
             }
             queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
             queryClient.invalidateQueries({ queryKey: ['financial-summary'] });

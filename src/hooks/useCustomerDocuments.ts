@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import type { Tables } from '@/integrations/supabase/types';
 import { useUserCompany } from '@/hooks/useUserCompany';
 import { sanitizeStorageFileName } from '@/utils/storagePath';
@@ -189,12 +190,14 @@ export function useCustomerDocuments(customerId?: string) {
 
   const setVisibility = useMutation({
     mutationFn: async ({ id, visible }: { id: string; visible: boolean }) => {
-      const { error } = await supabase
-        .from('customer_documents')
-        .update({ is_visible_in_portal: visible })
-        .eq('id', id)
-        .eq('customer_id', customerId!);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('customer_documents')
+          .update({ is_visible_in_portal: visible }, { count: 'exact' })
+          .eq('id', id)
+          .eq('customer_id', customerId!),
+        'update',
+      );
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
@@ -202,12 +205,14 @@ export function useCustomerDocuments(customerId?: string) {
   const remove = useMutation({
     mutationFn: async (document: Pick<CustomerDocument, 'id' | 'storage_path' | 'source'>) => {
       if (document.source === 'pmoc') throw new Error('Documentos gerados pela OS fazem parte do histórico e não podem ser excluídos por esta tela.');
-      const { error } = await supabase
-        .from('customer_documents')
-        .delete()
-        .eq('id', document.id)
-        .eq('customer_id', customerId!);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('customer_documents')
+          .delete({ count: 'exact' })
+          .eq('id', document.id)
+          .eq('customer_id', customerId!),
+        'delete',
+      );
       await supabase.storage.from(BUCKET).remove([document.storage_path]).catch(() => undefined);
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),

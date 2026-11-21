@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { writeFormResponse, type FormResponseClient } from './formResponseWrite';
+import { NoRowsAffectedError } from '@/lib/supabaseMutation';
 
-type Call = { op: 'select' | 'update' | 'insert'; payload?: unknown; id?: string };
+type Call = { op: 'select' | 'update' | 'insert'; payload?: unknown; id?: string; options?: unknown };
 
 /** Client de mentira: cada `select` consome a próxima resposta da fila. */
 function fakeClient(script: {
   selects: Array<{ data?: Array<{ id: string }>; error?: { code?: string; message?: string } }>;
   insertError?: { code?: string; message?: string } | null;
+  updateCount?: number;
 }) {
   const calls: Call[] = [];
   let selectIndex = 0;
@@ -26,11 +28,11 @@ function fakeClient(script: {
           };
           return chain;
         },
-        update(payload: unknown) {
+        update(payload: unknown, options?: unknown) {
           return {
             eq: async (_column: string, id: string) => {
-              calls.push({ op: 'update', payload, id });
-              return { data: null, error: null };
+              calls.push({ op: 'update', payload, id, options });
+              return { data: null, error: null, count: script.updateCount ?? 1 };
             },
           };
         },
@@ -84,6 +86,13 @@ describe('writeFormResponse', () => {
     await writeFormResponse(key, values, client);
     expect(calls.map((c) => c.op)).toEqual(['select', 'insert', 'select', 'update']);
     expect(calls[3].id).toBe('row-raced');
+  });
+
+  it('UPDATE barrado pela permissão (0 linhas, sem erro do banco) sobe erro em vez de fingir que gravou', async () => {
+    const { client, calls } = fakeClient({ selects: [{ data: [{ id: 'row-1' }] }], updateCount: 0 });
+    await expect(writeFormResponse(key, values, client)).rejects.toBeInstanceOf(NoRowsAffectedError);
+    expect(calls.map((c) => c.op)).toEqual(['select', 'update']);
+    expect(calls[1].options).toEqual({ count: 'exact' });
   });
 
   it('erro de insert que não é de unicidade sobe', async () => {

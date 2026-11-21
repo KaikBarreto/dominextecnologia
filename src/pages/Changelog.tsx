@@ -31,6 +31,28 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.40',
+    date: '21 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Aviso claro quando falta permissão',
+        category: 'correcao',
+        description: 'Quando você tenta excluir ou alterar algo sem ter permissão, ou quando o registro já não existe, o sistema agora mostra um aviso explicando. Antes, em alguns casos, aparecia a mensagem de sucesso sem que nada tivesse mudado. Vale para todo o sistema: financeiro, RH, loja, CRM, orçamentos, contratos, ordens de serviço, estoque, clientes, PMOC e usuários.',
+      },
+      {
+        title: 'Excluir contrato, OS ou equipe é tudo ou nada',
+        category: 'melhoria',
+        description: 'Ao excluir um contrato, uma ordem de serviço ou uma equipe, ou o sistema apaga tudo o que faz parte dela, ou não apaga nada e explica o motivo. Assim nada fica pela metade. As OS passadas e os recebimentos já realizados continuam preservados como antes.',
+      },
+      {
+        title: 'Mais proteção para os dados da sua empresa',
+        category: 'seguranca',
+        description: 'Reforçamos as regras de acesso. Os cargos de permissão agora são só da sua empresa, a edição de funcionários e salários fica com quem tem permissão de RH, e ninguém consegue trocar a empresa de um usuário. Também protegemos os dados de treinamento da Domiflix de cada empresa.',
+      },
+    ],
+  },
+  {
     version: '1.41.39',
     date: '21 de novembro de 2026',
     type: 'patch',

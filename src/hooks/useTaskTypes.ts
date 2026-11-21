@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getCurrentUserCompanyId } from '@/hooks/useUserCompany';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 export interface TaskType {
   id: string;
@@ -86,11 +87,13 @@ export function useTaskTypes() {
 
   const deleteTaskType = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('task_types' as any)
-        .delete()
-        .eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('task_types' as any)
+          .delete({ count: 'exact' })
+          .eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['task-types'] });

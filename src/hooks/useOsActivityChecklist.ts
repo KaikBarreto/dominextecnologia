@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { writeFormResponse } from '@/hooks/formResponseWrite';
 import type { FormQuestion } from '@/types/database';
 
@@ -439,18 +440,20 @@ export function useOsActivityChecklist(serviceOrderId: string | undefined) {
       setActivities((curr) =>
         curr.map((a) => (a.id === activityId ? { ...a, ...stampedPatch } : a))
       );
-      const { error } = await supabase
+      const result = await supabase
         .from('service_order_activities')
-        .update(stampedPatch as any)
+        .update(stampedPatch as any, { count: 'exact' })
         .eq('id', activityId);
-      if (error) {
-        // Reverte a linha pro estado anterior.
+      try {
+        assertRowsAffected(result, 'update');
+      } catch (err) {
+        // Reverte a linha pro estado anterior (erro do banco ou RLS que barrou sem erro).
         if (prev) {
           setActivities((curr) =>
             curr.map((a) => (a.id === activityId ? prev : a))
           );
         }
-        throw error;
+        throw err;
       }
     },
     [activities]

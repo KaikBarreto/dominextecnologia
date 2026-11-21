@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
+import { assertRowsAffected } from "@/lib/supabaseMutation";
 import { useDomiflixEpisodeExtras, type DomiflixEpisode } from "@/hooks/useDomiflix";
 import { parseTimedText } from "@/lib/timedText";
 import { toast } from "sonner";
@@ -63,9 +64,12 @@ export function AdminDomiflixLessonExtras({ episode, open, onOpenChange }: { epi
       order_index: data.resources.length,
     };
     const query = supabase.from("domiflix_episode_resources" as any);
-    const { error } = editingResourceId ? await query.update(payload as any).eq("id", editingResourceId) : await query.insert(payload as any);
+    const result = editingResourceId ? await query.update(payload as any, { count: "exact" }).eq("id", editingResourceId) : await query.insert(payload as any);
     setSaving(false);
-    if (error) return toast.error("Não foi possível salvar o material");
+    if (result.error) return toast.error("Não foi possível salvar o material");
+    if (editingResourceId) {
+      try { assertRowsAffected(result, "update"); } catch (error) { return toast.error(error instanceof Error ? error.message : "Não foi possível salvar o material"); }
+    }
     resetResourceForm();
     await invalidate();
     toast.success(editingResourceId ? "Link atualizado" : "Link adicionado");
@@ -93,8 +97,9 @@ export function AdminDomiflixLessonExtras({ episode, open, onOpenChange }: { epi
   }
 
   async function remove(table: "domiflix_episode_subtitles" | "domiflix_episode_resources", id: string) {
-    const { error } = await supabase.from(table as any).delete().eq("id", id);
-    if (error) return toast.error("Não foi possível remover");
+    const result = await supabase.from(table as any).delete({ count: "exact" }).eq("id", id);
+    if (result.error) return toast.error("Não foi possível remover");
+    try { assertRowsAffected(result, "delete"); } catch (error) { return toast.error(error instanceof Error ? error.message : "Não foi possível remover"); }
     await invalidate();
   }
 

@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { updateResult, deleteResult, updateEquipmentRow, deleteEquipmentRow, toast } = vi.hoisted(() => ({
   updateResult: { current: { data: { id: 'eq-1', name: 'Split atualizado' }, error: null as unknown } },
-  deleteResult: { current: { error: null as unknown } },
+  deleteResult: { current: { error: null as unknown, count: 1 as number | null } },
   updateEquipmentRow: vi.fn(),
   deleteEquipmentRow: vi.fn(),
   toast: vi.fn(),
@@ -60,7 +60,7 @@ function setup() {
 
 beforeEach(() => {
   updateResult.current = { data: { id: 'eq-1', name: 'Split atualizado' }, error: null };
-  deleteResult.current = { error: null };
+  deleteResult.current = { error: null, count: 1 };
   updateEquipmentRow.mockClear();
   deleteEquipmentRow.mockClear();
   toast.mockClear();
@@ -95,7 +95,7 @@ describe('useEquipment mutations', () => {
   });
 
   it('propaga a recusa do banco sem invalidar o cache', async () => {
-    deleteResult.current = { error: { code: '23503', message: 'foreign key violation' } };
+    deleteResult.current = { error: { code: '23503', message: 'foreign key violation' }, count: null };
     const { invalidate, Wrapper } = setup();
     const { result } = renderHook(() => useEquipment(), { wrapper: Wrapper });
 

@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 export type ServiceTypeCategory = Tables<'service_type_categories'>;
 export type ServiceTypeCategoryInsert = TablesInsert<'service_type_categories'>;
@@ -62,11 +63,13 @@ export function useServiceTypeCategories() {
 
   const updateCategory = useMutation({
     mutationFn: async ({ id, ...updates }: { id: string } & Partial<ServiceTypeCategoryUpdate>) => {
-      const { error } = await supabase
-        .from('service_type_categories')
-        .update(updates)
-        .eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('service_type_categories')
+          .update(updates, { count: 'exact' })
+          .eq('id', id),
+        'update',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-type-categories'] });
@@ -79,11 +82,13 @@ export function useServiceTypeCategories() {
 
   const deleteCategory = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('service_type_categories')
-        .delete()
-        .eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('service_type_categories')
+          .delete({ count: 'exact' })
+          .eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-type-categories'] });
@@ -113,11 +118,13 @@ export function useServiceTypeCategories() {
     },
     mutationFn: async (orderedIds: string[]) => {
       for (let i = 0; i < orderedIds.length; i++) {
-        const { error } = await supabase
-          .from('service_type_categories')
-          .update({ sort_order: i + 1 })
-          .eq('id', orderedIds[i]);
-        if (error) throw error;
+        assertRowsAffected(
+          await supabase
+            .from('service_type_categories')
+            .update({ sort_order: i + 1 }, { count: 'exact' })
+            .eq('id', orderedIds[i]),
+          'update',
+        );
       }
     },
     onSuccess: () => {

@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { assertRowsAffected, NoRowsAffectedError } from '@/lib/supabaseMutation';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -80,8 +81,10 @@ export function CompanyTable({ companies, masterUserMap, origins, salespersonMap
   const updateCompanyMutation = useMutation({
     mutationFn: async ({ id, field, value }: { id: string; field: string; value: any }) => {
       setUpdatingField({ id, field });
-      const { error } = await supabase.from('companies').update({ [field]: value }).eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('companies').update({ [field]: value }, { count: 'exact' }).eq('id', id),
+        'update',
+      );
     },
     onSuccess: () => {
       toast({ title: 'Empresa atualizada' });
@@ -89,8 +92,12 @@ export function CompanyTable({ companies, masterUserMap, origins, salespersonMap
       queryClient.invalidateQueries({ queryKey: ['admin-companies'] });
       onRefetch();
     },
-    onError: () => {
-      toast({ variant: 'destructive', title: 'Erro ao atualizar' });
+    onError: (error: unknown) => {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao atualizar',
+        description: error instanceof NoRowsAffectedError ? error.message : undefined,
+      });
       setUpdatingField(null);
     },
   });

@@ -4,6 +4,7 @@ import { EmptyState } from '@/components/mobile/EmptyState';
 import { Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import { assertRowsAffected, NoRowsAffectedError } from '@/lib/supabaseMutation';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -107,14 +108,20 @@ export function CompanyKanbanBoard({ companies, origins, masterUserMap, salesper
     );
 
     try {
-      const { error } = await supabase.from('companies').update({ subscription_status: newStatus }).eq('id', companyId);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('companies').update({ subscription_status: newStatus }, { count: 'exact' }).eq('id', companyId),
+        'update',
+      );
       const label = column.id === 'former_customer'
         ? 'Ex-clientes'
         : ({ active: 'Ativos', testing: 'Testando', inactive: 'Inativos' } as const)[newStatus];
       toast({ title: `${company.name} movido para ${label}` });
-    } catch {
-      toast({ variant: 'destructive', title: 'Erro ao atualizar status' });
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao atualizar status',
+        description: error instanceof NoRowsAffectedError ? error.message : undefined,
+      });
       queryClient.invalidateQueries({ queryKey: ['admin-companies'] });
     }
     setDraggedCompanyId(null);

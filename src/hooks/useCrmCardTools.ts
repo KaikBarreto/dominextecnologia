@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getCurrentUserCompanyId } from '@/hooks/useUserCompany';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 export interface CrmLabel {
   id: string;
@@ -165,8 +166,10 @@ export function useCrmLabels(admin = false) {
 
   const updateLabel = useMutation({
     mutationFn: async ({ id, name, color }: { id: string; name: string; color: string }) => {
-      const { error } = await supabase.from(table).update({ name: name.trim(), color }).eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from(table).update({ name: name.trim(), color }, { count: 'exact' }).eq('id', id),
+        'update',
+      );
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
     onError: (error) => toast({ variant: 'destructive', title: 'Não foi possível atualizar a etiqueta', description: getErrorMessage(error) }),
@@ -174,8 +177,10 @@ export function useCrmLabels(admin = false) {
 
   const deleteLabel = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from(table).delete().eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from(table).delete({ count: 'exact' }).eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
@@ -228,8 +233,10 @@ export function useCrmChecklistTemplates(admin = false) {
 
   const updateTemplate = useMutation({
     mutationFn: async ({ id, name, items }: { id: string; name: string; items: CrmChecklistTemplateItem[] }) => {
-      const { error } = await supabase.from(table).update({ name: name.trim(), items }).eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from(table).update({ name: name.trim(), items }, { count: 'exact' }).eq('id', id),
+        'update',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
@@ -240,8 +247,10 @@ export function useCrmChecklistTemplates(admin = false) {
 
   const deleteTemplate = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from(table).delete().eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from(table).delete({ count: 'exact' }).eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
@@ -330,8 +339,10 @@ export function useLeadCardTools(leadId: string | null | undefined, admin = fals
       const payload: Record<string, unknown> = {};
       if (updates.labelIds) payload.crm_label_ids = updates.labelIds;
       if (updates.checklists) payload.crm_checklists = updates.checklists;
-      const { error } = await supabase.from(table).update(payload).eq('id', leadId);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from(table).update(payload, { count: 'exact' }).eq('id', leadId),
+        'update',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });

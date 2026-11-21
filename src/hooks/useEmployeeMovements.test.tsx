@@ -3,6 +3,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { EmployeeMovement } from '@/utils/employeeCalculations';
+import { NoRowsAffectedError } from '@/lib/supabaseMutation';
 
 const { rpc, from, toast } = vi.hoisted(() => ({
   rpc: vi.fn(),
@@ -127,7 +128,7 @@ describe('useEmployeeMovements — vale financeiro atômico', () => {
   });
 
   it('exclui saldo residual como movimento de RH sem chamar a RPC financeira', async () => {
-    const eq = vi.fn().mockResolvedValue({ error: null });
+    const eq = vi.fn().mockResolvedValue({ error: null, count: 1 });
     const deleteRow = vi.fn(() => ({ eq }));
     from.mockReturnValue({ delete: deleteRow });
     const residual = { ...vale, id: 'residual-1', type: 'vale_residual', financial_transaction_id: null };
@@ -143,7 +144,32 @@ describe('useEmployeeMovements — vale financeiro atômico', () => {
 
     expect(from).toHaveBeenCalledWith('employee_movements');
     expect(deleteRow).toHaveBeenCalledOnce();
+    expect(deleteRow).toHaveBeenCalledWith({ count: 'exact' });
     expect(eq).toHaveBeenCalledWith('id', residual.id);
     expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it('quando a permissão barra o delete (zero linhas), avisa erro e não recalcula saldos', async () => {
+    const eq = vi.fn().mockResolvedValue({ error: null, count: 0 });
+    const deleteRow = vi.fn(() => ({ eq }));
+    const update = vi.fn();
+    from.mockReturnValue({ delete: deleteRow, update });
+    const residual = { ...vale, id: 'residual-1', type: 'vale_residual', financial_transaction_id: null };
+    const other = { ...vale, id: 'bonus-1', type: 'bonus', financial_transaction_id: null };
+    const { result } = renderHook(() => useEmployeeMovements(), { wrapper: wrapper() });
+
+    await expect(act(async () => {
+      await result.current.deleteMovement.mutateAsync({
+        id: residual.id,
+        movements: [residual, other],
+        salary: 1000,
+      });
+    })).rejects.toBeInstanceOf(NoRowsAffectedError);
+
+    expect(update).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: 'destructive', title: 'Erro ao excluir movimentação' }));
+    });
+    expect(toast).not.toHaveBeenCalledWith(expect.objectContaining({ title: 'Movimentação excluída!' }));
   });
 });

@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { allOrNothingDeleteError, assertRowsAffected } from '@/lib/supabaseMutation';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
 
 export interface Team {
@@ -110,11 +111,13 @@ export function useTeams() {
 
   const updateTeam = useMutation({
     mutationFn: async ({ id, member_ids, ...input }: TeamInput & { id: string }) => {
-      const { error } = await supabase
-        .from('teams')
-        .update(input as any)
-        .eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('teams')
+          .update(input as any, { count: 'exact' })
+          .eq('id', id),
+        'update',
+      );
 
       // Sync members
       if (member_ids !== undefined) {
@@ -185,12 +188,11 @@ export function useTeams() {
 
   const deleteTeam = useMutation({
     mutationFn: async (id: string) => {
-      // Remove team references from linked records before deleting
-      await supabase.from('service_orders').update({ team_id: null } as any).eq('team_id', id);
-      await supabase.from('contracts').update({ team_id: null } as any).eq('team_id', id);
-      await supabase.from('team_members').delete().eq('team_id', id);
-      const { error } = await supabase.from('teams').delete().eq('id', id);
-      if (error) throw error;
+      // Tudo ou nada no banco (delete_team_cascade): desvincula OS e contratos,
+      // apaga os membros e a equipe numa transação só. Se algo for barrado,
+      // nada muda.
+      const { error } = await supabase.rpc('delete_team_cascade', { p_team_id: id });
+      if (error) throw allOrNothingDeleteError(error);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teams'] });

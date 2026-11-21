@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { useUserCompany } from '@/hooks/useUserCompany';
 import { useToast } from '@/hooks/use-toast';
 import { SYSTEM_CATEGORY_ROLES } from '@/lib/finance-system-categories';
@@ -154,11 +155,13 @@ export function useTenantPaymentAccount() {
   const setAutoPostToFinanceMutation = useMutation({
     mutationFn: async (enabled: boolean) => {
       if (!companyId) throw new Error('Empresa não identificada.');
-      const { error } = await supabase
-        .from('tenant_payment_accounts')
-        .update({ auto_post_to_finance: enabled })
-        .eq('company_id', companyId);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('tenant_payment_accounts')
+          .update({ auto_post_to_finance: enabled }, { count: 'exact' })
+          .eq('company_id', companyId),
+        'update',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
@@ -170,11 +173,13 @@ export function useTenantPaymentAccount() {
   const setAutoPostFeesMutation = useMutation({
     mutationFn: async (enabled: boolean) => {
       if (!companyId) throw new Error('Empresa não identificada.');
-      const { error } = await supabase
-        .from('tenant_payment_accounts')
-        .update({ auto_post_fees: enabled })
-        .eq('company_id', companyId);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('tenant_payment_accounts')
+          .update({ auto_post_fees: enabled }, { count: 'exact' })
+          .eq('company_id', companyId),
+        'update',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
@@ -186,14 +191,16 @@ export function useTenantPaymentAccount() {
   const setLateFeesMutation = useMutation({
     mutationFn: async ({ finePercent, interestPercent }: { finePercent: number; interestPercent: number }) => {
       if (!companyId) throw new Error('Empresa não identificada.');
-      const { error } = await supabase
-        .from('tenant_payment_accounts')
-        .update({
-          default_fine_percent: finePercent,
-          default_interest_percent: interestPercent,
-        })
-        .eq('company_id', companyId);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('tenant_payment_accounts')
+          .update({
+            default_fine_percent: finePercent,
+            default_interest_percent: interestPercent,
+          }, { count: 'exact' })
+          .eq('company_id', companyId),
+        'update',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
@@ -208,11 +215,13 @@ export function useTenantPaymentAccount() {
     mutationFn: async (partial: ChargePreferencesInput) => {
       if (!companyId) throw new Error('Empresa não identificada.');
       if (Object.keys(partial).length === 0) return;
-      const { error } = await supabase
-        .from('tenant_payment_accounts')
-        .update(partial as Record<string, unknown>)
-        .eq('company_id', companyId);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('tenant_payment_accounts')
+          .update(partial as Record<string, unknown>, { count: 'exact' })
+          .eq('company_id', companyId),
+        'update',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });

@@ -1,9 +1,10 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { NoRowsAffectedError } from '@/lib/supabaseMutation';
 
 const state = vi.hoisted(() => ({
   persist: vi.fn(),
-  persistResults: [] as Promise<{ error: unknown } | undefined>[],
+  persistResults: [] as Promise<{ error: unknown; count?: number | null } | undefined>[],
 }));
 
 vi.mock('@/integrations/supabase/client', () => {
@@ -45,8 +46,10 @@ vi.mock('@/integrations/supabase/client', () => {
 import { useOsActivityChecklist } from './useOsActivityChecklist';
 
 function deferredPersist() {
-  let resolve!: (value: { error: unknown }) => void;
-  const promise = new Promise<{ error: unknown }>((done) => {
+  // `count` é o número de linhas que o UPDATE afetou (`{ count: 'exact' }`):
+  // 1 no caminho feliz; 0 quando a permissão barra sem erro do banco.
+  let resolve!: (value: { error: unknown; count?: number | null }) => void;
+  const promise = new Promise<{ error: unknown; count?: number | null }>((done) => {
     resolve = done;
   });
   return { promise, resolve };
@@ -57,7 +60,7 @@ describe('useOsActivityChecklist — fila de assinatura', () => {
     vi.clearAllMocks();
     state.persistResults = [];
     state.persist.mockImplementation(() =>
-      state.persistResults.shift() ?? Promise.resolve({ error: null }),
+      state.persistResults.shift() ?? Promise.resolve({ error: null, count: 1 }),
     );
   });
 
@@ -79,13 +82,13 @@ describe('useOsActivityChecklist — fila de assinatura', () => {
     expect(result.current.getFormResponse(null, 'question-1')?.response_value).toBe('traço-2');
 
     await act(async () => {
-      firstPersist.resolve({ error: null });
+      firstPersist.resolve({ error: null, count: 1 });
       await firstSave;
     });
     await waitFor(() => expect(state.persist).toHaveBeenCalledTimes(2));
 
     await act(async () => {
-      secondPersist.resolve({ error: null });
+      secondPersist.resolve({ error: null, count: 1 });
       await secondSave;
     });
 
@@ -112,7 +115,7 @@ describe('useOsActivityChecklist — fila de assinatura', () => {
 
     await waitFor(() => expect(state.persist).toHaveBeenCalledTimes(1));
     await act(async () => {
-      firstPersist.resolve({ error: null });
+      firstPersist.resolve({ error: null, count: 1 });
       await firstSave;
     });
     await waitFor(() => expect(state.persist).toHaveBeenCalledTimes(2));
@@ -121,6 +124,36 @@ describe('useOsActivityChecklist — fila de assinatura', () => {
     await act(async () => {
       secondPersist.resolve({ error: failure });
       await expect(secondSave).rejects.toEqual(failure);
+    });
+    await waitFor(() =>
+      expect(result.current.getFormResponse(null, 'question-1')?.response_value).toBe('persistido'),
+    );
+  });
+
+  it('UPDATE barrado pela permissão (0 linhas, sem erro) conta como falha e volta ao último snapshot persistido', async () => {
+    const firstPersist = deferredPersist();
+    const secondPersist = deferredPersist();
+    state.persistResults.push(firstPersist.promise, secondPersist.promise);
+    const { result } = renderHook(() => useOsActivityChecklist('os-A'));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    let firstSave!: Promise<void>;
+    let secondSave!: Promise<void>;
+    act(() => {
+      firstSave = result.current.saveFormResponse(null, 'question-1', { response_value: 'persistido' });
+      secondSave = result.current.saveFormResponse(null, 'question-1', { response_value: 'barrado' });
+    });
+
+    await waitFor(() => expect(state.persist).toHaveBeenCalledTimes(1));
+    await act(async () => {
+      firstPersist.resolve({ error: null, count: 1 });
+      await firstSave;
+    });
+    await waitFor(() => expect(state.persist).toHaveBeenCalledTimes(2));
+
+    await act(async () => {
+      secondPersist.resolve({ error: null, count: 0 });
+      await expect(secondSave).rejects.toBeInstanceOf(NoRowsAffectedError);
     });
     await waitFor(() =>
       expect(result.current.getFormResponse(null, 'question-1')?.response_value).toBe('persistido'),
@@ -145,7 +178,7 @@ describe('useOsActivityChecklist — fila de assinatura', () => {
     rerender({ serviceOrderId: 'os-B' });
     await waitFor(() => expect(result.current.getFormResponse(null, 'question-1')).toBeUndefined());
     await act(async () => {
-      oldPersist.resolve({ error: null });
+      oldPersist.resolve({ error: null, count: 1 });
       await oldSave;
     });
 

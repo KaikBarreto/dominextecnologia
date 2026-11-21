@@ -3,6 +3,7 @@ import { typography } from "@/lib/typography";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { assertRowsAffected } from "@/lib/supabaseMutation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -320,9 +321,15 @@ export default function AdminBlogEditor() {
   const updateCategory = async (catId: string) => {
     const name = editingCatName.trim();
     if (!name) return;
-    const { error } = await supabase.from("blog_categories").update({ name }).eq("id", catId);
-    if (error) {
+    const result = await supabase.from("blog_categories").update({ name }, { count: "exact" }).eq("id", catId);
+    if (result.error) {
       toast.error("Erro ao renomear categoria");
+      return;
+    }
+    try {
+      assertRowsAffected(result, "update");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao renomear categoria");
       return;
     }
     queryClient.invalidateQueries({ queryKey: ["blog-categories"] });
@@ -332,9 +339,15 @@ export default function AdminBlogEditor() {
 
   const deleteCategory = async (catId: string, catName: string) => {
     if (!confirm(`Excluir a categoria "${catName}"?`)) return;
-    const { error } = await supabase.from("blog_categories").delete().eq("id", catId);
-    if (error) {
+    const result = await supabase.from("blog_categories").delete({ count: "exact" }).eq("id", catId);
+    if (result.error) {
       toast.error("Erro ao excluir categoria");
+      return;
+    }
+    try {
+      assertRowsAffected(result, "delete");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao excluir categoria");
       return;
     }
     if (category === catName) setCategory("");

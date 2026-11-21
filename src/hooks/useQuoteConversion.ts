@@ -14,6 +14,7 @@ import { SERVICE_ORDER_BUDGET_KEY, SERVICE_ORDER_SERVICE_TYPES_KEY } from '@/hoo
 import { SERVICE_ORDER_OPTIONS_KEY } from '@/hooks/useServiceOrderOptions';
 import type { QuoteEquipmentServiceAssignment } from '@/lib/quoteServiceDistribution';
 import { getQuoteCommercialTotal } from '@/lib/quote-commercial-total';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 interface ApproveQuoteParams {
   quote: Quote;
@@ -303,17 +304,19 @@ export function useQuoteConversion() {
         const primaryId = ordered[0]?.id;
         if (!primaryId) throw new Error('Nenhuma parcela foi criada');
 
-        const { error: qErr } = await supabase
-          .from('quotes')
-          .update({
-            status: 'aprovado',
-            financial_generated_at: new Date().toISOString(),
-            financial_transaction_id: primaryId,
-            receivable_installments: plan.length,
-            receivable_first_due_date: firstDueDate,
-          } as any)
-          .eq('id', quote.id);
-        if (qErr) throw qErr;
+        assertRowsAffected(
+          await supabase
+            .from('quotes')
+            .update({
+              status: 'aprovado',
+              financial_generated_at: new Date().toISOString(),
+              financial_transaction_id: primaryId,
+              receivable_installments: plan.length,
+              receivable_first_due_date: firstDueDate,
+            } as any, { count: 'exact' })
+            .eq('id', quote.id),
+          'update',
+        );
 
         return { mode: 'a_receber', count: plan.length, primaryId };
       }
@@ -397,15 +400,17 @@ export function useQuoteConversion() {
       }
 
       // 4. Update quote status + link
-      const { error: qErr } = await supabase
-        .from('quotes')
-        .update({
-          status: 'aprovado',
-          financial_generated_at: new Date().toISOString(),
-          financial_transaction_id: revenue.id,
-        } as any)
-        .eq('id', quote.id);
-      if (qErr) throw qErr;
+      assertRowsAffected(
+        await supabase
+          .from('quotes')
+          .update({
+            status: 'aprovado',
+            financial_generated_at: new Date().toISOString(),
+            financial_transaction_id: revenue.id,
+          } as any, { count: 'exact' })
+          .eq('id', quote.id),
+        'update',
+      );
 
       return { mode: 'recebido', count: 1, primaryId: revenue.id };
     },

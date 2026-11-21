@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
 import {
@@ -301,11 +302,13 @@ export function usePermissionPresets() {
       const normalizedUpdates = updates.permissions
         ? { ...updates, permissions: normalizePermissionDependencies(updates.permissions) }
         : updates;
-      const { error } = await supabase
-        .from('permission_presets')
-        .update(normalizedUpdates)
-        .eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('permission_presets')
+          .update(normalizedUpdates, { count: 'exact' })
+          .eq('id', id),
+        'update',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['permission-presets'] });
@@ -316,8 +319,10 @@ export function usePermissionPresets() {
 
   const deletePreset = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('permission_presets').delete().eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('permission_presets').delete({ count: 'exact' }).eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['permission-presets'] });
@@ -376,11 +381,13 @@ export function useUserPermissions() {
 
   const toggleActive = useMutation({
     mutationFn: async ({ user_id, is_active }: { user_id: string; is_active: boolean }) => {
-      const { error } = await supabase
-        .from('user_permissions')
-        .update({ is_active })
-        .eq('user_id', user_id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('user_permissions')
+          .update({ is_active }, { count: 'exact' })
+          .eq('user_id', user_id),
+        'update',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-permissions'] });

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
 import { toast } from 'sonner';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { format } from 'date-fns';
 import { brtDateOnlyToTimestamp } from '@/lib/date-br';
 
@@ -331,8 +332,11 @@ export function useDeleteSalesperson() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('salespeople').delete().eq('id', id);
-      if (error) throw error;
+      // RLS barrando não dá erro, só apaga zero linhas: conferir.
+      assertRowsAffected(
+        await supabase.from('salespeople').delete({ count: 'exact' }).eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['salespeople'] });
@@ -386,8 +390,11 @@ export function useDeleteSale() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('salesperson_sales').delete().eq('id', id);
-      if (error) throw error;
+      // RLS barrando não dá erro, só apaga zero linhas: conferir.
+      assertRowsAffected(
+        await supabase.from('salesperson_sales').delete({ count: 'exact' }).eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['salesperson_sales'] });
@@ -463,15 +470,21 @@ export function useDeleteAdvance() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      // Remove a despesa espelhada primeiro pra não deixar lançamento órfão.
-      await supabase
+      // O vale primeiro, conferindo: RLS barrando não dá erro, só apaga zero
+      // linhas, e aí a despesa espelhada não pode sumir. Não há FK entre os dois
+      // (vínculo é reference_id + reference_type), então a ordem é livre.
+      assertRowsAffected(
+        await supabase.from('salesperson_advances').delete({ count: 'exact' }).eq('id', id),
+        'delete',
+      );
+
+      // Depois a despesa espelhada, pra não deixar lançamento órfão.
+      const { error: mirrorErr } = await supabase
         .from('admin_financial_transactions')
         .delete()
         .eq('reference_id', id)
         .eq('reference_type', 'salesperson_advance');
-
-      const { error } = await supabase.from('salesperson_advances').delete().eq('id', id);
-      if (error) throw error;
+      if (mirrorErr) throw mirrorErr;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['salesperson_advances'] });
@@ -572,11 +585,15 @@ export function useUpdatePaymentDate() {
     mutationFn: async ({ id, paidAt }: { id: string; paidAt: string }) => {
       // paidAt chega como ISO completo já ancorado ao meio-dia BRT (ver
       // SalespersonPaymentControl). Usa direto, sem reformatar pra 'yyyy-MM-dd'.
-      const { error } = await supabase
-        .from('salesperson_payments')
-        .update({ paid_at: paidAt })
-        .eq('id', id);
-      if (error) throw error;
+      // RLS barrando não dá erro, só altera zero linhas: conferir antes de
+      // propagar a data pro financeiro.
+      assertRowsAffected(
+        await supabase
+          .from('salesperson_payments')
+          .update({ paid_at: paidAt }, { count: 'exact' })
+          .eq('id', id),
+        'update',
+      );
 
       // Propaga pro financeiro: salário + comissão deste pagamento.
       const { error: salErr } = await supabase
@@ -601,14 +618,20 @@ export function useDeletePayment() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      await supabase
+      // O pagamento primeiro, conferindo: RLS barrando não dá erro, só apaga
+      // zero linhas, e aí as despesas espelhadas não podem sumir. Não há FK
+      // entre os dois (reference_id + reference_type), então a ordem é livre.
+      assertRowsAffected(
+        await supabase.from('salesperson_payments').delete({ count: 'exact' }).eq('id', id),
+        'delete',
+      );
+
+      const { error: mirrorErr } = await supabase
         .from('admin_financial_transactions')
         .delete()
         .eq('reference_id', id)
         .in('reference_type', ['salesperson_payment_salary', 'salesperson_payment_commission']);
-
-      const { error } = await supabase.from('salesperson_payments').delete().eq('id', id);
-      if (error) throw error;
+      if (mirrorErr) throw mirrorErr;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['salesperson_payments'] });

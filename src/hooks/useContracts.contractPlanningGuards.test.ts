@@ -12,7 +12,11 @@ describe('useContracts — guardas das visitas personalizadas', () => {
   });
 
   it('limpa metadados contratuais ao preservar uma OS passada como avulsa', () => {
-    expect(source).toContain('contract_id: null,\n        contract_reference_date: null,\n        contract_visit_customized_at: null');
+    // A exclusão de contrato virou tudo-ou-nada no banco (delete_contract_cascade):
+    // a regra de desvincular a OS passada mora na migration.
+    const rpc = readFileSync('supabase/migrations/20261121150000_delete_cascade_rpcs_transacionais.sql', 'utf8');
+    expect(rpc).toMatch(/contract_reference_date = NULL,\s+contract_visit_customized_at = NULL/);
+    expect(source).toContain("supabase.rpc('delete_contract_cascade', { p_contract_id: id, p_today: todayStr })");
   });
 
   it('não cai no fluxo não atômico quando a RPC transacional está habilitada', () => {

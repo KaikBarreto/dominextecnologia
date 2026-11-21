@@ -20,6 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useServiceOrders } from '@/hooks/useServiceOrders';
 import { useFinancial } from '@/hooks/useFinancial';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { useEquipment } from '@/hooks/useEquipment';
 import { useEquipmentCategories } from '@/hooks/useEquipmentCategories';
 import { useContracts } from '@/hooks/useContracts';
@@ -317,12 +318,12 @@ export function CustomerDetailContent() {
   const handleEditEquipment = (eq: any) => { setEditingEquipment(eq); setEquipFormOpen(true); };
   const handleDeleteEquipment = async () => {
     if (!equipmentToDelete) return;
-    const { error } = await supabase.from('equipment').delete().eq('id', equipmentToDelete.id);
-    if (error) {
-      toast({ variant: 'destructive', title: t.equipDeleteError, description: getErrorMessage(error) });
-    } else {
+    try {
+      assertRowsAffected(await supabase.from('equipment').delete({ count: 'exact' }).eq('id', equipmentToDelete.id), 'delete');
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
       toast({ title: t.equipDeleted });
+    } catch (error) {
+      toast({ variant: 'destructive', title: t.equipDeleteError, description: getErrorMessage(error) });
     }
     setEquipmentToDelete(null);
   };

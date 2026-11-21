@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import type { Json, Tables } from '@/integrations/supabase/types';
 
@@ -375,11 +376,13 @@ export function useOsMaterials(serviceOrderId?: string | null) {
       const patch: Partial<OsMaterialRow> = { quantity: input.quantity, notes };
       if (input.inventoryId) patch.inventory_id = input.inventoryId;
       if (input.stockId) patch.stock_id = input.stockId;
-      const { error } = await supabase
-        .from('service_order_materials')
-        .update(patch)
-        .eq('id', input.id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('service_order_materials')
+          .update(patch, { count: 'exact' })
+          .eq('id', input.id),
+        'update',
+      );
       await queryClient.invalidateQueries({ queryKey: ['os-materials', osId] });
     },
     [osId, persistPending, queryClient],
@@ -398,8 +401,7 @@ export function useOsMaterials(serviceOrderId?: string | null) {
         persistPending(local.filter((p) => p.id !== id));
         return;
       }
-      const { error } = await supabase.from('service_order_materials').delete().eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(await supabase.from('service_order_materials').delete({ count: 'exact' }).eq('id', id), 'delete');
       await queryClient.invalidateQueries({ queryKey: ['os-materials', osId] });
     },
     [osId, persistPending, queryClient],

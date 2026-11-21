@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 export interface CrmPipeline {
   id: string;
@@ -189,11 +190,13 @@ export function useCrmPipelines() {
     mutationFn: async (id: string) => {
       const current = pipelines.find((p) => p.is_default && p.id !== id);
       if (current) {
-        const { error: clearError } = await supabase
-          .from('crm_pipelines')
-          .update({ is_default: false })
-          .eq('id', current.id);
-        if (clearError) throw clearError;
+        assertRowsAffected(
+          await supabase
+            .from('crm_pipelines')
+            .update({ is_default: false }, { count: 'exact' })
+            .eq('id', current.id),
+          'update',
+        );
       }
 
       const { data, error } = await supabase
@@ -222,9 +225,10 @@ export function useCrmPipelines() {
   const reorderPipelines = useMutation({
     mutationFn: async (orderedIds: string[]) => {
       const updates = orderedIds.map((id, index) =>
-        supabase.from('crm_pipelines').update({ position: index }).eq('id', id),
+        supabase.from('crm_pipelines').update({ position: index }, { count: 'exact' }).eq('id', id),
       );
-      await Promise.all(updates);
+      const results = await Promise.all(updates);
+      results.forEach((result) => assertRowsAffected(result, 'update'));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['crm_pipelines'] });
@@ -261,16 +265,20 @@ export function useCrmPipelines() {
       if (target?.is_default) {
         const next = pipelines.find((p) => p.id !== id);
         if (next) {
-          const { error: promoteError } = await supabase
-            .from('crm_pipelines')
-            .update({ is_default: true })
-            .eq('id', next.id);
-          if (promoteError) throw promoteError;
+          assertRowsAffected(
+            await supabase
+              .from('crm_pipelines')
+              .update({ is_default: true }, { count: 'exact' })
+              .eq('id', next.id),
+            'update',
+          );
         }
       }
 
-      const { error } = await supabase.from('crm_pipelines').delete().eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('crm_pipelines').delete({ count: 'exact' }).eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['crm_pipelines'] });

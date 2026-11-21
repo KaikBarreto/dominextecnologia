@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { useToast } from '@/hooks/use-toast';
 import type { Tables, Enums } from '@/integrations/supabase/types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -137,12 +138,13 @@ export function useUsers() {
 
       if (existingRole) {
         // Update existing role
-        const { error } = await supabase
-          .from('user_roles')
-          .update({ role })
-          .eq('user_id', userId);
-        
-        if (error) throw error;
+        assertRowsAffected(
+          await supabase
+            .from('user_roles')
+            .update({ role }, { count: 'exact' })
+            .eq('user_id', userId),
+          'update',
+        );
       } else {
         // Insert new role
         const { error } = await supabase

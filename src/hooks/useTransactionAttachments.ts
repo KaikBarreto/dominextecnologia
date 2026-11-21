@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { sanitizeStorageFileName } from '@/utils/storagePath';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { tenantFileOptions } from '@/utils/tenantStorage';
 
 export interface TransactionAttachment {
@@ -182,11 +183,15 @@ export function useRemoveTransactionAttachment() {
 
   return useMutation({
     mutationFn: async (attachment: Pick<TransactionAttachment, 'id' | 'storage_path' | 'transaction_id'>) => {
-      const { error } = await supabase
-        .from('financial_transaction_attachments')
-        .delete()
-        .eq('id', attachment.id);
-      if (error) throw error;
+      // Conferir: RLS barrando não dá erro, só apaga zero linhas, e aí o
+      // arquivo do bucket não pode ser apagado.
+      assertRowsAffected(
+        await supabase
+          .from('financial_transaction_attachments')
+          .delete({ count: 'exact' })
+          .eq('id', attachment.id),
+        'delete',
+      );
 
       // O mesmo `storage_path` pode estar vinculado a N rows (compra parcelada
       // compartilha 1 arquivo entre todas as parcelas). Só removemos o arquivo

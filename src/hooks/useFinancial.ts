@@ -1,3 +1,4 @@
+import { assertRowsAffected, NoRowsAffectedError } from '@/lib/supabaseMutation';
 import { useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -640,15 +641,22 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
       const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
       const company_id = await getCurrentUserCompanyId();
 
-      const { error } = await supabase
-        .from('financial_transactions')
-        .update(patch as any)
-        .eq('company_id', company_id)
-        .in('id', ids);
-      if (error) throw error;
-      return ids.length;
+      // RLS barrando (sem permissão, lançamento do PDV) não dá erro, só altera
+      // menos linhas: conferir contra o tamanho da seleção.
+      return assertRowsAffected(
+        await supabase
+          .from('financial_transactions')
+          .update(patch as any, { count: 'exact' })
+          .eq('company_id', company_id)
+          .in('id', ids),
+        'update',
+        undefined,
+        new Set(ids).size,
+      );
     },
-    onSuccess: async () => {
+    // onSettled: num lote parcialmente barrado, parte mudou; a lista precisa
+    // refletir isso mesmo com o erro.
+    onSettled: async () => {
       await invalidateAll();
     },
   });
@@ -704,31 +712,64 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
         if (revertErr) throw revertErr;
       }
 
-      const remaining = ids.filter((id) => !billPaymentIds.includes(id));
+      const remaining = [...new Set(ids.filter((id) => !billPaymentIds.includes(id)))];
       if (remaining.length === 0) return ids.length;
 
-      // 2. Filhas primeiro (senão sobram órfãs apontando pra mãe inexistente).
-      const { error: childErr } = await supabase
+      // 2. Filhas (recebimento parcial, tarifa): a FK é ON DELETE SET NULL,
+      //    então elas não caem sozinhas. Guardamos id e mãe ANTES, porque
+      //    depois do delete o vínculo vira NULL e não dá mais para achá-las.
+      const { data: childRows, error: childFetchErr } = await supabase
         .from('financial_transactions')
-        .delete()
+        .select('id, parent_transaction_id')
         .in('parent_transaction_id', remaining);
-      if (childErr) throw childErr;
+      if (childFetchErr) throw childFetchErr;
+      const children = (childRows ?? []) as Array<{ id: string; parent_transaction_id: string | null }>;
 
-      // 3. Orçamento vinculado volta a 'enviado'.
-      await supabase
-        .from('quotes')
-        .update({ financial_transaction_id: null, financial_generated_at: null, status: 'enviado' } as any)
-        .in('financial_transaction_id', remaining);
-
-      const { error } = await supabase
+      // 3. As mães primeiro, conferindo. RLS (sem permissão, lançamento do PDV)
+      //    não dá erro, só apaga menos linhas. O orçamento vinculado é destravado
+      //    pelo gatilho reset_quote_financial_link_on_transaction_delete no
+      //    próprio delete, só para as linhas que de fato saíram.
+      const { error, count } = await supabase
         .from('financial_transactions')
-        .delete()
+        .delete({ count: 'exact' })
         .in('id', remaining);
       if (error) throw error;
+      const deletedCount = typeof count === 'number' ? count : 0;
+
+      // Lote parcial: descobrir quais mães continuam lá, para só apagar as
+      // filhas das que saíram (as filhas da sobrevivente ficam com ela).
+      let survivors = new Set<string>();
+      if (deletedCount < remaining.length) {
+        if (deletedCount > 0) {
+          const { data: left, error: leftErr } = await supabase
+            .from('financial_transactions')
+            .select('id')
+            .in('id', remaining);
+          if (leftErr) throw leftErr;
+          survivors = new Set(((left ?? []) as Array<{ id: string }>).map((row) => row.id));
+        } else {
+          survivors = new Set(remaining);
+        }
+      }
+
+      const orphanIds = children
+        .filter((child) => child.parent_transaction_id && !survivors.has(child.parent_transaction_id))
+        .map((child) => child.id);
+      if (orphanIds.length > 0) {
+        const { error: childErr } = await supabase
+          .from('financial_transactions')
+          .delete()
+          .in('id', orphanIds);
+        if (childErr) throw childErr;
+      }
+
+      assertRowsAffected({ error: null, count }, 'delete', undefined, remaining.length);
 
       return ids.length;
     },
-    onSuccess: async () => {
+    // onSettled: num lote parcialmente barrado, parte saiu (e os estornos de
+    // fatura já rodaram); a lista precisa refletir isso mesmo com o erro.
+    onSettled: async () => {
       await invalidateAll();
       queryClient.invalidateQueries({ queryKey: ['credit-card-bills'] });
     },
@@ -843,8 +884,12 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
       // o único jeito de estornar. É frágil de propósito (adivinha a fatura por
       // período quando não acha por payment_transaction_id); pode sumir quando
       // o backfill estiver confirmado em todos os tenants.
+      //
+      // Ordem importa: só LEMOS a fatura aqui. O ajuste roda depois que o
+      // lançamento foi de fato apagado, senão um delete barrado pela permissão
+      // deixaria a fatura alterada com o pagamento ainda lá.
+      let billAdjustment: { id: string; amountPaid: number; clearPaymentLink: boolean } | null = null;
       if (txn?.category === 'Pagamento de Fatura' && txn.account_id) {
-        // Find bill that references this payment transaction
         const { data: bill } = await supabase
           .from('credit_card_bills')
           .select('id, amount_paid, status, payment_transaction_id')
@@ -852,55 +897,70 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
           .maybeSingle();
 
         if (bill) {
-          const newAmountPaid = Math.max(0, Number(bill.amount_paid ?? 0) - Number(txn.amount));
-          await supabase
-            .from('credit_card_bills')
-            .update({
-              status: newAmountPaid > 0 ? 'partial' : 'open',
-              amount_paid: newAmountPaid,
-              payment_transaction_id: null,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', bill.id);
-        } else {
+          billAdjustment = {
+            id: bill.id,
+            amountPaid: Math.max(0, Number(bill.amount_paid ?? 0) - Number(txn.amount)),
+            clearPaymentLink: true,
+          };
+        } else if (txn.credit_card_bill_date) {
           // Payment may be partial — find bill by account + period and reduce amount_paid
-          if (txn.credit_card_bill_date) {
-            const { data: billByPeriod } = await supabase
-              .from('credit_card_bills')
-              .select('id, amount_paid')
-              .eq('account_id', txn.account_id)
-              .not('status', 'eq', 'open')
-              .order('reference_month', { ascending: false })
-              .limit(1)
-              .maybeSingle();
-
-            if (billByPeriod) {
-              const newAmountPaid = Math.max(0, Number(billByPeriod.amount_paid ?? 0) - Number(txn.amount));
-              await supabase
-                .from('credit_card_bills')
-                .update({
-                  status: newAmountPaid > 0 ? 'partial' : 'open',
-                  amount_paid: newAmountPaid,
-                  updated_at: new Date().toISOString(),
-                })
-                .eq('id', billByPeriod.id);
-            }
+          const { data: billByPeriod } = await supabase
+            .from('credit_card_bills')
+            .select('id, amount_paid')
+            .eq('account_id', txn.account_id)
+            .not('status', 'eq', 'open')
+            .order('reference_month', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (billByPeriod) {
+            billAdjustment = {
+              id: billByPeriod.id,
+              amountPaid: Math.max(0, Number(billByPeriod.amount_paid ?? 0) - Number(txn.amount)),
+              clearPaymentLink: false,
+            };
           }
         }
       }
 
-      // Cascade delete children + clear quote link if root
-      await supabase.from('financial_transactions').delete().eq('parent_transaction_id', id);
-      await supabase
-        .from('quotes')
-        .update({ financial_transaction_id: null, financial_generated_at: null, status: 'enviado' } as any)
-        .eq('financial_transaction_id', id);
-      const { error } = await supabase
+      // Filhas (recebimentos parciais, tarifas): a FK é ON DELETE SET NULL, então
+      // elas não caem sozinhas. Guardamos os ids antes, porque depois do delete
+      // da mãe o vínculo vira NULL e não dá mais para achá-las.
+      const { data: children } = await supabase
         .from('financial_transactions')
-        .delete()
-        .eq('id', id);
+        .select('id')
+        .eq('parent_transaction_id', id);
 
-      if (error) throw error;
+      // A mãe primeiro, conferindo: RLS sem permissão (ou lançamento do PDV, que
+      // a política não deixa apagar por aqui) não dá erro, só apaga zero linhas.
+      // Se nada saiu, paramos antes de mexer em filhas e fatura.
+      // O vínculo com orçamento é desfeito pelo gatilho
+      // reset_quote_financial_link_on_transaction_delete no próprio delete.
+      assertRowsAffected(
+        await supabase
+          .from('financial_transactions')
+          .delete({ count: 'exact' })
+          .eq('id', id),
+        'delete',
+      );
+
+      const childIds = (children ?? []).map((child) => child.id);
+      if (childIds.length > 0) {
+        const { error: childError } = await supabase.from('financial_transactions').delete().in('id', childIds);
+        if (childError) throw childError;
+      }
+
+      if (billAdjustment) {
+        const { error: billError } = await supabase
+          .from('credit_card_bills')
+          .update({
+            status: billAdjustment.amountPaid > 0 ? 'partial' : 'open',
+            amount_paid: billAdjustment.amountPaid,
+            ...(billAdjustment.clearPaymentLink ? { payment_transaction_id: null } : {}),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', billAdjustment.id);
+        if (billError) throw billError;
+      }
     },
     onSuccess: async () => {
       await invalidateAll();
@@ -1008,14 +1068,9 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
           .single();
         if (childErr) throw childErr;
 
-        // 2) Atualiza apenas o due_date da mãe (trigger no banco cuida do amount_received e do is_paid).
-        if (cfg.newDueDate) {
-          const { error: dueErr } = await supabase
-            .from('financial_transactions')
-            .update({ due_date: cfg.newDueDate } as any)
-            .eq('id', cfg.id);
-          if (dueErr) throw dueErr;
-        }
+        // 2) O novo vencimento da mãe vai no FIM (depois da tarifa), conferido:
+        //    a RLS pode barrar o update sem erro, e o recebimento e a tarifa
+        //    não podem ficar pela metade por causa disso.
 
         // A "row de retorno" pra encadear a tarifa de máquina é a filha (vincula tarifa ao recebimento).
         dataRow = child;
@@ -1060,6 +1115,19 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
         if (feeErr) throw feeErr;
       }
 
+      // Recebimento parcial com novo vencimento: só o due_date da mãe (o gatilho
+      // no banco cuida do amount_received e do is_paid).
+      if (isPartial && cfg.newDueDate) {
+        assertRowsAffected(
+          await supabase
+            .from('financial_transactions')
+            .update({ due_date: cfg.newDueDate } as any, { count: 'exact' })
+            .eq('id', cfg.id),
+          'update',
+          'O recebimento parcial foi registrado, mas o novo vencimento não foi salvo: você não tem permissão para alterar esta conta. Atualize a tela e confira.',
+        );
+      }
+
       return dataRow;
     },
     onSuccess: async () => {
@@ -1067,6 +1135,9 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
       toast({ title: 'Recebimento confirmado!' });
     },
     onError: (error: Error, params: string | MarkAsPaidParams) => {
+      // Vencimento barrado depois do recebimento parcial gravado: a lista
+      // precisa mostrar o recebimento mesmo com o aviso de erro.
+      if (error instanceof NoRowsAffectedError) void invalidateAll();
       let description = getErrorMessage(error);
       if (typeof params !== 'string' && params.occurrenceAmount !== undefined) {
         const message = getRpcErrorMessage(error);

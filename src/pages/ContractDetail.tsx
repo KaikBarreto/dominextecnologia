@@ -142,6 +142,7 @@ import { MESSAGES } from '@/lib/i18n/messages';
 import { readPastedCents } from '@/lib/money-paste-mask';
 import { useServiceOrders } from '@/hooks/useServiceOrders';
 import { normalizeServiceOrderSchedulePlan } from '@/lib/serviceOrderSchedule';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 /** Parse a YYYY-MM-DD string as a local date (avoids UTC-offset shift) */
 function parseLocalDate(dateStr: string): Date {
@@ -446,10 +447,18 @@ export default function ContractDetail() {
     const prev = portalIsPublic;
     setPortalIsPublic(next); // otimista
     setUpdatingPortalVisibility(true);
-    const { error } = await supabase
-      .from('contracts')
-      .update({ portal_is_public: next } as any)
-      .eq('id', id);
+    let error: unknown = null;
+    try {
+      assertRowsAffected(
+        await supabase
+          .from('contracts')
+          .update({ portal_is_public: next } as any, { count: 'exact' })
+          .eq('id', id),
+        'update',
+      );
+    } catch (e) {
+      error = e;
+    }
     setUpdatingPortalVisibility(false);
     if (error) {
       setPortalIsPublic(prev); // rollback
@@ -493,12 +502,20 @@ export default function ContractDetail() {
     else next[key] = state;
     setPortalSections(next); // otimista
     setSavingPortalSections(true);
-    const { error } = await supabase
-      .from('contracts')
-      // `portal_sections` já está no types.ts (migration 20261021160000), então
-      // aqui não precisa do `as any` que o `portal_is_public` acima ainda usa.
-      .update({ portal_sections: next as unknown as Json })
-      .eq('id', id);
+    let error: unknown = null;
+    try {
+      assertRowsAffected(
+        await supabase
+          .from('contracts')
+          // `portal_sections` já está no types.ts (migration 20261021160000), então
+          // aqui não precisa do `as any` que o `portal_is_public` acima ainda usa.
+          .update({ portal_sections: next as unknown as Json }, { count: 'exact' })
+          .eq('id', id),
+        'update',
+      );
+    } catch (e) {
+      error = e;
+    }
     setSavingPortalSections(false);
     if (error) {
       setPortalSections(prev); // rollback
@@ -1433,7 +1450,10 @@ export default function ContractDetail() {
     if (!contract || !id) return;
     const newValue = !(contract as any).show_billing_in_schedule;
     try {
-      await supabase.from('contracts').update({ show_billing_in_schedule: newValue } as any).eq('id', id);
+      assertRowsAffected(
+        await supabase.from('contracts').update({ show_billing_in_schedule: newValue } as any, { count: 'exact' }).eq('id', id),
+        'update',
+      );
       queryClient.invalidateQueries({ queryKey: ['contract-detail'] });
       queryClient.invalidateQueries({ queryKey: ['contracts-billing-hidden'] });
       toast({ title: newValue ? td.toasts.billingVisible : td.toasts.billingHidden });

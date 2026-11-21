@@ -27,6 +27,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -113,15 +114,17 @@ export function useTenantTasks() {
       const { data: authData } = await supabase.auth.getUser();
       const completed_by = authData.user?.id ?? null;
 
-      const { error } = await supabase
-        .from('tenant_tasks')
-        .update({
-          status: 'concluida',
-          completed_at: new Date().toISOString(),
-          completed_by,
-        })
-        .eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('tenant_tasks')
+          .update({
+            status: 'concluida',
+            completed_at: new Date().toISOString(),
+            completed_by,
+          }, { count: 'exact' })
+          .eq('id', id),
+        'update',
+      );
     },
     onSuccess: () => {
       invalidate();
@@ -137,8 +140,10 @@ export function useTenantTasks() {
 
   const deleteTask = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('tenant_tasks').delete().eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('tenant_tasks').delete({ count: 'exact' }).eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => {
       invalidate();

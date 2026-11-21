@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Database } from '@/integrations/supabase/types';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 /**
  * Fronteira Supabase dos formulários públicos de captação de cliente
@@ -140,11 +141,13 @@ export function useLeadCaptureForms() {
 
   const toggleActive = useMutation({
     mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
-      const { error } = await supabase
-        .from('lead_capture_forms')
-        .update({ is_active, updated_at: new Date().toISOString() } as any)
-        .eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('lead_capture_forms')
+          .update({ is_active, updated_at: new Date().toISOString() } as any, { count: 'exact' })
+          .eq('id', id),
+        'update',
+      );
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['lead-capture-forms'] });
@@ -157,8 +160,10 @@ export function useLeadCaptureForms() {
 
   const deleteForm = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('lead_capture_forms').delete().eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('lead_capture_forms').delete({ count: 'exact' }).eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lead-capture-forms'] });

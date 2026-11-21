@@ -18,6 +18,7 @@ import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { UserFormDialog } from '@/components/users/UserFormDialog';
 import { UserLimitModal } from '@/components/UserLimitModal';
 import { useEmployees } from '@/hooks/useEmployees';
@@ -162,21 +163,30 @@ export default function Users() {
       const profileUpdate: any = { full_name: data.full_name, phone: data.phone || null };
       if (avatarUrl !== undefined) profileUpdate.avatar_url = avatarUrl;
 
-      await supabase
-        .from('profiles')
-        .update(profileUpdate)
-        .eq('user_id', editingUser.user_id);
+      // Escrita principal da edição: conferida, porque a permissão pode barrar
+      // o UPDATE sem erro (0 linhas) e a tela diria "atualizado" à toa.
+      assertRowsAffected(
+        await supabase
+          .from('profiles')
+          .update(profileUpdate, { count: 'exact' })
+          .eq('user_id', editingUser.user_id),
+        'update',
+      );
 
       // Handle role: set 'tecnico' or remove role
       if (data.role === 'tecnico') {
         await updateUserRole.mutateAsync({ userId: editingUser.user_id, role: 'tecnico' });
       } else if (editingUser.role === 'tecnico' && !data.role) {
         // Remove tecnico role
-        await supabase
-          .from('user_roles')
-          .delete()
-          .eq('user_id', editingUser.user_id)
-          .eq('role', 'tecnico');
+        // O papel existe (editingUser.role === 'tecnico'): 0 linhas = barrado.
+        assertRowsAffected(
+          await supabase
+            .from('user_roles')
+            .delete({ count: 'exact' })
+            .eq('user_id', editingUser.user_id)
+            .eq('role', 'tecnico'),
+          'delete',
+        );
       }
 
       await upsertPermissions.mutateAsync({
@@ -196,7 +206,10 @@ export default function Users() {
         if (finalAvatarUrl) {
           empUpdate.photo_url = finalAvatarUrl;
         }
-        await supabase.from('employees').update(empUpdate).eq('id', data.employee_id);
+        assertRowsAffected(
+          await supabase.from('employees').update(empUpdate, { count: 'exact' }).eq('id', data.employee_id),
+          'update',
+        );
       }
 
       // Update email if changed

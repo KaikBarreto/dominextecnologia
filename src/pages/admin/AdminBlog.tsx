@@ -3,6 +3,7 @@ import { typography } from "@/lib/typography";
 import { fuzzyIncludes } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { assertRowsAffected } from "@/lib/supabaseMutation";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -130,8 +131,7 @@ function PostsTab() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("blog_posts").delete().eq("id", id);
-      if (error) throw error;
+      assertRowsAffected(await supabase.from("blog_posts").delete({ count: "exact" }).eq("id", id), "delete");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["blog-posts-admin"] });
@@ -420,8 +420,7 @@ function CommentsTab() {
 
   const approveMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("blog_post_comments").update({ is_approved: true }).eq("id", id);
-      if (error) throw error;
+      assertRowsAffected(await supabase.from("blog_post_comments").update({ is_approved: true }, { count: "exact" }).eq("id", id), "update");
     },
     onSuccess: () => { invalidate(); toast.success("Comentario aprovado"); },
     onError: () => toast.error("Erro ao aprovar comentario"),
@@ -429,8 +428,7 @@ function CommentsTab() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("blog_post_comments").delete().eq("id", id);
-      if (error) throw error;
+      assertRowsAffected(await supabase.from("blog_post_comments").delete({ count: "exact" }).eq("id", id), "delete");
     },
     onSuccess: () => { invalidate(); toast.success("Comentario excluido"); },
     onError: () => toast.error("Erro ao excluir comentario"),

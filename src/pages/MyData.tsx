@@ -4,6 +4,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -56,10 +57,13 @@ export default function MyData() {
     if (!user) return;
     setIsRequesting(true);
     try {
-      await supabase
-        .from('profiles')
-        .update({ deletion_requested_at: new Date().toISOString() } as any)
-        .eq('user_id', user.id);
+      assertRowsAffected(
+        await supabase
+          .from('profiles')
+          .update({ deletion_requested_at: new Date().toISOString() } as any, { count: 'exact' })
+          .eq('user_id', user.id),
+        'update',
+      );
 
       setDeletionRequested(true);
       toast({

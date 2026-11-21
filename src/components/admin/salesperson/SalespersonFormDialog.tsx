@@ -11,6 +11,7 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAvatar';
 import { useSaveSalesperson, type Salesperson, type SalespersonPersonType } from '@/hooks/useSalespersonData';
 import { supabase } from '@/integrations/supabase/client';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { processImageFile } from '@/utils/imageConvert';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessages';
@@ -167,11 +168,15 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
 
     const { data: { publicUrl } } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path);
 
-    const { error: updateError } = await supabase
-      .from('salespeople')
-      .update({ photo_url: publicUrl })
-      .eq('id', salespersonId);
-    if (updateError) {
+    try {
+      assertRowsAffected(
+        await supabase
+          .from('salespeople')
+          .update({ photo_url: publicUrl }, { count: 'exact' })
+          .eq('id', salespersonId),
+        'update',
+      );
+    } catch (updateError) {
       // Rollback do storage pra não deixar arquivo órfão
       await supabase.storage.from(AVATAR_BUCKET).remove([path]).catch(() => {});
       throw updateError;
@@ -228,11 +233,13 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
     setUploading(true);
     try {
       const oldPath = extractStoragePath(photoUrl);
-      const { error } = await supabase
-        .from('salespeople')
-        .update({ photo_url: null })
-        .eq('id', editingSalesperson.id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('salespeople')
+          .update({ photo_url: null }, { count: 'exact' })
+          .eq('id', editingSalesperson.id),
+        'update',
+      );
       if (oldPath) {
         await supabase.storage.from(AVATAR_BUCKET).remove([oldPath]).catch(() => {});
       }

@@ -1,3 +1,4 @@
+import { NoRowsAffectedError } from '@/lib/supabaseMutation';
 const DEFAULT_MESSAGE = 'Ocorreu um erro inesperado. Tente novamente.';
 
 type ErrorLike = {
@@ -458,6 +459,10 @@ const CONSTRAINT_MESSAGES: Array<{ constraint: string; text: string }> = [
 ];
 
 export function getErrorMessage(error: unknown, fallback = DEFAULT_MESSAGE) {
+  // Operação que não afetou linha (RLS barrou em silêncio): a mensagem já é
+  // PT-BR e orienta o usuário, então passa inteira.
+  if (error instanceof NoRowsAffectedError) return error.message;
+
   // 0) Constraint nomeada: mais específica que o SQLSTATE, então vem antes.
   if (error && typeof error === 'object') {
     const e = error as ErrorLike;

@@ -9,6 +9,7 @@ import {
   isResetRuntimeError,
 } from '@/utils/errorMessages';
 import { useStockManagement } from '@/hooks/useStocks';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 export type InventoryItem = Tables<'inventory'>;
 export type InventoryItemInsert = TablesInsert<'inventory'>;
@@ -369,11 +370,13 @@ export function useInventory() {
 
       // 1) Campos não-quantidade vão no update direto (se houver algum).
       if (Object.keys(nonQuantity).length > 0) {
-        const { error } = await supabase
-          .from('inventory')
-          .update(nonQuantity)
-          .eq('id', id);
-        if (error) throw error;
+        assertRowsAffected(
+          await supabase
+            .from('inventory')
+            .update(nonQuantity, { count: 'exact' })
+            .eq('id', id),
+          'update',
+        );
       }
 
       // 2) Se a quantidade mudou, registra um movimento de ajuste (delta

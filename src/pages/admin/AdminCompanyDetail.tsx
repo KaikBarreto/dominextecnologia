@@ -3,6 +3,8 @@ import { CompanyBillingStatus } from "@/components/admin/CompanyBillingStatus";
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
+import { deleteCompanyAsAdmin } from '@/lib/adminDeleteCompany';
 import { ArrowLeft, Edit, Trash2, AlertTriangle, Loader2, Pencil, X, Check, XCircle, Package, Users, RefreshCw, Handshake, Settings2 } from 'lucide-react';
 import { SelfServiceBadge } from '@/components/admin/company-lead/SelfServiceBadge';
 import { LeadWhatsAppButton } from '@/components/admin/company-lead/LeadWhatsAppButton';
@@ -197,13 +199,15 @@ export default function AdminCompanyDetail() {
   const normalMonthlyValue = Number(company?.subscription_value) || 0;
   const promotionalMonthlyValue = calculatePromotionalMonthlyValue(normalMonthlyValue, activePromotions);
 
+  // Mesma RPC da lista (admin_delete_company): confere permissão no servidor e
+  // apaga todo o tenant em transação. Nunca DELETE direto em `companies`.
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('companies').delete().eq('id', id!);
-      if (error) throw error;
+      await deleteCompanyAsAdmin(id!);
     },
     onSuccess: () => {
       toast({ title: 'Empresa excluída' });
+      queryClient.invalidateQueries({ queryKey: ['admin-companies'] });
       navigate('/admin/empresas');
     },
     onError: () => toast({ variant: 'destructive', title: 'Erro ao excluir' }),
@@ -213,8 +217,10 @@ export default function AdminCompanyDetail() {
     if (!id) return;
     setIsSavingNotes(true);
     try {
-      const { error } = await supabase.from('companies').update({ notes: notesValue || null }).eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('companies').update({ notes: notesValue || null }, { count: 'exact' }).eq('id', id),
+        'update',
+      );
       toast({ title: 'Observações salvas!' });
       setIsEditingNotes(false);
       refetch();
