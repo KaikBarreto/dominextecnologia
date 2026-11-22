@@ -19,6 +19,8 @@ interface EmployeesListViewProps {
   onMovement: (employee: Employee, type: 'vale' | 'bonus' | 'falta') => void;
   onPayment: (employee: Employee) => void;
   onExtract: (employee: Employee) => void;
+  /** Permissão de RH. Sem ela: sem contato, salário, saldo e ações de RH. */
+  canManage: boolean;
 }
 
 /**
@@ -40,6 +42,7 @@ export function EmployeesListView({
   onMovement,
   onPayment,
   onExtract,
+  canManage,
 }: EmployeesListViewProps) {
   const { toast } = useToast();
   const { locale, currency } = useAppLocaleContext();
@@ -64,9 +67,13 @@ export function EmployeesListView({
             <TableRow>
               <TableHead className="text-xs uppercase tracking-wider">{t.table.columnEmployee}</TableHead>
               <TableHead className="hidden md:table-cell text-xs uppercase tracking-wider">{t.table.columnPosition}</TableHead>
-              <TableHead className="hidden lg:table-cell text-xs uppercase tracking-wider">{t.table.columnContact}</TableHead>
-              <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider text-right">{t.table.columnSalary}</TableHead>
-              <TableHead className="text-xs uppercase tracking-wider text-right">{t.table.columnBalance}</TableHead>
+              {canManage && (
+                <>
+                  <TableHead className="hidden lg:table-cell text-xs uppercase tracking-wider">{t.table.columnContact}</TableHead>
+                  <TableHead className="hidden sm:table-cell text-xs uppercase tracking-wider text-right">{t.table.columnSalary}</TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-right">{t.table.columnBalance}</TableHead>
+                </>
+              )}
               <TableHead className="w-[60px] text-xs uppercase tracking-wider text-right">{t.table.columnActions}</TableHead>
             </TableRow>
           </TableHeader>
@@ -80,8 +87,8 @@ export function EmployeesListView({
               return (
                 <TableRow
                   key={emp.id}
-                  className="cursor-pointer"
-                  onClick={() => onExtract(emp)}
+                  className={canManage ? 'cursor-pointer' : undefined}
+                  onClick={canManage ? () => onExtract(emp) : undefined}
                 >
                   {/* Funcionário: avatar + nome */}
                   <TableCell>
@@ -104,6 +111,8 @@ export function EmployeesListView({
                     {emp.position || '—'}
                   </TableCell>
 
+                  {canManage && (
+                  <>
                   {/* Contato */}
                   <TableCell className="hidden lg:table-cell">
                     {emp.phone ? (
@@ -118,7 +127,7 @@ export function EmployeesListView({
 
                   {/* Salário */}
                   <TableCell className="hidden sm:table-cell text-right font-medium">
-                    {fmt(emp.salary || 0)}
+                    {fmt(emp.salary ?? 0)}
                   </TableCell>
 
                   {/* Saldo — selo de status saturado + texto branco */}
@@ -132,12 +141,18 @@ export function EmployeesListView({
                       {fmt(saldo)}
                     </span>
                   </TableCell>
+                  </>
+                  )}
 
                   {/* Ações */}
                   <TableCell className="text-right">
                     <div onClick={(e) => e.stopPropagation()}>
                       <RowActionsMenu
-                        actions={[
+                        actions={!canManage ? (hasPontoLink ? [{
+                          label: t.actions.timeclockLink,
+                          icon: Clock,
+                          onClick: () => copyPontoLink(emp.ponto_slug!),
+                        }] : []) : [
                           {
                             label: t.actions.extract,
                             icon: FileText,

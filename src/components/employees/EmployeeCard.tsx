@@ -20,10 +20,15 @@ interface EmployeeCardProps {
   onMovement: (type: 'vale' | 'bonus' | 'falta') => void;
   onPayment: () => void;
   onExtract: () => void;
-
+  /**
+   * Usuário tem permissão de RH (`useCanManageEmployees`)? Sem ela o card
+   * mostra só o cadastro básico: sem salário, saldo, vale/bônus/falta,
+   * pagamento, extrato, editar nem arquivar (o banco recusaria todos).
+   */
+  canManage: boolean;
 }
 
-export function EmployeeCard({ employee, balance, onEdit, onArchive, onArchiveWithUser, onMovement, onPayment, onExtract }: EmployeeCardProps) {
+export function EmployeeCard({ employee, balance, onEdit, onArchive, onArchiveWithUser, onMovement, onPayment, onExtract, canManage }: EmployeeCardProps) {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const { locale, currency, timezone } = useAppLocaleContext();
@@ -56,8 +61,11 @@ export function EmployeeCard({ employee, balance, onEdit, onArchive, onArchiveWi
           <div className="min-w-0 flex-1">
             <h3 className="font-semibold text-sm truncate leading-tight">{employee.name}</h3>
             {employee.position && <p className="text-xs text-muted-foreground truncate">{employee.position}</p>}
-            <p className="text-xs font-semibold mt-0.5">{fmt(employee.salary)}</p>
+            {canManage && employee.salary != null && (
+              <p className="text-xs font-semibold mt-0.5">{fmt(employee.salary)}</p>
+            )}
           </div>
+          {canManage && (
           <div className="flex gap-0.5 shrink-0">
             <Button
               variant="ghost"
@@ -105,9 +113,11 @@ export function EmployeeCard({ employee, balance, onEdit, onArchive, onArchiveWi
               </AlertDialogContent>
             </AlertDialog>
           </div>
+          )}
         </div>
 
-        {/* Bloco financeiro: vales / bônus / faltas + saldo atual */}
+        {/* Bloco financeiro: vales / bônus / faltas + saldo atual (só RH: o saldo parte do salário) */}
+        {canManage && (
         <div className="rounded-md border bg-muted/30 px-2.5 pt-3 pb-2.5">
           <div className="grid grid-cols-3 gap-1.5 text-[11px]">
             <div className="flex flex-col">
@@ -136,6 +146,7 @@ export function EmployeeCard({ employee, balance, onEdit, onArchive, onArchiveWi
             </div>
           </div>
         </div>
+        )}
 
         {/* Contato compacto */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
@@ -163,7 +174,9 @@ export function EmployeeCard({ employee, balance, onEdit, onArchive, onArchiveWi
           )}
         </div>
 
-        {/* Ações: grid 2-col */}
+        {/* Ações: grid 2-col (só RH) */}
+        {canManage && (
+        <>
         <div className="grid grid-cols-2 gap-1.5 pt-0.5 border-t mt-0.5">
           <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5 hover:bg-red-600 hover:text-white hover:border-red-600" onClick={() => onMovement('vale')}>
             <Banknote className="h-3.5 w-3.5" /> {t.actions.advance}
@@ -186,6 +199,8 @@ export function EmployeeCard({ employee, balance, onEdit, onArchive, onArchiveWi
         >
           <FileText className="h-3.5 w-3.5" /> {t.card.viewExtract}
         </Button>
+        </>
+        )}
       </div>
     </Card>
   );

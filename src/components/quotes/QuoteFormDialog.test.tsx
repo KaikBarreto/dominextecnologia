@@ -92,6 +92,9 @@ vi.mock('@/hooks/useQuoteNumberReservation', () => ({
 vi.mock('@/contexts/AuthContext', () => ({
   useAuth: () => ({ profile: testState.profile, user: testState.userId ? { id: testState.userId } : null }),
 }));
+// A calculadora de mão de obra (montada pelo editor de custos) pergunta se o
+// usuário é RH para gravar custo no cadastro. Não é o alvo deste teste.
+vi.mock('@/hooks/useCanManageEmployees', () => ({ useCanManageEmployees: () => false }));
 vi.mock('@/hooks/useServiceCostBreakdown', () => ({
   fetchServiceCostBreakdown: testState.fetchBreakdown,
 }));

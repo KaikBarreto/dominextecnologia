@@ -31,6 +31,28 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.41',
+    date: '22 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ranking de vendas da Loja',
+        category: 'recurso',
+        description: 'Os relatórios da Loja ganharam a aba Vendas. Você pode analisar o período por produto, cliente, vendedor ou horário e acompanhar quantidade, faturamento, custo e margem. Quem tem acesso restrito a um estoque vê somente as vendas desse estoque.',
+      },
+      {
+        title: 'Resumo da Loja respeita o estoque permitido',
+        category: 'correcao',
+        description: 'Os totais e as linhas do Resumo agora usam o mesmo acesso por estoque. Também corrigimos a diferença de caixa: falta continua como saída e sobra não é mais contada como receita de venda.',
+      },
+      {
+        title: 'Dados de RH protegidos nas telas e exportações',
+        category: 'seguranca',
+        description: 'Salário, CPF, PIX, endereço e outros dados pessoais dos funcionários só aparecem nas telas e na exportação para quem tem permissão de RH. Quem prepara orçamento continua vendo apenas o custo por hora necessário para calcular a mão de obra.',
+      },
+    ],
+  },
+  {
     version: '1.41.40',
     date: '21 de novembro de 2026',
     type: 'patch',

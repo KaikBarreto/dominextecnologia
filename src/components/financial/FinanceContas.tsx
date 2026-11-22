@@ -76,6 +76,7 @@ import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { EmployeePaymentModal, PaymentPayload } from '@/components/employees/EmployeePaymentModal';
 import { useEmployeeMovements } from '@/hooks/useEmployeeMovements';
 import { calculateEmployeeBalance } from '@/utils/employeeCalculations';
+import { useEmployeeHrDetails } from '@/hooks/useEmployees';
 import { Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -148,7 +149,7 @@ function filterIconNode(color: string, Icon: LucideIcon | null) {
 type FilterStatus = 'pendentes' | 'vencidas' | 'pagas' | 'todas';
 type AccountsView = 'list' | 'calendar';
 
-type PayrollTxn = FinancialTransaction & { customer?: any; supplier?: any; employee?: { id: string; name: string; salary: number; photo_url: string | null } };
+type PayrollTxn = FinancialTransaction & { customer?: any; supplier?: any; employee?: { id: string; name: string; photo_url: string | null } };
 
 interface FinanceContasProps {
   /** Transações já filtradas pelo período selecionado no parent. */
@@ -278,10 +279,20 @@ export function FinanceContas({
   // v1.9.15 — refactor cartão/faturas.
   const { bills: allBills } = useAllCreditCardBills();
   const { movements: payrollEmpMovements } = useEmployeeMovements(payrollTxn?.employee?.id);
+  // Salário-base da folha: só RH lê o cadastro (get_employees_hr). Para quem
+  // paga a folha sem ser RH, a base é o valor do próprio lançamento, que a
+  // pessoa já vê na lista (o banco gera esse valor a partir do salário).
+  const {
+    employee: payrollEmployeeHr,
+    isLoading: payrollEmployeeHrLoading,
+  } = useEmployeeHrDetails(payrollTxn?.employee?.id);
+  const payrollSalary = payrollTxn
+    ? (payrollEmployeeHr?.salary ?? Number(payrollTxn.amount))
+    : 0;
   const payrollBalance = useMemo(() => {
     if (!payrollTxn?.employee) return calculateEmployeeBalance([], 0);
-    return calculateEmployeeBalance(payrollEmpMovements ?? [], payrollTxn.employee.salary);
-  }, [payrollEmpMovements, payrollTxn?.employee]);
+    return calculateEmployeeBalance(payrollEmpMovements ?? [], payrollSalary);
+  }, [payrollEmpMovements, payrollTxn?.employee, payrollSalary]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const financialTransactionsFetching = useIsFetching({ queryKey: ['financial-transactions'] });
@@ -324,7 +335,7 @@ export function FinanceContas({
 
   const handleConfirmPayrollPayment = async (payload: PaymentPayload) => {
     if (!payrollTxn) return;
-    const subtotal = (payrollTxn.employee?.salary ?? Number(payrollTxn.amount))
+    const subtotal = payrollSalary
       + payrollBalance.totalBonus
       - payrollBalance.totalFaltas;
     const netAmount = subtotal - payload.valeDiscount;
@@ -1979,12 +1990,12 @@ export function FinanceContas({
         </AlertDialogContent>
       </AlertDialog>
 
-      {payrollTxn?.employee && (
+      {payrollTxn?.employee && !payrollEmployeeHrLoading && (
         <EmployeePaymentModal
           open={!!payrollTxn}
           onOpenChange={(v) => { if (!v) setPayrollTxn(null); }}
           employeeName={payrollTxn.employee.name}
-          salary={payrollTxn.employee.salary}
+          salary={payrollSalary}
           balance={payrollBalance}
           onSubmit={handleConfirmPayrollPayment}
           financialTransactionId={payrollTxn.id}

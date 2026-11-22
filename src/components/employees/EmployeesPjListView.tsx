@@ -17,6 +17,11 @@ interface EmployeesPjListViewProps {
   onArchive: (employee: Employee) => void;
   onPayment: (employee: Employee) => void;
   onExtract: (employee: Employee) => void;
+  /**
+   * Permissão de RH. Sem ela a lista mostra só nome e vigência: CNPJ, valor do
+   * contrato, extrato, pagamento, editar e arquivar ficam fora.
+   */
+  canManage: boolean;
 }
 
 /** Badge de vigência saturado + texto branco (régua de UI: nunca outline dessaturado). */
@@ -44,6 +49,7 @@ export function EmployeesPjListView({
   onArchive,
   onPayment,
   onExtract,
+  canManage,
 }: EmployeesPjListViewProps) {
   const { locale, currency, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.employees;
@@ -56,17 +62,21 @@ export function EmployeesPjListView({
           <TableHeader>
             <TableRow>
               <TableHead className="text-xs uppercase tracking-wider">{t.pjTab.table.columnProvider}</TableHead>
-              <TableHead className="hidden md:table-cell text-xs uppercase tracking-wider">{t.pjTab.table.columnCnpj}</TableHead>
-              <TableHead className="hidden lg:table-cell text-xs uppercase tracking-wider text-right">{t.pjTab.table.columnValue}</TableHead>
+              {canManage && (
+                <>
+                  <TableHead className="hidden md:table-cell text-xs uppercase tracking-wider">{t.pjTab.table.columnCnpj}</TableHead>
+                  <TableHead className="hidden lg:table-cell text-xs uppercase tracking-wider text-right">{t.pjTab.table.columnValue}</TableHead>
+                </>
+              )}
               <TableHead className="text-xs uppercase tracking-wider">{t.pjTab.table.columnVigencia}</TableHead>
-              <TableHead className="w-[60px] text-xs uppercase tracking-wider text-right">{t.pjTab.table.columnActions}</TableHead>
+              {canManage && <TableHead className="w-[60px] text-xs uppercase tracking-wider text-right">{t.pjTab.table.columnActions}</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {employees.map((emp) => {
               const contract = activeContractsMap.get(emp.id);
               return (
-                <TableRow key={emp.id} className="cursor-pointer" onClick={() => onExtract(emp)}>
+                <TableRow key={emp.id} className={canManage ? 'cursor-pointer' : undefined} onClick={canManage ? () => onExtract(emp) : undefined}>
                   <TableCell>
                     <div className="flex items-center gap-3 min-w-0">
                       <EmployeePhotoAvatar name={emp.name} src={emp.photo_url} className="h-9 w-9" />
@@ -79,6 +89,8 @@ export function EmployeesPjListView({
                     </div>
                   </TableCell>
 
+                  {canManage && (
+                  <>
                   <TableCell className="hidden md:table-cell text-muted-foreground">
                     {emp.pj_cnpj || '—'}
                   </TableCell>
@@ -93,6 +105,8 @@ export function EmployeesPjListView({
                       <span className="text-muted-foreground">{t.pjTab.noContract}</span>
                     )}
                   </TableCell>
+                  </>
+                  )}
 
                   <TableCell>
                     {contract ? (
@@ -102,6 +116,7 @@ export function EmployeesPjListView({
                     )}
                   </TableCell>
 
+                  {canManage && (
                   <TableCell className="text-right">
                     <div onClick={(e) => e.stopPropagation()}>
                       <RowActionsMenu
@@ -114,6 +129,7 @@ export function EmployeesPjListView({
                       />
                     </div>
                   </TableCell>
+                  )}
                 </TableRow>
               );
             })}

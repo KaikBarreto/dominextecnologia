@@ -357,12 +357,17 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
       const data = await fetchAllPaginated<FinancialTransaction & { customer: any; supplier: any; account: any; employee: any }>(
         () => supabase
           .from('financial_transactions')
+          // 🚨 O embed de `employees` só pode pedir colunas não sensíveis
+          // (ver EMPLOYEE_PUBLIC_COLUMNS em useEmployees). Uma coluna de RH
+          // aqui (ex.: salary) derruba a LISTA INTEIRA do financeiro para todo
+          // mundo depois da migration 20261122090000. O salário da folha vem
+          // de useEmployeeHrDetails, só para RH.
           .select(`
             *,
             customer:customers(id, name, document),
             supplier:suppliers(id, name, cpf_cnpj),
             account:financial_accounts(id, name, type, color),
-            employee:employees(id, name, salary, photo_url)
+            employee:employees(id, name, photo_url)
           `)
           // 🚨 NÃO volte a filtrar `parent_transaction_id` AQUI.
           // A query traz TUDO (mães e filhas). Esconder a filha é regra de

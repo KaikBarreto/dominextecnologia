@@ -473,6 +473,113 @@ export function usePdvHistoryExport(params: HistoryExportParams & { enabled?: bo
     (isCurrent) => fetchPdvHistoryExport(params, isCurrent));
 }
 
+export type PdvSalesDimension = 'product' | 'customer' | 'salesperson' | 'hour';
+
+export interface PdvSalesRow {
+  key: string | null;
+  label: string;
+  detail: string | null;
+  ordersCount: number;
+  quantity: number;
+  revenue: number;
+  cmv: number | null;
+  margin: number | null;
+  share: number;
+}
+
+export interface PdvSalesReport {
+  dimension: PdvSalesDimension;
+  from: string;
+  to: string;
+  totals: { ordersCount: number; quantity: number; revenue: number; cmv: number | null; margin: number | null };
+  totalCount: number;
+  limit: number;
+  offset: number;
+  hasMore: boolean;
+  rows: PdvSalesRow[];
+}
+
+const SALES_DIMENSIONS: readonly PdvSalesDimension[] = ['product', 'customer', 'salesperson', 'hour'];
+
+/** "O que eu vendi": ranking por produto, cliente, vendedor ou horário. Fail-closed como as demais projeções. */
+export function projectPdvSalesReport(payload: unknown): PdvSalesReport {
+  const root = recordOf(payload);
+  const dimension = root.dimension as PdvSalesDimension;
+  if (!SALES_DIMENSIONS.includes(dimension) || !Array.isArray(root.rows) || typeof root.has_more !== 'boolean') {
+    throw new PdvReportContractError();
+  }
+  const totals = recordOf(root.totals);
+  const page = pageMeta(root, root.rows.length);
+  return {
+    dimension,
+    from: civilDate(root.from),
+    to: civilDate(root.to),
+    totals: {
+      ordersCount: integer(totals.orders_count),
+      quantity: finiteNumber(totals.quantity),
+      revenue: finiteNumber(totals.revenue),
+      cmv: nullableFiniteNumber(totals.cmv),
+      margin: nullableFiniteNumber(totals.margin),
+    },
+    ...page,
+    rows: root.rows.map((raw): PdvSalesRow => {
+      const row = recordOf(raw);
+      const label = textOf(row.label);
+      if (!label) throw new PdvReportContractError();
+      if (row.key !== null && typeof row.key !== 'string') throw new PdvReportContractError();
+      if (row.detail !== undefined && row.detail !== null && typeof row.detail !== 'string') throw new PdvReportContractError();
+      const share = finiteNumber(row.share);
+      if (share < 0 || share > 1.0001) throw new PdvReportContractError();
+      return {
+        key: row.key as string | null,
+        label,
+        detail: textOf(row.detail),
+        ordersCount: integer(row.orders_count),
+        quantity: finiteNumber(row.quantity),
+        revenue: finiteNumber(row.revenue),
+        cmv: nullableFiniteNumber(row.cmv),
+        margin: nullableFiniteNumber(row.margin),
+        share,
+      };
+    }),
+  };
+}
+
+type SalesParams = { dimension: PdvSalesDimension; from: string; to: string };
+
+export function usePdvSalesReport(params: SalesParams & { limit?: number; offset?: number; enabled?: boolean }) {
+  const { dimension, from, to, limit = 25, offset = 0, enabled = true } = params;
+  const scope = usePdvAuthorizedQueryScope();
+  return useQuery({
+    queryKey: [...PDV_REPORTS_QUERY_ROOT, ...scope.key, 'sales', dimension, from, to, limit, offset],
+    queryFn: async () => {
+      const report = projectPdvSalesReport(await call('pdv_sales_report_v1', {
+        p_dimension: dimension, p_from: from, p_to: to, p_limit: limit, p_offset: offset,
+      }));
+      if (report.dimension !== dimension || report.from !== from || report.to !== to) throw new PdvReportContractError();
+      return report;
+    },
+    enabled: enabled && scope.ready && Boolean(from && to),
+    staleTime: 30_000,
+  });
+}
+
+export function fetchPdvSalesExport(params: SalesParams, isCurrent: () => boolean) {
+  return collectPdvExport(async (offset) => {
+    const page = projectPdvSalesReport(await call('pdv_sales_report_v1', {
+      p_dimension: params.dimension, p_from: params.from, p_to: params.to,
+      p_limit: PDV_EXPORT_PAGE_SIZE, p_offset: offset,
+    }));
+    if (page.dimension !== params.dimension || page.from !== params.from || page.to !== params.to) throw new PdvReportContractError();
+    return { ...page, entries: page.rows, summary: JSON.stringify([page.totalCount, page.totals]) };
+  }, (row) => `${params.dimension}:${row.key ?? 'sem-chave'}`, isCurrent);
+}
+
+export function usePdvSalesExport(params: SalesParams & { enabled?: boolean }) {
+  return usePdvScopedExport(JSON.stringify(['sales', params.dimension, params.from, params.to]), params.enabled !== false,
+    (isCurrent) => fetchPdvSalesExport(params, isCurrent));
+}
+
 export function usePdvGlobalHistory(params: {
   from: string;
   to: string;

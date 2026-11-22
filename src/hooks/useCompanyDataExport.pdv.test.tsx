@@ -65,6 +65,10 @@ vi.mock('@/hooks/useCompanySettings', () => ({
   useCompanySettings: () => ({ settings: { name: 'Empresa Teste' } }),
 }));
 
+// Aba Funcionários sem permissão de RH: lê só as colunas não sensíveis
+// (o caso RH tem prova própria em useCompanyDataExport.employees.test.tsx).
+vi.mock('@/hooks/useCanManageEmployees', () => ({ useCanManageEmployees: () => false }));
+
 vi.mock('@/hooks/useCompanyModules', () => ({
   useCompanyModules: () => ({
     hasModule: (code: string) => (code === 'pdv' ? state.hasPdv : true),

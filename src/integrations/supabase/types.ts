@@ -20105,6 +20105,20 @@ export type Database = {
         Args: { p_employee_id: string }
         Returns: Json
       }
+      get_employee_hourly_costs: {
+        Args: { p_ids?: string[] }
+        Returns: { employee_id: string; hourly_cost: number }[]
+      }
+      get_employees_hr: {
+        Args: { p_ids?: string[] }
+        Returns: Database["public"]["Tables"]["employees"]["Row"][]
+        SetofOptions: {
+          from: "*"
+          to: "employees"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_face_enrollment_context: {
         Args: { p_token_hash: string }
         Returns: Json

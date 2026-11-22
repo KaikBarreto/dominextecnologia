@@ -14,6 +14,8 @@ import { cn } from '@/lib/utils';
 import { MonthlyCostCalculatorModal, MonthlyCostBreakdown } from './MonthlyCostCalculatorModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmployeeWorkHours } from '@/hooks/useEmployeeWorkHours';
+import { useEmployeeHourlyCosts, monthlyCostFromHourly } from '@/hooks/useEmployeeHourlyCosts';
+import { useCanManageEmployees } from '@/hooks/useCanManageEmployees';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney, getCurrencySymbol } from '@/lib/format';
@@ -24,7 +26,15 @@ import { OverlayNestingProvider } from '@/contexts/OverlayCoordinatorContext';
 interface Worker {
   id: string;
   name: string;
+  /** Custo mensal digitado (ou vindo do sub-cálculo). Ignorado enquanto `hourlyCost` vale. */
   salary: number;
+  /**
+   * Custo-hora do cadastro do funcionário (RPC get_employee_hourly_costs).
+   * Enquanto não for null, o custo mensal exibido e usado é
+   * `monthlyCostFromHourly(hourlyCost, horasDaEmpresa)`. Digitar no campo ou
+   * aplicar o sub-cálculo zera isto e volta para `salary`.
+   */
+  hourlyCost: number | null;
   hours: number;
   hoursEdited: boolean;
   isFixedCost: boolean;
@@ -47,6 +57,7 @@ const makeWorker = (defaultHours: number): Worker => ({
   id: String(nextId++),
   name: '',
   salary: 0,
+  hourlyCost: null,
   hours: defaultHours,
   hoursEdited: false,
   isFixedCost: false,
@@ -62,12 +73,15 @@ function EmployeeCombobox({
 }: {
   value: string;
   employeeId: string | null;
-  onChange: (name: string, employeeId: string | null, monthlyCost: number, breakdown: MonthlyCostBreakdown | null) => void;
+  onChange: (name: string, employeeId: string | null, hourlyCost: number | null, breakdown: MonthlyCostBreakdown | null) => void;
 }) {
   const { locale, currency } = useAppLocaleContext();
   const t = MESSAGES[locale].app.crm.costModals;
   const fmt = (v: number) => formatMoney(v, currency, locale);
   const { employees } = useEmployees();
+  // Custo-hora vem do banco para qualquer membro; salário/custo mensal nunca
+  // são lidos aqui (são dados de RH).
+  const { hourlyCosts } = useEmployeeHourlyCosts();
   const [open, setOpen] = useState(false);
   const activeEmployees = useMemo(
     () => (employees ?? []).filter(e => e.is_active),
@@ -80,7 +94,7 @@ function EmployeeCombobox({
         <div className="relative">
           <Input
             value={value}
-            onChange={e => onChange(e.target.value, null, 0, null)}
+            onChange={e => onChange(e.target.value, null, null, null)}
             placeholder={t.laborEmployeePlaceholder}
             className="h-11 text-base font-medium pr-11"
           />
@@ -101,15 +115,15 @@ function EmployeeCombobox({
             <CommandEmpty>{t.laborEmployeeEmpty}</CommandEmpty>
             <CommandGroup>
               {activeEmployees.map(emp => {
-                const displayCost = emp.monthly_cost ?? emp.salary ?? 0;
+                const hourlyCost = hourlyCosts.get(emp.id) ?? null;
                 return (
                   <CommandItem
                     key={emp.id}
                     value={emp.name}
                     onSelect={() => {
-                      const cost = emp.monthly_cost ?? emp.salary ?? 0;
+                      // Detalhamento do custo só chega para RH (null para os demais).
                       const breakdown = (emp.monthly_cost_breakdown as MonthlyCostBreakdown | null) ?? null;
-                      onChange(emp.name, emp.id, cost, breakdown);
+                      onChange(emp.name, emp.id, hourlyCost, breakdown);
                       setOpen(false);
                     }}
                   >
@@ -118,9 +132,9 @@ function EmployeeCombobox({
                       <span className="text-sm">{emp.name}</span>
                       {emp.position && <span className="text-xs text-muted-foreground">{emp.position}</span>}
                     </div>
-                    {displayCost > 0 && (
+                    {hourlyCost != null && hourlyCost > 0 && (
                       <span className="ml-auto text-xs text-muted-foreground">
-                        {fmt(displayCost)}
+                        {fmt(hourlyCost)}/h
                       </span>
                     )}
                   </CommandItem>
@@ -141,6 +155,13 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
   const fmt = (v: number) => formatMoney(v, currency, locale);
   const currencySymbol = getCurrencySymbol(currency, locale);
   const { monthlyHours: companyMonthlyHours } = useEmployeeWorkHours(null);
+  const canManageEmployees = useCanManageEmployees();
+  // Custo mensal efetivo do trabalhador: o do cadastro (custo-hora × horas da
+  // empresa) ou o digitado.
+  const workerMonthlyCost = useCallback(
+    (w: Worker) => (w.hourlyCost != null ? monthlyCostFromHourly(w.hourlyCost, companyMonthlyHours) : w.salary),
+    [companyMonthlyHours],
+  );
   const [monthlyHours, setMonthlyHours] = useState(176);
   const monthlyHoursTouchedRef = useRef(false);
   const wasOpenRef = useRef(false);
@@ -185,7 +206,7 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
     (id: string, field: 'fixedCost' | 'salary') => (e: React.ClipboardEvent<HTMLInputElement>) => {
       const cents = readPastedCents(e);
       if (cents == null) return;
-      updateWorker(id, { [field]: cents / 100 });
+      updateWorker(id, field === 'salary' ? { salary: cents / 100, hourlyCost: null } : { fixedCost: cents / 100 });
     },
     [updateWorker]
   );
@@ -239,7 +260,8 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
         totalCostFixed += w.fixedCost;
         return { ...w, rate: 0, cost: w.fixedCost };
       }
-      const rate = monthlyHours > 0 ? w.salary / monthlyHours : 0;
+      // = hourlyCost × horasDaEmpresa / horasInformadas quando vem do cadastro.
+      const rate = monthlyHours > 0 ? workerMonthlyCost(w) / monthlyHours : 0;
       const cost = rate * w.hours;
       totalCostHourly += cost;
       if (w.hours > maxHours) maxHours = w.hours;
@@ -251,7 +273,7 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
     const avgRate = totalHours > 0 ? totalCost / totalHours : 0;
 
     return { details, totalCost, totalCostHourly, totalCostFixed, totalHours, avgRate };
-  }, [workers, monthlyHours]);
+  }, [workers, monthlyHours, workerMonthlyCost]);
 
   const handleApply = () => {
     onApply(
@@ -331,10 +353,10 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
                       <EmployeeCombobox
                         value={w.name}
                         employeeId={w.employeeId}
-                        onChange={(name, empId, monthlyCost, breakdown) => {
+                        onChange={(name, empId, hourlyCost, breakdown) => {
                           const patch: Partial<Worker> = { name, employeeId: empId };
-                          if (empId && monthlyCost > 0) {
-                            patch.salary = monthlyCost;
+                          if (empId && hourlyCost != null && hourlyCost > 0) {
+                            patch.hourlyCost = hourlyCost;
                             patch.monthlyCostBreakdown = breakdown;
                           }
                           if (!empId) {
@@ -392,8 +414,8 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
                           <Input
                             type="number" min={0} step="0.01"
                             aria-label={t.laborMonthlyCostLabel}
-                            value={w.salary || ''}
-                            onChange={e => updateWorker(w.id, { salary: Number(e.target.value) || 0 })}
+                            value={workerMonthlyCost(w) || ''}
+                            onChange={e => updateWorker(w.id, { salary: Number(e.target.value) || 0, hourlyCost: null })}
                             onPaste={handleMoneyPaste(w.id, 'salary')}
                             placeholder="0,00"
                             className="h-8 text-sm"
@@ -482,15 +504,16 @@ export function LaborCalculatorModal({ open, onOpenChange, onApply }: LaborCalcu
       <MonthlyCostCalculatorModal
         open={!!costCalcWorkerId}
         onOpenChange={open => { if (!open) setCostCalcWorkerId(null); }}
-        initialSalary={costCalcWorker?.salary ?? 0}
+        initialSalary={costCalcWorker ? workerMonthlyCost(costCalcWorker) : 0}
         initialBreakdown={costCalcWorker?.monthlyCostBreakdown ?? null}
         defaultMonthlyHours={monthlyHours}
         onApply={(totalCost, breakdown) => {
           if (costCalcWorkerId) {
-            updateWorker(costCalcWorkerId, { salary: totalCost, monthlyCostBreakdown: breakdown });
-            // Persist to employee record if linked
+            updateWorker(costCalcWorkerId, { salary: totalCost, hourlyCost: null, monthlyCostBreakdown: breakdown });
+            // Grava no cadastro do funcionário só para RH: custo mensal é dado
+            // de RH e o banco recusa a escrita dos demais.
             const worker = workers.find(w => w.id === costCalcWorkerId);
-            if (worker?.employeeId) {
+            if (worker?.employeeId && canManageEmployees) {
               supabase.from('employees').update({
                 monthly_cost: totalCost,
                 monthly_cost_breakdown: breakdown as unknown as Json,

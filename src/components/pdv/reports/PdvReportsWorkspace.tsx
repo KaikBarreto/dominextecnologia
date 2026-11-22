@@ -9,6 +9,7 @@ import {
   Loader2,
   Printer,
   RefreshCw,
+  ShoppingBag,
   WalletCards,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
@@ -55,9 +56,10 @@ import {
 } from "@/hooks/usePdvReportsV2";
 import { usePdvWorkflowSettings } from "@/hooks/usePdvCounterFlow";
 import { PdvCardSettlementsPanel } from "@/components/pdv/reports/PdvCardSettlementsPanel";
+import { PdvSalesPanel } from "@/components/pdv/reports/PdvSalesPanel";
 import { csvCell as safeCsvTextCell } from "@/utils/movimentacoesCsvGenerator";
 
-type ReportTab = "summary" | "history" | "documents" | "cards";
+type ReportTab = "summary" | "sales" | "history" | "documents" | "cards";
 const PAGE_SIZE = 25;
 
 const EVENT_TONES: Record<PdvHistoryEventType, string> = {
@@ -149,6 +151,7 @@ function Pagination({
 export function PdvReportsWorkspace() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  const [salesRefreshKey, setSalesRefreshKey] = useState(0);
   const { timezone } = useAppLocaleContext();
   const { money, date } = useLocaleFormatters();
   const workflow = usePdvWorkflowSettings();
@@ -212,6 +215,11 @@ export function PdvReportsWorkspace() {
       icon: <BarChart3 className="h-4 w-4" />,
     },
     {
+      value: "sales",
+      label: "Vendas",
+      icon: <ShoppingBag className="h-4 w-4" />,
+    },
+    {
       value: "history",
       label: "Histórico",
       icon: <History className="h-4 w-4" />,
@@ -228,20 +236,22 @@ export function PdvReportsWorkspace() {
     },
   ];
 
-  const loading = tab === "cards" ? false :
+  const loading = tab === "cards" || tab === "sales" ? false :
     tab === "summary"
       ? projectionReport.isLoading
       : tab === "history"
         ? historyReport.isLoading
         : documentsReport.isLoading;
-  const error = tab === "cards" ? null :
+  const error = tab === "cards" || tab === "sales" ? null :
     tab === "summary"
       ? projectionReport.error
       : tab === "history"
         ? historyReport.error
         : documentsReport.error;
   const refetch =
-    tab === "summary"
+    tab === "sales"
+      ? () => setSalesRefreshKey((value) => value + 1)
+      : tab === "summary"
       ? projectionReport.refetch
       : tab === "history"
         ? historyReport.refetch
@@ -516,6 +526,8 @@ export function PdvReportsWorkspace() {
       )}
 
       {tab === "cards" && <PdvCardSettlementsPanel />}
+
+      {tab === "sales" && <PdvSalesPanel from={from} to={to} refreshKey={salesRefreshKey} onDownloadCsv={downloadCsv} />}
 
       {!loading && !error && tab === "history" && historyReport.data && (
         <section className="space-y-3">
