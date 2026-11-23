@@ -17750,6 +17750,7 @@ export type Database = {
         Row: {
           finance_movements_include_card_purchases: boolean
           language: string
+          schedule_entry_type_filter: string[]
           schedule_view_mode_desktop: string
           schedule_view_mode_mobile: string
           updated_at: string
@@ -17758,6 +17759,7 @@ export type Database = {
         Insert: {
           finance_movements_include_card_purchases?: boolean
           language?: string
+          schedule_entry_type_filter?: string[]
           schedule_view_mode_desktop?: string
           schedule_view_mode_mobile?: string
           updated_at?: string
@@ -17766,6 +17768,7 @@ export type Database = {
         Update: {
           finance_movements_include_card_purchases?: boolean
           language?: string
+          schedule_entry_type_filter?: string[]
           schedule_view_mode_desktop?: string
           schedule_view_mode_mobile?: string
           updated_at?: string

@@ -32,7 +32,10 @@ import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { canSeeAllTasks, isMyTask } from '@/lib/taskVisibility';
-import { useUserPreferences } from '@/hooks/useUserPreferences';
+import {
+  normalizeScheduleEntryTypeFilter,
+  useUserPreferences,
+} from '@/hooks/useUserPreferences';
 import { useTouchDragDrop } from '@/hooks/useTouchDragDrop';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrderFormDialog';
@@ -133,8 +136,10 @@ export default function Schedule() {
   // 1º acesso (sem preferência): celular abre em "Dia", computador em "Mês".
   const {
     scheduleViewMode,
+    scheduleEntryTypeFilter,
     isLoading: isPrefsLoading,
     setScheduleViewMode,
+    setScheduleEntryTypeFilter,
   } = useUserPreferences();
   const scheduleDevice: 'mobile' | 'desktop' = isMobile ? 'mobile' : 'desktop';
 
@@ -262,6 +267,26 @@ export default function Schedule() {
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   // Tarefa x OS (E5) — valores 'os' | 'tarefa', vazio = todos
   const [entryTypeFilter, setEntryTypeFilter] = useState<string[]>([]);
+  const entryTypeFilterHydratedFor = useRef<string | null>(null);
+
+  // O filtro segue a pessoa (não o aparelho) e só é hidratado uma vez por
+  // sessão de usuário. Refetches da preferência não podem desfazer um clique
+  // local enquanto a gravação está em trânsito.
+  useEffect(() => {
+    if (isPrefsLoading || !user?.id) return;
+    if (entryTypeFilterHydratedFor.current === user.id) return;
+    entryTypeFilterHydratedFor.current = user.id;
+    setEntryTypeFilter(scheduleEntryTypeFilter);
+  }, [isPrefsLoading, scheduleEntryTypeFilter, user?.id]);
+
+  const handleEntryTypeFilterChange = useCallback(
+    (values: string[]) => {
+      const normalized = normalizeScheduleEntryTypeFilter(values);
+      setEntryTypeFilter(normalized);
+      setScheduleEntryTypeFilter(normalized);
+    },
+    [setScheduleEntryTypeFilter],
+  );
 
   // Get team IDs the current user belongs to
   const myTeamIds = useMemo(() => {
@@ -903,7 +928,7 @@ export default function Schedule() {
       setTechnicianFilter([]);
       setCustomerFilter([]);
       setStatusFilter([]);
-      setEntryTypeFilter([]);
+      handleEntryTypeFilterChange([]);
     };
 
     // Header actions: [Lupa → expande busca inline] + [PausadasOS]
@@ -1051,7 +1076,7 @@ export default function Schedule() {
                   { value: 'tarefa', label: t.entryTypeSelector.taskTitle },
                 ]}
                 selected={entryTypeFilter}
-                onChange={setEntryTypeFilter}
+                onChange={handleEntryTypeFilterChange}
               />
             </div>
           </FilterSheet>
@@ -1273,7 +1298,7 @@ export default function Schedule() {
         statusFilter={statusFilter}
         onStatusFilterChange={setStatusFilter}
         entryTypeFilter={entryTypeFilter}
-        onEntryTypeFilterChange={setEntryTypeFilter}
+        onEntryTypeFilterChange={handleEntryTypeFilterChange}
         filtersEnabled={filterOptionsEnabled}
         onFiltersOpenChange={(open) => {
           if (open) setFilterOptionsEnabled(true);

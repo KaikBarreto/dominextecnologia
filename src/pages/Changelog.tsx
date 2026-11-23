@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.45',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Filtros persistentes na Agenda',
+        category: 'recurso',
+        description: 'Agora você pode escolher se quer ver tudo, somente ordens de serviço ou somente tarefas na Agenda. A escolha fica salva no seu usuário e acompanha você quando acessar em outro aparelho.',
+      },
+      {
+        title: 'Agenda mais limpa em dias cheios',
+        category: 'melhoria',
+        description: 'Os compromissos ocupam menos espaço quando há muitos itens no mesmo período. As tarefas também ganharam um visual neutro em cinza, adaptado ao tema claro ou escuro, para destacar melhor as ordens de serviço.',
+      },
+    ],
+  },
+  {
     version: '1.41.44',
     date: '23 de novembro de 2026',
     type: 'patch',

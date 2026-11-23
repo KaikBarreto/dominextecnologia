@@ -189,7 +189,7 @@ function OrderDetail({
           <div className="flex items-center gap-2 flex-wrap min-w-0">
             <Badge className={cn('text-xs shrink-0', statusBadge.className)}>{statusBadge.label}</Badge>
             {isTask ? (
-              <Badge variant="outline" className="text-xs truncate max-w-[140px] border-violet-500/50 text-violet-400">{t.badgeTask}</Badge>
+              <Badge variant="outline" className="max-w-[140px] truncate border-foreground/15 bg-foreground/[0.04] text-xs text-foreground/70">{t.badgeTask}</Badge>
             ) : (
               <Badge variant="outline" className="text-xs truncate max-w-[140px]">{getOsTypeLabel(order, osTypeLabels, { genericLabel: tTypeGeneric })}</Badge>
             )}
