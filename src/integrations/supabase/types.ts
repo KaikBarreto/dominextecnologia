@@ -22161,6 +22161,30 @@ export type Database = {
         Returns: Json
       }
       schedule_plan_is_valid: { Args: { p_plan: Json }; Returns: boolean }
+      schedule_visible_entries_v1: {
+        Args: { p_end_date: string; p_start_date: string }
+        Returns: { entry: Json }[]
+      }
+      schedule_visible_entries_v2: {
+        Args: {
+          p_after_id?: string | null
+          p_after_order_number?: number | null
+          p_after_scheduled_date?: string | null
+          p_after_scheduled_time?: string | null
+          p_after_scheduled_time_is_null?: boolean | null
+          p_end_date: string
+          p_page_size?: number
+          p_start_date: string
+        }
+        Returns: {
+          cursor_id: string
+          cursor_order_number: number
+          cursor_scheduled_date: string
+          cursor_scheduled_time: string | null
+          cursor_scheduled_time_is_null: boolean
+          entry: Json
+        }[]
+      }
       schedule_weekly_hours_is_valid: {
         Args: { p_value: Json }
         Returns: boolean

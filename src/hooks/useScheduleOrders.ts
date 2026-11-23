@@ -16,19 +16,118 @@ type ScheduleOrder = ServiceOrder & {
   _assignee_user_ids?: string[];
 };
 
-type ScheduleEntryRow = { entry: ScheduleOrder };
+type ScheduleEntryRow = {
+  entry: ScheduleOrder;
+  cursor_scheduled_date: string;
+  cursor_scheduled_time: string | null;
+  cursor_scheduled_time_is_null: boolean;
+  cursor_order_number: number;
+  cursor_id: string;
+};
 type ScheduleRpcResult = { data: ScheduleEntryRow[] | null; error: Error | null };
 interface ScheduleRpcBuilder extends PromiseLike<ScheduleRpcResult> {
   abortSignal(signal: AbortSignal): ScheduleRpcBuilder;
-  range(from: number, to: number): ScheduleRpcBuilder;
 }
 
-const SCHEDULE_PAGE_SIZE = 1000;
-const SCHEDULE_REQUEST_TIMEOUT_MS = 8_000;
+interface ScheduleCursor {
+  scheduledDate: string;
+  scheduledTime: string | null;
+  scheduledTimeIsNull: boolean;
+  orderNumber: number;
+  id: string;
+}
+
+const SCHEDULE_PAGE_SIZE = 500;
 const SCHEDULE_SESSION_UNAVAILABLE = 'schedule_session_unavailable';
-const SCHEDULE_REQUEST_TIMEOUT = 'schedule_request_timeout';
+const SCHEDULE_ORDER_COLUMNS = `
+  admin_indirect_rate,
+  bdi,
+  check_in_by,
+  check_in_time,
+  check_out_by,
+  check_out_time,
+  client_signature_at,
+  client_signed_by,
+  commercial_adjustment,
+  company_id,
+  completed_at,
+  contract_id,
+  contract_reference_date,
+  contract_visit_customized_at,
+  created_at,
+  created_by,
+  crm_automation_action_key,
+  crm_automation_rule_id,
+  crm_checklist_id,
+  customer_id,
+  description,
+  diagnosis,
+  displacement_cost,
+  distance_km,
+  duration_minutes,
+  entry_type,
+  equipment_id,
+  form_template_id,
+  generate_nps_survey,
+  id,
+  km_cost,
+  labor_hours,
+  labor_value,
+  lead_id,
+  notes,
+  order_number,
+  legacy_order_number,
+  origin,
+  os_type,
+  partial_finish,
+  parts_used,
+  parts_value,
+  paused_at,
+  pmoc_conformity_notes,
+  pmoc_conformity_status,
+  profit_rate,
+  public_short_code,
+  quote_id,
+  recurrence_end_date,
+  recurrence_group_id,
+  recurrence_indeterminate,
+  recurrence_interval,
+  recurrence_type,
+  recurrence_weekdays,
+  require_client_signature,
+  require_tech_signature,
+  resumed_at,
+  schedule_plan,
+  scheduled_date,
+  scheduled_days,
+  scheduled_time,
+  service_address,
+  service_address_number,
+  service_city,
+  service_latitude,
+  service_longitude,
+  service_neighborhood,
+  service_state,
+  service_type_id,
+  service_zip_code,
+  show_in_schedule,
+  solution,
+  started_at,
+  status,
+  task_title,
+  task_type_id,
+  tax_rate,
+  team_id,
+  tech_signature_at,
+  tech_signed_by,
+  technician_id,
+  total_cost,
+  total_value,
+  updated_at,
+  use_bdi
+`;
 const SCHEDULE_RELATIONS_SELECT = `
-  *,
+  ${SCHEDULE_ORDER_COLUMNS},
   customer:customers(id, name, phone, celular, email, document, address, address_number, complement, neighborhood, city, state, zip_code, company_name, customer_type),
   equipment:equipment(id, name, brand, model),
   form_template:form_templates(id, name),
@@ -49,34 +148,9 @@ function sessionUnavailableError(cause?: unknown): ScheduleReadError {
   return error;
 }
 
-function scheduleRequestTimeoutError(): ScheduleReadError {
-  const error = new Error('A Agenda demorou mais que o esperado para responder. Tente novamente.') as ScheduleReadError;
-  error.code = SCHEDULE_REQUEST_TIMEOUT;
-  return error;
-}
-
-/**
- * Toda leitura da Agenda possui teto. Além de abortar o fetch, a corrida com o
- * timer garante que um navegador que não conclua o abort nunca deixe a tela em
- * skeleton infinito.
- */
-export async function withScheduleRequestTimeout<T>(
-  request: (signal: AbortSignal) => PromiseLike<T>,
-  timeoutMs = SCHEDULE_REQUEST_TIMEOUT_MS,
-): Promise<T> {
-  const controller = new AbortController();
-  let timeout: ReturnType<typeof setTimeout> | null = null;
-  const deadline = new Promise<never>((_, reject) => {
-    timeout = setTimeout(() => {
-      controller.abort();
-      reject(scheduleRequestTimeoutError());
-    }, timeoutMs);
-  });
-
-  try {
-    return await Promise.race([Promise.resolve(request(controller.signal)), deadline]);
-  } finally {
-    if (timeout !== null) clearTimeout(timeout);
+function throwIfScheduleAborted(signal: AbortSignal) {
+  if (signal.aborted) {
+    throw new DOMException('Consulta da Agenda cancelada.', 'AbortError');
   }
 }
 
@@ -105,6 +179,8 @@ function shiftIsoDate(value: string, days: number) {
 }
 
 function isFallbackVisibleOrder(order: ScheduleOrder, window: ScheduleOrdersWindow, today: string) {
+  if (order.entry_type === 'tarefa' && !order.show_in_schedule) return false;
+
   const scheduledDate = order.scheduled_date ?? '';
   if (scheduledDate >= window.startDate && scheduledDate <= window.endDate) return true;
 
@@ -130,37 +206,37 @@ function isFallbackVisibleOrder(order: ScheduleOrder, window: ScheduleOrdersWind
  * Continuidade operacional da Agenda. A leitura permanece recortada no
  * servidor, paginada e sujeita às mesmas policies RLS das tabelas.
  */
-export async function fetchScheduleOrdersFallback(window: ScheduleOrdersWindow) {
+export async function fetchScheduleOrdersFallback(
+  window: ScheduleOrdersWindow,
+  signal?: AbortSignal,
+) {
+  const requestSignal = signal ?? new AbortController().signal;
+  throwIfScheduleAborted(requestSignal);
+
   const today = new Date().toISOString().slice(0, 10);
-  const multiDayStart = shiftIsoDate(window.startDate, -31);
   const endExclusive = shiftIsoDate(window.endDate, 1);
 
-  const primaryPromise = withScheduleRequestTimeout((signal) =>
-    fetchAllPaginated<ScheduleOrder>(() => supabase
+  const primaryPromise = fetchAllPaginated<ScheduleOrder>(() => supabase
       .from('service_orders')
       .select(SCHEDULE_RELATIONS_SELECT)
       .gte('scheduled_date', window.startDate)
       .lte('scheduled_date', window.endDate)
       .order('scheduled_date')
       .order('id')
-      .abortSignal(signal)),
-  );
+      .abortSignal(requestSignal));
 
-  const multiDayPromise = withScheduleRequestTimeout((signal) =>
-    fetchAllPaginated<ScheduleOrder>(() => supabase
+  const multiDayPromise = fetchAllPaginated<ScheduleOrder>(() => supabase
       .from('service_orders')
       .select(SCHEDULE_RELATIONS_SELECT)
       .gt('scheduled_days', 1)
-      .gte('scheduled_date', multiDayStart)
       .lte('scheduled_date', window.endDate)
+      .gte('schedule_plan->-1->>date', window.startDate)
       .order('scheduled_date')
       .order('id')
-      .abortSignal(signal)),
-  );
+      .abortSignal(requestSignal));
 
   const resumedPromise = window.startDate <= today
-    ? withScheduleRequestTimeout((signal) =>
-      fetchAllPaginated<ScheduleOrder>(() => supabase
+    ? fetchAllPaginated<ScheduleOrder>(() => supabase
         .from('service_orders')
         .select(SCHEDULE_RELATIONS_SELECT)
         .in('status', ['pendente', 'a_caminho', 'em_andamento'])
@@ -168,8 +244,7 @@ export async function fetchScheduleOrdersFallback(window: ScheduleOrdersWindow) 
         .lt('resumed_at', endExclusive)
         .order('resumed_at')
         .order('id')
-        .abortSignal(signal)),
-    )
+        .abortSignal(requestSignal))
     : Promise.resolve([] as ScheduleOrder[]);
 
   const candidates = (await Promise.all([
@@ -177,6 +252,8 @@ export async function fetchScheduleOrdersFallback(window: ScheduleOrdersWindow) 
     multiDayPromise,
     resumedPromise,
   ])).flat();
+  throwIfScheduleAborted(requestSignal);
+
   const orders = [...new Map(
     candidates
       .filter((order) => isFallbackVisibleOrder(order, window, today))
@@ -189,15 +266,13 @@ export async function fetchScheduleOrdersFallback(window: ScheduleOrdersWindow) 
   try {
     for (let index = 0; index < orders.length; index += 200) {
       const ids = orders.slice(index, index + 200).map((order) => order.id);
-      const rows = await withScheduleRequestTimeout((signal) =>
-        fetchAllPaginated<{ service_order_id: string; user_id: string }>(() => supabase
+      const rows = await fetchAllPaginated<{ service_order_id: string; user_id: string }>(() => supabase
           .from('service_order_assignees')
           .select('service_order_id, user_id')
           .in('service_order_id', ids)
           .order('service_order_id')
           .order('user_id')
-          .abortSignal(signal)),
-      );
+          .abortSignal(requestSignal));
       for (const row of rows) {
         const assignees = assigneeMap.get(row.service_order_id) ?? [];
         assignees.push(row.user_id);
@@ -205,6 +280,7 @@ export async function fetchScheduleOrdersFallback(window: ScheduleOrdersWindow) 
       }
     }
   } catch (error) {
+    throwIfScheduleAborted(requestSignal);
     const diagnostic = error as { code?: string; message?: string };
     console.warn('[Agenda] Responsáveis não puderam ser agregados no fallback.', {
       code: diagnostic?.code ?? 'unknown',
@@ -221,31 +297,53 @@ export async function fetchScheduleOrdersFallback(window: ScheduleOrdersWindow) 
 export async function fetchScheduleOrders(
   window: ScheduleOrdersWindow,
   expectedUserId: string,
+  signal?: AbortSignal,
 ) {
+  const requestSignal = signal ?? new AbortController().signal;
   await ensureScheduleSession(expectedUserId);
+  throwIfScheduleAborted(requestSignal);
 
   const rpc = supabase.rpc as unknown as (
     name: string,
-    args: { p_start_date: string; p_end_date: string },
+    args: {
+      p_start_date: string;
+      p_end_date: string;
+      p_after_scheduled_date: string | null;
+      p_after_scheduled_time: string | null;
+      p_after_scheduled_time_is_null: boolean | null;
+      p_after_order_number: number | null;
+      p_after_id: string | null;
+      p_page_size: number;
+    },
   ) => ScheduleRpcBuilder;
 
   const entries: ScheduleOrder[] = [];
-  for (let from = 0; ; from += SCHEDULE_PAGE_SIZE) {
+  let cursor: ScheduleCursor | null = null;
+
+  while (true) {
     let result: ScheduleRpcResult;
     try {
-      result = await withScheduleRequestTimeout((signal) => rpc('schedule_visible_entries_v1', {
+      result = await rpc('schedule_visible_entries_v2', {
         p_start_date: window.startDate,
         p_end_date: window.endDate,
-      }).abortSignal(signal).range(from, from + SCHEDULE_PAGE_SIZE - 1));
+        p_after_scheduled_date: cursor?.scheduledDate ?? null,
+        p_after_scheduled_time: cursor?.scheduledTime ?? null,
+        p_after_scheduled_time_is_null: cursor?.scheduledTimeIsNull ?? null,
+        p_after_order_number: cursor?.orderNumber ?? null,
+        p_after_id: cursor?.id ?? null,
+        p_page_size: SCHEDULE_PAGE_SIZE,
+      }).abortSignal(requestSignal);
     } catch (error) {
+      throwIfScheduleAborted(requestSignal);
       const diagnostic = error as ScheduleReadError;
       console.warn('[Agenda] Consulta principal não concluiu; usando leitura recortada.', {
         code: diagnostic?.code ?? 'unknown',
         message: diagnostic?.message?.slice(0, 160) ?? 'Erro sem mensagem',
       });
-      return fetchScheduleOrdersFallback(window);
+      return fetchScheduleOrdersFallback(window, requestSignal);
     }
 
+    throwIfScheduleAborted(requestSignal);
     const { data, error } = result;
 
     if (error) {
@@ -253,11 +351,33 @@ export async function fetchScheduleOrders(
         code: (error as { code?: string }).code ?? 'unknown',
         message: error.message?.slice(0, 160) ?? 'Erro sem mensagem',
       });
-      return fetchScheduleOrdersFallback(window);
+      return fetchScheduleOrdersFallback(window, requestSignal);
     }
+
     const page = data ?? [];
     entries.push(...page.map((row) => row.entry));
     if (page.length < SCHEDULE_PAGE_SIZE) break;
+
+    const lastRow = page.at(-1)!;
+    const nextCursor: ScheduleCursor = {
+      scheduledDate: lastRow.cursor_scheduled_date,
+      scheduledTime: lastRow.cursor_scheduled_time,
+      scheduledTimeIsNull: lastRow.cursor_scheduled_time_is_null,
+      orderNumber: lastRow.cursor_order_number,
+      id: lastRow.cursor_id,
+    };
+    if (
+      cursor
+      && cursor.scheduledDate === nextCursor.scheduledDate
+      && cursor.scheduledTime === nextCursor.scheduledTime
+      && cursor.scheduledTimeIsNull === nextCursor.scheduledTimeIsNull
+      && cursor.orderNumber === nextCursor.orderNumber
+      && cursor.id === nextCursor.id
+    ) {
+      console.warn('[Agenda] Cursor da consulta principal não avançou; usando leitura recortada.');
+      return fetchScheduleOrdersFallback(window, requestSignal);
+    }
+    cursor = nextCursor;
   }
   return entries;
 }
@@ -268,7 +388,7 @@ export function shouldRetryScheduleRead(failureCount: number, rawError: unknown)
   const error = rawError as ScheduleReadError | null;
   const code = error?.code ?? '';
   const message = error?.message?.toLowerCase() ?? '';
-  if (code === SCHEDULE_SESSION_UNAVAILABLE || code === SCHEDULE_REQUEST_TIMEOUT || code === '42501') return false;
+  if (error?.name === 'AbortError' || code === SCHEDULE_SESSION_UNAVAILABLE || code === '42501') return false;
 
   return (
     !code
@@ -295,7 +415,7 @@ export function useScheduleOrders(
   const query = useQuery({
     queryKey: ['service-orders', 'schedule-window', companyId, sessionUserId, window.startDate, window.endDate],
     enabled,
-    queryFn: () => fetchScheduleOrders(window, sessionUserId!),
+    queryFn: ({ signal }) => fetchScheduleOrders(window, sessionUserId!, signal),
     staleTime: 30_000,
     gcTime: 5 * 60_000,
     placeholderData: keepPreviousData,
