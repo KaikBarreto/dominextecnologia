@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.51";
+export const APP_VERSION = "1.41.52";
 
 export const VERSION_NOTES =
-  "Agora você pode escolher, em cada cliente, quais contatos recebem cada aviso de cobrança por e-mail.";
+  "Vídeos e novos arquivos agora carregam de forma mais econômica, reduzindo consumo de dados sem mudar o uso do sistema.";

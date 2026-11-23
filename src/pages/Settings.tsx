@@ -507,7 +507,6 @@ function AdministrativeSettings() {
     const filePath = `os_social_${Date.now()}.${isPng ? 'png' : 'jpg'}`;
     const options = await tenantFileOptions({
       contentType: isPng ? 'image/png' : 'image/jpeg',
-      cacheControl: '3600',
     });
     const { error: uploadError } = await supabase.storage
       .from('company-logos')

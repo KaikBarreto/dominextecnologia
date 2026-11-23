@@ -30,6 +30,11 @@ import { supabase } from '@/integrations/supabase/client';
 
 type FileOptions = Record<string, unknown>;
 
+// Os caminhos enviados por este helper são versionados por UUID, timestamp ou
+// hash. Como uma alteração cria outro caminho, o arquivo pode permanecer no CDN
+// por um ano sem prender uma versão antiga na tela.
+export const IMMUTABLE_STORAGE_CACHE_SECONDS = '31536000';
+
 // A empresa do usuário não muda durante a sessão; resolver uma vez evita uma ida
 // ao banco por arquivo (o envio de fotos da OS manda 3 em paralelo).
 let cache: { userId: string; companyId: string | null } | null = null;
@@ -63,9 +68,13 @@ export function clearTenantStorageCache(): void {
  */
 export async function tenantFileOptions(extra?: FileOptions): Promise<FileOptions> {
   const companyId = await currentCompanyId();
-  if (!companyId) return { ...(extra ?? {}) };
-  return {
+  const options = {
+    cacheControl: IMMUTABLE_STORAGE_CACHE_SECONDS,
     ...(extra ?? {}),
+  };
+  if (!companyId) return options;
+  return {
+    ...options,
     metadata: {
       ...((extra?.metadata as Record<string, unknown> | undefined) ?? {}),
       company_id: companyId,
