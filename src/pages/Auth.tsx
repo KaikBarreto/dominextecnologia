@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect, useMemo, type ReactNode } from 'react';
+import { useState, useRef, useEffect, useMemo, type ReactNode } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -21,12 +21,17 @@ import { useIsDark } from '@/hooks/useIsDark';
 import { supabase } from '@/integrations/supabase/client';
 import { trackUsage } from '@/lib/trackUsage';
 import { getDeviceInfo } from '@/lib/sessionUtils';
-import { registerSession, resolvePostLoginRedirect } from '@/lib/postLogin';
+import {
+  PostLoginTimeoutError,
+  bootstrapPostLoginSession,
+  findRecentOtherSessions,
+  resolvePostLoginRedirect,
+} from '@/lib/postLogin';
 import {
   isAddingAccountStandalone,
-  addCurrentSessionToSavedStandalone,
   clearAddAccountFlagStandalone,
 } from '@/lib/savedSessions';
+import { setAuthSessionPersistence } from '@/integrations/supabase/authStorage';
 import { useLocale } from '@/lib/i18n';
 import { localizeInternal } from '@/lib/i18n/localizeInternal';
 import LanguageSelector from '@/components/i18n/LanguageSelector';
@@ -129,18 +134,6 @@ export default function Auth() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Inicia o OAuth com Google. É um redirect (o browser sai pro Google), então
-  // no sucesso não navegamos nem resetamos o loading — a página é descarregada.
-  const handleGoogleLogin = async () => {
-    setIsLoading(true);
-    setAuthError(null);
-    const { error } = await signInWithGoogle();
-    if (error) {
-      setAuthError(mapGotrueError(error, t.gotrueErrors));
-      setIsLoading(false);
-    }
-  };
-
   // Limpa a flag de "relogin email" assim que o componente monta. Mantemos
   // pra o defaultValues capturar (linha abaixo) — usuário não pode ver email
   // de outra conta da próxima vez que abrir /auth manualmente.
@@ -158,45 +151,21 @@ export default function Auth() {
   // de volta pro dashboard antes do user digitar credenciais da outra conta.
   useEffect(() => {
     if (!loading && user && !loginInProgressRef.current && !isAddingAccountStandalone()) {
-      // Check role + company status to determine redirect target
       const checkAndRedirect = async () => {
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .eq('role', 'super_admin')
-          .maybeSingle();
-        if (roleData) {
-          navigate('/admin/empresas', { replace: true });
-          return;
+        try {
+          const destination = await resolvePostLoginRedirect(user.id);
+          navigate(destination, { replace: true });
+        } catch (error) {
+          console.error('[Auth] session restore bootstrap failed:', error);
+          // Estado de role/tenant desconhecido falha fechado. A pessoa volta a
+          // autenticar em vez de ser liberada no dashboard por fallback.
+          await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
+          setAuthError(t.errorSessionRestore);
         }
-        // Check company status
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('company_id')
-          .eq('user_id', user.id)
-          .maybeSingle();
-        if (profileData?.company_id) {
-          const { data: companyData } = await supabase
-            .from('companies')
-            .select('subscription_status, payment_lock_bypass')
-            .eq('id', profileData.company_id)
-            .maybeSingle();
-          // pending_payment manda pro checkout, EXCETO se a empresa tem
-          // bypass liberado (payment_lock_bypass === true) — aí segue normal.
-          // Cast as any: coluna ainda não está no types.ts. Comparação
-          // estrita: null/undefined nunca abre exceção.
-          const hasBypass = (companyData as any)?.payment_lock_bypass === true;
-          if (companyData?.subscription_status === 'pending_payment' && !hasBypass) {
-            navigate('/checkout', { replace: true });
-            return;
-          }
-        }
-        navigate('/dashboard', { replace: true });
       };
-      checkAndRedirect();
+      void checkAndRedirect();
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, navigate, t.errorSessionRestore]);
 
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -213,32 +182,42 @@ export default function Auth() {
     },
   });
 
+  // Inicia o OAuth com Google. O checkbox também governa esse fluxo: a escolha
+  // precisa ser persistida antes do redirect para o GoTrue gravar o token no
+  // storage correto quando o navegador voltar do provedor.
+  const handleGoogleLogin = async () => {
+    setIsLoading(true);
+    setAuthError(null);
+    setAuthSessionPersistence(form.getValues('rememberMe'));
+    const { error } = await signInWithGoogle();
+    if (error) {
+      setAuthError(mapGotrueError(error, t.gotrueErrors));
+      setIsLoading(false);
+    }
+  };
+
   // registerSession e a árvore de decisão de destino vivem em @/lib/postLogin
   // (fonte única compartilhada com o retorno do OAuth em AuthCallback).
 
-  const disconnectOtherSessions = useCallback(async (userId: string) => {
-    const currentToken = localStorage.getItem("session_token");
-    if (!currentToken) return;
-    await supabase
-      .from('active_sessions')
-      .delete()
-      .eq("user_id", userId)
-      .neq("session_token", currentToken);
-  }, []);
-
-  const completeLogin = async (data: LoginForm, userId: string) => {
+  const completeLogin = async (
+    data: LoginForm,
+    userId: string,
+    options?: { disconnectOthers?: boolean },
+  ) => {
     if (data.rememberMe) {
       localStorage.setItem('rememberedEmail', data.email);
     } else {
       localStorage.removeItem('rememberedEmail');
     }
-    await registerSession(userId);
+    // Registro de active_session e resolução do tenant/redirect são
+    // independentes e rodam em paralelo, com timeout e rollback controlados.
+    const { destination } = await bootstrapPostLoginSession(userId, {
+      disconnectOthers: options?.disconnectOthers,
+    });
 
-    // Adiciona/atualiza a sessão no switcher de contas e libera futuros
-    // redirects automáticos. Fire-and-forget — se falhar, segue o fluxo.
-    addCurrentSessionToSavedStandalone().catch((e) =>
-      console.warn('[Auth] addCurrentSessionToSavedStandalone failed:', e),
-    );
+    if (options?.disconnectOthers) {
+      toast({ title: t.toastOtherSessionsDisconnected });
+    }
     clearAddAccountFlagStandalone();
 
     // Instrumentação MVP — fire-and-forget, não bloqueia UX
@@ -248,7 +227,6 @@ export default function Auth() {
     // Destino pós-login: árvore de decisão compartilhada (super_admin →
     // /admin/empresas; pending_payment sem bypass → /checkout; técnico →
     // /agenda; resto → /dashboard). Fonte única em @/lib/postLogin.
-    const destination = await resolvePostLoginRedirect(userId);
     // Toast específico do fluxo email/senha quando cai no checkout por
     // pagamento pendente. (O OAuth não emite esse toast.)
     if (destination === '/checkout') {
@@ -270,6 +248,9 @@ export default function Auth() {
     // dispositivo precisa voltar a registrar em active_sessions. O branch do
     // Token de Acesso abaixo re-seta a flag quando for o caso.
     localStorage.removeItem('is_admin_token_session');
+    // A escolha precisa existir ANTES de signInWithPassword, pois o GoTrue
+    // persiste os tokens durante essa chamada.
+    setAuthSessionPersistence(data.rememberMe);
 
     try {
       // Call signInWithPassword directly to avoid AuthContext triggering redirect
@@ -317,23 +298,16 @@ export default function Auth() {
 
       // Check for existing active sessions from OTHER devices
       const currentToken = localStorage.getItem("session_token");
-      const { data: otherSessions } = await supabase
-        .from('active_sessions')
-        .select("device_info, last_activity, session_token")
-        .eq("user_id", userId)
-        .neq("session_token", currentToken || "___none___");
-
-      // Filter recent sessions (active within last 60 min)
-      const recentSessions = (otherSessions || []).filter((s) => {
-        const diff = (Date.now() - new Date(s.last_activity!).getTime()) / 60000;
-        return diff < 60;
-      });
+      const recentSessions = await findRecentOtherSessions(userId, currentToken);
 
       if (recentSessions.length > 0) {
         // Show session dialog — keep loginInProgressRef true to block redirect
         setPendingUserId(userId);
         setPendingLoginData(data);
-        setExistingSessionsInfo(recentSessions.map((s: any) => ({ device_info: s.device_info, last_activity: s.last_activity })));
+        setExistingSessionsInfo(recentSessions.map((session) => ({
+          device_info: session.device_info,
+          last_activity: session.last_activity,
+        })));
         setDisconnectOthers(false);
         setSessionDialogOpen(true);
         setIsLoading(false);
@@ -342,9 +316,15 @@ export default function Auth() {
 
       // No other sessions - login directly
       await completeLogin(data, userId);
-    } catch {
+    } catch (error) {
+      console.error('[Auth] login bootstrap failed:', error);
+      await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
       loginInProgressRef.current = false;
-      setAuthError(t.errorUnexpected);
+      setAuthError(
+        error instanceof PostLoginTimeoutError
+          ? t.errorLoginTimeout
+          : t.errorUnexpected,
+      );
     } finally {
       setIsLoading(false);
     }
@@ -354,19 +334,21 @@ export default function Auth() {
     if (!pendingLoginData || !pendingUserId) return;
     setIsLoading(true);
     try {
-      await completeLogin(pendingLoginData, pendingUserId);
-
-      if (disconnectOthers) {
-        await disconnectOtherSessions(pendingUserId);
-        toast({ title: t.toastOtherSessionsDisconnected });
-      }
+      await completeLogin(pendingLoginData, pendingUserId, { disconnectOthers });
 
       setSessionDialogOpen(false);
       setPendingLoginData(null);
       setPendingUserId(null);
       setExistingSessionsInfo([]);
-    } catch {
-      setAuthError(t.errorContinueLogin);
+    } catch (error) {
+      console.error('[Auth] continue login failed:', error);
+      await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
+      loginInProgressRef.current = false;
+      setAuthError(
+        error instanceof PostLoginTimeoutError
+          ? t.errorLoginTimeout
+          : t.errorContinueLogin,
+      );
     } finally {
       setIsLoading(false);
     }

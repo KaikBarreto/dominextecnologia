@@ -15,6 +15,17 @@ describe('contrato de atualização segura do PWA', () => {
     expect(viteConfig).toContain('"/sw-origin-guard.js"');
   });
 
+  it('precacheia somente o shell e guarda chunks de rota sob demanda', () => {
+    const viteConfig = readRootFile('vite.config.ts');
+
+    expect(viteConfig).toContain('"assets/app-entry-*.js"');
+    expect(viteConfig).toContain('"assets/index-*.css"');
+    expect(viteConfig).toContain('entryFileNames: "assets/app-entry-[hash].js"');
+    expect(viteConfig).toContain('cacheName: "dominex-build-assets"');
+    expect(viteConfig).toContain('handler: "StaleWhileRevalidate"');
+    expect(viteConfig).not.toContain('"**/*.{js,css,html,ico,png,svg,woff2,otf}"');
+  });
+
   it('mantém os scripts do service worker sem cache HTTP', () => {
     const config = JSON.parse(readRootFile('vercel.json')) as {
       redirects?: Array<{ has?: Array<{ type?: string; value?: string }> }>;

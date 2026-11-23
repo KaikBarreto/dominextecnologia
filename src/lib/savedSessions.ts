@@ -148,18 +148,20 @@ export async function addCurrentSessionToSavedStandalone(options?: {
   // Pegar profile pra full_name, avatar, company. Schema Dominex: filtra
   // por `user_id` (não `id` como EcoSistema). E não tem coluna `email`
   // em profiles — usa session.user.email.
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name, avatar_url, company_id")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  // Roles do Dominex vivem em user_roles (M:N). Pode ter mais de um por
-  // user_id. Pega o "mais alto" via resolveEffectiveRole.
-  const { data: roleData } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", user.id);
+  const [profileResult, rolesResult] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("full_name, avatar_url, company_id")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    // Roles do Dominex vivem em user_roles (M:N). Pode ter mais de um por
+    // user_id. Pega o "mais alto" via resolveEffectiveRole.
+    supabase.from("user_roles").select("role").eq("user_id", user.id),
+  ]);
+  if (profileResult.error) throw profileResult.error;
+  if (rolesResult.error) throw rolesResult.error;
+  const profile = profileResult.data;
+  const roleData = rolesResult.data;
   const effectiveRole = resolveEffectiveRole(roleData);
 
   // Company name — só busca se tem company_id. super_admin tipicamente

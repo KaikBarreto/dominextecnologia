@@ -31,6 +31,28 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.42',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Entrada mais rápida no sistema',
+        category: 'melhoria',
+        description: 'Reduzimos o tempo de espera após informar a senha ou entrar com o Google. As informações necessárias para abrir a conta agora são carregadas juntas e, se algum serviço demorar além do esperado, o acesso não fica preso indefinidamente.',
+      },
+      {
+        title: 'Lembrar-me mantém a sessão corretamente',
+        category: 'correcao',
+        description: 'Ao marcar Lembrar-me, o acesso continua salvo depois de fechar e abrir o navegador, inclusive quando a entrada é feita pelo Google. Sem essa opção, a sessão permanece apenas enquanto o navegador estiver aberto.',
+      },
+      {
+        title: 'Aplicativo instalado mais leve para abrir e atualizar',
+        category: 'melhoria',
+        description: 'O aplicativo instalado no celular ou computador deixou de baixar antecipadamente telas e recursos que ainda não foram usados. Eles passam a ser carregados conforme a navegação, reduzindo o download inicial e acelerando as atualizações.',
+      },
+    ],
+  },
+  {
     version: '1.41.41',
     date: '22 de novembro de 2026',
     type: 'patch',

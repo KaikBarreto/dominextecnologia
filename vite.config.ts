@@ -17,6 +17,29 @@ import { APP_VERSION } from "./src/config/version";
 // Página nova: acrescente a pasta aqui e só aqui.
 const PAGINAS_ESTATICAS = ["trilha-domiflix", "guia-tecnico"];
 
+// O PWA precisa instalar somente o shell necessário para abrir a aplicação.
+// Chunks lazy de rotas são numerosos e alguns têm vários MiB (catálogos,
+// editores, mapas e relatórios). Precachear `**/*.js` anulava o code-splitting:
+// cada instalação/atualização baixava centenas de arquivos antes mesmo do
+// usuário entrar. Os chunks visitados continuam disponíveis offline pelo cache
+// runtime `dominex-build-assets` abaixo.
+const CORE_PRECACHE_PATTERNS = [
+  "assets/app-entry-*.js",
+  "assets/vite-preload-helper-*.js",
+  "assets/vendor-react-*.js",
+  "assets/vendor-react-query-*.js",
+  "assets/vendor-router-*.js",
+  "assets/vendor-sonner-*.js",
+  "assets/vendor-supabase-*.js",
+  "assets/vendor-date-fns-*.js",
+  // O CSS global da SPA se chama `index-*`. CSS de rotas lazy entra no cache
+  // runtime somente quando a tela correspondente for aberta.
+  "assets/index-*.css",
+  "favicon.{ico,png}",
+  "icons/icon-*.png",
+  "offline.html",
+];
+
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
@@ -46,7 +69,7 @@ export default defineConfig(({ mode }) => ({
         // customizado (reduz risco nos fluxos offline já estabilizados).
         importScripts: ["/sw-origin-guard.js", "/push-sw.js"],
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,otf}"],
+        globPatterns: CORE_PRECACHE_PATTERNS,
         // Páginas estáticas servidas fora da SPA (public/<pasta>/index.html) não
         // podem entrar no precache nem ser interceptadas pelo navigateFallback —
         // senão o SW devolve o shell do app e a rota cai no 404 da SPA. As duas
@@ -74,6 +97,33 @@ export default defineConfig(({ mode }) => ({
           ...PAGINAS_ESTATICAS.map((pasta) => new RegExp(`^/${pasta}`)),
         ],
         runtimeCaching: [
+          // Assets gerados pelo Vite têm hash no nome: CacheFirst é seguro e
+          // evita baixar novamente os chunks das rotas já visitadas. O regex
+          // começa em `/assets/`, portanto o Workbox só o aplica same-origin.
+          {
+            urlPattern: /\/assets\/.*\.(?:js|css|woff2?|otf|png|jpe?g|webp|svg)$/i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "dominex-build-assets",
+              expiration: {
+                maxEntries: 300,
+                maxAgeSeconds: 60 * 60 * 24 * 30,
+              },
+            },
+          },
+          // Arquivos públicos não têm hash. StaleWhileRevalidate acelera o uso
+          // recorrente sem prender logos, ícones ou imagens em versão antiga.
+          {
+            urlPattern: /\/(?:images|icons|fonts)\/.*\.(?:woff2?|otf|png|jpe?g|webp|svg|ico)$/i,
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "dominex-public-assets",
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 60 * 60 * 24 * 7,
+              },
+            },
+          },
           // Supabase storage (assets publicos: logos, fotos) — pode cachear.
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/storage\/v1\/object\/public\/.*/i,
@@ -117,6 +167,9 @@ export default defineConfig(({ mode }) => ({
   build: {
     rollupOptions: {
       output: {
+        // Nome estável (com hash de conteúdo) para o único entry da SPA. Isso
+        // permite precachear o shell sem incluir todo chunk chamado `index`.
+        entryFileNames: "assets/app-entry-[hash].js",
         // ESTRATÉGIA DE CHUNKING — minimalista de propósito.
         //
         // O ganho real da landing vem do code-splitting POR ROTA (React.lazy em

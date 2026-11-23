@@ -4,11 +4,9 @@ import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  registerSession,
+  bootstrapPostLoginSession,
   hasSystemAccess,
-  resolvePostLoginRedirect,
 } from '@/lib/postLogin';
-import { addCurrentSessionToSavedStandalone } from '@/lib/savedSessions';
 import { trackUsage } from '@/lib/trackUsage';
 import logoWhite from '@/assets/logo-horizontal-verde.png';
 import DarkVeil from '@/components/ui/DarkVeil';
@@ -70,13 +68,8 @@ export default function AuthCallback() {
 
         // Conta com acesso: registra a sessão (single-session enforcement) e
         // espelha o destino do completeLogin do login email/senha.
-        await registerSession(user.id);
-        addCurrentSessionToSavedStandalone().catch((e) =>
-          console.warn('[AuthCallback] addCurrentSessionToSavedStandalone failed:', e),
-        );
+        const { destination } = await bootstrapPostLoginSession(user.id);
         trackUsage('login');
-
-        const destination = await resolvePostLoginRedirect(user.id);
         navigate(destination, { replace: true });
       } catch (e) {
         console.error('[AuthCallback] erro inesperado no retorno do Google:', e);

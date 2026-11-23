@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.41";
+export const APP_VERSION = "1.41.42";
 
 export const VERSION_NOTES =
-  "Os relatórios da Loja ganharam a aba Vendas, com rankings por produto, cliente, vendedor e horário. Também corrigimos o escopo dos totais por estoque e protegemos os dados de RH nas telas e exportações.";
+  "O acesso ficou mais rápido e a opção Lembrar-me passou a manter a sessão corretamente, inclusive ao entrar com o Google. Também reduzimos o carregamento inicial do aplicativo instalado.";
