@@ -31,7 +31,7 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
-    version: '1.41.47',
+    version: '1.41.48',
     date: '23 de novembro de 2026',
     type: 'patch',
     changes: [
@@ -49,6 +49,28 @@ export const changelog: ChangelogEntry[] = [
         title: 'Canais respeitam os módulos contratados',
         category: 'seguranca',
         description: 'E-mail e WhatsApp agora validam separadamente o canal e o módulo que origina cada evento. Assim, automações de cobrança só funcionam quando o módulo Cobranças está ativo, inclusive no momento do envio.',
+      },
+    ],
+  },
+  {
+    version: '1.41.47',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Entrada recupera a conexão sem ficar travada',
+        category: 'correcao',
+        description: 'Quando a conexão demora ou passa por uma oscilação, a entrada deixa de ficar presa indefinidamente e oferece uma tentativa segura para continuar. A sessão local também é liberada mesmo quando o serviço de saída está temporariamente indisponível.',
+      },
+      {
+        title: 'Atualização completa pelo rodapé',
+        category: 'melhoria',
+        description: 'O botão ao lado da versão, tanto na tela de entrada quanto dentro do sistema, agora atualiza o aplicativo, o cache e a versão instalada. Se a conexão ainda estiver oscilando, a tela atual é preservada e o botão fica disponível para tentar novamente.',
+      },
+      {
+        title: 'Mensagens de recuperação mais tranquilas',
+        category: 'melhoria',
+        description: 'Falhas temporárias de conexão agora preservam o contexto da tela e mostram orientações claras para retomar o trabalho, sem exibir detalhes técnicos ou sugerir uma pendência de assinatura que não existe.',
       },
     ],
   },
