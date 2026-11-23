@@ -8,7 +8,6 @@ import {
   Package,
   DollarSign,
   FileText,
-  Receipt,
   TicketPercent,
   Settings as SettingsIcon,
   User,
@@ -80,6 +79,7 @@ import { NotificationsBell } from '@/components/notifications/NotificationsBell'
 import { AdminNotificationBell } from '@/components/admin/AdminNotificationBell';
 import { getCompanyWhatsAppNumber } from '@/components/landing/whatsappNumbers';
 import { cn } from '@/lib/utils';
+import { fiscalNavigationItem } from '@/config/fiscalNavigation';
 
 interface MenuItem {
   title: string;
@@ -153,7 +153,7 @@ const tenantMenuItems: MenuItem[] = [
     ],
   },
   { title: 'Financeiro', icon: DollarSign, path: '/financeiro', screenKey: 'screen:finance' },
-  { title: 'Notas Fiscais', icon: Receipt, path: '/notas-fiscais', screenKey: 'screen:fiscal_notes', moduleKey: 'nfe' },
+  fiscalNavigationItem,
 ];
 
 const adminMenuItems: (MenuItem & { masterOnly?: boolean })[] = [

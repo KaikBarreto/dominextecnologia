@@ -16,19 +16,20 @@ import { GoodsFiscalCatalogPanels, type GoodsCatalogTab } from '@/components/fis
 import { cn } from '@/lib/utils';
 
 type SettingsTab = 'documents' | GoodsCatalogTab;
-const SETTINGS_TABS: Array<{ value: SettingsTab; label: string }> = [
+const CONFIGURATION_TABS: Array<{ value: SettingsTab; label: string }> = [
   { value: 'documents', label: 'Documentos' },
   { value: 'series', label: 'Séries' },
-  { value: 'scenarios', label: 'Cenários' },
   { value: 'carriers', label: 'Transportadoras' },
 ];
 
-export function GoodsSettingsSection({ environment, certificateReady }: { environment: FiscalAmbiente; certificateReady: boolean }) {
+type GoodsSettingsMode = 'configuration' | 'scenarios';
+
+export function GoodsSettingsSection({ environment, certificateReady, mode = 'configuration' }: { environment: FiscalAmbiente; certificateReady: boolean; mode?: GoodsSettingsMode }) {
   const { user, profile, profileLoading, loading } = useAuth();
   if (!user || profile?.user_id !== user.id || loading !== false || profileLoading !== false || profile.is_active !== true) return <p role={profile?.is_active === false ? 'alert' : 'status'}>{profile?.is_active === false ? 'Seu acesso fiscal está indisponível. Entre novamente para continuar.' : 'Carregando o contexto fiscal…'}</p>;
-  return <GoodsSettingsContext key={`${user.id}:${profile.company_id}`} environment={environment} certificateReady={certificateReady} />;
+  return <GoodsSettingsContext key={`${user.id}:${profile.company_id}:${mode}`} environment={environment} certificateReady={certificateReady} mode={mode} />;
 }
-function GoodsSettingsContext({ environment, certificateReady }: { environment: FiscalAmbiente; certificateReady: boolean }) {
+function GoodsSettingsContext({ environment, certificateReady, mode }: { environment: FiscalAmbiente; certificateReady: boolean; mode: GoodsSettingsMode }) {
   const { settings, isLoading, isError, save, isSaving, refetch } = useGoodsFiscalSettings();
   const catalogs = useGoodsFiscalCatalogs();
   const [activeTab, setActiveTab] = useState<SettingsTab>('documents');
@@ -44,6 +45,10 @@ function GoodsSettingsContext({ environment, certificateReady }: { environment: 
   };
   if (isLoading) return <div className="flex justify-center py-16"><Loader2 className="h-7 w-7 animate-spin" /></div>;
   if (isError) return <div className="rounded-2xl border border-destructive p-5"><p className="font-bold text-destructive">Não foi possível carregar as configurações.</p><Button variant="outline" className="mt-4" onClick={() => refetch()}>Tentar novamente</Button></div>;
+  if (mode === 'scenarios') return <div className="space-y-6">
+    <div className="flex items-start gap-3 rounded-2xl bg-primary p-5 text-primary-foreground"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-foreground text-primary"><ReceiptText className="h-5 w-5" /></span><div><h2 className="text-xl font-bold">Cenários de mercadorias</h2><p className="mt-1 text-sm text-primary-foreground/75">Regras compartilhadas pelas emissões de NF-e e NFC-e. Serviços continuam com tributação própria na configuração de NFS-e.</p></div></div>
+    <GoodsFiscalCatalogPanels tab="scenarios" />
+  </div>;
   const activeExitSeries = catalogs.series.filter((entry) => entry.active && (entry.direction === 'saida' || entry.direction === 'ambos'));
   const activeEntrySeries = catalogs.series.filter((entry) => entry.active && (entry.direction === 'entrada' || entry.direction === 'ambos'));
   return <div className="space-y-6">
@@ -51,7 +56,7 @@ function GoodsSettingsContext({ environment, certificateReady }: { environment: 
     {!certificateReady && <div className="rounded-2xl border border-destructive p-4 text-destructive"><p className="font-bold">Certificado A1 necessário</p><p className="mt-1 text-sm">Envie o certificado na aba Certificado. Sem ele, o rascunho funciona, mas a emissão é bloqueada antes do motor fiscal.</p></div>}
     <HorizontalTabBar asChild>
       <div className="flex min-w-0 gap-6 border-b" role="tablist" aria-label="Configurações de NF-e e NFC-e">
-        {SETTINGS_TABS.map((tab) => <button key={tab.value} type="button" role="tab" aria-selected={activeTab === tab.value} onClick={() => setActiveTab(tab.value)} className={cn('shrink-0 border-b-2 px-1 py-3 text-sm font-semibold transition-colors', activeTab === tab.value ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground')}>{tab.label}</button>)}
+        {CONFIGURATION_TABS.map((tab) => <button key={tab.value} type="button" role="tab" aria-selected={activeTab === tab.value} onClick={() => setActiveTab(tab.value)} className={cn('shrink-0 border-b-2 px-1 py-3 text-sm font-semibold transition-colors', activeTab === tab.value ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground')}>{tab.label}</button>)}
       </div>
     </HorizontalTabBar>
     {activeTab === 'documents' && <div className="space-y-6">
@@ -61,6 +66,6 @@ function GoodsSettingsContext({ environment, certificateReady }: { environment: 
     </div>
     <div className="flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between"><p className="text-sm text-muted-foreground">Ambiente compartilhado: <strong className="text-foreground">{environment === 'producao' ? 'Produção' : 'Homologação'}</strong>. Liberação de produção continua fail-closed até aprovação.</p><Button className="h-14 gap-2 px-6 text-base font-bold" onClick={handleSave} disabled={isSaving}>{isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}Salvar NF-e e NFC-e</Button></div>
     </div>}
-    {activeTab !== 'documents' && <GoodsFiscalCatalogPanels tab={activeTab} />}
+    {activeTab !== 'documents' && <GoodsFiscalCatalogPanels tab={activeTab as GoodsCatalogTab} />}
   </div>;
 }

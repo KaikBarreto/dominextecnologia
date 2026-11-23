@@ -920,9 +920,19 @@ const AppRoutes = () => (
       <Route path="/financeiro/categorias" element={<Navigate to="/financeiro/configuracoes-financeiras?tab=categorias" replace />} />
       <Route path="/financeiro/configuracoes" element={<Navigate to="/financeiro/configuracoes-financeiras" replace />} />
       <Route path="/financeiro/centro-de-custo" element={<Navigate to="/financeiro/configuracoes-financeiras?tab=centro-de-custo" replace />} />
-      {/* Notas Fiscais (NFS-e) — gateada pelo módulo pago `nfe`. */}
+      {/* Fiscal: áreas próprias, gateadas pelo mesmo módulo e permissão. */}
+      {localizedTemplatesFor('fiscalNotes').map((tpl) => (
+        <Route key={`fiscal-redirect:${tpl}`} path={tpl} element={<Navigate to="/notas-fiscais/nfe" replace />} />
+      ))}
+      {localizedAppRoutes('fiscalNfe', <PermissionRoute screenKey="screen:fiscal_notes"><ModuleRoute moduleKey="nfe"><NotasFiscais /></ModuleRoute></PermissionRoute>)}
+      {localizedAppRoutes('fiscalNfce', <PermissionRoute screenKey="screen:fiscal_notes"><ModuleRoute moduleKey="nfe"><NotasFiscais /></ModuleRoute></PermissionRoute>)}
+      {localizedAppRoutes('fiscalNfse', <PermissionRoute screenKey="screen:fiscal_notes"><ModuleRoute moduleKey="nfe"><NotasFiscais /></ModuleRoute></PermissionRoute>)}
+      {localizedAppRoutes('fiscalInventory', <PermissionRoute screenKey="screen:fiscal_notes"><ModuleRoute moduleKey="nfe"><NotasFiscais /></ModuleRoute></PermissionRoute>)}
+      {localizedTemplatesFor('fiscalReports').map((tpl) => (
+        <Route key={`fiscal-reports-redirect:${tpl}`} path={tpl} element={<Navigate to="/notas-fiscais/estoque-fiscal" replace />} />
+      ))}
+      {localizedAppRoutes('fiscalScenarios', <PermissionRoute screenKey="screen:fiscal_notes"><ModuleRoute moduleKey="nfe"><FiscalSettings /></ModuleRoute></PermissionRoute>)}
       {localizedAppRoutes('fiscalSettings', <PermissionRoute screenKey="screen:fiscal_notes"><ModuleRoute moduleKey="nfe"><FiscalSettings /></ModuleRoute></PermissionRoute>)}
-      {localizedAppRoutes('fiscalNotes', <PermissionRoute screenKey="screen:fiscal_notes"><ModuleRoute moduleKey="nfe"><NotasFiscais /></ModuleRoute></PermissionRoute>)}
       {localizedAppRoutes('pmoc', <PMOC />)}
       {localizedAppRoutes('contracts', <PermissionRoute screenKey="screen:contracts"><ModuleRoute moduleKey="contracts"><Contracts /></ModuleRoute></PermissionRoute>)}
       {localizedAppRoutes('contractDetail', <PermissionRoute screenKey="screen:contracts"><ModuleRoute moduleKey="contracts"><ContractDetail /></ModuleRoute></PermissionRoute>)}

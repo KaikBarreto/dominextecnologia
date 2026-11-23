@@ -34,6 +34,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/format";
 import { useInventory } from "@/hooks/useInventory";
+import { useStocks } from "@/hooks/useStocks";
 import { useCustomers } from "@/hooks/useCustomers";
 import { useSuppliers } from "@/hooks/useSuppliers";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -102,6 +103,7 @@ const newDraft = (model: GoodsModel, direction: GoodsDirection): GoodsFiscalDraf
   id: null,
   model,
   direction,
+  stockId: null,
   seriesId: null,
   carrierId: null,
   sourceType: "manual",
@@ -201,6 +203,7 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
   const [selectedSource, setSelectedSource] = useState<string | null>(null);
   const [selectedPartyId, setSelectedPartyId] = useState("");
   const { items: inventory } = useInventory();
+  const { stocks, defaultStock, isLoading: stocksLoading } = useStocks();
   const { customers } = useCustomers();
   const { suppliers } = useSuppliers();
   const catalogs = useGoodsFiscalCatalogs();
@@ -267,6 +270,7 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
       const party = restored ? restored.party : includeIdentifiedConsumer ? imported.party : null;
       setDraft(current => ({ ...current, ...imported, ...restored, id: openingDocument.current.id ?? null, model,
         sourceType, sourceId, direction: imported.direction, party,
+        stockId: imported.stockId,
         nature: restored?.nature || initialNature || current.nature }));
       setSelectedPartyId(party?.id ?? '');
     }).catch(() => { if (active) setSourceError('Não foi possível importar a venda confirmada. Confira seu acesso fiscal e tente novamente.'); })
@@ -282,6 +286,11 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
     const preferred = availableSeries.find((entry) => entry.id === configuredId) ?? availableSeries[0];
     setDraft((current) => current.seriesId ? current : { ...current, seriesId: preferred.id });
   }, [open, model, draft.seriesId, draft.direction, availableSeries, settings.nfe.defaultEntrySeriesId, settings.nfe.defaultExitSeriesId]);
+
+  useEffect(() => {
+    if (!open || draft.stockId || !defaultStock) return;
+    setDraft((current) => current.stockId ? current : { ...current, stockId: defaultStock.id });
+  }, [open, draft.stockId, defaultStock]);
 
   const patch = (values: Partial<GoodsFiscalDraft>) =>
     setDraft((current) => ({ ...current, ...values }));
@@ -396,6 +405,8 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
   const stepError = (): string | null => {
     if (step === "dados" && sourceMode === "import" && !draft.sourceId)
       return "Escolha uma venda ou compra para importar.";
+    if (step === "dados" && !draft.stockId)
+      return "Selecione o local de estoque da operação.";
     if (step === "dados" && model === 55 && !selectedSeries)
       return "Escolha uma série de NF-e ativa para esta operação.";
     if (
@@ -437,6 +448,11 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
   const persist = async (emit: boolean) => {
     if (saver.isPending || sourceLoading || sourceError) return;
     if (emit) {
+      if (!draft.stockId) {
+        setStep("dados");
+        toast.error("Selecione o local de estoque da operação.");
+        return;
+      }
       if (model === 55 && !selectedSeries) {
         setStep("dados");
         toast.error("Escolha uma série de NF-e ativa para esta operação.");
@@ -773,8 +789,38 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
                 )}
               </div>
             )}
+            <div className="grid max-w-5xl gap-5 lg:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="goods-stock">Local de estoque</Label>
+                <Select
+                  value={draft.stockId ?? ""}
+                  onValueChange={(stockId) => patch({ stockId })}
+                  disabled={stocksLoading || importedSource}
+                >
+                  <SelectTrigger id="goods-stock" className="min-h-11">
+                    <SelectValue placeholder={stocksLoading ? "Carregando locais…" : "Selecione o local da operação"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stocks.map((stock) => (
+                      <SelectItem key={stock.id} value={stock.id}>
+                        {stock.name}{stock.is_default ? " · principal" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground">
+                  {importedSource
+                    ? "O local foi herdado da venda ou compra e não pode ser trocado nesta nota."
+                    : "A autorização fiscal movimentará este local; rascunhos e contingência não alteram saldo."}
+                </p>
+                {!stocksLoading && stocks.length === 0 ? (
+                  <p role="alert" className="text-sm font-medium text-destructive">
+                    Nenhum local geral está disponível para seu acesso. Cadastre ou solicite acesso a um local antes de emitir.
+                  </p>
+                ) : null}
+              </div>
             {model === 55 && (
-              <div className="max-w-xl space-y-2">
+              <div className="space-y-2">
                 <Label htmlFor="goods-nfe-series">Série da NF-e</Label>
                 <Select
                   value={draft.seriesId ?? undefined}
@@ -802,6 +848,7 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
                 )}
               </div>
             )}
+            </div>
           </section>
         )}
 

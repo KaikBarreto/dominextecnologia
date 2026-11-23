@@ -87,6 +87,7 @@ interface NormalizedDraft {
   id: string | null;
   model: 55 | 65;
   direction: "entrada" | "saida";
+  stockId: string | null;
   seriesId: string | null;
   carrierId: string | null;
   sourceType: "manual" | "pdv_sale" | "pdv_purchase" | "inventory_purchase";
@@ -190,6 +191,7 @@ export function normalizeDraft(raw: unknown): NormalizedDraft {
     id: uuid(draft.id),
     model,
     direction,
+    stockId: uuid(draft.stockId),
     seriesId: model === 55 ? uuid(draft.seriesId) : null,
     carrierId: model === 55 ? uuid(draft.carrierId) : null,
     sourceType,
@@ -211,6 +213,7 @@ function validation(
   taxRegime: string,
 ): string[] {
   const errors: string[] = [];
+  if (!draft.stockId) errors.push("Selecione o local de estoque da operação.");
   if (!draft.nature) errors.push("Informe a natureza da operação.");
   if (!draft.items.length) errors.push("Adicione ao menos um item.");
   if (
@@ -591,6 +594,7 @@ async function saveDraft(
   const table = draft.model === 55 ? "nfe_documents" : "nfce_documents";
   const common: JsonObject = {
     company_id: auth.companyId,
+    stock_id: draft.stockId,
     source_type: draft.sourceType,
     source_id: draft.sourceId,
     draft_payload: draft,
@@ -649,6 +653,51 @@ async function saveDraft(
         : "Não foi possível salvar o rascunho.",
     );
   return data as JsonObject;
+}
+
+async function assertFiscalStock(
+  auth: Awaited<ReturnType<typeof authorizeFiscalGoodsIssuer>> & { ok: true },
+  draft: NormalizedDraft,
+) {
+  if (!draft.stockId) {
+    throw new GoodsDocumentError('stock_required', 'Selecione o local de estoque da operação.');
+  }
+  const [stock, access] = await Promise.all([
+    auth.supabase.from('stocks').select('id').eq('id', draft.stockId)
+      .eq('company_id', auth.companyId).is('customer_id', null).maybeSingle(),
+    auth.supabase.rpc('can_access_stock', {
+      _user_id: auth.userId,
+      _stock_id: draft.stockId,
+    }),
+  ]);
+  if (stock.error || !stock.data || access.error || access.data !== true) {
+    throw new GoodsDocumentError('stock_forbidden', 'O local de estoque não está disponível para seu acesso.', 403);
+  }
+  if (draft.sourceType === 'manual') return;
+  if (!draft.sourceId) {
+    throw new GoodsDocumentError('source_invalid', 'Selecione uma venda ou compra válida para importar.');
+  }
+
+  let inheritedStockId: string | null = null;
+  if (draft.sourceType === 'pdv_sale') {
+    const source = await auth.supabase.from('pdv_orders').select('stock_id')
+      .eq('id', draft.sourceId).eq('company_id', auth.companyId).maybeSingle();
+    if (source.error) throw new Error('Não foi possível validar o local da venda importada.');
+    inheritedStockId = uuid(source.data?.stock_id);
+  } else {
+    const source = await auth.supabase.from('compra_ordens')
+      .select('compras!inner(stock_id)').eq('id', draft.sourceId)
+      .eq('company_id', auth.companyId).maybeSingle();
+    if (source.error) throw new Error('Não foi possível validar o local da compra importada.');
+    inheritedStockId = uuid(object(source.data?.compras).stock_id);
+  }
+  if (!inheritedStockId || inheritedStockId !== draft.stockId) {
+    throw new GoodsDocumentError(
+      'stock_source_mismatch',
+      'O local de estoque da nota precisa ser o mesmo da venda ou compra importada.',
+      409,
+    );
+  }
 }
 
 async function assertSourceBelongsToCompany(
@@ -1182,6 +1231,7 @@ Deno.serve(async (req) => {
         400,
       );
     await assertSourceBelongsToCompany(auth, draft);
+    await assertFiscalStock(auth, draft);
     await assertFiscalCatalogsBelongToCompany(auth, draft);
     const row = await saveDraft(auth, draft);
     if (action === "save_draft" || row.status !== 'draft')
