@@ -28,7 +28,9 @@ import { isValidDocument } from '@/lib/documentValidation';
 
 export type GoodsCatalogTab = 'series' | 'scenarios' | 'carriers';
 
-const emptySeries = (): Partial<NfeSeries> => ({ label: '', series: 1, nextNumber: 1, direction: 'saida', active: true });
+type NfeSeriesForm = Partial<NfeSeries> & { lastNumberUsed?: number };
+
+const emptySeries = (): NfeSeriesForm => ({ label: '', series: 1, lastNumberUsed: 0, direction: 'saida', active: true });
 const emptyScenario = (): Partial<GoodsFiscalScenario> => ({
   name: '', direction: 'saida', operationNature: '', destinationScope: 'ambos', cfopInternal: '', cfopInterstate: '',
   icmsCode: '', icmsRate: null, icmsReductionRate: null, pisCst: '', pisRate: null, cofinsCst: '', cofinsRate: null,
@@ -42,7 +44,7 @@ const numberOrNull = (value: string) => value.trim() === '' ? null : Number(valu
 
 export function GoodsFiscalCatalogPanels({ tab }: { tab: GoodsCatalogTab }) {
   const catalogs = useGoodsFiscalCatalogs();
-  const [series, setSeries] = useState<Partial<NfeSeries>>(emptySeries);
+  const [series, setSeries] = useState<NfeSeriesForm>(emptySeries);
   const [scenario, setScenario] = useState<Partial<GoodsFiscalScenario>>(emptyScenario);
   const [carrier, setCarrier] = useState<Partial<GoodsFiscalCarrier>>(emptyCarrier);
   const [deletion, setDeletion] = useState<{ type: GoodsCatalogTab; id: string; label: string } | null>(null);
@@ -50,6 +52,9 @@ export function GoodsFiscalCatalogPanels({ tab }: { tab: GoodsCatalogTab }) {
   const saveSeries = async () => {
     if (!series.label?.trim() || !Number.isInteger(Number(series.series)) || Number(series.series) < 0 || Number(series.series) > 889) {
       toast.error('Informe o nome e uma série entre 0 e 889.'); return;
+    }
+    if (!series.id && (!Number.isInteger(Number(series.lastNumberUsed)) || Number(series.lastNumberUsed) < 0 || Number(series.lastNumberUsed) > 999_999_998)) {
+      toast.error('Informe a última numeração utilizada entre 0 e 999.999.998.'); return;
     }
     try { await catalogs.upsertSeries(series); setSeries(emptySeries()); toast.success('Série salva.'); }
     catch (error) { toast.error((error as Error).message); }
@@ -84,6 +89,22 @@ export function GoodsFiscalCatalogPanels({ tab }: { tab: GoodsCatalogTab }) {
       <CatalogForm title={series.id ? 'Editar série' : 'Nova série'} description="A numeração é reservada no servidor. Uma série já utilizada não pode ser renumerada ou excluída.">
         <Field label="Nome"><Input value={series.label ?? ''} onChange={(event) => setSeries((current) => ({ ...current, label: event.target.value }))} placeholder="Ex.: NF-e saída principal" /></Field>
         <div className="grid grid-cols-2 gap-3"><Field label="Número"><Input inputMode="numeric" disabled={!!series.id} value={series.series ?? 1} onChange={(event) => setSeries((current) => ({ ...current, series: Number(event.target.value) }))} /></Field><Field label="Direção"><Select value={series.direction ?? 'saida'} onValueChange={(direction: NfeSeries['direction']) => setSeries((current) => ({ ...current, direction }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="saida">Saída</SelectItem><SelectItem value="entrada">Entrada</SelectItem><SelectItem value="ambos">Entrada e saída</SelectItem></SelectContent></Select></Field></div>
+        {!series.id ? <Field label="Último número utilizado">
+          <Input
+            inputMode="numeric"
+            min={0}
+            max={999_999_998}
+            value={series.lastNumberUsed ?? 0}
+            onChange={(event) => setSeries((current) => ({ ...current, lastNumberUsed: Number(event.target.value) }))}
+            aria-describedby="series-last-number-help"
+          />
+          <p id="series-last-number-help" className="text-sm text-muted-foreground">
+            Use 0 se esta série nunca emitiu NF-e. A próxima emissão será a nº <strong className="text-foreground">{Number.isInteger(Number(series.lastNumberUsed)) && Number(series.lastNumberUsed) >= 0 ? Number(series.lastNumberUsed) + 1 : '—'}</strong>.
+          </p>
+        </Field> : <div className="rounded-xl border bg-muted/40 p-3">
+          <p className="text-sm font-semibold">Próximo número reservado</p>
+          <p className="mt-1 text-sm text-muted-foreground">A próxima emissão desta série será a nº <strong className="text-foreground">{series.nextNumber}</strong>. O contador não pode ser reduzido.</p>
+        </div>}
         <ActiveField active={series.active !== false} onChange={(active) => setSeries((current) => ({ ...current, active }))} />
         <FormActions editing={!!series.id} busy={catalogs.isMutating} onCancel={() => setSeries(emptySeries())} onSave={saveSeries} />
       </CatalogForm>

@@ -65,10 +65,12 @@ async function saveDocumentSettings(auth: FiscalAuth, body: JsonObject) {
 async function upsertSeries(auth: FiscalAuth, raw: unknown) {
   const record = object(raw); const id = uuid(record.id); const series = integer(record.series, -1); const direction = text(record.direction);
   if (!text(record.label, 80) || series < 0 || series > 889 || !['entrada', 'saida', 'ambos'].includes(direction)) throw new SettingsError('invalid_series', 'Revise nome, número e direção da série.');
+  const lastNumberUsed = integer(record.lastNumberUsed, record.lastNumberUsed == null ? 0 : -1);
+  if (!id && (lastNumberUsed < 0 || lastNumberUsed > 999_999_998)) throw new SettingsError('invalid_last_number', 'A última numeração utilizada precisa estar entre 0 e 999.999.998.');
   const values = { company_id: auth.companyId, label: text(record.label, 80), series, direction, active: record.active !== false };
   const query = id
     ? auth.supabase.from('nfe_series').update(values).eq('id', id).eq('company_id', auth.companyId).select('id').maybeSingle()
-    : auth.supabase.from('nfe_series').insert(values).select('id').single();
+    : auth.supabase.from('nfe_series').insert({ ...values, next_number: lastNumberUsed + 1 }).select('id').single();
   const result = await query;
   if (result.error || !result.data) throw new SettingsError('series_save_failed', 'Não foi possível salvar a série. Confira se o número já existe e se ela já foi usada.', 409);
   return result.data;

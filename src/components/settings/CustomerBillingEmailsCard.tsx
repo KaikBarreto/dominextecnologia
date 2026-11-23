@@ -200,6 +200,14 @@ export function CustomerBillingEmailsCard() {
         </NoticeBanner>
       )}
 
+      {enabled && (
+        <NoticeBanner variant="info" title="Quem recebe estes avisos">
+          Clientes sem personalização recebem no e-mail principal. Para escolher
+          contatos e eventos diferentes, ajuste os destinatários na ficha de cada
+          cliente. Cobranças anteriores à ativação não são enviadas.
+        </NoticeBanner>
+      )}
+
       <div className="space-y-2 rounded-xl bg-background/70 p-3.5">
         <div className="flex items-center justify-between gap-3 text-xs">
           <span className="font-medium">Franquia mensal</span>
