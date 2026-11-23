@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.43',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Agenda mais estável com muitos agendamentos',
+        category: 'correcao',
+        description: 'Corrigimos as falhas que podiam interromper o carregamento da Agenda em empresas com muitos registros. Agora todos os agendamentos do período são carregados em etapas, incluindo atendimentos de vários dias e retomadas, sem limitar a quantidade exibida.',
+      },
+      {
+        title: 'Carregamento mais leve da Agenda',
+        category: 'melhoria',
+        description: 'A Agenda passou a buscar somente as informações necessárias em cada etapa. Isso reduz o esforço para abrir e navegar pelo calendário, mantendo os dados e as permissões da empresa protegidos.',
+      },
+    ],
+  },
+  {
     version: '1.41.42',
     date: '23 de novembro de 2026',
     type: 'patch',

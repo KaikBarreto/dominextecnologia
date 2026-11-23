@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.42";
+export const APP_VERSION = "1.41.43";
 
 export const VERSION_NOTES =
-  "O acesso ficou mais rápido e a opção Lembrar-me passou a manter a sessão corretamente, inclusive ao entrar com o Google. Também reduzimos o carregamento inicial do aplicativo instalado.";
+  "A Agenda ficou mais estável para empresas com muitos agendamentos. A consulta agora carrega todos os itens em etapas, sem encerrar antes da conclusão, e ficou mais leve para abrir e navegar.";

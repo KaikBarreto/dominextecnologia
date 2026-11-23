@@ -9,7 +9,6 @@ const mocks = vi.hoisted(() => ({
   refreshSession: vi.fn(),
   rpc: vi.fn(),
   abortSignal: vi.fn(),
-  range: vi.fn(),
 }));
 
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: mocks.useAuth }));
@@ -27,11 +26,9 @@ describe('useScheduleOrders', () => {
     vi.clearAllMocks();
     const rpcBuilder = {
       abortSignal: mocks.abortSignal,
-      range: mocks.range,
     };
     mocks.rpc.mockReturnValue(rpcBuilder);
-    mocks.abortSignal.mockReturnValue(rpcBuilder);
-    mocks.range.mockResolvedValue({ data: [], error: null });
+    mocks.abortSignal.mockResolvedValue({ data: [], error: null });
   });
 
   it('nao consulta enquanto perfil e sessao pertencem a usuarios diferentes', async () => {
@@ -74,9 +71,68 @@ describe('useScheduleOrders', () => {
     await waitFor(() => expect(view.result.current.isLoading).toBe(false));
     expect(mocks.getSession).toHaveBeenCalledOnce();
     expect(mocks.refreshSession).not.toHaveBeenCalled();
-    expect(mocks.rpc).toHaveBeenCalledWith('schedule_visible_entries_v1', {
+    expect(mocks.rpc).toHaveBeenCalledWith('schedule_visible_entries_v2', {
       p_start_date: '2026-11-01',
       p_end_date: '2026-11-30',
+      p_after_scheduled_date: null,
+      p_after_scheduled_time: null,
+      p_after_scheduled_time_is_null: null,
+      p_after_order_number: null,
+      p_after_id: null,
+      p_page_size: 500,
+    });
+    expect(mocks.abortSignal).toHaveBeenCalledWith(expect.any(AbortSignal));
+  });
+
+  it('avança o cursor e reúne todas as páginas sem impor teto de registros', async () => {
+    const session = { user: { id: 'user-1' }, access_token: 'token' };
+    mocks.useAuth.mockReturnValue({
+      profile: { company_id: 'company-1', user_id: 'user-1' },
+      session,
+    });
+    mocks.getSession.mockResolvedValue({ data: { session }, error: null });
+
+    const firstPage = Array.from({ length: 500 }, (_, index) => ({
+      entry: { id: `os-${index}` },
+      cursor_scheduled_date: '2026-11-15',
+      cursor_scheduled_time: '08:00:00',
+      cursor_scheduled_time_is_null: false,
+      cursor_order_number: index + 1,
+      cursor_id: `os-${index}`,
+    }));
+    mocks.abortSignal
+      .mockResolvedValueOnce({ data: firstPage, error: null })
+      .mockResolvedValueOnce({
+        data: [{
+          entry: { id: 'os-500' },
+          cursor_scheduled_date: '2026-11-16',
+          cursor_scheduled_time: null,
+          cursor_scheduled_time_is_null: true,
+          cursor_order_number: 501,
+          cursor_id: 'os-500',
+        }],
+        error: null,
+      });
+
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+    const view = renderHook(
+      () => useScheduleOrders({ startDate: '2026-11-01', endDate: '2026-11-30' }),
+      { wrapper },
+    );
+
+    await waitFor(() => expect(view.result.current.serviceOrders).toHaveLength(501));
+    expect(mocks.rpc).toHaveBeenNthCalledWith(2, 'schedule_visible_entries_v2', {
+      p_start_date: '2026-11-01',
+      p_end_date: '2026-11-30',
+      p_after_scheduled_date: '2026-11-15',
+      p_after_scheduled_time: '08:00:00',
+      p_after_scheduled_time_is_null: false,
+      p_after_order_number: 500,
+      p_after_id: 'os-499',
+      p_page_size: 500,
     });
   });
 });
@@ -96,5 +152,9 @@ describe('shouldRetryScheduleRead', () => {
         message: 'restabelecendo sessao',
       }),
     ).toBe(false);
+  });
+
+  it('nao repete consultas canceladas pelo ciclo de vida da tela', () => {
+    expect(shouldRetryScheduleRead(0, new DOMException('cancelada', 'AbortError'))).toBe(false);
   });
 });
