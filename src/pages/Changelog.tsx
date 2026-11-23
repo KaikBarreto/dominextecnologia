@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.52',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Vídeos carregam somente quando necessário',
+        category: 'melhoria',
+        description: 'O Domiflix agora prepara o vídeo sem baixar o conteúdo inteiro antes da reprodução. As miniaturas da linha do tempo também são carregadas somente durante a interação, reduzindo consumo de dados e acessos desnecessários.',
+      },
+      {
+        title: 'Novos arquivos aproveitam melhor o cache',
+        category: 'melhoria',
+        description: 'Novas imagens, documentos e mídias do catálogo passam a aproveitar cache prolongado quando possuem endereço versionado, deixando acessos repetidos mais leves sem prender versões antigas dos arquivos.',
+      },
+    ],
+  },
+  {
     version: '1.41.50',
     date: '23 de novembro de 2026',
     type: 'patch',

@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.50";
+export const APP_VERSION = "1.41.52";
 
 export const VERSION_NOTES =
-  "Falhas de conexão agora são informadas com clareza e a tela de entrada mantém logo, idioma e tema organizados no celular.";
+  "Vídeos e novos arquivos agora carregam de forma mais econômica, reduzindo consumo de dados sem mudar o uso do sistema.";

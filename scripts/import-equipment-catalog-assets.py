@@ -19,6 +19,7 @@ import uuid
 
 FIELDS = {"image_url", "manual_url"}
 BUCKET = "equipment-catalog"
+IMMUTABLE_CACHE_CONTROL = "max-age=31536000"
 
 
 def validate_declared_model(model):
@@ -168,7 +169,11 @@ class CatalogClient:
         path = "/storage/v1/object/" + BUCKET + "/" + object_path(entry)
         mime = mimetypes.types_map.get("." + entry["extension"], "application/octet-stream")
         try:
-            self.request(path, "POST", body, {"Content-Type": mime, "x-upsert": "false"})
+            self.request(path, "POST", body, {
+                "Content-Type": mime,
+                "cache-control": IMMUTABLE_CACHE_CONTROL,
+                "x-upsert": "false",
+            })
         except urllib.error.HTTPError as error:
             # Reexecução: aceitar apenas o mesmo conteúdo, nunca substituir objeto.
             if error.code not in (400, 409):

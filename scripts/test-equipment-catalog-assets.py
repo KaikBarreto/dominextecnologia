@@ -67,6 +67,24 @@ class CatalogImportTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             catalog.object_path({**shared, "storage_path": "verified/../../another-bucket/file.pdf"})
 
+    def test_upload_marks_content_addressed_asset_as_immutable(self):
+        client = catalog.CatalogClient("https://example.org", "not-a-real-secret")
+        captured = []
+
+        def fake(path, method="GET", body=None, headers=None):
+            captured.append((path, method, body, headers))
+            return b""
+
+        client.request = fake
+        client.upload(self.entry, self.body)
+
+        path, method, body, headers = captured[0]
+        self.assertEqual(path, "/storage/v1/object/equipment-catalog/" + catalog.object_path(self.entry))
+        self.assertEqual(method, "POST")
+        self.assertEqual(body, self.body)
+        self.assertEqual(headers["cache-control"], "max-age=31536000")
+        self.assertEqual(headers["x-upsert"], "false")
+
     def test_new_references_require_traceable_source_and_correct_proof(self):
         reference = dict(source_url="https://manufacturer.example/manual.pdf", document="Manual original", pages=[5], source_kind="pdf", proof_kind="visual", source_sha256="a" * 64)
         catalog.validate_declared_model({"catalog_reference": reference})

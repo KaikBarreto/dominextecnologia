@@ -1515,27 +1515,36 @@ export function NetflixPlayer({
     : isStorage
       ? supabase.storage.from("domiflix-videos").getPublicUrl(videoId).data.publicUrl
       : "";
+  const previewActive = isHtml5Video && hoverPct !== null;
 
   useEffect(() => {
-    if (!isHtml5Video) return;
+    setPreviewReady(false);
+    if (!previewActive) return;
     const pv = previewVideoRef.current;
     if (!pv) return;
     const onMeta = () => setPreviewReady(true);
+    if (pv.readyState >= HTMLMediaElement.HAVE_METADATA) {
+      setPreviewReady(true);
+      return;
+    }
     pv.addEventListener("loadedmetadata", onMeta);
     return () => pv.removeEventListener("loadedmetadata", onMeta);
-  }, [isHtml5Video]);
+  }, [html5StreamUrl, previewActive]);
 
   // Debounced preview seek + canvas draw
   useEffect(() => {
-    if (!isHtml5Video || hoverPct === null || !previewReady) return;
+    if (!previewActive || hoverPct === null || !previewReady) return;
     if (previewSeekTimer.current) cancelAnimationFrame(previewSeekTimer.current);
+    let previewVideo: HTMLVideoElement | null = null;
+    let drawOnSeeked: (() => void) | null = null;
     previewSeekTimer.current = requestAnimationFrame(() => {
       const pv = previewVideoRef.current;
       const canvas = previewCanvasRef.current;
       if (!pv || !canvas || !pv.duration) return;
+      previewVideo = pv;
       const t = Math.max(0, Math.min(pv.duration - 0.1, hoverPct * pv.duration));
       pv.currentTime = t;
-      const drawOnSeeked = () => {
+      drawOnSeeked = () => {
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
         try {
@@ -1547,7 +1556,16 @@ export function NetflixPlayer({
       };
       pv.addEventListener("seeked", drawOnSeeked);
     });
-  }, [hoverPct, isHtml5Video, previewReady]);
+    return () => {
+      if (previewSeekTimer.current) {
+        cancelAnimationFrame(previewSeekTimer.current);
+        previewSeekTimer.current = null;
+      }
+      if (previewVideo && drawOnSeeked) {
+        previewVideo.removeEventListener("seeked", drawOnSeeked);
+      }
+    };
+  }, [hoverPct, previewActive, previewReady]);
 
   const playbackProgress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
@@ -1669,10 +1687,9 @@ export function NetflixPlayer({
 
       {/* ── Drive HTML5 video ──
           Notes for fast streaming:
-          - `preload="auto"` tells the browser to start fetching bytes
-            immediately (the `usercontent.google.com` host honours HTTP
-            Range requests, so the video can begin playing before the
-            full file is downloaded).
+          - `preload="metadata"` carrega apenas o necessário para preparar o
+            player. Os bytes do conteúdo começam a ser buscados ao reproduzir,
+            evitando egress de uma aula que o usuário ainda não iniciou.
           - We do NOT set `crossOrigin` on the main element: that would
             force a CORS preflight on every range request and slow the
             initial buffering. The hidden preview <video> below keeps
@@ -1690,20 +1707,22 @@ export function NetflixPlayer({
             )}
             playsInline
             disablePictureInPicture={contained}
-            preload="auto"
+            preload="metadata"
           />
           {/* Hidden preview video for frame thumbnails.
               `preload="metadata"` avoids downloading the full file in
               parallel with the main player — bytes are only fetched
               on-demand when the user hovers the progress bar. */}
-          <video
-            ref={previewVideoRef}
-            src={html5StreamUrl}
-            className="hidden"
-            preload="metadata"
-            muted
-            crossOrigin="anonymous"
-          />
+          {previewActive && (
+            <video
+              ref={previewVideoRef}
+              src={html5StreamUrl}
+              className="hidden"
+              preload="metadata"
+              muted
+              crossOrigin="anonymous"
+            />
+          )}
         </>
       )}
 
