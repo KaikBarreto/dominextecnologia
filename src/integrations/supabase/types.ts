@@ -22244,6 +22244,16 @@ export type Database = {
         }
         Returns: Json
       }
+      regenerate_contract_visits_with_override: {
+        Args: {
+          p_contract_id: string
+          p_delete_ids?: string[]
+          p_dry_run?: boolean
+          p_orders: Json
+          p_override_justification?: string
+        }
+        Returns: Json
+      }
       regenerate_pmoc_token: {
         Args: { p_contract_id: string }
         Returns: string

@@ -94,6 +94,12 @@ import {
   reconcileEquipmentChecklistTemplateIds,
 } from '@/lib/serviceOrderServices';
 import { ServiceOrderSchedulePlanner } from '@/components/service-orders/ServiceOrderSchedulePlanner';
+import { ScheduleConflictDialog } from '@/components/schedule/ScheduleConflictDialog';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
+import {
+  isScheduleConflictError,
+  type ScheduleConflictItem,
+} from '@/lib/scheduleBooking';
 import {
   ServiceOrderFormStepper,
   ServiceOrderFormSummary,
@@ -188,6 +194,8 @@ export function ServiceOrderFormDialog({
   const { serviceTypes } = useServiceTypes();
   const { teams, teamsWithMembers } = useTeams();
   const { settings: npsSettings } = useNpsSettings();
+  const { settings: companySettings } = useCompanySettings();
+  const allowScheduleConflicts = companySettings?.allow_schedule_conflicts === true;
   const isEditing = !!serviceOrder;
   const [step, setStep] = useState(0);
   const [maxStepReached, setMaxStepReached] = useState(0);
@@ -328,6 +336,17 @@ export function ServiceOrderFormDialog({
   }, [numberScope, open, onOpenChange]);
   const [numberSaveError, setNumberSaveError] = useState('');
   useEffect(() => { setNumberSaveError(''); }, [open, numberSession.requestId]);
+  const [pendingScheduleConflict, setPendingScheduleConflict] = useState<{
+    data: Record<string, unknown>;
+    conflicts: ScheduleConflictItem[];
+  } | null>(null);
+  const [isAuthorizingScheduleConflict, setIsAuthorizingScheduleConflict] = useState(false);
+  useEffect(() => {
+    if (!open) {
+      setPendingScheduleConflict(null);
+      setIsAuthorizingScheduleConflict(false);
+    }
+  }, [open]);
   const { settings: pricingSettings } = usePricingSettings();
   const budgetQuery = useServiceOrderBudget(isEditing ? serviceOrder?.id : null);
   const serviceTypesQuery = useServiceOrderServiceTypes(isEditing ? serviceOrder?.id : null);
@@ -999,6 +1018,21 @@ export function ServiceOrderFormDialog({
       await onSubmit(cleanedData);
     } catch (error) {
       if (!currentSession()) return;
+      if (isScheduleConflictError(error)) {
+        if (allowScheduleConflicts) {
+          setPendingScheduleConflict({
+            data: cleanedData as Record<string, unknown>,
+            conflicts: error.conflicts,
+          });
+        } else {
+          editToast({
+            variant: 'destructive',
+            title: 'Conflito de agenda',
+            description: error.message,
+          });
+        }
+        return;
+      }
       const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : '';
       if (code.startsWith('OSN')) {
         const friendly = normalizeServiceOrderNumberError(error);
@@ -1012,6 +1046,39 @@ export function ServiceOrderFormDialog({
     draft.clearDraft();
     form.reset();
     onOpenChange(false);
+  };
+
+  const handleScheduleConflictOverride = async (reason: string) => {
+    const pending = pendingScheduleConflict;
+    if (!pending || !allowScheduleConflicts || isAuthorizingScheduleConflict) return;
+
+    const session = formSessionRef.current.generation;
+    setIsAuthorizingScheduleConflict(true);
+    try {
+      await onSubmit({
+        ...pending.data,
+        schedule_override: true,
+        schedule_override_reason: reason,
+      } as ServiceOrderFormData);
+      if (formSessionRef.current.generation !== session) return;
+      setPendingScheduleConflict(null);
+      draft.clearDraft();
+      form.reset();
+      onOpenChange(false);
+    } catch (error) {
+      if (formSessionRef.current.generation !== session) return;
+      editToast({
+        variant: 'destructive',
+        title: 'Não foi possível autorizar o conflito',
+        description: isScheduleConflictError(error)
+          ? 'Confirme se a opção continua ativa nas configurações da empresa e tente novamente.'
+          : getErrorMessage(error),
+      });
+    } finally {
+      if (formSessionRef.current.generation === session) {
+        setIsAuthorizingScheduleConflict(false);
+      }
+    }
   };
 
   const buildEditPayload = async (data: ServiceOrderFormData) => {
@@ -2705,6 +2772,7 @@ export function ServiceOrderFormDialog({
   );
 
   return (
+    <>
     <FullscreenWizard
       open={open}
       onOpenChange={handleModalOpenChange}
@@ -3154,5 +3222,14 @@ export function ServiceOrderFormDialog({
         templates={templates}
       />
     </FullscreenWizard>
+    <ScheduleConflictDialog
+      open={!!pendingScheduleConflict}
+      conflicts={pendingScheduleConflict?.conflicts ?? []}
+      canOverride={allowScheduleConflicts}
+      isLoading={isAuthorizingScheduleConflict}
+      onCancel={() => setPendingScheduleConflict(null)}
+      onOverride={(reason) => { void handleScheduleConflictOverride(reason); }}
+    />
+    </>
   );
 }

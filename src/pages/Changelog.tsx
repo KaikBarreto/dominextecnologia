@@ -45,6 +45,11 @@ export const changelog: ChangelogEntry[] = [
         category: 'seguranca',
         description: 'Quando a opção está ligada, o sistema avisa sobre a sobreposição e exige uma justificativa antes de confirmar, mantendo a decisão registrada para consulta.',
       },
+      {
+        title: 'Visitas do contrato salvas por completo',
+        category: 'correcao',
+        description: 'A criação e a atualização de contratos agora confirmam todas as visitas previstas de uma só vez. Se alguma visita não puder ser salva, nenhuma parte do lote é mantida, evitando diferenças entre a prévia e a agenda e preservando as datas do cronograma.',
+      },
     ],
   },
   {

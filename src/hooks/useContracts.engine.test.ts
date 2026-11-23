@@ -87,6 +87,22 @@ describe('visitas personalizadas do contrato', () => {
 
 const START = new Date('2026-01-15T12:00:00');
 
+describe('generateOccurrences', () => {
+  it('mantém o dia civil e gera as 25 visitas trimestrais da prévia', () => {
+    const occurrences = generateOccurrences(
+      new Date('2026-11-02T12:00:00'),
+      'months',
+      3,
+      72,
+    );
+
+    expect(occurrences).toHaveLength(25);
+    expect(occurrences[0].toISOString().slice(0, 10)).toBe('2026-11-02');
+    expect(occurrences[1].toISOString().slice(0, 10)).toBe('2027-02-02');
+    expect(occurrences.at(-1)?.toISOString().slice(0, 10)).toBe('2032-11-02');
+  });
+});
+
 /** Atalho pra criar uma atividade do plano com freq_code e seção. */
 function act(
   description: string,

@@ -787,7 +787,10 @@ export default function Schedule() {
         schedule_request_id: requestId,
       });
     } catch (error) {
-      if (isScheduleConflictError(error)) {
+      // Na criação, o próprio wizard mantém os dados preenchidos e apresenta a
+      // confirmação de conflito. A Agenda só assume o conflito de uma edição,
+      // evitando dois overlays concorrentes para a mesma tentativa.
+      if (isScheduleConflictError(error) && selectedOrder) {
         setPendingScheduleConflict({
           kind: 'reschedule',
           serviceOrderId: orderId,

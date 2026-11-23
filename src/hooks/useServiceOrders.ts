@@ -461,11 +461,9 @@ export function useServiceOrders(options: { enabled?: boolean } = {}) {
     },
     onError: (error: Error) => {
       if (isScheduleConflictError(error)) {
-        toast({
-          variant: 'destructive',
-          title: 'Conflito de agenda',
-          description: error.message,
-        });
+        // O chamador decide como apresentar o conflito. Os fluxos de Agenda e
+        // do wizard de OS abrem a confirmação com justificativa quando a
+        // política da empresa permite; disparar toast aqui duplicaria o aviso.
         return;
       }
       toast({ 
