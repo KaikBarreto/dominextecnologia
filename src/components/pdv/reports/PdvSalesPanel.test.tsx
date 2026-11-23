@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PdvSalesPanel } from './PdvSalesPanel';
 
@@ -28,16 +28,21 @@ describe('aba Vendas do PDV', () => {
   it.each([false, true])('mostra o ranking com totais (mobile=%s)', (mobile) => {
     mocks.mobile = mobile;
     render(<PdvSalesPanel from="2026-11-01" to="2026-11-21" onDownloadCsv={vi.fn()} />);
-    expect(screen.getByText('Capacitor 35uF')).toBeInTheDocument();
+    expect(screen.getAllByText('Capacitor 35uF').length).toBeGreaterThan(0);
     expect(screen.getByText('R$ 662.1')).toBeInTheDocument();
     expect(screen.getAllByText('Indisponível').length).toBeGreaterThan(0);
+    expect(screen.getByText('Leitura do período')).toBeInTheDocument();
+    expect(screen.getByText('Concentração de receita')).toBeInTheDocument();
+    expect(screen.getAllByText('75,5%').length).toBeGreaterThan(0);
+    expect(screen.getByText(/por venda/)).toBeInTheDocument();
     expect(screen.getByText(/de 1 registros/)).toBeInTheDocument();
   });
 
   it('mostra horário como faixa e esconde a coluna de quantidade fora de produtos', () => {
     mocks.data = report('hour', [{ ...productRows[0], key: '14', label: '14', detail: null }]);
     render(<PdvSalesPanel from="2026-11-01" to="2026-11-21" onDownloadCsv={vi.fn()} />);
-    expect(screen.getByText('14h às 15h')).toBeInTheDocument();
+    expect(screen.getAllByText('14h às 15h').length).toBeGreaterThan(0);
+    expect(screen.getByText('Horário de pico')).toBeInTheDocument();
     expect(screen.queryByRole('columnheader', { name: 'Quantidade' })).toBeNull();
   });
 
@@ -56,5 +61,36 @@ describe('aba Vendas do PDV', () => {
       ['Produto', 'Detalhe', 'Vendas', 'Quantidade', 'Receita', 'Custo dos materiais', 'Margem', 'Participação'],
       ['Capacitor 35uF', 'SKU 123 · un', 8, 12, 500, 200, 300, 75.5],
     ]);
+  });
+
+  it('exporta Excel da dimensão ativa quando o menu global solicita', async () => {
+    const downloadExcel = vi.fn().mockResolvedValue(undefined);
+    mocks.exportEntries.mockImplementation((done: (rows: unknown[]) => void) => done(productRows));
+    const { rerender } = render(
+      <PdvSalesPanel
+        from="2026-11-01"
+        to="2026-11-21"
+        excelRequestKey={0}
+        onDownloadExcel={downloadExcel}
+        onDownloadCsv={vi.fn()}
+      />,
+    );
+    rerender(
+      <PdvSalesPanel
+        from="2026-11-01"
+        to="2026-11-21"
+        excelRequestKey={1}
+        onDownloadExcel={downloadExcel}
+        onDownloadCsv={vi.fn()}
+      />,
+    );
+    await waitFor(() => expect(downloadExcel).toHaveBeenCalledWith(
+      'vendas-pdv-produtos-2026-11-01-2026-11-21',
+      'Produtos',
+      [
+        ['Produto', 'Detalhe', 'Vendas', 'Quantidade', 'Receita', 'Custo dos materiais', 'Margem', 'Participação'],
+        ['Capacitor 35uF', 'SKU 123 · un', 8, 12, 500, 200, 300, 75.5],
+      ],
+    ));
   });
 });

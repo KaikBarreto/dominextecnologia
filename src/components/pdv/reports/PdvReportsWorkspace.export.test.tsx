@@ -12,10 +12,12 @@ vi.mock('@/contexts/AppLocaleContext', () => ({ useAppLocaleContext: () => ({ ti
 vi.mock('@/lib/format/hooks', () => ({ useLocaleFormatters: () => ({ money: (value: number) => `R$ ${value}`, date: (value: string) => value }) }));
 vi.mock('@/components/ui/DateRangeFilter', () => ({ DateRangeFilter: () => <div>Período fictício</div>, useDateRangeFilter: () => ({ range: { from: new Date(2026, 10, 1), to: new Date(2026, 10, 7) }, preset: 'custom', setPreset: vi.fn(), setRange: vi.fn() }) }));
 vi.mock('@/components/pdv/reports/PdvCardSettlementsPanel', () => ({ PdvCardSettlementsPanel: () => null }));
+vi.mock('@/components/pdv/reports/PdvOverviewPanel', () => ({ PdvOverviewPanel: () => <div>Visão geral fictícia</div> }));
+vi.mock('@/components/pdv/reports/PdvPaymentsCashPanel', () => ({ PdvPaymentsCashPanel: () => null }));
 vi.mock('@/hooks/usePdvReportsV2', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/usePdvReportsV2')>();
   const empty = { isLoading: false, error: null, refetch: vi.fn(), data: { entries: [], documents: [], totalCount: 501, revenue: 100, cmv: null, expense: 0, result: null, cashFlow: 40 } };
-  return { ...actual, usePdvPartialProjection: () => empty, usePdvGlobalHistory: () => empty, usePdvDocumentIndex: () => empty };
+  return { ...actual, usePdvManagementReport: () => ({ ...empty, data: null }), usePdvPartialProjection: () => empty, usePdvGlobalHistory: () => empty, usePdvDocumentIndex: () => empty };
 });
 function page(offset: number, history = false) {
   const entries = Array.from({ length: offset === 0 ? 500 : 1 }, (_, index) => history ? {
@@ -33,6 +35,7 @@ function page(offset: number, history = false) {
 }
 function mount(history: boolean) {
   render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><PdvReportsWorkspace /></MemoryRouter>);
+  fireEvent.click(screen.getByRole('tab', { name: 'Operacional' }));
   if (history) fireEvent.click(screen.getByRole('tab', { name: 'Histórico' }));
 }
 async function blobText(blob: Blob) {
@@ -102,7 +105,7 @@ describe('arquivo CSV completo na UI real de relatórios', () => {
     mount(false);
     fireEvent.click(screen.getByRole('button', { name: 'Exportar CSV' }));
     await waitFor(() => expect(mocks.click).toHaveBeenCalledOnce());
-    const lines = (await blobText(mocks.createUrl.mock.calls[0][0])).replace(/^﻿/, '').split('\n');
+    const lines = (await blobText(mocks.createUrl.mock.calls[0][0])).replace(/^\uFEFF/, '').split('\n');
     expect(lines[0]).toBe('"Data";"Origem";"Venda";"Item";"Quantidade";"Receita";"Custo dos materiais";"Despesa";"Fluxo"');
     expect(lines.slice(1)).toEqual([
       '"2026-11-07";"Venda 42";42;"Capacitor";2;60;;5;7',

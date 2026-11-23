@@ -31,6 +31,28 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.44',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Visão gerencial dos resultados da Loja',
+        category: 'recurso',
+        description: 'Os relatórios da Loja ganharam uma Visão geral com receita, vendas, ticket médio, margem, custos, devoluções e evolução diária. Os indicadores também comparam o período escolhido com o período anterior para facilitar a leitura do desempenho.',
+      },
+      {
+        title: 'Produtos, pagamentos e caixas em análises próprias',
+        category: 'recurso',
+        description: 'Agora há áreas separadas para analisar produtos e margem, formas de pagamento e conferência dos caixas. Os rankings destacam concentração de receita e eficiência comercial, enquanto a conferência mostra valores esperados, contados, faltas e sobras.',
+      },
+      {
+        title: 'Relatórios organizados e exportação em PDF ou Excel',
+        category: 'melhoria',
+        description: 'O período ficou no topo da tela e as ações passaram a acompanhar as abas do relatório. O botão Exportar permite escolher PDF ou Excel, e a navegação foi ajustada para ocupar melhor o espaço no computador e no celular.',
+      },
+    ],
+  },
+  {
     version: '1.41.43',
     date: '23 de novembro de 2026',
     type: 'patch',

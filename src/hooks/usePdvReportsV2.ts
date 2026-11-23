@@ -95,6 +95,53 @@ export interface PdvDocumentPage {
   documents: PdvDocumentEntry[];
 }
 
+export interface PdvManagementTotals {
+  ordersCount: number;
+  quantity: number;
+  revenue: number;
+  cmv: number | null;
+  margin: number | null;
+  marginRate: number | null;
+  averageTicket: number;
+  returnsCount: number;
+  returnsImpact: number;
+}
+
+export interface PdvManagementDay {
+  date: string;
+  ordersCount: number;
+  revenue: number;
+  cmv: number | null;
+  margin: number | null;
+}
+
+export interface PdvManagementPayment {
+  method: string;
+  ordersCount: number;
+  amount: number;
+  share: number;
+}
+
+export interface PdvManagementReport {
+  from: string;
+  to: string;
+  previousFrom: string;
+  previousTo: string;
+  current: PdvManagementTotals;
+  previous: PdvManagementTotals;
+  daily: PdvManagementDay[];
+  payments: PdvManagementPayment[];
+  paymentTotal: number;
+  cash: {
+    closedSessions: number;
+    expected: number;
+    counted: number;
+    difference: number;
+    shortage: number;
+    surplus: number;
+  };
+}
+
 type RpcError = { code?: string; message?: string; details?: string };
 type RpcResult = { data: unknown; error: RpcError | null };
 type RpcCaller = (name: string, args?: Record<string, unknown>) => Promise<RpcResult>;
@@ -335,6 +382,86 @@ export function projectPdvDocuments(payload: unknown): PdvDocumentPage {
       };
     }),
   };
+}
+
+function projectManagementTotals(value: unknown): PdvManagementTotals {
+  const totals = recordOf(value);
+  const marginRate = nullableFiniteNumber(totals.margin_rate);
+  if (marginRate !== null && (marginRate < -100 || marginRate > 100)) throw new PdvReportContractError();
+  return {
+    ordersCount: integer(totals.orders_count),
+    quantity: finiteNumber(totals.quantity),
+    revenue: finiteNumber(totals.revenue),
+    cmv: nullableFiniteNumber(totals.cmv),
+    margin: nullableFiniteNumber(totals.margin),
+    marginRate,
+    averageTicket: finiteNumber(totals.average_ticket),
+    returnsCount: integer(totals.returns_count),
+    returnsImpact: finiteNumber(totals.returns_impact),
+  };
+}
+
+/** Contrato único da visão gerencial. IDs operacionais nunca fazem parte do payload. */
+export function projectPdvManagementReport(payload: unknown): PdvManagementReport {
+  const root = recordOf(payload);
+  if (root.scope !== 'pdv_management' || !Array.isArray(root.daily) || !Array.isArray(root.payments)) {
+    throw new PdvReportContractError();
+  }
+  const cash = recordOf(root.cash);
+  const payments = root.payments.map((raw): PdvManagementPayment => {
+    const row = recordOf(raw);
+    const method = textOf(row.method);
+    const share = finiteNumber(row.share);
+    if (!method || share < 0 || share > 1.0001) throw new PdvReportContractError();
+    return { method, ordersCount: integer(row.orders_count), amount: finiteNumber(row.amount), share };
+  });
+  const paymentTotal = finiteNumber(root.payment_total);
+  if (Math.abs(payments.reduce((sum, row) => sum + row.amount, 0) - paymentTotal) > 0.011) {
+    throw new PdvReportContractError();
+  }
+  return {
+    from: civilDate(root.from),
+    to: civilDate(root.to),
+    previousFrom: civilDate(root.previous_from),
+    previousTo: civilDate(root.previous_to),
+    current: projectManagementTotals(root.current),
+    previous: projectManagementTotals(root.previous),
+    daily: root.daily.map((raw): PdvManagementDay => {
+      const row = recordOf(raw);
+      return {
+        date: civilDate(row.date),
+        ordersCount: integer(row.orders_count),
+        revenue: finiteNumber(row.revenue),
+        cmv: nullableFiniteNumber(row.cmv),
+        margin: nullableFiniteNumber(row.margin),
+      };
+    }),
+    payments,
+    paymentTotal,
+    cash: {
+      closedSessions: integer(cash.closed_sessions),
+      expected: finiteNumber(cash.expected),
+      counted: finiteNumber(cash.counted),
+      difference: finiteNumber(cash.difference),
+      shortage: finiteNumber(cash.shortage),
+      surplus: finiteNumber(cash.surplus),
+    },
+  };
+}
+
+export function usePdvManagementReport(params: { from: string; to: string; enabled?: boolean }) {
+  const { from, to, enabled = true } = params;
+  const scope = usePdvAuthorizedQueryScope();
+  return useQuery({
+    queryKey: [...PDV_REPORTS_QUERY_ROOT, ...scope.key, 'management', from, to],
+    queryFn: async () => {
+      const report = projectPdvManagementReport(await call('pdv_management_report_v1', { p_from: from, p_to: to }));
+      if (report.from !== from || report.to !== to) throw new PdvReportContractError();
+      return report;
+    },
+    enabled: enabled && scope.ready && Boolean(from && to),
+    staleTime: 30_000,
+  });
 }
 
 export function usePdvPartialProjection(params: {

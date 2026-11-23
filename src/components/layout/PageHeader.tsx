@@ -7,6 +7,7 @@ interface PageHeaderProps {
   subtitle?: string;
   icon?: LucideIcon;
   actions?: React.ReactNode;
+  actionsClassName?: string;
   className?: string;
   /**
    * Conteúdo renderizado NA MESMA LINHA do título, logo à direita dele (ex: as
@@ -26,7 +27,7 @@ interface PageHeaderProps {
  *     <Button>Novo Cliente</Button>
  *   </PageHeader>
  */
-export function PageHeader({ title, subtitle, icon: Icon, actions, className, titleSuffix }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, icon: Icon, actions, actionsClassName, className, titleSuffix }: PageHeaderProps) {
   return (
     <div className={cn('app-ui-page-header mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between', className)}>
       <div className={cn('flex items-start gap-3 min-w-0', titleSuffix && 'flex-1')}>
@@ -44,7 +45,7 @@ export function PageHeader({ title, subtitle, icon: Icon, actions, className, ti
         </div>
       </div>
       {actions && (
-        <div className="flex flex-wrap items-center gap-2 shrink-0">{actions}</div>
+        <div className={cn('flex flex-wrap items-center gap-2 shrink-0', actionsClassName)}>{actions}</div>
       )}
     </div>
   );

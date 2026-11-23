@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.43";
+export const APP_VERSION = "1.41.44";
 
 export const VERSION_NOTES =
-  "A Agenda ficou mais estável para empresas com muitos agendamentos. A consulta agora carrega todos os itens em etapas, sem encerrar antes da conclusão, e ficou mais leve para abrir e navegar.";
+  "Os relatórios da Loja ganharam uma visão gerencial completa, análises de produtos, pagamentos e caixas, além de exportação em PDF ou Excel. O período e as ações também ficaram mais organizados no computador e no celular.";
