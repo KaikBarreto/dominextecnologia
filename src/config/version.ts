@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.48";
+export const APP_VERSION = "1.41.49";
 
 export const VERSION_NOTES =
-  "Agora você pode enviar avisos de cobrança por e-mail pela Dominex, escolher os eventos, personalizar o conteúdo e selecionar o modelo visual da sua empresa.";
+  "Ao salvar um contato, uma conexão lenta não deixa mais a tela presa: os dados ficam preenchidos e você pode tentar novamente com segurança.";

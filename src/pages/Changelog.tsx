@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.49',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cadastro de contato não fica mais preso',
+        category: 'correcao',
+        description: 'Se a conexão demorar ao adicionar, editar ou excluir um contato, o sistema devolve o controle rapidamente. No cadastro, os campos continuam preenchidos para você tentar novamente sem perder o que digitou e sem criar contatos duplicados.',
+      },
+    ],
+  },
+  {
     version: '1.41.48',
     date: '23 de novembro de 2026',
     type: 'patch',

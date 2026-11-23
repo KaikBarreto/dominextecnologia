@@ -2143,7 +2143,7 @@ export function CustomerDetailContent() {
         contact={editingContact}
         onSubmit={async (data) => {
           if (editingContact) {
-            await updateContact.mutateAsync({ id: editingContact.id, ...data });
+            await updateContact.mutateAsync({ ...data, id: editingContact.id });
           } else {
             await createContact.mutateAsync({ customer_id: id!, ...data });
           }

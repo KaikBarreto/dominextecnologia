@@ -379,6 +379,8 @@ export const customers = {
       save: 'Salvar',
       add: 'Adicionar',
       cancel: 'Cancelar',
+      saveProblemTitle: 'Seus dados continuam aqui',
+      saveProblemDescription: 'Não foi possível salvar agora. Confira sua conexão e tente novamente.',
     },
 
     // ── Portal do Cliente (CustomerPortal.tsx) ──
@@ -1130,6 +1132,8 @@ export const customers = {
       save: 'Save',
       add: 'Add',
       cancel: 'Cancel',
+      saveProblemTitle: 'Your details are still here',
+      saveProblemDescription: 'We could not save right now. Check your connection and try again.',
     },
 
     portal: {
@@ -1862,6 +1866,8 @@ export const customers = {
       save: 'Guardar',
       add: 'Agregar',
       cancel: 'Cancelar',
+      saveProblemTitle: 'Tus datos siguen aquí',
+      saveProblemDescription: 'No fue posible guardar ahora. Comprueba tu conexión e inténtalo de nuevo.',
     },
 
     portal: {
@@ -2594,6 +2600,8 @@ export const customers = {
       save: 'Enregistrer',
       add: 'Ajouter',
       cancel: 'Annuler',
+      saveProblemTitle: 'Vos données sont toujours là',
+      saveProblemDescription: 'Impossible d’enregistrer maintenant. Vérifiez votre connexion et réessayez.',
     },
 
     portal: {
