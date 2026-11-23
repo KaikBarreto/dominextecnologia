@@ -204,14 +204,32 @@ async function ensureAsaasCustomer(
     );
   }
 
+  const { data: emailSettings, error: emailSettingsError } = await supabase
+    .from("customer_email_settings")
+    .select("enabled")
+    .eq("company_id", companyId)
+    .maybeSingle();
+  if (emailSettingsError) {
+    throw new Error("Não foi possível validar a configuração de e-mails de cobrança.");
+  }
+  const notificationDisabled = emailSettings?.enabled === true ? true : undefined;
+
+  let found: any = null;
   try {
     const existing = await asaas.get<any>(
       `/customers?externalReference=${encodeURIComponent(customer.id)}&limit=1`,
     );
-    const found = Array.isArray(existing?.data) ? existing.data[0] : null;
-    if (found?.id) return found.id;
+    found = Array.isArray(existing?.data) ? existing.data[0] : null;
   } catch {
     // Busca falhou (não-fatal): segue pra criação.
+  }
+  if (found?.id) {
+    if (notificationDisabled === true) {
+      await asaas.put<any>(`/customers/${encodeURIComponent(found.id)}`, {
+        notificationDisabled: true,
+      });
+    }
+    return found.id;
   }
 
   const created = await asaas.post<any>("/customers", {
@@ -220,6 +238,7 @@ async function ensureAsaasCustomer(
     phone: customer.phone ?? customer.celular ?? undefined,
     cpfCnpj: doc,
     externalReference: customer.id,
+    notificationDisabled,
   });
   const asaasCustomerId: string | undefined = created?.id;
   if (!asaasCustomerId) {

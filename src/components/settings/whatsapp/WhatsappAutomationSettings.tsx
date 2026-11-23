@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Banknote,
   CalendarClock,
@@ -8,6 +8,7 @@ import {
   ExternalLink,
   FilePlus2,
   Link2,
+  Lock,
   ReceiptText,
   RotateCcw,
   Save,
@@ -20,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { NumericInput } from '@/components/ui/numeric-input';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
@@ -30,7 +32,6 @@ import type { LocaleCode } from '@/lib/i18n/locales';
 import {
   DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES,
   buildWhatsappMessagePreview,
-  countEnabledWhatsappAutomations,
   resolveWhatsappEventTemplate,
   type WhatsappAutomationRule,
   type WhatsappAutomationEvent,
@@ -47,6 +48,7 @@ type Domain = 'os' | 'billing';
 
 interface WhatsappAutomationSettingsProps {
   locale: LocaleCode;
+  availableDomains?: Domain[];
   enabled: boolean;
   preferences: WhatsappAutomationPreferences;
   isSaving: boolean;
@@ -91,6 +93,8 @@ const COPY = {
     automaticNote: 'No modo automático, o texto acima é o modelo Cordial. Os envios alternam entre os modelos prontos. Ao editar, a mensagem passa a ser Personalizada.',
     customOptionsNote: 'No texto personalizado, o link da OS, o valor e o link de pagamento aparecem só se você inserir a variável correspondente no texto.',
     fixMessages: 'Corrija a mensagem personalizada para salvar',
+    noDomainsTitle: 'Nenhuma automação disponível neste plano',
+    noDomainsDescription: 'O canal de WhatsApp pode continuar conectado, mas os avisos de OS exigem Ordens de serviço e os avisos financeiros exigem Cobranças.',
     osLink: 'Incluir link de acompanhamento da OS',
     billingContent: 'Informações da cobrança',
     amount: 'Valor',
@@ -135,6 +139,7 @@ const COPY = {
     automaticNote: 'In automatic mode, the text above is the Friendly template. Messages alternate between the ready-made templates. Editing it turns the message into Custom.',
     customOptionsNote: 'In a custom text, the work order link, amount and payment link only appear if you insert the matching variable in the text.',
     fixMessages: 'Fix the custom message to save',
+    noDomainsTitle: 'No automations available on this plan', noDomainsDescription: 'The WhatsApp channel may stay connected, but work order notices require Work orders and financial notices require Charges.',
     osLink: 'Include work order tracking link', billingContent: 'Charge information', amount: 'Amount', paymentLink: 'Payment link',
     createdHint: 'If the due date is more than 10 days away, no message is sent on creation. The customer is notified by the "Before due date" reminder, so the next installment is not mistaken for the current one.',
     beforeDays: 'Days before', afterDays: 'Days after', days: 'days', preview: 'Message preview', previewHint: 'Illustrative data — no message will be sent at this stage.',
@@ -163,6 +168,7 @@ const COPY = {
     automaticNote: 'En modo automático, el texto de arriba es el modelo Cordial. Los envíos alternan entre los modelos listos. Al editarlo, el mensaje pasa a ser Personalizado.',
     customOptionsNote: 'En el texto personalizado, el enlace de la orden, el importe y el enlace de pago solo aparecen si insertas la variable correspondiente en el texto.',
     fixMessages: 'Corrige el mensaje personalizado para guardar',
+    noDomainsTitle: 'No hay automatizaciones disponibles en este plan', noDomainsDescription: 'El canal de WhatsApp puede seguir conectado, pero los avisos de órdenes requieren Órdenes de trabajo y los avisos financieros requieren Cobros.',
     osLink: 'Incluir enlace de seguimiento de la orden', billingContent: 'Información del cobro', amount: 'Importe', paymentLink: 'Enlace de pago',
     createdHint: 'Si el vencimiento está a más de 10 días, el aviso no se envía al crear el cobro. El cliente recibe el recordatorio "Antes del vencimiento", para no confundir la próxima cuota con la actual.',
     beforeDays: 'Cuántos días antes', afterDays: 'Cuántos días después', days: 'días', preview: 'Vista previa', previewHint: 'Datos ilustrativos — no se enviará ningún mensaje en esta etapa.',
@@ -192,6 +198,7 @@ const COPY = {
     automaticNote: 'En mode automatique, le texte ci-dessus est le modèle Cordial. Les envois alternent entre les modèles prêts. En le modifiant, le message devient Personnalisé.',
     customOptionsNote: 'Dans un texte personnalisé, le lien du bon, le montant et le lien de paiement n’apparaissent que si vous insérez la variable correspondante dans le texte.',
     fixMessages: 'Corrigez le message personnalisé pour enregistrer',
+    noDomainsTitle: 'Aucune automatisation disponible avec cette offre', noDomainsDescription: 'Le canal WhatsApp peut rester connecté, mais les avis d’intervention nécessitent les Bons de travail et les avis financiers nécessitent les Encaissements.',
     osLink: 'Inclure le lien de suivi du bon', billingContent: 'Informations de facturation', amount: 'Montant', paymentLink: 'Lien de paiement',
     createdHint: 'Si l’échéance est dans plus de 10 jours, aucun message n’est envoyé à la création. Le client reçoit le rappel « Avant l’échéance », pour ne pas confondre la prochaine mensualité avec l’actuelle.',
     beforeDays: 'Jours avant', afterDays: 'Jours après', days: 'jours', preview: 'Aperçu du message', previewHint: 'Données illustratives — aucun message ne sera envoyé à ce stade.',
@@ -212,6 +219,13 @@ const COPY = {
 
 const OS_EVENTS: WhatsappOsEventKey[] = ['criada', 'scheduled_reminder', 'a_caminho', 'em_andamento', 'concluida'];
 const BILLING_EVENTS: WhatsappBillingEventKey[] = ['created', 'before_due', 'due_today', 'after_due'];
+const ALL_DOMAINS: Domain[] = ['os', 'billing'];
+
+function defaultEventForDomain(domain: Domain): WhatsappAutomationEvent {
+  return domain === 'os'
+    ? { domain: 'os', key: 'a_caminho' }
+    : { domain: 'billing', key: 'created' };
+}
 
 function eventId(event: WhatsappAutomationEvent): string {
   return `${event.domain}.${event.key}`;
@@ -219,6 +233,7 @@ function eventId(event: WhatsappAutomationEvent): string {
 
 export function WhatsappAutomationSettings({
   locale,
+  availableDomains = ALL_DOMAINS,
   enabled,
   preferences,
   isSaving,
@@ -230,8 +245,18 @@ export function WhatsappAutomationSettings({
   onSave,
 }: WhatsappAutomationSettingsProps) {
   const copy = COPY[locale];
-  const [domain, setDomain] = useState<Domain>('os');
-  const [selected, setSelected] = useState<WhatsappAutomationEvent>({ domain: 'os', key: 'a_caminho' });
+  const normalizedDomains = ALL_DOMAINS.filter((candidate) => availableDomains.includes(candidate));
+  const initialDomain = normalizedDomains[0] ?? 'os';
+  const [domain, setDomain] = useState<Domain>(initialDomain);
+  const [selected, setSelected] = useState<WhatsappAutomationEvent>(() => defaultEventForDomain(initialDomain));
+
+  useEffect(() => {
+    if (normalizedDomains.includes(domain)) return;
+    const nextDomain = normalizedDomains[0];
+    if (!nextDomain) return;
+    setDomain(nextDomain);
+    setSelected(defaultEventForDomain(nextDomain));
+  }, [domain, normalizedDomains]);
 
   const events = useMemo<WhatsappAutomationEvent[]>(
     () => domain === 'os'
@@ -244,7 +269,10 @@ export function WhatsappAutomationSettings({
     ? preferences.os.events[selected.key]
     : preferences.billing.events[selected.key];
   const preview = buildWhatsappMessagePreview(selected, preferences, undefined, companyValues);
-  const enabledCount = countEnabledWhatsappAutomations(preferences);
+  const enabledCount = normalizedDomains.reduce((count, currentDomain) => {
+    const rules = currentDomain === 'os' ? preferences.os.events : preferences.billing.events;
+    return count + Object.values(rules).filter((rule) => rule.enabled).length;
+  }, 0);
   const controlsLocked = readOnly || isSaving;
 
   // O editor sempre mostra o texto que vale para o aviso: o do próprio cliente
@@ -255,16 +283,40 @@ export function WhatsappAutomationSettings({
     : resolveWhatsappEventTemplate(selected, preferences);
 
   const hasInvalidCustomText = [
-    ...OS_EVENTS.map((key) => ({ domain: 'os' as const, rule: preferences.os.events[key] })),
-    ...BILLING_EVENTS.map((key) => ({ domain: 'billing' as const, rule: preferences.billing.events[key] })),
+    ...(normalizedDomains.includes('os')
+      ? OS_EVENTS.map((key) => ({ domain: 'os' as const, rule: preferences.os.events[key] }))
+      : []),
+    ...(normalizedDomains.includes('billing')
+      ? BILLING_EVENTS.map((key) => ({ domain: 'billing' as const, rule: preferences.billing.events[key] }))
+      : []),
   ].some(({ domain: ruleDomain, rule }) => rule.template === 'custom'
     && !validateWhatsappCustomText(rule.customText ?? '', ruleDomain).valid);
 
+  if (normalizedDomains.length === 0) {
+    return (
+      <Card>
+        <CardHeader className="gap-4 border-b bg-muted/20 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <WhatsAppIcon className="h-5 w-5 text-[#25D366]" />
+              {copy.title}
+            </CardTitle>
+            <CardDescription>{copy.description}</CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent className="p-4 sm:p-5">
+          <NoticeBanner variant="warning" icon={Lock} title={copy.noDomainsTitle}>
+            {copy.noDomainsDescription}
+          </NoticeBanner>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const chooseDomain = (next: Domain) => {
+    if (!normalizedDomains.includes(next)) return;
     setDomain(next);
-    setSelected(next === 'os'
-      ? { domain: 'os', key: 'a_caminho' }
-      : { domain: 'billing', key: 'created' });
+    setSelected(defaultEventForDomain(next));
   };
 
   const rewriteSelectedRule = (
@@ -383,18 +435,19 @@ export function WhatsappAutomationSettings({
       </CardHeader>
 
       <CardContent className="p-0">
-        <div className="border-b p-4 sm:p-5">
-          <SegmentedControl
-            value={domain}
-            onValueChange={chooseDomain}
-            className="[&_[role=radio][aria-checked=true]]:text-white"
-            aria-label={copy.chooseEvent}
-            options={[
-              { value: 'os', label: copy.os, icon: <Wrench className="h-4 w-4" /> },
-              { value: 'billing', label: copy.billing, icon: <ReceiptText className="h-4 w-4" /> },
-            ]}
-          />
-        </div>
+        {normalizedDomains.length > 1 && (
+          <div className="border-b p-4 sm:p-5">
+            <SegmentedControl
+              value={domain}
+              onValueChange={chooseDomain}
+              className="[&_[role=radio][aria-checked=true]]:text-white"
+              aria-label={copy.chooseEvent}
+              options={normalizedDomains.map((currentDomain) => currentDomain === 'os'
+                ? { value: 'os', label: copy.os, icon: <Wrench className="h-4 w-4" /> }
+                : { value: 'billing', label: copy.billing, icon: <ReceiptText className="h-4 w-4" /> })}
+            />
+          </div>
+        )}
 
         <div className="grid xl:grid-cols-[minmax(0,1fr)_380px]">
           <div className="min-w-0 p-4 sm:p-5 xl:border-r">

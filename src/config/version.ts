@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.43";
+export const APP_VERSION = "1.41.47";
 
 export const VERSION_NOTES =
-  "A Agenda ficou mais estável para empresas com muitos agendamentos. A consulta agora carrega todos os itens em etapas, sem encerrar antes da conclusão, e ficou mais leve para abrir e navegar.";
+  "Agora você pode enviar avisos de cobrança por e-mail pela Dominex, escolher os eventos, personalizar o conteúdo e selecionar o modelo visual da sua empresa.";

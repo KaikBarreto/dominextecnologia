@@ -302,14 +302,32 @@ async function ensureAsaasCustomer(
     );
   }
 
+  const { data: emailSettings, error: emailSettingsError } = await supabase
+    .from("customer_email_settings")
+    .select("enabled")
+    .eq("company_id", companyId)
+    .maybeSingle();
+  if (emailSettingsError) {
+    throw new Error("Não foi possível validar a configuração de e-mails de cobrança.");
+  }
+  const notificationDisabled = emailSettings?.enabled === true ? true : undefined;
+
+  let found: any = null;
   try {
     const existing = await asaas.get<any>(
       `/customers?externalReference=${encodeURIComponent(customer.id)}&limit=1`,
     );
-    const found = Array.isArray(existing?.data) ? existing.data[0] : null;
-    if (found?.id) return found.id;
+    found = Array.isArray(existing?.data) ? existing.data[0] : null;
   } catch {
     // Busca falhou (não-fatal): segue pra criação.
+  }
+  if (found?.id) {
+    if (notificationDisabled === true) {
+      await asaas.put<any>(`/customers/${encodeURIComponent(found.id)}`, {
+        notificationDisabled: true,
+      });
+    }
+    return found.id;
   }
 
   const created = await asaas.post<any>("/customers", {
@@ -318,6 +336,7 @@ async function ensureAsaasCustomer(
     phone: customer.phone ?? customer.celular ?? undefined,
     cpfCnpj: doc,
     externalReference: customer.id,
+    notificationDisabled,
   });
   const asaasCustomerId: string | undefined = created?.id;
   if (!asaasCustomerId) {
@@ -564,10 +583,12 @@ async function handleRequest(req: Request): Promise<Response> {
       }
     }
 
-    // 2) Assinaturas diretas precisam do customer id da Asaas. O checkout
-    // hospedado não aceita esse id no DTO documentado: nele usamos somente
-    // customerData e deixamos a própria página da Asaas completar os dados.
-    const asaasCustomerId = isCreditCard ? null : await ensureAsaasCustomer(
+    // 2) Toda assinatura, inclusive o checkout hospedado, reutiliza um customer
+    // Asaas previamente preparado. Além de deduplicar por externalReference, isso
+    // garante notificationDisabled=true antes de qualquer cobrança quando o motor
+    // de e-mails Dominex estiver ativo. O Checkout documenta `customer` para esse
+    // cenário e proíbe enviá-lo junto com `customerData`.
+    const asaasCustomerId = await ensureAsaasCustomer(
       supabase,
       asaas,
       companyId,
@@ -606,37 +627,6 @@ async function handleRequest(req: Request): Promise<Response> {
     // validade ou CVV. O checkout cria a assinatura somente depois de o pagador
     // concluir o formulário hospedado; até lá nosso espelho fica pending.
     if (isCreditCard) {
-      const { data: checkoutCustomer, error: checkoutCustomerErr } =
-        await supabase
-          .from("customers")
-          .select(
-            "name, document, email, phone, celular, address, address_number, complement, neighborhood, zip_code",
-          )
-          .eq("id", input.customer_id)
-          .eq("company_id", companyId)
-          .maybeSingle();
-      if (checkoutCustomerErr || !checkoutCustomer) {
-        return jsonResponse(req, {
-          error: "Cliente não encontrado na sua empresa.",
-        }, 404);
-      }
-      const checkoutDocument = unmaskDoc(
-        String(checkoutCustomer.document ?? ""),
-      );
-      if (!checkoutDocument) {
-        return jsonResponse(req, {
-          error: `O cliente "${
-            checkoutCustomer.name ?? "selecionado"
-          }" não tem CPF/CNPJ cadastrado. Cadastre o documento antes de criar o checkout.`,
-        }, 400);
-      }
-      if (!isValidDocument(checkoutDocument)) {
-        return jsonResponse(req, {
-          error: `O CPF/CNPJ do cliente "${
-            checkoutCustomer.name ?? "selecionado"
-          }" é inválido. Corrija o cadastro antes de criar o checkout.`,
-        }, 400);
-      }
       const localSubscriptionId = crypto.randomUUID();
       const publicShortCode = generateShortCode();
       const minutesToExpire = 24 * 60;
@@ -712,18 +702,7 @@ async function handleRequest(req: Request): Promise<Response> {
           chargeTypes: ["RECURRENT"],
           minutesToExpire,
           externalReference: localSubscriptionId,
-          customerData: {
-            name: checkoutCustomer.name,
-            cpfCnpj: checkoutDocument,
-            email: checkoutCustomer.email ?? undefined,
-            phone: checkoutCustomer.phone ?? checkoutCustomer.celular ??
-              undefined,
-            address: checkoutCustomer.address ?? undefined,
-            addressNumber: checkoutCustomer.address_number ?? undefined,
-            complement: checkoutCustomer.complement ?? undefined,
-            province: checkoutCustomer.neighborhood ?? undefined,
-            postalCode: checkoutCustomer.zip_code ?? undefined,
-          },
+          customer: asaasCustomerId,
           items: [{
             name: (description ?? "Assinatura recorrente").substring(0, 50),
             description: description ?? undefined,
