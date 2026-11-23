@@ -13,7 +13,7 @@ vi.mock('@/hooks/useStocks',()=>({useStocks:()=>({stocks:[{id:'stock-a',name:'Pr
 vi.mock('@/hooks/useCustomers',()=>({useCustomers:()=>({customers:[]})}));
 vi.mock('@/hooks/useSuppliers',()=>({useSuppliers:()=>({suppliers:[]})}));
 vi.mock('@/hooks/use-mobile',()=>({useIsMobile:()=>false}));
-vi.mock('@/components/customers/CustomerSelectField',()=>({CustomerSelectField:()=>null}));
+vi.mock('@/components/customers/CustomerSelectField',()=>({CustomerSelectField:({onValueChange}:{onValueChange:(id:string)=>void})=><button type="button" aria-label="Seletor de cliente" onClick={()=>onValueChange('customer-a')}>Selecionar cliente</button>}));
 vi.mock('@/components/financial/SupplierSelectField',()=>({SupplierSelectField:()=>null}));
 vi.mock('./GoodsFiscalItemInput',()=>({GoodsFiscalItemInput:()=>null}));
 vi.mock('@/hooks/useGoodsFiscal',()=>({useGoodsFiscalSourceImport:()=>({mutateAsync:state.importer}),useGoodsFiscalSources:()=>({data:[],isLoading:false}),useSaveGoodsFiscalDocument:()=>({mutateAsync:state.save,isPending:false})}));
@@ -38,6 +38,21 @@ describe('wizard fiscal reutilizado para venda confirmada',()=>{
   fireEvent.click(screen.getByRole('button',{name:'Salvar rascunho'}));
   await waitFor(()=>expect(state.save).toHaveBeenCalledWith(expect.objectContaining({emit:false,draft:expect.objectContaining({id:'manual-a',sourceType:'manual',sourceId:null,nature:'VENDA SALVA',notes:'Anotação salva',items:saved.items})})));
   expect(state.importer).not.toHaveBeenCalled();
+ });
+
+ it('mantém somente o seletor de cliente até o preenchimento manual ser escolhido',()=>{
+  render(<GoodsFiscalWizard model={55} direction="saida" open onOpenChange={vi.fn()}/>);
+  const recipientSection=screen.getByText('Para quem é a nota').closest('section');
+  expect(recipientSection).not.toBeNull();
+  const recipient=within(recipientSection as HTMLElement);
+  expect(recipient.getByRole('button',{name:'Seletor de cliente'})).toBeVisible();
+  expect(recipient.queryByLabelText('Nome / razão social')).not.toBeInTheDocument();
+  fireEvent.click(recipient.getByRole('button',{name:'Preencher manualmente'}));
+  expect(recipient.getByLabelText('Nome / razão social')).toBeVisible();
+  expect(recipient.queryByRole('button',{name:'Seletor de cliente'})).not.toBeInTheDocument();
+  fireEvent.click(recipient.getByRole('button',{name:'Selecionar cliente cadastrado'}));
+  expect(recipient.getByRole('button',{name:'Seletor de cliente'})).toBeVisible();
+  expect(recipient.queryByLabelText('Nome / razão social')).not.toBeInTheDocument();
  });
 
  const nfeDraft=(stateRegistration=''):GoodsFiscalDraft=>({

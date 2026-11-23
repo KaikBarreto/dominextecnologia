@@ -18,6 +18,7 @@ import {
   Loader2,
   PackagePlus,
   Package,
+  PencilLine,
   ReceiptText,
   Save,
   Search,
@@ -70,6 +71,7 @@ import { useGoodsFiscalCatalogs } from "@/hooks/useGoodsFiscalCatalogs";
 import { useGoodsFiscalSettings } from "@/hooks/useGoodsFiscalSettings";
 
 type Step = "dados" | "itens" | "impostos" | "faturamento" | "transporte" | "opcoes" | "preview";
+type PartyEntryMode = "select" | "manual";
 
 const STEPS: Array<{ key: Step; label: string }> = [
   { key: "dados", label: "Dados" },
@@ -119,7 +121,7 @@ const newDraft = (model: GoodsModel, direction: GoodsDirection): GoodsFiscalDraf
       : model === 65
         ? "VENDA A CONSUMIDOR"
         : "VENDA DE MERCADORIA",
-  party: model === 65 ? null : emptyParty(),
+  party: null,
   items: [],
   payments: [{ method: model === 65 ? "01" : "90", amount: 0, change: 0 }],
   freightMode: 9,
@@ -213,6 +215,7 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
   const [sourceQuery, setSourceQuery] = useState("");
   const [selectedSource, setSelectedSource] = useState<string | null>(null);
   const [selectedPartyId, setSelectedPartyId] = useState("");
+  const [partyEntryMode, setPartyEntryMode] = useState<PartyEntryMode>("select");
   const { items: inventory } = useInventory();
   const { stocks, defaultStock, isLoading: stocksLoading } = useStocks();
   const { customers } = useCustomers();
@@ -262,11 +265,13 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
     setSourceQuery("");
     setSelectedSource(null);
     setSelectedPartyId("");
+    setPartyEntryMode("select");
     if (initialNature) setDraft(current => ({ ...current, nature: initialNature }));
     const saved = openingDocument.current.draft;
     if (!sourceId && saved?.sourceType === 'manual' && saved.model === model && saved.direction === direction && Array.isArray(saved.items) && Array.isArray(saved.payments)) {
       setDraft(normalizeFinalConsumer({...saved,id:openingDocument.current.id ?? saved.id ?? null}));
       setSelectedPartyId(saved.party?.id ?? '');
+      setPartyEntryMode(saved.party && !saved.party.id ? "manual" : "select");
     }
   }, [open, model, direction, initialNature, sourceId]);
 
@@ -284,6 +289,7 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
         stockId: imported.stockId,
         nature: restored?.nature || initialNature || current.nature }));
       setSelectedPartyId(party?.id ?? '');
+      setPartyEntryMode(party && !party.id ? "manual" : "select");
     }).catch(() => { if (active) setSourceError('Não foi possível importar a venda confirmada. Confira seu acesso fiscal e tente novamente.'); })
       .finally(() => { if (active) setSourceLoading(false); });
     return () => { active = false; };
@@ -328,6 +334,7 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
         notes: "",
       }));
       setSelectedPartyId(imported.party?.id ?? "");
+      setPartyEntryMode(imported.party && !imported.party.id ? "manual" : "select");
       toast.success(`${source.originLabel} importada para conferência.`);
     } catch (error) {
       toast.error((error as Error).message);
@@ -335,6 +342,7 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
   };
 
   const selectCustomer = (id: string) => {
+    setPartyEntryMode("select");
     setSelectedPartyId(id);
     const customer = customers.find((entry) => entry.id === id);
     if (!customer) return;
@@ -361,6 +369,7 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
   };
 
   const selectSupplier = (id: string) => {
+    setPartyEntryMode("select");
     setSelectedPartyId(id);
     const supplier = suppliers.find((entry) => entry.id === id);
     if (!supplier) return;
@@ -707,10 +716,11 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
                     sourceType: "manual",
                     sourceId: null,
                     items: [],
-                    party: model === 65 ? null : emptyParty(),
+                    party: null,
                   });
                   setSelectedSource(null);
                   setSelectedPartyId("");
+                  setPartyEntryMode("select");
                 }}
                 variant="outline"
                 className={cn(
@@ -891,7 +901,7 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
                   : "Confira documento e endereço fiscal antes de avançar."}
               </p>
             </header>
-            {model === 55 || draft.party ? (
+            {(model === 55 || draft.party) && partyEntryMode === "select" ? (
               <div className="space-y-3">
                 <Label htmlFor="goods-party-selector" className="font-semibold">
                   {draft.direction === "entrada" ? "Selecionar fornecedor" : "Selecionar cliente"}
@@ -911,6 +921,7 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
                   ) : (
                     <CustomerSelectField
                       id="goods-party-selector"
+                      variant="large"
                       value={selectedPartyId}
                       onValueChange={selectCustomer}
                       customers={customers}
@@ -922,12 +933,27 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
                     />
                   )}
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Os dados fiscais abaixo são preenchidos pelo cadastro e continuam editáveis para conferência.
-                </p>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm text-muted-foreground">
+                    Os dados fiscais são preenchidos automaticamente pelo cadastro selecionado.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="gap-2 text-muted-foreground"
+                    onClick={() => {
+                      setPartyEntryMode("manual");
+                      setSelectedPartyId("");
+                      patch({ party: emptyParty(), finalConsumer: true });
+                    }}
+                  >
+                    <PencilLine className="h-4 w-4" />
+                    Preencher manualmente
+                  </Button>
+                </div>
               </div>
             ) : null}
-            {model === 65 && draft.party && <Button type="button" variant="outline" onClick={() => { patch({party:null}); setSelectedPartyId(''); }}>Usar consumidor não identificado</Button>}
+            {model === 65 && draft.party && <Button type="button" variant="outline" onClick={() => { patch({party:null}); setSelectedPartyId(''); setPartyEntryMode("select"); }}>Usar consumidor não identificado</Button>}
             {model === 65 && !draft.party ? (
               <div className="flex items-center justify-between gap-4 rounded-2xl bg-primary p-5 text-primary-foreground">
                 <div>
@@ -938,12 +964,35 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
                 </div>
                 <Button
                   variant="secondary"
-                  onClick={() => patch({ party: emptyParty() })}
+                  onClick={() => {
+                    patch({ party: emptyParty() });
+                    setPartyEntryMode("select");
+                  }}
                 >
                   Identificar consumidor
                 </Button>
               </div>
-            ) : (
+            ) : partyEntryMode === "manual" ? (
+              <div className="space-y-5">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-4">
+                  <div>
+                    <p className="font-semibold">Preenchimento manual</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Use somente quando o {draft.direction === "entrada" ? "fornecedor" : "cliente"} ainda não estiver cadastrado.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setPartyEntryMode("select");
+                      setSelectedPartyId("");
+                      patch({ party: null, finalConsumer: true });
+                    }}
+                  >
+                    Selecionar {draft.direction === "entrada" ? "fornecedor" : "cliente"} cadastrado
+                  </Button>
+                </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="goods-party-name">Nome / razão social</Label>
@@ -1052,8 +1101,9 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
                   </div>
                 </div>
               </div>
-            )}
-            {model === 55 && draft.direction === "saida" && draft.party ? (
+              </div>
+            ) : null}
+            {model === 55 && draft.direction === "saida" && draft.party && (partyEntryMode === "manual" || !!selectedPartyId || !!draft.party.id) ? (
               <div className="space-y-3" data-qa="nfe-final-consumer-purpose">
                 <div>
                   <Label className="text-base font-bold">Finalidade para o destinatário</Label>
