@@ -22,6 +22,7 @@ Deno.env.set('FISCAL_SERVICE_URL','https://engine.example.invalid');
 Deno.env.set('FISCAL_SERVICE_TOKEN','fictitious-motor-test-key');
 let moduleAllowed=true, issuerAllowed=true, sourceAllowed=true, existingStatus='draft', environment='homologacao';
 let hasCertificate=false; let expiresAt='2099-01-01';
+let nfeHomologationApproved=true;let nfeProductionApproved=false;
 let seriesAllowed=true, seriesActive=true, seriesDirection='saida';
 let carrierAllowed=true, carrierActive=true;
 let completeMode=false;let faultStage='';let storedStatus='draft';let claimCompared=false;let rowExtra:Record<string,unknown>={};let transmitCompared=false;let rowVersion=0;const patches:Record<string,unknown>[]=[];
@@ -32,7 +33,7 @@ let reservationArgs:Record<string,unknown>|null=null;
 const storedArtifacts=new Map<string,string>();
 const json = (value:unknown) => new Response(JSON.stringify(value),{status:200,headers:{'content-type':'application/json'}});
 function setup() {
- moduleAllowed=true;issuerAllowed=true;sourceAllowed=true;existingStatus='draft';environment='homologacao';hasCertificate=false;expiresAt='2099-01-01';seriesAllowed=true;seriesActive=true;seriesDirection='saida';carrierAllowed=true;carrierActive=true;completeMode=false;faultStage='';storedStatus='draft';claimCompared=false;rowExtra={};transmitCompared=false;rowVersion=0;reservationArgs=null;storedArtifacts.clear();patches.length=0;paths.length=0;documentWrites.length=0;motorBodies.length=0;
+ moduleAllowed=true;issuerAllowed=true;sourceAllowed=true;existingStatus='draft';environment='homologacao';hasCertificate=false;expiresAt='2099-01-01';nfeHomologationApproved=true;nfeProductionApproved=false;seriesAllowed=true;seriesActive=true;seriesDirection='saida';carrierAllowed=true;carrierActive=true;completeMode=false;faultStage='';storedStatus='draft';claimCompared=false;rowExtra={};transmitCompared=false;rowVersion=0;reservationArgs=null;storedArtifacts.clear();patches.length=0;paths.length=0;documentWrites.length=0;motorBodies.length=0;
  globalThis.fetch = ((input:RequestInfo|URL, init?:RequestInit) => {
   const url=new URL(typeof input==='string'?input:input instanceof URL?input.href:input.url);
   assert(['backend.example.invalid','engine.example.invalid'].includes(url.hostname),'Tentativa de rede externa durante teste fiscal');
@@ -66,7 +67,7 @@ function setup() {
   if(name==='can_access_stock')return Promise.resolve(json(true));
   if(name==='stocks')return Promise.resolve(json({id:stock}));
   if(name==='company_nfce_settings')return Promise.resolve(json({uf:'RJ',series:1,enabled:true,homologation_approved:true,production_approved:true,...(completeMode?{qr_base_url_homologation:'https://sefaz.example.gov.br/qrcode',access_url_homologation:'https://sefaz.example.gov.br/consulta'}:{})}));
-  if(name==='company_nfe_settings')return Promise.resolve(json({enabled:true,homologation_approved:true,production_approved:false,default_operation_nature:'VENDA DE MERCADORIA'}));
+  if(name==='company_nfe_settings')return Promise.resolve(json({enabled:true,homologation_approved:nfeHomologationApproved,production_approved:nfeProductionApproved,default_operation_nature:'VENDA DE MERCADORIA'}));
   if(name==='nfe_series')return Promise.resolve(json(seriesAllowed?{id:seriesId,direction:seriesDirection,active:seriesActive}:null));
   if(name==='fiscal_goods_carriers')return Promise.resolve(json(carrierAllowed?{id:carrierId,active:carrierActive}:null));
   if(name==='nfce_documents'||name==='nfe_documents'){
@@ -157,6 +158,16 @@ Deno.test('rascunho de NF-e preserva série e transportadora, sem aplicar cenár
  }finally{globalThis.fetch=originalFetch;}
 });
 
+Deno.test('rascunho preserva o ambiente escolhido e a coluna fiscal correspondente',async()=>{
+ setup();try{
+  const response=await handler(request({action:'save_draft',draft:{...completeNfeDraft,environment:'producao'}}));
+  assertEquals(response.status,200);
+  const inserted=documentWrites.find(write=>'draft_payload' in write)!;
+  assertEquals((inserted.draft_payload as Record<string,unknown>).environment,'producao');
+  assertEquals(inserted.environment,1);
+ }finally{globalThis.fetch=originalFetch;}
+});
+
 for(const variant of ['cross_tenant','inactive','wrong_direction'])Deno.test(`NF-e rejeita série ${variant}`,async()=>{
  setup();if(variant==='cross_tenant')seriesAllowed=false;if(variant==='inactive')seriesActive=false;if(variant==='wrong_direction')seriesDirection='entrada';
  try{
@@ -186,6 +197,25 @@ Deno.test('NF-e reserva a série escolhida e não envia catálogo local de trans
  }finally{globalThis.fetch=originalFetch;}
 });
 
+Deno.test('NF-e usa homologação escolhida na nota mesmo quando o ambiente global está em produção',async()=>{
+ setup();completeMode=true;hasCertificate=true;environment='producao';try{
+  const response=await handler(request({action:'emit',draft:{...completeNfeDraft,environment:'homologacao'}}));
+  assertEquals(response.status,201);
+  const prepare=motorBodies.find(body=>'documento' in body) as {documento?:{invoice?:{environment?:string}}}|undefined;
+  assertEquals(prepare?.documento?.invoice?.environment,'homologacao');
+  assert(patches.some(patch=>patch.environment===2 && (patch.draft_payload as Record<string,unknown>)?.environment==='homologacao'));
+ }finally{globalThis.fetch=originalFetch;}
+});
+
+Deno.test('NF-e bloqueia produção escolhida na nota sem aprovação, antes de reservar número',async()=>{
+ setup();completeMode=true;hasCertificate=true;environment='homologacao';try{
+  const response=await handler(request({action:'emit',draft:{...completeNfeDraft,environment:'producao'}}));
+  assertEquals(response.status,422);
+  assertEquals((await response.json()).error,'production_not_approved');
+  assert(!paths.some(path=>path.includes('reserve_goods_fiscal_number')||path.startsWith('MOTOR:')));
+ }finally{globalThis.fetch=originalFetch;}
+});
+
 Deno.test('NFC-e ignora série e transportadora de NF-e e continua usando configuração própria',()=>{
  const normalized=edgeModule.normalizeDraft({...completeDraft,seriesId,carrierId,scenarioId});
  assertEquals(normalized.model,65);assertEquals(normalized.seriesId,null);assertEquals(normalized.carrierId,null);assert(!('scenarioId' in normalized));
@@ -205,7 +235,7 @@ for(const state of ['uncertain','transmitting','authorized','cancellation_pendin
 Deno.test('preparação recente não reabre enquanto outra execução pode estar ativa',async()=>{setup();existingStatus='preparing';rowExtra={updated_at:new Date().toISOString()};try{const response=await handler(request({model:65,documentId:doc,action:'revise'}));assertEquals(response.status,409);assert(!paths.some(p=>p.startsWith('PATCH:')||p.startsWith('MOTOR:')));}finally{globalThis.fetch=originalFetch;}});
 Deno.test('preparação antiga sem chave pode voltar à revisão sem transmissão',async()=>{setup();existingStatus='preparing';rowExtra={updated_at:'2020-01-01T00:00:00Z'};try{const response=await handler(request({model:65,documentId:doc,action:'revise'}));assertEquals(response.status,200);assert(!paths.some(p=>p.startsWith('MOTOR:')));}finally{globalThis.fetch=originalFetch;}});
 for(const status of ['uncertain','transmitting','authorized'])Deno.test(`retomada nunca reenvia documento ${status}`,async()=>{setup();existingStatus=status;try{const response=await handler(request({model:65,documentId:doc,action:'resume'}));assertEquals(response.status,409);assert(!paths.some(p=>p.startsWith('MOTOR:')||p.startsWith('PATCH:')));}finally{globalThis.fetch=originalFetch;}});
-async function setupSigned(){setup();completeMode=true;hasCertificate=true;existingStatus='signed';storedStatus='signed';const frozen={test:'frozen'};const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(frozen))))].map(n=>n.toString(16).padStart(2,'0')).join('');rowExtra={number:12,environment:2,snapshot:frozen,snapshot_hash:hash,draft_payload:completeDraft};}
+async function setupSigned(){setup();completeMode=true;hasCertificate=true;existingStatus='signed';storedStatus='signed';const frozen={test:'frozen'};const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(frozen))))].map(n=>n.toString(16).padStart(2,'0')).join('');rowExtra={number:12,environment:2,snapshot:frozen,snapshot_hash:hash,draft_payload:{...completeDraft,environment:'homologacao'}};}
 Deno.test('retoma somente XML assinado persistido com a mesma operação e sem novo número',async()=>{await setupSigned();try{const response=await handler(request({model:65,documentId:doc,action:'resume'}));assertEquals(response.status,201);assert(transmitCompared);assert(paths.includes('MOTOR:/v1/nfce/autorizar'));assert(!paths.includes('MOTOR:/v1/nfce/preparar'));assert(!paths.some(p=>p.includes('reserve_goods_fiscal_number')));}finally{globalThis.fetch=originalFetch;}});
 Deno.test('dupla retomada perde claim e não chama autorização novamente',async()=>{await setupSigned();faultStage='resume_concurrent';try{const response=await handler(request({model:65,documentId:doc,action:'resume'}));assertEquals(response.status,409);assertEquals((await response.json()).error,'document_changed');assert(transmitCompared);assert(!paths.includes('MOTOR:/v1/nfce/autorizar'));}finally{globalThis.fetch=originalFetch;}});
 Deno.test('snapshot corrompido ou ambiente alterado não é reenviado',async()=>{for(const patch of [{snapshot_hash:'0'.repeat(64)},{environment:1}]){await setupSigned();Object.assign(rowExtra,patch);try{const response=await handler(request({model:65,documentId:doc,action:'resume'}));assertEquals(response.status,409);assert(!paths.includes('MOTOR:/v1/nfce/autorizar'));}finally{globalThis.fetch=originalFetch;}}});

@@ -102,6 +102,7 @@ interface NormalizedDraft {
   stockId: string | null;
   seriesId: string | null;
   carrierId: string | null;
+  environment: "homologacao" | "producao" | null;
   sourceType: "manual" | "pdv_sale" | "pdv_purchase" | "inventory_purchase";
   sourceId: string | null;
   nature: string;
@@ -213,6 +214,12 @@ export function normalizeDraft(raw: unknown): NormalizedDraft {
     stockId: uuid(draft.stockId),
     seriesId: model === 55 ? uuid(draft.seriesId) : null,
     carrierId: model === 55 ? uuid(draft.carrierId) : null,
+    environment:
+      draft.environment === "producao"
+        ? "producao"
+        : draft.environment === "homologacao"
+          ? "homologacao"
+          : null,
     sourceType,
     sourceId: sourceType === "manual" ? null : uuid(draft.sourceId),
     nature: text(draft.nature, 60),
@@ -628,6 +635,9 @@ async function saveDraft(
     status: "draft",
     customer_id: draft.direction === "saida" ? uuid(draft.party?.id) : null,
   };
+  if (draft.environment) {
+    common.environment = draft.environment === "producao" ? 1 : 2;
+  }
   if (draft.model === 55) {
     common.direction = draft.direction;
     common.supplier_id =
@@ -976,18 +986,24 @@ async function handleDocumentAction(
   }
   if (action === 'resume') {
     if(row.status!=='signed')return jsonResponse({error:'resume_blocked',message:'Consulte a situação desta nota antes de continuar. Nenhum novo envio foi iniciado.'},409);
-    const {fiscal,ctx}=await fiscalContext(auth,`retomar_${model}:${documentId}`);
+    const {fiscal}=await fiscalContext(auth,`retomar_${model}:${documentId}`);
     const [company,configResult]=await Promise.all([loadGoodsIssuer(auth),auth.supabase.from(model===55?'company_nfe_settings':'company_nfce_settings').select('*').eq('company_id',auth.companyId).maybeSingle()]);
     if(configResult.error)throw new GoodsDocumentError('readiness_unavailable','Não foi possível conferir a configuração fiscal. Tente novamente.',503);
-    const issues=goodsReadinessIssues(model,company,fiscal,object(configResult.data),Deno.env.get('FISCAL_NFCE_PRODUCAO_HABILITADA')==='1');
-    if(issues.length)return jsonResponse({error:issues[0].code,message:issues[0].message},422);
-    if(Number(row.environment)!==(fiscal.fiscal_ambiente==='producao'?1:2) || text(row.uf).toUpperCase()!==text(company.state).toUpperCase())throw new GoodsDocumentError('fiscal_context_changed','O ambiente ou a UF mudou desde a preparação. Consulte o suporte antes de continuar.',409);
-    if(!/^[0-9a-f]{64}$/.test(text(row.snapshot_hash)) || await sha256(row.snapshot)!==row.snapshot_hash || digits(row.access_key).length!==44)throw new GoodsDocumentError('snapshot_unavailable','Não foi possível recuperar os dados fiscais preparados. Nenhum novo envio foi iniciado.',409);
     const storedDraft = normalizeDraft(row.draft_payload);
+    const resumedEnvironment = storedDraft.environment ?? (Number(row.environment) === 1 ? 'producao' : 'homologacao');
+    const effectiveFiscal: JsonObject = {
+      ...fiscal,
+      fiscal_ambiente: resumedEnvironment,
+    };
+    const issues=goodsReadinessIssues(model,company,effectiveFiscal,object(configResult.data),Deno.env.get('FISCAL_NFCE_PRODUCAO_HABILITADA')==='1');
+    if(issues.length)return jsonResponse({error:issues[0].code,message:issues[0].message},422);
+    if(Number(row.environment)!==(resumedEnvironment==='producao'?1:2) || text(row.uf).toUpperCase()!==text(company.state).toUpperCase())throw new GoodsDocumentError('fiscal_context_changed','O ambiente ou a UF mudou desde a preparação. Consulte o suporte antes de continuar.',409);
+    if(!/^[0-9a-f]{64}$/.test(text(row.snapshot_hash)) || await sha256(row.snapshot)!==row.snapshot_hash || digits(row.access_key).length!==44)throw new GoodsDocumentError('snapshot_unavailable','Não foi possível recuperar os dados fiscais preparados. Nenhum novo envio foi iniciado.',409);
     await assertSourceBelongsToCompany(auth, storedDraft);
     await assertFiscalCatalogsBelongToCompany(auth, storedDraft);
     const xml=await storedSignedXml(auth,row.signed_xml_path);
     if(!xml)throw new GoodsDocumentError('snapshot_unavailable','O XML assinado ainda não está disponível. Nenhum novo envio foi iniciado.',409);
+    const ctx:NfseProviderCtx={supabase:auth.supabase,companyId:auth.companyId,fiscal:effectiveFiscal,contextoAuditoria:`retomar_${model}:${documentId}`};
     return await transmitSavedGoods(auth,model,row,ctx,xml,setActive);
   }
 
@@ -1296,13 +1312,19 @@ Deno.serve(async (req) => {
     const company = object(companyResult);
     const config = object(configResult.data);
     if (fiscalResult.error || configResult.error) throw new GoodsDocumentError('readiness_unavailable','Não foi possível conferir a configuração fiscal. Tente novamente.',503);
-    const readiness = goodsReadinessIssues(draft.model, company, fiscal, config, Deno.env.get('FISCAL_NFCE_PRODUCAO_HABILITADA') === '1');
+    const selectedEnvironment = draft.environment ?? (fiscal.fiscal_ambiente === 'producao' ? 'producao' : 'homologacao');
+    const effectiveDraft:NormalizedDraft={...draft,environment:selectedEnvironment};
+    const effectiveFiscal: JsonObject = {
+      ...fiscal,
+      fiscal_ambiente: selectedEnvironment,
+    };
+    const readiness = goodsReadinessIssues(draft.model, company, effectiveFiscal, config, Deno.env.get('FISCAL_NFCE_PRODUCAO_HABILITADA') === '1');
     if (readiness.length) return jsonResponse({error:readiness[0].code,message:readiness[0].message},422);
-    const environment = fiscal.fiscal_ambiente === 'producao' ? 1 : 2;
+    const environment = selectedEnvironment === 'producao' ? 1 : 2;
     const errors = validation(
-      draft,
+      effectiveDraft,
       text(company.state).toUpperCase(),
-      text(fiscal.regime_tributario),
+      text(effectiveFiscal.regime_tributario),
     );
     if (errors.length)
       return jsonResponse(
@@ -1343,9 +1365,9 @@ Deno.serve(async (req) => {
       documentNumber = number(reservation.number);
     }
     const document = buildMotorDocument(
-      draft,
+      effectiveDraft,
       company,
-      fiscal,
+      effectiveFiscal,
       series,
       documentNumber,
     );
@@ -1353,6 +1375,7 @@ Deno.serve(async (req) => {
     const operationId = text(row.operation_id);
     preparationFence=await storeGoodsDocument(auth, table, text(row.id), {
         status: "preparing",
+        draft_payload: effectiveDraft,
         environment,
         uf: text(company.state).toUpperCase(),
         series,
@@ -1366,7 +1389,7 @@ Deno.serve(async (req) => {
     const ctx: NfseProviderCtx = {
       supabase: auth.supabase,
       companyId: auth.companyId,
-      fiscal,
+      fiscal: effectiveFiscal,
       contextoAuditoria: `emitir_${draft.model === 55 ? "nfe" : "nfce"}:${row.id}`,
     };
     const prepared =

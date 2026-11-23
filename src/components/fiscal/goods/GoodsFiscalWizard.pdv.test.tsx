@@ -8,6 +8,7 @@ vi.mock('@/contexts/AppLocaleContext',()=>({useAppLocaleContext:()=>({locale:'pt
 vi.mock('@/hooks/useGoodsFiscalAccess',()=>({useGoodsFiscalAccess:()=>({allowed:true,scopeId:'company-a:user-a:emit'})}));
 vi.mock('@/hooks/useGoodsFiscalCatalogs',()=>({useGoodsFiscalCatalogs:()=>({series:[{id:'series-a',label:'Principal',series:1,nextNumber:16,direction:'saida',active:true}],scenarios:[],carriers:[],isLoading:false})}));
 vi.mock('@/hooks/useGoodsFiscalSettings',()=>({useGoodsFiscalSettings:()=>({settings:{nfe:{defaultEntrySeriesId:'',defaultExitSeriesId:''}}})}));
+vi.mock('@/hooks/useFiscalSettings',()=>({useFiscalSettings:()=>({settings:{fiscal_ambiente:'homologacao'},isLoading:false})}));
 vi.mock('@/hooks/useInventory',()=>({useInventory:()=>({items:[]})}));
 vi.mock('@/hooks/useStocks',()=>({useStocks:()=>({stocks:[{id:'stock-a',name:'Principal',is_default:true}],defaultStock:{id:'stock-a',name:'Principal',is_default:true},isLoading:false})}));
 vi.mock('@/hooks/useCustomers',()=>({useCustomers:()=>({customers:[]})}));
@@ -18,7 +19,7 @@ vi.mock('@/components/financial/SupplierSelectField',()=>({SupplierSelectField:(
 vi.mock('./GoodsFiscalItemInput',()=>({GoodsFiscalItemInput:()=>null}));
 vi.mock('@/hooks/useGoodsFiscal',()=>({useGoodsFiscalSourceImport:()=>({mutateAsync:state.importer}),useGoodsFiscalSources:()=>({data:[],isLoading:false}),useSaveGoodsFiscalDocument:()=>({mutateAsync:state.save,isPending:false})}));
 vi.mock('sonner',()=>({toast:{error:(...args:unknown[])=>state.toastError(...args),success:vi.fn(),message:vi.fn()}}));
-vi.mock('@/components/ui/FullscreenWizard',()=>({FullscreenWizard:({children,footer}:{children:ReactNode;footer:ReactNode})=><div role="dialog">{children}{footer}</div>,FullscreenWizardAction:({children,onClick,disabled}:{children:ReactNode;onClick:()=>void;disabled?:boolean})=><button onClick={onClick} disabled={disabled}>{children}</button>}));
+vi.mock('@/components/ui/FullscreenWizard',()=>({FullscreenWizard:({children,footer,headerActions}:{children:ReactNode;footer:ReactNode;headerActions?:ReactNode})=><div role="dialog">{headerActions}{children}{footer}</div>,FullscreenWizardAction:({children,onClick,disabled}:{children:ReactNode;onClick:()=>void;disabled?:boolean})=><button onClick={onClick} disabled={disabled}>{children}</button>}));
 const payments=[{method:'01',amount:35,change:5,deferred:false},{method:'17',amount:15,change:0,deferred:false},{method:'05',amount:15,change:0,deferred:true}];
 const snapshot={model:65,direction:'saida',stockId:'stock-a',sourceType:'pdv_sale',sourceId:'paid-sale',party:null,items:[{id:'item-a',sourceItemId:'line-a',description:'Material fictício',quantity:2,unitPrice:30,discount:0,total:60,unit:'UN',taxUnit:'UN',ncm:'12345678',origin:'0',cfopExitInternal:'5102',icmsCode:'102',pisCst:'49',cofinsCst:'49'}],payments};
 beforeEach(()=>{vi.clearAllMocks();state.importer.mockResolvedValue(snapshot);state.save.mockResolvedValue({id:'document-a',status:'draft'});});
@@ -53,6 +54,18 @@ describe('wizard fiscal reutilizado para venda confirmada',()=>{
   fireEvent.click(recipient.getByRole('button',{name:'Selecionar cliente cadastrado'}));
   expect(recipient.getByRole('button',{name:'Seletor de cliente'})).toBeVisible();
   expect(recipient.queryByLabelText('Nome / razão social')).not.toBeInTheDocument();
+ });
+
+ it('mantém série e ambiente no header e resolve o estoque fiscal sem expor outro seletor',async()=>{
+  render(<GoodsFiscalWizard model={55} direction="saida" open onOpenChange={vi.fn()}/>);
+  expect(screen.getByLabelText('Série da NF-e')).toBeVisible();
+  expect(screen.getByLabelText('Ambiente de emissão')).toBeVisible();
+  expect(screen.queryByText('Local de estoque')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'Salvar rascunho'}));
+  await waitFor(()=>expect(state.save).toHaveBeenCalledWith(expect.objectContaining({
+   emit:false,
+   draft:expect.objectContaining({stockId:'stock-a',seriesId:'series-a',environment:'homologacao'}),
+  })));
  });
 
  const nfeDraft=(stateRegistration=''):GoodsFiscalDraft=>({

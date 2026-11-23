@@ -8,6 +8,7 @@ export type GoodsDirection = "entrada" | "saida";
 export type GoodsSourceType =
   "manual" | "pdv_sale" | "pdv_purchase" | "inventory_purchase";
 export type GoodsModel = 55 | 65;
+export type GoodsFiscalEnvironment = "homologacao" | "producao";
 
 export interface GoodsFiscalSource {
   sourceType: Exclude<GoodsSourceType, "manual">;
@@ -81,6 +82,7 @@ export interface GoodsFiscalDraft {
   stockId?: string | null;
   seriesId?: string | null;
   carrierId?: string | null;
+  environment?: GoodsFiscalEnvironment;
   sourceType: GoodsSourceType;
   sourceId?: string | null;
   nature: string;
@@ -204,6 +206,12 @@ export function projectGoodsSnapshot(
     stockId: text(root.stockId) || null,
     seriesId: text(root.seriesId) || null,
     carrierId: text(root.carrierId) || null,
+    environment:
+      root.environment === "producao"
+        ? "producao"
+        : root.environment === "homologacao"
+          ? "homologacao"
+          : undefined,
     sourceType: text(root.sourceType) as GoodsSourceType,
     sourceId: text(root.sourceId) || null,
     finalConsumer:
