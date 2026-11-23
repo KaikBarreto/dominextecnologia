@@ -905,7 +905,7 @@ export function PmocContractDocsTab({
 }
 
 type SignedDownloadResolver = (
-  document: Pick<PmocDocument, 'contract_id' | 'doc_type' | 'version' | 'generated_at' | 'pdf_storage_path'>,
+  document: Pick<PmocDocument, 'id' | 'contract_id'>,
   establishmentName?: string | null,
 ) => Promise<string>;
 

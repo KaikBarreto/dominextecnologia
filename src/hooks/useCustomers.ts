@@ -105,6 +105,8 @@ export function useCustomers(options: { enabled?: boolean } = {}) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
+      // O detalhe do contrato embute o cliente no cache `contracts`.
+      queryClient.invalidateQueries({ queryKey: ['contracts'] });
       toast({ title: 'Cliente atualizado com sucesso!' });
     },
     onError: (error: Error) => {

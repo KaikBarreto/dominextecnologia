@@ -16,7 +16,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useGoodsFiscalAccess } from '@/hooks/useGoodsFiscalAccess';
 import { useGoodsFiscalDocumentAction, useGoodsFiscalDocuments, type GoodsFiscalDraft } from '@/hooks/useGoodsFiscal';
 import { useGoodsFiscalSettings } from '@/hooks/useGoodsFiscalSettings';
-import { goodsDocumentRecovery, pdvNfceStatus, shouldAskPdvNfce } from '@/lib/fiscal/pdvNfce';
+import { cloneGoodsDraftForReissue, goodsDocumentRecovery, pdvNfceStatus, shouldAskPdvNfce } from '@/lib/fiscal/pdvNfce';
 import { GoodsFiscalWizard } from './GoodsFiscalWizard';
 
 interface Props {
@@ -53,6 +53,7 @@ function PdvNfceSaleContext({ orderId, confirmed = true, promptAfterPayment = fa
   const readiness = useGoodsFiscalReadiness(65,!document || status === 'draft');
   const { locale } = useAppLocaleContext();
   const [open, setOpen] = useState(false); const [ask, setAsk] = useState(false);
+  const [reissueDraft, setReissueDraft] = useState<GoodsFiscalDraft | null>(null);
   const [cancel, setCancel] = useState(false); const [reason, setReason] = useState('');
   const [artifact, setArtifact] = useState<{url:string;kind:'xml'|'pdf';expiresAt:number} | null>(null);
   const alive = useRef(true);
@@ -98,11 +99,17 @@ function PdvNfceSaleContext({ orderId, confirmed = true, promptAfterPayment = fa
     } catch (e) { pending?.close(); if(name==='resume')closePendingDanfce(); if (alive.current) toast.error((e as Error).message); }
   };
   const canOpen = confirmed && settings.nfce.enabled && !settingsLoading && !settingsError && !docs.isLoading && !docs.isError && readiness.data?.ready === true && (!document || status === 'draft');
-  const openWizard = () => { onDetailsOpenChange?.(false); setOpen(true); };
+  const openWizard = () => { setReissueDraft(null); onDetailsOpenChange?.(false); setOpen(true); };
+  const reissue = () => {
+    const draft = cloneGoodsDraftForReissue(document?.draft_payload) as unknown as GoodsFiscalDraft;
+    setReissueDraft(draft);
+    onDetailsOpenChange?.(false);
+    setOpen(true);
+  };
   const content = <div className="space-y-3" aria-label="NFC-e da venda">
     <div className="flex flex-wrap items-center gap-2"><Badge className={status === 'authorized' ? 'bg-emerald-700 text-white' : status === 'rejected' ? 'bg-red-700 text-white' : 'bg-slate-700 text-white'}>NFC-e · {pdvNfceStatus(status || null)}</Badge>{(docs.isLoading || action.isPending) && <Loader2 className="h-4 w-4 animate-spin" />}
       {(!document || status === 'draft') && <Button variant="outline" size="sm" disabled={!canOpen} onClick={openWizard}><ReceiptText className="mr-2 h-4 w-4" />{status === 'draft' ? 'Revisar NFC-e' : 'Emitir NFC-e'}</Button>}
-      {recovery && <Button variant="outline" size="sm" disabled={action.isPending} onClick={() => run(recovery.action)}><ReceiptText className="mr-2 h-4 w-4" />{recovery.label}</Button>}
+      {recovery && <Button variant="outline" size="sm" disabled={action.isPending} onClick={() => recovery.action === 'reissue' ? reissue() : run(recovery.action)}><ReceiptText className="mr-2 h-4 w-4" />{recovery.label}</Button>}
       {document && !['draft', 'queued', 'preparing', 'signed'].includes(status) && <Button variant="outline" size="sm" disabled={action.isPending} onClick={() => run('consult')}><FileSearch className="mr-2 h-4 w-4" />Consultar situação</Button>}
       {status === 'authorized' && <><Button variant="outline" size="sm" disabled={action.isPending} onClick={() => run('artifact', 'pdf')}><FileText className="mr-2 h-4 w-4" />DANFC-e</Button><Button variant="outline" size="sm" disabled={action.isPending} onClick={() => run('artifact', 'xml')}>XML</Button><Button variant="outline" size="sm" disabled={action.isPending} onClick={() => setCancel(true)}><XCircle className="mr-2 h-4 w-4" />Cancelar NFC-e</Button></>}
     </div>
@@ -120,7 +127,7 @@ function PdvNfceSaleContext({ orderId, confirmed = true, promptAfterPayment = fa
   return <>
     {detailsOpen === undefined ? content : <ResponsiveModal open={detailsOpen} onOpenChange={onDetailsOpenChange ?? (() => {})} title="NFC-e do pedido" description="A situação fiscal é independente do pagamento da venda." density="compact">{content}</ResponsiveModal>}
     <AlertDialog open={ask} onOpenChange={setAsk}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Emitir NFC-e desta venda?</AlertDialogTitle><AlertDialogDescription>A venda já está concluída. Revise os dados fiscais antes de emitir.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Agora não</AlertDialogCancel><AlertDialogAction onClick={openWizard}>Revisar e emitir</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
-    <GoodsFiscalWizard open={open} onOpenChange={setOpen} model={65} direction="saida" sourceType="pdv_sale" sourceId={orderId} documentId={typeof document?.id === 'string' ? document.id : null} initialDraft={document?.draft_payload && typeof document.draft_payload === 'object' ? document.draft_payload as GoodsFiscalDraft : null} initialNature={settings.nfce.defaultOperationNature} includeIdentifiedConsumer={settings.nfce.includeIdentifiedConsumer} onBeforeEmit={reserveDanfce} onEmitFailure={closePendingDanfce} onSaved={afterSaved} />
+    <GoodsFiscalWizard open={open} onOpenChange={next => { setOpen(next); if (!next) setReissueDraft(null); }} model={65} direction="saida" sourceType="pdv_sale" sourceId={orderId} documentId={reissueDraft ? null : typeof document?.id === 'string' ? document.id : null} initialDraft={reissueDraft ?? (document?.draft_payload && typeof document.draft_payload === 'object' ? document.draft_payload as GoodsFiscalDraft : null)} initialNature={settings.nfce.defaultOperationNature} includeIdentifiedConsumer={settings.nfce.includeIdentifiedConsumer} onBeforeEmit={reserveDanfce} onEmitFailure={closePendingDanfce} onSaved={afterSaved} />
     <AlertDialog open={cancel} onOpenChange={setCancel}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Cancelar NFC-e</AlertDialogTitle><AlertDialogDescription>Informe uma justificativa com pelo menos 15 caracteres. O cancelamento fiscal não estorna a venda.</AlertDialogDescription></AlertDialogHeader><Input aria-label="Justificativa do cancelamento fiscal" value={reason} maxLength={255} onChange={e => setReason(e.target.value)} /><AlertDialogFooter><AlertDialogCancel>Voltar</AlertDialogCancel><AlertDialogAction disabled={reason.trim().length < 15 || action.isPending} onClick={e => { e.preventDefault(); void run('cancel'); }}>Solicitar cancelamento</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
   </>;
 }

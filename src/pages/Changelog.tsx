@@ -31,6 +31,52 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.57',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Visitas do contrato salvas por completo',
+        category: 'correcao',
+        description: 'A criação e a atualização de contratos agora confirmam todas as visitas previstas de uma só vez. Se alguma visita não puder ser salva, nenhuma parte do lote é mantida, evitando diferenças entre a prévia e a agenda e preservando as datas do cronograma.',
+      },
+    ],
+  },
+  {
+    version: '1.41.56',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Finalidade correta na NF-e',
+        category: 'correcao',
+        description: 'Ao emitir para um cliente sem inscrição estadual, o sistema agora identifica automaticamente a operação como consumidor final. Para clientes com inscrição estadual, você escolhe entre uso próprio e revenda ou industrialização antes da emissão.',
+      },
+      {
+        title: 'Correção segura de notas rejeitadas',
+        category: 'seguranca',
+        description: 'Uma NF-e ou NFC-e rejeitada permanece preservada no histórico. A ação Corrigir e reemitir abre uma nova emissão com nova numeração, sem alterar nem reutilizar o documento rejeitado.',
+      },
+    ],
+  },
+  {
+    version: '1.41.55',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Downloads do PMOC restaurados',
+        category: 'correcao',
+        description: 'Os documentos do dossiê e as versões anteriores do PMOC voltaram a ficar disponíveis para baixar e imprimir com segurança.',
+      },
+      {
+        title: 'Endereço completo reconhecido',
+        category: 'correcao',
+        description: 'O dossiê agora identifica corretamente o endereço completo quando ele já está preenchido no cadastro do cliente.',
+      },
+    ],
+  },
+  {
     version: '1.41.54',
     date: '23 de novembro de 2026',
     type: 'patch',
@@ -44,11 +90,6 @@ export const changelog: ChangelogEntry[] = [
         title: 'Confirmação com justificativa',
         category: 'seguranca',
         description: 'Quando a opção está ligada, o sistema avisa sobre a sobreposição e exige uma justificativa antes de confirmar, mantendo a decisão registrada para consulta.',
-      },
-      {
-        title: 'Visitas do contrato salvas por completo',
-        category: 'correcao',
-        description: 'A criação e a atualização de contratos agora confirmam todas as visitas previstas de uma só vez. Se alguma visita não puder ser salva, nenhuma parte do lote é mantida, evitando diferenças entre a prévia e a agenda e preservando as datas do cronograma.',
       },
     ],
   },

@@ -29,6 +29,7 @@ const ERRORS: Record<string, string> = {
   document_not_transmitted: 'A nota ainda não possui chave de acesso. Aguarde o processamento.',
   not_found: 'A nota não foi encontrada nesta empresa.',
   automatic_blocked: 'A emissão automática permanece bloqueada até a aprovação do canário.',
+  number_reservation_failed: 'Não foi possível reservar a próxima numeração desta série. Atualize a nota e tente novamente. Se continuar, confira a série nas Configurações Fiscais.',
 };
 export function goodsFiscalError(payload: unknown, fallback = 'Não foi possível concluir a operação fiscal. Tente novamente.') {
   const row = payload && typeof payload === 'object' ? payload as Record<string, unknown> : {};

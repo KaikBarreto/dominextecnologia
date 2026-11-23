@@ -80,7 +80,18 @@ export interface Contract {
   nfse_codigo_tributacao_municipal: string | null;
   nfse_codigo_nbs: string | null;
   nfse_iss_aliquota: number | null;
-  customers?: { id: string; name: string; document?: string | null; address?: string | null; city?: string | null; state?: string | null } | null;
+  customers?: {
+    id: string;
+    name: string;
+    document?: string | null;
+    address?: string | null;
+    address_number?: string | null;
+    neighborhood?: string | null;
+    complement?: string | null;
+    city?: string | null;
+    state?: string | null;
+    zip_code?: string | null;
+  } | null;
   // Alias singular do MESMO cliente do contrato (FK customer_id). Existe porque
   // alguns consumidores (ex.: select "Contrato vinculado" no financeiro) leem
   // `contract.customer?.name`. Sem este alias o label caía em "Sem cliente".
@@ -1955,7 +1966,7 @@ export function useContracts() {
         .from('contracts')
         .select(`
           *,
-          customers (id, name, document, phone, celular, email, address, city, state),
+          customers (id, name, document, phone, celular, email, address, address_number, neighborhood, complement, city, state, zip_code),
           customer:customers (id, name),
           responsible_technicians:responsible_technician_id (id, full_name, cft_crea, modality),
           contract_items (id, contract_id, equipment_id, environment_id, item_name, item_description, form_template_id, form_template_ids, first_os_excluded_questions, pmoc_scope, pmoc_start_visit, sort_order, equipment:equipment(id, name, brand, model)),

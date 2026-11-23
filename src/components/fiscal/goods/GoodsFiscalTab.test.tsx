@@ -19,11 +19,13 @@ describe('lista fiscal e continuidade do trabalho',()=>{
   expect(state.wizard).toHaveBeenLastCalledWith(expect.objectContaining({documentId:'document-a',initialDraft:draft,direction:'entrada'}));
   expect(screen.getByTestId('wizard')).toBeInTheDocument();
  });
- it('retoma preparação rejeitada localmente e abre o mesmo rascunho',async()=>{
+ it('mantém a rejeitada imutável e abre uma nova nota para corrigir e reemitir',async()=>{
   state.documents=[{id:'document-a',status:'rejected',draft_payload:draft,created_at:'2026-01-01'}];render(<GoodsFiscalTab model={55}/>);
-  fireEvent.click(screen.getByRole('button',{name:'Corrigir dados'}));
-  await waitFor(()=>expect(state.invoke).toHaveBeenCalledWith({model:55,documentId:'document-a',action:'revise'}));
+  fireEvent.click(screen.getByRole('button',{name:'Corrigir e reemitir'}));
+  expect(state.invoke).not.toHaveBeenCalled();
+  expect(state.wizard).toHaveBeenLastCalledWith(expect.objectContaining({documentId:null,initialDraft:expect.objectContaining({id:null,direction:'entrada',nature:'COMPRA SALVA'})}));
   expect(await screen.findByTestId('wizard')).toBeInTheDocument();
+  expect(draft).toEqual(expect.objectContaining({direction:'entrada',nature:'COMPRA SALVA'}));
  });
  it('reserva janela no clique e oferece link seguro se o navegador bloquear',async()=>{
   state.documents=[{id:'document-a',status:'authorized',danfe_pdf_path:'path',draft_payload:draft,created_at:'2026-01-01'}];
