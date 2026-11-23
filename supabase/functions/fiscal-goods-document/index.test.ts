@@ -10,6 +10,9 @@ const user='a6020000-0000-4000-8000-000000000011';
 const company='a6020000-0000-4000-8000-000000000001';
 const doc='a6020000-0000-4000-8000-000000000061';
 const source='a6020000-0000-4000-8000-000000000051';
+const seriesId='a6020000-0000-4000-8000-000000000071';
+const carrierId='a6020000-0000-4000-8000-000000000081';
+const scenarioId='a6020000-0000-4000-8000-000000000091';
 const originalFetch = globalThis.fetch;
 Deno.env.set('SUPABASE_URL','https://backend.example.invalid');
 Deno.env.set('SUPABASE_SERVICE_ROLE_KEY','fictitious-local-test-key');
@@ -18,16 +21,28 @@ Deno.env.set('FISCAL_SERVICE_URL','https://engine.example.invalid');
 Deno.env.set('FISCAL_SERVICE_TOKEN','fictitious-motor-test-key');
 let moduleAllowed=true, issuerAllowed=true, sourceAllowed=true, existingStatus='draft', environment='homologacao';
 let hasCertificate=false; let expiresAt='2099-01-01';
+let seriesAllowed=true, seriesActive=true, seriesDirection='saida';
+let carrierAllowed=true, carrierActive=true;
 let completeMode=false;let faultStage='';let storedStatus='draft';let claimCompared=false;let rowExtra:Record<string,unknown>={};let transmitCompared=false;let rowVersion=0;const patches:Record<string,unknown>[]=[];
 const paths:string[]=[];
+const documentWrites:Record<string,unknown>[]=[];
+const motorBodies:Record<string,unknown>[]=[];
+let reservationArgs:Record<string,unknown>|null=null;
 const storedArtifacts=new Map<string,string>();
 const json = (value:unknown) => new Response(JSON.stringify(value),{status:200,headers:{'content-type':'application/json'}});
 function setup() {
- moduleAllowed=true;issuerAllowed=true;sourceAllowed=true;existingStatus='draft';environment='homologacao';hasCertificate=false;expiresAt='2099-01-01';completeMode=false;faultStage='';storedStatus='draft';claimCompared=false;rowExtra={};transmitCompared=false;rowVersion=0;storedArtifacts.clear();patches.length=0;paths.length=0;
+ moduleAllowed=true;issuerAllowed=true;sourceAllowed=true;existingStatus='draft';environment='homologacao';hasCertificate=false;expiresAt='2099-01-01';seriesAllowed=true;seriesActive=true;seriesDirection='saida';carrierAllowed=true;carrierActive=true;completeMode=false;faultStage='';storedStatus='draft';claimCompared=false;rowExtra={};transmitCompared=false;rowVersion=0;reservationArgs=null;storedArtifacts.clear();patches.length=0;paths.length=0;documentWrites.length=0;motorBodies.length=0;
  globalThis.fetch = ((input:RequestInfo|URL, init?:RequestInit) => {
   const url=new URL(typeof input==='string'?input:input instanceof URL?input.href:input.url);
   assert(['backend.example.invalid','engine.example.invalid'].includes(url.hostname),'Tentativa de rede externa durante teste fiscal');
-  if(url.hostname==='engine.example.invalid'){paths.push(`MOTOR:${url.pathname}`);if(url.pathname.endsWith('/preparar'))return Promise.resolve(json({tenantId:faultStage==='wrong_tenant'?'other-fictitious-company':company,operationId:doc,snapshotHash:JSON.parse(String(init?.body)).snapshotHash,status:'preparada',chave:'0'.repeat(20)+'65'+'0'.repeat(22),xmlAssinado:'<NFe>FICTITIOUS-SIGNED</NFe>'.repeat(30)}));if(url.pathname.endsWith('/autorizar')||url.pathname.endsWith('/consultar'))return Promise.resolve(json({outcome:'authorized',situacaoOficial:'autorizada',resposta:{cstat:'100'},prova:{protocol:'1'.repeat(15)},xmlProcessado:'<nfeProc>FICTITIOUS-PROOF</nfeProc>'.repeat(30),danfceBase64:btoa('%PDF-FICTITIOUS')}));throw new Error('Unexpected motor test route');}
+  if(url.hostname==='engine.example.invalid'){
+    paths.push(`MOTOR:${url.pathname}`);
+    const motorBody=JSON.parse(String(init?.body));motorBodies.push(motorBody);
+    const model=url.pathname.includes('/nfe/')?'55':'65';
+    if(url.pathname.endsWith('/preparar'))return Promise.resolve(json({tenantId:faultStage==='wrong_tenant'?'other-fictitious-company':company,operationId:doc,snapshotHash:motorBody.snapshotHash,status:'preparada',chave:'0'.repeat(20)+model+'0'.repeat(22),xmlAssinado:'<NFe>FICTITIOUS-SIGNED</NFe>'.repeat(30)}));
+    if(url.pathname.endsWith('/autorizar')||url.pathname.endsWith('/consultar'))return Promise.resolve(json({outcome:'authorized',situacaoOficial:'autorizada',resposta:{cstat:'100'},prova:{protocol:'1'.repeat(15)},xmlProcessado:'<nfeProc>FICTITIOUS-PROOF</nfeProc>'.repeat(30),...(model==='55'?{danfeBase64:btoa('%PDF-FICTITIOUS')}:{danfceBase64:btoa('%PDF-FICTITIOUS')})}));
+    throw new Error('Unexpected motor test route');
+  }
   if(url.pathname.includes('/storage/v1/object/')){
     if((init?.method??'GET')==='GET')return Promise.resolve(new Response('fictitious-encrypted-test-object'));
     return (async()=>{const body=init?.body;let data='';
@@ -48,9 +63,16 @@ function setup() {
   if(name==='fiscal_goods_user_can_access_source')return Promise.resolve(json(sourceAllowed));
   if(name==='fiscal_goods_sale_ready')return Promise.resolve(json(true));
   if(name==='company_nfce_settings')return Promise.resolve(json({uf:'RJ',series:1,enabled:true,homologation_approved:true,production_approved:true,...(completeMode?{qr_base_url_homologation:'https://sefaz.example.gov.br/qrcode',access_url_homologation:'https://sefaz.example.gov.br/consulta'}:{})}));
-  if(name==='nfce_documents'){
+  if(name==='company_nfe_settings')return Promise.resolve(json({enabled:true,homologation_approved:true,production_approved:false,default_operation_nature:'VENDA DE MERCADORIA'}));
+  if(name==='nfe_series')return Promise.resolve(json(seriesAllowed?{id:seriesId,direction:seriesDirection,active:seriesActive}:null));
+  if(name==='fiscal_goods_carriers')return Promise.resolve(json(carrierAllowed?{id:carrierId,active:carrierActive}:null));
+  if(name==='nfce_documents'||name==='nfe_documents'){
+    if(init?.method==='POST'){
+      const inserted=JSON.parse(String(init.body));documentWrites.push(inserted);Object.assign(rowExtra,inserted);
+    }
     if(init?.method==='PATCH'){
       const patch=JSON.parse(String(init.body));patches.push(patch);
+      documentWrites.push(patch);
       if (patch.status==='preparing' && !('snapshot' in patch)) { claimCompared=url.searchParams.has('draft_payload'); if(faultStage==='concurrent')return Promise.resolve(json(null)); }
       if(patch.status==='transmitting'){transmitCompared=url.searchParams.get('status')==='eq.signed'&&url.searchParams.get('operation_id')===`eq.${doc}`;if(faultStage==='resume_concurrent')return Promise.resolve(json(null));}
       const fail=(faultStage==='snapshot'&&'snapshot' in patch)||(faultStage==='signed'&&patch.status==='signed')||(['official','consult'].includes(faultStage)&&patch.status==='authorized');
@@ -66,13 +88,14 @@ function setup() {
       }
       storedStatus=String(patch.status??storedStatus);Object.assign(rowExtra,patch,{updated_at:new Date(Date.UTC(2026,0,1)+(++rowVersion)).toISOString()});
     }
-    return Promise.resolve(json({id:doc,company_id:company,status:completeMode?storedStatus:existingStatus,source_type:'manual',source_id:null,operation_id:doc,updated_at:new Date(Date.UTC(2026,0,1)+rowVersion).toISOString(),series:1,...(completeMode&&existingStatus!=='draft'?{access_key:'0'.repeat(44),protocol:'1'.repeat(15),uf:'RJ',signed_xml_path:`${company}/65/${doc}/assinado.xml`}:{}),...rowExtra}));
+    const model=name==='nfe_documents'?55:65;
+    return Promise.resolve(json({id:doc,company_id:company,status:completeMode?storedStatus:existingStatus,source_type:'manual',source_id:null,operation_id:doc,updated_at:new Date(Date.UTC(2026,0,1)+rowVersion).toISOString(),series:1,...(completeMode&&existingStatus!=='draft'?{access_key:'0'.repeat(44),protocol:'1'.repeat(15),uf:'RJ',signed_xml_path:`${company}/${model}/${doc}/assinado.xml`}:{}),...rowExtra}));
   }
-  if(name==='nfce_events'||name==='fiscal_certificate_audit'){
-    if(name==='nfce_events'&&faultStage==='event')return Promise.resolve(new Response(JSON.stringify({code:'fault_injected'}),{status:500,headers:{'content-type':'application/json'}}));
+  if(name==='nfce_events'||name==='nfe_events'||name==='fiscal_certificate_audit'){
+    if((name==='nfce_events'||name==='nfe_events')&&faultStage==='event')return Promise.resolve(new Response(JSON.stringify({code:'fault_injected'}),{status:500,headers:{'content-type':'application/json'}}));
     return Promise.resolve(json({id:doc}));
   }
-  if(name==='reserve_goods_fiscal_number')return Promise.resolve(json([{series:1,number:12}]));
+  if(name==='reserve_goods_fiscal_number'){reservationArgs=JSON.parse(String(init?.body));return Promise.resolve(json([{series:1,number:12}]));}
   if(name==='company_fiscal_settings')return Promise.resolve(json({certificado_ref:hasCertificate?'fictitious-reference':null,certificate_expires_at:expiresAt,fiscal_ambiente:environment,...(completeMode?{regime_tributario:'simples_nacional',inscricao_estadual:'12345678',municipio_ibge:'3304557',certificado_dek_envelopada:'fictitious-dek',certificado_senha_cifrada:'fictitious-cipher',certificado_nonce:'fictitious-nonce'}:{})}));
   if(name==='companies')return Promise.resolve(json({cnpj:'00000000000000',state:'RJ',name:'Emitente fictício',address:'Rua fictícia',neighborhood:'Centro',city:'Cidade fictícia',zip_code:'00000000'}));
   if(name==='company_settings')return Promise.resolve(json(null));
@@ -106,6 +129,65 @@ Deno.test('adapter fiscal preserva fiado como pagamento a prazo sem alterar valo
 });
 
 const completeDraft={...draft,items:[{description:'Material fictício',quantity:1,unitPrice:10,discount:0,unit:'UN',taxUnit:'UN',ncm:'12345678',origin:'0',cfopExitInternal:'5102',icmsCode:'102',pisCst:'49',cofinsCst:'49'}],payments:[{method:'01',amount:10,change:0}]};
+const completeNfeDraft={
+ ...completeDraft,
+ model:55,
+ nature:'VENDA DE MERCADORIA',
+ seriesId,
+ carrierId,
+ scenarioId,
+ freightMode:0,
+ party:{
+  name:'Destinatário fictício',document:'00000000000000',address:'Rua fictícia',addressNumber:'100',
+  neighborhood:'Centro',city:'Cidade fictícia',state:'RJ',zipCode:'00000000',municipalityCode:'3304557',
+ },
+};
+
+Deno.test('rascunho de NF-e preserva série e transportadora, sem aplicar cenário automaticamente',async()=>{
+ setup();try{
+  const response=await handler(request({action:'save_draft',draft:completeNfeDraft}));
+  assertEquals(response.status,200);
+  const inserted=documentWrites.find(write=>'draft_payload' in write);
+  const persisted=(inserted?.draft_payload??{}) as Record<string,unknown>;
+  assertEquals(persisted.seriesId,seriesId);assertEquals(persisted.carrierId,carrierId);
+  assert(!('scenarioId' in persisted));assert(!paths.some(path=>path.includes('reserve_goods_fiscal_number')||path.startsWith('MOTOR:')));
+ }finally{globalThis.fetch=originalFetch;}
+});
+
+for(const variant of ['cross_tenant','inactive','wrong_direction'])Deno.test(`NF-e rejeita série ${variant}`,async()=>{
+ setup();if(variant==='cross_tenant')seriesAllowed=false;if(variant==='inactive')seriesActive=false;if(variant==='wrong_direction')seriesDirection='entrada';
+ try{
+  const response=await handler(request({action:'save_draft',draft:completeNfeDraft}));
+  assertEquals(response.status,403);assertEquals((await response.json()).error,'series_forbidden');
+  assert(!paths.some(path=>path.includes('nfe_documents')||path.includes('reserve_goods_fiscal_number')||path.startsWith('MOTOR:')));
+ }finally{globalThis.fetch=originalFetch;}
+});
+
+for(const variant of ['cross_tenant','inactive'])Deno.test(`NF-e rejeita transportadora ${variant}`,async()=>{
+ setup();if(variant==='cross_tenant')carrierAllowed=false;if(variant==='inactive')carrierActive=false;
+ try{
+  const response=await handler(request({action:'save_draft',draft:completeNfeDraft}));
+  assertEquals(response.status,403);assertEquals((await response.json()).error,'carrier_forbidden');
+  assert(!paths.some(path=>path.includes('nfe_documents')||path.includes('reserve_goods_fiscal_number')||path.startsWith('MOTOR:')));
+ }finally{globalThis.fetch=originalFetch;}
+});
+
+Deno.test('NF-e reserva a série escolhida e não envia catálogo local de transportadora ou cenário ao motor',async()=>{
+ setup();completeMode=true;hasCertificate=true;try{
+  const response=await handler(request({action:'emit',draft:completeNfeDraft}));
+  assertEquals(response.status,201);
+  assertEquals(reservationArgs,{p_company_id:company,p_model:55,p_series_id:seriesId,p_direction:'saida'});
+  assert(paths.includes('MOTOR:/v1/nfe/preparar'));assert(paths.includes('MOTOR:/v1/nfe/autorizar'));
+  const serialized=JSON.stringify(motorBodies);
+  assert(!serialized.includes(carrierId));assert(!serialized.includes(scenarioId));
+ }finally{globalThis.fetch=originalFetch;}
+});
+
+Deno.test('NFC-e ignora série e transportadora de NF-e e continua usando configuração própria',()=>{
+ const normalized=edgeModule.normalizeDraft({...completeDraft,seriesId,carrierId,scenarioId});
+ assertEquals(normalized.model,65);assertEquals(normalized.seriesId,null);assertEquals(normalized.carrierId,null);assert(!('scenarioId' in normalized));
+});
+
 for(const stage of ['snapshot','signed'])Deno.test(`falha de persistência ${stage} impede autorização no motor`,async()=>{setup();completeMode=true;hasCertificate=true;faultStage=stage;try{const r=await handler(request({action:'emit',draft:completeDraft}));assertEquals(r.status,503);assertEquals((await r.json()).error,'persistence_failed');assert(!paths.includes('MOTOR:/v1/nfce/autorizar'));if(stage==='snapshot')assert(!paths.includes('MOTOR:/v1/nfce/preparar'));}finally{globalThis.fetch=originalFetch;}});
 Deno.test('falha ao persistir resposta oficial não devolve sucesso e preserva consulta do mesmo documento',async()=>{setup();completeMode=true;hasCertificate=true;faultStage='official';try{const r=await handler(request({action:'emit',draft:completeDraft}));assertEquals(r.status,503);assertEquals((await r.json()).error,'persistence_failed');assert(paths.includes('MOTOR:/v1/nfce/autorizar'));assertEquals(storedStatus,'uncertain');assert(patches.some(p=>p.status==='signed'&&p.access_key));}finally{globalThis.fetch=originalFetch;}});
 Deno.test('falha de evento não rebaixa autorização já persistida nem devolve sucesso',async()=>{setup();completeMode=true;hasCertificate=true;faultStage='event';try{const r=await handler(request({action:'emit',draft:completeDraft}));assertEquals(r.status,503);assertEquals((await r.json()).error,'persistence_failed');assertEquals(storedStatus,'authorized');}finally{globalThis.fetch=originalFetch;}});

@@ -60,6 +60,8 @@ import {
 } from "@/hooks/useGoodsFiscal";
 
 import { useGoodsFiscalAccess } from "@/hooks/useGoodsFiscalAccess";
+import { useGoodsFiscalCatalogs } from "@/hooks/useGoodsFiscalCatalogs";
+import { useGoodsFiscalSettings } from "@/hooks/useGoodsFiscalSettings";
 
 type Step = "dados" | "itens" | "impostos" | "faturamento" | "transporte" | "opcoes" | "preview";
 
@@ -100,6 +102,8 @@ const newDraft = (model: GoodsModel, direction: GoodsDirection): GoodsFiscalDraf
   id: null,
   model,
   direction,
+  seriesId: null,
+  carrierId: null,
   sourceType: "manual",
   sourceId: null,
   nature:
@@ -199,6 +203,8 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
   const { items: inventory } = useInventory();
   const { customers } = useCustomers();
   const { suppliers } = useSuppliers();
+  const catalogs = useGoodsFiscalCatalogs();
+  const { settings } = useGoodsFiscalSettings();
   const isMobile = useIsMobile();
   const sources = useGoodsFiscalSources(
     draft.direction,
@@ -227,6 +233,12 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
       ),
     [draft.items, draft.direction],
   );
+  const availableSeries = useMemo(
+    () => catalogs.series.filter((entry) => entry.active && (entry.direction === draft.direction || entry.direction === 'ambos')),
+    [catalogs.series, draft.direction],
+  );
+  const selectedSeries = availableSeries.find((entry) => entry.id === draft.seriesId) ?? null;
+  const selectedCarrier = catalogs.carriers.find((entry) => entry.id === draft.carrierId) ?? null;
 
   useEffect(() => {
     if (!open) return;
@@ -261,6 +273,15 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
       .finally(() => { if (active) setSourceLoading(false); });
     return () => { active = false; };
   }, [open, model, sourceId, sourceType, initialNature, includeIdentifiedConsumer]);
+
+  useEffect(() => {
+    if (!open || model !== 55 || draft.seriesId || !availableSeries.length) return;
+    const configuredId = draft.direction === 'entrada'
+      ? settings.nfe.defaultEntrySeriesId
+      : settings.nfe.defaultExitSeriesId;
+    const preferred = availableSeries.find((entry) => entry.id === configuredId) ?? availableSeries[0];
+    setDraft((current) => current.seriesId ? current : { ...current, seriesId: preferred.id });
+  }, [open, model, draft.seriesId, draft.direction, availableSeries, settings.nfe.defaultEntrySeriesId, settings.nfe.defaultExitSeriesId]);
 
   const patch = (values: Partial<GoodsFiscalDraft>) =>
     setDraft((current) => ({ ...current, ...values }));
@@ -375,6 +396,8 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
   const stepError = (): string | null => {
     if (step === "dados" && sourceMode === "import" && !draft.sourceId)
       return "Escolha uma venda ou compra para importar.";
+    if (step === "dados" && model === 55 && !selectedSeries)
+      return "Escolha uma série de NF-e ativa para esta operação.";
     if (
       step === "dados" &&
       model === 55 &&
@@ -414,6 +437,11 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
   const persist = async (emit: boolean) => {
     if (saver.isPending || sourceLoading || sourceError) return;
     if (emit) {
+      if (model === 55 && !selectedSeries) {
+        setStep("dados");
+        toast.error("Escolha uma série de NF-e ativa para esta operação.");
+        return;
+      }
       if (model === 65 && draft.party && ![11,14].includes(draft.party.document.replace(/\D/g,'').length)) { setStep('dados'); toast.error('Informe um CPF/CNPJ válido ou remova a identificação do consumidor.'); return; }
       if (
         model === 55 &&
@@ -742,6 +770,35 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
                       </button>
                     ))}
                   </div>
+                )}
+              </div>
+            )}
+            {model === 55 && (
+              <div className="max-w-xl space-y-2">
+                <Label htmlFor="goods-nfe-series">Série da NF-e</Label>
+                <Select
+                  value={draft.seriesId ?? undefined}
+                  onValueChange={(seriesId) => patch({ seriesId })}
+                >
+                  <SelectTrigger id="goods-nfe-series">
+                    <SelectValue placeholder="Selecione uma série ativa" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableSeries.map((entry) => (
+                      <SelectItem key={entry.id} value={entry.id}>
+                        {entry.label} · série {entry.series} · próximo nº {entry.nextNumber}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {availableSeries.length === 0 ? (
+                  <p role="alert" className="text-sm font-medium text-destructive">
+                    Nenhuma série ativa atende esta operação. Cadastre uma série em Configurações fiscais antes de emitir.
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    A numeração é reservada pelo servidor somente na emissão e nunca é calculada pelo navegador.
+                  </p>
                 )}
               </div>
             )}
@@ -1084,9 +1141,10 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
                 <Label>Modalidade do frete</Label>
                 <Select
                   value={String(draft.freightMode)}
-                  onValueChange={(value) =>
-                    patch({ freightMode: Number(value) })
-                  }
+                  onValueChange={(value) => patch({
+                    freightMode: Number(value),
+                    carrierId: value === "9" ? null : draft.carrierId,
+                  })}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -1097,6 +1155,30 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
                     <SelectItem value="1">Por conta do destinatário</SelectItem>
                   </SelectContent>
                 </Select>
+                {draft.freightMode !== 9 && model === 55 && (
+                  <div className="mt-5 space-y-2">
+                    <Label htmlFor="goods-carrier">Transportadora cadastrada</Label>
+                    <Select
+                      value={draft.carrierId ?? "none"}
+                      onValueChange={(carrierId) => patch({ carrierId: carrierId === "none" ? null : carrierId })}
+                    >
+                      <SelectTrigger id="goods-carrier">
+                        <SelectValue placeholder="Sem transportadora informada" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Sem transportadora informada</SelectItem>
+                        {catalogs.carriers.filter((entry) => entry.active).map((entry) => (
+                          <SelectItem key={entry.id} value={entry.id}>
+                            {entry.name} · {entry.document}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-sm text-muted-foreground">
+                      O cadastro fica associado ao rascunho. Os dados só serão enviados ao motor quando o contrato fiscal de transporte estiver homologado.
+                    </p>
+                  </div>
+                )}
               </div>}
               {step === "faturamento" && !importedSource && <div className="space-y-2">
                 <Label>Meio de pagamento</Label>
@@ -1208,6 +1290,11 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
                     {draft.direction === "entrada" ? "Entrada" : "Saída"}
                   </h3>
                   <p className="mt-1 text-sm">{draft.nature}</p>
+                  {model === 55 && selectedSeries && (
+                    <p className="mt-1 text-xs font-semibold">
+                      Série {selectedSeries.series} · {selectedSeries.label}
+                    </p>
+                  )}
                 </div>
                 <div className="grid border-b border-slate-400 py-4 sm:grid-cols-2">
                   <div>
@@ -1282,6 +1369,27 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
                       </dt>
                       <dd className="font-semibold">{draft.items.length}</dd>
                     </div>
+                    {model === 55 && (
+                      <div>
+                        <dt className="text-primary-foreground/65">Série</dt>
+                        <dd className="font-semibold">
+                          {selectedSeries ? `${selectedSeries.series} · ${selectedSeries.label}` : "Não selecionada"}
+                        </dd>
+                      </div>
+                    )}
+                    {model === 55 && (
+                      <div>
+                        <dt className="text-primary-foreground/65">Frete</dt>
+                        <dd className="font-semibold">
+                          {draft.freightMode === 9
+                            ? "Sem frete"
+                            : draft.freightMode === 0
+                              ? "Por conta do emitente"
+                              : "Por conta do destinatário"}
+                        </dd>
+                        {selectedCarrier && <dd className="text-primary-foreground/75">{selectedCarrier.name}</dd>}
+                      </div>
+                    )}
                     <div>
                       <dt className="text-primary-foreground/65">
                         Total
@@ -1292,11 +1400,13 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
                     </div>
                   </dl>
                 </div>
-                {fiscalIssues.length ? (
+                {fiscalIssues.length || (model === 55 && !selectedSeries) ? (
                   <div className="rounded-2xl border border-destructive p-4 text-destructive">
                     <p className="font-bold">Emissão bloqueada</p>
                     <p className="mt-1 text-sm">
-                      {fiscalIssues.slice(0, 4).join("; ")}
+                      {model === 55 && !selectedSeries
+                        ? "Escolha uma série de NF-e ativa para esta operação."
+                        : fiscalIssues.slice(0, 4).join("; ")}
                     </p>
                   </div>
                 ) : (
