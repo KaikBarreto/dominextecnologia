@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.54";
+export const APP_VERSION = "1.41.55";
 
 export const VERSION_NOTES =
-  "A empresa agora pode permitir agendamentos conflitantes pela configuração de Usabilidade, mantendo alerta e justificativa obrigatória.";
+  "O download dos documentos do PMOC voltou a funcionar e o dossiê agora reconhece o endereço completo já cadastrado para o cliente.";

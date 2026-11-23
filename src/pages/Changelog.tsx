@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.55',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Downloads do PMOC restaurados',
+        category: 'correcao',
+        description: 'Os documentos do dossiê e as versões anteriores do PMOC voltaram a ficar disponíveis para baixar e imprimir com segurança.',
+      },
+      {
+        title: 'Endereço completo reconhecido',
+        category: 'correcao',
+        description: 'O dossiê agora identifica corretamente o endereço completo quando ele já está preenchido no cadastro do cliente.',
+      },
+    ],
+  },
+  {
     version: '1.41.54',
     date: '23 de novembro de 2026',
     type: 'patch',

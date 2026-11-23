@@ -134,6 +134,7 @@ import { TaxCodeCombobox } from '@/components/fiscal/TaxCodeCombobox';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { todayInTz, dateInTz } from '@/lib/timezone';
+import { formatCustomerAddress, type CustomerAddressParts } from '@/lib/customerAddress';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -1596,7 +1597,7 @@ export default function ContractDetail() {
   // Os campos abaixo vivem em colunas adicionadas pela Onda A/B (RT) — usamos
   // narrowing defensivo via Record genérico até types.ts ser regenerado.
   type RtRelation = { full_name?: string; modality?: string; cft_crea?: string };
-  type CustomerExtra = { document?: string; address?: string; city?: string; state?: string };
+  type CustomerExtra = CustomerAddressParts & { document?: string };
   // PostgREST join `responsible_technicians:responsible_technician_id (...)` no useContracts
   // resulta no alias PLURAL `responsible_technicians` (não singular). Bug histórico: lia
   // singular → contractRt sempre undefined → banner pintava RT como faltando mesmo
@@ -1627,9 +1628,7 @@ export default function ContractDetail() {
         cidade: companySettings?.city ?? '',
         customer_name: customerExtra.name ?? '',
         customer_document: customerExtra.document ?? '',
-        customer_address: [customerExtra.address, customerExtra.city, customerExtra.state]
-          .filter(Boolean)
-          .join(', '),
+        customer_address: formatCustomerAddress(customerExtra),
         contract_frequency_label: getFrequencyLabel(contract.frequency_type, contract.frequency_value),
         contract_start_date_extenso: format(parseLocalDate(contract.start_date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR }),
         // ISO bruto de contracts.created_at — o PmocContractDocsTab deriva
