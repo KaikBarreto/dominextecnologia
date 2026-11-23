@@ -80,7 +80,15 @@ async function sha256(value: unknown): Promise<string> {
 }
 
 class GoodsDocumentError extends Error {
-  constructor(public code: string, message: string, public status = 422) { super(message); }
+  constructor(
+    public code: string,
+    message: string,
+    public status = 422,
+    public diagnostic: JsonObject = {},
+  ) {
+    super(message);
+    this.name = "GoodsDocumentError";
+  }
 }
 
 interface NormalizedDraft {
@@ -981,9 +989,10 @@ async function handleDocumentAction(
         ? await consultNfe(ctx, { uf, key, signedXml })
         : await consultNfce(ctx, { uf, key, signedXml });
     const normalized = outcomeStatus(official as JsonObject);
-    // Consulta inconclusiva não desfaz autorização nem libera cancelamento em andamento.
+    // Consulta inconclusiva não desfaz estados fiscais já conclusivos nem libera cancelamento em andamento.
     if(row.status==='cancellation_pending' && normalized.status!=='cancelled')return jsonResponse({ok:true,status:'cancellation_pending',existing:true,refreshRequired:true,checkInconclusive:true},202);
     if(row.status==='authorized' && !['authorized','cancelled'].includes(normalized.status))return jsonResponse({ok:true,status:'authorized',existing:true,refreshRequired:true,checkInconclusive:true},202);
+    if(row.status==='rejected' && normalized.status==='uncertain')return jsonResponse({ok:true,status:'rejected',existing:true,refreshRequired:true,checkInconclusive:true},202);
     const recoveredArtifacts = await officialArtifacts(auth, model, documentId, official as JsonObject);
     const now = new Date().toISOString();
     await storeGoodsDocument(auth, table, documentId, {
@@ -1291,7 +1300,15 @@ Deno.serve(async (req) => {
         ? object(reserved.data[0])
         : object(reserved.data);
       if (reserved.error || !reservation.number)
-        throw new Error("Não foi possível reservar a numeração fiscal.");
+        throw new GoodsDocumentError(
+          "number_reservation_failed",
+          "Não foi possível reservar a numeração fiscal. Nenhum número foi consumido.",
+          503,
+          {
+            stage: "reserve_number",
+            databaseCode: text(reserved.error?.code, 32) || null,
+          },
+        );
       series = number(reservation.series);
       documentNumber = number(reservation.number);
     }
@@ -1406,7 +1423,13 @@ Deno.serve(async (req) => {
         payload: { code, transmissionStarted, operationId: activeDocument.fence.operationId, stateApplied:!!recoveryResult.data },
       });
     }
-    console.error('[fiscal-goods-document]', { code, transmissionStarted });
+    console.error('[fiscal-goods-document]', {
+      code,
+      transmissionStarted,
+      ...(error instanceof GoodsDocumentError ? error.diagnostic : {
+        errorType: error instanceof Error ? error.name : typeof error,
+      }),
+    });
     return jsonResponse(
       { error: code, message: error instanceof GoodsDocumentError ? error.message : message },
       error instanceof GoodsDocumentError ? error.status : fiscal ? (error as NfeMotorError).status : 500,

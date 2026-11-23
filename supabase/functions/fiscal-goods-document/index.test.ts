@@ -10,6 +10,7 @@ const user='a6020000-0000-4000-8000-000000000011';
 const company='a6020000-0000-4000-8000-000000000001';
 const doc='a6020000-0000-4000-8000-000000000061';
 const source='a6020000-0000-4000-8000-000000000051';
+const stock='a6020000-0000-4000-8000-000000000052';
 const seriesId='a6020000-0000-4000-8000-000000000071';
 const carrierId='a6020000-0000-4000-8000-000000000081';
 const scenarioId='a6020000-0000-4000-8000-000000000091';
@@ -62,6 +63,8 @@ function setup() {
   if(name==='fiscal_user_can_emit_goods')return Promise.resolve(json(issuerAllowed));
   if(name==='fiscal_goods_user_can_access_source')return Promise.resolve(json(sourceAllowed));
   if(name==='fiscal_goods_sale_ready')return Promise.resolve(json(true));
+  if(name==='can_access_stock')return Promise.resolve(json(true));
+  if(name==='stocks')return Promise.resolve(json({id:stock}));
   if(name==='company_nfce_settings')return Promise.resolve(json({uf:'RJ',series:1,enabled:true,homologation_approved:true,production_approved:true,...(completeMode?{qr_base_url_homologation:'https://sefaz.example.gov.br/qrcode',access_url_homologation:'https://sefaz.example.gov.br/consulta'}:{})}));
   if(name==='company_nfe_settings')return Promise.resolve(json({enabled:true,homologation_approved:true,production_approved:false,default_operation_nature:'VENDA DE MERCADORIA'}));
   if(name==='nfe_series')return Promise.resolve(json(seriesAllowed?{id:seriesId,direction:seriesDirection,active:seriesActive}:null));
@@ -103,7 +106,7 @@ function setup() {
  }) as typeof fetch;
 }
 const request=(body:unknown, auth=true) => new Request('https://edge.example.invalid/fiscal-goods-document',{method:'POST',headers:{'content-type':'application/json',...(auth?{authorization:'Bearer fictitious-session'}:{})},body:JSON.stringify(body)});
-const draft={model:65,direction:'saida',sourceType:'manual',nature:'VENDA A CONSUMIDOR',party:null,items:[],payments:[],freightMode:9,notes:''};
+const draft={model:65,direction:'saida',sourceType:'manual',stockId:stock,nature:'VENDA A CONSUMIDOR',party:null,items:[],payments:[],freightMode:9,notes:''};
 Deno.test('goods Edge exige Authorization antes de consultar backend',async()=>{setup();try{const r=await handler(request({},false));assertEquals(r.status,401);assertEquals(paths.length,0);}finally{globalThis.fetch=originalFetch;}});
 Deno.test('goods Edge falha fechado sem módulo',async()=>{setup();moduleAllowed=false;try{const r=await handler(request({action:'emit',draft}));assertEquals(r.status,403);assertEquals((await r.json()).error,'module_inactive');assert(!paths.some(p=>p.includes('nfce_documents')));}finally{globalThis.fetch=originalFetch;}});
 Deno.test('goods Edge exige ação granular e não chama can_manage_system',async()=>{setup();issuerAllowed=false;try{const r=await handler(request({action:'emit',draft}));assertEquals(r.status,403);assert(paths.some(p=>p.includes('fiscal_user_can_emit_goods')));assert(!paths.some(p=>p.includes('can_manage_system')));}finally{globalThis.fetch=originalFetch;}});
@@ -261,6 +264,10 @@ Deno.test('consulta iniciada durante cancelamento preserva pendência se SEFAZ a
 Deno.test('consulta inconclusiva não rebaixa autorização já persistida',async()=>{
  await setupSigned();storedStatus='authorized';const baseFetch=globalThis.fetch;globalThis.fetch=(async(input,init)=>routeUrl(input).pathname.endsWith('/consultar')?json({outcome:'uncertain',situacaoOficial:'aguardando_confirmacao'}):baseFetch(input,init))as typeof fetch;
  try{const response=await handler(request({model:65,documentId:doc,action:'consult'}));assertEquals(response.status,202);assertEquals((await response.json()).status,'authorized');assertEquals(storedStatus,'authorized');assertEquals(patches.length,0);}finally{globalThis.fetch=originalFetch;}
+});
+Deno.test('consulta inconclusiva não rebaixa rejeição já persistida',async()=>{
+ await setupSigned();storedStatus='rejected';const baseFetch=globalThis.fetch;globalThis.fetch=(async(input,init)=>routeUrl(input).pathname.endsWith('/consultar')?json({outcome:'uncertain',situacaoOficial:'nao_localizada'}):baseFetch(input,init))as typeof fetch;
+ try{const response=await handler(request({model:65,documentId:doc,action:'consult'}));assertEquals(response.status,202);assertEquals((await response.json()).status,'rejected');assertEquals(storedStatus,'rejected');assertEquals(patches.length,0);}finally{globalThis.fetch=originalFetch;}
 });
 
 Deno.test('consulta com status igual também exige a revisão updated_at capturada',async()=>{
