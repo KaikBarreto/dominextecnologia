@@ -50,6 +50,7 @@ import {
 import logoDark from '@/assets/logo-dark.png';
 import logoGreen from '@/assets/logo-horizontal-verde.png';
 import { getContrastingLogoSurfaceTone } from '@/utils/logoInk';
+import { PageRecoveryBoundary } from '@/components/errors/PageRecoveryBoundary';
 
 const DomiflixIntroGate = lazy(() => import('@/components/domiflix/DomiflixIntroGate').then((module) => ({ default: module.DomiflixIntroGate })));
 
@@ -247,6 +248,7 @@ function ResponsiveAppShell({ isCompactViewport, useTopbar, isAdminUser, ownerKe
   isCompactViewport: boolean; useTopbar: boolean; isAdminUser: boolean; ownerKey: string;
 }) {
   const location = useLocation();
+  const { locale } = useAppLocaleContext();
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => { setScrolled(false); }, [location.pathname, isCompactViewport]);
 
@@ -257,6 +259,9 @@ function ResponsiveAppShell({ isCompactViewport, useTopbar, isAdminUser, ownerKe
     window.location.reload();
   };
   const mode = isCompactViewport ? 'compact' : useTopbar ? 'topbar' : 'sidebar';
+  const homePath = isAdminUser
+    ? '/admin/empresas'
+    : localizeAppPath('/dashboard', locale);
   return <AppViewport
     mode={mode}
     sidebar={<Sidebar />}
@@ -270,7 +275,14 @@ function ResponsiveAppShell({ isCompactViewport, useTopbar, isAdminUser, ownerKe
     onScroll={event => setScrolled(event.currentTarget.scrollTop > 48)}
     scrollResetKey={`${ownerKey}:${location.pathname}`}
   >
-    <AppRouteTransition ownerKey={ownerKey}><Outlet /></AppRouteTransition>
+    <AppRouteTransition ownerKey={ownerKey}>
+      <PageRecoveryBoundary
+        homePath={homePath}
+        resetKey={`${ownerKey}:${location.pathname}`}
+      >
+        <Outlet />
+      </PageRecoveryBoundary>
+    </AppRouteTransition>
   </AppViewport>;
 }
 

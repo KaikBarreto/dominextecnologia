@@ -3,7 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Eye, EyeOff, Loader2, Mail, Lock, Moon, Sun } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Mail, Lock, Moon, RefreshCw, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -26,16 +26,79 @@ import {
   bootstrapPostLoginSession,
   findRecentOtherSessions,
   resolvePostLoginRedirect,
+  withPostLoginTimeout,
 } from '@/lib/postLogin';
 import {
   isAddingAccountStandalone,
   clearAddAccountFlagStandalone,
 } from '@/lib/savedSessions';
-import { setAuthSessionPersistence } from '@/integrations/supabase/authStorage';
+import {
+  clearStoredAuthSession,
+  setAuthSessionPersistence,
+} from '@/integrations/supabase/authStorage';
 import { useLocale } from '@/lib/i18n';
 import { localizeInternal } from '@/lib/i18n/localizeInternal';
 import LanguageSelector from '@/components/i18n/LanguageSelector';
 import { mapGotrueError } from '@/utils/authErrorMessages';
+import { clearCachesAndReload } from '@/lib/pwa';
+
+const AUTHENTICATION_TIMEOUT_MS = 15_000;
+const LOCAL_SIGN_OUT_SETTLE_MS = 2_000;
+
+function isTransientAuthFailure(error: unknown): boolean {
+  if (error instanceof PostLoginTimeoutError) return true;
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  return /network|fetch|timeout|timed out|gateway|502|503|504/i.test(message);
+}
+
+async function releaseLocalSession(expectedAccessToken?: string): Promise<void> {
+  if (expectedAccessToken) {
+    const { data } = await supabase.auth.getSession().catch(() => ({
+      data: { session: null },
+    }));
+    if (data.session?.access_token !== expectedAccessToken) return;
+  }
+
+  // O SDK chama `/logout` antes de remover o storage, inclusive com escopo
+  // local. Limpamos primeiro para que uma indisponibilidade 502/503/504 não
+  // deixe a tela de login presa numa sessão que não consegue terminar.
+  clearStoredAuthSession();
+  const signOut = supabase.auth
+    .signOut({ scope: 'local' })
+    .then(() => undefined)
+    .catch(() => undefined);
+
+  await Promise.race([
+    signOut,
+    new Promise<void>((resolve) => {
+      window.setTimeout(resolve, LOCAL_SIGN_OUT_SETTLE_MS);
+    }),
+  ]);
+}
+
+async function authenticateWithTimeout(email: string, password: string) {
+  const operation = Promise.resolve(
+    supabase.auth.signInWithPassword({ email, password }),
+  );
+
+  try {
+    return await withPostLoginTimeout(
+      operation,
+      'authenticate',
+      AUTHENTICATION_TIMEOUT_MS,
+    );
+  } catch (error) {
+    if (error instanceof PostLoginTimeoutError) {
+      // A chamada HTTP não é cancelável. Se concluir depois do teto e criar uma
+      // sessão, removemos apenas a sessão local para não deixar um login tardio
+      // redirecionar o usuário depois que a tela já voltou ao estado seguro.
+      void operation.then(({ data }) => {
+        if (data.session) void releaseLocalSession(data.session.access_token);
+      });
+    }
+    throw error;
+  }
+}
 
 // Mensagens do schema vêm do i18n (montado dentro do componente via useMemo).
 type LoginForm = {
@@ -85,6 +148,8 @@ export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [recoverySuggested, setRecoverySuggested] = useState(false);
+  const [isRefreshingConnection, setIsRefreshingConnection] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const isDark = useIsDark();
 
@@ -159,7 +224,8 @@ export default function Auth() {
           console.error('[Auth] session restore bootstrap failed:', error);
           // Estado de role/tenant desconhecido falha fechado. A pessoa volta a
           // autenticar em vez de ser liberada no dashboard por fallback.
-          await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
+          await releaseLocalSession();
+          setRecoverySuggested(isTransientAuthFailure(error));
           setAuthError(t.errorSessionRestore);
         }
       };
@@ -188,12 +254,23 @@ export default function Auth() {
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     setAuthError(null);
+    setRecoverySuggested(false);
     setAuthSessionPersistence(form.getValues('rememberMe'));
     const { error } = await signInWithGoogle();
     if (error) {
+      setRecoverySuggested(isTransientAuthFailure(error));
       setAuthError(mapGotrueError(error, t.gotrueErrors));
       setIsLoading(false);
     }
+  };
+
+  const handleRefreshConnection = async () => {
+    setIsRefreshingConnection(true);
+    await clearCachesAndReload();
+    // Se o host ainda estiver oscilando, a função preserva a página atual em
+    // vez de recarregar para uma tela do navegador. Nesse caso liberamos o CTA
+    // para uma nova tentativa assim que a conexão responder.
+    setIsRefreshingConnection(false);
   };
 
   // registerSession e a árvore de decisão de destino vivem em @/lib/postLogin
@@ -242,6 +319,7 @@ export default function Auth() {
   const handleLogin = async (data: LoginForm) => {
     setIsLoading(true);
     setAuthError(null);
+    setRecoverySuggested(false);
     // CRITICAL: Set ref BEFORE any async call to block the useEffect redirect
     loginInProgressRef.current = true;
     // Limpa flag stale de sessão admin-como-usuário: um login NORMAL neste
@@ -254,10 +332,10 @@ export default function Auth() {
 
     try {
       // Call signInWithPassword directly to avoid AuthContext triggering redirect
-      const { data: authData, error } = await supabase.auth.signInWithPassword({
-        email: data.email,
-        password: data.password,
-      });
+      const { data: authData, error } = await authenticateWithTimeout(
+        data.email,
+        data.password,
+      );
 
       if (error) {
         // Fallback "Token de Acesso" (painel master): se a senha digitada tem a
@@ -289,6 +367,7 @@ export default function Auth() {
 
         loginInProgressRef.current = false;
         // Erros do Supabase Auth chegam em inglês → mapeados pro locale atual.
+        setRecoverySuggested(isTransientAuthFailure(error));
         setAuthError(mapGotrueError(error, t.gotrueErrors));
         return;
       }
@@ -318,8 +397,9 @@ export default function Auth() {
       await completeLogin(data, userId);
     } catch (error) {
       console.error('[Auth] login bootstrap failed:', error);
-      await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
+      await releaseLocalSession();
       loginInProgressRef.current = false;
+      setRecoverySuggested(isTransientAuthFailure(error));
       setAuthError(
         error instanceof PostLoginTimeoutError
           ? t.errorLoginTimeout
@@ -342,8 +422,9 @@ export default function Auth() {
       setExistingSessionsInfo([]);
     } catch (error) {
       console.error('[Auth] continue login failed:', error);
-      await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
+      await releaseLocalSession();
       loginInProgressRef.current = false;
+      setRecoverySuggested(isTransientAuthFailure(error));
       setAuthError(
         error instanceof PostLoginTimeoutError
           ? t.errorLoginTimeout
@@ -363,7 +444,7 @@ export default function Auth() {
     // Cancelar o login só desfaz a sessão DESTE dispositivo. Sem `scope: 'local'`
     // o default 'global' revogaria os tokens dos outros dispositivos que o
     // usuário escolheu preservar.
-    supabase.auth.signOut({ scope: 'local' });
+    void releaseLocalSession();
     toast({ title: t.toastLoginCanceled });
   };
 
@@ -421,7 +502,33 @@ export default function Auth() {
             <ForgotPasswordFlow initialEmail={form.getValues('email')} onBack={() => setShowForgotPassword(false)} />
           ) : (
             <div className="space-y-5">
-              {authError && <Alert variant="destructive"><AlertDescription>{authError}</AlertDescription></Alert>}
+              {authError && (
+                <Alert
+                  variant={recoverySuggested ? 'default' : 'destructive'}
+                  className={recoverySuggested ? 'border-[#00C597]/40 bg-[#00C597]/[0.07]' : undefined}
+                >
+                  <AlertDescription className="space-y-3">
+                    <p>{authError}</p>
+                    {recoverySuggested && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="border-[#00C597]/45 bg-background font-semibold text-[#007d63] hover:bg-[#00C597]/10 dark:text-[#00C597]"
+                        onClick={() => void handleRefreshConnection()}
+                        disabled={isRefreshingConnection}
+                      >
+                        {isRefreshingConnection ? (
+                          <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
+                        ) : (
+                          <RefreshCw className="h-4 w-4" />
+                        )}
+                        {isRefreshingConnection ? t.refreshingConnection : t.refreshAndRetry}
+                      </Button>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
 
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(handleLogin)} className="space-y-4" autoComplete="on">

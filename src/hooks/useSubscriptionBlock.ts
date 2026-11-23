@@ -8,9 +8,11 @@ import { SubscriptionExpired } from "@/components/SubscriptionExpired";
 
 export const SUBSCRIPTION_GRACE_DAYS = 1;
 export const SUBSCRIPTION_REVALIDATE_MS = 60 * 1000;
+export const SUBSCRIPTION_RECOVERY_RETRY_MS = 10 * 1000;
 
 export type SubscriptionAccessStatus =
   | "checking"
+  | "reconnecting"
   | "allowed"
   | "trial_expired"
   | "subscription_expired"
@@ -99,7 +101,9 @@ export function decideSubscriptionAccess(
 
 /**
  * Fonte única do bloqueio por assinatura no frontend. A consulta revalida a
- * cada minuto e falha fechado no primeiro carregamento e em qualquer erro.
+ * cada minuto e falha fechado no primeiro carregamento. Quando uma revalidação
+ * em segundo plano falha, a última decisão válida continua montada apenas para
+ * preservar o contexto visual, mas fica inerte até a conexão ser restabelecida.
  * Admin Auctus e visitantes anônimos não estão sujeitos à assinatura do tenant;
  * usuário autenticado sem company_id é estado inválido e falha fechado.
  *
@@ -133,7 +137,10 @@ export function useSubscriptionBlock(): SubscriptionBlockResult {
     },
     enabled: shouldCheck,
     staleTime: 30 * 1000,
-    refetchInterval: SUBSCRIPTION_REVALIDATE_MS,
+    refetchInterval: (query) =>
+      query.state.error
+        ? SUBSCRIPTION_RECOVERY_RETRY_MS
+        : SUBSCRIPTION_REVALIDATE_MS,
     refetchIntervalInBackground: true,
     refetchOnWindowFocus: "always",
     retry: 1,
@@ -175,11 +182,19 @@ export function useSubscriptionBlock(): SubscriptionBlockResult {
     return { blocked: true, screen: null, status: "checking", retry };
   }
 
-  if (error || !company) {
+  if (!company) {
     return { blocked: true, screen: null, status: "unavailable", retry };
   }
 
   const decision = decideSubscriptionAccess(company);
+
+  // Uma falha de revalidação não apaga uma decisão válida já conhecida nem
+  // sugere inadimplência. O conteúdo permanece montado para não perder
+  // formulários/estado local, porém o gate segue fechado enquanto reconecta.
+  if (error && decision.status === "allowed") {
+    return { blocked: true, screen: null, status: "reconnecting", retry };
+  }
+
   if (decision.status === "allowed") {
     return { blocked: false, screen: null, status: "allowed", retry };
   }

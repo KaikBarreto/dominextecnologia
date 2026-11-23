@@ -155,6 +155,10 @@ export const enOverrides: MessagesOverride = {
 
     errorUnexpected: 'An unexpected error occurred. Please try again.',
     errorContinueLogin: 'Error continuing sign-in.',
+    errorLoginTimeout: 'The connection took longer than expected. Your data is safe; please try again shortly.',
+    errorSessionRestore: 'We are restoring your connection. You can update the app and continue.',
+    refreshAndRetry: 'Update and try again',
+    refreshingConnection: 'Updating connection...',
 
     gotrueErrors: {
       invalidCredentials: 'Incorrect email or password. Check your credentials and try again.',

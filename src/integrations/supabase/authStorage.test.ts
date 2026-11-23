@@ -1,6 +1,7 @@
 import {
   AUTH_SESSION_PERSISTENCE_KEY,
   authStorage,
+  clearStoredAuthSession,
   setAuthSessionPersistence,
   shouldPersistAuthSession,
 } from './authStorage';
@@ -48,5 +49,19 @@ describe('authStorage', () => {
     authStorage.removeItem(AUTH_KEY);
     expect(localStorage.getItem(AUTH_KEY)).toBeNull();
     expect(sessionStorage.getItem(AUTH_KEY)).toBeNull();
+  });
+
+  it('força a limpeza local dos tokens sem apagar preferências do aplicativo', () => {
+    localStorage.setItem(AUTH_KEY, 'local');
+    sessionStorage.setItem(AUTH_KEY, 'session');
+    localStorage.setItem('theme', 'dark');
+    sessionStorage.setItem('draft', 'preservar');
+
+    clearStoredAuthSession();
+
+    expect(localStorage.getItem(AUTH_KEY)).toBeNull();
+    expect(sessionStorage.getItem(AUTH_KEY)).toBeNull();
+    expect(localStorage.getItem('theme')).toBe('dark');
+    expect(sessionStorage.getItem('draft')).toBe('preservar');
   });
 });

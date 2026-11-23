@@ -203,6 +203,27 @@ describe("useSubscriptionBlock", () => {
     expect(single).toHaveBeenCalledTimes(2);
   });
 
+  it("preserva a última decisão válida e fecha as ações enquanto reconecta", async () => {
+    authState.user = { id: "usuario" };
+    authState.profile = { company_id: "tenant" };
+    single
+      .mockResolvedValueOnce({ data: company(), error: null })
+      .mockResolvedValue({ data: null, error: new Error("indisponível") });
+
+    const { result } = renderHook(() => useSubscriptionBlock(), {
+      wrapper: queryWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.status).toBe("allowed"));
+
+    await act(async () => {
+      await result.current.retry();
+    });
+
+    await waitFor(() => expect(result.current.status).toBe("reconnecting"));
+    expect(result.current.blocked).toBe(true);
+  });
+
   it("libera o afiliado vinculado, que não tem assinatura de tenant", () => {
     authState.user = { id: "afiliado" };
     authState.linkedAffiliateId = "afiliado-1";

@@ -29,6 +29,13 @@ function isSupabaseAuthKey(key: string): boolean {
   return key.startsWith('sb-') && key.includes('-auth-token');
 }
 
+function removeAuthItems(storage: Storage): void {
+  const keys = Array.from({ length: storage.length }, (_, index) => storage.key(index))
+    .filter((key): key is string => !!key && isSupabaseAuthKey(key));
+
+  for (const key of keys) storage.removeItem(key);
+}
+
 function moveAuthItems(source: Storage, target: Storage): void {
   const keys = Array.from({ length: source.length }, (_, index) => source.key(index))
     .filter((key): key is string => !!key && isSupabaseAuthKey(key));
@@ -56,6 +63,19 @@ export function setAuthSessionPersistence(remember: boolean): void {
   } else {
     moveAuthItems(local, session);
   }
+}
+
+/**
+ * Remove somente a sessão Supabase deste navegador, sem depender do endpoint
+ * remoto de logout. É a saída de emergência para indisponibilidade do Auth:
+ * `signOut({ scope: 'local' })` tenta chamar `/logout` antes de limpar o
+ * storage e, em 502/503/504, pode manter o usuário preso na sessão quebrada.
+ */
+export function clearStoredAuthSession(): void {
+  const local = getLocalStorage();
+  const session = getSessionStorage();
+  if (local) removeAuthItems(local);
+  if (session) removeAuthItems(session);
 }
 
 /**

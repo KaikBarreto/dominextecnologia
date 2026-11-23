@@ -31,17 +31,27 @@ export function SystemFooter({ variant = 'light' }: SystemFooterProps) {
   const handleRefresh = async () => {
     setRefreshing(true);
     toast.info(t.refreshing);
-    await clearCachesAndReload();
+    try {
+      await clearCachesAndReload();
+    } finally {
+      // Quando o host ainda está indisponível, a rotina forte preserva a tela
+      // atual em vez de forçar uma navegação quebrada. Nesse caso o botão deve
+      // voltar a ficar disponível para uma nova tentativa.
+      setRefreshing(false);
+    }
   };
 
   return (
     <div className={`text-center text-[10px] ${textClass} space-y-0.5`}>
       <p className="flex items-center justify-center gap-1.5">
         <button
+          type="button"
           onClick={handleRefresh}
           disabled={refreshing}
           className={`inline-flex items-center transition-colors ${iconClass}`}
           title={t.refreshTitle}
+          aria-label={t.refreshTitle}
+          aria-busy={refreshing}
         >
           <RefreshCw className={`h-3 w-3 ${refreshing ? 'animate-spin' : ''}`} />
         </button>

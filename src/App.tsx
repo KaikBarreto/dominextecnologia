@@ -14,7 +14,7 @@ import { companyHasSegment, normalizeCompanySegments } from "@/utils/companySegm
 import { ModuleGateModal, MODULE_INFO } from "@/components/ModuleGateModal";
 import { trackUsage } from "@/lib/trackUsage";
 import { podeAcessarDomiflixAdmin } from "@/lib/adminDomiflixAccess";
-import { getErrorMessage } from "@/utils/errorMessages";
+import { getSanitizedErrorDiagnostic } from "@/utils/errorMessages";
 import {
   autoHealStaleBundleIfNeeded,
   clearCachesAndReload,
@@ -39,7 +39,10 @@ class ErrorBoundary extends React.Component<
     return { hasError: true, error };
   }
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    console.error("ErrorBoundary caught:", error, info);
+    console.error("ErrorBoundary caught:", {
+      ...getSanitizedErrorDiagnostic(error),
+      componentStack: info.componentStack?.split("\n").slice(0, 8).join("\n"),
+    });
     // Erro de BUNDLE VELHO após deploy (ex: React.lazy lendo `.default` de
     // undefined → "Cannot read properties of undefined (reading 'default')").
     // Esse throw sobe pro render e escapa da rede de chunk-fetch. Se for esse
@@ -55,13 +58,18 @@ class ErrorBoundary extends React.Component<
       return (
         <div className="flex min-h-screen items-center justify-center bg-background p-6">
           <div className="text-center max-w-md space-y-4">
-            <h1 className="text-2xl font-bold">Algo deu errado</h1>
-            <p className="text-muted-foreground text-sm">{getErrorMessage(this.state.error)}</p>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
+              Vamos retomar daqui
+            </p>
+            <h1 className="text-2xl font-bold">O aplicativo só precisa ser atualizado</h1>
+            <p className="text-muted-foreground text-sm">
+              Seus dados continuam protegidos. Atualize para continuar de onde parou.
+            </p>
             <button
               onClick={() => { void clearCachesAndReload(); }}
               className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm"
             >
-              Recarregar página
+              Atualizar e continuar
             </button>
           </div>
         </div>
