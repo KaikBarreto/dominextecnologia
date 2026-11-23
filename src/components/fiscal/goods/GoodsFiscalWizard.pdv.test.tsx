@@ -6,6 +6,8 @@ import { GoodsFiscalWizard } from './GoodsFiscalWizard';
 const state=vi.hoisted(()=>({importer:vi.fn(),save:vi.fn()}));
 vi.mock('@/contexts/AppLocaleContext',()=>({useAppLocaleContext:()=>({locale:'pt-br'})}));
 vi.mock('@/hooks/useGoodsFiscalAccess',()=>({useGoodsFiscalAccess:()=>({allowed:true,scopeId:'company-a:user-a:emit'})}));
+vi.mock('@/hooks/useGoodsFiscalCatalogs',()=>({useGoodsFiscalCatalogs:()=>({series:[],scenarios:[],carriers:[],isLoading:false})}));
+vi.mock('@/hooks/useGoodsFiscalSettings',()=>({useGoodsFiscalSettings:()=>({settings:{nfe:{defaultEntrySeriesId:'',defaultExitSeriesId:''}}})}));
 vi.mock('@/hooks/useInventory',()=>({useInventory:()=>({items:[]})}));
 vi.mock('@/hooks/useCustomers',()=>({useCustomers:()=>({customers:[]})}));
 vi.mock('@/hooks/useSuppliers',()=>({useSuppliers:()=>({suppliers:[]})}));

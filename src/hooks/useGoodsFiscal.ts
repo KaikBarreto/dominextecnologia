@@ -78,6 +78,8 @@ export interface GoodsFiscalDraft {
   id?: string | null;
   model: GoodsModel;
   direction: GoodsDirection;
+  seriesId?: string | null;
+  carrierId?: string | null;
   sourceType: GoodsSourceType;
   sourceId?: string | null;
   nature: string;
@@ -197,6 +199,8 @@ export function projectGoodsSnapshot(
   return {
     id: null,
     direction: root.direction === "entrada" ? "entrada" : "saida",
+    seriesId: text(root.seriesId) || null,
+    carrierId: text(root.carrierId) || null,
     sourceType: text(root.sourceType) as GoodsSourceType,
     sourceId: text(root.sourceId) || null,
     party,
