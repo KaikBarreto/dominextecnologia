@@ -106,6 +106,7 @@ import { generateMovimentacoesReportPdf } from '@/utils/movimentacoesPdfGenerato
 import { generateMovimentacoesExcel } from '@/utils/movimentacoesExcelGenerator';
 import { generateMovimentacoesCsv } from '@/utils/movimentacoesCsvGenerator';
 import { FinanceAccountsCalendar, type FinanceCalendarItem } from './FinanceAccountsCalendar';
+import { selectFinanceCalendarTransactions } from '@/lib/finance-calendar';
 import {
   getFinancialAccountPriority,
   sortFinancialAccountsByPriority,
@@ -155,9 +156,9 @@ interface FinanceContasProps {
   /** Transações já filtradas pelo período selecionado no parent. */
   transactions: PayrollTxn[];
   /**
-   * Dataset COMPLETO (sem filtro de período), usado só pela busca textual
-   * universal — pra achar a conta mesmo em outro mês. Opcional: se ausente,
-   * a busca cai pra `transactions` (comportamento period-bound).
+   * Dataset COMPLETO (sem filtro de período), usado pela busca textual
+   * universal e pelo calendário navegável. Opcional: se ausente, ambos caem
+   * para `transactions` (comportamento limitado ao período).
    */
   allTransactions?: PayrollTxn[];
   /**
@@ -397,6 +398,27 @@ export function FinanceContas({
     return map;
   }, [allAccounts]);
 
+  // Faturas elegíveis pra subTab='pagar'. O recorte de período é aplicado só
+  // em `cardInvoices`; o calendário usa esta base completa porque a navegação
+  // mensal não pode herdar o filtro de datas da lista.
+  const eligibleCardInvoices = useMemo<CreditCardBillWithTransactions[]>(() => {
+    if (subTab === 'receber') return [];
+    return allBills.filter((bill) => {
+      if (!cardAccountMap[bill.account_id]) return false;
+      return (bill.total_amount ?? 0) > 0 || Number(bill.amount_paid ?? 0) > 0;
+    });
+  }, [allBills, cardAccountMap, subTab]);
+
+  const matchesInvoiceStatus = (bill: CreditCardBillWithTransactions) => {
+    if (filter === 'todas') return true;
+    if (filter === 'pagas') return bill.status === 'paid';
+    if (filter === 'pendentes') return bill.status !== 'paid';
+    if (filter === 'vencidas') {
+      return bill.status !== 'paid' && isBefore(parseLocalDate(bill.due_date), today);
+    }
+    return true;
+  };
+
   // Faturas filtradas pra subTab='pagar'. Status semântico:
   // - pendentes = aberta + parcial + fechada (qualquer não-paga)
   // - vencidas = não-paga com due_date < hoje
@@ -405,31 +427,23 @@ export function FinanceContas({
   // Só inclui faturas com pelo menos 1 transação ou amount_paid > 0
   // (filtra bills "vazias" que ficaram órfãs).
   const cardInvoices = useMemo<CreditCardBillWithTransactions[]>(() => {
-    if (subTab === 'receber') return [];
-    const eligible = allBills.filter((b) => {
-      const account = cardAccountMap[b.account_id];
-      if (!account) return false;
-      const hasContent = (b.total_amount ?? 0) > 0 || Number(b.amount_paid ?? 0) > 0;
-      return hasContent;
-    });
     // Filtra faturas pelo periodo selecionado (comparando due_date da fatura
     // contra o range do DateRangeFilter do parent). Sem isso, todas as faturas
     // de todos os meses apareciam — CEO reportou como bug.
-    const inRange = eligible.filter((b) => {
+    const inRange = eligibleCardInvoices.filter((b) => {
       if (!dateRange?.from && !dateRange?.to) return true;
       const dueDate = parseLocalDate(b.due_date);
       return isDateInCivilRange(dueDate, dateRange);
     });
-    return inRange.filter((b) => {
-      if (filter === 'todas') return true;
-      if (filter === 'pagas') return b.status === 'paid';
-      if (filter === 'pendentes') return b.status !== 'paid';
-      if (filter === 'vencidas') {
-        return b.status !== 'paid' && isBefore(parseLocalDate(b.due_date), today);
-      }
-      return true;
-    });
-  }, [allBills, cardAccountMap, subTab, filter, today, dateRange]);
+    return inRange.filter(matchesInvoiceStatus);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eligibleCardInvoices, filter, today, dateRange]);
+
+  const calendarCardInvoices = useMemo(
+    () => eligibleCardInvoices.filter(matchesInvoiceStatus),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [eligibleCardInvoices, filter, today],
+  );
 
   const searchActive = search.trim().length > 0;
 
@@ -522,6 +536,23 @@ export function FinanceContas({
     return filterByCostCenters(byStatusAndCategory, costCenterFilter);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseFiltered, searchBase, filter, today, categoryFilter, costCenterFilter, searchActive, search]);
+
+  const calendarTransactions = useMemo(
+    () => selectFinanceCalendarTransactions({
+      periodTransactions: transactions,
+      allTransactions,
+      subTab,
+      status: filter,
+      categoryFilter,
+      costCenterFilter,
+      today,
+      searchActive,
+      matchesSearch,
+    }),
+    // `matchesSearch` depende destas entradas e é recriada a cada render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [transactions, allTransactions, subTab, filter, categoryFilter, costCenterFilter, today, searchActive, search, categoryLookup],
+  );
 
   // Summary: somar TODAS as fontes (txns + faturas) pra refletir "movimento total"
   // — pendente/vencido/7dias/pago. Caso contrário o card "Pago" zeraria pra clientes
@@ -1063,6 +1094,9 @@ export function FinanceContas({
   const visibleInvoices = !searchActive && categoryFilter.length === 0 && costCenterFilter.length === 0
     ? cardInvoices
     : [];
+  const calendarVisibleInvoices = !searchActive && categoryFilter.length === 0 && costCenterFilter.length === 0
+    ? calendarCardInvoices
+    : [];
 
   const buildExportRows = (): MovimentacaoReportRow[] => [
     // Defesa adicional do documento: mesmo que a lista mude no futuro, o PDF
@@ -1143,7 +1177,7 @@ export function FinanceContas({
   };
 
   const calendarItems: FinanceCalendarItem[] = [
-    ...filtered.filter((t) => !!t.due_date).map((t) => ({
+    ...calendarTransactions.filter((t) => !!t.due_date).map((t) => ({
       id: t.id,
       title: t.description,
       date: t.due_date as string,
@@ -1152,7 +1186,7 @@ export function FinanceContas({
       status: getStatus(t),
       subtitle: t.customer?.name ?? t.supplier?.name ?? t.employee?.name,
     })),
-    ...visibleInvoices.map((bill) => ({
+    ...calendarVisibleInvoices.map((bill) => ({
       id: `bill-${bill.id}`,
       title: `${fin.accounts.cardInvoices.invoice} ${cardAccountMap[bill.account_id]?.name ?? ''}`.trim(),
       date: bill.due_date,

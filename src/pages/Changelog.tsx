@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.46',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Todas as contas aparecem ao navegar pelo calendário',
+        category: 'correcao',
+        description: 'No Contas a Pagar e Receber, o calendário agora mostra as contas com vencimento no mês aberto, mesmo quando a lista está filtrada por outro período. Os filtros de status, categoria, centro de custo e tipo de conta continuam funcionando normalmente.',
+      },
+    ],
+  },
+  {
     version: '1.41.45',
     date: '23 de novembro de 2026',
     type: 'patch',
