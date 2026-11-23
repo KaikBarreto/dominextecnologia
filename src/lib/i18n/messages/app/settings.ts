@@ -1481,6 +1481,7 @@ export const settings = {
     integrations: {
       subTabs: {
         whatsapp: 'WhatsApp',
+        email: 'E-mail',
         asaas: 'Cobranças (Asaas)',
         configuracao: 'Configurações',
         simulador: 'Simulador',
@@ -3186,6 +3187,7 @@ export const settings = {
     integrations: {
       subTabs: {
         whatsapp: 'WhatsApp',
+        email: 'Email',
         asaas: 'Charges (Asaas)',
         configuracao: 'Settings',
         simulador: 'Simulator',
@@ -4890,6 +4892,7 @@ export const settings = {
     integrations: {
       subTabs: {
         whatsapp: 'WhatsApp',
+        email: 'Correo electrónico',
         asaas: 'Cobros (Asaas)',
         configuracao: 'Configuración',
         simulador: 'Simulador',
@@ -6594,6 +6597,7 @@ export const settings = {
     integrations: {
       subTabs: {
         whatsapp: 'WhatsApp',
+        email: 'E-mail',
         asaas: 'Encaissements (Asaas)',
         configuracao: 'Paramètres',
         simulador: 'Simulateur',

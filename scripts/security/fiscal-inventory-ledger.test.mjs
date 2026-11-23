@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const migrationUrl = new URL('../../supabase/migrations/20261123150000_fiscal_inventory_ledger.sql', import.meta.url);
+const migrationUrl = new URL('../../supabase/migrations/20261123171000_fiscal_inventory_ledger.sql', import.meta.url);
 const edgeUrl = new URL('../../supabase/functions/fiscal-goods-document/index.ts', import.meta.url);
 const [migration, edge] = await Promise.all([
   readFile(migrationUrl, 'utf8'),
@@ -44,6 +44,7 @@ test('kardex calcula saldo antes e depois antes de filtrar a página', () => {
   );
   const filtered = movementsRpc.slice(movementsRpc.indexOf('), filtered AS ('));
 
+  assert.match(migration, /DROP FUNCTION IF EXISTS public\.fiscal_inventory_movements_report\([\s\S]*timestamptz, timestamptz/);
   assert.match(migration, /sum\(e\.quantity\) OVER \([\s\S]*PARTITION BY e\.stock_id, e\.inventory_id/);
   assert.match(migration, /ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW/);
   assert.match(migration, /e\.balance_after - e\.quantity, e\.balance_after/);

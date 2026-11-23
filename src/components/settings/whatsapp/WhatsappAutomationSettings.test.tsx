@@ -162,6 +162,41 @@ describe('WhatsappAutomationSettings', () => {
     expect(container.textContent).not.toContain('Descrição');
   });
 
+  it('oculta Cobranças quando somente Ordens de serviço está contratado', () => {
+    renderSettings({ availableDomains: ['os'] });
+
+    expect(container.textContent).toContain('Técnico a caminho');
+    expect(container.textContent).not.toContain('Cobrança gerada');
+    expect(Array.from(container.querySelectorAll('[role="radio"]'))
+      .some((element) => element.textContent?.includes('Cobranças'))).toBe(false);
+  });
+
+  it('oculta OS quando somente Cobranças está contratado', () => {
+    renderSettings({ availableDomains: ['billing'] });
+
+    expect(container.textContent).toContain('Cobrança gerada');
+    expect(container.textContent).not.toContain('Técnico a caminho');
+    expect(Array.from(container.querySelectorAll('[role="radio"]'))
+      .some((element) => element.textContent?.includes('Ordens de serviço'))).toBe(false);
+  });
+
+  it('mostra os dois domínios quando ambos estão contratados', () => {
+    renderSettings({ availableDomains: ['os', 'billing'] });
+
+    const domains = Array.from(container.querySelectorAll('[role="radio"]'))
+      .map((element) => element.textContent);
+    expect(domains).toContain('Ordens de serviço');
+    expect(domains).toContain('Cobranças');
+  });
+
+  it('mostra estado vazio quando nenhum domínio de automação está contratado', () => {
+    renderSettings({ availableDomains: [] });
+
+    expect(container.textContent).toContain('Nenhuma automação disponível neste plano');
+    expect(container.textContent).not.toContain('Técnico a caminho');
+    expect(container.textContent).not.toContain('Cobrança gerada');
+  });
+
   it('permite consultar cobranças em modo somente leitura sem liberar edições', () => {
     const onPreferencesChange = vi.fn();
     act(() => {

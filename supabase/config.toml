@@ -429,6 +429,11 @@ verify_jwt = false
 [functions.process-notification-deliveries]
 verify_jwt = false
 
+# Worker global dos e-mails transacionais de cobrança. O pg_cron envia o
+# CRON_SECRET cru e a função faz comparação timing-safe antes de usar service_role.
+[functions.process-customer-email-deliveries]
+verify_jwt = false
+
 # Diagnóstico/reparo do webhook master. Chamado por pg_cron com x-cron-secret;
 # o handler valida CRON_SECRET fail-closed e não aceita sessão de tenant.
 [functions.admin-asaas-webhook-health]

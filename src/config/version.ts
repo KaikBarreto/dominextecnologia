@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.47";
+export const APP_VERSION = "1.41.48";
 
 export const VERSION_NOTES =
-  "O calendário de Contas a Pagar e Receber agora mostra corretamente as contas de cada mês ao navegar, mesmo quando a lista está filtrada por outro período. Os demais filtros continuam sendo respeitados.";
+  "Agora você pode enviar avisos de cobrança por e-mail pela Dominex, escolher os eventos, personalizar o conteúdo e selecionar o modelo visual da sua empresa.";

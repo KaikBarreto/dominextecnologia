@@ -4468,6 +4468,185 @@ export type Database = {
           },
         ]
       }
+      customer_email_deliveries: {
+        Row: {
+          attempts: number
+          charge_id: string
+          company_id: string
+          created_at: string
+          customer_id: string | null
+          dedupe_key: string
+          event_type: string
+          id: string
+          last_error_code: string | null
+          locked_at: string | null
+          next_attempt_at: string
+          period_month: string | null
+          provider_message_id: string | null
+          provider_status: number | null
+          recipient_email: string
+          sent_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          charge_id: string
+          company_id: string
+          created_at?: string
+          customer_id?: string | null
+          dedupe_key: string
+          event_type: string
+          id?: string
+          last_error_code?: string | null
+          locked_at?: string | null
+          next_attempt_at?: string
+          period_month?: string | null
+          provider_message_id?: string | null
+          provider_status?: number | null
+          recipient_email: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          charge_id?: string
+          company_id?: string
+          created_at?: string
+          customer_id?: string | null
+          dedupe_key?: string
+          event_type?: string
+          id?: string
+          last_error_code?: string | null
+          locked_at?: string | null
+          next_attempt_at?: string
+          period_month?: string | null
+          provider_message_id?: string | null
+          provider_status?: number | null
+          recipient_email?: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_email_deliveries_charge_id_fkey"
+            columns: ["charge_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_charges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_email_deliveries_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_email_deliveries_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_email_monthly_usage: {
+        Row: {
+          accepted_count: number
+          company_id: string
+          period_month: string
+          updated_at: string
+        }
+        Insert: {
+          accepted_count?: number
+          company_id: string
+          period_month: string
+          updated_at?: string
+        }
+        Update: {
+          accepted_count?: number
+          company_id?: string
+          period_month?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_email_monthly_usage_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_email_settings: {
+        Row: {
+          charge_created_enabled: boolean
+          charge_overdue_enabled: boolean
+          charge_paid_enabled: boolean
+          charge_refunded_enabled: boolean
+          company_id: string
+          content_overrides: Json
+          created_at: string
+          due_reminder_enabled: boolean
+          enabled: boolean
+          monthly_limit_override: number | null
+          reminder_days_before: number[]
+          reply_to_email: string | null
+          sender_name: string | null
+          template_style: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          charge_created_enabled?: boolean
+          charge_overdue_enabled?: boolean
+          charge_paid_enabled?: boolean
+          charge_refunded_enabled?: boolean
+          company_id: string
+          content_overrides?: Json
+          created_at?: string
+          due_reminder_enabled?: boolean
+          enabled?: boolean
+          monthly_limit_override?: number | null
+          reminder_days_before?: number[]
+          reply_to_email?: string | null
+          sender_name?: string | null
+          template_style?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          charge_created_enabled?: boolean
+          charge_overdue_enabled?: boolean
+          charge_paid_enabled?: boolean
+          charge_refunded_enabled?: boolean
+          company_id?: string
+          content_overrides?: Json
+          created_at?: string
+          due_reminder_enabled?: boolean
+          enabled?: boolean
+          monthly_limit_override?: number | null
+          reminder_days_before?: number[]
+          reply_to_email?: string | null
+          sender_name?: string | null
+          template_style?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_email_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_label_assignments: {
         Row: {
           company_id: string
@@ -16083,6 +16262,7 @@ export type Database = {
           included_modules: Json | null
           is_active: boolean | null
           max_users: number | null
+          monthly_customer_email_limit: number
           max_video_questions: number
           name: string
           price: number
@@ -16097,6 +16277,7 @@ export type Database = {
           included_modules?: Json | null
           is_active?: boolean | null
           max_users?: number | null
+          monthly_customer_email_limit?: number
           max_video_questions?: number
           name: string
           price?: number
@@ -16111,6 +16292,7 @@ export type Database = {
           included_modules?: Json | null
           is_active?: boolean | null
           max_users?: number | null
+          monthly_customer_email_limit?: number
           max_video_questions?: number
           name?: string
           price?: number
@@ -19365,6 +19547,44 @@ export type Database = {
         }[]
       }
       check_email_available: { Args: { _email: string }; Returns: boolean }
+      claim_customer_email_deliveries: {
+        Args: { p_limit?: number; p_orphan_minutes?: number }
+        Returns: {
+          attempts: number
+          billing_type: string | null
+          boleto_url: string | null
+          charge_description: string | null
+          charge_value: number
+          company_address: string | null
+          company_address_number: string | null
+          company_city: string | null
+          company_complement: string | null
+          company_document: string | null
+          company_email: string | null
+          company_header_name: string | null
+          company_logo_url: string | null
+          company_name: string
+          company_neighborhood: string | null
+          company_phone: string | null
+          company_primary_color: string | null
+          company_state: string | null
+          company_zip_code: string | null
+          content_overrides: Json
+          customer_name: string | null
+          delivery_id: string
+          due_date: string | null
+          event_type: string
+          invoice_url: string | null
+          payment_date: string | null
+          pix_copy_paste: string | null
+          public_short_code: string | null
+          recipient_email: string
+          reply_to_email: string | null
+          sender_name: string | null
+          template_style: string
+          white_label_enabled: boolean
+        }[]
+      }
       claim_subscription_payment_nfse: {
         Args: {
           p_company_id: string
@@ -19405,6 +19625,18 @@ export type Database = {
         Returns: boolean
       }
       company_today: { Args: { p_company_id: string }; Returns: string }
+      complete_customer_email_delivery: {
+        Args: {
+          p_delivery_id: string
+          p_error_code?: string | null
+          p_provider_message_id?: string | null
+          p_provider_status?: number | null
+          p_retry_after_seconds?: number
+          p_retryable?: boolean
+          p_success: boolean
+        }
+        Returns: boolean
+      }
       complete_employee_face_enrollment: {
         Args: {
           p_model_version: string
@@ -20064,6 +20296,25 @@ export type Database = {
           last_activity_at: string
           subscription_plan: string
           subscription_status: string
+        }[]
+      }
+      get_customer_email_settings_summary: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          charge_created_enabled: boolean
+          charge_overdue_enabled: boolean
+          charge_paid_enabled: boolean
+          charge_refunded_enabled: boolean
+          company_id: string
+          content_overrides: Json
+          due_reminder_enabled: boolean
+          enabled: boolean
+          monthly_limit: number
+          monthly_used: number
+          reminder_days_before: number[]
+          reply_to_email: string | null
+          sender_name: string | null
+          template_style: string
         }[]
       }
       get_customer_portal_forms: {
@@ -22434,6 +22685,22 @@ export type Database = {
       }
       unresolve_billing_reminder: {
         Args: { p_transaction_id: string }
+        Returns: undefined
+      }
+      update_customer_email_settings: {
+        Args: {
+          p_charge_created_enabled: boolean
+          p_charge_overdue_enabled: boolean
+          p_charge_paid_enabled: boolean
+          p_charge_refunded_enabled: boolean
+          p_due_reminder_enabled: boolean
+          p_enabled: boolean
+          p_content_overrides: Json
+          p_reminder_days_before: number[]
+          p_reply_to_email: string
+          p_sender_name: string
+          p_template_style: string
+        }
         Returns: undefined
       }
       update_customer_stock_item: {

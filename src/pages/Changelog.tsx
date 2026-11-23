@@ -31,6 +31,28 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.48',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Avisos de cobrança por e-mail',
+        category: 'recurso',
+        description: 'Em Integrações > E-mail, empresas com o módulo Cobranças podem ativar avisos para cobrança criada, próxima do vencimento, vencida, paga ou estornada. Os envios começam apenas nos próximos eventos e somente para clientes com e-mail válido cadastrado.',
+      },
+      {
+        title: 'Modelos e conteúdo personalizados',
+        category: 'recurso',
+        description: 'Você pode escolher entre modelos claros e escuros, editar o assunto e os textos de cada aviso e usar a identidade da empresa. Os e-mails mostram as formas de pagamento disponíveis, com acesso ao checkout Dominex, boleto e Pix.',
+      },
+      {
+        title: 'Canais respeitam os módulos contratados',
+        category: 'seguranca',
+        description: 'E-mail e WhatsApp agora validam separadamente o canal e o módulo que origina cada evento. Assim, automações de cobrança só funcionam quando o módulo Cobranças está ativo, inclusive no momento do envio.',
+      },
+    ],
+  },
+  {
     version: '1.41.47',
     date: '23 de novembro de 2026',
     type: 'patch',

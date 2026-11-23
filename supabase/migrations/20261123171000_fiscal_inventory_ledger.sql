@@ -457,6 +457,12 @@ REVOKE ALL ON FUNCTION public.fiscal_inventory_report(timestamptz, uuid[], uuid[
 GRANT EXECUTE ON FUNCTION public.fiscal_inventory_report(timestamptz, uuid[], uuid[], integer[], text, boolean, boolean, boolean, integer, integer)
   TO authenticated, service_role;
 
+-- A função já pode existir em ambientes que receberam uma versão anterior do
+-- relatório. O PostgreSQL não permite alterar RETURNS TABLE via OR REPLACE.
+DROP FUNCTION IF EXISTS public.fiscal_inventory_movements_report(
+  timestamptz, timestamptz, uuid[], uuid[], integer[], text[], text, integer, integer
+);
+
 CREATE OR REPLACE FUNCTION public.fiscal_inventory_movements_report(
   p_date_start timestamptz DEFAULT NULL,
   p_date_end timestamptz DEFAULT NULL,
