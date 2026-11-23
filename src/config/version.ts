@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.49";
+export const APP_VERSION = "1.41.50";
 
 export const VERSION_NOTES =
-  "Ao salvar um contato, uma conexão lenta não deixa mais a tela presa: os dados ficam preenchidos e você pode tentar novamente com segurança.";
+  "Falhas de conexão agora são informadas com clareza e a tela de entrada mantém logo, idioma e tema organizados no celular.";

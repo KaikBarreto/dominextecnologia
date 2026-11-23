@@ -101,9 +101,9 @@ describe("SubscriptionGate", () => {
 
     expect(screen.queryByText("Produto sensível")).not.toBeInTheDocument();
     expect(
-      screen.getByRole("status", { name: "Estamos retomando seu acesso" }),
+      screen.getByRole("status", { name: "Não foi possível conectar ao servidor" }),
     ).toHaveTextContent(
-      "Esta pausa é temporária e não indica pendência na sua assinatura",
+      "O serviço está indisponível agora",
     );
     expect(screen.queryByText(/validar sua assinatura/i)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Tentar agora" }));
@@ -169,7 +169,7 @@ describe("SubscriptionGate", () => {
     fireEvent.click(screen.getByRole("button", { name: "Tentar agora" }));
 
     expect(
-      await screen.findByText(/tentaremos novamente automaticamente/i),
+      await screen.findByText(/a nova tentativa não foi concluída/i),
     ).toBeInTheDocument();
     expect(screen.queryByText("Produto sensível")).not.toBeInTheDocument();
     expect(
@@ -185,7 +185,7 @@ describe("SubscriptionGate", () => {
       .getByText("Produto sensível")
       .closest("[data-subscription-inert]");
     expect(inertContent).toHaveAttribute("inert");
-    expect(screen.getByText(/você não precisa refazer nada/i)).toBeInTheDocument();
+    expect(screen.getByText(/o servidor está temporariamente indisponível/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Sair" })).not.toBeInTheDocument();
   });
 

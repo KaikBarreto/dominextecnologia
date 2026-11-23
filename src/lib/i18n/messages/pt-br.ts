@@ -903,8 +903,8 @@ export const ptBr = {
     // Erros do login (Alert)
     errorUnexpected: 'Ocorreu um erro inesperado. Tente novamente.',
     errorContinueLogin: 'Erro ao continuar login.',
-    errorLoginTimeout: 'A conexão demorou mais que o esperado. Seus dados estão seguros; tente novamente em instantes.',
-    errorSessionRestore: 'Estamos retomando sua conexão. Você pode atualizar o aplicativo e continuar.',
+    errorLoginTimeout: 'Não foi possível conectar ao servidor. O serviço está temporariamente indisponível; tente novamente em instantes.',
+    errorSessionRestore: 'Não foi possível restaurar sua sessão agora. Atualize o aplicativo e tente novamente.',
     refreshAndRetry: 'Atualizar e tentar novamente',
     refreshingConnection: 'Atualizando conexão...',
 

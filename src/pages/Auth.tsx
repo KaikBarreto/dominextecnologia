@@ -3,7 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Eye, EyeOff, Loader2, Mail, Lock, Moon, RefreshCw, Sun } from 'lucide-react';
+import { CircleAlert, Eye, EyeOff, Loader2, Mail, Lock, Moon, RefreshCw, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -457,8 +457,8 @@ export default function Auth() {
   const authShell = (content: ReactNode) => (
     <div className="min-h-[100dvh] bg-white text-[#151819] dark:bg-[#0c0f10] dark:text-white">
       <div className="grid min-h-[100dvh] md:grid-cols-[minmax(360px,46%)_1fr] xl:grid-cols-[minmax(480px,42%)_1fr]">
-        <main className="relative flex min-h-[100dvh] items-center justify-center overflow-y-auto px-6 py-[max(env(safe-area-inset-top),2rem)] pb-[max(env(safe-area-inset-bottom),2rem)] sm:px-10 md:px-8 lg:px-12 xl:px-16">
-          <div className="absolute right-5 top-5 z-20 flex items-center gap-2">
+        <main className="relative flex min-h-[100dvh] flex-col items-center justify-center overflow-y-auto px-6 py-[max(env(safe-area-inset-top),2rem)] pb-[max(env(safe-area-inset-bottom),2rem)] sm:px-10 md:px-8 lg:px-12 xl:px-16">
+          <div className="mb-6 flex w-full max-w-[430px] items-center justify-end gap-2 md:absolute md:right-5 md:top-5 md:z-20 md:mb-0 md:w-auto md:max-w-none">
             <LanguageSelector variant="compact" surface="light" />
             <button type="button" onClick={toggleTheme} className="grid h-9 w-9 place-items-center rounded-md border border-slate-200 bg-white text-slate-600 transition-colors hover:border-[#00C597] hover:text-[#008f70] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#00C597] dark:border-white/15 dark:bg-white/[0.04] dark:text-white/70 dark:hover:border-[#00C597] dark:hover:text-white" aria-label={isDark ? 'Usar tema claro' : 'Usar tema escuro'}>
               {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -504,9 +504,10 @@ export default function Auth() {
             <div className="space-y-5">
               {authError && (
                 <Alert
-                  variant={recoverySuggested ? 'default' : 'destructive'}
-                  className={recoverySuggested ? 'border-[#00C597]/40 bg-[#00C597]/[0.07]' : undefined}
+                  variant="destructive"
+                  className="border-destructive bg-destructive text-destructive-foreground [&>svg]:text-destructive-foreground"
                 >
+                  <CircleAlert className="h-4 w-4" aria-hidden="true" />
                   <AlertDescription className="space-y-3">
                     <p>{authError}</p>
                     {recoverySuggested && (
@@ -514,7 +515,7 @@ export default function Auth() {
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="border-[#00C597]/45 bg-background font-semibold text-[#007d63] hover:bg-[#00C597]/10 dark:text-[#00C597]"
+                        className="border-white/70 bg-white font-semibold text-destructive hover:bg-white/90 hover:text-destructive"
                         onClick={() => void handleRefreshConnection()}
                         disabled={isRefreshingConnection}
                       >

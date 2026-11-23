@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.50',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Indisponibilidade comunicada com clareza',
+        category: 'correcao',
+        description: 'Quando o servidor não responder, a entrada e a validação de acesso agora informam claramente o que aconteceu, preservam a segurança dos dados e oferecem uma nova tentativa sem expor detalhes técnicos.',
+      },
+      {
+        title: 'Entrada organizada no celular',
+        category: 'melhoria',
+        description: 'Os controles de idioma e tema ganharam um espaço próprio no topo da tela de entrada e não ficam mais sobre a marca em telas menores.',
+      },
+    ],
+  },
+  {
     version: '1.41.49',
     date: '23 de novembro de 2026',
     type: 'patch',
