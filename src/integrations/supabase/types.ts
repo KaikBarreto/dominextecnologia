@@ -20399,6 +20399,16 @@ export type Database = {
       }
       get_accessible_inventory_ids: { Args: never; Returns: string[] }
       get_admin_cobrancas_overview: { Args: never; Returns: Json }
+      get_admin_communication_statistics: {
+        Args: {
+          p_channel?: string
+          p_company_id?: string
+          p_from?: string
+          p_timezone?: string
+          p_to?: string
+        }
+        Returns: Json
+      }
       get_admin_usage_statistics: {
         Args: {
           p_bucket?: string
