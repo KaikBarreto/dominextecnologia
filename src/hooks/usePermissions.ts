@@ -146,7 +146,6 @@ export const FUNCTION_PERMISSIONS = [
   { key: 'fn:manage_users', label: 'Gerenciar Usuários', description: 'Criar, editar e gerenciar usuários do sistema', group: 'Administração', category: 'administracao', relatedScreen: 'screen:users' },
   { key: 'fn:manage_settings', label: 'Gerenciar Configurações', description: 'Alterar configurações do sistema', group: 'Administração', category: 'administracao', relatedScreen: 'screen:settings' },
   { key: 'fn:manage_api_keys', label: 'Gerenciar Chaves da API', description: 'Criar, rotacionar e revogar credenciais da API Pública', group: 'Administração', category: 'administracao', relatedScreen: 'screen:settings' },
-  { key: 'fn:override_schedule_conflict', label: 'Sobrescrever Conflito de Agenda', description: 'Autorizar sobreposição de horário com justificativa auditada', group: 'Serviços', category: 'servicos', relatedScreen: 'screen:schedule' },
   { key: 'fn:export_company_data', label: 'Exportar Dados da Empresa', description: 'Baixar em planilha todos os dados da empresa, incluindo financeiro e salários dos funcionários', group: 'Administração', category: 'administracao', relatedScreen: 'screen:settings' },
   { key: 'fn:manage_crm', label: 'Gerenciar CRM', description: 'Gerenciar leads e pipeline comercial', group: 'Comercial', category: 'comercial', relatedScreen: 'screen:crm' },
   { key: 'fn:manage_contracts', label: 'Gerenciar Contratos', description: 'Gerenciar contratos recorrentes e manutenções', group: 'Serviços', category: 'servicos', relatedScreen: 'screen:contracts' },

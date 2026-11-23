@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.54',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Agendamentos conflitantes configuráveis',
+        category: 'recurso',
+        description: 'Em Configurações > Usabilidade > Agenda, a empresa agora pode permitir atendimentos no mesmo horário. Quando a opção está desligada, os conflitos continuam bloqueados normalmente.',
+      },
+      {
+        title: 'Confirmação com justificativa',
+        category: 'seguranca',
+        description: 'Quando a opção está ligada, o sistema avisa sobre a sobreposição e exige uma justificativa antes de confirmar, mantendo a decisão registrada para consulta.',
+      },
+    ],
+  },
+  {
     version: '1.41.53',
     date: '23 de novembro de 2026',
     type: 'patch',

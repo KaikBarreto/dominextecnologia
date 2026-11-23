@@ -88,6 +88,10 @@ export interface CompanySettings {
   // aparelho, por isso mora aqui e não em localStorage. Default false no
   // banco. Ver Settings.tsx (aba Usabilidade → Ordens de Serviço).
   os_stock_consumption_enabled?: boolean;
+  // Politica de agenda da empresa. Quando ligada, qualquer usuario que ja
+  // possa criar/editar a OS pode confirmar uma sobreposicao com justificativa
+  // auditada. A API Publica continua sem override. Default false no banco.
+  allow_schedule_conflicts?: boolean;
   // Receita ao finalizar a OS: ao concluir uma Ordem de Serviço, o sistema
   // pergunta se houve receita e já abre o lançamento vinculado àquela OS.
   // Também é decisão de tenant (não preferência de aparelho). A pergunta só

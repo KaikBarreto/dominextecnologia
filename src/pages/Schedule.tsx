@@ -116,11 +116,9 @@ export default function Schedule() {
   const canCreateOS = isAdminOrGestor() || hasPermission('fn:create_os');
   const canEditOS = isAdminOrGestor() || hasPermission('fn:edit_os');
   const canDeleteOS = isAdminOrGestor() || hasPermission('fn:delete_os');
-  // Override de conflito é deliberadamente estrito: o fallback legado de
-  // `hasPermission` por role não vale para uma autorização auditável.
-  const canOverrideScheduleConflict = hasPermissionRecord && (
-    permissions.includes('*') || permissions.includes('fn:override_schedule_conflict')
-  );
+  // Politica da empresa, não permissão individual. O servidor repete a mesma
+  // decisão e ainda exige a permissão normal de criar/editar a OS.
+  const allowScheduleConflicts = companySettings?.allow_schedule_conflicts === true;
   // Aviso financeiro na agenda apaga LANÇAMENTO (financial_transactions), não OS
   // — logo, `fn:delete_finance`, não `fn:delete_os`.
   // Espelha `public.can_delete_finance` (RLS de DELETE em financial_transactions):
@@ -849,7 +847,7 @@ export default function Schedule() {
 
   const handleScheduleConflictOverride = async (reason: string) => {
     const pending = pendingScheduleConflict;
-    if (!pending || !canOverrideScheduleConflict) return;
+    if (!pending || !allowScheduleConflicts) return;
 
     if (pending.kind === 'reschedule') {
       await rescheduleServiceOrder.mutateAsync({
@@ -1420,7 +1418,7 @@ export default function Schedule() {
       <ScheduleConflictDialog
         open={!!pendingScheduleConflict}
         conflicts={pendingScheduleConflict?.conflicts ?? []}
-        canOverride={canOverrideScheduleConflict}
+        canOverride={allowScheduleConflicts}
         isLoading={createServiceOrder.isPending || updateServiceOrder.isPending || rescheduleServiceOrder.isPending}
         onCancel={() => setPendingScheduleConflict(null)}
         onOverride={(reason) => {

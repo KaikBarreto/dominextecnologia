@@ -6,7 +6,7 @@ describe('erros da agenda', () => {
     ['P0001', 'schedule_resource_not_in_tenant', 'Um dos responsáveis desta OS não está mais ativo na empresa. Atualize a atribuição e tente novamente.'],
     ['P0001', 'schedule_equipment_not_found', 'Um dos equipamentos desta OS não está mais disponível. Atualize a seleção e tente novamente.'],
     ['22023', 'schedule_invalid_equipment_items', 'Não foi possível validar os equipamentos e checklists desta OS. Atualize a seleção e tente novamente.'],
-    ['42501', 'schedule_override_permission_denied', 'Você não tem permissão para autorizar conflitos de agenda.'],
+    ['42501', 'schedule_override_permission_denied', 'A empresa não permite agendamentos conflitantes. Ative essa opção em Configurações > Usabilidade para autorizar a sobreposição.'],
     ['42501', 'schedule_tenant_not_entitled', 'O acesso da empresa não está ativo para esta operação. Verifique a assinatura ou fale com o suporte.'],
     ['22023', 'schedule_invalid_duration', 'A duração do atendimento deve ficar entre 15 minutos e 24 horas.'],
     ['P0001', 'schedule_company_timezone_invalid', 'O fuso horário da empresa está inválido. Ajuste-o nas configurações antes de agendar.'],

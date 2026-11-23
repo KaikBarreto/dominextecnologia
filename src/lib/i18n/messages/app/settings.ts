@@ -258,6 +258,10 @@ export const settings = {
             title: 'Exibir Feriados',
             description: 'Mostrar feriados nacionais e municipais na agenda',
           },
+          allowScheduleConflicts: {
+            title: 'Permitir agendamentos conflitantes',
+            description: 'Permite autorizar sobreposições de horário com alerta e justificativa auditada. Vale para toda a empresa.',
+          },
         },
       },
 
@@ -2027,6 +2031,10 @@ export const settings = {
             title: 'Show Holidays',
             description: 'Display national and local holidays on the schedule',
           },
+          allowScheduleConflicts: {
+            title: 'Allow conflicting appointments',
+            description: 'Allows time overlaps to be authorized with a warning and an audited justification. Applies company-wide.',
+          },
         },
       },
 
@@ -3732,6 +3740,10 @@ export const settings = {
             title: 'Mostrar festivos',
             description: 'Mostrar festivos nacionales y locales en la agenda',
           },
+          allowScheduleConflicts: {
+            title: 'Permitir citas conflictivas',
+            description: 'Permite autorizar solapamientos de horario con una alerta y una justificación auditada. Se aplica a toda la empresa.',
+          },
         },
       },
 
@@ -5436,6 +5448,10 @@ export const settings = {
           showHolidays: {
             title: 'Afficher les jours fériés',
             description: 'Afficher les jours fériés nationaux et locaux dans l’agenda',
+          },
+          allowScheduleConflicts: {
+            title: 'Autoriser les rendez-vous en conflit',
+            description: "Permet d'autoriser les chevauchements avec un avertissement et une justification auditée. S'applique à toute l'entreprise.",
           },
         },
       },

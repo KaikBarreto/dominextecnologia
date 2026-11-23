@@ -491,9 +491,8 @@ function TechnicianOSInner() {
     profile: currentUserProfile,
     isAdminOrGestor,
     hasPermission,
-    permissions,
-    hasPermissionRecord,
   } = useAuth();
+  const { settings } = useCompanySettings();
   // Bloqueio por assinatura do TENANT DO USUÁRIO LOGADO (profile.company_id),
   // reusando a mesma decisão do SubscriptionGate. Só é APLICADO no modo técnico
   // autenticado (ver abaixo) — o hook em si não bloqueia anônimo (sem profile)
@@ -843,9 +842,7 @@ function TechnicianOSInner() {
   // botão nem aparece offline (a edição de escopo exige internet no v1).
   const canEditarOsCampo = isAdminOrGestor() || hasPermission('fn:editar_os_campo');
   const canEditScheduleInOs = isAdminOrGestor() || hasPermission('fn:edit_os');
-  const canOverrideScheduleConflict = hasPermissionRecord && (
-    permissions.includes('*') || permissions.includes('fn:override_schedule_conflict')
-  );
+  const allowScheduleConflicts = settings?.allow_schedule_conflicts === true;
   const showEditScopeAction = canEditarOsCampo && !isPmocOrder;
 
   // "Consumir do estoque" no menu de mais-ações (v1.22.0).
@@ -1046,7 +1043,6 @@ function TechnicianOSInner() {
     return () => window.removeEventListener('keydown', onKey);
   }, [routeFullscreen]);
   // A Área do Técnico aparece quando qualquer segmento contratado tem ferramentas.
-  const { settings } = useCompanySettings();
   const companySegments = normalizeCompanySegments(settings?.segments, settings?.segment);
   const toolsSegment = companySegments.find(segmentHasTechTools) ?? companySegments[0];
   const showTools = segmentsHaveTechTools(companySegments);
@@ -4861,7 +4857,7 @@ function TechnicianOSInner() {
             team_id: serviceOrder?.team_id,
           }}
           canEditSchedule={canEditScheduleInOs}
-          canOverrideScheduleConflict={canOverrideScheduleConflict}
+          allowScheduleConflicts={allowScheduleConflicts}
           onSaved={async () => {
             await Promise.all([
               fetchServiceOrder(),

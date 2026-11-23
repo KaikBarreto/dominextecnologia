@@ -2265,6 +2265,7 @@ export type Database = {
       }
       company_settings: {
         Row: {
+          allow_schedule_conflicts: boolean
           pdv_default_stock_id: string | null
           pdv_stock_settings_revision: number
           address: string | null
@@ -2325,6 +2326,7 @@ export type Database = {
           zip_code: string | null
         }
         Insert: {
+          allow_schedule_conflicts?: boolean
           pdv_default_stock_id?: string | null
           pdv_stock_settings_revision?: number
           address?: string | null
@@ -2385,6 +2387,7 @@ export type Database = {
           zip_code?: string | null
         }
         Update: {
+          allow_schedule_conflicts?: boolean
           pdv_default_stock_id?: string | null
           pdv_stock_settings_revision?: number
           address?: string | null

@@ -94,7 +94,7 @@ const SCHEDULE_ERROR_MESSAGES: Record<string, string> = {
   schedule_tenant_not_entitled: 'O acesso da empresa não está ativo para esta operação. Verifique a assinatura ou fale com o suporte.',
   schedule_create_permission_denied: 'Você não tem permissão para criar ordens de serviço.',
   schedule_edit_permission_denied: 'Você não tem permissão para alterar o agendamento desta ordem de serviço.',
-  schedule_override_permission_denied: 'Você não tem permissão para autorizar conflitos de agenda.',
+  schedule_override_permission_denied: 'A empresa não permite agendamentos conflitantes. Ative essa opção em Configurações > Usabilidade para autorizar a sobreposição.',
   schedule_override_justification_required: 'Informe uma justificativa com pelo menos 10 caracteres para autorizar o conflito.',
   schedule_customer_not_found: 'O cliente selecionado não está mais disponível. Atualize a seleção e tente novamente.',
   schedule_equipment_not_found: 'Um dos equipamentos desta OS não está mais disponível. Atualize a seleção e tente novamente.',
