@@ -1,6 +1,10 @@
 import { goodsReadinessIssues } from '../_shared/fiscal-goods-readiness.ts';
 import { goodsOutcome, sourceFinancialsMatch } from "../_shared/fiscal-goods-policy.ts";
 import {
+  isGoodsFinalConsumerCompatible,
+  resolveGoodsFinalConsumer,
+} from "../_shared/fiscal-goods-final-consumer.ts";
+import {
   authorizeFiscalGoodsIssuer,
   corsHeaders,
   jsonResponse,
@@ -101,6 +105,7 @@ interface NormalizedDraft {
   sourceType: "manual" | "pdv_sale" | "pdv_purchase" | "inventory_purchase";
   sourceId: string | null;
   nature: string;
+  finalConsumer: boolean;
   party: JsonObject | null;
   items: JsonObject[];
   payments: JsonObject[];
@@ -150,6 +155,12 @@ export function normalizeDraft(raw: unknown): NormalizedDraft {
         municipalityCode: digits(partySource.municipalityCode),
       }
     : null;
+  const finalConsumer = resolveGoodsFinalConsumer({
+    model,
+    direction,
+    stateRegistration: party?.stateRegistration,
+    requested: draft.finalConsumer,
+  });
   if (asRows(draft.items).length > 990 || asRows(draft.payments).length > 100)
     throw new GoodsDocumentError('invalid_draft', 'Revise a quantidade de itens e formas de pagamento da nota.');
   const items = asRows(draft.items)
@@ -205,6 +216,7 @@ export function normalizeDraft(raw: unknown): NormalizedDraft {
     sourceType,
     sourceId: sourceType === "manual" ? null : uuid(draft.sourceId),
     nature: text(draft.nature, 60),
+    finalConsumer,
     party,
     items,
     payments,
@@ -223,6 +235,12 @@ function validation(
   const errors: string[] = [];
   if (!draft.stockId) errors.push("Selecione o local de estoque da operação.");
   if (!draft.nature) errors.push("Informe a natureza da operação.");
+  if (!isGoodsFinalConsumerCompatible({
+    model: draft.model,
+    direction: draft.direction,
+    stateRegistration: draft.party?.stateRegistration,
+    requested: draft.finalConsumer,
+  })) errors.push("Destinatário sem inscrição estadual precisa ser consumidor final.");
   if (!draft.items.length) errors.push("Adicione ao menos um item.");
   if (
     draft.model === 55 &&
@@ -495,7 +513,7 @@ export function buildMotorDocument(
       numero: numberValue,
       serie: series,
       presencial: draft.model === 65 ? 1 : 0,
-      consumidorFinal: draft.model === 65,
+      consumidorFinal: draft.finalConsumer,
       natureza: draft.nature,
       saida: draft.direction === "saida",
       finalidade: 1,
@@ -624,7 +642,8 @@ async function saveDraft(
   }
   if (!draft.id && draft.sourceId) {
     const existing = await auth.supabase.from(table).select('*')
-      .eq('company_id', auth.companyId).eq('source_type', draft.sourceType).eq('source_id', draft.sourceId).maybeSingle();
+      .eq('company_id', auth.companyId).eq('source_type', draft.sourceType).eq('source_id', draft.sourceId)
+      .not('status', 'in', '(cancelled,rejected)').maybeSingle();
     if (existing.error) throw new Error('Não foi possível consultar a nota vinculada à venda.');
     if (existing.data) draft.id = text(existing.data.id);
   }
@@ -651,7 +670,8 @@ async function saveDraft(
     .select("*")
     .single();
   if (error?.code === '23505' && draft.sourceId) {
-    const existing = await auth.supabase.from(table).select('*').eq('company_id', auth.companyId).eq('source_type', draft.sourceType).eq('source_id', draft.sourceId).maybeSingle();
+    const existing = await auth.supabase.from(table).select('*').eq('company_id', auth.companyId).eq('source_type', draft.sourceType).eq('source_id', draft.sourceId)
+      .not('status', 'in', '(cancelled,rejected)').maybeSingle();
     if (!existing.error && existing.data) return object(existing.data);
   }
   if (error || !data)
@@ -861,7 +881,17 @@ async function transmitSavedGoods(
   },transmissionFence);
   setActive(null);
   await storeGoodsEvent(auth,events,{company_id:auth.companyId,document_id:id,event_type:'authorization_result',status:normalized.status,official_status:normalized.official,cstat:text(object(official.resposta).cstat)||null,message:normalized.status==='authorized'?'Documento autorizado pela SEFAZ.':'Resultado fiscal registrado.',payload:{outcome:official.outcome,recovered:official.recovered,orientacao:official.orientacao}});
-  return jsonResponse({ok:true,id,status:normalized.status,officialStatus:normalized.official,accessKey:input.key},normalized.status==='authorized'?201:202);
+  const rejectionCode = normalized.status === 'rejected'
+    ? `sefaz_${text(object(official.resposta).cstat)}`
+    : null;
+  return jsonResponse({
+    ok:true,
+    id,
+    status:normalized.status,
+    officialStatus:normalized.official,
+    accessKey:input.key,
+    ...(rejectionCode ? { rejectionCode } : {}),
+  },normalized.status==='authorized'?201:202);
 }
 
 async function handleDocumentAction(

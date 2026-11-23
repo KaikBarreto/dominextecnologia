@@ -1,4 +1,4 @@
-import { goodsDocumentRecovery } from './pdvNfce';
+import { cloneGoodsDraftForReissue, goodsDocumentRecovery } from './pdvNfce';
 import { describe, it, expect } from 'vitest';
 import { shouldAskPdvNfce, pdvNfceStatus } from './pdvNfce';
 import { goodsRejectionGuidance } from './goodsRejectionGuidance';
@@ -16,10 +16,10 @@ describe('ponte NFC-e e venda confirmada', () => {
     expect(goodsOutcome({ outcome: 'rejected' })).toEqual({status:'rejected',official:null});
     expect(goodsOutcome({ situacaoOficial:'cancelada',outcome:'authorized' }).status).toBe('cancelled');
   });
-  it.each(['unauthorized','module_inactive','forbidden','certificate_required','production_blocked','resultado_incerto','source_mismatch','document_changed'])('traduz código %s sem expor detalhes internos', error => {
+  it.each(['unauthorized','module_inactive','forbidden','certificate_required','production_blocked','resultado_incerto','source_mismatch','document_changed','number_reservation_failed'])('traduz código %s sem expor detalhes internos', error => {
     expect(goodsFiscalError({error,message:'SQLSTATE 42501 public.secret_rpc token=private'})).not.toMatch(/SQLSTATE|42501|secret_rpc|token=/);
   });
-  it.each(['sefaz_230','sefaz_231','sefaz_590','sefaz_591','sefaz_778','sefaz_779','unexpected'])('traduz rejeição %s em causa e orientação sem código interno', code => { expect(goodsRejectionGuidance(code)).not.toContain(code); expect(goodsRejectionGuidance(code)).toMatch(/Revise|Confira|Corrija/); });
+  it.each(['sefaz_230','sefaz_231','sefaz_590','sefaz_591','sefaz_696','sefaz_778','sefaz_779','unexpected'])('traduz rejeição %s em causa e orientação sem código interno', code => { expect(goodsRejectionGuidance(code)).not.toContain(code); expect(goodsRejectionGuidance(code)).toMatch(/Revise|Confira|Corrija/); });
   it('fallback de validação bloqueia detalhes de banco', () => {
     expect(goodsFiscalError({error:'validation_failed',message:'constraint nfce_documents SQLSTATE 23505'})).not.toContain('23505');
     expect(goodsFiscalError({error:'validation_failed',message:'Item 1: NCM precisa ter 8 dígitos.'})).toContain('NCM');
@@ -61,10 +61,17 @@ describe('rateio fiscal por item preserva fonte comercial',()=>{
 describe('recuperação fiscal antes do envio',()=>{
  it('oferece o mesmo envio assinado e revisão local, sem recuperar estados incertos',()=>{
   expect(goodsDocumentRecovery({status:'signed',access_key:'0'.repeat(44)})?.action).toBe('resume');
-  expect(goodsDocumentRecovery({status:'rejected'})?.action).toBe('revise');
+  expect(goodsDocumentRecovery({status:'rejected'})?.action).toBe('reissue');
+  expect(goodsDocumentRecovery({status:'rejected',access_key:'0'.repeat(44)})?.action).toBe('reissue');
   expect(goodsDocumentRecovery({status:'preparing',updated_at:'2020-01-01'} )?.action).toBe('revise');
   for(const status of ['uncertain','transmitting','authorized','cancelled','cancellation_pending'])expect(goodsDocumentRecovery({status})).toBeNull();
-  expect(goodsDocumentRecovery({status:'rejected',access_key:'0'.repeat(44)})).toBeNull();
   expect(goodsDocumentRecovery({status:'preparing',updated_at:new Date().toISOString()})).toBeNull();
+ });
+ it('clona a rejeitada como nova nota sem mutar nem reaproveitar identificadores fiscais',()=>{
+  const rejected={id:'rejected-a',number:15,numero:15,accessKey:'1'.repeat(44),access_key:'2'.repeat(44),chave:'3'.repeat(44),protocol:'protocol-a',protocolo:'protocol-b',operationId:'operation-a',operation_id:'operation-b',party:{name:'Cliente teste'}};
+  const cloned=cloneGoodsDraftForReissue(rejected);
+  expect(cloned).toEqual({id:null,party:{name:'Cliente teste'}});
+  expect(rejected).toEqual(expect.objectContaining({id:'rejected-a',number:15,accessKey:'1'.repeat(44),party:{name:'Cliente teste'}}));
+  expect(cloned.party).not.toBe(rejected.party);
  });
 });

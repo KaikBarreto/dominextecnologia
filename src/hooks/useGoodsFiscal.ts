@@ -84,6 +84,7 @@ export interface GoodsFiscalDraft {
   sourceType: GoodsSourceType;
   sourceId?: string | null;
   nature: string;
+  finalConsumer?: boolean;
   party: GoodsFiscalParty | null;
   items: GoodsFiscalItem[];
   payments: GoodsFiscalPayment[];
@@ -205,6 +206,8 @@ export function projectGoodsSnapshot(
     carrierId: text(root.carrierId) || null,
     sourceType: text(root.sourceType) as GoodsSourceType,
     sourceId: text(root.sourceId) || null,
+    finalConsumer:
+      typeof root.finalConsumer === "boolean" ? root.finalConsumer : undefined,
     party,
     items,
     payments,

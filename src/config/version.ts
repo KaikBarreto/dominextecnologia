@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.55";
+export const APP_VERSION = "1.41.56";
 
 export const VERSION_NOTES =
-  "O download dos documentos do PMOC voltou a funcionar e o dossiê agora reconhece o endereço completo já cadastrado para o cliente.";
+  "A NF-e agora identifica corretamente o consumidor final e permite corrigir rejeições por uma nova emissão, sem alterar nem reutilizar a numeração da nota rejeitada.";

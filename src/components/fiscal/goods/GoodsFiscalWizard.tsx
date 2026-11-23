@@ -1,5 +1,10 @@
 import { HorizontalTabBar } from '@/components/ui/HorizontalTabBar';
 import { goodsPaymentLabel } from '@/lib/fiscal/pdvNfce';
+import {
+  goodsFinalConsumerLabel,
+  resolveGoodsFinalConsumer,
+} from '@/lib/fiscal/goodsFinalConsumer';
+import { goodsRejectionGuidance } from '@/lib/fiscal/goodsRejectionGuidance';
 import { useAppLocaleContext } from "@/contexts/AppLocaleContext";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { toast } from "sonner";
@@ -119,6 +124,12 @@ const newDraft = (model: GoodsModel, direction: GoodsDirection): GoodsFiscalDraf
   payments: [{ method: model === 65 ? "01" : "90", amount: 0, change: 0 }],
   freightMode: 9,
   notes: "",
+  finalConsumer: model === 65 || (model === 55 && direction === "saida"),
+});
+
+const normalizeFinalConsumer = (draft: GoodsFiscalDraft): GoodsFiscalDraft => ({
+  ...draft,
+  finalConsumer: resolveGoodsFinalConsumer(draft),
 });
 
 const requiredFiscal = (item: GoodsFiscalItem, direction: GoodsDirection) => {
@@ -254,7 +265,7 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
     if (initialNature) setDraft(current => ({ ...current, nature: initialNature }));
     const saved = openingDocument.current.draft;
     if (!sourceId && saved?.sourceType === 'manual' && saved.model === model && saved.direction === direction && Array.isArray(saved.items) && Array.isArray(saved.payments)) {
-      setDraft({...saved,id:openingDocument.current.id ?? saved.id ?? null});
+      setDraft(normalizeFinalConsumer({...saved,id:openingDocument.current.id ?? saved.id ?? null}));
       setSelectedPartyId(saved.party?.id ?? '');
     }
   }, [open, model, direction, initialNature, sourceId]);
@@ -268,7 +279,7 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
       const saved = openingDocument.current.draft;
       const restored = saved?.model === model && saved.sourceType === sourceType && saved.sourceId === sourceId && Array.isArray(saved.items) && Array.isArray(saved.payments) ? saved : null;
       const party = restored ? restored.party : includeIdentifiedConsumer ? imported.party : null;
-      setDraft(current => ({ ...current, ...imported, ...restored, id: openingDocument.current.id ?? null, model,
+      setDraft(current => normalizeFinalConsumer({ ...current, ...imported, ...restored, id: openingDocument.current.id ?? null, model,
         sourceType, sourceId, direction: imported.direction, party,
         stockId: imported.stockId,
         nature: restored?.nature || initialNature || current.nature }));
@@ -303,7 +314,7 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
     setSelectedSource(id);
     try {
       const imported = await importer.mutateAsync(source);
-      setDraft((current) => ({
+      setDraft((current) => normalizeFinalConsumer({
         ...current,
         ...imported,
         model,
@@ -343,6 +354,9 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
         zipCode: customer.zip_code || "",
         municipalityCode: customer.ibge_municipality_code || "",
       },
+      finalConsumer: customer.inscricao_estadual
+        ? draft.finalConsumer === true
+        : true,
     });
   };
 
@@ -382,7 +396,7 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
     }
     const customer = customers.find((entry) => entry.id === selectedPartyId);
     if (!customer) return;
-    setDraft((current) => ({
+    setDraft((current) => normalizeFinalConsumer({
       ...current,
       party: {
         id: customer.id,
@@ -489,17 +503,25 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
     }
     try {
       if (emit) onBeforeEmit?.();
+      const normalizedDraft = normalizeFinalConsumer(draft);
       const response = await saver.mutateAsync({
-        draft,
+        draft: normalizedDraft,
         emit,
       });
-      if (typeof response.id === "string") patch({ id: response.id });
+      setDraft((current) => normalizeFinalConsumer({
+        ...current,
+        id: response.status === 'rejected'
+          ? null
+          : typeof response.id === "string"
+            ? response.id
+            : current.id,
+      }));
       if (response.status === 'authorized') toast.success(`${model === 65 ? 'NFC-e' : 'NF-e'} autorizada pela SEFAZ.`);
-      else if (response.status === 'rejected') toast.error('Documento rejeitado. Confira a situação e corrija as pendências fiscais.');
+      else if (response.status === 'rejected') toast.error(goodsRejectionGuidance(response.rejectionCode));
       else if (emit) toast.message('Solicitação fiscal registrada. Acompanhe a situação desta mesma nota.');
       else toast.success('Rascunho salvo.');
       onSaved?.(response);
-      if (emit) onOpenChange(false);
+      if (emit && response.status !== 'rejected') onOpenChange(false);
     } catch (error) {
       if (emit) onEmitFailure?.();
       toast.error((error as Error).message);
@@ -823,7 +845,7 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
               <div className="space-y-2">
                 <Label htmlFor="goods-nfe-series">Série da NF-e</Label>
                 <Select
-                  value={draft.seriesId ?? undefined}
+                  value={draft.seriesId ?? ""}
                   onValueChange={(seriesId) => patch({ seriesId })}
                 >
                   <SelectTrigger id="goods-nfe-series">
@@ -945,9 +967,18 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
                   <Input
                     id="goods-party-ie"
                     value={draft.party?.stateRegistration ?? ""}
-                    onChange={(e) =>
-                      patchParty({ stateRegistration: e.target.value })
-                    }
+                    onChange={(e) => {
+                      const stateRegistration = e.target.value;
+                      patch({
+                        party: {
+                          ...(draft.party ?? emptyParty()),
+                          stateRegistration,
+                        },
+                        finalConsumer: stateRegistration.replace(/\D/g, "")
+                          ? draft.finalConsumer === true
+                          : true,
+                      });
+                    }}
                   />
                 </div>
                 <div className="space-y-2">
@@ -1022,6 +1053,84 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
                 </div>
               </div>
             )}
+            {model === 55 && draft.direction === "saida" && draft.party ? (
+              <div className="space-y-3" data-qa="nfe-final-consumer-purpose">
+                <div>
+                  <Label className="text-base font-bold">Finalidade para o destinatário</Label>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Essa informação define se a compra é para uso próprio ou para continuar a atividade comercial.
+                  </p>
+                </div>
+                {!draft.party.stateRegistration?.replace(/\D/g, "") ? (
+                  <div className="flex items-start gap-4 rounded-2xl bg-primary p-5 text-primary-foreground">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-foreground text-primary">
+                      <UserRound className="h-5 w-5" />
+                    </span>
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-bold">Consumidor final</p>
+                        <Badge className="border border-primary-foreground/30 bg-primary-foreground/15 text-primary-foreground hover:bg-primary-foreground/15">
+                          Automático
+                        </Badge>
+                      </div>
+                      <p className="mt-1 text-sm text-primary-foreground/75">
+                        Como o destinatário não possui inscrição estadual, a NF-e será emitida para uso ou consumo próprio.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {[
+                      {
+                        value: true,
+                        title: "Uso ou consumo próprio",
+                        description: "O destinatário vai usar o produto e não pretende revendê-lo.",
+                        icon: UserRound,
+                      },
+                      {
+                        value: false,
+                        title: "Revenda ou industrialização",
+                        description: "O produto será revendido, transformado ou usado na produção.",
+                        icon: Package,
+                      },
+                    ].map((option) => {
+                      const selected = resolveGoodsFinalConsumer(draft) === option.value;
+                      const Icon = option.icon;
+                      return (
+                        <button
+                          key={String(option.value)}
+                          type="button"
+                          aria-pressed={selected}
+                          onClick={() => patch({ finalConsumer: option.value })}
+                          className={cn(
+                            "flex min-h-32 items-start gap-4 rounded-2xl border-2 p-5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                            selected
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border bg-background hover:border-foreground/30",
+                          )}
+                        >
+                          <span className={cn(
+                            "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground",
+                            selected && "bg-primary-foreground text-primary",
+                          )}>
+                            <Icon className="h-5 w-5" />
+                          </span>
+                          <span>
+                            <span className="block font-bold">{option.title}</span>
+                            <span className={cn(
+                              "mt-1 block text-sm text-muted-foreground",
+                              selected && "text-primary-foreground/75",
+                            )}>
+                              {option.description}
+                            </span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ) : null}
           </section>
         )}
 
@@ -1416,6 +1525,12 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
                       </dt>
                       <dd className="font-semibold">{draft.items.length}</dd>
                     </div>
+                    {model === 55 && (
+                      <div>
+                        <dt className="text-primary-foreground/65">Finalidade</dt>
+                        <dd className="font-semibold">{goodsFinalConsumerLabel(draft)}</dd>
+                      </div>
+                    )}
                     {model === 55 && (
                       <div>
                         <dt className="text-primary-foreground/65">Série</dt>

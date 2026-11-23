@@ -18,12 +18,24 @@ export function goodsPaymentLabel(method: string) {
   return labels[method] ?? 'Outro meio de pagamento';
 }
 
-/** A interface oferece recuperação apenas antes de qualquer envio; o servidor reconfirma. */
-export function goodsDocumentRecovery(document: Record<string,unknown>, now = Date.now()): {action:'revise'|'resume';label:string} | null {
+export type GoodsDocumentRecoveryAction = 'revise' | 'resume' | 'reissue';
+
+/** A interface mantém a rejeitada imutável e cria uma nova tentativa com nova numeração. */
+export function goodsDocumentRecovery(document: Record<string,unknown>, now = Date.now()): {action:GoodsDocumentRecoveryAction;label:string} | null {
   if (document.status === 'signed' && typeof document.access_key === 'string' && /^\d{44}$/.test(document.access_key)) return {action:'resume',label:'Continuar emissão'};
+  if (document.status === 'rejected') return {action:'reissue',label:'Corrigir e reemitir'};
   if (document.access_key) return null;
-  if (document.status === 'rejected') return {action:'revise',label:'Corrigir dados'};
   const age = now - new Date(String(document.updated_at ?? '')).getTime();
   if (document.status === 'preparing' && Number.isFinite(age) && age >= 300_000) return {action:'revise',label:'Retomar rascunho'};
   return null;
+}
+
+export function cloneGoodsDraftForReissue(payload: unknown): Record<string, unknown> {
+  const source = payload && typeof payload === 'object' && !Array.isArray(payload)
+    ? payload as Record<string, unknown>
+    : {};
+  const clone = JSON.parse(JSON.stringify(source)) as Record<string, unknown>;
+  for (const key of ['number', 'numero', 'accessKey', 'access_key', 'chave', 'protocol', 'protocolo', 'operationId', 'operation_id']) delete clone[key];
+  clone.id = null;
+  return clone;
 }

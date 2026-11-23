@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.56',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Finalidade correta na NF-e',
+        category: 'correcao',
+        description: 'Ao emitir para um cliente sem inscrição estadual, o sistema agora identifica automaticamente a operação como consumidor final. Para clientes com inscrição estadual, você escolhe entre uso próprio e revenda ou industrialização antes da emissão.',
+      },
+      {
+        title: 'Correção segura de notas rejeitadas',
+        category: 'seguranca',
+        description: 'Uma NF-e ou NFC-e rejeitada permanece preservada no histórico. A ação Corrigir e reemitir abre uma nova emissão com nova numeração, sem alterar nem reutilizar o documento rejeitado.',
+      },
+    ],
+  },
+  {
     version: '1.41.55',
     date: '23 de novembro de 2026',
     type: 'patch',
