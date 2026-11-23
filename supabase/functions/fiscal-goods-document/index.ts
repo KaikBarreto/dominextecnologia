@@ -87,6 +87,8 @@ interface NormalizedDraft {
   id: string | null;
   model: 55 | 65;
   direction: "entrada" | "saida";
+  seriesId: string | null;
+  carrierId: string | null;
   sourceType: "manual" | "pdv_sale" | "pdv_purchase" | "inventory_purchase";
   sourceId: string | null;
   nature: string;
@@ -188,6 +190,8 @@ export function normalizeDraft(raw: unknown): NormalizedDraft {
     id: uuid(draft.id),
     model,
     direction,
+    seriesId: model === 55 ? uuid(draft.seriesId) : null,
+    carrierId: model === 55 ? uuid(draft.carrierId) : null,
     sourceType,
     sourceId: sourceType === "manual" ? null : uuid(draft.sourceId),
     nature: text(draft.nature, 60),
@@ -709,6 +713,28 @@ async function assertSourceBelongsToCompany(
   }
 }
 
+async function assertFiscalCatalogsBelongToCompany(
+  auth: Awaited<ReturnType<typeof authorizeFiscalGoodsIssuer>> & { ok: true },
+  draft: NormalizedDraft,
+) {
+  if (draft.model !== 55) return;
+  if (draft.seriesId) {
+    const series = await auth.supabase.from('nfe_series').select('id,direction,active')
+      .eq('id', draft.seriesId).eq('company_id', auth.companyId).maybeSingle();
+    const allowedDirections = draft.direction === 'entrada' ? ['entrada', 'ambos'] : ['saida', 'ambos'];
+    if (series.error || !series.data || series.data.active !== true || !allowedDirections.includes(text(series.data.direction))) {
+      throw new GoodsDocumentError('series_forbidden', 'A série escolhida não está ativa para esta operação ou não pertence à empresa.', 403);
+    }
+  }
+  if (draft.carrierId) {
+    const carrier = await auth.supabase.from('fiscal_goods_carriers').select('id,active')
+      .eq('id', draft.carrierId).eq('company_id', auth.companyId).maybeSingle();
+    if (carrier.error || !carrier.data || carrier.data.active !== true) {
+      throw new GoodsDocumentError('carrier_forbidden', 'A transportadora escolhida não está ativa ou não pertence à empresa.', 403);
+    }
+  }
+}
+
 const outcomeStatus = goodsOutcome;
 
 const documentTable = (model: 55 | 65) =>
@@ -870,7 +896,9 @@ async function handleDocumentAction(
     if(issues.length)return jsonResponse({error:issues[0].code,message:issues[0].message},422);
     if(Number(row.environment)!==(fiscal.fiscal_ambiente==='producao'?1:2) || text(row.uf).toUpperCase()!==text(company.state).toUpperCase())throw new GoodsDocumentError('fiscal_context_changed','O ambiente ou a UF mudou desde a preparação. Consulte o suporte antes de continuar.',409);
     if(!/^[0-9a-f]{64}$/.test(text(row.snapshot_hash)) || await sha256(row.snapshot)!==row.snapshot_hash || digits(row.access_key).length!==44)throw new GoodsDocumentError('snapshot_unavailable','Não foi possível recuperar os dados fiscais preparados. Nenhum novo envio foi iniciado.',409);
-    await assertSourceBelongsToCompany(auth,normalizeDraft(row.draft_payload));
+    const storedDraft = normalizeDraft(row.draft_payload);
+    await assertSourceBelongsToCompany(auth, storedDraft);
+    await assertFiscalCatalogsBelongToCompany(auth, storedDraft);
     const xml=await storedSignedXml(auth,row.signed_xml_path);
     if(!xml)throw new GoodsDocumentError('snapshot_unavailable','O XML assinado ainda não está disponível. Nenhum novo envio foi iniciado.',409);
     return await transmitSavedGoods(auth,model,row,ctx,xml,setActive);
@@ -1154,7 +1182,8 @@ Deno.serve(async (req) => {
         400,
       );
     await assertSourceBelongsToCompany(auth, draft);
-    let row = await saveDraft(auth, draft);
+    await assertFiscalCatalogsBelongToCompany(auth, draft);
+    const row = await saveDraft(auth, draft);
     if (action === "save_draft" || row.status !== 'draft')
       return jsonResponse({ ok: true, id: row.id, status: row.status, existing: row.status !== 'draft' }, 200);
 
@@ -1205,6 +1234,8 @@ Deno.serve(async (req) => {
       const reserved = await auth.supabase.rpc("reserve_goods_fiscal_number", {
         p_company_id: auth.companyId,
         p_model: draft.model,
+        p_series_id: draft.seriesId,
+        p_direction: draft.direction,
       });
       const reservation = Array.isArray(reserved.data)
         ? object(reserved.data[0])
