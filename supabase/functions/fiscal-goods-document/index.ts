@@ -87,6 +87,9 @@ interface NormalizedDraft {
   id: string | null;
   model: 55 | 65;
   direction: "entrada" | "saida";
+  stockId: string | null;
+  seriesId: string | null;
+  carrierId: string | null;
   sourceType: "manual" | "pdv_sale" | "pdv_purchase" | "inventory_purchase";
   sourceId: string | null;
   nature: string;
@@ -188,6 +191,9 @@ export function normalizeDraft(raw: unknown): NormalizedDraft {
     id: uuid(draft.id),
     model,
     direction,
+    stockId: uuid(draft.stockId),
+    seriesId: model === 55 ? uuid(draft.seriesId) : null,
+    carrierId: model === 55 ? uuid(draft.carrierId) : null,
     sourceType,
     sourceId: sourceType === "manual" ? null : uuid(draft.sourceId),
     nature: text(draft.nature, 60),
@@ -207,6 +213,7 @@ function validation(
   taxRegime: string,
 ): string[] {
   const errors: string[] = [];
+  if (!draft.stockId) errors.push("Selecione o local de estoque da operação.");
   if (!draft.nature) errors.push("Informe a natureza da operação.");
   if (!draft.items.length) errors.push("Adicione ao menos um item.");
   if (
@@ -587,6 +594,7 @@ async function saveDraft(
   const table = draft.model === 55 ? "nfe_documents" : "nfce_documents";
   const common: JsonObject = {
     company_id: auth.companyId,
+    stock_id: draft.stockId,
     source_type: draft.sourceType,
     source_id: draft.sourceId,
     draft_payload: draft,
@@ -645,6 +653,51 @@ async function saveDraft(
         : "Não foi possível salvar o rascunho.",
     );
   return data as JsonObject;
+}
+
+async function assertFiscalStock(
+  auth: Awaited<ReturnType<typeof authorizeFiscalGoodsIssuer>> & { ok: true },
+  draft: NormalizedDraft,
+) {
+  if (!draft.stockId) {
+    throw new GoodsDocumentError('stock_required', 'Selecione o local de estoque da operação.');
+  }
+  const [stock, access] = await Promise.all([
+    auth.supabase.from('stocks').select('id').eq('id', draft.stockId)
+      .eq('company_id', auth.companyId).is('customer_id', null).maybeSingle(),
+    auth.supabase.rpc('can_access_stock', {
+      _user_id: auth.userId,
+      _stock_id: draft.stockId,
+    }),
+  ]);
+  if (stock.error || !stock.data || access.error || access.data !== true) {
+    throw new GoodsDocumentError('stock_forbidden', 'O local de estoque não está disponível para seu acesso.', 403);
+  }
+  if (draft.sourceType === 'manual') return;
+  if (!draft.sourceId) {
+    throw new GoodsDocumentError('source_invalid', 'Selecione uma venda ou compra válida para importar.');
+  }
+
+  let inheritedStockId: string | null = null;
+  if (draft.sourceType === 'pdv_sale') {
+    const source = await auth.supabase.from('pdv_orders').select('stock_id')
+      .eq('id', draft.sourceId).eq('company_id', auth.companyId).maybeSingle();
+    if (source.error) throw new Error('Não foi possível validar o local da venda importada.');
+    inheritedStockId = uuid(source.data?.stock_id);
+  } else {
+    const source = await auth.supabase.from('compra_ordens')
+      .select('compras!inner(stock_id)').eq('id', draft.sourceId)
+      .eq('company_id', auth.companyId).maybeSingle();
+    if (source.error) throw new Error('Não foi possível validar o local da compra importada.');
+    inheritedStockId = uuid(object(source.data?.compras).stock_id);
+  }
+  if (!inheritedStockId || inheritedStockId !== draft.stockId) {
+    throw new GoodsDocumentError(
+      'stock_source_mismatch',
+      'O local de estoque da nota precisa ser o mesmo da venda ou compra importada.',
+      409,
+    );
+  }
 }
 
 async function assertSourceBelongsToCompany(
@@ -706,6 +759,28 @@ async function assertSourceBelongsToCompany(
     throw new Error(
       "A compra importada não foi encontrada na origem escolhida para esta empresa.",
     );
+  }
+}
+
+async function assertFiscalCatalogsBelongToCompany(
+  auth: Awaited<ReturnType<typeof authorizeFiscalGoodsIssuer>> & { ok: true },
+  draft: NormalizedDraft,
+) {
+  if (draft.model !== 55) return;
+  if (draft.seriesId) {
+    const series = await auth.supabase.from('nfe_series').select('id,direction,active')
+      .eq('id', draft.seriesId).eq('company_id', auth.companyId).maybeSingle();
+    const allowedDirections = draft.direction === 'entrada' ? ['entrada', 'ambos'] : ['saida', 'ambos'];
+    if (series.error || !series.data || series.data.active !== true || !allowedDirections.includes(text(series.data.direction))) {
+      throw new GoodsDocumentError('series_forbidden', 'A série escolhida não está ativa para esta operação ou não pertence à empresa.', 403);
+    }
+  }
+  if (draft.carrierId) {
+    const carrier = await auth.supabase.from('fiscal_goods_carriers').select('id,active')
+      .eq('id', draft.carrierId).eq('company_id', auth.companyId).maybeSingle();
+    if (carrier.error || !carrier.data || carrier.data.active !== true) {
+      throw new GoodsDocumentError('carrier_forbidden', 'A transportadora escolhida não está ativa ou não pertence à empresa.', 403);
+    }
   }
 }
 
@@ -870,7 +945,9 @@ async function handleDocumentAction(
     if(issues.length)return jsonResponse({error:issues[0].code,message:issues[0].message},422);
     if(Number(row.environment)!==(fiscal.fiscal_ambiente==='producao'?1:2) || text(row.uf).toUpperCase()!==text(company.state).toUpperCase())throw new GoodsDocumentError('fiscal_context_changed','O ambiente ou a UF mudou desde a preparação. Consulte o suporte antes de continuar.',409);
     if(!/^[0-9a-f]{64}$/.test(text(row.snapshot_hash)) || await sha256(row.snapshot)!==row.snapshot_hash || digits(row.access_key).length!==44)throw new GoodsDocumentError('snapshot_unavailable','Não foi possível recuperar os dados fiscais preparados. Nenhum novo envio foi iniciado.',409);
-    await assertSourceBelongsToCompany(auth,normalizeDraft(row.draft_payload));
+    const storedDraft = normalizeDraft(row.draft_payload);
+    await assertSourceBelongsToCompany(auth, storedDraft);
+    await assertFiscalCatalogsBelongToCompany(auth, storedDraft);
     const xml=await storedSignedXml(auth,row.signed_xml_path);
     if(!xml)throw new GoodsDocumentError('snapshot_unavailable','O XML assinado ainda não está disponível. Nenhum novo envio foi iniciado.',409);
     return await transmitSavedGoods(auth,model,row,ctx,xml,setActive);
@@ -1154,7 +1231,9 @@ Deno.serve(async (req) => {
         400,
       );
     await assertSourceBelongsToCompany(auth, draft);
-    let row = await saveDraft(auth, draft);
+    await assertFiscalStock(auth, draft);
+    await assertFiscalCatalogsBelongToCompany(auth, draft);
+    const row = await saveDraft(auth, draft);
     if (action === "save_draft" || row.status !== 'draft')
       return jsonResponse({ ok: true, id: row.id, status: row.status, existing: row.status !== 'draft' }, 200);
 
@@ -1205,6 +1284,8 @@ Deno.serve(async (req) => {
       const reserved = await auth.supabase.rpc("reserve_goods_fiscal_number", {
         p_company_id: auth.companyId,
         p_model: draft.model,
+        p_series_id: draft.seriesId,
+        p_direction: draft.direction,
       });
       const reservation = Array.isArray(reserved.data)
         ? object(reserved.data[0])

@@ -6,7 +6,10 @@ import { GoodsFiscalWizard } from './GoodsFiscalWizard';
 const state=vi.hoisted(()=>({importer:vi.fn(),save:vi.fn()}));
 vi.mock('@/contexts/AppLocaleContext',()=>({useAppLocaleContext:()=>({locale:'pt-br'})}));
 vi.mock('@/hooks/useGoodsFiscalAccess',()=>({useGoodsFiscalAccess:()=>({allowed:true,scopeId:'company-a:user-a:emit'})}));
+vi.mock('@/hooks/useGoodsFiscalCatalogs',()=>({useGoodsFiscalCatalogs:()=>({series:[],scenarios:[],carriers:[],isLoading:false})}));
+vi.mock('@/hooks/useGoodsFiscalSettings',()=>({useGoodsFiscalSettings:()=>({settings:{nfe:{defaultEntrySeriesId:'',defaultExitSeriesId:''}}})}));
 vi.mock('@/hooks/useInventory',()=>({useInventory:()=>({items:[]})}));
+vi.mock('@/hooks/useStocks',()=>({useStocks:()=>({stocks:[{id:'stock-a',name:'Principal',is_default:true}],defaultStock:{id:'stock-a',name:'Principal',is_default:true},isLoading:false})}));
 vi.mock('@/hooks/useCustomers',()=>({useCustomers:()=>({customers:[]})}));
 vi.mock('@/hooks/useSuppliers',()=>({useSuppliers:()=>({suppliers:[]})}));
 vi.mock('@/hooks/use-mobile',()=>({useIsMobile:()=>false}));
@@ -16,7 +19,7 @@ vi.mock('./GoodsFiscalItemInput',()=>({GoodsFiscalItemInput:()=>null}));
 vi.mock('@/hooks/useGoodsFiscal',()=>({useGoodsFiscalSourceImport:()=>({mutateAsync:state.importer}),useGoodsFiscalSources:()=>({data:[],isLoading:false}),useSaveGoodsFiscalDocument:()=>({mutateAsync:state.save,isPending:false})}));
 vi.mock('@/components/ui/FullscreenWizard',()=>({FullscreenWizard:({children,footer}:{children:ReactNode;footer:ReactNode})=><div role="dialog">{children}{footer}</div>,FullscreenWizardAction:({children,onClick,disabled}:{children:ReactNode;onClick:()=>void;disabled?:boolean})=><button onClick={onClick} disabled={disabled}>{children}</button>}));
 const payments=[{method:'01',amount:35,change:5,deferred:false},{method:'17',amount:15,change:0,deferred:false},{method:'05',amount:15,change:0,deferred:true}];
-const snapshot={model:65,direction:'saida',sourceType:'pdv_sale',sourceId:'paid-sale',party:null,items:[{id:'item-a',sourceItemId:'line-a',description:'Material fictício',quantity:2,unitPrice:30,discount:0,total:60,unit:'UN',taxUnit:'UN',ncm:'12345678',origin:'0',cfopExitInternal:'5102',icmsCode:'102',pisCst:'49',cofinsCst:'49'}],payments};
+const snapshot={model:65,direction:'saida',stockId:'stock-a',sourceType:'pdv_sale',sourceId:'paid-sale',party:null,items:[{id:'item-a',sourceItemId:'line-a',description:'Material fictício',quantity:2,unitPrice:30,discount:0,total:60,unit:'UN',taxUnit:'UN',ncm:'12345678',origin:'0',cfopExitInternal:'5102',icmsCode:'102',pisCst:'49',cofinsCst:'49'}],payments};
 beforeEach(()=>{vi.clearAllMocks();state.importer.mockResolvedValue(snapshot);state.save.mockResolvedValue({id:'document-a',status:'draft'});});
 describe('wizard fiscal reutilizado para venda confirmada',()=>{
  it('mostra todas as formas importadas, troco e fiado sem editar pagamento',async()=>{

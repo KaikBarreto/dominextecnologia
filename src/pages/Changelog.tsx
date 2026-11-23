@@ -53,6 +53,57 @@ export const changelog: ChangelogEntry[] = [
     ],
   },
   {
+    version: '1.41.46',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Todas as contas aparecem ao navegar pelo calendário',
+        category: 'correcao',
+        description: 'No Contas a Pagar e Receber, o calendário agora mostra as contas com vencimento no mês aberto, mesmo quando a lista está filtrada por outro período. Os filtros de status, categoria, centro de custo e tipo de conta continuam funcionando normalmente.',
+      },
+    ],
+  },
+  {
+    version: '1.41.45',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Filtros persistentes na Agenda',
+        category: 'recurso',
+        description: 'Agora você pode escolher se quer ver tudo, somente ordens de serviço ou somente tarefas na Agenda. A escolha fica salva no seu usuário e acompanha você quando acessar em outro aparelho.',
+      },
+      {
+        title: 'Agenda mais limpa em dias cheios',
+        category: 'melhoria',
+        description: 'Os compromissos ocupam menos espaço quando há muitos itens no mesmo período. As tarefas também ganharam um visual neutro em cinza, adaptado ao tema claro ou escuro, para destacar melhor as ordens de serviço.',
+      },
+    ],
+  },
+  {
+    version: '1.41.44',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Visão gerencial dos resultados da Loja',
+        category: 'recurso',
+        description: 'Os relatórios da Loja ganharam uma Visão geral com receita, vendas, ticket médio, margem, custos, devoluções e evolução diária. Os indicadores também comparam o período escolhido com o período anterior para facilitar a leitura do desempenho.',
+      },
+      {
+        title: 'Produtos, pagamentos e caixas em análises próprias',
+        category: 'recurso',
+        description: 'Agora há áreas separadas para analisar produtos e margem, formas de pagamento e conferência dos caixas. Os rankings destacam concentração de receita e eficiência comercial, enquanto a conferência mostra valores esperados, contados, faltas e sobras.',
+      },
+      {
+        title: 'Relatórios organizados e exportação em PDF ou Excel',
+        category: 'melhoria',
+        description: 'O período ficou no topo da tela e as ações passaram a acompanhar as abas do relatório. O botão Exportar permite escolher PDF ou Excel, e a navegação foi ajustada para ocupar melhor o espaço no computador e no celular.',
+      },
+    ],
+  },
+  {
     version: '1.41.43',
     date: '23 de novembro de 2026',
     type: 'patch',

@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Loader2, ShoppingBag } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Loader2, ShoppingBag, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -39,22 +39,70 @@ export function PdvSalesPanel({
   from,
   to,
   refreshKey = 0,
+  excelRequestKey = 0,
+  onDownloadExcel,
+  onExcelError,
   onDownloadCsv,
+  dimensions = ['product', 'customer', 'salesperson', 'hour'],
+  initialDimension,
+  description = 'O que mais saiu no período, só com vendas. Os valores já descontam as devoluções.',
 }: {
   from: string;
   to: string;
   /** Muda quando o usuário toca em Atualizar no topo do relatório. */
   refreshKey?: number;
+  /** Muda quando o usuário escolhe Excel no menu global de exportação. */
+  excelRequestKey?: number;
+  onDownloadExcel?: (
+    name: string,
+    sheetName: string,
+    rows: Array<Array<string | number | null>>,
+  ) => Promise<void>;
+  onExcelError?: (message: string | null) => void;
   onDownloadCsv: (name: string, rows: Array<Array<string | number | null>>) => void;
+  dimensions?: PdvSalesDimension[];
+  initialDimension?: PdvSalesDimension;
+  description?: string;
 }) {
   const isMobile = useIsMobile();
   const { money } = useLocaleFormatters();
-  const [dimension, setDimension] = useState<PdvSalesDimension>("product");
+  const [dimension, setDimension] = useState<PdvSalesDimension>(initialDimension ?? dimensions[0] ?? 'customer');
   const [offset, setOffset] = useState(0);
   useEffect(() => { setOffset(0); }, [dimension, from, to]);
 
   const report = usePdvSalesReport({ dimension, from, to, limit: PAGE_SIZE, offset });
   const salesExport = usePdvSalesExport({ dimension, from, to });
+  const handledExcelRequest = useRef(0);
+  const excelHandlers = useRef({ onDownloadExcel, onExcelError });
+  const exportEntries = useRef(salesExport.exportEntries);
+  excelHandlers.current = { onDownloadExcel, onExcelError };
+  exportEntries.current = salesExport.exportEntries;
+  useEffect(() => {
+    if (excelRequestKey <= 0 || handledExcelRequest.current === excelRequestKey) return;
+    handledExcelRequest.current = excelRequestKey;
+    const handlers = excelHandlers.current;
+    if (!handlers.onDownloadExcel) return;
+    handlers.onExcelError?.(null);
+    void exportEntries.current((rows) => {
+      void handlers.onDownloadExcel?.(
+        `vendas-pdv-${SALES_DIMENSION_LABELS[dimension].toLowerCase()}-${from}-${to}`,
+        SALES_DIMENSION_LABELS[dimension],
+        [
+          [NAME_HEADER[dimension], "Detalhe", "Vendas", "Quantidade", "Receita", "Custo dos materiais", "Margem", "Participação"],
+          ...rows.map((row) => [
+            salesRowLabel(row, dimension),
+            row.detail,
+            row.ordersCount,
+            row.quantity,
+            row.revenue,
+            row.cmv,
+            row.margin,
+            Number((row.share * 100).toFixed(2)),
+          ]),
+        ],
+      ).catch(() => handlers.onExcelError?.("Não foi possível gerar o arquivo Excel. Tente novamente."));
+    });
+  }, [dimension, excelRequestKey, from, to]);
   const { refetch } = report;
   useEffect(() => { if (refreshKey > 0) void refetch(); }, [refreshKey, refetch]);
   const percent = (share: number) => `${(share * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`;
@@ -76,25 +124,41 @@ export function PdvSalesPanel({
   const showQuantity = shown === "product";
   const page = Math.floor(offset / PAGE_SIZE) + 1;
   const totalPages = Math.max(1, Math.ceil(data.totalCount / PAGE_SIZE));
+  const revenueLeader = data.rows.reduce<(typeof data.rows)[number] | null>(
+    (leader, row) => (!leader || row.revenue > leader.revenue ? row : leader),
+    null,
+  );
+  const topRows = [...data.rows]
+    .sort((left, right) => right.revenue - left.revenue)
+    .slice(0, 3);
+  const topRowsShare = Math.min(1, topRows.reduce((total, row) => total + row.share, 0));
+  const topRowsCount = topRows.length;
+  const averagePerSale = data.totals.ordersCount > 0
+    ? data.totals.revenue / data.totals.ordersCount
+    : 0;
+  const marginRate = data.totals.margin == null || data.totals.revenue === 0
+    ? null
+    : data.totals.margin / data.totals.revenue;
+  const concentrationLabel = shown === 'hour' ? 'Horário de pico' : 'Concentração de receita';
 
   return (
     <section className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        O que mais saiu no período, só com vendas. Os valores já descontam as devoluções.
+        {description}
       </p>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex max-w-xs flex-1">
+        {dimensions.length > 1 && <div className="flex max-w-xs flex-1">
           <Select value={dimension} onValueChange={(value) => setDimension(value as PdvSalesDimension)}>
             <SelectTrigger aria-label="Ver vendas por">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {(Object.keys(SALES_DIMENSION_LABELS) as PdvSalesDimension[]).map((value) => (
+              {dimensions.map((value) => (
                 <SelectItem key={value} value={value}>{`Por ${SALES_DIMENSION_LABELS[value].toLowerCase()}`}</SelectItem>
               ))}
             </SelectContent>
           </Select>
-        </div>
+        </div>}
         <div className="flex justify-end print:hidden">
           <Button
             variant="outline"
@@ -130,6 +194,46 @@ export function PdvSalesPanel({
         ))}
       </div>
 
+      {data.rows.length > 0 && offset === 0 && (
+        <div className="space-y-3 rounded-xl bg-muted/45 p-4 sm:p-5">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-muted-foreground" />
+            <div>
+              <h3 className="text-sm font-semibold">Leitura do período</h3>
+              <p className="text-xs text-muted-foreground">Destaques para decidir onde investigar primeiro.</p>
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Maior receita</p>
+              <p className="mt-1 break-words font-semibold">{revenueLeader ? salesRowLabel(revenueLeader, shown) : 'Sem destaque'}</p>
+              {revenueLeader && <p className="text-xs text-muted-foreground tabular-nums">{money(revenueLeader.revenue)} · {percent(revenueLeader.share)} do total</p>}
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">{concentrationLabel}</p>
+              {shown === 'hour' ? (
+                <>
+                  <p className="mt-1 break-words font-semibold">{revenueLeader ? salesRowLabel(revenueLeader, shown) : 'Sem destaque'}</p>
+                  {revenueLeader && <p className="text-xs text-muted-foreground tabular-nums">{percent(revenueLeader.share)} da receita</p>}
+                </>
+              ) : (
+                <>
+                  <p className="mt-1 font-semibold tabular-nums">{percent(topRowsShare)}</p>
+                  <p className="text-xs text-muted-foreground">da receita está concentrada {topRowsCount === 1 ? 'no primeiro registro' : `nos ${topRowsCount} primeiros`}</p>
+                </>
+              )}
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Eficiência comercial</p>
+              <p className="mt-1 break-words font-semibold tabular-nums">{money(averagePerSale)} por venda</p>
+              <p className="text-xs text-muted-foreground">
+                {marginRate == null ? 'Margem percentual indisponível' : `${percent(marginRate)} de margem no período`}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {data.rows.length === 0 ? (
         <EmptyState
           size="compact"
@@ -137,7 +241,13 @@ export function PdvSalesPanel({
           title="Nenhuma venda no período"
           description="Mude o período para ver outras vendas."
         />
-      ) : isMobile ? (
+      ) : (
+        <div className="space-y-3">
+          <div>
+            <h3 className="text-sm font-semibold">Detalhamento do ranking</h3>
+            <p className="text-xs text-muted-foreground">Compare participação, receita e margem de cada registro.</p>
+          </div>
+          {isMobile ? (
         <div className="space-y-2">
           {data.rows.map((row, index) => (
             <Card key={`${row.key ?? "sem"}-${index}`}>
@@ -164,7 +274,7 @@ export function PdvSalesPanel({
             </Card>
           ))}
         </div>
-      ) : (
+          ) : (
         <Card>
           <CardContent className="p-0">
             <Table>
@@ -207,6 +317,8 @@ export function PdvSalesPanel({
             </Table>
           </CardContent>
         </Card>
+          )}
+        </div>
       )}
 
       <div className="flex flex-col gap-2 border-t pt-3 text-xs sm:flex-row sm:items-center sm:justify-between">

@@ -78,6 +78,9 @@ export interface GoodsFiscalDraft {
   id?: string | null;
   model: GoodsModel;
   direction: GoodsDirection;
+  stockId?: string | null;
+  seriesId?: string | null;
+  carrierId?: string | null;
   sourceType: GoodsSourceType;
   sourceId?: string | null;
   nature: string;
@@ -197,6 +200,9 @@ export function projectGoodsSnapshot(
   return {
     id: null,
     direction: root.direction === "entrada" ? "entrada" : "saida",
+    stockId: text(root.stockId) || null,
+    seriesId: text(root.seriesId) || null,
+    carrierId: text(root.carrierId) || null,
     sourceType: text(root.sourceType) as GoodsSourceType,
     sourceId: text(root.sourceId) || null,
     party,
@@ -237,10 +243,22 @@ export function useGoodsFiscalSourceImport() {
   const guard = useFiscalGuard();
   return useMutation({ mutationFn: async (source: Pick<GoodsFiscalSource, 'sourceType' | 'sourceId'>) => {
     const assertCurrent = guard();
-    const { data, error } = await rpc('fiscal_get_goods_source_snapshot', { p_source_type: source.sourceType, p_source_id: source.sourceId });
+    const snapshotResult = await rpc('fiscal_get_goods_source_snapshot', {
+      p_source_type: source.sourceType,
+      p_source_id: source.sourceId,
+    });
     assertCurrent();
-    if (error) throw new Error('Não foi possível importar esta venda ou compra. Confira a confirmação e o acesso fiscal.');
-    return projectGoodsSnapshot(data);
+    if (snapshotResult.error) throw new Error('Não foi possível importar esta venda ou compra. Confira a confirmação e o acesso fiscal.');
+    const stockResult = await rpc('fiscal_resolve_source_stock', {
+      p_source_type: source.sourceType,
+      p_source_id: source.sourceId,
+    });
+    assertCurrent();
+    if (stockResult.error) throw new Error('Não foi possível identificar o local de estoque desta venda ou compra.');
+    return {
+      ...projectGoodsSnapshot(snapshotResult.data),
+      stockId: text(stockResult.data) || null,
+    };
   }});
 }
 
@@ -253,7 +271,7 @@ export function useGoodsFiscalDocuments(model: GoodsModel, sourceId?: string | n
       type Builder = { eq: (column: string, value: string) => Builder; order: (column: string, options: { ascending: boolean }) => Builder; limit: (count: number) => Promise<RpcResult> };
       const client = supabase as unknown as { from: (name: string) => { select: (fields: string) => Builder } };
       let builder = client.from(model === 55 ? 'nfe_documents' : 'nfce_documents')
-        .select(`id,status,official_status,environment,series,number,access_key,protocol,draft_payload,source_type,source_id,processed_xml_path,${model === 55 ? 'danfe_pdf_path' : 'danfce_pdf_path'},last_error_code,last_error_message,created_at,updated_at`)
+        .select(`id,status,official_status,environment,series,number,access_key,protocol,draft_payload,stock_id,source_type,source_id,processed_xml_path,${model === 55 ? 'danfe_pdf_path' : 'danfce_pdf_path'},last_error_code,last_error_message,created_at,updated_at`)
         .eq('company_id', access.companyId!);
       if (sourceId) builder = builder.eq('source_type', 'pdv_sale').eq('source_id', sourceId);
       const { data, error } = await builder.order('created_at', { ascending: false }).limit(sourceId ? 1 : 100);
@@ -281,11 +299,17 @@ export function useSaveGoodsFiscalDocument() {
     const assertCurrent = guard();
     const result = await invokeGoods({ action: emit ? 'emit' : 'save_draft', draft });
     assertCurrent(); return result;
-  }, onSettled: () => client.invalidateQueries({ queryKey: GOODS_FISCAL_ROOT }), retry: false });
+  }, onSettled: () => {
+    void client.invalidateQueries({ queryKey: GOODS_FISCAL_ROOT });
+    void client.invalidateQueries({ queryKey: ['fiscal-inventory'] });
+  }, retry: false });
 }
 export function useGoodsFiscalDocumentAction() {
   const client = useQueryClient(); const guard = useFiscalGuard();
   return useMutation({ mutationFn: async (input: { model: GoodsModel; documentId: string; action: 'consult' | 'artifact' | 'cancel' | 'revise' | 'resume'; kind?: 'xml' | 'pdf'; reason?: string }) => {
     const assertCurrent = guard(); const result = await invokeGoods(input); assertCurrent(); return result;
-  }, onSettled: () => client.invalidateQueries({ queryKey: GOODS_FISCAL_ROOT }), retry: false });
+  }, onSettled: () => {
+    void client.invalidateQueries({ queryKey: GOODS_FISCAL_ROOT });
+    void client.invalidateQueries({ queryKey: ['fiscal-inventory'] });
+  }, retry: false });
 }

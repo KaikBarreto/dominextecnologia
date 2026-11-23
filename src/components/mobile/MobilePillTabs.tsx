@@ -253,9 +253,9 @@ export function MobilePillTabs({ tabs, activeTab, onTabChange, className, varian
   // A linha inteira ganha a borda; a barra de abas perde a dela pra não
   // desenhar duas linhas sobrepostas de comprimentos diferentes.
   return (
-    <div className={cn('flex items-end gap-3 border-b border-border', className)}>
+    <div className={cn('flex flex-col gap-2 border-b border-border sm:flex-row sm:items-end sm:gap-3', className)}>
       <div className="min-w-0 flex-1 [&_[role=tablist]]:border-b-0">{barra}</div>
-      <div className="shrink-0 pb-1.5">{actions}</div>
+      <div className="flex shrink-0 justify-end pb-1.5">{actions}</div>
     </div>
   );
 }

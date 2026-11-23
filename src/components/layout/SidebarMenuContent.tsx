@@ -6,7 +6,6 @@ import {
   Package,
   DollarSign,
   FileText,
-  Receipt,
   TicketPercent,
   Settings as SettingsIcon,
   User,
@@ -82,6 +81,7 @@ import { HelpCenterDrawer } from '@/components/layout/HelpCenterDrawer';
 import { AccountSwitcherDropdown } from '@/components/account-switcher/AccountSwitcherDropdown';
 import { getCompanyWhatsAppNumber } from '@/components/landing/whatsappNumbers';
 import { podeAcessarDomiflixAdmin } from '@/lib/adminDomiflixAccess';
+import { fiscalNavigationItem } from '@/config/fiscalNavigation';
 import iconePreto from '@/assets/icone_preto.png';
 import iconeVerde from '@/assets/icone_verde.png';
 import logoHorizontalVerde from '@/assets/logo-horizontal-verde.png';
@@ -190,9 +190,7 @@ const tenantMenuItems: MenuItem[] = [
       { title: 'Relatórios', icon: BarChart3, path: '/financeiro/relatorios', screenKey: 'screen:finance' },
     ],
   },
-  // Módulo fiscal no primeiro nível do menu, independente do grupo Financeiro.
-  // Mantém o gate duplo: módulo pago `nfe` + permissão de tela dedicada.
-  { title: 'Notas Fiscais', icon: Receipt, path: '/notas-fiscais', screenKey: 'screen:fiscal_notes', moduleKey: 'nfe' },
+  fiscalNavigationItem,
 ];
 
 const adminMenuItems: (MenuItem & { masterOnly?: boolean })[] = [

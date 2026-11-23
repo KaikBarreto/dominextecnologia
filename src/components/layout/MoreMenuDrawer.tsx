@@ -8,7 +8,6 @@ import {
   Package,
   DollarSign,
   FileText,
-  Receipt,
   TicketPercent,
   FileBarChart,
   CalendarClock,
@@ -71,6 +70,7 @@ import { SystemFooter } from '@/components/layout/SystemFooter';
 import { getCompanyWhatsAppNumber } from '@/components/landing/whatsappNumbers';
 import { podeAcessarDomiflixAdmin } from '@/lib/adminDomiflixAccess';
 import { cn } from '@/lib/utils';
+import { fiscalNavigationItem } from '@/config/fiscalNavigation';
 
 interface MenuItem {
   title: string;
@@ -157,7 +157,7 @@ const tenantMenuItems: MenuItem[] = [
       { title: 'Relatórios', icon: BarChart3, path: '/financeiro/relatorios', screenKey: 'screen:finance' },
     ],
   },
-  { title: 'Notas Fiscais', icon: Receipt, path: '/notas-fiscais', screenKey: 'screen:fiscal_notes', moduleKey: 'nfe' },
+  fiscalNavigationItem,
   // Configurações intencionalmente fora da lista — já existe botão dedicado
   // no footer do drawer (mesmo destino), evitando duplicidade visual.
 ];

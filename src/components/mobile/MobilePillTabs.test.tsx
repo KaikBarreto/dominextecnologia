@@ -84,6 +84,28 @@ describe('MobilePillTabs underline', () => {
     expect(screen.getByRole('tab', { name: 'Custos dos Serviços' })).not.toHaveClass('font-bold');
   });
 
+  it('empilha ações no mobile e mantém a mesma faixa no desktop', () => {
+    render(
+      <MobilePillTabs
+        variant="underline"
+        tabs={[
+          { value: 'movimentos', label: 'Movimentações' },
+          { value: 'historico', label: 'Histórico' },
+        ]}
+        activeTab="movimentos"
+        onTabChange={() => undefined}
+        actions={<button type="button">Exportar</button>}
+      />,
+    );
+
+    const exportar = screen.getByRole('button', { name: 'Exportar' });
+    const actions = exportar.parentElement;
+    const wrapper = actions?.parentElement;
+
+    expect(actions).toHaveClass('justify-end');
+    expect(wrapper).toHaveClass('flex-col', 'sm:flex-row', 'sm:items-end');
+  });
+
   it('mantém texto branco na categoria saturada quando solicitado', () => {
     render(
       <MobilePillTabs

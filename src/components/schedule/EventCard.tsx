@@ -179,12 +179,12 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
           'group flex items-start gap-1 px-1.5 py-0.5 rounded text-xs cursor-pointer transition-all hover:scale-[1.02] overflow-hidden',
           fillHeight && 'h-full',
           isDone && 'opacity-60',
-          isTask && !serviceTypeColor && 'bg-violet-500/15 text-violet-700 dark:text-violet-300 border border-violet-300/50 dark:border-violet-600/50',
+          isTask && 'border border-foreground/10 bg-foreground/[0.06] text-foreground/70 hover:bg-foreground/[0.09]',
           !isTask && !serviceTypeColor && statusBadge.className,
           isResumedDisplay && 'border-l-4 border-l-amber-500',
           isMoving && 'ring-2 ring-primary ring-offset-1 animate-glow-pulse'
         )}
-        style={serviceTypeColor ? { backgroundColor: colorShift ? getShiftedColor(serviceTypeColor, colorShift) : serviceTypeColor, color: 'white' } : undefined}
+        style={!isTask && serviceTypeColor ? { backgroundColor: colorShift ? getShiftedColor(serviceTypeColor, colorShift) : serviceTypeColor, color: 'white' } : undefined}
         title={isResumedDisplay ? 'OS retomada — agendada originalmente para outra data' : undefined}
       >
         {isResumedDisplay && <Play className="h-3 w-3 shrink-0 mt-px text-amber-500" />}
@@ -218,7 +218,7 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
 
   // Precedência da borda esquerda:
   //  1. Retomada → âmbar (máxima prioridade)
-  //  2. Tarefa   → violet
+  //  2. Tarefa   → neutra, adaptada ao tema
   //  3. PMOC     → azul (mesma cor do selo "PMOC", bg-blue-600)
   //  4. serviceTypeColor → filete com a cor do tipo de serviço
   let leftBorderStyle: React.CSSProperties | undefined;
@@ -227,7 +227,7 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
   if (isResumedDisplay) {
     leftBorderClass = 'border-l-4 border-l-amber-500';
   } else if (isTask) {
-    leftBorderClass = 'border-l-4 border-l-violet-500';
+    leftBorderClass = 'border-l-4 border-l-foreground/25';
   } else if (isPmoc) {
     leftBorderClass = 'border-l-4 border-l-blue-600';
   } else if (serviceTypeColor) {
@@ -262,7 +262,7 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
             </Badge>
           )}
           {isDone && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
-          {isTask && !isDone && <CheckSquare className="h-3.5 w-3.5 text-violet-500" />}
+          {isTask && !isDone && <CheckSquare className="h-3.5 w-3.5 text-foreground/50" />}
           {showDate && (
             <span className={cn('text-xs font-medium text-muted-foreground', isDone && 'line-through')}>
               {formatShortDate(order.scheduled_date)}
@@ -294,7 +294,7 @@ export function EventCard({ order, compact = false, fillHeight = false, onClick,
         </div>
       </div>
       {isTask ? (
-        <p className="text-xs font-medium break-words line-clamp-2 text-violet-600 dark:text-violet-400">
+        <p className="text-xs font-medium break-words line-clamp-2 text-foreground/75">
           {taskTitle || 'Tarefa'}
         </p>
       ) : (
