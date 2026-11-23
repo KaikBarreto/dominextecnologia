@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.52";
+export const APP_VERSION = "1.41.53";
 
 export const VERSION_NOTES =
-  "Vídeos e novos arquivos agora carregam de forma mais econômica, reduzindo consumo de dados sem mudar o uso do sistema.";
+  "O administrador master agora acompanha envios, falhas, filas e limites de e-mail e WhatsApp em um único painel.";

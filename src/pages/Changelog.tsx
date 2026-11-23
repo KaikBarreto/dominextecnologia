@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.53',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Acompanhamento de e-mail e WhatsApp',
+        category: 'recurso',
+        description: 'O administrador master ganhou uma área de Comunicações em Estatísticas para acompanhar envios, falhas, filas, empresas e a situação das conexões de WhatsApp em um único lugar.',
+      },
+      {
+        title: 'Limites de e-mail visíveis',
+        category: 'melhoria',
+        description: 'O painel também mostra o consumo diário e mensal da conta de e-mail, o ritmo máximo de envio e a franquia usada por empresa, facilitando a identificação de limites antes que afetem os clientes.',
+      },
+    ],
+  },
+  {
     version: '1.41.52',
     date: '23 de novembro de 2026',
     type: 'patch',
