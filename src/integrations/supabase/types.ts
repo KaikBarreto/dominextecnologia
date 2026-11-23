@@ -4474,6 +4474,7 @@ export type Database = {
           charge_id: string
           company_id: string
           created_at: string
+          customer_contact_id: string | null
           customer_id: string | null
           dedupe_key: string
           event_type: string
@@ -4485,6 +4486,8 @@ export type Database = {
           provider_message_id: string | null
           provider_status: number | null
           recipient_email: string
+          recipient_kind: string
+          recipient_route_id: string | null
           sent_at: string | null
           status: string
           updated_at: string
@@ -4494,6 +4497,7 @@ export type Database = {
           charge_id: string
           company_id: string
           created_at?: string
+          customer_contact_id?: string | null
           customer_id?: string | null
           dedupe_key: string
           event_type: string
@@ -4505,6 +4509,8 @@ export type Database = {
           provider_message_id?: string | null
           provider_status?: number | null
           recipient_email: string
+          recipient_kind?: string
+          recipient_route_id?: string | null
           sent_at?: string | null
           status?: string
           updated_at?: string
@@ -4514,6 +4520,7 @@ export type Database = {
           charge_id?: string
           company_id?: string
           created_at?: string
+          customer_contact_id?: string | null
           customer_id?: string | null
           dedupe_key?: string
           event_type?: string
@@ -4525,6 +4532,8 @@ export type Database = {
           provider_message_id?: string | null
           provider_status?: number | null
           recipient_email?: string
+          recipient_kind?: string
+          recipient_route_id?: string | null
           sent_at?: string | null
           status?: string
           updated_at?: string
@@ -4550,6 +4559,112 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_email_deliveries_customer_contact_id_fkey"
+            columns: ["customer_contact_id"]
+            isOneToOne: false
+            referencedRelation: "customer_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_email_deliveries_recipient_route_id_fkey"
+            columns: ["recipient_route_id"]
+            isOneToOne: false
+            referencedRelation: "customer_email_routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_email_route_recipients: {
+        Row: {
+          charge_created_enabled: boolean
+          charge_overdue_enabled: boolean
+          charge_paid_enabled: boolean
+          charge_refunded_enabled: boolean
+          created_at: string
+          customer_contact_id: string | null
+          due_reminder_enabled: boolean
+          id: string
+          recipient_kind: string
+          route_id: string
+        }
+        Insert: {
+          charge_created_enabled?: boolean
+          charge_overdue_enabled?: boolean
+          charge_paid_enabled?: boolean
+          charge_refunded_enabled?: boolean
+          created_at?: string
+          customer_contact_id?: string | null
+          due_reminder_enabled?: boolean
+          id?: string
+          recipient_kind: string
+          route_id: string
+        }
+        Update: {
+          charge_created_enabled?: boolean
+          charge_overdue_enabled?: boolean
+          charge_paid_enabled?: boolean
+          charge_refunded_enabled?: boolean
+          created_at?: string
+          customer_contact_id?: string | null
+          due_reminder_enabled?: boolean
+          id?: string
+          recipient_kind?: string
+          route_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_email_route_recipients_customer_contact_id_fkey"
+            columns: ["customer_contact_id"]
+            isOneToOne: false
+            referencedRelation: "customer_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_email_route_recipients_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "customer_email_routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_email_routes: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          enabled: boolean
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          enabled?: boolean
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          enabled?: boolean
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_email_routes_customer_company_fkey"
+            columns: ["customer_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id", "company_id"]
           },
         ]
       }
@@ -18957,6 +19072,14 @@ export type Database = {
       admin_ledger_summary: { Args: Record<PropertyKey, never>; Returns: Json }
 
 
+      set_customer_email_route: {
+        Args: {
+          p_customer_id: string
+          p_enabled: boolean
+          p_recipients?: Json
+        }
+        Returns: string
+      }
       set_customer_whatsapp_route: {
         Args: {
           p_category: string
@@ -19547,6 +19670,20 @@ export type Database = {
         }[]
       }
       check_email_available: { Args: { _email: string }; Returns: boolean }
+      email_resolve_recipients: {
+        Args: {
+          p_company_id: string
+          p_customer_id: string
+          p_event_type: string
+        }
+        Returns: {
+          customer_contact_id: string | null
+          recipient_email: string
+          recipient_kind: string
+          recipient_name: string
+          recipient_route_id: string | null
+        }[]
+      }
       claim_customer_email_deliveries: {
         Args: { p_limit?: number; p_orphan_minutes?: number }
         Returns: {

@@ -42,6 +42,11 @@ import {
   whatsappRouteBadgesForContact,
   type CustomerWhatsappRecipientCandidate,
 } from '@/hooks/useCustomerWhatsappRoutes';
+import {
+  useCustomerEmailRoute,
+  type CustomerEmailEvent,
+} from '@/hooks/useCustomerEmailRoutes';
+import { useCustomerBillingEmails } from '@/hooks/useCustomerBillingEmails';
 import { osStatusLabels } from '@/types/database';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
@@ -106,6 +111,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import {
   CustomerWhatsappRecipients,
 } from '@/components/customers/CustomerWhatsappRecipients';
+import { CustomerEmailRecipients } from '@/components/customers/CustomerEmailRecipients';
 
 type TabKey = 'geral' | 'equipamentos' | 'historico' | 'tarefas' | 'financeiro' | 'chamados' | 'contratos' | 'documentos' | 'cobrancas' | 'estoque';
 
@@ -231,6 +237,26 @@ export function CustomerDetailContent() {
     hasWhatsapp && Boolean(id),
     customer?.company_id,
   );
+  const customerBillingEmails = useCustomerBillingEmails({
+    enabled: hasCobrancas && canViewCustomerFinancial,
+  });
+  const customerEmailRoute = useCustomerEmailRoute(
+    id,
+    hasCobrancas && canViewCustomerFinancial && Boolean(id),
+    customer?.company_id,
+  );
+  const globallyEnabledEmailEvents = useMemo<CustomerEmailEvent[]>(() => {
+    const settings = customerBillingEmails.settings;
+    if (!settings) return [];
+
+    return [
+      settings.charge_created_enabled && 'charge_created',
+      settings.due_reminder_enabled && 'charge_due_reminder',
+      settings.charge_overdue_enabled && 'charge_overdue',
+      settings.charge_paid_enabled && 'charge_paid',
+      settings.charge_refunded_enabled && 'charge_refunded',
+    ].filter((event): event is CustomerEmailEvent => Boolean(event));
+  }, [customerBillingEmails.settings]);
   const { activeOrigins } = useCustomerOrigins();
   const { labelsFor } = usePartyLabels();
   const { labelsFor: equipmentLabelsFor } = usePartyLabels('equipment');
@@ -1205,6 +1231,26 @@ export function CustomerDetailContent() {
                 canEditFinancial={canManageFinance}
                 onRetry={() => { void customerWhatsappRoutes.refetch(); }}
                 onSave={(input) => customerWhatsappRoutes.saveRoute.mutateAsync(input)}
+              />
+            )}
+
+            {hasCobrancas && canViewCustomerFinancial && id && (
+              <CustomerEmailRecipients
+                customerId={id}
+                primaryName={customer.name}
+                primaryEmail={customer.email}
+                contacts={contacts}
+                route={customerEmailRoute.route}
+                isLoading={customerEmailRoute.isLoading || customerBillingEmails.isLoading}
+                isError={customerEmailRoute.isError || customerBillingEmails.isError}
+                isSaving={customerEmailRoute.saveRoute.isPending}
+                channelEnabled={customerBillingEmails.settings?.enabled ?? false}
+                globallyEnabledEvents={globallyEnabledEmailEvents}
+                canEdit={canManageFinance}
+                onRetry={() => {
+                  void customerEmailRoute.refetch();
+                }}
+                onSave={(input) => customerEmailRoute.saveRoute.mutateAsync(input)}
               />
             )}
           </CardContent></Card>

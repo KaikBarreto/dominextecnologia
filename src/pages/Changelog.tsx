@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.51',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Destinatários de cobrança por cliente',
+        category: 'recurso',
+        description: 'Na ficha do cliente, agora você pode ativar ou desativar os avisos por e-mail, escolher o e-mail principal ou contatos adicionais e definir quais eventos cada endereço recebe.',
+      },
+      {
+        title: 'Configuração simples e segura',
+        category: 'seguranca',
+        description: 'Clientes sem personalização continuam recebendo no e-mail principal. Alterações no canal, nos eventos ou nos destinatários também interrompem mensagens que ainda estavam aguardando envio.',
+      },
+    ],
+  },
+  {
     version: '1.41.50',
     date: '23 de novembro de 2026',
     type: 'patch',
