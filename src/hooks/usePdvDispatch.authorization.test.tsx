@@ -136,8 +136,8 @@ describe('leituras de expedição isoladas por autorização', () => {
     const invalidate = vi.spyOn(client, 'invalidateQueries');
     const { result } = renderHook(() => usePdvCompleteDispatch(), { wrapper });
     await act(async () => { await result.current.mutateAsync({ orderId: 'same-order', lines: [], attemptId: 'attempt-1' }); });
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['pdv-dispatch', 'queue'] });
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['pdv-dispatch', 'order', 'same-order'] });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['pdv-dispatch'] });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['pdv', 'orders-workspace'] });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['pdv-orders'] });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['inventory'] });
     client.clear();

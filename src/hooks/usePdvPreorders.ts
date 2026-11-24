@@ -1,3 +1,4 @@
+import { invalidatePdvOrderProjections } from '@/hooks/pdvOperationalCache';
 import { safePdvCouponError } from '@/hooks/usePdvCoupons';
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -288,6 +289,9 @@ export function usePdvPreorderActions() {
 
   const invalidate = async (preorderId?: string) => {
     await Promise.all([
+      invalidatePdvOrderProjections(queryClient),
+      queryClient.invalidateQueries({ queryKey: ['pdv-counter', 'cash-queue'] }),
+      queryClient.invalidateQueries({ queryKey: ['pdv-direct-sale-v2', 'catalog'] }),
       queryClient.invalidateQueries({ queryKey: ROOT_KEY }),
       preorderId
         ? queryClient.invalidateQueries({

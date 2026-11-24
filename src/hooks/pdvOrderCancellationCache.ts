@@ -1,3 +1,4 @@
+import { invalidatePdvCatalogCaches } from '@/hooks/pdvOperationalCache';
 import type { QueryClient, QueryKey } from '@tanstack/react-query';
 import { invalidatePdvReportCaches } from '@/hooks/pdvReportCache';
 
@@ -12,6 +13,7 @@ export const PDV_ORDER_CANCELLATION_QUERY_ROOTS = [
   ['pdv', 'orders-workspace'],
   ['pdv-orders'],
   ['pdv-sales-flow'],
+  ['pdv-customer-history'],
   ['pdv-dispatch'],
   ['pdv-counter'],
   ['pdv-cash'],
@@ -44,6 +46,7 @@ export async function invalidatePdvOrderCancellationCaches(queryClient: QueryCli
     ...PDV_ORDER_CANCELLATION_QUERY_ROOTS.map((queryKey) =>
       queryClient.invalidateQueries({ queryKey }),
     ),
+    invalidatePdvCatalogCaches(queryClient),
     invalidatePdvReportCaches(queryClient),
   ]);
 }

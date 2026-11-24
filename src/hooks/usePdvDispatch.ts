@@ -1,3 +1,4 @@
+import { invalidatePdvCatalogCaches, invalidatePdvOrderProjections } from '@/hooks/pdvOperationalCache';
 import { useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
@@ -110,4 +111,23 @@ export function usePdvDispatchHistory() { return usePdvDispatchRead(['history'],
 export function usePdvDispatchOrder(orderId: string | null) { return usePdvDispatchRead(['order', orderId], async signal => projectPdvDispatchDetail(await call('pdv_get_dispatch_order_v2', { p_order_id: orderId }, signal)), 5_000, Boolean(orderId)); }
 export async function fetchPdvDeliveryReceipt(deliveryId: string, signal?: AbortSignal) { return projectPdvDeliveryReceipt(await call('pdv_get_delivery_receipt_snapshot_v2', { p_delivery_id: deliveryId }, signal)); }
 export function usePdvDeliveryReceipt(deliveryId: string | null) { return usePdvDispatchRead(['receipt', deliveryId], signal => fetchPdvDeliveryReceipt(deliveryId!, signal), Infinity, Boolean(deliveryId)); }
-export function usePdvCompleteDispatch() { const client = useQueryClient(); return useMutation({ mutationFn: async (input: PdvCompleteDispatchInput) => rec(await call('pdv_complete_dispatch_delivery_v2', buildPdvDispatchRpcArgs(input))), onSuccess: async (_, input) => { await Promise.all([client.invalidateQueries({ queryKey: [...ROOT, 'queue'] }), client.invalidateQueries({ queryKey: [...ROOT, 'order', input.orderId] }), client.invalidateQueries({ queryKey: ['inventory'] }), client.invalidateQueries({ queryKey: ['pdv-orders'] }), invalidatePdvReportCaches(client)]); } }); }
+export function usePdvCompleteDispatch() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: PdvCompleteDispatchInput) => rec(await call(
+      'pdv_complete_dispatch_delivery_v2', buildPdvDispatchRpcArgs(input),
+    )),
+    onSuccess: async () => {
+      await Promise.all([
+        // Fila, detalhe e histórico compartilham os fatos da retirada.
+        client.invalidateQueries({ queryKey: ROOT }),
+        invalidatePdvOrderProjections(client),
+        invalidatePdvCatalogCaches(client),
+        ...['inventory-stock-levels', 'inventory-movements', 'pdv-stock-availability',
+          'pdv-stock-reservations', 'pdv-cash-sessions-v2', 'inventory', 'pdv-orders']
+          .map(root => client.invalidateQueries({ queryKey: [root] })),
+        invalidatePdvReportCaches(client),
+      ]);
+    },
+  });
+}

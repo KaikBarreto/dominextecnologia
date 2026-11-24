@@ -1,3 +1,4 @@
+import { invalidatePdvReportCaches } from '@/hooks/pdvReportCache';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { assertRowsAffected } from '@/lib/supabaseMutation';
@@ -91,6 +92,8 @@ export function useReceivablePayments(parentId: string | null | undefined) {
       queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
       queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
       queryClient.invalidateQueries({ queryKey: ['account-balances'] });
+      void queryClient.invalidateQueries({ queryKey: ['pdv-cash-sessions-v2'] });
+      void invalidatePdvReportCaches(queryClient);
       toast({ title: 'Recebimento estornado', description: 'O valor voltou a ficar pendente nesta conta.' });
     },
     onError: (error: Error) => {

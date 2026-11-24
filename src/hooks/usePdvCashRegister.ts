@@ -272,6 +272,9 @@ async function fetchOperatorNames(userIds: string[]): Promise<Record<string, str
 
 export async function invalidatePdvCashRegisterCaches(queryClient: QueryClient) {
   await Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['pdv-direct-sale-v2', 'catalog'] }),
+    queryClient.invalidateQueries({ queryKey: ['pdv-orders', 'receiving-target'] }),
+    queryClient.invalidateQueries({ queryKey: ['pdv-cash-account-settings-v2'] }),
     queryClient.invalidateQueries({ queryKey: SESSION_KEYS.sessions }),
     queryClient.invalidateQueries({ queryKey: ['pdv-cash-session-operators'] }),
     queryClient.invalidateQueries({ queryKey: SESSION_KEYS.cofre }),

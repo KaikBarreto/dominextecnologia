@@ -66,3 +66,14 @@ describe('estornar recebimento parcial', () => {
     expect(state.toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Recebimento estornado' }));
   });
 });
+
+
+it('estornar recebimento invalida relatórios e posição do caixa v2', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  const keys = [['pdv', 'reports-v2', 'scope', 'company-a', 'user-a', 'history'], ['pdv-cash-sessions-v2', 'detail', 'session']];
+  keys.forEach(key => client.setQueryData(key, { amount: 100 }));
+  const view = renderHook(() => useReceivablePayments(null), { wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider> });
+  await view.result.current.reverse.mutateAsync('pay-1');
+  keys.forEach(key => expect(client.getQueryState(key)?.isInvalidated).toBe(true));
+  view.unmount(); client.clear();
+});

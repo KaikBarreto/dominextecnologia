@@ -144,7 +144,8 @@ export interface PdvManagementReport {
 
 type RpcError = { code?: string; message?: string; details?: string };
 type RpcResult = { data: unknown; error: RpcError | null };
-type RpcCaller = (name: string, args?: Record<string, unknown>) => Promise<RpcResult>;
+type RpcRequest = PromiseLike<RpcResult> & { abortSignal?: (signal: AbortSignal) => RpcRequest };
+type RpcCaller = (name: string, args?: Record<string, unknown>) => RpcRequest;
 const rpc = supabase.rpc.bind(supabase) as unknown as RpcCaller;
 export class PdvReportContractError extends Error {
   constructor() {
@@ -243,8 +244,10 @@ function mapReportError(error: RpcError): Error {
   return new PdvReportReadError('Não foi possível carregar o relatório agora. Tente novamente.');
 }
 
-async function call(name: string, args?: Record<string, unknown>): Promise<unknown> {
-  const { data, error } = await rpc(name, args);
+async function call(name: string, args?: Record<string, unknown>, signal?: AbortSignal): Promise<unknown> {
+  let request = rpc(name, args);
+  if (signal && request.abortSignal) request = request.abortSignal(signal);
+  const { data, error } = await request;
   if (error) throw mapReportError(error);
   return data;
 }
@@ -454,13 +457,15 @@ export function usePdvManagementReport(params: { from: string; to: string; enabl
   const scope = usePdvAuthorizedQueryScope();
   return useQuery({
     queryKey: [...PDV_REPORTS_QUERY_ROOT, ...scope.key, 'management', from, to],
-    queryFn: async () => {
-      const report = projectPdvManagementReport(await call('pdv_management_report_v1', { p_from: from, p_to: to }));
+    queryFn: async ({ signal }) => {
+      const report = projectPdvManagementReport(await call('pdv_management_report_v1', { p_from: from, p_to: to }, signal));
       if (report.from !== from || report.to !== to) throw new PdvReportContractError();
       return report;
     },
     enabled: enabled && scope.ready && Boolean(from && to),
     staleTime: 30_000,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: 'always',
   });
 }
 
@@ -476,15 +481,17 @@ export function usePdvPartialProjection(params: {
   const scope = usePdvAuthorizedQueryScope();
   return useQuery({
     queryKey: [...PDV_REPORTS_QUERY_ROOT, ...scope.key, 'projection', projection, from, to, limit, offset],
-    queryFn: async () => projectPdvPartialProjection(await call('pdv_partial_projection_report_v4', {
+    queryFn: async ({ signal }) => projectPdvPartialProjection(await call('pdv_partial_projection_report_v4', {
       p_projection: projection,
       p_from: from,
       p_to: to,
       p_limit: limit,
       p_offset: offset,
-    })),
+    }, signal)),
     enabled: enabled && scope.ready && Boolean(from && to),
     staleTime: 30_000,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: 'always',
   });
 }
 
@@ -679,15 +686,17 @@ export function usePdvSalesReport(params: SalesParams & { limit?: number; offset
   const scope = usePdvAuthorizedQueryScope();
   return useQuery({
     queryKey: [...PDV_REPORTS_QUERY_ROOT, ...scope.key, 'sales', dimension, from, to, limit, offset],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const report = projectPdvSalesReport(await call('pdv_sales_report_v1', {
         p_dimension: dimension, p_from: from, p_to: to, p_limit: limit, p_offset: offset,
-      }));
+      }, signal));
       if (report.dimension !== dimension || report.from !== from || report.to !== to) throw new PdvReportContractError();
       return report;
     },
     enabled: enabled && scope.ready && Boolean(from && to),
     staleTime: 30_000,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: 'always',
   });
 }
 
@@ -719,15 +728,17 @@ export function usePdvGlobalHistory(params: {
   const scope = usePdvAuthorizedQueryScope();
   return useQuery({
     queryKey: [...PDV_REPORTS_QUERY_ROOT, ...scope.key, 'history', from, to, cashSessionId, limit, offset],
-    queryFn: async () => projectPdvHistory(await call('pdv_global_event_history_v3', {
+    queryFn: async ({ signal }) => projectPdvHistory(await call('pdv_global_event_history_v3', {
       p_from: from,
       p_to: to,
       p_cash_session_id: cashSessionId,
       p_limit: limit,
       p_offset: offset,
-    })),
+    }, signal)),
     enabled: enabled && scope.ready && Boolean(from && to),
     staleTime: 15_000,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: 'always',
   });
 }
 
@@ -736,11 +747,13 @@ export function usePdvDocumentIndex(params: { limit?: number; offset?: number; e
   const scope = usePdvAuthorizedQueryScope();
   return useQuery({
     queryKey: [...PDV_REPORTS_QUERY_ROOT, ...scope.key, 'documents', limit, offset],
-    queryFn: async () => projectPdvDocuments(await call('pdv_document_index_v3', {
+    queryFn: async ({ signal }) => projectPdvDocuments(await call('pdv_document_index_v3', {
       p_limit: limit,
       p_offset: offset,
-    })),
+    }, signal)),
     enabled: enabled && scope.ready,
     staleTime: 30_000,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: 'always',
   });
 }

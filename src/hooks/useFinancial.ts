@@ -6,7 +6,7 @@ import type { Database } from '@/integrations/supabase/types';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { usePdvAuthorizedQueryScope } from '@/hooks/pdvReportCache';
+import { invalidatePdvReportCaches, usePdvAuthorizedQueryScope } from '@/hooks/pdvReportCache';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { getRpcErrorMessage } from '@/hooks/useCreditCardBills';
@@ -346,6 +346,8 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
     // voltar de outra tela, o operador não pode ver o fechamento antigo.
     void queryClient.invalidateQueries({ queryKey: ['pdv-cash-session-detail'] });
     void queryClient.invalidateQueries({ queryKey: ['pdv-cofre-balance'] });
+    void queryClient.invalidateQueries({ queryKey: ['pdv-cash-sessions-v2'] });
+    void invalidatePdvReportCaches(queryClient);
     return transactionsRefetch;
   };
 

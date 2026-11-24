@@ -137,3 +137,16 @@ describe('recebimento parcial com novo vencimento', () => {
     expect(state.toast).not.toHaveBeenCalledWith(expect.objectContaining({ title: 'Recebimento confirmado!' }));
   });
 });
+
+
+it('editar lançamento financeiro também invalida relatórios e caixa v2', async () => {
+  state.respond = call => ({ data: { id: 'tx-1', is_paid: false, ...((call.values ?? {}) as Record<string, unknown>) }, error: null, count: 1 });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  const keys = [['pdv', 'reports-v2', 'scope', 'company-a', 'user-a', 'management'],
+    ['pdv-cash-sessions-v2', 'detail', 'session', 'scope', 'company-a', 'user-a']];
+  keys.forEach(key => client.setQueryData(key, { amount: 100 }));
+  const view = renderHook(() => useFinancial({ loadData: false }), { wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider> });
+  await view.result.current.updateTransactionsBatch.mutateAsync({ ids: ['tx-1'], changes: { category: 'Outros' } });
+  keys.forEach(key => expect(client.getQueryState(key)?.isInvalidated).toBe(true));
+  view.unmount(); client.clear();
+});

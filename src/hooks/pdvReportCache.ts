@@ -58,6 +58,10 @@ export function usePdvAuthorizedQueryScope() {
  * existe apenas para compor a chave de autorização das leituras sensíveis.
  */
 export async function invalidatePdvReportCaches(queryClient: QueryClient) {
+  // invalidateQueries reaproveita a primeira leitura em voo quando ainda não
+  // existe dado no cache. Interrompê-la garante uma consulta posterior ao fato.
+  // O cancelamento é síncrono; marcar o cache não precisa esperar a rede.
+  void queryClient.cancelQueries({ queryKey: PDV_REPORTS_QUERY_ROOT });
   await Promise.all([
     ...['financial-summary', 'account-balances', 'financial-accounts', 'pdv-cofre-balance', 'pdv-cash-session-detail'].map(root => queryClient.invalidateQueries({ queryKey: [root] })),
     queryClient.invalidateQueries({ queryKey: ['pdv-customer-credit'] }),

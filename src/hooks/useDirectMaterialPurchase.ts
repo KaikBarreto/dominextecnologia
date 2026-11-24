@@ -1,3 +1,4 @@
+import { invalidatePdvCatalogCaches } from '@/hooks/pdvOperationalCache';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database, Json } from '@/integrations/supabase/types';
@@ -5,9 +6,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { getErrorMessage } from '@/utils/errorMessages';
-import { MATERIAL_PURCHASE_REPORT_QUERY_KEY } from '@/hooks/useMaterialPurchaseReport';
 import type { PdvPurchaseCashContext } from '@/components/pdv/caixa-v2/pdvPurchaseContext';
-import { usePdvAuthorizedQueryScope } from '@/hooks/pdvReportCache';
+import { invalidatePdvReportCaches, usePdvAuthorizedQueryScope } from '@/hooks/pdvReportCache';
 
 const CASH_PURCHASE_ERROR_MESSAGES: Record<string, string> = {
   PDV_CASH_PURCHASE_CONTEXT_REQUIRED: 'Volte ao Caixa e abra esta compra novamente.',
@@ -206,7 +206,8 @@ export function useDirectMaterialPurchase() {
       queryClient.invalidateQueries({ queryKey: ['pdv-cash-purchase-context'] });
       queryClient.invalidateQueries({ queryKey: ['pdv-supplier-credit'] });
       queryClient.invalidateQueries({ queryKey: ['party-account-v2'] });
-      queryClient.invalidateQueries({ queryKey: MATERIAL_PURCHASE_REPORT_QUERY_KEY });
+      // Invalidação imediata; refetch de relatório não deve segurar a confirmação da compra.
+      void Promise.allSettled([invalidatePdvReportCaches(queryClient), invalidatePdvCatalogCaches(queryClient)]);
       toast({ title: t.successTitle, description: t.successDescription });
     },
     onError: (error) => {

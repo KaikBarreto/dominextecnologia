@@ -1,3 +1,4 @@
+import { invalidatePdvOrderProjections } from '@/hooks/pdvOperationalCache';
 import { useEffect, useRef } from 'react';
 import { isPdvModuleFeatureEnabled, usePdvModuleFeature } from '@/hooks/usePdvModuleFeatures';
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
@@ -445,6 +446,8 @@ export function usePdvVoucherSearch(input: { query: string; customerId: string |
 
 async function invalidateAfterSale(client: QueryClient, orderId: string | null) {
   await Promise.all([
+    invalidatePdvOrderProjections(client),
+    client.invalidateQueries({ queryKey: ['pdv-preorders', 'catalog'] }),
     client.invalidateQueries({ queryKey: PDV_AFTER_SALE_QUERY_ROOT }), client.invalidateQueries({ queryKey: ['pdv-returns'] }),
     client.invalidateQueries({ queryKey: ['party-account'] }), client.invalidateQueries({ queryKey: ['party-account-v2'] }),
     client.invalidateQueries({ queryKey: ['pdv-cash-sessions-v2'] }), client.invalidateQueries({ queryKey: ['pdv-cash-sessions'] }),

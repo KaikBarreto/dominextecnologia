@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.68',
+    date: '24 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'PDV atualizado entre as telas',
+        category: 'correcao',
+        description: 'Compras, recebimentos, entregas, devoluções e estornos atualizam os dados relacionados em Pedidos, Venda, Balcão, Caixa e relatórios, sem precisar recarregar a página.',
+      },
+      {
+        title: 'Relatórios conferidos ao retornar',
+        category: 'melhoria',
+        description: 'Ao abrir os relatórios ou voltar para a janela, os dados são consultados novamente. Uma consulta antiga interrompida pela navegação também deixa de substituir os valores de uma operação já confirmada.',
+      },
+    ],
+  },
+  {
     version: '1.41.67',
     date: '24 de novembro de 2026',
     type: 'patch',

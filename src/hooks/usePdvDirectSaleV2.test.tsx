@@ -198,7 +198,7 @@ describe('usePdvDirectSaleV2', () => {
     expect(calls[0][1].p_idempotency_key).toBe(calls[1][1].p_idempotency_key);
     await waitFor(() => {
       expect(invalidate).toHaveBeenCalledWith({ queryKey: ['inventory'] });
-      expect(invalidate).toHaveBeenCalledWith({ queryKey: ['pdv-direct-sale-v2'] });
+      expect(invalidate).toHaveBeenCalledWith({ queryKey: ['pdv-direct-sale-v2', 'catalog'] });
       expect(invalidate).toHaveBeenCalledWith({ queryKey: ['financial-transactions'] });
       expect(invalidate).toHaveBeenCalledWith({ queryKey: ['pdv-stock-reservations'] });
       expect(invalidate).toHaveBeenCalledWith({ queryKey: ['pdv-stock-availability'] });

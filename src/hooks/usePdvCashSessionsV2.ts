@@ -162,6 +162,9 @@ const ROOT = PDV_CASH_V2_QUERY_ROOT;
 
 export async function invalidatePdvCashV2Caches(queryClient: QueryClient) {
   await Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['pdv-direct-sale-v2', 'catalog'] }),
+    queryClient.invalidateQueries({ queryKey: ['pdv-orders', 'receiving-target'] }),
+    queryClient.invalidateQueries({ queryKey: ['pdv-cash-account-settings-v2'] }),
     queryClient.invalidateQueries({ queryKey: [...ROOT, 'open'] }),
     queryClient.invalidateQueries({ queryKey: [...ROOT, 'history'] }),
     queryClient.invalidateQueries({ queryKey: [...ROOT, 'history-page'] }),
@@ -804,14 +807,7 @@ export function usePdvCashHistoryV2(input: {
       if (error) throw mapPdvCashV2Error(error);
       return projectPdvCashReopenV2Result(data);
     },
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: [...ROOT] }),
-        queryClient.invalidateQueries({ queryKey: ['financial-transactions'] }),
-        queryClient.invalidateQueries({ queryKey: ['account-balances'] }),
-        invalidatePdvReportCaches(queryClient),
-      ]);
-    },
+    onSuccess: () => invalidatePdvCashV2Caches(queryClient),
   });
 
   return {

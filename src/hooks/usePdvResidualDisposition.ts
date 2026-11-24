@@ -1,3 +1,4 @@
+import { invalidatePdvOrderProjections } from '@/hooks/pdvOperationalCache';
 import { useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
@@ -91,7 +92,7 @@ export function usePdvResidualDisposition(orderId: string, open: boolean) {
       if (result.error) throw mapPdvResidualDispositionError(result.error); return projectPdvResidualDispositionPlan(result.data, orderId); },
   });
   async function invalidate() {
-    await Promise.all([...['pdv-after-sale-v2', 'pdv-returns', 'party-account', 'party-account-v2', 'pdv-orders', 'pdv-dispatch', 'pdv-cash-sessions-v2', 'financial-transactions'].map(root => client.invalidateQueries({ queryKey: [root] })), invalidatePdvReportCaches(client)]);
+    await Promise.all([invalidatePdvOrderProjections(client), ...['pdv-after-sale-v2', 'pdv-returns', 'party-account', 'party-account-v2', 'pdv-orders', 'pdv-dispatch', 'pdv-cash-sessions-v2', 'financial-transactions'].map(root => client.invalidateQueries({ queryKey: [root] })), invalidatePdvReportCaches(client)]);
   }
   const mutation = useMutation({ mutationFn: async (intent: Intent): Promise<Result> => {
     assertCurrent(); if (intent.epoch !== token.epoch) throw new PdvResidualFault('O contexto mudou. Abra o pós-venda novamente.', 'context');

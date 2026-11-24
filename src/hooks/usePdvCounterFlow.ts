@@ -1,3 +1,4 @@
+import { invalidatePdvCatalogCaches, invalidatePdvOrderProjections } from '@/hooks/pdvOperationalCache';
 import { safePdvCouponError, PDV_COUPONS_ROOT } from '@/hooks/usePdvCoupons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -247,6 +248,9 @@ export function usePdvCoverOrder() {
     mutationFn: async (input: PdvCoverOrderInput) => record(await call(input.couponRevision === undefined ? 'pdv_cover_existing_order_v2' : 'pdv_cover_existing_order_coupon_v1', buildPdvCoverageRpcArgs(input))),
     onSuccess: async () => {
       await Promise.all([
+        invalidatePdvOrderProjections(queryClient),
+        invalidatePdvCatalogCaches(queryClient),
+        ...['inventory-stock-levels', 'inventory-movements', 'pdv-stock-reservations', 'pdv-stock-availability'].map(root => queryClient.invalidateQueries({ queryKey: [root] })),
         queryClient.invalidateQueries({ queryKey: [...ROOT, 'cash-queue'] }),
         queryClient.invalidateQueries({ queryKey: ['pdv-dispatch'] }),
         queryClient.invalidateQueries({ queryKey: ['pdv-cash'] }),

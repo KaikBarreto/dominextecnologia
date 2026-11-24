@@ -1,3 +1,4 @@
+import { invalidatePdvCatalogCaches, invalidatePdvOrderProjections } from '@/hooks/pdvOperationalCache';
 /**
  * Fronteira Supabase da VENDA do PDV. Componente nunca chama
  * `supabase.from(...)` direto — é lei da casa.
@@ -110,6 +111,8 @@ export interface PdvSettleResult {
 
 export async function invalidatePdvSaleCaches(queryClient: QueryClient) {
   await Promise.all([
+    invalidatePdvOrderProjections(queryClient),
+    invalidatePdvCatalogCaches(queryClient),
     queryClient.invalidateQueries({ queryKey: ['inventory'] }),
     queryClient.invalidateQueries({ queryKey: ['inventory-stock-levels'] }),
     queryClient.invalidateQueries({ queryKey: ['inventory-movements'] }),

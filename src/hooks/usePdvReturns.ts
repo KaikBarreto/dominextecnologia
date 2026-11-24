@@ -1,3 +1,4 @@
+import { invalidatePdvCatalogCaches, invalidatePdvOrderProjections } from '@/hooks/pdvOperationalCache';
 import { useEffect, useRef } from 'react';
 import { isPdvModuleFeatureEnabled, usePdvModuleFeature } from '@/hooks/usePdvModuleFeatures';
 import { useAuth } from '@/contexts/AuthContext';
@@ -293,6 +294,9 @@ export function usePdvReturnWorkspace(orderId: string | null, enabled: boolean) 
 
 export async function invalidateReturnConsumers(client: ReturnType<typeof useQueryClient>, orderId: string | null) {
   await Promise.all([
+    invalidatePdvOrderProjections(client),
+    invalidatePdvCatalogCaches(client),
+    ...['pdv-counter', 'inventory-stock-levels', 'inventory-movements', 'pdv-stock-availability'].map(root => client.invalidateQueries({ queryKey: [root] })),
     client.invalidateQueries({ queryKey: ROOT }),
     client.invalidateQueries({ queryKey: ['pdv-dispatch'] }),
     client.invalidateQueries({ queryKey: ['pdv-orders'] }),

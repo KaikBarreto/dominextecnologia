@@ -1,3 +1,4 @@
+import { invalidatePdvCatalogCaches, invalidatePdvOrderProjections } from '@/hooks/pdvOperationalCache';
 import { safePdvCouponError, PDV_COUPONS_ROOT } from '@/hooks/usePdvCoupons';
 import { projectPdvCatalogCustomer, type PdvCatalogCustomer } from '@/lib/pdv/catalogCustomer';
 import { pdvDirectSaleIdempotencyKey } from '@/lib/pdv/directSaleRecovery';
@@ -269,11 +270,11 @@ export function usePdvDirectSaleV2() {
         ['pdv-stock-reservations'],['pdv-stock-availability'],['financial-accounts'],
         ['account-balances'],['financial-transactions'],['financial-summary'],['pdv-cofre-balance'],
         ['pdv-cash-sessions'],['pdv-cash-session-detail'],['pdv-customer-credit'],['pdv-customer-payment-options'],['party-account-v2'],['pdv-orders'],
-        ['pdv-direct-sale-v2'],PDV_COUPONS_ROOT,PDV_CASH_V2_QUERY_ROOT] as const).map((key) => queryClient.invalidateQueries({ queryKey: [...key] }));
+        PDV_COUPONS_ROOT,PDV_CASH_V2_QUERY_ROOT] as const).map((key) => queryClient.invalidateQueries({ queryKey: [...key] }));
       // A venda já foi confirmada pelo servidor. Marcar todas as leituras
       // como desatualizadas é imediato; refazer relatórios em segundo plano
       // não pode manter o caixa em "Finalizando" nem sugerir um novo envio.
-      void Promise.allSettled([...invalidations, invalidatePdvReportCaches(queryClient)]);
+      void Promise.allSettled([...invalidations, invalidatePdvOrderProjections(queryClient), invalidatePdvCatalogCaches(queryClient), invalidatePdvReportCaches(queryClient)]);
     },
   });
   return {
