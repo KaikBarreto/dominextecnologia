@@ -8,6 +8,7 @@ vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'operat
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc } }));
 
 import {
+  mapPdvDirectSaleV2Error,
   buildPdvDirectSaleV2RpcPayload,
   canonicalizePdvDirectSalePayments,
   projectPdvDirectSaleCapabilityV2,
@@ -26,6 +27,10 @@ const sale: PdvCompleteDirectSaleV2Input = {
 };
 
 describe('usePdvDirectSaleV2', () => {
+  it('orienta conferir abertura e permissão sem exigir autoria própria do caixa', () => {
+    expect(mapPdvDirectSaleV2Error({ details: 'code=pdv_direct_sale_session_invalid' }).message).toBe('O caixa selecionado não está disponível. Confira se está aberto e se você tem permissão para operá-lo.');
+  });
+
   beforeEach(() => { vi.clearAllMocks(); authScope.companyId = 'company-a'; authScope.permissions = ['screen:pdv']; });
 
   it('preserva payload histórico sem cupom e separa desconto promocional de pagamentos', () => {

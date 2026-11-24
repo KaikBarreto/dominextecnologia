@@ -106,7 +106,7 @@ export function mapPdvCounterError(error: unknown): Error {
     pdv_counter_mode_disabled: 'O fluxo de balcão não está ativo nas configurações do PDV.',
     pdv_counter_order_not_coverable: 'Este pedido não está mais aguardando pagamento.',
     pdv_counter_order_already_covered: 'Este pedido já recebeu pagamento ou fiado aprovado.',
-    pdv_counter_session_invalid: 'Use um caixa v2 aberto por você neste terminal.',
+    pdv_counter_session_invalid: 'O caixa selecionado não está disponível. Confira se está aberto e se você tem permissão para operá-lo.',
     pdv_counter_terminal_invalid: 'Abra o caixa no mesmo local de estoque do pedido.',
     pdv_counter_reservation_conflict: 'O estoque deste pedido precisa ser reconciliado antes do recebimento.',
     pdv_counter_credit_limit_exceeded: 'O limite disponível do cliente não cobre este pedido.',

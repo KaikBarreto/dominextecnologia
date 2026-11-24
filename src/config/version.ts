@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.64";
+export const APP_VERSION = "1.41.66";
 
 export const VERSION_NOTES =
-  "A quantidade dos materiais no PDV cresce conforme o número digitado, mantendo todos os dígitos visíveis no notebook e no celular.";
+  "Operadores autorizados podem concluir vendas e receber pedidos em caixas abertos por outra pessoa, preservando a identificação de cada responsável.";

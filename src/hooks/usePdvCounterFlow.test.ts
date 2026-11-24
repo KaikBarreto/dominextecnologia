@@ -9,6 +9,10 @@ import {
 } from './usePdvCounterFlow';
 
 describe('W3 fluxo balcão', () => {
+  it('orienta conferir abertura e permissão sem exigir autoria própria do caixa', () => {
+    expect(mapPdvCounterError({ details: 'code=pdv_counter_session_invalid' }).message).toBe('O caixa selecionado não está disponível. Confira se está aberto e se você tem permissão para operá-lo.');
+  });
+
   it('falha fechado quando a capacidade está ausente ou simples', () => {
     expect(projectPdvCounterCapability({})).toEqual({ mode: 'simples', fulfillmentMode: 'dispatch', counterEnabled: false, dispatchEnabled: false, cashierDeliveryEnabled: false });
     expect(projectPdvCounterCapability({ mode: 'simples', fulfillment_mode: 'cashier', counter_enabled: true, dispatch_enabled: true, cashier_delivery_enabled: true })).toEqual({ mode: 'simples', fulfillmentMode: 'cashier', counterEnabled: false, dispatchEnabled: false, cashierDeliveryEnabled: false });

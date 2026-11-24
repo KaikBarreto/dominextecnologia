@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.66',
+    date: '24 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Recebimento em caixa com operador autorizado',
+        category: 'correcao',
+        description: 'Quem já tem permissão para operar o caixa de outra pessoa consegue concluir vendas e receber pedidos nesse caixa. A abertura continua vinculada ao responsável original e cada recebimento mantém a identificação de quem realizou a operação.',
+      },
+    ],
+  },
+  {
     version: '1.41.64',
     date: '24 de novembro de 2026',
     type: 'patch',

@@ -81,7 +81,7 @@ export function mapPdvDirectSaleV2Error(error: RpcError): PdvDirectSaleV2Error {
     pdv_direct_sale_context_required: 'Abra um caixa v2 neste terminal antes de finalizar.',
     pdv_direct_sale_terminal_invalid: 'O terminal ou local de estoque não está disponível.',
     pdv_direct_sale_stock_mismatch: 'Use o local de estoque configurado neste terminal.',
-    pdv_direct_sale_session_invalid: 'Use um caixa v2 aberto por você neste terminal.',
+    pdv_direct_sale_session_invalid: 'O caixa selecionado não está disponível. Confira se está aberto e se você tem permissão para operá-lo.',
     pdv_direct_sale_customer_invalid: 'Cliente não encontrado nesta empresa.',
     pdv_direct_sale_inventory_invalid: 'Um material não está disponível neste local.',
     pdv_direct_sale_bank_forbidden: 'Você não tem permissão para receber em conta bancária.',
