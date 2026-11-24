@@ -58,18 +58,18 @@ class ErrorBoundary extends React.Component<
       return (
         <div className="flex min-h-screen items-center justify-center bg-background p-6">
           <div className="text-center max-w-md space-y-4">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
-              Vamos retomar daqui
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-destructive">
+              Algo deu errado
             </p>
-            <h1 className="text-2xl font-bold">O aplicativo só precisa ser atualizado</h1>
+            <h1 className="text-2xl font-bold">Não foi possível abrir esta tela</h1>
             <p className="text-muted-foreground text-sm">
-              Seus dados continuam protegidos. Atualize para continuar de onde parou.
+              Atualize o aplicativo para tentar novamente. Se continuar, volte ao início e abra a tela outra vez.
             </p>
             <button
               onClick={() => { void clearCachesAndReload(); }}
               className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm"
             >
-              Atualizar e continuar
+              Atualizar aplicativo
             </button>
           </div>
         </div>
@@ -393,12 +393,12 @@ function SubscriptionProtectedRoute({ children }: { children: React.ReactNode })
 function PermissionRoute({ screenKey, children }: { screenKey: string | string[]; children: React.ReactNode }) {
   const {
     hasScreenAccess, loading, user, roles, permissions, adminPermissions,
-    linkedAffiliateId, affiliateLoading,
+    hasPermissionRecord, profileLoading, linkedAffiliateId, affiliateLoading,
   } = useAuth();
   const { hasScreen, isLoading: modulesLoading } = useCompanyModules();
   const defaultRoute = useDefaultRoute();
 
-  if (loading || modulesLoading) return <LoadingSpinner />;
+  if (loading || profileLoading || modulesLoading) return <LoadingSpinner />;
   // Espera a detecção de vínculo de afiliado: sem isto o `defaultRoute` do
   // afiliado ainda não existe e ele seria mandado pro fallback /perfil.
   if (user && affiliateLoading) return <LoadingSpinner />;
@@ -408,7 +408,15 @@ function PermissionRoute({ screenKey, children }: { screenKey: string | string[]
   // ser redirecionado pro painel de afiliados. O login manda todo usuário sem
   // empresa pra /dashboard (Auth.tsx), então ESTE é o caminho que o afiliado
   // percorre logo depois de entrar.
-  if (user && !linkedAffiliateId && roles.length === 0 && permissions.length === 0 && adminPermissions.length === 0) return <LoadingSpinner />;
+  if (
+    user
+    && !profileLoading
+    && !hasPermissionRecord
+    && !linkedAffiliateId
+    && roles.length === 0
+    && permissions.length === 0
+    && adminPermissions.length === 0
+  ) return <Navigate to={defaultRoute} replace />;
   const acceptedScreens = Array.isArray(screenKey) ? screenKey : [screenKey];
   if (!acceptedScreens.some((key) => hasScreenAccess(key) && hasScreen(key))) return <Navigate to={defaultRoute} replace />;
 

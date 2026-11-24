@@ -25,7 +25,7 @@ const GENERIC_ERROR_MESSAGE =
  * chegamos aqui (ou está estabelecendo) — esperamos `user && !loading`.
  *
  * Regra de produto: Google só entra com conta que JÁ EXISTE no sistema. Conta
- * Google desconhecida (sem super_admin nem user_role) é DESLOGADA (scope local)
+ * Google desconhecida (sem papel nem permissões explícitas) é DESLOGADA (scope local)
  * e mandada de volta pro /login com mensagem PT-BR. NUNCA auto-cadastra.
  */
 export default function AuthCallback() {
