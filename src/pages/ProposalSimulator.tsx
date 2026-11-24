@@ -16,6 +16,7 @@ import {
   Moon,
   Plus,
   FileDown,
+  FileSignature,
   Loader2,
   Sparkles,
   Trash2,
@@ -74,8 +75,10 @@ import { formatBRL } from '@/utils/currency';
 import logoWhite from '@/assets/logo-white-horizontal.png';
 import {
   generateProposalSimulatorPdf,
+  type GenerateProposalPdfInput,
   type ProposalPdfModuleValue,
 } from '@/utils/proposalSimulatorPdf';
+import { generateProposalContractPdf } from '@/utils/proposalContractPdf';
 
 type ModulePricePeriod = 'monthly' | 'annual';
 
@@ -424,6 +427,7 @@ export default function ProposalSimulator() {
   const [openUnitId, setOpenUnitId] = useState<string | undefined>(initialState.units[0]?.id);
   const [modulePickerUnitId, setModulePickerUnitId] = useState<string | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isGeneratingContractPdf, setIsGeneratingContractPdf] = useState(false);
   const didMount = useRef(false);
   const { data: catalog, isLoading, isError } = usePublicSubscriptionCatalog(businessCore);
   const plans = useMemo(() => catalog?.plans ?? [], [catalog?.plans]);
@@ -639,41 +643,50 @@ export default function ProposalSimulator() {
     }
   }
 
-  async function generatePdf(settings: ProposalExportSettings) {
+  function buildPdfInput(settings: ProposalExportSettings): GenerateProposalPdfInput {
+    return {
+      clientName,
+      logoUrl: logoWhite,
+      units: unitViews.map((view) => {
+        const unitTotals = calculateProposalTotals(
+          [view.unit],
+          plans,
+          proposalModules,
+          extraUserPrice,
+        );
+        return {
+          name: view.unit.name,
+          planName: view.name,
+          modules: view.modules,
+          users: view.users,
+          monthly: unitTotals.monthlyFull,
+          yearlyFull: unitTotals.yearlyFull,
+          yearlyDiscounted: unitTotals.yearlyFull,
+          moduleValues: view.moduleValues,
+        };
+      }),
+      totals,
+      showModulePrices: settings.showModulePrices,
+      modulePricePeriod: settings.modulePricePeriod,
+      showMonthlyPrice: settings.showMonthlyPrice,
+      showPixInstallments: settings.showPixInstallments,
+    };
+  }
+
+  function validatePdfClient(documentLabel: string): boolean {
     if (!clientName.trim()) {
-      toast.error('Informe o nome do cliente antes de gerar a proposta.');
-      return;
+      toast.error(`Informe o nome do cliente antes de gerar ${documentLabel}.`);
+      return false;
     }
+    return true;
+  }
+
+  async function generatePdf(settings: ProposalExportSettings) {
+    if (!validatePdfClient('a proposta')) return;
 
     setIsGeneratingPdf(true);
     try {
-      await generateProposalSimulatorPdf({
-        clientName,
-        logoUrl: logoWhite,
-        units: unitViews.map((view) => {
-          const unitTotals = calculateProposalTotals(
-            [view.unit],
-            plans,
-            proposalModules,
-            extraUserPrice,
-          );
-          return {
-            name: view.unit.name,
-            planName: view.name,
-            modules: view.modules,
-            users: view.users,
-            monthly: unitTotals.monthlyFull,
-            yearlyFull: unitTotals.yearlyFull,
-            yearlyDiscounted: unitTotals.yearlyFull,
-            moduleValues: view.moduleValues,
-          };
-        }),
-        totals,
-        showModulePrices: settings.showModulePrices,
-        modulePricePeriod: settings.modulePricePeriod,
-        showMonthlyPrice: settings.showMonthlyPrice,
-        showPixInstallments: settings.showPixInstallments,
-      });
+      await generateProposalSimulatorPdf(buildPdfInput(settings));
       setExportDialogOpen(false);
       toast.success('Proposta em PDF gerada com sucesso.');
     } catch (error) {
@@ -681,6 +694,22 @@ export default function ProposalSimulator() {
       toast.error('Não foi possível gerar a proposta em PDF. Tente novamente.');
     } finally {
       setIsGeneratingPdf(false);
+    }
+  }
+
+  async function generateContractPdf(settings: ProposalExportSettings) {
+    if (!validatePdfClient('a minuta')) return;
+
+    setIsGeneratingContractPdf(true);
+    try {
+      await generateProposalContractPdf(buildPdfInput(settings));
+      setExportDialogOpen(false);
+      toast.success('Minuta contratual em PDF gerada com sucesso.');
+    } catch (error) {
+      console.error(error);
+      toast.error('Não foi possível gerar a minuta contratual em PDF. Tente novamente.');
+    } finally {
+      setIsGeneratingContractPdf(false);
     }
   }
 
@@ -741,13 +770,13 @@ export default function ProposalSimulator() {
               <Copy className="mr-2 h-4 w-4" />
               Link
             </Button>
-            <Button size="sm" onClick={() => setExportDialogOpen(true)} disabled={isGeneratingPdf || isLoading}>
-              {isGeneratingPdf ? (
+            <Button size="sm" onClick={() => setExportDialogOpen(true)} disabled={isGeneratingPdf || isGeneratingContractPdf || isLoading}>
+              {isGeneratingPdf || isGeneratingContractPdf ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <FileDown className="mr-2 h-4 w-4" />
               )}
-              <span className="hidden sm:inline">{isGeneratingPdf ? 'Gerando...' : 'Gerar proposta'}</span>
+              <span className="hidden sm:inline">{isGeneratingPdf || isGeneratingContractPdf ? 'Gerando...' : 'Gerar documentos'}</span>
               <span className="sm:hidden">Gerar</span>
             </Button>
           </div>
@@ -757,16 +786,16 @@ export default function ProposalSimulator() {
         <ResponsiveModal
           open={exportDialogOpen}
           onOpenChange={setExportDialogOpen}
-          title="Configurar proposta"
-          description="Escolha como os valores vão aparecer no PDF."
+          title="Configurar documentos"
+          description="Escolha como os valores vão aparecer e gere a proposta ou a minuta contratual."
           footer={(
-            <div className="flex gap-2">
+            <div className="grid w-full gap-2 sm:grid-cols-3">
               <Button
                 type="button"
                 variant="outline"
                 className="flex-1 hover:border-red-600 hover:bg-red-600 hover:text-white dark:hover:border-red-600 dark:hover:bg-red-600 dark:hover:text-white"
                 onClick={() => setExportDialogOpen(false)}
-                disabled={isGeneratingPdf}
+                disabled={isGeneratingPdf || isGeneratingContractPdf}
               >
                 Cancelar
               </Button>
@@ -774,18 +803,27 @@ export default function ProposalSimulator() {
                 type="button"
                 className="flex-1"
                 onClick={() => void generatePdf(exportSettings)}
-                disabled={isGeneratingPdf}
+                disabled={isGeneratingPdf || isGeneratingContractPdf}
               >
                 {isGeneratingPdf ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                {isGeneratingPdf ? 'Gerando...' : 'Gerar PDF'}
+                {isGeneratingPdf ? 'Gerando...' : 'Gerar proposta'}
+              </Button>
+              <Button
+                type="button"
+                className="flex-1 bg-emerald-600 text-white hover:bg-emerald-700"
+                onClick={() => void generateContractPdf(exportSettings)}
+                disabled={isGeneratingPdf || isGeneratingContractPdf}
+              >
+                {isGeneratingContractPdf ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSignature className="mr-2 h-4 w-4" />}
+                {isGeneratingContractPdf ? 'Gerando...' : 'Gerar minuta'}
               </Button>
             </div>
           )}
         >
           <div className="space-y-5 py-2">
             <div className="rounded-lg bg-emerald-600 p-3 text-white">
-              <p className="text-sm font-semibold">Valor anual sempre incluído</p>
-              <p className="mt-1 text-xs text-white/80">A proposta sempre mostra o total anual e a economia negociada.</p>
+              <p className="text-sm font-semibold">Uma configuração, dois documentos</p>
+              <p className="mt-1 text-xs text-white/80">A proposta e a minuta usam o mesmo escopo e os mesmos valores negociados.</p>
             </div>
 
             <div className="divide-y divide-border/50">
