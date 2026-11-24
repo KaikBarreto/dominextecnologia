@@ -18,7 +18,8 @@ describe('projeções seguras dos relatórios PDV v2', () => {
     expect(source).toContain("call('pdv_global_event_history_v3'");
     expect(source).toContain("call('pdv_document_index_v3'");
     expect(source).toContain("call('pdv_sales_report_v1'");
-    expect(source.match(/\.\.\.scope\.key/g)).toHaveLength(4);
+    expect(source).toContain("call('pdv_management_report_v1'");
+    expect(source.match(/\.\.\.scope\.key/g)).toHaveLength(5);
     expect(source).not.toMatch(/call\('pdv_(partial_projection_report|global_event_history|document_index)_v2'/);
   });
 
