@@ -25,6 +25,37 @@ function renderStepper(quantity = 19, step = 1) {
 }
 
 describe('PdvQuantityStepper', () => {
+  it('preserva todos os dígitos de uma quantidade grande ao editar e confirmar', () => {
+    const { onSetQuantity } = renderStepper(12345.678);
+    fireEvent.click(screen.getByRole('button', { name: 'Editar quantidade' }));
+    const input = screen.getByRole('textbox', { name: 'Editar quantidade' });
+    expect(input).toHaveValue('12345,678');
+    fireEvent.change(input, { target: { value: '98765,432' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(onSetQuantity).toHaveBeenCalledWith(98765.432);
+  });
+
+  it('cancela a edição de uma quantidade grande com Escape', () => {
+    const { onSetQuantity, onConfirmEdit } = renderStepper(12345.678);
+    fireEvent.click(screen.getByRole('button', { name: 'Editar quantidade' }));
+    const input = screen.getByRole('textbox', { name: 'Editar quantidade' });
+    fireEvent.change(input, { target: { value: '98765,432' } });
+    fireEvent.keyDown(input, { key: 'Escape' });
+    expect(screen.getByRole('button', { name: 'Editar quantidade' })).toHaveTextContent('12345,678');
+    expect(onSetQuantity).not.toHaveBeenCalled();
+    expect(onConfirmEdit).not.toHaveBeenCalled();
+  });
+
+  it('confirma quantidade grande ao sair do campo sem redirecionar o foco', () => {
+    const { onSetQuantity, onConfirmEdit } = renderStepper();
+    fireEvent.click(screen.getByRole('button', { name: 'Editar quantidade' }));
+    const input = screen.getByRole('textbox', { name: 'Editar quantidade' });
+    fireEvent.change(input, { target: { value: '98765,432' } });
+    fireEvent.blur(input);
+    expect(onSetQuantity).toHaveBeenCalledWith(98765.432);
+    expect(onConfirmEdit).not.toHaveBeenCalled();
+  });
+
   it('aceita vírgula e confirma a quantidade fracionada sem truncar', () => {
     const { onSetQuantity, onConfirmEdit } = renderStepper();
 

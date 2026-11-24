@@ -93,13 +93,17 @@ export function PdvQuantityStepper({
     setEditing(false);
   }
 
-  const btnSize = size === 'sm' ? 'h-7 w-7' : 'h-8 w-8';
+  const btnSize = cn('shrink-0', size === 'sm' ? 'h-7 w-7' : 'h-8 w-8');
   const iconSize = size === 'sm' ? 'h-3.5 w-3.5' : 'h-4 w-4';
-  // Quantidade fracionada precisa caber inteira (`13,600`), sem ellipsis.
-  const numberWidth = size === 'sm' ? 'w-12' : 'w-14';
+  const displayedQuantity = String(quantity).replace('.', ',');
+  // Dígitos tabulares: reserva um caractere extra para o cursor e cresce
+  // também durante a digitação, sem espremer os botões laterais.
+  const numberStyle = {
+    width: `${Math.max(size === 'sm' ? 5 : 6, (editing ? draft : displayedQuantity).length + 1)}ch`,
+  };
 
   return (
-    <div className={cn('flex items-center gap-1', className)}>
+    <div className={cn('pdv-quantity-stepper flex shrink-0 items-center gap-1', className)}>
       <Button
         type="button"
         variant="outline"
@@ -119,8 +123,9 @@ export function PdvQuantityStepper({
           decimal
           maxDecimals={3}
           aria-label={editAriaLabel}
+          style={numberStyle}
           className={cn(
-            numberWidth,
+            'pdv-quantity-value shrink-0 whitespace-nowrap',
             'h-auto rounded-none border-0 border-b border-input bg-transparent p-0 text-center text-sm font-semibold tabular-nums shadow-none focus-visible:border-primary focus-visible:ring-0 focus-visible:ring-offset-0',
           )}
           onBlur={() => commit({ focusSearch: false })}
@@ -145,12 +150,13 @@ export function PdvQuantityStepper({
           type="button"
           onClick={startEditing}
           aria-label={editAriaLabel}
+          style={numberStyle}
           className={cn(
-            numberWidth,
+            'pdv-quantity-value shrink-0 whitespace-nowrap',
             'cursor-text border-b border-dashed border-muted-foreground/50 text-center text-sm font-semibold tabular-nums text-foreground transition-colors hover:border-primary hover:border-solid hover:text-primary',
           )}
         >
-          {String(quantity).replace('.', ',')}
+          {displayedQuantity}
         </button>
       )}
 

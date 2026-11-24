@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.63";
+export const APP_VERSION = "1.41.64";
 
 export const VERSION_NOTES =
-  "O PDV adapta o catálogo ao espaço disponível e mantém o valor a receber junto do botão, com detalhes recolhíveis em telas menores.";
+  "A quantidade dos materiais no PDV cresce conforme o número digitado, mantendo todos os dígitos visíveis no notebook e no celular.";

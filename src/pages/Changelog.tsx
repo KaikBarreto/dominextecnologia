@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.64',
+    date: '24 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Quantidade inteira à vista no PDV',
+        category: 'correcao',
+        description: 'O campo de quantidade acompanha o tamanho do número, inclusive durante a edição de valores maiores ou fracionados. Em telas estreitas, as ações se reorganizam para preservar a leitura e os botões de aumentar e diminuir.',
+      },
+    ],
+  },
+  {
     version: '1.41.63',
     date: '24 de novembro de 2026',
     type: 'patch',
