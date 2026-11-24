@@ -1,4 +1,4 @@
-import { goodsDocumentRecovery } from '@/lib/fiscal/pdvNfce';
+import { cloneGoodsDraftForReissue, goodsDocumentRecovery } from '@/lib/fiscal/pdvNfce';
 import { useGoodsFiscalAccess } from '@/hooks/useGoodsFiscalAccess';
 import { goodsRejectionGuidance } from "@/lib/fiscal/goodsRejectionGuidance";
 import { useEffect, useRef, useState } from "react";
@@ -68,7 +68,7 @@ export function GoodsFiscalTab({ model }: { model: GoodsModel }) {
 }
 function GoodsFiscalTabContext({ model }: { model: GoodsModel }) {
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<{id:string;draft:GoodsFiscalDraft} | null>(null);
+  const [editing, setEditing] = useState<{id:string | null;draft:GoodsFiscalDraft} | null>(null);
   const [artifact,setArtifact] = useState<{documentId:string;url:string;kind:'xml'|'pdf';expiresAt:number} | null>(null);
   const alive = useRef(true);
   useEffect(()=>{alive.current=true;return()=>{alive.current=false;};},[]);
@@ -244,6 +244,13 @@ function GoodsFiscalTabContext({ model }: { model: GoodsModel }) {
                   <div className="mt-3 flex flex-wrap gap-2">
                     {recovery && <Button size="sm" variant="outline" disabled={action.isPending} onClick={async()=>{
                       try {
+                        if (recovery.action === 'reissue') {
+                          const cloned = cloneGoodsDraftForReissue(payload) as unknown as GoodsFiscalDraft;
+                          setEditing({id:null,draft:cloned});
+                          setDirection(cloned.direction === 'entrada' ? 'entrada' : 'saida');
+                          setOpen(true);
+                          return;
+                        }
                         await action.mutateAsync({model,documentId:id,action:recovery.action});
                         if(!alive.current)return;
                         await documents.refetch();

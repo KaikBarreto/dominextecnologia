@@ -14,7 +14,20 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { FormWizardStepper } from '@/components/ui/FormWizardStepper';
 import { WizardMobileSummary, WizardReviewChecklist } from '@/components/ui/WizardReviewChecklist';
 import { AssigneeMultiSelect } from '@/components/schedule/AssigneeMultiSelect';
-import { useContracts, useContractPlanActivities, generateOccurrences, getFrequencyLabel, type PlanActivityInput, type FreqCode, activityPeriodMonths, generateGroupedVisits, isMonthlyCadence, REGENERABLE_OS_STATUSES } from '@/hooks/useContracts';
+import {
+  useContracts,
+  useContractPlanActivities,
+  generateOccurrences,
+  getFrequencyLabel,
+  type PlanActivityInput,
+  type FreqCode,
+  activityPeriodMonths,
+  generateGroupedVisits,
+  isMonthlyCadence,
+  REGENERABLE_OS_STATUSES,
+  ContractVisitScheduleConflictError,
+  type ContractVisitGenerationAttempt,
+} from '@/hooks/useContracts';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { StepTransition } from '@/components/ui/step-transition';
 import { FullscreenWizard, FullscreenWizardAction, FullscreenWizardNotice } from '@/components/ui/FullscreenWizard';
@@ -115,6 +128,7 @@ import { readPastedCents } from '@/lib/money-paste-mask';
 import { todayInTz } from '@/lib/timezone';
 import { formatMoney } from '@/lib/format';
 import { useToast } from '@/hooks/use-toast';
+import { ScheduleConflictDialog } from '@/components/schedule/ScheduleConflictDialog';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { format } from 'date-fns';
@@ -239,7 +253,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const t = MESSAGES[locale].app.contracts.contractForm;
   const tPortal = MESSAGES[locale].app.pmoc.contractDetail.overview;
 
-  const { createContract, updateContract, createContractInstallments } = useContracts();
+  const { createContract, generateContractVisits, updateContract, createContractInstallments } = useContracts();
   // Plano de serviços já persistido (só carrega em edição). Hook é a fronteira
   // do Supabase — o componente nunca lê contract_plan_activities direto.
   const { data: existingPlan } = useContractPlanActivities(editContract?.id);
@@ -298,6 +312,10 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // declarado mais abaixo; STEPS é derivado num useMemo após isPmoc existir.)
   const [submitting, setSubmitting] = useState(false);
   const [showQuickCustomer, setShowQuickCustomer] = useState(false);
+  const [pendingVisitGeneration, setPendingVisitGeneration] =
+    useState<ContractVisitGenerationAttempt | null>(null);
+  const [showScheduleConflict, setShowScheduleConflict] = useState(false);
+  const [submittingConflictOverride, setSubmittingConflictOverride] = useState(false);
 
   // Step 1
   const [name, setName] = useState('');
@@ -2345,7 +2363,119 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     }
   };
 
+  const finishCreatedContract = async (result: {
+    id: string;
+    generatedOsCount: number;
+    expectedOsCount: number;
+  }) => {
+    const { id: newContractId, generatedOsCount, expectedOsCount } = result;
+
+    if (isActive && generatedOsCount !== expectedOsCount) {
+      throw new Error('Não foi possível confirmar todas as visitas do contrato. Nenhuma alteração parcial foi mantida.');
+    }
+
+    // Auto-gera a V1 dos documentos PMOC (TRT, Certificado, Cronograma,
+    // Dossiê) em segundo plano. SÓ pra contratos PMOC — contrato comum não
+    // tem documentos e a chamada nem dispara. Best-effort: não bloqueia o
+    // navigate nem trava a UI; erros individuais são ignorados (o gestor
+    // gera manual depois se faltar CNPJ/RT).
+    if (isPmoc) {
+      void autoGeneratePmocDocsV1(newContractId);
+      toast({
+        title: t.toasts.pmocDocsGenerating,
+        description: t.toasts.pmocDocsDesc,
+      });
+    }
+
+    // Só há sucesso quando o lote inteiro foi confirmado. O fluxo atômico não
+    // aceita mais contratos ativos com menos OSs do que a prévia informou.
+    toast({
+      title: isActive
+        ? `✅ ${isPmoc ? t.toasts.contractPmocCreatedWithOs : t.toasts.contractCreatedWithOs} ${generatedOsCount} ${t.toasts.contractOssGenerated}`
+        : `✅ ${isPmoc ? t.toasts.contractPmocCreatedSuccess : t.toasts.contractCreatedSuccess}`,
+    });
+
+    // ── Etapa Financeiro: lança as parcelas DEPOIS do contrato existir ──
+    // NÃO-FATAL: o contrato e suas OSs já estão confirmados. Uma falha aqui
+    // recebe aviso próprio e pode ser corrigida depois pela aba Financeiro.
+    if (finWillGenerate) {
+      try {
+        const plan = finPlan;
+        const desc = finEffectiveDescription;
+        await createContractInstallments.mutateAsync({
+          contractId: newContractId,
+          customerId,
+          accountId: finAccountId || null,
+          category: finCategory || null,
+          costCenterId: finCostCenterId,
+          paymentMethod: finPaymentMethod || null,
+          notes: `Vinculado ao contrato: ${name.trim()}`,
+          rows: plan.map((row) => ({
+            description: contractInstallmentDescription({
+              base: desc,
+              date: row.date,
+              number: row.number,
+              total: plan.length,
+              continuous: finIsContinuous,
+            }),
+            amount: row.amount,
+            date: row.date,
+          })),
+        });
+        toast({
+          title: plan.length > 1
+            ? t.toasts.financeCreated.replace('{n}', String(plan.length))
+            : t.toasts.financeCreatedSingle,
+        });
+      } catch (finErr: unknown) {
+        toast({
+          variant: 'destructive',
+          title: t.toasts.financeFailed,
+          description: `${t.toasts.financeFailedDesc} ${getErrorMessage(finErr)}`,
+        });
+      }
+    }
+
+    draft.clearDraft();
+    setPendingVisitGeneration(null);
+    setShowScheduleConflict(false);
+    onOpenChange(false);
+    if (onCreated) onCreated(newContractId);
+  };
+
+  const handleScheduleConflictOverride = async (reason: string) => {
+    if (!pendingVisitGeneration) return;
+
+    setSubmittingConflictOverride(true);
+    try {
+      const generation = await generateContractVisits.mutateAsync({
+        ...pendingVisitGeneration,
+        overrideReason: reason,
+      });
+      await finishCreatedContract({
+        id: pendingVisitGeneration.contractId,
+        generatedOsCount: generation.createdCount,
+        expectedOsCount: pendingVisitGeneration.expectedOsCount,
+      });
+    } catch (err: unknown) {
+      toast({
+        variant: 'destructive',
+        title: t.toasts.error,
+        description: getErrorMessage(err),
+      });
+    } finally {
+      setSubmittingConflictOverride(false);
+    }
+  };
+
   const handleSubmit = async () => {
+    // O contrato já existe e só falta autorizar o lote conflitante. Repetir o
+    // submit reabre a mesma tentativa; nunca cria um segundo contrato.
+    if (pendingVisitGeneration) {
+      setShowScheduleConflict(true);
+      return;
+    }
+
     // Defesa em profundidade: nunca salvar sem responsável pela execução.
     if (!hasExecutor) {
       toast({
@@ -2527,94 +2657,18 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           plan_activities: planActivitiesPayload,
         });
 
-        const generatedOsCount = (result as any)?.generatedOsCount ?? 0;
-        const expectedOsCount = (result as any)?.expectedOsCount ?? visitCount;
-        const newContractId = (result as any)?.id as string | undefined;
-
-        // Auto-gera a V1 dos documentos PMOC (TRT, Certificado, Cronograma,
-        // Dossiê) em segundo plano. SÓ pra contratos PMOC — contrato comum não
-        // tem documentos e a chamada nem dispara. Best-effort: não bloqueia o
-        // navigate nem trava a UI; erros individuais são ignorados (o gestor
-        // gera manual depois se faltar CNPJ/RT).
-        if (isPmoc && newContractId) {
-          void autoGeneratePmocDocsV1(newContractId);
-          toast({
-            title: t.toasts.pmocDocsGenerating,
-            description: t.toasts.pmocDocsDesc,
-          });
-        }
-
-        // PMOC e contrato comum agora seguem o mesmo fluxo: geração imediata
-        // das N OSs no momento da criação. Toast unificado.
-        toast({
-          title: isActive
-            ? generatedOsCount === expectedOsCount
-              ? `✅ ${isPmoc ? t.toasts.contractPmocCreatedWithOs : t.toasts.contractCreatedWithOs} ${generatedOsCount} ${t.toasts.contractOssGenerated}`
-              : `⚠️ ${isPmoc ? t.toasts.contractPmocCreatedWithOs : t.toasts.contractCreatedWithOs} ${generatedOsCount} ${t.toasts.contractPartialOs} ${expectedOsCount} ${t.toasts.contractOssGenerated}`
-            : `✅ ${isPmoc ? t.toasts.contractPmocCreatedSuccess : t.toasts.contractCreatedSuccess}`,
+        await finishCreatedContract({
+          id: result.id,
+          generatedOsCount: result.generatedOsCount,
+          expectedOsCount: result.expectedOsCount,
         });
-        // ── Etapa Financeiro: lança as parcelas DEPOIS do contrato existir ──
-        // NÃO duplica receita: estas linhas SÃO o "a receber" do contrato, as
-        // mesmas que a aba Financeiro lista. Nenhuma outra peça cria recebível
-        // de contrato na criação, então não há segunda fonte pra somar.
-        //
-        // REPETIÇÃO, não parcelamento: 12x R$ 450 são 12 lançamentos de R$ 450
-        // (R$ 5.400), nunca R$ 450 fatiados em 12 — regra da 1.24.18, quem
-        // parcela é o cliente. O passo de mês vem do motor com clamp de fim de
-        // mês (31/01 → 28/02, nunca 03/03).
-        //
-        // NÃO-FATAL, com try/catch PRÓPRIO: o contrato já está criado e as OSs
-        // já foram geradas: um erro aqui não pode cair no catch de fora (que
-        // mostraria "erro ao criar contrato" pra um contrato que existe). O
-        // usuário é avisado com toast próprio e lança pela aba Financeiro.
-        if (finWillGenerate && newContractId) {
-          try {
-            const plan = finPlan;
-            const desc = finEffectiveDescription;
-            await createContractInstallments.mutateAsync({
-              contractId: newContractId,
-              customerId,
-              accountId: finAccountId || null,
-              category: finCategory || null,
-              costCenterId: finCostCenterId,
-              paymentMethod: finPaymentMethod || null,
-              notes: `Vinculado ao contrato: ${name.trim()}`,
-              // Com cobrança contínua NÃO escrevemos "(n/total)": numerar
-              // sobre um total desconhecido é mentira, e o cron que continua a
-              // série também não saberia numerar. Fonte única do formato em
-              // @/lib/contract-billing (o mesmo que o Postgres escreve).
-              rows: plan.map((row) => ({
-                description: contractInstallmentDescription({
-                  base: desc,
-                  date: row.date,
-                  number: row.number,
-                  total: plan.length,
-                  continuous: finIsContinuous,
-                }),
-                amount: row.amount,
-                date: row.date,
-              })),
-            });
-            toast({
-              title: plan.length > 1
-                ? t.toasts.financeCreated.replace('{n}', String(plan.length))
-                : t.toasts.financeCreatedSingle,
-            });
-          } catch (finErr: unknown) {
-            toast({
-              variant: 'destructive',
-              title: t.toasts.financeFailed,
-              description: `${t.toasts.financeFailedDesc} ${getErrorMessage(finErr)}`,
-            });
-          }
-        }
-
-        // Criou com sucesso → descarta o rascunho persistido.
-        draft.clearDraft();
-        onOpenChange(false);
-        if (onCreated && result) onCreated((result as any).id);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      if (err instanceof ContractVisitScheduleConflictError) {
+        setPendingVisitGeneration(err.attempt);
+        setShowScheduleConflict(true);
+        return;
+      }
       toast({ variant: 'destructive', title: t.toasts.error, description: getErrorMessage(err) });
     } finally {
       setSubmitting(false);
@@ -5277,6 +5331,15 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       src={previewPhoto?.src ?? ''}
       alt={previewPhoto?.alt}
       onClose={() => setPreviewPhoto(null)}
+    />
+
+    <ScheduleConflictDialog
+      open={showScheduleConflict}
+      conflicts={[]}
+      canOverride={companySettings?.allow_schedule_conflicts === true}
+      isLoading={submittingConflictOverride}
+      onCancel={() => setShowScheduleConflict(false)}
+      onOverride={handleScheduleConflictOverride}
     />
 
     {/* Confirmação antes de recalcular as visitas futuras (edição de cronograma).

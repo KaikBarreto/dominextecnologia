@@ -1,5 +1,10 @@
 import { HorizontalTabBar } from '@/components/ui/HorizontalTabBar';
 import { goodsPaymentLabel } from '@/lib/fiscal/pdvNfce';
+import {
+  goodsFinalConsumerLabel,
+  resolveGoodsFinalConsumer,
+} from '@/lib/fiscal/goodsFinalConsumer';
+import { goodsRejectionGuidance } from '@/lib/fiscal/goodsRejectionGuidance';
 import { useAppLocaleContext } from "@/contexts/AppLocaleContext";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { toast } from "sonner";
@@ -13,6 +18,7 @@ import {
   Loader2,
   PackagePlus,
   Package,
+  PencilLine,
   ReceiptText,
   Save,
   Search,
@@ -63,8 +69,10 @@ import {
 import { useGoodsFiscalAccess } from "@/hooks/useGoodsFiscalAccess";
 import { useGoodsFiscalCatalogs } from "@/hooks/useGoodsFiscalCatalogs";
 import { useGoodsFiscalSettings } from "@/hooks/useGoodsFiscalSettings";
+import { useFiscalSettings } from "@/hooks/useFiscalSettings";
 
 type Step = "dados" | "itens" | "impostos" | "faturamento" | "transporte" | "opcoes" | "preview";
+type PartyEntryMode = "select" | "manual";
 
 const STEPS: Array<{ key: Step; label: string }> = [
   { key: "dados", label: "Dados" },
@@ -114,11 +122,17 @@ const newDraft = (model: GoodsModel, direction: GoodsDirection): GoodsFiscalDraf
       : model === 65
         ? "VENDA A CONSUMIDOR"
         : "VENDA DE MERCADORIA",
-  party: model === 65 ? null : emptyParty(),
+  party: null,
   items: [],
   payments: [{ method: model === 65 ? "01" : "90", amount: 0, change: 0 }],
   freightMode: 9,
   notes: "",
+  finalConsumer: model === 65 || (model === 55 && direction === "saida"),
+});
+
+const normalizeFinalConsumer = (draft: GoodsFiscalDraft): GoodsFiscalDraft => ({
+  ...draft,
+  finalConsumer: resolveGoodsFinalConsumer(draft),
 });
 
 const requiredFiscal = (item: GoodsFiscalItem, direction: GoodsDirection) => {
@@ -202,12 +216,14 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
   const [sourceQuery, setSourceQuery] = useState("");
   const [selectedSource, setSelectedSource] = useState<string | null>(null);
   const [selectedPartyId, setSelectedPartyId] = useState("");
+  const [partyEntryMode, setPartyEntryMode] = useState<PartyEntryMode>("select");
   const { items: inventory } = useInventory();
-  const { stocks, defaultStock, isLoading: stocksLoading } = useStocks();
+  const { defaultStock, isLoading: stocksLoading } = useStocks();
   const { customers } = useCustomers();
   const { suppliers } = useSuppliers();
   const catalogs = useGoodsFiscalCatalogs();
   const { settings } = useGoodsFiscalSettings();
+  const { settings: fiscalSettings, isLoading: fiscalSettingsLoading } = useFiscalSettings();
   const isMobile = useIsMobile();
   const sources = useGoodsFiscalSources(
     draft.direction,
@@ -251,11 +267,13 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
     setSourceQuery("");
     setSelectedSource(null);
     setSelectedPartyId("");
+    setPartyEntryMode("select");
     if (initialNature) setDraft(current => ({ ...current, nature: initialNature }));
     const saved = openingDocument.current.draft;
     if (!sourceId && saved?.sourceType === 'manual' && saved.model === model && saved.direction === direction && Array.isArray(saved.items) && Array.isArray(saved.payments)) {
-      setDraft({...saved,id:openingDocument.current.id ?? saved.id ?? null});
+      setDraft(normalizeFinalConsumer({...saved,id:openingDocument.current.id ?? saved.id ?? null}));
       setSelectedPartyId(saved.party?.id ?? '');
+      setPartyEntryMode(saved.party && !saved.party.id ? "manual" : "select");
     }
   }, [open, model, direction, initialNature, sourceId]);
 
@@ -268,11 +286,12 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
       const saved = openingDocument.current.draft;
       const restored = saved?.model === model && saved.sourceType === sourceType && saved.sourceId === sourceId && Array.isArray(saved.items) && Array.isArray(saved.payments) ? saved : null;
       const party = restored ? restored.party : includeIdentifiedConsumer ? imported.party : null;
-      setDraft(current => ({ ...current, ...imported, ...restored, id: openingDocument.current.id ?? null, model,
+      setDraft(current => normalizeFinalConsumer({ ...current, ...imported, ...restored, id: openingDocument.current.id ?? null, model,
         sourceType, sourceId, direction: imported.direction, party,
         stockId: imported.stockId,
         nature: restored?.nature || initialNature || current.nature }));
       setSelectedPartyId(party?.id ?? '');
+      setPartyEntryMode(party && !party.id ? "manual" : "select");
     }).catch(() => { if (active) setSourceError('Não foi possível importar a venda confirmada. Confira seu acesso fiscal e tente novamente.'); })
       .finally(() => { if (active) setSourceLoading(false); });
     return () => { active = false; };
@@ -286,6 +305,18 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
     const preferred = availableSeries.find((entry) => entry.id === configuredId) ?? availableSeries[0];
     setDraft((current) => current.seriesId ? current : { ...current, seriesId: preferred.id });
   }, [open, model, draft.seriesId, draft.direction, availableSeries, settings.nfe.defaultEntrySeriesId, settings.nfe.defaultExitSeriesId]);
+
+  useEffect(() => {
+    if (
+      !open ||
+      fiscalSettingsLoading ||
+      draft.environment ||
+      openingDocument.current.draft?.environment
+    ) return;
+    setDraft((current) => current.environment
+      ? current
+      : { ...current, environment: fiscalSettings.fiscal_ambiente });
+  }, [open, fiscalSettingsLoading, fiscalSettings.fiscal_ambiente, draft.environment]);
 
   useEffect(() => {
     if (!open || draft.stockId || !defaultStock) return;
@@ -303,7 +334,7 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
     setSelectedSource(id);
     try {
       const imported = await importer.mutateAsync(source);
-      setDraft((current) => ({
+      setDraft((current) => normalizeFinalConsumer({
         ...current,
         ...imported,
         model,
@@ -317,6 +348,7 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
         notes: "",
       }));
       setSelectedPartyId(imported.party?.id ?? "");
+      setPartyEntryMode(imported.party && !imported.party.id ? "manual" : "select");
       toast.success(`${source.originLabel} importada para conferência.`);
     } catch (error) {
       toast.error((error as Error).message);
@@ -324,6 +356,7 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
   };
 
   const selectCustomer = (id: string) => {
+    setPartyEntryMode("select");
     setSelectedPartyId(id);
     const customer = customers.find((entry) => entry.id === id);
     if (!customer) return;
@@ -343,10 +376,14 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
         zipCode: customer.zip_code || "",
         municipalityCode: customer.ibge_municipality_code || "",
       },
+      finalConsumer: customer.inscricao_estadual
+        ? draft.finalConsumer === true
+        : true,
     });
   };
 
   const selectSupplier = (id: string) => {
+    setPartyEntryMode("select");
     setSelectedPartyId(id);
     const supplier = suppliers.find((entry) => entry.id === id);
     if (!supplier) return;
@@ -382,7 +419,7 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
     }
     const customer = customers.find((entry) => entry.id === selectedPartyId);
     if (!customer) return;
-    setDraft((current) => ({
+    setDraft((current) => normalizeFinalConsumer({
       ...current,
       party: {
         id: customer.id,
@@ -489,17 +526,25 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
     }
     try {
       if (emit) onBeforeEmit?.();
+      const normalizedDraft = normalizeFinalConsumer(draft);
       const response = await saver.mutateAsync({
-        draft,
+        draft: normalizedDraft,
         emit,
       });
-      if (typeof response.id === "string") patch({ id: response.id });
+      setDraft((current) => normalizeFinalConsumer({
+        ...current,
+        id: response.status === 'rejected'
+          ? null
+          : typeof response.id === "string"
+            ? response.id
+            : current.id,
+      }));
       if (response.status === 'authorized') toast.success(`${model === 65 ? 'NFC-e' : 'NF-e'} autorizada pela SEFAZ.`);
-      else if (response.status === 'rejected') toast.error('Documento rejeitado. Confira a situação e corrija as pendências fiscais.');
+      else if (response.status === 'rejected') toast.error(goodsRejectionGuidance(response.rejectionCode));
       else if (emit) toast.message('Solicitação fiscal registrada. Acompanhe a situação desta mesma nota.');
       else toast.success('Rascunho salvo.');
       onSaved?.(response);
-      if (emit) onOpenChange(false);
+      if (emit && response.status !== 'rejected') onOpenChange(false);
     } catch (error) {
       if (emit) onEmitFailure?.();
       toast.error((error as Error).message);
@@ -572,13 +617,62 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
       exitLabel="Sair"
       footer={footer}
       headerActions={
-        <div className="flex items-center gap-2">
-          <Badge className="border-0 bg-primary text-primary-foreground hover:bg-primary/90">
+        <div className="flex flex-nowrap items-center justify-end gap-1.5 sm:gap-2">
+          <Badge className="border-0 bg-foreground px-2 text-[10px] text-background hover:bg-foreground/90 sm:px-2.5 sm:text-xs">
             {draft.direction === "entrada" ? "Entrada" : "Saída"}
           </Badge>
-          <Badge variant="outline">
+          <Badge variant="outline" className="hidden sm:inline-flex">
             {model === 65 ? "Modelo 65" : "Modelo 55"}
           </Badge>
+          {model === 55 ? (
+            <Select
+              value={draft.seriesId ?? ""}
+              onValueChange={(seriesId) => patch({ seriesId })}
+            >
+              <SelectTrigger
+                aria-label="Série da NF-e"
+                className="h-8 w-[92px] gap-1 px-2 text-[11px] font-semibold sm:w-auto sm:min-w-[132px] sm:max-w-[220px] sm:gap-1.5 sm:px-3 sm:text-xs"
+              >
+                <SelectValue placeholder="Série">
+                  {selectedSeries ? (
+                    <>
+                      <span className="sm:hidden">Série {selectedSeries.series}</span>
+                      <span className="hidden max-w-[174px] truncate sm:inline">
+                        {selectedSeries.label} · série {selectedSeries.series} · próximo nº {selectedSeries.nextNumber}
+                      </span>
+                    </>
+                  ) : undefined}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent align="end">
+                {availableSeries.map((entry) => (
+                  <SelectItem key={entry.id} value={entry.id}>
+                    {entry.label} · série {entry.series} · próximo nº {entry.nextNumber}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : null}
+          <Select
+            value={draft.environment ?? ""}
+            onValueChange={(environment) => patch({
+              environment: environment === "producao" ? "producao" : "homologacao",
+            })}
+            disabled={fiscalSettingsLoading}
+          >
+            <SelectTrigger
+              aria-label="Ambiente de emissão"
+              className="h-8 w-[126px] px-2 text-[11px] font-semibold sm:w-[138px] sm:px-3 sm:text-xs"
+            >
+              <SelectValue placeholder="Ambiente">
+                {draft.environment === "producao" ? "Produção" : "Homologação"}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent align="end">
+              <SelectItem value="producao">Produção</SelectItem>
+              <SelectItem value="homologacao">Homologação</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       }
     >
@@ -594,7 +688,7 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
           </div>
         </div>
         {draft.items.length > 0 && fiscalIssues.length === 0 ? (
-          <Badge className="gap-1.5 border-0 bg-primary px-3 py-1.5 text-primary-foreground">
+          <Badge className="gap-1.5 border-0 bg-foreground px-3 py-1.5 text-background">
             <CircleCheck className="h-3.5 w-3.5" />Pronta pra emitir
           </Badge>
         ) : (
@@ -660,19 +754,19 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
         {sourceError && <p role="alert" className="mb-5 text-destructive">{sourceError}</p>}
         {sourceId && !sourceLoading && !sourceError && <p className="mb-5 text-sm text-muted-foreground">Venda concluída importada para conferência. A emissão fiscal não altera o pagamento.</p>}
         {step === "dados" && (
-          <section className="space-y-7">
+          <section className="space-y-5">
             <header>
-              <p className="text-sm font-semibold uppercase tracking-wide text-foreground">
+              <p className="text-xs font-semibold uppercase tracking-wide text-foreground">
                 Etapa 1
               </p>
-              <h2 className="mt-1 text-2xl font-bold sm:text-3xl">
+              <h2 className="mt-1 text-2xl font-bold">
                 Dados da nota
               </h2>
-              <p className="mt-2 max-w-3xl text-base text-muted-foreground">
+              <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
                 Preencha manualmente ou importe uma {draft.direction === "entrada" ? "compra" : "venda"} para evitar redigitação.
               </p>
             </header>
-            <div className="flex flex-wrap items-center gap-2 border-b border-border/60 pb-4">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="mr-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Preenchimento
               </span>
@@ -685,16 +779,17 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
                     sourceType: "manual",
                     sourceId: null,
                     items: [],
-                    party: model === 65 ? null : emptyParty(),
+                    party: null,
                   });
                   setSelectedSource(null);
                   setSelectedPartyId("");
+                  setPartyEntryMode("select");
                 }}
                 variant="outline"
                 className={cn(
                   "h-10 gap-2 px-4 text-sm font-bold",
                   sourceMode === "manual" &&
-                    "border-primary bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground",
+                    "border-foreground bg-foreground text-background hover:bg-foreground/90 hover:text-background",
                 )}
               >
                 <PackagePlus className="h-4 w-4" />
@@ -711,7 +806,7 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
                 className={cn(
                   "h-10 gap-2 px-4 text-sm font-bold",
                   sourceMode === "import" &&
-                    "border-primary bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground",
+                    "border-foreground bg-foreground text-background hover:bg-foreground/90 hover:text-background",
                 )}
               >
                 <FileInput className="h-4 w-4" />
@@ -748,15 +843,15 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
                         className={cn(
                           "flex items-center gap-4 rounded-2xl border-2 p-4 text-left",
                           selectedSource === source.sourceId
-                            ? "border-primary bg-primary text-primary-foreground"
+                            ? "border-foreground bg-foreground text-background"
                             : "border-border hover:border-foreground/30",
                         )}
                       >
                         <span
                           className={cn(
-                            "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground",
+                            "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-foreground text-background",
                             selectedSource === source.sourceId &&
-                              "bg-primary-foreground text-primary",
+                              "bg-background text-foreground",
                           )}
                         >
                           {source.sourceType === "pdv_sale" ? (
@@ -774,7 +869,7 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
                             className={cn(
                               "mt-1 block text-sm text-muted-foreground",
                               selectedSource === source.sourceId &&
-                                "text-primary-foreground/75",
+                                "text-background/75",
                             )}
                           >
                             {source.originLabel} · {source.itemCount} itens
@@ -789,92 +884,42 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
                 )}
               </div>
             )}
-            <div className="grid max-w-5xl gap-5 lg:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="goods-stock">Local de estoque</Label>
-                <Select
-                  value={draft.stockId ?? ""}
-                  onValueChange={(stockId) => patch({ stockId })}
-                  disabled={stocksLoading || importedSource}
-                >
-                  <SelectTrigger id="goods-stock" className="min-h-11">
-                    <SelectValue placeholder={stocksLoading ? "Carregando locais…" : "Selecione o local da operação"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {stocks.map((stock) => (
-                      <SelectItem key={stock.id} value={stock.id}>
-                        {stock.name}{stock.is_default ? " · principal" : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-sm text-muted-foreground">
-                  {importedSource
-                    ? "O local foi herdado da venda ou compra e não pode ser trocado nesta nota."
-                    : "A autorização fiscal movimentará este local; rascunhos e contingência não alteram saldo."}
-                </p>
-                {!stocksLoading && stocks.length === 0 ? (
-                  <p role="alert" className="text-sm font-medium text-destructive">
-                    Nenhum local geral está disponível para seu acesso. Cadastre ou solicite acesso a um local antes de emitir.
-                  </p>
-                ) : null}
-              </div>
-            {model === 55 && (
-              <div className="space-y-2">
-                <Label htmlFor="goods-nfe-series">Série da NF-e</Label>
-                <Select
-                  value={draft.seriesId ?? undefined}
-                  onValueChange={(seriesId) => patch({ seriesId })}
-                >
-                  <SelectTrigger id="goods-nfe-series">
-                    <SelectValue placeholder="Selecione uma série ativa" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableSeries.map((entry) => (
-                      <SelectItem key={entry.id} value={entry.id}>
-                        {entry.label} · série {entry.series} · próximo nº {entry.nextNumber}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {availableSeries.length === 0 ? (
-                  <p role="alert" className="text-sm font-medium text-destructive">
-                    Nenhuma série ativa atende esta operação. Cadastre uma série em Configurações fiscais antes de emitir.
-                  </p>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    A numeração é reservada pelo servidor somente na emissão e nunca é calculada pelo navegador.
-                  </p>
-                )}
-              </div>
-            )}
-            </div>
+            {!stocksLoading && !draft.stockId ? (
+              <p role="alert" className="text-sm font-medium text-destructive">
+                Nenhum estoque fiscal está disponível para seu acesso. Configure o estoque principal antes de emitir.
+              </p>
+            ) : null}
+            {model === 55 && availableSeries.length === 0 ? (
+              <p role="alert" className="text-sm font-medium text-destructive">
+                Nenhuma série ativa atende esta operação. Cadastre uma série em Configurações fiscais antes de emitir.
+              </p>
+            ) : null}
           </section>
         )}
 
         {step === "dados" && (
-          <section className="mt-8 space-y-7 border-t border-border/60 pt-7">
+          <section className="mt-6 space-y-5 border-t border-border/60 pt-5">
             <header>
-              <p className="text-sm font-semibold uppercase tracking-wide text-foreground">
+              <p className="text-xs font-semibold uppercase tracking-wide text-foreground">
                 {draft.direction === "entrada" ? "Fornecedor" : "Destinatário"}
               </p>
-              <h2 className="mt-1 text-2xl font-bold sm:text-3xl">
+              <h2 className="mt-1 text-2xl font-bold">
                 {draft.direction === "entrada"
                   ? "Quem forneceu"
                   : "Para quem é a nota"}
               </h2>
-              <p className="mt-2 text-base text-muted-foreground">
+              <p className="mt-1 text-sm text-muted-foreground">
                 {model === 65
                   ? "Na NFC-e o consumidor pode ficar sem identificação."
                   : "Confira documento e endereço fiscal antes de avançar."}
               </p>
             </header>
-            {model === 55 || draft.party ? (
+            {(model === 55 || draft.party) && partyEntryMode === "select" ? (
               <div className="space-y-3">
                 <Label htmlFor="goods-party-selector" className="font-semibold">
                   {draft.direction === "entrada" ? "Selecionar fornecedor" : "Selecionar cliente"}
                 </Label>
-                <div className="max-w-3xl [&_button:last-child]:bg-primary [&_button:last-child]:text-primary-foreground [&_button:last-child]:hover:bg-primary/90">
+                <div className="max-w-3xl [&_button:last-child]:bg-foreground [&_button:last-child]:text-background [&_button:last-child]:hover:bg-foreground/90">
                   {draft.direction === "entrada" ? (
                     <SupplierSelectField
                       id="goods-party-selector"
@@ -889,6 +934,7 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
                   ) : (
                     <CustomerSelectField
                       id="goods-party-selector"
+                      variant="large"
                       value={selectedPartyId}
                       onValueChange={selectCustomer}
                       customers={customers}
@@ -900,28 +946,66 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
                     />
                   )}
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Os dados fiscais abaixo são preenchidos pelo cadastro e continuam editáveis para conferência.
-                </p>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm text-muted-foreground">
+                    Os dados fiscais são preenchidos automaticamente pelo cadastro selecionado.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="gap-2 border-foreground bg-foreground text-background hover:bg-foreground/90 hover:text-background"
+                    onClick={() => {
+                      setPartyEntryMode("manual");
+                      setSelectedPartyId("");
+                      patch({ party: emptyParty(), finalConsumer: true });
+                    }}
+                  >
+                    <PencilLine className="h-4 w-4" />
+                    Preencher manualmente
+                  </Button>
+                </div>
               </div>
             ) : null}
-            {model === 65 && draft.party && <Button type="button" variant="outline" onClick={() => { patch({party:null}); setSelectedPartyId(''); }}>Usar consumidor não identificado</Button>}
+            {model === 65 && draft.party && <Button type="button" variant="outline" onClick={() => { patch({party:null}); setSelectedPartyId(''); setPartyEntryMode("select"); }}>Usar consumidor não identificado</Button>}
             {model === 65 && !draft.party ? (
-              <div className="flex items-center justify-between gap-4 rounded-2xl bg-primary p-5 text-primary-foreground">
+              <div className="flex items-center justify-between gap-4 rounded-2xl bg-foreground p-5 text-background">
                 <div>
                   <p className="font-bold">Consumidor não identificado</p>
-                  <p className="mt-1 text-sm text-primary-foreground/75">
+                  <p className="mt-1 text-sm text-background/75">
                     Permitido para este fluxo de NFC-e.
                   </p>
                 </div>
                 <Button
                   variant="secondary"
-                  onClick={() => patch({ party: emptyParty() })}
+                  onClick={() => {
+                    patch({ party: emptyParty() });
+                    setPartyEntryMode("select");
+                  }}
                 >
                   Identificar consumidor
                 </Button>
               </div>
-            ) : (
+            ) : partyEntryMode === "manual" ? (
+              <div className="space-y-5">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-4">
+                  <div>
+                    <p className="font-semibold">Preenchimento manual</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Use somente quando o {draft.direction === "entrada" ? "fornecedor" : "cliente"} ainda não estiver cadastrado.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setPartyEntryMode("select");
+                      setSelectedPartyId("");
+                      patch({ party: null, finalConsumer: true });
+                    }}
+                  >
+                    Selecionar {draft.direction === "entrada" ? "fornecedor" : "cliente"} cadastrado
+                  </Button>
+                </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="goods-party-name">Nome / razão social</Label>
@@ -945,9 +1029,18 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
                   <Input
                     id="goods-party-ie"
                     value={draft.party?.stateRegistration ?? ""}
-                    onChange={(e) =>
-                      patchParty({ stateRegistration: e.target.value })
-                    }
+                    onChange={(e) => {
+                      const stateRegistration = e.target.value;
+                      patch({
+                        party: {
+                          ...(draft.party ?? emptyParty()),
+                          stateRegistration,
+                        },
+                        finalConsumer: stateRegistration.replace(/\D/g, "")
+                          ? draft.finalConsumer === true
+                          : true,
+                      });
+                    }}
                   />
                 </div>
                 <div className="space-y-2">
@@ -1021,7 +1114,86 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
                   </div>
                 </div>
               </div>
-            )}
+              </div>
+            ) : null}
+            {model === 55 && draft.direction === "saida" && draft.party && (partyEntryMode === "manual" || !!selectedPartyId || !!draft.party.id) ? (
+              <div className="space-y-3" data-qa="nfe-final-consumer-purpose">
+                <div>
+                  <Label className="text-base font-bold">Finalidade para o destinatário</Label>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Essa informação define se a compra é para uso próprio ou para continuar a atividade comercial.
+                  </p>
+                </div>
+                {!draft.party.stateRegistration?.replace(/\D/g, "") ? (
+                  <div className="flex items-start gap-4 rounded-2xl bg-foreground p-5 text-background">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-background text-foreground">
+                      <UserRound className="h-5 w-5" />
+                    </span>
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-bold">Consumidor final</p>
+                        <Badge className="border border-background/30 bg-background/15 text-background hover:bg-background/15">
+                          Automático
+                        </Badge>
+                      </div>
+                      <p className="mt-1 text-sm text-background/75">
+                        Como o destinatário não possui inscrição estadual, a NF-e será emitida para uso ou consumo próprio.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {[
+                      {
+                        value: true,
+                        title: "Uso ou consumo próprio",
+                        description: "O destinatário vai usar o produto e não pretende revendê-lo.",
+                        icon: UserRound,
+                      },
+                      {
+                        value: false,
+                        title: "Revenda ou industrialização",
+                        description: "O produto será revendido, transformado ou usado na produção.",
+                        icon: Package,
+                      },
+                    ].map((option) => {
+                      const selected = resolveGoodsFinalConsumer(draft) === option.value;
+                      const Icon = option.icon;
+                      return (
+                        <button
+                          key={String(option.value)}
+                          type="button"
+                          aria-pressed={selected}
+                          onClick={() => patch({ finalConsumer: option.value })}
+                          className={cn(
+                            "flex min-h-32 items-start gap-4 rounded-2xl border-2 p-5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                            selected
+                              ? "border-foreground bg-foreground text-background"
+                              : "border-border bg-background hover:border-foreground/30",
+                          )}
+                        >
+                          <span className={cn(
+                            "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground",
+                            selected && "bg-background text-foreground",
+                          )}>
+                            <Icon className="h-5 w-5" />
+                          </span>
+                          <span>
+                            <span className="block font-bold">{option.title}</span>
+                            <span className={cn(
+                              "mt-1 block text-sm text-muted-foreground",
+                              selected && "text-background/75",
+                            )}>
+                              {option.description}
+                            </span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ) : null}
           </section>
         )}
 
@@ -1077,7 +1249,7 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
                                   Fiscal incompleto
                                 </Badge>
                               ) : (
-                                <Badge className="border-0 bg-primary text-primary-foreground">
+                                <Badge className="border-0 bg-foreground text-background">
                                   <BadgeCheck className="mr-1 h-3.5 w-3.5" />
                                   Pronto
                                 </Badge>
@@ -1392,12 +1564,12 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
                 </div>
               </div>
               <aside className="space-y-4">
-                <div className="rounded-2xl bg-primary p-5 text-primary-foreground">
+                <div className="rounded-2xl bg-foreground p-5 text-background">
                   <ReceiptText className="h-7 w-7" />
                   <h3 className="mt-4 text-lg font-bold">Resumo da emissão</h3>
                   <dl className="mt-4 space-y-3 text-sm">
                     <div>
-                      <dt className="text-primary-foreground/65">
+                      <dt className="text-background/65">
                         Origem
                       </dt>
                       <dd className="font-semibold">
@@ -1411,14 +1583,20 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-primary-foreground/65">
+                      <dt className="text-background/65">
                         Itens
                       </dt>
                       <dd className="font-semibold">{draft.items.length}</dd>
                     </div>
                     {model === 55 && (
                       <div>
-                        <dt className="text-primary-foreground/65">Série</dt>
+                        <dt className="text-background/65">Finalidade</dt>
+                        <dd className="font-semibold">{goodsFinalConsumerLabel(draft)}</dd>
+                      </div>
+                    )}
+                    {model === 55 && (
+                      <div>
+                        <dt className="text-background/65">Série</dt>
                         <dd className="font-semibold">
                           {selectedSeries ? `${selectedSeries.series} · ${selectedSeries.label}` : "Não selecionada"}
                         </dd>
@@ -1426,7 +1604,7 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
                     )}
                     {model === 55 && (
                       <div>
-                        <dt className="text-primary-foreground/65">Frete</dt>
+                        <dt className="text-background/65">Frete</dt>
                         <dd className="font-semibold">
                           {draft.freightMode === 9
                             ? "Sem frete"
@@ -1434,11 +1612,11 @@ function GoodsFiscalWizardContent({ model, direction, open, onOpenChange, onSave
                               ? "Por conta do emitente"
                               : "Por conta do destinatário"}
                         </dd>
-                        {selectedCarrier && <dd className="text-primary-foreground/75">{selectedCarrier.name}</dd>}
+                        {selectedCarrier && <dd className="text-background/75">{selectedCarrier.name}</dd>}
                       </div>
                     )}
                     <div>
-                      <dt className="text-primary-foreground/65">
+                      <dt className="text-background/65">
                         Total
                       </dt>
                       <dd className="text-xl font-bold">

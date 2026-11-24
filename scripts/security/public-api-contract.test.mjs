@@ -16,6 +16,8 @@ const publicReference = await readFile(new URL('public/docs/api/referencia.md', 
 const llmsDocumentation = await readFile(new URL('public/docs/llms.txt', root), 'utf8');
 const bookingMigration = await readFile(new URL('supabase/migrations/20261017122000_public_api_v1_booking_engine.sql', root), 'utf8');
 const multiDayBookingMigration = await readFile(new URL('supabase/migrations/20261019173000_os_multiplos_dias_na_agenda.sql', root), 'utf8');
+const companyScheduleConflictsMigration = await readFile(new URL('supabase/migrations/20261123221500_company_schedule_conflicts_setting.sql', root), 'utf8');
+const permissionsHook = await readFile(new URL('src/hooks/usePermissions.ts', root), 'utf8');
 const crmCardsMigration = await readFile(new URL('supabase/migrations/20261029120000_public_api_v1_crm_cards.sql', root), 'utf8');
 const canonicalOriginMigration = await readFile(new URL('supabase/migrations/20261115013000_normalize_public_tracking_url_origin.sql', root), 'utf8');
 const contract = parse(openapiSource);
@@ -147,6 +149,11 @@ test('override interno nao fica acessivel a service role nem a API publica', () 
   assert.match(multiDayBookingMigration, /REVOKE ALL ON FUNCTION public\.schedule_book_service_order_plan\(uuid,\s*text,\s*uuid,\s*timestamptz,\s*jsonb,\s*text\)\s+FROM PUBLIC, anon, service_role/i);
   assert.match(multiDayBookingMigration, /REVOKE ALL ON FUNCTION public\.schedule_create_service_order_plan_with_override\(jsonb,\s*text,\s*jsonb,\s*uuid\[\]\)\s+FROM PUBLIC, anon, service_role/i);
   assert.doesNotMatch(publicEdge, /schedule_create_service_order_with_override|schedule_book_service_order/i);
+  assert.match(companyScheduleConflictsMigration, /ADD COLUMN allow_schedule_conflicts boolean NOT NULL DEFAULT false/i);
+  assert.match(companyScheduleConflictsMigration, /cs\.allow_schedule_conflicts IS TRUE/i);
+  assert.match(companyScheduleConflictsMigration, /auth\.role\(\)\) = 'authenticated'/i);
+  assert.match(companyScheduleConflictsMigration, /permissions = permissions - 'fn:override_schedule_conflict'[\s\S]+UPDATE public\.permission_presets/i);
+  assert.doesNotMatch(permissionsHook, /fn:override_schedule_conflict/i);
 });
 
 test('edge publica exige proxy autenticado e recebe IP apenas da borda confiavel', () => {

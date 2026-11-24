@@ -77,7 +77,7 @@ export function ScheduleConflictDialog({
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Escolha outro horário ou outro responsável. Você não possui permissão para autorizar sobreposição.
+            A empresa não permite agendamentos conflitantes. Ative essa opção em Configurações → Usabilidade → Agenda ou escolha outro horário/responsável.
           </p>
         )}
 

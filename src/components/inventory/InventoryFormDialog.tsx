@@ -122,6 +122,8 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
     item,
   });
   const isEditing = !!item;
+  const quantityBaseRef = useRef(0);
+  const quantityChangedRef = useRef(false);
 
   const [formData, setFormData] = useState<Partial<InventoryItemInsert>>({
     name: '', sku: '', category: '', group_id: null, description: '', quantity: 0, unit: 'un', cost_price: 0, sale_price: 0, supplier_id: null,
@@ -251,7 +253,7 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
       if (item) {
         setFormData({
           name: item.name, sku: item.sku || '', category: item.category || '', group_id: item.group_id || null,
-          description: item.description || '', quantity: item.quantity || 0, unit: item.unit || 'un',
+          description: item.description || '', quantity: 0, unit: item.unit || 'un',
           cost_price: item.cost_price || 0, sale_price: item.sale_price || 0, supplier_id: item.supplier_id ?? null,
           is_pmoc_product: item.is_pmoc_product,
           pmoc_manufacturer: item.pmoc_manufacturer,
@@ -282,7 +284,7 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
           fiscal_ibs_cbs_cst: item.fiscal_ibs_cbs_cst,
         });
         setNumericText({
-          quantity: toNumericText(item.quantity),
+          quantity: '',
           cost_price: toNumericText(item.cost_price),
           sale_price: toNumericText(item.sale_price),
         });
@@ -319,8 +321,9 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
   // passagem pelo efeito abaixo hidrata de novo, do zero.
   useEffect(() => {
     hydratedRef.current = false;
+    quantityChangedRef.current = false;
     setStocksHydrated(false);
-  }, [open, item]);
+  }, [open, item, activeStockId]);
 
   // Hidrata presença + mínimo por estoque UMA VEZ por abertura, e só quando
   // stocksSectionReady (stockLevels e stocks já carregados) — nunca antes.
@@ -334,6 +337,10 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
     if (!stocksSectionReady) return;
     initStockMinMap();
     initStockPresenceMap();
+    const localQuantity = item && activeStockId ? getQuantityForStock(item.id, activeStockId) : 0;
+    quantityBaseRef.current = localQuantity;
+    setFormData((previous) => ({ ...previous, quantity: localQuantity }));
+    setNumericText((previous) => ({ ...previous, quantity: toNumericText(localQuantity) }));
     hydratedRef.current = true;
     setStocksHydrated(true);
     // initStockMinMap/initStockPresenceMap mudam de identidade a cada render
@@ -342,7 +349,7 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
     // o efeito em todo render; o gate real é open + stocksSectionReady, com
     // hydratedRef travando a segunda execução.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, stocksSectionReady]);
+  }, [open, stocksSectionReady, item, activeStockId]);
 
   const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
@@ -411,13 +418,17 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
     };
 
     if (isEditing && item) {
-      // Use stock-specific qty as the "previous" so the adjustment targets the
-      // active local (not the global sum). Falls back to item.quantity when no
-      // active stock is selected (single-stock or "all" view).
-      const previousQty = activeStockId
-        ? getQuantityForStock(item.id, activeStockId)
-        : (item.quantity ?? 0);
-      await updateItem.mutateAsync({ id: item.id, ...normalized, previousQuantity: previousQty, activeStockId: activeStockId ?? undefined });
+      // Cadastro e preço não reenviam saldo; somente a edição explícita ajusta o local.
+      const { quantity, ...catalogFields } = normalized;
+      await updateItem.mutateAsync({
+        id: item.id,
+        ...catalogFields,
+        ...(activeStockId && quantityChangedRef.current ? {
+          quantity,
+          previousQuantity: quantityBaseRef.current,
+          activeStockId,
+        } : {}),
+      });
       savedItemId = item.id;
     } else {
       // Extrai a quantidade inicial do formData — ela NÃO vai no payload do catálogo
@@ -453,7 +464,11 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
         .filter((s) => s.id in stockPresenceMap && stockPresenceMap[s.id] === true)
         .map((s) => s.id);
       try {
-        await setInventoryPresence.mutateAsync({ inventoryId: savedItemId, stockIds: presentStockIds });
+        const presenceChanged = !item || stocks.some((stock) =>
+          stockPresenceMap[stock.id] !== getPresenceForStock(item.id, stock.id));
+        if (presenceChanged) {
+          await setInventoryPresence.mutateAsync({ inventoryId: savedItemId, stockIds: presentStockIds });
+        }
       } catch (err: unknown) {
         const msg = String((err as Error).message ?? '');
         if (msg.includes('presence_has_balance')) {
@@ -688,8 +703,11 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label>{t.fields.quantity}</Label>
-                <NumericInput decimal value={numericText.quantity} onValueChange={(v) => handleNumericChange('quantity', v)} />
+                <Label htmlFor="inventory-local-quantity">{t.fields.quantity}</Label>
+                <NumericInput id="inventory-local-quantity" decimal value={numericText.quantity} disabled={!activeStockId || !stocksHydrated} onValueChange={(v) => { quantityChangedRef.current = true; handleNumericChange('quantity', v); }} />
+                <p className="text-xs text-muted-foreground">{activeStockId
+                  ? `Saldo em ${stocks.find((stock) => stock.id === activeStockId)?.name ?? 'local selecionado'}. Preços e cadastro valem para todos os locais.`
+                  : 'Cadastro e preços valem para todos os locais. Para alterar quantidades, use Registrar entrada ou Registrar saída e escolha o local.'}</p>
               </div>
               <div className="space-y-2">
                 <Label>{t.fields.unit}</Label>
@@ -701,8 +719,8 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
                 <p className="text-xs text-muted-foreground">{t.fields.priceHint}</p>
               </div>
               <div className="space-y-2">
-                <Label>{t.fields.salePrice}</Label>
-                <NumericInput decimal maxDecimals={2} value={numericText.sale_price} onValueChange={(v) => handleNumericChange('sale_price', v)} />
+                <Label htmlFor="inventory-sale-price">{t.fields.salePrice}</Label>
+                <NumericInput id="inventory-sale-price" decimal maxDecimals={2} value={numericText.sale_price} onValueChange={(v) => handleNumericChange('sale_price', v)} />
                 <p className="text-xs text-muted-foreground">{t.fields.priceHint}</p>
               </div>
             </div>

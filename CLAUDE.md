@@ -122,6 +122,7 @@ Versão em [src/config/version.ts](src/config/version.ts), changelog em [src/pag
 15. **Aplicar migration / edge function é do `dev-database` ou `dev-plataforma-multitenant`** — não sobra comando pro Kaik rodar depois.
 16. **Nunca `git stash`/`stash pop`/`reset --hard`/`clean`** — a pilha de stash é compartilhada entre worktrees e sessões paralelas.
 17. **Mês é mês calendário**, nunca 30 dias (`addMonths` / `interval '1 month'`, com clamp de fim de mês).
+18. **Nunca criar repositório, `git worktree`, `node_modules`, `dist`, cache ou ambiente virtual dentro de `.context/`.** Use o workspace atual; se isolamento temporário for indispensável, use `mktemp -d` sob `/private/tmp`, preserve commits e remova somente o que a própria sessão criou após confirmar que está limpo. Artefato grande regenerável também fica em `/private/tmp`; `.context/` recebe apenas evidência final pequena.
 
 ---
 

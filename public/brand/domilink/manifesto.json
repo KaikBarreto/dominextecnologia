@@ -1,0 +1,454 @@
+{
+  "marca": "DomiLink®",
+  "simbolo": "01 Encaixe",
+  "tipografiaBase": "Sora 600 personalizada — i retos e ponto centralizado",
+  "registrado": {
+    "peso": 400,
+    "tamanho": 11,
+    "alinhamento": "base da tinta do k",
+    "distanciaK": 1.2
+  },
+  "alinhamentoSimbolo": "mesma altura e centro vertical da tinta da palavra",
+  "metricasBase": {
+    "wordBounds": [
+      3.7800000000000002,
+      15.121999999999996,
+      188.39,
+      47.798
+    ],
+    "registeredBounds": [
+      189.58999999999997,
+      40.752,
+      195.85999999999999,
+      47.0
+    ],
+    "kBottom": 47.0,
+    "inkHeight": 32.676,
+    "width": 192.07999999999998,
+    "wordWidth": 184.60999999999999,
+    "registeredGap": 1.2,
+    "iStemBounds": [
+      52,
+      0,
+      191,
+      543
+    ],
+    "iDotCenter": 121.5,
+    "iStemCenter": 121.5,
+    "kerning": {
+      "in": -0.35,
+      "nk": -1.1
+    }
+  },
+  "cores": {
+    "preto": {
+      "simbolo": "#000000",
+      "texto": "#000000",
+      "fundo": "#ffffff"
+    },
+    "grafite": {
+      "simbolo": "#17191c",
+      "texto": "#17191c",
+      "fundo": "#ffffff"
+    },
+    "branco": {
+      "simbolo": "#ffffff",
+      "texto": "#ffffff",
+      "fundo": "#17191c"
+    },
+    "verde": {
+      "simbolo": "#00c597",
+      "texto": "#00c597",
+      "fundo": "#17191c"
+    },
+    "verde-texto-preto": {
+      "simbolo": "#00c597",
+      "texto": "#000000",
+      "fundo": "#ffffff"
+    },
+    "verde-texto-branco": {
+      "simbolo": "#00c597",
+      "texto": "#ffffff",
+      "fundo": "#17191c"
+    }
+  },
+  "arquivos": [
+    {
+      "cor": "preto",
+      "nome": "Preto",
+      "formato": "horizontal",
+      "svg": "preto/horizontal/domilink-preto-horizontal.svg",
+      "png": "preto/horizontal/domilink-preto-horizontal.png",
+      "pngFundo": "preto/horizontal/domilink-preto-horizontal-fundo.png",
+      "fundo": "#ffffff",
+      "viewBox": "-1.5 -1.5 243.840500 35.676000"
+    },
+    {
+      "cor": "preto",
+      "nome": "Preto",
+      "formato": "vertical",
+      "svg": "preto/vertical/domilink-preto-vertical.svg",
+      "png": "preto/vertical/domilink-preto-vertical.png",
+      "pngFundo": "preto/vertical/domilink-preto-vertical-fundo.png",
+      "fundo": "#ffffff",
+      "viewBox": "-1.5 -1.5 195.080000 85.352000"
+    },
+    {
+      "cor": "preto",
+      "nome": "Preto",
+      "formato": "simbolo",
+      "svg": "preto/simbolo/domilink-preto-simbolo.svg",
+      "png": "preto/simbolo/domilink-preto-simbolo.png",
+      "pngFundo": "preto/simbolo/domilink-preto-simbolo-fundo.png",
+      "fundo": "#ffffff",
+      "viewBox": "-1.5 -1.5 67.000000 67.000000"
+    },
+    {
+      "cor": "preto",
+      "nome": "Preto",
+      "formato": "texto",
+      "svg": "preto/texto/domilink-preto-texto.svg",
+      "png": "preto/texto/domilink-preto-texto.png",
+      "pngFundo": "preto/texto/domilink-preto-texto-fundo.png",
+      "fundo": "#ffffff",
+      "viewBox": "-1.5 -1.5 195.080000 35.676000"
+    },
+    {
+      "cor": "grafite",
+      "nome": "Grafite",
+      "formato": "horizontal",
+      "svg": "grafite/horizontal/domilink-grafite-horizontal.svg",
+      "png": "grafite/horizontal/domilink-grafite-horizontal.png",
+      "pngFundo": "grafite/horizontal/domilink-grafite-horizontal-fundo.png",
+      "fundo": "#ffffff",
+      "viewBox": "-1.5 -1.5 243.840500 35.676000"
+    },
+    {
+      "cor": "grafite",
+      "nome": "Grafite",
+      "formato": "vertical",
+      "svg": "grafite/vertical/domilink-grafite-vertical.svg",
+      "png": "grafite/vertical/domilink-grafite-vertical.png",
+      "pngFundo": "grafite/vertical/domilink-grafite-vertical-fundo.png",
+      "fundo": "#ffffff",
+      "viewBox": "-1.5 -1.5 195.080000 85.352000"
+    },
+    {
+      "cor": "grafite",
+      "nome": "Grafite",
+      "formato": "simbolo",
+      "svg": "grafite/simbolo/domilink-grafite-simbolo.svg",
+      "png": "grafite/simbolo/domilink-grafite-simbolo.png",
+      "pngFundo": "grafite/simbolo/domilink-grafite-simbolo-fundo.png",
+      "fundo": "#ffffff",
+      "viewBox": "-1.5 -1.5 67.000000 67.000000"
+    },
+    {
+      "cor": "grafite",
+      "nome": "Grafite",
+      "formato": "texto",
+      "svg": "grafite/texto/domilink-grafite-texto.svg",
+      "png": "grafite/texto/domilink-grafite-texto.png",
+      "pngFundo": "grafite/texto/domilink-grafite-texto-fundo.png",
+      "fundo": "#ffffff",
+      "viewBox": "-1.5 -1.5 195.080000 35.676000"
+    },
+    {
+      "cor": "branco",
+      "nome": "Branco",
+      "formato": "horizontal",
+      "svg": "branco/horizontal/domilink-branco-horizontal.svg",
+      "png": "branco/horizontal/domilink-branco-horizontal.png",
+      "pngFundo": "branco/horizontal/domilink-branco-horizontal-fundo.png",
+      "fundo": "#17191c",
+      "viewBox": "-1.5 -1.5 243.840500 35.676000"
+    },
+    {
+      "cor": "branco",
+      "nome": "Branco",
+      "formato": "vertical",
+      "svg": "branco/vertical/domilink-branco-vertical.svg",
+      "png": "branco/vertical/domilink-branco-vertical.png",
+      "pngFundo": "branco/vertical/domilink-branco-vertical-fundo.png",
+      "fundo": "#17191c",
+      "viewBox": "-1.5 -1.5 195.080000 85.352000"
+    },
+    {
+      "cor": "branco",
+      "nome": "Branco",
+      "formato": "simbolo",
+      "svg": "branco/simbolo/domilink-branco-simbolo.svg",
+      "png": "branco/simbolo/domilink-branco-simbolo.png",
+      "pngFundo": "branco/simbolo/domilink-branco-simbolo-fundo.png",
+      "fundo": "#17191c",
+      "viewBox": "-1.5 -1.5 67.000000 67.000000"
+    },
+    {
+      "cor": "branco",
+      "nome": "Branco",
+      "formato": "texto",
+      "svg": "branco/texto/domilink-branco-texto.svg",
+      "png": "branco/texto/domilink-branco-texto.png",
+      "pngFundo": "branco/texto/domilink-branco-texto-fundo.png",
+      "fundo": "#17191c",
+      "viewBox": "-1.5 -1.5 195.080000 35.676000"
+    },
+    {
+      "cor": "verde",
+      "nome": "Verde",
+      "formato": "horizontal",
+      "svg": "verde/horizontal/domilink-verde-horizontal.svg",
+      "png": "verde/horizontal/domilink-verde-horizontal.png",
+      "pngFundo": "verde/horizontal/domilink-verde-horizontal-fundo.png",
+      "fundo": "#17191c",
+      "viewBox": "-1.5 -1.5 243.840500 35.676000"
+    },
+    {
+      "cor": "verde",
+      "nome": "Verde",
+      "formato": "vertical",
+      "svg": "verde/vertical/domilink-verde-vertical.svg",
+      "png": "verde/vertical/domilink-verde-vertical.png",
+      "pngFundo": "verde/vertical/domilink-verde-vertical-fundo.png",
+      "fundo": "#17191c",
+      "viewBox": "-1.5 -1.5 195.080000 85.352000"
+    },
+    {
+      "cor": "verde",
+      "nome": "Verde",
+      "formato": "simbolo",
+      "svg": "verde/simbolo/domilink-verde-simbolo.svg",
+      "png": "verde/simbolo/domilink-verde-simbolo.png",
+      "pngFundo": "verde/simbolo/domilink-verde-simbolo-fundo.png",
+      "fundo": "#17191c",
+      "viewBox": "-1.5 -1.5 67.000000 67.000000"
+    },
+    {
+      "cor": "verde",
+      "nome": "Verde",
+      "formato": "texto",
+      "svg": "verde/texto/domilink-verde-texto.svg",
+      "png": "verde/texto/domilink-verde-texto.png",
+      "pngFundo": "verde/texto/domilink-verde-texto-fundo.png",
+      "fundo": "#17191c",
+      "viewBox": "-1.5 -1.5 195.080000 35.676000"
+    },
+    {
+      "cor": "verde-texto-preto",
+      "nome": "Símbolo verde + texto preto",
+      "formato": "horizontal",
+      "svg": "verde-texto-preto/horizontal/domilink-verde-texto-preto-horizontal.svg",
+      "png": "verde-texto-preto/horizontal/domilink-verde-texto-preto-horizontal.png",
+      "pngFundo": "verde-texto-preto/horizontal/domilink-verde-texto-preto-horizontal-fundo.png",
+      "fundo": "#ffffff",
+      "viewBox": "-1.5 -1.5 243.840500 35.676000"
+    },
+    {
+      "cor": "verde-texto-preto",
+      "nome": "Símbolo verde + texto preto",
+      "formato": "vertical",
+      "svg": "verde-texto-preto/vertical/domilink-verde-texto-preto-vertical.svg",
+      "png": "verde-texto-preto/vertical/domilink-verde-texto-preto-vertical.png",
+      "pngFundo": "verde-texto-preto/vertical/domilink-verde-texto-preto-vertical-fundo.png",
+      "fundo": "#ffffff",
+      "viewBox": "-1.5 -1.5 195.080000 85.352000"
+    },
+    {
+      "cor": "verde-texto-preto",
+      "nome": "Símbolo verde + texto preto",
+      "formato": "simbolo",
+      "svg": "verde-texto-preto/simbolo/domilink-verde-texto-preto-simbolo.svg",
+      "png": "verde-texto-preto/simbolo/domilink-verde-texto-preto-simbolo.png",
+      "pngFundo": "verde-texto-preto/simbolo/domilink-verde-texto-preto-simbolo-fundo.png",
+      "fundo": "#ffffff",
+      "viewBox": "-1.5 -1.5 67.000000 67.000000"
+    },
+    {
+      "cor": "verde-texto-preto",
+      "nome": "Símbolo verde + texto preto",
+      "formato": "texto",
+      "svg": "verde-texto-preto/texto/domilink-verde-texto-preto-texto.svg",
+      "png": "verde-texto-preto/texto/domilink-verde-texto-preto-texto.png",
+      "pngFundo": "verde-texto-preto/texto/domilink-verde-texto-preto-texto-fundo.png",
+      "fundo": "#ffffff",
+      "viewBox": "-1.5 -1.5 195.080000 35.676000"
+    },
+    {
+      "cor": "verde-texto-branco",
+      "nome": "Símbolo verde + texto branco",
+      "formato": "horizontal",
+      "svg": "verde-texto-branco/horizontal/domilink-verde-texto-branco-horizontal.svg",
+      "png": "verde-texto-branco/horizontal/domilink-verde-texto-branco-horizontal.png",
+      "pngFundo": "verde-texto-branco/horizontal/domilink-verde-texto-branco-horizontal-fundo.png",
+      "fundo": "#17191c",
+      "viewBox": "-1.5 -1.5 243.840500 35.676000"
+    },
+    {
+      "cor": "verde-texto-branco",
+      "nome": "Símbolo verde + texto branco",
+      "formato": "vertical",
+      "svg": "verde-texto-branco/vertical/domilink-verde-texto-branco-vertical.svg",
+      "png": "verde-texto-branco/vertical/domilink-verde-texto-branco-vertical.png",
+      "pngFundo": "verde-texto-branco/vertical/domilink-verde-texto-branco-vertical-fundo.png",
+      "fundo": "#17191c",
+      "viewBox": "-1.5 -1.5 195.080000 85.352000"
+    },
+    {
+      "cor": "verde-texto-branco",
+      "nome": "Símbolo verde + texto branco",
+      "formato": "simbolo",
+      "svg": "verde-texto-branco/simbolo/domilink-verde-texto-branco-simbolo.svg",
+      "png": "verde-texto-branco/simbolo/domilink-verde-texto-branco-simbolo.png",
+      "pngFundo": "verde-texto-branco/simbolo/domilink-verde-texto-branco-simbolo-fundo.png",
+      "fundo": "#17191c",
+      "viewBox": "-1.5 -1.5 67.000000 67.000000"
+    },
+    {
+      "cor": "verde-texto-branco",
+      "nome": "Símbolo verde + texto branco",
+      "formato": "texto",
+      "svg": "verde-texto-branco/texto/domilink-verde-texto-branco-texto.svg",
+      "png": "verde-texto-branco/texto/domilink-verde-texto-branco-texto.png",
+      "pngFundo": "verde-texto-branco/texto/domilink-verde-texto-branco-texto-fundo.png",
+      "fundo": "#17191c",
+      "viewBox": "-1.5 -1.5 195.080000 35.676000"
+    }
+  ],
+  "opcoesTipograficas": [
+    {
+      "numero": 1,
+      "familia": "Montserrat",
+      "peso": 700,
+      "baseAtual": false,
+      "svg": "tipografias/01-montserrat/domilink-01-montserrat.svg",
+      "png": "tipografias/01-montserrat/domilink-01-montserrat.png",
+      "pngFundo": "tipografias/01-montserrat/domilink-01-montserrat-fundo.png",
+      "fundo": "#ffffff",
+      "viewBox": "-1.5 -1.5 263.531750 36.390000",
+      "metricas": {
+        "wordBounds": [
+          3.486,
+          13.945999999999998,
+          204.28799999999998,
+          47.336
+        ],
+        "registeredBounds": [
+          206.688,
+          39.234,
+          214.45399999999998,
+          47.0
+        ],
+        "kBottom": 47.0,
+        "inkHeight": 33.39,
+        "width": 210.968,
+        "wordWidth": 200.802
+      }
+    },
+    {
+      "numero": 2,
+      "familia": "Manrope",
+      "peso": 700,
+      "baseAtual": false,
+      "svg": "tipografias/02-manrope/domilink-02-manrope.svg",
+      "png": "tipografias/02-manrope/domilink-02-manrope.png",
+      "pngFundo": "tipografias/02-manrope/domilink-02-manrope-fundo.png",
+      "fundo": "#ffffff",
+      "viewBox": "-1.5 -1.5 234.475275 34.394987",
+      "metricas": {
+        "wordBounds": [
+          2.9400000000000004,
+          16.23501281738281,
+          179.36092822265624,
+          47.63
+        ],
+        "registeredBounds": [
+          181.76092822265625,
+          41.66501342773438,
+          187.09591479492187,
+          47.0
+        ],
+        "kBottom": 47.0,
+        "inkHeight": 31.394987182617193,
+        "width": 184.15591479492187,
+        "wordWidth": 176.42092822265624
+      }
+    },
+    {
+      "numero": 3,
+      "familia": "Sora",
+      "peso": 600,
+      "baseAtual": true,
+      "svg": "tipografias/03-sora/domilink-03-sora.svg",
+      "png": "tipografias/03-sora/domilink-03-sora.png",
+      "pngFundo": "tipografias/03-sora/domilink-03-sora-fundo.png",
+      "fundo": "#ffffff",
+      "viewBox": "-1.5 -1.5 243.840500 35.676000",
+      "metricas": {
+        "wordBounds": [
+          3.7800000000000002,
+          15.121999999999996,
+          188.39,
+          47.798
+        ],
+        "registeredBounds": [
+          189.58999999999997,
+          40.752,
+          195.85999999999999,
+          47.0
+        ],
+        "kBottom": 47.0,
+        "inkHeight": 32.676,
+        "width": 192.07999999999998,
+        "wordWidth": 184.60999999999999,
+        "registeredGap": 1.2,
+        "iStemBounds": [
+          52,
+          0,
+          191,
+          543
+        ],
+        "iDotCenter": 121.5,
+        "iStemCenter": 121.5,
+        "kerning": {
+          "in": -0.35,
+          "nk": -1.1
+        }
+      },
+      "personalizada": true
+    },
+    {
+      "numero": 4,
+      "familia": "Space Grotesk",
+      "peso": 600,
+      "baseAtual": false,
+      "svg": "tipografias/04-space-grotesk/domilink-04-space-grotesk.svg",
+      "png": "tipografias/04-space-grotesk/domilink-04-space-grotesk.png",
+      "pngFundo": "tipografias/04-space-grotesk/domilink-04-space-grotesk-fundo.png",
+      "fundo": "#ffffff",
+      "viewBox": "-1.5 -1.5 227.605847 33.282021",
+      "metricas": {
+        "wordBounds": [
+          1.946698974609375,
+          17.305979492187497,
+          173.46527307128906,
+          47.588
+        ],
+        "registeredBounds": [
+          175.86527307128907,
+          42.424,
+          180.48527307128904,
+          47.0
+        ],
+        "kBottom": 47.0,
+        "inkHeight": 30.282020507812504,
+        "width": 178.53857409667967,
+        "wordWidth": 171.51857409667969
+      }
+    }
+  ],
+  "personalizacao": {
+    "fonte": "Sora",
+    "peso": 600,
+    "alteracao": "Bandeiras superiores dos dois i removidas; hastes retas e pontos centralizados; demais letras preservadas."
+  }
+}

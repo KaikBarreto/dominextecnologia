@@ -31,6 +31,8 @@ import { AccountUsageCard } from '@/components/billing/AccountUsageCard';
 import { useSubscriptionPaymentHistory } from '@/hooks/useSubscriptionPaymentHistory';
 import { hasActiveCustomPrice as hasActiveCustomPriceUtil } from '@/utils/subscriptionPricing';
 import { cn } from '@/lib/utils';
+import { ModuleTutorialSuccessModal } from '@/components/domiflix/ModuleTutorialSuccessModal';
+import { parseTutorialModules } from '@/lib/domiflixModuleTutorial';
 export default function Billing() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -56,12 +58,22 @@ export default function Billing() {
     configure: searchParams.get('configurar') === '1',
   }));
   const wantsDeepLink = !!deepLink.addModule || deepLink.addUsers || deepLink.configure;
+  const activatedTutorialModules = searchParams.get('moduleActivated') === '1'
+    ? parseTutorialModules(searchParams.get('tutorialModules'))
+    : [];
 
   const clearDeepLinkParams = () => {
     const next = new URLSearchParams(searchParams);
     next.delete('addModule');
     next.delete('addUsers');
     next.delete('configurar');
+    setSearchParams(next, { replace: true });
+  };
+
+  const clearActivatedTutorialParams = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('moduleActivated');
+    next.delete('tutorialModules');
     setSearchParams(next, { replace: true });
   };
 
@@ -217,6 +229,12 @@ export default function Billing() {
         title={t.pageTitle}
         subtitle={t.pageSubtitle}
         icon={CreditCard}
+      />
+
+      <ModuleTutorialSuccessModal
+        open={activatedTutorialModules.length > 0}
+        moduleCodes={activatedTutorialModules}
+        onOpenChange={(next) => { if (!next) clearActivatedTutorialParams(); }}
       />
 
       {/* ═══════════════════════════════════════════════════════════════════

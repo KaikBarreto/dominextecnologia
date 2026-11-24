@@ -2265,6 +2265,7 @@ export type Database = {
       }
       company_settings: {
         Row: {
+          allow_schedule_conflicts: boolean
           pdv_default_stock_id: string | null
           pdv_stock_settings_revision: number
           address: string | null
@@ -2325,6 +2326,7 @@ export type Database = {
           zip_code: string | null
         }
         Insert: {
+          allow_schedule_conflicts?: boolean
           pdv_default_stock_id?: string | null
           pdv_stock_settings_revision?: number
           address?: string | null
@@ -2385,6 +2387,7 @@ export type Database = {
           zip_code?: string | null
         }
         Update: {
+          allow_schedule_conflicts?: boolean
           pdv_default_stock_id?: string | null
           pdv_stock_settings_revision?: number
           address?: string | null
@@ -20399,6 +20402,16 @@ export type Database = {
       }
       get_accessible_inventory_ids: { Args: never; Returns: string[] }
       get_admin_cobrancas_overview: { Args: never; Returns: Json }
+      get_admin_communication_statistics: {
+        Args: {
+          p_channel?: string
+          p_company_id?: string
+          p_from?: string
+          p_timezone?: string
+          p_to?: string
+        }
+        Returns: Json
+      }
       get_admin_usage_statistics: {
         Args: {
           p_bucket?: string
@@ -21592,6 +21605,24 @@ export type Database = {
         Args: { p_order_id: string; p_reason: string }
         Returns: Json
       }
+      inventory_remove_from_stock_v4: {
+        Args: { p_inventory_id: string; p_stock_id: string }
+        Returns: undefined
+      }
+      pdv_can_initialize_treasury_v2: {
+        Args: { p_cash_account_id: string }
+        Returns: boolean
+      }
+      pdv_initialize_and_open_cash_v2: {
+        Args: {
+          p_terminal_id: string
+          p_cash_account_id: string
+          p_opening_amount: number
+          p_initial_balance: number
+          p_idempotency_key: string
+        }
+        Returns: Json
+      }
       pdv_cash_movement: {
         Args: {
           p_amount: number
@@ -22228,6 +22259,16 @@ export type Database = {
           p_delete_ids?: string[]
           p_dry_run?: boolean
           p_orders: Json
+        }
+        Returns: Json
+      }
+      regenerate_contract_visits_with_override: {
+        Args: {
+          p_contract_id: string
+          p_delete_ids?: string[]
+          p_dry_run?: boolean
+          p_orders: Json
+          p_override_justification?: string
         }
         Returns: Json
       }

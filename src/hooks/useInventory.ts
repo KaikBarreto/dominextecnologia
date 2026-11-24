@@ -53,6 +53,16 @@ const INVENTORY_READ_QUERY_KEYS = [
   ['inventory-movements'],
 ] as const;
 
+/** Catálogo, presença e preços compartilham a invalidação da entidade. */
+export async function invalidateInventoryCatalogCaches(
+  queryClient: Pick<ReturnType<typeof useQueryClient>, 'invalidateQueries'>,
+): Promise<void> {
+  await Promise.all([
+    ['inventory'], ['inventory-stock-levels'], ['inventory-movements'],
+    ['accessible-inventory-ids'], ['pdv-direct-sale-v2', 'catalog'], ['pdv-preorders', 'catalog'],
+  ].map((queryKey) => queryClient.invalidateQueries({ queryKey })));
+}
+
 /**
  * Depois de uma falha ambígua, consulta novamente somente as fontes de leitura.
  * Não repete update nem RPC de movimento: uma etapa pode já ter sido gravada e
@@ -228,15 +238,30 @@ export function useInventory() {
       });
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['inventory-stock-levels'] });
-    },
+    onSuccess: () => invalidateInventoryCatalogCaches(queryClient),
     // Não mostra toast aqui — a UI deve tratar presence_has_balance especificamente
     onError: (error: Error) => {
       if (!String(error.message).includes('presence_has_balance')) {
         toast({ title: 'Erro ao atualizar presença', description: getErrorMessage(error), variant: 'destructive' });
       }
       // Se for presence_has_balance, re-throw para a UI tratar
+    },
+  });
+
+  const removeFromStock = useMutation({
+    mutationFn: async ({ inventoryId, stockId }: { inventoryId: string; stockId: string }) => {
+      const { error } = await inventorySecurityRpc('inventory_remove_from_stock_v4', {
+        p_inventory_id: inventoryId, p_stock_id: stockId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => invalidateInventoryCatalogCaches(queryClient),
+    onError: (error) => {
+      const details = String((error as { details?: string }).details ?? '');
+      const description = details.includes('inventory_presence_has_balance')
+        ? 'Transfira ou registre a saída do saldo antes de remover o material deste local.'
+        : getErrorMessage(error);
+      toast({ title: 'Não foi possível remover deste local', description, variant: 'destructive' });
     },
   });
 
@@ -300,10 +325,8 @@ export function useInventory() {
       });
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['inventory'] });
-      queryClient.invalidateQueries({ queryKey: ['inventory-stock-levels'] });
-      queryClient.invalidateQueries({ queryKey: ['inventory-movements'] });
+    onSuccess: async () => {
+      await invalidateInventoryCatalogCaches(queryClient);
     },
     onError: (error) => {
       toast({ title: 'Erro ao registrar movimentação', description: getErrorMessage(error), variant: 'destructive' });
@@ -342,10 +365,8 @@ export function useInventory() {
 
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['inventory'] });
-      queryClient.invalidateQueries({ queryKey: ['inventory-stock-levels'] });
-      queryClient.invalidateQueries({ queryKey: ['inventory-movements'] });
+    onSuccess: async () => {
+      await invalidateInventoryCatalogCaches(queryClient);
       toast({ title: 'Item cadastrado com sucesso!' });
     },
     onError: (error) => {
@@ -399,10 +420,8 @@ export function useInventory() {
 
       return { id };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['inventory'] });
-      queryClient.invalidateQueries({ queryKey: ['inventory-stock-levels'] });
-      queryClient.invalidateQueries({ queryKey: ['inventory-movements'] });
+    onSuccess: async () => {
+      await invalidateInventoryCatalogCaches(queryClient);
       toast({ title: 'Item atualizado com sucesso!' });
     },
     onError: async (error) => {
@@ -495,6 +514,7 @@ export function useInventory() {
     getPresenceForStock,
     updateStockLevelMinQuantity,
     setInventoryPresence,
+    removeFromStock,
     addGroupToStock,
     setStockMaterials,
     registerInlineMovement,

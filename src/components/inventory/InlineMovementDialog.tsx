@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { NumericInput } from '@/components/ui/numeric-input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useInventory, type InventoryItem } from '@/hooks/useInventory';
 import { useStocks } from '@/hooks/useStocks';
@@ -32,31 +33,35 @@ export function InlineMovementDialog({
 }: InlineMovementDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory.inlineMovement;
-  const { registerInlineMovement, getQuantityForStock } = useInventory();
+  const { registerInlineMovement, getQuantityForStock, stockLevelsLoaded } = useInventory();
   const { stocks } = useStocks();
   const { toast } = useToast();
 
   const [quantityStr, setQuantityStr] = useState('');
   const [notes, setNotes] = useState('');
+  const [stockId, setStockId] = useState('');
+  const submitGuard = useRef(false);
 
   useEffect(() => {
     if (open) {
+      setStockId(activeStockId ?? '');
       setQuantityStr('');
       setNotes('');
     }
-  }, [open]);
+  }, [open, activeStockId]);
 
   if (!item) return null;
 
-  const activeStock = stocks.find((s) => s.id === activeStockId);
-  const currentQty = activeStockId ? getQuantityForStock(item.id, activeStockId) : (item.quantity ?? 0);
+  const activeStock = stocks.find((s) => s.id === stockId);
+  const currentQty = stockId ? getQuantityForStock(item.id, stockId) : 0;
   const quantity = parseFloat(quantityStr.replace(',', '.')) || 0;
 
   const isEntrada = movementType === 'entrada';
   const resultQty = isEntrada ? currentQty + quantity : currentQty - quantity;
 
   const handleConfirm = async () => {
-    if (!activeStockId) {
+    if (submitGuard.current) return;
+    if (!activeStock || !stockLevelsLoaded || registerInlineMovement.isPending) {
       toast({ variant: 'destructive', title: t.errors.noStock });
       return;
     }
@@ -69,10 +74,11 @@ export function InlineMovementDialog({
       return;
     }
 
+    submitGuard.current = true;
     try {
       await registerInlineMovement.mutateAsync({
         inventoryId: item.id,
-        stockId: activeStockId,
+        stockId,
         movementType,
         quantity,
         notes: notes.trim() || undefined,
@@ -83,6 +89,8 @@ export function InlineMovementDialog({
       onOpenChange(false);
     } catch {
       // onError do mutation já exibe o toast de erro — não duplicar.
+    } finally {
+      submitGuard.current = false;
     }
   };
 
@@ -93,13 +101,13 @@ export function InlineMovementDialog({
   return (
     <ResponsiveModal
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={(next) => { if (!submitGuard.current) onOpenChange(next); }}
       title={title}
       footer={
         <div className="flex gap-2">
           <Button
             type="button"
-            variant="outline"
+            variant="cancel"
             onClick={() => onOpenChange(false)}
             className="flex-1"
             disabled={registerInlineMovement.isPending}
@@ -108,7 +116,7 @@ export function InlineMovementDialog({
           </Button>
           <Button
             onClick={handleConfirm}
-            disabled={registerInlineMovement.isPending || quantity <= 0}
+            disabled={registerInlineMovement.isPending || !activeStock || !stockLevelsLoaded || quantity <= 0}
             className="flex-1"
           >
             {registerInlineMovement.isPending ? t.saving : t.confirm}
@@ -137,11 +145,19 @@ export function InlineMovementDialog({
                 </Badge>
               )}
               <span className="text-xs text-muted-foreground">
-                {t.currentQty}: <strong>{currentQty} {item.unit || 'un'}</strong>
+                {t.currentQty}: <strong>{stockId && stockLevelsLoaded ? currentQty : '—'} {item.unit || 'un'}</strong>
               </span>
             </div>
           </div>
         </div>
+
+        {!activeStockId && <div className="space-y-2">
+          <Label htmlFor="inventory-movement-stock">Local de estoque</Label>
+          <Select value={stockId} onValueChange={setStockId} disabled={registerInlineMovement.isPending}>
+            <SelectTrigger id="inventory-movement-stock"><SelectValue placeholder="Escolha o local da movimentação" /></SelectTrigger>
+            <SelectContent>{stocks.map((stock) => <SelectItem key={stock.id} value={stock.id}>{stock.name}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>}
 
         {/* Quantidade */}
         <div className="space-y-2">
@@ -156,7 +172,7 @@ export function InlineMovementDialog({
         </div>
 
         {/* Resultado projetado */}
-        {quantity > 0 && (
+        {stockId && stockLevelsLoaded && quantity > 0 && (
           <div className="rounded-lg border px-3 py-2 text-sm">
             <span className="text-muted-foreground">{t.resultLabel}: </span>
             <strong className={resultQty < 0 ? 'text-destructive' : ''}>

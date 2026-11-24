@@ -169,6 +169,9 @@ export async function invalidatePdvCashV2Caches(queryClient: QueryClient) {
     queryClient.invalidateQueries({ queryKey: [...ROOT, 'snapshot'] }),
     queryClient.invalidateQueries({ queryKey: [...ROOT, 'maintenance-presence'] }),
     queryClient.invalidateQueries({ queryKey: ['pdv-cash-sessions'] }),
+    queryClient.invalidateQueries({ queryKey: [...ROOT, 'initialization'] }),
+    queryClient.invalidateQueries({ queryKey: ['financial-accounts'] }),
+    queryClient.invalidateQueries({ queryKey: ['financial-summary'] }),
     queryClient.invalidateQueries({ queryKey: ['financial-transactions'] }),
     queryClient.invalidateQueries({ queryKey: ['account-balances'] }),
     invalidatePdvReportCaches(queryClient),
@@ -430,6 +433,9 @@ export function mapPdvCashV2Error(error: unknown): Error {
     PDV_SUBSCRIPTION_INACTIVE: 'A assinatura da empresa não permite operar o caixa agora.',
     PDV_MODULE_INACTIVE: 'O módulo PDV (Loja) não está ativo nesta empresa.',
     PDV_SCREEN_FORBIDDEN: 'Você não tem permissão para operar o caixa.',
+    PDV_TREASURY_INITIALIZATION_FORBIDDEN: 'Você não tem permissão para registrar o saldo inicial do cofre.',
+    PDV_TREASURY_ALREADY_INITIALIZED: 'O cofre já possui histórico. Confira o saldo no Financeiro antes de abrir.',
+    PDV_TREASURY_INITIAL_BALANCE_INVALID: 'Informe o dinheiro total existente e um troco que caiba nesse valor.',
     PDV_TREASURY_ACCOUNT_NOT_CONFIGURED: 'Configure a conta do cofre antes de abrir o caixa.',
     PDV_TREASURY_AVAILABLE_INSUFFICIENT: 'O cofre não possui dinheiro disponível para esse valor.',
     PDV_TERMINAL_SESSION_ALREADY_OPEN: 'Este terminal já possui um caixa aberto.',
@@ -540,6 +546,7 @@ export function buildPdvOpenCashV2AttemptPayload(input: {
   terminalId: string;
   cashAccountId: string;
   openingAmount: number;
+  initialBalance?: number;
 }) {
   return { ...input };
 }
@@ -568,6 +575,7 @@ export function buildPdvOpenCashV2Args(input: {
   terminalId: string;
   cashAccountId: string;
   openingAmount: number;
+  initialBalance?: number;
   attemptId: string;
 }) {
   return {
@@ -575,6 +583,7 @@ export function buildPdvOpenCashV2Args(input: {
     p_cash_account_id: input.cashAccountId,
     p_opening_amount: input.openingAmount,
     p_idempotency_key: input.attemptId,
+    ...(input.initialBalance != null ? { p_initial_balance: input.initialBalance } : {}),
   };
 }
 
@@ -826,6 +835,7 @@ export function usePdvCashSessionsV2(input: {
   cashAccountId: string | null;
   userId: string | null;
   canManageOthers: boolean;
+  canInitializeTreasury?: boolean;
   history: PdvCashHistoryFilters;
 }) {
   const queryClient = useQueryClient();
@@ -896,11 +906,25 @@ export function usePdvCashSessionsV2(input: {
     refetchOnWindowFocus: 'always',
   });
 
+  const initializationQuery = useQuery({
+    queryKey: [...ROOT, 'initialization', input.cashAccountId, ...scope.key],
+    enabled: snapshotEnabled && input.canInitializeTreasury === true,
+    gcTime: 0,
+    queryFn: async () => {
+      const { data, error } = await rpc('pdv_can_initialize_treasury_v2', { p_cash_account_id: input.cashAccountId });
+      if (error) throw mapPdvCashV2Error(error);
+      if (typeof data !== 'boolean') throw new Error('Não foi possível conferir o saldo inicial.');
+      return data;
+    },
+    staleTime: 0,
+    retry: false,
+  });
+
   const invalidate = () => invalidatePdvCashV2Caches(queryClient);
 
   const openSession = useMutation({
     mutationFn: async (vars: Parameters<typeof buildPdvOpenCashV2Args>[0]) => {
-      const { data, error } = await rpc('pdv_open_cash_session_v2', buildPdvOpenCashV2Args(vars));
+      const { data, error } = await rpc(vars.initialBalance != null ? 'pdv_initialize_and_open_cash_v2' : 'pdv_open_cash_session_v2', buildPdvOpenCashV2Args(vars));
       if (error) throw mapPdvCashV2Error(error);
       const result = record(data);
       if (result.ok !== true) {
@@ -952,21 +976,25 @@ export function usePdvCashSessionsV2(input: {
     } : {},
     snapshot: snapshotEnabled ? snapshotQuery.data ?? null : null,
     isLoading: input.enabled && (!scope.ready || !input.userId || terminalsQuery.isLoading || openSessionsQuery.isLoading
-      || (snapshotEnabled && snapshotQuery.isLoading)),
+      || (snapshotEnabled && snapshotQuery.isLoading)
+      || (snapshotEnabled && input.canInitializeTreasury === true && initializationQuery.isLoading)),
     isHistoryLoading: input.enabled && (!scope.ready || !input.userId || historyQuery.isLoading),
     authorizationReady: scope.ready,
     authorizationScopeKey: JSON.stringify(scope.key),
     isError: terminalsQuery.isError || openSessionsQuery.isError
-      || (snapshotEnabled && snapshotQuery.isError),
-    error: terminalsQuery.error ?? openSessionsQuery.error ?? snapshotQuery.error ?? null,
+      || (snapshotEnabled && snapshotQuery.isError)
+      || (snapshotEnabled && input.canInitializeTreasury === true && initializationQuery.isError),
+    error: terminalsQuery.error ?? openSessionsQuery.error ?? snapshotQuery.error ?? (input.canInitializeTreasury ? initializationQuery.error : null) ?? null,
     refetch: async () => {
       await Promise.all([
         terminalsQuery.refetch(),
         openSessionsQuery.refetch(),
         historyQuery.refetch(),
         snapshotQuery.refetch(),
+        ...(input.canInitializeTreasury ? [initializationQuery.refetch()] : []),
       ]);
     },
+    canInitializeTreasury: snapshotEnabled && input.canInitializeTreasury === true && initializationQuery.data === true,
     openSession,
     recordEvent,
     closeSession,

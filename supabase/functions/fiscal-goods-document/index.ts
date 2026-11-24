@@ -1,6 +1,10 @@
 import { goodsReadinessIssues } from '../_shared/fiscal-goods-readiness.ts';
 import { goodsOutcome, sourceFinancialsMatch } from "../_shared/fiscal-goods-policy.ts";
 import {
+  isGoodsFinalConsumerCompatible,
+  resolveGoodsFinalConsumer,
+} from "../_shared/fiscal-goods-final-consumer.ts";
+import {
   authorizeFiscalGoodsIssuer,
   corsHeaders,
   jsonResponse,
@@ -80,7 +84,15 @@ async function sha256(value: unknown): Promise<string> {
 }
 
 class GoodsDocumentError extends Error {
-  constructor(public code: string, message: string, public status = 422) { super(message); }
+  constructor(
+    public code: string,
+    message: string,
+    public status = 422,
+    public diagnostic: JsonObject = {},
+  ) {
+    super(message);
+    this.name = "GoodsDocumentError";
+  }
 }
 
 interface NormalizedDraft {
@@ -90,9 +102,11 @@ interface NormalizedDraft {
   stockId: string | null;
   seriesId: string | null;
   carrierId: string | null;
+  environment: "homologacao" | "producao" | null;
   sourceType: "manual" | "pdv_sale" | "pdv_purchase" | "inventory_purchase";
   sourceId: string | null;
   nature: string;
+  finalConsumer: boolean;
   party: JsonObject | null;
   items: JsonObject[];
   payments: JsonObject[];
@@ -142,6 +156,12 @@ export function normalizeDraft(raw: unknown): NormalizedDraft {
         municipalityCode: digits(partySource.municipalityCode),
       }
     : null;
+  const finalConsumer = resolveGoodsFinalConsumer({
+    model,
+    direction,
+    stateRegistration: party?.stateRegistration,
+    requested: draft.finalConsumer,
+  });
   if (asRows(draft.items).length > 990 || asRows(draft.payments).length > 100)
     throw new GoodsDocumentError('invalid_draft', 'Revise a quantidade de itens e formas de pagamento da nota.');
   const items = asRows(draft.items)
@@ -194,9 +214,16 @@ export function normalizeDraft(raw: unknown): NormalizedDraft {
     stockId: uuid(draft.stockId),
     seriesId: model === 55 ? uuid(draft.seriesId) : null,
     carrierId: model === 55 ? uuid(draft.carrierId) : null,
+    environment:
+      draft.environment === "producao"
+        ? "producao"
+        : draft.environment === "homologacao"
+          ? "homologacao"
+          : null,
     sourceType,
     sourceId: sourceType === "manual" ? null : uuid(draft.sourceId),
     nature: text(draft.nature, 60),
+    finalConsumer,
     party,
     items,
     payments,
@@ -215,6 +242,12 @@ function validation(
   const errors: string[] = [];
   if (!draft.stockId) errors.push("Selecione o local de estoque da operação.");
   if (!draft.nature) errors.push("Informe a natureza da operação.");
+  if (!isGoodsFinalConsumerCompatible({
+    model: draft.model,
+    direction: draft.direction,
+    stateRegistration: draft.party?.stateRegistration,
+    requested: draft.finalConsumer,
+  })) errors.push("Destinatário sem inscrição estadual precisa ser consumidor final.");
   if (!draft.items.length) errors.push("Adicione ao menos um item.");
   if (
     draft.model === 55 &&
@@ -487,7 +520,7 @@ export function buildMotorDocument(
       numero: numberValue,
       serie: series,
       presencial: draft.model === 65 ? 1 : 0,
-      consumidorFinal: draft.model === 65,
+      consumidorFinal: draft.finalConsumer,
       natureza: draft.nature,
       saida: draft.direction === "saida",
       finalidade: 1,
@@ -602,6 +635,9 @@ async function saveDraft(
     status: "draft",
     customer_id: draft.direction === "saida" ? uuid(draft.party?.id) : null,
   };
+  if (draft.environment) {
+    common.environment = draft.environment === "producao" ? 1 : 2;
+  }
   if (draft.model === 55) {
     common.direction = draft.direction;
     common.supplier_id =
@@ -616,7 +652,8 @@ async function saveDraft(
   }
   if (!draft.id && draft.sourceId) {
     const existing = await auth.supabase.from(table).select('*')
-      .eq('company_id', auth.companyId).eq('source_type', draft.sourceType).eq('source_id', draft.sourceId).maybeSingle();
+      .eq('company_id', auth.companyId).eq('source_type', draft.sourceType).eq('source_id', draft.sourceId)
+      .not('status', 'in', '(cancelled,rejected)').maybeSingle();
     if (existing.error) throw new Error('Não foi possível consultar a nota vinculada à venda.');
     if (existing.data) draft.id = text(existing.data.id);
   }
@@ -643,7 +680,8 @@ async function saveDraft(
     .select("*")
     .single();
   if (error?.code === '23505' && draft.sourceId) {
-    const existing = await auth.supabase.from(table).select('*').eq('company_id', auth.companyId).eq('source_type', draft.sourceType).eq('source_id', draft.sourceId).maybeSingle();
+    const existing = await auth.supabase.from(table).select('*').eq('company_id', auth.companyId).eq('source_type', draft.sourceType).eq('source_id', draft.sourceId)
+      .not('status', 'in', '(cancelled,rejected)').maybeSingle();
     if (!existing.error && existing.data) return object(existing.data);
   }
   if (error || !data)
@@ -853,7 +891,17 @@ async function transmitSavedGoods(
   },transmissionFence);
   setActive(null);
   await storeGoodsEvent(auth,events,{company_id:auth.companyId,document_id:id,event_type:'authorization_result',status:normalized.status,official_status:normalized.official,cstat:text(object(official.resposta).cstat)||null,message:normalized.status==='authorized'?'Documento autorizado pela SEFAZ.':'Resultado fiscal registrado.',payload:{outcome:official.outcome,recovered:official.recovered,orientacao:official.orientacao}});
-  return jsonResponse({ok:true,id,status:normalized.status,officialStatus:normalized.official,accessKey:input.key},normalized.status==='authorized'?201:202);
+  const rejectionCode = normalized.status === 'rejected'
+    ? `sefaz_${text(object(official.resposta).cstat)}`
+    : null;
+  return jsonResponse({
+    ok:true,
+    id,
+    status:normalized.status,
+    officialStatus:normalized.official,
+    accessKey:input.key,
+    ...(rejectionCode ? { rejectionCode } : {}),
+  },normalized.status==='authorized'?201:202);
 }
 
 async function handleDocumentAction(
@@ -938,18 +986,24 @@ async function handleDocumentAction(
   }
   if (action === 'resume') {
     if(row.status!=='signed')return jsonResponse({error:'resume_blocked',message:'Consulte a situação desta nota antes de continuar. Nenhum novo envio foi iniciado.'},409);
-    const {fiscal,ctx}=await fiscalContext(auth,`retomar_${model}:${documentId}`);
+    const {fiscal}=await fiscalContext(auth,`retomar_${model}:${documentId}`);
     const [company,configResult]=await Promise.all([loadGoodsIssuer(auth),auth.supabase.from(model===55?'company_nfe_settings':'company_nfce_settings').select('*').eq('company_id',auth.companyId).maybeSingle()]);
     if(configResult.error)throw new GoodsDocumentError('readiness_unavailable','Não foi possível conferir a configuração fiscal. Tente novamente.',503);
-    const issues=goodsReadinessIssues(model,company,fiscal,object(configResult.data),Deno.env.get('FISCAL_NFCE_PRODUCAO_HABILITADA')==='1');
-    if(issues.length)return jsonResponse({error:issues[0].code,message:issues[0].message},422);
-    if(Number(row.environment)!==(fiscal.fiscal_ambiente==='producao'?1:2) || text(row.uf).toUpperCase()!==text(company.state).toUpperCase())throw new GoodsDocumentError('fiscal_context_changed','O ambiente ou a UF mudou desde a preparação. Consulte o suporte antes de continuar.',409);
-    if(!/^[0-9a-f]{64}$/.test(text(row.snapshot_hash)) || await sha256(row.snapshot)!==row.snapshot_hash || digits(row.access_key).length!==44)throw new GoodsDocumentError('snapshot_unavailable','Não foi possível recuperar os dados fiscais preparados. Nenhum novo envio foi iniciado.',409);
     const storedDraft = normalizeDraft(row.draft_payload);
+    const resumedEnvironment = storedDraft.environment ?? (Number(row.environment) === 1 ? 'producao' : 'homologacao');
+    const effectiveFiscal: JsonObject = {
+      ...fiscal,
+      fiscal_ambiente: resumedEnvironment,
+    };
+    const issues=goodsReadinessIssues(model,company,effectiveFiscal,object(configResult.data),Deno.env.get('FISCAL_NFCE_PRODUCAO_HABILITADA')==='1');
+    if(issues.length)return jsonResponse({error:issues[0].code,message:issues[0].message},422);
+    if(Number(row.environment)!==(resumedEnvironment==='producao'?1:2) || text(row.uf).toUpperCase()!==text(company.state).toUpperCase())throw new GoodsDocumentError('fiscal_context_changed','O ambiente ou a UF mudou desde a preparação. Consulte o suporte antes de continuar.',409);
+    if(!/^[0-9a-f]{64}$/.test(text(row.snapshot_hash)) || await sha256(row.snapshot)!==row.snapshot_hash || digits(row.access_key).length!==44)throw new GoodsDocumentError('snapshot_unavailable','Não foi possível recuperar os dados fiscais preparados. Nenhum novo envio foi iniciado.',409);
     await assertSourceBelongsToCompany(auth, storedDraft);
     await assertFiscalCatalogsBelongToCompany(auth, storedDraft);
     const xml=await storedSignedXml(auth,row.signed_xml_path);
     if(!xml)throw new GoodsDocumentError('snapshot_unavailable','O XML assinado ainda não está disponível. Nenhum novo envio foi iniciado.',409);
+    const ctx:NfseProviderCtx={supabase:auth.supabase,companyId:auth.companyId,fiscal:effectiveFiscal,contextoAuditoria:`retomar_${model}:${documentId}`};
     return await transmitSavedGoods(auth,model,row,ctx,xml,setActive);
   }
 
@@ -981,9 +1035,10 @@ async function handleDocumentAction(
         ? await consultNfe(ctx, { uf, key, signedXml })
         : await consultNfce(ctx, { uf, key, signedXml });
     const normalized = outcomeStatus(official as JsonObject);
-    // Consulta inconclusiva não desfaz autorização nem libera cancelamento em andamento.
+    // Consulta inconclusiva não desfaz estados fiscais já conclusivos nem libera cancelamento em andamento.
     if(row.status==='cancellation_pending' && normalized.status!=='cancelled')return jsonResponse({ok:true,status:'cancellation_pending',existing:true,refreshRequired:true,checkInconclusive:true},202);
     if(row.status==='authorized' && !['authorized','cancelled'].includes(normalized.status))return jsonResponse({ok:true,status:'authorized',existing:true,refreshRequired:true,checkInconclusive:true},202);
+    if(row.status==='rejected' && normalized.status==='uncertain')return jsonResponse({ok:true,status:'rejected',existing:true,refreshRequired:true,checkInconclusive:true},202);
     const recoveredArtifacts = await officialArtifacts(auth, model, documentId, official as JsonObject);
     const now = new Date().toISOString();
     await storeGoodsDocument(auth, table, documentId, {
@@ -1257,13 +1312,19 @@ Deno.serve(async (req) => {
     const company = object(companyResult);
     const config = object(configResult.data);
     if (fiscalResult.error || configResult.error) throw new GoodsDocumentError('readiness_unavailable','Não foi possível conferir a configuração fiscal. Tente novamente.',503);
-    const readiness = goodsReadinessIssues(draft.model, company, fiscal, config, Deno.env.get('FISCAL_NFCE_PRODUCAO_HABILITADA') === '1');
+    const selectedEnvironment = draft.environment ?? (fiscal.fiscal_ambiente === 'producao' ? 'producao' : 'homologacao');
+    const effectiveDraft:NormalizedDraft={...draft,environment:selectedEnvironment};
+    const effectiveFiscal: JsonObject = {
+      ...fiscal,
+      fiscal_ambiente: selectedEnvironment,
+    };
+    const readiness = goodsReadinessIssues(draft.model, company, effectiveFiscal, config, Deno.env.get('FISCAL_NFCE_PRODUCAO_HABILITADA') === '1');
     if (readiness.length) return jsonResponse({error:readiness[0].code,message:readiness[0].message},422);
-    const environment = fiscal.fiscal_ambiente === 'producao' ? 1 : 2;
+    const environment = selectedEnvironment === 'producao' ? 1 : 2;
     const errors = validation(
-      draft,
+      effectiveDraft,
       text(company.state).toUpperCase(),
-      text(fiscal.regime_tributario),
+      text(effectiveFiscal.regime_tributario),
     );
     if (errors.length)
       return jsonResponse(
@@ -1291,14 +1352,22 @@ Deno.serve(async (req) => {
         ? object(reserved.data[0])
         : object(reserved.data);
       if (reserved.error || !reservation.number)
-        throw new Error("Não foi possível reservar a numeração fiscal.");
+        throw new GoodsDocumentError(
+          "number_reservation_failed",
+          "Não foi possível reservar a numeração fiscal. Nenhum número foi consumido.",
+          503,
+          {
+            stage: "reserve_number",
+            databaseCode: text(reserved.error?.code, 32) || null,
+          },
+        );
       series = number(reservation.series);
       documentNumber = number(reservation.number);
     }
     const document = buildMotorDocument(
-      draft,
+      effectiveDraft,
       company,
-      fiscal,
+      effectiveFiscal,
       series,
       documentNumber,
     );
@@ -1306,6 +1375,7 @@ Deno.serve(async (req) => {
     const operationId = text(row.operation_id);
     preparationFence=await storeGoodsDocument(auth, table, text(row.id), {
         status: "preparing",
+        draft_payload: effectiveDraft,
         environment,
         uf: text(company.state).toUpperCase(),
         series,
@@ -1319,7 +1389,7 @@ Deno.serve(async (req) => {
     const ctx: NfseProviderCtx = {
       supabase: auth.supabase,
       companyId: auth.companyId,
-      fiscal,
+      fiscal: effectiveFiscal,
       contextoAuditoria: `emitir_${draft.model === 55 ? "nfe" : "nfce"}:${row.id}`,
     };
     const prepared =
@@ -1406,7 +1476,13 @@ Deno.serve(async (req) => {
         payload: { code, transmissionStarted, operationId: activeDocument.fence.operationId, stateApplied:!!recoveryResult.data },
       });
     }
-    console.error('[fiscal-goods-document]', { code, transmissionStarted });
+    console.error('[fiscal-goods-document]', {
+      code,
+      transmissionStarted,
+      ...(error instanceof GoodsDocumentError ? error.diagnostic : {
+        errorType: error instanceof Error ? error.name : typeof error,
+      }),
+    });
     return jsonResponse(
       { error: code, message: error instanceof GoodsDocumentError ? error.message : message },
       error instanceof GoodsDocumentError ? error.status : fiscal ? (error as NfeMotorError).status : 500,

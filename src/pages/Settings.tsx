@@ -747,6 +747,15 @@ function AdministrativeSettings() {
     );
   };
 
+  // Politica da EMPRESA. O backend usa o mesmo campo para autorizar (ou negar)
+  // a justificativa de conflito; desligado/ausente falha fechado.
+  const handleToggleScheduleConflicts = (checked: boolean) => {
+    updateSettings.mutate(
+      { allow_schedule_conflicts: checked },
+      { onSuccess: () => toast({ title: t.usability.preferenceSaved }) }
+    );
+  };
+
   // Mesmo padrão do os_stock_consumption_enabled acima: decisão da EMPRESA, no
   // servidor. O controle é alimentado por `settings?.<campo>` (não
   // por estado local) porque o optimistic update do useCompanySettings já
@@ -822,6 +831,7 @@ function AdministrativeSettings() {
       description: t.usability.sections.schedule.description,
       items: [
         { key: 'showHolidays', title: t.usability.sections.schedule.showHolidays.title, description: t.usability.sections.schedule.showHolidays.description },
+        { key: 'allowScheduleConflicts', title: t.usability.sections.schedule.allowScheduleConflicts.title, description: t.usability.sections.schedule.allowScheduleConflicts.description },
       ],
     },
   ];
@@ -1754,7 +1764,7 @@ function AdministrativeSettings() {
                             <Label className="text-sm font-medium">{item.title}</Label>
                             <p className="text-xs text-muted-foreground">{item.description}</p>
                           </div>
-                          {item.key === 'osStockConsumptionEnabled' ? (
+                          {item.key === 'osStockConsumptionEnabled' || item.key === 'allowScheduleConflicts' ? (
                             isLoading ? (
                               // Valor vem do servidor (não do localStorage como os
                               // vizinhos) — enquanto a query carrega, não sabemos o
@@ -1765,9 +1775,13 @@ function AdministrativeSettings() {
                               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                             ) : (
                               <Switch
-                                checked={!!settings?.os_stock_consumption_enabled}
+                                checked={item.key === 'osStockConsumptionEnabled'
+                                  ? !!settings?.os_stock_consumption_enabled
+                                  : !!settings?.allow_schedule_conflicts}
                                 disabled={!canSaveSettings || updateSettings.isPending}
-                                onCheckedChange={handleToggleStockConsumption}
+                                onCheckedChange={item.key === 'osStockConsumptionEnabled'
+                                  ? handleToggleStockConsumption
+                                  : handleToggleScheduleConflicts}
                               />
                             )
                           ) : (

@@ -16,6 +16,15 @@
 - Se um arquivo estiver modificado por outra pessoa e for necessario tocar nele, trabalhar com a mudanca existente; nao restaurar conteudo antigo.
 - Nao renomear branch, nao fazer `git stash`, `git add -A`, `git add .`, `git reset --hard`, checkout amplo ou push/commit sem autorizacao explicita.
 
+## Higiene de Disco no Conductor
+
+- `.context/` serve para anexos, screenshots, logs pequenos e handoffs. Nunca criar dentro dela copia do repositorio, `git worktree`, `node_modules`, `dist`, cache de build ou ambiente virtual.
+- Preferir trabalhar no workspace atual. Se um worktree temporario for realmente necessario para integrar ou liberar codigo, cria-lo com `mktemp -d` sob `/private/tmp`, nunca dentro do workspace.
+- Nao instalar dependencias novamente em varios worktrees temporarios sem necessidade. Quando o lockfile for identico, reutilizar as dependencias do workspace de forma segura ou rodar apenas a verificacao indispensavel.
+- Ao concluir, remover worktrees temporarios apenas depois de confirmar que estao limpos e que todo commit necessario foi preservado. Nunca remover worktree de outra sessao ou agente.
+- Artefatos grandes e regeneraveis de QA ficam em `/private/tmp`; copiar para `.context/` somente a evidencia final que o CEO precisa receber.
+- Antes de criar artefato potencialmente grande, verificar `df -h` e `du -sh .context`. Com menos de 15 GB livres, evitar builds/copias paralelas e avisar o CEO.
+
 ## Stack do Projeto
 
 - App Vite + React + TypeScript.
@@ -50,6 +59,12 @@
 - Landing/growth/blog/i18n: site publico, SEO, conteudo, rotas localizadas e internacionalizacao.
 - WhatsApp/Evolution/infra: conexao, envio, webhook, tiers, VPS, Caddy, Docker, backup e runbooks.
 - Database: migrations, RLS, RPCs, triggers, tipos Supabase e consistencia de schema.
+
+## DomiLink e EcoTray
+
+- Antes de alterar drivers de impressora, balanca ou leitor do DomiLink, e ao atualizar o checkout local do EcoSistema, executar `python3 scripts/domilink/check_ecotray.py` (usar `--source /caminho/EcoSistemaSaaS/ecotray` quando necessario).
+- Revisar mudancas de origem e destino, testar as adaptacoes e so entao atualizar `docs/integrations/domilink-ecotray-sync.json` com `--accept --reviewed`. Ver `docs/integrations/domilink-ecotray.md`. Nao copiar automaticamente configuracao real, transporte inseguro nem alterar o repositorio vizinho sem escopo autorizado.
+- Testes virtuais nao homologam hardware fisico. Separar implementacao, teste com doubles/virtual e validacao com equipamento real ao relatar compatibilidade.
 
 ## Regras Duraveis Importadas do CLAUDE.md
 
@@ -89,12 +104,14 @@
 - Dashboards usam hierarquia, tipografia e respiro para agrupar informacao; evitar borda, fundo branco e sombra em toda secao. Reservar superficies fortes para o resumo ou a acao principal.
 - Cabeçalhos Kanban reutilizam `src/components/ui/KanbanColumnHeader.tsx`: fundo saturado da cor canonica da etapa/status, titulo/icone brancos, contador branco sobre `bg-white/20` e acoes acessiveis. Valores opcionais usam o slot children, sem ellipsis. Na busca, mostrar somente colunas com resultados; sem busca, preservar as colunas vazias de operacao. Nao copiar o JSX de uma tela para criar variacoes locais no PDV ou outros dominios.
 - Valores monetarios operacionais nunca usam ellipsis: o container deve refluir, crescer ou adotar apresentacao compacta preservando o numero completo.
+- Cabeçalhos Kanban reutilizam `src/components/ui/KanbanColumnHeader.tsx`: fundo saturado da cor canonica da etapa/status, titulo/icone brancos, contador branco sobre `bg-white/20` e acoes acessiveis. Valores opcionais usam o slot children, sem ellipsis. Na busca, mostrar somente colunas com resultados; sem busca, preservar as colunas vazias de operacao. Nao copiar o JSX de uma tela para criar variacoes locais no PDV ou outros dominios.
 - Graficos de pizza destacam a fatia em hover/foco e atenuam as demais; tooltip e legenda acompanham o destaque, permanecem legiveis e sem clipping, e a geometria final deve renderizar sem animacao inicial enganosa.
 - Fluxos longos em tela cheia reutilizam `src/components/ui/FullscreenWizard.tsx`: Sair com icone de saida no topo esquerdo (encerra o fluxo); Voltar fica reservado ao retorno de etapa no rodape, etapas no corpo, uma unica rolagem vertical, tipografia maior e acoes fixas no rodape com `FullscreenWizardAction` (52 px no celular, 56 px no desktop, texto negrito). Resumo contextual fica a direita no desktop e compacto no celular.
 - Campos homologos nos wizards fullscreen reutilizam o mesmo componente e variante: cliente usa `CustomerSelectField variant="large"` (foto, busca e cadastro no mesmo campo) em orcamentos, contratos e OS; inputs e selects comuns seguem o tamanho de 48 px e texto de 16 px definido em `FullscreenWizard`, sem overrides locais que criem variacoes visuais. Preservar diferencas funcionais necessarias, como selecao multipla de servicos na OS.
 - Titulos de criacao devem explicitar a acao com verbo no infinitivo + entidade, como `Criar orçamento` e `Adicionar serviço`; evitar o artigo quando nao acrescenta clareza e prejudica a leitura no celular. O acompanhamento de rascunho automatico fica no canto superior direito do cabecalho e informa salvando, destino real do salvamento ou falha. So anunciar salvo na conta depois da confirmacao do servidor; em falha de rede, identificar o backup local e oferecer nova tentativa.
 - O rascunho automatico de criacao de orcamento e pessoal por usuario e empresa, expira 30 dias desde a ultima edicao e nao cria um orcamento comercial nem altera o catalogo. Salvar rascunho na lista e uma acao explicita separada, sem essa expiracao; editar outro orcamento existente deve preservar o rascunho pessoal de criacao. A numeracao definitiva e reservada no servidor ao abrir a criacao e acompanha o rascunho entre dispositivos; nao prever MAX+1 no cliente nem reciclar numeros abandonados. A reserva nao cria orcamento na listagem.
 - Documentos numerados em fullscreen exibem a identificacao no topo pelo componente `DocumentNumberStatus`. Nova OS reserva o numero real no servidor e usa o UUID da reserva como id ao criar, sem criar registro vazio na listagem; na recorrencia, o numero exibido e o da primeira OS. Retomar rascunho preserva a reserva pessoal; descartar exige novo UUID. Nunca estimar MAX+1 nem reciclar numeros abandonados.
+- Rascunhos simultaneos do PDV preservam versoes divergentes e excedentes recuperados sem truncar conteudo. Exclusao exige intencao explicita, nunca ausencia em snapshot; CAS usa a base confirmada do conteudo, nao o relogio local. Ao trocar empresa/usuario/caixa, mascarar imediatamente tambem conflitos e resolucoes antigas, descartando respostas atrasadas.
 - Nesse padrao fullscreen, avisos secundarios como recuperacao de rascunho usam `FullscreenWizardNotice`/`DraftResumeNotice` no slot `floatingNotice`: centralizados horizontalmente acima da altura REAL do rodape, sem backdrop, sem capturar foco nem abrir modal sobre modal; animacao de entrada curta respeita movimento reduzido.
 - Cancelar, Sair, Voltar, Fechar e acoes destrutivas/negativas usam vermelho saturado com texto e icone brancos no hover; acoes primarias e estados selecionados usam os tokens `primary`/`primary-foreground`: preto com conteudo branco no tema claro, branco com conteudo escuro no tema escuro. Nao fixar `bg-zinc-950 text-white` em controles que precisam acompanhar o tema. Verde fica reservado ao destaque e identidade da entidade.
 

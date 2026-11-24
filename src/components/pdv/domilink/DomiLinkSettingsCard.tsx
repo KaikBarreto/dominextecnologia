@@ -56,7 +56,7 @@ function DomiLinkSettingsForm({ domiLink }: { domiLink: ReturnType<typeof useDom
 
   return <section className="space-y-4" aria-labelledby="domilink-title">
     <div className="flex items-start justify-between gap-4">
-      <DomiLinkBrand caption={<h2 id="domilink-title" className="domilink-brand-caption">Equipamentos deste computador</h2>} />
+      <DomiLinkBrand monochrome={false} caption={<h2 id="domilink-title" className="domilink-brand-caption">Equipamentos deste computador</h2>} />
       <Switch aria-label="Ativar DomiLink neste computador" checked={domiLink.enabled} onCheckedChange={domiLink.setEnabled} />
     </div>
 

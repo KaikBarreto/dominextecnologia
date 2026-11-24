@@ -63,7 +63,7 @@ export function PdvCashV2Page({ cashAccountId, allowNewSessions, userId, canMana
   const texts = MESSAGES[locale].app.pdv.cashPanel;
   const attemptRegistry = usePdvCashV2AttemptRegistry();
   const historyFilters = useMemo<PdvCashHistoryFilters>(() => ({ terminalId: null, operatorId: null, page: 0, pageSize: 1 }), []);
-  const cash = usePdvCashSessionsV2({ enabled: true, cashAccountId, userId, canManageOthers, history: historyFilters });
+  const cash = usePdvCashSessionsV2({ enabled: true, cashAccountId, userId, canManageOthers, canInitializeTreasury: canViewTreasury, history: historyFilters });
   const accountsState = useFinancialAccounts();
   const receiptSettings = usePdvReceiptSettings();
   const [selected, setSelected] = useState<'home' | string>('home');
@@ -245,7 +245,7 @@ export function PdvCashV2Page({ cashAccountId, allowNewSessions, userId, canMana
         </div>
       )}
 
-      {cashAccountId ? <PdvCashV2OpenDialog open={openDialog} onOpenChange={setOpenDialog} terminals={cash.terminals} available={snapshot?.available ?? null} canViewTreasury={canViewTreasury} cashAccountId={cashAccountId} attemptRegistry={attemptRegistry} money={money} onConfirm={async ({ terminalId, openingAmount, attemptId }) => { const result = await cash.openSession.mutateAsync({ terminalId, cashAccountId, openingAmount, attemptId }); setSelected(result.sessionId); }} /> : null}
+      {cashAccountId ? <PdvCashV2OpenDialog open={openDialog} onOpenChange={setOpenDialog} terminals={cash.terminals} available={snapshot?.available ?? null} canViewTreasury={canViewTreasury} canInitializeTreasury={cash.canInitializeTreasury} cashAccountId={cashAccountId} attemptRegistry={attemptRegistry} money={money} onConfirm={async ({ terminalId, openingAmount, initialBalance, attemptId }) => { const result = await cash.openSession.mutateAsync({ terminalId, cashAccountId, openingAmount, initialBalance, attemptId }); setSelected(result.sessionId); }} /> : null}
       <PdvFirstCashSetupDialog open={firstCashSetupOpen} onOpenChange={setFirstCashSetupOpen} onCreated={async () => { await cash.refetch(); setOpenDialog(true); }} />
       <PdvCashV2EventDialog open={eventKind !== null} onOpenChange={(open) => !open && setEventKind(null)} kind={eventKind ?? 'supply'} session={focusedSession} attemptRegistry={attemptRegistry} onConfirm={async ({ kind, amount, description, notes, attemptId }) => { if (!focusedSession) throw new Error('Selecione um caixa aberto.'); await cash.recordEvent.mutateAsync({ sessionId: focusedSession.id, cashAccountId: focusedSession.cashAccountId, kind, amount, description, notes, attemptId }); await detail.refetch(); }} />
       <PdvCashV2CloseDialog open={closeDialog} onOpenChange={setCloseDialog} session={focusedSession} expectedAmount={detail.detail?.position ?? null} money={money} attemptRegistry={attemptRegistry} onConfirm={async ({ countedAmount, notes, attemptId }) => { if (!focusedSession) throw new Error('Selecione um caixa aberto.'); const result = await cash.closeSession.mutateAsync({ sessionId: focusedSession.id, cashAccountId: focusedSession.cashAccountId, countedAmount, notes, attemptId }); setLastClose(result); setSelected('home'); return result; }} />

@@ -31,6 +31,108 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.58',
+    date: '24 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cadastro e saldo separados por local',
+        category: 'correcao',
+        description: 'Editar o nome ou o preço de um produto não altera mais sua quantidade. O saldo exibido acompanha o local selecionado, as movimentações na visão geral pedem um local e é possível remover um produto sem saldo de apenas um local, preservando os demais.',
+      },
+      {
+        title: 'Primeira abertura de caixa mais clara',
+        category: 'melhoria',
+        description: 'No primeiro uso, quem tem permissão pode informar o dinheiro físico já existente na empresa e separar o troco da gaveta na mesma abertura. O restante fica disponível no cofre, sem contar o saldo inicial como venda.',
+      },
+      {
+        title: 'Tutorial do módulo na hora certa',
+        category: 'melhoria',
+        description: 'Quando há uma aula publicada, a tela do módulo oferece um atalho para aprender a usá-lo. Depois da ativação confirmada, você também pode abrir diretamente a próxima aula sem perder seu progresso.',
+      },
+    ],
+  },
+  {
+    version: '1.41.57',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Visitas do contrato salvas por completo',
+        category: 'correcao',
+        description: 'A criação e a atualização de contratos agora confirmam todas as visitas previstas de uma só vez. Se alguma visita não puder ser salva, nenhuma parte do lote é mantida, evitando diferenças entre a prévia e a agenda e preservando as datas do cronograma.',
+      },
+    ],
+  },
+  {
+    version: '1.41.56',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Finalidade correta na NF-e',
+        category: 'correcao',
+        description: 'Ao emitir para um cliente sem inscrição estadual, o sistema agora identifica automaticamente a operação como consumidor final. Para clientes com inscrição estadual, você escolhe entre uso próprio e revenda ou industrialização antes da emissão.',
+      },
+      {
+        title: 'Correção segura de notas rejeitadas',
+        category: 'seguranca',
+        description: 'Uma NF-e ou NFC-e rejeitada permanece preservada no histórico. A ação Corrigir e reemitir abre uma nova emissão com nova numeração, sem alterar nem reutilizar o documento rejeitado.',
+      },
+    ],
+  },
+  {
+    version: '1.41.55',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Downloads do PMOC restaurados',
+        category: 'correcao',
+        description: 'Os documentos do dossiê e as versões anteriores do PMOC voltaram a ficar disponíveis para baixar e imprimir com segurança.',
+      },
+      {
+        title: 'Endereço completo reconhecido',
+        category: 'correcao',
+        description: 'O dossiê agora identifica corretamente o endereço completo quando ele já está preenchido no cadastro do cliente.',
+      },
+    ],
+  },
+  {
+    version: '1.41.54',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Agendamentos conflitantes configuráveis',
+        category: 'recurso',
+        description: 'Em Configurações > Usabilidade > Agenda, a empresa agora pode permitir atendimentos no mesmo horário. Quando a opção está desligada, os conflitos continuam bloqueados normalmente.',
+      },
+      {
+        title: 'Confirmação com justificativa',
+        category: 'seguranca',
+        description: 'Quando a opção está ligada, o sistema avisa sobre a sobreposição e exige uma justificativa antes de confirmar, mantendo a decisão registrada para consulta.',
+      },
+    ],
+  },
+  {
+    version: '1.41.53',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Acompanhamento de e-mail e WhatsApp',
+        category: 'recurso',
+        description: 'O administrador master ganhou uma área de Comunicações em Estatísticas para acompanhar envios, falhas, filas, empresas e a situação das conexões de WhatsApp em um único lugar.',
+      },
+      {
+        title: 'Limites de e-mail visíveis',
+        category: 'melhoria',
+        description: 'O painel também mostra o consumo diário e mensal da conta de e-mail, o ritmo máximo de envio e a franquia usada por empresa, facilitando a identificação de limites antes que afetem os clientes.',
+      },
+    ],
+  },
+  {
     version: '1.41.52',
     date: '23 de novembro de 2026',
     type: 'patch',

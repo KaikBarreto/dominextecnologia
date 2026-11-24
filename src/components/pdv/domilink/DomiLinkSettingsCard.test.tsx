@@ -20,6 +20,7 @@ describe('DomiLinkSettingsCard', () => {
     render(<DomiLinkSettingsCard />);
     expect(screen.getByRole('heading', { name: 'Equipamentos deste computador' })).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'DomiLink' })).toBeVisible();
+    expect(screen.getByRole('img', { name: 'DomiLink' }).closest('.domilink-brand')).toHaveClass('domilink-brand--color');
     expect(screen.getByText(/equipamentos podem ser conectados quando você precisar/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/código do DomiLink/i)).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /baixar/i })).not.toBeInTheDocument();

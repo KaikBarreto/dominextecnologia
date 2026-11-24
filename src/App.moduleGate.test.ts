@@ -61,4 +61,10 @@ describe('ModuleGateModal continua levando pra assinatura', () => {
     expect(modal).toContain('useModuleCatalog');
     expect(modal).toContain('dbModule?.name');
   });
+
+  it('oferece a aula do módulo sem substituir o CTA de contratação', () => {
+    expect(modal).toContain('<ModuleTutorialAction');
+    expect(modal).toContain('moduleCodes={moduleCode}');
+    expect(modal).toContain('Adicionar módulo');
+  });
 });

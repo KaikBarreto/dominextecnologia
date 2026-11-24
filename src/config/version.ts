@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.52";
+export const APP_VERSION = "1.41.58";
 
 export const VERSION_NOTES =
-  "Vídeos e novos arquivos agora carregam de forma mais econômica, reduzindo consumo de dados sem mudar o uso do sistema.";
+  "O estoque separa cadastro e saldo de cada local, a primeira abertura de caixa orienta o registro do dinheiro existente e os módulos oferecem seus tutoriais após a ativação.";

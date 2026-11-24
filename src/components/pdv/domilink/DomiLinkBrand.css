@@ -1,5 +1,6 @@
 /* Assinatura Sora vetorizada: o app usa o mesmo desenho dos arquivos da marca. */
 .domilink-brand{--domilink-logo-height:28px;min-width:0;max-width:100%;color:hsl(var(--foreground))}
+.domilink-brand--color .domilink-lockup-symbol{color:#00c597}
 .domilink-lockup{display:block;width:auto;height:var(--domilink-logo-height);max-width:100%;overflow:visible}
 .domilink-symbol{display:block;flex-shrink:0;width:48px;height:48px}
 .domilink-brand-caption-slot{padding-left:calc(var(--domilink-logo-height)*var(--domilink-caption-ratio))}

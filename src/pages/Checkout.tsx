@@ -39,6 +39,7 @@ import {
 } from '@/lib/subscriptionCatalog';
 import { resolveBusinessCore } from '@/lib/businessCore';
 import { buildCoreCommercialFeatures, corePlanFeatures, planBelongsToCore } from '@/lib/businessCoreCatalog';
+import { parseTutorialModules } from '@/lib/domiflixModuleTutorial';
 
 type PaymentMethod = "pix" | "boleto" | "card" | null;
 
@@ -100,6 +101,7 @@ export default function Checkout() {
   const isRenewal = searchParams.get("mode") === "renewal";
   const isUpgrade = searchParams.get("mode") === "upgrade";
   const changeRequestId = isUpgrade ? searchParams.get("change") : null;
+  const tutorialModules = parseTutorialModules(searchParams.get('tutorialModules'));
   const {
     data: upgradeQuote,
     isLoading: upgradeQuoteLoading,
@@ -490,7 +492,10 @@ export default function Checkout() {
           queryClient.invalidateQueries({ queryKey: ["subscription-upgrade-checkout", changeRequestId] }),
         ]);
         setPaymentSuccess(true);
-        setTimeout(() => { window.location.href = "/assinatura"; }, 3000);
+        const tutorialQuery = tutorialModules.length > 0
+          ? `?moduleActivated=1&tutorialModules=${encodeURIComponent(tutorialModules.join(','))}`
+          : '';
+        setTimeout(() => { window.location.href = `/assinatura${tutorialQuery}`; }, 3000);
         return;
       }
 

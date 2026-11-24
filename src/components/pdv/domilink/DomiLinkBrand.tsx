@@ -18,9 +18,9 @@ export function DomiLinkSymbol({ className, label }: {
 export function DomiLinkBrand({ className, monochrome = true, caption }: {
   className?: string; monochrome?: boolean; caption?: ReactNode;
 }) {
-  return <div className={cn('domilink-brand', className)} style={{ '--domilink-caption-ratio': DOMILINK_LOCKUP.textOffset / DOMILINK_LOCKUP.height } as CSSProperties}>
+  return <div className={cn('domilink-brand', !monochrome && 'domilink-brand--color', className)} style={{ '--domilink-caption-ratio': DOMILINK_LOCKUP.textOffset / DOMILINK_LOCKUP.height } as CSSProperties}>
     <svg className="domilink-lockup" viewBox={DOMILINK_LOCKUP.viewBox} width={DOMILINK_LOCKUP.width} height={DOMILINK_LOCKUP.height} role="img" aria-label="DomiLink" focusable="false">
-      <g transform={DOMILINK_LOCKUP.symbolTransform}>{SYMBOL_PATHS.map(path => <path key={path} d={path} fill="currentColor" />)}</g>
+      <g className="domilink-lockup-symbol" transform={DOMILINK_LOCKUP.symbolTransform}>{SYMBOL_PATHS.map(path => <path key={path} d={path} fill="currentColor" />)}</g>
       <g transform={DOMILINK_LOCKUP.wordTransform}><path className="domilink-wordmark" d={DOMILINK_LOCKUP.wordPath} fill="currentColor" /><path className="domilink-registered" d={DOMILINK_LOCKUP.registeredPath} fill="currentColor" /></g>
     </svg>
     {caption && <div className="domilink-brand-caption-slot">{caption}</div>}
