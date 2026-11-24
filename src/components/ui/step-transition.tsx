@@ -61,7 +61,7 @@ export function StepTransition({
   const exitX = reduceMotion ? 0 : direction * -OFFSET;
 
   return (
-    <AnimatePresence mode="wait" initial={animateInitial}>
+    <AnimatePresence mode="sync" initial={animateInitial}>
       <motion.div
         key={stepKey}
         className={className}

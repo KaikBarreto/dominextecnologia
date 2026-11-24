@@ -138,7 +138,7 @@ export function useTaskSubmit() {
           title: 'Revise a recorrência',
           description: describeRecurrenceIssue(recurrenceIssue),
         });
-        return;
+        return false;
       }
 
       // ─────────────────── EDIÇÃO ───────────────────
@@ -187,12 +187,12 @@ export function useTaskSubmit() {
           } as any);
         } catch (error) {
           // O próprio updateServiceOrder já mostra o toast de erro.
-          return;
+          return false;
         }
 
         // Sem recorrência ativada e sem série anterior → UPDATE simples, terminou.
         if (!wantsRecurrence && !existingGroupId) {
-          return;
+          return true;
         }
 
         // Recorrência ativa (nova série OU série existente) → "esta e as futuras".
@@ -232,10 +232,11 @@ export function useTaskSubmit() {
 
           toast({ title: 'Série atualizada!', description: 'Esta tarefa e as próximas foram atualizadas.' });
           queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+          return true;
         } catch (error) {
           toast({ variant: 'destructive', title: 'Erro ao atualizar a série', description: getErrorMessage(error) });
+          return false;
         }
-        return;
       }
 
       // ─────────────────── CRIAÇÃO ───────────────────
@@ -263,8 +264,10 @@ export function useTaskSubmit() {
         const count = await insertTaskOccurrences(data, dates, groupId, company_id);
         toast({ title: `${count} tarefa(s) criada(s)!` });
         queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+        return true;
       } catch (error) {
         toast({ variant: 'destructive', title: 'Erro ao criar tarefa', description: getErrorMessage(error) });
+        return false;
       }
     },
     [serviceOrders, updateServiceOrder, deleteServiceOrder, insertTaskOccurrences, toast, queryClient],

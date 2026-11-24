@@ -18,6 +18,7 @@
 
 export type LogoInk = 'dark' | 'light';
 export type LogoSurfaceTone = 'dark' | 'light';
+export type LogoSurfacePreference = 'auto' | 'system' | LogoSurfaceTone;
 
 /** Acima disso a arte é considerada CLARA (pede fundo escuro). */
 export const LOGO_INK_LUMINANCE_THRESHOLD = 0.38;
@@ -30,6 +31,17 @@ const LIGHT_INK_LUMINANCE_THRESHOLD = 0.7;
  * logo, e não como um brilho ou detalhe pequeno de uma arte escura.
  */
 const MIN_LIGHT_INK_SHARE = 0.18;
+
+/**
+ * Alguns arquivos não são transparentes: o próprio PNG/JPG já traz uma placa
+ * retangular atrás da marca. Nesse caso, tentar inferir só a "tinta" produz o
+ * efeito inverso (ex.: logo branco/dourado dentro de um retângulo preto ganha
+ * uma faixa branca externa). A borda do arquivo é a evidência mais segura de
+ * uma placa incorporada, desde que seja opaca e praticamente uniforme.
+ */
+const EMBEDDED_SURFACE_MIN_OPAQUE_SHARE = 0.92;
+const EMBEDDED_SURFACE_MIN_UNIFORM_SHARE = 0.86;
+const EMBEDDED_SURFACE_COLOR_TOLERANCE = 24;
 
 function relativeLuminance(red: number, green: number, blue: number): number {
   const linearize = (channel: number) => {
@@ -83,6 +95,106 @@ export function classifyInk(pixels: Uint8ClampedArray): LogoInk | null {
   return lightAlpha / totalAlpha >= MIN_LIGHT_INK_SHARE ? 'light' : 'dark';
 }
 
+function colorDistanceFrom(
+  red: number,
+  green: number,
+  blue: number,
+  reference: readonly [number, number, number],
+): number {
+  return Math.max(
+    Math.abs(red - reference[0]),
+    Math.abs(green - reference[1]),
+    Math.abs(blue - reference[2]),
+  );
+}
+
+/**
+ * Detecta uma placa opaca já incorporada ao arquivo do logo.
+ *
+ * A amostra usa dois pixels de espessura em todo o perímetro. As quatro bordas
+ * precisam estar majoritariamente opacas, e a grande maioria dos pixels deve
+ * estar próxima da mesma cor. Logos transparentes ou artes que chegam até a
+ * borda não são classificados por palpite.
+ */
+export function detectEmbeddedLogoSurfaceTone(
+  pixels: Uint8ClampedArray,
+  width: number,
+  height: number,
+): LogoSurfaceTone | null {
+  if (width < 4 || height < 4 || pixels.length < width * height * 4) return null;
+
+  const edgeDepth = Math.min(2, Math.floor(Math.min(width, height) / 2));
+  const edgeIndexes: number[] = [];
+  const edges = [
+    { startX: 0, endX: width, startY: 0, endY: edgeDepth },
+    { startX: 0, endX: width, startY: height - edgeDepth, endY: height },
+    { startX: 0, endX: edgeDepth, startY: edgeDepth, endY: height - edgeDepth },
+    { startX: width - edgeDepth, endX: width, startY: edgeDepth, endY: height - edgeDepth },
+  ];
+
+  for (const edge of edges) {
+    let edgeOpaque = 0;
+    let edgeTotal = 0;
+    for (let y = edge.startY; y < edge.endY; y += 1) {
+      for (let x = edge.startX; x < edge.endX; x += 1) {
+        const index = (y * width + x) * 4;
+        edgeTotal += 1;
+        if (pixels[index + 3] / 255 >= 0.9) {
+          edgeOpaque += 1;
+          edgeIndexes.push(index);
+        }
+      }
+    }
+    if (edgeTotal === 0 || edgeOpaque / edgeTotal < EMBEDDED_SURFACE_MIN_OPAQUE_SHARE) {
+      return null;
+    }
+  }
+
+  const perimeterPixelCount = 2 * edgeDepth * width
+    + 2 * edgeDepth * Math.max(0, height - 2 * edgeDepth);
+  if (edgeIndexes.length / perimeterPixelCount < EMBEDDED_SURFACE_MIN_OPAQUE_SHARE) return null;
+
+  let red = 0;
+  let green = 0;
+  let blue = 0;
+  for (const index of edgeIndexes) {
+    red += pixels[index];
+    green += pixels[index + 1];
+    blue += pixels[index + 2];
+  }
+  const average = [
+    red / edgeIndexes.length,
+    green / edgeIndexes.length,
+    blue / edgeIndexes.length,
+  ] as const;
+
+  const uniformPixels = edgeIndexes.filter((index) => (
+    colorDistanceFrom(pixels[index], pixels[index + 1], pixels[index + 2], average)
+      <= EMBEDDED_SURFACE_COLOR_TOLERANCE
+  )).length;
+  if (uniformPixels / edgeIndexes.length < EMBEDDED_SURFACE_MIN_UNIFORM_SHARE) return null;
+
+  return relativeLuminance(average[0], average[1], average[2])
+    <= LOGO_INK_LUMINANCE_THRESHOLD
+    ? 'dark'
+    : 'light';
+}
+
+/**
+ * Classificação usada pela imagem real. Quando o arquivo já tem uma placa,
+ * devolve a tinta efetiva oposta a ela para que o modo automático preserve o
+ * mesmo tom no shell. Sem placa incorporada, mantém a análise normal da arte.
+ */
+export function classifyLogoPixels(
+  pixels: Uint8ClampedArray,
+  width: number,
+  height: number,
+): LogoInk | null {
+  const embeddedSurface = detectEmbeddedLogoSurfaceTone(pixels, width, height);
+  if (embeddedSurface) return embeddedSurface === 'dark' ? 'light' : 'dark';
+  return classifyInk(pixels);
+}
+
 /**
  * Define a placa de contraste apenas quando a tinta e a superfície têm o
  * mesmo tom. Em superfícies opostas o próprio fundo já dá contraste suficiente.
@@ -101,6 +213,20 @@ export function getContrastingLogoSurfaceTone(
 ): LogoSurfaceTone | null {
   if (ink === null) return null;
   return ink === 'dark' ? 'light' : 'dark';
+}
+
+/**
+ * Resolve a preferência persistida da empresa para a faixa do logo.
+ * `system` não força tokens: cada shell acompanha o próprio fundo/tema.
+ */
+export function resolveLogoSurfaceTone(
+  preference: LogoSurfacePreference | null | undefined,
+  ink: LogoInk | null,
+): LogoSurfaceTone | null {
+  const normalized = preference ?? 'auto';
+  if (normalized === 'system') return null;
+  if (normalized === 'light' || normalized === 'dark') return normalized;
+  return getContrastingLogoSurfaceTone(ink);
 }
 
 // Um logo por tenant muda quase nunca; a URL já carrega o timestamp do upload,
@@ -132,7 +258,11 @@ async function measure(url: string): Promise<LogoInk | null> {
     // Esticado de propósito: só a cor/alfa importa, e esticar evita que a
     // sobra transparente do canvas entre na conta como se fosse do arquivo.
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
-    return classifyInk(context.getImageData(0, 0, canvas.width, canvas.height).data);
+    return classifyLogoPixels(
+      context.getImageData(0, 0, canvas.width, canvas.height).data,
+      canvas.width,
+      canvas.height,
+    );
   } finally {
     URL.revokeObjectURL(objectUrl);
   }

@@ -177,6 +177,7 @@ const SQLSTATE_MESSAGES: Record<string, string> = {
   // ── PostgREST-specific ──
   PGRST116: 'Registro não encontrado.',
   PGRST200: 'Não foi possível encontrar o relacionamento solicitado.',
+  PGRST204: 'Esta configuração ainda não está disponível no servidor. Atualize a página e tente novamente em alguns instantes.',
   PGRST301: 'Sessão expirou. Faça login novamente.',
 };
 

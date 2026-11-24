@@ -528,7 +528,10 @@ export function ServiceOrderFormDialog({
           }
         });
         const eqIds = Array.from(eqIdSet);
-        if (eqIds.length > 0) setSelectedEquipmentIds(eqIds);
+        if (eqIds.length > 0) {
+          setSelectedEquipmentIds(eqIds);
+          setExpandedEquipmentIds(eqIds);
+        }
         if (Object.keys(templateMap).length > 0) setEquipmentTemplateMap(templateMap);
         setEquipmentServiceTypeMap(serviceMap);
         if (standaloneIds.length > 0) setSelectedStandaloneTemplateIds(standaloneIds);
@@ -582,7 +585,7 @@ export function ServiceOrderFormDialog({
       setScopeLoading(false);
       setScopeLoadError(false);
       loadedScopeSigRef.current = null;
-      setExpandedEquipmentIds([]);
+      setExpandedEquipmentIds(serviceOrder?.equipment_id ? [serviceOrder.equipment_id] : []);
       setRequireTechSignature(Boolean(so?.require_tech_signature));
       setRequireClientSignature(Boolean(so?.require_client_signature));
       setCustomerMode('existing');
@@ -1944,9 +1947,11 @@ export function ServiceOrderFormDialog({
                   onClick={() => {
                     if (selectedEquipmentIds.length === equipment.length) {
                       setSelectedEquipmentIds([]);
+                      setExpandedEquipmentIds([]);
                     } else {
                       const ids = equipment.map(eq => eq.id);
                       setSelectedEquipmentIds(ids);
+                      setExpandedEquipmentIds(ids);
                       setEquipmentServiceTypeMap(prev => Object.fromEntries(
                         ids.map(id => [id, prev[id] ?? selectedServiceTypeIds]),
                       ));
@@ -2073,7 +2078,7 @@ export function ServiceOrderFormDialog({
                         <ClipboardList className="h-3.5 w-3.5" />
                         {selectedTemplates.length > 0
                           ? t.equipmentChecklistCount.replace('{n}', String(selectedTemplates.length))
-                          : t.equipmentChecklistToggle}
+                          : t.equipmentChecklistAdd}
                         <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', expanded && 'rotate-180')} />
                       </Button>
                     )}

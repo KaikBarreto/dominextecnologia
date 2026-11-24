@@ -5,23 +5,13 @@ import { supabase } from '@/integrations/supabase/client';
 import type { AppRole, Profile } from '@/types/database';
 import { clearDomiLinkSessionOutsideScope, type DomiLinkSessionScope } from '@/lib/domilink/storage';
 import { revokeDomiLink } from '@/lib/domilink/client';
+import { clearAllWhiteLabelCssVars } from '@/lib/whiteLabelCssVars';
 
 function clearDomiLinkOutsideScope(scope: Partial<DomiLinkSessionScope> | null) {
   const token = clearDomiLinkSessionOutsideScope(scope);
   // Não segura o lock do GoTrue nem depende da disponibilidade do serviço local.
   if (token) setTimeout(() => { void revokeDomiLink(token).catch(() => undefined); }, 0);
 }
-
-// Same set of CSS variables that useWhiteLabel applies. Duplicated here to
-// avoid a circular import (useWhiteLabel → useCompanySettings → useAuth).
-const WHITE_LABEL_VARS = [
-  '--primary',
-  '--ring',
-  '--sidebar-primary',
-  '--sidebar-accent',
-  '--sidebar-ring',
-  '--gradient-brand',
-];
 
 interface AuthContextType {
   user: User | null;
@@ -410,7 +400,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // the login screen and would also bleed into the next user that logs in
     // before useWhiteLabel re-runs.
     const root = document.documentElement;
-    WHITE_LABEL_VARS.forEach((v) => root.style.removeProperty(v));
+    clearAllWhiteLabelCssVars(root.style);
     root.classList.remove('dark');
     localStorage.removeItem('theme');
     // Limpa a cache da marca usada no boot síncrono (index.html). Sem isto o
@@ -418,6 +408,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // piscar no reload antes do useWhiteLabel re-rodar (regra-lei nº2).
     localStorage.removeItem('__wl_primary');
     localStorage.removeItem('__wl_gradient');
+    localStorage.removeItem('__wl_nav_neon');
+    localStorage.removeItem('__wl_primary_foreground');
     queryClient.clear();
     setUser(null);
     setSession(null);

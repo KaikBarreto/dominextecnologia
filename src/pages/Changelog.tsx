@@ -31,6 +31,33 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.55',
+    date: '24 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Logo sempre legível no tema claro e escuro',
+        category: 'melhoria',
+        description: 'Em Configurações da Empresa, agora é possível escolher o fundo usado atrás do logo e conferir uma prévia antes de salvar. O sistema também ajusta o contraste automaticamente quando necessário, evitando logo claro sobre fundo claro ou logo escuro sobre fundo escuro.',
+      },
+      {
+        title: 'Marca da empresa nos links compartilhados',
+        category: 'correcao',
+        description: 'Ao compartilhar o portal público do cliente ou do contrato, a prévia no WhatsApp e em outras redes passa a usar a imagem e a identidade da própria empresa quando o White Label estiver ativo.',
+      },
+      {
+        title: 'Equipamentos e checklists organizados por ambiente',
+        category: 'melhoria',
+        description: 'Nos fluxos em tela cheia de criação e edição de contratos e de nova OS, ficou mais simples navegar pelos ambientes, adicionar equipamentos e vincular checklists. As janelas auxiliares agora aparecem sobre o fluxo atual sem fechá-lo, e a foto do ambiente ocupa menos espaço.',
+      },
+      {
+        title: 'Tarefas disponíveis na ficha do cliente',
+        category: 'recurso',
+        description: 'A ficha do cliente agora permite acompanhar e criar tarefas relacionadas sem sair do contexto do cadastro, facilitando o acompanhamento de pendências e próximos passos.',
+      },
+    ],
+  },
+  {
     version: '1.41.54',
     date: '23 de novembro de 2026',
     type: 'patch',

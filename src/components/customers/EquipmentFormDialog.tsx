@@ -45,13 +45,15 @@ interface EquipmentFormDialogProps {
   equipmentCount?: number;
   /** Ao criar dentro de um fluxo rápido, abre o teclado já no nome. */
   focusNameOnOpen?: boolean;
+  /** Mantém o fluxo que abriu este cadastro visível atrás do modal. */
+  overlayParentId?: string | null;
 }
 
 const builtInFieldKeys = new Set(['brand', 'model', 'serial_number', 'capacity', 'location', 'install_date']);
 
 export function EquipmentFormDialog({
   open, onOpenChange, equipment, onSubmit, customers, categories = [], isLoading, equipmentCount = 0,
-  focusNameOnOpen = false,
+  focusNameOnOpen = false, overlayParentId,
 }: EquipmentFormDialogProps) {
   const { fields: fieldConfig } = useEquipmentFieldConfig();
   const { activeLabels, labelIdsFor, setEntityLabels } = usePartyLabels('equipment');
@@ -302,6 +304,7 @@ export function EquipmentFormDialog({
       onOpenChange={onOpenChange}
       title={equipment ? tf.titleEdit : tf.titleNew}
       footer={footer}
+      overlayParentId={overlayParentId}
     >
       <Form {...form}>
         <form id="equipment-form" onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">

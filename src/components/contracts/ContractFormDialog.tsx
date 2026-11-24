@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useId } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DatePicker } from '@/components/ui/DatePicker';
@@ -120,7 +120,8 @@ import { MESSAGES } from '@/lib/i18n/messages';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn, fuzzyIncludesAny } from '@/lib/utils';
-import { ChevronLeft, ChevronRight, ChevronDown, Check, Search, Plus, CalendarCheck, AlertTriangle, ShieldCheck, ExternalLink, Info, Trash2, Wrench, Lock, HelpCircle, Loader2, Calculator, Wallet } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, Check, Search, Plus, CalendarCheck, AlertTriangle, ShieldCheck, ExternalLink, Info, Trash2, Wrench, Lock, HelpCircle, Loader2, Calculator, Wallet, ClipboardList } from 'lucide-react';
+import { EnvironmentEquipmentNavigator } from '@/components/contracts/EnvironmentEquipmentNavigator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import {
@@ -235,8 +236,10 @@ function newEnvRow(): EnvRow {
 }
 
 export function ContractFormDialog({ open, onOpenChange, onCreated, editContract, defaultCustomerId }: ContractFormDialogProps) {
+  const contractWizardOverlayId = `contract-form-wizard-${useId()}`;
   const { locale, currency, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.contracts.contractForm;
+  const tEnvironments = MESSAGES[locale].app.contracts.environmentsTab;
   const tPortal = MESSAGES[locale].app.pmoc.contractDetail.overview;
 
   const { createContract, updateContract, createContractInstallments } = useContracts();
@@ -1516,6 +1519,22 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     });
   };
 
+  const openEnvironmentDetail = (key: string) => {
+    const equipmentIds = key === LOOSE_ENV_KEY
+      ? looseItems.map((item) => item.equipment_id).filter((id): id is string => !!id)
+      : environments.find((environment) => environment.key === key)?.equipment_ids ?? [];
+    setSelectedEnvKey(key);
+    setExpandedEqIds((previous) => new Set([...previous, ...equipmentIds]));
+  };
+
+  const focusEnvironmentEquipment = (environmentKey: string, equipmentId: string) => {
+    openEnvironmentDetail(environmentKey);
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      document.querySelector<HTMLElement>(`[data-contract-equipment-id="${equipmentId}"]`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }));
+  };
+
   // Adiciona um equipamento ao ambiente (membership), tirando de outros. No comum,
   // se vinha do grupo "Sem ambiente", deixa de ser solto.
   const addEquipmentToEnv = (envKey: string, eqId: string) => {
@@ -1602,11 +1621,13 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   };
   const confirmMemberPicker = () => {
     if (!memberPickerEnvKey) return;
+    const addedEquipmentIds = [...memberPickerSelection];
     if (memberPickerEnvKey === LOOSE_ENV_KEY) {
-      for (const eqId of memberPickerSelection) addEquipmentAsLoose(eqId);
+      for (const eqId of addedEquipmentIds) addEquipmentAsLoose(eqId);
     } else {
-      for (const eqId of memberPickerSelection) addEquipmentToEnv(memberPickerEnvKey, eqId);
+      for (const eqId of addedEquipmentIds) addEquipmentToEnv(memberPickerEnvKey, eqId);
     }
+    setExpandedEqIds((previous) => new Set([...previous, ...addedEquipmentIds]));
     setMemberPickerEnvKey(null);
   };
 
@@ -3407,25 +3428,56 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
               ...environments.flatMap(e => e.equipment_ids),
               ...looseItems.map(it => it.equipment_id).filter(Boolean) as string[],
             ]).size;
+            const contextNavigator = (
+              <EnvironmentEquipmentNavigator
+                environments={environments.map((environment, index) => ({
+                  key: environment.key,
+                  label: environment.identificacao.trim() || `${t.items.envGroupLabel} ${index + 1}`,
+                  equipmentIds: environment.equipment_ids,
+                }))}
+                looseGroup={!isPmoc && looseItems.length > 0 ? {
+                  key: LOOSE_ENV_KEY,
+                  label: t.items.unassignedEquipmentTitle,
+                  equipmentIds: looseItems
+                    .map((item) => item.equipment_id)
+                    .filter((id): id is string => !!id),
+                } : null}
+                selectedEnvironmentKey={selectedEnvKey}
+                getEquipmentLabel={(equipmentId) => equipmentById.get(equipmentId)?.name ?? t.equipmentFallback}
+                onSelectOverview={() => setSelectedEnvKey(null)}
+                onSelectEnvironment={openEnvironmentDetail}
+                onSelectEquipment={focusEnvironmentEquipment}
+                labels={{
+                  ariaLabel: tEnvironments.navigatorAriaLabel,
+                  title: tEnvironments.navigatorTitle,
+                  overview: tEnvironments.navigatorOverview,
+                }}
+              />
+            );
 
             // Campos do ambiente: PMOC = completo (refrigeração); comum = só os
             // genéricos (identificação + tipo/uso + foto).
             const renderEnvFields = (env: EnvRow, idx: number) => (
               <div className="space-y-3">
-                <EnvironmentPhotoField
-                  value={env.photo_url}
-                  onChange={(url) => setEnvironmentPhoto(env.key, url)}
-                  envLabel={env.identificacao.trim() || `Ambiente ${idx + 1}`}
-                />
+                <div className="grid items-end gap-3 sm:grid-cols-[auto_minmax(0,1fr)]">
+                  <EnvironmentPhotoField
+                    value={env.photo_url}
+                    onChange={(url) => setEnvironmentPhoto(env.key, url)}
+                    envLabel={env.identificacao.trim() || `Ambiente ${idx + 1}`}
+                  />
+                  <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">{t.items.envIdentLabel}</Label>
+                      <Input value={env.identificacao} onChange={e => updateEnvironmentField(env.key, 'identificacao', e.target.value)} placeholder={t.items.envIdentPlaceholder} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">{isPmoc ? t.items.envTypeActivityLabelPmoc : t.items.envTypeActivityLabelCommon}</Label>
+                      <Input value={env.tipo_atividade} onChange={e => updateEnvironmentField(env.key, 'tipo_atividade', e.target.value)} placeholder={t.items.envTypeActivityPlaceholder} />
+                    </div>
+                  </div>
+                </div>
+                {isPmoc && (
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">{t.items.envIdentLabel}</Label>
-                    <Input value={env.identificacao} onChange={e => updateEnvironmentField(env.key, 'identificacao', e.target.value)} placeholder={t.items.envIdentPlaceholder} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">{isPmoc ? t.items.envTypeActivityLabelPmoc : t.items.envTypeActivityLabelCommon}</Label>
-                    <Input value={env.tipo_atividade} onChange={e => updateEnvironmentField(env.key, 'tipo_atividade', e.target.value)} placeholder={t.items.envTypeActivityPlaceholder} />
-                  </div>
                   {isPmoc && (
                   <>
                   <div className="space-y-1.5">
@@ -3502,6 +3554,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                   </>
                   )}
                 </div>
+                )}
               </div>
             );
 
@@ -3533,26 +3586,21 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                       const eq = equipmentById.get(eqId);
                       const cfg = machineConfigs[eqId];
                       const expanded = expandedEqIds.has(eqId);
+                      const checklistCount = isPmoc
+                        ? 0
+                        : getCommonChecklist(eqId).formTemplateIds.length;
                       const name = eq?.name ?? t.equipmentFallback;
                       return (
-                        <div key={eqId}>
+                        <div key={eqId} data-contract-equipment-id={eqId}>
                           <div
-                            className="flex cursor-pointer items-center gap-2 px-3 py-2.5 transition-colors hover:bg-muted/30"
-                            role="button"
-                            tabIndex={0}
-                            aria-expanded={expanded}
-                            onClick={() => toggleExpanded(eqId)}
-                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpanded(eqId); } }}
+                            className="flex flex-wrap items-center gap-2 px-3 py-2.5 transition-colors hover:bg-muted/30"
                           >
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground" aria-hidden="true">
-                              <ChevronDown className={cn('h-4 w-4 transition-transform', expanded && 'rotate-180')} />
-                            </span>
                             <EquipmentAvatar
                               photoUrl={eq?.photo_url}
                               name={name}
                               onPreview={eq?.photo_url ? () => setPreviewPhoto({ src: eq.photo_url, alt: name }) : undefined}
                             />
-                            <div className="min-w-0 flex-1">
+                            <div className="min-w-40 flex-1">
                               <p className="truncate text-sm font-medium">{name}</p>
                               <p className="truncate text-xs text-muted-foreground">
                                 {[eq?.brand, eq?.model].filter(Boolean).join(' - ')}
@@ -3561,12 +3609,29 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                             </div>
                             <Button
                               type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-9 shrink-0 gap-1.5 rounded-xl text-xs"
+                              onClick={() => toggleExpanded(eqId)}
+                              aria-expanded={expanded}
+                            >
+                              <ClipboardList className="h-3.5 w-3.5" />
+                              {checklistCount > 0
+                                ? (checklistCount === 1
+                                    ? tEnvironments.checklistCountSingle
+                                    : tEnvironments.checklistCountPlural
+                                  ).replace('{n}', String(checklistCount))
+                                : tEnvironments.addChecklist}
+                              <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', expanded && 'rotate-180')} />
+                            </Button>
+                            <Button
+                              type="button"
                               variant="ghost"
                               size="icon"
                               className="h-9 w-9 shrink-0 text-destructive active:scale-90 transition-transform rounded-xl"
                               title={isPmoc ? t.items.removeEquipTitlePmoc : t.items.removeEquipTitleCommon}
                               aria-label={isPmoc ? t.items.removeEquipTitlePmoc : t.items.removeEquipTitleCommon}
-                              onClick={(e) => { e.stopPropagation(); setRemovingMember({ mode: 'env', envKey: env.key, eqId }); }}
+                              onClick={() => setRemovingMember({ mode: 'env', envKey: env.key, eqId })}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -3800,33 +3865,39 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                       // Só item COM equipamento tem checklist por equipamento.
                       const looseExpanded = !!it.equipment_id && expandedEqIds.has(it.equipment_id);
                       return (
-                        <div key={`${it.equipment_id ?? 'manual'}-${looseIdx}`}>
-                          <div className="flex items-center gap-2 px-3 py-2.5">
-                            {it.equipment_id ? (
-                              <button
-                                type="button"
-                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/60"
-                                onClick={() => toggleExpanded(it.equipment_id!)}
-                                aria-label={looseExpanded ? t.items.collapseChecklistAriaLabel : t.items.expandChecklistAriaLabel}
-                                aria-expanded={looseExpanded}
-                              >
-                                <ChevronDown className={cn('h-4 w-4 transition-transform', looseExpanded && 'rotate-180')} />
-                              </button>
-                            ) : (
-                              <div className="w-1" />
-                            )}
+                        <div key={`${it.equipment_id ?? 'manual'}-${looseIdx}`} data-contract-equipment-id={it.equipment_id || undefined}>
+                          <div className="flex flex-wrap items-center gap-2 px-3 py-2.5">
                             <EquipmentAvatar
                               photoUrl={eq?.photo_url}
                               name={name}
                               onPreview={eq?.photo_url ? () => setPreviewPhoto({ src: eq.photo_url, alt: name }) : undefined}
                             />
-                            <div className="min-w-0 flex-1">
+                            <div className="min-w-40 flex-1">
                               <p className="truncate text-sm font-medium">{name}</p>
                               <p className="truncate text-xs text-muted-foreground">
                                 {[eq?.brand, eq?.model].filter(Boolean).join(' - ') || it.item_description}
                                 {eq?.location && <span className="text-muted-foreground"> • {eq.location}</span>}
                               </p>
                             </div>
+                            {it.equipment_id && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-9 shrink-0 gap-1.5 rounded-xl text-xs"
+                                onClick={() => toggleExpanded(it.equipment_id!)}
+                                aria-expanded={looseExpanded}
+                              >
+                                <ClipboardList className="h-3.5 w-3.5" />
+                                {getCommonChecklist(it.equipment_id).formTemplateIds.length > 0
+                                  ? (getCommonChecklist(it.equipment_id).formTemplateIds.length === 1
+                                      ? tEnvironments.checklistCountSingle
+                                      : tEnvironments.checklistCountPlural
+                                    ).replace('{n}', String(getCommonChecklist(it.equipment_id).formTemplateIds.length))
+                                  : tEnvironments.addChecklist}
+                                <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', looseExpanded && 'rotate-180')} />
+                              </Button>
+                            )}
                             {it.equipment_id && environments.length > 0 && (
                               <Button
                                 type="button"
@@ -3896,7 +3967,9 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
 
             if (isLooseSelected) {
               return (
-                <div className="space-y-4">
+                <div className="grid min-w-0 gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
+                  {contextNavigator}
+                  <div className="min-w-0 space-y-4">
                   <Button variant="ghost" size="sm" className="-ml-2 min-h-11 sm:min-h-9 active:scale-[0.98] transition-transform" onClick={() => setSelectedEnvKey(null)}>
                     <ChevronLeft className="mr-1 h-4 w-4" /> {t.items.backToEnv}
                   </Button>
@@ -3908,13 +3981,16 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                     {t.items.noEnvGroupDesc}
                   </p>
                   {renderLooseEquipment()}
+                  </div>
                 </div>
               );
             }
 
             if (selectedEnv) {
               return (
-                <div className="space-y-4">
+                <div className="grid min-w-0 gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
+                  {contextNavigator}
+                  <div className="min-w-0 space-y-4">
                   <Button variant="ghost" size="sm" className="-ml-2 min-h-11 sm:min-h-9 active:scale-[0.98] transition-transform" onClick={() => setSelectedEnvKey(null)}>
                     <ChevronLeft className="mr-1 h-4 w-4" /> {t.items.backToEnv}
                   </Button>
@@ -3938,13 +4014,16 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                   </div>
                   {renderEnvFields(selectedEnv, selectedEnvIdx)}
                   {renderEnvEquipment(selectedEnv)}
+                  </div>
                 </div>
               );
             }
 
             // LISTA de ambientes (default).
             return (
-              <div className="space-y-4">
+              <div className="grid min-w-0 gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
+                {contextNavigator}
+                <div className="min-w-0 space-y-4">
                 <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
                   <div className="flex min-w-0 flex-col gap-1">
                     <span className="flex items-center gap-2 text-base font-semibold">
@@ -3981,7 +4060,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                       <button
                         key={env.key}
                         type="button"
-                        onClick={() => setSelectedEnvKey(env.key)}
+                        onClick={() => openEnvironmentDetail(env.key)}
                         className="flex w-full min-h-16 items-center gap-3 rounded-2xl border-2 bg-card p-3 text-left shadow-sm transition-colors hover:bg-muted/40 active:scale-[0.99]"
                       >
                         {env.photo_url ? (
@@ -4010,7 +4089,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                     {!isPmoc && looseItems.length > 0 && (
                       <button
                         type="button"
-                        onClick={() => setSelectedEnvKey(LOOSE_ENV_KEY)}
+                        onClick={() => openEnvironmentDetail(LOOSE_ENV_KEY)}
                         className="flex w-full min-h-16 items-center gap-3 rounded-2xl border-2 border-dashed bg-muted/20 p-3 text-left shadow-sm transition-colors hover:bg-muted/40 active:scale-[0.99]"
                       >
                         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
@@ -4043,6 +4122,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                     </p>
                   </div>
                 )}
+                </div>
               </div>
             );
           })()}
@@ -4970,6 +5050,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     <FullscreenWizard
       open={open}
       onOpenChange={handleModalOpenChange}
+      overlayId={contractWizardOverlayId}
       title={locale === 'pt-br' ? (isEditing ? 'Editar contrato' : 'Criar contrato') : (isEditing ? t.modalTitleEdit : t.modalTitleNew)}
       description="Defina o cliente, organize o escopo e a agenda e revise antes de salvar."
       footer={wizardFooter}
@@ -5027,6 +5108,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     <EquipmentFormDialog
       open={showQuickEquip}
       onOpenChange={setShowQuickEquip}
+      overlayParentId={contractWizardOverlayId}
       customers={contractCustomerAsList}
       categories={equipmentCategories}
       isLoading={createEquipment.isPending}
@@ -5037,6 +5119,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
         if (newId && memberPickerEnvKey) {
           if (memberPickerEnvKey === LOOSE_ENV_KEY) addEquipmentAsLoose(newId);
           else addEquipmentToEnv(memberPickerEnvKey, newId);
+          setExpandedEqIds((previous) => new Set([...previous, newId]));
         }
         setShowQuickEquip(false);
         setMemberPickerEnvKey(null);
@@ -5050,6 +5133,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       open={!!memberPickerEnvKey && !showQuickEquip}
       onOpenChange={(v) => { if (!v) setMemberPickerEnvKey(null); }}
       title={memberPickerEnvKey === LOOSE_ENV_KEY ? t.memberPicker.titleLoose : t.memberPicker.titleEnv}
+      overlayParentId={contractWizardOverlayId}
     >
       {(() => {
         const inTarget = memberPickerEnvKey === LOOSE_ENV_KEY

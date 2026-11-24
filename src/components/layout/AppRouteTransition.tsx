@@ -13,5 +13,9 @@ export function AppRouteTransition({ ownerKey, children }: { ownerKey: string; c
 
   // Ficha e lista pertencem à mesma tela. Empresa/usuário diferentes sempre
   // descartam o estado transitório; breakpoint e estilo de menu não o descartam.
-  return <div key={`${ownerKey}:${appScreenKey(location.pathname)}`} className="animate-in fade-in duration-200 min-w-0 max-w-full">{children}</div>;
+  // A transição `animate-in fade-in` podia permanecer no frame inicial
+  // (opacity: 0) no Safari/WebKit após reload ou HMR, deixando a rota inteira
+  // invisível apesar de o conteúdo já estar montado e acessível. A troca de
+  // tela continua instantânea e previsível, sem arriscar ocultar o conteúdo.
+  return <div key={`${ownerKey}:${appScreenKey(location.pathname)}`} className="min-w-0 max-w-full">{children}</div>;
 }

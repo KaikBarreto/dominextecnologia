@@ -182,7 +182,7 @@ export function ResponsiveModal({
           className={cn(
             'flex max-h-[90vh] flex-col sm:max-w-[600px]',
             density === 'compact' && 'gap-3 p-5',
-            fullScreen && '!left-0 !top-0 h-[100dvh] max-h-none w-screen !max-w-none !translate-x-0 !translate-y-0 gap-0 rounded-none border-0 p-0 shadow-none duration-0 data-[state=open]:zoom-in-100 data-[state=closed]:zoom-out-100 sm:rounded-none',
+            fullScreen && '!left-0 !top-0 h-[100dvh] max-h-none w-screen !max-w-none !translate-x-0 !translate-y-0 gap-0 rounded-none border-0 p-0 shadow-none !animate-none sm:rounded-none',
             className,
           )}
           hideCloseButton={fullScreen}

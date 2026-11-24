@@ -265,11 +265,12 @@ Design Premium com Verde da Marca #00C597
      montado. Aqui RE-DECLARAMOS só os tokens que mudam o "sabor" dos CTAs:
      primary vira PRETO e os cantos ficam mais retos. A LANDING pública NÃO tem
      `data-app` → segue com o verde da marca (o :root acima).
-     PRESERVADOS de propósito (herdam do :root/.dark): --success (verde positivo),
-     --sidebar-* (verde da nav, é a Fase 2), --accent (já é cinza neutro).
+     PRESERVADOS de propósito (herdam do :root/.dark): --success (verde positivo)
+     e --accent (já é cinza neutro). Os tokens operacionais da navegação também
+     são neutralizados aqui para não herdarem a cor da empresa.
      Especificidade [data-app] (0,1,1 com o &) > :root (0,1,0), então vence o
-     boot padrão. Exceção conhecida: white-label seta --primary INLINE no <html>
-     (root.style.setProperty), e inline vence qualquer seletor — ver relatório. */
+     boot padrão. White-label injeta somente --brand-* e --gradient-brand; não
+     sobrescreve --primary, --ring nem --sidebar-* no app logado. */
   [data-app] {
     /* was: --primary: 160 100% 39%  (verde marca) */
     --primary: 0 0% 10%;
@@ -279,6 +280,12 @@ Design Premium com Verde da Marca #00C597
     --primary-foreground: 0 0% 100%;
     /* was: --ring: 160 100% 39% */
     --ring: 0 0% 10%;
+    --sidebar-primary: 0 0% 10%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 92%;
+    --sidebar-accent-foreground: 0 0% 10%;
+    --sidebar-ring: 0 0% 10%;
+    --nav-neon: 0 0% 10%;
     /* was: --radius: 0.75rem */
     --radius: 0.375rem;
   }
@@ -292,6 +299,12 @@ Design Premium com Verde da Marca #00C597
     --primary-foreground: 0 0% 8%;
     /* was: --ring: 160 100% 39% */
     --ring: 0 0% 70%;
+    --sidebar-primary: 0 0% 88%;
+    --sidebar-primary-foreground: 0 0% 8%;
+    --sidebar-accent: 0 0% 18%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-ring: 0 0% 70%;
+    --nav-neon: 0 0% 100%;
     /* --radius herda de [data-app] acima (0.375rem) */
   }
 
@@ -323,16 +336,16 @@ Design Premium com Verde da Marca #00C597
     --sidebar-background: 0 0% 8%;
     --sidebar-foreground: 0 0% 90%;
     --sidebar-border: 0 0% 15%;
-    /* Com white-label, `--wl-nav-neon` é injetado em :root (useWhiteLabel /
-       boot inline) e a barra vira a cor do cliente; sem ele, verde neon. */
-    --nav-neon: var(--wl-nav-neon, 160 90% 50%);
+    /* Estado selecionado operacional: branco sobre a navegação escura. A cor
+       da empresa permanece em `--brand-primary`, sem pintar controles. */
+    --nav-neon: 0 0% 100%;
   }
 
   /* Token neon disponível também quando o app JÁ está no tema escuro (a nav
      herda o dark do sistema, mas o indicador precisa da cor). */
   .dark [data-nav-surface],
   .dark [data-sidebar="sidebar"] {
-    --nav-neon: var(--wl-nav-neon, 160 90% 50%);
+    --nav-neon: 0 0% 100%;
   }
 
   /* ─── Área do LOGO no sidebar escuro ──────────────────────────────────────
@@ -1119,7 +1132,8 @@ body:has([data-app-overlay][data-state="open"], [data-vaul-drawer][data-state="o
 
 /* ─── Barra NEON — indicador de item ativo/hover da NAV escura (Fase 2) ────────
    `.nav-indicator` desenha uma barra fina na BASE do item via ::after, na cor
-   neon da marca (`--nav-neon`, fallback verde 160 90% 50%). Largura animada:
+   contraste operacional (`--nav-neon`, preto no menu claro e branco no menu
+   escuro). Largura animada:
    0 parado → 60% no hover → 85% no ativo (`.nav-indicator-active`). SEM
    preenchimento: qualquer bg residual (bg-primary/bg-sidebar-primary/hover:bg-*)
    é zerado com !important DENTRO do escopo dark-nav, pra o sinal ser só a barra.
@@ -1136,7 +1150,7 @@ body:has([data-app-overlay][data-state="open"], [data-vaul-drawer][data-state="o
   width: 0;
   transform: translateX(-50%);
   border-radius: 9999px;
-  background: hsl(var(--nav-neon, 160 90% 50%));
+  background: hsl(var(--nav-neon, var(--primary)));
   transition: width 200ms ease-out, opacity 200ms ease-out;
   opacity: 0;
   pointer-events: none;
@@ -1196,8 +1210,8 @@ body:has([data-app-overlay][data-state="open"], [data-vaul-drawer][data-state="o
    todo mundo (um tenant de marca roxa neon não pinta o formulário de cartão).
 
    Por que redeclarar TODOS os tokens neste escopo:
-     • O white-label injeta --primary, --ring, --sidebar-primary e --gradient-brand INLINE
-       no <html> (useWhiteLabel → root.style.setProperty) e o script anti-FOUC do
+     • O white-label injeta --brand-primary e --gradient-brand INLINE no <html>
+       (useWhiteLabel → root.style.setProperty) e o script anti-FOUC do
        index.html reaplica o cache `__wl_primary` de QUALQUER tenant já visitado
        naquele navegador. Estilo inline vence qualquer seletor NO MESMO elemento,
        mas custom property é HERDADA: redeclarando no container da direita, toda

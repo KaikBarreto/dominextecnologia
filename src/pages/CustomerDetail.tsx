@@ -59,6 +59,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { TaskFormDialog, TaskFormData } from '@/components/schedule/TaskFormDialog';
 import { useTaskSubmit } from '@/hooks/useTaskSubmit';
+import { useCustomerTasks } from '@/hooks/useCustomerTasks';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -218,6 +219,7 @@ export function CustomerDetailContent() {
   const id = customer?.id ?? (isUuid(routeParam) ? routeParam : undefined);
 
   const { serviceOrders, createServiceOrder, deleteServiceOrder } = useServiceOrders();
+  const customerTasksQuery = useCustomerTasks(id, activeTab === 'tarefas');
   const customerPortalCalls = usePortalCalls({ customerId: id, enabled: Boolean(id) });
   const { submitTask } = useTaskSubmit();
   const { transactions, createTransaction, updateTransaction, deleteTransaction } = useFinancial();
@@ -386,7 +388,7 @@ export function CustomerDetailContent() {
     [customers, labelsFor]
   );
   const customerOrders = serviceOrders.filter(os => os.customer_id === id && (os as any).entry_type !== 'tarefa');
-  const customerTasks = serviceOrders.filter(os => os.customer_id === id && (os as any).entry_type === 'tarefa');
+  const customerTasks = customerTasksQuery.tasks;
   const customerTransactions = transactions.filter(t => t.customer_id === id);
   // Uma cobrança que é lançada automaticamente no Financeiro grava
   // `tenant_charge_id` na transação espelho (ver `financial_transactions`).
@@ -1504,13 +1506,40 @@ export function CustomerDetailContent() {
               {t.newTask}
             </Button>
           </div>
-          {customerTasks.length === 0 ? (
+          {customerTasksQuery.isLoading ? (
+            <Card className={cn(isMobile && 'rounded-2xl')}>
+              <CardContent className="space-y-3 p-4" aria-label={t.tasksLoading}>
+                {[0, 1].map((row) => (
+                  <div key={row} className="flex items-center gap-3">
+                    <Skeleton className="h-10 flex-1" />
+                    <Skeleton className="h-10 w-24" />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          ) : customerTasksQuery.isError ? (
+            <Card className={cn('border-destructive/40', isMobile && 'rounded-2xl')}>
+              <CardContent className="flex flex-col items-center gap-3 px-6 py-8 text-center">
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+                  <AlertCircle className="h-6 w-6" aria-hidden="true" />
+                </span>
+                <div className="space-y-1">
+                  <p className="font-semibold">{t.tasksLoadError}</p>
+                  <p className="text-sm text-muted-foreground">{t.tasksLoadErrorDesc}</p>
+                </div>
+                <Button variant="outline" onClick={() => { void customerTasksQuery.refetch(); }}>
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  {tCustomers.retry}
+                </Button>
+              </CardContent>
+            </Card>
+          ) : customerTasks.length === 0 ? (
             <EmptyState
               size="compact"
               icon={<CheckSquare className="h-10 w-10" />}
               title={t.emptyTasksTitle}
               description={t.emptyTasksDesc}
-              action={{ label: t.newTask, onClick: () => setTaskFormOpen(true) }}
+              action={isMobile ? undefined : { label: t.newTask, onClick: () => setTaskFormOpen(true) }}
             />
           ) : (
             <Card className={cn(isMobile && 'rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)]')}><CardContent className="p-0">
@@ -2094,10 +2123,9 @@ export function CustomerDetailContent() {
           try {
             // Em criação a partir da aba, o cliente atual é sempre o vínculo.
             const payload = editingTask ? data : { ...data, customer_id: id || data.customer_id };
-            await submitTask(payload, editingTask);
+            return await submitTask(payload, editingTask);
           } finally {
             setCreatingTask(false);
-            setEditingTask(null);
           }
         }}
       />

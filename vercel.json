@@ -67,6 +67,7 @@
     { "source": "/v1/openapi.json", "destination": "/api/openapi-v1" },
     { "source": "/v1/:path*", "destination": "/api/public-v1?path=:path*" },
     { "source": "/os-tecnico/:id", "destination": "/api/public-os?id=:id" },
+    { "source": "/contrato/unidade/:token", "destination": "/api/public-contract-portal?token=:token" },
     { "source": "/blog/:slug", "destination": "/api/blog-post?slug=:slug&locale=pt-br" },
     { "source": "/en/blog/:slug", "destination": "/api/blog-post?slug=:slug&locale=en" },
     { "source": "/es/blog/:slug", "destination": "/api/blog-post?slug=:slug&locale=es" },

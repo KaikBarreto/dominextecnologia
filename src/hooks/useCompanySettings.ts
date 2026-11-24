@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessages';
 import type { LocaleCode } from '@/lib/i18n/locales';
 import { PDV_RECEIPT_COMPANY_QUERY_ROOT } from '@/lib/pdv/receipt/cacheKeys';
+import type { LogoSurfacePreference } from '@/utils/logoInk';
 
 export interface CompanySettings {
   pdv_default_stock_id?: string | null;
@@ -47,6 +48,7 @@ export interface CompanySettings {
   };
   white_label_enabled?: boolean;
   white_label_logo_url?: string;
+  white_label_logo_surface?: LogoSurfacePreference;
   white_label_icon_url?: string;
   white_label_primary_color?: string;
   // Estilo do QR Code branded (só aplica quando white_label_enabled).

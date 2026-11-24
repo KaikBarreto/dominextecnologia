@@ -13,6 +13,7 @@ import {
   ChevronRight,
   ChevronDown,
   Search,
+  ClipboardList,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -31,6 +32,7 @@ import { EquipmentAvatar } from '@/components/contracts/EquipmentAvatar';
 import { EnvironmentPhotoField } from '@/components/contracts/EnvironmentPhotoField';
 import { PmocChecklistPicker } from '@/components/contracts/PmocChecklistPicker';
 import { CommonChecklistEditor, type ChecklistTemplateOption } from '@/components/contracts/CommonChecklistEditor';
+import { EnvironmentEquipmentNavigator } from '@/components/contracts/EnvironmentEquipmentNavigator';
 import { isEveryVisit } from '@/components/contracts/questionFrequency';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { EquipmentFormDialog } from '@/components/customers/EquipmentFormDialog';
@@ -746,6 +748,26 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
     });
   };
 
+  const openEnvironmentDetail = (key: string) => {
+    const equipmentIds = key === LOOSE_ENV_KEY
+      ? looseItems.map((item) => item.equipment_id).filter((id): id is string => !!id)
+      : envs.find((environment) => environment.key === key)?.equipment_ids ?? [];
+    setSelectedEnvKey(key);
+    if (isPmoc) {
+      setExpandedEqIds((previous) => new Set([...previous, ...equipmentIds]));
+    } else {
+      setExpandedChecklistEqIds((previous) => new Set([...previous, ...equipmentIds]));
+    }
+  };
+
+  const focusEnvironmentEquipment = (environmentKey: string, equipmentId: string) => {
+    openEnvironmentDetail(environmentKey);
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      document.querySelector<HTMLElement>(`[data-contract-equipment-id="${equipmentId}"]`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }));
+  };
+
   // ---- Rotina por máquina (mesmos handlers do form) -------------------------
   const setMachineScope = (eqId: string, scope: PmocMachineScope) => {
     setMachineConfigs((prev) => {
@@ -900,10 +922,16 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
 
   const confirmMemberPicker = () => {
     if (!memberPickerEnvKey) return;
+    const addedEquipmentIds = [...memberPickerSelection];
     if (memberPickerEnvKey === LOOSE_ENV_KEY) {
-      for (const eqId of memberPickerSelection) addEquipmentAsLoose(eqId);
+      for (const eqId of addedEquipmentIds) addEquipmentAsLoose(eqId);
     } else {
-      for (const eqId of memberPickerSelection) addEquipmentToEnv(memberPickerEnvKey, eqId);
+      for (const eqId of addedEquipmentIds) addEquipmentToEnv(memberPickerEnvKey, eqId);
+    }
+    if (isPmoc) {
+      setExpandedEqIds((previous) => new Set([...previous, ...addedEquipmentIds]));
+    } else {
+      setExpandedChecklistEqIds((previous) => new Set([...previous, ...addedEquipmentIds]));
     }
     setMemberPickerEnvKey(null);
   };
@@ -915,6 +943,11 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
     if (created?.id && memberPickerEnvKey) {
       if (memberPickerEnvKey === LOOSE_ENV_KEY) addEquipmentAsLoose(created.id);
       else addEquipmentToEnv(memberPickerEnvKey, created.id);
+      if (isPmoc) {
+        setExpandedEqIds((previous) => new Set([...previous, created.id]));
+      } else {
+        setExpandedChecklistEqIds((previous) => new Set([...previous, created.id]));
+      }
     }
     return created;
   };
@@ -1094,6 +1127,32 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
   );
   // Grupo virtual "Sem ambiente" em detalhe (só comum).
   const isLooseSelected = !isPmoc && selectedEnvKey === LOOSE_ENV_KEY;
+  const contextNavigator = (
+    <EnvironmentEquipmentNavigator
+      environments={envs.map((environment, index) => ({
+        key: environment.key,
+        label: environment.identificacao.trim() || `${t.envGroupLabel} ${index + 1}`,
+        equipmentIds: environment.equipment_ids,
+      }))}
+      looseGroup={!isPmoc && looseItems.length > 0 ? {
+        key: LOOSE_ENV_KEY,
+        label: tForm.items.unassignedEquipmentTitle,
+        equipmentIds: looseItems
+          .map((item) => item.equipment_id)
+          .filter((id): id is string => !!id),
+      } : null}
+      selectedEnvironmentKey={selectedEnvKey}
+      getEquipmentLabel={(equipmentId) => equipmentById.get(equipmentId)?.name ?? 'Equipamento'}
+      onSelectOverview={() => setSelectedEnvKey(null)}
+      onSelectEnvironment={openEnvironmentDetail}
+      onSelectEquipment={focusEnvironmentEquipment}
+      labels={{
+        ariaLabel: t.navigatorAriaLabel,
+        title: t.navigatorTitle,
+        overview: t.navigatorOverview,
+      }}
+    />
+  );
 
   // Esvaziou o grupo "Sem ambiente" (moveu/removeu o último item) → volta à lista.
   useEffect(() => {
@@ -1115,7 +1174,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
       if (inTarget.has(eq.id)) return false;
       return fuzzyIncludesAny([eq.name, eq.brand, eq.model, eq.serial_number, eq.identifier], memberPickerSearch);
     });
-  }, [memberPickerEnvKey, envs, activeEquipment, memberPickerSearch]);
+  }, [memberPickerEnvKey, envs, looseItems, activeEquipment, memberPickerSearch]);
 
   // ---- Render: barra de dirty (compartilhada lista/detalhe) -----------------
   const dirtyBar = dirty && (
@@ -1148,6 +1207,9 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
 
   return (
     <div className="space-y-6 min-w-0 w-full">
+      <div className="grid min-w-0 gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
+        {contextNavigator}
+        <div className="min-w-0">
       {isLooseSelected ? (
         /* ============ DETALHE DO GRUPO "SEM AMBIENTE" (comum) ============ */
         <Card className="w-full min-w-0 max-w-full overflow-hidden border-0 bg-transparent shadow-none">
@@ -1254,7 +1316,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                   <button
                     key={env.key}
                     type="button"
-                    onClick={() => setSelectedEnvKey(env.key)}
+                    onClick={() => openEnvironmentDetail(env.key)}
                     className="flex w-full min-h-16 items-center gap-3 rounded-2xl bg-muted/35 p-3 text-left transition-colors hover:bg-muted/50 active:scale-[0.99]"
                   >
                     {env.photo_url ? (
@@ -1292,7 +1354,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                 {!isPmoc && looseItems.length > 0 && (
                   <button
                     type="button"
-                    onClick={() => setSelectedEnvKey(LOOSE_ENV_KEY)}
+                    onClick={() => openEnvironmentDetail(LOOSE_ENV_KEY)}
                     className="flex w-full min-h-16 items-center gap-3 rounded-2xl bg-muted/20 p-3 text-left transition-colors hover:bg-muted/40 active:scale-[0.99]"
                   >
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
@@ -1323,6 +1385,8 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
           </CardContent>
         </Card>
       )}
+        </div>
+      </div>
 
       {/* Picker do catálogo PMOC por máquina (drawer no mobile, dialog no desktop). */}
       <ResponsiveModal
@@ -1589,20 +1653,25 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
   function renderEnvFields(env: EnvRow, idx: number) {
     return (
       <div className="space-y-3">
-        <EnvironmentPhotoField
-          value={env.photo_url}
-          onChange={(url) => setEnvPhoto(env.key, url)}
-          envLabel={env.identificacao.trim() || `Ambiente ${idx + 1}`}
-        />
+        <div className="grid items-end gap-3 sm:grid-cols-[auto_minmax(0,1fr)]">
+          <EnvironmentPhotoField
+            value={env.photo_url}
+            onChange={(url) => setEnvPhoto(env.key, url)}
+            envLabel={env.identificacao.trim() || `Ambiente ${idx + 1}`}
+          />
+          <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs">{tForm.items.envIdentLabel}</Label>
+              <Input value={env.identificacao} onChange={(e) => updateField(env.key, 'identificacao', e.target.value)} placeholder={tForm.items.envIdentPlaceholder} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">{isPmoc ? tForm.items.envTypeActivityLabelPmoc : tForm.items.envTypeActivityLabelCommon}</Label>
+              <Input value={env.tipo_atividade} onChange={(e) => updateField(env.key, 'tipo_atividade', e.target.value)} placeholder={tForm.items.envTypeActivityPlaceholder} />
+            </div>
+          </div>
+        </div>
+        {isPmoc && (
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label className="text-xs">{tForm.items.envIdentLabel}</Label>
-            <Input value={env.identificacao} onChange={(e) => updateField(env.key, 'identificacao', e.target.value)} placeholder={tForm.items.envIdentPlaceholder} />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">{isPmoc ? tForm.items.envTypeActivityLabelPmoc : tForm.items.envTypeActivityLabelCommon}</Label>
-            <Input value={env.tipo_atividade} onChange={(e) => updateField(env.key, 'tipo_atividade', e.target.value)} placeholder={tForm.items.envTypeActivityPlaceholder} />
-          </div>
           {isPmoc && (
           <>
           <div className="space-y-1.5">
@@ -1703,6 +1772,7 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
           </>
           )}
         </div>
+        )}
       </div>
     );
   }
@@ -1747,48 +1817,38 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
               const checklistCount = getCommonChecklist(eqId).formTemplateIds.length;
               const name = eq?.name ?? 'Equipamento';
               return (
-                <div key={eqId}>
-                  <div className="flex items-center gap-2 px-3 py-2.5">
-                    {/* Chevron de expansão. PMOC: config por máquina. Comum: editor
-                        de checklist por equipamento. */}
-                    {isPmoc ? (
-                      <button
-                        type="button"
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/60"
-                        onClick={() => toggleExpanded(eqId)}
-                        aria-label={expanded ? tForm.items.collapseChecklistAriaLabel : tForm.items.expandChecklistAriaLabel}
-                        aria-expanded={expanded}
-                      >
-                        <ChevronDown className={cn('h-4 w-4 transition-transform', expanded && 'rotate-180')} />
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/60"
-                        onClick={() => toggleChecklistExpanded(eqId)}
-                        aria-label={checklistExpanded ? tForm.items.collapseChecklistAriaLabel : tForm.items.expandChecklistAriaLabel}
-                        aria-expanded={checklistExpanded}
-                      >
-                        <ChevronDown className={cn('h-4 w-4 transition-transform', checklistExpanded && 'rotate-180')} />
-                      </button>
-                    )}
+                <div key={eqId} data-contract-equipment-id={eqId}>
+                  <div className="flex flex-wrap items-center gap-2 px-3 py-2.5">
                     <EquipmentAvatar
                       photoUrl={eq?.photo_url}
                       name={name}
                       onPreview={eq?.photo_url ? () => setPreviewPhoto({ src: eq.photo_url, alt: name }) : undefined}
                     />
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-40 flex-1">
                       <p className="truncate text-sm font-medium">{name}</p>
                       <p className="truncate text-xs text-muted-foreground">
                         {[eq?.brand, eq?.model].filter(Boolean).join(' - ')}
                         {eq?.location && <span className="text-muted-foreground"> • {eq.location}</span>}
                       </p>
                     </div>
-                    {!isPmoc && (
-                      <Badge variant="outline" className="shrink-0 text-[10px] font-normal">
-                        {checklistCount} checklist{checklistCount === 1 ? '' : 's'}
-                      </Badge>
-                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-9 shrink-0 gap-1.5 rounded-xl text-xs"
+                      onClick={() => isPmoc ? toggleExpanded(eqId) : toggleChecklistExpanded(eqId)}
+                      aria-expanded={isPmoc ? expanded : checklistExpanded}
+                    >
+                      <ClipboardList className="h-3.5 w-3.5" />
+                      {!isPmoc && checklistCount > 0
+                        ? (checklistCount === 1 ? t.checklistCountSingle : t.checklistCountPlural)
+                          .replace('{n}', String(checklistCount))
+                        : t.addChecklist}
+                      <ChevronDown className={cn(
+                        'h-3.5 w-3.5 transition-transform',
+                        (isPmoc ? expanded : checklistExpanded) && 'rotate-180',
+                      )} />
+                    </Button>
                     <Button
                       type="button"
                       variant="ghost"
@@ -1990,28 +2050,14 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
               const checklistExpanded = !!eqId && expandedChecklistEqIds.has(eqId);
               const checklistCount = eqId ? getCommonChecklist(eqId).formTemplateIds.length : 0;
               return (
-                <div key={key}>
-                  <div className="flex items-center gap-2 px-3 py-2.5">
-                    {/* Chevron do editor de checklist (só item com equipamento). */}
-                    {eqId ? (
-                      <button
-                        type="button"
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/60"
-                        onClick={() => toggleChecklistExpanded(eqId)}
-                        aria-label={checklistExpanded ? tForm.items.collapseChecklistAriaLabel : tForm.items.expandChecklistAriaLabel}
-                        aria-expanded={checklistExpanded}
-                      >
-                        <ChevronDown className={cn('h-4 w-4 transition-transform', checklistExpanded && 'rotate-180')} />
-                      </button>
-                    ) : (
-                      <div className="w-1" />
-                    )}
+                <div key={key} data-contract-equipment-id={eqId || undefined}>
+                  <div className="flex flex-wrap items-center gap-2 px-3 py-2.5">
                     <EquipmentAvatar
                       photoUrl={eq?.photo_url}
                       name={name}
                       onPreview={eq?.photo_url ? () => setPreviewPhoto({ src: eq.photo_url, alt: name }) : undefined}
                     />
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-40 flex-1">
                       <p className="truncate text-sm font-medium">{name}</p>
                       {subtitle && (
                         <p className="truncate text-xs text-muted-foreground">
@@ -2021,9 +2067,21 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                       )}
                     </div>
                     {eqId && (
-                      <Badge variant="outline" className="shrink-0 text-[10px] font-normal">
-                        {checklistCount} checklist{checklistCount === 1 ? '' : 's'}
-                      </Badge>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-9 shrink-0 gap-1.5 rounded-xl text-xs"
+                        onClick={() => toggleChecklistExpanded(eqId)}
+                        aria-expanded={checklistExpanded}
+                      >
+                        <ClipboardList className="h-3.5 w-3.5" />
+                        {checklistCount > 0
+                          ? (checklistCount === 1 ? t.checklistCountSingle : t.checklistCountPlural)
+                            .replace('{n}', String(checklistCount))
+                          : t.addChecklist}
+                        <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', checklistExpanded && 'rotate-180')} />
+                      </Button>
                     )}
                     <Button
                       type="button"

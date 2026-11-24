@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  classifyLogoPixels,
   classifyInk,
+  detectEmbeddedLogoSurfaceTone,
   getContrastingLogoSurfaceTone,
   getLogoPlateTone,
   inkLuminance,
+  resolveLogoSurfaceTone,
 } from '../logoInk';
 
 /** Monta um bloco de pixels RGBA repetindo as cores informadas. */
@@ -18,6 +21,23 @@ function pixels(colors: Array<[number, number, number, number]>, repeat = 1): Ui
       data[cursor + 3] = a;
       cursor += 4;
     });
+  }
+  return data;
+}
+
+function imagePixels(
+  width: number,
+  height: number,
+  background: [number, number, number, number],
+  center: [number, number, number, number],
+): Uint8ClampedArray {
+  const data = new Uint8ClampedArray(width * height * 4);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const isCenter = x >= 2 && x < width - 2 && y >= 2 && y < height - 2;
+      const color = isCenter ? center : background;
+      data.set(color, (y * width + x) * 4);
+    }
   }
   return data;
 }
@@ -89,6 +109,39 @@ describe('classifyInk', () => {
   });
 });
 
+describe('placa incorporada ao arquivo', () => {
+  it('reconhece o retângulo preto opaco de um logo com lettering claro', () => {
+    const logo = imagePixels(12, 8, [8, 8, 8, 255], [226, 184, 74, 255]);
+
+    expect(detectEmbeddedLogoSurfaceTone(logo, 12, 8)).toBe('dark');
+    expect(classifyLogoPixels(logo, 12, 8)).toBe('light');
+    expect(resolveLogoSurfaceTone('auto', classifyLogoPixels(logo, 12, 8))).toBe('dark');
+  });
+
+  it('reconhece placa clara incorporada e mantém faixa clara no automático', () => {
+    const logo = imagePixels(12, 8, [250, 250, 250, 255], [18, 18, 18, 255]);
+
+    expect(detectEmbeddedLogoSurfaceTone(logo, 12, 8)).toBe('light');
+    expect(classifyLogoPixels(logo, 12, 8)).toBe('dark');
+  });
+
+  it('não confunde transparência com placa incorporada', () => {
+    const logo = imagePixels(12, 8, TRANSPARENT, [255, 255, 255, 255]);
+
+    expect(detectEmbeddedLogoSurfaceTone(logo, 12, 8)).toBeNull();
+    expect(classifyLogoPixels(logo, 12, 8)).toBe('light');
+  });
+
+  it('não força placa quando as bordas opacas têm várias cores', () => {
+    const logo = imagePixels(12, 8, [8, 8, 8, 255], [255, 255, 255, 255]);
+    for (let x = 0; x < 12; x += 1) {
+      logo.set([230, 40, 40, 255], x * 4);
+    }
+
+    expect(detectEmbeddedLogoSurfaceTone(logo, 12, 8)).toBeNull();
+  });
+});
+
 describe('getLogoPlateTone', () => {
   it.each([
     { ink: 'dark' as const, surface: 'light' as const, plate: null },
@@ -115,5 +168,26 @@ describe('getContrastingLogoSurfaceTone', () => {
 
   it('não força uma faixa enquanto a tinta ainda não foi medida', () => {
     expect(getContrastingLogoSurfaceTone(null)).toBeNull();
+  });
+});
+
+describe('resolveLogoSurfaceTone', () => {
+  it('mantém a detecção da tinta no modo automático', () => {
+    expect(resolveLogoSurfaceTone('auto', 'dark')).toBe('light');
+    expect(resolveLogoSurfaceTone('auto', 'light')).toBe('dark');
+  });
+
+  it('não força fundo quando a preferência acompanha o sistema', () => {
+    expect(resolveLogoSurfaceTone('system', 'light')).toBeNull();
+  });
+
+  it.each(['light', 'dark'] as const)('respeita o override manual %s', (tone) => {
+    expect(resolveLogoSurfaceTone(tone, tone === 'light' ? 'dark' : 'light')).toBe(tone);
+    expect(resolveLogoSurfaceTone(tone, null)).toBe(tone);
+  });
+
+  it('trata preferência antiga/ausente como automática', () => {
+    expect(resolveLogoSurfaceTone(null, 'light')).toBe('dark');
+    expect(resolveLogoSurfaceTone(undefined, 'dark')).toBe('light');
   });
 });

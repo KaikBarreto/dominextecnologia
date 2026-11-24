@@ -575,6 +575,8 @@ Deno.serve(async (req) => {
             "white_label_logo_url",
             "white_label_primary_color",
             "white_label_icon_url",
+            "os_social_image_url",
+            "os_social_image_mode",
             "address",
             "city",
             "state",
@@ -625,6 +627,11 @@ Deno.serve(async (req) => {
     const primaryColor = useWhiteLabel
       ? companySettings?.white_label_primary_color ?? null
       : null;
+    const socialImageUrl = useWhiteLabel
+      ? companySettings?.os_social_image_url ?? logoUrl
+      : null;
+    const socialImageIsComposed = useWhiteLabel
+      && Boolean(companySettings?.os_social_image_url);
 
     // -------------------------------------------------------------------------
     // 3) History + Schedule — OSs do contrato, em duas queries separadas.
@@ -1515,6 +1522,11 @@ Deno.serve(async (req) => {
       tenant: {
         name: tenantName,
         logo_url: logoUrl,
+        // Imagem usada por WhatsApp e demais redes ao compartilhar o portal.
+        // White Label nunca cai na arte genérica da Dominex: usa a arte social
+        // configurada e, na ausência dela, o próprio logo da empresa.
+        social_image_url: socialImageUrl,
+        social_image_is_composed: socialImageIsComposed,
         primary_color: primaryColor,
         address: companySettings?.address ?? null,
         city: companySettings?.city ?? null,

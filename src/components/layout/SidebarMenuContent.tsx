@@ -74,7 +74,7 @@ import { segmentsHaveTechTools } from '@/config/technicianArea';
 import { companyHasSegment, normalizeCompanySegments } from '@/utils/companySegments';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useLogoInk } from '@/hooks/useLogoInk';
-import { getContrastingLogoSurfaceTone } from '@/utils/logoInk';
+import { resolveLogoSurfaceTone } from '@/utils/logoInk';
 import { useSidebar } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 import { HelpCenterDrawer } from '@/components/layout/HelpCenterDrawer';
@@ -252,7 +252,7 @@ export function SidebarMenuContent() {
   const L = (path: string) => localizeAppPath(path, locale);
   const { hasModule, hasScreen } = useCompanyModules();
   const { settings } = useCompanySettings();
-  const { logoUrl, iconUrl, enabled: wlEnabled, defaultLogoDark, isLoading: logoLoading } = useWhiteLabel();
+  const { logoUrl, iconUrl, enabled: wlEnabled, logoSurfacePreference, defaultLogoDark, isLoading: logoLoading } = useWhiteLabel();
   // Logo do tenant é UM arquivo só para as duas superfícies. A tinta e o tom
   // efetivo da nav decidem a placa: clara para arte escura sobre fundo escuro,
   // escura para arte clara sobre fundo claro, e nenhuma quando já há contraste.
@@ -290,7 +290,7 @@ export function SidebarMenuContent() {
     return 'light';
   });
   const tenantLogoSurface = !isAdminUser && wlEnabled && (collapsed ? tenantIconUrl : tenantLogoUrl)
-    ? getContrastingLogoSurfaceTone(collapsed ? tenantIconInk : tenantLogoInk) ?? undefined
+    ? resolveLogoSurfaceTone(logoSurfacePreference, collapsed ? tenantIconInk : tenantLogoInk) ?? undefined
     : undefined;
 
   // ResizeObserver no trigger do rodapé — mede a altura em runtime pra que
@@ -393,39 +393,23 @@ export function SidebarMenuContent() {
             collapsed
               ? <div className="h-7 w-7 rounded bg-muted animate-pulse" />
               : <div className="h-8 w-28 rounded bg-muted animate-pulse" />
+          ) : collapsed ? (
+            !isAdminUser && wlEnabled ? (
+              iconUrl ? <img src={iconUrl} alt="Icon" className="h-7 w-7 object-contain" /> : null
+            ) : (
+              <>
+                <img src={iconePreto} alt="Logo" className="nav-logo-light h-7 w-7 object-contain dark:hidden" />
+                <img src={iconeVerde} alt="Logo" className="nav-logo-dark h-7 w-7 object-contain hidden dark:block" />
+              </>
+            )
           ) : (
-            <>
-              <div
-                className={cn(
-                  'absolute inset-0 flex items-center justify-center transition-opacity duration-500 ease-out',
-                  collapsed ? 'opacity-100' : 'opacity-0 pointer-events-none'
-                )}
-              >
-                {!isAdminUser && wlEnabled ? (
-                  iconUrl ? (
-                    <img src={iconUrl} alt="Icon" className="h-7 w-7 object-contain" />
-                  ) : null
-                ) : (
-                  <>
-                    <img src={iconePreto} alt="Logo" className="nav-logo-light h-7 w-7 object-contain dark:hidden" />
-                    <img src={iconeVerde} alt="Logo" className="nav-logo-dark h-7 w-7 object-contain hidden dark:block" />
-                  </>
-                )}
-              </div>
-              <div
-                className={cn(
-                  'absolute inset-0 flex items-center justify-center px-2 transition-opacity duration-500 ease-out',
-                  collapsed ? 'opacity-0 pointer-events-none' : 'opacity-100'
-                )}
-              >
-                {/* O contraste pertence à faixa inteira do cabeçalho. O wrapper
-                    existe só para limitar logos largos à largura da sidebar. */}
-                <div className="flex min-w-0 max-w-full items-center justify-center">
-                  <img src={isAdminUser ? defaultLogoDark : logoUrl || defaultLogoDark} alt="Logo" className="nav-logo-light max-h-11 w-auto max-w-full object-contain dark:hidden" />
-                  <img src={isAdminUser ? logoHorizontalVerde : logoUrl || logoHorizontalVerde} alt="Logo" className="nav-logo-dark max-h-11 w-auto max-w-full object-contain hidden dark:block" />
-                </div>
-              </div>
-            </>
+            /* Renderizar apenas a variante ativa evita que WebKit componha o
+               ícone transparente por cima do logo expandido durante a captura
+               e durante a animação de recolher/abrir a barra. */
+            <div className="flex min-w-0 max-w-full items-center justify-center">
+              <img src={isAdminUser ? defaultLogoDark : logoUrl || defaultLogoDark} alt="Logo" className="nav-logo-light max-h-11 w-auto max-w-full object-contain dark:hidden" />
+              <img src={isAdminUser ? logoHorizontalVerde : logoUrl || logoHorizontalVerde} alt="Logo" className="nav-logo-dark max-h-11 w-auto max-w-full object-contain hidden dark:block" />
+            </div>
           )}
         </NavLink>
 

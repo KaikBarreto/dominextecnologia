@@ -3,43 +3,10 @@ import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useAuth } from '@/contexts/AuthContext';
 import logoDark from '@/assets/logo-dark.png';
 import logoWhite from '@/assets/logo-white.png';
-
-const WHITE_LABEL_VARS = [
-  '--primary',
-  '--ring',
-  '--sidebar-primary',
-  '--sidebar-accent',
-  '--sidebar-ring',
-  '--gradient-brand',
-  // Barra neon do menu escuro (Fase 2). Sem white-label volta ao verde neon
-  // default declarado no index.css; com white-label deriva da cor do cliente.
-  // É `--wl-nav-neon` (não `--nav-neon`) porque as superfícies de nav
-  // redeclaram `--nav-neon: var(--wl-nav-neon, <verde>)` no próprio elemento —
-  // setar `--nav-neon` só no :root seria sobrescrito por essa redeclaração.
-  '--wl-nav-neon',
-  // Texto do botão/badge "default" (--primary-foreground) — derivado da cor
-  // do TENANT via `resolvePrimaryContrast`. Sem isso, marca clara (ex.:
-  // amarelo/laranja) herdaria o branco fixo do :root e ficaria ilegível.
-  '--primary-foreground',
-] as const;
-
-/**
- * Deriva a cor da barra NEON (indicador do menu escuro) da cor primária do
- * white-label. Recebe o HSL "H S% L%" já computado e devolve uma versão um
- * pouco mais SATURADA e CLARA pra "acender" como neon sobre o fundo escuro do
- * menu — mas nunca abaixo do original (marcas já vivas/claras não escurecem).
- */
-export function buildNavNeon(hsl: string): string {
-  const parts = hsl.trim().split(/\s+/);
-  if (parts.length < 3) return hsl;
-  const h = Number.parseInt(parts[0], 10);
-  const s = Number.parseInt(parts[1], 10); // "62%" → 62
-  const l = Number.parseInt(parts[2], 10);
-  if (!Number.isFinite(h) || !Number.isFinite(s) || !Number.isFinite(l)) return hsl;
-  const neonS = Math.min(s + 15, 95);
-  const neonL = Math.min(Math.max(l, 50), 62);
-  return `${h} ${neonS}% ${neonL}%`;
-}
+import {
+  WHITE_LABEL_BRAND_CSS_VARS,
+  clearLegacyWhiteLabelOperationCssVars,
+} from '@/lib/whiteLabelCssVars';
 
 export function hexToHsl(hex: string): string | null {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -80,19 +47,16 @@ function buildBrandGradient(hsl: string) {
   return `linear-gradient(135deg, hsl(${hsl}) 0%, hsl(${h} ${s} ${glowLightness}%) 100%)`;
 }
 
-// ── Contraste do PAR primary/primary-foreground ─────────────────────────────
-// Botão/badge "default" usa fundo --primary + texto --primary-foreground.
+// ── Contraste do PAR brand-primary/brand-primary-foreground ─────────────────
+// Materiais de identidade usam fundo --brand-primary e o foreground calculado.
 // Verde default (#00C597) e várias cores de white-label medem <4.5:1 (WCAG AA)
 // contra texto branco — mas o MESMO fundo mede ótimo contraste contra um
 // texto escuro neutro. Decisão (CEO, pós-QA visual v1.24.0): a marca (matiz/
-// saturação/luminância do --primary) NUNCA muda pra "resolver" contraste —
-// trocar a cor destoaria da aba ativa/badge ao lado que também usa --primary
-// (incidente: white-label laranja da Glacial virou botão marrom, dessincronizado
-// da aba "Notas Fiscais" ao lado). Em vez disso:
-//   1. Calcula o contraste do --primary efetivo contra BRANCO e contra um
+// saturação/luminância da marca) NUNCA muda pra "resolver" contraste. Em vez disso:
+//   1. Calcula o contraste da marca efetiva contra BRANCO e contra um
 //      ESCURO NEUTRO (`0 0% 10%`, o mesmo tom usado como --foreground/
-//      --primary-foreground do restyle sóbrio do app logado).
-//   2. Usa o que der o MELHOR contraste como --primary-foreground.
+//      neutro escuro (`0 0% 10%`).
+//   2. Usa o que der o MELHOR contraste como --brand-primary-foreground.
 //   3. SÓ SE nenhum dos dois bater 4.5:1 (cor de luminância intermediária,
 //      ex. um azul médio — existe e acontece), ajusta a luminância do PRÓPRIO
 //      --primary o mínimo necessário (1 ponto de cada vez) até o melhor dos
@@ -186,11 +150,10 @@ export function resolvePrimaryContrast(hsl: string): { primary: string; foregrou
 // eliminando o flash da cor verde padrão da Dominex no reload/pull-to-refresh.
 // Os nomes das chaves são FIXOS e duplicados como string literal no script
 // inline do index.html (que é JS puro e não importa constantes).
-function cacheWhiteLabel(hsl: string, gradient: string, navNeon: string, foreground: string) {
+function cacheWhiteLabel(hsl: string, gradient: string, foreground: string) {
   try {
     localStorage.setItem('__wl_primary', hsl);
     localStorage.setItem('__wl_gradient', gradient);
-    localStorage.setItem('__wl_nav_neon', navNeon);
     localStorage.setItem('__wl_primary_foreground', foreground);
   } catch (_) {
     /* localStorage pode lançar em modo privado/iOS — ignorar */
@@ -211,15 +174,20 @@ function clearWhiteLabelCache() {
 export function applyWhiteLabelTheme(enabled: boolean, primaryColor?: string | null) {
   const root = document.documentElement;
 
+  // Limpa o contrato antigo mesmo durante o carregamento de uma empresa com
+  // white-label. Isso também remove valores restaurados pelo boot de uma build
+  // anterior sem depender de logout ou de limpeza manual do navegador.
+  clearLegacyWhiteLabelOperationCssVars(root.style);
+
   if (!enabled || !primaryColor) {
-    WHITE_LABEL_VARS.forEach((variable) => root.style.removeProperty(variable));
+    WHITE_LABEL_BRAND_CSS_VARS.forEach((variable) => root.style.removeProperty(variable));
     clearWhiteLabelCache();
     return;
   }
 
   const hsl = hexToHsl(primaryColor);
   if (!hsl) {
-    WHITE_LABEL_VARS.forEach((variable) => root.style.removeProperty(variable));
+    WHITE_LABEL_BRAND_CSS_VARS.forEach((variable) => root.style.removeProperty(variable));
     clearWhiteLabelCache();
     return;
   }
@@ -230,21 +198,12 @@ export function applyWhiteLabelTheme(enabled: boolean, primaryColor?: string | n
   // `resolvePrimaryContrast` pro racional completo.
   const { primary: resolvedPrimary, foreground } = resolvePrimaryContrast(hsl);
   const gradient = buildBrandGradient(resolvedPrimary);
-  const navNeon = buildNavNeon(resolvedPrimary);
-  root.style.setProperty('--primary', resolvedPrimary);
-  root.style.setProperty('--primary-foreground', foreground);
-  root.style.setProperty('--ring', resolvedPrimary);
-  root.style.setProperty('--sidebar-primary', resolvedPrimary);
-  root.style.setProperty('--sidebar-accent', resolvedPrimary);
-  root.style.setProperty('--sidebar-ring', resolvedPrimary);
+  root.style.setProperty('--brand-primary', resolvedPrimary);
+  root.style.setProperty('--brand-primary-foreground', foreground);
   root.style.setProperty('--gradient-brand', gradient);
-  // Barra neon do menu escuro passa a usar a cor do cliente (todos os itens,
-  // incl. subitens dos grupos colapsáveis, herdam via var(--nav-neon), que
-  // resolve `var(--wl-nav-neon, <verde>)` nas superfícies de nav).
-  root.style.setProperty('--wl-nav-neon', navNeon);
 
   // Persiste a marca já computada para o boot síncrono no próximo load.
-  cacheWhiteLabel(resolvedPrimary, gradient, navNeon, foreground);
+  cacheWhiteLabel(resolvedPrimary, gradient, foreground);
 }
 
 export function useWhiteLabel() {
@@ -256,6 +215,7 @@ export function useWhiteLabel() {
   const primaryColor = settings?.white_label_primary_color || null;
   const customLogoUrl = settings?.white_label_logo_url || null;
   const customIconUrl = settings?.white_label_icon_url || null;
+  const logoSurfacePreference = settings?.white_label_logo_surface || 'auto';
 
   const logoUrl = enabled ? customLogoUrl || settings?.logo_url || null : null;
   const iconUrl = enabled ? customIconUrl : null;
@@ -279,6 +239,7 @@ export function useWhiteLabel() {
     customIconUrl,
     logoUrl,
     iconUrl,
+    logoSurfacePreference,
     defaultLogoDark,
     defaultLogoWhite,
     isLoading,

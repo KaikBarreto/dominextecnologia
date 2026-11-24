@@ -60,7 +60,7 @@ export interface TaskFormData {
 interface TaskFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: TaskFormData) => Promise<void>;
+  onSubmit: (data: TaskFormData) => Promise<boolean | void>;
   isLoading?: boolean;
   defaultDate?: string;
   defaultTime?: string;
@@ -201,7 +201,7 @@ export function TaskFormDialog({
     // este bloqueio nunca alcança os outros chamadores).
     if (isCrmTask && showInSchedule && !scheduledDate) return;
 
-    await onSubmit({
+    const submitted = await onSubmit({
       task_title: title.trim(),
       customer_id: customerId || undefined,
       task_type_id: taskTypeId || undefined,
@@ -231,7 +231,7 @@ export function TaskFormDialog({
       lead_id: leadId,
       show_in_schedule: showInSchedule,
     });
-    onOpenChange(false);
+    if (submitted !== false) onOpenChange(false);
   };
 
   // Recorrência exige uma data-base pra ancorar a série (generateRecurrenceDates).

@@ -315,6 +315,8 @@ function buildMockPayload(_token: string): PortalPayload {
     tenant: {
       name: 'Refrigeração Exemplo Ltda',
       logo_url: null,
+      social_image_url: null,
+      social_image_is_composed: false,
       primary_color: '#5555FF',
       address: 'Rua dos Bobos, 0',
       city: 'São Paulo',

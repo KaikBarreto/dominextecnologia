@@ -26,4 +26,17 @@ describe('mensagem de incompatibilidade de tipo do banco', () => {
     expect(message).not.toContain('form_template_id');
     expect(message).not.toContain('uuid');
   });
+
+  it('não expõe coluna nem código interno quando o schema ainda não foi atualizado', () => {
+    const message = getErrorMessage({
+      code: 'PGRST204',
+      message: "Could not find the 'white_label_logo_surface' column of 'company_settings' in the schema cache",
+    });
+
+    expect(message).toBe(
+      'Esta configuração ainda não está disponível no servidor. Atualize a página e tente novamente em alguns instantes.',
+    );
+    expect(message).not.toContain('white_label_logo_surface');
+    expect(message).not.toContain('PGRST204');
+  });
 });

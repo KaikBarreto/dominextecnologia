@@ -24,6 +24,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { processImageFile } from '@/utils/imageConvert';
 import { cn } from '@/lib/utils';
 import { useLogoInk } from '@/hooks/useLogoInk';
+import { resolveLogoSurfaceTone, type LogoSurfacePreference } from '@/utils/logoInk';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { SettingsSidebarLayout, SettingsTab } from '@/components/SettingsSidebarLayout';
@@ -77,6 +78,7 @@ function settingsToJson(settings: any): string {
     zip_code: settings.zip_code || null,
     white_label_enabled: !!settings.white_label_enabled,
     white_label_primary_color: settings.white_label_primary_color || '#00C597',
+    white_label_logo_surface: settings.white_label_logo_surface || 'auto',
     // Espelha a hidratação do form (defaults square/square e cor caindo na
     // primary→preto) pra o baseline bater com o buildPayload e não marcar
     // "sujo" logo no mount.
@@ -257,6 +259,7 @@ function AdministrativeSettings() {
   const [wlUploading, setWlUploading] = useState(false);
   const [wlEnabled, setWlEnabled] = useState(false);
   const [wlColor, setWlColor] = useState('#00C597');
+  const [wlLogoSurface, setWlLogoSurface] = useState<LogoSurfacePreference>('auto');
   // Estilo do QR Code branded (só aplica com white-label ligado).
   const [wlQrDotStyle, setWlQrDotStyle] = useState<QRDotStyle>('square');
   const [wlQrCornerStyle, setWlQrCornerStyle] = useState<QRCornerStyle>('square');
@@ -317,6 +320,7 @@ function AdministrativeSettings() {
       setCompanySegments(normalizeCompanySegments(settings.segments, settings.segment));
       setWlEnabled(!!settings.white_label_enabled);
       setWlColor(settings.white_label_primary_color || '#00C597');
+      setWlLogoSurface(settings.white_label_logo_surface || 'auto');
       setWlQrDotStyle((settings.white_label_qr_dot_style as QRDotStyle) || 'square');
       setWlQrCornerStyle((settings.white_label_qr_corner_style as QRCornerStyle) || 'square');
       setWlQrColor(settings.white_label_qr_color || settings.white_label_primary_color || '#000000');
@@ -364,6 +368,7 @@ function AdministrativeSettings() {
     zip_code: companyZip || null,
     white_label_enabled: wlEnabled,
     white_label_primary_color: wlColor || null,
+    white_label_logo_surface: wlLogoSurface,
     white_label_qr_dot_style: wlQrDotStyle,
     white_label_qr_corner_style: wlQrCornerStyle,
     white_label_qr_color: wlQrColor || null,
@@ -382,7 +387,7 @@ function AdministrativeSettings() {
     // `segment` continua como espelho do primeiro item para consumidores legados.
     segment: companySegments[0] || null,
     segments: companySegments,
-  }), [companyName, companyDoc, companyPhone, companyEmail, companyAddress, companyNumber, companyNeighborhood, companyComplement, companyCity, companyState, companyZip, wlEnabled, wlColor, wlQrDotStyle, wlQrCornerStyle, wlQrColor, showNameInDocs, showCnpjInDocs, showAddressInDocs, showPhoneInDocs, showEmailInDocs, reportBgColor, reportTextColor, reportLogoSize, reportShowLogoBg, reportLogoBgColor, reportStatusBarColor, reportLogoType, companySegments]);
+  }), [companyName, companyDoc, companyPhone, companyEmail, companyAddress, companyNumber, companyNeighborhood, companyComplement, companyCity, companyState, companyZip, wlEnabled, wlColor, wlLogoSurface, wlQrDotStyle, wlQrCornerStyle, wlQrColor, showNameInDocs, showCnpjInDocs, showAddressInDocs, showPhoneInDocs, showEmailInDocs, reportBgColor, reportTextColor, reportLogoSize, reportShowLogoBg, reportLogoBgColor, reportStatusBarColor, reportLogoType, companySegments]);
 
   useEffect(() => {
     // O gate do auto-save abre quando dá pra salvar (canSave), não quando
@@ -458,6 +463,7 @@ function AdministrativeSettings() {
   const companyLogoInk = useLogoInk(settings?.logo_url);
   const whiteLabelLogoUrl = settings?.white_label_logo_url || settings?.logo_url || null;
   const whiteLabelLogoInk = useLogoInk(whiteLabelLogoUrl);
+  const whiteLabelLogoSurfaceTone = resolveLogoSurfaceTone(wlLogoSurface, whiteLabelLogoInk);
 
   useEffect(() => {
     if (!hasServiceOperations || !socialEditorOpen || !currentBrandLogo) {
@@ -1387,18 +1393,18 @@ function AdministrativeSettings() {
                         </p>
                         {whiteLabelLogoUrl ? (
                           <div className="flex items-center gap-4">
-                            <img
-                              src={whiteLabelLogoUrl}
-                              alt="WL Logo"
-                              className={cn(
-                                'h-16 w-auto max-w-[200px] rounded-lg border object-contain p-1',
-                                whiteLabelLogoInk === 'dark' && 'bg-white',
-                                whiteLabelLogoInk === 'light' && 'bg-zinc-950',
-                                whiteLabelLogoInk === null && 'bg-muted/40',
-                              )}
-                              crossOrigin="anonymous"
-                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                            />
+                            <div
+                              data-tenant-logo-surface={whiteLabelLogoSurfaceTone ?? undefined}
+                              className="tenant-logo-surface flex h-20 w-full max-w-[240px] items-center justify-center rounded-lg border bg-background px-3 transition-colors duration-300"
+                            >
+                              <img
+                                src={whiteLabelLogoUrl}
+                                alt={t.company.whiteLabelSection.logoSurface.previewAlt}
+                                className="max-h-16 w-auto max-w-full object-contain"
+                                crossOrigin="anonymous"
+                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                              />
+                            </div>
                             <div className="flex flex-col gap-2">
                               <Button variant="outline" size="sm" asChild disabled={wlUploading}>
                                 <label className="cursor-pointer">
@@ -1425,6 +1431,32 @@ function AdministrativeSettings() {
                             <input type="file" accept="image/*" className="hidden" onChange={handleWlLogoUpload} disabled={wlUploading} />
                           </label>
                         )}
+
+                        <div className="space-y-2 pt-2">
+                          <div className="space-y-1">
+                            <Label>{t.company.whiteLabelSection.logoSurface.label}</Label>
+                            <p className="text-xs text-muted-foreground">
+                              {t.company.whiteLabelSection.logoSurface.description}
+                            </p>
+                          </div>
+                          <Select
+                            value={wlLogoSurface}
+                            onValueChange={(value) => setWlLogoSurface(value as LogoSurfacePreference)}
+                          >
+                            <SelectTrigger aria-label={t.company.whiteLabelSection.logoSurface.label}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="auto">{t.company.whiteLabelSection.logoSurface.options.auto}</SelectItem>
+                              <SelectItem value="system">{t.company.whiteLabelSection.logoSurface.options.system}</SelectItem>
+                              <SelectItem value="light">{t.company.whiteLabelSection.logoSurface.options.light}</SelectItem>
+                              <SelectItem value="dark">{t.company.whiteLabelSection.logoSurface.options.dark}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-[11px] text-muted-foreground">
+                            {t.company.whiteLabelSection.logoSurface.previewCaption}
+                          </p>
+                        </div>
                       </div>
 
                       {/* WL Icon */}

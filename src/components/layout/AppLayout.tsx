@@ -49,7 +49,7 @@ import {
 } from '@/components/ui/tooltip';
 import logoDark from '@/assets/logo-dark.png';
 import logoGreen from '@/assets/logo-horizontal-verde.png';
-import { getContrastingLogoSurfaceTone } from '@/utils/logoInk';
+import { resolveLogoSurfaceTone } from '@/utils/logoInk';
 import { PageRecoveryBoundary } from '@/components/errors/PageRecoveryBoundary';
 
 const DomiflixIntroGate = lazy(() => import('@/components/domiflix/DomiflixIntroGate').then((module) => ({ default: module.DomiflixIntroGate })));
@@ -290,10 +290,10 @@ function MobileTabletHeader({ isAdminUser, scrolled }: { isAdminUser: boolean; s
   const navigate = useNavigate();
   const location = useLocation();
   const { user, signOut } = useAuth();
-  const { logoUrl, enabled: whiteLabelEnabled, isLoading: logoLoading } = useWhiteLabel();
+  const { logoUrl, enabled: whiteLabelEnabled, logoSurfacePreference, isLoading: logoLoading } = useWhiteLabel();
   const logoInk = useLogoInk(!isAdminUser && whiteLabelEnabled ? logoUrl : null);
   const logoSurfaceTone = !isAdminUser && whiteLabelEnabled && logoUrl
-    ? getContrastingLogoSurfaceTone(logoInk) ?? undefined
+    ? resolveLogoSurfaceTone(logoSurfacePreference, logoInk) ?? undefined
     : undefined;
   const { locale } = useAppLocaleContext();
   const accountT = MESSAGES[locale].app.shell.account;

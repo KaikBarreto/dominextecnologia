@@ -526,6 +526,12 @@ export const contracts = {
       envGroupLabel: 'Ambiente',
       noEnvGroupBadge: 'Sem ambiente',
       equipmentCountSuffix: 'equipamento(s)',
+      navigatorAriaLabel: 'Navegar por ambientes e equipamentos',
+      navigatorTitle: 'Ambientes e equipamentos',
+      navigatorOverview: 'Visão geral',
+      addChecklist: 'Adicionar checklist',
+      checklistCountSingle: '{n} checklist',
+      checklistCountPlural: '{n} checklists',
     },
 
     equipmentTab: {
@@ -1313,6 +1319,12 @@ export const contracts = {
       envGroupLabel: 'Environment',
       noEnvGroupBadge: 'No environment',
       equipmentCountSuffix: 'equipment item(s)',
+      navigatorAriaLabel: 'Navigate environments and equipment',
+      navigatorTitle: 'Environments and equipment',
+      navigatorOverview: 'Overview',
+      addChecklist: 'Add checklist',
+      checklistCountSingle: '{n} checklist',
+      checklistCountPlural: '{n} checklists',
     },
 
     equipmentTab: {
@@ -2054,6 +2066,12 @@ export const contracts = {
       envGroupLabel: 'Ambiente',
       noEnvGroupBadge: 'Sin ambiente',
       equipmentCountSuffix: 'equipo(s)',
+      navigatorAriaLabel: 'Navegar por ambientes y equipos',
+      navigatorTitle: 'Ambientes y equipos',
+      navigatorOverview: 'Vista general',
+      addChecklist: 'Agregar lista',
+      checklistCountSingle: '{n} lista',
+      checklistCountPlural: '{n} listas',
     },
 
     equipmentTab: {
@@ -2795,6 +2813,12 @@ export const contracts = {
       envGroupLabel: `Environnement`,
       noEnvGroupBadge: `Sans environnement`,
       equipmentCountSuffix: `équipement(s)`,
+      navigatorAriaLabel: `Naviguer par environnements et équipements`,
+      navigatorTitle: `Environnements et équipements`,
+      navigatorOverview: `Vue d'ensemble`,
+      addChecklist: `Ajouter une liste`,
+      checklistCountSingle: `{n} liste`,
+      checklistCountPlural: `{n} listes`,
     },
 
     equipmentTab: {

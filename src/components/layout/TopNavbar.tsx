@@ -72,7 +72,7 @@ import { useCompanyModules, type ModuleCode } from '@/hooks/useCompanyModules';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useLogoInk } from '@/hooks/useLogoInk';
-import { getContrastingLogoSurfaceTone } from '@/utils/logoInk';
+import { resolveLogoSurfaceTone } from '@/utils/logoInk';
 import { HelpCenterDrawer } from '@/components/layout/HelpCenterDrawer';
 import { AccountSwitcherDropdown } from '@/components/account-switcher/AccountSwitcherDropdown';
 import { NotificationsBell } from '@/components/notifications/NotificationsBell';
@@ -196,7 +196,7 @@ export const TopNavbar = memo(() => {
   const accountT = shellT.account;
   const tMenu = (title: string) => translateMenuLabel(title, shellT);
   const L = (path: string) => localizeAppPath(path, locale);
-  const { logoUrl, defaultLogoDark, defaultLogoWhite, isLoading: logoLoading } = useWhiteLabel();
+  const { logoUrl, logoSurfacePreference, defaultLogoDark, defaultLogoWhite, isLoading: logoLoading } = useWhiteLabel();
   // A mesma arte atende barra clara e escura; sua tinta define o contraste da
   // faixa inteira do menu, sem criar uma placa local ao redor da imagem.
   const logoInk = useLogoInk(logoUrl);
@@ -210,7 +210,7 @@ export const TopNavbar = memo(() => {
     return 'light';
   });
   const logoSurfaceTone = logoUrl
-    ? getContrastingLogoSurfaceTone(logoInk) ?? undefined
+    ? resolveLogoSurfaceTone(logoSurfacePreference, logoInk) ?? undefined
     : undefined;
 
   const applyTheme = (next: 'light' | 'dark') => {

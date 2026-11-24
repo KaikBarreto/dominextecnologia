@@ -2319,6 +2319,7 @@ export type Database = {
           white_label_enabled: boolean
           white_label_icon_url: string | null
           white_label_logo_url: string | null
+          white_label_logo_surface: string
           white_label_primary_color: string | null
           white_label_qr_color: string | null
           white_label_qr_corner_style: string | null
@@ -2380,6 +2381,7 @@ export type Database = {
           white_label_enabled?: boolean
           white_label_icon_url?: string | null
           white_label_logo_url?: string | null
+          white_label_logo_surface?: string
           white_label_primary_color?: string | null
           white_label_qr_color?: string | null
           white_label_qr_corner_style?: string | null
@@ -2441,6 +2443,7 @@ export type Database = {
           white_label_enabled?: boolean
           white_label_icon_url?: string | null
           white_label_logo_url?: string | null
+          white_label_logo_surface?: string
           white_label_primary_color?: string | null
           white_label_qr_color?: string | null
           white_label_qr_corner_style?: string | null

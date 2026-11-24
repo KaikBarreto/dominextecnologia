@@ -279,9 +279,10 @@ function usePortalSeo(
     setMeta('property', 'og:description', description);
     setMeta('property', 'og:url', url);
     setMeta('property', 'og:locale', toOgLocale(locale));
-    if (payload.tenant.logo_url) {
-      setMeta('property', 'og:image', payload.tenant.logo_url);
-      setMeta('name', 'twitter:image', payload.tenant.logo_url);
+    const socialImageUrl = payload.tenant.social_image_url || payload.tenant.logo_url;
+    if (socialImageUrl) {
+      setMeta('property', 'og:image', socialImageUrl);
+      setMeta('name', 'twitter:image', socialImageUrl);
     }
     setMeta('name', 'twitter:card', 'summary_large_image');
     setMeta('name', 'twitter:title', title);

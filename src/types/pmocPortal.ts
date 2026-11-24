@@ -135,6 +135,10 @@ export interface PortalReportHeaderConfig {
 export interface PortalTenant {
   name: string;
   logo_url: string | null;
+  /** Arte 1200x630 configurada para compartilhamento, ou logo da empresa como fallback. */
+  social_image_url?: string | null;
+  /** `true` quando a imagem já foi composta no formato social 1200x630. */
+  social_image_is_composed?: boolean;
   /** Hex string (ex: "#0066cc"). Null quando NÃO white-label (edge function decide). */
   primary_color: string | null;
   address: string | null;
