@@ -9,6 +9,8 @@ import {
   selectPdvPurchaseDraft,
   updatePdvPurchaseDraft,
   pdvPurchaseDraftStorageKey,
+  setPdvPurchaseDraftFinalAmount,
+  setPdvPurchaseItemFinalAmount,
   MAX_PDV_PURCHASE_DRAFTS,
 } from '@/lib/pdv/purchase-drafts';
 
@@ -56,6 +58,29 @@ describe('rascunhos simultâneos da compra PDV', () => {
     expect(hasPdvPurchaseDraftContent(workspace.drafts[0])).toBe(true);
   });
 
+  it('edita o valor final de um material recalculando seu custo unitário', () => {
+    const draft = {
+      ...createPdvPurchaseWorkspace(defaults).drafts[0],
+      items: [{ id: 'i1', inventoryId: 'item', quantityText: '2', unitPriceText: '10' }],
+    };
+    const result = setPdvPurchaseItemFinalAmount(draft, 'i1', 18);
+    expect(result.items[0].unitPriceText).toBe('9');
+    expect(pdvPurchaseDraftTotal(result)).toBe(18);
+  });
+
+  it('edita o total da compra rateando o custo entre os materiais', () => {
+    const draft = {
+      ...createPdvPurchaseWorkspace(defaults).drafts[0],
+      items: [
+        { id: 'i1', inventoryId: 'item-1', quantityText: '2', unitPriceText: '10' },
+        { id: 'i2', inventoryId: 'item-2', quantityText: '1', unitPriceText: '20' },
+      ],
+    };
+    const result = setPdvPurchaseDraftFinalAmount(draft, 36);
+    expect(pdvPurchaseDraftTotal(result)).toBe(36);
+    expect(result.items.map(item => item.unitPriceText)).toEqual(['9', '18']);
+  });
+
   it('falha fechado para storage inválido e descarta shape corrompido', () => {
     expect(parsePdvPurchaseWorkspace('{quebrado', defaults).drafts).toHaveLength(1);
     const parsed = parsePdvPurchaseWorkspace(JSON.stringify({ drafts: [{ id: 'x' }] }), defaults);
@@ -73,4 +98,13 @@ describe('rascunhos simultâneos da compra PDV', () => {
     expect(workspace).toBe(full);
     expect(workspace.drafts).toHaveLength(MAX_PDV_PURCHASE_DRAFTS);
   });
+  it('recupera todos os atendimentos válidos acima do limite sem permitir nova criação', () => {
+    const original = createPdvPurchaseWorkspace(defaults);
+    const drafts = Array.from({ length: 21 }, (_, i) => ({ ...original.drafts[0], id: `recover-${i}`, sequence: i + 1 }));
+    const restored = parsePdvPurchaseWorkspace(JSON.stringify({ drafts, activeId: 'recover-20', nextSequence: 22 }), defaults);
+    expect(restored.drafts).toHaveLength(21);
+    expect(restored.activeId).toBe('recover-20');
+    expect(addPdvPurchaseDraft(restored, defaults)).toBe(restored);
+  });
+
 });

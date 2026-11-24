@@ -32,7 +32,8 @@ interface MobileListToolbarProps {
  * - Todo controle da 2ª linha tem `h-10` (alvo de toque e alinhamento).
  * - Botão com ícone + rótulo curto; se o rótulo não couber em tela estreita,
  *   esconda só o texto com `hidden min-[340px]:inline` (o ícone permanece).
- * - Nunca mais de 3 controles na 2ª linha — o 4º vai pro sheet de filtros.
+ * - Os controles refluem quando os rótulos ocupam mais espaço; nenhuma ação
+ *   pode ficar cortada só porque a página limita seu overflow horizontal.
  */
 export function MobileListToolbar({
   searchValue,
@@ -58,9 +59,9 @@ export function MobileListToolbar({
         />
       </div>
       {hasActions && (
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           {children}
-          {trailing && <div className="ml-auto flex items-center gap-2">{trailing}</div>}
+          {trailing && <div className="ml-auto flex shrink-0 items-center gap-2">{trailing}</div>}
         </div>
       )}
     </div>

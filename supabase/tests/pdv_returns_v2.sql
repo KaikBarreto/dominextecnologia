@@ -42,6 +42,11 @@ BEGIN
     OR has_table_privilege('service_role','public.pdv_commercial_return_items','INSERT') THEN
     RAISE EXCEPTION 'livro W5 exposto diretamente'; END IF;
   SELECT pg_get_functiondef('public.pdv_return_delivery_items_v2(uuid,jsonb,jsonb,date,text,text)'::regprocedure) INTO v_src;
+  IF position('pdv_assert_order_cash_access_v2(p_order_id,auth.uid())' in v_src)=0
+     OR position('pdv_return_delivery_items_core_015_v2' in v_src)=0 THEN
+    RAISE EXCEPTION 'devolucao publica nao valida custodia antes do core';
+  END IF;
+  SELECT pg_get_functiondef('public.pdv_return_delivery_items_core_015_v2(uuid,jsonb,jsonb,date,text,text)'::regprocedure) INTO v_src;
   IF position('pdv_delivery_items' in v_src)=0 OR position('FOR UPDATE' in v_src)=0
     OR position('register_inventory_movement' in v_src)=0
     OR v_src~*'(nfce|nfc-e|fiscal_document|invoice|voucher|refund)' THEN
@@ -53,6 +58,10 @@ BEGIN
     OR position('jsonb_array_length(p_lines) NOT BETWEEN 1 AND 100' in v_src)=0 THEN
     RAISE EXCEPTION 'hierarquia/cap de locks do retorno regrediu'; END IF;
   SELECT pg_get_functiondef('public.pdv_reverse_commercial_return_v2(uuid,text,text)'::regprocedure) INTO v_src;
+  IF position('pdv_assert_order_cash_access_v2' in v_src)=0 THEN
+    RAISE EXCEPTION 'estorno da devolucao nao valida custodia';
+  END IF;
+  SELECT pg_get_functiondef('public.pdv_reverse_commercial_return_core_015_v2(uuid,text,text)'::regprocedure) INTO v_src;
   IF position('FROM public.customers customer' in v_src)=0
     OR position('FROM public.inventory inventory' in v_src)<=position('FROM public.customers customer' in v_src)
     OR position('FROM public.inventory_stock_levels level' in v_src)<=position('FROM public.inventory inventory' in v_src)
@@ -112,10 +121,13 @@ BEGIN
     (ua,'["screen:pdv_orders","fn:return_pdv_order","fn:reverse_pdv_return","fn:cancel_pdv_order_residual"]',true),
     (lifecycle_user,'["screen:pdv_orders","fn:return_pdv_order"]',true);
   INSERT INTO public.company_modules(company_id,module_code) VALUES(ca,'basic'),(ca,'pdv'),(cb,'basic'),(cb,'pdv');
-  INSERT INTO public.company_settings(company_id,name,timezone) VALUES(ca,'W5 Empresa A','America/Sao_Paulo');
+  INSERT INTO public.company_settings(company_id,name,timezone) VALUES(ca,'W5 Empresa A','America/Sao_Paulo')
+  ON CONFLICT (company_id) DO UPDATE SET name=EXCLUDED.name, timezone=EXCLUDED.timezone;
   UPDATE public.app_feature_flags SET company_allowlist=ARRAY[ca,cb]::uuid[]
     WHERE key IN('pdv_returns_v2','pdv_party_accounts_v2');
   INSERT INTO public.customers(id,company_id,name,is_deleted) VALUES(customer,ca,'Cliente W5',false);
+  -- A criação da empresa já fornece um estoque padrão; a fixture escolhe outro explicitamente.
+  UPDATE public.stocks SET is_default=false WHERE company_id IN (ca, cb) AND is_default IS TRUE;
   INSERT INTO public.stocks(id,company_id,name,is_default) VALUES
     (saleable,ca,'Loja',true),(quarantine,ca,'Quarentena',false),(foreign_stock,cb,'Outra empresa',true);
   INSERT INTO public.pdv_return_quarantine_stocks(company_id,stock_id) VALUES(ca,quarantine);

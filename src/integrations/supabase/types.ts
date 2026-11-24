@@ -8356,6 +8356,15 @@ export type Database = {
           customer_id: string | null
           description: string | null
           fiscal_cest: string | null
+          fiscal_cfop_entry_internal: string | null
+          fiscal_cfop_entry_interstate: string | null
+          fiscal_cfop_exit_internal: string | null
+          fiscal_cfop_exit_interstate: string | null
+          fiscal_icms_rate: number | null
+          fiscal_icms_reduction_rate: number | null
+          fiscal_pis_rate: number | null
+          fiscal_cofins_rate: number | null
+          fiscal_ipi_rate: number | null
           fiscal_cfop_internal: string | null
           fiscal_cfop_interstate: string | null
           fiscal_cofins_cst: string | null
@@ -8399,6 +8408,15 @@ export type Database = {
           customer_id?: string | null
           description?: string | null
           fiscal_cest?: string | null
+          fiscal_cfop_entry_internal?: string | null
+          fiscal_cfop_entry_interstate?: string | null
+          fiscal_cfop_exit_internal?: string | null
+          fiscal_cfop_exit_interstate?: string | null
+          fiscal_icms_rate?: number | null
+          fiscal_icms_reduction_rate?: number | null
+          fiscal_pis_rate?: number | null
+          fiscal_cofins_rate?: number | null
+          fiscal_ipi_rate?: number | null
           fiscal_cfop_internal?: string | null
           fiscal_cfop_interstate?: string | null
           fiscal_cofins_cst?: string | null
@@ -8442,6 +8460,15 @@ export type Database = {
           customer_id?: string | null
           description?: string | null
           fiscal_cest?: string | null
+          fiscal_cfop_entry_internal?: string | null
+          fiscal_cfop_entry_interstate?: string | null
+          fiscal_cfop_exit_internal?: string | null
+          fiscal_cfop_exit_interstate?: string | null
+          fiscal_icms_rate?: number | null
+          fiscal_icms_reduction_rate?: number | null
+          fiscal_pis_rate?: number | null
+          fiscal_cofins_rate?: number | null
+          fiscal_ipi_rate?: number | null
           fiscal_cfop_internal?: string | null
           fiscal_cfop_interstate?: string | null
           fiscal_cofins_cst?: string | null
@@ -10619,6 +10646,7 @@ export type Database = {
           total: number
           unit: string
           unit_cost: number
+          unit_factor_snapshot: number
           unit_price: number
         }
         Insert: {
@@ -10633,6 +10661,7 @@ export type Database = {
           total?: number
           unit: string
           unit_cost?: number
+          unit_factor_snapshot?: number
           unit_price?: number
         }
         Update: {
@@ -10647,6 +10676,7 @@ export type Database = {
           total?: number
           unit?: string
           unit_cost?: number
+          unit_factor_snapshot?: number
           unit_price?: number
         }
         Relationships: [
@@ -19205,6 +19235,28 @@ export type Database = {
         Args: { p_order_id: string; p_reason: string }
         Returns: Json
       }
+      pdv_cancel_order_v2: {
+        Args: { p_order_id: string; p_reason: string }
+        Returns: Json
+      }
+      inventory_remove_from_stock_v4: {
+        Args: { p_inventory_id: string; p_stock_id: string }
+        Returns: undefined
+      }
+      pdv_can_initialize_treasury_v2: {
+        Args: { p_cash_account_id: string }
+        Returns: boolean
+      }
+      pdv_initialize_and_open_cash_v2: {
+        Args: {
+          p_terminal_id: string
+          p_cash_account_id: string
+          p_opening_amount: number
+          p_initial_balance: number
+          p_idempotency_key: string
+        }
+        Returns: Json
+      }
       pdv_cash_movement: {
         Args: {
           p_amount: number
@@ -19266,6 +19318,31 @@ export type Database = {
         }
       }
       pdv_fmt_brl: { Args: { p_value: number }; Returns: string }
+      pdv_current_actor_can_read_orders_v4: { Args: never; Returns: boolean }
+      pdv_get_customer_payment_options_v3: {
+        Args: { p_customer_id: string }
+        Returns: Json
+      }
+      pdv_get_supplier_payment_option_v3: {
+        Args: { p_supplier_id: string }
+        Returns: Json
+      }
+      pdv_register_direct_purchase_supplier_credit_v3: {
+        Args: {
+          p_account_id: string
+          p_cash_session_id: string
+          p_category_id: string
+          p_client_request_id: string
+          p_description: string
+          p_items: Json
+          p_notes: string
+          p_purchase_date: string
+          p_stock_id: string
+          p_supplier_id: string
+          p_terminal_id: string
+        }
+        Returns: Json
+      }
       pdv_get_purchase_cash_context_v2: {
         Args: {
           p_cash_session_id: string

@@ -1,9 +1,11 @@
-import { ShoppingCart, Trash2 } from "lucide-react";
+import { PdvCartWorkspaceHeader } from './PdvCartWorkspaceParts';
+import { List, ShoppingCart, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/mobile/EmptyState";
 import { PdvCartLineRow } from "@/components/pdv/PdvCartLineRow";
 import {
   PdvCartSummary,
+  PdvCartCustomerSelector,
   type PdvCartSummaryTexts,
 } from "@/components/pdv/PdvCartSummary";
 import { PdvScrollFadeContainer } from "@/components/pdv/PdvScrollFadeContainer";
@@ -12,8 +14,11 @@ import { PDV_CART_ITEM_MOTION, PDV_MOTION_EASE } from "@/lib/pdv/motion";
 import type { LocaleCode } from "@/lib/i18n/locales";
 import type { Customer } from "@/types/database";
 import { cn } from "@/lib/utils";
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import type { PdvValueAdjustmentMode } from '@/components/pdv/PdvInlineValueEditor';
 
 export interface PdvCartPanelTexts extends PdvCartSummaryTexts {
   title: string;
@@ -45,6 +50,9 @@ interface PdvCartPanelProps {
   onIncrement: (inventoryId: string, delta: number) => void;
   onSetQuantity: (inventoryId: string, quantity: number) => void;
   onSetLineDiscount: (inventoryId: string, discountAmount: number) => void;
+  onSetLineFinalAmount: (inventoryId: string, finalAmount: number, mode: PdvValueAdjustmentMode) => void;
+  onSetCartFinalAmount: (finalAmount: number, mode: PdvValueAdjustmentMode) => void;
+  modePreferenceKey?: string;
   onRemove: (inventoryId: string) => void;
   onCustomerChange: (id: string | null) => void;
   onRequestClearCart: () => void;
@@ -67,16 +75,16 @@ interface PdvCartPanelProps {
   hideFinalizeShortcut?: boolean;
   showAdvancedOptions?: boolean;
   showFinalizeAction?: boolean;
+  appliedCreditContent?: ReactNode;
+  /** Cliente acima dos materiais e lista flexível para o posto de venda. */
+  layout?: 'stacked' | 'workspace';
+  onCloseOrder?: () => void;
+  hasOrderContent?: boolean;
+  appliedCreditAmount?: number;
+  onSaveQuote?: () => void;
 }
 
-/**
- * Conteúdo COMPLETO do carrinho (header + lista de itens + resumo) — usado
- * SÓ no drawer do mobile (`CART_DRAWER_BREAKPOINT`). No desktop/tablet a
- * lista de itens desceu pra coluna dos produtos (`PdvCartItemsTable`) e o
- * resumo mora isolado na coluna da direita (`PdvCartSummary`), direto em
- * `Pdv.tsx` — ver pedido do CEO 2026-10-18. Este componente permanece
- * intacto pro mobile não regredir.
- */
+/** Carrinho canônico, com apresentação de balcão e variante padrão preservada. */
 export function PdvCartPanel({
   orderSwitcher,
   cart,
@@ -89,6 +97,9 @@ export function PdvCartPanel({
   onIncrement,
   onSetQuantity,
   onSetLineDiscount,
+  onSetLineFinalAmount,
+  onSetCartFinalAmount,
+  modePreferenceKey,
   onRemove,
   onCustomerChange,
   onRequestClearCart,
@@ -108,6 +119,12 @@ export function PdvCartPanel({
   hideFinalizeShortcut = false,
   showAdvancedOptions = true,
   showFinalizeAction = true,
+  appliedCreditContent,
+  layout = 'stacked',
+  onCloseOrder,
+  hasOrderContent,
+  appliedCreditAmount,
+  onSaveQuote,
 }: PdvCartPanelProps) {
   // Produtos distintos: nunca somar kg + un + l sob o rótulo genérico "itens".
   const itemCount = cart.lines.length;
@@ -115,11 +132,20 @@ export function PdvCartPanel({
     null,
   );
   const reduceMotion = useReducedMotion();
+  const [sort, setSort] = useState('inclusion');
+  const [closeAction, setCloseAction] = useState<(() => void) | null>(null);
+  const displayedLines = useMemo(() => {
+    const lines = [...cart.lines];
+    if (sort === 'recent') lines.reverse();
+    if (sort === 'name') lines.sort((a, b) => a.name.localeCompare(b.name, locale));
+    if (sort === 'value') lines.sort((a, b) => (b.quantity * b.unitPrice - b.discountAmount) - (a.quantity * a.unitPrice - a.discountAmount));
+    return lines;
+  }, [cart.lines, locale, sort]);
 
   return (
-    <div className={cn("flex h-full flex-col", className)}>
+    <div className={cn("flex h-full min-h-0 flex-col", className)} data-testid={layout === 'workspace' ? 'pdv-cart-workspace' : undefined}>
       {orderSwitcher && <div className="shrink-0">{orderSwitcher}</div>}
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+      {layout === 'workspace' ? <PdvCartWorkspaceHeader title={texts.title} personSelector={<PdvCartCustomerSelector cart={cart} customers={customers} texts={texts} onCustomerChange={onCustomerChange} readOnly={readOnly} compact />} disabled={readOnly} closeLabel={onCloseOrder ? 'Fechar atendimento atual' : texts.clearCart} onClose={() => { if (!onCloseOrder) { onRequestClearCart(); return; } if (hasOrderContent ?? cart.lines.length > 0) setCloseAction(() => onCloseOrder); else onCloseOrder(); }} /> : <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
@@ -145,10 +171,13 @@ export function PdvCartPanel({
             <span className="hidden sm:inline">{texts.clearCart}</span>
           </Button>
         )}
-      </div>
+      </div>}
+
+      {layout === 'workspace' && <div className="cartlistcaption"><span>{itemCount} {itemCount === 1 ? 'material' : 'materiais'}</span><Select value={sort} onValueChange={setSort}><SelectTrigger className="cartordertrigger h-8 w-auto gap-2 border-0 px-1 text-[10px] shadow-none" aria-label="Ordenar materiais"><List className="h-3 w-3" /><SelectValue /></SelectTrigger><SelectContent><SelectItem value="inclusion">Inclusão</SelectItem><SelectItem value="recent">Mais recentes</SelectItem><SelectItem value="name">Nome A–Z</SelectItem><SelectItem value="value">Maior valor</SelectItem></SelectContent></Select></div>}
 
       <PdvScrollFadeContainer
-        className="h-72 shrink-0 px-4"
+        externalScrollbar={layout === 'workspace'}
+        className={layout === 'workspace' ? 'cartbody min-h-28 flex-1' : 'h-72 shrink-0 px-4'}
         recomputeDeps={[cart.lines.length, editingLineDiscount]}
         fadeDisabled={editingLineDiscount != null}
         scrollToEndKey={additionFeedback?.sequence}
@@ -164,15 +193,15 @@ export function PdvCartPanel({
                 animate={{ opacity: 1 }}
                 transition={{ duration: reduceMotion ? 0 : 0.2 }}
               >
-                <EmptyState
+                {layout === 'workspace' ? <div className="empty"><ShoppingCart /><h3>O pedido está vazio</h3><p>Escolha um material para começar.</p></div> : <EmptyState
                   icon={<ShoppingCart className="h-10 w-10" />}
                   title={texts.empty}
                   description={texts.emptyHint}
                   size="compact"
-                />
+                />}
               </motion.div>
             ) : (
-              cart.lines.map((line) => {
+              displayedLines.map((line) => {
                 const isLastAdded =
                   additionFeedback?.inventoryId === line.inventoryId;
                 return (
@@ -263,6 +292,8 @@ export function PdvCartPanel({
                       onIncrement={onIncrement}
                       onSetQuantity={onSetQuantity}
                       onSetLineDiscount={onSetLineDiscount}
+                      onSetLineFinalAmount={onSetLineFinalAmount}
+                      modePreferenceKey={modePreferenceKey}
                       onDiscountEditingChange={(editing) =>
                         setEditingLineDiscount((current) =>
                           editing
@@ -275,6 +306,7 @@ export function PdvCartPanel({
                       onRemove={onRemove}
                       onConfirmQuantityEdit={onConfirmQuantityEdit}
                       readOnly={readOnly}
+                      density={layout === 'workspace' ? 'preview' : 'default'}
                     />
                   </motion.div>
                 );
@@ -292,6 +324,7 @@ export function PdvCartPanel({
         locale={locale}
         currencyFractionDigits={currencyFractionDigits}
         onSetDiscountAmount={onSetDiscountAmount}
+        onSetCartFinalAmount={onSetCartFinalAmount}
         onCustomerChange={onCustomerChange}
         onRequestPayment={onRequestPayment}
         cashClosed={cashClosed}
@@ -306,8 +339,14 @@ export function PdvCartPanel({
         hideFinalizeShortcut={hideFinalizeShortcut}
         showAdvancedOptions={showAdvancedOptions}
         showFinalizeAction={showFinalizeAction}
-        className="min-h-0 flex-1 overflow-y-auto border-t border-border bg-muted/30"
+        appliedCreditContent={appliedCreditContent}
+        hideCustomerSelector={layout === 'workspace'}
+        layout={layout}
+        appliedCreditAmount={appliedCreditAmount}
+        onSaveQuote={onSaveQuote}
+        className={cn('min-h-0 overflow-y-auto bg-background', layout === 'workspace' ? 'shrink-0' : 'flex-1 border-t border-border')}
       />
+      <AlertDialog open={!!closeAction} onOpenChange={open => { if (!open) setCloseAction(null); }}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Fechar atendimento?</AlertDialogTitle><AlertDialogDescription>Este atendimento ainda tem conteúdo. Confirme para fechá-lo.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Continuar atendimento</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => { closeAction?.(); setCloseAction(null); }}>Fechar atendimento</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
     </div>
   );
 }

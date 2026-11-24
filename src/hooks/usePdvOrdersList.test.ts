@@ -44,10 +44,15 @@ describe('tela geral de Pedidos do PDV', () => {
 
   it('concentra ações de cada pedido no menu de três pontos', () => {
     const page = readFileSync('src/pages/PdvOrders.tsx', 'utf8');
-    expect(page).toContain('ariaLabel={`Ações do pedido ${row.number}`}');
-    expect(page).toContain("label: 'Ver detalhes'");
-    expect(page).toContain("label: 'Gerar comprovante'");
-    expect(page).toContain('hidden: !row.canGenerateReceipt');
+    expect(page).toContain('<PdvOrderActionsMenu');
+    const menu = readFileSync('src/components/pdv/PdvOrderActionsMenu.tsx', 'utf8');
+    expect(menu).toContain('ariaLabel={`Ações do pedido ${props.orderNumber}`}');
+    expect(menu).toContain("label: 'Ver pedido e histórico'");
+    expect(menu).toContain("label: 'Gerar comprovante'");
+    expect(menu).toContain("label: 'Cancelar pedido'");
+    expect(menu).toContain("variant: 'delete'");
+    expect(menu).toContain('hidden: !props.canGenerateReceipt');
+    expect(page).toContain('<PdvOrderCancelDialog');
     expect(page).toContain('list.data?.canFilterCash');
     expect(page).not.toContain('<PdvOrderReceiptButton');
   });

@@ -1,3 +1,4 @@
+import '@/components/pdv/PdvWorkspace.css';
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { PdvOrderReceiptButton } from '@/components/pdv/receipt/PdvOrderReceiptButton';
@@ -40,7 +41,7 @@ export function PdvDirectSalePostSaleDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-4xl">
+      <DialogContent className="pdv-dialog max-h-[90dvh] overflow-y-auto sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>Pós-venda do pedido #{orderNumber}</DialogTitle>
           <DialogDescription>

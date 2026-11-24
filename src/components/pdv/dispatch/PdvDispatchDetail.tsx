@@ -4,7 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { PdvDispatchStatusBadge } from './PdvDispatchStatusBadge';
-import { PdvDeliveryReceiptButton } from './PdvDeliveryReceiptButton';
+import { usePdvStageReceiptAuto } from '@/hooks/usePdvStageReceiptAuto';
+import { usePdvReceiptCompany } from '@/hooks/usePdvReceiptCompany';
+import { PdvDeliveryReceiptButton, openPdvDeliveryReceipt } from './PdvDeliveryReceiptButton';
 import { PdvReturnsPanel, type PdvReturnsAccess } from '@/components/pdv/returns/PdvReturnsPanel';
 import { stablePdvAttempt, usePdvCompleteDispatch, type PdvDispatchDetail as Detail } from '@/hooks/usePdvDispatch';
 import { useToast } from '@/hooks/use-toast';
@@ -12,12 +14,17 @@ import type { PdvAfterSaleAccess } from '@/hooks/usePdvAfterSale';
 import { PdvAfterSalePanel } from '@/components/pdv/after-sale/PdvAfterSalePanel';
 import { hasPdvDispatchConflict, shouldShowPdvDispatchActions } from './dispatchRules';
 
-export function PdvDispatchDetail({ detail, canDeliver, returnsAccess, afterSaleAccess, onBack, onReload }: { detail: Detail; canDeliver: boolean; returnsAccess?: PdvReturnsAccess; afterSaleAccess?: PdvAfterSaleAccess; onBack?: () => void; onReload: () => void }) {
+export function PdvDispatchDetail({ detail, canDeliver, returnsAccess, afterSaleAccess, onBack, onReload, onCompleted }: { detail: Detail; canDeliver: boolean; returnsAccess?: PdvReturnsAccess; afterSaleAccess?: PdvAfterSaleAccess; onBack?: () => void; onReload: () => void; onCompleted?: (deliveryId: string | null) => void }) {
   const { toast } = useToast();
   const mutation = usePdvCompleteDispatch();
+  const autoReceipt = usePdvStageReceiptAuto();
+  const receiptCompany = usePdvReceiptCompany();
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [deliveryId, setDeliveryId] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<'dispatch' | 'returns' | 'values'>('dispatch');
+  const canViewValues = Boolean(afterSaleAccess?.enabled && afterSaleAccess.canView);
+  const canViewReturns = Boolean(returnsAccess?.enabled && (returnsAccess.canReturn || returnsAccess.canReverse || returnsAccess.canCancelResidual));
+  const activeTab = (detailTab === 'values' && !canViewValues) || (detailTab === 'returns' && !canViewReturns) ? 'dispatch' : detailTab;
   const attempt = useRef<{ signature: string; id: string } | null>(null);
 
   useEffect(() => {
@@ -41,12 +48,18 @@ export function PdvDispatchDetail({ detail, canDeliver, returnsAccess, afterSale
   async function deliver() {
     const signature = JSON.stringify(lines);
     attempt.current = stablePdvAttempt(attempt.current, signature, () => crypto.randomUUID());
+    const receiptAttempt = autoReceipt.prepare('delivery');
     try {
       const result = await mutation.mutateAsync({ orderId: detail.order.id, lines, attemptId: attempt.current.id });
       const id = typeof result.delivery_id === 'string' ? result.delivery_id : null;
       setDeliveryId(id);
+      if (id) void receiptAttempt.commit(`delivery:${id}`, (format, options) => openPdvDeliveryReceipt(id, format, { ...options, company: receiptCompany }), result.idempotent === true);
+      else receiptAttempt.cancel();
       toast({ title: result.status === 'entregue' ? 'Pedido entregue' : 'Retirada parcial registrada', description: 'O estoque e o histórico foram atualizados.' });
+      onReload();
+      if (result.status === 'entregue') onCompleted?.(id);
     } catch (error) {
+      receiptAttempt.cancel();
       toast({ title: 'Retirada não registrada', description: error instanceof Error ? error.message : 'Tente novamente.', variant: 'destructive' });
     }
   }
@@ -61,12 +74,12 @@ export function PdvDispatchDetail({ detail, canDeliver, returnsAccess, afterSale
     </header>
 
     <nav className="flex gap-6 overflow-x-auto border-b" aria-label="Áreas do pedido">
-      <DetailTabButton active={detailTab === 'dispatch'} onClick={() => setDetailTab('dispatch')}>Retirada</DetailTabButton>
-      {returnsAccess?.enabled && <DetailTabButton active={detailTab === 'returns'} onClick={() => setDetailTab('returns')}>Devoluções</DetailTabButton>}
-      {afterSaleAccess?.enabled && <DetailTabButton active={detailTab === 'values'} onClick={() => setDetailTab('values')}>Créditos e reembolsos</DetailTabButton>}
+      <DetailTabButton active={activeTab === 'dispatch'} onClick={() => setDetailTab('dispatch')}>Retirada</DetailTabButton>
+      {canViewReturns && <DetailTabButton active={activeTab === 'returns'} onClick={() => setDetailTab('returns')}>Devoluções</DetailTabButton>}
+      {canViewValues && <DetailTabButton active={activeTab === 'values'} onClick={() => setDetailTab('values')}>Créditos e reembolsos</DetailTabButton>}
     </nav>
 
-    {detailTab === 'dispatch' && <>
+    {activeTab === 'dispatch' && <>
       {hasConflict && <NoticeBanner variant="warning"><AlertTriangle className="mr-2 inline h-4 w-4" />O estoque mudou. Atualize ou reconcilie as reservas antes de entregar.</NoticeBanner>}
       {deliveryId && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-success p-4 text-success-foreground"><span className="flex items-center gap-2 font-semibold"><CheckCircle2 className="h-5 w-5" />Retirada registrada</span><PdvDeliveryReceiptButton deliveryId={deliveryId} /></div>}
 
@@ -86,8 +99,8 @@ export function PdvDispatchDetail({ detail, canDeliver, returnsAccess, afterSale
         <Button className="min-h-12" onClick={() => void deliver()} disabled={!canDeliver || !lines.length || hasConflict || mutation.isPending}>{mutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PackageCheck className="mr-2 h-4 w-4" />}Registrar retirada</Button>
       </div>}
     </>}
-    {detailTab === 'returns' && returnsAccess?.enabled && <PdvReturnsPanel orderId={detail.order.id} orderNumber={detail.order.number} remainingQuantity={detail.items.reduce((sum, item) => sum + Math.max(0, item.remainingQuantity), 0)} access={returnsAccess} onReload={onReload} />}
-    {detailTab === 'values' && afterSaleAccess?.enabled && <PdvAfterSalePanel orderId={detail.order.id} access={afterSaleAccess} onReload={onReload} />}
+    {activeTab === 'returns' && returnsAccess?.enabled && <PdvReturnsPanel orderId={detail.order.id} orderNumber={detail.order.number} remainingQuantity={detail.items.reduce((sum, item) => sum + Math.max(0, item.remainingQuantity), 0)} access={returnsAccess} onReload={onReload} />}
+    {activeTab === 'values' && canViewValues && afterSaleAccess && <PdvAfterSalePanel orderId={detail.order.id} access={afterSaleAccess} onReload={onReload} />}
   </div>;
 }
 

@@ -1,21 +1,23 @@
 import { AlertTriangle, ArrowRight, BookOpen, X } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { getDomiflixContinueUrl, useDismissDomiflixReminder, useDomiflixLearningStatus } from "@/hooks/useDomiflix";
-import { getTutorialReminderCopy } from "@/lib/tutorialReminderCopy";
+import { getTutorialReminderCopy, shouldShowTutorialReminder } from "@/lib/tutorialReminderCopy";
 import { cn } from "@/lib/utils";
 
 export function DomiflixLearningReminder() {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const showInCurrentScreen = shouldShowTutorialReminder(pathname);
   const { profile, isAdminUser } = useAuth();
-  const { data: status, isError } = useDomiflixLearningStatus(!isAdminUser);
+  const { data: status, isError } = useDomiflixLearningStatus(!isAdminUser && showInCurrentScreen);
   const dismiss = useDismissDomiflixReminder();
   const { data: company } = useQuery({
     queryKey: ["domiflix-reminder-company", profile?.company_id],
-    enabled: !!profile?.company_id && !isAdminUser,
+    enabled: !!profile?.company_id && !isAdminUser && showInCurrentScreen,
     staleTime: 60_000,
     queryFn: async () => {
       const { data } = await supabase.from("companies").select("subscription_status, subscription_expires_at").eq("id", profile!.company_id!).maybeSingle();
@@ -23,7 +25,7 @@ export function DomiflixLearningReminder() {
     },
   });
 
-  if (!status || isError || status.reminder.severity === "none" || status.reminder.severity === "complete") return null;
+  if (!showInCurrentScreen || !status || isError || status.reminder.severity === "none" || status.reminder.severity === "complete") return null;
   if (company?.subscription_expires_at) {
     const expiration = new Date(company.subscription_expires_at);
     const days = Math.floor((new Date().setHours(0, 0, 0, 0) - expiration.setHours(0, 0, 0, 0)) / 86_400_000);

@@ -8,7 +8,11 @@ import type { CartLine } from "@/lib/pdv/cart";
 import type { LocaleCode } from "@/lib/i18n/locales";
 import { PdvProductName } from "@/components/pdv/PdvProductName";
 import { PdvProductImagePreview } from "@/components/pdv/PdvProductImagePreview";
+import { PdvInlineValueEditor, type PdvValueAdjustmentMode } from '@/components/pdv/PdvInlineValueEditor';
 import { inventoryQuantityStep } from "@/lib/inventoryUnits";
+import { useState } from 'react';
+import { Percent } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface PdvCartLineRowProps {
   line: CartLine;
@@ -26,12 +30,15 @@ interface PdvCartLineRowProps {
   onIncrement: (inventoryId: string, delta: number) => void;
   onSetQuantity: (inventoryId: string, quantity: number) => void;
   onSetLineDiscount: (inventoryId: string, discountAmount: number) => void;
+  onSetLineFinalAmount: (inventoryId: string, finalAmount: number, mode: PdvValueAdjustmentMode) => void;
+  modePreferenceKey?: string;
   onDiscountEditingChange?: (editing: boolean) => void;
   onRemove: (inventoryId: string) => void;
   /** Enter na edição de quantidade devolve o foco pra busca (balcão é fila). */
   onConfirmQuantityEdit?: () => void;
   /** Mantém a mesma linha visual, mas sem controles em estados concluídos/cancelados. */
   readOnly?: boolean;
+  density?: 'default' | 'preview';
 }
 
 /**
@@ -55,11 +62,16 @@ export function PdvCartLineRow({
   onIncrement,
   onSetQuantity,
   onSetLineDiscount,
+  onSetLineFinalAmount,
+  modePreferenceKey,
   onDiscountEditingChange,
   onRemove,
   onConfirmQuantityEdit,
   readOnly = false,
+  density = 'default',
 }: PdvCartLineRowProps) {
+  const [discountOpen, setDiscountOpen] = useState(false);
+  const [valueEditing, setValueEditing] = useState(false);
   const lineGross = line.quantity * line.unitPrice;
   const lineDiscount = Math.min(
     Math.max(line.discountAmount ?? 0, 0),
@@ -67,9 +79,16 @@ export function PdvCartLineRow({
   );
   const lineTotal = lineGross - lineDiscount;
 
+  if (density === 'preview') return <div className="cartitem" data-cart-item={line.inventoryId}>
+    <div className={cn('row between', valueEditing && 'flex-wrap')} style={{ alignItems: 'flex-start' }}><span className="cartthumbnail"><PdvProductImagePreview iconOnlyFallback imageUrl={line.imageUrl} name={line.name} fallbackLabel={noPhotoLabel} openLabel={openPhotoLabel} viewerDescription={photoViewerDescription} className="h-8 w-8 shrink-0 object-contain" /></span><div className="grow"><strong>{line.name}</strong><small>{formatCurrency(line.unitPrice)} / {line.unit || 'un'}</small></div><div className={cn(valueEditing ? 'w-full pt-2' : 'shrink-0 text-right')}>{lineDiscount > 0 && <small className="oldprice">{formatCurrency(lineGross)}</small>}<PdvInlineValueEditor label={`valor de ${line.name}`} value={lineTotal} baseAmount={lineGross} formatCurrency={formatCurrency} disabled={readOnly} onApply={(amount, mode) => onSetLineFinalAmount(line.inventoryId, amount, mode)} onEditingChange={setValueEditing} modePreferenceKey={modePreferenceKey} className="cartitemtotal amount font-bold" /></div></div>
+    <div className="row between itemcontrols">{readOnly ? <span>{line.quantity} {line.unit}</span> : <PdvQuantityStepper size="sm" className="qty" quantity={line.quantity} availableQuantity={line.availableQuantity} step={inventoryQuantityStep(line.unit)} onIncrement={delta => onIncrement(line.inventoryId, delta)} onSetQuantity={quantity => onSetQuantity(line.inventoryId, quantity)} onConfirmEdit={onConfirmQuantityEdit} decrementAriaLabel={'Diminuir ' + line.name} incrementAriaLabel={'Aumentar ' + line.name} editAriaLabel={quantityEditLabel} />}{!readOnly && <div className="row" style={{ gap: 2 }}><button type="button" className={'itemdiscount ' + (lineDiscount > 0 ? 'hasdiscount' : '')} aria-label={'Desconto em ' + line.name} aria-expanded={discountOpen} onClick={() => { setDiscountOpen(current => !current); onDiscountEditingChange?.(!discountOpen); }}><Percent />{lineDiscount > 0 ? formatCurrency(lineDiscount) : 'Desconto'}</button><button type="button" className="iconbtn negative removeitem" onClick={() => onRemove(line.inventoryId)} aria-label={removeLabel}><Trash2 /></button></div>}</div>
+    {!readOnly && <PdvInlineDiscountEditor variant="line" presentation="preview" hideTrigger open={discountOpen} label={discountLabel} baseAmount={lineGross} discountAmount={lineDiscount} formatCurrency={formatCurrency} currencySymbol={currencySymbol} locale={locale} currencyFractionDigits={currencyFractionDigits} texts={discountEditorTexts} onApply={amount => onSetLineDiscount(line.inventoryId, amount)} onEditingChange={editing => { setDiscountOpen(editing); onDiscountEditingChange?.(editing); }} />}
+  </div>;
+
   return (
     <div className="relative flex min-h-[4.25rem] items-center gap-2.5 py-1.5 pr-16">
       <PdvProductImagePreview
+        iconOnlyFallback
         imageUrl={line.imageUrl}
         name={line.name}
         fallbackLabel={noPhotoLabel}
@@ -85,21 +104,21 @@ export function PdvCartLineRow({
             que cortava praticamente todo nome de peça já na segunda palavra.
             Sem `min-h`: nome curto fica em 1 linha, só o longo cresce e deixa
             a linha mais alta. */}
-        <div className="flex min-w-0 items-center justify-between gap-2">
+        <div className={cn('flex min-w-0 items-start justify-between gap-2', valueEditing && 'flex-wrap')}>
           <div className="min-w-0">
             <PdvProductName
               name={line.name}
               className="min-w-0 text-sm font-semibold leading-snug text-foreground"
             />
           </div>
-          <span className="flex shrink-0 flex-col items-end text-sm font-bold leading-tight tabular-nums">
+          <div className={cn('flex flex-col items-end text-sm font-bold leading-tight tabular-nums', valueEditing ? 'w-full min-w-0 pt-1' : 'shrink-0')}>
             {lineDiscount > 0 && (
               <span className="text-[10px] font-normal leading-none text-muted-foreground line-through">
                 {formatCurrency(lineGross)}
               </span>
             )}
-            {formatCurrency(lineTotal)}
-          </span>
+            <PdvInlineValueEditor label={`valor de ${line.name}`} value={lineTotal} baseAmount={lineGross} formatCurrency={formatCurrency} disabled={readOnly} onApply={(amount, mode) => onSetLineFinalAmount(line.inventoryId, amount, mode)} onEditingChange={setValueEditing} modePreferenceKey={modePreferenceKey} />
+          </div>
         </div>
 
         <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">

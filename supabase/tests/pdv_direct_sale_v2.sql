@@ -54,7 +54,7 @@ DECLARE
   u_denied uuid := 'e2000000-0000-4000-8000-000000000004';
   stock_id uuid := 'e2000000-0000-4000-8000-000000000011';
   stock_other uuid := 'e2000000-0000-4000-8000-000000000012';
-  inventory_id uuid := 'e2000000-0000-4000-8000-000000000021';
+  v_inventory_id uuid := 'e2000000-0000-4000-8000-000000000021';
   inventory_zero uuid := 'e2000000-0000-4000-8000-000000000022';
   inventory_other uuid := 'e2000000-0000-4000-8000-000000000023';
   inventory_credit uuid := 'e2000000-0000-4000-8000-000000000024';
@@ -67,7 +67,7 @@ DECLARE
   terminal_other uuid := 'e2000000-0000-4000-8000-000000000042';
   customer_id uuid := 'e2000000-0000-4000-8000-000000000051';
   session_id uuid;
-  order_id uuid;
+  created_order_id uuid;
   zero_order_id uuid;
   immediate_order_id uuid;
   discount_order_id uuid;
@@ -120,12 +120,15 @@ BEGIN
     (other_account,c_other,'Cofre Other','caixa',100,true);
   INSERT INTO public.company_settings(
     company_id,name,timezone,pdv_cash_account_id,pdv_strict_cash_tracking,pdv_mode
-  ) VALUES(c,'Fixture Direct','America/Sao_Paulo',cash_account,true,'simples');
+  ) VALUES(c,'Fixture Direct','America/Sao_Paulo',cash_account,true,'simples')
+  ON CONFLICT (company_id) DO UPDATE SET name=EXCLUDED.name, timezone=EXCLUDED.timezone, pdv_cash_account_id=EXCLUDED.pdv_cash_account_id, pdv_strict_cash_tracking=EXCLUDED.pdv_strict_cash_tracking, pdv_mode=EXCLUDED.pdv_mode;
   INSERT INTO public.company_nfce_settings(
     company_id,enabled,homologation_approved,production_approved,uf,series
   ) VALUES(c,true,true,false,'SP',1);
   v_today := public.company_today(c);
   v_backdate := v_today-1;
+  -- A criação da empresa já fornece um estoque padrão; a fixture escolhe outro explicitamente.
+  UPDATE public.stocks SET is_default=false WHERE company_id IN (c, c_other) AND is_default IS TRUE;
   INSERT INTO public.stocks(id,company_id,name,is_default) VALUES
     (stock_id,c,'Loja Direct',true),(stock_other,c_other,'Outro estoque',true);
   INSERT INTO public.pdv_terminals(id,company_id,name,stock_id,is_active) VALUES
@@ -134,7 +137,7 @@ BEGIN
   INSERT INTO public.inventory(
     id,company_id,sku,name,unit,quantity,cost_price,sale_price
   ) VALUES
-    (inventory_id,c,'DIR-1','Última unidade','un',1,7,200),
+    (v_inventory_id,c,'DIR-1','Última unidade','un',1,7,200),
     (inventory_zero,c,'DIR-0','Bonificado','un',1,5,0),
     (inventory_credit,c,'DIR-C','Teste limite','un',1,0,1),
     (inventory_discount_a,c,'DIR-DA','Preço especial','un',1,20,100),
@@ -143,7 +146,7 @@ BEGIN
   INSERT INTO public.inventory_stock_levels(
     company_id,inventory_id,stock_id,quantity,is_present
   ) VALUES
-    (c,inventory_id,stock_id,1,true),
+    (c,v_inventory_id,stock_id,1,true),
     (c,inventory_zero,stock_id,1,true),
     (c,inventory_credit,stock_id,1,true),
     (c,inventory_discount_a,stock_id,1,true),
@@ -175,7 +178,7 @@ BEGIN
     PERFORM public.pdv_complete_direct_sale_v2(
       terminal_id,session_id,cash_account,NULL,
       jsonb_build_array(jsonb_build_object(
-        'inventory_id',inventory_id,'stock_id',stock_id,'quantity','NaN'
+        'inventory_id',v_inventory_id,'stock_id',stock_id,'quantity','NaN'
       )),jsonb_build_array(jsonb_build_object('method','dinheiro','amount',200)),
       'direct-sale-nan-quantity-0001'
     );
@@ -187,7 +190,7 @@ BEGIN
     PERFORM public.pdv_complete_direct_sale_v2(
       terminal_id,session_id,cash_account,NULL,
       jsonb_build_array(jsonb_build_object(
-        'inventory_id',inventory_id,'stock_id',stock_id,'quantity',1
+        'inventory_id',v_inventory_id,'stock_id',stock_id,'quantity',1
       )),jsonb_build_array(jsonb_build_object('method','dinheiro','amount','Infinity')),
       'direct-sale-infinity-amount-0001'
     );
@@ -199,7 +202,7 @@ BEGIN
     PERFORM public.pdv_complete_direct_sale_v2(
       terminal_id,session_id,cash_account,NULL,
       jsonb_build_array(jsonb_build_object(
-        'inventory_id',inventory_id,'stock_id',stock_id,'quantity',1
+        'inventory_id',v_inventory_id,'stock_id',stock_id,'quantity',1
       )),jsonb_build_array(jsonb_build_object(
         'method','credito','amount',200,'change_amount',1
       )),'direct-sale-card-change-0001'
@@ -208,7 +211,7 @@ BEGIN
   END;
   IF NOT blocked THEN RAISE EXCEPTION 'troco em cobertura sem dinheiro foi aceito'; END IF;
   SELECT jsonb_agg(jsonb_build_object(
-    'inventory_id',inventory_id,'stock_id',stock_id,'quantity',1
+    'inventory_id',v_inventory_id,'stock_id',stock_id,'quantity',1
   )) INTO oversized_cart FROM generate_series(1,101);
   blocked:=false;
   BEGIN
@@ -226,7 +229,7 @@ BEGIN
       terminal_id,session_id,cash_account,NULL,
       jsonb_build_object(
         'items',jsonb_build_array(jsonb_build_object(
-          'inventory_id',inventory_id,'stock_id',stock_id,'quantity',1
+          'inventory_id',v_inventory_id,'stock_id',stock_id,'quantity',1
         )),
         'order_discount_amount',0,'notes',repeat('x',2001),
         'transaction_date',v_today
@@ -242,7 +245,7 @@ BEGIN
       terminal_id,session_id,cash_account,NULL,
       jsonb_build_object(
         'items',jsonb_build_array(jsonb_build_object(
-          'inventory_id',inventory_id,'stock_id',stock_id,'quantity',1,
+          'inventory_id',v_inventory_id,'stock_id',stock_id,'quantity',1,
           'discount_amount',200.01
         )),
         'order_discount_amount',0,'transaction_date',v_today
@@ -257,7 +260,7 @@ BEGIN
       terminal_id,session_id,cash_account,NULL,
       jsonb_build_object(
         'items',jsonb_build_array(jsonb_build_object(
-          'inventory_id',inventory_id,'stock_id',stock_id,'quantity',1
+          'inventory_id',v_inventory_id,'stock_id',stock_id,'quantity',1
         )),
         'order_discount_amount',200.01,'transaction_date',v_today
       ),'[]'::jsonb,'direct-sale-order-discount-exceeded-0001'
@@ -272,7 +275,7 @@ BEGIN
 
   cart := jsonb_build_object(
     'items',jsonb_build_array(jsonb_build_object(
-      'inventory_id',inventory_id,'stock_id',stock_id,'quantity',1,
+      'inventory_id',v_inventory_id,'stock_id',stock_id,'quantity',1,
       'unit_cost',999,'unit_price',200,'discount_amount',0
     )),
     'order_discount_amount',0,
@@ -292,11 +295,11 @@ BEGIN
     terminal_id,session_id,cash_account,customer_id,cart,payments,
     'direct-sale-mixed-0001'
   );
-  order_id := (result->>'order_id')::uuid;
+  created_order_id := (result->>'order_id')::uuid;
 
   IF NOT EXISTS(
     SELECT 1 FROM public.pdv_orders order_row
-     WHERE order_row.id=order_id AND order_row.company_id=c
+     WHERE order_row.id=created_order_id AND order_row.company_id=c
        AND order_row.status='entregue' AND order_row.contract_version=2
        AND order_row.operation_mode_snapshot='direct' AND order_row.total=200
        AND order_row.subtotal=200 AND order_row.discount_amount=0
@@ -305,42 +308,42 @@ BEGIN
        AND order_row.paid_at IS NULL
   ) OR NOT EXISTS(
     SELECT 1 FROM public.pdv_order_items item
-     WHERE item.order_id=order_id AND item.inventory_id=inventory_id
+     WHERE item.order_id=created_order_id AND item.inventory_id=v_inventory_id
        AND item.unit_price=200 AND item.unit_cost_v2=7 AND item.unit_cost=7
        AND item.contract_version=2
   ) THEN RAISE EXCEPTION 'pedido/item não congelou preço e custo do servidor'; END IF;
   IF (SELECT count(*) FROM public.pdv_order_payments payment
-       WHERE payment.order_id=order_id AND payment.contract_version=2)<>4
+       WHERE payment.order_id=created_order_id AND payment.contract_version=2)<>4
      OR NOT EXISTS(
        SELECT 1 FROM public.pdv_order_payments payment
-        WHERE payment.order_id=order_id AND payment.method='dinheiro'
+        WHERE payment.order_id=created_order_id AND payment.method='dinheiro'
           AND payment.amount=50 AND payment.change_amount=10
      )
      OR NOT EXISTS(
        SELECT 1 FROM public.pdv_order_payments payment
-        WHERE payment.order_id=order_id
+        WHERE payment.order_id=created_order_id
           AND payment.coverage_kind='card_authorization'
           AND payment.settlement_transaction_id IS NULL
      ) OR NOT EXISTS(
        SELECT 1 FROM public.pdv_order_payments payment
-        WHERE payment.order_id=order_id AND payment.coverage_kind='receivable'
+        WHERE payment.order_id=created_order_id AND payment.coverage_kind='receivable'
           AND payment.receivable_transaction_id IS NOT NULL
      )
   THEN RAISE EXCEPTION 'cobertura mista dinheiro/Pix/cartão/fiado divergente'; END IF;
   IF (SELECT count(*) FROM public.pdv_stock_reservation_items reservation
        WHERE reservation.order_item_id IN(
-         SELECT id FROM public.pdv_order_items WHERE order_id=order_id
+         SELECT id FROM public.pdv_order_items WHERE order_id=created_order_id
        ) AND reservation.state='consumed')<>1
      OR (SELECT count(*) FROM public.pdv_delivery_items item
           JOIN public.pdv_deliveries delivery ON delivery.id=item.delivery_id
-         WHERE delivery.order_id=order_id)<>1
+         WHERE delivery.order_id=created_order_id)<>1
      OR (SELECT count(*) FROM public.inventory_movements movement
-         WHERE movement.company_id=c AND movement.inventory_id=inventory_id
+         WHERE movement.company_id=c AND movement.inventory_id=v_inventory_id
            AND movement.quantity=-1)<>1
      OR NOT EXISTS(
        SELECT 1 FROM public.pdv_delivery_items item
         JOIN public.pdv_deliveries delivery ON delivery.id=item.delivery_id
-       WHERE delivery.order_id=order_id AND item.recognition_date=v_today
+       WHERE delivery.order_id=created_order_id AND item.recognition_date=v_today
      )
   THEN RAISE EXCEPTION 'reserva/entrega/Kardex não fecharam uma vez'; END IF;
   SELECT position.custody_amount INTO custody
@@ -375,7 +378,7 @@ BEGIN
     terminal_id,session_id,cash_account,customer_id,
     jsonb_build_object(
       'items',jsonb_build_array(jsonb_build_object(
-        'inventory_id',inventory_id,'stock_id',stock_id,'quantity',1,
+        'inventory_id',v_inventory_id,'stock_id',stock_id,'quantity',1,
         'unit_cost',0,'unit_price',200,'discount_amount',0
       )),
       'order_discount_amount',0,
@@ -385,16 +388,16 @@ BEGIN
   );
   IF (retry_result - 'idempotent') IS DISTINCT FROM (result - 'idempotent')
      OR (retry_result->>'idempotent')::boolean IS NOT TRUE
-     OR (SELECT count(*) FROM public.pdv_orders WHERE id=order_id)<>1
+     OR (SELECT count(*) FROM public.pdv_orders WHERE id=created_order_id)<>1
      OR (SELECT count(*) FROM public.inventory_movements
-          WHERE company_id=c AND inventory_id=inventory_id AND quantity=-1)<>1
+          WHERE company_id=c AND inventory_id=v_inventory_id AND quantity=-1)<>1
   THEN RAISE EXCEPTION 'retry equivalente duplicou ou mudou resultado'; END IF;
   blocked:=false;
   BEGIN
     PERFORM public.pdv_complete_direct_sale_v2(
       terminal_id,session_id,cash_account,customer_id,
       jsonb_build_array(jsonb_build_object(
-        'inventory_id',inventory_id,'stock_id',stock_id,'quantity',2
+        'inventory_id',v_inventory_id,'stock_id',stock_id,'quantity',2
       )),payments,'direct-sale-mixed-0001'
     );
   EXCEPTION WHEN invalid_parameter_value THEN blocked:=true;

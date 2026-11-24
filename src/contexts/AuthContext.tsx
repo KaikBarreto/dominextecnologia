@@ -3,6 +3,14 @@ import { User, Session } from '@supabase/supabase-js';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { AppRole, Profile } from '@/types/database';
+import { clearDomiLinkSessionOutsideScope, type DomiLinkSessionScope } from '@/lib/domilink/storage';
+import { revokeDomiLink } from '@/lib/domilink/client';
+
+function clearDomiLinkOutsideScope(scope: Partial<DomiLinkSessionScope> | null) {
+  const token = clearDomiLinkSessionOutsideScope(scope);
+  // Não segura o lock do GoTrue nem depende da disponibilidade do serviço local.
+  if (token) setTimeout(() => { void revokeDomiLink(token).catch(() => undefined); }, 0);
+}
 
 // Same set of CSS variables that useWhiteLabel applies. Duplicated here to
 // avoid a circular import (useWhiteLabel → useCompanySettings → useAuth).
@@ -116,6 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const nextUserId = session?.user?.id ?? null;
         const userChanged = currentUserIdRef.current !== nextUserId;
+        clearDomiLinkOutsideScope(nextUserId ? { userId: nextUserId } : null);
         setSession(session);
         setUser(session?.user ?? null);
         currentUserIdRef.current = nextUserId;
@@ -191,6 +200,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single();
 
       if (profileData && isStillCurrent()) {
+        clearDomiLinkOutsideScope(profileData.company_id ? { userId, companyId: profileData.company_id } : null);
         setProfile(profileData as Profile);
       }
 
@@ -319,6 +329,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    clearDomiLinkOutsideScope(null);
     // Clean up active session
     const sessionToken = localStorage.getItem('session_token');
     if (sessionToken && user) {

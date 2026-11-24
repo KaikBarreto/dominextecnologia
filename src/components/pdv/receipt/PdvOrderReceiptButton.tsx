@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { fetchPdvOrderReceiptSnapshot } from '@/hooks/usePdvOrderReceiptSnapshot';
 import { generatePdvReceiptPdf, preparePdvReceiptSnapshotLogo } from '@/lib/pdv/receipt/pdf';
-import { receiptFilename, type PdvReceiptFormat } from '@/lib/pdv/receipt/model';
+import { receiptFilename, type PdvReceiptFormat, type PdvReceiptDocumentKind, type PdvReceiptSnapshot } from '@/lib/pdv/receipt/model';
 import { openPdfInTab, openPendingPdfTab } from '@/utils/openPdfInTab';
 
 export interface PdvOrderReceiptButtonProps {
@@ -12,14 +12,20 @@ export interface PdvOrderReceiptButtonProps {
   format: PdvReceiptFormat;
   label?: string;
   className?: string;
+  documentKind?: 'sale' | 'pickup';
 }
 
-export async function openPdvOrderReceipt(orderId: string, format: PdvReceiptFormat): Promise<void> {
-  const target = openPendingPdfTab('Gerando comprovante não fiscal...');
+export function resolvePdvOrderReceiptKind(snapshot: PdvReceiptSnapshot): PdvReceiptDocumentKind {
+  const status = snapshot.fulfillment?.status.toLocaleLowerCase('pt-BR');
+  return snapshot.fulfillment?.mode === 'retirada' && status && /liberad|aguard|parcial/.test(status) ? 'pickup' : 'sale';
+}
+
+export async function openPdvOrderReceipt(orderId: string, format: PdvReceiptFormat, options?: { target?: Window | null; copies?: 1 | 2 | 3; documentKind?: 'sale' | 'pickup' }): Promise<void> {
+  const target = options && 'target' in options ? options.target : openPendingPdfTab('Gerando comprovante não fiscal...');
   try {
     const savedSnapshot = await fetchPdvOrderReceiptSnapshot(orderId);
-    const snapshot = await preparePdvReceiptSnapshotLogo(savedSnapshot);
-    const blob = generatePdvReceiptPdf(snapshot, format);
+    const snapshot = await preparePdvReceiptSnapshotLogo({ ...savedSnapshot, documentKind: options?.documentKind ?? resolvePdvOrderReceiptKind(savedSnapshot) });
+    const blob = options?.copies ? generatePdvReceiptPdf(snapshot, format, { copies: options.copies }) : generatePdvReceiptPdf(snapshot, format);
     openPdfInTab(blob, receiptFilename(snapshot, format), target);
   } catch (error) {
     target?.close();
@@ -32,6 +38,7 @@ export function PdvOrderReceiptButton({
   format,
   label = 'Reimprimir comprovante',
   className,
+  documentKind,
 }: PdvOrderReceiptButtonProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -39,11 +46,11 @@ export function PdvOrderReceiptButton({
   async function open() {
     setLoading(true);
     try {
-      await openPdvOrderReceipt(orderId, format);
-    } catch (error) {
+      await openPdvOrderReceipt(orderId, format, documentKind ? { documentKind } : undefined);
+    } catch {
       toast({
         title: 'Não foi possível gerar o comprovante',
-        description: error instanceof Error ? error.message : 'Tente novamente.',
+        description: 'Tente novamente pelo botão do comprovante.',
         variant: 'destructive',
       });
     } finally {

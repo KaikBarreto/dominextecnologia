@@ -1,9 +1,10 @@
+import { canCapturePdvCatalogScan } from '@/lib/pdv/catalogKeyboard';
+import '@/components/pdv/PdvWorkspace.css';
 import { createPortal } from "react-dom";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
-  Barcode,
   Check,
   ClipboardCheck,
   Keyboard,
@@ -53,11 +54,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { EmptyState } from "@/components/mobile/EmptyState";
 import {
-  MobilePillTabs,
   type PillTab,
 } from "@/components/mobile/MobilePillTabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { FilterButton } from "@/components/ui/FilterButton";
 import { ResponsiveModal } from "@/components/ui/ResponsiveModal";
 import {
   Drawer,
@@ -70,14 +69,15 @@ import {
   type PdvCartPanelTexts,
 } from "@/components/pdv/PdvCartPanel";
 import {
-  PdvProductCard,
   type PdvGridProduct,
 } from "@/components/pdv/PdvProductCard";
+import { PdvSalePreviewView } from "@/components/pdv/PdvSalePreviewView";
 import { PdvShortcutHelpDialog } from "@/components/pdv/PdvShortcutHelpDialog";
 import { useLocaleFormatters } from "@/lib/format/hooks";
 import { getCurrencySymbol } from "@/lib/format";
 import { useMediaBreakpoint } from "@/hooks/use-mobile";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
+import { useInventoryIdentifiers } from "@/hooks/useInventoryIdentifiers";
 import {
   findPdvGridNeighbor,
   isPdvEditableTarget,
@@ -85,8 +85,9 @@ import {
   type PdvGridDirection,
   type PdvGridItemRect,
 } from "@/lib/pdv/keyboard";
-import type { CartState } from "@/lib/pdv/cart";
+import { setCartFinalAmount, setLineFinalAmount, type CartState, type PdvValueAdjustmentMode } from "@/lib/pdv/cart";
 import type { Customer } from "@/types/database";
+import { toPdvCustomerRecord, type PdvCatalogCustomer } from "@/lib/pdv/catalogCustomer";
 import { typography } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 import {
@@ -98,6 +99,7 @@ import {
 } from "@/hooks/usePdvPreorders";
 import { PdvPreorderStatusBadge } from "./PdvPreorderStatusBadge";
 import { PdvPreorderReceiptButton } from "./PdvPreorderReceiptButton";
+import { InventoryIdentifierCameraScanner } from "@/components/inventory/identifiers/InventoryIdentifierCameraScanner";
 
 export interface PdvPreorderCatalogItem {
   id: string;
@@ -152,12 +154,13 @@ interface Props {
   detail: Detail | null;
   draftId?: string;
   inventory: PdvPreorderCatalogItem[];
-  customers: PdvPreorderOption[];
+  customers: PdvCatalogCustomer[];
   stocks: PdvPreorderOption[];
   terminals: Array<PdvPreorderOption & { stockId: string }>;
   canValue: boolean;
   canConvert: boolean;
   canCancel: boolean;
+  modePreferenceKey?: string;
   onBack?: () => void;
   onReload: () => void;
   onSave: (payload: SavePayload) => Promise<PdvPreorderMutationResult>;
@@ -209,6 +212,7 @@ export function PdvPreorderDetail({
   canValue,
   canConvert,
   canCancel,
+  modePreferenceKey,
   onBack,
   onReload,
   onSave,
@@ -218,7 +222,12 @@ export function PdvPreorderDetail({
   onConvert,
 }: Props) {
   const { money, locale, currency } = useLocaleFormatters();
-  const isMobileCart = useMediaBreakpoint(768);
+  const identifiers = useInventoryIdentifiers();
+  const isMobileCart = useMediaBreakpoint(801);
+  const controlsRef = useRef<HTMLDivElement>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [catalogMode, setCatalogMode] = useState<"quick" | "catalog">("quick");
+  const [keyboardHighlight, setKeyboardHighlight] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const preorder = detail?.preorder ?? null;
@@ -239,6 +248,7 @@ export function PdvPreorderDetail({
   const [notesOpen, setNotesOpen] = useState(false);
   const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [exitDialogOpen, setExitDialogOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [saved, setSaved] = useState(false);
   const [busyAction, setBusyAction] = useState<string | null>(null);
@@ -316,14 +326,13 @@ export function PdvPreorderDetail({
       })),
     ];
   }, [inventory]);
-  const visibleCategoryTabs = categoryTabs.slice(0, 6);
-  const hiddenCategoryTabs = categoryTabs.slice(6);
 
   const gridProducts = useMemo<PdvGridProduct[]>(
     () =>
       filteredInventory.map((item) => ({
         inventoryId: item.id,
         name: item.name,
+        sku: item.sku,
         imageUrl: item.imageUrl ?? null,
         unitPrice: item.salePrice ?? 0,
         unit: item.unit,
@@ -335,9 +344,10 @@ export function PdvPreorderDetail({
       })),
     [filteredInventory, stockId],
   );
+  const visibleProducts = useMemo(() => catalogMode === "quick" && !catalogQuery.trim() ? gridProducts.slice(0, 4) : gridProducts, [catalogMode, catalogQuery, gridProducts]);
   const keyboardProducts = useMemo(
-    () => gridProducts.filter((product) => product.availableQuantity > 0),
-    [gridProducts],
+    () => visibleProducts.filter((product) => product.availableQuantity > 0),
+    [visibleProducts],
   );
   const activeProductId =
     keyboardProducts[
@@ -363,6 +373,7 @@ export function PdvPreorderDetail({
   const moveProductFocus = useCallback(
     (direction: PdvGridDirection) => {
       if (!activeProductId || !gridRef.current) return;
+      setKeyboardHighlight(true);
       const elements = Array.from(
         gridRef.current.querySelectorAll<HTMLButtonElement>(
           "[data-pdv-product-id]:not(:disabled)",
@@ -458,17 +469,7 @@ export function PdvPreorderDetail({
     [customerId, inventory, lines, orderDiscount, stockId],
   );
 
-  const customerRecords = useMemo<Customer[]>(
-    () =>
-      customers.map((customer) => ({
-        id: customer.id,
-        name: customer.name,
-        customer_type: "pf",
-        created_at: "",
-        updated_at: "",
-      })),
-    [customers],
-  );
+  const customerRecords = useMemo<Customer[]>(() => customers.map(toPdvCustomerRecord), [customers]);
 
   function updateLine(id: string, patch: Partial<EditableLine>) {
     setLines((current) =>
@@ -477,24 +478,32 @@ export function PdvPreorderDetail({
     markDirty();
   }
 
-  function addMaterial(selectedMaterialId: string) {
+  function addMaterial(selectedMaterialId: string, quantity = 1, unitFactor = 1) {
     const material = inventory.find((item) => item.id === selectedMaterialId);
-    if (!material || lines.some((line) => line.inventoryId === material.id))
-      return;
-    setLines((current) => [
-      ...current,
-      {
-        id: crypto.randomUUID(),
-        inventoryId: material.id,
-        itemType: "material",
-        description: material.name,
-        quantity: "1",
-        unitPrice: inputNumber(canValue ? null : material.salePrice),
-        discountAmount: "0",
-        unitFactor: 1,
-        sortOrder: current.length,
-      },
-    ]);
+    if (!material) return;
+    setLines((current) => {
+      const existing = current.find((line) => line.inventoryId === material.id);
+      if (existing) {
+        const currentQuantity = parseDecimalInputValue(existing.quantity) ?? 0;
+        return current.map((line) => line.id === existing.id
+          ? { ...line, quantity: inputNumber(currentQuantity + quantity), unitFactor }
+          : line);
+      }
+      return [
+        ...current,
+        {
+          id: crypto.randomUUID(),
+          inventoryId: material.id,
+          itemType: "material",
+          description: material.name,
+          quantity: inputNumber(quantity),
+          unitPrice: inputNumber(canValue ? null : material.salePrice),
+          discountAmount: "0",
+          unitFactor,
+          sortOrder: current.length,
+        },
+      ];
+    });
     setCatalogQuery("");
     markDirty();
   }
@@ -513,9 +522,10 @@ export function PdvPreorderDetail({
   }
 
   function addGridProduct(product: PdvGridProduct) {
+    setKeyboardHighlight(false);
     addMaterial(product.inventoryId);
     setActiveProductIndex(0);
-    window.requestAnimationFrame(() => searchInputRef.current?.focus());
+    window.requestAnimationFrame(() => { searchInputRef.current?.focus({ preventScroll: true }); searchInputRef.current?.select(); });
   }
 
   function setCartQuantity(lineId: string, quantity: number) {
@@ -542,30 +552,61 @@ export function PdvPreorderDetail({
     updateLine(lineId, { discountAmount: inputNumber(amount) });
   }
 
-  function handleBarcode(code: string) {
+  function setCartLineFinalAmount(lineId: string, amount: number, mode: PdvValueAdjustmentMode) {
+    if (!canEditCommercial) return;
+    const next = setLineFinalAmount(cart, lineId, amount, mode);
+    const changed = next.lines.find((line) => line.inventoryId === lineId);
+    if (!changed) return;
+    updateLine(lineId, {
+      unitPrice: inputNumber(changed.unitPrice),
+      discountAmount: inputNumber(changed.discountAmount),
+    });
+  }
+
+  function setCartTotalAmount(amount: number, mode: PdvValueAdjustmentMode) {
+    if (!canEditCommercial) return;
+    const next = setCartFinalAmount(cart, amount, mode);
+    setLines((current) => current.map((line) => {
+      const changed = next.lines.find((candidate) => candidate.inventoryId === line.id);
+      return changed ? {
+        ...line,
+        unitPrice: inputNumber(changed.unitPrice),
+        discountAmount: inputNumber(changed.discountAmount),
+      } : line;
+    }));
+    setOrderDiscount(inputNumber(next.discount));
+    markDirty();
+  }
+
+  async function handleBarcode(code: string) {
     if (!isEditing) return;
-    const normalized = code.trim().toLocaleLowerCase("pt-BR");
-    const item = inventory.find(
-      (candidate) =>
-        candidate.barcode?.toLocaleLowerCase("pt-BR") === normalized ||
-        candidate.sku?.toLocaleLowerCase("pt-BR") === normalized,
-    );
-    setCatalogQuery("");
-    if (!item) {
-      setActionError(
-        new PdvPreorderDomainError(
-          "Código não encontrado no catálogo.",
-          "unknown",
-        ),
+    try {
+      const resolved = await identifiers.resolve.mutateAsync({ code });
+      const normalized = code.trim().toLocaleLowerCase("pt-BR");
+      const fallback = resolved ? null : inventory.find(
+        (candidate) =>
+          candidate.barcode?.toLocaleLowerCase("pt-BR") === normalized ||
+          candidate.sku?.toLocaleLowerCase("pt-BR") === normalized,
       );
-      return;
+      const item = inventory.find((candidate) => candidate.id === resolved?.material.id) ?? fallback;
+      setCatalogQuery("");
+      if (!item) {
+        throw new PdvPreorderDomainError("Código não encontrado no catálogo.", "unknown");
+      }
+      addMaterial(item.id, resolved?.unitFactor ?? 1, resolved?.unitFactor ?? 1);
+    } catch (error) {
+      setActionError(
+        error instanceof PdvPreorderDomainError
+          ? error
+          : new PdvPreorderDomainError(error instanceof Error ? error.message : "Código não encontrado no catálogo.", "unknown"),
+      );
     }
-    addMaterial(item.id);
   }
 
   useBarcodeScanner({
+    shouldCaptureTarget: target => canCapturePdvCatalogScan(target, searchInputRef.current),
     onScan: handleBarcode,
-    enabled: isEditing && !notesOpen && !shortcutHelpOpen,
+    enabled: isEditing && !busyAction && !notesOpen && !shortcutHelpOpen,
   });
 
   function handleSearchKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
@@ -708,7 +749,7 @@ export function PdvPreorderDetail({
       : "Salvar orçamento"
     : canForward
       ? "Enviar ao caixa"
-      : "Criar pedido";
+      : "Gerar pedido";
   const primaryDisabled =
     Boolean(busyAction) ||
     lines.length === 0 ||
@@ -818,7 +859,7 @@ export function PdvPreorderDetail({
     itemDiscount: "Desconto",
     itemDiscountPlaceholder: "0,00",
     customerLabel: "Cliente",
-    customerNone: "Venda sem cliente",
+    customerNone: "Orçamento sem cliente",
     customerPlaceholder: "Selecione o cliente",
     customerSearchPlaceholder: "Buscar cliente",
     customerEmpty: "Nenhum cliente encontrado",
@@ -827,7 +868,8 @@ export function PdvPreorderDetail({
     itemDiscounts: "Descontos nos itens",
     discount: "Desconto geral",
     discountPlaceholder: "0,00",
-    total: missingPrices > 0 ? "Total pendente" : "Total",
+    total: missingPrices > 0 ? "Total pendente" : "Total do orçamento",
+    amountDue: "Valor do orçamento",
     paymentLabel: primaryLabel,
     paymentShortcut: "",
     finalizeLabel: primaryLabel,
@@ -857,6 +899,7 @@ export function PdvPreorderDetail({
 
   const cartPanelProps = {
     cart,
+    layout: isEditing ? "workspace" as const : "stacked" as const,
     customers: customerRecords,
     formatCurrency: money,
     currencySymbol,
@@ -868,6 +911,9 @@ export function PdvPreorderDetail({
     onIncrement: incrementCartLine,
     onSetQuantity: setCartQuantity,
     onSetLineDiscount: setCartLineDiscount,
+    onSetLineFinalAmount: setCartLineFinalAmount,
+    onSetCartFinalAmount: setCartTotalAmount,
+    modePreferenceKey,
     onRemove: removeLine,
     onCustomerChange: (id: string | null) => {
       setCustomerId(id ?? "none");
@@ -894,6 +940,8 @@ export function PdvPreorderDetail({
     ),
     hideFinalizeShortcut: true,
     showFinalizeAction: showPrimaryAction,
+    onCloseOrder: onBack,
+    hasOrderContent: dirty,
   };
 
   if (!preorder && !isNew) {
@@ -920,7 +968,7 @@ export function PdvPreorderDetail({
       }
       data-testid="pdv-preorder-sale-workspace"
     >
-      <header className="flex items-center gap-4 border-b border-border pb-3">
+      {!isEditing && <header className="flex items-center gap-4 border-b border-border pb-3">
         <div className="flex min-w-0 flex-1 items-center">
           {onBack && (
             <Button
@@ -963,9 +1011,9 @@ export function PdvPreorderDetail({
           <DropdownMenuTrigger asChild>
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="icon"
-              className="h-9 w-9 shrink-0"
+              className="h-9 w-9 shrink-0 border-0 bg-transparent shadow-none hover:bg-transparent"
               aria-label="Ações do orçamento"
             >
               <MoreHorizontal className="h-4 w-4" />
@@ -1015,10 +1063,12 @@ export function PdvPreorderDetail({
             "Alterações não salvas"
           ) : null}
         </div>
-      </header>
+      </header>}
+
+      <AlertDialog open={exitDialogOpen} onOpenChange={setExitDialogOpen}><AlertDialogContent className="pdv-dialog"><AlertDialogHeader><AlertDialogTitle>Sair sem salvar as alterações?</AlertDialogTitle><AlertDialogDescription>As alterações deste atendimento ainda não foram salvas na conta.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Continuar editando</AlertDialogCancel><AlertDialogAction className="bg-destructive text-white hover:bg-destructive/90" onClick={() => { setExitDialogOpen(false); onBack?.(); }}>Sair sem salvar</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
 
       <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="pdv-dialog">
           <AlertDialogHeader>
             <AlertDialogTitle>Cancelar este orçamento do balcão?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -1082,216 +1132,151 @@ export function PdvPreorderDetail({
         </NoticeBanner>
       )}
 
-      <div className="flex flex-col gap-3 md:min-h-[40rem] md:flex-row md:items-start">
-        <div className="flex min-w-0 flex-1 flex-col gap-3 md:h-full">
-          {isEditing && (
-            <div
-              className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3 shadow-sm"
-              data-testid="pdv-preorder-catalog-controls"
-            >
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <div className="relative flex-1">
-                  <Barcode className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    ref={searchInputRef}
-                    autoFocus
-                    type="search"
-                    name="pdv-orcamento-busca-produto"
-                    role="searchbox"
-                    aria-autocomplete="none"
-                    inputMode="search"
-                    autoComplete="off"
-                    autoCorrect="off"
-                    autoCapitalize="off"
-                    spellCheck={false}
-                    data-1p-ignore
-                    data-lpignore="true"
-                    data-form-type="other"
-                    value={catalogQuery}
-                    onChange={(event) => {
-                      setCatalogQuery(event.target.value);
-                      setActiveProductIndex(0);
-                    }}
-                    onKeyDown={handleSearchKeyDown}
-                    placeholder="Buscar material por nome, código ou ler etiqueta"
-                    className="h-12 pl-10 pr-14 text-base [&::-webkit-search-cancel-button]:appearance-none"
-                  />
-                  <span className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground sm:inline-flex">
-                    F2
-                  </span>
+      {isEditing && <div className="pdv-preview-sale min-w-0" data-pdv-preorder-preview>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-background px-5 py-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={stockId} onValueChange={value => { setStockId(value); setTargetTerminalId("none"); markDirty(); }}><SelectTrigger id="preorder-stock" className="w-full sm:w-52"><SelectValue placeholder="Local de estoque" /></SelectTrigger><SelectContent><SelectItem value="none">Escolher estoque</SelectItem>{stocks.map(stock => <SelectItem key={stock.id} value={stock.id}>{stock.name}</SelectItem>)}</SelectContent></Select>
+            <Select value={targetTerminalId} onValueChange={value => { setTargetTerminalId(value); markDirty(); }}><SelectTrigger className="w-full sm:w-52"><SelectValue placeholder="Caixa de destino" /></SelectTrigger><SelectContent><SelectItem value="none">Escolher caixa de destino</SelectItem>{terminals.filter(terminal => terminal.stockId === stockId).map(terminal => <SelectItem key={terminal.id} value={terminal.id}>{terminal.name}</SelectItem>)}</SelectContent></Select>
+          </div>
+          <small className="text-muted-foreground" role="status">{busyAction === "save" ? "Salvando…" : saved ? "Salvo na conta" : dirty ? "Alterações não salvas" : "Novo orçamento"}</small>
+        </div>
+        <PdvSalePreviewView title={isNew ? "Criar orçamento" : `Orçamento #${preorder?.number}`} mode={catalogMode} onModeChange={setCatalogMode} search={catalogQuery} onSearchChange={value => { setCatalogQuery(value); setActiveProductIndex(0); }} onSearchKeyDown={handleSearchKeyDown} searchInputRef={searchInputRef} gridRef={gridRef} controlsRef={controlsRef} rowRef={rowRef} onGridKeyDown={handleGridKeyDown} products={visibleProducts} disabled={Boolean(busyAction) || !canEditCommercial} activeProductId={activeProductId} keyboardHighlight={keyboardHighlight} onProductFocus={id => { const index = keyboardProducts.findIndex(product => product.inventoryId === id); if (index >= 0) setActiveProductIndex(index); setKeyboardHighlight(true); }} onProductSelect={addGridProduct} formatCurrency={money} exitLabel="Sair do orçamento" footerHint="↑ ↓ ← → navegar · Enter incluir · / buscar · F9 salvar" onExit={() => dirty ? setExitDialogOpen(true) : onBack?.()} style={!isMobileCart ? { height: 'max(580px, calc(100dvh - 240px))' } : undefined} camera={<InventoryIdentifierCameraScanner triggerVariant="icon" onScan={code => void handleBarcode(code)} disabled={Boolean(busyAction) || identifiers.resolve.isPending} />} filters={<>{categoryTabs.map(tab => <button type="button" key={tab.value} className={'chip ' + (activeCategory === tab.value ? 'active' : '')} onClick={() => setActiveCategory(tab.value)}>{tab.label}</button>)}</>} cart={!isMobileCart ? <PdvCartPanel {...cartPanelProps} /> : null} />
+        <div className="flex flex-wrap gap-2 px-5 pb-4"><Button type="button" variant="outline" size="sm" onClick={() => addLooseItem("service")}><Plus className="h-4 w-4" />Serviço</Button><Button type="button" variant="outline" size="sm" onClick={() => addLooseItem("free_item")}><Plus className="h-4 w-4" />Item livre</Button></div>
+      </div>}
+      {isEditing && <div className="min-w-0">          {showLineEditor && (
+            <Card data-testid="pdv-preorder-line-editor">
+              <CardContent className="space-y-3 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="font-bold">
+                      {isValuing ? "Preços do orçamento" : "Itens manuais"}
+                    </h2>
+                    <p className="text-xs text-muted-foreground">
+                      Preço vazio continua pendente; preço zero é uma escolha
+                      explícita.
+                    </p>
+                  </div>
+                  {isValuing && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => void submit()}
+                      disabled={Boolean(busyAction) || !dirty}
+                    >
+                      <Check className="h-4 w-4" /> Salvar preços
+                    </Button>
+                  )}
                 </div>
-                <Select
-                  value={stockId}
-                  onValueChange={(value) => {
-                    setStockId(value);
-                    setTargetTerminalId("none");
-                    markDirty();
-                  }}
-                >
-                  <SelectTrigger id="preorder-stock" className="w-full sm:w-56">
-                    <SelectValue placeholder="Local de estoque" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Escolher estoque antes de enviar ao caixa</SelectItem>
-                    {stocks.map((stock) => (
-                      <SelectItem key={stock.id} value={stock.id}>
-                        {stock.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select
-                  value={targetTerminalId}
-                  onValueChange={(value) => { setTargetTerminalId(value); markDirty(); }}
-                >
-                  <SelectTrigger className="w-full sm:w-56">
-                    <SelectValue placeholder="Caixa de destino" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Escolher caixa de destino</SelectItem>
-                    {terminals.filter((terminal) => terminal.stockId === stockId).map((terminal) => (
-                      <SelectItem key={terminal.id} value={terminal.id}>{terminal.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center gap-2">
-                {categoryTabs.length > 1 && (
-                  <MobilePillTabs
-                    tabs={visibleCategoryTabs}
-                    activeTab={activeCategory}
-                    onTabChange={(value) => {
-                      setActiveCategory(value);
-                      setActiveProductIndex(0);
-                    }}
-                    className="min-w-0 flex-1"
-                  />
-                )}
-                {hiddenCategoryTabs.length > 0 && (
-                  <FilterButton
-                    activeCount={
-                      hiddenCategoryTabs.some(
-                        (tab) => tab.value === activeCategory,
-                      )
-                        ? 1
-                        : 0
-                    }
-                    onClear={() => setActiveCategory("all")}
-                    className="shrink-0"
-                  >
-                    <div className="flex flex-col gap-1">
-                      {hiddenCategoryTabs.map((tab) => (
-                        <button
-                          key={tab.value}
-                          type="button"
-                          onClick={() => setActiveCategory(tab.value)}
-                          className={cn(
-                            "flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors",
-                            tab.value === activeCategory
-                              ? "bg-primary text-primary-foreground"
-                              : "hover:bg-muted",
-                          )}
+                <div className="divide-y divide-border">
+                  {lines
+                    .filter((line) => isValuing || line.itemType !== "material")
+                    .map((line) => {
+                      const price = parseDecimalInputValue(line.unitPrice);
+                      return (
+                        <div
+                          key={line.id}
+                          className="grid gap-3 py-3 md:grid-cols-[minmax(12rem,1fr)_8rem_9rem_auto] md:items-end"
                         >
-                          {tab.accentColor && (
-                            <span
-                              className="h-2.5 w-2.5 rounded-full"
-                              style={{ backgroundColor: tab.accentColor }}
+                          <div className="space-y-1.5">
+                            <Badge
+                              variant="outline"
+                              className="px-1.5 py-0 text-[10px]"
+                            >
+                              {line.itemType === "material"
+                                ? "Material"
+                                : line.itemType === "service"
+                                  ? "Serviço"
+                                  : "Item livre"}
+                            </Badge>
+                            <Label
+                              htmlFor={`description-${line.id}`}
+                              className="sr-only"
+                            >
+                              Descrição
+                            </Label>
+                            <Input
+                              id={`description-${line.id}`}
+                              value={line.description}
+                              onChange={(event) =>
+                                updateLine(line.id, {
+                                  description: event.target.value,
+                                })
+                              }
+                              disabled={
+                                !isEditing || line.itemType === "material"
+                              }
+                              placeholder="Descrição do item"
                             />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label
+                              htmlFor={`quantity-${line.id}`}
+                              className="text-xs"
+                            >
+                              Quantidade
+                            </Label>
+                            <NumericInput
+                              id={`quantity-${line.id}`}
+                              decimal
+                              value={line.quantity}
+                              onValueChange={(value) =>
+                                updateLine(line.id, { quantity: value })
+                              }
+                              disabled={!isEditing}
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label
+                              htmlFor={`price-${line.id}`}
+                              className="text-xs"
+                            >
+                              Preço unitário
+                            </Label>
+                            {canValue && canEditCommercial ? (
+                              <NumericInput
+                                id={`price-${line.id}`}
+                                aria-label="Preço unitário"
+                                decimal
+                                maxDecimals={2}
+                                value={line.unitPrice}
+                                onValueChange={(value) =>
+                                  updateLine(line.id, { unitPrice: value })
+                                }
+                                placeholder="Pendente"
+                              />
+                            ) : (
+                              <div className="flex h-10 items-center font-medium tabular-nums">
+                                {price == null ? (
+                                  <Badge variant="warning">
+                                    Preço pendente
+                                  </Badge>
+                                ) : (
+                                  money(price)
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          {isEditing && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeLine(line.id)}
+                              aria-label={`Remover ${line.description || "item"}`}
+                              className="hover:bg-destructive hover:text-white"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           )}
-                          {tab.label}
-                        </button>
-                      ))}
-                    </div>
-                  </FilterButton>
-                )}
-                <div className="ml-auto flex shrink-0 gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => addLooseItem("service")}
-                  >
-                    <Plus className="h-4 w-4" /> Serviço
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => addLooseItem("free_item")}
-                  >
-                    <Plus className="h-4 w-4" /> Item livre
-                  </Button>
+                        </div>
+                      );
+                    })}
                 </div>
-              </div>
-            </div>
-          )}
-
-          {isEditing && (
-            <div
-              className="min-h-0 flex-1 overflow-y-auto pr-1"
-              data-testid="pdv-preorder-product-grid"
-            >
-              <div
-                ref={gridRef}
-                tabIndex={-1}
-                className="space-y-5 outline-none"
-                onKeyDown={handleGridKeyDown}
-              >
-                {gridProducts.length === 0 ? (
-                  <EmptyState
-                    icon={<Search className="h-10 w-10" />}
-                    title="Nenhum material encontrado"
-                    description="Tente outro nome, código ou categoria."
-                  />
-                ) : (
-                  <section aria-labelledby="pdv-preorder-catalog-all">
-                    <div className="mb-2 flex items-center gap-2.5">
-                      <h2
-                        id="pdv-preorder-catalog-all"
-                        className="shrink-0 text-sm font-bold text-foreground"
-                      >
-                        Materiais
-                      </h2>
-                      <div className="h-px min-w-4 flex-1 bg-border" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 min-[768px]:grid-cols-3 min-[1024px]:grid-cols-4 min-[1280px]:grid-cols-5">
-                      {gridProducts.map((product) => (
-                        <PdvProductCard
-                          key={product.inventoryId}
-                          product={product}
-                          formatCurrency={money}
-                          formatQuantity={(value, unit) =>
-                            value === Number.MAX_SAFE_INTEGER
-                              ? "Disponível"
-                              : `${value} ${unit}`
-                          }
-                          outOfStockLabel="Sem estoque"
-                          availableLabel="{count}"
-                          noPhotoLabel="Sem foto"
-                          compact={false}
-                          imageAspect="square"
-                          imageBackdrop="cutout"
-                          keyboardActive={
-                            activeProductId === product.inventoryId
-                          }
-                          onKeyboardFocus={() => {
-                            const nextIndex = keyboardProducts.findIndex(
-                              (candidate) =>
-                                candidate.inventoryId === product.inventoryId,
-                            );
-                            if (nextIndex >= 0)
-                              setActiveProductIndex(nextIndex);
-                          }}
-                          onSelect={addGridProduct}
-                        />
-                      ))}
-                    </div>
-                  </section>
-                )}
-              </div>
-            </div>
-          )}
-
+              </CardContent>
+            </Card>
+          )}</div>}
+      {!isEditing &&       <div className="flex flex-col gap-3 md:min-h-[40rem] md:flex-row md:items-start">
+        <div className="flex min-w-0 flex-1 flex-col gap-3 md:h-full">
           {showLineEditor && (
             <Card data-testid="pdv-preorder-line-editor">
               <CardContent className="space-y-3 p-4">
@@ -1445,7 +1430,7 @@ export function PdvPreorderDetail({
             </CardContent>
           </Card>
         )}
-      </div>
+      </div>}
 
       {isMobileCart && (
         <>
@@ -1453,7 +1438,7 @@ export function PdvPreorderDetail({
             <button
               type="button"
               onClick={() => setCartDrawerOpen(true)}
-              className="fixed inset-x-0 z-40 flex items-center justify-between gap-3 rounded-t-xl border-t border-border bg-primary px-4 py-3 text-primary-foreground shadow-lg"
+              className="fixed inset-x-0 z-40 flex items-center justify-between gap-3 rounded-t-xl border-t border-border bg-primary px-4 py-3 text-primary-foreground shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               style={{ bottom: "calc(104px + env(safe-area-inset-bottom))" }}
             >
               <span className="flex items-center gap-2 text-sm font-semibold">
@@ -1469,7 +1454,7 @@ export function PdvPreorderDetail({
             document.body,
           )}
           <Drawer open={cartDrawerOpen} onOpenChange={setCartDrawerOpen}>
-            <DrawerContent className="flex max-h-[85dvh] flex-col">
+            <DrawerContent className="pdv-preview-sale flex max-h-[85dvh] flex-col">
               <DrawerHeader className="sr-only">
                 <DrawerTitle>Orçamento do balcão</DrawerTitle>
               </DrawerHeader>
@@ -1482,7 +1467,7 @@ export function PdvPreorderDetail({
         </>
       )}
 
-      <ResponsiveModal
+      <ResponsiveModal drawerClassName="pdv-dialog" className="pdv-dialog"
         open={notesOpen}
         onOpenChange={setNotesOpen}
         title="Observações do orçamento"

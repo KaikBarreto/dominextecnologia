@@ -91,4 +91,9 @@ describe('W5-02 pós-venda', () => {
     expect(mapPdvAfterSaleError({ code: '42501', details: 'code=pdv_after_sale_permission_denied' }).message).toBe('Seu perfil não permite realizar esta ação.');
     expect(mapPdvAfterSaleError({ code: '22023', details: 'code=unknown_internal_code' }).message).not.toContain('unknown_internal_code');
   });
+
+  it.each(['code=pdv_voucher_customer_inactive', 'CODE=PDV_VOUCHER_CUSTOMER_INACTIVE'])('orienta a revisar o cliente inativo sem expor o detalhe interno (%s)', details => {
+    expect(mapPdvAfterSaleError({ code: '23514', details, message: 'public.pdv_guard_voucher_active_customer_v2' }).message)
+      .toBe('O cliente deste voucher está inativo. Revise o cadastro antes de continuar.');
+  });
 });

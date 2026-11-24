@@ -57,4 +57,11 @@ describe('PdvProductImagePreview', () => {
     fireEvent.load(container.querySelector('img')!);
     expect(container.querySelector('.animate-pulse')).not.toBeInTheDocument();
   });
+
+  it('miniatura pequena usa ícone nomeado sem microtexto nem botão vazio', () => {
+    render(<PdvProductImagePreview imageUrl={null} name="Material" fallbackLabel="Sem foto" openLabel="Ver foto de {name}" viewerDescription="Foto do material" iconOnlyFallback className="h-8 w-8" />);
+    expect(screen.getByRole('img', { name: 'Sem foto' })).toBeInTheDocument();
+    expect(screen.queryByText('Sem foto')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
 });

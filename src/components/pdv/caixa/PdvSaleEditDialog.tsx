@@ -1,3 +1,4 @@
+import '@/components/pdv/PdvWorkspace.css';
 import { AlertTriangle } from 'lucide-react';
 import {
   AlertDialog,
@@ -39,7 +40,7 @@ export function PdvSaleEditDialog({
         if (!isPending) onOpenChange(next);
       }}
     >
-      <AlertDialogContent>
+      <AlertDialogContent className="pdv-dialog">
         <AlertDialogHeader>
           <div className="flex justify-center sm:justify-start">
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-warning">

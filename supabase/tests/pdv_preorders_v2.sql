@@ -18,6 +18,7 @@ BEGIN
   END IF;
   FOREACH f IN ARRAY ARRAY[
     'public.pdv_save_preorder_v2(uuid,bigint,jsonb,jsonb,text)',
+    'public.pdv_assign_preorder_terminal_v3(uuid,bigint,uuid,text)',
     'public.pdv_forward_preorder_v2(uuid,bigint,text)',
     'public.pdv_cancel_preorder_v2(uuid,bigint,text)',
     'public.pdv_convert_preorder_v2(uuid,bigint,text)',
@@ -43,10 +44,13 @@ DECLARE
   c uuid:='c2000000-0000-4000-8000-000000000001'; c2 uuid:='c2000000-0000-4000-8000-000000000002';
   u uuid:='c2000000-0000-4000-8000-000000000003'; u2 uuid:='c2000000-0000-4000-8000-000000000004'; u3 uuid:='c2000000-0000-4000-8000-000000000005';
   s uuid:='c2000000-0000-4000-8000-000000000011'; i uuid:='c2000000-0000-4000-8000-000000000021';
+  terminal uuid:='c2000000-0000-4000-8000-000000000051';
+  cash_session uuid:='c2000000-0000-4000-8000-000000000052';
+  cash_account uuid:='c2000000-0000-4000-8000-000000000053';
   p uuid:='c2000000-0000-4000-8000-000000000031'; p2 uuid:='c2000000-0000-4000-8000-000000000032';
   p3 uuid:='c2000000-0000-4000-8000-000000000033'; p_pending uuid:='c2000000-0000-4000-8000-000000000034';
   pi uuid:='c2000000-0000-4000-8000-000000000041'; si uuid:='c2000000-0000-4000-8000-000000000042'; fi uuid:='c2000000-0000-4000-8000-000000000043';
-  r public.pdv_stock_reservation_items; result jsonb; order_id uuid; admin_order_id uuid:=gen_random_uuid(); blocked boolean; n integer;
+  r public.pdv_stock_reservation_items; result jsonb; created_order_id uuid; admin_order_id uuid:=gen_random_uuid(); blocked boolean; n integer;
   items_missing jsonb; items_retry jsonb; items_priced jsonb; pending_header jsonb; pending_items jsonb; pending_payload jsonb; before_fin integer; before_mov integer;
 BEGIN
   INSERT INTO auth.users(instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at,confirmation_token,email_change,email_change_token_new,recovery_token)
@@ -64,7 +68,17 @@ BEGIN
     (u2,'["screen:pdv"]',true),
     (u3,'["screen:pdv","screen:pdv_orders","fn:convert_pdv_preorder"]',true);
   INSERT INTO public.company_modules(company_id,module_code) VALUES(c,'pdv'),(c2,'pdv');
+  -- A criação da empresa já fornece um estoque padrão; a fixture escolhe outro explicitamente.
+  UPDATE public.stocks SET is_default=false WHERE company_id IN (c) AND is_default IS TRUE;
   INSERT INTO public.stocks(id,company_id,name,is_default) VALUES(s,c,'Principal',true);
+  -- O caixa autorizado recebe somente orçamentos destinados ao seu terminal/abertura.
+  INSERT INTO public.financial_accounts(id,company_id,name,type,initial_balance,is_active)
+  VALUES(cash_account,c,'Cofre fixture pre-pedido','caixa',0,true);
+  INSERT INTO public.pdv_terminals(id,company_id,name,stock_id,is_active)
+  VALUES(terminal,c,'Caixa destino',s,true);
+  INSERT INTO public.pdv_cash_sessions(id,company_id,terminal_id,opened_by,opening_amount,status,
+    cash_account_id,cash_account_name_snapshot,cash_policy_snapshot,contract_version)
+  VALUES(cash_session,c,terminal,u3,0,'aberta',cash_account,'Cofre fixture pre-pedido','{}',2);
   INSERT INTO public.inventory(id,company_id,sku,name,unit,quantity,cost_price) VALUES(i,c,'PRE-M','Material','un',5,30);
   INSERT INTO public.inventory_stock_levels(company_id,inventory_id,stock_id,quantity,is_present) VALUES(c,i,s,5,true);
   PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',u,'role','authenticated')::text,true);
@@ -154,27 +168,36 @@ BEGIN
   EXCEPTION WHEN serialization_failure THEN blocked:=true; END;
   IF NOT blocked THEN RAISE EXCEPTION 'CAS obsoleto sobrescreveu pre-pedido'; END IF;
 
-  result:=public.pdv_forward_preorder_v2(p,2,'forward-pre-0001');
-  IF result->>'status'<>'encaminhado' OR (result->>'revision')::int<>3 THEN RAISE EXCEPTION 'encaminhamento incorreto'; END IF;
+  -- O writer não pode encaminhar sem caixa; a fixture não contorna esse guard.
+  blocked:=false;
+  BEGIN PERFORM public.pdv_forward_preorder_v2(p,2,'forward-no-target');
+  EXCEPTION WHEN check_violation THEN blocked:=true; END;
+  IF NOT blocked THEN RAISE EXCEPTION 'encaminhamento sem caixa de destino foi aceito'; END IF;
+
+  -- Mesmo writer usado pela UI: salvar, escolher destino (CAS) e encaminhar.
+  result:=public.pdv_assign_preorder_terminal_v3(p,2,terminal,'assign-pre-0001');
+  IF (result->>'revision')::int<>3 OR (result->>'target_terminal_id')::uuid<>terminal THEN RAISE EXCEPTION 'destino nao foi congelado pela RPC canonica'; END IF;
+  result:=public.pdv_forward_preorder_v2(p,3,'forward-pre-0001');
+  IF result->>'status'<>'encaminhado' OR (result->>'revision')::int<>4 THEN RAISE EXCEPTION 'encaminhamento incorreto'; END IF;
 
   SELECT count(*) INTO before_fin FROM public.financial_transactions WHERE company_id=c;
   SELECT count(*) INTO before_mov FROM public.inventory_movements WHERE company_id=c;
-  -- A fila encaminhada e compartilhada com o caixa autorizado, sem atribuição manual.
+  -- A fila encaminhada pertence ao operador da abertura/terminal de destino.
   PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',u3,'role','authenticated')::text,true);
   IF NOT EXISTS(SELECT 1 FROM public.pdv_list_preorders_v2('encaminhado') q WHERE q.id=p) THEN RAISE EXCEPTION 'caixa autorizado nao recebeu fila encaminhada'; END IF;
-  result:=public.pdv_convert_preorder_v2(p,3,'convert-pre-0001'); order_id:=(result->>'order_id')::uuid;
-  IF (result->>'already_converted')::boolean OR order_id IS NULL THEN RAISE EXCEPTION 'conversao nao criou pedido'; END IF;
-  IF NOT EXISTS(SELECT 1 FROM public.pdv_orders WHERE id=order_id AND source_preorder_id=p AND contract_version=2 AND operation_mode_snapshot='counter') THEN RAISE EXCEPTION 'pedido v2 sem origem/mode'; END IF;
-  IF NOT EXISTS(SELECT 1 FROM public.pdv_stock_reservation_items x JOIN public.pdv_order_items oi ON oi.id=x.order_item_id WHERE x.id=r.id AND x.preorder_item_id IS NULL AND oi.order_id=order_id AND x.reservation_kind='coverage') THEN RAISE EXCEPTION 'reserva nao migrou atomicamente'; END IF;
-  IF NOT EXISTS(SELECT 1 FROM public.pdv_order_items oi WHERE oi.order_id=order_id AND oi.inventory_id=i AND oi.gross_total_v2=23.47 AND oi.line_discount_amount_v2=0 AND oi.order_discount_allocated_v2=.96 AND oi.total=22.51 AND oi.unit_cost_v2=30) THEN RAISE EXCEPTION 'pedido nao preservou total/custo snapshot'; END IF;
-  IF NOT EXISTS(SELECT 1 FROM public.pdv_order_items oi WHERE oi.order_id=order_id AND oi.item_type='free_item' AND oi.order_discount_allocated_v2=.04 AND oi.total=.96) THEN RAISE EXCEPTION 'maior resto nao conciliou desconto geral'; END IF;
-  IF (SELECT sum(oi.total) FROM public.pdv_order_items oi WHERE oi.order_id=order_id)<>23.47 THEN RAISE EXCEPTION 'soma dos itens divergiu do pedido'; END IF;
-  IF NOT EXISTS(SELECT 1 FROM public.pdv_order_items oi WHERE oi.order_id=order_id AND oi.item_type='service' AND oi.unit_cost=0 AND oi.unit_cost_v2 IS NULL) THEN RAISE EXCEPTION 'servico sem fonte virou custo zero conhecido'; END IF;
-  IF (SELECT count(*) FROM public.financial_transactions WHERE company_id=c)<>before_fin OR (SELECT count(*) FROM public.inventory_movements WHERE company_id=c)<>before_mov OR EXISTS(SELECT 1 FROM public.pdv_deliveries WHERE order_id=order_id) THEN RAISE EXCEPTION 'conversao criou financeiro/estoque/entrega'; END IF;
+  result:=public.pdv_convert_preorder_v2(p,4,'convert-pre-0001'); created_order_id:=(result->>'order_id')::uuid;
+  IF (result->>'already_converted')::boolean OR created_order_id IS NULL THEN RAISE EXCEPTION 'conversao nao criou pedido'; END IF;
+  IF NOT EXISTS(SELECT 1 FROM public.pdv_orders WHERE id=created_order_id AND source_preorder_id=p AND contract_version=2 AND operation_mode_snapshot='counter') THEN RAISE EXCEPTION 'pedido v2 sem origem/mode'; END IF;
+  IF NOT EXISTS(SELECT 1 FROM public.pdv_stock_reservation_items x JOIN public.pdv_order_items oi ON oi.id=x.order_item_id WHERE x.id=r.id AND x.preorder_item_id IS NULL AND oi.order_id=created_order_id AND x.reservation_kind='coverage') THEN RAISE EXCEPTION 'reserva nao migrou atomicamente'; END IF;
+  IF NOT EXISTS(SELECT 1 FROM public.pdv_order_items oi WHERE oi.order_id=created_order_id AND oi.inventory_id=i AND oi.gross_total_v2=23.47 AND oi.line_discount_amount_v2=0 AND oi.order_discount_allocated_v2=.96 AND oi.total=22.51 AND oi.unit_cost_v2=30) THEN RAISE EXCEPTION 'pedido nao preservou total/custo snapshot'; END IF;
+  IF NOT EXISTS(SELECT 1 FROM public.pdv_order_items oi WHERE oi.order_id=created_order_id AND oi.item_type='free_item' AND oi.order_discount_allocated_v2=.04 AND oi.total=.96) THEN RAISE EXCEPTION 'maior resto nao conciliou desconto geral'; END IF;
+  IF (SELECT sum(oi.total) FROM public.pdv_order_items oi WHERE oi.order_id=created_order_id)<>23.47 THEN RAISE EXCEPTION 'soma dos itens divergiu do pedido'; END IF;
+  IF NOT EXISTS(SELECT 1 FROM public.pdv_order_items oi WHERE oi.order_id=created_order_id AND oi.item_type='service' AND oi.unit_cost=0 AND oi.unit_cost_v2 IS NULL) THEN RAISE EXCEPTION 'servico sem fonte virou custo zero conhecido'; END IF;
+  IF (SELECT count(*) FROM public.financial_transactions WHERE company_id=c)<>before_fin OR (SELECT count(*) FROM public.inventory_movements WHERE company_id=c)<>before_mov OR EXISTS(SELECT 1 FROM public.pdv_deliveries delivery WHERE delivery.order_id=created_order_id) THEN RAISE EXCEPTION 'conversao criou financeiro/estoque/entrega'; END IF;
 
-  PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',u,'role','authenticated')::text,true);
-  result:=public.pdv_convert_preorder_v2(p,3,'convert-pre-0002');
-  IF NOT (result->>'already_converted')::boolean OR (result->>'order_id')::uuid<>order_id THEN RAISE EXCEPTION 'dupla conversao nao recuperou pedido'; END IF;
+  -- Repetição pelo mesmo caixa autorizado; cargo admin não concede acesso a outro caixa.
+  result:=public.pdv_convert_preorder_v2(p,4,'convert-pre-0002');
+  IF NOT (result->>'already_converted')::boolean OR (result->>'order_id')::uuid<>created_order_id THEN RAISE EXCEPTION 'dupla conversao nao recuperou pedido'; END IF;
   SELECT count(*) INTO n FROM public.pdv_orders WHERE source_preorder_id=p; IF n<>1 THEN RAISE EXCEPTION 'dupla conversao criou dois pedidos'; END IF;
 
   -- Outro tenant nao enxerga nem conhece o pre-pedido.
@@ -190,12 +213,15 @@ BEGIN
   IF EXISTS(SELECT 1 FROM public.pdv_preorders WHERE company_id=c) OR EXISTS(SELECT 1 FROM public.pdv_preorder_number_counters WHERE company_id=c) THEN RAISE EXCEPTION 'reset nao limpou pre-pedidos'; END IF;
 
   -- Exclusao administrativa real remove a origem antes do pedido convertido.
-  INSERT INTO public.pdv_preorders(id,company_id,number,status,operation_mode,created_by,forwarded_at)
-  VALUES(p3,c,999,'encaminhado','counter',u,now());
-  INSERT INTO public.pdv_orders(id,company_id,number,status,source_preorder_id,contract_version,operation_mode_snapshot)
-  VALUES(admin_order_id,c,999,'aguardando_pagamento',p3,2,'counter');
+  -- O reset removeu os terminais; a fixture administrativa recria um destino válido.
+  INSERT INTO public.pdv_terminals(id,company_id,name,stock_id,is_active) VALUES(terminal,c,'Destino administrativo',s,true);
+  INSERT INTO public.pdv_preorders(id,company_id,number,stock_id,target_terminal_id,status,operation_mode,created_by,forwarded_at)
+  VALUES(p3,c,999,s,terminal,'encaminhado','counter',u,now());
+  INSERT INTO public.pdv_orders(id,company_id,number,stock_id,target_terminal_id,status,source_preorder_id,contract_version,operation_mode_snapshot)
+  VALUES(admin_order_id,c,999,s,terminal,'aguardando_pagamento',p3,2,'counter');
   UPDATE public.pdv_preorders SET status='convertido',converted_order_id=admin_order_id,converted_at=now() WHERE id=p3;
-  UPDATE public.user_roles SET role='super_admin' WHERE user_id=u;
+  -- O lifecycle ganha papel explícito sem remover o último administrador.
+  INSERT INTO public.user_roles(user_id,role) VALUES(u,'super_admin') ON CONFLICT(user_id,role) DO NOTHING;
   PERFORM public.admin_delete_company(c);
   IF EXISTS(SELECT 1 FROM public.companies WHERE id=c) OR EXISTS(SELECT 1 FROM public.pdv_preorders WHERE id=p3) OR EXISTS(SELECT 1 FROM public.pdv_orders WHERE id=admin_order_id) THEN
     RAISE EXCEPTION 'admin_delete_company nao concluiu lifecycle de pre-pedido convertido';

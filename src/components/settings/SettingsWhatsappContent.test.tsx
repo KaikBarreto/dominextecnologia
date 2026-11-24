@@ -37,6 +37,10 @@ vi.mock('@/components/settings/SettingsAsaasSimulator', () => ({
   SettingsAsaasSimulator: () => <div>Conteúdo do simulador Asaas</div>,
 }));
 
+vi.mock('@/components/settings/domilink/DomiLinkIntegrationContent', () => ({
+  DomiLinkIntegrationContent: () => <div>Integração canônica do DomiLink</div>,
+}));
+
 vi.mock('@/components/settings/SettingsPublicApiContent', () => ({
   SettingsPublicApiContent: () => <div>Gestão da API Pública</div>,
 }));
@@ -145,6 +149,26 @@ describe('SettingsIntegrationContent', () => {
     const location = useLocation();
     return <output data-testid="location">{location.search}</output>;
   }
+
+  it('abre DomiLink por deep-link e permite acessá-lo pela navegação de integrações', () => {
+    act(() => {
+      root.render(
+        <MemoryRouter initialEntries={['/configuracoes?tab=integracoes&integration=domilink']}>
+          <SettingsIntegrationContent />
+          <LocationProbe />
+        </MemoryRouter>,
+      );
+    });
+    expect(container.textContent).toContain('Integração canônica do DomiLink');
+    expect(container.querySelectorAll('[role=tab][aria-selected=true]')).toHaveLength(1);
+    const apiTab = [...container.querySelectorAll('button')].find(button => button.textContent === 'API Pública');
+    act(() => apiTab?.click());
+    expect(container.textContent).toContain('Gestão da API Pública');
+    const domiLinkTab = [...container.querySelectorAll('button')].find(button => button.textContent === 'DomiLink');
+    act(() => domiLinkTab?.click());
+    expect(container.textContent).toContain('Integração canônica do DomiLink');
+    expect(container.querySelector('[data-testid="location"]')?.textContent).toContain('integration=domilink');
+  });
 
   it('abre a API por deep-link e preserva a escolha da subaba na URL', () => {
     act(() => {

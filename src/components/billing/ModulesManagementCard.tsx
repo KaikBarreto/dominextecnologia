@@ -30,6 +30,8 @@ import { useNfseQuota } from '@/hooks/useNfseQuota';
 import { usePublicSubscriptionCatalog } from '@/hooks/usePublicSubscriptionPlans';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { ModuleTutorialSuccessModal } from '@/components/domiflix/ModuleTutorialSuccessModal';
+import { appendTutorialModulesToUrl, normalizeTutorialModuleCodes } from '@/lib/domiflixModuleTutorial';
 import {
   BASIC_BUNDLE_DESCRIPTION,
   BASIC_BUNDLE_LABEL,
@@ -154,6 +156,7 @@ export function ModulesManagementCard({
     input: ChangePlanInput;
     quote: ChangePlanResult;
   } | null>(null);
+  const [activatedTutorialModules, setActivatedTutorialModules] = useState<string[]>([]);
   const usersSectionRef = useRef<HTMLDivElement | null>(null);
   const autoOpenConsumed = useRef(false);
 
@@ -327,19 +330,29 @@ export function ModulesManagementCard({
   // Passo 2: aplica exatamente a mesma intenção, agora com confirmação explícita.
   const confirmQuotedChange = () => {
     if (!pendingConfirmation) return;
+    const confirmedInput = pendingConfirmation.input;
+    const previousModules = new Set(moduleCodes);
     planChange.mutate(
-      { ...pendingConfirmation.input, confirm: true },
+      { ...confirmedInput, confirm: true },
       {
         onSuccess: (result) => {
+          const targetModules = normalizeTutorialModuleCodes(
+            result.modules
+              ?? result.target_modules
+              ?? confirmedInput.customModules
+              ?? [],
+          );
+          const addedModules = targetModules.filter((code) => !previousModules.has(code));
           setPendingConfirmation(null);
           toast.success(result.message);
           if (result.requires_payment && result.checkout_url) {
             setOpen(false);
-            navigate(result.checkout_url);
+            navigate(appendTutorialModulesToUrl(result.checkout_url, addedModules));
             return;
           }
           if (result.asaas_warning) toast.warning(result.asaas_warning);
           setOpen(false);
+          setActivatedTutorialModules(addedModules);
         },
         onError: (err) => toast.error(err.message || 'Não foi possível atualizar o plano.'),
       },
@@ -999,6 +1012,12 @@ export function ModulesManagementCard({
           </div>
         )}
       </ResponsiveModal>
+
+      <ModuleTutorialSuccessModal
+        open={activatedTutorialModules.length > 0}
+        moduleCodes={activatedTutorialModules}
+        onOpenChange={(next) => { if (!next) setActivatedTutorialModules([]); }}
+      />
     </>
   );
 }

@@ -1,26 +1,30 @@
+import { PdvPageSkeleton } from '@/components/pdv/loading/PdvPageSkeleton';
+import { canCapturePdvCatalogScan } from '@/lib/pdv/catalogKeyboard';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Barcode, CheckCircle2, Paperclip, RefreshCw, Search, ShoppingCart } from 'lucide-react';
+import { CheckCircle2, Paperclip, RefreshCw, ShoppingCart } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { PdvAdvancedOptionsDialog, type PdvPendingAttachment } from '@/components/pdv/PdvAdvancedOptionsDialog';
-import { PdvCartItemsTable } from '@/components/pdv/PdvCartItemsTable';
 import { PdvCartPanel } from '@/components/pdv/PdvCartPanel';
-import { PdvCartSummary } from '@/components/pdv/PdvCartSummary';
+import { PdvSalePreviewView } from '@/components/pdv/PdvSalePreviewView';
 import { PdvPaymentDialog } from '@/components/pdv/PdvPaymentDialog';
-import { PdvProductCard, type PdvGridProduct } from '@/components/pdv/PdvProductCard';
-import { PdvOrderReceiptButton } from '@/components/pdv/receipt/PdvOrderReceiptButton';
+import { PdvAppliedVoucherControl } from '@/components/pdv/PdvAppliedVoucherControl';
+import { type PdvGridProduct } from '@/components/pdv/PdvProductCard';
+import { PdvOrderReceiptButton, openPdvOrderReceipt } from '@/components/pdv/receipt/PdvOrderReceiptButton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
+import { useInventoryIdentifiers } from '@/hooks/useInventoryIdentifiers';
 import {
   canonicalizePdvDirectSalePayments,
   resolvePdvDirectSaleAttemptV2,
   type PdvDirectSaleAttemptV2,
   type usePdvDirectSaleV2,
 } from '@/hooks/usePdvDirectSaleV2';
+import { usePdvStageReceiptAuto } from '@/hooks/usePdvStageReceiptAuto';
+import { resolvePdvReceiptStagePolicy } from '@/lib/pdv/receipt/stagePolicy';
 import { usePdvReceiptSettings } from '@/hooks/usePdvReceiptSettings';
 import { useUploadPdvOrderAttachment } from '@/hooks/usePdvSale';
 import { useToast } from '@/hooks/use-toast';
@@ -29,20 +33,33 @@ import {
   addItem,
   clearCart,
   computeTotal,
+  computeSubtotal,
   incrementLineQuantity,
   removeItem,
   setCartCustomer,
+  setCartFinalAmount,
   setDiscount,
+  setLineFinalAmount,
   setLineDiscount,
   setLineQuantity,
   type CartState,
 } from '@/lib/pdv/cart';
+import { clampStoredValueApplication } from '@/lib/pdv/payment';
+import type { PdvAppliedVoucher } from '@/lib/pdv/sale-drafts';
 import { readDeviceReceiptFormat } from '@/lib/pdv/receipt/devicePreference';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney, getCurrencySymbol, toBcp47 } from '@/lib/format';
 import { todayInTz } from '@/lib/timezone';
 import type { Customer } from '@/types/database';
+import { toPdvCustomerRecord } from '@/lib/pdv/catalogCustomer';
 import { processImageFile } from '@/utils/imageConvert';
+import { InventoryIdentifierCameraScanner } from '@/components/inventory/identifiers/InventoryIdentifierCameraScanner';
+import {
+  findPdvGridNeighbor,
+  shouldNavigatePdvCatalogFromSearch,
+  type PdvGridDirection,
+  type PdvGridItemRect,
+} from '@/lib/pdv/keyboard';
 
 type DirectSale = ReturnType<typeof usePdvDirectSaleV2>;
 
@@ -90,8 +107,13 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
   const { toast } = useToast();
   const uploadAttachment = useUploadPdvOrderAttachment();
   const receiptSettings = usePdvReceiptSettings();
+  const identifiers = useInventoryIdentifiers();
   const [cart, setCart] = useState<CartState>(EMPTY_CART);
+  const [appliedVoucher, setAppliedVoucher] = useState<PdvAppliedVoucher | null>(null);
   const [search, setSearch] = useState('');
+  const [catalogMode, setCatalogMode] = useState<'quick' | 'catalog'>(() =>
+    typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches ? 'catalog' : 'quick');
+  const [additionFeedback, setAdditionFeedback] = useState<{ inventoryId: string; sequence: number }>();
   const [terminalId, setTerminalId] = useState<string | null>(null);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -101,9 +123,13 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
   const [attachments, setAttachments] = useState<PdvPendingAttachment[]>([]);
   const [attachmentBusy, setAttachmentBusy] = useState(false);
   const [completedSale, setCompletedSale] = useState<CompletedSale | null>(null);
+  const [activeProductIndex, setActiveProductIndex] = useState(0);
   const attemptRef = useRef<PdvDirectSaleAttemptV2 | null>(null);
-  const autoReceiptRef = useRef<HTMLDivElement>(null);
-  const autoReceiptDoneRef = useRef<string | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const productGridRef = useRef<HTMLDivElement>(null);
+  const controlsRef = useRef<HTMLDivElement>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const autoReceipt = usePdvStageReceiptAuto();
 
   const catalog = directSale.catalog.data;
   useEffect(() => {
@@ -136,6 +162,7 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
       return {
         inventoryId: material.id,
         name: material.name,
+          sku: material.sku,
         imageUrl: material.imageUrl,
         unitPrice: material.salePrice ?? 0,
         unit: material.unit,
@@ -152,14 +179,54 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
         .some((value) => value?.toLocaleLowerCase(locale).includes(term));
     });
   }, [catalog?.materials, locale, products, search]);
+  const visibleProducts = useMemo(
+    () => catalogMode === 'quick' && !search.trim() ? filteredProducts.slice(0, 4) : filteredProducts,
+    [catalogMode, filteredProducts, search],
+  );
+  const keyboardProducts = useMemo(
+    () => visibleProducts.filter((product) => product.availableQuantity > 0),
+    [visibleProducts],
+  );
+  const activeProductId = keyboardProducts[
+    Math.min(activeProductIndex, Math.max(0, keyboardProducts.length - 1))
+  ]?.inventoryId ?? null;
 
-  const customers = useMemo<Customer[]>(() => (catalog?.customers ?? []).map((customer) => ({
-    id: customer.id,
-    name: customer.name,
-    customer_type: 'pf',
-    created_at: '',
-    updated_at: '',
-  })), [catalog?.customers]);
+  useEffect(() => { setActiveProductIndex(0); }, [search]);
+  useEffect(() => {
+    if (!activeProductId) return;
+    const activeButton = Array.from(
+      productGridRef.current?.querySelectorAll<HTMLElement>('[data-pdv-product-id]') ?? [],
+    ).find((element) => element.dataset.pdvProductId === activeProductId);
+    activeButton?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+  }, [activeProductId]);
+
+  const moveProductFocus = useCallback((direction: PdvGridDirection) => {
+    if (!activeProductId || !productGridRef.current) return;
+    const elements = Array.from(
+      productGridRef.current.querySelectorAll<HTMLButtonElement>('[data-pdv-product-id]:not(:disabled)'),
+    );
+    const rects: PdvGridItemRect[] = elements.map((element) => {
+      const rect = element.getBoundingClientRect();
+      return {
+        id: element.dataset.pdvProductId ?? '',
+        left: rect.left,
+        top: rect.top,
+        right: rect.right,
+        bottom: rect.bottom,
+        width: rect.width,
+        height: rect.height,
+      };
+    }).filter((rect) => rect.id);
+    const nextId = findPdvGridNeighbor(rects, activeProductId, direction);
+    const nextIndex = keyboardProducts.findIndex((product) => product.inventoryId === nextId);
+    if (nextIndex < 0) return;
+    setActiveProductIndex(nextIndex);
+    window.requestAnimationFrame(() => {
+      elements.find((element) => element.dataset.pdvProductId === nextId)?.focus();
+    });
+  }, [activeProductId, keyboardProducts]);
+
+  const customers = useMemo<Customer[]>(() => (catalog?.customers ?? []).map(toPdvCustomerRecord), [catalog?.customers]);
   const customerName = customers.find((customer) => customer.id === cart.customerId)?.name ?? null;
   const paymentAccounts = useMemo(() => (catalog?.bankAccounts ?? []).map((account) => ({
     id: account.id,
@@ -176,31 +243,97 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
     resetAttempt();
     setCart(updater);
   }, [resetAttempt]);
+  const cartTotal = computeTotal(cart);
+
+  useEffect(() => {
+    setAppliedVoucher((current) => {
+      if (!current) return null;
+      const amount = clampStoredValueApplication(cartTotal, current.balance, current.amount);
+      return amount > 0 ? { ...current, amount } : null;
+    });
+  }, [cartTotal]);
+
+  const changeCustomer = useCallback((customerId: string | null) => {
+    resetAttempt();
+    setAppliedVoucher(null);
+    setCart((current) => setCartCustomer(current, customerId));
+  }, [resetAttempt]);
 
   function addProduct(product: PdvGridProduct, quantity = 1) {
-    const result = addItem(cart, { ...product, unitCost: 0 }, quantity);
-    if (result.ok === false) {
-      toast({
-        variant: 'destructive',
-        title: result.reason === 'out_of_stock' ? t.toast.outOfStock : t.toast.insufficientStock,
-      });
-      return;
-    }
-    resetAttempt();
-    setCart(result.cart);
+    updateCart((current) => {
+      const result = addItem(current, { ...product, unitCost: 0 }, quantity);
+      if (result.ok === false) {
+        toast({
+          variant: 'destructive',
+          title: result.reason === 'out_of_stock' ? t.toast.outOfStock : t.toast.insufficientStock,
+        });
+        return current;
+      }
+      return result.cart;
+    });
+    setAdditionFeedback(current => ({ inventoryId: product.inventoryId, sequence: (current?.sequence ?? 0) + 1 }));
     setSearch('');
+    window.requestAnimationFrame(() => { searchInputRef.current?.focus({ preventScroll: true }); searchInputRef.current?.select(); });
   }
 
-  function handleBarcode(code: string) {
-    const material = catalog?.materials.find((item) => item.barcode === code);
-    const product = products.find((item) => item.inventoryId === material?.id);
-    if (!product) {
-      toast({ variant: 'destructive', title: t.toast.barcodeNotFound });
+  function handleProductGridKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      const button = (event.target as HTMLElement).closest<HTMLButtonElement>(
+        '[data-pdv-product-id]:not(:disabled)',
+      );
+      const product = keyboardProducts.find(
+        (candidate) => candidate.inventoryId === button?.dataset.pdvProductId,
+      );
+      if (!product) return;
+      event.preventDefault();
+      addProduct(product);
       return;
     }
-    addProduct(product);
+    const directions: Partial<Record<string, PdvGridDirection>> = {
+      ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
+    };
+    const direction = directions[event.key];
+    if (!direction) return;
+    event.preventDefault();
+    moveProductFocus(direction);
   }
-  useBarcodeScanner({ onScan: handleBarcode, enabled: !paymentOpen && !advancedOpen });
+
+  function handleSearchKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    const directions: Partial<Record<string, PdvGridDirection>> = {
+      ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
+    };
+    const direction = directions[event.key];
+    if (direction && keyboardProducts.length > 0 && shouldNavigatePdvCatalogFromSearch(event.key, search)) {
+      event.preventDefault();
+      moveProductFocus(direction);
+      return;
+    }
+    if (event.key === 'Enter' && keyboardProducts.length > 0) {
+      event.preventDefault();
+      addProduct(keyboardProducts[Math.min(activeProductIndex, keyboardProducts.length - 1)]);
+    }
+  }
+
+  async function handleBarcode(code: string) {
+    try {
+      const resolved = await identifiers.resolve.mutateAsync({ code });
+      const fallbackMaterial = resolved ? null : catalog?.materials.find((item) => item.barcode === code || item.sku === code);
+      const inventoryId = resolved?.material.id ?? fallbackMaterial?.id;
+      const product = products.find((item) => item.inventoryId === inventoryId);
+      if (!product) {
+        toast({ variant: 'destructive', title: t.toast.barcodeNotFound });
+        return;
+      }
+      addProduct(product, resolved?.unitFactor ?? 1);
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: t.toast.barcodeNotFound,
+        description: error instanceof Error ? error.message : 'Tente novamente.',
+      });
+    }
+  }
+  useBarcodeScanner({ onScan: handleBarcode, enabled: !paymentOpen && !advancedOpen, shouldCaptureTarget: target => canCapturePdvCatalogScan(target, searchInputRef.current) });
 
   async function handleAttachFiles(files: File[]) {
     setAttachmentBusy(true);
@@ -273,7 +406,10 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
     const signature = saleSignature(cart, terminal.id, notes, transactionDate, payments);
     attemptRef.current = resolvePdvDirectSaleAttemptV2(attemptRef.current, signature);
     const attemptId = attemptRef.current.id;
-    const result = await directSale.complete.mutateAsync({
+    const receiptAttempt = autoReceipt.prepare('sale');
+    let result: Awaited<ReturnType<typeof directSale.complete.mutateAsync>>;
+    try {
+    result = await directSale.complete.mutateAsync({
       attemptId,
       terminalId: terminal.id,
       cashSessionId: session.id,
@@ -294,6 +430,9 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
       payments,
     });
 
+    } catch (error) { receiptAttempt.cancel(); throw error; }
+    void receiptAttempt.commit(`sale:${result.orderId}`, (format, options) => openPdvOrderReceipt(result.orderId, format, { ...options, documentKind: 'sale' }), result.idempotent);
+
     const readyAttachments = attachments.filter((attachment) => attachment.status === 'ready');
     setCompletedSale({
       orderId: result.orderId,
@@ -303,6 +442,7 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
     });
     setPaymentOpen(false);
     setCart(EMPTY_CART);
+    setAppliedVoucher(null);
     setNotes('');
     setTransactionDate(maxTransactionDate);
     setAttachments([]);
@@ -313,21 +453,13 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
     }
   }
 
-  const receiptFormat = readDeviceReceiptFormat() ?? receiptSettings.data?.defaultFormat ?? '80mm';
-  useEffect(() => {
-    if (!completedSale || !receiptSettings.data?.autoPrint) return;
-    if (autoReceiptDoneRef.current === completedSale.orderId) return;
-    autoReceiptDoneRef.current = completedSale.orderId;
-    const timer = window.setTimeout(() => {
-      autoReceiptRef.current?.querySelectorAll<HTMLButtonElement>('button').forEach((button) => button.click());
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [completedSale, receiptSettings.data?.autoPrint]);
+  const receiptFormat = readDeviceReceiptFormat() ?? resolvePdvReceiptStagePolicy(receiptSettings.data, 'sale').format;
 
   if (directSale.catalog.isLoading || !catalog) {
     return (
       <div className="space-y-4">
         <PageHeader title={t.title} subtitle="Carregando catálogo seguro da venda..." icon={ShoppingCart} />
+        {directSale.catalog.isLoading && <PdvPageSkeleton variant="sale" catalogMode={catalogMode} label="Carregando catálogo da venda" />}
         {directSale.catalog.isError && (
           <NoticeBanner
             variant="destructive"
@@ -350,7 +482,7 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
     title: t.cart.title,
     itemsCount: t.cart.itemsCount,
     itemsCountOne: t.cart.itemsCountOne,
-    draftHint: t.cart.draftHint,
+    draftHint: 'Atendimento atual',
     empty: t.cart.empty,
     emptyHint: t.cart.emptyHint,
     subtotal: t.cart.subtotal,
@@ -377,33 +509,13 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
     paymentShortcut: t.actions.paymentShortcut,
     finalizeLabel: t.actions.finalize,
     finalizeShortcut: t.actions.finalizeShortcut,
-    cashClosedTitle: t.cashClosedNotice.title,
-    cashClosedDescription: t.cashClosedNotice.description,
+    cashClosedTitle: 'Caixa fechado',
+    cashClosedDescription: 'Abra um caixa para concluir a venda.',
     cashClosedAction: t.cashClosedNotice.action,
     notesLabel: t.cart.notesLabel,
     notesPlaceholder: t.cart.notesPlaceholder,
     advancedOptionsTrigger: t.advancedOptions.trigger,
   };
-  const cartItemsTexts = {
-    title: t.cart.title,
-    itemsCount: t.cart.itemsCount,
-    itemsCountOne: t.cart.itemsCountOne,
-    empty: t.cart.empty,
-    emptyHint: t.cart.emptyHint,
-    removeLine: t.cart.removeLine,
-    clearCart: t.cart.clearCart,
-    noPhoto: t.stock.noPhoto,
-    openProductPhoto: t.cart.openProductPhoto,
-    productPhotoViewerDescription: t.cart.productPhotoViewerDescription,
-    columnProduct: t.cart.columnProduct,
-    columnQuantity: t.cart.columnQuantity,
-    quantityEditLabel: t.cart.quantityEditLabel,
-    discountLabel: t.cart.itemDiscount,
-    discountPlaceholder: t.cart.itemDiscountPlaceholder,
-    columnUnitPrice: t.cart.columnUnitPrice,
-    columnLineTotal: t.cart.columnLineTotal,
-  };
-
   const requestPayment = () => {
     if (attachmentBusy) {
       toast({ variant: 'destructive', title: 'Aguarde a preparação das fotos.' });
@@ -411,6 +523,20 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
     }
     setPaymentOpen(true);
   };
+
+  const appliedCreditContent = (
+    <PdvAppliedVoucherControl
+      enabled
+      customerId={cart.customerId}
+      total={cartTotal}
+      value={appliedVoucher}
+      formatCurrency={formatCurrency}
+      onChange={(value) => {
+        resetAttempt();
+        setAppliedVoucher(value);
+      }}
+    />
+  );
 
   return (
     <div className="space-y-4" data-testid="pdv-direct-sale-v2" data-pdv-ui>
@@ -432,86 +558,30 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
                   <Paperclip className="mr-2 h-4 w-4" />Tentar fotos novamente
                 </Button>
               )}
-              <PdvOrderReceiptButton orderId={completedSale.orderId} format={receiptFormat} label="Gerar comprovante" />
+              <PdvOrderReceiptButton orderId={completedSale.orderId} format={receiptFormat} documentKind="sale" label="Gerar comprovante" />
             </div>
-            {receiptSettings.data?.autoPrint && (
-              <div ref={autoReceiptRef} className="sr-only" aria-hidden="true">
-                {Array.from({ length: receiptSettings.data.copies }, (_, index) => (
-                  <PdvOrderReceiptButton key={index} orderId={completedSale.orderId} format={receiptFormat} label="Impressão automática" />
-                ))}
-              </div>
-            )}
+
           </CardContent>
         </Card>
       )}
 
       {!session && (
-        <NoticeBanner variant="warning" title="Caixa v2 fechado neste terminal">
-          Abra o caixa no painel do PDV antes de receber a venda.
+        <NoticeBanner variant="warning" title="Abra um caixa para concluir a venda">
+          Escolha o caixa no painel do PDV antes de receber.
         </NoticeBanner>
       )}
 
-      <div data-testid="pdv-direct-sale-v2-layout" className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_22rem] md:items-start">
-        <section className="min-w-0 space-y-3">
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <div className="relative min-w-0 flex-1">
-              <Barcode className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder={t.search.placeholder}
-                className="h-12 pl-10"
-                type="search"
-                inputMode="search"
-              />
-              <Search className="sr-only" />
-            </div>
-            {catalog.terminals.length > 1 && (
-              <Select
-                value={terminalId ?? undefined}
-                onValueChange={(value) => {
-                  setTerminalId(value);
-                  setCart(EMPTY_CART);
-                  resetAttempt();
-                }}
-              >
-                <SelectTrigger className="h-12 w-full sm:w-64"><SelectValue placeholder="Terminal" /></SelectTrigger>
-                <SelectContent>{catalog.terminals.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent>
-              </Select>
-            )}
-          </div>
-
-          <div className="grid max-h-[46vh] grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3 xl:grid-cols-4">
-            {filteredProducts.map((product) => (
-              <PdvProductCard
-                key={product.inventoryId}
-                product={product}
-                formatCurrency={formatCurrency}
-                outOfStockLabel={t.stock.outOfStock}
-                availableLabel={t.stock.available}
-                noPhotoLabel={t.stock.noPhoto}
-                onSelect={addProduct}
-              />
-            ))}
-          </div>
-          {filteredProducts.length === 0 && (
-            <NoticeBanner variant="info">Nenhum material disponível para este terminal.</NoticeBanner>
-          )}
-
-          <PdvCartItemsTable
-            cart={cart}
-            formatCurrency={formatCurrency}
-            onIncrement={(id, delta) => updateCart((current) => incrementLineQuantity(current, id, delta))}
-            onSetQuantity={(id, quantity) => updateCart((current) => setLineQuantity(current, id, quantity))}
-            onSetLineDiscount={(id, value) => updateCart((current) => setLineDiscount(current, id, value))}
-            onRemove={(id) => updateCart((current) => removeItem(current, id))}
-            onRequestClearCart={() => updateCart((current) => clearCart(current))}
-            texts={cartItemsTexts}
-            className="hidden max-h-80 md:flex"
-          />
-        </section>
-
-        <Card className="min-w-0 overflow-hidden md:hidden">
+      {catalog.terminals.length > 1 && <Select value={terminalId ?? undefined} onValueChange={value => { setTerminalId(value); setCart(EMPTY_CART); setAppliedVoucher(null); resetAttempt(); }}><SelectTrigger className="w-full sm:w-56"><SelectValue placeholder="Caixa" /></SelectTrigger><SelectContent>{catalog.terminals.map(item => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent></Select>}
+      <div data-testid="pdv-direct-sale-v2-layout" className="pdv-preview-sale">
+        <PdvSalePreviewView
+          mode={catalogMode} onModeChange={setCatalogMode} search={search} onSearchChange={setSearch}
+          onSearchKeyDown={handleSearchKeyDown} searchInputRef={searchInputRef} gridRef={productGridRef}
+          controlsRef={controlsRef} rowRef={rowRef} onGridKeyDown={handleProductGridKeyDown}
+          products={visibleProducts} disabled={directSale.complete.isPending} activeProductId={activeProductId}
+          onProductFocus={id => { const index = keyboardProducts.findIndex(product => product.inventoryId === id); if (index >= 0) setActiveProductIndex(index); }}
+          onProductSelect={addProduct} formatCurrency={formatCurrency} onExit={() => window.location.assign('/pdv')}
+          camera={<InventoryIdentifierCameraScanner triggerVariant="icon" onScan={code => void handleBarcode(code)} disabled={paymentOpen || advancedOpen || identifiers.resolve.isPending} />}
+          cart={
           <PdvCartPanel
             cart={cart}
             customers={customers}
@@ -523,8 +593,10 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
             onIncrement={(id, delta) => updateCart((current) => incrementLineQuantity(current, id, delta))}
             onSetQuantity={(id, quantity) => updateCart((current) => setLineQuantity(current, id, quantity))}
             onSetLineDiscount={(id, value) => updateCart((current) => setLineDiscount(current, id, value))}
+            onSetLineFinalAmount={(id, value, mode) => updateCart((current) => setLineFinalAmount(current, id, value, mode, currencyFractionDigits))}
+            onSetCartFinalAmount={(value, mode) => updateCart((current) => setCartFinalAmount(current, value, mode, currencyFractionDigits))}
             onRemove={(id) => updateCart((current) => removeItem(current, id))}
-            onCustomerChange={(id) => updateCart((current) => setCartCustomer(current, id))}
+            onCustomerChange={changeCustomer}
             onRequestClearCart={() => updateCart((current) => clearCart(current))}
             onRequestPayment={requestPayment}
             cashClosed={!session}
@@ -532,38 +604,28 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
             onOpenAdvancedOptions={() => setAdvancedOpen(true)}
             advancedOptionsActive={advancedSummary.length > 0}
             advancedOptionsSummary={advancedSummary}
+            appliedCreditContent={appliedCreditContent}
+            layout="workspace"
+            additionFeedback={additionFeedback}
+            onConfirmQuantityEdit={() => searchInputRef.current?.focus()}
             texts={cartPanelTexts}
           />
-        </Card>
-
-        <Card className="sticky top-4 hidden min-w-0 overflow-hidden md:block">
-          <PdvCartSummary
-            cart={cart}
-            customers={customers}
-            formatCurrency={formatCurrency}
-            currencySymbol={currencySymbol}
-            locale={locale}
-            currencyFractionDigits={currencyFractionDigits}
-            onSetDiscountAmount={(value) => updateCart((current) => setDiscount(current, value))}
-            onCustomerChange={(id) => updateCart((current) => setCartCustomer(current, id))}
-            onRequestPayment={requestPayment}
-            cashClosed={!session}
-            onGoToCashPanel={() => { window.location.assign('/pdv'); }}
-            onOpenAdvancedOptions={() => setAdvancedOpen(true)}
-            advancedOptionsActive={advancedSummary.length > 0}
-            advancedOptionsSummary={advancedSummary}
-            texts={cartPanelTexts}
-          />
-        </Card>
+          }
+        />
       </div>
 
       <PdvPaymentDialog
         open={paymentOpen}
         onOpenChange={setPaymentOpen}
         texts={t.payment}
-        total={computeTotal(cart)}
+        total={cartTotal}
+        summaryItems={cart.lines.map(line => ({ id: line.inventoryId, name: line.name, quantity: line.quantity, unit: line.unit ?? undefined, unitPrice: line.unitPrice, total: computeTotal({ lines: [line], discount: 0, customerId: null }), imageUrl: line.imageUrl }))}
+        summarySubtotal={computeSubtotal(cart)}
+        summaryDiscount={computeSubtotal(cart) - cartTotal}
         itemCount={cart.lines.length}
         customerName={customerName}
+        customerId={cart.customerId}
+        appliedVoucher={appliedVoucher}
         customerCredit={null}
         accounts={paymentAccounts}
         canUseBankAccounts={paymentAccounts.length > 0}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import './financialMovementLayout.css';
 import { TransactionListPanel } from './TransactionListPanel';
 import { AccountFormDialog } from './AccountFormDialog';
 import { AdjustBalanceDialog } from './AdjustBalanceDialog';
@@ -97,7 +98,7 @@ function AccountDistributionTooltip({
   const pct = totalDonut > 0 ? (value / totalDonut) * 100 : 0;
   return (
     <div className="min-w-44 rounded-xl border bg-popover px-3 py-2.5 text-xs text-popover-foreground shadow-xl">
-      <p className="max-w-64 truncate font-semibold">{item.payload?.name}</p>
+      <p className="max-w-64 break-words font-semibold">{item.payload?.name}</p>
       <p className="mt-1.5 flex items-center justify-between gap-5">
         <span className="text-muted-foreground">Saldo</span>
         <strong className="tabular-nums">{formatValue(value)}</strong>
@@ -643,7 +644,7 @@ export function FinanceMovimentacoes({
             <span className="block truncate text-sm font-medium">{label}</span>
             {sublabel && (
               <span className={cn(
-                'mt-0.5 block truncate text-xs tabular-nums',
+                'mt-0.5 block break-words text-xs tabular-nums',
                 selected ? 'opacity-80' : 'text-muted-foreground',
               )}>
                 {sublabel}
@@ -829,7 +830,7 @@ export function FinanceMovimentacoes({
       ) : (
         <div className="min-w-0 lg:grid lg:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)] lg:gap-5">
           {!isMobile && accountNavigator}
-          <section className="min-w-0 space-y-3" aria-label="Detalhes da conta selecionada">
+          <section className="financial-account-detail min-w-0 space-y-3" aria-label="Detalhes da conta selecionada">
             {isMobile && activeTab !== RECONCILE_TAB && (
               <Button type="button" variant="ghost" size="sm" className="-ml-2 gap-2" onClick={() => setMobileDetailOpen(false)}>
                 <ChevronLeft className="h-4 w-4" /> Contas e cartões
@@ -851,7 +852,7 @@ export function FinanceMovimentacoes({
               const totalDonut = compactPieData.reduce((sum, item) => sum + item.value, 0);
               return (
                 <div className="rounded-xl border bg-card p-4 shadow-sm sm:p-5">
-                  <div className="grid gap-5 lg:grid-cols-[minmax(16rem,0.85fr)_minmax(0,1.35fr)] lg:items-center">
+                  <div className="financial-summary-layout grid gap-5">
                     <div className="min-w-0">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex min-w-0 items-center gap-3">
@@ -868,7 +869,7 @@ export function FinanceMovimentacoes({
                         </span>
                       </div>
 
-                      <p className="mt-4 break-words text-2xl font-bold leading-tight tabular-nums sm:text-3xl">
+                      <p className="financial-summary-total mt-4 break-words text-2xl font-bold leading-tight tabular-nums sm:text-3xl">
                         {fmt(totalBalance)}
                       </p>
 
@@ -878,9 +879,9 @@ export function FinanceMovimentacoes({
                           <p className="mt-0.5 font-semibold tabular-nums">{pieData.length}</p>
                         </div>
                         <div className="min-w-0">
-                          <p className="truncate text-muted-foreground">Faturas em aberto</p>
+                          <p className="text-muted-foreground">Faturas em aberto</p>
                           <p className={cn(
-                            'mt-0.5 truncate font-semibold tabular-nums',
+                            'mt-0.5 break-words font-semibold tabular-nums',
                             totalOpenCardBills > 0 && 'text-destructive',
                           )} title={fmt(totalOpenCardBills)}>
                             {fmt(totalOpenCardBills)}
@@ -895,7 +896,7 @@ export function FinanceMovimentacoes({
                       )}
                     </div>
 
-                    <div className="min-w-0 lg:border-l lg:pl-5">
+                    <div className="financial-distribution min-w-0">
                       <div className="mb-2 flex items-center justify-between gap-3">
                         <div>
                           <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Distribuição do saldo</h4>
@@ -904,8 +905,8 @@ export function FinanceMovimentacoes({
                       </div>
 
                       {compactPieData.length > 0 ? (
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
-                          <div className="relative h-[148px] w-full shrink-0 sm:w-[168px]">
+                        <div className="financial-distribution-content">
+                          <div className="financial-distribution-chart relative h-[148px] w-full shrink-0 sm:w-[168px]">
                             <ResponsiveContainer width="100%" height="100%">
                               <PieChart>
                                 <Pie
@@ -946,7 +947,7 @@ export function FinanceMovimentacoes({
                               <span className="text-[10px] uppercase tracking-wider text-muted-foreground">saldos</span>
                             </div>
                           </div>
-                          <div className="grid min-w-0 flex-1 grid-cols-1 gap-x-5 gap-y-2 sm:grid-cols-2">
+                          <div className="financial-distribution-legend grid min-w-0 flex-1 grid-cols-1 gap-x-5 gap-y-2">
                             {compactPieData.map((entry, index) => {
                               const percentage = totalDonut > 0 ? Math.round((entry.value / totalDonut) * 100) : 0;
                               return (
@@ -965,7 +966,7 @@ export function FinanceMovimentacoes({
                                   aria-label={`${entry.name}: ${fmt(entry.value)}, ${percentage}%`}
                                 >
                                   <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: entry.color }} />
-                                  <span className="min-w-0 flex-1 truncate text-foreground">{entry.name}</span>
+                                  <span className="min-w-0 flex-1 break-words text-foreground">{entry.name}</span>
                                   <span className="shrink-0 tabular-nums text-muted-foreground">{percentage}%</span>
                                 </div>
                               );

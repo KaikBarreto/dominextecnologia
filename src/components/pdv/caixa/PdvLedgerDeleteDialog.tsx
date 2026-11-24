@@ -1,3 +1,4 @@
+import '@/components/pdv/PdvWorkspace.css';
 import { useEffect, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import {
@@ -111,7 +112,7 @@ export function PdvLedgerDeleteDialog({
         if (!isPending) onOpenChange(v);
       }}
     >
-      <AlertDialogContent>
+      <AlertDialogContent className="pdv-dialog">
         <AlertDialogHeader>
           <div className="flex justify-center sm:justify-start">
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive">

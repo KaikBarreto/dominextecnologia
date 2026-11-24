@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Barcode, ChevronDown, CircleAlert, Link2, Loader2, Printer, Scale, Unplug } from 'lucide-react';
+import { DomiLinkBrand } from './DomiLinkBrand';
+import { Barcode, ChevronDown, CircleAlert, Loader2, Printer, Scale, Unplug } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -46,13 +47,15 @@ export function DomiLinkSettingsCard() {
     }
   }
 
-  return <section className="border-t pt-7" aria-labelledby="domilink-title">
+  return <section className="space-y-4" aria-labelledby="domilink-title">
     <div className="flex items-start justify-between gap-4">
-      <div className="flex min-w-0 items-start gap-3"><div className="rounded-lg bg-primary p-2 text-primary-foreground"><Link2 className="h-5 w-5" /></div><div><h2 id="domilink-title" className="text-lg font-semibold">Equipamentos do caixa</h2><p className="text-sm text-muted-foreground">O DomiLink conecta a impressora, a balança e o leitor deste computador.</p></div></div>
-      <Switch aria-label="Ativar equipamentos do caixa neste computador" checked={domiLink.enabled} onCheckedChange={domiLink.setEnabled} />
+      <DomiLinkBrand monochrome={false} caption={<h2 id="domilink-title" className="domilink-brand-caption">Equipamentos deste computador</h2>} />
+      <Switch aria-label="Ativar DomiLink neste computador" checked={domiLink.enabled} onCheckedChange={domiLink.setEnabled} />
     </div>
 
-    {!domiLink.enabled && <p className="mt-4 text-sm text-muted-foreground">Desligado neste computador. O PDV continua funcionando normalmente pelo navegador.</p>}
+    <p className="text-sm text-muted-foreground">Conecte a impressora, a balança e o leitor deste computador.</p>
+
+    {!domiLink.enabled && <p className="mt-4 text-sm text-muted-foreground">Desligado neste computador. Os equipamentos podem ser conectados quando você precisar.</p>}
 
     {domiLink.enabled && <div className="mt-4 border-t pt-4">
       {domiLink.status === 'checking' && <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Procurando o DomiLink neste computador…</div>}

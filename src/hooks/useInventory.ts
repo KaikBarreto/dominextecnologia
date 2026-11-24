@@ -2,7 +2,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
-import { getErrorMessage } from '@/utils/errorMessages';
+import {
+  getErrorMessage,
+  getSanitizedErrorDiagnostic,
+  isInternalRuntimeError,
+  isResetRuntimeError,
+} from '@/utils/errorMessages';
 
 export type InventoryItem = Tables<'inventory'>;
 export type InventoryItemInsert = TablesInsert<'inventory'>;
@@ -31,6 +36,43 @@ const inventorySecurityRpc = supabase.rpc as unknown as (
   fn: string,
   args: Record<string, unknown>,
 ) => PromiseLike<InventorySecurityRpcResult>;
+
+export type InventoryUpdateFailureKind = 'supabase' | 'runtime' | 'runtime-reset';
+
+export function classifyInventoryUpdateFailure(error: unknown): InventoryUpdateFailureKind {
+  if (isResetRuntimeError(error)) return 'runtime-reset';
+  if (isInternalRuntimeError(error)) return 'runtime';
+  return 'supabase';
+}
+
+const INVENTORY_READ_QUERY_KEYS = [
+  ['inventory'],
+  ['inventory-stock-levels'],
+  ['inventory-movements'],
+] as const;
+
+/** Catálogo, presença e preços compartilham a invalidação da entidade. */
+export async function invalidateInventoryCatalogCaches(
+  queryClient: Pick<ReturnType<typeof useQueryClient>, 'invalidateQueries'>,
+): Promise<void> {
+  await Promise.all([
+    ['inventory'], ['inventory-stock-levels'], ['inventory-movements'],
+    ['accessible-inventory-ids'], ['pdv-direct-sale-v2', 'catalog'], ['pdv-preorders', 'catalog'],
+  ].map((queryKey) => queryClient.invalidateQueries({ queryKey })));
+}
+
+/**
+ * Depois de uma falha ambigua, consulta novamente somente as fontes de leitura.
+ * Nao repete update nem RPC de movimento: o servidor pode ja ter confirmado
+ * uma das etapas e um retry cego duplicaria o Kardex.
+ */
+export async function reconcileInventoryReads(
+  queryClient: Pick<ReturnType<typeof useQueryClient>, 'invalidateQueries'>,
+): Promise<void> {
+  await Promise.allSettled(
+    INVENTORY_READ_QUERY_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey: [...queryKey] })),
+  );
+}
 
 export function useInventory() {
   const { toast } = useToast();
@@ -183,15 +225,30 @@ export function useInventory() {
       });
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['inventory-stock-levels'] });
-    },
+    onSuccess: () => invalidateInventoryCatalogCaches(queryClient),
     // Não mostra toast aqui — a UI deve tratar presence_has_balance especificamente
     onError: (error: Error) => {
       if (!String(error.message).includes('presence_has_balance')) {
         toast({ title: 'Erro ao atualizar presença', description: getErrorMessage(error), variant: 'destructive' });
       }
       // Se for presence_has_balance, re-throw para a UI tratar
+    },
+  });
+
+  const removeFromStock = useMutation({
+    mutationFn: async ({ inventoryId, stockId }: { inventoryId: string; stockId: string }) => {
+      const { error } = await inventorySecurityRpc('inventory_remove_from_stock_v4', {
+        p_inventory_id: inventoryId, p_stock_id: stockId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => invalidateInventoryCatalogCaches(queryClient),
+    onError: (error) => {
+      const details = String((error as { details?: string }).details ?? '');
+      const description = details.includes('inventory_presence_has_balance')
+        ? 'Transfira ou registre a saída do saldo antes de remover o material deste local.'
+        : getErrorMessage(error);
+      toast({ title: 'Não foi possível remover deste local', description, variant: 'destructive' });
     },
   });
 
@@ -254,10 +311,8 @@ export function useInventory() {
       });
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['inventory'] });
-      queryClient.invalidateQueries({ queryKey: ['inventory-stock-levels'] });
-      queryClient.invalidateQueries({ queryKey: ['inventory-movements'] });
+    onSuccess: async () => {
+      await invalidateInventoryCatalogCaches(queryClient);
     },
     onError: (error) => {
       toast({ title: 'Erro ao registrar movimentação', description: getErrorMessage(error), variant: 'destructive' });
@@ -296,10 +351,8 @@ export function useInventory() {
 
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['inventory'] });
-      queryClient.invalidateQueries({ queryKey: ['inventory-stock-levels'] });
-      queryClient.invalidateQueries({ queryKey: ['inventory-movements'] });
+    onSuccess: async () => {
+      await invalidateInventoryCatalogCaches(queryClient);
       toast({ title: 'Item cadastrado com sucesso!' });
     },
     onError: (error) => {
@@ -351,13 +404,31 @@ export function useInventory() {
 
       return { id };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['inventory'] });
-      queryClient.invalidateQueries({ queryKey: ['inventory-stock-levels'] });
-      queryClient.invalidateQueries({ queryKey: ['inventory-movements'] });
+    onSuccess: async () => {
+      await invalidateInventoryCatalogCaches(queryClient);
       toast({ title: 'Item atualizado com sucesso!' });
     },
-    onError: (error) => {
+    onError: async (error) => {
+      const failureKind = classifyInventoryUpdateFailure(error);
+      if (failureKind !== 'supabase') {
+        // Registra apenas campos controlados: nunca serializa response, payload
+        // do material, credenciais ou o objeto de erro inteiro.
+        console.error('[Estoque] Falha de runtime ao atualizar material', {
+          kind: failureKind,
+          diagnostic: getSanitizedErrorDiagnostic(error),
+        });
+
+        await reconcileInventoryReads(queryClient);
+        toast({
+          title: 'Não foi possível confirmar a atualização',
+          description: failureKind === 'runtime-reset'
+            ? 'Atualize a versão do Dominex e confira o material, o saldo e o Kardex antes de tentar novamente.'
+            : 'Atualizamos os dados exibidos. Confira o material e o saldo antes de tentar novamente.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
       toast({ title: 'Erro ao atualizar item', description: getErrorMessage(error), variant: 'destructive' });
     },
   });
@@ -428,6 +499,7 @@ export function useInventory() {
     getPresenceForStock,
     updateStockLevelMinQuantity,
     setInventoryPresence,
+    removeFromStock,
     addGroupToStock,
     setStockMaterials,
     registerInlineMovement,

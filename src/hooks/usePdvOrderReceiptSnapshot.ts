@@ -23,6 +23,12 @@ export function projectPdvOrderReceiptSnapshot(payload:unknown):PdvReceiptSnapsh
   const payments=root.payments.map((raw)=>{const payment=object(raw);const method=text(payment?.method);const amount=number(payment?.amount);if(!method||amount==null||amount<=0) throw new PdvReceiptSettingsError('Os pagamentos do comprovante estão inválidos.','pdv_receipt_invalid_snapshot');return{method,amount,dueDate:text(payment?.due_date)};});
   if(items.length===0||subtotal<0||discount<0||total<0||toReceiptCents(subtotal-discount)!==toReceiptCents(total)||toReceiptCents(items.reduce((sum,item)=>sum+item.total,0))!==toReceiptCents(total)) throw new PdvReceiptSettingsError('Os totais do comprovante estão inválidos.','pdv_receipt_totals_mismatch');
   if(toReceiptCents(payments.reduce((sum,payment)=>sum+payment.amount,0))!==toReceiptCents(total)) throw new PdvReceiptSettingsError('Os pagamentos não fecham com o total do comprovante.','pdv_receipt_totals_mismatch');
+  // A RPC entrega o snapshot imutável capturado somente com coberturas autorizadas.
+  // Fiado autorizado libera retirada, mas não representa dinheiro já recebido.
+  const paidMethods = new Set(['dinheiro','pix','transferencia','debito','credito','saldo_cliente','voucher']);
+  const knownCoverage = payments.every(payment => payment.method === 'fiado' || paidMethods.has(payment.method));
+  const approvedCreditAmount = toReceiptCents(payments.filter(payment => payment.method === 'fiado').reduce((sum,payment) => sum+payment.amount,0))/100;
+  const paidAmount = toReceiptCents(total-approvedCreditAmount)/100;
   const fulfillment=object(root.fulfillment); const mode=fulfillment?.mode; const status=text(fulfillment?.status);
   return {
     company:{
@@ -36,6 +42,7 @@ export function projectPdvOrderReceiptSnapshot(payload:unknown):PdvReceiptSnapsh
     },
     order:{number:orderNumber,issuedAt,operatorName,terminalName:text(order.terminal_name),customerName:text(order.customer_name)},
     items,totals:{subtotal,discount,total},payments,
+    ...(knownCoverage ? {coverage:{paidAmount,approvedCreditAmount,status:approvedCreditAmount>0 ? paidAmount>0 ? 'mixed' : 'credit_approved' : 'paid'}} : {}),
     fulfillment:fulfillment&&(mode==='retirada'||mode==='entrega')&&status?{mode,status,address:text(fulfillment.address)}:null,
     note:text(root.note),
   };

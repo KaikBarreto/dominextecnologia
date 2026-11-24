@@ -18,6 +18,11 @@ dependencies = [
 [project.optional-dependencies]
 serial = ["pyserial==3.5"]
 escpos = ["python-escpos==3.1"]
+windows-print = [
+  "pywin32==310; sys_platform == 'win32'",
+  "Pillow==11.3.0; sys_platform == 'win32'",
+  "PyMuPDF==1.26.5; sys_platform == 'win32'",
+]
 dev = [
   "httpx==0.28.1",
   "mypy==1.15.0",

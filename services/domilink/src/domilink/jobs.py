@@ -10,6 +10,12 @@ from typing import Callable, Optional, Tuple
 
 from .adapters.base import AdapterError, PrintAdapter, PrintPayload
 
+IDEMPOTENCY_WINDOW_SECONDS = 3600
+
+
+class JobQueueFull(ValueError):
+    pass
+
 
 class IdempotencyConflict(ValueError):
     pass
@@ -45,6 +51,9 @@ class PrintJobStore:
                 if existing_fingerprint != fingerprint:
                     raise IdempotencyConflict("chave já usada com outro conteúdo")
                 return self._jobs[job_id], False
+            self._trim()
+            if len(self._jobs) >= self._retention:
+                raise JobQueueFull("Fila local cheia; aguarde antes de imprimir novamente")
             now = self._clock()
             job = PrintJob(
                 id=str(uuid.uuid4()),
@@ -68,8 +77,14 @@ class PrintJobStore:
         return digest.hexdigest()
 
     def _trim(self) -> None:
-        while len(self._jobs) > self._retention:
-            job_id, _ = self._jobs.popitem(last=False)
+        # Jobs ativos nunca somem. Chaves terminais sobrevivem por uma hora após o fim.
+        now = self._clock()
+        for job_id, job in list(self._jobs.items()):
+            if job.status not in {"completed", "failed"}:
+                continue
+            if now - job.updated_at < IDEMPOTENCY_WINDOW_SECONDS:
+                continue
+            self._jobs.pop(job_id)
             stale = [key for key, value in self._idempotency.items() if value[1] == job_id]
             for key in stale:
                 self._idempotency.pop(key, None)
@@ -82,7 +97,10 @@ class PrintJobStore:
                 raise KeyError(job_id) from exc
 
     def execute(self, job_id: str, adapter: PrintAdapter, payload: PrintPayload) -> None:
-        self._update(job_id, "printing")
+        with self._lock:
+            if self._jobs[job_id].status != "queued":
+                return
+            self._update(job_id, "printing")
         try:
             adapter.print(payload)
         except AdapterError as exc:

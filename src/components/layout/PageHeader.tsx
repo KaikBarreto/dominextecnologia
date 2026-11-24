@@ -28,10 +28,10 @@ interface PageHeaderProps {
  */
 export function PageHeader({ title, subtitle, icon: Icon, actions, className, titleSuffix }: PageHeaderProps) {
   return (
-    <div className={cn('flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-6', className)}>
+    <div className={cn('app-ui-page-header mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between', className)}>
       <div className={cn('flex items-start gap-3 min-w-0', titleSuffix && 'flex-1')}>
         {Icon && (
-          <Icon className="h-7 w-7 lg:h-8 lg:w-8 text-foreground/70 shrink-0 mt-0.5" />
+          <Icon className="h-6 w-6 shrink-0 text-foreground/70 mt-0.5 md:h-7 md:w-7" />
         )}
         <div className={cn('min-w-0', titleSuffix && 'flex-1')}>
           <div className={cn(titleSuffix && 'flex items-center gap-3 min-w-0')}>

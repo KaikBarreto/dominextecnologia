@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { SignedImg } from '@/components/ui/SignedImg';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PdvProductName } from '@/components/pdv/PdvProductName';
+import { PdvProductCode, PdvProductPlaceholder } from './PdvProductIdentity';
 import { cn } from '@/lib/utils';
 
 /**
@@ -29,6 +30,7 @@ const readyProductPhotos = new Set<string>();
 export interface PdvGridProduct {
   inventoryId: string;
   name: string;
+  sku?: string | null;
   imageUrl: string | null;
   unitPrice: number;
   unit?: string | null;
@@ -84,7 +86,7 @@ interface PdvProductCardProps {
  * Célula da grade do Caixa. Réguas do CEO respeitadas aqui:
  * - foto + nome em negrito + preço em destaque + saldo visível na própria célula;
  * - "Sem estoque" é selo SATURADO (fundo vermelho, texto branco), nunca outline;
- * - sem foto cai no placeholder digno do `SignedImg` (ícone + texto), nunca
+ * - sem foto cai em ícone discreto com nome acessível, nunca
  *   quadrado quebrado;
  * - item sem saldo é claramente marcado E não é clicável (não entra no carrinho).
  */
@@ -104,7 +106,7 @@ function PdvProductCardImpl({
 }: PdvProductCardProps) {
   const outOfStock = product.availableQuantity <= 0;
 
-  // Sem foto cadastrada: `SignedImg` já mostra o placeholder "sem foto" na
+  // Sem foto cadastrada: o ícone acessível aparece na
   // hora, sem esperar rede nenhuma — não é um estado de carregamento, é vazio
   // de verdade, então nasce "pronto" (sem skeleton por cima). Com foto, nasce
   // "carregando" até o <img> real disparar `onLoad` (dois tempos: a URL
@@ -156,7 +158,7 @@ function PdvProductCardImpl({
           visíveis na própria célula. */}
       <div
         className={cn(
-          'relative w-full',
+          'pdv-product-thumbnail relative w-full',
           imageBackdrop === 'cutout' && product.imageUrl
             ? 'bg-[radial-gradient(circle_at_50%_42%,hsl(var(--background))_0%,hsl(var(--muted)/0.72)_100%)]'
             : 'bg-muted/40',
@@ -205,7 +207,7 @@ function PdvProductCardImpl({
             enquanto a foto não chegou acompanha o da imagem real: sem isso a
             cópia borrada (que não tem `onLoad`) apareceria por cima do
             Skeleton e mataria o carregamento amigável. */}
-        <SignedImg
+        {!product.imageUrl ? <PdvProductPlaceholder label={noPhotoLabel} className="absolute inset-0 h-full w-full" /> : <SignedImg
           src={product.imageUrl}
           alt={product.name}
           fallbackLabel={noPhotoLabel}
@@ -222,7 +224,7 @@ function PdvProductCardImpl({
             if (product.imageUrl) readyProductPhotos.add(product.imageUrl);
             setPhotoReady(true);
           }}
-        />
+        />}
       </div>
       {outOfStock && (
         <Badge
@@ -249,6 +251,7 @@ function PdvProductCardImpl({
             serrilhada). `title` guarda o nome inteiro pro mouse/leitor de
             tela. Na variante compacta a fonte desce um passo (`text-xs`) e
             o `min-h` acompanha (2 linhas em `text-xs`/`leading-tight`). */}
+        <PdvProductCode code={product.sku} />
         <PdvProductName
           name={product.name}
           className={cn(

@@ -14,9 +14,13 @@ import { useEffect, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { invalidatePdvReportCaches } from '@/hooks/pdvReportCache';
+import { invalidatePdvOrderCancellationCaches } from '@/hooks/pdvOrderCancellationCache';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
 import type { FinancialTransaction } from '@/types/database';
+import { assertPdvCancellationResult } from '@/lib/pdv/orderCancellation';
+
+export { assertPdvCancellationResult } from '@/lib/pdv/orderCancellation';
 
 export interface PdvTerminal {
   id: string;
@@ -272,6 +276,7 @@ export async function invalidatePdvCashRegisterCaches(queryClient: QueryClient) 
     queryClient.invalidateQueries({ queryKey: ['pdv-cash-session-operators'] }),
     queryClient.invalidateQueries({ queryKey: SESSION_KEYS.cofre }),
     queryClient.invalidateQueries({ queryKey: ['pdv-cash-session-detail'] }),
+    queryClient.invalidateQueries({ queryKey: ['pdv-cash-sessions-v2'] }),
     queryClient.invalidateQueries({ queryKey: ['financial-accounts'] }),
     queryClient.invalidateQueries({ queryKey: ['account-balances'] }),
     queryClient.invalidateQueries({ queryKey: ['financial-transactions'] }),
@@ -475,21 +480,17 @@ export function usePdvCashRegister(focusedSessionId: string | null = null) {
    */
   const cancelOrder = useMutation({
     mutationFn: async (vars: { orderId: string; reason?: string | null }) => {
-      const { data, error } = await supabase.rpc('pdv_cancel_order', {
+      const { data, error } = await supabase.rpc('pdv_cancel_order_v2', {
         p_order_id: vars.orderId,
         p_reason: vars.reason ?? null,
       });
       if (error) throw error;
-      return data as unknown as Record<string, unknown>;
+      return assertPdvCancellationResult(
+        data as unknown as Record<string, unknown> | null,
+      );
     },
-    onSuccess: () => {
-      invalidateCash();
-      // O estorno mexe em estoque e em fiado, não só em dinheiro: as telas de
-      // Estoque e o limite do cliente têm que reagir junto.
-      queryClient.invalidateQueries({ queryKey: ['inventory'] });
-      queryClient.invalidateQueries({ queryKey: ['inventory-stock-levels'] });
-      queryClient.invalidateQueries({ queryKey: ['inventory-movements'] });
-      queryClient.invalidateQueries({ queryKey: ['pdv-customer-credit'] });
+    onSuccess: async () => {
+      await invalidatePdvOrderCancellationCaches(queryClient);
     },
   });
 

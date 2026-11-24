@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { usePdvAuthorizedQueryScope } from './pdvReportCache';
 
 export type PdvPreorderStatus =
   "edicao" | "encaminhado" | "convertido" | "cancelado";
@@ -238,25 +239,29 @@ export function usePdvPreorderQueue(
   status: PdvPreorderStatus | null,
   enabled = true,
 ) {
+  const scope = usePdvAuthorizedQueryScope();
   return useQuery({
-    queryKey: [...ROOT_KEY, "list", status ?? "all"],
+    queryKey: [...ROOT_KEY, "list", status ?? "all", ...scope.key],
     queryFn: () =>
       callRpc<PdvPreorderListRow[]>("pdv_list_preorders_v2", {
         p_status: status,
       }),
-    enabled,
+    enabled: enabled && scope.ready,
     staleTime: 15_000,
+    gcTime: 0,
   });
 }
 
 export function usePdvPreorder(preorderId: string | null) {
+  const scope = usePdvAuthorizedQueryScope();
   return useQuery({
-    queryKey: [...ROOT_KEY, "detail", preorderId],
+    queryKey: [...ROOT_KEY, "detail", preorderId, ...scope.key],
     queryFn: () =>
       callRpc<PdvPreorderDetail>("pdv_get_preorder_v2", {
         p_preorder_id: preorderId,
       }),
-    enabled: Boolean(preorderId),
+    enabled: Boolean(preorderId) && scope.ready,
+    gcTime: 0,
   });
 }
 

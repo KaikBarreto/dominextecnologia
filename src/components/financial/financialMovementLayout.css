@@ -1,0 +1,25 @@
+/* O detalhe pode ser estreito mesmo num monitor grande: menu e contas já
+   ocupam parte da viewport. O resumo acompanha seu próprio espaço útil. */
+.financial-account-detail { container: financial-account-detail / inline-size; }
+.financial-summary-layout { grid-template-columns: minmax(0,1fr); }
+.financial-distribution { border-top: 1px solid hsl(var(--border)); padding-top: 20px; }
+.financial-distribution-content { display:flex; flex-direction:column; gap:12px; }
+.financial-distribution-legend { width:100%; }
+@container financial-account-detail (min-width: 520px) {
+  .financial-distribution-content { flex-direction:row; align-items:center; gap:20px; }
+}
+@container financial-account-detail (min-width: 660px) {
+  .financial-summary-layout { grid-template-columns:minmax(256px,.85fr) minmax(0,1.35fr); align-items:center; }
+  .financial-distribution { border-top:0; padding-top:0; border-left:1px solid hsl(var(--border)); padding-left:12px; }
+}
+
+/* Na largura típica do painel ao lado do menu e das contas (660–879px),
+   duas colunas ainda são úteis se o gráfico e o total têm escala própria. */
+@container financial-account-detail (min-width: 660px) and (max-width: 879px) {
+  .financial-summary-total { font-size:26px; }
+  .financial-distribution-content { gap:12px; }
+  .financial-distribution-chart { width:148px; }
+}
+@container financial-account-detail (min-width: 880px) {
+  .financial-distribution { padding-left:20px; }
+}

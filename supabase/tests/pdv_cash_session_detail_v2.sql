@@ -40,9 +40,15 @@ BEGIN
   END IF;
 
   SELECT pg_get_functiondef(v_function::regprocedure) INTO v_definition;
-  IF strpos(v_definition, 's.opened_by=auth.uid()') = 0
+  IF strpos(v_definition, 'pdv_cash_session_projection_v3(p_session_id,false)') = 0 THEN
+    RAISE EXCEPTION 'detalhe nao usa a projecao canonica do Caixa';
+  END IF;
+  SELECT pg_get_functiondef('public.pdv_cash_session_projection_v3(uuid,boolean)'::regprocedure) ||
+         pg_get_functiondef('public.pdv_assert_cash_session_actor_v3(uuid,uuid,boolean,boolean)'::regprocedure) INTO v_definition;
+  IF strpos(v_definition, 'pdv_assert_cash_session_actor_v3') = 0
+     OR strpos(v_definition, 's.opened_by=v_context.user_id') = 0
+     OR strpos(v_definition, 's.company_id=v_context.company_id') = 0
      OR strpos(v_definition, 'pdv_can_operate_other_cash_v2') = 0
-     OR strpos(v_definition, 'pdv_cash_session_detail_core_015_v2') = 0
   THEN
     RAISE EXCEPTION 'detalhe perdeu wrapper nominal do Caixa';
   END IF;

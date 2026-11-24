@@ -42,6 +42,7 @@ interface ReportHeaderProps {
     icon_url?: string;
   } | null;
   orderNumber?: string;
+  serviceLabel?: string;
   osType?: string;
   checkOutTime?: string | null;
   config?: Partial<ReportHeaderConfig>;
@@ -51,6 +52,7 @@ interface ReportHeaderProps {
 export function ReportHeader({
   company,
   orderNumber = '000001',
+  serviceLabel = 'Serviço',
   osType = 'Manutenção Preventiva',
   checkOutTime,
   config: configOverride,
@@ -136,8 +138,8 @@ export function ReportHeader({
             >
               OS #{orderNumber}
             </div>
-            <p data-print-preserve-colors="true" className="text-xs sm:text-sm" style={{ color: cfg.textColor, opacity: 0.9 }}>
-              {osType}
+            <p data-print-preserve-colors="true" className="max-w-full sm:max-w-[280px] text-left sm:text-right text-xs sm:text-sm break-words" style={{ color: cfg.textColor, opacity: 0.9 }}>
+              <span className="font-semibold">{serviceLabel}:</span> {osType}
             </p>
           </div>
         </div>

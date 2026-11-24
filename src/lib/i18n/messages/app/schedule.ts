@@ -17,7 +17,7 @@ export const schedule = {
     },
     loadError: {
       title: 'Não foi possível carregar a agenda',
-      description: 'Verifique sua conexão e tente novamente.',
+      description: 'Tente novamente. Se continuar, atualize a página.',
     },
     nav: {
       prevAriaLabel: 'Anterior',

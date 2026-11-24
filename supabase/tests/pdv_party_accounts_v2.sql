@@ -378,20 +378,21 @@ BEGIN
   EXCEPTION WHEN OTHERS THEN GET STACKED DIAGNOSTICS denied_state=RETURNED_SQLSTATE; END;
   IF denied_state IS DISTINCT FROM '42501' THEN RAISE EXCEPTION 'viewer conseguiu escrever crédito'; END IF;
 
-  -- Tenant B resolve apenas a própria conta.
+  -- Tenant B com assinatura e modulo resolve a propria conta sem allowlist
+  -- paralela. O tenant A continua inacessivel pela mesma sessao.
   PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',ub,'role','authenticated')::text,true);
-  denied_state:=NULL; denied_detail:=NULL;
-  BEGIN PERFORM public.pdv_party_account_summary_v2('customer',customer_b);
-  EXCEPTION WHEN OTHERS THEN GET STACKED DIAGNOSTICS denied_state=RETURNED_SQLSTATE,denied_detail=PG_EXCEPTION_DETAIL; END;
-  IF denied_state IS DISTINCT FROM '42501' OR denied_detail IS DISTINCT FROM 'code=pdv_party_account_rollout_disabled' THEN
-    RAISE EXCEPTION 'rollout fechado não negou tenant B: %, %',denied_state,denied_detail; END IF;
-  UPDATE public.app_feature_flags SET company_allowlist=ARRAY[ca,cb]::uuid[]
-   WHERE key='pdv_party_accounts_v2';
   summary:=public.pdv_party_account_summary_v2('customer',customer_b);
   IF summary->>'party_id'<>customer_b::text OR (summary->>'open_amount')::numeric<>50 THEN
-    RAISE EXCEPTION 'tenant B não resolveu a própria conta'; END IF;
+    RAISE EXCEPTION 'tenant B com modulo nao resolveu a propria conta'; END IF;
+  denied_state:=NULL; denied_detail:=NULL;
+  BEGIN PERFORM public.pdv_party_account_summary_v2('customer',customer_a);
+  EXCEPTION WHEN OTHERS THEN GET STACKED DIAGNOSTICS denied_state=RETURNED_SQLSTATE,denied_detail=PG_EXCEPTION_DETAIL; END;
+  IF denied_state IS DISTINCT FROM 'P0002' OR denied_detail IS DISTINCT FROM 'code=pdv_party_account_party_not_found' THEN
+    RAISE EXCEPTION 'tenant B cruzou a conta da empresa A: %, %',denied_state,denied_detail; END IF;
+  UPDATE public.app_feature_flags SET company_allowlist=ARRAY[ca,cb]::uuid[]
+   WHERE key='pdv_party_accounts_v2';
 
-  -- Ambos os resets removem ledger antes das chaves, sem alterar outro tenant/rollout.
+  -- Ambos os resets removem ledger antes das chaves, sem alterar outro tenant.
   PERFORM public.reset_system_step(ca,'pdv',NULL);
   IF EXISTS(SELECT 1 FROM public.pdv_party_credit_entries WHERE company_id=ca)
      OR EXISTS(SELECT 1 FROM public.pdv_operation_requests request WHERE request.company_id=ca

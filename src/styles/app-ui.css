@@ -1,0 +1,62 @@
+/* Métricas da interface operacional. O escopo existente do shell cobre portais
+   e deixa páginas públicas, autenticação e checkout comercial com seus defaults. */
+@layer base {
+  [data-app] {
+    --app-ui-font-family: Montserrat, Arial, sans-serif;
+    --app-ui-body-size: 13px;
+    --app-ui-line-height: 1.5;
+    --app-ui-title-size: 26px;
+    --app-ui-title-mobile: 22px;
+    --app-ui-title-weight: 800;
+    --app-ui-title-tracking: -.8px;
+    --app-ui-field-size: 12px;
+    --app-ui-control-font-size: 13px;
+    --app-ui-control-height: 40px;
+    --app-ui-touch-height: 44px;
+    --app-ui-radius: 6px;
+    --app-ui-card-padding: 24px;
+    --app-ui-card-shadow: 0 0 #0000;
+    --app-ui-card-title-line-height: 1.4;
+    --app-ui-dialog-title-line-height: 1.35;
+    --app-ui-label-line-height: 1.4;
+    --app-ui-control-font-weight: 600;
+    --app-ui-table-head-height: 44px;
+    --app-ui-table-head-size: 11px;
+    --app-ui-table-head-weight: 600;
+    --app-ui-table-row-padding: 12px;
+    --app-ui-tab-gap: 12px;
+    --app-ui-screen-tab-size: 14px;
+    --app-ui-section-tab-size: 13px;
+    --app-ui-card-title-size: 16px;
+    --app-ui-dialog-title-size: 22px;
+    --app-ui-dialog-title-weight: 800;
+    --app-ui-page-gutter: 24px;
+    --app-ui-space-1: 4px;
+    --app-ui-space-2: 8px;
+    --app-ui-space-3: 12px;
+    --app-ui-space-4: 16px;
+    --app-ui-space-6: 24px;
+    --app-ui-space-8: 32px;
+  }
+  [data-app] body {
+    font-family: var(--app-ui-font-family);
+    font-size: var(--app-ui-body-size);
+    line-height: var(--app-ui-line-height);
+  }
+  @media (max-width: 767px) {
+    [data-app] {
+      --app-ui-control-height: 44px;
+      --app-ui-card-padding: 16px;
+      --app-ui-page-gutter: 16px;
+    }
+  }
+  @media (min-width: 1536px) {
+    [data-app] { --app-ui-page-gutter: 32px; }
+  }
+}
+@layer components {
+  [data-app] .app-ui-main { padding: var(--app-ui-page-gutter); }
+  [data-app] .app-ui-card { box-shadow: none; }
+  [data-app] .app-ui-button { font-weight: 600; }
+  [data-app] .app-ui-field-label { font-size: var(--app-ui-field-size); font-weight: 500; }
+}

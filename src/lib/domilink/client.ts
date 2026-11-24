@@ -18,6 +18,7 @@ const FRIENDLY_ERRORS: Record<string, string> = {
   session_expired: 'A conexão expirou. Faça o pareamento novamente.',
   device_not_found: 'O equipamento não foi encontrado no DomiLink.',
   idempotency_conflict: 'Este teste já foi enviado com outro conteúdo.',
+  print_queue_full: 'A fila de impressão está cheia. Aguarde 30 segundos e tente novamente.',
   rate_limited: 'Muitas tentativas. Aguarde um instante e tente novamente.',
   body_too_large: 'O documento é grande demais para enviar ao DomiLink.',
   unsupported_format: 'Esta impressora não aceita o formato do documento de teste.',
@@ -168,15 +169,17 @@ export function getDomiLinkPrintJob(token: string, jobId: string) {
   return request<{ job: DomiLinkPrintJob }>(`/v1/print/jobs/${encodeURIComponent(jobId)}`, { token, timeoutMs: 5_000 });
 }
 
-export async function waitForDomiLinkPrintJob(token: string, initial: DomiLinkPrintJob) {
+export async function waitForDomiLinkPrintJob(token: string, initial: DomiLinkPrintJob, assertCurrent: () => void = () => undefined) {
   let job = initial;
   for (let attempt = 0; attempt < 40; attempt += 1) {
+    assertCurrent();
     if (job.status === 'completed') return job;
     if (job.status === 'failed') {
       const code = job.error_code ?? 'unexpected_adapter_error';
       throw new DomiLinkError(code, FRIENDLY_ERRORS[code] ?? 'A impressão falhou. Confira o equipamento no DomiLink.');
     }
     if (attempt > 0) await new Promise((resolve) => window.setTimeout(resolve, 250));
+    assertCurrent();
     job = (await getDomiLinkPrintJob(token, job.id)).job;
   }
   throw new DomiLinkError('job_timeout', 'O DomiLink não confirmou a impressão. Confira a fila do equipamento.');
@@ -188,7 +191,7 @@ export async function readDomiLinkScale(token: string, deviceId: string) {
 }
 
 export async function readDomiLinkBarcode(token: string, deviceId: string) {
-  const payload = await request<{ code: string }>(`/v1/barcodes/${encodeURIComponent(deviceId)}/read`, { token, timeoutMs: 15_000 });
+  const payload = await request<{ code: string }>(`/v1/barcodes/${encodeURIComponent(deviceId)}/read`, { token, timeoutMs: 15_000, retryGet: false });
   return payload.code;
 }
 

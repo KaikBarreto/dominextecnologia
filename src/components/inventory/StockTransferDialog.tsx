@@ -38,7 +38,7 @@ export function StockTransferDialog({
 }: StockTransferDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory.transferDialog;
-  const { stocks, defaultStock, transferStock } = useStocks();
+  const { stocks, transferStock } = useStocks();
   const { getQuantityForStock } = useInventory();
   const { toast } = useToast();
 
@@ -52,11 +52,11 @@ export function StockTransferDialog({
     // initialFromStockId tem precedência: vem do atalho de presença bloqueada
     // (local cujo saldo impede a remoção). Só cai no activeStockId/default quando
     // o dialog é aberto pelo menu de ações "Transferir" normal.
-    setFromStockId(initialFromStockId ?? activeStockId ?? defaultStock?.id ?? '');
+    setFromStockId(initialFromStockId ?? activeStockId ?? '');
     setToStockId('');
     setQuantityStr('');
     setNotes('');
-  }, [open, initialFromStockId, activeStockId, defaultStock]);
+  }, [open, initialFromStockId, activeStockId]);
 
   const availableQty = item && fromStockId
     ? getQuantityForStock(item.id, fromStockId)

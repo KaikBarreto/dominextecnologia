@@ -35,8 +35,10 @@ BEGIN
     'public.pdv_list_cash_sessions_v2(text,uuid,uuid,integer,integer)'::regprocedure
   ) INTO v_definition;
   IF strpos(v_definition, 'pdv_can_operate_other_cash_v2') = 0
-     OR strpos(v_definition, 'p_operator_id:=v_uid') = 0
-     OR strpos(v_definition, 'pdv_list_cash_sessions_core_015_v2') = 0
+     OR strpos(v_definition, 'p_operator_id:=v_context.user_id') = 0
+     OR strpos(v_definition, 's.company_id=v_context.company_id') = 0
+     OR strpos(v_definition, '(v_can_other OR s.opened_by=v_context.user_id)') = 0
+     OR strpos(v_definition, 's.contract_version=2') = 0
      OR strpos(v_definition, 'can_manage_others') = 0
   THEN
     RAISE EXCEPTION 'listagem perdeu wrapper nominal de operador';

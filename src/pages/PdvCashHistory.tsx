@@ -1,3 +1,4 @@
+import '@/components/pdv/PdvWorkspace.css';
 import { Fragment, useMemo, useState } from 'react';
 import {
   AlertTriangle,
@@ -11,16 +12,17 @@ import {
   MoreHorizontal,
   Printer,
   RefreshCw,
-  Search,
   SlidersHorizontal,
 } from 'lucide-react';
+import '@/components/pdv/pdv-preview-sale.css';
+import '@/components/pdv/pdv-preview-purchase.css';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { SearchField, SearchFieldAction } from '@/components/ui/search-field-actions';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
+import { PdvPageSkeleton } from '@/components/pdv/loading/PdvPageSkeleton';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
@@ -119,7 +121,7 @@ export default function PdvCashHistory() {
     if (!query) return cash.history;
     return cash.history.filter((row) => {
       const values = [
-        terminalNames[row.terminalId] ?? 'Terminal',
+        terminalNames[row.terminalId] ?? 'Caixa',
         row.openedBy ? (cash.operators[row.openedBy] ?? 'Operador') : 'Operador',
         row.openedAt ? dateTime(row.openedAt) : '',
         row.closedAt ? dateTime(row.closedAt) : '',
@@ -146,7 +148,7 @@ export default function PdvCashHistory() {
     });
   };
 
-  const terminalName = (id: string) => terminalNames[id] ?? 'Terminal';
+  const terminalName = (id: string) => terminalNames[id] ?? 'Caixa';
   const operatorName = (id: string | null) => (
     id ? (cash.operators[id] ?? 'Operador') : 'Operador'
   );
@@ -233,7 +235,7 @@ export default function PdvCashHistory() {
   );
 
   return (
-    <div className={cn('space-y-5 pb-8', isMobile && 'pb-24')}>
+    <div className={cn('pdv-workspace pdv-preview-page space-y-5 pb-8', isMobile && 'pb-24')} data-pdv-ui data-testid="pdv-cash-history-workspace">
       <PageHeader
         title="Histórico de caixa"
         subtitle="Consulte as conferências dos caixas já fechados."
@@ -250,33 +252,13 @@ export default function PdvCashHistory() {
         )}
       />
 
-      <section className="space-y-4 rounded-xl bg-muted/30 p-4 sm:p-5 print:bg-transparent print:p-0">
-          <div className="flex flex-col gap-2 sm:flex-row print:hidden">
-            <div className="relative flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Buscar nesta página"
-                className="pl-9"
-                aria-label="Buscar caixas fechados nesta página"
-              />
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setFiltersOpen((current) => !current)}
-              aria-expanded={filtersOpen}
-            >
-              <SlidersHorizontal className="h-4 w-4" /> Filtros
-              {activeFilterCount > 0 ? <Badge variant="info">{activeFilterCount}</Badge> : null}
-            </Button>
-          </div>
+      <section className="space-y-4">
+          <SearchField containerClassName="print:hidden" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar nesta página" aria-label="Buscar caixas fechados nesta página" actions={<SearchFieldAction icon={SlidersHorizontal} label="Filtros" activeCount={activeFilterCount} onClick={() => setFiltersOpen((current) => !current)} aria-expanded={filtersOpen} aria-controls="pdv-cash-history-filters" />} />
 
           {filtersOpen ? (
-            <div className="grid gap-3 rounded-lg border bg-background p-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end print:hidden">
+            <div id="pdv-cash-history-filters" className="grid gap-3 rounded-lg border bg-background p-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end print:hidden">
               <label className="space-y-1.5 text-sm font-medium">
-                <span>Terminal</span>
+                <span>Caixa</span>
                 <Select
                   value={filters.terminalId ?? ALL}
                   onValueChange={(value) => updateFilters({
@@ -284,9 +266,9 @@ export default function PdvCashHistory() {
                     page: 0,
                   })}
                 >
-                  <SelectTrigger><SelectValue placeholder="Todos os terminais" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Todos os caixas" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={ALL}>Todos os terminais</SelectItem>
+                    <SelectItem value={ALL}>Todos os caixas</SelectItem>
                     {cash.terminals.map((terminal) => (
                       <SelectItem key={terminal.id} value={terminal.id}>{terminal.name}</SelectItem>
                     ))}
@@ -407,11 +389,11 @@ export default function PdvCashHistory() {
             </div>
           ) : (
             <div className="overflow-hidden rounded-lg bg-background print:border print:border-black">
-              <Table className="min-w-[940px]">
+              <Table className="pdv-history-table min-w-[940px]">
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
                     <TableHead className="h-10 w-11 px-2 print:hidden"><span className="sr-only">Detalhes</span></TableHead>
-                    <TableHead className="h-10 px-3">Terminal</TableHead>
+                    <TableHead className="h-10 px-3">Caixa</TableHead>
                     <TableHead className="h-10 px-3">Operador</TableHead>
                     <TableHead className="h-10 px-3">Fechado em</TableHead>
                     <TableHead className="h-10 px-3 text-right">Esperado</TableHead>
@@ -526,7 +508,7 @@ export default function PdvCashHistory() {
             <p className="text-xs text-muted-foreground">Informe pelo menos 3 caracteres. O motivo ficará no histórico.</p>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" disabled={cash.reopenSession.isPending} onClick={() => setReopenTarget(null)}>Cancelar</Button>
+            <Button type="button" variant="cancel-ghost" disabled={cash.reopenSession.isPending} onClick={() => setReopenTarget(null)}>Cancelar</Button>
             <Button type="button" disabled={reopenReason.trim().length < 3 || cash.reopenSession.isPending} onClick={() => void confirmReopen()}>
               {cash.reopenSession.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Reabrir caixa
             </Button>
@@ -538,7 +520,7 @@ export default function PdvCashHistory() {
 }
 
 function DifferenceBadge({ difference }: { difference: number | null }) {
-  if (difference == null) return <Badge variant="muted">Sem conferência</Badge>;
+  if (difference == null) return <Badge className="border-0 bg-slate-600 text-white">Sem conferência</Badge>;
   if (difference === 0) return <Badge variant="success">Conferido</Badge>;
   return <Badge variant="warning">Com diferença</Badge>;
 }
@@ -607,8 +589,6 @@ function SessionDetails({
 
 function HistoryLoading() {
   return (
-    <div className="space-y-2" aria-label="Carregando histórico">
-      {[0, 1, 2, 3, 4].map((item) => <Skeleton key={item} className="h-14 w-full" />)}
-    </div>
+    <PdvPageSkeleton variant="table" label="Carregando histórico de caixa" />
   );
 }

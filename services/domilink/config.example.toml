@@ -51,4 +51,28 @@ codes = ["7890000000011", "QR:EXEMPLO-FICTICIO"]
 # label = "Balança serial"
 # port = "/dev/ttyUSB0"
 # baudrate = 9600
-# protocol = "line"
+# protocol = "upx"  # line (legado kg), upx, toledo, filizola, generic ou auto
+# bytesize = 8
+# parity = "N"
+# stopbits = 1
+# UPX envia ENQ automaticamente; em outros perfis, configure só após conferir o manual.
+# read_command = "\u0005"
+# tare_command = "T\r"  # exemplo, NÃO é comando universal de tara
+#
+# [[devices]]
+# id = "barcode-serial"
+# kind = "barcode"
+# adapter = "serial-barcode"
+# label = "Leitor serial"
+# port = "/dev/ttyUSB1"
+# baudrate = 9600
+# encoding = "utf-8"
+# Configure no leitor: sufixo CR, LF ou ETX. USB/HID usa o teclado do PDV.
+#
+# [[devices]]
+# id = "printer-system"
+# kind = "printer"
+# adapter = "system-pdf"
+# label = "Impressora do sistema"
+# printer_name = "Fila-Ficticia"
+# paper_width_mm = 80  # Windows GDI: bobina 58/80 e largura imprimível real do driver

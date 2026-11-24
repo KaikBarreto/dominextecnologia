@@ -125,6 +125,56 @@ export function pdvPurchaseDraftTotal(draft: PdvPurchaseDraft): number {
   );
 }
 
+const roundPurchaseMoney = (value: number) => Math.round((Number(value) || 0) * 100) / 100;
+
+export function setPdvPurchaseItemFinalAmount(
+  draft: PdvPurchaseDraft,
+  itemId: string,
+  finalAmount: number,
+): PdvPurchaseDraft {
+  const target = Math.max(0, roundPurchaseMoney(finalAmount));
+  return {
+    ...draft,
+    items: draft.items.map((item) => {
+      if (item.id !== itemId) return item;
+      const quantity = parsePdvPurchaseNumber(item.quantityText);
+      if (quantity <= 0) return item;
+      return { ...item, unitPriceText: String(roundPurchaseMoney(target / quantity)) };
+    }),
+  };
+}
+
+export function setPdvPurchaseDraftFinalAmount(
+  draft: PdvPurchaseDraft,
+  finalAmount: number,
+): PdvPurchaseDraft {
+  const target = Math.max(0, roundPurchaseMoney(finalAmount));
+  const pricedItems = draft.items.filter((item) => parsePdvPurchaseNumber(item.quantityText) > 0);
+  if (pricedItems.length === 0) return draft;
+  const currentTotal = pdvPurchaseDraftTotal(draft);
+  const quantityTotal = pricedItems.reduce((sum, item) => sum + parsePdvPurchaseNumber(item.quantityText), 0);
+  let remaining = target;
+  let adjustedIndex = 0;
+  return {
+    ...draft,
+    items: draft.items.map((item) => {
+      const quantity = parsePdvPurchaseNumber(item.quantityText);
+      if (quantity <= 0) return item;
+      const isLast = adjustedIndex === pricedItems.length - 1;
+      const currentLine = quantity * parsePdvPurchaseNumber(item.unitPriceText);
+      const share = isLast
+        ? remaining
+        : roundPurchaseMoney(currentTotal > 0
+          ? target * (currentLine / currentTotal)
+          : target * (quantity / quantityTotal));
+      const unitPrice = roundPurchaseMoney(Math.max(0, share) / quantity);
+      remaining = roundPurchaseMoney(remaining - unitPrice * quantity);
+      adjustedIndex += 1;
+      return { ...item, unitPriceText: String(unitPrice) };
+    }),
+  };
+}
+
 function cloneDraft(draft: PdvPurchaseDraft): PdvPurchaseDraft {
   return { ...draft, items: draft.items.map((item) => ({ ...item })) };
 }
@@ -238,8 +288,7 @@ export function parsePdvPurchaseWorkspace(
     const parsed = JSON.parse(raw) as Partial<PdvPurchaseWorkspace>;
     const drafts = (Array.isArray(parsed.drafts) ? parsed.drafts : [])
       .map((draft) => sanitizeDraft(draft, defaults))
-      .filter((draft): draft is PdvPurchaseDraft => draft != null)
-      .slice(0, MAX_PDV_PURCHASE_DRAFTS);
+      .filter((draft): draft is PdvPurchaseDraft => draft != null);
     if (drafts.length === 0) return createPdvPurchaseWorkspace(defaults);
     const activeId = drafts.some((draft) => draft.id === parsed.activeId)
       ? parsed.activeId as string

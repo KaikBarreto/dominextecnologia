@@ -147,6 +147,8 @@
         "npm:@vitejs/plugin-react-swc@^3.11.0",
         "npm:@vladmandic/face-api@^1.7.15",
         "npm:@xyflow/react@^12.11.2",
+        "npm:@zxing/browser@~0.2.1",
+        "npm:@zxing/library@0.23",
         "npm:autoprefixer@^10.4.21",
         "npm:class-variance-authority@~0.7.1",
         "npm:clsx@^2.1.1",

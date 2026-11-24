@@ -12,6 +12,7 @@ import {
   PAYMENT_TOLERANCE,
   PDV_PAYMENT_METHODS,
   autofillPaymentRemainder,
+  clampStoredValueApplication,
   computeRemaining,
   computeRowChange,
   computeTotalChange,
@@ -19,6 +20,7 @@ import {
   isBalanced,
   newPaymentRow,
   requiresAccount,
+  splitFiadoInstallments,
   sumFiado,
   sumPayments,
   toSettlePayload,
@@ -50,6 +52,8 @@ function row(partial: Partial<PaymentRow> & { method: PaymentRow['method']; amou
     tendered: partial.tendered ?? 0,
     accountId: partial.accountId ?? null,
     dueDate: partial.dueDate ?? null,
+    installmentCount: partial.installmentCount ?? 1,
+    referenceId: partial.referenceId ?? null,
   };
 }
 
@@ -61,7 +65,7 @@ describe('pdv/payment — formas aceitas', () => {
   it('não oferece "pontos" (a RPC recusa, a funcionalidade é Onda 4)', () => {
     expect(PDV_PAYMENT_METHODS).not.toContain('pontos' as never);
     expect([...PDV_PAYMENT_METHODS].sort()).toEqual(
-      ['credito', 'debito', 'dinheiro', 'fiado', 'pix', 'transferencia'],
+      ['credito', 'debito', 'dinheiro', 'fiado', 'pix', 'saldo_cliente', 'transferencia', 'voucher'],
     );
   });
 
@@ -77,6 +81,13 @@ describe('pdv/payment — formas aceitas', () => {
 });
 
 describe('pdv/payment — soma e quanto falta', () => {
+  it('limita voucher ao menor valor entre pedido, saldo e valor solicitado', () => {
+    expect(clampStoredValueApplication(100, 150, 120)).toBe(100);
+    expect(clampStoredValueApplication(200, 80, 150)).toBe(80);
+    expect(clampStoredValueApplication(200, 180, 75.555)).toBe(75.56);
+    expect(clampStoredValueApplication(100, 100, -10)).toBe(0);
+  });
+
   it('soma as formas e devolve o que falta', () => {
     const rows = [row({ method: 'dinheiro', amount: 50 }), row({ method: 'pix', amount: 30, accountId: 'a' })];
     expect(sumPayments(rows)).toBe(80);
@@ -174,6 +185,14 @@ describe('pdv/payment — vencimento do fiado (mês calendário)', () => {
     expect(defaultFiadoDueDate(new Date(2026, 11, 20))).toBe('2027-01-20');
   });
 
+  it('divide o fiado em parcelas exatas, inclusive quando os centavos não dividem', () => {
+    expect(splitFiadoInstallments(100, 3, '2026-11-30')).toEqual([
+      { amount: 33.34, dueDate: '2026-11-30' },
+      { amount: 33.33, dueDate: '2026-12-30' },
+      { amount: 33.33, dueDate: '2027-01-30' },
+    ]);
+  });
+
   it('a linha nova de fiado já nasce com vencimento, e as outras não', () => {
     const fiado = newPaymentRow('fiado', 30, { today: new Date(2026, 9, 18) });
     expect(fiado.dueDate).toBe('2026-11-18');
@@ -249,6 +268,59 @@ describe('pdv/payment — complemento automático de múltiplas formas', () => {
 });
 
 describe('pdv/payment — validação que bloqueia a venda', () => {
+  it('voucher exato cobre a venda sem exigir outra forma', () => {
+    const voucher = row({ method: 'voucher', amount: 100, referenceId: 'voucher-1' });
+    const result = validatePayments([voucher], ctx({ voucherBalances: { 'voucher-1': 100 } }));
+    expect(result.ok).toBe(true);
+    expect(toSettlePayload([voucher])).toEqual([
+      { method: 'voucher', amount: 100, reference_id: 'voucher-1' },
+    ]);
+  });
+
+  it('voucher parcial combina com recebimento sem virar desconto', () => {
+    const voucher = row({ method: 'voucher', amount: 35, referenceId: 'voucher-1' });
+    const pix = row({ method: 'pix', amount: 65, accountId: 'conta-pix' });
+    const result = validatePayments([voucher, pix], ctx({ voucherBalances: { 'voucher-1': 80 } }));
+    expect(result.ok).toBe(true);
+    expect(toSettlePayload([voucher, pix])).toEqual([
+      { method: 'voucher', amount: 35, reference_id: 'voucher-1' },
+      { method: 'pix', amount: 65, account_id: 'conta-pix' },
+    ]);
+  });
+
+  it('saldo e voucher exigem cliente; voucher também exige a seleção', () => {
+    const balance = row({ method: 'saldo_cliente', amount: 50 });
+    const voucher = row({ method: 'voucher', amount: 50 });
+    const result = validatePayments([balance, voucher], ctx({ hasCustomer: false }));
+    expect(codes(result.issues)).toContain('valor_armazenado_sem_cliente');
+    expect(codes(result.issues)).toContain('valor_armazenado_sem_referencia');
+  });
+
+  it('bloqueia saldo ou voucher acima do valor disponível', () => {
+    const balance = row({ method: 'saldo_cliente', amount: 60 });
+    const voucher = row({ method: 'voucher', amount: 40, referenceId: 'voucher-1' });
+    const result = validatePayments([balance, voucher], ctx({
+      availableCustomerBalance: 59.99,
+      voucherBalances: { 'voucher-1': 39.99 },
+    }));
+    expect(result.issues).toEqual(expect.arrayContaining([
+      { code: 'saldo_cliente_insuficiente', rowId: balance.id },
+      { code: 'voucher_insuficiente', rowId: voucher.id },
+    ]));
+  });
+
+  it('expande o fiado parcelado no payload sem perder um centavo', () => {
+    const payload = toSettlePayload([{
+      ...row({ method: 'fiado', amount: 100, dueDate: '2026-11-30' }),
+      installmentCount: 3,
+    }]);
+    expect(payload).toEqual([
+      { method: 'fiado', amount: 33.34, due_date: '2026-11-30' },
+      { method: 'fiado', amount: 33.33, due_date: '2026-12-30' },
+      { method: 'fiado', amount: 33.33, due_date: '2027-01-30' },
+    ]);
+    expect(payload.reduce((total, item) => total + item.amount, 0)).toBe(100);
+  });
   it('venda simples em dinheiro, caixa aberto: passa', () => {
     const rows = [row({ method: 'dinheiro', amount: 100, tendered: 150 })];
     const result = validatePayments(rows, ctx());

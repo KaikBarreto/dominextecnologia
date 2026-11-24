@@ -6,6 +6,7 @@ import {
   deletePdvSaleDraft,
   parsePdvSaleWorkspace,
   selectPdvSaleDraft,
+  setPdvSaleDraftCustomer,
   updatePdvSaleDraft,
   pdvSaleDraftStorageKey,
   MAX_PDV_SALE_DRAFTS,
@@ -21,6 +22,14 @@ const product = {
 };
 
 describe('rascunhos simultâneos da venda PDV', () => {
+  it('restaura a chave versionada e o pedido confirmado sem reinterpretar a tentativa legada', () => {
+    const workspace = createPdvSaleWorkspace('2026-11-15');
+    const confirmedSale = { orderId: 'paid-order', orderNumber: 12, deliveryId: 'delivery', subtotal: 25, discountAmount: 0, total: 25, idempotent: false };
+    workspace.drafts[0].attempt = { signature: 'intent', clientRequestId: 'stable', orderId: 'paid-order', directSaleVersion: 3, idempotencyKey: 'direct-sale-v3-stable', confirmedSale };
+    expect(parsePdvSaleWorkspace(JSON.stringify(workspace), '2026-11-15').drafts[0].attempt).toEqual(workspace.drafts[0].attempt);
+    workspace.drafts[0].attempt = { signature: 'legacy', clientRequestId: 'legacy-request', orderId: 'open-legacy-order' };
+    expect(parsePdvSaleWorkspace(JSON.stringify(workspace), '2026-11-15').drafts[0].attempt).toEqual(workspace.drafts[0].attempt);
+  });
   it('separa o cache do mesmo operador entre duas aberturas e dois Caixas', () => {
     const base = { companyId: 'company', userId: 'operator', stockId: 'stock' };
     const keyA = pdvSaleDraftStorageKey({ ...base, cashSessionId: 'opening-a', terminalId: 'cash-a' });
@@ -98,6 +107,39 @@ describe('rascunhos simultâneos da venda PDV', () => {
     expect(recovered.drafts[0].transactionDate).toBe('2026-10-20');
   });
 
+  it('restaura a intenção de voucher no rascunho sem consumir saldo', () => {
+    const original = createPdvSaleWorkspace('2026-10-19', 'stock-a');
+    original.drafts[0].appliedVoucher = {
+      voucherId: 'voucher-1',
+      code: 'DEV-1042',
+      amount: 40,
+      balance: 75,
+      expiresOn: '2026-12-31',
+    };
+    const restored = parsePdvSaleWorkspace(JSON.stringify(original), '2026-10-20');
+    expect(restored.drafts[0].appliedVoucher).toEqual(original.drafts[0].appliedVoucher);
+    // O rascunho guarda só intenção: não há lançamento, pagamento nem mutation aqui.
+    expect(restored.drafts[0].attempt).toBeNull();
+  });
+
+  it('descarta voucher de cache inválido ou sem valor positivo', () => {
+    const original = createPdvSaleWorkspace('2026-10-19');
+    const raw = JSON.parse(JSON.stringify(original));
+    raw.drafts[0].appliedVoucher = { voucherId: 'v', code: 'V', amount: -1, balance: 50 };
+    expect(parsePdvSaleWorkspace(JSON.stringify(raw), '2026-10-20').drafts[0].appliedVoucher).toBeNull();
+  });
+
+  it('trocar o cliente limpa o voucher para impedir uso na pessoa errada', () => {
+    const workspace = createPdvSaleWorkspace('2026-10-19');
+    const draft = workspace.drafts[0];
+    draft.cart.customerId = 'cliente-a';
+    draft.appliedVoucher = {
+      voucherId: 'voucher-a', code: 'A-1', amount: 50, balance: 50, expiresOn: null,
+    };
+    expect(setPdvSaleDraftCustomer(draft, 'cliente-b').appliedVoucher).toBeNull();
+    expect(setPdvSaleDraftCustomer(draft, 'cliente-a').appliedVoucher).toEqual(draft.appliedVoucher);
+  });
+
   it('não ultrapassa o limite de pedidos simultâneos', () => {
     let workspace = createPdvSaleWorkspace('2026-10-19');
     while (workspace.drafts.length < MAX_PDV_SALE_DRAFTS) {
@@ -108,4 +150,13 @@ describe('rascunhos simultâneos da venda PDV', () => {
     expect(workspace).toBe(full);
     expect(workspace.drafts).toHaveLength(MAX_PDV_SALE_DRAFTS);
   });
+  it('recupera todos os atendimentos válidos acima do limite sem permitir nova criação', () => {
+    const original = createPdvSaleWorkspace('2026-10-19');
+    const drafts = Array.from({ length: 21 }, (_, i) => ({ ...original.drafts[0], id: `recover-${i}`, sequence: i + 1 }));
+    const restored = parsePdvSaleWorkspace(JSON.stringify({ drafts, activeId: 'recover-20', nextSequence: 22 }), '2026-10-19');
+    expect(restored.drafts).toHaveLength(21);
+    expect(restored.activeId).toBe('recover-20');
+    expect(addPdvSaleDraft(restored, '2026-10-19')).toBe(restored);
+  });
+
 });

@@ -13,8 +13,7 @@ export function getInventoryBarcodeDetectorConstructor(): InventoryBarcodeDetect
 
 export function canScanInventoryIdentifierWithCamera(): boolean {
   return Boolean(
-    getInventoryBarcodeDetectorConstructor()
-    && typeof navigator !== 'undefined'
+    typeof navigator !== 'undefined'
     && navigator.mediaDevices?.getUserMedia,
   );
 }

@@ -1,3 +1,4 @@
+import '@/components/pdv/PdvWorkspace.css';
 import { useMemo, useState } from "react";
 import { Loader2, Repeat2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -188,7 +189,7 @@ export function PdvExchangeDialog({
   }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+      <DialogContent className="pdv-dialog max-h-[90vh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Usar devolução em troca</DialogTitle>
           <DialogDescription>
@@ -196,7 +197,7 @@ export function PdvExchangeDialog({
             permanecem no histórico.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-2 sm:grid-cols-2">
+        <div className="pdv-form-section grid gap-4 py-2 sm:grid-cols-2">
           <div className="grid gap-2 sm:col-span-2">
             <Label>Novo pedido</Label>
             <Select value={candidateId} onValueChange={setCandidateId}>
@@ -338,7 +339,7 @@ export function PdvExchangeDialog({
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="cancel" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
           <Button

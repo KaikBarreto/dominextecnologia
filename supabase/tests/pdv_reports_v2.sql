@@ -7,9 +7,9 @@ BEGIN
   FOREACH v_fn IN ARRAY ARRAY[
     'public.get_material_purchase_report_v2(date,date,uuid[],uuid[],uuid[],uuid[],uuid[],integer,integer)',
     'public.get_inventory_abc_report(date,date,uuid[])',
-    'public.pdv_partial_projection_report_v2(text,date,date,integer,integer)',
-    'public.pdv_global_event_history_v2(date,date,uuid,integer,integer)',
-    'public.pdv_document_index_v2(integer,integer)'
+    'public.pdv_partial_projection_report_v3(text,date,date,integer,integer)',
+    'public.pdv_global_event_history_v3(date,date,uuid,integer,integer)',
+    'public.pdv_document_index_v3(integer,integer)'
   ] LOOP
     IF has_function_privilege('anon',v_fn,'EXECUTE')
        OR NOT has_function_privilege('authenticated',v_fn,'EXECUTE') THEN
@@ -20,6 +20,9 @@ BEGIN
       RAISE EXCEPTION 'RPC sem SECURITY DEFINER/search_path em %',v_fn; END IF;
   END LOOP;
   FOREACH v_fn IN ARRAY ARRAY[
+    'public.pdv_partial_projection_report_v2(text,date,date,integer,integer)',
+    'public.pdv_global_event_history_v2(date,date,uuid,integer,integer)',
+    'public.pdv_document_index_v2(integer,integer)',
     'public.pdv_commercial_facts_v2(uuid)',
     'public.pdv_reports_context_v2(text,boolean)',
     'public.pdv_material_purchase_rows_v2(uuid,uuid,date,date,uuid[],uuid[],uuid[],uuid[])',
@@ -138,8 +141,11 @@ BEGIN
   INSERT INTO public.user_permissions(user_id,permissions,is_active) VALUES
     (user_operator,'["screen:pdv_reports","screen:inventory"]',true),(user_denied,'[]',true);
   INSERT INTO public.company_modules(company_id,module_code) VALUES(company_a,'basic'),(company_a,'pdv'),(company_b,'basic');
-  INSERT INTO public.company_settings(company_id,name,timezone) VALUES(company_a,'W6 Empresa PDV','America/Sao_Paulo');
+  INSERT INTO public.company_settings(company_id,name,timezone) VALUES(company_a,'W6 Empresa PDV','America/Sao_Paulo')
+  ON CONFLICT (company_id) DO UPDATE SET name=EXCLUDED.name, timezone=EXCLUDED.timezone;
   today_a:=public.company_today(company_a); first_day:=today_a-1;
+  -- A criação da empresa já fornece um estoque padrão; a fixture escolhe outro explicitamente.
+  UPDATE public.stocks SET is_default=false WHERE company_id IN (company_a, company_b) AND is_default IS TRUE;
   INSERT INTO public.stocks(id,company_id,name,is_default) VALUES
     (stock_a,company_a,'Principal',true),(stock_b,company_b,'Principal B',true);
   INSERT INTO public.inventory(id,company_id,sku,name,unit,quantity,cost_price,sale_price) VALUES

@@ -9,6 +9,7 @@ vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc } }));
 import {
   InventoryIdentifierError,
   mapInventoryIdentifierError,
+  projectInventoryIdentifierList,
   projectResolvedInventoryIdentifier,
   useInventoryIdentifiers,
 } from '@/hooks/useInventoryIdentifiers';
@@ -54,6 +55,27 @@ describe('useInventoryIdentifiers', () => {
   it('retorna null para codigo desconhecido e recusa payload incompleto', () => {
     expect(projectResolvedInventoryIdentifier(null)).toBeNull();
     expect(projectResolvedInventoryIdentifier({ identifier_id: 'x', material: { id: 'y' } })).toBeNull();
+  });
+
+  it('projeta a lista de codigos sem aceitar campos fora do contrato', () => {
+    const list = projectInventoryIdentifierList({
+      inventory_id: 'material-1', material_name: 'Parafuso', sku: 'PAR-1', unit: 'un',
+      cost_price: 999,
+      items: [{
+        identifier_id: 'identifier-1', inventory_id: 'material-1', identifier_type: 'qr',
+        code: 'QR-1', unit_label: 'caixa', unit_factor: 12, is_primary: false, is_active: true,
+        company_id: 'segredo',
+      }],
+    });
+    expect(list).toEqual({
+      inventoryId: 'material-1', materialName: 'Parafuso', sku: 'PAR-1', unit: 'un',
+      items: [{
+        identifierId: 'identifier-1', inventoryId: 'material-1', identifierType: 'qr',
+        code: 'QR-1', unitLabel: 'caixa', unitFactor: 12, isPrimary: false, isActive: true,
+      }],
+    });
+    expect(list).not.toHaveProperty('cost_price');
+    expect(list.items[0]).not.toHaveProperty('company_id');
   });
 
   it('gera codigo interno somente pela unidade-base, sem prometer fator de embalagem', async () => {

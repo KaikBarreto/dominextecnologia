@@ -898,6 +898,8 @@ function CurrentSale() {
     currencyFractionDigits: 2,
     onSetDiscountAmount: cartState.setDiscountAmount,
     onSetLineDiscount: cartState.setCartLineDiscount,
+    onSetLineFinalAmount: () => undefined,
+    onSetCartFinalAmount: () => undefined,
     onCustomerChange: cartState.setCustomer,
     onRequestPayment: () => undefined,
     cashClosed: false,

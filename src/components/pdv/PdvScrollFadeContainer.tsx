@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import * as ScrollAreaPrimitive from '@radix-ui/react-scroll-area';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import './PdvScrollFadeContainer.css';
 
 interface ScrollEdges {
   /** Rolado até o topo (nada acima). */
@@ -75,6 +77,8 @@ interface PdvScrollFadeContainerProps {
   className?: string;
   /** Editor inline aberto: mantém o conteúdo totalmente opaco durante a edição. */
   fadeDisabled?: boolean;
+  /** Trilho próprio fora da largura dos itens, inclusive com scroll overlay do SO. */
+  externalScrollbar?: boolean;
   /** Evento de adição: cada chave nova leva a lista ao item mais recente no fim. */
   scrollToEndKey?: number;
   /** Item afetado pela adição; quando já existe, rola até ele sem reordenar a lista. */
@@ -105,6 +109,7 @@ export function PdvScrollFadeContainer({
   recomputeDeps = [],
   className,
   fadeDisabled = false,
+  externalScrollbar = false,
   scrollToEndKey,
   scrollToItemKey,
 }: PdvScrollFadeContainerProps) {
@@ -151,6 +156,9 @@ export function PdvScrollFadeContainer({
   ];
   const maskImage = `linear-gradient(to bottom, ${stops.join(', ')})`;
 
+  const Root = externalScrollbar ? ScrollAreaPrimitive.Root : 'div';
+  const Viewport = externalScrollbar ? ScrollAreaPrimitive.Viewport : 'div';
+
   return (
     // `className` (ex: `flex-1 min-h-0` do chamador) vai no WRAPPER raiz, não
     // no filho — bug medido 2026-10-19: `flex-1` só tem efeito dentro de um
@@ -158,17 +166,21 @@ export function PdvScrollFadeContainer({
     // dentro de um `relative` comum, SEM `display:flex`), virava no-op e o
     // container nunca ficava limitado, crescendo sempre com o conteúdo —
     // scrollHeight==clientHeight sempre, fade/chevron nunca apareciam.
-    <div className={cn('relative min-h-0', className)}>
-      <div
+    <Root className={cn('relative min-h-0', className, externalScrollbar && 'pdv-cart-scroll')} {...(externalScrollbar ? { type: 'auto' as const } : {})}>
+      <Viewport
         ref={ref}
-        className="h-full overflow-y-auto"
+        className="pdv-cart-scroll-viewport h-full overflow-y-auto"
+        {...(externalScrollbar ? { tabIndex: 0, role: 'region', 'aria-label': 'Materiais do pedido' } : {})}
         style={{
           WebkitMaskImage: maskImage,
           maskImage,
         }}
       >
         {children}
-      </div>
+      </Viewport>
+      {externalScrollbar && <ScrollAreaPrimitive.Scrollbar orientation="vertical" className="pdv-cart-scroll-rail">
+        <ScrollAreaPrimitive.Thumb className="pdv-cart-scroll-thumb" />
+      </ScrollAreaPrimitive.Scrollbar>}
 
       {showBottomFade && (
         <div
@@ -178,6 +190,6 @@ export function PdvScrollFadeContainer({
           <ChevronDown className="h-3.5 w-3.5 animate-bounce text-muted-foreground/70" strokeWidth={2.5} />
         </div>
       )}
-    </div>
+    </Root>
   );
 }

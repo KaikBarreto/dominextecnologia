@@ -136,10 +136,8 @@ export default function Settings() {
   const { acceptedAt: termsAcceptedAt } = useTermsOfService();
   const termsAcceptedLabel = formatBrtDateTime(termsAcceptedAt);
   const [searchParams, setSearchParams] = useSearchParams();
-  const [activeTab, setActiveTabState] = useState(() => {
-    const tabFromUrl = searchParams.get('tab');
-    return tabFromUrl && ALL_TABS.includes(tabFromUrl) ? tabFromUrl : 'empresa';
-  });
+  const tabFromUrl = searchParams.get('tab');
+  const activeTab = tabFromUrl && ALL_TABS.includes(tabFromUrl) ? tabFromUrl : 'empresa';
 
   const visibleTabs = settingsTabs.filter(t => {
     if (t.value === 'usuarios') return hasScreenAccess('screen:users');
@@ -150,8 +148,10 @@ export default function Settings() {
     return true;
   });
   const setActiveTab = (tab: string) => {
-    setActiveTabState(tab);
-    setSearchParams({ tab }, { replace: true });
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', tab);
+    if (tab !== 'integracoes') next.delete('integration');
+    setSearchParams(next, { replace: true });
   };
   // canSave: query terminou e o usuário é de tenant com empresa — mesmo sem
   // linha em company_settings (o hook auto-cria via INSERT no primeiro save).

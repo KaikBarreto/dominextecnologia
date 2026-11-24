@@ -31,8 +31,18 @@ vi.mock("@/components/customers/CustomerSelectField", () => ({
   ),
 }));
 
+vi.mock("@/hooks/usePdvReceiptCompany", () => ({ usePdvReceiptCompany: () => null, PDV_RECEIPT_COMPANY_PENDING: "Aguarde a identificação da empresa." }));
+
 vi.mock("@/hooks/useCompanySettings", () => ({
   useCompanySettings: () => ({ settings: { name: "Empresa Teste" } }),
+}));
+
+vi.mock("@/hooks/useInventoryIdentifiers", () => ({
+  useInventoryIdentifiers: () => ({ resolve: { mutateAsync: vi.fn(), isPending: false } }),
+}));
+
+vi.mock("@/components/inventory/identifiers/InventoryIdentifierCameraScanner", () => ({
+  InventoryIdentifierCameraScanner: () => null,
 }));
 
 beforeAll(() => {
@@ -126,7 +136,7 @@ describe("PdvPreorderDetail", () => {
 
     expect(screen.getAllByText("Preço pendente").length).toBeGreaterThan(0);
     expect(screen.getAllByText(/R\$\s*0,00/).length).toBeGreaterThan(0);
-    expect(screen.getByRole("button", { name: "Criar pedido" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Gerar pedido" })).toBeDisabled();
     expect(screen.getByText("Faltam preços")).toBeInTheDocument();
   });
 
@@ -138,6 +148,29 @@ describe("PdvPreorderDetail", () => {
     ).toBeInTheDocument();
     expect(screen.getAllByLabelText("Preço unitário")).toHaveLength(2);
     expect(screen.queryByText("Faltam preços")).not.toBeInTheDocument();
+  });
+
+  it("mantém Gerar pedido exclusivo da conversão e preços bloqueados para esse perfil", async () => {
+    const onConvert = vi.fn().mockResolvedValue({});
+    const onValue = vi.fn();
+    render(<PdvPreorderDetail {...baseProps} detail={{ ...detail, items: detail.items.map(item => ({ ...item, unit_price: 10 })) }} canValue={false} canConvert onConvert={onConvert} onValue={onValue} />);
+    expect(screen.queryByLabelText('Preço unitário')).not.toBeInTheDocument();
+    const action = screen.getByRole('button', { name: 'Gerar pedido' });
+    expect(action).toBeEnabled(); fireEvent.click(action);
+    await waitFor(() => expect(onConvert).toHaveBeenCalledOnce());
+    expect(onValue).not.toHaveBeenCalled();
+  });
+
+  it("quem só valoriza pode editar preços sem receber ação Gerar pedido", () => {
+    render(<PdvPreorderDetail {...baseProps} canValue canConvert={false} />);
+    expect(screen.getAllByLabelText('Preço unitário')).toHaveLength(2);
+    expect(screen.queryByRole('button', { name: 'Gerar pedido' })).not.toBeInTheDocument();
+  });
+
+  it("sem as duas permissões não oferece edição de preços nem conversão", () => {
+    render(<PdvPreorderDetail {...baseProps} canValue={false} canConvert={false} />);
+    expect(screen.queryByLabelText('Preço unitário')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Gerar pedido' })).not.toBeInTheDocument();
   });
 
   it("reutiliza catálogo em cards e carrinho lateral da venda ao criar orçamento", () => {
@@ -166,11 +199,9 @@ describe("PdvPreorderDetail", () => {
     expect(
       screen.getByTestId("pdv-preorder-sale-workspace"),
     ).toBeInTheDocument();
-    expect(
-      screen.getByTestId("pdv-preorder-catalog-controls"),
-    ).toBeInTheDocument();
-    expect(screen.getByTestId("pdv-preorder-product-grid")).toBeInTheDocument();
-    expect(screen.getByTestId("pdv-preorder-cart-panel")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Busca rápida" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "Catálogo" })).toBeInTheDocument();
+    expect(screen.getByTestId("pdv-cart-workspace")).toBeInTheDocument();
 
     fireEvent.click(
       container.querySelector(
@@ -227,7 +258,7 @@ describe("PdvPreorderDetail", () => {
         }) as DOMRect;
     });
 
-    const search = screen.getByRole("searchbox");
+    const search = screen.getByRole("combobox", { name: "Buscar material por nome ou código" });
     expect(search).toHaveAttribute("type", "search");
     expect(search).toHaveAttribute("autocomplete", "off");
     expect(search).toHaveAttribute("data-form-type", "other");
@@ -238,33 +269,33 @@ describe("PdvPreorderDetail", () => {
     expect(search).toHaveFocus();
 
     fireEvent.keyDown(search, { key: "ArrowDown" });
-    await waitFor(() => expect(buttons[2]).toHaveFocus());
-    expect(buttons[2]).toHaveClass(
-      "outline-none",
-      "shadow-[inset_0_0_0_2px_hsl(var(--primary))]",
-    );
+    await waitFor(() => expect(search).toHaveAttribute("aria-activedescendant", buttons[2].id));
+    expect(buttons[2]).toHaveClass("keyboard-active");
+    expect(container.querySelectorAll(".keyboard-active")).toHaveLength(1);
     expect(buttons[2].className).not.toContain("ring-");
 
     fireEvent.keyDown(buttons[2], { key: "ArrowRight" });
-    await waitFor(() => expect(buttons[3]).toHaveFocus());
+    await waitFor(() => expect(search).toHaveAttribute("aria-activedescendant", buttons[3].id));
     fireEvent.keyDown(buttons[3], { key: "ArrowRight" });
-    await waitFor(() => expect(buttons[0]).toHaveFocus());
+    await waitFor(() => expect(search).toHaveAttribute("aria-activedescendant", buttons[0].id));
 
     fireEvent.keyDown(buttons[0], { key: "Enter" });
     await waitFor(() => expect(search).toHaveFocus());
     expect(search).toHaveValue("");
     expect(
-      within(screen.getByTestId("pdv-preorder-cart-panel")).getByText(
+      within(screen.getByTestId("pdv-cart-workspace")).getByText(
         "Material A",
       ),
     ).toBeInTheDocument();
 
     fireEvent.keyDown(search, { key: "ArrowRight" });
-    await waitFor(() => expect(buttons[1]).toHaveFocus());
+    await waitFor(() => expect(search).toHaveAttribute("aria-activedescendant", buttons[0].id));
+    fireEvent.keyDown(search, { key: "ArrowRight" });
+    await waitFor(() => expect(search).toHaveAttribute("aria-activedescendant", buttons[1].id));
     fireEvent.keyDown(buttons[1], { key: " " });
     await waitFor(() => expect(search).toHaveFocus());
     expect(
-      within(screen.getByTestId("pdv-preorder-cart-panel")).getByText(
+      within(screen.getByTestId("pdv-cart-workspace")).getByText(
         "Material B",
       ),
     ).toBeInTheDocument();
@@ -281,7 +312,7 @@ describe("PdvPreorderDetail", () => {
       />,
     );
 
-    const search = screen.getByRole("searchbox");
+    const search = screen.getByRole("combobox", { name: "Buscar material por nome ou código" });
     search.blur();
     fireEvent.keyDown(window, { key: "f", metaKey: true });
     await waitFor(() => expect(search).toHaveFocus());

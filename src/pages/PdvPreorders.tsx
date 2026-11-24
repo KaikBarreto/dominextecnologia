@@ -1,9 +1,9 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import '@/components/pdv/PdvWorkspace.css';
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
+  ArrowLeft,
   ClipboardCheck,
-  Columns3,
-  LayoutList,
   MoreHorizontal,
   Plus,
   RefreshCw,
@@ -17,7 +17,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Skeleton } from "@/components/ui/skeleton";
+import { PdvPageSkeleton } from "@/components/pdv/loading/PdvPageSkeleton";
 import {
   ListDetailLayout,
   type ListDetailSortOption,
@@ -33,13 +33,19 @@ import {
   usePdvPreorderActions,
   usePdvPreorderQueue,
   type PdvPreorderStatus,
+  type PdvPreorderDetail as PreorderDetail,
 } from "@/hooks/usePdvPreorders";
 import {
   PdvPreorderDetail,
   type PdvPreorderCatalogItem,
 } from "@/components/pdv/preorders/PdvPreorderDetail";
 import { PdvPreorderStatusBadge } from "@/components/pdv/preorders/PdvPreorderStatusBadge";
-import { PdvPreorderReceiptButton } from "@/components/pdv/preorders/PdvPreorderReceiptButton";
+import { usePdvStageReceiptAuto } from "@/hooks/usePdvStageReceiptAuto";
+import { usePdvReceiptCompany } from "@/hooks/usePdvReceiptCompany";
+import { PdvPreorderReceiptButton, openPdvPreorderReceipt } from "@/components/pdv/preorders/PdvPreorderReceiptButton";
+import { preorderWorkspaceAction } from "@/components/pdv/preorders/preorderWorkspaceAction";
+import { pdvFlowCardDestination } from "@/components/pdv/flow/pdvFlowNavigation";
+import { PdvWorkspaceViewToggle } from "@/components/pdv/flow/PdvWorkspaceViewToggle";
 import { PdvSalesFlowBoard } from "@/components/pdv/flow/PdvSalesFlowBoard";
 import {
   resolvePdvSalesFlowMode,
@@ -59,6 +65,8 @@ import {
 } from "@/hooks/usePdvAfterSale";
 import { canLoadPdvPreorderWorkspace } from "@/components/pdv/flow/pdvFlowAccess";
 import { cn } from "@/lib/utils";
+import { FilterButton } from "@/components/ui/FilterButton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type QueueFilter = "all" | PdvPreorderStatus;
 
@@ -80,7 +88,11 @@ const newestFirst: ListDetailSortOption = {
 export default function PdvPreorders() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedPreorderId = searchParams.get("orcamento");
   const { toast } = useToast();
+  const autoReceipt = usePdvStageReceiptAuto();
+  const receiptCompany = usePdvReceiptCompany();
   const { dateTime, money } = useLocaleFormatters();
   const {
     user,
@@ -92,13 +104,15 @@ export default function PdvPreorders() {
     hasPermissionRecord,
     hasScreenAccess,
   } = useAuth();
-  const [filter, setFilter] = useState<QueueFilter>("all");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<QueueFilter>(() => searchParams.get("situacao") === "encaminhado" ? "encaminhado" : "all");
+  const [selectedId, setSelectedId] = useState<string | null>(() => searchParams.get("orcamento"));
   const [selectedFlowOrderId, setSelectedFlowOrderId] = useState<string | null>(
     null,
   );
   const [draftId, setDraftId] = useState<string | null>(null);
-  const [view, setView] = useState<"board" | "list">("board");
+  const [view, setView] = useState<"flow" | "list">("list");
+  const [editingDetail, setEditingDetail] = useState(false);
+  useEffect(() => { if (requestedPreorderId) { setSelectedId(requestedPreorderId); setDraftId(null); setEditingDetail(false); setView("list"); } }, [requestedPreorderId]);
   const canUsePreorderWorkspace = canLoadPdvPreorderWorkspace({
     adminOrManager: isAdminOrGestor(),
     hasPdvScreen: hasScreenAccess("screen:pdv"),
@@ -109,8 +123,10 @@ export default function PdvPreorders() {
     filter === "all" ? null : filter,
     canUsePreorderWorkspace,
   );
-  const flow = usePdvSalesFlow();
   const capability = usePdvCounterCapability();
+  const canViewFlow = canUsePreorderWorkspace && capability.data?.counterEnabled === true;
+  const activeView = view === 'flow' && canViewFlow ? 'flow' : 'list';
+  const flow = usePdvSalesFlow(activeView === 'flow');
   const detail = usePdvPreorder(selectedId);
   const flowOrder = usePdvSalesFlowOrder(selectedFlowOrderId);
   const actions = usePdvPreorderActions();
@@ -209,14 +225,17 @@ export default function PdvPreorders() {
                 {money(preorder.total)}
               </span>
             )}
-            <span onClick={(event) => event.stopPropagation()}>
+
+          </div>
+        ),
+        actions: (<>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8"
+                    className="h-8 w-8 border-0 bg-transparent shadow-none hover:bg-transparent"
                     aria-label={`Ações do orçamento ${preorder.number}`}
                   >
                     <MoreHorizontal className="h-4 w-4" />
@@ -236,9 +255,7 @@ export default function PdvPreorders() {
                   />
                 </DropdownMenuContent>
               </DropdownMenu>
-            </span>
-          </div>
-        ),
+</>),
       })),
     [customerName, inventory, money, queue.data],
   );
@@ -246,7 +263,7 @@ export default function PdvPreorders() {
   const activeDetail = detail.data ?? null;
   const activeRevision = activeDetail?.preorder.revision ?? 0;
   const activeId = activeDetail?.preorder.id ?? draftId;
-  const detailOpen = Boolean(selectedId || selectedFlowOrderId || draftId);
+  const workspaceOpen = Boolean(draftId || editingDetail || selectedFlowOrderId);
   const flowCards = flow.data ?? [];
   const fulfillmentMode =
     capability.data?.fulfillmentMode ??
@@ -257,12 +274,14 @@ export default function PdvPreorders() {
   }
 
   function startNew() {
+    setEditingDetail(true);
     setSelectedId(null);
     setSelectedFlowOrderId(null);
     setDraftId(crypto.randomUUID());
   }
 
   function closeDetail() {
+    setEditingDetail(false);
     setSelectedId(null);
     setSelectedFlowOrderId(null);
     setDraftId(null);
@@ -282,10 +301,12 @@ export default function PdvPreorders() {
       setDraftId(null);
       setSelectedFlowOrderId(null);
       setSelectedId(card.preorderId);
+      setEditingDetail(false);
+      setView("list");
       return;
     }
     if (card.stage === "cash") {
-      navigate("/pdv?aba=pedidos");
+      if (card.orderId) { const destination = pdvFlowCardDestination(card, { pdv: canCreate, orders: canUseSharedQueue, dispatch: hasScreenAccess('screen:pdv_dispatch') }); if (destination) navigate(destination); }
       return;
     }
     if (card.stage === "completed" && card.fulfillmentMode === "cashier") {
@@ -297,7 +318,8 @@ export default function PdvPreorders() {
       return;
     }
     if (card.orderId) {
-      navigate(`/pdv/expedicao?pedido=${encodeURIComponent(card.orderId)}`);
+      const destination = pdvFlowCardDestination(card, { pdv: canCreate, orders: canUseSharedQueue, dispatch: hasScreenAccess('screen:pdv_dispatch') });
+      if (destination) navigate(destination);
     }
   }
 
@@ -306,16 +328,16 @@ export default function PdvPreorders() {
       detail={activeDetail}
       draftId={draftId ?? undefined}
       inventory={inventory}
-      customers={customers.map((customer) => ({
-        id: customer.id,
-        name: customer.name,
-      }))}
+      customers={customers}
       stocks={stocks.map((stock) => ({ id: stock.id, name: stock.name }))}
       terminals={(catalog.data?.terminals ?? []).map((terminal) => ({
         id: terminal.id, name: terminal.name, stockId: terminal.stock_id,
       }))}
       canValue={canValue}
       canConvert={canConvert}
+      modePreferenceKey={user?.id && profile?.company_id
+        ? `pdv:value-adjustment-mode:${profile.company_id}:${user.id}`
+        : undefined}
       canCancel={Boolean(
         isAdminOrGestor() ||
         (activeDetail &&
@@ -364,14 +386,19 @@ export default function PdvPreorders() {
       }}
       onForward={async () => {
         if (!activeId) throw new Error("Orçamento do balcão não selecionado.");
+        const receiptAttempt = autoReceipt.prepare('budget');
+        try {
         const result = await actions.forward.mutateAsync({
           preorderId: activeId,
           expectedRevision: activeRevision,
           requestId: requestId("forward-preorder"),
         });
-        toast({ title: "Orçamento do balcão enviado ao caixa" });
+        void receiptAttempt.commit(`budget:${activeId}:${result.revision ?? activeRevision}`, (format, options) => openPdvPreorderReceipt(activeId, { ...options, format, company: receiptCompany, inventory, customerName: detail.data?.preorder.customer_id ? customerName.get(detail.data.preorder.customer_id) : null }), detail.data?.preorder.status === "encaminhado" || ("idempotent" in result && result.idempotent === true));
+        toast({ title: "Orçamento enviado ao caixa", description: canCreate ? "Você já pode começar o próximo atendimento." : "Acompanhe o atendimento na lista." });
         await flow.refetch();
+        if (canCreate) startNew(); else closeDetail();
         return result;
+        } catch (error) { receiptAttempt.cancel(); throw error; }
       }}
       onCancel={async () => {
         if (!activeId) throw new Error("Orçamento do balcão não selecionado.");
@@ -382,6 +409,7 @@ export default function PdvPreorders() {
         });
         toast({ title: "Orçamento do balcão cancelado" });
         await flow.refetch();
+        closeDetail();
         return result;
       }}
       onConvert={async () => {
@@ -400,23 +428,24 @@ export default function PdvPreorders() {
             : undefined,
         });
         await flow.refetch();
+        if (result.order_id) navigate(hasScreenAccess('screen:pdv') ? `/pdv?fila=1&pedido=${encodeURIComponent(result.order_id)}` : `/pdv/pedidos?pedido=${encodeURIComponent(result.order_id)}`);
         return result;
       }}
     />
   );
 
   const completedOrderContent = flowOrder.isLoading ? (
-    <div className="space-y-4">
-      <Skeleton className="h-16" />
-      <Skeleton className="h-72" />
-    </div>
+    <PdvPageSkeleton variant="detail" label="Carregando pedido concluído" />
   ) : flowOrder.isError || !flowOrder.data ? (
-    <EmptyState
-      icon={<RefreshCw className="h-12 w-12 text-destructive" />}
-      title="Não foi possível abrir o pedido concluído"
-      description="Atualize o fluxo e tente novamente. Nenhum dado foi alterado."
-      action={{ label: "Tentar novamente", onClick: () => void flowOrder.refetch() }}
-    />
+    <div className="space-y-3">
+      <Button type="button" variant="cancel-ghost" onClick={closeDetail}><ArrowLeft className="h-4 w-4" />Voltar à lista</Button>
+      <EmptyState
+        icon={<RefreshCw className="h-12 w-12 text-destructive" />}
+        title="Não foi possível abrir o pedido concluído"
+        description="Atualize o fluxo e tente novamente. Nenhum dado foi alterado."
+        action={{ label: "Tentar novamente", onClick: () => void flowOrder.refetch() }}
+      />
+    </div>
   ) : (
     <PdvDispatchDetail
       detail={flowOrder.data}
@@ -429,8 +458,8 @@ export default function PdvPreorders() {
   );
 
   return (
-    <div className={cn("space-y-4", isMobile && "pb-20")} data-pdv-ui>
-      {!detailOpen && (
+    <div className={cn("pdv-workspace space-y-4", isMobile && "pb-20")} data-pdv-ui>
+      {!workspaceOpen && !(isMobile && selectedId) && (
         <PageHeader
           title="Orçamentos"
           subtitle={
@@ -441,24 +470,7 @@ export default function PdvPreorders() {
           icon={ClipboardCheck}
           actions={
             <div className="flex flex-wrap gap-2">
-              {canUsePreorderWorkspace ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={view === "list" ? "default" : "outline"}
-                  onClick={() => setView("list")}
-                >
-                  <LayoutList className="h-4 w-4" /> Lista
-                </Button>
-              ) : null}
-              <Button
-                type="button"
-                size="sm"
-                variant={view === "board" ? "default" : "outline"}
-                onClick={() => setView("board")}
-              >
-                <Columns3 className="h-4 w-4" /> Kanban
-              </Button>
+              <PdvWorkspaceViewToggle value={activeView} showFlow={canViewFlow} onChange={value => setView(value === 'flow' ? 'flow' : 'list')} />
               {canCreate ? (
                 <Button type="button" onClick={startNew}>
                   <Plus className="mr-2 h-4 w-4" /> Criar orçamento
@@ -469,65 +481,32 @@ export default function PdvPreorders() {
         />
       )}
 
-      {!detailOpen && view === "list" && (
-        <nav
-          className="flex gap-5 overflow-x-auto border-b border-border"
-          aria-label="Etapas dos orçamentos do balcão"
-        >
-          {FILTERS.map((item) => (
-            <button
-              key={item.value}
-              type="button"
-              onClick={() => {
-                setFilter(item.value);
-                closeDetail();
-              }}
-              className={cn(
-                "shrink-0 border-b-2 px-0.5 pb-2 text-sm font-medium transition-colors",
-                filter === item.value
-                  ? "border-primary text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground",
-              )}
-              aria-current={filter === item.value ? "page" : undefined}
-            >
-              {item.label}
-            </button>
-          ))}
-        </nav>
-      )}
 
-      {detailOpen ? (
+
+      {workspaceOpen ? (
         selectedFlowOrderId ? (
           completedOrderContent
         ) : selectedId && detail.isLoading ? (
-          <div className="space-y-4">
-            <Skeleton className="h-12 w-72" />
-            <Skeleton className="h-[36rem] w-full" />
-          </div>
+          <PdvPageSkeleton variant="sale" label="Carregando orçamento" />
         ) : selectedId && detail.isError ? (
-          <EmptyState
-            icon={<Users className="h-12 w-12 text-destructive" />}
-            title="Não foi possível abrir o orçamento do balcão"
-            description="Ele pode ter sido atualizado ou seu acesso pode ter mudado."
-            action={{ label: "Atualizar", onClick: () => void reloadDetail() }}
-          />
+          <div className="space-y-3">
+            <Button type="button" variant="cancel-ghost" onClick={closeDetail}><ArrowLeft className="h-4 w-4" />Voltar à lista</Button>
+            <EmptyState
+              icon={<Users className="h-12 w-12 text-destructive" />}
+              title="Não foi possível abrir o orçamento do balcão"
+              description="Ele pode ter sido atualizado ou seu acesso pode ter mudado."
+              action={{ label: "Atualizar", onClick: () => void reloadDetail() }}
+            />
+          </div>
         ) : (
           content
         )
       ) :
-        (view === "board"
+        (activeView === "flow"
           ? flow.isLoading || capability.isLoading
           : queue.isLoading || catalog.isLoading) ? (
-        <div className="grid gap-5 lg:grid-cols-[22rem_minmax(0,1fr)]">
-          <div className="space-y-2">
-            <Skeleton className="h-10 w-full" />
-            {Array.from({ length: 6 }).map((_, index) => (
-              <Skeleton key={index} className="h-16 w-full" />
-            ))}
-          </div>
-          <Skeleton className="h-[32rem] w-full" />
-        </div>
-      ) : (view === "board"
+<PdvPageSkeleton variant={activeView === "flow" ? "kanban" : "list-detail"} listLeading label="Carregando orçamentos" />
+      ) : (activeView === "flow"
           ? flow.isError || capability.isError
           : queue.isError || catalog.isError) ? (
         <EmptyState
@@ -544,7 +523,7 @@ export default function PdvPreorders() {
               ]),
           }}
         />
-      ) : view === "board" ? (
+      ) : activeView === "flow" ? (
         <PdvSalesFlowBoard
           cards={flowCards}
           fulfillmentMode={fulfillmentMode}
@@ -571,23 +550,25 @@ export default function PdvPreorders() {
               </Button>
             ) : undefined
           }
+          listFilters={<FilterButton embedded activeCount={filter === 'all' ? 0 : 1} onClear={() => setFilter('all')}><label className="block space-y-2 text-sm font-semibold">Etapa<Select value={filter} onValueChange={value => { setFilter(value as QueueFilter); closeDetail(); }}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{FILTERS.map(item => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select></label></FilterButton>}
           sortOptions={[newestFirst]}
           storageKey="pdv-preorders-list"
           searchPlaceholder="Buscar por número ou cliente"
           emptyLabel="Nenhum orçamento nesta etapa"
-          mobileDetailOpen={false}
+          mobileDetailOpen={isMobile && Boolean(selectedId)}
           onSelect={(id) => {
             setDraftId(null);
+            setEditingDetail(false);
             setSelectedId(id);
           }}
         >
-          <EmptyState
+          {selectedId ? detail.isLoading ? <PdvPageSkeleton variant="detail" label="Carregando detalhes do orçamento" /> : detail.isError || !activeDetail ? <div className="space-y-3">{isMobile && <Button type="button" variant="cancel-ghost" onClick={closeDetail}><ArrowLeft className="h-4 w-4" />Voltar à lista</Button>}<EmptyState icon={<RefreshCw className="h-12 w-12 text-destructive" />} title="Não foi possível abrir o orçamento" description="Atualize a lista e tente novamente." action={{ label: 'Atualizar', onClick: () => void reloadDetail() }} /></div> : <PdvPreorderOverview detail={activeDetail} customerName={customerName.get(activeDetail.preorder.customer_id ?? '') ?? 'Sem cliente'} stockName={stocks.find(stock => stock.id === activeDetail.preorder.stock_id)?.name ?? 'Estoque não escolhido'} inventory={inventory} money={money} dateTime={dateTime} onBack={isMobile ? closeDetail : undefined} onEdit={() => setEditingDetail(true)} workspaceAction={preorderWorkspaceAction(activeDetail.preorder.status, canValue, canConvert)} /> : <EmptyState
             icon={
               <ClipboardCheck className="h-12 w-12 text-muted-foreground" />
             }
             title="Escolha um orçamento"
             description="Abra um item da lista ou crie um novo orçamento do balcão."
-          />
+          />}
         </ListDetailLayout>
       )}
 
@@ -600,4 +581,14 @@ export default function PdvPreorders() {
       </p>
     </div>
   );
+}
+
+function PdvPreorderOverview({ detail, customerName, stockName, inventory, money, dateTime, onBack, onEdit, workspaceAction }: { detail: PreorderDetail; customerName: string; stockName: string; inventory: PdvPreorderCatalogItem[]; money: (amount: number) => string; dateTime: (value: string | Date | null | undefined) => string; onBack?: () => void; onEdit: () => void; workspaceAction: string | null }) {
+  return <div className="min-w-0 space-y-6 p-1 sm:p-2">
+    <header className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs text-muted-foreground">Orçamento do balcão</p><h2 className="text-2xl font-bold">#{detail.preorder.number}</h2><p className="mt-1 text-sm text-muted-foreground">{customerName}</p></div><PdvPreorderStatusBadge status={detail.preorder.status} /></header>
+    <div className="flex flex-wrap items-center gap-2">{onBack && <Button variant="cancel-ghost" onClick={onBack}>Voltar à lista</Button>}{workspaceAction && <Button onClick={onEdit}>{workspaceAction}</Button>}<PdvPreorderReceiptButton preorderId={detail.preorder.id} customerName={customerName} inventory={inventory} /></div>
+    <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2"><div><dt className="text-muted-foreground">Estoque</dt><dd className="mt-1 font-medium">{stockName}</dd></div><div><dt className="text-muted-foreground">Atualizado em</dt><dd className="mt-1 font-medium">{dateTime(detail.preorder.updated_at)}</dd></div></dl>
+    <section><div className="mb-2 flex items-center justify-between gap-3"><h3 className="font-semibold">Materiais e serviços</h3><strong className="whitespace-nowrap tabular-nums">{detail.preorder.total == null ? 'Preço pendente' : money(detail.preorder.total)}</strong></div><div className="divide-y border-y">{detail.items.map(item => <div key={item.id} className="flex items-start justify-between gap-3 py-3"><div className="min-w-0"><p className="font-medium">{item.description}</p><p className="text-xs text-muted-foreground">{item.quantity} × {item.unit_price == null ? 'Preço pendente' : money(item.unit_price)}</p></div><strong className="whitespace-nowrap text-sm tabular-nums">{item.unit_price == null ? 'Pendente' : money(Math.max(0, item.quantity * item.unit_price - item.discount_amount))}</strong></div>)}</div></section>
+    {detail.preorder.notes && <section><h3 className="font-semibold">Observações</h3><p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{detail.preorder.notes}</p></section>}
+  </div>;
 }

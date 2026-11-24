@@ -20,6 +20,14 @@ const product = {
 };
 
 describe('PdvProductCard', () => {
+  it('separa código do nome e substitui o texto da foto ausente por um ícone acessível', () => {
+    const { getByRole, queryByText, getByText } = render(<PdvProductCard product={{ ...product, sku: 'MAT-042', imageUrl: null }} formatCurrency={String} outOfStockLabel="Sem estoque" availableLabel="{count} em estoque" noPhotoLabel="Sem foto" onSelect={vi.fn()} />);
+    expect(getByRole('img', { name: 'Sem foto' })).toBeInTheDocument();
+    expect(queryByText('Sem foto')).not.toBeInTheDocument();
+    expect(getByText('MAT-042')).toHaveClass('pdv-product-code');
+    expect(getByText(product.name)).not.toContainElement(getByText('MAT-042'));
+    expect(getByRole('button')).toHaveAccessibleName(expect.stringContaining('MAT-042'));
+  });
   it('mantém o skeleton visível até a foto terminar de carregar', () => {
     const { container } = render(
       <PdvProductCard

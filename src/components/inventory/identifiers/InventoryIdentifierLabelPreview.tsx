@@ -1,6 +1,6 @@
 import { BrandedQRCode } from '@/components/BrandedQRCode';
 import { cn } from '@/lib/utils';
-import { encodeCode128B, type InventoryIdentifierLabel } from '@/lib/pdv/inventoryLabelPdf';
+import { canEncodeCode128B, encodeCode128B, type InventoryIdentifierLabel } from '@/lib/pdv/inventoryLabelPdf';
 
 interface InventoryIdentifierLabelPreviewProps {
   label: InventoryIdentifierLabel;
@@ -35,7 +35,9 @@ export function InventoryIdentifierLabelPreview({ label, className }: InventoryI
           <p className="truncate text-xs">{unit}</p>
           {label.sku && <p className="truncate text-[10px] text-zinc-600">SKU {label.sku}</p>}
           <div className="mt-auto">
-            <Code128Preview value={label.code} />
+            {canEncodeCode128B(label.code)
+              ? <Code128Preview value={label.code} />
+              : <div className="flex h-10 items-center justify-center text-[10px] text-zinc-600">Leia pelo QR Code</div>}
             <p className="truncate text-center font-mono text-[9px]">{label.code}</p>
           </div>
         </div>

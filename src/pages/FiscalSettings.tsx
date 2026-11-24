@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { ArrowLeft, Building2, CheckCircle2, AlertCircle, AlertTriangle, Info, Landmark, Loader2, MapPin, RefreshCw, Shield, Wrench } from 'lucide-react';
+import { ArrowLeft, FileText, Building2, CheckCircle2, AlertCircle, AlertTriangle, Info, Landmark, Loader2, MapPin, RefreshCw, Shield, Wrench } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
@@ -32,6 +32,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { FISCAL_SCREEN_PERMISSION } from '@/components/fiscal/fiscalPermissions';
 import { EmpresaSection } from '@/components/fiscal/EmpresaSection';
+import { GoodsSettingsSection } from '@/components/fiscal/GoodsSettingsSection';
 import { CertificadoSection } from '@/components/fiscal/CertificadoSection';
 import { ImpostosSection, type IeHint, type RegimeHint } from '@/components/fiscal/ImpostosSection';
 import { ServicosSection } from '@/components/fiscal/ServicosSection';
@@ -40,10 +41,10 @@ import { automaticCoverageCheckKey } from '@/lib/fiscal/automaticCoverage';
 export { FISCAL_SCREEN_PERMISSION };
 
 /** Seções da tela de Configurações fiscais. */
-export type FiscalSettingsSection = 'empresa' | 'certificado' | 'impostos' | 'servicos';
+export type FiscalSettingsSection = 'empresa' | 'certificado' | 'impostos' | 'servicos' | 'mercadorias';
 
 function normalizeSection(raw: string | null): FiscalSettingsSection {
-  return raw === 'certificado' || raw === 'impostos' || raw === 'servicos' ? raw : 'empresa';
+  return raw === 'certificado' || raw === 'impostos' || raw === 'servicos' || raw === 'mercadorias' ? raw : 'empresa';
 }
 
 /** Form local — strings cruas pra inputs controlados (evita o "0" preso). */
@@ -666,6 +667,7 @@ export default function FiscalSettings() {
     { value: 'empresa', label: t.settings.sections.empresa, icon: Building2 },
     { value: 'certificado', label: t.settings.sections.certificado, icon: Shield },
     { value: 'impostos', label: t.settings.sections.impostos, icon: Landmark },
+    { value: 'mercadorias', label: 'NF-e e NFC-e', icon: FileText },
     { value: 'servicos', label: t.settings.sections.servicos, icon: Wrench },
   ];
 
@@ -842,6 +844,7 @@ export default function FiscalSettings() {
               />
             )}
 
+            {section === 'mercadorias' && <GoodsSettingsSection environment={settings.fiscal_ambiente} certificateReady={certificateReady} />}
             {section === 'servicos' && <ServicosSection t={t} />}
           </div>
         </SettingsSidebarLayout>

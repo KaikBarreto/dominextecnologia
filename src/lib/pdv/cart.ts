@@ -194,6 +194,90 @@ export function setLineDiscount(
   };
 }
 
+export type PdvValueAdjustmentMode = 'price' | 'discount';
+
+function roundCurrency(value: number, fractionDigits = 2): number {
+  const scale = 10 ** fractionDigits;
+  return Math.round((Number(value) || 0) * scale) / scale;
+}
+
+/**
+ * Define por quanto a linha deve ficar. Em `price`, troca apenas o preço desta
+ * operação e remove o desconto da linha. Em `discount`, mantém o preço e
+ * calcula a diferença que será apresentada como desconto.
+ */
+export function setLineFinalAmount(
+  cart: CartState,
+  inventoryId: string,
+  finalAmount: number,
+  mode: PdvValueAdjustmentMode,
+  fractionDigits = 2,
+): CartState {
+  const target = Math.max(0, roundCurrency(finalAmount, fractionDigits));
+  return {
+    ...cart,
+    lines: cart.lines.map((line) => {
+      if (line.inventoryId !== inventoryId || line.quantity <= 0) return line;
+      const gross = line.quantity * line.unitPrice;
+      if (mode === 'discount' && target <= gross) {
+        return {
+          ...line,
+          discountAmount: roundCurrency(gross - target, fractionDigits),
+        };
+      }
+      return {
+        ...line,
+        unitPrice: roundCurrency(target / line.quantity, fractionDigits),
+        discountAmount: 0,
+      };
+    }),
+  };
+}
+
+/**
+ * Define o valor final do carrinho pelo resultado informado pelo operador.
+ * `discount` usa o desconto geral existente no contrato. `price` rateia o
+ * valor pelos itens, zera descontos e persiste preços próprios da operação.
+ */
+export function setCartFinalAmount(
+  cart: CartState,
+  finalAmount: number,
+  mode: PdvValueAdjustmentMode,
+  fractionDigits = 2,
+): CartState {
+  const target = Math.max(0, roundCurrency(finalAmount, fractionDigits));
+  const afterItemDiscounts = Math.max(0, computeSubtotal(cart) - computeItemDiscountTotal(cart));
+  if (mode === 'discount' && target <= afterItemDiscounts) {
+    return {
+      ...cart,
+      discount: roundCurrency(afterItemDiscounts - target, fractionDigits),
+    };
+  }
+  if (cart.lines.length === 0) return { ...cart, discount: 0 };
+
+  const grossWeights = cart.lines.map((line) => Math.max(0, line.quantity * line.unitPrice));
+  const grossTotal = grossWeights.reduce((sum, amount) => sum + amount, 0);
+  const quantityWeights = cart.lines.map((line) => Math.max(0, line.quantity));
+  const quantityTotal = quantityWeights.reduce((sum, amount) => sum + amount, 0);
+  const weights = grossTotal > 0 ? grossWeights : quantityWeights;
+  const weightTotal = grossTotal > 0 ? grossTotal : quantityTotal;
+  let remaining = target;
+
+  const lines = cart.lines.map((line, index) => {
+    const isLast = index === cart.lines.length - 1;
+    const share = isLast
+      ? remaining
+      : roundCurrency(weightTotal > 0 ? target * (weights[index] / weightTotal) : 0, fractionDigits);
+    const unitPrice = line.quantity > 0
+      ? roundCurrency(Math.max(0, share) / line.quantity, fractionDigits)
+      : 0;
+    remaining = roundCurrency(remaining - unitPrice * line.quantity, fractionDigits);
+    return { ...line, unitPrice, discountAmount: 0 };
+  });
+
+  return { ...cart, lines, discount: 0 };
+}
+
 export function setCartCustomer(cart: CartState, customerId: string | null): CartState {
   return { ...cart, customerId };
 }

@@ -26,6 +26,12 @@ import {
 } from './usePdvCashSessionsV2';
 
 describe('W1A-04 caixa multissessão v2', () => {
+  it.each([
+    ['PDV_CASH_RECONCILIATION_REQUIRED', 'O dinheiro separado nos caixas precisa de conferência. Consulte o histórico de caixas antes de continuar.'],
+    ['PDV_CASH_CLOSE_NOT_BALANCED', 'Ainda há valores pendentes no fechamento. Confira o dinheiro contado e as movimentações do caixa.'],
+  ])('explica %s sem expor código ou termo interno', (code, message) => {
+    expect(mapPdvCashV2Error({ details: code, message: 'Erro interno' }).message).toBe(message);
+  });
   it('envia abertura com conta, terminal e chave idempotente explícitos', () => {
     expect(buildPdvOpenCashV2Args({
       terminalId: 'terminal-1',

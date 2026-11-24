@@ -463,6 +463,7 @@ function MoreMenuList({ onClose }: { onClose: () => void }) {
                         <NavLink
                           key={sub.path}
                           to={L(sub.path!)}
+                          end={sub.path === '/pdv'}
                           onClick={onClose}
                           className={({ isActive }) =>
                             cn(
@@ -489,6 +490,7 @@ function MoreMenuList({ onClose }: { onClose: () => void }) {
               <NavLink
                 key={item.path}
                 to={L(item.path!)}
+                      end={item.path === '/pdv'}
                 onClick={onClose}
                 className={({ isActive }) =>
                   cn(

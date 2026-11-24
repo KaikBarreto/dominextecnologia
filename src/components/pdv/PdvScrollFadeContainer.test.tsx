@@ -5,6 +5,7 @@ import { PdvScrollFadeContainer } from '@/components/pdv/PdvScrollFadeContainer'
 beforeEach(() => {
   vi.stubGlobal('ResizeObserver', class {
     observe() {}
+    unobserve() {}
     disconnect() {}
   });
 });
@@ -15,14 +16,22 @@ afterEach(() => {
 });
 
 describe('PdvScrollFadeContainer', () => {
-  it('leva a lista ao fim quando recebe uma nova adição', () => {
+  it('permite focar o viewport do carrinho por teclado com nome acessível', () => {
+    const { getByRole } = render(<PdvScrollFadeContainer externalScrollbar><button>Editar material</button></PdvScrollFadeContainer>);
+    const viewport = getByRole('region', { name: 'Materiais do pedido' });
+    expect(viewport).toHaveAttribute('tabindex', '0');
+    viewport.focus();
+    expect(viewport).toHaveFocus();
+    expect(viewport).toContainElement(getByRole('button', { name: 'Editar material' }));
+  });
+  it.each([false, true])('leva a lista ao fim com trilho externo=%s quando recebe uma nova adição', (externalScrollbar) => {
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
       callback(0);
       return 1;
     });
 
     const { container, rerender } = render(
-      <PdvScrollFadeContainer>
+      <PdvScrollFadeContainer externalScrollbar={externalScrollbar}>
         <div>Primeiro item</div>
       </PdvScrollFadeContainer>,
     );
@@ -36,7 +45,7 @@ describe('PdvScrollFadeContainer', () => {
 
     act(() => {
       rerender(
-        <PdvScrollFadeContainer scrollToEndKey={1}>
+        <PdvScrollFadeContainer externalScrollbar={externalScrollbar} scrollToEndKey={1}>
           <div>Último item adicionado</div>
         </PdvScrollFadeContainer>,
       );
@@ -45,7 +54,7 @@ describe('PdvScrollFadeContainer', () => {
     expect(scrollTo).toHaveBeenCalledWith({ top: 600, behavior: 'smooth' });
   });
 
-  it('rola até a linha incrementada sem precisar mudar sua posição', () => {
+  it.each([false, true])('rola até a linha incrementada sem reordenar com trilho externo=%s', (externalScrollbar) => {
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
       callback(0);
       return 1;
@@ -53,7 +62,7 @@ describe('PdvScrollFadeContainer', () => {
     const scrollIntoView = vi.fn();
 
     const { getByText, rerender } = render(
-      <PdvScrollFadeContainer>
+      <PdvScrollFadeContainer externalScrollbar={externalScrollbar}>
         <div data-pdv-scroll-item="p1">Primeiro item</div>
         <div data-pdv-scroll-item="p2">Segundo item</div>
       </PdvScrollFadeContainer>,
@@ -63,7 +72,7 @@ describe('PdvScrollFadeContainer', () => {
 
     act(() => {
       rerender(
-        <PdvScrollFadeContainer scrollToEndKey={1} scrollToItemKey="p1">
+        <PdvScrollFadeContainer externalScrollbar={externalScrollbar} scrollToEndKey={1} scrollToItemKey="p1">
           <div data-pdv-scroll-item="p1">Primeiro item</div>
           <div data-pdv-scroll-item="p2">Segundo item</div>
         </PdvScrollFadeContainer>,

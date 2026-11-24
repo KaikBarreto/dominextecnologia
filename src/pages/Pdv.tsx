@@ -1,7 +1,8 @@
+import { canCapturePdvCatalogScan } from '@/lib/pdv/catalogKeyboard';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type SetStateAction } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ShoppingCart, Search, ShoppingBasket, ArrowLeft, Barcode, CheckCircle2, Keyboard, RefreshCw } from 'lucide-react';
+import { ShoppingCart, Search, ShoppingBasket, ArrowLeft, Barcode, Keyboard, RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -24,6 +25,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import type { PdvReceiptFormat } from '@/lib/pdv/receipt/model';
 import { ToastAction } from '@/components/ui/toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
@@ -45,6 +48,7 @@ import { useStocks } from '@/hooks/useStocks';
 import { useMaterialGroups } from '@/hooks/useMaterialGroups';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
+import { useInventoryIdentifiers } from '@/hooks/useInventoryIdentifiers';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { useBankPermissions } from '@/hooks/useBankPermissions';
 import { usePdvCashRegister } from '@/hooks/usePdvCashRegister';
@@ -62,8 +66,9 @@ import {
   clearCart,
   incrementLineQuantity,
   removeItem,
-  setCartCustomer,
   setDiscount,
+  setCartFinalAmount,
+  setLineFinalAmount,
   setLineDiscount,
   setLineQuantity,
   computeTotal,
@@ -82,23 +87,32 @@ import {
   type PdvGridDirection,
   type PdvGridItemRect,
 } from '@/lib/pdv/keyboard';
-import { PdvProductCard, type PdvGridProduct } from '@/components/pdv/PdvProductCard';
+import type { PdvGridProduct } from '@/components/pdv/PdvProductCard';
+import { PdvSalePreviewView } from '@/components/pdv/PdvSalePreviewView';
 import { PdvCartPanel } from '@/components/pdv/PdvCartPanel';
 import { PdvSkeleton } from '@/components/pdv/PdvSkeleton';
 import { PdvPaymentDialog } from '@/components/pdv/PdvPaymentDialog';
+import { PdvAppliedVoucherControl } from '@/components/pdv/PdvAppliedVoucherControl';
 import { PdvAdvancedOptionsDialog, type PdvPendingAttachment } from '@/components/pdv/PdvAdvancedOptionsDialog';
 import { PdvOrderSwitcher } from '@/components/pdv/PdvOrderSwitcher';
+import { PdvDraftSyncNotice } from '@/components/pdv/PdvDraftSyncNotice';
+import { transferRecoveredDraftAttachments } from '@/lib/pdv/draft-attachments';
 import { PdvShortcutHelpDialog } from '@/components/pdv/PdvShortcutHelpDialog';
-import { PdvOrderReceiptButton } from '@/components/pdv/receipt/PdvOrderReceiptButton';
+import { PdvOrderReceiptButton, openPdvOrderReceipt } from '@/components/pdv/receipt/PdvOrderReceiptButton';
 import { PdvDirectSalePostSaleDialog } from '@/components/pdv/direct-sale-v2/PdvDirectSalePostSaleDialog';
+import { InventoryIdentifierCameraScanner } from '@/components/inventory/identifiers/InventoryIdentifierCameraScanner';
 import {
   parsePdvSaleCashContext,
   resolvePdvSaleCashContext,
 } from '@/components/pdv/caixa-v2/pdvSaleContext';
 import { derivePdvReturnsAccess, usePdvReturnsFeature } from '@/hooks/usePdvReturns';
 import { derivePdvAfterSaleAccess, usePdvAfterSaleFeature } from '@/hooks/usePdvAfterSale';
+import { usePdvStageReceiptAuto } from '@/hooks/usePdvStageReceiptAuto';
+import { resolvePdvReceiptStagePolicy } from '@/lib/pdv/receipt/stagePolicy';
 import { usePdvReceiptSettings } from '@/hooks/usePdvReceiptSettings';
 import { readDeviceReceiptFormat } from '@/lib/pdv/receipt/devicePreference';
+import { toPdvCustomerRecord } from '@/lib/pdv/catalogCustomer';
+import { completeDurablePdvDirectSale, isDurablePdvDirectSaleAttempt, PDV_DIRECT_SALE_REVIEW_MESSAGE, PDV_DIRECT_SALE_SCOPE_MESSAGE } from '@/lib/pdv/directSaleRecovery';
 import {
   canonicalizePdvDirectSalePayments,
   shouldUseLegacyPdvRoute,
@@ -106,7 +120,9 @@ import {
   type PdvCompleteDirectSaleV2Result,
 } from '@/hooks/usePdvDirectSaleV2';
 import type { Customer } from '@/types/database';
-import { hasPdvSaleDraftContent, MAX_PDV_SALE_DRAFTS, type PdvSaleAttempt } from '@/lib/pdv/sale-drafts';
+import { hasPdvSaleDraftContent, MAX_PDV_SALE_DRAFTS, setPdvSaleDraftCustomer, type PdvAppliedVoucher, type PdvSaleAttempt, type PdvSaleDraft } from '@/lib/pdv/sale-drafts';
+import { resolvePdvScannedSelection } from '@/lib/pdv/identifierSelection';
+import { clampStoredValueApplication } from '@/lib/pdv/payment';
 import {
   clearPdvSaleEditDraft,
   isPdvSaleEditDraft,
@@ -115,7 +131,8 @@ import {
 } from '@/lib/pdv/order-edit';
 
 /** Breakpoint onde o carrinho deixa de ser painel fixo e vira folha inferior. */
-const CART_DRAWER_BREAKPOINT = 768;
+// Mantém o carrinho em drawer no mesmo limite de 800 px do preview aprovado.
+const CART_DRAWER_BREAKPOINT = 801;
 
 /**
  * Teclado numérico na tela é só pro PDV de tablet de balcão (sem teclado
@@ -138,9 +155,38 @@ const PDV_PANEL_PATH = '/pdv';
 const PDV_SALE_PATH = '/pdv/venda';
 
 interface CompletedPdvSale {
+  scopeKey: string;
   orderId: string;
   orderNumber: number;
   total: number;
+}
+
+
+/** Atalho de leitura: cabe na faixa existente e deixa a próxima venda pronta. */
+export function PdvLastSaleHeader({ completedSale, scopeKey, receiptFormat, canOpenPostSale, onOpenPostSale, children }: {
+  completedSale: CompletedPdvSale | null;
+  scopeKey: string | null;
+  receiptFormat: PdvReceiptFormat;
+  canOpenPostSale: boolean;
+  onOpenPostSale: () => void;
+  children: ReactNode;
+}) {
+  const { currency, locale } = useAppLocaleContext();
+  const [lastSaleMenuOpen, setLastSaleMenuOpen] = useState(false);
+  useEffect(() => setLastSaleMenuOpen(false), [scopeKey]);
+  return <>
+      {completedSale && completedSale.scopeKey === scopeKey ? <div className="flex min-w-0 items-center border-b border-border bg-card pr-2 [&_.pdv-order-switcher]:border-b-0">
+        <div className="min-w-0 flex-1">{children}</div>
+        <Popover open={lastSaleMenuOpen} onOpenChange={setLastSaleMenuOpen}>
+          <PopoverTrigger asChild><Button type="button" variant="ghost" size="sm" className="shrink-0 gap-1 px-2 text-xs" data-testid="pdv-last-sale-trigger" aria-label={`Último pedido #${completedSale.orderNumber}`}><span className="hidden sm:inline">Último pedido</span><span className="sm:hidden">Último</span><strong>#{completedSale.orderNumber}</strong></Button></PopoverTrigger>
+          <PopoverContent align="end" aria-label="Ações do último pedido" className="w-72 max-w-[calc(100vw-2rem)] space-y-3">
+            <div><p className="font-semibold">Pedido #{completedSale.orderNumber} concluído</p><p className="text-sm tabular-nums text-muted-foreground">{formatMoney(completedSale.total, currency, locale)}</p></div>
+            <PdvOrderReceiptButton orderId={completedSale.orderId} format={receiptFormat} documentKind="sale" label="Comprovante" className="w-full" />
+            {canOpenPostSale && <Button type="button" variant="outline" className="w-full" onClick={() => { setLastSaleMenuOpen(false); onOpenPostSale(); }}>Abrir pós-venda</Button>}
+          </PopoverContent>
+        </Popover>
+      </div> : children}
+  </>;
 }
 
 /** `3 * <código>` digitado antes do código (manual) ou antes da rajada do leitor. */
@@ -376,6 +422,7 @@ function PdvSaleWorkspace({
     isLoading: cashLoading,
   } = usePdvCashRegister();
   const { createOrder, settleOrder, replaceOrder } = usePdvSale();
+  const identifiers = useInventoryIdentifiers();
   const uploadAttachment = useUploadPdvOrderAttachment();
   const receiptSettings = usePdvReceiptSettings();
   const returnsFeature = usePdvReturnsFeature(profile?.company_id);
@@ -436,13 +483,7 @@ function PdvSaleWorkspace({
   }, [isV2, stocks, v2Catalog?.terminals]);
   const customers = useMemo<Customer[]>(
     () => isV2
-      ? (v2Catalog?.customers ?? []).map((customer) => ({
-          id: customer.id,
-          name: customer.name,
-          customer_type: 'pf',
-          created_at: '',
-          updated_at: '',
-        }))
+      ? (v2Catalog?.customers ?? []).map(toPdvCustomerRecord)
       : legacyCustomers,
     [isV2, legacyCustomers, v2Catalog?.customers],
   );
@@ -472,13 +513,22 @@ function PdvSaleWorkspace({
     workspace: draftWorkspace,
     activeDraft,
     updateDraft,
+    persistDraftNow,
     updateActiveDraft,
     createDraft,
     selectDraft,
     deleteDraft,
+    setWorkspace: setDraftWorkspace,
     syncIssue,
+    draftConflicts = [],
+    resolveDraftConflict,
+    resolvingDraftId = null,
+    localPersistenceIssue = false,
+    retrySync,
+    lastResolution = null,
   } = usePdvSaleDraftWorkspace({
     owner: draftOwner,
+    directSaleV2: isV2,
     transactionDate: maxTransactionDate,
     defaultStockId: resolvedV2CashContext.status === 'resolved'
       ? resolvedV2CashContext.context.stockId
@@ -487,6 +537,9 @@ function PdvSaleWorkspace({
 
   const cart = activeDraft?.cart ?? EMPTY_CART;
   const activeDraftId = activeDraft?.id ?? null;
+  const directSaleNeedsReview = Boolean(isV2 && activeDraft?.attempt && (!isDurablePdvDirectSaleAttempt(activeDraft.attempt) || activeDraft.attempt.orderId));
+  const liveCartRef = useRef(cart);
+  liveCartRef.current = cart;
   const selectedStockId = activeDraft?.stockId
     ?? (resolvedV2CashContext.status === 'resolved'
       ? resolvedV2CashContext.context.stockId
@@ -497,20 +550,34 @@ function PdvSaleWorkspace({
   const setCart = useCallback((next: SetStateAction<CartState>) => {
     updateActiveDraft((draft) => ({
       ...draft,
-      cart: typeof next === 'function' ? next(draft.cart) : next,
+      ...(() => {
+        const nextCart = typeof next === 'function' ? next(draft.cart) : next;
+        liveCartRef.current = nextCart;
+        const nextTotal = computeTotal(nextCart);
+        const nextVoucherAmount = draft.appliedVoucher
+          ? clampStoredValueApplication(nextTotal, draft.appliedVoucher.balance, draft.appliedVoucher.amount)
+          : 0;
+        const appliedVoucher = draft.appliedVoucher && nextVoucherAmount > 0
+          ? {
+              ...draft.appliedVoucher,
+              amount: nextVoucherAmount,
+            }
+          : null;
+        return { cart: nextCart, appliedVoucher };
+      })(),
       // Alterar qualquer dado material invalida a tentativa anterior deste
       // pedido, mas não toca nas tentativas dos outros rascunhos.
-      attempt: null,
+      attempt: isV2 ? draft.attempt : null,
     }));
-  }, [updateActiveDraft]);
+  }, [isV2, updateActiveDraft]);
 
   const setSelectedStockId = useCallback((stockId: string | null) => {
-    updateActiveDraft((draft) => ({ ...draft, stockId, attempt: null }));
-  }, [updateActiveDraft]);
+    updateActiveDraft((draft) => ({ ...draft, stockId, attempt: isV2 ? draft.attempt : null }));
+  }, [isV2, updateActiveDraft]);
 
   const setOrderNotes = useCallback((notes: string) => {
-    updateActiveDraft((draft) => ({ ...draft, notes, attempt: null }));
-  }, [updateActiveDraft]);
+    updateActiveDraft((draft) => ({ ...draft, notes, attempt: isV2 ? draft.attempt : null }));
+  }, [isV2, updateActiveDraft]);
 
   const preferredV2StockId = useMemo(() => {
     if (!isV2 || resolvedV2CashContext.status !== 'resolved') return null;
@@ -528,7 +595,10 @@ function PdvSaleWorkspace({
   }, [activeDraft, isV2, preferredV2StockId, setSelectedStockId, v2Catalog?.terminals]);
 
   const [search, setSearch] = useState('');
+  const [catalogMode, setCatalogMode] = useState<'quick' | 'catalog'>(() =>
+    typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches ? 'catalog' : 'quick');
   const [activeProductIndex, setActiveProductIndex] = useState(0);
+  const [catalogKeyboardActive, setCatalogKeyboardActive] = useState(false);
   const [activeCategory, setActiveCategory] = useState('all');
   const editSourceOrderId = new URLSearchParams(location.search).get('editar');
   const [saleEditDrafts, setSaleEditDrafts] = useState<Record<string, PdvSaleEditDraft>>({});
@@ -554,19 +624,34 @@ function PdvSaleWorkspace({
   // continua mandando `null`, caminho feliz intacto.
   const [attachmentsByDraft, setAttachmentsByDraft] = useState<Record<string, PdvPendingAttachment[]>>({});
   const pendingAttachments = activeDraft ? attachmentsByDraft[activeDraft.id] ?? [] : [];
+  const handledResolutionRef = useRef<typeof lastResolution>(null);
+  useLayoutEffect(() => {
+    if (!lastResolution || handledResolutionRef.current === lastResolution) return;
+    handledResolutionRef.current = lastResolution;
+    if (!lastResolution.localCopyId || lastResolution.localCopyId === lastResolution.id) return;
+    const { id, localCopyId } = lastResolution;
+    // A identidade vem da resolução confirmada; não associar arquivos pela
+    // semelhança de cliente/conteúdo, nem à versão online que substituiu a local.
+    setAttachmentsByDraft(current => transferRecoveredDraftAttachments(current, { id, localCopyId }));
+  }, [lastResolution]);
   const [attachmentBusy, setAttachmentBusy] = useState(false);
   const [advancedOptionsOpen, setAdvancedOptionsOpen] = useState(false);
   const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
   const [completedSale, setCompletedSale] = useState<CompletedPdvSale | null>(null);
   const [postSaleOpen, setPostSaleOpen] = useState(false);
+  const completedSaleScope = draftOwner ? [draftOwner.companyId, draftOwner.userId, draftOwner.cashSessionId, draftOwner.terminalId, draftOwner.stockId].join(':') : null;
+  const completedSaleScopeRef = useRef(completedSaleScope);
+  completedSaleScopeRef.current = completedSaleScope;
+  // O render mascara o resultado imediatamente; o efeito também descarta seus controles antigos.
+  const visibleCompletedSale = completedSale && completedSale.scopeKey === completedSaleScope ? completedSale : null;
+  useEffect(() => { setCompletedSale(null); setPostSaleOpen(false); }, [completedSaleScope]);
+
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
-  const autoReceiptRef = useRef<HTMLDivElement>(null);
-  const autoReceiptDoneRef = useRef<string | null>(null);
+  const autoReceipt = usePdvStageReceiptAuto();
   const receiptFormat = readDeviceReceiptFormat()
-    ?? receiptSettings.data?.defaultFormat
-    ?? '80mm';
+    ?? resolvePdvReceiptStagePolicy(receiptSettings.data, 'sale').format;
   const hasPostSaleAccess = (
     returnsAccess.enabled
     && (returnsAccess.canReturn || returnsAccess.canReverse || returnsAccess.canCancelResidual)
@@ -578,28 +663,22 @@ function PdvSaleWorkspace({
    * tentativa ao carrinho que a originou (ver `cartSignature`).
    */
   const attemptByDraftRef = useRef<Map<string, PdvSaleAttempt>>(new Map());
+  const attemptMapScopeRef = useRef(completedSaleScope);
+  if (attemptMapScopeRef.current !== completedSaleScope) {
+    attemptByDraftRef.current = new Map();
+    attemptMapScopeRef.current = completedSaleScope;
+  }
   const paymentSnapshotRef = useRef<{
     draftId: string;
     cart: CartState;
     stockId: string | null;
     notes: string;
     transactionDate: string;
+    appliedVoucher: PdvAppliedVoucher | null;
     editDraft: PdvSaleEditDraft | null;
     attachments: PdvPendingAttachment[];
   } | null>(null);
   const editDraftHydratedRef = useRef<Set<string>>(new Set());
-
-  useEffect(() => {
-    if (!completedSale || !receiptSettings.data?.autoPrint) return;
-    if (autoReceiptDoneRef.current === completedSale.orderId) return;
-    autoReceiptDoneRef.current = completedSale.orderId;
-    const timer = window.setTimeout(() => {
-      autoReceiptRef.current
-        ?.querySelectorAll<HTMLButtonElement>('button')
-        .forEach((button) => button.click());
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [completedSale, receiptSettings.data?.autoPrint]);
 
   // Rascunho é isolado por usuário + empresa e por pedido. Em terminal
   // compartilhado, trocar de conta nunca pode exibir dados da venda anterior.
@@ -647,7 +726,7 @@ function PdvSaleWorkspace({
       ...draft,
       transactionDate: value,
       transactionDateTouched: true,
-      attempt: null,
+      attempt: isV2 ? draft.attempt : null,
     }));
   }
 
@@ -718,7 +797,7 @@ function PdvSaleWorkspace({
       notes: '',
       transactionDate: maxTransactionDate,
       transactionDateTouched: false,
-      attempt: null,
+      attempt: isV2 ? draft.attempt : null,
     }));
     setAttachmentsByDraft((current) => {
       (current[draftId] ?? []).forEach((p) => URL.revokeObjectURL(p.previewUrl));
@@ -757,6 +836,7 @@ function PdvSaleWorkspace({
         return {
           inventoryId: material.id,
           name: material.name,
+          sku: material.sku,
           imageUrl: material.imageUrl,
           unitPrice: material.salePrice ?? 0,
           unit: material.unit || 'un',
@@ -777,6 +857,7 @@ function PdvSaleWorkspace({
       .map((item) => ({
         inventoryId: item.id,
         name: item.name,
+        sku: item.sku,
         imageUrl: item.image_url ?? null,
         unitPrice: item.sale_price ?? 0,
         unit: item.unit || 'un',
@@ -831,12 +912,13 @@ function PdvSaleWorkspace({
       notes: saleEditDraft.notes,
       transactionDate: saleEditDraft.transactionDate,
       transactionDateTouched: true,
-      attempt: null,
+      attempt: isV2 ? draft.attempt : null,
     }));
     editDraftHydratedRef.current.add(draftId);
   }, [
     activeDraftId,
     saleEditDraft,
+    isV2,
     isLoadingPdv,
     pdvStocks,
     selectedStockId,
@@ -875,7 +957,7 @@ function PdvSaleWorkspace({
     if (!term.trim()) return categoryFiltered;
     return categoryFiltered.filter((p) => {
       const groupName = groups.find((group) => group.id === p.groupId)?.name ?? '';
-      return fuzzyIncludesAny([p.name, p.barcode, groupName], term);
+      return fuzzyIncludesAny([p.sku, p.name, p.barcode, groupName], term);
     });
   }, [categoryFiltered, groups, search]);
 
@@ -883,9 +965,13 @@ function PdvSaleWorkspace({
   // não existe ação útil para Enter. O primeiro produto disponível permanece
   // ativo mesmo com a busca vazia, dando ao operador um ponto de partida
   // previsível assim que abre o PDV ou limpa/pesquisa o catálogo.
+  const visibleProducts = useMemo(
+    () => catalogMode === 'quick' && !search.trim() ? searchFiltered.slice(0, 4) : searchFiltered,
+    [catalogMode, search, searchFiltered],
+  );
   const keyboardProducts = useMemo(
-    () => searchFiltered.filter((product) => product.availableQuantity > 0),
-    [searchFiltered],
+    () => visibleProducts.filter((product) => product.availableQuantity > 0),
+    [visibleProducts],
   );
   const activeProductId = keyboardProducts[
     Math.min(activeProductIndex, Math.max(0, keyboardProducts.length - 1))
@@ -893,7 +979,7 @@ function PdvSaleWorkspace({
 
   useEffect(() => {
     setActiveProductIndex(0);
-  }, [search, activeCategory]);
+  }, [search, activeCategory, catalogMode]);
 
   useEffect(() => {
     if (!activeProductId) return;
@@ -1026,7 +1112,12 @@ function PdvSaleWorkspace({
   }
 
   function tryAdd(p: PdvGridProduct, quantity: number) {
-    const result = addItem(cart, toProduct(p), quantity);
+    if (directSaleNeedsReview) return;
+    setCatalogKeyboardActive(false);
+    // A resolução de QR/embalagem é assíncrona. O ref é atualizado antes do
+    // próximo scan para duas leituras que terminam juntas nunca sobrescreverem
+    // a quantidade uma da outra com um snapshot antigo do carrinho.
+    const result = addItem(liveCartRef.current, toProduct(p), quantity);
     // `=== false` (não `!result.ok`): sem strictNullChecks neste tsconfig, a
     // negação bare não estreita o discriminated union.
     if (result.ok === false) {
@@ -1036,6 +1127,7 @@ function PdvSaleWorkspace({
       });
       return;
     }
+    liveCartRef.current = result.cart;
     setCart(result.cart);
     if (activeDraftId) {
       cartAdditionSequenceRef.current += 1;
@@ -1048,6 +1140,7 @@ function PdvSaleWorkspace({
   }
 
   function handleProductSelect(product: PdvGridProduct) {
+    if (directSaleNeedsReview) return;
     tryAdd(product, 1);
     setSearch('');
     setActiveProductIndex(0);
@@ -1058,36 +1151,55 @@ function PdvSaleWorkspace({
     if (isMobileCart && cartDrawerOpen) return;
     // Depois de adicionar/editar, espera o commit visual do carrinho. Assim o
     // botão clicado nunca recupera o foco no fim do mesmo gesto.
-    window.requestAnimationFrame(() => searchInputRef.current?.focus());
+    window.requestAnimationFrame(() => { searchInputRef.current?.focus({ preventScroll: true }); searchInputRef.current?.select(); });
   }
 
-  function handleBarcodeScan(code: string) {
+  async function handleBarcodeScan(code: string) {
+    if (directSaleNeedsReview) return;
     // A rajada do leitor pode vir depois de um multiplicador digitado à mão
     // ("3 *" + leitura) — o que sobrou no campo ANTES do código escaneado.
     const prefixRaw = search.slice(0, Math.max(0, search.length - code.length));
     const { multiplier } = extractMultiplierPrefix(`${prefixRaw}x`);
     setSearch('');
 
-    const found = sellableProducts.find((p) => p.barcode && p.barcode === code);
-    if (!found) {
-      toast({ variant: 'destructive', title: t.toast.barcodeNotFound });
-      return;
+    try {
+      const selection = await resolvePdvScannedSelection({
+        code,
+        isV2,
+        products: sellableProducts,
+        resolveIdentifier: (value) => identifiers.resolve.mutateAsync({ code: value }),
+      });
+      if (!selection) {
+        toast({ variant: 'destructive', title: t.toast.barcodeNotFound });
+        return;
+      }
+      tryAdd(selection.product, multiplier * selection.unitFactor);
+      focusSearch();
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: t.toast.barcodeNotFound,
+        description: error instanceof Error ? error.message : 'Tente novamente.',
+      });
     }
-    tryAdd(found, multiplier);
-    focusSearch();
   }
 
   useBarcodeScanner({
-    onScan: handleBarcodeScan,
+    shouldCaptureTarget: target => canCapturePdvCatalogScan(target, searchInputRef.current),
+    onScan: (code) => { if (document.querySelector('[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]')) return; void handleBarcodeScan(code); },
     enabled: !confirmClearOpen && !paymentOpen && !advancedOptionsOpen && !shortcutHelpOpen,
   });
 
-  function handleSearchEnter() {
+  function handleSearchEnter(preferred?: PdvGridProduct) {
     const { multiplier, term } = extractMultiplierPrefix(search);
     const cleanTerm = term.trim();
+    if (preferred) {
+      tryAdd(preferred, multiplier);
+      setSearch(''); setActiveProductIndex(0); focusSearch(); return;
+    }
     if (!cleanTerm) return;
     const matches = searchFiltered.length ? searchFiltered : [];
-    const direct = sellableProducts.filter((p) => fuzzyIncludesAny([p.name, p.barcode], cleanTerm));
+    const direct = sellableProducts.filter((p) => fuzzyIncludesAny([p.sku, p.name, p.barcode], cleanTerm));
     const pool = direct.length ? direct : matches;
     if (pool.length > 0) {
       const active = pool.find((product) => product.inventoryId === activeProductId)
@@ -1114,6 +1226,7 @@ function PdvSaleWorkspace({
       && shouldNavigatePdvCatalogFromSearch(e.key, search)
     ) {
       e.preventDefault();
+      setCatalogKeyboardActive(true);
       moveProductFocus(direction);
       return;
     }
@@ -1151,7 +1264,7 @@ function PdvSaleWorkspace({
 
   const itemCount = cart.lines.length;
   const total = computeTotal(cart);
-  const canPay = cart.lines.length > 0 && total > 0;
+  const canPay = cart.lines.length > 0 && total > 0 && !directSaleNeedsReview;
 
   // No v2, terminal, sessão e conta da gaveta vêm juntos da projeção
   // fechada. O hook legado exclui caixas contract_version=2 de propósito.
@@ -1271,6 +1384,10 @@ function PdvSaleWorkspace({
   }
 
   function openPayment() {
+    if (directSaleNeedsReview) {
+      toast({ title: 'Confira a última tentativa em Pedidos', description: PDV_DIRECT_SALE_REVIEW_MESSAGE });
+      return;
+    }
     if (!canPay || !activeDraft) {
       toast({ variant: 'destructive', title: t.payment.issues.sem_itens });
       return;
@@ -1284,6 +1401,7 @@ function PdvSaleWorkspace({
       stockId: activeDraft.stockId,
       notes: activeDraft.notes,
       transactionDate: activeDraft.transactionDate,
+      appliedVoucher: activeDraft.appliedVoucher ? { ...activeDraft.appliedVoucher } : null,
       editDraft: saleEditDrafts[activeDraft.id] ?? null,
       attachments: [...(attachmentsByDraft[activeDraft.id] ?? [])],
     };
@@ -1319,7 +1437,11 @@ function PdvSaleWorkspace({
       discountAmount: line.discountAmount,
     }));
 
+    const receiptAttempt = autoReceipt.prepare('sale', !editDraft);
+    try {
     let result: PdvSettleResult;
+    let preserveConfirmedDraft = false;
+    let confirmationNotice: string | null = null;
 
     if (editDraft) {
       if (isV2) {
@@ -1373,35 +1495,55 @@ function PdvSaleWorkspace({
         ),
         payments: canonicalizePdvDirectSalePayments(payments),
       });
-      let attempt = attemptByDraftRef.current.get(draftId)
+      const previousAttempt = attemptByDraftRef.current.get(draftId)
         ?? draftWorkspace.drafts.find((draft) => draft.id === draftId)?.attempt
         ?? null;
-      if (!attempt || attempt.signature !== signature) {
-        attempt = { signature, orderId: null, clientRequestId: crypto.randomUUID() };
-        attemptByDraftRef.current.set(draftId, attempt);
-        updateDraft(draftId, (draft) => ({ ...draft, attempt }));
-      }
-
-      const completed = await directSale.complete.mutateAsync({
-        attemptId: attempt.clientRequestId,
-        terminalId: v2Terminal.id,
-        cashSessionId: v2Session.id,
-        cashAccountId: v2Session.cashAccountId,
-        customerId: paymentCart.customerId,
-        items: paymentCart.lines.map((line) => ({
-          inventoryId: line.inventoryId,
-          stockId: v2Terminal.stockId,
-          quantity: line.quantity,
-          unitPrice: line.unitPrice,
-          discountAmount: line.discountAmount,
-        })),
-        orderDiscountAmount: paymentCart.discount,
-        notes,
-        transactionDate: paymentDate === maxTransactionDate ? null : paymentDate,
-        payments,
+      const isScopeCurrent = () => Boolean(completedSaleScope && completedSaleScopeRef.current === completedSaleScope);
+      const completed = await completeDurablePdvDirectSale({
+        attempt: previousAttempt,
+        signature,
+        isScopeCurrent,
+        persist: async (attempt) => {
+          if (!isScopeCurrent()) return { server: 'scope_changed', localSaved: false };
+          attemptByDraftRef.current.set(draftId, attempt);
+          return persistDraftNow(draftId, draft => ({ ...draft, attempt }));
+        },
+        complete: attempt => {
+          if (!isScopeCurrent()) throw new Error(PDV_DIRECT_SALE_SCOPE_MESSAGE);
+          return directSale.complete.mutateAsync({
+            attemptId: attempt.clientRequestId,
+            idempotencyKey: attempt.idempotencyKey,
+            terminalId: v2Terminal.id,
+            cashSessionId: v2Session.id,
+            cashAccountId: v2Session.cashAccountId,
+            customerId: paymentCart.customerId,
+            items: paymentCart.lines.map((line) => ({
+              inventoryId: line.inventoryId, stockId: v2Terminal.stockId, quantity: line.quantity,
+              unitPrice: line.unitPrice, discountAmount: line.discountAmount,
+            })),
+            orderDiscountAmount: paymentCart.discount, notes,
+            transactionDate: paymentDate === maxTransactionDate ? null : paymentDate,
+            payments,
+          });
+        },
+        onConfirmed: (attempt, sale) => {
+          if (!isScopeCurrent()) return;
+          attemptByDraftRef.current.set(draftId, attempt);
+          if (completedSaleScope && completedSaleScopeRef.current === completedSaleScope) {
+            setPaymentOpen(false);
+            paymentSnapshotRef.current = null;
+            setCompletedSale({ scopeKey: completedSaleScope, orderId: sale.orderId, orderNumber: sale.orderNumber, total: sale.total });
+          }
+        },
       });
-      result = adaptPdvDirectSaleV2Result(completed, payments, paymentCart.lines.length);
-      directSale.releaseAttempt(attempt.clientRequestId);
+      if (completedSaleScopeRef.current !== completedSaleScope) { receiptAttempt.cancel(); return; }
+      result = adaptPdvDirectSaleV2Result(completed.sale, payments, paymentCart.lines.length);
+      preserveConfirmedDraft = completed.persistence.server !== 'saved';
+      if (preserveConfirmedDraft) {
+        confirmationNotice = completed.persistence.localSaved
+          ? 'Pedido já concluído. A confirmação possui backup local e aguarda sincronização na conta. Confira o pedido; não envie outra venda.'
+          : 'Pedido já concluído. A confirmação está nesta sessão e aguarda sincronização. Confira o pedido antes de continuar; não envie outra venda.';
+      }
 
       // No v2 o pedido nasce e é concluído atomicamente. Fotos entram depois;
       // falha de Storage não transforma uma venda concluída em meia venda.
@@ -1478,6 +1620,10 @@ function PdvSaleWorkspace({
       });
     }
 
+    if (isV2 && completedSaleScopeRef.current !== completedSaleScope) { receiptAttempt.cancel(); return; }
+    if (!editDraft) void receiptAttempt.commit(`sale:${result.order_id}`, (format, options) => openPdvOrderReceipt(result.order_id, format, { ...options, documentKind: 'sale' }), result.idempotente);
+    else receiptAttempt.cancel();
+
     const change = (result.pagamentos ?? []).reduce(
       (sum, pay) => sum + (Number(pay.change_amount) || 0),
       0,
@@ -1486,18 +1632,18 @@ function PdvSaleWorkspace({
     // Deu certo: a tentativa morre, o carrinho zera e o foco volta pra busca.
     // Balcão é fila — a tela tem que estar pronta pro próximo cliente sem
     // clique extra, então o sucesso é um aviso na tela, não um modal.
-    attemptByDraftRef.current.delete(draftId);
+    if (!preserveConfirmedDraft) attemptByDraftRef.current.delete(draftId);
     paymentSnapshotRef.current = null;
     setPaymentOpen(false);
     clearSaleEditContext(draftId);
-    setAttachmentsByDraft((current) => {
+    if (!preserveConfirmedDraft) setAttachmentsByDraft((current) => {
       (current[draftId] ?? []).forEach((attachment) => URL.revokeObjectURL(attachment.previewUrl));
       const { [draftId]: _removed, ...rest } = current;
       return rest;
     });
     // Remove EXATAMENTE o rascunho finalizado. Outro pedido que esteja ativo
     // (por storage event/troca rápida) não é limpo nem recebe o cliente dele.
-    deleteDraft(draftId);
+    if (!preserveConfirmedDraft) deleteDraft(draftId);
 
     // Pós-venda em TOAST, não em faixa fixa na tela (pedido do CEO 2026-10-26:
     // "esse verde e amarelo tinha que aparecer como toasts").
@@ -1511,7 +1657,9 @@ function PdvSaleWorkspace({
     const saleTotal = Number(result.total) || 0;
     const saleChange = Math.round(change * 100) / 100;
     const saleWarnings = extractSaleWarnings(result.avisos);
+    if (completedSaleScope && completedSaleScopeRef.current === completedSaleScope) {
     setCompletedSale({
+      scopeKey: completedSaleScope,
       orderId: result.order_id,
       orderNumber: saleNumber,
       total: saleTotal,
@@ -1528,6 +1676,7 @@ function PdvSaleWorkspace({
               ? ` · ${t.saleSuccess.change.replace('{value}', formatCurrency(saleChange))}`
               : ''}
           </div>
+          {confirmationNotice && <NoticeBanner variant="warning" className="px-2 py-1.5 text-xs">{confirmationNotice}</NoticeBanner>}
           {saleWarnings.map((code) => (
             <NoticeBanner key={code} variant="warning" className="px-2 py-1.5 text-xs">
               {t.saleSuccess.warnings[code]}
@@ -1538,8 +1687,17 @@ function PdvSaleWorkspace({
       // Toast some sozinho, e isto é dinheiro: troco e aviso ficam MUITO mais
       // tempo na tela que o padrão (5s) pra o operador conferir sem correr.
       duration: saleChange > 0 || saleWarnings.length > 0 ? 15000 : 8000,
+      action: <ToastAction altText={`Abrir comprovante do pedido ${saleNumber}`} onClick={() => {
+        if (completedSaleScopeRef.current !== completedSaleScope) return;
+        void openPdvOrderReceipt(result.order_id, receiptFormat, { documentKind: 'sale' }).catch(() => {
+          if (completedSaleScopeRef.current === completedSaleScope) toast({ title: 'Não foi possível gerar o comprovante', description: 'Tente novamente pelo atalho do último pedido.', variant: 'destructive' });
+        });
+      }}>Comprovante</ToastAction>,
     });
-    setTimeout(() => searchInputRef.current?.focus(), 0);
+      setTimeout(() => searchInputRef.current?.focus(), 0);
+    }
+
+    } catch (error) { receiptAttempt.cancel(); throw error; }
   }
 
   // Atalhos operacionais do balcão. Teclas imprimíveis nunca atravessam campos;
@@ -1547,6 +1705,7 @@ function PdvSaleWorkspace({
   useEffect(() => {
     function handleGlobalKeyDown(e: KeyboardEvent) {
       if (e.defaultPrevented || e.altKey) return;
+      if (document.querySelector('[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]')) return;
       if (paymentOpen || confirmClearOpen || advancedOptionsOpen || shortcutHelpOpen) return;
 
       const commandAction = resolvePdvCommandShortcut(e);
@@ -1608,253 +1767,28 @@ function PdvSaleWorkspace({
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   });
 
-  /**
-   * Teto/chão de linhas do carrinho (coluna dos produtos) — DERIVADO do
-   * viewport, não mais cravado em 5 (pedido do CEO 2026-10-19: "a altura de
-   * quando tem 5 itens é o padrão, mas se não tiver essa folga, até 3 linhas
-   * é aceitável"). Preço do cabeçalho (53px) + cabeçalho da tabela (32px) +
-   * cada linha (48,5px), MEDIDOS com Playwright em 2026-10-19 (ver o
-   * `h-[328px]` histórico = 5 linhas). `CART_HEIGHT_CLASS` abaixo tem que ter
-   * uma entrada (classe Tailwind arbitrária LITERAL, pro JIT escanear) pra
-   * cada valor entre `CART_LINES_MIN` e `CART_LINES_MAX`.
-   */
-  const CART_LINES_MAX = 5;
-  const CART_LINES_MIN = 3;
-  const CART_HEADER_PX = 53;
-  const CART_TABLE_HEADER_PX = 32;
-  const CART_ROW_PX = 48.5;
-  const CART_HEIGHT_CLASS: Record<number, string> = {
-    5: 'h-[328px]',
-    4: 'h-[279px]',
-    3: 'h-[231px]',
-  };
-  function cartTableHeightPx(lines: number): number {
-    return Math.ceil(CART_HEADER_PX + CART_TABLE_HEADER_PX + lines * CART_ROW_PX);
-  }
-
-  /**
-   * Piso da grade de produtos — NORMAL (`full`) e COMPACTO (`compact`).
-   * Pedido do CEO 2026-10-19 via Tech Lead: notebook (1366×768) não pode
-   * mais cair no fallback de rolagem gigante; se nem com cabeçalho
-   * comprimido + 3 linhas de carrinho o piso de 260px couber, a grade passa
-   * a usar o card COMPACTO (`PdvProductCard compact`) em vez de desistir e
-   * deixar o `<main>` rolar.
-   *
-   * `GRID_FLOOR_FULL_PX` (260) é o valor histórico, sem mudança.
-   * `GRID_FLOOR_COMPACT_PX` (150) é CALCULADO a partir da altura teórica do
-   * card compacto (~142px, ver o comentário de `compact` em
-   * `PdvProductCard.tsx`) + ~8px de margem de segurança — NÃO medido em
-   * navegador real. `GRID_FLOOR_CLASS` espelha os dois valores em classe
-   * Tailwind LITERAL (pro JIT escanear, mesmo padrão do `CART_HEIGHT_CLASS`
-   * acima).
-   */
-  const GRID_FLOOR_FULL_PX = 260;
-  const GRID_FLOOR_COMPACT_PX = 150;
-  const GRID_FLOOR_CLASS: Record<'full' | 'compact', string> = {
-    full: 'min-h-[260px]',
-    compact: 'min-h-[150px]',
-  };
-
-  /**
-   * Composição de ALTURA FIXA no desktop (pedido do CEO 2026-10-19): a
-   * PÁGINA não rola — só a grade e o carrinho rolam por dentro — "a não ser
-   * que seja necessário" (se não couber, deixa rolar; nunca corta preço,
-   * saldo ou o botão de Finalizar pra caber).
-   *
-   * Em vez de chutar um offset em `rem` (como `calc(100vh-18rem)` fazia —
-   * motivo de 3 rodadas de ajuste de número às cegas), MEDE em tempo real o
-   * quanto de viewport já foi consumido ACIMA desta linha (sidebar/topbar +
-   * voltar + título + avisos) e QUANTO FALTA pro rodapé do app (`footer`
-   * `h-[52px]` fixo nos dois shells de desktop — `SidebarShell`/`TopbarShell`
-   * em `AppLayout.tsx`, que eu NÃO toco: é constante conhecida, não chute).
-   * O que sobra vira a altura exata da composição; o FLEX interno
-   * (`flex-1 min-h-0 overflow-y-auto` na grade e no carrinho) resolve a
-   * divisão sozinho — sem outro calc().
-   *
-   * `100dvh`-aware: usa `window.visualViewport.height` quando existe (não
-   * `100vh`, que conta a barra de endereço do mobile — a régua da casa já
-   * tropeçou nisso). SÓ desktop (`!isMobileCart`): mobile/tablet continuam
-   * com rolagem de página normal, sem este cálculo.
-   *
-   * ALTURA DO CARRINHO DERIVADA, NÃO CRAVADA (pedido do CEO 2026-10-19):
-   * tenta do TETO (5 linhas) ao CHÃO (3), e só então comprime o cabeçalho
-   * (some o subtítulo, "Voltar" entra na mesma linha do título) se isso
-   * destravar o teto de 5 — nunca o contrário. Pra saber SE comprimir ajuda
-   * sem precisar de duas rodadas de re-render (que arriscaria oscilar), mede
-   * os DOIS cabeçalhos ao mesmo tempo: o que está ATIVO no fluxo normal
-   * (`headerRef`) e a MESMA variante trocada, invisível e fora do fluxo
-   * (`headerProbeRef`, `position:absolute` dentro de um `position:relative`
-   * — não empurra nada, não conta na altura do pai). A diferença entre os
-   * dois é a folga real que a compressão abriria, medida de verdade em vez
-   * de chutada.
-   *
-   * TRAVA 1 (chão é chão, não corte): se nem com 3 linhas (cabeçalho já
-   * comprimido) couber, NÃO comprime nada — deixa o `<main>` do AppLayout
-   * rolar, como sempre fez. Rolagem é feia; conteúdo escondido é bug.
-   *
-   * TRAVA 2 (não pula embaixo do dedo): com o carrinho CHEIO, a quantidade de
-   * linhas E o card compacto/normal ficam CONGELADOS (só o
-   * `desktopCompositionHeight`/cabeçalho reavaliam) — senão a tabela E a
-   * grade mudariam de tamanho enquanto o operador trabalha. Só reavalia
-   * linhas/card com carrinho VAZIO ou em `resize` (ação explícita do
-   * usuário).
-   */
+  // A altura usa o espaço real abaixo do cabeçalho. Catálogo e materiais do
+  // pedido têm rolagem própria; não reservamos mais uma tabela na coluna esquerda.
   const desktopRowRef = useRef<HTMLDivElement>(null);
   const topControlsRef = useRef<HTMLDivElement>(null);
-  const headerRef = useRef<HTMLDivElement>(null);
-  const headerProbeRef = useRef<HTMLDivElement>(null);
   const [desktopCompositionHeight, setDesktopCompositionHeight] = useState<number | null>(null);
-  const [headerCompressed, setHeaderCompressed] = useState(false);
-  const [cartLines, setCartLines] = useState(CART_LINES_MAX);
-  const [cardCompact, setCardCompact] = useState(false);
   useLayoutEffect(() => {
-    if (isMobileCart) {
-      setDesktopCompositionHeight(null);
-      return;
-    }
-    const rowEl = desktopRowRef.current;
-    const topControlsEl = topControlsRef.current;
-    const headerEl = headerRef.current;
-    const probeEl = headerProbeRef.current;
-    if (!rowEl || !topControlsEl || !headerEl || !probeEl) return;
-
-    // `footer` fixo dos 2 shells de desktop (`AppLayout.tsx`, `SidebarShell`/
-    // `TopbarShell`) — constante conhecida, não medida (não temos acesso ao
-    // DOM do footer a partir daqui sem acoplar a um seletor frágil).
-    const APPLAYOUT_FOOTER_HEIGHT_PX = 52;
-    // Chão (não folga visual): o `<main>` do AppLayout tem `overflow-y-auto`
-    // próprio + `md:p-6` (24px) de padding em TODOS os lados, inclusive o de
-    // baixo — e este `<main>` é SEMPRE o caso (esta lógica só roda em
-    // `!isMobileCart`, ou seja, >=768px, onde `md:` já vale). Reservar menos
-    // que esses 24px faz o CONTEÚDO colar na borda do padding e o PRÓPRIO
-    // `<main>` abrir scroll interno (invisível pro
-    // `document.documentElement`, mas visível pro operador) — achado
-    // confirmado com um probe estático reproduzindo a cadeia de contenção
-    // real (`h-[100dvh]` → `SidebarInset overflow-hidden` → `main
-    // overflow-y-auto`) em 2026-10-19: com 16px sobravam 8px de overflow
-    // DENTRO do `<main>` em 1920×1080 e 1440×900, mesmo com
-    // `document.documentElement` "limpo". 24px fecha a conta exata.
-    const BOTTOM_BREATHING_ROOM_PX = 24;
-    // `gap-3` do Tailwind = 0.75rem = 12px (root sem alteração de font-size).
-    const FLEX_GAP_PX = 12;
-
-    function recompute(allowLinesChange: boolean) {
-      if (!rowEl || !topControlsEl || !headerEl || !probeEl) return;
-
-      const rowTop = rowEl.getBoundingClientRect().top;
-      const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
-      const availableActive = viewportHeight - rowTop - APPLAYOUT_FOOTER_HEIGHT_PX - BOTTOM_BREATHING_ROOM_PX;
-
-      // `headerEl` é a variante REALMENTE renderizada agora; `probeEl` é a
-      // OPOSTA, medida escondida — então, seja qual for o estado atual, os
-      // dois dão o par (altura cheia, altura comprimida) sem precisar
-      // trocar o estado pra medir o outro lado.
-      const activeHeight = headerEl.getBoundingClientRect().height;
-      const alternateHeight = probeEl.getBoundingClientRect().height;
-      const fullHeight = headerCompressed ? alternateHeight : activeHeight;
-      const compressedHeight = headerCompressed ? activeHeight : alternateHeight;
-      const savings = Math.max(0, fullHeight - compressedHeight);
-
-      const availableFull = headerCompressed ? availableActive - savings : availableActive;
-      const availableCompressed = headerCompressed ? availableActive : availableActive + savings;
-
-      const topControlsHeight = topControlsEl.getBoundingClientRect().height;
-
-      // Carrinho cheio: só reavalia a quantidade ATUAL de linhas E o card
-      // ATUAL (congelados), pra tabela/grade não pularem debaixo do dedo do
-      // operador (trava 2). Vazio ou resize (ação explícita): testa de novo
-      // do teto (5 linhas, card normal) ao chão (3 linhas, card compacto).
-      const lineCandidates = allowLinesChange
-        ? [CART_LINES_MAX, CART_LINES_MAX - 1, CART_LINES_MIN]
-        : [cartLines];
-      // Card compacto é o ÚLTIMO recurso (pedido do CEO: só densifica se
-      // precisar) — por isso a tentativa `false` (normal) sempre roda
-      // primeiro, nas 2 linhas abaixo, pra TODAS as combinações de linhas/
-      // cabeçalho antes de sequer considerar o card compacto.
-      const compactCandidates = allowLinesChange ? [false, true] : [cardCompact];
-
-      let chosen: {
-        lines: number;
-        compressed: boolean;
-        compact: boolean;
-        available: number;
-      } | null = null;
-      for (const compactTry of compactCandidates) {
-        const gridFloor = compactTry ? GRID_FLOOR_COMPACT_PX : GRID_FLOOR_FULL_PX;
-        const fixedOverhead = topControlsHeight + FLEX_GAP_PX * 2 + gridFloor;
-        for (const lines of lineCandidates) {
-          const needed = fixedOverhead + cartTableHeightPx(lines);
-          if (availableFull >= needed) {
-            chosen = { lines, compressed: false, compact: compactTry, available: availableFull };
-            break;
-          }
-          if (availableCompressed >= needed) {
-            chosen = { lines, compressed: true, compact: compactTry, available: availableCompressed };
-            break;
-          }
-        }
-        if (chosen) break;
-      }
-
-      if (!chosen) {
-        // Nem o chão (card compacto, 3 linhas, cabeçalho comprimido) cabe:
-        // não comprime/densifica nada, deixa o <main> rolar (trava 1).
-        setHeaderCompressed(false);
-        setDesktopCompositionHeight(null);
-        if (allowLinesChange) {
-          setCartLines(CART_LINES_MAX);
-          setCardCompact(false);
-        }
-        return;
-      }
-
-      setHeaderCompressed(chosen.compressed);
-      setDesktopCompositionHeight(chosen.available);
-      if (allowLinesChange) {
-        setCartLines(chosen.lines);
-        setCardCompact(chosen.compact);
-      }
-    }
-
-    // Primeira medição do efeito: sempre livre pra escolher linhas (ou o
-    // carrinho está vazio, ou é o carregamento inicial da tela).
-    recompute(cart.lines.length === 0);
-
-    function handleResize() {
-      // Resize é ação EXPLÍCITA do usuário — reavalia linhas mesmo com
-      // carrinho cheio (trava 2 permite nesse caso).
-      recompute(true);
-    }
-    window.addEventListener('resize', handleResize);
-    window.visualViewport?.addEventListener('resize', handleResize);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      window.visualViewport?.removeEventListener('resize', handleResize);
+    if (isMobileCart) { setDesktopCompositionHeight(null); return; }
+    const row = desktopRowRef.current;
+    if (!row) return;
+    const recompute = () => {
+      const height = window.visualViewport?.height ?? window.innerHeight;
+      const available = Math.floor(height - row.getBoundingClientRect().top - 52 - 24);
+      // Em janelas muito baixas, rolar a página preserva os controles e valores.
+      setDesktopCompositionHeight(available >= 400 ? available : null);
     };
-    // Recalcula quando algo ACIMA/DENTRO da composição muda de altura (aviso
-    // de pós-venda aparece/some, pills de categoria mudam de contagem, aviso
-    // de caixa fechado aparece/some, o carrinho esvazia) — tudo que desloca
-    // `top` ou o orçamento disponível. `isLoadingPdv` é o mais importante:
-    // enquanto carrega, a tela inteira é `PdvSkeleton` e os refs NEM EXISTEM
-    // no DOM — sem este dep, quando o carregamento termina e a composição de
-    // verdade monta, o efeito nunca roda de novo (bug medido 2026-10-19:
-    // altura travada nunca chegava a aplicar). `headerCompressed` entra pra
-    // manter o closure de `recompute` sincronizado com a variante REALMENTE
-    // ativa (sem isso, um resize posterior compararia a variante errada).
-    // `cardCompact` entra pelo MESMO motivo que `cartLines`: com a trava 2
-    // ativa (`allowLinesChange=false`), o closure precisa ler o valor ATUAL
-    // pra congelar (`compactCandidates = [cardCompact]`).
-  }, [
-    isMobileCart,
-    isLoadingPdv,
-    categoryTabs.length,
-    hiddenCategoryTabs.length,
-    hasOpenCashSession,
-    cart.lines.length,
-    headerCompressed,
-    cartLines,
-    cardCompact,
-  ]);
+    recompute();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(recompute);
+    if (topControlsRef.current) observer?.observe(topControlsRef.current);
+    window.addEventListener('resize', recompute);
+    window.visualViewport?.addEventListener('resize', recompute);
+    return () => { observer?.disconnect(); window.removeEventListener('resize', recompute); window.visualViewport?.removeEventListener('resize', recompute); };
+  }, [isMobileCart, isLoadingPdv, catalogMode, categoryTabs.length, hasOpenCashSession, syncIssue, localPersistenceIssue, draftConflicts.length]);
 
   function handleConfirmClearCart() {
     if (!activeDraftId) return;
@@ -1889,7 +1823,7 @@ function PdvSaleWorkspace({
               if (draft.cart.lines.some((line) => line.inventoryId === inventoryId)) return draft;
               const lines = [...draft.cart.lines];
               lines.splice(Math.min(removedIndex, lines.length), 0, removedLine);
-              return { ...draft, cart: { ...draft.cart, lines }, attempt: null };
+              return { ...draft, cart: { ...draft.cart, lines }, attempt: isV2 ? draft.attempt : null };
             });
           }}
         >
@@ -1928,6 +1862,14 @@ function PdvSaleWorkspace({
     },
     onCreate: handleCreateDraft,
     onDelete: handleDeleteDraft,
+    orderPreferenceKey: draftOwner ? ['pdv-tab-order', draftOwner.companyId, draftOwner.userId, draftOwner.cashSessionId, draftOwner.terminalId, draftOwner.stockId].join(':') : undefined,
+    onReorder: (ids: string[]) => setDraftWorkspace(current => ({
+      ...current,
+      drafts: [...current.drafts].sort((a, b) => {
+        const first = ids.indexOf(a.id), second = ids.indexOf(b.id);
+        return (first < 0 ? ids.length : first) - (second < 0 ? ids.length : second);
+      }),
+    })),
     disabled:
       createOrder.isPending ||
       settleOrder.isPending ||
@@ -1936,21 +1878,37 @@ function PdvSaleWorkspace({
   };
 
   const cartPanelProps = {
-    orderSwitcher: isMobileCart ? <PdvOrderSwitcher embedded {...orderSwitcherProps} /> : undefined,
+    layout: 'workspace' as const,
+    readOnly: directSaleNeedsReview,
+    onCloseOrder: activeDraftId ? () => handleDeleteDraft(activeDraftId) : undefined,
+    hasOrderContent: Boolean(activeDraft && (hasPdvSaleDraftContent(activeDraft) || pendingAttachments.length > 0 || saleEditDraft)),
+    appliedCreditAmount: activeDraft?.appliedVoucher?.amount ?? 0,
+    orderSwitcher: undefined,
     cart,
     customers,
     formatCurrency,
     currencySymbol,
     locale,
     currencyFractionDigits,
+    modePreferenceKey: user?.id && profile?.company_id
+      ? `pdv:value-adjustment-mode:${profile.company_id}:${user.id}`
+      : undefined,
     onSetDiscountAmount: (discountAmount: number) =>
       setCart((prev) => setDiscount(prev, discountAmount)),
     onIncrement: (id: string, delta: number) => setCart((prev) => incrementLineQuantity(prev, id, delta)),
     onSetQuantity: (id: string, quantity: number) => setCart((prev) => setLineQuantity(prev, id, quantity)),
     onSetLineDiscount: (id: string, discountAmount: number) =>
       setCart((prev) => setLineDiscount(prev, id, discountAmount)),
+    onSetLineFinalAmount: (id: string, finalAmount: number, mode: 'price' | 'discount') =>
+      setCart((prev) => setLineFinalAmount(prev, id, finalAmount, mode, currencyFractionDigits)),
+    onSetCartFinalAmount: (finalAmount: number, mode: 'price' | 'discount') =>
+      setCart((prev) => setCartFinalAmount(prev, finalAmount, mode, currencyFractionDigits)),
     onRemove: handleRemoveCartLine,
-    onCustomerChange: (id: string | null) => setCart((prev) => setCartCustomer(prev, id)),
+    onCustomerChange: (id: string | null) => updateActiveDraft((draft) => {
+      const next = setPdvSaleDraftCustomer(draft, id);
+      liveCartRef.current = next.cart;
+      return isV2 ? { ...next, attempt: draft.attempt } : next;
+    }),
     onRequestClearCart: () => setConfirmClearOpen(true),
     onRequestPayment: openPayment,
     cashClosed: !hasOpenCashSession,
@@ -1962,6 +1920,21 @@ function PdvSaleWorkspace({
     onOpenAdvancedOptions: () => setAdvancedOptionsOpen(true),
     advancedOptionsActive: advancedOptionsSummary.length > 0,
     advancedOptionsSummary,
+    appliedCreditContent: isV2 && activeDraft && activeDraftId ? (
+      <PdvAppliedVoucherControl
+        key={`${activeDraftId}:${activeDraft.cart.customerId ?? 'sem-cliente'}`}
+        enabled
+        customerId={activeDraft.cart.customerId}
+        total={computeTotal(activeDraft.cart)}
+        value={activeDraft.appliedVoucher}
+        formatCurrency={formatCurrency}
+        onChange={(appliedVoucher) => updateDraft(activeDraftId, (draft) => ({
+          ...draft,
+          appliedVoucher,
+          attempt: isV2 ? draft.attempt : null,
+        }))}
+      />
+    ) : undefined,
     additionFeedback:
       cartAdditionFeedback?.draftId === activeDraftId
         ? {
@@ -2052,7 +2025,7 @@ function PdvSaleWorkspace({
       <div className="flex flex-col gap-4">
         {backToCashPanel}
         <PageHeader title={t.title} subtitle={t.subtitle} icon={ShoppingCart} />
-        <PdvSkeleton isMobileCart={isMobileCart} showNumpad={showNumpad} />
+        <PdvSkeleton isMobileCart={isMobileCart} showNumpad={showNumpad} catalogMode={catalogMode} />
       </div>
     );
   }
@@ -2100,110 +2073,46 @@ function PdvSaleWorkspace({
     );
   }
 
-  // Cabeçalho CHEIO (padrão) × COMPRIMIDO (subtítulo some, "Voltar" entra na
-  // mesma linha do título) — só o desktop troca, via `headerCompressed`
-  // medido no `useLayoutEffect` acima. Os DOIS blocos existem sempre: um no
-  // fluxo normal (visível) e o outro escondido numa sonda (`headerProbeRef`),
-  // só pra medir "quanto esse troca economizaria" sem precisar de uma
-  // segunda rodada de render pra decidir.
-  const operatorName = profile?.full_name?.trim() || user?.email || '';
-  const operatorInitials = operatorName
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toLocaleUpperCase(locale))
-    .join('') || 'OP';
-  const activeTerminalName = isV2
-    ? v2Terminal?.name ?? ''
-    : legacyTerminals.find((terminal) => terminal.id === terminalId)?.name ?? '';
-  const desktopOrderSwitcher = (
-    <div className="hidden w-[22rem] shrink-0 md:block lg:w-[25rem] min-[1280px]:w-[30rem]">
-      <PdvOrderSwitcher header {...orderSwitcherProps} />
-    </div>
-  );
-  const shortcutHelpButton = (
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      className="shrink-0 gap-1.5"
-      onClick={() => setShortcutHelpOpen(true)}
-      aria-label={t.shortcuts.open}
-      title={t.shortcuts.open}
-    >
-      <Keyboard className="h-4 w-4" />
-      <span className="hidden min-[1280px]:inline">{t.shortcuts.open}</span>
-      <kbd className="rounded border bg-muted px-1 text-[10px] text-muted-foreground">?</kbd>
-    </Button>
-  );
-  const fullHeaderBlock = (
-    <header className="flex items-center gap-4 border-b border-border pb-3">
-      <div className="flex min-w-0 flex-1 items-center">
-        <Button type="button" variant="ghost" size="icon" onClick={() => navigate(PDV_PANEL_PATH)} aria-label={t.backToCashPanel}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div className="min-w-0">
-          <h1 className={cn(typography.pageTitle, 'truncate')}>{t.title}</h1>
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-            <span className={cn('inline-flex items-center gap-1.5 font-semibold', hasOpenCashSession ? 'text-success' : 'text-warning')}>
-              <span className={cn('h-2 w-2 rounded-full', hasOpenCashSession ? 'bg-success' : 'bg-warning')} />
-              {hasOpenCashSession ? t.header.cashOpen : t.header.cashClosed}
-            </span>
-            {activeTerminalName && <span>{activeTerminalName}</span>}
-            {operatorName && (
-              <span className="inline-flex items-center gap-1.5">
-                <Avatar className="h-5 w-5 ring-1 ring-border">
-                  <AvatarImage src={profile?.avatar_url ?? undefined} alt={operatorName} className="object-cover" />
-                  <AvatarFallback className="bg-primary text-[8px] font-bold text-primary-foreground">
-                    {operatorInitials}
-                  </AvatarFallback>
-                </Avatar>
-                {t.header.operator.replace('{name}', operatorName)}
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-      {shortcutHelpButton}
-      {desktopOrderSwitcher}
-    </header>
-  );
-  const compactHeaderBlock = (
-    <header className="flex items-center gap-2 border-b border-border pb-2">
-      <Button type="button" variant="ghost" size="icon" onClick={() => navigate(PDV_PANEL_PATH)} aria-label={t.backToCashPanel}>
-        <ArrowLeft className="h-4 w-4" />
-      </Button>
-      <h1 className={cn(typography.pageTitle, 'min-w-0 flex-1 truncate')}>{t.title}</h1>
-      {shortcutHelpButton}
-      {desktopOrderSwitcher}
-      <Avatar className="h-7 w-7 ring-1 ring-border">
-        <AvatarImage src={profile?.avatar_url ?? undefined} alt={operatorName} className="object-cover" />
-        <AvatarFallback className="bg-primary text-[9px] font-bold text-primary-foreground">{operatorInitials}</AvatarFallback>
-      </Avatar>
-    </header>
-  );
+  function draftVersionSummary(draft: PdvSaleDraft | null) {
+    if (!draft) return null;
+    const person = customers.find(customer => customer.id === draft.cart.customerId)?.name ?? 'Sem cliente';
+    return {
+      title: person,
+      details: `${draft.cart.lines.length} materiais · ${formatCurrency(computeTotal(draft.cart))}`,
+      notes: draft.notes,
+      updatedAt: draft.updatedAt,
+    };
+  }
+  const draftConflictViews = draftConflicts.map(conflict => ({
+    id: conflict.id,
+    label: `Venda #${conflict.local?.sequence ?? conflict.server?.sequence ?? ''}`,
+    local: draftVersionSummary(conflict.local),
+    server: draftVersionSummary(conflict.server),
+    alternativesCount: conflict.alternatives.length,
+    requiresOrderReview: conflict.requiresOrderReview || Boolean(saleEditDrafts[conflict.id]),
+    orderId: conflict.orderId ?? saleEditDrafts[conflict.id]?.sourceOrderId ?? null,
+  }));
+  const workspaceOrderSwitcher = <PdvOrderSwitcher header {...orderSwitcherProps} />;
 
   return (
     // pb generoso no mobile: dá espaço pra barra fixa do carrinho (acima do bottom
     // nav global, ver offset de 96px abaixo) não cobrir o fim da grade.
-    <div className={cn('flex flex-col gap-4', isMobileCart && 'pb-44')} data-pdv-ui>
-      <div className="relative">
-        <div ref={headerRef}>{headerCompressed ? compactHeaderBlock : fullHeaderBlock}</div>
-        {/* Sonda invisível: SEMPRE a variante OPOSTA à visível, pra medir sem
-            trocar nada na tela. `position:absolute` tira do fluxo (não
-            empurra o que vem depois, não entra na altura do `relative` pai);
-            `invisible` tira da pintura/acessibilidade sem deixar de ocupar
-            layout (precisa ocupar pra ter altura real pra medir). */}
-        <div ref={headerProbeRef} aria-hidden="true" className="invisible pointer-events-none absolute inset-x-0 top-0">
-          {headerCompressed ? fullHeaderBlock : compactHeaderBlock}
-        </div>
-      </div>
+    <div className={cn('pdv-preview-sale min-w-0', isMobileCart && 'pb-44')} data-pdv-ui data-testid="pdv-sale-workspace">
+      <PdvLastSaleHeader completedSale={completedSale} scopeKey={completedSaleScope} receiptFormat={receiptFormat} canOpenPostSale={isV2 && hasPostSaleAccess} onOpenPostSale={() => setPostSaleOpen(true)}>{workspaceOrderSwitcher}</PdvLastSaleHeader>
 
-      {syncIssue && (
-        <NoticeBanner variant={syncIssue === 'conflict' ? 'warning' : 'info'}>
-          {t.draftSync[syncIssue]}
-        </NoticeBanner>
-      )}
+      {directSaleNeedsReview && <NoticeBanner variant="warning" title={activeDraft?.attempt?.confirmedSale ? `Pedido #${activeDraft.attempt.confirmedSale.orderNumber} já concluído` : 'Confira a última tentativa antes de reenviar'}>
+        <div className="flex flex-wrap items-center justify-between gap-3"><span>{activeDraft?.attempt?.confirmedSale ? 'O pedido já foi confirmado. Confira o pedido antes de iniciar outro atendimento.' : PDV_DIRECT_SALE_REVIEW_MESSAGE}</span><Button type="button" variant="outline" onClick={() => navigate(activeDraft?.attempt?.orderId ? `/pdv/pedidos?pedido=${encodeURIComponent(activeDraft.attempt.orderId)}` : '/pdv/pedidos')}>Conferir Pedidos</Button></div>
+      </NoticeBanner>}
+      <PdvDraftSyncNotice
+        key={draftOwner ? [draftOwner.companyId, draftOwner.userId, draftOwner.cashSessionId, draftOwner.stockId].join(':') : 'unbound'}
+        issue={syncIssue ?? null}
+        localPersistenceIssue={localPersistenceIssue}
+        resolvingDraftId={resolvingDraftId}
+        conflicts={draftConflictViews}
+        onRetry={() => retrySync?.()}
+        onReviewOrder={id => navigate(`/pdv/pedidos?pedido=${encodeURIComponent(id)}`)}
+        onResolve={(id, choice) => saleEditDrafts[id] ? Promise.resolve('review_order') : resolveDraftConflict?.(id, choice) ?? Promise.resolve('unavailable')}
+      />
 
       {saleEditDraft && (
         <NoticeBanner
@@ -2214,254 +2123,36 @@ function PdvSaleWorkspace({
         </NoticeBanner>
       )}
 
-      {completedSale && (
-        <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-center gap-3">
-            <CheckCircle2 className="h-6 w-6 shrink-0 text-emerald-600" aria-hidden="true" />
-            <div className="min-w-0">
-              <p className="font-semibold">Pedido #{completedSale.orderNumber} concluído</p>
-              <p className="text-sm text-muted-foreground">
-                Total {formatCurrency(completedSale.total)}. O comprovante pode ser reaberto sem gerar outra venda.
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <PdvOrderReceiptButton
-              orderId={completedSale.orderId}
-              format={receiptFormat}
-              label="Gerar comprovante"
-            />
-            {isV2 && hasPostSaleAccess && (
-              <Button type="button" onClick={() => setPostSaleOpen(true)}>
-                Abrir pós-venda
-              </Button>
-            )}
-          </div>
-          {receiptSettings.data?.autoPrint && (
-            <div ref={autoReceiptRef} className="hidden" aria-hidden="true">
-              {Array.from({ length: receiptSettings.data.copies }, (_, index) => (
-                <PdvOrderReceiptButton
-                  key={`${completedSale.orderId}-${index}`}
-                  orderId={completedSale.orderId}
-                  format={receiptFormat}
-                  label={`Impressão automática ${index + 1}`}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
-      <div
-        ref={desktopRowRef}
-        className="flex flex-col gap-3 md:flex-row md:items-start"
+      <PdvSalePreviewView
+        rowRef={desktopRowRef}
+        controlsRef={topControlsRef}
+        gridRef={gridRef}
+        searchInputRef={searchInputRef}
+        mode={catalogMode}
+        onModeChange={mode => { setCatalogMode(mode); if (mode === 'quick') setActiveCategory('all'); }}
+        search={search}
+        onSearchChange={setSearch}
+        onSearchKeyDown={handleSearchKeyDown}
+        onSearchConfirm={handleSearchEnter}
+        onGridKeyDown={handleGridKeyDown}
+        products={visibleProducts}
+        disabled={directSaleNeedsReview || createOrder.isPending || settleOrder.isPending || replaceOrder.isPending || directSale.complete.isPending}
+        catalogLoading={isLoadingPdv}
+        activeProductId={activeProductId}
+        keyboardHighlight={catalogKeyboardActive}
+        onProductFocus={id => { const index = keyboardProducts.findIndex(product => product.inventoryId === id); if (index >= 0) setActiveProductIndex(index); setCatalogKeyboardActive(true); }}
+        onProductSelect={handleProductSelect}
+        formatCurrency={formatCurrency}
+        onExit={() => navigate(PDV_PANEL_PATH)}
         style={desktopCompositionHeight != null ? { height: desktopCompositionHeight } : undefined}
-      >
-        {/* Coluna dos produtos: busca + filtros + grade + carrinho (itens) —
-            tudo no mesmo eixo de leitura, de cima pra baixo. Pedido do CEO
-            2026-10-18: "o carrinho não tá claro na direita, melhor ele ficar
-            na área dos produtos, com os itens incluídos abaixo da grade". No
-            mobile (drawer) os itens continuam só no painel deslizante.
-
-            Altura da coluna: `md:h-full`, NÃO mais `calc(100vh-18rem)`
-            (correção 2026-10-19 — "pare de chutar número, deixe o flex
-            resolver"). A altura REAL vem da MEDIÇÃO em `desktopCompositionHeight`
-            (ver o `useLayoutEffect` acima), aplicada como `style` no `<div>`
-            pai desta linha — `h-full` aqui só herda esse valor medido. */}
-        <div className="flex min-w-0 flex-1 flex-col gap-3 md:h-full">
-          {/* `topControlsRef` mede busca+local+pills JUNTOS — é o "overhead
-              fixo" que o `useLayoutEffect` acima soma ao chão da grade e à
-              altura do carrinho pra decidir quantas linhas cabem. Mantém o
-              MESMO `gap-3` que já existia entre busca e pills (visual
-              idêntico a antes; só agrupou numa `div` pra dar um ref comum). */}
-          <div ref={topControlsRef} className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3 shadow-sm">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <div className="relative flex-1">
-                <Barcode className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-                {/* type="search" + name que não lembra credencial: sem isso o
-                    Safari trata este campo (grande, sozinho e com autoFocus)
-                    como login e o iCloud oferece "Ativar Preenchimento
-                    Automático de Senha" em cima do PDV. Os data-* calam
-                    1Password, LastPass e Dashlane pelo mesmo motivo. O
-                    ::-webkit-search-cancel-button sai pra o visual não mudar. */}
-                <Input
-                  ref={searchInputRef}
-                  autoFocus
-                  type="search"
-                  name="pdv-busca-produto"
-                  inputMode="search"
-                  enterKeyHint="search"
-                  autoComplete="off"
-                  autoCorrect="off"
-                  autoCapitalize="off"
-                  spellCheck={false}
-                  data-1p-ignore
-                  data-lpignore="true"
-                  data-form-type="other"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  onKeyDown={handleSearchKeyDown}
-                  placeholder={t.search.placeholder}
-                  className="h-12 pl-10 pr-14 text-base [&::-webkit-search-cancel-button]:appearance-none"
-                />
-                <span className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground sm:inline-flex">
-                  F2
-                </span>
-              </div>
-              {pdvStocks.length > 1 && (
-                <Select
-                  value={selectedStockId ?? undefined}
-                  onValueChange={setSelectedStockId}
-                  disabled={isV2 && resolvedV2CashContext.status === 'resolved'}
-                >
-                  <SelectTrigger className="w-full sm:w-56">
-                    <SelectValue placeholder={t.stock.locationLabel} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {pdvStocks.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-
-            {categoryTabs.length > 1 && (
-              <div className="flex items-center gap-2">
-                <MobilePillTabs
-                  tabs={visibleCategoryTabs}
-                  activeTab={activeCategory}
-                  onTabChange={setActiveCategory}
-                  className="min-w-0 flex-1"
-                />
-                {/* Teto de pills visíveis (régua do CEO: "cuidado pra não
-                    acumular"). O resto mora atrás do botão "Filtros" — já
-                    reusado da tela de Estoque, mesmo componente/visual. */}
-                {hiddenCategoryTabs.length > 0 && (
-                  <FilterButton
-                    activeCount={hiddenCategoryTabs.some((tb) => tb.value === activeCategory) ? 1 : 0}
-                    onClear={() => setActiveCategory('all')}
-                    className="shrink-0"
-                  >
-                    <div className="flex flex-col gap-1">
-                      {hiddenCategoryTabs.map((tb) => {
-                        const isActive = tb.value === activeCategory;
-                        return (
-                          <button
-                            key={tb.value}
-                            type="button"
-                            onClick={() => setActiveCategory(tb.value)}
-                            className={cn(
-                              'flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors',
-                              isActive ? 'bg-primary text-primary-foreground' : 'hover:bg-muted',
-                            )}
-                          >
-                            {tb.accentColor && (
-                              <span
-                                className="h-2.5 w-2.5 shrink-0 rounded-full"
-                                style={{ backgroundColor: tb.accentColor }}
-                              />
-                            )}
-                            {tb.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </FilterButton>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Grade: altura contida no desktop/tablet (rola dentro dela) pra
-              abrir espaço pro carrinho logo abaixo, no mesmo eixo de leitura.
-              No mobile mantém o fluxo natural de página (sem teto).
-
-              `min-h-[260px]`/`min-h-[150px]` (`GRID_FLOOR_CLASS`) é CHÃO, não
-              teto: sem ele, a tabela de itens logo abaixo (natural/shrink,
-              nunca mais `shrink-0`) comia a altura inteira quando tinha
-              conteúdo (EmptyState alto ou várias linhas), e a janela da
-              grade podia encolher pra MENOS que um card inteiro — regressão
-              medida 2026-10-18 (janela 173px pra um card de 221px, preço
-              21px abaixo do corte). 260px é o piso MEDIDO com Playwright no
-              caso normal (card cheio); 150px é o piso do card COMPACTO
-              (`cardCompact`, ver `GRID_FLOOR_COMPACT_PX` acima) — só entra
-              em viewport baixo (notebook 1366×768) onde nem cabeçalho
-              comprimido + 3 linhas de carrinho destravam o piso de 260px. */}
-          <div
-            className={cn(
-              'min-h-0',
-              !isMobileCart &&
-                cn('flex-1 overflow-y-auto pr-1', GRID_FLOOR_CLASS[cardCompact ? 'compact' : 'full']),
-            )}
-          >
-            <div
-              ref={gridRef}
-              tabIndex={-1}
-              className="space-y-5 outline-none"
-              onKeyDown={handleGridKeyDown}
-            >
-              {searchFiltered.length === 0 ? (
-                <div>
-                  <EmptyState
-                    icon={<Search className="h-10 w-10" />}
-                    title={sellableProducts.length === 0 ? t.emptyCatalog.title : t.search.noResults}
-                    description={sellableProducts.length === 0 ? t.emptyCatalog.description : undefined}
-                  />
-                </div>
-              ) : (
-                catalogSections.map((section) => (
-                  <section key={section.id} aria-labelledby={`pdv-catalog-${section.id}`}>
-                    <div className="mb-2 flex items-center gap-2.5">
-                      <h2 id={`pdv-catalog-${section.id}`} className="shrink-0 text-sm font-bold text-foreground">
-                        {section.label}
-                      </h2>
-                      <div className="h-px min-w-4 flex-1 bg-border" aria-hidden="true" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 min-[768px]:grid-cols-3 min-[1024px]:grid-cols-4 min-[1280px]:grid-cols-5">
-                      {section.items.map((product) => (
-                        <PdvProductCard
-                          key={product.inventoryId}
-                          product={product}
-                          formatCurrency={formatCurrency}
-                          formatQuantity={formatQuantity}
-                          outOfStockLabel={t.stock.outOfStock}
-                          availableLabel={t.stock.available}
-                          noPhotoLabel={t.stock.noPhoto}
-                          compact={cardCompact}
-                          imageAspect="square"
-                          imageBackdrop="cutout"
-                          keyboardActive={activeProductId === product.inventoryId}
-                          onKeyboardFocus={() => {
-                            const nextIndex = keyboardProducts.findIndex(
-                              (candidate) => candidate.inventoryId === product.inventoryId,
-                            );
-                            if (nextIndex >= 0) setActiveProductIndex(nextIndex);
-                          }}
-                          onSelect={handleProductSelect}
-                        />
-                      ))}
-                    </div>
-                  </section>
-                ))
-              )}
-            </div>
-          </div>
-
-        </div>
-
-        {/* O painel completo do pedido fica à direita, como no preview
-            aprovado: lista com altura contida/rolagem + resumo + CTA. */}
-        {!isMobileCart && (
-          <Card className="w-full shrink-0 overflow-hidden border-foreground/15 shadow-none md:h-full md:w-[22rem] lg:w-[25rem] min-[1280px]:w-[30rem]">
-            <CardContent className="h-full p-0">
-              <PdvCartPanel {...cartPanelProps} />
-            </CardContent>
-          </Card>
-        )}
-      </div>
+        camera={isV2 ? <InventoryIdentifierCameraScanner triggerVariant="icon" onScan={code => { void handleBarcodeScan(code); }} disabled={directSaleNeedsReview || confirmClearOpen || paymentOpen || advancedOptionsOpen || shortcutHelpOpen || identifiers.resolve.isPending} /> : undefined}
+        filters={<>
+          {pdvStocks.length > 1 && <Select value={selectedStockId ?? undefined} onValueChange={setSelectedStockId} disabled={isV2 && resolvedV2CashContext.status === 'resolved'}><SelectTrigger className="h-10 w-48"><SelectValue placeholder={t.stock.locationLabel} /></SelectTrigger><SelectContent>{pdvStocks.map(stock => <SelectItem key={stock.id} value={stock.id}>{stock.name}</SelectItem>)}</SelectContent></Select>}
+          {categoryTabs.map(tab => <button type="button" key={tab.value} className={'chip ' + (activeCategory === tab.value ? 'active' : '')} onClick={() => setActiveCategory(tab.value)}>{tab.label}</button>)}
+        </>}
+        cart={!isMobileCart ? <PdvCartPanel {...cartPanelProps} /> : null}
+      />
 
       {/* Barra fixa + drawer do carrinho (mobile) */}
       {isMobileCart && (
@@ -2470,7 +2161,7 @@ function PdvSaleWorkspace({
             <button
               type="button"
               onClick={() => setCartDrawerOpen(true)}
-              className="fixed inset-x-0 z-40 flex items-center justify-between gap-3 rounded-t-xl border-t border-border bg-primary px-4 py-3 text-primary-foreground shadow-lg"
+              className="fixed inset-x-0 z-40 flex items-center justify-between gap-3 rounded-t-xl border-t border-border bg-primary px-4 py-3 text-primary-foreground shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               // Portal pro <body>: `MobileTabletShell` envolve o `<Outlet />` com
               // `MobilePullToRefresh`, que aplica `transform: translateY(...)` no
               // wrapper do conteúdo (mesmo com valor 0, parado) — isso cria um
@@ -2507,7 +2198,7 @@ function PdvSaleWorkspace({
           )}
 
           <Drawer open={cartDrawerOpen} onOpenChange={setCartDrawerOpen}>
-            <DrawerContent className="flex max-h-[85dvh] flex-col">
+            <DrawerContent className="pdv-preview-sale flex max-h-[85dvh] flex-col">
               <DrawerHeader className="sr-only">
                 <DrawerTitle>{t.cart.title}</DrawerTitle>
               </DrawerHeader>
@@ -2544,8 +2235,16 @@ function PdvSaleWorkspace({
         }}
         texts={t.payment}
         total={computeTotal(paymentCart)}
+        summaryItems={paymentCart.lines.map(line => ({ id: line.inventoryId, name: line.name, quantity: line.quantity, unit: line.unit ?? undefined, unitPrice: line.unitPrice, total: computeTotal({ lines: [line], discount: 0, customerId: null }), imageUrl: line.imageUrl }))}
+        summarySubtotal={computeSubtotal(paymentCart)}
+        summaryDiscount={computeSubtotal(paymentCart) - computeTotal(paymentCart)}
         itemCount={paymentCart.lines.length}
         customerName={customerName}
+        customerId={paymentCart.customerId}
+        advancedPaymentsEnabled={isV2}
+        appliedVoucher={paymentOpen
+          ? paymentSnapshotRef.current?.appliedVoucher ?? null
+          : activeDraft?.appliedVoucher ?? null}
         customerCredit={customerCredit}
         accounts={paymentAccounts}
         canUseBankAccounts={canUseBankAccounts}
@@ -2572,12 +2271,12 @@ function PdvSaleWorkspace({
         attaching={attachmentBusy}
       />
 
-      {isV2 && completedSale && (
+      {isV2 && visibleCompletedSale && (
         <PdvDirectSalePostSaleDialog
           open={postSaleOpen}
           onOpenChange={setPostSaleOpen}
-          orderId={completedSale.orderId}
-          orderNumber={completedSale.orderNumber}
+          orderId={visibleCompletedSale.orderId}
+          orderNumber={visibleCompletedSale.orderNumber}
           receiptFormat={receiptFormat}
           returnsAccess={returnsAccess}
           afterSaleAccess={afterSaleAccess}

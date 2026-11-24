@@ -347,6 +347,7 @@ export const TopNavbar = memo(() => {
                   <NavLink
                     key={item.path}
                     to={L(item.path!)}
+                      end={item.path === '/pdv'}
                     className={({ isActive }) =>
                       cn(
                         'nav-indicator inline-flex items-center justify-center h-10 px-3 text-[13px] font-semibold rounded-md transition-colors gap-1.5 text-foreground',

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import '@/components/pdv/PdvWorkspace.css';
+import { useEffect, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -30,12 +31,14 @@ interface OpenDialogProps {
   terminals: PdvCashV2Terminal[];
   available: number | null;
   canViewTreasury: boolean;
+  canInitializeTreasury?: boolean;
   cashAccountId: string;
   attemptRegistry: PdvCashV2AttemptRegistry;
   money: (value: number) => string;
   onConfirm: (input: {
     terminalId: string;
     openingAmount: number;
+    initialBalance?: number;
     attemptId: string;
   }) => Promise<void>;
 }
@@ -46,26 +49,35 @@ export function PdvCashV2OpenDialog({
   terminals,
   available,
   canViewTreasury,
+  canInitializeTreasury = false,
   cashAccountId,
   attemptRegistry,
   money,
   onConfirm,
 }: OpenDialogProps) {
   const [terminalId, setTerminalId] = useState('');
+  const [initialBalance, setInitialBalance] = useState(0);
+  const submitGuard = useRef(false);
+  const initializationStarted = useRef(false);
+  const initializeTreasury = canInitializeTreasury || initializationStarted.current;
   const [amount, setAmount] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
+    initializationStarted.current = false;
     setTerminalId(terminals[0]?.id ?? '');
     setAmount(0);
+    setInitialBalance(0);
     setError(null);
     setSubmitting(false);
   }, [open, terminals]);
 
   async function submit() {
-    if (!terminalId || submitting) return;
+    if (!terminalId || submitGuard.current || (initializeTreasury && (initialBalance < 0 || amount > initialBalance))) return;
+    initializationStarted.current = initializeTreasury;
+    submitGuard.current = true;
     setSubmitting(true);
     setError(null);
     try {
@@ -73,28 +85,30 @@ export function PdvCashV2OpenDialog({
         terminalId,
         cashAccountId,
         openingAmount: amount,
+        ...(initializeTreasury ? { initialBalance } : {}),
       });
       const attempt = attemptRegistry.resolve('open', terminalId, payload);
-      await onConfirm({ terminalId, openingAmount: amount, attemptId: attempt.key });
+      await onConfirm({ terminalId, openingAmount: amount, ...(initializeTreasury ? { initialBalance } : {}), attemptId: attempt.key });
       attemptRegistry.complete('open', terminalId, payload);
       onOpenChange(false);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Não foi possível abrir o caixa.');
     } finally {
+      submitGuard.current = false;
       setSubmitting(false);
     }
   }
 
   return (
-    <ResponsiveModal
+    <ResponsiveModal drawerClassName="pdv-dialog" className="pdv-dialog"
       open={open}
       onOpenChange={(next) => !submitting && onOpenChange(next)}
       title="Abrir caixa"
-      description="O dinheiro inicial fica reservado no cofre da empresa até o fechamento."
+      description="Separe do dinheiro da empresa somente o valor que ficará na gaveta para troco."
       footer={(
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button variant="cancel" disabled={submitting} onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button disabled={submitting || !terminalId || amount < 0} onClick={submit}>
+          <Button disabled={submitting || !terminalId || amount < 0 || (initializeTreasury && (initialBalance < 0 || amount > initialBalance))} onClick={submit}>
             {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             Abrir caixa
           </Button>
@@ -104,7 +118,7 @@ export function PdvCashV2OpenDialog({
       <div className="space-y-4">
         <div className="space-y-1.5">
           <Label htmlFor="pdv-v2-terminal">Caixa</Label>
-          <Select value={terminalId} onValueChange={setTerminalId}>
+          <Select value={terminalId} onValueChange={setTerminalId} disabled={submitting}>
             <SelectTrigger id="pdv-v2-terminal"><SelectValue placeholder="Escolha o caixa" /></SelectTrigger>
             <SelectContent>
               {terminals.map((terminal) => (
@@ -116,15 +130,23 @@ export function PdvCashV2OpenDialog({
             A disponibilidade deste caixa será confirmada ao abrir.
           </p>
         </div>
+        {initializeTreasury && <div className="space-y-1.5">
+          <Label htmlFor="pdv-v2-initial-balance">Dinheiro físico total da empresa</Label>
+          <PdvMoneyInput id="pdv-v2-initial-balance" value={initialBalance} onChange={setInitialBalance} disabled={submitting} autoFocus />
+          <p className="text-xs text-muted-foreground">Primeiro uso: informe todo o dinheiro que já existe, incluindo o que ficará no cofre e no caixa. Esse registro é saldo inicial, sem contar como venda.</p>
+        </div>}
         <div className="space-y-1.5">
           <Label htmlFor="pdv-v2-opening">Dinheiro inicial</Label>
-          <PdvMoneyInput id="pdv-v2-opening" value={amount} onChange={setAmount} autoFocus />
+          <PdvMoneyInput id="pdv-v2-opening" value={amount} onChange={setAmount} disabled={submitting} autoFocus={!initializeTreasury} />
           <p className="text-xs text-muted-foreground">
-            {canViewTreasury && available !== null
+            {initializeTreasury
+              ? `Após separar o troco, ficam livres no cofre: ${money(Math.max(0, initialBalance - amount))}.`
+              : canViewTreasury && available !== null
               ? `Disponível no cofre: ${money(available)}.`
               : 'O servidor confere o limite do cofre sem expor o saldo.'}
           </p>
         </div>
+        {initializeTreasury && amount > initialBalance && <NoticeBanner variant="destructive">O dinheiro inicial do caixa não pode superar o dinheiro total informado.</NoticeBanner>}
         {error ? <NoticeBanner variant="destructive">{error}</NoticeBanner> : null}
       </div>
     </ResponsiveModal>
@@ -228,7 +250,7 @@ export function PdvCashV2EventDialog({
   }
 
   return (
-    <ResponsiveModal
+    <ResponsiveModal drawerClassName="pdv-dialog" className="pdv-dialog"
       open={open}
       onOpenChange={(next) => !submitting && onOpenChange(next)}
       title={content.title}
@@ -341,7 +363,7 @@ export function PdvCashV2CloseDialog({
   }
 
   return (
-    <ResponsiveModal
+    <ResponsiveModal drawerClassName="pdv-dialog" className="pdv-dialog"
       open={open}
       onOpenChange={(next) => !submitting && onOpenChange(next)}
       title="Fechar caixa"

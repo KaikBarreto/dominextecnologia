@@ -29,6 +29,7 @@ import { ContractInfoCard } from './ContractInfoCard';
 import type { ReportChecklistItem } from './ReportChecklist';
 import { OsActionFooter } from './OsDesktopShell';
 import { OsVideoPlayer } from './OsVideoPlayer';
+import { getReportResponseContent } from './osReportResponse';
 import dominexLogoWhite from '@/assets/logo-white-horizontal.png';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -336,14 +337,8 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
   const otherResponses = formResponses.filter(r => r.question?.question_type !== 'signature');
 
   const isResponseEmpty = (response: FormResponseData): boolean => {
-    const val = response.response_value;
-    const photo = response.response_photo_url;
-    // A response is empty only if BOTH value and photo are missing
-    const hasValue = val && val.trim() !== '' && val.trim() !== '-';
-    const hasPhoto = !!photo;
-    const hasVideo = !!response.response_video_url;
-    if (response.question?.question_type === 'signature') return !val;
-    return !hasValue && !hasPhoto && !hasVideo;
+    if (response.question?.question_type === 'signature') return !response.response_value;
+    return getReportResponseContent(response).isEmpty;
   };
 
   // ── Checklists PERSONALIZADOS por equipamento ────────────────────────────────
@@ -396,8 +391,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
       return null; // sem filtro → mantém comportamento histórico
     }
     const hasRealContent = (r: FormResponseData) => {
-      const v = typeof r.response_value === 'string' ? r.response_value.trim() : '';
-      return (v !== '' && v !== '-') || !!r.response_photo_url;
+      return !getReportResponseContent(r).isEmpty;
     };
     const scheduledDate = (serviceOrder as any)?.scheduled_date ?? null;
     const byEquipment = new Map<string, FormResponseData[]>();
@@ -880,8 +874,8 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
   const renderResponseItem = (response: FormResponseData, idx: number) => {
     if (isResponseEmpty(response)) return null;
 
-    const hasTextValue = response.response_value && response.response_value.trim() !== '' && response.response_value.trim() !== '-';
-    const hasPhoto = !!response.response_photo_url;
+    const content = getReportResponseContent(response);
+    const { hasText: hasTextValue, hasPhoto, hasVideo } = content;
 
     return (
       <div key={response.id} data-pdf-keep className="flex items-start gap-2 py-2 border-b border-slate-100 last:border-0">
@@ -889,38 +883,12 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-slate-700 break-words">{response.question?.question}</p>
           <div className="mt-1 space-y-2">
-            {response.question?.question_type === 'video' ? (
-              // Na tela: toca o vídeo via OsVideoPlayer.
-              // Gerando PDF (html2canvas): placeholder estático (video rasteriza preto).
-              // Imprimindo via window.print(): CSS print:hidden/print:flex resolve.
-              // Documento é sempre tema claro → cores hardcoded slate no placeholder.
-              generating ? (
-                <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                  <Video className="h-4 w-4 text-slate-400 shrink-0" />
-                  <span>{tR.videoAvailableOnline}</span>
-                </div>
-              ) : (
-                <>
-                  {/* Tela normal: player interativo */}
-                  <div className="print:hidden">
-                    <OsVideoPlayer
-                      src={response.response_video_url}
-                      className="max-w-full sm:max-w-sm max-h-[70vh] rounded-md"
-                    />
-                  </div>
-                  {/* window.print(): placeholder estático */}
-                  <div className="hidden print:flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                    <Video className="h-4 w-4 text-slate-400 shrink-0" />
-                    <span>{tR.videoAvailableOnline}</span>
-                  </div>
-                </>
-              )
-            ) : response.question?.question_type === 'boolean' ? (
+            {response.question?.question_type === 'boolean' && hasTextValue ? (
               <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${response.response_value === 'true' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}`}>
                 {response.response_value === 'true' ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
                 {response.response_value === 'true' ? tR.answerYes : tR.answerNo}
               </span>
-            ) : response.question?.question_type === 'conformidade' ? (
+            ) : response.question?.question_type === 'conformidade' && hasTextValue ? (
               <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
                 response.response_value === 'Conforme' ? 'bg-emerald-600 text-white'
                   : response.response_value === 'Não Conforme' ? 'bg-red-600 text-white'
@@ -960,7 +928,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
               );
             })() : (
               <>
-                {hasTextValue && (
+                {hasTextValue && response.question?.question_type !== 'video' && (
                   response.response_value!.includes('|||') ? (
                     <div className="flex flex-wrap gap-1.5 mt-0.5">
                       {response.response_value!.split('|||').filter(Boolean).map((val, i) => (
@@ -976,13 +944,37 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                 )}
               </>
             )}
+            {/* Vídeo é uma mídia independente do tipo-base. Em perguntas
+                compostas (ex.: foto + texto + vídeo), usar `question_type`
+                fazia o vídeo salvo desaparecer da tela e do PDF. */}
+            {hasVideo && (
+              generating ? (
+                <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                  <Video className="h-4 w-4 text-slate-400 shrink-0" />
+                  <span>{tR.videoAvailableOnline}</span>
+                </div>
+              ) : (
+                <>
+                  <div className="print:hidden">
+                    <OsVideoPlayer
+                      src={content.videoUrl}
+                      className="max-w-full sm:max-w-sm max-h-[70vh] rounded-md"
+                    />
+                  </div>
+                  <div className="hidden print:flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                    <Video className="h-4 w-4 text-slate-400 shrink-0" />
+                    <span>{tR.videoAvailableOnline}</span>
+                  </div>
+                </>
+              )
+            )}
             {/* Fotos anexadas à resposta. IRMÃO da cadeia de `question_type` (e
                 não filho do último `else`): antes, resposta de conformidade,
                 sim/não, numérica ou medição PMOC com foto anexada NUNCA mostrava
                 a foto — nem na tela nem no PDF (o cliente VS PROJECT viu só o
                 selo). Vídeo + foto na mesma resposta também se perdia. */}
             {hasPhoto && (() => {
-              const urls = response.response_photo_url!.split(',').filter(Boolean).map(u => u.trim());
+              const urls = content.photoUrls;
               const openFullscreen = (i: number) => { setGalleryImages(urls); setGalleryIndex(i); setPreviewImage(urls[i]); };
               return <ReportPhotoGrid urls={urls} onOpen={openFullscreen} errorLabel={tR.imgError} />;
             })()}
@@ -1026,6 +1018,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
               logo_url: isWhiteLabel ? (company.logo_url || (company as any).white_label_logo_url) : company.logo_url,
             } : null}
             orderNumber={formatOSNumberDigits(serviceOrder.order_number)}
+            serviceLabel={tR.labelService}
             osType={getOsTypeLabel(
               { ...serviceOrder, contract: isPmoc ? { is_pmoc: true } : (serviceOrder as any).contract },
               MESSAGES[locale].app.os.typeFallback,

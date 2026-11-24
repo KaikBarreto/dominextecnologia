@@ -6,6 +6,7 @@ import {
   loadDomiLinkProfile,
   pairDomiLink,
   queueDomiLinkTestPrint,
+  readDomiLinkBarcode,
   waitForDomiLinkPrintJob,
 } from './client';
 import type { DomiLinkDevice } from './types';
@@ -97,4 +98,31 @@ describe('cliente DomiLink', () => {
   it('traduz job failed pelo error_code sem expor backend', async () => {
     await expect(waitForDomiLinkPrintJob('token-local', { id: 'job-1', status: 'failed', device_id: 'printer-1', error_code: 'device_offline' })).rejects.toThrow('O equipamento está offline.');
   });
+  it('não repete leitura de código após falha: o primeiro evento pode já ter sido consumido', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockRejectedValueOnce(new TypeError('conexão caiu após consumir código'))
+      .mockResolvedValueOnce(jsonResponse({ code: 'segundo-codigo' }));
+    await expect(readDomiLinkBarcode('token-local', 'barcode-1')).rejects.toMatchObject({ code: 'offline' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await expect(readDomiLinkBarcode('token-local', 'barcode-1')).resolves.toBe('segundo-codigo');
+  });
+
+  it('orienta fila cheia sem expor mensagem interna nem reenviar impressão', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ error: { code: 'print_queue_full', message: 'internal queue capacity' } }, 503));
+    await expect(queueDomiLinkTestPrint('token-local', pdfPrinter, 'intent-full')).rejects.toThrow('A fila de impressão está cheia. Aguarde 30 segundos e tente novamente.');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('interrompe polling quando o contexto autenticado muda durante a resposta', async () => {
+    let current = true;
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+      current = false;
+      return jsonResponse({ job: { id: 'job-1', status: 'completed', device_id: 'printer-1' } });
+    });
+    await expect(waitForDomiLinkPrintJob('token-local', { id: 'job-1', status: 'queued', device_id: 'printer-1' }, () => {
+      if (!current) throw new Error('contexto mudou');
+    })).rejects.toThrow('contexto mudou');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
 });

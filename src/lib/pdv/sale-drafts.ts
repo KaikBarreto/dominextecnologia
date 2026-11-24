@@ -6,7 +6,27 @@ export interface PdvSaleAttempt {
   signature: string;
   orderId: string | null;
   clientRequestId: string;
+  /** Presente somente na venda direta com identidade financeira durável. */
+  directSaleVersion?: 3;
+  idempotencyKey?: string;
+  confirmedSale?: {
+    orderId: string; orderNumber: number; deliveryId: string;
+    subtotal: number; discountAmount: number; total: number; idempotent: boolean;
+  };
 }
+
+/**
+ * Voucher escolhido no resumo da venda. Ele permanece apenas como intenção
+ * no rascunho; o saldo só é consumido pela RPC de liquidação, sob lock.
+ */
+export interface PdvAppliedVoucher {
+  voucherId: string;
+  code: string;
+  amount: number;
+  balance: number;
+  expiresOn: string | null;
+}
+
 export interface PdvSaleDraft {
   id: string;
   sequence: number;
@@ -15,6 +35,7 @@ export interface PdvSaleDraft {
   notes: string;
   transactionDate: string;
   transactionDateTouched: boolean;
+  appliedVoucher: PdvAppliedVoucher | null;
   attempt: PdvSaleAttempt | null;
   createdAt: string;
   updatedAt: string;
@@ -59,6 +80,7 @@ export function createPdvSaleDraft(
     notes: '',
     transactionDate,
     transactionDateTouched: false,
+    appliedVoucher: null,
     attempt: null,
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -79,8 +101,19 @@ export function hasPdvSaleDraftContent(draft: PdvSaleDraft): boolean {
     draft.cart.customerId != null ||
     draft.cart.discount > 0 ||
     draft.notes.trim().length > 0 ||
+    draft.appliedVoucher != null ||
     draft.transactionDateTouched
   );
+}
+
+/** Trocar a pessoa remove qualquer voucher vinculado à pessoa anterior. */
+export function setPdvSaleDraftCustomer(draft: PdvSaleDraft, customerId: string | null): PdvSaleDraft {
+  return {
+    ...draft,
+    cart: { ...draft.cart, customerId },
+    appliedVoucher: customerId === draft.cart.customerId ? draft.appliedVoucher : null,
+    attempt: null,
+  };
 }
 
 /**
@@ -174,6 +207,25 @@ function sanitizeDraft(value: unknown): PdvSaleDraft | null {
   ) return null;
 
   const timestamp = nowIso();
+  const rawVoucher = draft.appliedVoucher && typeof draft.appliedVoucher === 'object'
+    ? draft.appliedVoucher as Partial<PdvAppliedVoucher>
+    : null;
+  const appliedVoucher = rawVoucher
+    && typeof rawVoucher.voucherId === 'string'
+    && typeof rawVoucher.code === 'string'
+    && typeof rawVoucher.amount === 'number'
+    && Number.isFinite(rawVoucher.amount)
+    && rawVoucher.amount > 0
+    && typeof rawVoucher.balance === 'number'
+    && Number.isFinite(rawVoucher.balance)
+      ? {
+          voucherId: rawVoucher.voucherId,
+          code: rawVoucher.code,
+          amount: Math.min(rawVoucher.amount, Math.max(0, rawVoucher.balance)),
+          balance: Math.max(0, rawVoucher.balance),
+          expiresOn: typeof rawVoucher.expiresOn === 'string' ? rawVoucher.expiresOn : null,
+        }
+      : null;
   return {
     id: draft.id,
     sequence: Math.max(1, Math.floor(draft.sequence)),
@@ -182,6 +234,7 @@ function sanitizeDraft(value: unknown): PdvSaleDraft | null {
     notes: typeof draft.notes === 'string' ? draft.notes : '',
     transactionDate: draft.transactionDate,
     transactionDateTouched: draft.transactionDateTouched === true,
+    appliedVoucher,
     attempt:
       draft.attempt &&
       typeof draft.attempt.signature === 'string' &&
@@ -190,6 +243,20 @@ function sanitizeDraft(value: unknown): PdvSaleDraft | null {
             signature: draft.attempt.signature,
             orderId: typeof draft.attempt.orderId === 'string' ? draft.attempt.orderId : null,
             clientRequestId: draft.attempt.clientRequestId,
+            ...(draft.attempt.directSaleVersion === 3 ? {
+              directSaleVersion: 3 as const,
+              idempotencyKey: typeof draft.attempt.idempotencyKey === 'string' ? draft.attempt.idempotencyKey : undefined,
+              confirmedSale: draft.attempt.confirmedSale && typeof draft.attempt.confirmedSale.orderId === 'string'
+                && draft.attempt.confirmedSale.orderId === draft.attempt.orderId
+                && typeof draft.attempt.confirmedSale.deliveryId === 'string'
+                && [draft.attempt.confirmedSale.orderNumber, draft.attempt.confirmedSale.subtotal,
+                  draft.attempt.confirmedSale.discountAmount, draft.attempt.confirmedSale.total].every(Number.isFinite)
+                ? { orderId: draft.attempt.confirmedSale.orderId, orderNumber: draft.attempt.confirmedSale.orderNumber,
+                  deliveryId: draft.attempt.confirmedSale.deliveryId, subtotal: draft.attempt.confirmedSale.subtotal,
+                  discountAmount: draft.attempt.confirmedSale.discountAmount, total: draft.attempt.confirmedSale.total,
+                  idempotent: draft.attempt.confirmedSale.idempotent === true }
+                : undefined,
+            } : {}),
           }
         : null,
     createdAt: typeof draft.createdAt === 'string' ? draft.createdAt : timestamp,
@@ -207,8 +274,7 @@ export function parsePdvSaleWorkspace(
     const parsed = JSON.parse(raw) as Partial<PdvSaleDraftWorkspace>;
     const drafts = (Array.isArray(parsed.drafts) ? parsed.drafts : [])
       .map(sanitizeDraft)
-      .filter((draft): draft is PdvSaleDraft => draft != null)
-      .slice(0, MAX_PDV_SALE_DRAFTS);
+      .filter((draft): draft is PdvSaleDraft => draft != null);
     if (drafts.length === 0) return createPdvSaleWorkspace(transactionDate, stockId);
     const activeId = drafts.some((draft) => draft.id === parsed.activeId)
       ? parsed.activeId as string

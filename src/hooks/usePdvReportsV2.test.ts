@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { QueryClient } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
-import { invalidatePdvReportCaches, PdvReportContractError, pdvProjectionSourceLabel, projectPdvDocuments, projectPdvHistory, projectPdvPartialProjection } from './usePdvReportsV2';
+import { invalidatePdvReportCaches, PdvReportContractError, pdvProjectionSourceLabel, projectPdvDocuments, projectPdvHistory, projectPdvPartialProjection, resolvePdvHistoryDeepLink } from './usePdvReportsV2';
 
 const partialBase = {
   scope: 'pdv_partial', projection: 'dre_competence', from: '2026-11-01', to: '2026-11-07',
@@ -12,9 +12,9 @@ const partialBase = {
 };
 
 describe('projeções seguras dos relatórios PDV v2', () => {
-  it('usa somente RPCs v3 e chaves segregadas pelo escopo autorizado', () => {
+  it('usa somente RPCs versionadas e chaves segregadas pelo escopo autorizado', () => {
     const source = readFileSync('src/hooks/usePdvReportsV2.ts', 'utf8');
-    expect(source).toContain("call('pdv_partial_projection_report_v3'");
+    expect(source).toContain("call('pdv_partial_projection_report_v4'");
     expect(source).toContain("call('pdv_global_event_history_v3'");
     expect(source).toContain("call('pdv_document_index_v3'");
     expect(source.match(/\.\.\.scope\.key/g)).toHaveLength(3);
@@ -24,7 +24,7 @@ describe('projeções seguras dos relatórios PDV v2', () => {
   it('preserva CMV e resultado desconhecidos sem convertê-los em zero', () => {
     const report = projectPdvPartialProjection({
       ...partialBase,
-      entries: [{ event_id: 'evento-1', event_date: '2026-11-07', source_type: 'delivery_v2', revenue: 100, cmv: null, expense: 0, cash_flow: 0 }],
+      entries: [{ event_id: 'evento-1', event_date: '2026-11-07', source_type: 'delivery_v2', revenue: 100, cmv: null, expense: 0, cash_flow: 0, order_number: null, item_count: 1, details: [] }],
     });
     expect(report.scope).toBe('pdv_partial');
     expect(report.cmv).toBeNull();
@@ -99,5 +99,29 @@ describe('projeções seguras dos relatórios PDV v2', () => {
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['pdv', 'reports-v2'] });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['material-purchase-report'] });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['inventory', 'abc-report'] });
+  });
+});
+
+describe('grupos do resumo (v4) e link de retirada', () => {
+  const group = { event_id: 'g1', event_date: '2026-11-07', source_type: 'delivery_v2', order_number: 42, item_count: 2, revenue: 10, cmv: null, expense: 0, cash_flow: 0, details: [{ description: 'Capacitor', quantity: 2, revenue: 10, cmv: null }] };
+  const parse = (entry: Record<string, unknown>) => projectPdvPartialProjection({ ...partialBase, total_count: 1, limit: 25, offset: 0, has_more: false, entries: [entry] });
+  it('lê o grupo com itens', () => {
+    const [entry] = parse(group).entries;
+    expect(entry.orderNumber).toBe(42);
+    expect(entry.details[0]).toEqual({ description: 'Capacitor', quantity: 2, revenue: 10, cmv: null });
+  });
+  it.each([
+    ['item_count 0', { item_count: 0 }], ['item_count fracionado', { item_count: 1.5 }], ['sem details', { details: undefined }],
+    ['details null', { details: null }], ['order_number texto', { order_number: '42' }],
+    ['descrição vazia', { details: [{ description: ' ', quantity: 1, revenue: 1, cmv: null }] }],
+    ['quantidade inválida', { details: [{ description: 'A', quantity: 'x', revenue: 1, cmv: null }] }],
+    ['cmv indefinido', { details: [{ description: 'A', quantity: 1, revenue: 1 }] }],
+  ])('rejeita %s', (_n, patch) => {
+    expect(() => parse({ ...group, ...patch })).toThrow(PdvReportContractError);
+  });
+  it('converge o link de expedição para pedidos fora do balcão com expedição', () => {
+    expect(resolvePdvHistoryDeepLink('/pdv/expedicao?order=abc', false)).toBe('/pdv/pedidos?order=abc');
+    expect(resolvePdvHistoryDeepLink('/pdv/expedicao?order=abc', true)).toBe('/pdv/expedicao?order=abc');
+    expect(resolvePdvHistoryDeepLink('/pdv/pedidos?order=abc', false)).toBe('/pdv/pedidos?order=abc');
   });
 });

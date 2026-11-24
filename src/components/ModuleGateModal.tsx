@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { useModuleCatalog } from '@/hooks/useModuleCatalog';
+import { ModuleTutorialAction } from '@/components/domiflix/ModuleTutorialAction';
 
 interface ModuleGateModalProps {
   open: boolean;
@@ -68,8 +69,15 @@ export function ModuleGateModal({
               <Plus className="h-4 w-4" />
               Adicionar módulo
             </Button>
-            <Button
+            <ModuleTutorialAction
+              moduleCodes={moduleCode}
               variant="outline"
+              className="w-full gap-2"
+              showWhileLoading
+              onBeforeNavigate={() => onOpenChange(false)}
+            />
+            <Button
+              variant="ghost"
               className="w-full gap-2"
               onClick={() => {
                 onOpenChange(false);

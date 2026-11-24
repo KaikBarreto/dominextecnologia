@@ -5,6 +5,7 @@ vi.mock('@/integrations/supabase/client', () => ({ supabase: {} }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: vi.fn() }));
 
 import {
+  assertPdvCancellationResult,
   assertLegacyCashSessionContract,
   attachReplacementOrderNumbers,
   invalidatePdvCashRegisterCaches,
@@ -12,6 +13,25 @@ import {
   type PdvCashSession,
   type PdvSessionOrder,
 } from './usePdvCashRegister';
+
+describe('assertPdvCancellationResult', () => {
+  it('aceita somente a confirmacao explicita do cancelamento', () => {
+    const result = { status: 'cancelado', cancelado: true, order_id: 'order-1' };
+
+    expect(assertPdvCancellationResult(result)).toBe(result);
+  });
+
+  it.each([
+    null,
+    {},
+    { status: 'entregue', cancelado: true },
+    { status: 'cancelado', cancelado: false },
+  ])('recusa retorno que poderia gerar falso sucesso: %j', (result) => {
+    expect(() => assertPdvCancellationResult(result)).toThrow(
+      'A venda não foi cancelada',
+    );
+  });
+});
 
 function order(overrides: Partial<PdvSessionOrder> = {}): Omit<PdvSessionOrder, 'replaces_order_number'> {
   const { replaces_order_number: _ignored, ...row } = {

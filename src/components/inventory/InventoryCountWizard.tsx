@@ -14,6 +14,7 @@ import { MESSAGES } from '@/lib/i18n/messages';
 import { useToast } from '@/hooks/use-toast';
 import { cn, fuzzyIncludes } from '@/lib/utils';
 import { Package, Warehouse, Users, AlignJustify, Search } from 'lucide-react';
+import { InventoryIdentifierInput } from '@/components/inventory/identifiers/InventoryIdentifierInput';
 
 interface Props {
   open: boolean;
@@ -210,18 +211,24 @@ export function InventoryCountWizard({ open, onOpenChange }: Props) {
                     className={cn(
                       'flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors',
                       selectedStocks.includes(s.id)
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border hover:bg-muted/50',
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border bg-background hover:border-primary',
                     )}
                   >
                     <Checkbox
                       checked={selectedStocks.includes(s.id)}
                       onCheckedChange={() => toggleStock(s.id)}
+                      className={cn(selectedStocks.includes(s.id) && 'border-primary-foreground data-[state=checked]:bg-primary-foreground data-[state=checked]:text-primary')}
                     />
-                    <Warehouse className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <Warehouse className={cn('h-4 w-4 shrink-0', selectedStocks.includes(s.id) ? 'text-primary-foreground' : 'text-muted-foreground')} />
                     <span className="text-sm font-medium">{s.name}</span>
                     {s.is_default && (
-                      <span className="ml-auto text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">
+                      <span className={cn(
+                        'ml-auto rounded-full px-1.5 py-0.5 text-[10px]',
+                        selectedStocks.includes(s.id)
+                          ? 'bg-primary-foreground text-primary'
+                          : 'bg-primary text-primary-foreground',
+                      )}>
                         {t.defaultBadge}
                       </span>
                     )}
@@ -251,11 +258,11 @@ export function InventoryCountWizard({ open, onOpenChange }: Props) {
                   className={cn(
                     'w-full flex items-center gap-3 p-3 rounded-xl border text-left text-sm transition-colors',
                     scopeMode === mode
-                      ? 'border-primary bg-primary/5 font-medium'
-                      : 'border-border hover:bg-muted/50',
+                      ? 'border-primary bg-primary font-medium text-primary-foreground'
+                      : 'border-border bg-background hover:border-primary',
                   )}
                 >
-                  <span className="text-muted-foreground">{icon}</span>
+                  <span className={scopeMode === mode ? 'text-primary-foreground' : 'text-muted-foreground'}>{icon}</span>
                   {label}
                 </button>
               ))}
@@ -303,12 +310,15 @@ export function InventoryCountWizard({ open, onOpenChange }: Props) {
                             key={g.id}
                             className={cn(
                               'flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors',
-                              selectedGroups.includes(g.id) ? 'border-primary bg-primary/5' : 'border-border',
+                              selectedGroups.includes(g.id)
+                                ? 'border-primary bg-primary text-primary-foreground'
+                                : 'border-border bg-background hover:border-primary',
                             )}
                           >
                             <Checkbox
                               checked={selectedGroups.includes(g.id)}
                               onCheckedChange={() => toggleGroup(g.id)}
+                              className={cn(selectedGroups.includes(g.id) && 'border-primary-foreground data-[state=checked]:bg-primary-foreground data-[state=checked]:text-primary')}
                             />
                             <div
                               className="h-3 w-3 rounded-full shrink-0"
@@ -327,6 +337,17 @@ export function InventoryCountWizard({ open, onOpenChange }: Props) {
             {/* Seleção de itens */}
             {scopeMode === 'items' && (
               <div className="space-y-2">
+                <InventoryIdentifierInput
+                  enabled={open && step === 'scope' && scopeMode === 'items'}
+                  label="Localizar material por código"
+                  placeholder="Digite, use o leitor ou a câmera"
+                  onResolved={(result) => {
+                    setSelectedItems((current) => current.includes(result.material.id)
+                      ? current
+                      : [...current, result.material.id]);
+                    setItemSearch(result.material.name);
+                  }}
+                />
                 {inventoryItems.length === 0 ? (
                   <p className="text-sm text-muted-foreground">{t.noItems}</p>
                 ) : (
@@ -366,18 +387,21 @@ export function InventoryCountWizard({ open, onOpenChange }: Props) {
                             key={item.id}
                             className={cn(
                               'flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors',
-                              selectedItems.includes(item.id) ? 'border-primary bg-primary/5' : 'border-border',
+                              selectedItems.includes(item.id)
+                                ? 'border-primary bg-primary text-primary-foreground'
+                                : 'border-border bg-background hover:border-primary',
                             )}
                           >
                             <Checkbox
                               checked={selectedItems.includes(item.id)}
                               onCheckedChange={() => toggleItem(item.id)}
+                              className={cn(selectedItems.includes(item.id) && 'border-primary-foreground data-[state=checked]:bg-primary-foreground data-[state=checked]:text-primary')}
                             />
-                            <Package className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <Package className={cn('h-3.5 w-3.5 shrink-0', selectedItems.includes(item.id) ? 'text-primary-foreground' : 'text-muted-foreground')} />
                             <div className="min-w-0">
                               <span className="text-sm truncate block">{item.name}</span>
                               {item.sku && (
-                                <span className="text-[10px] text-muted-foreground font-mono">{item.sku}</span>
+                                <span className={cn('font-mono text-[10px]', selectedItems.includes(item.id) ? 'text-primary-foreground' : 'text-muted-foreground')}>{item.sku}</span>
                               )}
                             </div>
                           </label>

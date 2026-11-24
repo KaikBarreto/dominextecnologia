@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from . import __version__
 from .adapters.base import AdapterError, DeviceAdapter, PrintPayload, ScaleAdapter
 from .config import Settings
-from .jobs import IdempotencyConflict, PrintJob, PrintJobStore
+from .jobs import IdempotencyConflict, JobQueueFull, PrintJob, PrintJobStore
 from .logging_utils import safe_event
 from .models import PairRequest, PrintRequest
 from .registry import DeviceRegistry
@@ -304,6 +304,12 @@ def create_app(
             job, created = app.state.jobs.create(
                 scope, idempotency_key, payload.device_id, print_payload
             )
+        except JobQueueFull as exc:
+            raise HTTPException(
+                503,
+                detail={"code": "print_queue_full", "message": str(exc)},
+                headers={"Retry-After": "30"},
+            ) from exc
         except IdempotencyConflict as exc:
             raise HTTPException(
                 status_code=409,
@@ -313,6 +319,7 @@ def create_app(
                 },
             ) from exc
         if created:
+
             async def execute_job() -> None:
                 await asyncio.to_thread(app.state.jobs.execute, job.id, printer, print_payload)
 

@@ -36,6 +36,8 @@ BEGIN
   INSERT INTO public.companies(id,name,subscription_status) VALUES(c,'W1B3','active'),(c2,'W1B3 B','active');
   UPDATE public.profiles SET company_id=c,is_active=true WHERE user_id=u;
   INSERT INTO public.company_modules(company_id,module_code) VALUES(c,'pdv');
+  -- A criação da empresa já fornece um estoque padrão; a fixture escolhe outro explicitamente.
+  UPDATE public.stocks SET is_default=false WHERE company_id IN (c) AND is_default IS TRUE;
   INSERT INTO public.stocks(id,company_id,name,is_default) VALUES(s,c,'Principal',true);
   INSERT INTO public.inventory(id,company_id,sku,name,unit,quantity,cost_price)
     VALUES(i,c,'W1B3-M','Material custo desconhecido','un',5,NULL);

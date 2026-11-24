@@ -36,5 +36,13 @@ describe('cache autorizado do contexto de compra no caixa', () => {
       details: 'PDV_CASH_PURCHASE_CONTEXT_MISMATCH',
     });
     expect(mismatch).toBe('Esta compra pertence a outro caixa ou local de estoque.');
+
+    const supplierBalance = getDirectMaterialPurchaseErrorMessage({
+      code: '23514',
+      message: 'saldo interno',
+      details: 'code=pdv_supplier_credit_insufficient',
+    });
+    expect(supplierBalance).toBe('O saldo do fornecedor não cobre o total desta compra.');
+    expect(supplierBalance).not.toContain('pdv_');
   });
 });

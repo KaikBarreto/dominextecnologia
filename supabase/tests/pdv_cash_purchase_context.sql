@@ -91,6 +91,8 @@ BEGIN
     (ux,'["screen:pdv","fn:operate_other_pdv_cash"]',true),
     (uo,'["screen:pdv","fn:operate_other_pdv_cash"]',true);
   INSERT INTO public.company_modules(company_id,module_code) VALUES(c,'pdv'),(c2,'pdv');
+  -- A criação da empresa já fornece um estoque padrão; a fixture escolhe outro explicitamente.
+  UPDATE public.stocks SET is_default=false WHERE company_id IN (c) AND is_default IS TRUE;
   INSERT INTO public.stocks(id,company_id,name,is_default) VALUES(stock,c,'Mesmo estoque',true);
   INSERT INTO public.financial_accounts(id,company_id,name,type,initial_balance,is_active)
     VALUES(account,c,'Cofre 019','caixa',1000,true);
@@ -103,8 +105,8 @@ BEGIN
   r:=public.pdv_open_cash_session_v2(ta,account,100,'019-open-a'); sa:=(r->>'session_id')::uuid;
   PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',ub,'role','authenticated')::text,true);
   r:=public.pdv_open_cash_session_v2(tb,account,100,'019-open-b'); sb:=(r->>'session_id')::uuid;
-  PERFORM set_config('pdv.test.019.session_a',sa::text,true);
-  PERFORM set_config('pdv.test.019.session_b',sb::text,true);
+  PERFORM set_config('pdv.test.wave019.session_a',sa::text,true);
+  PERFORM set_config('pdv.test.wave019.session_b',sb::text,true);
 END $fixture$;
 
 SET LOCAL ROLE authenticated;
@@ -118,8 +120,8 @@ DECLARE
   stock uuid:='19000000-0000-4000-8000-000000000021';
   ta uuid:='19000000-0000-4000-8000-000000000031';
   tb uuid:='19000000-0000-4000-8000-000000000032';
-  sa uuid:=current_setting('pdv.test.019.session_a')::uuid;
-  sb uuid:=current_setting('pdv.test.019.session_b')::uuid;
+  sa uuid:=current_setting('pdv.test.wave019.session_a')::uuid;
+  sb uuid:=current_setting('pdv.test.wave019.session_b')::uuid;
   da uuid:='19000000-0000-4000-8000-000000000041';
   db uuid:='19000000-0000-4000-8000-000000000042';
   blocked boolean; n integer;

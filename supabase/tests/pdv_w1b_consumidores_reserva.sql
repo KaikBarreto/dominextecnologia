@@ -36,8 +36,14 @@ BEGIN
     RAISE EXCEPTION 'primitiva interna W1B-02 exposta a role da API';
   END IF;
 
-  IF NOT has_function_privilege(
+  IF has_function_privilege(
        'authenticated', 'public.register_inventory_movement(uuid,text,numeric,uuid,numeric,text,uuid,uuid,uuid)', 'EXECUTE'
+     ) OR has_function_privilege(
+       'anon', 'public.register_inventory_movement(uuid,text,numeric,uuid,numeric,text,uuid,uuid,uuid)', 'EXECUTE'
+     ) OR has_function_privilege(
+       'anon', 'public.inventory_register_manual_movement_v3(uuid,text,numeric,uuid,numeric,text,uuid,uuid,uuid)', 'EXECUTE'
+     ) OR NOT has_function_privilege(
+       'authenticated', 'public.inventory_register_manual_movement_v3(uuid,text,numeric,uuid,numeric,text,uuid,uuid,uuid)', 'EXECUTE'
      ) OR NOT has_function_privilege(
        'authenticated', 'public.transfer_stock_between(uuid,uuid,uuid,numeric,text,text)', 'EXECUTE'
      ) OR NOT has_function_privilege(
@@ -45,7 +51,16 @@ BEGIN
      ) OR NOT has_function_privilege(
        'authenticated', 'public.finalize_inventory_count(uuid,text)', 'EXECUTE'
      ) THEN
-    RAISE EXCEPTION 'ACL publica preexistente nao foi preservada';
+    RAISE EXCEPTION 'fronteira publica do estoque ou primitivas internas foi alterada';
+  END IF;
+
+  SELECT pg_get_functiondef(
+    'public.inventory_register_manual_movement_v3(uuid,text,numeric,uuid,numeric,text,uuid,uuid,uuid)'::regprocedure
+  ) INTO v_definition;
+  IF position('inventory_user_can_manage_v3' in v_definition)=0
+     OR position('can_access_stock' in v_definition)=0
+     OR position('register_inventory_movement' in v_definition)=0 THEN
+    RAISE EXCEPTION 'wrapper manual perdeu permissao, local ou delegacao ao Kardex';
   END IF;
 
   SELECT pg_get_functiondef(
@@ -177,6 +192,8 @@ BEGIN
   INSERT INTO public.customers (id, company_id, name, customer_type)
   VALUES (v_customer_a, v_company_a, 'Cliente W1B2', 'pj');
 
+  -- A criação da empresa já fornece um estoque padrão; a fixture escolhe outro explicitamente.
+  UPDATE public.stocks SET is_default=false WHERE company_id IN (v_company_a, v_company_b) AND is_default IS TRUE;
   INSERT INTO public.stocks (id, company_id, name, is_default)
   VALUES
     (v_stock_a, v_company_a, 'Principal A', true),
@@ -269,7 +286,7 @@ BEGIN
   -- Ajuste comum nao pode consumir a ultima unidade garantida.
   v_blocked := false;
   BEGIN
-    PERFORM public.register_inventory_movement(
+    PERFORM public.inventory_register_manual_movement_v3(
       v_inventory_a, 'ajuste', -3, NULL, NULL, 'teste ajuste',
       NULL, NULL, v_stock_a
     );
@@ -281,7 +298,7 @@ BEGIN
   END IF;
 
   -- Ate o limite exato da garantia e permitido.
-  v_movement := public.register_inventory_movement(
+  v_movement := public.inventory_register_manual_movement_v3(
     v_inventory_a, 'ajuste', -2, NULL, NULL, 'teste limite',
     NULL, NULL, v_stock_a
   );
@@ -328,7 +345,7 @@ BEGIN
   END IF;
 
   -- Compatibilidade: sem reserva, saldo negativo legado continua permitido.
-  v_movement := public.register_inventory_movement(
+  v_movement := public.inventory_register_manual_movement_v3(
     v_inventory_free, 'saida', -1, NULL, NULL, 'negativo sem reserva',
     NULL, NULL, v_stock_a
   );
@@ -381,7 +398,7 @@ BEGIN
   );
   v_blocked := false;
   BEGIN
-    PERFORM public.register_inventory_movement(
+    PERFORM public.inventory_register_manual_movement_v3(
       v_inventory_a, 'saida', -1, NULL, NULL, NULL, NULL, NULL, v_stock_a
     );
   EXCEPTION WHEN insufficient_privilege THEN
@@ -407,14 +424,19 @@ BEGIN
     v_company_a, v_count_a, v_inventory_a, v_stock_a, 8, 4, 30
   );
 
+  -- Estado administrativo da fixture; o comportamento continua como tecnico.
+  PERFORM set_config('request.jwt.claims','{"role":"service_role"}',true);
   UPDATE public.profiles SET is_active=false WHERE user_id=v_user_a;
+  PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',v_user_a,'role','authenticated')::text,true);
   v_blocked := false;
   BEGIN
     PERFORM public.finalize_inventory_count(v_count_a,NULL);
   EXCEPTION WHEN insufficient_privilege THEN v_blocked := true;
   END;
   IF NOT v_blocked THEN RAISE EXCEPTION 'perfil inativo finalizou inventario'; END IF;
+  PERFORM set_config('request.jwt.claims','{"role":"service_role"}',true);
   UPDATE public.profiles SET is_active=true WHERE user_id=v_user_a;
+  PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',v_user_a,'role','authenticated')::text,true);
 
   UPDATE public.companies SET subscription_status='inactive' WHERE id=v_company_a;
   v_blocked := false;
@@ -502,7 +524,7 @@ BEGIN
   END IF;
 
   -- Entrada posterior aumenta fisico, mas nao limpa conflito nem entrega.
-  v_movement := public.register_inventory_movement(
+  v_movement := public.inventory_register_manual_movement_v3(
     v_inventory_a, 'entrada', 5, NULL, 30, 'reposicao posterior',
     NULL, NULL, v_stock_a
   );
@@ -532,7 +554,7 @@ BEGIN
   v_reservation := public.pdv_consume_stock_reservation_internal_v2(
     v_company_a, v_reservation.id, 2
   );
-  v_movement := public.register_inventory_movement(
+  v_movement := public.inventory_register_manual_movement_v3(
     v_inventory_a, 'saida', -2, NULL, 30, 'simulacao entrega futura',
     NULL, NULL, v_stock_a
   );
@@ -544,6 +566,8 @@ BEGIN
   -- DELETE avulso, que ja foi bloqueado acima.
   INSERT INTO public.companies (id, name, subscription_status, subscription_expires_at)
   VALUES (v_company_c, 'Empresa W1B2 cascata', 'active', NULL);
+  -- A criação da empresa já fornece um estoque padrão; a fixture escolhe outro explicitamente.
+  UPDATE public.stocks SET is_default=false WHERE company_id IN (v_company_c) AND is_default IS TRUE;
   INSERT INTO public.stocks (id, company_id, name, is_default)
   VALUES (v_stock_c, v_company_c, 'Principal C', true);
   INSERT INTO public.inventory (

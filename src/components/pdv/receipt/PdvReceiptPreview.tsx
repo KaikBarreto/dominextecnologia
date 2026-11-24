@@ -1,6 +1,6 @@
-import { useEffect, useState, type SyntheticEvent } from 'react';
-import { formatReceiptMoney, type PdvReceiptFormat, type PdvReceiptSnapshot } from '@/lib/pdv/receipt/model';
-import { getPdvReceiptLogoPlacement, type PdvReceiptLogoPlacement } from '@/lib/pdv/receipt/layout';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { formatReceiptMoney, getPdvReceiptApproval, getPdvReceiptCoverageLines, getPdvReceiptDocumentMetadata, getPdvReceiptNote, type PdvReceiptFormat, type PdvReceiptSnapshot } from '@/lib/pdv/receipt/model';
+import { buildPdvReceiptItemBlocks, getPdvReceiptItemColumnProportions, getPdvReceiptPaymentRows, stackPdvReceiptItemColumns } from '@/lib/pdv/receipt/layout';
 import { cn } from '@/lib/utils';
 import { safeTimeZone } from '@/lib/timezone';
 import dominexLogo from '@/assets/logo-black-horizontal.png';
@@ -13,83 +13,110 @@ export interface PdvReceiptPreviewProps {
 
 const RECEIPT_SANS_FONT = 'Arial, Helvetica, ui-sans-serif, system-ui, sans-serif';
 
+/** Valores monetários inteiros refluem como uma unidade; a fonte nunca é reduzida. */
+function ReceiptMoney({ value }: { value: number }) {
+  return <span style={{ display: 'inline-block', whiteSpace: 'nowrap', lineHeight: 1.35 }}>{formatReceiptMoney(value)}</span>;
+}
+
+/** A prévia usa as mesmas etapas, colunas e dados do PDF; nunca completa pagamentos ou retiradas. */
 export function PdvReceiptPreview({ snapshot, format, className }: PdvReceiptPreviewProps) {
+  const metadata = getPdvReceiptDocumentMetadata(snapshot);
+  const { kind } = metadata;
   const isA4 = format === 'a4';
-  const [logoPlacement, setLogoPlacement] = useState<PdvReceiptLogoPlacement>('inline');
+  const isDelivery = kind === 'delivery';
+  const isCommercial = !isDelivery;
+  const approval = getPdvReceiptApproval(snapshot);
+  const pendingPrices = snapshot.items.some(item => item.pricePending);
+  const itemBlocks = buildPdvReceiptItemBlocks(snapshot);
+  const previewRef = useRef<HTMLElement>(null);
+  const [previewWidth, setPreviewWidth] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const element=previewRef.current;
+    if(!element)return;
+    const measure=()=>{const width=element.getBoundingClientRect().width;if(width>0)setPreviewWidth(width);};
+    measure();
+    if(typeof ResizeObserver==='undefined')return;
+    const observer=new ResizeObserver(measure);observer.observe(element);
+    return ()=>observer.disconnect();
+  }, []);
+  const note = getPdvReceiptNote(snapshot);
   const [logoFailed, setLogoFailed] = useState(false);
-  useEffect(() => {
-    setLogoFailed(false);
-    setLogoPlacement('inline');
-  }, [snapshot.company.logoUrl]);
-  const logoUrl = logoFailed ? null : snapshot.company.logoUrl;
-  const placeLogo = (event: SyntheticEvent<HTMLImageElement>) => {
-    setLogoPlacement(getPdvReceiptLogoPlacement(event.currentTarget.naturalWidth, event.currentTarget.naturalHeight));
-  };
+  const companyLogo = snapshot.company.logoDataUrl || snapshot.company.logoUrl;
+  useEffect(() => { setLogoFailed(false); }, [companyLogo]);
+  const logoUrl = logoFailed ? null : companyLogo;
+  const issuedDate = new Date(isDelivery && snapshot.withdrawal ? snapshot.withdrawal.withdrawnAt : snapshot.order.issuedAt);
+  const dateOptions = { timeZone: safeTimeZone(snapshot.company.timeZone) };
+  const dateText = issuedDate.toLocaleDateString('pt-BR', dateOptions);
+  const timeText = issuedDate.toLocaleTimeString('pt-BR', { ...dateOptions, hour: '2-digit', minute: '2-digit' });
+  const itemCellStyle = { border: 0, padding: '3px 0 5px', fontSize: isA4 ? 12 : format === '58mm' ? 12 : 13 };
+
+  const paymentRows = getPdvReceiptPaymentRows(snapshot);
   return (
-    <article className={cn(
-      'mx-auto bg-white p-4 text-[11px] leading-snug tracking-normal text-black shadow-sm ring-1 ring-black/15',
-      isA4 ? 'aspect-[210/297] w-full max-w-[620px] p-8 text-[12px]' : format === '58mm' ? 'w-full max-w-[274px]' : 'w-full max-w-[360px]',
+    <article ref={previewRef} className={cn(
+      'mx-auto bg-white text-[12px] leading-snug tracking-normal text-black shadow-sm ring-1 ring-black/15 [overflow-wrap:anywhere]',
+      isA4 ? 'min-h-[877px] w-full max-w-[620px] text-[12px]' : format === '58mm' ? 'w-full max-w-[274px] ' : 'w-full max-w-[360px] text-[13px]',
       className,
-    )} style={{ fontFamily: RECEIPT_SANS_FONT }} aria-label={`Prévia do comprovante ${format}`}>
-      <header
-        className={cn(
-          'flex gap-4 border-b-2 border-black pb-3',
-          logoUrl && logoPlacement === 'stacked' ? 'flex-col items-center text-center' : 'items-start',
-        )}
-        data-logo-layout={logoUrl ? logoPlacement : 'none'}
-      >
-        {logoUrl && <img
-          src={logoUrl}
-          alt="Logo da empresa"
-          onLoad={placeLogo}
-          onError={() => setLogoFailed(true)}
-          className={cn(
-            'shrink-0 object-contain',
-            logoPlacement === 'stacked'
-              ? isA4 ? 'max-h-20 max-w-[70%]' : 'max-h-12 max-w-full'
-              : isA4 ? 'max-h-16 max-w-32' : 'max-h-12 max-w-20',
-          )}
-        />}
+    )} style={{ fontFamily: RECEIPT_SANS_FONT, padding: isA4 ? 'min(7.6%, 47px)' : format === '58mm' ? 'min(6.9%, 19px)' : 'min(5%, 18px)' }} aria-label={`Prévia do comprovante ${format}`} data-document-kind={kind}>
+      <header className="flex items-start gap-3 border-b-2 border-black pb-3 text-left" data-logo-layout={logoUrl ? 'inline' : 'none'}>
+        {logoUrl && <img src={logoUrl} alt="Logo da empresa" onError={() => setLogoFailed(true)} className={cn('h-auto max-h-20 w-[30%] shrink-0 self-center object-contain object-left', isA4 && 'w-[24%]')} />}
         <div className="min-w-0 flex-1">
-          <h3 className={cn('font-black uppercase tracking-tight', isA4 ? 'text-xl' : 'text-sm')}>{snapshot.company.name}</h3>
+          <h3 className={cn('font-bold', isA4 ? 'text-sm' : 'text-sm')}>{snapshot.company.name}</h3>
           {snapshot.company.document && <p>{snapshot.company.document}</p>}
           {snapshot.company.address && <p>{snapshot.company.address}</p>}
           {snapshot.company.phone && <p>{snapshot.company.phone}</p>}
         </div>
       </header>
 
-      <div className="my-3 bg-black px-3 py-2 text-center text-white">
-        <p className="text-[9px] font-bold uppercase tracking-[0.18em]">COMPROVANTE NÃO FISCAL</p>
-        <p className={cn('font-black uppercase', isA4 ? 'text-2xl' : 'text-base')}>Pedido nº {snapshot.order.number}</p>
+      <div className="my-3">
+        <h4 className="font-bold uppercase" style={{fontSize:isA4?22:format==='58mm'?16:19,lineHeight:1.2}}>{isDelivery ? <>{metadata.title}<br />PEDIDO Nº {snapshot.order.number}</> : `${metadata.title} Nº ${snapshot.order.number}`}</h4>
+        {!isDelivery && snapshot.order.budgetNumber != null && <p className="mt-1 text-[11px] text-black">Origem: Orçamento Nº {snapshot.order.budgetNumber}</p>}
+      </div>
+      <section className="my-3 text-left" style={{ border: '1px solid #828282',fontSize:12 }} data-receipt-metadata>
+        <p className="px-1.5 py-1.5 font-bold" style={{ borderBottom: '1px solid #828282' }}>Cliente: {snapshot.order.customerName || 'Não informado'}</p>
+        <div className="grid grid-cols-[65%_35%]">
+          <p className="flex items-center px-1.5 py-1.5" style={{ borderRight: '1px solid #828282' }}><span>Operador: {(isDelivery ? snapshot.withdrawal?.operatorName : null) || snapshot.order.operatorName}{!isDelivery && snapshot.order.terminalName && <><br />{snapshot.order.terminalName}</>}</span></p>
+          <p className="px-1.5 py-1.5 text-right">{dateText}<br />{timeText}</p>
+        </div>
+        {isDelivery && snapshot.withdrawal && <p className="px-1.5 py-2" style={{ borderTop: '1px solid #828282' }}>Registro de retirada: {snapshot.withdrawal.id}{snapshot.withdrawal.stockName && <><br />Local: {snapshot.withdrawal.stockName}</>}</p>}
+      </section>
+
+      <div className="my-3 space-y-2">
+        {itemBlocks.map((block, index) => {
+          const stacked = stackPdvReceiptItemColumns(isA4 && previewWidth != null && previewWidth < 500 ? '58mm' : format, block);
+          const count = stacked ? 2 : block.columns.length;
+          return <table key={index} className="w-full table-fixed border-collapse tabular-nums" aria-label={`Material ${index + 1}`} data-receipt-item data-receipt-stacked={stacked || undefined}>
+            <colgroup>{(stacked ? [0.35,0.65] : getPdvReceiptItemColumnProportions(format,count)).map((proportion,index) => <col key={index} style={{ width: `${100 * proportion}%` }} />)}</colgroup>
+            <tbody>
+              <tr><td colSpan={count} className="text-left font-bold" style={itemCellStyle} data-receipt-description>{block.description}{block.discount && <p className="mt-1 font-bold">{block.discount}</p>}</td></tr>
+              {stacked ? block.columns.map((column,columnIndex) => <tr key={column.label} style={columnIndex===block.columns.length-1?{borderBottom:'1px solid #828282'}:undefined}>
+                <td colSpan={2} style={itemCellStyle}><div className="flex flex-wrap justify-between gap-x-2 gap-y-1"><span className={column.label==='TOTAL'?'font-bold':undefined}>{column.label}</span><span className={cn('ml-auto text-right',column.label==='TOTAL'&&'font-bold')} style={{whiteSpace:'nowrap'}}>{column.amount != null ? <ReceiptMoney value={column.amount} /> : column.value}</span></div></td>
+              </tr>) : <tr style={{borderBottom:'1px solid #828282'}}>{block.columns.map((column,index) => <td key={column.label} className={cn('align-middle',index===0?'text-left':'text-right',column.label==='TOTAL'&&'font-bold')} style={{...itemCellStyle,paddingRight:index<block.columns.length-1?6:0}}><span className="mb-1 block text-black" style={{ fontSize: 11 }}>{column.label}</span><span style={{whiteSpace:'nowrap'}}>{column.amount != null ? <ReceiptMoney value={column.amount} /> : column.value}</span></td>)}</tr>}
+            </tbody>
+          </table>;
+        })}
+
+        {isDelivery && !itemBlocks.length && <p>Nenhum item retirado informado neste documento.</p>}
       </div>
 
-      <dl className={cn('grid gap-x-4 gap-y-1 border border-black p-2', isA4 ? 'grid-cols-2' : 'grid-cols-1')}>
-        <div><dt className="inline font-bold">Data: </dt><dd className="inline">{new Date(snapshot.order.issuedAt).toLocaleString('pt-BR', { timeZone: safeTimeZone(snapshot.company.timeZone) })}</dd></div>
-        <div><dt className="inline font-bold">Operador: </dt><dd className="inline">{snapshot.order.operatorName}</dd></div>
-        {snapshot.order.terminalName && <div><dt className="inline font-bold">Terminal: </dt><dd className="inline">{snapshot.order.terminalName}</dd></div>}
-        {snapshot.order.customerName && <div><dt className="inline font-bold">Cliente: </dt><dd className="inline">{snapshot.order.customerName}</dd></div>}
-      </dl>
+      {isCommercial && <div className="my-3 tabular-nums" style={isA4?{width:previewWidth != null && previewWidth < 500 && formatReceiptMoney(snapshot.totals.total).length > 11 ? '100%' : '40.45%',marginLeft:'auto'}:undefined} data-receipt-summary>
+        <p className="flex flex-wrap justify-between gap-1 border-b border-black/20 p-2"><span>Subtotal</span><span className="ml-auto" style={{whiteSpace:"nowrap"}}>{formatReceiptMoney(snapshot.totals.subtotal)}</span></p>
+        {snapshot.totals.discount > 0 && <p className="flex flex-wrap justify-between gap-1 p-2"><span>Descontos</span><span className="ml-auto" style={{whiteSpace:"nowrap"}}>-{formatReceiptMoney(snapshot.totals.discount)}</span></p>}
+        <p className="flex flex-wrap justify-between gap-1 bg-black p-2 text-base font-bold text-white"><span>{pendingPrices ? 'TOTAL A DEFINIR' : 'TOTAL'}</span><span className="ml-auto">{pendingPrices ? '—' : <ReceiptMoney value={snapshot.totals.total} />}</span></p>
+      </div>}
+      {kind === 'pickup' && (!paymentRows.length || !snapshot.coverage) && <div className="my-3 px-1.5">{getPdvReceiptCoverageLines(snapshot).filter(text => !text.startsWith('Fiado aprovado:') || (snapshot.coverage?.approvedCreditAmount ?? 0) > 0).map(text => <p key={text}>{text}</p>)}</div>}
+      {paymentRows.length > 0 && <section className="my-3 space-y-1 text-left" data-receipt-payments aria-label="Formas de pagamento">
+        <h5 className="font-bold">Formas de Pagamento:</h5>
+        {paymentRows.map((payment, index) => <div key={index}><p>{payment.label}: <ReceiptMoney value={payment.amount} /></p>{payment.due && <p className="text-inherit">{payment.due}</p>}</div>)}
+      </section>}
 
-      <table className="my-3 w-full border-collapse tabular-nums">
-        <thead className="bg-black text-white"><tr><th className="px-2 py-1.5 text-left uppercase">Item</th><th className="px-2 py-1.5 text-center uppercase">Qtd.</th><th className="px-2 py-1.5 text-right uppercase">Total</th></tr></thead>
-        <tbody>{snapshot.items.map((item, index) => <tr key={`${item.description}-${index}`} className="border-b border-black/25 align-top"><td className="px-2 py-2"><strong className="block">{item.description}</strong><span className="text-[10px]">{formatReceiptMoney(item.unitPrice)}/{item.unit}{item.discount > 0 ? ` · desc. ${formatReceiptMoney(item.discount)}` : ''}</span></td><td className="px-2 py-2 text-center">{item.quantity} {item.unit}</td><td className="px-2 py-2 text-right font-bold">{formatReceiptMoney(item.total)}</td></tr>)}</tbody>
-      </table>
 
-      <div className="space-y-1 border-t-2 border-black pt-2 text-right tabular-nums">
-        <p>Subtotal <strong>{formatReceiptMoney(snapshot.totals.subtotal)}</strong></p>
-        {snapshot.totals.discount > 0 && <p>Desconto <strong>-{formatReceiptMoney(snapshot.totals.discount)}</strong></p>}
-        <p className={cn('mt-2 flex items-center justify-between bg-black px-3 py-2 font-black text-white', isA4 ? 'text-xl' : 'text-base')}><span>TOTAL</span><span>{formatReceiptMoney(snapshot.totals.total)}</span></p>
-      </div>
-
-      <section className="my-3 border border-black p-2 text-center"><h4 className="font-black uppercase">Pagamentos</h4>{snapshot.payments.map((payment, index) => <p key={`${payment.method}-${index}`}>{payment.method}: <strong>{formatReceiptMoney(payment.amount)}</strong>{payment.dueDate ? ` · vence ${new Date(`${payment.dueDate}T12:00:00`).toLocaleDateString('pt-BR')}` : ''}</p>)}</section>
-      {snapshot.fulfillment && <section className="my-3 border border-black p-2"><p className="font-black uppercase">{snapshot.fulfillment.mode === 'retirada' ? 'Retirada' : 'Entrega'}: {snapshot.fulfillment.status}</p>{snapshot.fulfillment.address && <p>{snapshot.fulfillment.address}</p>}</section>}
-      {snapshot.note && <p className="my-3 border-l-4 border-black pl-2"><strong>Observação:</strong> {snapshot.note}</p>}
-      <footer className="mt-4 border-t-2 border-black pt-2 text-center">
-        <p className="font-bold">Este documento não substitui nota fiscal.</p>
-        <p>Reimpressão não altera pagamento, estoque ou saldo.</p>
+      {note && <p className="my-3 p-1.5">Observações: {note}</p>}
+      {isDelivery && <section className="my-4 space-y-6 p-1.5"><p>Recebido por: {snapshot.withdrawal?.receivedBy || '__________________________________'}</p><p>Assinatura: ____________________________________</p></section>}
+      {approval && <div className="my-3 mx-auto border border-black text-center font-bold" style={{width:'max-content',minWidth:isA4?100:86,maxWidth:'100%',padding:'5px 13px',fontSize:isA4?15:format==='58mm'?12:13,lineHeight:1.3}} data-receipt-approval>{approval}</div>}
+      <footer className="mt-3 text-center text-[11px] text-black">
         {!snapshot.company.whiteLabelEnabled && <div className="mt-4 border-t border-black/20 pt-3" data-dominex-branding>
-          <img src={dominexLogo} alt="Dominex" className={cn('mx-auto h-auto object-contain', isA4 ? 'w-28' : 'w-20')} />
-          <p className="mt-1 text-[9px] text-black/60">www.dominex.app</p>
+          <img src={dominexLogo} alt="Dominex" className="mx-auto h-auto w-20 object-contain" />
+          <p className="mt-1 text-[11px] text-black">www.dominex.app</p>
         </div>}
       </footer>
     </article>

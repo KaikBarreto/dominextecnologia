@@ -411,3 +411,11 @@ verify_jwt = false
 # usuario, tenant e permissao explicita, sem depender do fallback legado.
 [functions.api-key-manager]
 verify_jwt = true
+
+# Auth, módulo e ação são verificados pelo handler fiscal (compatível com JWT ES256).
+[functions.fiscal-goods-document]
+verify_jwt = false
+
+# Auth, módulo e ação são verificados pelo handler fiscal (compatível com JWT ES256).
+[functions.fiscal-goods-settings]
+verify_jwt = false

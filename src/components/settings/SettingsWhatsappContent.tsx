@@ -23,6 +23,8 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import { DomiLinkIntegrationContent } from '@/components/settings/domilink/DomiLinkIntegrationContent';
+import { DomiLinkSymbol } from '@/components/pdv/domilink/DomiLinkBrand';
 import { SettingsAsaasContent } from '@/components/settings/SettingsAsaasContent';
 import { SettingsAsaasSimulator } from '@/components/settings/SettingsAsaasSimulator';
 import { WhatsappAutomationSettings } from '@/components/settings/whatsapp/WhatsappAutomationSettings';
@@ -60,7 +62,7 @@ import {
   type WhatsappAutomationPreferences,
 } from '@/lib/whatsappAutomation';
 
-type IntegrationSubTab = 'whatsapp' | 'asaas' | 'printer' | 'api';
+type IntegrationSubTab = 'whatsapp' | 'asaas' | 'printer' | 'api' | 'domilink';
 type AsaasSection = 'settings' | 'simulator';
 type WhatsappSection = 'automations' | 'inbox' | 'templates' | 'campaigns' | 'history' | 'connection';
 
@@ -141,7 +143,7 @@ export function SettingsIntegrationContent() {
   const t = MESSAGES[locale].app.settings.integrations;
   const [searchParams, setSearchParams] = useSearchParams();
   const integrationParam = searchParams.get('integration');
-  const activeSubTab: IntegrationSubTab = integrationParam === 'asaas' || integrationParam === 'printer' || integrationParam === 'api'
+  const activeSubTab: IntegrationSubTab = integrationParam === 'domilink' || integrationParam === 'asaas' || integrationParam === 'printer' || integrationParam === 'api'
     ? integrationParam
     : 'whatsapp';
 
@@ -153,6 +155,7 @@ export function SettingsIntegrationContent() {
   };
 
   const subTabs = [
+    { value: 'domilink' as const, label: 'DomiLink', icon: <DomiLinkSymbol className="!h-4 !w-4 shrink-0" /> },
     { value: 'whatsapp' as const, label: t.subTabs.whatsapp, icon: <WhatsAppIcon className="h-4 w-4 shrink-0" /> },
     { value: 'asaas' as const, label: t.subTabs.asaas, icon: <CreditCard className="h-4 w-4 shrink-0" /> },
     { value: 'printer' as const, label: locale === 'pt-br' ? 'Impressora fiscal' : locale === 'es' ? 'Impresora fiscal' : locale === 'fr' ? 'Imprimante fiscale' : 'Fiscal printer', icon: <Printer className="h-4 w-4 shrink-0" /> },
@@ -168,6 +171,7 @@ export function SettingsIntegrationContent() {
         onTabChange={(value) => setActiveSubTab(value as IntegrationSubTab)}
       />
 
+      {activeSubTab === 'domilink' && <DomiLinkIntegrationContent />}
       {activeSubTab === 'whatsapp' && <WhatsappContent />}
       {activeSubTab === 'asaas' && <AsaasContent />}
       {activeSubTab === 'printer' && <FiscalPrinterIntegrationSettings />}

@@ -7,6 +7,89 @@ type ErrorLike = {
   message?: string;
 };
 
+const RUNTIME_INTERNAL_MESSAGE = 'O sistema encontrou uma inconsistência temporária. Atualize a página e tente novamente.';
+
+function extractErrorText(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  if (!error || typeof error !== 'object') return '';
+
+  const typedError = error as ErrorLike;
+  return [typedError.message, typedError.details, typedError.hint, typedError.code]
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    .join(' | ');
+}
+
+/**
+ * Erros de execucao do JavaScript nunca devem virar copy de produto. A
+ * classificacao fica exportada para fluxos que precisam reconciliar leituras
+ * antes de orientar uma nova tentativa, sem repetir a mutacao automaticamente.
+ */
+export function isInternalRuntimeError(error: unknown): boolean {
+  const raw = extractErrorText(error).toLowerCase();
+  if (!raw) return false;
+
+  if (
+    raw.includes('failed to fetch dynamically imported module') ||
+    raw.includes('error loading dynamically imported module')
+  ) {
+    return true;
+  }
+
+  // Falhas de rede possuem orientacao propria e nao significam, por si so,
+  // incompatibilidade de bundle/runtime.
+  if (
+    raw.includes('failed to fetch') ||
+    raw.includes('networkerror') ||
+    raw.includes('network request failed')
+  ) {
+    return false;
+  }
+
+  return (
+    error instanceof TypeError ||
+    raw.includes('cannot read properties of undefined') ||
+    raw.includes('cannot read properties of null') ||
+    raw.includes('cannot set properties of undefined') ||
+    raw.includes('cannot set properties of null') ||
+    raw.includes('is not a function')
+  );
+}
+
+export function isResetRuntimeError(error: unknown): boolean {
+  const raw = extractErrorText(error).toLowerCase();
+  return isInternalRuntimeError(error) && (
+    raw.includes("reading 'reset'") ||
+    raw.includes('reading "reset"') ||
+    raw.includes("setting 'reset'") ||
+    raw.includes('setting "reset"') ||
+    raw.includes('reset is not a function')
+  );
+}
+
+export interface SanitizedErrorDiagnostic {
+  name: string;
+  message: string;
+  stack?: string;
+}
+
+/** Mantem informacao util no console sem serializar payloads/respostas inteiros. */
+export function getSanitizedErrorDiagnostic(error: unknown): SanitizedErrorDiagnostic {
+  const runtimeError = error instanceof Error ? error : null;
+  const clean = (value: string, limit: number) => value
+    .replace(/([?&](?:token|access_token|apikey|key|signature)=)[^&\s]+/gi, '$1[removido]')
+    .replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g, '[token removido]')
+    .slice(0, limit);
+
+  return {
+    name: clean(runtimeError?.name || typeof error, 80),
+    message: clean(extractErrorText(error) || 'Erro sem mensagem', 500),
+    ...(runtimeError?.stack
+      ? { stack: clean(runtimeError.stack.split('\n').slice(0, 8).join('\n'), 2_000) }
+      : {}),
+  };
+}
+
 /**
  * Códigos internos do motor de agenda nunca devem chegar à interface. Eles são
  * úteis para o backend e para os testes, mas o usuário precisa saber o que
@@ -403,18 +486,10 @@ export function getErrorMessage(error: unknown, fallback = DEFAULT_MESSAGE) {
   }
 
   // 3) Extrai texto cru pra substring match (cobertura legada).
-  let raw = '';
+  const raw = extractErrorText(error);
 
-  if (error instanceof Error) {
-    raw = error.message;
-  } else if (typeof error === 'string') {
-    raw = error;
-  } else if (error && typeof error === 'object') {
-    const typedError = error as ErrorLike;
-    raw = [typedError.message, typedError.details, typedError.hint, typedError.code]
-      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-      .join(' | ');
-  }
+  // TypeError e falhas de runtime sao diagnostico interno, nunca copy de UI.
+  if (isInternalRuntimeError(error)) return RUNTIME_INTERNAL_MESSAGE;
 
   const message = raw.toLowerCase();
   const mapped = DATABASE_ERROR_MAP.find((item) => item.test(message));

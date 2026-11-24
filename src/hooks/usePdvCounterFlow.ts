@@ -33,10 +33,11 @@ export interface PdvCashQueueRow {
 }
 
 export interface PdvCoveragePayment {
-  method: 'dinheiro' | 'pix' | 'transferencia' | 'debito' | 'credito' | 'fiado';
+  method: 'dinheiro' | 'pix' | 'transferencia' | 'debito' | 'credito' | 'fiado' | 'saldo_cliente' | 'voucher';
   amount: number;
   account_id?: string | null;
   due_date?: string | null;
+  reference_id?: string | null;
 }
 
 export interface PdvCoverOrderInput {
@@ -54,11 +55,12 @@ export function buildPdvCoverageRpcArgs(input: PdvCoverOrderInput): Record<strin
     p_terminal_id: input.terminalId,
     p_cash_session_id: input.cashSessionId,
     p_cash_account_id: input.cashAccountId,
-    p_payments: input.payments.map(({ method, amount, account_id, due_date }) => ({
+    p_payments: input.payments.map(({ method, amount, account_id, due_date, reference_id }) => ({
       method,
       amount,
       ...(account_id ? { account_id } : {}),
       ...(due_date ? { due_date } : {}),
+      ...(reference_id ? { reference_id } : {}),
     })),
     p_idempotency_key: input.attemptId,
   };
@@ -102,6 +104,9 @@ export function mapPdvCounterError(error: unknown): Error {
     pdv_counter_reservation_conflict: 'O estoque deste pedido precisa ser reconciliado antes do recebimento.',
     pdv_counter_credit_limit_exceeded: 'O limite disponível do cliente não cobre este pedido.',
     pdv_counter_credit_forbidden: 'Seu perfil não permite aprovar venda no fiado.',
+    pdv_counter_voucher_invalid: 'O voucher escolhido venceu, pertence a outro cliente ou não possui saldo suficiente.',
+    pdv_counter_customer_balance_insufficient: 'O saldo disponível do cliente não cobre este valor.',
+    pdv_counter_stored_value_customer_required: 'Selecione um cliente para usar saldo ou voucher.',
     pdv_counter_coverage_in_progress: 'Este recebimento ainda está sendo processado. Tente novamente em instantes.',
     pdv_counter_mode_invalid: 'Escolha uma forma válida de atendimento.',
     pdv_counter_fulfillment_invalid: 'Escolha se a retirada acontece no caixa ou na expedição.',
@@ -229,6 +234,10 @@ export function usePdvCoverOrder() {
         queryClient.invalidateQueries({ queryKey: ['pdv-cash'] }),
         queryClient.invalidateQueries({ queryKey: ['pdv-orders'] }),
         queryClient.invalidateQueries({ queryKey: ['inventory'] }),
+        queryClient.invalidateQueries({ queryKey: ['financial-transactions'] }),
+        queryClient.invalidateQueries({ queryKey: ['financial-summary'] }),
+        queryClient.invalidateQueries({ queryKey: ['pdv-customer-payment-options'] }),
+        queryClient.invalidateQueries({ queryKey: ['party-account-v2'] }),
         queryClient.invalidateQueries({ queryKey: PDV_CASH_V2_QUERY_ROOT }),
         invalidatePdvReportCaches(queryClient),
       ]);

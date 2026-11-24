@@ -216,7 +216,7 @@ const DialogContent = React.forwardRef<
           // [data-app-overlay][data-state="open"] pra tirar o toast da frente.
           data-app-overlay="drawer"
           className={cn(
-            "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-2xl border bg-background",
+            "app-ui-dialog fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-2xl border bg-background",
             className,
           )}
           style={{ maxHeight: "90dvh" }}
@@ -247,7 +247,7 @@ const DialogContent = React.forwardRef<
         // Ver `data-app-overlay` no branch de drawer acima.
         data-app-overlay="dialog"
         className={cn(
-          "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
+          "app-ui-dialog fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
           className,
         )}
         {...props}
@@ -323,7 +323,7 @@ const DialogTitle = React.forwardRef<
     return (
       <DrawerPrimitive.Title
         ref={ref as React.Ref<HTMLHeadingElement>}
-        className={cn("text-lg font-semibold leading-none tracking-tight", className)}
+        className={cn("app-ui-dialog-title text-[length:var(--app-ui-dialog-title-size,18px)] font-[number:var(--app-ui-dialog-title-weight,600)] leading-[var(--app-ui-dialog-title-line-height,1)] tracking-tight", className)}
         {...(props as unknown as React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Title>)}
       />
     );
@@ -331,7 +331,7 @@ const DialogTitle = React.forwardRef<
   return (
     <DialogPrimitive.Title
       ref={ref}
-      className={cn("text-lg font-semibold leading-none tracking-tight", className)}
+      className={cn("app-ui-dialog-title text-[length:var(--app-ui-dialog-title-size,18px)] font-[number:var(--app-ui-dialog-title-weight,600)] leading-[var(--app-ui-dialog-title-line-height,1)] tracking-tight", className)}
       {...props}
     />
   );
@@ -347,7 +347,7 @@ const DialogDescription = React.forwardRef<
     return (
       <DrawerPrimitive.Description
         ref={ref as React.Ref<HTMLParagraphElement>}
-        className={cn("text-sm text-muted-foreground", className)}
+        className={cn("app-ui-dialog-description text-[length:var(--app-ui-control-font-size,14px)] leading-relaxed text-muted-foreground", className)}
         {...(props as unknown as React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Description>)}
       />
     );
@@ -355,7 +355,7 @@ const DialogDescription = React.forwardRef<
   return (
     <DialogPrimitive.Description
       ref={ref}
-      className={cn("text-sm text-muted-foreground", className)}
+      className={cn("app-ui-dialog-description text-[length:var(--app-ui-control-font-size,14px)] leading-relaxed text-muted-foreground", className)}
       {...props}
     />
   );

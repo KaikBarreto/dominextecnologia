@@ -26,8 +26,8 @@ const TabsList = React.forwardRef<
     ref={ref}
     className={cn(
       variant === "underline"
-        ? "flex h-auto items-end justify-start gap-1 overflow-x-auto border-b border-border bg-transparent p-0 text-muted-foreground scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        : "inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
+        ? "app-ui-tabs-list flex h-auto items-end justify-start gap-[var(--app-ui-tab-gap,4px)] overflow-x-auto border-b border-border bg-transparent p-0 text-muted-foreground scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        : "app-ui-tabs-list inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
       className,
     )}
     {...props}
@@ -47,14 +47,14 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+      "app-ui-tab inline-flex items-center justify-center whitespace-nowrap ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring focus-visible:ring-offset-0 disabled:pointer-events-none disabled:opacity-50",
       // Abas de TELA mandam no que a página inteira mostra, então pesam mais
       // que subabas e abas de ficha. Vale só no underline.
       variant === "underline" && level === "screen"
-        ? "text-[15px] font-semibold"
-        : "text-sm font-medium",
+        ? "text-[length:var(--app-ui-screen-tab-size,15px)] font-semibold"
+        : "text-[length:var(--app-ui-section-tab-size,14px)] font-medium",
       variant === "underline"
-        ? "-mb-px shrink-0 rounded-none border-b-2 border-transparent bg-transparent px-4 py-2.5 shadow-none hover:text-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
+        ? "-mb-px min-h-[var(--app-ui-control-height,0px)] shrink-0 rounded-none border-b-2 border-transparent bg-transparent px-4 py-2.5 shadow-none hover:text-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
         : "rounded-sm px-3 py-1.5 transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm",
       className,
     )}
@@ -70,7 +70,7 @@ const TabsContent = React.forwardRef<
   <TabsPrimitive.Content
     ref={ref}
     className={cn(
-      "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+      "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring focus-visible:ring-offset-0",
       className,
     )}
     {...props}

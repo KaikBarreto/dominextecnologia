@@ -12,6 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SignedImg } from '@/components/ui/SignedImg';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,6 +32,11 @@ import { processImageFile } from '@/utils/imageConvert';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { validateInventoryPmocProduct } from '@/lib/inventoryPmocProduct';
+import { InventoryIdentifierCameraScanner } from '@/components/inventory/identifiers/InventoryIdentifierCameraScanner';
+import { InventoryIdentifierManager } from '@/components/inventory/identifiers/InventoryIdentifierManager';
+import { InventoryFiscalFields } from './InventoryFiscalFields';
+import { normalizeMaterialFiscalFields, validateMaterialFiscalFields } from '@/lib/fiscal/materialFiscal';
+import { isInventoryModuleConfirmed, shouldShowInventoryPmoc } from './inventoryFormVisibility';
 
 /** Bucket `inventory-photos`: privado, por empresa. Ver tenantStorage.ts. */
 const PHOTO_BUCKET = 'inventory-photos';
@@ -61,17 +67,37 @@ interface InventoryFormDialogProps {
 /** Número salvo → texto do campo. Vazio quando 0/nulo (nunca "0" travado) e vírgula como separador. */
 const toNumericText = (n?: number | null) => (!n ? '' : String(n).replace('.', ','));
 
+type InventoryFormTab = 'basic' | 'stock' | 'codes' | 'pmoc' | 'fiscal';
+
+const FORM_COPY = {
+  'pt-br': { titleNew: 'Adicionar material', titleEdit: 'Editar material', basic: 'Dados básicos', basicShort: 'Cadastro', stock: 'Estoque e preços', stockShort: 'Estoque', codes: 'Códigos e etiquetas', codesShort: 'Códigos', primaryCode: 'Código principal', primaryPdvHint: 'Use o código da embalagem unitária para localizar este material no caixa.', primaryOptionalHint: 'Opcional para leitor, câmera, inventário ou impressão de etiquetas.', saveForCodes: 'Salve o material para gerar o código interno, cadastrar embalagens, QR Codes e imprimir etiquetas.', pmocDisabled: 'Ative esta opção somente para produtos que precisam constar nos documentos PMOC.' },
+  en: { titleNew: 'Add material', titleEdit: 'Edit material', basic: 'Basic details', basicShort: 'Details', stock: 'Inventory and prices', stockShort: 'Inventory', codes: 'Codes and labels', codesShort: 'Codes', primaryCode: 'Primary code', primaryPdvHint: 'Use the unit package code to find this material at checkout.', primaryOptionalHint: 'Optional for scanners, camera, inventory counts, or label printing.', saveForCodes: 'Save the material to generate its internal code, add packages and QR Codes, and print labels.', pmocDisabled: 'Enable this only for products that must appear in PMOC documents.' },
+  es: { titleNew: 'Añadir material', titleEdit: 'Editar material', basic: 'Datos básicos', basicShort: 'Registro', stock: 'Existencias y precios', stockShort: 'Existencias', codes: 'Códigos y etiquetas', codesShort: 'Códigos', primaryCode: 'Código principal', primaryPdvHint: 'Usa el código del envase unitario para localizar este material en caja.', primaryOptionalHint: 'Opcional para lector, cámara, inventario o impresión de etiquetas.', saveForCodes: 'Guarda el material para generar su código interno, añadir envases y códigos QR e imprimir etiquetas.', pmocDisabled: 'Activa esta opción solo para productos que deban constar en documentos PMOC.' },
+  fr: { titleNew: 'Ajouter un matériel', titleEdit: 'Modifier le matériel', basic: 'Données générales', basicShort: 'Général', stock: 'Stock et prix', stockShort: 'Stock', codes: 'Codes et étiquettes', codesShort: 'Codes', primaryCode: 'Code principal', primaryPdvHint: `Utilisez le code de l'emballage unitaire pour retrouver ce matériel en caisse.`, primaryOptionalHint: `Optionnel pour le lecteur, la caméra, l'inventaire ou l'impression d'étiquettes.`, saveForCodes: `Enregistrez le matériel pour générer son code interne, ajouter des emballages et des QR Codes, puis imprimer des étiquettes.`, pmocDisabled: `Activez cette option uniquement pour les produits qui doivent figurer dans les documents PMOC.` },
+} as const;
+
 export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, onOpenTransfer }: InventoryFormDialogProps) {
   const { locale } = useAppLocaleContext();
+  const ui = FORM_COPY[locale];
   const t = MESSAGES[locale].app.inventory.formDialog;
   const { toast } = useToast();
   const { createItem, updateItem, getMinQuantityForStock, getQuantityForStock, updateStockLevelMinQuantity, getPresenceForStock, setInventoryPresence, stockLevelsLoaded } = useInventory();
   const { stocks, isLoading: stocksLoading } = useStocks();
   const { suppliers } = useSuppliers();
   const { groups, createGroup } = useMaterialGroups();
-  const { hasModule } = useCompanyModules();
-  const pdvEnabled = hasModule('pdv');
+  const { hasModule, isLoading: modulesLoading } = useCompanyModules();
+  // Fail-closed: recursos próprios do PDV só aparecem depois que a fonte
+  // canônica de módulos terminou de carregar e confirmou o acesso.
+  const fiscalEnabled = isInventoryModuleConfirmed(modulesLoading, hasModule('nfe'));
+  const pdvEnabled = isInventoryModuleConfirmed(modulesLoading, hasModule('pdv'));
+  const showPmocSection = shouldShowInventoryPmoc({
+    modulesLoading,
+    contractsAllowed: hasModule('contracts'),
+    item,
+  });
   const isEditing = !!item;
+  const quantityBaseRef = useRef(0);
+  const quantityChangedRef = useRef(false);
 
   const [formData, setFormData] = useState<Partial<InventoryItemInsert>>({
     name: '', sku: '', category: '', group_id: null, description: '', quantity: 0, unit: 'un', cost_price: 0, sale_price: 0, supplier_id: null,
@@ -96,14 +122,28 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
   // ── Código de barras: texto + is_sellable (PDV) ─────────────────────────
   const [barcode, setBarcode] = useState('');
   const [isSellable, setIsSellable] = useState(true);
+  const [activeTab, setActiveTab] = useState<InventoryFormTab>('basic');
+  const codesExpanded = activeTab === 'codes';
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const barcodeInputRef = useRef<HTMLInputElement>(null);
+  const pmocManufacturerRef = useRef<HTMLInputElement>(null);
+  const pmocAnvisaRef = useRef<HTMLInputElement>(null);
+  const pmocManufacturedOnRef = useRef<HTMLInputElement>(null);
+  const pmocExpiresOnRef = useRef<HTMLInputElement>(null);
+
+  // O cadastro sempre abre nos dados básicos. Códigos continuam disponíveis
+  // para inventário/etiquetas, mas só capturam leitor quando a aba é escolhida.
+  useEffect(() => {
+    if (!open) return;
+    setActiveTab('basic');
+  }, [open, item?.id]);
 
   // Leitor USB (pistola): ativo só enquanto este diálogo está aberto e o
   // quick-create de grupo (dialog aninhado) não está. onScan sobrescreve o
   // campo e devolve o foco pra ele — "quem consome é dono de limpar o
   // próprio estado", conforme o contrato do hook.
   useBarcodeScanner({
-    enabled: open && !groupFormOpen,
+    enabled: open && codesExpanded && !groupFormOpen,
     onScan: (code) => {
       setBarcode(code);
       barcodeInputRef.current?.focus();
@@ -185,8 +225,9 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
     const run = async () => {
       if (item) {
         setFormData({
+          ...normalizeMaterialFiscalFields(item),
           name: item.name, sku: item.sku || '', category: item.category || '', group_id: item.group_id || null,
-          description: item.description || '', quantity: item.quantity || 0, unit: item.unit || 'un',
+          description: item.description || '', quantity: 0, unit: item.unit || 'un',
           cost_price: item.cost_price || 0, sale_price: item.sale_price || 0, supplier_id: item.supplier_id ?? null,
           is_pmoc_product: item.is_pmoc_product,
           pmoc_manufacturer: item.pmoc_manufacturer,
@@ -196,7 +237,7 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
           pmoc_expires_on: item.pmoc_expires_on,
         });
         setNumericText({
-          quantity: toNumericText(item.quantity),
+          quantity: '',
           cost_price: toNumericText(item.cost_price),
           sale_price: toNumericText(item.sale_price),
         });
@@ -232,8 +273,9 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
   // passagem pelo efeito abaixo hidrata de novo, do zero.
   useEffect(() => {
     hydratedRef.current = false;
+    quantityChangedRef.current = false;
     setStocksHydrated(false);
-  }, [open, item]);
+  }, [open, item, activeStockId]);
 
   // Hidrata presença + mínimo por estoque UMA VEZ por abertura, e só quando
   // stocksSectionReady (stockLevels e stocks já carregados) — nunca antes.
@@ -247,6 +289,10 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
     if (!stocksSectionReady) return;
     initStockMinMap();
     initStockPresenceMap();
+    const localQuantity = item && activeStockId ? getQuantityForStock(item.id, activeStockId) : 0;
+    quantityBaseRef.current = localQuantity;
+    setFormData((previous) => ({ ...previous, quantity: localQuantity }));
+    setNumericText((previous) => ({ ...previous, quantity: toNumericText(localQuantity) }));
     hydratedRef.current = true;
     setStocksHydrated(true);
     // initStockMinMap/initStockPresenceMap mudam de identidade a cada render
@@ -255,7 +301,7 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
     // o efeito em todo render; o gate real é open + stocksSectionReady, com
     // hydratedRef travando a segunda execução.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, stocksSectionReady]);
+  }, [open, stocksSectionReady, item, activeStockId]);
 
   const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
@@ -263,6 +309,11 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
     // hidratado (cobre também o Enter dentro do <form>, que dispara o submit
     // sem passar pelo botão Salvar fora dele).
     if (!stocksHydrated) return;
+    if (!formData.name?.trim()) {
+      setActiveTab('basic');
+      window.requestAnimationFrame(() => nameInputRef.current?.reportValidity());
+      return;
+    }
     let savedItemId: string | null = null;
 
     const pmocValidationError = validateInventoryPmocProduct({
@@ -274,6 +325,16 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
       expiresOn: formData.pmoc_expires_on,
     });
     if (pmocValidationError) {
+      setActiveTab('pmoc');
+      window.requestAnimationFrame(() => {
+        const target = {
+          manufacturer_required: pmocManufacturerRef,
+          anvisa_required: pmocAnvisaRef,
+          expiration_required: pmocExpiresOnRef,
+          manufacture_after_expiration: pmocManufacturedOnRef,
+        }[pmocValidationError];
+        target.current?.focus();
+      });
       toast({
         variant: 'destructive',
         title: t.pmocValidation.title,
@@ -284,8 +345,11 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
 
     // Normaliza SKU e código de barras: vazio/só espaços → null, para não
     // colidir com os índices únicos parciais (company_id, sku) / (company_id, barcode).
+    const fiscalError = fiscalEnabled ? validateMaterialFiscalFields(formData) : null;
+    if (fiscalError) { setActiveTab('fiscal'); toast({ title: 'Revise os dados fiscais', description: fiscalError, variant: 'destructive' }); return; }
     const normalized = {
       ...formData,
+      ...(fiscalEnabled ? normalizeMaterialFiscalFields(formData) : {}),
       sku: formData.sku?.trim() ? formData.sku.trim() : null,
       barcode: barcode.trim() ? barcode.trim() : null,
       image_url: photoUrl || null,
@@ -301,13 +365,18 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
     };
 
     if (isEditing && item) {
-      // Use stock-specific qty as the "previous" so the adjustment targets the
-      // active local (not the global sum). Falls back to item.quantity when no
-      // active stock is selected (single-stock or "all" view).
-      const previousQty = activeStockId
-        ? getQuantityForStock(item.id, activeStockId)
-        : (item.quantity ?? 0);
-      await updateItem.mutateAsync({ id: item.id, ...normalized, previousQuantity: previousQty, activeStockId: activeStockId ?? undefined });
+      // Cadastro/preço não carrega um saldo de volta ao servidor. Somente uma
+      // edição explícita de quantidade em um local real pode gerar Kardex.
+      const { quantity, ...catalogFields } = normalized;
+      await updateItem.mutateAsync({
+        id: item.id,
+        ...catalogFields,
+        ...(activeStockId && quantityChangedRef.current ? {
+          quantity,
+          previousQuantity: quantityBaseRef.current,
+          activeStockId,
+        } : {}),
+      });
       savedItemId = item.id;
     } else {
       // Extrai a quantidade inicial do formData — ela NÃO vai no payload do catálogo
@@ -343,7 +412,11 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
         .filter((s) => s.id in stockPresenceMap && stockPresenceMap[s.id] === true)
         .map((s) => s.id);
       try {
-        await setInventoryPresence.mutateAsync({ inventoryId: savedItemId, stockIds: presentStockIds });
+        const presenceChanged = !item || stocks.some((stock) =>
+          stockPresenceMap[stock.id] !== getPresenceForStock(item.id, stock.id));
+        if (presenceChanged) {
+          await setInventoryPresence.mutateAsync({ inventoryId: savedItemId, stockIds: presentStockIds });
+        }
       } catch (err: unknown) {
         const msg = String((err as Error).message ?? '');
         if (msg.includes('presence_has_balance')) {
@@ -467,14 +540,16 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
   };
 
   const isPending = createItem.isPending || updateItem.isPending || updateStockLevelMinQuantity.isPending || setInventoryPresence.isPending;
+  const modalTitle = isEditing ? ui.titleEdit : ui.titleNew;
 
   return (
     <>
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
-      title={isEditing ? t.titleEdit : t.titleNew}
-      className="sm:max-w-[680px]"
+      title={modalTitle}
+      className="sm:!max-w-[1040px]"
+      drawerClassName="h-[90dvh]"
       footer={
         <div className="flex gap-2">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1" disabled={isPending}>{t.cancel}</Button>
@@ -484,402 +559,179 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
         </div>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label>{t.fields.name}</Label>
-            <Input value={formData.name} onChange={(e) => handleChange('name', e.target.value)} placeholder={t.fields.namePlaceholder} required />
-          </div>
-          <div className="space-y-2">
-            <Label>{t.fields.sku}</Label>
-            <div className="flex items-center gap-2">
-              <Input className="min-w-0 flex-1" value={formData.sku || ''} onChange={(e) => handleChange('sku', e.target.value)} placeholder={t.fields.skuPlaceholder} />
-              <Button type="button" variant="outline" size="sm" className="h-10 shrink-0 px-3" onClick={applyAutoSku} disabled={isEditing || isSkuGenerating}>
-                <Wand2 className="h-4 w-4 mr-1" />{isSkuGenerating ? t.fields.skuGenerating : t.fields.skuAuto}
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">{t.fields.skuHint}</p>
-          </div>
-        </div>
+      <form id="inventory-material-form" onSubmit={handleSubmit}>
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as InventoryFormTab)}>
+          <TabsList variant="underline" className="sticky top-0 z-10 w-full bg-background">
+            <TabsTrigger value="basic" variant="underline"><span className="sm:hidden">{ui.basicShort}</span><span className="hidden sm:inline">{ui.basic}</span></TabsTrigger>
+            <TabsTrigger value="stock" variant="underline"><span className="sm:hidden">{ui.stockShort}</span><span className="hidden sm:inline">{ui.stock}</span></TabsTrigger>
+            <TabsTrigger value="codes" variant="underline"><span className="sm:hidden">{ui.codesShort}</span><span className="hidden sm:inline">{ui.codes}</span></TabsTrigger>
+            {fiscalEnabled && <TabsTrigger value="fiscal" variant="underline">Fiscal</TabsTrigger>}
+            {showPmocSection && <TabsTrigger value="pmoc" variant="underline">PMOC</TabsTrigger>}
+          </TabsList>
 
-        {/* Foto + Código de barras (módulo PDV e Loja: catálogo com foto e código) */}
-        <div className="grid gap-4 sm:grid-cols-[112px_1fr]">
-          <div className="space-y-2">
-            <Label>{t.fields.photo}</Label>
-            <div className="flex flex-col items-center gap-2">
-              <button
-                type="button"
-                onClick={() => photoUrl && setPhotoViewerOpen(true)}
-                disabled={uploadingPhoto || !photoUrl}
-                className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-input bg-muted flex items-center justify-center disabled:cursor-default"
-                aria-label={t.fields.photo}
-              >
-                {photoUrl ? (
-                  <SignedImg
-                    src={photoUrl}
-                    alt={formData.name || t.fields.photo}
-                    className="h-20 w-20 object-cover"
+          <TabsContent value="basic" className="mt-0 space-y-5 pt-5">
+            <div className="grid gap-4 md:grid-cols-[minmax(0,1.5fr)_minmax(260px,1fr)]">
+              <div className="space-y-2">
+                <Label htmlFor="inventory-material-name">{t.fields.name}</Label>
+                <Input id="inventory-material-name" ref={nameInputRef} value={formData.name} onChange={(e) => handleChange('name', e.target.value)} placeholder={t.fields.namePlaceholder} required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="inventory-material-sku">{t.fields.sku}</Label>
+                <div className="flex items-center gap-2">
+                  <Input id="inventory-material-sku" className="min-w-0 flex-1" value={formData.sku || ''} onChange={(e) => handleChange('sku', e.target.value)} placeholder={t.fields.skuPlaceholder} />
+                  <Button type="button" variant="outline" size="sm" className="h-10 shrink-0 px-3" onClick={applyAutoSku} disabled={isEditing || isSkuGenerating}>
+                    <Wand2 className="mr-1 h-4 w-4" />{isSkuGenerating ? t.fields.skuGenerating : t.fields.skuAuto}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">{t.fields.skuHint}</p>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>{t.fields.group}</Label>
+                <div className="flex h-10 items-center rounded-md border border-input bg-background ring-offset-background focus-within:border-ring focus-within:ring-1 focus-within:ring-ring">
+                  <SearchableSelect
+                    value={formData.group_id ?? ''}
+                    onValueChange={(value) => handleChange('group_id', value || null)}
+                    onSearchChange={setGroupSearchQuery}
+                    placeholder={t.fields.groupPlaceholder}
+                    searchPlaceholder={t.fields.groupSearchPlaceholder}
+                    className="h-10 min-w-0 flex-1 justify-between rounded-none rounded-l-md border-0 bg-transparent px-3 font-normal text-foreground shadow-none hover:bg-transparent hover:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                    options={groups.map((g) => ({
+                      value: g.id,
+                      label: g.name,
+                      icon: <div className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: g.color ?? '#6B7280' }} />,
+                    }))}
                   />
-                ) : (
-                  <ImageIcon className="h-6 w-6 text-muted-foreground/60" aria-hidden="true" />
-                )}
-                {uploadingPhoto && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                    <Loader2 className="h-5 w-5 text-white animate-spin" />
-                  </div>
-                )}
-                {photoUrl && !uploadingPhoto && (
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    aria-label={t.fields.photoRemove}
-                    onClick={(e) => { e.stopPropagation(); handleRemovePhoto(); }}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); handleRemovePhoto(); } }}
-                    className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground"
-                  >
-                    <X className="h-3 w-3" />
-                  </span>
-                )}
-              </button>
-              <label className={uploadingPhoto ? 'pointer-events-none opacity-60' : undefined}>
-                <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" asChild disabled={uploadingPhoto}>
-                  <span>{photoUrl ? t.fields.photoChange : t.fields.photoAdd}</span>
-                </Button>
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif"
-                  className="hidden"
-                  onChange={handlePhotoUpload}
-                  disabled={uploadingPhoto}
-                />
-              </label>
+                  <Button type="button" variant="ghost" size="icon" onClick={() => setGroupFormOpen(true)} className="h-10 w-10 shrink-0 rounded-none rounded-r-md border-l border-input text-muted-foreground hover:bg-primary hover:text-primary-foreground focus-visible:ring-0 focus-visible:ring-offset-0" aria-label={t.fields.groupCreateAlways}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="inventory-supplier">{t.fields.supplier}</Label>
+                <SupplierSelectField id="inventory-supplier" suppliers={suppliers} value={formData.supplier_id || ''} onValueChange={(id) => handleChange('supplier_id', id || null)} placeholder={t.fields.supplierPlaceholder} searchPlaceholder={t.fields.supplierSearchPlaceholder} emptyMessage={t.fields.supplierEmpty} createAriaLabel={t.fields.supplierCreateAriaLabel} />
+                {!formData.supplier_id && item?.supplier && <p className="text-xs text-muted-foreground">{t.fields.supplierLegacy.replace('{name}', item.supplier)}</p>}
+              </div>
             </div>
-          </div>
 
-          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="inventory-material-description">{t.fields.description}</Label>
+              <Textarea id="inventory-material-description" value={formData.description || ''} onChange={(e) => handleChange('description', e.target.value)} placeholder={t.fields.descriptionPlaceholder} rows={3} />
+            </div>
+
+            <section className="flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center">
+              <button type="button" onClick={() => photoUrl && setPhotoViewerOpen(true)} disabled={uploadingPhoto || !photoUrl} className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-input bg-muted disabled:cursor-default" aria-label={t.fields.photo}>
+                {photoUrl ? <SignedImg src={photoUrl} alt={formData.name || t.fields.photo} className="h-20 w-20 object-cover" /> : <ImageIcon className="h-6 w-6 text-muted-foreground/60" aria-hidden="true" />}
+                {uploadingPhoto && <div className="absolute inset-0 flex items-center justify-center bg-black/40"><Loader2 className="h-5 w-5 animate-spin text-white" /></div>}
+                {photoUrl && !uploadingPhoto && <span role="button" tabIndex={0} aria-label={t.fields.photoRemove} onClick={(e) => { e.stopPropagation(); handleRemovePhoto(); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); handleRemovePhoto(); } }} className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground"><X className="h-3 w-3" /></span>}
+              </button>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold">{t.fields.photo}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t.fields.photoHint}</p>
+              </div>
+              <label className={uploadingPhoto ? 'pointer-events-none opacity-60' : undefined}>
+                <Button type="button" variant="outline" size="sm" asChild disabled={uploadingPhoto}><span>{photoUrl ? t.fields.photoChange : t.fields.photoAdd}</span></Button>
+                <input type="file" accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif" className="hidden" onChange={handlePhotoUpload} disabled={uploadingPhoto} />
+              </label>
+            </section>
+          </TabsContent>
+
+          <TabsContent value="stock" className="mt-0 space-y-6 pt-5">
+            {pdvEnabled && (
+              <div className="flex items-start justify-between gap-4 border-b pb-5">
+                <div>
+                  <p className="text-sm font-semibold">{t.fields.isSellable}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{t.fields.isSellableHint}</p>
+                </div>
+                <LabeledSwitch value={isSellable ? 'on' : 'off'} onChange={(v) => setIsSellable(v === 'on')} off={{ value: 'off', label: t.fields.isSellableOff }} on={{ value: 'on', label: t.fields.isSellableOn }} aria-label={t.fields.isSellable} />
+              </div>
+            )}
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="inventory-local-quantity">{t.fields.quantity}</Label>
+                <NumericInput id="inventory-local-quantity" decimal value={numericText.quantity} disabled={!activeStockId || !stocksHydrated} onValueChange={(v) => { quantityChangedRef.current = true; handleNumericChange('quantity', v); }} />
+                <p className="text-xs text-muted-foreground">{activeStockId
+                  ? `Saldo em ${stocks.find((stock) => stock.id === activeStockId)?.name ?? 'local selecionado'}. Preços e cadastro valem para todos os locais.`
+                  : 'Cadastro e preços valem para todos os locais. Para alterar quantidades, use Registrar entrada ou Registrar saída e escolha o local.'}</p>
+              </div>
+              <div className="space-y-2">
+                <Label>{t.fields.unit}</Label>
+                <Select value={formData.unit || 'un'} onValueChange={(value) => handleChange('unit', value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{UNITS.map(u => <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>)}</SelectContent></Select>
+              </div>
+              <div className="space-y-2">
+                <Label>{t.fields.costPrice}</Label>
+                <NumericInput decimal maxDecimals={2} value={numericText.cost_price} onValueChange={(v) => handleNumericChange('cost_price', v)} />
+                <p className="text-xs text-muted-foreground">{t.fields.priceHint}</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="inventory-sale-price">{t.fields.salePrice}</Label>
+                <NumericInput id="inventory-sale-price" decimal maxDecimals={2} value={numericText.sale_price} onValueChange={(v) => handleNumericChange('sale_price', v)} />
+                <p className="text-xs text-muted-foreground">{t.fields.priceHint}</p>
+              </div>
+            </div>
+
+            {stocks.length > 0 && (
+              <div className="space-y-3 border-t pt-5">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div><Label className="text-sm font-semibold">{t.fields.minQtyPerStockLabel}</Label><p className="mt-0.5 text-xs text-muted-foreground">{t.fields.minQtyPerStockHint}</p></div>
+                  {stocks.length > 1 && <div className="flex shrink-0 items-center gap-1.5"><Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={handleMarkAll} disabled={!stocksHydrated || allPresent}>{t.fields.markAll}</Button><Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={handleUnmarkAll} disabled={!stocksHydrated || nonePresent}>{t.fields.unmarkAll}</Button></div>}
+                </div>
+                {stocksHydrated ? (
+                  <div className="divide-y border-y">
+                    {stocks.map((s) => {
+                      const isPresent = stockPresenceMap[s.id] !== false;
+                      return <div key={s.id} className="flex items-center gap-3 py-3"><Checkbox id={`presence-${s.id}`} checked={isPresent} onCheckedChange={(checked) => setStockPresenceMap((prev) => ({ ...prev, [s.id]: !!checked }))} className="shrink-0" /><div className="min-w-0 flex-1"><label htmlFor={`presence-${s.id}`} className="block cursor-pointer truncate text-sm font-medium">{s.name}</label>{s.is_default && <p className="text-xs text-muted-foreground">{t.fields.minQtyDefaultBadge}</p>}</div><div className="w-28 shrink-0"><NumericInput decimal value={stockMinQtyMap[s.id] ?? ''} onValueChange={(v) => setStockMinQtyMap((prev) => ({ ...prev, [s.id]: v }))} placeholder={t.fields.minQtyPlaceholder} className="h-8 text-sm" disabled={!isPresent} /></div></div>;
+                    })}
+                  </div>
+                ) : (
+                  <div className="divide-y border-y">{stocks.map((s) => <div key={s.id} className="flex items-center gap-3 py-3"><Skeleton className="h-4 w-4 shrink-0 rounded-sm" /><div className="min-w-0 flex-1"><Skeleton className="h-4 w-32" /></div><Skeleton className="h-8 w-28 shrink-0 rounded-md" /></div>)}</div>
+                )}
+              </div>
+            )}
+          </TabsContent>
+
+          {fiscalEnabled && <TabsContent value="fiscal" className="mt-0 space-y-5 pt-5"><InventoryFiscalFields value={formData} onChange={(field, value) => handleChange(field, value)} /></TabsContent>}
+          <TabsContent value="codes" className="mt-0 space-y-5 pt-5">
+            <div>
+              <h3 className="text-sm font-semibold">{ui.primaryCode}</h3>
+              <p className="mt-1 text-xs text-muted-foreground">{pdvEnabled ? ui.primaryPdvHint : ui.primaryOptionalHint}</p>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="inventory-barcode">{t.fields.barcode}</Label>
               <div className="flex gap-2">
-                <Input
-                  id="inventory-barcode"
-                  ref={barcodeInputRef}
-                  value={barcode}
-                  onChange={(e) => setBarcode(e.target.value)}
-                  placeholder={t.fields.barcodePlaceholder}
-                  className="flex-1"
-                  // Código, não quantidade: nunca NumericInput — vide régua de UI.
-                  inputMode="text"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="shrink-0"
-                  onClick={() => barcodeInputRef.current?.focus()}
-                  aria-label={t.fields.barcodeScanButton}
-                  title={t.fields.barcodeScanButton}
-                >
-                  <ScanBarcode className="h-4 w-4" />
-                </Button>
+                <Input id="inventory-barcode" ref={barcodeInputRef} value={barcode} onChange={(e) => setBarcode(e.target.value)} placeholder={t.fields.barcodePlaceholder} className="flex-1" inputMode="text" autoComplete="off" data-form-type="other" />
+                <Button type="button" variant="outline" size="icon" className="shrink-0" onClick={() => barcodeInputRef.current?.focus()} aria-label={t.fields.barcodeScanButton} title={t.fields.barcodeScanButton}><ScanBarcode className="h-4 w-4" /></Button>
               </div>
               <p className="text-xs text-muted-foreground">{t.fields.barcodeScanHint}</p>
-              {/* Geração automática (prefixo + sequencial + dígito verificador) depende
-                  de RPC ainda não implementada (pdv_generate_barcode) — fora desta entrega. */}
-              <p className="text-xs text-muted-foreground/70">{t.fields.barcodeAutoHint}</p>
+              <InventoryIdentifierCameraScanner className="pt-1" onScan={(code) => { setBarcode(code); barcodeInputRef.current?.focus(); }} disabled={isPending} />
             </div>
+            {isEditing && item ? <InventoryIdentifierManager inventoryId={item.id} embedded /> : <p className="border-t pt-4 text-sm text-muted-foreground">{ui.saveForCodes}</p>}
+          </TabsContent>
 
-            {pdvEnabled && (
-              <div className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2">
-                <div>
-                  <p className="text-sm font-medium">{t.fields.isSellable}</p>
-                  <p className="text-xs text-muted-foreground">{t.fields.isSellableHint}</p>
-                </div>
-                <LabeledSwitch
-                  value={isSellable ? 'on' : 'off'}
-                  onChange={(v) => setIsSellable(v === 'on')}
-                  off={{ value: 'off', label: t.fields.isSellableOff }}
-                  on={{ value: 'on', label: t.fields.isSellableOn }}
-                  aria-label={t.fields.isSellable}
-                />
+          {showPmocSection && (
+            <TabsContent value="pmoc" className="mt-0 space-y-5 pt-5">
+              <div className="flex items-start justify-between gap-4 border-b pb-5">
+                <div><p className="text-sm font-semibold">{t.fields.isPmocProduct}</p><p className="mt-1 text-xs text-muted-foreground">{t.fields.isPmocProductHint}</p></div>
+                <LabeledSwitch value={formData.is_pmoc_product ? 'on' : 'off'} onChange={(value) => handlePmocProductChange(value === 'on')} off={{ value: 'off', label: t.fields.isPmocProductOff }} on={{ value: 'on', label: t.fields.isPmocProductOn }} aria-label={t.fields.isPmocProduct} />
               </div>
-            )}
-          </div>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label>{t.fields.group}</Label>
-            <div className="flex items-center h-10 rounded-md border border-input bg-background ring-offset-background focus-within:border-ring focus-within:ring-1 focus-within:ring-ring focus-within:ring-offset-0">
-              <SearchableSelect
-                value={formData.group_id ?? ''}
-                onValueChange={(value) => handleChange('group_id', value || null)}
-                onSearchChange={setGroupSearchQuery}
-                placeholder={t.fields.groupPlaceholder}
-                searchPlaceholder={t.fields.groupSearchPlaceholder}
-                className="flex-1 min-w-0 justify-between rounded-none rounded-l-md border-0 bg-transparent hover:bg-transparent text-foreground hover:text-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 px-3 h-10 font-normal"
-                options={groups.map((g) => ({
-                  value: g.id,
-                  label: g.name,
-                  icon: (
-                    <div
-                      className="h-2.5 w-2.5 rounded-full shrink-0"
-                      style={{ backgroundColor: g.color ?? '#6B7280' }}
-                    />
-                  ),
-                }))}
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => setGroupFormOpen(true)}
-                className="h-10 w-10 shrink-0 rounded-none rounded-r-md border-l border-input bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
-                aria-label={t.fields.groupCreateAlways}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="inventory-supplier">{t.fields.supplier}</Label>
-            {/* Select do CADASTRO de fornecedor (não texto livre): mesmo padrão do
-                cliente/origem, com busca e "+" colado na borda pra criar na hora.
-                O nome em inventory.supplier é espelhado por gatilho a partir do
-                supplier_id, então o form só manda o id. */}
-            <SupplierSelectField
-              id="inventory-supplier"
-              suppliers={suppliers}
-              value={formData.supplier_id || ''}
-              onValueChange={(id) => handleChange('supplier_id', id || null)}
-              placeholder={t.fields.supplierPlaceholder}
-              searchPlaceholder={t.fields.supplierSearchPlaceholder}
-              emptyMessage={t.fields.supplierEmpty}
-              createAriaLabel={t.fields.supplierCreateAriaLabel}
-            />
-            {/* Material antigo tinha o fornecedor digitado à mão. Enquanto ele não
-                for vinculado ao cadastro, o select fica vazio e o nome sumiria da
-                tela — mostramos o texto legado pra não perder a informação. */}
-            {!formData.supplier_id && item?.supplier && (
-              <p className="text-xs text-muted-foreground">
-                {t.fields.supplierLegacy.replace('{name}', item.supplier)}
-              </p>
-            )}
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label>{t.fields.description}</Label>
-          <Textarea value={formData.description || ''} onChange={(e) => handleChange('description', e.target.value)} placeholder={t.fields.descriptionPlaceholder} rows={2} />
-        </div>
-
-        <section className="space-y-4 rounded-xl border p-4 sm:p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="space-y-1">
-              <p className="text-sm font-semibold">{t.fields.isPmocProduct}</p>
-              <p className="text-xs text-muted-foreground">{t.fields.isPmocProductHint}</p>
-            </div>
-            <LabeledSwitch
-              value={formData.is_pmoc_product ? 'on' : 'off'}
-              onChange={(value) => handlePmocProductChange(value === 'on')}
-              off={{ value: 'off', label: t.fields.isPmocProductOff }}
-              on={{ value: 'on', label: t.fields.isPmocProductOn }}
-              aria-label={t.fields.isPmocProduct}
-            />
-          </div>
-
-          {formData.is_pmoc_product && (
-            <div className="space-y-4 border-t pt-4">
-              <div>
-                <p className="text-sm font-semibold">{t.fields.pmocSectionTitle}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{t.fields.pmocSectionHint}</p>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="inventory-pmoc-manufacturer">{t.fields.pmocManufacturer}</Label>
-                  <Input
-                    id="inventory-pmoc-manufacturer"
-                    value={formData.pmoc_manufacturer || ''}
-                    onChange={(event) => handleChange('pmoc_manufacturer', event.target.value)}
-                    placeholder={t.fields.pmocManufacturerPlaceholder}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="inventory-pmoc-anvisa">{t.fields.pmocAnvisaRegistration}</Label>
-                  <Input
-                    id="inventory-pmoc-anvisa"
-                    value={formData.pmoc_anvisa_registration || ''}
-                    onChange={(event) => handleChange('pmoc_anvisa_registration', event.target.value)}
-                    placeholder={t.fields.pmocAnvisaRegistrationPlaceholder}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="inventory-pmoc-batch">{t.fields.pmocBatchNumber}</Label>
-                  <Input
-                    id="inventory-pmoc-batch"
-                    value={formData.pmoc_batch_number || ''}
-                    onChange={(event) => handleChange('pmoc_batch_number', event.target.value)}
-                    placeholder={t.fields.pmocBatchNumberPlaceholder}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="inventory-pmoc-manufactured-on">{t.fields.pmocManufacturedOn}</Label>
-                  <Input
-                    id="inventory-pmoc-manufactured-on"
-                    type="date"
-                    value={formData.pmoc_manufactured_on || ''}
-                    onChange={(event) => handleChange('pmoc_manufactured_on', event.target.value || null)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="inventory-pmoc-expires-on">{t.fields.pmocExpiresOn}</Label>
-                  <Input
-                    id="inventory-pmoc-expires-on"
-                    type="date"
-                    value={formData.pmoc_expires_on || ''}
-                    onChange={(event) => handleChange('pmoc_expires_on', event.target.value || null)}
-                    required
-                  />
-                  <p className="text-xs text-muted-foreground">{t.fields.pmocExpiresOnHint}</p>
-                </div>
-              </div>
-            </div>
-          )}
-        </section>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label>{t.fields.quantity}</Label>
-            <NumericInput decimal value={numericText.quantity} onValueChange={(v) => handleNumericChange('quantity', v)} />
-          </div>
-          <div className="space-y-2">
-            <Label>{t.fields.unit}</Label>
-            <Select value={formData.unit || 'un'} onValueChange={(value) => handleChange('unit', value)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{UNITS.map(u => (<SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>))}</SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label>{t.fields.costPrice}</Label>
-            <NumericInput
-              decimal
-              maxDecimals={2}
-              value={numericText.cost_price}
-              onValueChange={(v) => handleNumericChange('cost_price', v)}
-            />
-            <p className="text-xs text-muted-foreground">{t.fields.priceHint}</p>
-          </div>
-          <div className="space-y-2">
-            <Label>{t.fields.salePrice}</Label>
-            <NumericInput
-              decimal
-              maxDecimals={2}
-              value={numericText.sale_price}
-              onValueChange={(v) => handleNumericChange('sale_price', v)}
-            />
-            <p className="text-xs text-muted-foreground">{t.fields.priceHint}</p>
-          </div>
-        </div>
-
-        {/* Locais deste material — presença + mínimo por local */}
-        {stocks.length > 0 && (
-          <div className="space-y-3">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <Label className="text-sm font-semibold">{t.fields.minQtyPerStockLabel}</Label>
-                <p className="text-xs text-muted-foreground mt-0.5">{t.fields.minQtyPerStockHint}</p>
-              </div>
-              {stocks.length > 1 && (
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2 text-xs"
-                    onClick={handleMarkAll}
-                    disabled={!stocksHydrated || allPresent}
-                  >
-                    {t.fields.markAll}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2 text-xs"
-                    onClick={handleUnmarkAll}
-                    disabled={!stocksHydrated || nonePresent}
-                  >
-                    {t.fields.unmarkAll}
-                  </Button>
-                </div>
-              )}
-            </div>
-            {stocksHydrated ? (
-              <div className="rounded-xl border divide-y">
-                {stocks.map((s) => {
-                  const isPresent = stockPresenceMap[s.id] !== false;
-                  return (
-                    <div key={s.id} className="flex items-center gap-3 px-3 py-2.5">
-                      {/* Checkbox de presença */}
-                      <Checkbox
-                        id={`presence-${s.id}`}
-                        checked={isPresent}
-                        onCheckedChange={(checked) => {
-                          setStockPresenceMap((prev) => ({ ...prev, [s.id]: !!checked }));
-                        }}
-                        className="shrink-0"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <label
-                          htmlFor={`presence-${s.id}`}
-                          className="text-sm font-medium truncate cursor-pointer block"
-                        >
-                          {s.name}
-                        </label>
-                        {s.is_default && (
-                          <p className="text-xs text-muted-foreground">{t.fields.minQtyDefaultBadge}</p>
-                        )}
-                      </div>
-                      {/* Campo de mínimo (sempre visível mas desabilitado quando ausente) */}
-                      <div className="w-28 shrink-0">
-                        <NumericInput
-                          decimal
-                          value={stockMinQtyMap[s.id] ?? ''}
-                          onValueChange={(v) =>
-                            setStockMinQtyMap((prev) => ({ ...prev, [s.id]: v }))
-                          }
-                          placeholder={t.fields.minQtyPlaceholder}
-                          className="h-8 text-sm"
-                          disabled={!isPresent}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              // Skeleton: nasce aqui em vez do estado "tudo marcado" enquanto os
-              // stockLevels ainda não chegaram — era exatamente esse estado
-              // (default permissivo pintado como marcado) que corrompia a
-              // presença real ao salvar, antes desta correção.
-              <div className="rounded-xl border divide-y">
-                {stocks.map((s) => (
-                  <div key={s.id} className="flex items-center gap-3 px-3 py-2.5">
-                    <Skeleton className="h-4 w-4 rounded-sm shrink-0" />
-                    <div className="flex-1 min-w-0 space-y-1.5">
-                      <Skeleton className="h-4 w-32" />
-                    </div>
-                    <Skeleton className="h-8 w-28 rounded-md shrink-0" />
+              {formData.is_pmoc_product ? (
+                <div className="space-y-4">
+                  <div><p className="text-sm font-semibold">{t.fields.pmocSectionTitle}</p><p className="mt-1 text-xs text-muted-foreground">{t.fields.pmocSectionHint}</p></div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2 md:col-span-2"><Label htmlFor="inventory-pmoc-manufacturer">{t.fields.pmocManufacturer}</Label><Input id="inventory-pmoc-manufacturer" ref={pmocManufacturerRef} value={formData.pmoc_manufacturer || ''} onChange={(event) => handleChange('pmoc_manufacturer', event.target.value)} placeholder={t.fields.pmocManufacturerPlaceholder} required /></div>
+                    <div className="space-y-2"><Label htmlFor="inventory-pmoc-anvisa">{t.fields.pmocAnvisaRegistration}</Label><Input id="inventory-pmoc-anvisa" ref={pmocAnvisaRef} value={formData.pmoc_anvisa_registration || ''} onChange={(event) => handleChange('pmoc_anvisa_registration', event.target.value)} placeholder={t.fields.pmocAnvisaRegistrationPlaceholder} required /></div>
+                    <div className="space-y-2"><Label htmlFor="inventory-pmoc-batch">{t.fields.pmocBatchNumber}</Label><Input id="inventory-pmoc-batch" value={formData.pmoc_batch_number || ''} onChange={(event) => handleChange('pmoc_batch_number', event.target.value)} placeholder={t.fields.pmocBatchNumberPlaceholder} /></div>
+                    <div className="space-y-2"><Label htmlFor="inventory-pmoc-manufactured-on">{t.fields.pmocManufacturedOn}</Label><Input id="inventory-pmoc-manufactured-on" ref={pmocManufacturedOnRef} type="date" value={formData.pmoc_manufactured_on || ''} onChange={(event) => handleChange('pmoc_manufactured_on', event.target.value || null)} /></div>
+                    <div className="space-y-2"><Label htmlFor="inventory-pmoc-expires-on">{t.fields.pmocExpiresOn}</Label><Input id="inventory-pmoc-expires-on" ref={pmocExpiresOnRef} type="date" value={formData.pmoc_expires_on || ''} onChange={(event) => handleChange('pmoc_expires_on', event.target.value || null)} required /><p className="text-xs text-muted-foreground">{t.fields.pmocExpiresOnHint}</p></div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+                </div>
+              ) : <p className="text-sm text-muted-foreground">{ui.pmocDisabled}</p>}
+            </TabsContent>
+          )}
+        </Tabs>
       </form>
     </ResponsiveModal>
 

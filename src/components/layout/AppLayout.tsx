@@ -6,19 +6,20 @@ import { Menu, UserCircle, LogOut, ArrowLeft } from 'lucide-react';
 // UserCircle continua importado porque o MobileTabletHeader (tablet >=lg) ainda
 // usa o atalho pro perfil. No DesktopSidebarHeader o avatar/perfil vive dentro
 // do dropdown do sidebar, então o botão duplicado foi removido (v1.9.22 polish).
-import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
+import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
-import { appScreenKey, localizeAppPath } from '@/lib/i18n/appRouteSlugs';
+import { localizeAppPath, resolveAppSlug } from '@/lib/i18n/appRouteSlugs';
 import { useNavigationPreference } from '@/hooks/useNavigationPreference';
 import { useNavThemePreference } from '@/hooks/useNavThemePreference';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { MobilePullToRefresh } from '@/components/mobile/MobilePullToRefresh';
+import { AppViewport } from './AppViewport';
+import { AppRouteTransition } from './AppRouteTransition';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useCanonicalAppRoute } from '@/hooks/useCanonicalAppRoute';
 import { Sidebar } from './Sidebar';
@@ -72,7 +73,7 @@ export function AppLayout() {
   // Menu escuro por padrão (Fase 2). Mantém `data-nav-theme` no <html> em sync
   // com a preferência do usuário (localStorage) enquanto o shell está montado.
   useNavThemePreference();
-  const { isAdminUser, user } = useAuth();
+  const { isAdminUser, user, profile } = useAuth();
   const isMobile = useIsMobile();
   const [isTablet, setIsTablet] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -143,13 +144,12 @@ export function AppLayout() {
           onOpenChange={setTasksDrawerOpen}
         />
       )}
-      {isCompactViewport ? (
-        <MobileTabletShell isAdminUser={isAdminUser} />
-      ) : useTopbar ? (
-        <TopbarShell />
-      ) : (
-        <SidebarShell />
-      )}
+      <ResponsiveAppShell
+        isCompactViewport={isCompactViewport}
+        useTopbar={useTopbar}
+        isAdminUser={isAdminUser}
+        ownerKey={`${user?.id ?? 'anonymous'}:${profile?.company_id ?? 'no-company'}`}
+      />
     </>
   );
 }
@@ -157,53 +157,13 @@ export function AppLayout() {
 // ============================================================
 // Wrapper de transição entre rotas — fade-in suave + scroll-to-top
 // ============================================================
-function RouteTransition({ children }: { children: React.ReactNode }) {
-  const location = useLocation();
-
-  // Scroll-to-top em qualquer container scrollável quando muda de rota
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
-    }
-    document.querySelectorAll('main, [data-scroll-container]').forEach((el) => {
-      (el as HTMLElement).scrollTop = 0;
-    });
-  }, [location.pathname]);
-
-  // A chave é da TELA, não do pathname: em lista + ficha, abrir um cadastro é a
-  // mesma tela. Com `location.pathname` aqui, cada clique na lista remontava a
-  // tela inteira e repetia o fade — era isso que piscava.
-  return (
-    <div key={appScreenKey(location.pathname)} className="animate-in fade-in duration-200 min-w-0 max-w-full">
-      {children}
-    </div>
-  );
-}
-
-// ============================================================
-// SHELL: desktop sidebar (modo padrão)
-// ============================================================
-function SidebarShell() {
-  return (
-    <SidebarProvider>
-      <div className="flex h-[100dvh] w-full max-w-full">
-        <Sidebar />
-        <SidebarInset className="flex flex-col min-w-0 max-w-full overflow-hidden">
-          <DesktopSidebarHeader />
-          <SubscriptionRenewalBanner />
-          <DomiflixLearningReminder />
-          <SystemNoticeBanners scope="global" />
-          <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 min-w-0 max-w-full">
-            <RouteTransition>
-              <Outlet />
-            </RouteTransition>
-          </main>
-          <footer className="border-t px-4 h-[52px] flex-shrink-0 flex items-center justify-center">
-            <SystemFooter />
-          </footer>
-        </SidebarInset>
-      </div>
-    </SidebarProvider>
+function LayoutSystemFooter({ mobile = false }: { mobile?: boolean }) {
+  const { pathname } = useLocation();
+  // O posto de venda usa a altura para itens e recebimento; as demais telas
+  // mantêm o rodapé institucional do app.
+  if (resolveAppSlug(pathname) === 'pdvSale') return null;
+  return mobile ? <div className="mt-6 pb-2"><SystemFooter /></div> : (
+    <footer className="h-[52px] shrink-0 border-t px-4 flex items-center justify-center"><SystemFooter /></footer>
   );
 }
 
@@ -266,80 +226,36 @@ function DesktopSidebarHeader() {
   );
 }
 
-// ============================================================
-// SHELL: desktop topbar (modo alternativo)
-// ============================================================
-function TopbarShell() {
-  return (
-    <div className="flex h-[100dvh] w-full max-w-full flex-col overflow-hidden min-w-0">
-      <TopNavbar />
-      <SubscriptionRenewalBanner />
-      <DomiflixLearningReminder />
-      <SystemNoticeBanners scope="global" />
-      <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 min-w-0 max-w-full">
-        <RouteTransition>
-          <Outlet />
-        </RouteTransition>
-      </main>
-      <footer className="h-[52px] shrink-0 border-t px-4 flex items-center justify-center">
-        <SystemFooter />
-      </footer>
-    </div>
-  );
-}
-
-// ============================================================
-// SHELL: mobile/tablet (header simples + MobileBottomNav + pull-to-refresh)
-// ============================================================
-function MobileTabletShell({ isAdminUser }: { isAdminUser: boolean }) {
+// O conteúdo permanece montado ao alternar tamanho de tela ou estilo de menu.
+function ResponsiveAppShell({ isCompactViewport, useTopbar, isAdminUser, ownerKey }: {
+  isCompactViewport: boolean; useTopbar: boolean; isAdminUser: boolean; ownerKey: string;
+}) {
   const location = useLocation();
   const [scrolled, setScrolled] = useState(false);
-
-  // Reseta ao trocar de rota para a barra não ficar com o título "preso"
-  // da tela anterior enquanto o novo conteúdo ancora no topo.
-  useEffect(() => {
-    setScrolled(false);
-  }, [location.pathname]);
+  useEffect(() => { setScrolled(false); }, [location.pathname, isCompactViewport]);
 
   const handleRefresh = async () => {
-    // Defense-in-depth: o gate principal é o MobilePullToRefresh, que nem inicia
-    // o gesto com modal/drawer aberto. Ainda assim, se por algum caminho um
-    // modal estiver aberto aqui, não recarregamos (mataria o formulário).
     if (document.querySelector('[data-state="open"]')) return;
-    // Efeito literal de F5: reload completo. Aceito perder estado de UI
-    // temporário (filtros) em troca de garantir refresh de tudo (caches de
-    // imagem, contexts, service worker). CEO 2026-05-23.
+    // O gesto explícito continua tendo o efeito de F5; só a troca visual de
+    // shell deixa de remontar a tela e perder formulários em andamento.
     window.location.reload();
   };
-
-  return (
-    <div className="flex h-[100dvh] w-full max-w-full flex-col bg-background">
-      <MobileTabletHeader isAdminUser={isAdminUser} scrolled={scrolled} />
-      <DomiflixLearningReminder />
-      <SystemNoticeBanners scope="global" />
-      <MobilePullToRefresh
-        onRefresh={handleRefresh}
-        onScroll={(e) => {
-          const st = e.currentTarget.scrollTop;
-          setScrolled((prev) => {
-            const next = st > 48;
-            return prev === next ? prev : next;
-          });
-        }}
-        className="flex-1 overflow-x-hidden min-w-0 max-w-full bg-background"
-      >
-        <main className="p-4 pb-[calc(8rem+env(safe-area-inset-bottom))] bg-background">
-          <RouteTransition>
-            <Outlet />
-          </RouteTransition>
-          <div className="mt-6 pb-2">
-            <SystemFooter />
-          </div>
-        </main>
-      </MobilePullToRefresh>
-      <MobileBottomNav />
-    </div>
-  );
+  const mode = isCompactViewport ? 'compact' : useTopbar ? 'topbar' : 'sidebar';
+  return <AppViewport
+    mode={mode}
+    sidebar={<Sidebar />}
+    header={isCompactViewport ? <MobileTabletHeader isAdminUser={isAdminUser} scrolled={scrolled} /> : useTopbar ? <TopNavbar /> : <DesktopSidebarHeader />}
+    subscriptionNotice={<SubscriptionRenewalBanner />}
+    notices={<><DomiflixLearningReminder /><SystemNoticeBanners scope="global" /></>}
+    desktopFooter={<LayoutSystemFooter />}
+    mobileFooter={<LayoutSystemFooter mobile />}
+    bottomNavigation={<MobileBottomNav />}
+    onRefresh={handleRefresh}
+    onScroll={event => setScrolled(event.currentTarget.scrollTop > 48)}
+    scrollResetKey={`${ownerKey}:${location.pathname}`}
+  >
+    <AppRouteTransition ownerKey={ownerKey}><Outlet /></AppRouteTransition>
+  </AppViewport>;
 }
 
 function MobileTabletHeader({ isAdminUser, scrolled }: { isAdminUser: boolean; scrolled: boolean }) {

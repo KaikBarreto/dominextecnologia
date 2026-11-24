@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { PixIcon } from '@/components/ui/PixIcon';
 import { SignedLink } from '@/components/ui/SignedLink';
 import type { FinancialCategory } from '@/hooks/useFinancialCategories';
 import type { CostCenter } from '@/hooks/useCostCenters';
@@ -29,6 +30,7 @@ import { useReceivablePayments } from '@/hooks/useReceivablePayments';
 import { useToast } from '@/hooks/use-toast';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { formatMoney } from '@/lib/format';
+import { normalizePaymentMethod } from '@/lib/finance-payment-methods';
 import type { FinancialTransaction } from '@/types/database';
 import { cn } from '@/lib/utils';
 import { FinancialCategoryPill } from './FinancialCategoryPill';
@@ -179,7 +181,7 @@ export function FinancialTransactionDetailsPanel({
         <DetailItem label="Conta financeira" icon={Landmark} value={transaction.account?.name || 'Não vinculada'} />
         <DetailItem label="Data do lançamento" icon={CalendarDays} value={formatDate(transaction.transaction_date)} />
         <DetailItem label="Vencimento" icon={CalendarDays} value={formatDate(transaction.due_date)} />
-        <DetailItem label={transaction.transaction_type === 'entrada' ? 'Recebimento' : 'Pagamento'} icon={WalletCards} value={transaction.paid_date ? `${formatDate(transaction.paid_date)} · ${PAYMENT_METHODS[transaction.payment_method || ''] || transaction.payment_method || 'Forma não informada'}` : 'Ainda não realizado'} />
+        <DetailItem label={transaction.transaction_type === 'entrada' ? 'Recebimento' : 'Pagamento'} icon={normalizePaymentMethod(transaction.payment_method?.toLowerCase()) === 'pix' ? PixIcon : WalletCards} value={transaction.paid_date ? `${formatDate(transaction.paid_date)} · ${PAYMENT_METHODS[transaction.payment_method || ''] || transaction.payment_method || 'Forma não informada'}` : 'Ainda não realizado'} />
         <DetailItem label="Centro de custo" value={costCenter ? costCenterBadge(costCenter) : 'Não vinculado'} />
         <DetailItem label="Repete / parcelamento" icon={Repeat2} value={installment} />
         <DetailItem label="Valor original" value={money(Number(transaction.amount))} />

@@ -1,7 +1,7 @@
--- Smoke do rollout fechado e projeção mínima da venda direta v2.
+-- Smoke da ativação pelo módulo e projeção mínima da venda direta v2.
 BEGIN;
 DO $contract$
-DECLARE v_wrapper text; v_catalog text;
+DECLARE v_wrapper text; v_catalog text; v_gate text;
 BEGIN
   IF has_function_privilege('authenticated','public.pdv_complete_direct_sale_v2(uuid,uuid,uuid,uuid,jsonb,jsonb,text)','EXECUTE')
      OR NOT has_function_privilege('authenticated','public.pdv_complete_direct_sale_rollout_v2(uuid,uuid,uuid,uuid,jsonb,jsonb,text)','EXECUTE')
@@ -11,9 +11,12 @@ BEGIN
      OR has_function_privilege('anon','public.pdv_get_direct_sale_catalog_v2()','EXECUTE') THEN
     RAISE EXCEPTION 'ACL do core, wrapper ou projeção está incorreta';
   END IF;
-  IF NOT EXISTS(SELECT 1 FROM public.app_feature_flags f
-    WHERE f.key='pdv_direct_sale_v2' AND f.enabled IS FALSE AND cardinality(f.company_allowlist)=0) THEN
-    RAISE EXCEPTION 'rollout não nasceu fail-closed';
+  SELECT pg_get_functiondef('public.pdv_direct_sale_v2_enabled_internal(uuid)'::regprocedure) INTO v_gate;
+  IF strpos(v_gate,'tenant_subscription_allows_access')=0
+     OR strpos(v_gate,'company_has_module')=0
+     OR strpos(v_gate,'app_feature_flags')>0
+     OR strpos(v_gate,'company_allowlist')>0 THEN
+    RAISE EXCEPTION 'gate do Caixa v2 não acompanha assinatura e módulo';
   END IF;
   SELECT pg_get_functiondef('public.pdv_complete_direct_sale_rollout_v2(uuid,uuid,uuid,uuid,jsonb,jsonb,text)'::regprocedure) INTO v_wrapper;
   IF strpos(v_wrapper,'pdv_direct_sale_v2_enabled_internal')=0 OR strpos(v_wrapper,'pdv_complete_direct_sale_v2')=0 THEN
@@ -52,7 +55,10 @@ BEGIN
   INSERT INTO public.financial_accounts(id,company_id,name,type,initial_balance,is_active,color,icon) VALUES
     (cash1,c1,'Cofre rollout','caixa',0,true,'#111111','wallet'),
     (bank1,c1,'Banco rollout','banco',0,true,'#222222','landmark');
-  INSERT INTO public.company_settings(company_id,name,pdv_cash_account_id,pdv_mode) VALUES(c1,'Rollout A',cash1,'simples');
+  INSERT INTO public.company_settings(company_id,name,pdv_cash_account_id,pdv_mode) VALUES(c1,'Rollout A',cash1,'simples')
+  ON CONFLICT (company_id) DO UPDATE SET name=EXCLUDED.name, pdv_cash_account_id=EXCLUDED.pdv_cash_account_id, pdv_mode=EXCLUDED.pdv_mode;
+  -- A criação da empresa já fornece um estoque padrão; a fixture escolhe outro explicitamente.
+  UPDATE public.stocks SET is_default=false WHERE company_id IN (c1, c2) AND is_default IS TRUE;
   INSERT INTO public.stocks(id,company_id,name,is_default,purpose) VALUES(s1,c1,'Loja A',true,'pdv'),(s2,c2,'Loja B',true,'pdv');
   INSERT INTO public.pdv_terminals(id,company_id,name,stock_id,is_active) VALUES(t1,c1,'Terminal A',s1,true),(t2,c2,'Terminal B',s2,true);
   INSERT INTO public.inventory(id,company_id,sku,barcode,name,unit,quantity,cost_price,sale_price,is_sellable) VALUES
@@ -74,15 +80,7 @@ BEGIN
     RAISE EXCEPTION 'caixa nominal ganhou escrita de configuração: %, %',denied_state,denied_detail;
   END IF;
   capability:=public.pdv_get_direct_sale_capability_v2();
-  IF capability->>'enabled'<>'false' THEN RAISE EXCEPTION 'empresa ativada sem allowlist'; END IF;
-  BEGIN PERFORM public.pdv_get_direct_sale_catalog_v2();
-  EXCEPTION WHEN OTHERS THEN GET STACKED DIAGNOSTICS denied_state=RETURNED_SQLSTATE,denied_detail=PG_EXCEPTION_DETAIL; END;
-  IF denied_state IS DISTINCT FROM '42501' OR denied_detail IS DISTINCT FROM 'code=pdv_direct_sale_rollout_disabled' THEN
-    RAISE EXCEPTION 'catálogo não falhou fechado: %, %',denied_state,denied_detail;
-  END IF;
-
-  UPDATE public.app_feature_flags SET company_allowlist=ARRAY[c1],updated_at=now() WHERE key='pdv_direct_sale_v2';
-  capability:=public.pdv_get_direct_sale_capability_v2(); catalog:=public.pdv_get_direct_sale_catalog_v2();
+  catalog:=public.pdv_get_direct_sale_catalog_v2();
   IF capability->>'enabled'<>'true' OR capability->>'contract_version'<>'2'
      OR jsonb_array_length(catalog->'materials')<>1 OR catalog->'materials'->0->>'id'<>i1::text
      OR jsonb_array_length(catalog->'customers')<>1 OR catalog->'customers'->0->>'id'<>cu1::text
@@ -107,13 +105,12 @@ BEGIN
 
   PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',u2,'role','authenticated')::text,true);
   capability:=public.pdv_get_direct_sale_capability_v2();
-  IF capability->>'enabled'<>'false' THEN RAISE EXCEPTION 'allowlist vazou para outro tenant'; END IF;
-  denied_state:=NULL; denied_detail:=NULL;
-  BEGIN
-    PERFORM public.pdv_complete_direct_sale_rollout_v2(NULL,NULL,NULL,NULL,'{}','[]','rollout-blocked-0001');
-  EXCEPTION WHEN OTHERS THEN GET STACKED DIAGNOSTICS denied_state=RETURNED_SQLSTATE,denied_detail=PG_EXCEPTION_DETAIL; END;
-  IF denied_state IS DISTINCT FROM '42501' OR denied_detail IS DISTINCT FROM 'code=pdv_direct_sale_rollout_disabled' THEN
-    RAISE EXCEPTION 'wrapper chegou ao core sem rollout: %, %',denied_state,denied_detail;
+  catalog:=public.pdv_get_direct_sale_catalog_v2();
+  IF capability->>'enabled'<>'true' OR capability->>'contract_version'<>'2'
+     OR jsonb_array_length(catalog->'materials')<>1 OR catalog->'materials'->0->>'id'<>i2::text
+     OR jsonb_array_length(catalog->'customers')<>1 OR catalog->'customers'->0->>'id'<>cu2::text
+     OR jsonb_array_length(catalog->'terminals')<>1 OR catalog->'terminals'->0->>'id'<>t2::text THEN
+    RAISE EXCEPTION 'ativação pelo módulo vazou dados entre empresas';
   END IF;
 
   PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',no_screen,'role','authenticated')::text,true);

@@ -25,6 +25,8 @@ DECLARE
   i1 uuid:='c7133000-0000-4000-8000-000000000011';
   i2 uuid:='c7133000-0000-4000-8000-000000000012';
   i3 uuid:='c7133000-0000-4000-8000-000000000013';
+  restricted_stock uuid:='c7133000-0000-4000-8000-000000000014';
+  restricted_item uuid:='c7133000-0000-4000-8000-000000000015';
   payload jsonb;
   denied_state text;
   denied_detail text;
@@ -48,6 +50,11 @@ BEGIN
     (manager2,'["screen:inventory","fn:manage_inventory"]',true);
   INSERT INTO public.company_modules(company_id,module_code) VALUES
     (c1,'basic'),(c1,'pdv'),(c2,'basic');
+  INSERT INTO public.stocks(id,company_id,name,is_default)
+  VALUES(restricted_stock,c1,'Local restrito',false);
+  -- Uma ACL atribuída a outro usuário torna o local invisível para manager1.
+  INSERT INTO public.stock_access(company_id,stock_id,user_id)
+  VALUES(c1,restricted_stock,operator1);
 
   -- O AFTER INSERT prova o default: interno, SKU, GTIN e barcode legado sao semeados.
   INSERT INTO public.inventory(
@@ -55,7 +62,10 @@ BEGIN
   ) VALUES
     (i1,c1,'SKU-A','Material A','un',10,91.23,123.45,'7891000000010','7891000000096'),
     (i2,c1,'SKU-B','Material B','un',5,55,80,NULL,NULL),
-    (i3,c2,'SKU-A','Material outro tenant','cx',7,77,99,'7891000000010',NULL);
+    (i3,c2,'SKU-A','Material outro tenant','cx',7,77,99,'7891000000010',NULL),
+    (restricted_item,c1,'SKU-RESTRITO','Material de local restrito','un',1,10,20,NULL,NULL);
+  INSERT INTO public.inventory_stock_levels(company_id,inventory_id,stock_id,quantity,is_present)
+  VALUES(c1,restricted_item,restricted_stock,1,true);
   IF (SELECT count(*) FROM public.inventory_identifiers WHERE inventory_id=i1)<>4 THEN
     RAISE EXCEPTION 'semente/backfill nao criou interno, SKU, GTIN e barcode';
   END IF;
@@ -74,6 +84,68 @@ BEGIN
      OR payload->>'unit_label'<>'un' THEN
     RAISE EXCEPTION 'caminho FOUND do codigo interno alterou unidade-base: %',payload;
   END IF;
+
+  -- Remover e restaurar o código legado reaproveita a linha inativa. Sem isto,
+  -- a UNIQUE do código colidiria com o próprio histórico A -> vazio -> A.
+  UPDATE public.inventory SET sku=NULL WHERE id=i1;
+  IF NOT EXISTS(
+    SELECT 1 FROM public.inventory_identifiers
+     WHERE inventory_id=i1 AND identifier_type='sku' AND code='SKU-A'
+       AND is_primary IS TRUE AND is_active IS FALSE
+  ) THEN RAISE EXCEPTION 'sync nao preservou o identificador SKU inativo'; END IF;
+  UPDATE public.inventory SET sku='SKU-A' WHERE id=i1;
+  IF (SELECT count(*) FROM public.inventory_identifiers
+       WHERE inventory_id=i1 AND identifier_type='sku' AND code='SKU-A' AND is_active IS TRUE)<>1 THEN
+    RAISE EXCEPTION 'sync nao reativou o SKU sem duplicar';
+  END IF;
+
+  -- Linhas desativadas pela versão antiga perderam is_primary. A restauração
+  -- deve reaproveitá-las também, inclusive se outro SKU já virou principal.
+  UPDATE public.inventory SET sku=NULL WHERE id=i1;
+  UPDATE public.inventory_identifiers SET is_primary=false
+   WHERE inventory_id=i1 AND identifier_type='sku' AND code='SKU-A' AND is_active IS FALSE;
+  UPDATE public.inventory SET sku='SKU-INTERMEDIARIO' WHERE id=i1;
+  UPDATE public.inventory SET sku='SKU-A' WHERE id=i1;
+  IF (SELECT count(*) FROM public.inventory_identifiers
+       WHERE inventory_id=i1 AND identifier_type='sku' AND code='SKU-A')<>1
+     OR NOT EXISTS(SELECT 1 FROM public.inventory_identifiers
+       WHERE inventory_id=i1 AND identifier_type='sku' AND code='SKU-A'
+         AND is_active IS TRUE AND is_primary IS TRUE) THEN
+    RAISE EXCEPTION 'sync nao restaurou SKU legado inativo/nao principal sem duplicar';
+  END IF;
+
+  -- Código de barras igual ao GTIN é desativado sem criar ambiguidade; ao voltar
+  -- ao valor anterior, a mesma linha é reativada e continua resolvendo.
+  UPDATE public.inventory SET barcode=fiscal_gtin WHERE id=i1;
+  UPDATE public.inventory SET barcode='7891000000010' WHERE id=i1;
+  payload:=public.inventory_resolve_identifier_v2('7891000000010',NULL);
+  IF payload->'material'->>'id'<>i1::text OR payload->>'identifier_type'<>'barcode' THEN
+    RAISE EXCEPTION 'sync nao restaurou o barcode legado: %',payload;
+  END IF;
+
+  -- Permissão funcional não atravessa a ACL por local. Mesmo conhecendo o UUID,
+  -- o gestor operacional não gera nem altera códigos do material oculto.
+  denied_state:=NULL; denied_detail:=NULL;
+  BEGIN
+    PERFORM public.inventory_generate_internal_identifier_v2(restricted_item);
+  EXCEPTION WHEN OTHERS THEN
+    GET STACKED DIAGNOSTICS denied_state=RETURNED_SQLSTATE,denied_detail=PG_EXCEPTION_DETAIL;
+  END;
+  IF denied_state IS DISTINCT FROM 'P0002' OR denied_detail IS DISTINCT FROM 'code=inventory_identifier_material_not_found' THEN
+    RAISE EXCEPTION 'generate atravessou ACL do local ou retornou erro errado: %, %',denied_state,denied_detail;
+  END IF;
+  denied_state:=NULL; denied_detail:=NULL;
+  BEGIN
+    PERFORM public.inventory_save_identifier_v2(
+      NULL,restricted_item,'alias','CODIGO-RESTRITO','un',1,false,true
+    );
+  EXCEPTION WHEN OTHERS THEN
+    GET STACKED DIAGNOSTICS denied_state=RETURNED_SQLSTATE,denied_detail=PG_EXCEPTION_DETAIL;
+  END;
+  IF denied_state IS DISTINCT FROM 'P0002' OR denied_detail IS DISTINCT FROM 'code=inventory_identifier_material_not_found' THEN
+    RAISE EXCEPTION 'save atravessou ACL do local ou retornou erro errado: %, %',denied_state,denied_detail;
+  END IF;
+
   payload:=public.inventory_save_identifier_v2(
     NULL,i1,'alias',' caixa 12 ','caixa',12,true,true
   );

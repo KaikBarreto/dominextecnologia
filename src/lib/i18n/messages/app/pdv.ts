@@ -30,10 +30,10 @@ export const pdv = {
       orders: {
         number: 'Número', value: 'Valor', customer: 'Cliente', newOrder: 'Novo pedido',
         productsShort: 'prod.',
-        unnamedCustomer: 'Sem cliente', editBadge: 'Edição', deleteLabel: 'Excluir pedido',
-        deleteTitle: 'Excluir este pedido?',
-        deleteDescription: 'Somente este rascunho será apagado. Os outros pedidos continuarão intactos.',
-        keepOrder: 'Manter pedido', confirmDelete: 'Excluir pedido',
+        unnamedCustomer: 'Sem cliente', editBadge: 'Edição', deleteLabel: 'Fechar rascunho',
+        deleteTitle: 'Fechar este atendimento?',
+        deleteDescription: 'Somente este rascunho será fechado. As vendas já finalizadas continuam no histórico de Pedidos.',
+        keepOrder: 'Continuar atendimento', confirmDelete: 'Fechar rascunho',
         limitReached: 'O limite de 20 pedidos simultâneos foi atingido.',
       },
       draftSync: {
@@ -596,10 +596,10 @@ export const pdv = {
       orders: {
         number: 'Number', value: 'Amount', customer: 'Customer', newOrder: 'New order',
         productsShort: 'prod.',
-        unnamedCustomer: 'No customer', editBadge: 'Editing', deleteLabel: 'Delete order',
-        deleteTitle: 'Delete this order?',
-        deleteDescription: 'Only this draft will be deleted. Your other orders will remain unchanged.',
-        keepOrder: 'Keep order', confirmDelete: 'Delete order',
+        unnamedCustomer: 'No customer', editBadge: 'Editing', deleteLabel: 'Close draft',
+        deleteTitle: 'Close this service?',
+        deleteDescription: 'Only this draft will be closed. Completed sales remain in the Orders history.',
+        keepOrder: 'Continue service', confirmDelete: 'Close draft',
         limitReached: 'The limit of 20 simultaneous orders has been reached.',
       },
       draftSync: {
@@ -1148,10 +1148,10 @@ export const pdv = {
       orders: {
         number: 'Número', value: 'Importe', customer: 'Cliente', newOrder: 'Nuevo pedido',
         productsShort: 'prod.',
-        unnamedCustomer: 'Sin cliente', editBadge: 'Edición', deleteLabel: 'Eliminar pedido',
-        deleteTitle: '¿Eliminar este pedido?',
-        deleteDescription: 'Solo se eliminará este borrador. Los demás pedidos seguirán intactos.',
-        keepOrder: 'Mantener pedido', confirmDelete: 'Eliminar pedido',
+        unnamedCustomer: 'Sin cliente', editBadge: 'Edición', deleteLabel: 'Cerrar borrador',
+        deleteTitle: '¿Cerrar esta atención?',
+        deleteDescription: 'Solo se cerrará este borrador. Las ventas finalizadas permanecen en el historial de Pedidos.',
+        keepOrder: 'Continuar atención', confirmDelete: 'Cerrar borrador',
         limitReached: 'Se alcanzó el límite de 20 pedidos simultáneos.',
       },
       draftSync: {
@@ -1698,10 +1698,10 @@ export const pdv = {
       orders: {
         number: 'Numéro', value: 'Montant', customer: 'Client', newOrder: 'Nouvelle commande',
         productsShort: 'prod.',
-        unnamedCustomer: 'Sans client', editBadge: 'Modification', deleteLabel: 'Supprimer la commande',
-        deleteTitle: 'Supprimer cette commande ?',
-        deleteDescription: 'Seul ce brouillon sera supprimé. Les autres commandes resteront intactes.',
-        keepOrder: 'Garder la commande', confirmDelete: 'Supprimer la commande',
+        unnamedCustomer: 'Sans client', editBadge: 'Modification', deleteLabel: 'Fermer le brouillon',
+        deleteTitle: 'Fermer cette vente en cours ?',
+        deleteDescription: `Seul ce brouillon sera fermé. Les ventes finalisées restent dans l'historique des commandes.`,
+        keepOrder: 'Continuer la vente', confirmDelete: 'Fermer le brouillon',
         limitReached: 'La limite de 20 commandes simultanées a été atteinte.',
       },
       draftSync: {

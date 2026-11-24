@@ -44,6 +44,7 @@ import { NfseStatsCards, type NfseStats } from '@/components/fiscal/NfseStatsCar
 import { nfseRowToEmission, type NfseListRow } from '@/components/fiscal/nfseRow';
 import { NfseListTab } from '@/components/fiscal/NfseListTab';
 import { NotasRecebidasTab } from '@/components/fiscal/inboundNotes/NotasRecebidasTab';
+import { GoodsFiscalTab } from '@/components/fiscal/goods/GoodsFiscalTab';
 import { AutoEmissoesTab } from '@/components/fiscal/AutoEmissoesTab';
 
 /** Quantas notas o atalho "Últimas emissões" mostra. */
@@ -85,7 +86,7 @@ export default function NotasFiscais() {
   const [searchParams, setSearchParams] = useSearchParams();
   // Abre na listagem (a informação que o usuário busca primeiro); "Relatório
   // fiscal" (ex-"Visão Geral") é a 2ª aba.
-  const [tab, setTab] = useState<'visao-geral' | 'nfse' | 'recebidas' | 'automaticas'>('nfse');
+  const [tab, setTab] = useState<'visao-geral' | 'nfse' | 'recebidas' | 'automaticas' | 'nfe' | 'nfce'>('nfse');
   const [novaOpen, setNovaOpen] = useState(false);
   const [selected, setSelected] = useState<NfseEmission | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -260,6 +261,8 @@ export default function NotasFiscais() {
   // primeiro — é o que o usuário busca ao entrar na tela; "Relatório fiscal"
   // (ex-"Visão Geral") é o resumo, depois.
   const navTabs: SettingsTab[] = [
+    { value: 'nfe', label: 'NF-e', icon: FileText },
+    { value: 'nfce', label: 'NFC-e', icon: FileText },
     { value: 'nfse', label: t.tabs.list, icon: FileText },
     { value: 'visao-geral', label: t.tabs.overview, icon: FileBarChart },
     { value: 'automaticas', label: t.tabs.automatic, icon: RefreshCw },
@@ -344,9 +347,9 @@ export default function NotasFiscais() {
             variant="underline"
             tabs={navTabs}
             activeTab={tab}
-            onTabChange={(v) => setTab(v as 'visao-geral' | 'nfse' | 'recebidas' | 'automaticas')}
+            onTabChange={(v) => setTab(v as 'visao-geral' | 'nfse' | 'recebidas' | 'automaticas' | 'nfe' | 'nfce')}
           >
-            {tab === 'recebidas' ? (
+            {tab === 'nfe' || tab === 'nfce' ? (<GoodsFiscalTab model={tab === 'nfce' ? 65 : 55} />) : tab === 'recebidas' ? (
               /* ---- Notas recebidas: NF-e/NFS-e emitidas contra o CNPJ do cliente ---- */
               <NotasRecebidasTab />
             ) : tab === 'automaticas' ? (

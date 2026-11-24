@@ -7,7 +7,6 @@ import {
   Scale,
   Store,
   PlusCircle,
-  RefreshCw,
   TrendingDown,
   TrendingUp,
   Vault,
@@ -15,7 +14,7 @@ import {
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
+import { PdvPageSkeleton } from '@/components/pdv/loading/PdvPageSkeleton';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { useToast } from '@/hooks/use-toast';
@@ -28,6 +27,7 @@ import { useFinancial } from '@/hooks/useFinancial';
 import { useFinancialAccounts, type FinancialAccount } from '@/hooks/useFinancialAccounts';
 import { useBankPermissions } from '@/hooks/useBankPermissions';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { usePdvEnsureSetup } from '@/hooks/usePdvEnsureSetup';
 import { usePdvReceiptSettings } from '@/hooks/usePdvReceiptSettings';
 import { DEFAULT_PDV_RECEIPT_SETTINGS } from '@/lib/pdv/receipt/model';
 import {
@@ -51,6 +51,7 @@ import { PdvOpenCashDialog } from '@/components/pdv/caixa/PdvOpenCashDialog';
 import { PdvCloseCashDialog } from '@/components/pdv/caixa/PdvCloseCashDialog';
 import { PdvCashMovementDialog } from '@/components/pdv/caixa/PdvCashMovementDialog';
 import { PdvFirstCashSetupDialog } from '@/components/pdv/caixa/PdvFirstCashSetupDialog';
+import { PdvCashAccessState } from '@/components/pdv/caixa/PdvCashAccessState';
 import { PdvCashQueuePanel } from '@/components/pdv/counter/PdvCashQueuePanel';
 import { PdvCashV2Page } from '@/components/pdv/caixa-v2/PdvCashV2Page';
 import { canOperateOtherPdvCash } from '@/components/pdv/caixa-v2/pdvCashAccess';
@@ -113,13 +114,16 @@ export default function PdvCaixa() {
   const { locale } = useAppLocaleContext();
   const { settings, isLoading, isError, refetch: refetchSettings } = useCompanySettings();
   const { user, roles, permissions, isAdminOrGestor, hasPermission, hasPermissionRecord } = useAuth();
-  const { canManageBankAccounts } = useBankPermissions();
+  const { canUseBankAccounts, canManageBankAccounts } = useBankPermissions();
   const capability = usePdvCashV2Capability(!!user);
+  const ensureSetup = usePdvEnsureSetup();
+  const { toast: accessToast } = useToast();
   const cashAccountId = settings?.pdv_cash_account_id ?? null;
   const canManageOthers = canOperateOtherPdvCash({ roles, permissions, hasPermissionRecord });
   const canManageFinance = isAdminOrGestor() || hasPermission('fn:manage_finance');
   const canManageSettings = isAdminOrGestor()
     || (hasPermissionRecord && hasPermission('fn:manage_pdv_settings'));
+  const canPrepareSetup = isAdminOrGestor();
   const canCoverPdvOrders = isAdminOrGestor()
     || (hasPermissionRecord && hasPermission('fn:cover_pdv_order'));
   const maintenance = usePdvCashV2MaintenancePresence({
@@ -141,37 +145,70 @@ export default function PdvCaixa() {
     return (
       <div className="space-y-4">
         <PageHeader title="Caixa" subtitle="Validando o acesso seguro ao Caixa" icon={Banknote} />
-        <Skeleton className="h-48 w-full" />
+        <PdvPageSkeleton variant="cash" label="Carregando caixa" />
       </div>
     );
   }
 
   if (route === 'blocked' || (route === 'v2' && isError) || !user) {
     return (
-      <PdvCashV2GateError
-        description="Não foi possível confirmar qual contrato de caixa esta empresa pode usar. Nenhuma operação foi liberada."
-        onRetry={() => {
-          void capability.refetch();
-          void maintenance.refetch();
-          void refetchSettings();
-        }}
+      <PdvCashAccessState
+        kind="unavailable"
+        description="Os dados do caixa não carregaram. Tente novamente em alguns instantes."
+        onRetry={() => Promise.all([
+          capability.refetch(),
+          maintenance.refetch(),
+          refetchSettings(),
+        ])}
       />
     );
   }
 
   if (route === 'v2' && !cashAccountId) {
+    const prepareCash = canPrepareSetup ? async () => {
+      try {
+        const result = await ensureSetup.mutateAsync();
+        await Promise.all([
+          capability.refetch(),
+          maintenance.refetch(),
+          refetchSettings(),
+        ]);
+        if (result.needsCashClose) {
+          accessToast({
+            title: 'Feche o caixa em andamento',
+            description: 'Depois do fechamento, volte aqui para concluir a preparação com segurança.',
+          });
+          return;
+        }
+        if (result.needsStock) {
+          accessToast({
+            title: 'Cadastre um local de estoque',
+            description: 'Depois, volte ao Caixa para concluir a primeira abertura.',
+          });
+          navigate(localizeAppPath('/estoque', locale));
+        }
+      } catch (error) {
+        accessToast({
+          title: 'Não foi possível preparar o caixa',
+          description: error instanceof Error ? error.message : 'Tente novamente.',
+          variant: 'destructive',
+        });
+      }
+    } : undefined;
     return (
-      <PdvCashV2GateError
-        description={canManageSettings
-          ? 'Escolha qual conta do tipo Caixa representa o dinheiro em espécie da loja.'
-          : 'Peça a um responsável para escolher a conta de dinheiro nas Configurações do PDV.'}
-        actionLabel={canManageSettings ? 'Configurar conta do dinheiro' : undefined}
-        onAction={canManageSettings ? () => navigate(localizeAppPath('/pdv/configuracoes', locale)) : undefined}
-        onRetry={() => {
-          void capability.refetch();
-          void maintenance.refetch();
-          void refetchSettings();
-        }}
+      <PdvCashAccessState
+        kind="setup"
+        description={canPrepareSetup
+          ? 'Prepare automaticamente a conta do dinheiro e o primeiro caixa da loja.'
+          : 'Peça a um administrador ou gestor para preparar a conta do dinheiro e o primeiro caixa da loja.'}
+        actionLabel={canPrepareSetup ? 'Preparar caixa' : undefined}
+        actionPendingLabel="Preparando caixa…"
+        onAction={prepareCash}
+        onRetry={() => Promise.all([
+          capability.refetch(),
+          maintenance.refetch(),
+          refetchSettings(),
+        ])}
       />
     );
   }
@@ -184,6 +221,7 @@ export default function PdvCaixa() {
         userId={user.id}
         canManageOthers={canManageOthers}
         canViewTreasury={canManageBankAccounts}
+        canUseBankAccounts={canUseBankAccounts}
         canManageFinance={canManageFinance}
         canCoverPdvOrders={canCoverPdvOrders}
         canManageSettings={canManageSettings}
@@ -199,6 +237,7 @@ export default function PdvCaixa() {
         userId={user.id}
         canManageOthers={canManageOthers}
         canViewTreasury={canManageBankAccounts}
+        canUseBankAccounts={canUseBankAccounts}
         canManageFinance={canManageFinance}
         canCoverPdvOrders={canCoverPdvOrders}
         canManageSettings={canManageSettings}
@@ -207,33 +246,15 @@ export default function PdvCaixa() {
   }
 
   return (
-    <PdvCashV2GateError
-      description="O contrato de caixa não pôde ser confirmado."
-      onRetry={() => {
-        void capability.refetch();
-        void maintenance.refetch();
-        void refetchSettings();
-      }}
+    <PdvCashAccessState
+      kind="unavailable"
+      description="Os dados do caixa não carregaram. Tente novamente em alguns instantes."
+      onRetry={() => Promise.all([
+        capability.refetch(),
+        maintenance.refetch(),
+        refetchSettings(),
+      ])}
     />
-  );
-}
-
-function PdvCashV2GateError({ description, onRetry, actionLabel, onAction }: { description: string; onRetry: () => void; actionLabel?: string; onAction?: () => void }) {
-  return (
-    <div className="space-y-4">
-      <PageHeader title="Caixa" subtitle="Validação segura do caixa" icon={Banknote} />
-      <Card>
-        <CardContent className="flex flex-col items-center gap-3 px-4 py-10 text-center">
-          <AlertTriangle className="h-12 w-12 text-destructive" />
-          <h2 className="text-lg font-bold text-destructive">Caixa temporariamente bloqueado</h2>
-          <p className="max-w-md text-sm text-muted-foreground">{description}</p>
-          <div className="flex flex-wrap justify-center gap-2">
-            {actionLabel && onAction ? <Button onClick={onAction}><Vault className="h-4 w-4" /> {actionLabel}</Button> : null}
-            <Button variant="outline" onClick={onRetry}><RefreshCw className="h-4 w-4" /> Tentar novamente</Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
   );
 }
 
@@ -859,17 +880,7 @@ function PdvCaixaLegacy() {
     return (
       <div className="space-y-4">
         {header}
-        <div className="grid gap-3 lg:grid-cols-2">
-          <Skeleton className="h-64 w-full" />
-          <Skeleton className="h-64 w-full" />
-        </div>
-        <Skeleton className="h-12 w-full" />
-        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-          {[0, 1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-24 w-full" />
-          ))}
-        </div>
-        <Skeleton className="h-72 w-full" />
+        <PdvPageSkeleton variant="cash" label="Carregando caixa" />
       </div>
     );
   }
@@ -1070,11 +1081,7 @@ function PdvCaixaLegacy() {
               </CardContent>
             </Card>
           ) : detail.isLoading ? (
-            <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-              {[0, 1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-24 w-full" />
-              ))}
-            </div>
+<PdvPageSkeleton variant="metrics" label="Carregando resumo do caixa" />
           ) : (
             <PdvCashSummaryCards
               texts={t.summary}

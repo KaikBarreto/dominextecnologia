@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 export type InventoryIdentifierType = 'sku' | 'barcode' | 'gtin' | 'qr' | 'internal' | 'alias';
@@ -29,6 +29,14 @@ export interface SavedInventoryIdentifier {
   unitFactor: number;
   isPrimary: boolean;
   isActive: boolean;
+}
+
+export interface InventoryIdentifierList {
+  inventoryId: string;
+  materialName: string;
+  sku: string | null;
+  unit: string;
+  items: SavedInventoryIdentifier[];
 }
 
 interface RpcError {
@@ -135,14 +143,41 @@ function projectSavedInventoryIdentifier(payload: unknown): SavedInventoryIdenti
   };
 }
 
+export function projectInventoryIdentifierList(payload: unknown): InventoryIdentifierList {
+  const value = payload && typeof payload === 'object' ? payload as Record<string, unknown> : {};
+  const inventoryId = text(value.inventory_id);
+  const materialName = text(value.material_name);
+  const unit = text(value.unit);
+  if (!inventoryId || !materialName || !unit || !Array.isArray(value.items)) {
+    throw new InventoryIdentifierError(
+      'O servidor retornou uma lista de códigos inválida.',
+      'inventory_identifier_invalid_response',
+    );
+  }
+  return {
+    inventoryId,
+    materialName,
+    sku: text(value.sku),
+    unit,
+    items: value.items.map(projectSavedInventoryIdentifier),
+  };
+}
+
 async function rpc(name: string, args?: Record<string, unknown>) {
   const { data, error } = await callRpc(name, args);
   if (error) throw mapInventoryIdentifierError(error);
   return data;
 }
 
-export function useInventoryIdentifiers() {
+export function useInventoryIdentifiers(inventoryId?: string | null, enabled = true) {
   const queryClient = useQueryClient();
+  const list = useQuery({
+    queryKey: ['inventory-identifiers', inventoryId ?? null],
+    enabled: enabled && Boolean(inventoryId),
+    queryFn: async () => projectInventoryIdentifierList(await rpc('inventory_list_identifiers_v2', {
+      p_inventory_id: inventoryId,
+    })),
+  });
   const resolve = useMutation({
     mutationFn: async ({ code, identifierType }: { code: string; identifierType?: InventoryIdentifierType | null }) =>
       projectResolvedInventoryIdentifier(await rpc('inventory_resolve_identifier_v2', {
@@ -185,5 +220,14 @@ export function useInventoryIdentifiers() {
       void queryClient.invalidateQueries({ queryKey: ['inventory-identifiers', variables.inventoryId] });
     },
   });
-  return { resolve, generateInternal, save };
+  return {
+    list: list.data ?? null,
+    isLoading: list.isLoading,
+    isError: list.isError,
+    error: list.error ?? null,
+    refetch: list.refetch,
+    resolve,
+    generateInternal,
+    save,
+  };
 }

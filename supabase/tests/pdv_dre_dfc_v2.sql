@@ -122,7 +122,8 @@ BEGIN
   INSERT INTO public.companies(id,name,subscription_status)
   VALUES(c,'Fixture W1C','active'),(c2,'Fixture W1C B','active');
   INSERT INTO public.company_settings(company_id,name,timezone)
-  VALUES(c,'Fixture W1C','America/Sao_Paulo');
+  VALUES(c,'Fixture W1C','America/Sao_Paulo')
+  ON CONFLICT (company_id) DO UPDATE SET name=EXCLUDED.name, timezone=EXCLUDED.timezone;
   INSERT INTO public.customers(id,company_id,name)
   VALUES(unknown_customer,c,'Cliente custo desconhecido');
   INSERT INTO public.financial_transactions(
@@ -132,10 +133,12 @@ BEGIN
     (legacy_parent,c2,'entrada','Mãe PDV legada',100,'Venda','2026-11-01',NULL,false,'pdv',NULL),
     (legacy_child1,c2,'entrada','Baixa PDV legada 30',30,'Recebimento parcial','2026-11-02','2026-11-02',true,'pdv',legacy_parent),
     (legacy_child2,c2,'entrada','Baixa PDV legada 70',70,'Recebimento parcial','2026-11-03','2026-11-03',true,'pdv',legacy_parent),
-    (legacy_external,c2,'entrada','Receita externa ao PDV',999,'Venda','2026-11-01','2026-11-01',true,'finance',NULL);
+    (legacy_external,c2,'entrada','Receita externa ao PDV',999,'Venda','2026-11-01','2026-11-01',true,'geral',NULL);
   INSERT INTO public.financial_accounts(id,company_id,name,type,initial_balance,is_active)
   VALUES(cash_account,c,'Cofre','caixa',1000,true),
         (bank_account,c,'Banco','banco',500,true);
+  -- A criação da empresa já fornece um estoque padrão; a fixture escolhe outro explicitamente.
+  UPDATE public.stocks SET is_default=false WHERE company_id IN (c) AND is_default IS TRUE;
   INSERT INTO public.stocks(id,company_id,name,is_default)
   VALUES(stock_id,c,'Principal',true);
   INSERT INTO public.inventory(id,company_id,sku,name,unit,quantity,cost_price)
@@ -415,7 +418,8 @@ BEGIN
   INSERT INTO public.companies(id,name,subscription_status)
   VALUES(c,'Fixture W1C N:N','active');
   INSERT INTO public.company_settings(company_id,name,timezone)
-  VALUES(c,'Fixture W1C N:N','America/Sao_Paulo');
+  VALUES(c,'Fixture W1C N:N','America/Sao_Paulo')
+  ON CONFLICT (company_id) DO UPDATE SET name=EXCLUDED.name, timezone=EXCLUDED.timezone;
   INSERT INTO public.financial_accounts(id,company_id,name,type,initial_balance,is_active)
   VALUES(account_id,c,'Banco N:N','banco',0,true);
   INSERT INTO public.pdv_orders(id,company_id,number,status,subtotal,discount_amount,total)

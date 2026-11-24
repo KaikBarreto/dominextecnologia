@@ -18,8 +18,10 @@ describe('DomiLinkSettingsCard', () => {
   it('fica simples e não inicia fluxo quando o recurso está desligado', () => {
     mocks.state = { ...base, enabled: false, status: 'disabled' };
     render(<DomiLinkSettingsCard />);
-    expect(screen.getByRole('heading', { name: 'Equipamentos do caixa' })).toBeInTheDocument();
-    expect(screen.getByText(/continua funcionando normalmente pelo navegador/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Equipamentos deste computador' })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'DomiLink' })).toBeVisible();
+    expect(screen.getByRole('img', { name: 'DomiLink' }).closest('.domilink-brand')).toHaveClass('domilink-brand--color');
+    expect(screen.getByText(/equipamentos podem ser conectados quando você precisar/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/código do DomiLink/i)).not.toBeInTheDocument();
   });
 

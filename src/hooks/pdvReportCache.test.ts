@@ -48,7 +48,7 @@ describe('invalidação canônica dos relatórios PDV', () => {
     expect(sale.match(/onSuccess: invalidateAfterSale/g)).toHaveLength(2);
     // abertura, fechamento, movimento, reversão e cancelamento.
     expect(legacyCash.match(/onSuccess: invalidateCash/g)).toHaveLength(4);
-    expect(legacyCash).toMatch(/const cancelOrder[\s\S]*?invalidateCash\(\)/);
+    expect(legacyCash).toMatch(/const cancelOrder[\s\S]*?invalidatePdvOrderCancellationCaches\(queryClient\)/);
     // abertura, suprimento/sangria e fechamento v2.
     expect(cashV2.match(/onSuccess: invalidate,/g)).toHaveLength(3);
   });

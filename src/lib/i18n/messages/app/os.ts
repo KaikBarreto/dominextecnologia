@@ -1815,6 +1815,7 @@ export const os = {
     // ── Relatório de OS (OSReport) ────────────────────────────────────────
     osDocumentReport: {
       sectionClient: 'Cliente',
+      labelService: 'Serviço',
       videoAvailableOnline: 'Vídeo disponível no relatório online',
       sectionEquipments: 'Equipamento(s)',
       equipmentsCount: '{n}',
@@ -3545,6 +3546,7 @@ export const os = {
     // ── Service work order report (OSReport) ─────────────────────────────
     osDocumentReport: {
       sectionClient: 'Customer',
+      labelService: 'Service',
       videoAvailableOnline: 'Video available in the online report',
       sectionEquipments: 'Equipment(s)',
       equipmentsCount: '{n}',
@@ -5275,6 +5277,7 @@ export const os = {
     // ── Informe de la OT (OSReport) ───────────────────────────────────────
     osDocumentReport: {
       sectionClient: 'Cliente',
+      labelService: 'Servicio',
       videoAvailableOnline: 'Video disponible en el informe en línea',
       sectionEquipments: 'Equipo(s)',
       equipmentsCount: '{n}',
@@ -7005,6 +7008,7 @@ export const os = {
     // ── Rapport du bon de travail (OSReport) ─────────────────────────────
     osDocumentReport: {
       sectionClient: 'Client',
+      labelService: 'Service',
       videoAvailableOnline: 'Vidéo disponible dans le rapport en ligne',
       sectionEquipments: 'Équipement(s)',
       equipmentsCount: '{n}',

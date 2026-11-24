@@ -22,6 +22,13 @@ BEGIN
   SELECT pg_get_functiondef(
     'public.pdv_cover_existing_order_v2(uuid,uuid,uuid,uuid,jsonb,text)'::regprocedure)
     INTO v_src;
+  -- O wrapper de custódia delega a mesma orquestração; não exigir a cópia
+  -- dos cálculos financeiros/estoque em toda camada de autorização.
+  IF strpos(v_src,'pdv_cover_existing_order_core_015_v2')>0 THEN
+    SELECT pg_get_functiondef(
+      'public.pdv_cover_existing_order_core_015_v2(uuid,uuid,uuid,uuid,jsonb,text)'::regprocedure)
+      INTO v_src;
+  END IF;
   IF strpos(v_src,'pdv_cover_existing_order_base_v2')=0
     OR strpos(v_src,'pdv_complete_delivery_internal_v2')=0
     OR strpos(v_src,'pdv_apply_settlement_fifo_v2')=0
@@ -38,6 +45,12 @@ BEGIN
     RAISE EXCEPTION 'snapshot cashier pode congelar estado intermediario';
   END IF;
   SELECT pg_get_functiondef('public.pdv_list_sales_flow_v2()'::regprocedure) INTO v_src;
+  IF strpos(v_src,'pdv_list_sales_flow_core_015_v2')>0 THEN
+    IF strpos(v_src,'pdv_order_actor_can_access_v2')=0 THEN
+      RAISE EXCEPTION 'wrapper do Kanban perdeu filtro de custódia';
+    END IF;
+    SELECT pg_get_functiondef('public.pdv_list_sales_flow_core_015_v2()'::regprocedure) INTO v_src;
+  END IF;
   IF strpos(v_src,'pdv_counter_context_v2')=0 OR strpos(v_src,'can_access_stock')=0
     OR strpos(v_src,'''draft''')=0 OR strpos(v_src,'''cash''')=0
     OR strpos(v_src,'''pickup''')=0 OR strpos(v_src,'''partial''')=0
@@ -68,6 +81,7 @@ DECLARE
   blocked_item uuid:='f8000000-0000-4000-8000-000000000072';
   session_id uuid; result jsonb; replay jsonb; flow jsonb; blocked boolean;
   delivery_id uuid; before_payments integer; before_deliveries integer;
+  before_financial integer; counted_cash numeric;
 BEGIN
   INSERT INTO auth.users(instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,
     raw_app_meta_data,raw_user_meta_data,created_at,updated_at,confirmation_token,
@@ -82,13 +96,18 @@ BEGIN
     (u,'comercial'::public.app_role),(u_dispatch,'comercial'::public.app_role);
   INSERT INTO public.user_permissions(user_id,permissions,is_active) VALUES
     (u,'["screen:pdv","screen:pdv_orders","screen:pdv_dispatch","screen:pdv_settings","fn:manage_pdv_settings","fn:value_pdv_preorder","fn:convert_pdv_preorder","fn:cover_pdv_order","fn:deliver_pdv_order"]',true),
-    (u_dispatch,'["screen:pdv_dispatch","fn:deliver_pdv_order"]',true);
+    -- Expedição de pedidos recebidos por outro caixa exige escopo nominal
+    -- de custódia; isto não concede tela do caixa nem ação de cobertura.
+    (u_dispatch,'["screen:pdv_dispatch","fn:deliver_pdv_order","fn:operate_other_pdv_cash"]',true);
   INSERT INTO public.company_modules(company_id,module_code) VALUES(c,'pdv');
   INSERT INTO public.financial_accounts(id,company_id,name,type,initial_balance,is_active)
   VALUES(cash_account,c,'Cofre fulfillment','caixa',1000,true);
   INSERT INTO public.company_settings(company_id,name,timezone,pdv_cash_account_id,
     pdv_strict_cash_tracking,pdv_mode,pdv_fulfillment_mode)
-  VALUES(c,'Fixture fulfillment','America/Sao_Paulo',cash_account,true,'balcao','cashier');
+  VALUES(c,'Fixture fulfillment','America/Sao_Paulo',cash_account,true,'balcao','cashier')
+  ON CONFLICT (company_id) DO UPDATE SET name=EXCLUDED.name, timezone=EXCLUDED.timezone, pdv_cash_account_id=EXCLUDED.pdv_cash_account_id, pdv_strict_cash_tracking=EXCLUDED.pdv_strict_cash_tracking, pdv_mode=EXCLUDED.pdv_mode, pdv_fulfillment_mode=EXCLUDED.pdv_fulfillment_mode;
+  -- A criação da empresa já fornece um estoque padrão; a fixture escolhe outro explicitamente.
+  UPDATE public.stocks SET is_default=false WHERE company_id IN (c) AND is_default IS TRUE;
   INSERT INTO public.stocks(id,company_id,name,is_default) VALUES(stock_id,c,'Loja',true);
   INSERT INTO public.stock_access(company_id,stock_id,user_id) VALUES
     (c,stock_id,u),(c,stock_id,u_dispatch);
@@ -105,8 +124,8 @@ BEGIN
   session_id:=(result->>'session_id')::uuid;
 
   INSERT INTO public.pdv_orders(id,company_id,number,salesperson_id,stock_id,status,
-    subtotal,discount_amount,total,contract_version,operation_mode_snapshot)
-  VALUES(order_id,c,1800001,u,stock_id,'aguardando_pagamento',10,0,10,2,'counter');
+    subtotal,discount_amount,total,contract_version,operation_mode_snapshot,target_terminal_id)
+  VALUES(order_id,c,1800001,u,stock_id,'aguardando_pagamento',10,0,10,2,'counter',terminal_id);
   INSERT INTO public.pdv_order_items(id,company_id,order_id,description,quantity,
     unit_price,unit_cost,discount_amount,total,sort_order,item_type,unit_cost_v2,
     contract_version,gross_total_v2,line_discount_amount_v2,order_discount_allocated_v2,unit)
@@ -122,22 +141,37 @@ BEGIN
   delivery_id:=(result->>'delivery_id')::uuid;
   IF result->>'status'<>'entregue' OR delivery_id IS NULL
     OR (result->>'receipt_snapshot_id') IS NULL
-    OR (SELECT snapshot#>>'{fulfillment,status}' FROM public.pdv_order_receipt_snapshots
-      WHERE order_id=fixture.order_id)<>'Retirada concluída'
-    OR NOT EXISTS(SELECT 1 FROM public.pdv_delivery_items
-      WHERE delivery_id=fixture.delivery_id AND order_item_id=item_id AND quantity=1) THEN
+    OR (SELECT receipt.snapshot#>>'{fulfillment,status}' FROM public.pdv_order_receipt_snapshots receipt
+      WHERE receipt.order_id=fixture.order_id)<>'Retirada concluída'
+    OR NOT EXISTS(SELECT 1 FROM public.pdv_delivery_items delivered
+      WHERE delivered.delivery_id=fixture.delivery_id AND delivered.order_item_id=fixture.item_id AND delivered.quantity=1) THEN
     RAISE EXCEPTION 'cobertura cashier nao concluiu entrega/comprovante final';
   END IF;
-  SELECT count(*) INTO before_payments FROM public.pdv_order_payments WHERE order_id=order_id;
-  SELECT count(*) INTO before_deliveries FROM public.pdv_deliveries WHERE order_id=order_id;
+  SELECT count(*) INTO before_payments FROM public.pdv_order_payments payment WHERE payment.order_id=fixture.order_id;
+  SELECT count(*) INTO before_deliveries FROM public.pdv_deliveries delivery WHERE delivery.order_id=fixture.order_id;
   replay:=public.pdv_cover_existing_order_v2(order_id,terminal_id,session_id,cash_account,
     jsonb_build_array(jsonb_build_object('method','dinheiro','amount',10)),
     'fulfillment-cover-0001');
   IF (replay->>'delivery_id')::uuid IS DISTINCT FROM delivery_id
     OR NOT(replay->>'idempotent')::boolean
-    OR before_payments<>(SELECT count(*) FROM public.pdv_order_payments WHERE order_id=order_id)
-    OR before_deliveries<>(SELECT count(*) FROM public.pdv_deliveries WHERE order_id=order_id) THEN
+    OR before_payments<>(SELECT count(*) FROM public.pdv_order_payments payment WHERE payment.order_id=fixture.order_id)
+    OR before_deliveries<>(SELECT count(*) FROM public.pdv_deliveries delivery WHERE delivery.order_id=fixture.order_id) THEN
     RAISE EXCEPTION 'replay duplicou cobertura ou entrega';
+  END IF;
+  -- Fechar a gaveta não revoga a autoria da confirmação já concluída.
+  SELECT COALESCE(sum(entry.amount),0) INTO counted_cash
+    FROM public.pdv_cash_custody_entries entry WHERE entry.session_id=fixture.session_id;
+  PERFORM public.pdv_close_cash_session_v2(session_id,cash_account,counted_cash,
+    'Fechamento fictício para testar replay','fulfillment-close-retry-0001');
+  SELECT count(*) INTO before_financial FROM public.financial_transactions transaction_row WHERE transaction_row.company_id=c;
+  replay:=public.pdv_cover_existing_order_v2(order_id,terminal_id,session_id,cash_account,
+    '[{"method":"dinheiro","amount":10}]'::jsonb,'fulfillment-cover-0001');
+  IF NOT COALESCE((replay->>'idempotent')::boolean,false)
+    OR (replay->>'delivery_id')::uuid IS DISTINCT FROM delivery_id
+    OR before_financial<>(SELECT count(*) FROM public.financial_transactions transaction_row WHERE transaction_row.company_id=c)
+    OR before_payments<>(SELECT count(*) FROM public.pdv_order_payments payment WHERE payment.order_id=fixture.order_id)
+    OR before_deliveries<>(SELECT count(*) FROM public.pdv_deliveries delivery WHERE delivery.order_id=fixture.order_id) THEN
+    RAISE EXCEPTION 'replay após fechamento recriou cobertura, entrega ou financeiro';
   END IF;
   IF (public.pdv_get_sales_flow_order_v2(order_id)#>>'{order,status}')<>'entregue' THEN
     RAISE EXCEPTION 'detalhe seguro do pos-venda cashier indisponivel';
@@ -148,14 +182,18 @@ BEGIN
   IF NOT blocked THEN RAISE EXCEPTION 'fila de expedicao abriu no modo cashier'; END IF;
 
   result:=public.pdv_save_preorder_v2(preorder_id,0,
-    jsonb_build_object('operation_mode','counter','discount_amount',0),
+    jsonb_build_object('operation_mode','counter','discount_amount',0,
+      'stock_id',stock_id),
     jsonb_build_array(jsonb_build_object('id',preorder_item,'item_type','service',
       'description','Serviço orçamento','quantity',1,'unit_price',5,
       'discount_amount',0,'unit_factor',1,'sort_order',0)),
     'fulfillment-preorder-save-0001');
-  result:=public.pdv_forward_preorder_v2(preorder_id,1,'fulfillment-preorder-forward-0001');
-  IF (result->>'stock_id')::uuid IS DISTINCT FROM stock_id THEN
-    RAISE EXCEPTION 'estoque unico nao foi selecionado automaticamente';
+  result:=public.pdv_assign_preorder_terminal_v3(preorder_id,(result->>'revision')::bigint,
+    terminal_id,'fulfillment-preorder-route-0001');
+  result:=public.pdv_forward_preorder_v2(preorder_id,(result->>'revision')::bigint,'fulfillment-preorder-forward-0001');
+  IF (SELECT preorder.stock_id FROM public.pdv_preorders preorder WHERE preorder.id=fixture.preorder_id) IS DISTINCT FROM stock_id
+    OR (SELECT preorder.target_terminal_id FROM public.pdv_preorders preorder WHERE preorder.id=fixture.preorder_id) IS DISTINCT FROM terminal_id THEN
+    RAISE EXCEPTION 'encaminhamento perdeu estoque ou caixa de destino explícitos';
   END IF;
 
   INSERT INTO public.stocks(id,company_id,name,is_default) VALUES(stock_second,c,'Depósito',false);
@@ -172,7 +210,7 @@ BEGIN
   EXCEPTION WHEN not_null_violation THEN blocked:=true; END;
   IF NOT blocked THEN RAISE EXCEPTION 'orcamento ambiguo avancou sem estoque'; END IF;
 
-  DELETE FROM public.stock_access WHERE company_id=c AND stock_id=stock_second;
+  DELETE FROM public.stock_access access_row WHERE access_row.company_id=c AND access_row.stock_id=stock_second;
   result:=public.pdv_save_workflow_settings_v3('balcao','dispatch');
   PERFORM set_config('request.jwt.claims',
     jsonb_build_object('sub',u_dispatch,'role','authenticated')::text,true);
@@ -187,8 +225,8 @@ BEGIN
 
   PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',u,'role','authenticated')::text,true);
   INSERT INTO public.pdv_orders(id,company_id,number,salesperson_id,stock_id,status,
-    subtotal,discount_amount,total,contract_version,operation_mode_snapshot)
-  VALUES(blocked_order,c,1800002,u,stock_id,'aguardando_pagamento',1,0,1,2,'counter');
+    subtotal,discount_amount,total,contract_version,operation_mode_snapshot,target_terminal_id)
+  VALUES(blocked_order,c,1800002,u,stock_id,'aguardando_pagamento',1,0,1,2,'counter',terminal_id);
   INSERT INTO public.pdv_order_items(id,company_id,order_id,description,quantity,
     unit_price,unit_cost,discount_amount,total,sort_order,item_type,unit_cost_v2,
     contract_version,gross_total_v2,line_discount_amount_v2,order_discount_allocated_v2,unit)

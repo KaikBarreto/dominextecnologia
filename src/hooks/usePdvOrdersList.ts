@@ -1,6 +1,8 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { usePdvAuthorizedQueryScope } from '@/hooks/pdvReportCache';
+import { invalidatePdvOrderCancellationCaches } from '@/hooks/pdvOrderCancellationCache';
+import { assertPdvCancellationResult, mapPdvOrderCancellationError } from '@/lib/pdv/orderCancellation';
 
 export type PdvOrderPaymentStatus = 'aguardando' | 'parcial' | 'pago' | 'fiado_aprovado' | 'reembolso_parcial' | 'reembolsado' | 'cancelado';
 export type PdvOrderPickupStatus = 'aguardando_liberacao' | 'liberado' | 'parcial' | 'entregue' | 'cancelada';
@@ -143,4 +145,21 @@ export function usePdvOrdersList(filters: PdvOrdersListFilters) {
 export function usePdvOrderWorkspace(orderId: string | null) {
   const scope = usePdvAuthorizedQueryScope();
   return useQuery({ queryKey: ['pdv', 'orders-workspace', ...scope.key, 'detail', orderId], queryFn: async () => projectPdvOrderWorkspaceDetail(await call('pdv_get_order_workspace_v3', { p_order_id: orderId })), enabled: scope.ready && Boolean(orderId), staleTime: 5_000, gcTime: 0 });
+}
+
+export function usePdvCancelOrder() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ orderId, reason }: { orderId: string; reason: string | null }) => {
+      const { data, error } = await supabase.rpc('pdv_cancel_order_v2', {
+        p_order_id: orderId,
+        p_reason: reason ?? '',
+      });
+      if (error) throw mapPdvOrderCancellationError(error);
+      return assertPdvCancellationResult(data as Record<string, unknown> | null);
+    },
+    onSuccess: async () => {
+      await invalidatePdvOrderCancellationCaches(queryClient);
+    },
+  });
 }

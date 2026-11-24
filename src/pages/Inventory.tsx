@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { fuzzyIncludes, cn } from '@/lib/utils';
 import { useIsMobile, useMediaBreakpoint } from '@/hooks/use-mobile';
@@ -11,6 +12,7 @@ import {
   Edit,
   Archive,
   ArchiveRestore,
+  MapPinOff,
   TrendingUp,
   TrendingDown,
   Boxes,
@@ -142,13 +144,15 @@ const GENERAL_STOCK_UI = {
 } as const;
 
 const ARCHIVE_UI = {
-  'pt-br': { archive: 'Arquivar', restore: 'Desarquivar', archived: 'Arquivado', show: 'Mostrar arquivados', title: 'Arquivar material', description: 'Arquivar "{name}"? O material sai das operações, mas o cadastro e o histórico continuam guardados.', cancel: 'Cancelar', confirm: 'Arquivar' },
+  'pt-br': { archive: 'Arquivar em todos os locais', restore: 'Desarquivar', archived: 'Arquivado', show: 'Mostrar arquivados', title: 'Arquivar material', description: 'Arquivar "{name}"? O material sai das operações de todos os locais da empresa, mas o cadastro e o histórico continuam guardados.', cancel: 'Cancelar', confirm: 'Arquivar' },
   en: { archive: 'Archive', restore: 'Restore', archived: 'Archived', show: 'Show archived', title: 'Archive material', description: 'Archive "{name}"? It leaves daily operations, but its record and history remain saved.', cancel: 'Cancel', confirm: 'Archive' },
   es: { archive: 'Archivar', restore: 'Restaurar', archived: 'Archivado', show: 'Mostrar archivados', title: 'Archivar material', description: '¿Archivar "{name}"? Sale de las operaciones, pero su registro e historial se conservan.', cancel: 'Cancelar', confirm: 'Archivar' },
   fr: { archive: 'Archiver', restore: 'Restaurer', archived: 'Archivé', show: 'Afficher les archivés', title: 'Archiver le matériel', description: 'Archiver « {name} » ? Il quitte les opérations, mais sa fiche et son historique restent conservés.', cancel: 'Annuler', confirm: 'Archiver' },
 } as const;
 
 export default function Inventory() {
+  const { hasPermission, isAdminOrGestor } = useAuth();
+  const canManageInventory = isAdminOrGestor() || hasPermission('fn:manage_inventory');
   const location = useLocation();
   const navigate = useNavigate();
   const inventoryNavigation = location.state as {
@@ -167,6 +171,8 @@ export default function Inventory() {
     isLoading,
     stats,
     setArchived,
+    removeFromStock,
+    stockLevelsLoaded,
     getQuantityForStock,
     getMinQuantityForStock,
     getPresenceForStock,
@@ -188,6 +194,7 @@ export default function Inventory() {
   const [groupFilter, setGroupFilter] = useState<string[]>([]);
   const [lowStockOnly, setLowStockOnly] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  const [localRemoval, setLocalRemoval] = useState<{ item: InventoryItem; stockId: string } | null>(null);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [itemToArchive, setItemToArchive] = useState<InventoryItem | null>(null);
   const [exportFormat, setExportFormat] = useState<ExportFormat | null>(null);
@@ -316,16 +323,14 @@ export default function Inventory() {
 
   const handleEdit = (item: InventoryItem, e?: React.MouseEvent) => {
     e?.stopPropagation();
-    if (isGeneralStockView) {
-      requireSpecificStock();
-      return;
-    }
+    if (!canManageInventory) return;
     setEditingItem(item);
     setDialogOpen(true);
   };
 
   const handleArchiveClick = (item: InventoryItem, e?: React.MouseEvent) => {
     e?.stopPropagation();
+    if (!canManageInventory) return;
     if (item.archived_at) {
       setArchived.mutate({ id: item.id, archived: false });
       return;
@@ -337,6 +342,7 @@ export default function Inventory() {
   /** Abre o dialog de transferência a partir do menu de ações (origem = activeStockId normal). */
   const handleTransferClick = (item: InventoryItem, e?: React.MouseEvent) => {
     e?.stopPropagation();
+    if (!canManageInventory) return;
     setTransferFromStockId(null);
     setTransferItem(item);
     setTransferOpen(true);
@@ -352,13 +358,25 @@ export default function Inventory() {
 
   const handleInlineMovement = (item: InventoryItem, type: InlineMovementType, e?: React.MouseEvent) => {
     e?.stopPropagation();
-    if (isGeneralStockView) {
-      requireSpecificStock();
-      return;
-    }
+    if (!canManageInventory) return;
     setInlineMovementItem(item);
     setInlineMovementType(type);
     setInlineMovementOpen(true);
+  };
+
+  const handleRemoveFromLocation = (item: InventoryItem) => {
+    if (canManageInventory && resolvedStockId) setLocalRemoval({ item, stockId: resolvedStockId });
+  };
+
+  const confirmLocalRemoval = async () => {
+    if (!localRemoval || !canManageInventory || !stockLevelsLoaded) return;
+    try {
+      await removeFromStock.mutateAsync({ inventoryId: localRemoval.item.id, stockId: localRemoval.stockId });
+      setLocalRemoval(null);
+      toast({ title: 'Material removido deste local', description: 'O cadastro e o histórico continuam disponíveis nos demais locais.' });
+    } catch {
+      // A mutation canônica apresenta a orientação sem códigos internos.
+    }
   };
 
   const handleConfirmArchive = async () => {
@@ -856,7 +874,7 @@ export default function Inventory() {
                         const belowMin = isLowStockForActiveStock(item);
                         const itemGroup = groups.find((g) => g.id === item.group_id);
 
-                        const itemActions: ItemAction[] = item.archived_at ? [
+                        const itemActions: ItemAction[] = !canManageInventory ? [] : item.archived_at ? [
                           {
                             key: 'restore',
                             label: archiveUi.restore,
@@ -870,7 +888,7 @@ export default function Inventory() {
                             icon: <Eye className="h-4 w-4" />,
                             onClick: () => handleEdit(item),
                           },
-                          ...(!isGeneralStockView
+                          ...(canManageInventory
                             ? [
                                 {
                                   key: 'edit',
@@ -893,7 +911,7 @@ export default function Inventory() {
                                 },
                               ]
                             : []),
-                          ...(!isGeneralStockView && stocks.length > 1
+                          ...(canManageInventory && stocks.length > 1
                             ? [{
                                 key: 'transfer',
                                 label: t.rowActions.transfer,
@@ -901,6 +919,11 @@ export default function Inventory() {
                                 onClick: () => handleTransferClick(item),
                               }]
                             : []),
+                          ...(resolvedStockId ? [{
+                            key: 'remove-local', label: 'Remover deste local',
+                            icon: <MapPinOff className="h-4 w-4" />, variant: 'destructive' as const,
+                            onClick: () => handleRemoveFromLocation(item),
+                          }] : []),
                           {
                             key: 'archive',
                             label: archiveUi.archive,
@@ -928,7 +951,7 @@ export default function Inventory() {
                         return (
                           <MobileListItem
                             key={item.id}
-                            onClick={item.archived_at ? undefined : () => handleEdit(item)}
+                            onClick={item.archived_at || !canManageInventory ? undefined : () => handleEdit(item)}
                             actions={itemActions}
                             leading={
                               <InventoryItemThumbnail
@@ -1120,21 +1143,25 @@ export default function Inventory() {
                                   </TableCell>
                                   <TableCell>
                                     <RowActionsMenu
-                                      actions={[
-                                        ...(!item.archived_at && !isGeneralStockView
+                                      actions={canManageInventory ? [
+                                        ...(!item.archived_at && canManageInventory
                                           ? [
                                               { label: t.rowActions.edit, icon: Edit, variant: 'edit' as const, onClick: () => handleEdit(item) },
                                               { label: t.rowActions.registerEntrada, icon: TrendingUp, variant: 'default' as const, onClick: () => handleInlineMovement(item, 'entrada') },
                                               { label: t.rowActions.registerSaida, icon: TrendingDown, variant: 'default' as const, onClick: () => handleInlineMovement(item, 'saida') },
                                             ]
                                           : []),
-                                        ...(!item.archived_at && !isGeneralStockView && stocks.length > 1
+                                        ...(!item.archived_at && canManageInventory && stocks.length > 1
                                           ? [{ label: t.rowActions.transfer, icon: ArrowRightLeft, variant: 'default' as const, onClick: () => handleTransferClick(item) }]
                                           : []),
+                                        ...(!item.archived_at && resolvedStockId ? [{
+                                          label: 'Remover deste local', icon: MapPinOff, variant: 'delete' as const,
+                                          onClick: () => handleRemoveFromLocation(item),
+                                        }] : []),
                                         item.archived_at
                                           ? { label: archiveUi.restore, icon: ArchiveRestore, variant: 'default', onClick: () => handleArchiveClick(item) }
                                           : { label: archiveUi.archive, icon: Archive, variant: 'delete', onClick: () => handleArchiveClick(item) },
-                                      ]}
+                                      ] : []}
                                     />
                                   </TableCell>
                                 </TableRow>
@@ -1256,6 +1283,24 @@ export default function Inventory() {
           onOpenTransfer={handleTransferFromBlockedStock}
         />
       )}
+
+      <AlertDialog open={!!localRemoval} onOpenChange={(open) => { if (!open && !removeFromStock.isPending) setLocalRemoval(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover material deste local</AlertDialogTitle>
+            <AlertDialogDescription>
+              Remover “{localRemoval?.item.name}” de “{stocks.find((stock) => stock.id === localRemoval?.stockId)?.name}”? O cadastro, o histórico e os outros locais serão preservados.
+              {localRemoval && getQuantityForStock(localRemoval.item.id, localRemoval.stockId) !== 0 ? ' Transfira ou registre a saída do saldo deste local antes de remover.' : ''}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={removeFromStock.isPending}>Cancelar</AlertDialogCancel>
+            <Button variant="destructive" disabled={!stockLevelsLoaded || removeFromStock.isPending || !localRemoval || getQuantityForStock(localRemoval.item.id, localRemoval.stockId) !== 0} onClick={() => void confirmLocalRemoval()}>
+              {removeFromStock.isPending ? 'Removendo…' : 'Remover deste local'}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Arquivamento preserva Kardex, compras, reservas e relatórios. */}
       <AlertDialog open={archiveDialogOpen} onOpenChange={setArchiveDialogOpen}>

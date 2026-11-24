@@ -10,6 +10,7 @@ import {
   type PdvPurchaseDraft,
   type PdvPurchaseDraftDefaults,
   type PdvPurchaseWorkspace,
+  MAX_PDV_PURCHASE_DRAFTS,
 } from '@/lib/pdv/purchase-drafts';
 import { usePdvServerDraftSync } from '@/hooks/usePdvServerDraftSync';
 import { pdvPurchaseCashDraftStorageSuffix, type PdvPurchaseCashContext } from '@/components/pdv/caixa-v2/pdvPurchaseContext';
@@ -34,6 +35,7 @@ export function usePdvPurchaseDraftWorkspace({
   const [workspace, setWorkspace] = useState<PdvPurchaseWorkspace>(() =>
     createPdvPurchaseWorkspace(defaults),
   );
+  const [localPersistenceIssue, setLocalPersistenceIssue] = useState(false);
   const defaultsRef = useRef(defaults);
   defaultsRef.current = defaults;
   const hydratedKeyRef = useRef<string | null>(null);
@@ -55,9 +57,11 @@ export function usePdvPurchaseDraftWorkspace({
       return;
     }
     let raw: string | null = null;
+    setLocalPersistenceIssue(false);
     try {
       raw = window.localStorage.getItem(storageKey);
     } catch {
+      setLocalPersistenceIssue(true);
       // Storage indisponível: mantém os rascunhos somente em memória.
     }
     setWorkspace(parsePdvPurchaseWorkspace(raw, defaultsRef.current));
@@ -66,24 +70,15 @@ export function usePdvPurchaseDraftWorkspace({
   }, [storageKey]);
 
   useEffect(() => {
-    if (!storageKey || hydratedKeyRef.current !== storageKey) return;
+    if (!storageKey || hydratedKeyRef.current !== storageKey || hydration.key !== storageKey) return;
     try {
       window.localStorage.setItem(storageKey, JSON.stringify(workspace));
+      setLocalPersistenceIssue(false);
     } catch {
+      setLocalPersistenceIssue(true);
       // Persistência é best-effort e nunca pode impedir a compra.
     }
-  }, [storageKey, workspace]);
-
-  useEffect(() => {
-    if (!storageKey) return;
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key === storageKey && event.newValue != null) {
-        setWorkspace(parsePdvPurchaseWorkspace(event.newValue, defaultsRef.current));
-      }
-    };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, [storageKey]);
+  }, [hydration.key, storageKey, workspace]);
 
   useEffect(() => {
     setWorkspace((current) => ({
@@ -130,7 +125,11 @@ export function usePdvPurchaseDraftWorkspace({
     (raw: string) => parsePdvPurchaseWorkspace(raw, defaultsRef.current),
     [],
   );
-  const { markDeleted, syncIssue, serverReady } = usePdvServerDraftSync({
+  const createConflictCopy = useCallback((draft: PdvPurchaseDraft, id: string, sequence: number): PdvPurchaseDraft => ({
+    ...draft, id, sequence, clientRequestId: crypto.randomUUID(),
+    createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+  }), []);
+  const { markDeleted, syncIssue, serverReady, recoveryPersistenceIssue, draftConflicts, resolveDraftConflict, resolvingDraftId, retrySync, lastResolution } = usePdvServerDraftSync({
     storageKey,
     hydratedStorageKey: hydration.key,
     localCacheFound: hydration.cacheFound,
@@ -143,6 +142,7 @@ export function usePdvPurchaseDraftWorkspace({
     workspace,
     setWorkspace,
     parseWorkspace: parseServerWorkspace,
+    createConflictCopy,
   });
   const deleteDraft = useCallback((draftId: string) => {
     markDeleted(draftId);
@@ -158,5 +158,13 @@ export function usePdvPurchaseDraftWorkspace({
     deleteDraft,
     syncIssue,
     serverReady,
+    localPersistenceIssue: localPersistenceIssue || recoveryPersistenceIssue,
+    draftConflicts,
+    resolveDraftConflict,
+    resolvingDraftId,
+    retrySync,
+    lastResolution,
+    canCreateDraft: visibleWorkspace.drafts.length < MAX_PDV_PURCHASE_DRAFTS,
+    creationLimitReached: visibleWorkspace.drafts.length >= MAX_PDV_PURCHASE_DRAFTS,
   };
 }

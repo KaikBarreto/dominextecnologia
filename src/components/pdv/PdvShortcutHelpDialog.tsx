@@ -1,3 +1,4 @@
+import '@/components/pdv/PdvWorkspace.css';
 import { Keyboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
@@ -26,12 +27,12 @@ export function PdvShortcutHelpDialog({
   shortcuts,
 }: PdvShortcutHelpDialogProps) {
   return (
-    <ResponsiveModal
+    <ResponsiveModal drawerClassName="pdv-dialog"
       open={open}
       onOpenChange={onOpenChange}
       title={title}
       description={description}
-      className="sm:max-w-[520px]"
+      className="pdv-dialog sm:max-w-[520px]"
       footer={(
         <Button type="button" className="w-full sm:w-auto" onClick={() => onOpenChange(false)}>
           {closeLabel}

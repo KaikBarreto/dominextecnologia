@@ -1,5 +1,6 @@
+import '@/components/pdv/PdvWorkspace.css';
 import { useState } from "react";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, Ticket } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { SearchField } from "@/components/ui/search-field-actions";
 import { usePdvVoucherSearch } from "@/hooks/usePdvAfterSale";
 
 const statusLabel = {
@@ -33,7 +34,7 @@ export function PdvVoucherSearchDialog({
   const result = usePdvVoucherSearch({ query, customerId, enabled: open });
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="pdv-dialog sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Vouchers do cliente</DialogTitle>
           <DialogDescription>
@@ -41,15 +42,7 @@ export function PdvVoucherSearchDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-2">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              className="pl-9"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Buscar pelo código"
-            />
-          </div>
+          <SearchField value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar pelo código" aria-label="Buscar vouchers do cliente" />
           {result.isLoading ? (
             <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -68,8 +61,10 @@ export function PdvVoucherSearchDialog({
               {result.data.items.map((item) => (
                 <div
                   key={item.voucherId}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3"
+                  className="pdv-voucher-record"
                 >
+                  <div className="pdv-voucher-band"><Ticket className="h-3 w-3" />Crédito da loja</div>
+                  <div className="pdv-voucher-record-body">
                   <div>
                     <strong className="font-mono text-sm">
                       {item.publicCode}
@@ -77,7 +72,7 @@ export function PdvVoucherSearchDialog({
                     <p className="mt-1 text-xs text-muted-foreground">
                       {item.expiresOn
                         ? `Validade ${new Date(`${item.expiresOn}T12:00:00`).toLocaleDateString("pt-BR")}`
-                        : "Sem validade definida"}
+                        : "Sem vencimento"}
                     </p>
                   </div>
                   <div className="text-right">
@@ -97,13 +92,14 @@ export function PdvVoucherSearchDialog({
                       })}
                     </strong>
                   </div>
+                  </div>
                 </div>
               ))}
             </div>
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="cancel" onClick={() => onOpenChange(false)}>
             Fechar
           </Button>
         </DialogFooter>

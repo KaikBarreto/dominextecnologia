@@ -1,0 +1,37 @@
+@import './pdv-tokens.css';
+
+/* Densidade do preview no trabalho operacional; estrutura de cada tela permanece própria.
+   Portais ganham seu próprio escopo, sem depender de um ancestral da página. */
+.pdv-workspace,.pdv-dialog {
+  font-family:var(--pdv-font-family);font-size:var(--pdv-font-size);line-height:var(--pdv-line-height);min-width:0;
+}
+.pdv-workspace .text-sm,.pdv-dialog .text-sm {font-size:var(--app-ui-body-size,13px);line-height:var(--app-ui-line-height,1.5)}
+.pdv-workspace .text-xs,.pdv-dialog .text-xs {line-height:1.5}
+.pdv-workspace [role="tablist"]:not([data-orientation="vertical"]):not(.app-ui-tabs-list) {gap:var(--app-ui-tab-gap,12px)}
+.pdv-workspace [role="tab"]:not(.app-ui-tab),.pdv-dialog [role="tab"]:not(.app-ui-tab) {font-size:var(--app-ui-section-tab-size,13px);font-weight:600;min-height:var(--app-ui-control-height,40px)}
+.pdv-workspace [role="tab"][data-level="screen"]:not(.app-ui-tab),.pdv-dialog [role="tab"][data-level="screen"]:not(.app-ui-tab) {font-size:var(--app-ui-screen-tab-size,14px)}
+.pdv-workspace table th {font-size:var(--app-ui-table-head-size,11px);font-weight:var(--app-ui-table-head-weight,600);letter-spacing:.7px;text-transform:uppercase}
+.pdv-workspace table td {font-size:var(--app-ui-body-size,13px);line-height:var(--app-ui-line-height,1.5);padding-top:var(--app-ui-table-row-padding,12px);padding-bottom:var(--app-ui-table-row-padding,12px)}
+.pdv-workspace table td .tabular-nums {white-space:nowrap}
+.pdv-workspace .pdv-section-heading,.pdv-dialog .pdv-section-heading {font-size:13px;line-height:1.5;font-weight:700;letter-spacing:-.1px}
+.pdv-workspace .pdv-entity-detail {padding:24px}
+.pdv-workspace .pdv-list-toolbar {padding:16px;display:grid;gap:12px}
+.pdv-workspace .pdv-entity-title {font-size:22px;font-weight:800;letter-spacing:-.5px;line-height:1.35}
+.pdv-dialog .pdv-form-section {display:grid;gap:16px;padding-block:4px}
+.pdv-dialog .pdv-form-section + .pdv-form-section {border-top:1px solid hsl(var(--border));padding-top:20px}
+.pdv-dialog .pdv-value-summary {display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:12px;padding:16px 0;border-block:1px solid hsl(var(--border))}
+.pdv-dialog .pdv-value-summary strong {font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pdv-after-sale-entry {padding-block:20px;border-top:1px solid hsl(var(--border));display:grid;gap:16px}
+.pdv-after-sale-history {padding-block:12px;border-bottom:1px solid hsl(var(--border))}
+.pdv-voucher-record {position:relative;overflow:hidden;border:1px dashed hsl(var(--border));border-radius:8px;background:hsl(var(--card));min-width:0}
+.pdv-voucher-band {display:flex;align-items:center;gap:6px;padding:4px 12px;background:#e11d48;color:#fff;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px}
+.pdv-voucher-record-body {display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:12px}
+.pdv-voucher-record .font-mono {overflow-wrap:anywhere}
+@media(max-width:800px){
+  .pdv-workspace .pdv-entity-detail {padding:16px}
+  .pdv-workspace .pdv-entity-title {font-size:20px}
+  .pdv-dialog .pdv-form-section + .pdv-form-section {padding-top:16px}
+}
+
+/* Colunas são seções do fluxo, abaixo da hierarquia do título da página. */
+.pdv-preview-sale .board .colhead h2 {font-size:14px;font-weight:700;line-height:1.5;letter-spacing:0}

@@ -8,6 +8,7 @@ import {
 import { SignedImg } from '@/components/ui/SignedImg';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { PdvProductPlaceholder } from './PdvProductIdentity';
 
 interface PdvProductImagePreviewProps {
   imageUrl: string | null | undefined;
@@ -16,6 +17,8 @@ interface PdvProductImagePreviewProps {
   openLabel: string;
   viewerDescription: string;
   className?: string;
+  /** Miniaturas pequenas do PDV usam apenas o ícone, mantendo o nome acessível. */
+  iconOnlyFallback?: boolean;
 }
 
 const THUMBNAIL_SKELETON_TIMEOUT_MS = 8000;
@@ -32,6 +35,7 @@ export function PdvProductImagePreview({
   openLabel,
   viewerDescription,
   className,
+  iconOnlyFallback = false,
 }: PdvProductImagePreviewProps) {
   const [open, setOpen] = useState(false);
   const hasImage = Boolean(imageUrl?.trim());
@@ -45,6 +49,7 @@ export function PdvProductImagePreview({
   }, [hasImage, imageUrl]);
 
   if (!hasImage) {
+    if (iconOnlyFallback) return <PdvProductPlaceholder label={fallbackLabel} className={cn('pdv-product-thumbnail', className)} />;
     return (
       <SignedImg
         src={imageUrl}
@@ -64,6 +69,7 @@ export function PdvProductImagePreview({
         className={cn(
           'relative shrink-0 overflow-hidden rounded-md transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
           className,
+          iconOnlyFallback && 'pdv-product-thumbnail',
         )}
         aria-label={previewLabel}
         title={previewLabel}

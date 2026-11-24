@@ -1,0 +1,33 @@
+/* O trilho ocupa a margem do carrinho: nunca a coluna de preço/ações.
+   O viewport nativo continua responsável por teclado, touch e scrollIntoView. */
+.pdv-cart-scroll {
+  overflow: hidden;
+}
+.pdv-preview-sale .cartbody.pdv-cart-scroll {
+  overflow: hidden;
+  padding-inline: 20px 8px;
+}
+.pdv-cart-scroll > .pdv-cart-scroll-viewport {
+  width: calc(100% - 12px);
+  outline-offset: -2px;
+  scroll-padding-block: 16px;
+}
+.pdv-cart-scroll-rail {
+  display: flex;
+  width: 6px;
+  right: 0;
+  user-select: none;
+  touch-action: none;
+  padding: 0;
+  background: transparent;
+}
+.pdv-cart-scroll-thumb {
+  flex: 1;
+  min-height: 32px;
+  border-radius: 0;
+  background: hsl(var(--foreground) / 0.42);
+}
+.pdv-cart-scroll-thumb:hover,
+.pdv-cart-scroll-thumb:active {
+  background: hsl(var(--foreground) / 0.66);
+}

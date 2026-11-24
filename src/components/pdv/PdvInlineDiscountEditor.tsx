@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { BadgePercent } from 'lucide-react';
+import { BadgePercent, ChevronDown } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { formatNumber, parseMoney } from '@/lib/format';
@@ -40,6 +41,9 @@ interface PdvInlineDiscountEditorProps {
   onEditingChange?: (editing: boolean) => void;
   /** Gatilho compacto usado na linha do pedido, sem consumir uma linha textual. */
   iconOnly?: boolean;
+  presentation?: 'default' | 'preview';
+  open?: boolean;
+  hideTrigger?: boolean;
 }
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
@@ -57,9 +61,14 @@ export function PdvInlineDiscountEditor({
   onApply,
   onEditingChange,
   iconOnly = false,
+  presentation = 'default',
+  open: controlledOpen,
+  hideTrigger = false,
 }: PdvInlineDiscountEditorProps) {
   const editorRef = useRef<HTMLFormElement>(null);
-  const [editing, setEditing] = useState(false);
+  const [internalEditing, setEditing] = useState(false);
+  const editing = controlledOpen ?? internalEditing;
+  const reduceMotion = useReducedMotion();
   const [mode, setMode] = useState<DiscountMode>('value');
   const [draft, setDraft] = useState('');
   const normalizedApplied = clamp(Number(discountAmount) || 0, 0, Math.max(0, baseAmount));
@@ -80,6 +89,12 @@ export function PdvInlineDiscountEditor({
       minimumFractionDigits: 0,
       maximumFractionDigits: fractionDigits,
     });
+
+  useEffect(() => {
+    if (!controlledOpen) return;
+    setMode('value');
+    setDraft(formatNumber(normalizedApplied, locale, { useGrouping: false, minimumFractionDigits: 0, maximumFractionDigits: currencyFractionDigits }));
+  }, [controlledOpen, normalizedApplied, locale, currencyFractionDigits]);
 
   useEffect(() => {
     if (!editing) return;
@@ -127,6 +142,16 @@ export function PdvInlineDiscountEditor({
     onApply(amount);
     changeEditing(false);
   };
+
+  if (presentation === 'preview') return <>
+    {!hideTrigger && <button type="button" className={variant === 'order' ? 'benefitbtn' : 'itemdiscount'} disabled={baseAmount <= 0} aria-expanded={editing} aria-label={`${editing ? texts.close : texts.add}: ${label}`} onClick={toggleEditor}><span className="row"><BadgePercent />{label}</span><span className="row">{normalizedApplied > 0 ? '− ' + formatCurrency(normalizedApplied) : 'Adicionar'}<ChevronDown /></span></button>}
+    <AnimatePresence initial={false}>{editing && <motion.form ref={editorRef} className="itemeditor" initial={reduceMotion ? false : { height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: reduceMotion ? 0 : 0.34 }} onAnimationComplete={() => { if (editing) { const target = editorRef.current?.closest('[data-cart-item]') ?? editorRef.current; target?.scrollIntoView?.({ block: 'nearest' }); } }} onSubmit={event => { event.preventDefault(); applyDiscount(); }}>
+      <label className="eyebrow">{variant === 'line' ? 'DESCONTO NESTE MATERIAL' : 'DESCONTO NO PEDIDO'}</label>
+      <div className="discountline"><div className="segmented unbacked"><button type="button" aria-pressed={mode === 'percentage'} className={mode === 'percentage' ? 'selected' : ''} onClick={() => changeMode('percentage')}>%</button><button type="button" aria-pressed={mode === 'value'} className={mode === 'value' ? 'selected' : ''} onClick={() => changeMode('value')}>{currencySymbol}</button></div><Input aria-label={mode === 'percentage' ? texts.percentageLabel : texts.valueLabel} inputMode="decimal" autoComplete="off" value={draft} onChange={event => setDraft(event.target.value)} placeholder="0,00" /><button type="submit" className="btn primary" disabled={!canApply}>{texts.apply}</button></div>
+      {exceedsLimit && <small className="text-destructive">{mode === 'percentage' ? texts.percentageLimit : texts.valueLimit}</small>}
+      {normalizedApplied > 0 && <button type="button" className="textremove" onClick={() => { onApply(0); changeEditing(false); }}>{texts.remove}</button>}
+    </motion.form>}</AnimatePresence>
+  </>;
 
   return (
     <div className={cn(

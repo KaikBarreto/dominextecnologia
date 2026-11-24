@@ -49,7 +49,7 @@ import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableTableHead } from '@/components/ui/SortableTableHead';
-import { useIsMobile, useMediaBreakpoint } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
@@ -300,16 +300,29 @@ export function TransactionListPanel({
   // Lote aguardando confirmação de "desfazer".
   const [undoTarget, setUndoTarget] = useState<PaymentGroupInfo | null>(null);
   const isMobile = useIsMobile();
-  // A tabela vive ao lado da coluna de contas; breakpoints tradicionais do
-  // viewport exibiam colunas que não cabiam na largura REAL do detalhe.
-  // Remover as células do DOM (em vez de só `display:none`) também evita que
-  // `table-layout: fixed` reserve colunas invisíveis e esmague a descrição.
-  const isBelowAccountColumnWidth = useMediaBreakpoint(1280);
-  const isBelowBalanceColumnWidth = useMediaBreakpoint(1440);
-  const isBelowUserColumnWidth = useMediaBreakpoint(2000);
-  const showDesktopAccountColumn = !hideAccountColumn && !isBelowAccountColumnWidth;
-  const showDesktopBalanceColumn = !!balanceAfterById && !isBelowBalanceColumnWidth;
-  const showDesktopUserColumn = !isBelowUserColumnWidth;
+  // Colunas acompanham o painel real, que também pode viver ao lado de contas.
+  // Uma viewport larga não garante espaço para a descrição nesta composição.
+  const [desktopTableElement, setDesktopTableElement] = useState<HTMLDivElement | null>(null);
+  const [desktopTableWidth, setDesktopTableWidth] = useState(0);
+  useEffect(() => {
+    if (!desktopTableElement) return;
+    const measure = () => setDesktopTableWidth(desktopTableElement.clientWidth);
+    measure();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+    observer?.observe(desktopTableElement);
+    window.addEventListener('resize', measure);
+    return () => { observer?.disconnect(); window.removeEventListener('resize', measure); };
+  }, [desktopTableElement]);
+  const showDesktopAccountColumn = !hideAccountColumn && desktopTableWidth >= 960;
+  const showDesktopBalanceColumn = !!balanceAfterById && desktopTableWidth >= 752;
+  const showDesktopUserColumn = desktopTableWidth >= 1280;
+  // Cada coluna conserva uma largura operacional; painéis menores que o núcleo
+  // podem rolar, em vez de comprimir descrições e valores até se sobreporem.
+  const desktopTableMinWidth = 576
+    + (type !== 'all' && canDeleteFinance ? 40 : 0)
+    + (showDesktopAccountColumn ? 192 : 0)
+    + (showDesktopBalanceColumn ? 176 : 0)
+    + (showDesktopUserColumn ? 64 : 0);
   // `timezone`: fuso da empresa. Vai pros geradores de PDF/Excel pra o carimbo
   // "gerado em" e o nome do arquivo saírem no relógio da empresa, e não no do
   // aparelho de quem exportou.
@@ -1414,8 +1427,8 @@ export function TransactionListPanel({
       ) : (
         <Card className="rounded-2xl shadow-sm overflow-hidden">
           <CardContent className="p-0">
-            <div className="min-w-0 [&>div]:overflow-x-hidden">
-              <Table className="table-fixed">
+            <div ref={setDesktopTableElement} data-financial-table-viewport role="region" aria-label="Tabela de movimentações financeiras" tabIndex={0} className="min-w-0 max-w-full overflow-x-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [&>div]:overflow-visible">
+              <Table className="table-fixed" style={{ minWidth: desktopTableMinWidth }}>
                 <TableHeader>
                   <TableRow>
                     {type !== 'all' && canDeleteFinance && (
@@ -1424,16 +1437,16 @@ export function TransactionListPanel({
                       </SortableTableHead>
                     )}
                     <SortableTableHead sortKey="transaction_date" sortConfig={sortConfig} onSort={handleSort} className="w-[7rem] whitespace-nowrap">{fin.transactionList.table.date}</SortableTableHead>
-                    <SortableTableHead sortKey="description" sortConfig={sortConfig} onSort={handleSort}>{fin.transactionList.table.description}</SortableTableHead>
+                    <SortableTableHead sortKey="description" sortConfig={sortConfig} onSort={handleSort} className="w-[15rem]">{fin.transactionList.table.description}</SortableTableHead>
                     {showDesktopAccountColumn && (
                       <SortableTableHead sortKey="account_id" sortConfig={sortConfig} onSort={handleSort} className="w-[12rem]">{fin.transactionList.table.account}</SortableTableHead>
                     )}
-                    <SortableTableHead sortKey="amount" sortConfig={sortConfig} onSort={handleSort} className="w-[9rem] text-right">{fin.transactionList.table.amount}</SortableTableHead>
+                    <SortableTableHead sortKey="amount" sortConfig={sortConfig} onSort={handleSort} className="w-[10rem] text-right">{fin.transactionList.table.amount}</SortableTableHead>
                     {showDesktopBalanceColumn && (
-                      <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[10rem] whitespace-nowrap text-right">{resolvedBalanceAfterLabel}</SortableTableHead>
+                      <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[11rem] whitespace-nowrap text-right">{resolvedBalanceAfterLabel}</SortableTableHead>
                     )}
                     {showDesktopUserColumn && <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[4rem] text-center">{fin.transactionList.table.user}</SortableTableHead>}
-                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[5rem] text-center">{fin.transactionList.table.actions}</SortableTableHead>
+                    <SortableTableHead sortKey="" sortConfig={sortConfig} onSort={() => {}} className="w-[4rem] text-center">{fin.transactionList.table.actions}</SortableTableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1552,7 +1565,7 @@ export function TransactionListPanel({
                             {!group && (areDetailsExpanded
                               ? <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                               : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />)}
-                            <span className="min-w-0 truncate" title={t.description}>{t.description}</span>
+                            <span className="min-w-0 break-words [overflow-wrap:anywhere]" title={t.description}>{t.description}</span>
                             {group && (
                               <Badge className="bg-primary text-white text-[10px] px-1.5 py-0">
                                 {fin.transactionList.paymentGroup.badge}
@@ -1600,7 +1613,7 @@ export function TransactionListPanel({
                                   title={(t as any).account.name}
                                 >
                                   <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: (t as any).account.color }} />
-                                  <span className="truncate">
+                                  <span className="break-words [overflow-wrap:anywhere]">
                                     {(t as any).account.type === 'caixa'
                                       ? `${(t as any).account.name} ${fin.transactionList.cashSuffix}`
                                       : (t as any).account.name}
@@ -1624,7 +1637,7 @@ export function TransactionListPanel({
                               title={(t as any).account.name}
                             >
                               <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: (t as any).account.color }} />
-                              <span className="min-w-0 truncate">
+                              <span className="min-w-0 break-words [overflow-wrap:anywhere]">
                                 {(t as any).account.type === 'caixa' ? `${(t as any).account.name} ${fin.transactionList.cashSuffix}` : (t as any).account.name}
                               </span>
                             </span>

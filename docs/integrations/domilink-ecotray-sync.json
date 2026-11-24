@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "repository": "EcoSistemaSaaS",
+    "directory": "ecotray",
+    "revision": "e9629055fb3e8f9e87adfdb12f45f09066250c28",
+    "files": {
+      "print_manager.py": "e85a0fadae46ec83b8c31169ef7159b4d333a3f0c2b5f86f8838ca3c3efd861a",
+      "protocols/__init__.py": "e4933fd3ce1a86d81420a1ebf43eb5ef824442317a5255a399281cdcd65f49e1",
+      "protocols/filizola.py": "3c3cac2eff2be0362f32c57a0d295acb2913ce08dd4149d19b632acef0ef0d9d",
+      "protocols/generic.py": "c09ec3bfff11ecddb3a85e24480c4620234cea8c6d3e0d23622001229cda319a",
+      "protocols/toledo.py": "2f8c030df69fc4ed61d925e0ca1c71b867de564aab5df7d7f5fc2aa3a994107e",
+      "protocols/upx.py": "54ef503b962e7f3353488220049bb7d1488a9ca21cd9d901dbf6e8d99b8a6ac5",
+      "requirements.txt": "7cb995cb8c34c1ee27b96bf71504f325fddca51cf44d9b71242c43f02af32ad3",
+      "scale_reader.py": "6d4d417de0ca09a39e97766404b618402c2b38b726087510934dfe3fe3fbe4cc",
+      "test_compute_target_w.py": "bbbd476285557f6f621fe27a4f2cbea8e9fb906a46f8013fed872e058babc006",
+      "test_upx.py": "cbbda8f5dbd8e82b6f96bea6af891dfe7126275a7d69b4b27338444c2c6bebbb"
+    }
+  },
+  "target": {
+    "repository": "Dominex",
+    "directory": "services/domilink",
+    "files": {
+      "services/domilink/config.example.toml": "9844402c700005674dc5dd6c857a7ef9b2200db4a3ea0c3f8d2c2d1b336d05b2",
+      "services/domilink/pyproject.toml": "31089a1c050e7999f561288a4754ab2c6a48fa41d4cf1a837e04fb26de6a99bb",
+      "services/domilink/src/domilink/adapters/protocols/__init__.py": "432941688692ef447810149857077b268bf7ce6d7b0959828a255107d0940ea7",
+      "services/domilink/src/domilink/adapters/protocols/filizola.py": "ab61e23c3345ae6d8a681f17dca606659f764aaef16478c909ae9aff7c6fbf63",
+      "services/domilink/src/domilink/adapters/protocols/generic.py": "8cb73bc45c000bdccf8add7ce4ea0f2924b5d0ef3a41d042ff9a46007bd7eb1c",
+      "services/domilink/src/domilink/adapters/protocols/toledo.py": "e0681719d10036dff88482a01102508343e04d8be2f844346012f616d62d2f8d",
+      "services/domilink/src/domilink/adapters/protocols/upx.py": "fe094c707ca92ee672457bba11df7e612faab672aa78730baad612537ebed83a",
+      "services/domilink/src/domilink/adapters/serial.py": "1a7dfda72a28d7541d4337be5174c35f20bf143447781c2d560d146fceee90a5",
+      "services/domilink/src/domilink/adapters/system_pdf.py": "eb4ecebad199aa4a77224452aeb001811c552f401fb6d661b605c17d9d6e6cff",
+      "services/domilink/src/domilink/adapters/windows_gdi.py": "c366cc0a0e52e0b2682f385fdae0b076c552ba8a36894c7a90aa851b551f41f8",
+      "services/domilink/src/domilink/api.py": "8e02d8bf737e52ea448c903a8d6bd80c30ad0d3fdd4f5f7d33b468e801c6288b",
+      "services/domilink/src/domilink/cli.py": "d7b8c97e6792208efe2c4ea52889fae57ab231ab05e96592c5e3cda5a7b50144",
+      "services/domilink/src/domilink/discovery.py": "fbe376686e294e078bca22cc6baf17b647034a8855dfb937694c8227d0d4a5b1",
+      "services/domilink/src/domilink/jobs.py": "0dde2b50e99039e5b34d608a7948786f5af728cebdab7bc3943b5decfa57ad59",
+      "services/domilink/src/domilink/registry.py": "c40822414318b853247bceaf73392d17efeb153e16848a603525d39dd087f6dc",
+      "services/domilink/tests/test_ecotray_drivers.py": "e514aafe546b131e4c22c5b999f379d3fa59fc416204974781cb383e5731528a"
+    }
+  },
+  "adaptations": [
+    {
+      "source": [
+        "print_manager.py",
+        "test_compute_target_w.py"
+      ],
+      "target": [
+        "services/domilink/src/domilink/adapters/windows_gdi.py",
+        "services/domilink/src/domilink/adapters/system_pdf.py"
+      ],
+      "notes": "Dimensionamento térmico e impressão GDI opcionais; mantém API/fila/autenticação do DomiLink. Backend externo requer licença compatível para distribuição."
+    },
+    {
+      "source": [
+        "scale_reader.py",
+        "protocols/__init__.py",
+        "protocols/upx.py",
+        "protocols/toledo.py",
+        "protocols/filizola.py",
+        "protocols/generic.py",
+        "test_upx.py"
+      ],
+      "target": [
+        "services/domilink/src/domilink/adapters/serial.py",
+        "services/domilink/src/domilink/adapters/protocols/__init__.py",
+        "services/domilink/src/domilink/adapters/protocols/upx.py",
+        "services/domilink/src/domilink/adapters/protocols/toledo.py",
+        "services/domilink/src/domilink/adapters/protocols/filizola.py",
+        "services/domilink/src/domilink/adapters/protocols/generic.py"
+      ],
+      "notes": "Parsers preservam delimitadores, sinal e unidade; descoberta passiva; sem varredura ativa automática de portas. USB/HID usa navegador; serial tem adaptador próprio."
+    },
+    {
+      "source": [
+        "requirements.txt"
+      ],
+      "target": [
+        "services/domilink/pyproject.toml",
+        "services/domilink/src/domilink/discovery.py",
+        "services/domilink/src/domilink/cli.py"
+      ],
+      "notes": "Dependências de hardware opcionais; fronteira HTTP própria e configuração local explícita."
+    }
+  ],
+  "review": {
+    "at": "2026-11-14T22:54:03.379734+00:00",
+    "summary": "Drivers EcoTray revisados; UPX e dimensionamento termico equivalentes por AST. 63 testes Python, Ruff, mypy e lock validados. Fronteira HTTP e isolamento de sessao revisados independentemente; hardware fisico nao homologado."
+  }
+}

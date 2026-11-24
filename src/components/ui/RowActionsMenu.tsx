@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { MoreVertical } from 'lucide-react';
+import { MoreHorizontal, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -27,6 +27,8 @@ interface RowActionsMenuProps {
   actions: RowAction[];
   align?: 'start' | 'end' | 'center';
   triggerClassName?: string;
+  triggerVariant?: 'default' | 'plain';
+  onOpenChange?: (open: boolean) => void;
   ariaLabel?: string;
   /**
    * Quando passado, o trigger vira um botão com texto ao lado do ícone (visível
@@ -54,6 +56,8 @@ export function RowActionsMenu({
   actions,
   align = 'end',
   triggerClassName,
+  triggerVariant = 'default',
+  onOpenChange,
   ariaLabel,
   label,
 }: RowActionsMenuProps) {
@@ -63,6 +67,8 @@ export function RowActionsMenu({
   const [open, setOpen] = useState(false);
   const openTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const changeOpen = (next: boolean) => { setOpen(next); onOpenChange?.(next); };
 
   if (visible.length === 0) return null;
 
@@ -76,19 +82,19 @@ export function RowActionsMenu({
   const scheduleOpen = () => {
     cancelTimers();
     if (open) return;
-    openTimerRef.current = setTimeout(() => setOpen(true), HOVER_OPEN_DELAY_MS);
+    openTimerRef.current = setTimeout(() => changeOpen(true), HOVER_OPEN_DELAY_MS);
   };
 
   const scheduleClose = () => {
     cancelTimers();
-    closeTimerRef.current = setTimeout(() => setOpen(false), HOVER_CLOSE_DELAY_MS);
+    closeTimerRef.current = setTimeout(() => changeOpen(false), HOVER_CLOSE_DELAY_MS);
   };
 
   return (
     // modal={false}: evita o `pointer-events: none` que o Radix aplica fora do
     // conteúdo ao abrir — ele disparava um pointerleave falso no trigger,
     // fechando e reabrindo o menu (o "piscar 2x" no hover).
-    <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
+    <DropdownMenu open={open} onOpenChange={changeOpen} modal={false}>
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
@@ -96,6 +102,7 @@ export function RowActionsMenu({
           className={cn(
             'active:scale-95 transition-transform',
             label ? 'h-8 gap-1.5 px-2' : 'h-8 w-8',
+            triggerVariant === 'plain' && 'border-0 bg-transparent shadow-none hover:bg-primary hover:text-primary-foreground',
             triggerClassName,
           )}
           aria-label={resolvedAriaLabel}
@@ -103,7 +110,7 @@ export function RowActionsMenu({
           onPointerEnter={(e) => { if (e.pointerType === 'mouse') scheduleOpen(); }}
           onPointerLeave={(e) => { if (e.pointerType === 'mouse') scheduleClose(); }}
         >
-          <MoreVertical className="h-4 w-4" />
+          {triggerVariant === 'plain' ? <MoreHorizontal className="h-4 w-4" /> : <MoreVertical className="h-4 w-4" />}
           {label && <span className="hidden sm:inline">{label}</span>}
         </Button>
       </DropdownMenuTrigger>
@@ -122,7 +129,7 @@ export function RowActionsMenu({
               onClick={(e) => {
                 e.stopPropagation();
                 action.onClick(e);
-                setOpen(false);
+                changeOpen(false);
               }}
               disabled={action.disabled}
               className={cn(
