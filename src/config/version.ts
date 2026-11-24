@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.59";
+export const APP_VERSION = "1.41.60";
 
 export const VERSION_NOTES =
-  "Usuários internos com permissões ativas voltam a entrar normalmente, e falhas inesperadas mostram uma orientação mais clara para recuperação.";
+  "Vendas canceladas deixam de somar receita e custo nos relatórios da loja, preservando entregas parciais e devoluções.";

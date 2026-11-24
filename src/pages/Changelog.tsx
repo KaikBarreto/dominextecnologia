@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.60',
+    date: '24 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Totais corretos após cancelar uma venda',
+        category: 'correcao',
+        description: 'Vendas desfeitas deixam de somar receita e custo no painel e nos relatórios da loja, inclusive no período original da venda. Entregas mantidas em cancelamentos parciais, devoluções e seus estornos continuam aparecendo nas datas corretas.',
+      },
+    ],
+  },
+  {
     version: '1.41.59',
     date: '24 de novembro de 2026',
     type: 'patch',
