@@ -217,7 +217,14 @@ export function CustomerDetailContent() {
   // id real do cliente (alimenta os hooks abaixo).
   const id = customer?.id ?? (isUuid(routeParam) ? routeParam : undefined);
 
-  const { serviceOrders, createServiceOrder, deleteServiceOrder } = useServiceOrders();
+  const {
+    serviceOrders,
+    isLoading: serviceOrdersLoading,
+    error: serviceOrdersError,
+    refetchServiceOrders,
+    createServiceOrder,
+    deleteServiceOrder,
+  } = useServiceOrders();
   const customerPortalCalls = usePortalCalls({ customerId: id, enabled: Boolean(id) });
   const { submitTask } = useTaskSubmit();
   const { transactions, createTransaction, updateTransaction, deleteTransaction } = useFinancial();
@@ -1504,7 +1511,25 @@ export function CustomerDetailContent() {
               {t.newTask}
             </Button>
           </div>
-          {customerTasks.length === 0 ? (
+          {serviceOrdersLoading ? (
+            <div className="space-y-3" role="status" aria-label="Carregando tarefas do cliente">
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+            </div>
+          ) : serviceOrdersError ? (
+            <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="font-medium text-destructive">Não foi possível carregar as tarefas.</p>
+                  <p className="text-sm text-muted-foreground">Tente novamente para confirmar as tarefas deste cliente.</p>
+                </div>
+                <Button variant="outline" onClick={() => void refetchServiceOrders()}>
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  Tentar novamente
+                </Button>
+              </div>
+            </div>
+          ) : customerTasks.length === 0 ? (
             <EmptyState
               size="compact"
               icon={<CheckSquare className="h-10 w-10" />}
@@ -2097,7 +2122,6 @@ export function CustomerDetailContent() {
             await submitTask(payload, editingTask);
           } finally {
             setCreatingTask(false);
-            setEditingTask(null);
           }
         }}
       />

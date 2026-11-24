@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.65',
+    date: '24 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Tarefas do cliente mais confiáveis',
+        category: 'correcao',
+        description: 'Ao criar ou editar uma tarefa, uma falha não fecha mais o formulário nem apaga o que foi preenchido, permitindo tentar novamente. A ficha do cliente também diferencia carregamento, ausência de tarefas e falha de consulta, com opção de recarregar.',
+      },
+    ],
+  },
+  {
     version: '1.41.64',
     date: '24 de novembro de 2026',
     type: 'patch',

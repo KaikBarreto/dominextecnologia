@@ -1169,7 +1169,6 @@ export function LeadDetailModal({ open, onOpenChange, lead, onEdit, onStageChang
           await submitTask(data, editingTask);
         } finally {
           setCreatingTask(false);
-          setEditingTask(null);
         }
       }}
     />

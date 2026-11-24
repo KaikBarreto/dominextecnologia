@@ -138,7 +138,7 @@ export function useTaskSubmit() {
           title: 'Revise a recorrência',
           description: describeRecurrenceIssue(recurrenceIssue),
         });
-        return;
+        throw new Error(describeRecurrenceIssue(recurrenceIssue));
       }
 
       // ─────────────────── EDIÇÃO ───────────────────
@@ -160,35 +160,30 @@ export function useTaskSubmit() {
         const groupId = wantsRecurrence ? (existingGroupId || crypto.randomUUID()) : null;
 
         // 1) Atualiza a própria tarefa editada (campos + recorrência) via hook.
-        try {
-          await updateServiceOrder.mutateAsync({
-            id: editId,
-            task_title: data.task_title,
-            task_type_id: data.task_type_id || null,
-            service_type_id: data.service_type_id || null,
-            customer_id: data.customer_id || null,
-            technician_id: data.technician_id || null,
-            team_id: data.team_id || null,
-            scheduled_date: baseDate,
-            scheduled_time: data.scheduled_time || null,
-            duration_minutes: data.duration_minutes || 60,
-            description: data.description || null,
-            recurrence_type: wantsRecurrence ? data.recurrence_type : null,
-            recurrence_interval: wantsRecurrence ? data.recurrence_interval : null,
-            recurrence_end_date: wantsRecurrence ? data.recurrence_end_date : null,
-            recurrence_indeterminate: wantsRecurrence ? (data.recurrence_indeterminate || false) : false,
-            recurrence_weekdays: wantsRecurrence ? weekdaysToPersist(data) : null,
-            recurrence_group_id: groupId,
-            assignee_user_ids: data.assignee_user_ids || [],
-            // Onda E — mesmo par replicado na própria ocorrência editada (ver
-            // aviso na doc de insertTaskOccurrences, acima).
-            lead_id: data.lead_id ?? null,
-            show_in_schedule: showInSchedule,
-          } as any);
-        } catch (error) {
-          // O próprio updateServiceOrder já mostra o toast de erro.
-          return;
-        }
+        await updateServiceOrder.mutateAsync({
+          id: editId,
+          task_title: data.task_title,
+          task_type_id: data.task_type_id || null,
+          service_type_id: data.service_type_id || null,
+          customer_id: data.customer_id || null,
+          technician_id: data.technician_id || null,
+          team_id: data.team_id || null,
+          scheduled_date: baseDate,
+          scheduled_time: data.scheduled_time || null,
+          duration_minutes: data.duration_minutes || 60,
+          description: data.description || null,
+          recurrence_type: wantsRecurrence ? data.recurrence_type : null,
+          recurrence_interval: wantsRecurrence ? data.recurrence_interval : null,
+          recurrence_end_date: wantsRecurrence ? data.recurrence_end_date : null,
+          recurrence_indeterminate: wantsRecurrence ? (data.recurrence_indeterminate || false) : false,
+          recurrence_weekdays: wantsRecurrence ? weekdaysToPersist(data) : null,
+          recurrence_group_id: groupId,
+          assignee_user_ids: data.assignee_user_ids || [],
+          // Onda E — mesmo par replicado na própria ocorrência editada (ver
+          // aviso na doc de insertTaskOccurrences, acima).
+          lead_id: data.lead_id ?? null,
+          show_in_schedule: showInSchedule,
+        } as any);
 
         // Sem recorrência ativada e sem série anterior → UPDATE simples, terminou.
         if (!wantsRecurrence && !existingGroupId) {
@@ -231,9 +226,10 @@ export function useTaskSubmit() {
           }
 
           toast({ title: 'Série atualizada!', description: 'Esta tarefa e as próximas foram atualizadas.' });
-          queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+          await queryClient.invalidateQueries({ queryKey: ['service-orders'] });
         } catch (error) {
           toast({ variant: 'destructive', title: 'Erro ao atualizar a série', description: getErrorMessage(error) });
+          throw error;
         }
         return;
       }
@@ -262,9 +258,10 @@ export function useTaskSubmit() {
         const company_id = await getCurrentUserCompanyId();
         const count = await insertTaskOccurrences(data, dates, groupId, company_id);
         toast({ title: `${count} tarefa(s) criada(s)!` });
-        queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+        await queryClient.invalidateQueries({ queryKey: ['service-orders'] });
       } catch (error) {
         toast({ variant: 'destructive', title: 'Erro ao criar tarefa', description: getErrorMessage(error) });
+        throw error;
       }
     },
     [serviceOrders, updateServiceOrder, deleteServiceOrder, insertTaskOccurrences, toast, queryClient],

@@ -1322,7 +1322,6 @@ export default function CRM() {
           await submitTask(data, editingTask);
         } finally {
           setSavingTask(false);
-          setEditingTask(null);
         }
       }}
     />

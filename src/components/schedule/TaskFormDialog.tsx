@@ -201,37 +201,42 @@ export function TaskFormDialog({
     // este bloqueio nunca alcança os outros chamadores).
     if (isCrmTask && showInSchedule && !scheduledDate) return;
 
-    await onSubmit({
-      task_title: title.trim(),
-      customer_id: customerId || undefined,
-      task_type_id: taskTypeId || undefined,
-      technician_id: selectedUserIds[0] || undefined,
-      team_id: selectedTeamIds[0] || undefined,
-      assignee_user_ids: selectedUserIds,
-      assignee_team_ids: selectedTeamIds,
-      scheduled_date: scheduledDate || undefined,
-      scheduled_time: scheduledTime || undefined,
-      duration_minutes: duration,
-      description: description || undefined,
-      recurrence_type: recurrenceEnabled ? recurrenceType : undefined,
-      recurrence_interval: recurrenceEnabled ? recurrenceInterval : undefined,
-      // "Contínua" ignora a data final (o motor materializa até o horizonte).
-      recurrence_end_date: recurrenceEnabled && !recurrenceIndeterminate && recurrenceEndDate ? recurrenceEndDate : undefined,
-      recurrence_indeterminate: recurrenceEnabled ? recurrenceIndeterminate : undefined,
-      // Semanal também usa os dias marcados (a cada N semanas, em cada dia).
-      // Nenhum dia marcado = 1 por semana no dia da data inicial, como sempre foi.
-      recurrence_weekdays:
-        recurrenceEnabled && (recurrenceType === 'custom' || recurrenceType === 'weekly')
-          ? recurrenceWeekdays
-          : undefined,
-      // Onda E — sempre repassados (não só quando isCrmTask): tarefa comum
-      // nunca teve leadId, então isso vira `lead_id: null` sem efeito nenhum.
-      // Ver aviso em useTaskSubmit.ts sobre por que os dois têm que viajar
-      // juntos em toda chamada, inclusive na regeneração de série.
-      lead_id: leadId,
-      show_in_schedule: showInSchedule,
-    });
-    onOpenChange(false);
+    try {
+      await onSubmit({
+        task_title: title.trim(),
+        customer_id: customerId || undefined,
+        task_type_id: taskTypeId || undefined,
+        technician_id: selectedUserIds[0] || undefined,
+        team_id: selectedTeamIds[0] || undefined,
+        assignee_user_ids: selectedUserIds,
+        assignee_team_ids: selectedTeamIds,
+        scheduled_date: scheduledDate || undefined,
+        scheduled_time: scheduledTime || undefined,
+        duration_minutes: duration,
+        description: description || undefined,
+        recurrence_type: recurrenceEnabled ? recurrenceType : undefined,
+        recurrence_interval: recurrenceEnabled ? recurrenceInterval : undefined,
+        // "Contínua" ignora a data final (o motor materializa até o horizonte).
+        recurrence_end_date: recurrenceEnabled && !recurrenceIndeterminate && recurrenceEndDate ? recurrenceEndDate : undefined,
+        recurrence_indeterminate: recurrenceEnabled ? recurrenceIndeterminate : undefined,
+        // Semanal também usa os dias marcados (a cada N semanas, em cada dia).
+        // Nenhum dia marcado = 1 por semana no dia da data inicial, como sempre foi.
+        recurrence_weekdays:
+          recurrenceEnabled && (recurrenceType === 'custom' || recurrenceType === 'weekly')
+            ? recurrenceWeekdays
+            : undefined,
+        // Onda E — sempre repassados (não só quando isCrmTask): tarefa comum
+        // nunca teve leadId, então isso vira `lead_id: null` sem efeito nenhum.
+        // Ver aviso em useTaskSubmit.ts sobre por que os dois têm que viajar
+        // juntos em toda chamada, inclusive na regeneração de série.
+        lead_id: leadId,
+        show_in_schedule: showInSchedule,
+      });
+      onOpenChange(false);
+    } catch {
+      // O chamador apresenta o erro de domínio. Mantemos o formulário aberto
+      // para preservar os dados digitados e permitir uma nova tentativa.
+    }
   };
 
   // Recorrência exige uma data-base pra ancorar a série (generateRecurrenceDates).
