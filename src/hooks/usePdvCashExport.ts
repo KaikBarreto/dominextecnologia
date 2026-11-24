@@ -1,3 +1,4 @@
+import { usePdvAuthorizedQueryScope } from '@/hooks/pdvReportCache';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserCompany } from '@/hooks/useUserCompany';
@@ -179,9 +180,10 @@ export async function fetchPdvCashPeriodExport(params: PdvCashExportPeriodParams
 /** Nome da empresa para o cabeçalho do documento. */
 export function usePdvCashExportCompanyName(enabled: boolean): string {
   const { companyId } = useUserCompany();
+  const scope = usePdvAuthorizedQueryScope();
   const { data } = useQuery({
-    queryKey: ['pdv-cash-export-company-name', companyId],
-    enabled: enabled && !!companyId,
+    queryKey: ['pdv-cash-export-company-name', companyId, ...scope.key],
+    enabled: scope.ready && enabled && !!companyId,
     staleTime: 10 * 60 * 1000,
     queryFn: async () => {
       const { data: company, error } = await supabase

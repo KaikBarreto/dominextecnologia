@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '@/contexts/AuthContext';
+import { usePdvAuthorizedQueryScope } from '@/hooks/pdvReportCache';
 import { supabase } from '@/integrations/supabase/client';
 import { PDV_CASH_V2_QUERY_ROOT } from '@/hooks/usePdvCashSessionsV2';
 
@@ -69,12 +69,12 @@ function safeCashAccountError(error: RpcResult['error']): Error {
 }
 
 export function usePdvCashAccountSettings(enabled = true) {
-  const { user } = useAuth();
+  const scope = usePdvAuthorizedQueryScope();
   const queryClient = useQueryClient();
-  const queryKey = [...ROOT, user?.id ?? null] as const;
+  const queryKey = [...ROOT, ...scope.key] as const;
   const query = useQuery({
     queryKey,
-    enabled: enabled && !!user,
+    enabled: scope.ready && enabled,
     queryFn: async () => {
       const { data, error } = await rpc('pdv_get_cash_account_setting_v2');
       if (error) throw safeCashAccountError(error);

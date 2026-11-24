@@ -1,7 +1,7 @@
 import { safePdvCouponError, PDV_COUPONS_ROOT } from '@/hooks/usePdvCoupons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { invalidatePdvReportCaches } from '@/hooks/pdvReportCache';
+import { invalidatePdvReportCaches, usePdvAuthorizedQueryScope } from '@/hooks/pdvReportCache';
 import { PDV_CASH_V2_QUERY_ROOT } from '@/hooks/usePdvCashSessionsV2';
 
 export type PdvWorkflowMode = 'simples' | 'balcao';
@@ -191,25 +191,32 @@ export function projectPdvCashQueue(payload: unknown): PdvCashQueueRow[] {
 }
 
 export function usePdvCounterCapability() {
+  const scope = usePdvAuthorizedQueryScope();
   return useQuery({
-    queryKey: [...ROOT, 'capability'],
+    queryKey: [...ROOT, 'capability', ...scope.key],
+    enabled: scope.ready,
     queryFn: async () => projectPdvCounterCapability(await call('pdv_get_counter_capability_v2')),
     staleTime: 30_000,
   });
 }
 
 export function usePdvWorkflowSettings() {
+  const scope = usePdvAuthorizedQueryScope();
+  const settingsKey = [...ROOT, 'settings', ...scope.key];
   const queryClient = useQueryClient();
   const query = useQuery({
-    queryKey: [...ROOT, 'settings'],
+    queryKey: settingsKey,
+    enabled: scope.ready,
     queryFn: async () => projectPdvWorkflowSettings(await call('pdv_get_workflow_settings_v2')),
   });
   const save = useMutation({
+    onMutate: () => ({ settingsKey }),
     mutationFn: async (settings: PdvWorkflowSettingsValue) => projectPdvWorkflowSettings(
       await call('pdv_save_workflow_settings_v3', buildPdvWorkflowSaveArgs(settings)),
     ),
-    onSuccess: async (data) => {
-      queryClient.setQueryData([...ROOT, 'settings'], data);
+    onSuccess: async (data, _variables, context) => {
+      // A resposta pertence ao escopo que iniciou a gravação.
+      if (context) queryClient.setQueryData(context.settingsKey, data);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['company-settings'] }),
         queryClient.invalidateQueries({ queryKey: ROOT }),
@@ -222,13 +229,14 @@ export function usePdvWorkflowSettings() {
 }
 
 export function usePdvCashQueue(cashSessionId: string | null, terminalId: string | null, enabled = true) {
+  const scope = usePdvAuthorizedQueryScope();
   return useQuery({
-    queryKey: [...ROOT, 'cash-queue', cashSessionId, terminalId],
+    queryKey: [...ROOT, 'cash-queue', cashSessionId, terminalId, ...scope.key],
     queryFn: async () => projectPdvCashQueue(await call('pdv_list_cash_queue_v3', {
       p_cash_session_id: cashSessionId,
       p_terminal_id: terminalId,
     })),
-    enabled: enabled && !!cashSessionId && !!terminalId,
+    enabled: scope.ready && enabled && !!cashSessionId && !!terminalId,
     staleTime: 10_000,
   });
 }

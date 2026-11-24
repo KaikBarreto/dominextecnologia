@@ -327,7 +327,7 @@ export function PdvCashExportDialog({
         </div>
 
         {emptyNotice ? (
-          <div role="alert" className="flex items-start gap-2 rounded-lg border border-warning bg-warning/10 p-3 text-sm">
+          <div role="alert" className="flex items-start gap-2 rounded-lg border border-warning bg-muted p-3 text-sm">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
             <span>Nenhuma movimentação encontrada com esses filtros. Ajuste o período, os tipos ou as formas de pagamento e tente de novo.</span>
           </div>

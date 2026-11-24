@@ -64,6 +64,35 @@ BEGIN
     SELECT count(*) INTO actual FROM claim;
   IF actual<>0 THEN RAISE EXCEPTION 'Segundo claim tomou a mesma emissão'; END IF;
   UPDATE public.nfce_documents SET status='draft' WHERE id=doc1;
+  -- Sem envio externo: exercita o ledger a partir de transições fiscais fictícias.
+  UPDATE public.nfce_documents SET stock_id=stock,
+    draft_payload=jsonb_build_object('items',jsonb_build_array(jsonb_build_object(
+      'inventoryId',material_a,'quantity',2))),status='authorized' WHERE id=doc1;
+  UPDATE public.nfce_documents SET status='authorized' WHERE id=doc1;
+  IF (SELECT count(*) FROM public.fiscal_inventory_movements WHERE document_id=doc1)<>1
+    OR (SELECT sum(quantity) FROM public.fiscal_inventory_movements WHERE document_id=doc1)<>-2 THEN
+    RAISE EXCEPTION 'NFC-e não registrou saída fiscal idempotente.';
+  END IF;
+  UPDATE public.nfce_documents SET status='cancelled' WHERE id=doc1;
+  UPDATE public.nfce_documents SET status='cancelled' WHERE id=doc1;
+  IF (SELECT count(*) FROM public.fiscal_inventory_movements WHERE document_id=doc1)<>2
+    OR (SELECT sum(quantity) FROM public.fiscal_inventory_movements WHERE document_id=doc1)<>0 THEN
+    RAISE EXCEPTION 'Cancelamento NFC-e não recompôs estoque fiscal uma única vez.';
+  END IF;
+  -- O gatilho compartilhado também deve preservar entrada e saída da NF-e.
+  INSERT INTO public.nfe_documents(company_id,source_type,direction,uf,series,status,stock_id,draft_payload)
+    VALUES(c1,'manual','entrada','SP',1,'authorized',stock,
+      jsonb_build_object('items',jsonb_build_array(jsonb_build_object('inventoryId',material_b,'quantity',3)))),
+    (c1,'manual','saida','SP',1,'authorized',stock,
+      jsonb_build_object('items',jsonb_build_array(jsonb_build_object('inventoryId',material_b,'quantity',4))));
+  IF (SELECT sum(quantity) FROM public.fiscal_inventory_movements WHERE company_id=c1 AND document_model=55)<>-1
+    OR (SELECT count(DISTINCT direction) FROM public.fiscal_inventory_movements WHERE company_id=c1 AND document_model=55)<>2 THEN
+    RAISE EXCEPTION 'NF-e perdeu a direção fiscal de entrada/saída.';
+  END IF;
+  UPDATE public.nfe_documents SET status='cancelled' WHERE company_id=c1;
+  IF (SELECT sum(quantity) FROM public.fiscal_inventory_movements WHERE company_id=c1 AND document_model=55)<>0 THEN
+    RAISE EXCEPTION 'Cancelamento NF-e não recompôs o ledger fiscal.';
+  END IF;
   IF EXISTS(SELECT 1 FROM public.nfce_outbox WHERE company_id=c1) THEN RAISE EXCEPTION 'Pagamento disparou outbox no modo perguntar'; END IF;
   -- Sem cobertura autoritativa, nem status entregue permite importação.
   IF public.fiscal_goods_sale_ready(c1,sale1) THEN RAISE EXCEPTION 'Status comercial substituiu cobertura'; END IF;
@@ -105,7 +134,7 @@ BEGIN
   SELECT count(*) INTO actual FROM public.nfce_documents WHERE id IN(doc1,doc2);
   IF actual<>0 THEN RAISE EXCEPTION 'RLS retornou documentos sem módulo'; END IF;
   EXECUTE 'RESET ROLE';
-  IF has_function_privilege('authenticated','public.reserve_goods_fiscal_number(uuid,integer)','EXECUTE')
+  IF has_function_privilege('authenticated','public.reserve_goods_fiscal_number(uuid,integer,uuid,text)','EXECUTE')
     OR has_function_privilege('authenticated','public.fiscal_get_goods_source_snapshot_internal_v1(text,uuid)','EXECUTE')
     OR has_table_privilege('authenticated','public.company_nfce_settings','UPDATE') THEN
     RAISE EXCEPTION 'Aprovação, numeração ou função interna exposta ao browser';

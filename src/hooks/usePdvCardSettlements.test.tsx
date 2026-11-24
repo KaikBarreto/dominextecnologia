@@ -4,6 +4,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { rpc } = vi.hoisted(() => ({ rpc: vi.fn() }));
+vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({
+  user: { id: 'user' }, profile: { user_id: 'user', company_id: 'company', is_active: true },
+  permissions: ['*'], roles: [], hasPermissionRecord: true, profileLoading: false, loading: false,
+}) }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc } }));
 
 import { projectCardSettlementWorkspace, usePdvCardSettlements } from '@/hooks/usePdvCardSettlements';

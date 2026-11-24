@@ -1,3 +1,4 @@
+import { usePdvAuthorizedQueryScope } from '@/hooks/pdvReportCache';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { invalidatePdvOrderCancellationCaches } from '@/hooks/pdvOrderCancellationCache';
@@ -84,9 +85,10 @@ export function parsePdvUndoPlan(data: unknown): PdvUndoPlan {
 }
 
 export function usePdvUndoPlan(transactionId: string | null) {
+  const scope = usePdvAuthorizedQueryScope();
   return useQuery({
-    queryKey: ['finance-pdv-undo-plan', transactionId],
-    enabled: !!transactionId,
+    queryKey: ['finance-pdv-undo-plan', transactionId, ...scope.key],
+    enabled: scope.ready && !!transactionId,
     staleTime: 0,
     gcTime: 0,
     queryFn: async () => {

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { invalidatePdvReportCaches } from '@/hooks/pdvReportCache';
+import { invalidatePdvReportCaches, usePdvAuthorizedQueryScope } from '@/hooks/pdvReportCache';
 
 export interface OpenCardAuthorization {
   id: string;
@@ -91,10 +91,11 @@ export interface SettleCardInput {
 }
 
 export function usePdvCardSettlements(enabled = true) {
+  const scope = usePdvAuthorizedQueryScope();
   const queryClient = useQueryClient();
   const query = useQuery({
-    queryKey: ROOT,
-    enabled,
+    queryKey: [...ROOT, ...scope.key],
+    enabled: scope.ready && enabled,
     queryFn: async () => projectCardSettlementWorkspace(await call('pdv_list_open_card_authorizations_v3')),
     staleTime: 20_000,
     retry: false,

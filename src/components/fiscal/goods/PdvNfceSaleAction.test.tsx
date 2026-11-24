@@ -67,12 +67,16 @@ describe('controlador NFC-e pós-venda independente do popover',()=>{
   expect(screen.getByRole('alert')).toHaveTextContent('Não foi possível conferir');expect(state.invoke).not.toHaveBeenCalled();
  });
 
- it('corrige rejeição local pelo mesmo documento sem criar outra nota',async()=>{
-  state.docs=[{id:'local-rejected',status:'rejected',draft_payload:{sourceType:'pdv_sale',sourceId:'sale-a'}}];state.invoke.mockResolvedValue({status:'draft'});
+ it('corrige rejeição em nova tentativa e preserva a nota rejeitada',async()=>{
+  const draft={sourceType:'pdv_sale',sourceId:'sale-a',number:123,access_key:'chave-antiga',protocol:'protocolo-antigo'};
+  state.docs=[{id:'local-rejected',status:'rejected',draft_payload:draft}];
   render(<PdvNfceSaleAction {...props} promptAfterPayment={false} detailsOpen/>);
-  fireEvent.click(screen.getByRole('button',{name:'Corrigir dados'}));
-  await waitFor(()=>expect(state.invoke).toHaveBeenCalledWith(expect.objectContaining({documentId:'local-rejected',action:'revise'})));
+  fireEvent.click(screen.getByRole('button',{name:'Corrigir e reemitir'}));
   expect(await screen.findByTestId('fiscal-wizard')).toBeInTheDocument();
+  expect(state.wizard).toHaveBeenLastCalledWith(expect.objectContaining({documentId:null,sourceId:'sale-a',
+    initialDraft:{id:null,sourceType:'pdv_sale',sourceId:'sale-a'}}));
+  expect(draft.number).toBe(123);
+  expect(state.invoke).not.toHaveBeenCalled();
  });
  it('continua a nota assinada sem abrir outro formulário ou criar nota nova',async()=>{
   state.docs=[{id:'signed-document',status:'signed',access_key:'0'.repeat(44)}];state.invoke.mockResolvedValue({status:'uncertain'});

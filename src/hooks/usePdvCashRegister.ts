@@ -13,7 +13,7 @@
 import { useEffect, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { invalidatePdvReportCaches } from '@/hooks/pdvReportCache';
+import { invalidatePdvReportCaches, usePdvAuthorizedQueryScope } from '@/hooks/pdvReportCache';
 import { invalidatePdvOrderCancellationCaches } from '@/hooks/pdvOrderCancellationCache';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
@@ -288,13 +288,15 @@ export async function invalidatePdvCashRegisterCaches(queryClient: QueryClient) 
 export function usePdvCashRegister(focusedSessionId: string | null = null) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const scope = usePdvAuthorizedQueryScope();
 
   // Sangria/suprimento/quebra de caixa criam lançamentos reais. Estoque,
   // Financeiro e os três relatórios comerciais devem reagir juntos.
   const invalidateCash = () => invalidatePdvCashRegisterCaches(queryClient);
 
   const terminalsQuery = useQuery({
-    queryKey: SESSION_KEYS.terminals,
+    queryKey: [...SESSION_KEYS.terminals, ...scope.key],
+    enabled: scope.ready,
     queryFn: async (): Promise<PdvTerminal[]> => {
       const { data, error } = await supabase
         .from('pdv_terminals')
@@ -315,7 +317,8 @@ export function usePdvCashRegister(focusedSessionId: string | null = null) {
    * reserva o `opening_amount` de cada sessão aberta.
    */
   const sessionsQuery = useQuery({
-    queryKey: SESSION_KEYS.sessions,
+    queryKey: [...SESSION_KEYS.sessions, ...scope.key],
+    enabled: scope.ready,
     queryFn: async () => {
       const [openRes, closedRes] = await Promise.all([
         supabase
@@ -363,14 +366,15 @@ export function usePdvCashRegister(focusedSessionId: string | null = null) {
     [sessionsQuery.data?.lastClosed?.closed_by, sessionsQuery.data?.lastClosed?.opened_by, sessionsQuery.data?.openSessions],
   );
   const operatorsQuery = useQuery({
-    queryKey: SESSION_KEYS.operators(operatorIds),
-    enabled: operatorIds.length > 0,
+    queryKey: [...SESSION_KEYS.operators(operatorIds), ...scope.key],
+    enabled: scope.ready && operatorIds.length > 0,
     queryFn: () => fetchOperatorNames(operatorIds),
     staleTime: 5 * 60 * 1000,
   });
 
   const cofreQuery = useQuery({
-    queryKey: SESSION_KEYS.cofre,
+    queryKey: [...SESSION_KEYS.cofre, ...scope.key],
+    enabled: scope.ready,
     queryFn: async (): Promise<PdvCofreBalance> => {
       const { data, error } = await supabase.rpc('pdv_cofre_balance');
       if (error) throw error;
@@ -537,9 +541,10 @@ export function usePdvCashRegister(focusedSessionId: string | null = null) {
  * Busca sob demanda, uma linha, só quando o usuário abre a edição.
  */
 export function usePdvLedgerTransaction(transactionId: string | null) {
+  const scope = usePdvAuthorizedQueryScope();
   const query = useQuery({
-    queryKey: ['pdv-ledger-transaction', transactionId],
-    enabled: !!transactionId,
+    queryKey: ['pdv-ledger-transaction', transactionId, ...scope.key],
+    enabled: scope.ready && !!transactionId,
     queryFn: async (): Promise<FinancialTransaction | null> => {
       const { data, error } = await supabase
         .from('financial_transactions')
@@ -565,14 +570,15 @@ export function usePdvCashCustomerNames(
   customerIds: string[],
   companyId: string | null | undefined,
 ) {
+  const scope = usePdvAuthorizedQueryScope();
   const ids = useMemo(
     () => Array.from(new Set(customerIds.filter(Boolean))).sort(),
     [customerIds],
   );
 
   const query = useQuery({
-    queryKey: ['pdv-cash-customer-names', companyId ?? null, ...ids],
-    enabled: !!companyId && ids.length > 0,
+    queryKey: ['pdv-cash-customer-names', companyId ?? null, ...ids, ...scope.key],
+    enabled: scope.ready && !!companyId && ids.length > 0,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('customers')
@@ -596,13 +602,14 @@ export function usePdvCashActorProfiles(
   userIds: string[],
   companyId: string | null | undefined,
 ) {
+  const scope = usePdvAuthorizedQueryScope();
   const ids = useMemo(
     () => Array.from(new Set(userIds.filter(Boolean))).sort(),
     [userIds],
   );
   const query = useQuery({
-    queryKey: ['pdv-cash-actor-profiles', companyId ?? null, ...ids],
-    enabled: !!companyId && ids.length > 0,
+    queryKey: ['pdv-cash-actor-profiles', companyId ?? null, ...ids, ...scope.key],
+    enabled: scope.ready && !!companyId && ids.length > 0,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
@@ -641,12 +648,13 @@ export function usePdvCashActorProfiles(
  * receita nem despesa.
  */
 export function usePdvCashSessionDetail(session: PdvCashSession | null) {
+  const scope = usePdvAuthorizedQueryScope();
   const queryClient = useQueryClient();
   const sessionId = session?.id ?? null;
 
   const query = useQuery({
-    queryKey: SESSION_KEYS.detail(sessionId),
-    enabled: !!sessionId,
+    queryKey: [...SESSION_KEYS.detail(sessionId), ...scope.key],
+    enabled: scope.ready && !!sessionId,
     queryFn: async () => {
       const windowStart = session.opened_at;
       const windowEnd = session.closed_at ?? new Date().toISOString();

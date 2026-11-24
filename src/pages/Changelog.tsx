@@ -31,6 +31,28 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.67',
+    date: '24 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Caixa autorizado também no pós-venda e no fiado',
+        category: 'correcao',
+        description: 'Quem tem permissão para operar o caixa de outra pessoa pode selecioná-lo no pós-venda, realizar reembolsos, receber diferenças de troca e baixar ou estornar o fiado, respeitando as permissões de cada ação.',
+      },
+      {
+        title: 'Dados atualizados ao trocar de acesso',
+        category: 'seguranca',
+        description: 'Cartões, fila do balcão, configurações e dados do caixa são carregados novamente ao trocar empresa, usuário ou permissões. Uma resposta atrasada de configuração não substitui a informação da outra empresa.',
+      },
+      {
+        title: 'Criação de NFC-e corrigida',
+        category: 'correcao',
+        description: 'Corrigido um bloqueio que impedia criar a NFC-e da venda. A autorização e o cancelamento preservam a movimentação do estoque fiscal sem duplicar registros.',
+      },
+    ],
+  },
+  {
     version: '1.41.66',
     date: '24 de novembro de 2026',
     type: 'patch',
