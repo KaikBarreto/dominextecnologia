@@ -863,6 +863,7 @@ export function useServiceOrders(options: { enabled?: boolean } = {}) {
     serviceOrders: serviceOrdersQuery.data ?? [],
     isLoading: serviceOrdersQuery.isLoading,
     error: serviceOrdersQuery.error,
+    refetchServiceOrders: serviceOrdersQuery.refetch,
     createServiceOrder,
     updateServiceOrder,
     rescheduleServiceOrder,
