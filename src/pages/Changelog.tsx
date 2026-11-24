@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.61',
+    date: '24 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Recebimento acessível em telas menores',
+        category: 'correcao',
+        description: 'As ações do pedido permanecem visíveis na tela de venda, mesmo em janelas baixas ou com descontos e créditos expandidos. O conteúdo pode ser rolado para conferir materiais e valores sem perder o botão de receber.',
+      },
+    ],
+  },
+  {
     version: '1.41.60',
     date: '24 de novembro de 2026',
     type: 'patch',

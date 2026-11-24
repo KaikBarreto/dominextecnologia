@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.60";
+export const APP_VERSION = "1.41.61";
 
 export const VERSION_NOTES =
-  "Vendas canceladas deixam de somar receita e custo nos relatórios da loja, preservando entregas parciais e devoluções.";
+  "O botão de receber permanece acessível na venda, mesmo em telas baixas ou com o resumo do pedido expandido.";

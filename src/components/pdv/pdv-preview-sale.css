@@ -123,3 +123,38 @@
 .pdv-preview-sale .productart > .pdv-product-placeholder {width:100%;height:100%}
 .pdv-preview-sale .cartthumbnail {width:30px;height:30px}
 .pdv-preview-sale .cartthumbnail > .pdv-product-thumbnail {width:30px;height:30px}
+
+/* O painel pode ficar menor que cabeçalho + materiais + resumo. Nessa situação,
+   o conteúdo ganha rolagem sem deixar as ações presas no overflow do carrinho.
+   A lista continua com sua rolagem própria quando houver altura suficiente. */
+.pdv-preview-sale [data-testid="pdv-cart-workspace"] {
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+}
+.pdv-preview-sale [data-testid="pdv-cart-workspace"] > .cartfooter {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  padding-top: 12px;
+  background: hsl(var(--card));
+}
+
+/* Em janelas muito baixas, as ações dividem uma faixa para sobrar área
+   rolável para os valores. Nenhuma ação depende da dica de atalho. */
+@media (min-width: 801px) and (max-height: 500px) {
+  .pdv-preview-sale [data-testid="pdv-cart-workspace"] > .cartfooter {
+    display: flex;
+    gap: 6px;
+    padding: 8px 12px;
+  }
+  .pdv-preview-sale [data-testid="pdv-cart-workspace"] > .cartfooter > .btn {
+    flex: 1;
+    min-width: 0;
+    padding: 8px;
+    white-space: normal;
+    font-size: 11px;
+    line-height: 1.4;
+  }
+  .pdv-preview-sale [data-testid="pdv-cart-workspace"] > .cartfooter > small { display: none; }
+}

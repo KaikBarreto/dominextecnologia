@@ -31,7 +31,9 @@ export function PdvSaleWorkspace({ catalog, cart, mobile, drawerOpen, onDrawerOp
     if (!row) return;
     const measure = () => {
       const available = Math.floor((window.visualViewport?.height ?? window.innerHeight) - row.getBoundingClientRect().top - 52 - 24);
-      setHeight(available >= 400 ? available : null);
+      // Telas baixas também precisam limitar o carrinho: voltar à altura
+      // natural empurra o recebimento para fora da área visível.
+      setHeight(available > 0 ? available : null);
     };
     measure();
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
