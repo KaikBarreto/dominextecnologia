@@ -31,9 +31,9 @@ export const pdv = {
         number: 'Número', value: 'Valor', customer: 'Cliente', newOrder: 'Novo pedido',
         productsShort: 'prod.',
         unnamedCustomer: 'Sem cliente', editBadge: 'Edição', deleteLabel: 'Fechar rascunho',
-        deleteTitle: 'Fechar este atendimento?',
-        deleteDescription: 'Somente este rascunho será fechado. As vendas já finalizadas continuam no histórico de Pedidos.',
-        keepOrder: 'Continuar atendimento', confirmDelete: 'Fechar rascunho',
+        deleteTitle: 'Fechar este rascunho?',
+        deleteDescription: 'Somente este rascunho será apagado. Os outros pedidos continuarão intactos.',
+        keepOrder: 'Manter rascunho', confirmDelete: 'Fechar rascunho',
         limitReached: 'O limite de 20 pedidos simultâneos foi atingido.',
       },
       draftSync: {
@@ -110,7 +110,7 @@ export const pdv = {
         finalizeShortcut: 'F9',
       },
       shortcuts: {
-        open: 'Atalhos', title: 'Atalhos do PDV',
+        open: 'Atalhos', title: 'Atalhos do PDV (Loja)',
         description: 'Use o teclado para operar a venda sem interromper o atendimento.',
         close: 'Fechar', search: 'Focar busca de produtos', customer: 'Selecionar cliente',
         payment: 'Abrir pagamento', switchOrder: 'Pedido anterior ou próximo',
@@ -190,6 +190,8 @@ export const pdv = {
         removeRow: 'Remover esta forma de pagamento',
         fillRemaining: 'Usar o que falta',
         creditInfo: '{name} já deve {debt} e o limite é {limit}.',
+        creditDebtInfo: '{name} já deve {debt}.',
+        creditBalanceInfo: '{name} tem {balance} de saldo a favor.',
         creditNoLimit: '{name} já deve {debt} e não tem limite de crédito definido.',
         cashClosedTitle: 'Caixa fechado',
         cashClosedDescription:
@@ -197,7 +199,7 @@ export const pdv = {
         cashClosedAction: 'Abrir o caixa',
         cofreMissingTitle: 'Conta do cofre não configurada',
         cofreMissingDescription:
-          'Escolha a conta do cofre em Configurações do PDV antes de receber em dinheiro.',
+          'Escolha a conta do cofre em Configurações do PDV (Loja) antes de receber em dinheiro.',
         confirm: 'Finalizar Venda',
         submitting: 'Finalizando...',
         cancel: 'Voltar',
@@ -215,7 +217,7 @@ export const pdv = {
           fiado_sem_vencimento: 'Informe o vencimento do fiado.',
           dinheiro_sem_caixa: 'Abra o caixa antes de receber em dinheiro.',
           cofre_nao_configurado:
-            'Escolha a conta do cofre em Configurações do PDV antes de receber em dinheiro.',
+            'Escolha a conta do cofre em Configurações do PDV (Loja) antes de receber em dinheiro.',
           fiado_acima_do_limite:
             '{name} já deve {debt} e o limite é {limit}. Esta venda no fiado ({value}) passaria do limite.',
         },
@@ -278,7 +280,7 @@ export const pdv = {
       },
       noTerminal: {
         title: 'Nenhum caixa cadastrado',
-        description: 'Cadastre o caixa da loja em Configurações do PDV para abrir o turno e vender no balcão.',
+        description: 'Cadastre o caixa da loja em Configurações do PDV (Loja) para abrir o turno e vender no balcão.',
       },
       closed: {
         title: 'Caixa fechado',
@@ -299,7 +301,7 @@ export const pdv = {
         show: 'Mostrar valores',
         cofreAvailable: 'Disponível no cofre',
         cofreReserved: 'Reservado em caixa aberto',
-        cofreMissing: 'Escolha a conta do cofre em Configurações do PDV.',
+        cofreMissing: 'Escolha a conta do cofre em Configurações do PDV (Loja).',
         strictOff: 'Controle estrito de dinheiro desligado nesta empresa.',
         close: 'Fechar caixa',
       },
@@ -475,7 +477,7 @@ export const pdv = {
         cofreRule: 'Abrir o caixa não move dinheiro. O valor fica reservado no cofre e volta a ficar disponível quando você fechar.',
         cofreAvailable: 'Disponível no cofre: {value}',
         cofreLimitHidden: 'O valor informado ultrapassa o disponível no cofre. Informe um valor menor ou peça ajuda a quem gerencia as contas bancárias.',
-        cofreMissing: 'Escolha a conta do cofre em Configurações do PDV antes de abrir o caixa.',
+        cofreMissing: 'Escolha a conta do cofre em Configurações do PDV (Loja) antes de abrir o caixa.',
         strictOff: 'O controle estrito de dinheiro está desligado, então o valor de abertura não é conferido contra o cofre.',
         lastClosedHint: 'O último caixa fechou com {value} na gaveta.',
         reduce: 'Abrir com valor menor',
@@ -560,7 +562,7 @@ export const pdv = {
       },
     },
     settings: {
-      title: 'Configurações do PDV',
+      title: 'Configurações do PDV (Loja)',
       subtitle: 'Caixas da loja, cofre, etiquetas e modo de operação',
       tabs: {
         terminals: 'Caixas da loja',
@@ -583,7 +585,7 @@ export const pdv = {
     comingSoon: {
       title: 'Esta tela está chegando',
       description:
-        'O módulo PDV e Loja já está liberado para a sua empresa. Esta tela entra em funcionamento na próxima atualização do sistema.',
+        'O módulo PDV (Loja) já está liberado para a sua empresa. Esta tela entra em funcionamento na próxima atualização do sistema.',
     },
   },
 
@@ -597,9 +599,9 @@ export const pdv = {
         number: 'Number', value: 'Amount', customer: 'Customer', newOrder: 'New order',
         productsShort: 'prod.',
         unnamedCustomer: 'No customer', editBadge: 'Editing', deleteLabel: 'Close draft',
-        deleteTitle: 'Close this service?',
-        deleteDescription: 'Only this draft will be closed. Completed sales remain in the Orders history.',
-        keepOrder: 'Continue service', confirmDelete: 'Close draft',
+        deleteTitle: 'Close this draft?',
+        deleteDescription: 'Only this draft will be deleted. Your other orders will remain unchanged.',
+        keepOrder: 'Keep draft', confirmDelete: 'Close draft',
         limitReached: 'The limit of 20 simultaneous orders has been reached.',
       },
       draftSync: {
@@ -750,6 +752,8 @@ export const pdv = {
         removeRow: 'Remove this payment method',
         fillRemaining: 'Use what is left',
         creditInfo: '{name} already owes {debt} and the limit is {limit}.',
+        creditDebtInfo: '{name} already owes {debt}.',
+        creditBalanceInfo: '{name} has a credit balance of {balance}.',
         creditNoLimit: '{name} already owes {debt} and has no credit limit set.',
         cashClosedTitle: 'Register closed',
         cashClosedDescription:
@@ -1149,9 +1153,9 @@ export const pdv = {
         number: 'Número', value: 'Importe', customer: 'Cliente', newOrder: 'Nuevo pedido',
         productsShort: 'prod.',
         unnamedCustomer: 'Sin cliente', editBadge: 'Edición', deleteLabel: 'Cerrar borrador',
-        deleteTitle: '¿Cerrar esta atención?',
-        deleteDescription: 'Solo se cerrará este borrador. Las ventas finalizadas permanecen en el historial de Pedidos.',
-        keepOrder: 'Continuar atención', confirmDelete: 'Cerrar borrador',
+        deleteTitle: '¿Cerrar este borrador?',
+        deleteDescription: 'Solo se eliminará este borrador. Los demás pedidos seguirán intactos.',
+        keepOrder: 'Mantener borrador', confirmDelete: 'Cerrar borrador',
         limitReached: 'Se alcanzó el límite de 20 pedidos simultáneos.',
       },
       draftSync: {
@@ -1302,6 +1306,8 @@ export const pdv = {
         removeRow: 'Quitar esta forma de pago',
         fillRemaining: 'Usar lo que falta',
         creditInfo: '{name} ya debe {debt} y el límite es {limit}.',
+        creditDebtInfo: '{name} ya debe {debt}.',
+        creditBalanceInfo: '{name} tiene {balance} de saldo a favor.',
         creditNoLimit: '{name} ya debe {debt} y no tiene límite de crédito definido.',
         cashClosedTitle: 'Caja cerrada',
         cashClosedDescription:
@@ -1699,9 +1705,9 @@ export const pdv = {
         number: 'Numéro', value: 'Montant', customer: 'Client', newOrder: 'Nouvelle commande',
         productsShort: 'prod.',
         unnamedCustomer: 'Sans client', editBadge: 'Modification', deleteLabel: 'Fermer le brouillon',
-        deleteTitle: 'Fermer cette vente en cours ?',
-        deleteDescription: `Seul ce brouillon sera fermé. Les ventes finalisées restent dans l'historique des commandes.`,
-        keepOrder: 'Continuer la vente', confirmDelete: 'Fermer le brouillon',
+        deleteTitle: 'Fermer ce brouillon ?',
+        deleteDescription: 'Seul ce brouillon sera supprimé. Les autres commandes resteront intactes.',
+        keepOrder: 'Garder le brouillon', confirmDelete: 'Fermer le brouillon',
         limitReached: 'La limite de 20 commandes simultanées a été atteinte.',
       },
       draftSync: {
@@ -1852,6 +1858,8 @@ export const pdv = {
         removeRow: 'Retirer ce moyen de paiement',
         fillRemaining: 'Utiliser le reste',
         creditInfo: '{name} doit déjà {debt} et la limite est {limit}.',
+        creditDebtInfo: '{name} doit déjà {debt}.',
+        creditBalanceInfo: '{name} a un solde créditeur de {balance}.',
         creditNoLimit: `{name} doit déjà {debt} et n'a pas de limite de crédit définie.`,
         cashClosedTitle: 'Caisse fermée',
         cashClosedDescription: `Pour encaisser en espèces, ouvrez d'abord la caisse. PIX, carte et compte client fonctionnent caisse fermée.`,

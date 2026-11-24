@@ -16,16 +16,24 @@ import { getVersionTopics } from '@/lib/versionTopics';
 import { OVERLAY_PRIORITY, useOverlaySlot } from '@/contexts/OverlayCoordinatorContext';
 
 export const VersionUpdateNotification = () => {
-  const { showUpdateNotification, currentVersion, dismissNotification } = useVersionUpdate();
+  const { showUpdateNotification, currentVersion, markNotificationShown, dismissNotification } = useVersionUpdate();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const hasShownToast = useRef(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const isActiveOverlay = useOverlaySlot(isMobile && drawerOpen, {
+  const overlayRequested = showUpdateNotification && (!isMobile || drawerOpen);
+  const isActiveOverlay = useOverlaySlot(overlayRequested, {
     id: 'version-update',
     priority: OVERLAY_PRIORITY.marketing,
   });
   const visibleDrawerOpen = drawerOpen && isActiveOverlay;
+
+  // Persistir somente quando a novidade realmente venceu a fila e ficou
+  // visível. Enquanto tutorial/NPS/lembrete estiver à frente, um refresh não
+  // pode consumir silenciosamente este aviso.
+  useEffect(() => {
+    if (overlayRequested && isActiveOverlay) markNotificationShown();
+  }, [isActiveOverlay, markNotificationShown, overlayRequested]);
 
   // Tópicos curtos do que mudou nesta versão (derivados do changelog) —
   // mostrados no toast/drawer pra o cliente saber do que se trata.
@@ -42,7 +50,7 @@ export const VersionUpdateNotification = () => {
   // Desktop: mantém o toast (top-center, ~10s).
   useEffect(() => {
     if (isMobile) return;
-    if (showUpdateNotification && !hasShownToast.current) {
+    if (showUpdateNotification && isActiveOverlay && !hasShownToast.current) {
       hasShownToast.current = true;
 
       toast.custom((t) => (
@@ -123,7 +131,7 @@ export const VersionUpdateNotification = () => {
         closeButton: false,
       });
     }
-  }, [isMobile, showUpdateNotification, currentVersion, dismissNotification, navigate, topics]);
+  }, [isActiveOverlay, isMobile, showUpdateNotification, currentVersion, dismissNotification, navigate, topics]);
 
   if (!isMobile) {
     return null;

@@ -14,6 +14,7 @@ import { useUserNotifications, type UserNotification } from '@/hooks/useUserNoti
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { dateInTz, todayInTz } from '@/lib/timezone';
 import { MESSAGES } from '@/lib/i18n';
+import { isSafeNotificationActionUrl } from '@/lib/notificationAction';
 import { NotificationItem } from './NotificationItem';
 import { NotificationDetailModal } from './NotificationDetailModal';
 
@@ -76,6 +77,7 @@ export function NotificationsBell() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [desktopOpen, setDesktopOpen] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState<UserNotification | null>(null);
   const { notifications, unreadCount, markAsRead, markAllAsRead, dismiss } = useUserNotifications();
   const { locale, timezone } = useAppLocaleContext();
@@ -112,12 +114,15 @@ export function NotificationsBell() {
     if (notification.read_at === null) markAsRead(notification.id);
     setSelectedNotification(notification);
     if (isMobile) setDrawerOpen(false);
+    else setDesktopOpen(false);
   };
 
   // Botão dentro do detalhe — navega pro action_url e fecha modal.
   const handleActionClick = (notification: UserNotification) => {
     setSelectedNotification(null);
-    if (notification.action_url) navigate(notification.action_url);
+    if (isSafeNotificationActionUrl(notification.action_url)) {
+      navigate(notification.action_url);
+    }
   };
 
   const handleDismiss = (id: string) => (e: React.MouseEvent) => {
@@ -174,7 +179,7 @@ export function NotificationsBell() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="w-full text-muted-foreground hover:bg-primary hover:text-primary-foreground"
+                className="w-full text-muted-foreground hover:bg-foreground hover:text-background"
                 onClick={() => markAllAsRead()}
               >
                 {t.markAllRead}
@@ -203,7 +208,7 @@ export function NotificationsBell() {
           <DrawerContent>
             <DrawerHeader className="text-left">
               <DrawerTitle className="flex items-center gap-2">
-                <Bell className="h-5 w-5 text-primary" />
+                <Bell className="h-5 w-5 text-foreground" />
                 {t.title}
                 {unreadCount > 0 && (
                   <Badge variant="destructive" className="ml-auto">
@@ -222,7 +227,7 @@ export function NotificationsBell() {
 
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu open={desktopOpen} onOpenChange={setDesktopOpen}>
         <DropdownMenuTrigger asChild>{Trigger}</DropdownMenuTrigger>
         <DropdownMenuContent
           align="end"
@@ -231,7 +236,7 @@ export function NotificationsBell() {
         >
           <div className="px-2 py-1.5 mb-1 border-b">
             <div className="text-sm font-semibold flex items-center gap-2">
-              <Bell className="h-4 w-4 text-primary" />
+              <Bell className="h-4 w-4 text-foreground" />
               {t.title}
               {unreadCount > 0 && (
                 <Badge variant="destructive" className="ml-auto">

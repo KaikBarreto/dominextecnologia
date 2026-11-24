@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserCompany } from '@/hooks/useUserCompany';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected, NoRowsAffectedError } from '@/lib/supabaseMutation';
 
 /**
  * Fronteira do Supabase para os critérios de avaliação (estrelas) da pesquisa de
@@ -31,8 +32,11 @@ export interface NpsCriterionAverage {
 
 const SELECT_COLS = 'id, company_id, label, position, active';
 
+const NPS_NO_PERMISSION_MESSAGE = 'Você não tem permissão para alterar os critérios de avaliação ou o critério já não existe. Atualize a tela e fale com a gestão.';
+
 /** Traduz erro de RLS/permissão em mensagem amigável; senão repassa o padrão. */
 function friendlyError(error: any): Error {
+  if (error instanceof NoRowsAffectedError) return error;
   if (error?.code === '42501' || /permission|policy|row-level/i.test(error?.message || '')) {
     return new Error('Você não tem permissão para alterar os critérios de avaliação. Fale com a gestão.');
   }
@@ -78,16 +82,30 @@ export function useNpsCriteria() {
     }: { id: string } & Partial<Pick<NpsCriterion, 'label' | 'active' | 'position'>>) => {
       const payload: Record<string, unknown> = { ...values };
       if (typeof payload.label === 'string') payload.label = (payload.label as string).trim();
-      const { error } = await supabase.from('nps_criteria').update(payload).eq('id', id);
-      if (error) throw friendlyError(error);
+      try {
+        assertRowsAffected(
+          await supabase.from('nps_criteria').update(payload, { count: 'exact' }).eq('id', id),
+          'update',
+          NPS_NO_PERMISSION_MESSAGE,
+        );
+      } catch (error) {
+        throw friendlyError(error);
+      }
     },
     onSuccess: invalidate,
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('nps_criteria').delete().eq('id', id);
-      if (error) throw friendlyError(error);
+      try {
+        assertRowsAffected(
+          await supabase.from('nps_criteria').delete({ count: 'exact' }).eq('id', id),
+          'delete',
+          NPS_NO_PERMISSION_MESSAGE,
+        );
+      } catch (error) {
+        throw friendlyError(error);
+      }
     },
     onSuccess: invalidate,
   });

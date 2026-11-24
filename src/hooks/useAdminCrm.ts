@@ -8,6 +8,7 @@ import {
   buildStageChangeDescription,
   shouldLogStageChange,
 } from '@/lib/leadStageHistory';
+import { assertRowsAffected, NoRowsAffectedError } from '@/lib/supabaseMutation';
 
 export interface AdminCrmStage {
   id: string;
@@ -130,17 +131,21 @@ export function useAdminCrmPipelines() {
     mutationFn: async (id: string) => {
       const current = pipelines.find((pipeline) => pipeline.is_default && pipeline.id !== id);
       if (current) {
-        const { error } = await supabase
-          .from('admin_crm_pipelines')
-          .update({ is_default: false })
-          .eq('id', current.id);
-        if (error) throw error;
+        assertRowsAffected(
+          await supabase
+            .from('admin_crm_pipelines')
+            .update({ is_default: false }, { count: 'exact' })
+            .eq('id', current.id),
+          'update',
+        );
       }
-      const { error } = await supabase
-        .from('admin_crm_pipelines')
-        .update({ is_default: true })
-        .eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('admin_crm_pipelines')
+          .update({ is_default: true }, { count: 'exact' })
+          .eq('id', id),
+        'update',
+      );
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-crm-pipelines'] });
@@ -153,11 +158,10 @@ export function useAdminCrmPipelines() {
     mutationFn: async (orderedIds: string[]) => {
       const results = await Promise.all(
         orderedIds.map((id, position) =>
-          supabase.from('admin_crm_pipelines').update({ position }).eq('id', id),
+          supabase.from('admin_crm_pipelines').update({ position }, { count: 'exact' }).eq('id', id),
         ),
       );
-      const failed = results.find((result) => result.error);
-      if (failed?.error) throw failed.error;
+      results.forEach((result) => assertRowsAffected(result, 'update'));
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-crm-pipelines'] }),
     onError: (error) => toast({ variant: 'destructive', title: 'Erro ao reordenar funis', description: getErrorMessage(error) }),
@@ -170,20 +174,26 @@ export function useAdminCrmPipelines() {
       if (pipeline?.is_default) {
         const next = pipelines.find((item) => item.id !== id);
         if (next) {
-          const { error: clearError } = await supabase
-            .from('admin_crm_pipelines')
-            .update({ is_default: false })
-            .eq('id', pipeline.id);
-          if (clearError) throw clearError;
-          const { error } = await supabase
-            .from('admin_crm_pipelines')
-            .update({ is_default: true })
-            .eq('id', next.id);
-          if (error) throw error;
+          assertRowsAffected(
+            await supabase
+              .from('admin_crm_pipelines')
+              .update({ is_default: false }, { count: 'exact' })
+              .eq('id', pipeline.id),
+            'update',
+          );
+          assertRowsAffected(
+            await supabase
+              .from('admin_crm_pipelines')
+              .update({ is_default: true }, { count: 'exact' })
+              .eq('id', next.id),
+            'update',
+          );
         }
       }
-      const { error } = await supabase.from('admin_crm_pipelines').delete().eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('admin_crm_pipelines').delete({ count: 'exact' }).eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-crm-pipelines'] });
@@ -194,6 +204,8 @@ export function useAdminCrmPipelines() {
       title: 'Não foi possível excluir o funil',
       description: error instanceof Error && error.message === 'LAST_ADMIN_PIPELINE'
         ? 'Crie outro funil antes de excluir o único existente.'
+        : error instanceof NoRowsAffectedError
+        ? error.message
         : 'Remova ou mova as etapas e oportunidades deste funil antes de excluí-lo.',
     }),
   });
@@ -274,8 +286,10 @@ export function useAdminCrmStages(pipelineId?: string | null) {
 
   const updateStage = useMutation({
     mutationFn: async ({ id, ...input }: Partial<AdminCrmStage> & { id: string }) => {
-      const { error } = await supabase.from('admin_crm_stages' as any).update(input).eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('admin_crm_stages' as any).update(input, { count: 'exact' }).eq('id', id),
+        'update',
+      );
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-crm-stages'] }); },
     onError: (e) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(e) }),
@@ -283,8 +297,10 @@ export function useAdminCrmStages(pipelineId?: string | null) {
 
   const deleteStage = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('admin_crm_stages' as any).delete().eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('admin_crm_stages' as any).delete({ count: 'exact' }).eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-crm-stages'] }); toast({ title: 'Etapa removida!' }); },
     onError: (e) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(e) }),
@@ -300,11 +316,10 @@ export function useAdminCrmStages(pipelineId?: string | null) {
     mutationFn: async (orderedIds: string[]) => {
       const results = await Promise.all(
         orderedIds.map((id, position) =>
-          supabase.from('admin_crm_stages' as any).update({ position }).eq('id', id),
+          supabase.from('admin_crm_stages' as any).update({ position }, { count: 'exact' }).eq('id', id),
         ),
       );
-      const failed = results.find(r => r.error);
-      if (failed?.error) throw failed.error;
+      results.forEach((result) => assertRowsAffected(result, 'update'));
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-crm-stages'] }); },
     onError: (e) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(e) }),
@@ -377,7 +392,7 @@ export function useAdminLeads() {
       if (assigneesError) throw assigneesError;
       return data;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-leads'] }); toast({ title: 'Lead criado!' }); },
+    onSuccess: () => { qc.invalidateQueries({ predicate: (query) => ["admin-leads", "admin-commercial-action-queue"].includes(String(query.queryKey[0])) }); toast({ title: 'Lead criado!' }); },
     onError: (e) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(e) }),
   });
 
@@ -451,7 +466,7 @@ export function useAdminLeads() {
       return { id, loggedStageChange: isStageUpdate && shouldLogStageChange(previousStageId, nextStageId) };
     },
     onSuccess: (result) => {
-      qc.invalidateQueries({ queryKey: ['admin-leads'] });
+      qc.invalidateQueries({ predicate: (query) => ["admin-leads", "admin-commercial-action-queue"].includes(String(query.queryKey[0])) });
       qc.invalidateQueries({ queryKey: ['admin-lead', result.id] });
       if (result?.loggedStageChange) {
         qc.invalidateQueries({ queryKey: ['admin-lead-interactions', result.id] });
@@ -478,7 +493,7 @@ export function useAdminLeads() {
       if (error) throw error;
     },
     onSuccess: (_data, variables) => {
-      qc.invalidateQueries({ queryKey: ['admin-leads'] });
+      qc.invalidateQueries({ predicate: (query) => ["admin-leads", "admin-commercial-action-queue"].includes(String(query.queryKey[0])) });
       qc.invalidateQueries({ queryKey: ['admin-lead', variables.id] });
     },
   });
@@ -494,7 +509,7 @@ export function useAdminLeads() {
       if (error) throw error;
     },
     onSuccess: (_data, id) => {
-      qc.invalidateQueries({ queryKey: ['admin-leads'] });
+      qc.invalidateQueries({ predicate: (query) => ["admin-leads", "admin-commercial-action-queue"].includes(String(query.queryKey[0])) });
       qc.removeQueries({ queryKey: ['admin-lead', id] });
       toast({ title: 'Lead removido!' });
     },
@@ -586,7 +601,7 @@ export function useAdminLeadInteractions(leadId?: string) {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'admin_lead_interactions', filter: `lead_id=eq.${leadId}` },
-        () => qc.invalidateQueries({ queryKey: ['admin-lead-interactions', leadId] }),
+        () => qc.invalidateQueries({ predicate: (query) => query.queryKey[0] === 'admin-commercial-action-queue' || (query.queryKey[0] === 'admin-lead-interactions' && query.queryKey[1] === leadId) }),
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -598,7 +613,7 @@ export function useAdminLeadInteractions(leadId?: string) {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-lead-interactions', leadId] }); toast({ title: 'Interação registrada!' }); },
+    onSuccess: () => { qc.invalidateQueries({ predicate: (query) => query.queryKey[0] === 'admin-commercial-action-queue' || (query.queryKey[0] === 'admin-lead-interactions' && query.queryKey[1] === leadId) }); toast({ title: 'Interação registrada!' }); },
     onError: (e) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(e) }),
   });
 

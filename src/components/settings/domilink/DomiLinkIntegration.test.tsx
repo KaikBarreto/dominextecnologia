@@ -48,6 +48,21 @@ describe('acesso à integração DomiLink', () => {
     expect(screen.getByText('Formulário canônico do DomiLink')).toBeVisible();
   });
 
+  it.each(['screen:pdv', 'screen:pdv_dispatch', 'screen:pdv_preorders', 'screen:pdv_orders'])(
+    'permite configuração local para operador apenas %s, sem Settings geral', screenKey => {
+      mocks.screens = [screenKey]; mocks.modules = [screenKey];
+      render(<MemoryRouter initialEntries={[`/configuracoes${DOMILINK_SETTINGS_QUERY}`]}><SettingsDomiLinkRoute><div>Configurações gerais protegidas</div></SettingsDomiLinkRoute></MemoryRouter>);
+      expect(window.document.body).toHaveTextContent('Formulário canônico do DomiLink');
+      expect(window.document.body).not.toHaveTextContent('Configurações gerais protegidas');
+    },
+  );
+
+  it.each(['screen:pdv', 'screen:pdv_dispatch'])('bloqueia operador %s com assinatura/módulo indisponível', screenKey => {
+    mocks.screens = [screenKey]; mocks.modules = [];
+    render(<DomiLinkIntegrationContent />);
+    expect(mocks.card).not.toHaveBeenCalled(); expect(mocks.connection).not.toHaveBeenCalled();
+  });
+
   it.each([
     ['sem permissão', [], ['screen:inventory', 'screen:pdv_settings']],
     ['sem módulo', ['screen:inventory', 'screen:pdv_settings'], []],

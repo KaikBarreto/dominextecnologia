@@ -1,3 +1,6 @@
+import { usePdvDomiLinkWorkspace } from '@/hooks/usePdvDomiLinkWorkspace';
+import { PdvCouponControl } from '@/components/pdv/coupons/PdvCouponControl';
+import { confirmedCouponDiscount, couponCartReady } from '@/lib/pdv/cart';
 import { PdvPageSkeleton } from '@/components/pdv/loading/PdvPageSkeleton';
 import { canCapturePdvCatalogScan } from '@/lib/pdv/catalogKeyboard';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -7,9 +10,9 @@ import { PdvAdvancedOptionsDialog, type PdvPendingAttachment } from '@/component
 import { PdvCartPanel } from '@/components/pdv/PdvCartPanel';
 import { PdvSalePreviewView } from '@/components/pdv/PdvSalePreviewView';
 import { PdvPaymentDialog } from '@/components/pdv/PdvPaymentDialog';
-import { PdvAppliedVoucherControl } from '@/components/pdv/PdvAppliedVoucherControl';
+import { PdvAppliedVouchersControl } from '@/components/pdv/PdvAppliedVoucherControl';
 import { type PdvGridProduct } from '@/components/pdv/PdvProductCard';
-import { PdvOrderReceiptButton, openPdvOrderReceipt } from '@/components/pdv/receipt/PdvOrderReceiptButton';
+import { PdvOrderReceiptButton, usePdvOrderReceiptOpener } from '@/components/pdv/receipt/PdvOrderReceiptButton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
@@ -45,7 +48,7 @@ import {
   type CartState,
 } from '@/lib/pdv/cart';
 import { clampStoredValueApplication } from '@/lib/pdv/payment';
-import type { PdvAppliedVoucher } from '@/lib/pdv/sale-drafts';
+import { clampAppliedVouchers, type PdvAppliedVoucher } from '@/lib/pdv/sale-drafts';
 import { readDeviceReceiptFormat } from '@/lib/pdv/receipt/devicePreference';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney, getCurrencySymbol, toBcp47 } from '@/lib/format';
@@ -85,6 +88,7 @@ function saleSignature(
     terminalId,
     customerId: cart.customerId,
     discount: cart.discount,
+    ...(cart.coupon ? { coupon: [cart.coupon.id, cart.coupon.discountCents, cart.coupon.baseSignature] } : {}),
     notes,
     transactionDate,
     payments: canonicalizePdvDirectSalePayments(payments),
@@ -109,7 +113,7 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
   const receiptSettings = usePdvReceiptSettings();
   const identifiers = useInventoryIdentifiers();
   const [cart, setCart] = useState<CartState>(EMPTY_CART);
-  const [appliedVoucher, setAppliedVoucher] = useState<PdvAppliedVoucher | null>(null);
+  const [appliedVouchers, setAppliedVouchers] = useState<PdvAppliedVoucher[]>([]);
   const [search, setSearch] = useState('');
   const [catalogMode, setCatalogMode] = useState<'quick' | 'catalog'>(() =>
     typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches ? 'catalog' : 'quick');
@@ -130,6 +134,7 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
   const controlsRef = useRef<HTMLDivElement>(null);
   const rowRef = useRef<HTMLDivElement>(null);
   const autoReceipt = usePdvStageReceiptAuto();
+  const receiptOpener = usePdvOrderReceiptOpener();
 
   const catalog = directSale.catalog.data;
   useEffect(() => {
@@ -246,16 +251,12 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
   const cartTotal = computeTotal(cart);
 
   useEffect(() => {
-    setAppliedVoucher((current) => {
-      if (!current) return null;
-      const amount = clampStoredValueApplication(cartTotal, current.balance, current.amount);
-      return amount > 0 ? { ...current, amount } : null;
-    });
+    setAppliedVouchers(current => clampAppliedVouchers(current, cartTotal));
   }, [cartTotal]);
 
   const changeCustomer = useCallback((customerId: string | null) => {
     resetAttempt();
-    setAppliedVoucher(null);
+    setAppliedVouchers([]);
     setCart((current) => setCartCustomer(current, customerId));
   }, [resetAttempt]);
 
@@ -306,6 +307,11 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
     if (direction && keyboardProducts.length > 0 && shouldNavigatePdvCatalogFromSearch(event.key, search)) {
       event.preventDefault();
       moveProductFocus(direction);
+      return;
+    }
+    if (event.key === 'Enter' && keyboardProducts.length === 0 && search.trim()) {
+      event.preventDefault();
+      void handleBarcode(search.trim());
       return;
     }
     if (event.key === 'Enter' && keyboardProducts.length > 0) {
@@ -406,7 +412,7 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
     const signature = saleSignature(cart, terminal.id, notes, transactionDate, payments);
     attemptRef.current = resolvePdvDirectSaleAttemptV2(attemptRef.current, signature);
     const attemptId = attemptRef.current.id;
-    const receiptAttempt = autoReceipt.prepare('sale');
+    const receiptAttempt = receiptOpener.guardAttempt(autoReceipt.prepare('sale'));
     let result: Awaited<ReturnType<typeof directSale.complete.mutateAsync>>;
     try {
     result = await directSale.complete.mutateAsync({
@@ -425,13 +431,15 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
         discountAmount: line.discountAmount,
       })),
       orderDiscountAmount: cart.discount,
+        couponId: cart.coupon?.id ?? null, couponDiscountCents: Math.round(confirmedCouponDiscount(cart) * 100),
       notes,
       transactionDate: transactionDate === maxTransactionDate ? null : transactionDate,
       payments,
     });
 
-    } catch (error) { receiptAttempt.cancel(); throw error; }
-    void receiptAttempt.commit(`sale:${result.orderId}`, (format, options) => openPdvOrderReceipt(result.orderId, format, { ...options, documentKind: 'sale' }), result.idempotent);
+    } catch (error) { receiptAttempt.cancel(); if (receiptOpener.isCurrent()) throw error; return; }
+    if (!receiptOpener.isCurrent()) { receiptAttempt.cancel(); return; }
+    void receiptAttempt.commit(`sale:${result.orderId}`, (format, options) => receiptOpener.open(result.orderId, format, { ...options, documentKind: 'sale' }), result.idempotent);
 
     const readyAttachments = attachments.filter((attachment) => attachment.status === 'ready');
     setCompletedSale({
@@ -442,7 +450,7 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
     });
     setPaymentOpen(false);
     setCart(EMPTY_CART);
-    setAppliedVoucher(null);
+    setAppliedVouchers([]);
     setNotes('');
     setTransactionDate(maxTransactionDate);
     setAttachments([]);
@@ -454,6 +462,14 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
   }
 
   const receiptFormat = readDeviceReceiptFormat() ?? resolvePdvReceiptStagePolicy(receiptSettings.data, 'sale').format;
+
+  const hardware = usePdvDomiLinkWorkspace({
+    identity: cart, contextKey: JSON.stringify([terminalId, session?.id]),
+    blocked: paymentOpen || advancedOpen || directSale.complete.isPending || !catalog,
+    getLine: id => cart.lines.find(line => line.inventoryId === id),
+    onSetQuantity: (id, value) => updateCart(current => setLineQuantity(current, id, value)),
+    onSearchChange: setSearch, searchInputRef,
+  });
 
   if (directSale.catalog.isLoading || !catalog) {
     return (
@@ -517,6 +533,7 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
     advancedOptionsTrigger: t.advancedOptions.trigger,
   };
   const requestPayment = () => {
+    if (!couponCartReady(cart)) { toast({ title: 'Confira o cupom promocional antes de receber.' }); return; }
     if (attachmentBusy) {
       toast({ variant: 'destructive', title: 'Aguarde a preparação das fotos.' });
       return;
@@ -525,15 +542,15 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
   };
 
   const appliedCreditContent = (
-    <PdvAppliedVoucherControl
+    <PdvAppliedVouchersControl
       enabled
       customerId={cart.customerId}
       total={cartTotal}
-      value={appliedVoucher}
+      values={appliedVouchers}
       formatCurrency={formatCurrency}
       onChange={(value) => {
         resetAttempt();
-        setAppliedVoucher(value);
+        setAppliedVouchers(value);
       }}
     />
   );
@@ -571,7 +588,7 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
         </NoticeBanner>
       )}
 
-      {catalog.terminals.length > 1 && <Select value={terminalId ?? undefined} onValueChange={value => { setTerminalId(value); setCart(EMPTY_CART); setAppliedVoucher(null); resetAttempt(); }}><SelectTrigger className="w-full sm:w-56"><SelectValue placeholder="Caixa" /></SelectTrigger><SelectContent>{catalog.terminals.map(item => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent></Select>}
+      {catalog.terminals.length > 1 && <Select value={terminalId ?? undefined} onValueChange={value => { setTerminalId(value); setCart(EMPTY_CART); setAppliedVouchers([]); resetAttempt(); }}><SelectTrigger className="w-full sm:w-56"><SelectValue placeholder="Caixa" /></SelectTrigger><SelectContent>{catalog.terminals.map(item => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent></Select>}
       <div data-testid="pdv-direct-sale-v2-layout" className="pdv-preview-sale">
         <PdvSalePreviewView
           mode={catalogMode} onModeChange={setCatalogMode} search={search} onSearchChange={setSearch}
@@ -580,10 +597,12 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
           products={visibleProducts} disabled={directSale.complete.isPending} activeProductId={activeProductId}
           onProductFocus={id => { const index = keyboardProducts.findIndex(product => product.inventoryId === id); if (index >= 0) setActiveProductIndex(index); }}
           onProductSelect={addProduct} formatCurrency={formatCurrency} onExit={() => window.location.assign('/pdv')}
-          camera={<InventoryIdentifierCameraScanner triggerVariant="icon" onScan={code => void handleBarcode(code)} disabled={paymentOpen || advancedOpen || identifiers.resolve.isPending} />}
+          camera={<><InventoryIdentifierCameraScanner triggerVariant="icon" onScan={code => void handleBarcode(code)} disabled={paymentOpen || advancedOpen || identifiers.resolve.isPending} />{hardware.scannerControl}</>}
           cart={
           <PdvCartPanel
+            weighControl={hardware.weighControl}
             cart={cart}
+            couponContent={<PdvCouponControl cart={cart} disabled={paymentOpen} onChange={coupon => updateCart(current => ({ ...current, coupon }))} />}
             customers={customers}
             formatCurrency={formatCurrency}
             currencySymbol={currencySymbol}
@@ -625,7 +644,7 @@ export function PdvDirectSaleV2Page({ directSale }: PdvDirectSaleV2PageProps) {
         itemCount={cart.lines.length}
         customerName={customerName}
         customerId={cart.customerId}
-        appliedVoucher={appliedVoucher}
+        appliedVouchers={appliedVouchers}
         customerCredit={null}
         accounts={paymentAccounts}
         canUseBankAccounts={paymentAccounts.length > 0}

@@ -155,6 +155,10 @@ export const esOverrides: MessagesOverride = {
 
     errorUnexpected: 'Ocurrió un error inesperado. Inténtalo de nuevo.',
     errorContinueLogin: 'Error al continuar el inicio de sesión.',
+    errorLoginTimeout: 'No fue posible conectar con el servidor. El servicio no está disponible temporalmente; inténtalo de nuevo en unos instantes.',
+    errorSessionRestore: 'No fue posible restaurar tu sesión ahora. Actualiza la aplicación e inténtalo de nuevo.',
+    refreshAndRetry: 'Actualizar e intentar de nuevo',
+    refreshingConnection: 'Actualizando conexión...',
 
     gotrueErrors: {
       invalidCredentials: 'Correo o contraseña incorrectos. Verifica tus credenciales e inténtalo de nuevo.',

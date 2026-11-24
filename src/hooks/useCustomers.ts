@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import type { Customer, CustomerType } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
@@ -104,6 +105,8 @@ export function useCustomers(options: { enabled?: boolean } = {}) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
+      // O detalhe do contrato embute o cliente no cache `contracts`.
+      queryClient.invalidateQueries({ queryKey: ['contracts'] });
       toast({ title: 'Cliente atualizado com sucesso!' });
     },
     onError: (error: Error) => {
@@ -113,12 +116,14 @@ export function useCustomers(options: { enabled?: boolean } = {}) {
 
   const deleteCustomer = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('customers')
-        .update({ is_deleted: true, deleted_at: new Date().toISOString() } as TablesUpdate<'customers'>)
-        .eq('id', id);
-      
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('customers')
+          .update({ is_deleted: true, deleted_at: new Date().toISOString() } as TablesUpdate<'customers'>, { count: 'exact' })
+          .eq('id', id),
+        'update',
+        'Não foi possível excluir o cliente: você não tem permissão para esta ação ou ele já não existe. Atualize a tela e tente de novo.',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });

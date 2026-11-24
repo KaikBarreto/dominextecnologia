@@ -1,3 +1,5 @@
+import { useCreateRegistrationCoreOffer } from '@/hooks/useRegistrationCoreOffer';
+import type { BusinessCore } from '@/lib/businessCore';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { format, subMonths } from 'date-fns';
@@ -953,6 +955,8 @@ export default function AdminAffiliateDetail() {
   const { isAffiliateOnly, linkedAffiliateId, isLoading: permsLoading } = useAdminPermissions();
 
   const [activeTab, setActiveTab] = useState('portfolio');
+  const [linkBusinessCore,setLinkBusinessCore]=useState<BusinessCore>('services');
+  const offerMutation=useCreateRegistrationCoreOffer();
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isPayOpen, setIsPayOpen] = useState(false);
 
@@ -989,8 +993,11 @@ export default function AdminAffiliateDetail() {
     // `utm_key='affiliate'` e SOBRESCREVE a origem quando o affiliate_id bate
     // (ver supabase/functions/_shared/affiliate-resolver.ts). Mesmo que o CEO
     // renomeie a origem no painel, o link antigo continua atribuindo certo.
-    const url = `${origin}/cadastro?origem=Afiliado&afiliado=${afiliadoParam}`;
     try {
+      const params=new URLSearchParams({origem:'Afiliado',afiliado:afiliadoParam,tipo:'teste'});
+      const token=await offerMutation.mutateAsync({core:linkBusinessCore,params,affiliateTrialOnly:true});
+      params.set('nucleo',linkBusinessCore);params.set('oferta',token);
+      const url=`${origin}/cadastro?${params.toString()}`;
       await navigator.clipboard.writeText(url);
       toast.success('Link copiado');
     } catch {
@@ -1064,9 +1071,14 @@ export default function AdminAffiliateDetail() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <Select value={linkBusinessCore} onValueChange={value=>setLinkBusinessCore(value as BusinessCore)} disabled={offerMutation.isPending}>
+            <SelectTrigger className="w-40" aria-label="Perfil do link de afiliado"><SelectValue/></SelectTrigger>
+            <SelectContent><SelectItem value="services">Serviços</SelectItem><SelectItem value="retail">Loja</SelectItem></SelectContent>
+          </Select>
           <Button
             variant="outline"
             size={isMobile ? 'sm' : 'default'}
+            disabled={offerMutation.isPending}
             onClick={handleCopyLink}
             className="gap-2"
           >

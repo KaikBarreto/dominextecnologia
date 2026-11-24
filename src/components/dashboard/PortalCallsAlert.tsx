@@ -25,20 +25,19 @@ import {
   Drawer,
   DrawerContent,
 } from '@/components/ui/drawer';
-import type { ServiceOrder } from '@/types/database';
-import { buildPortalCallsPath } from '@/lib/portalCalls';
+import { buildPortalCallsPath, type PortalCall } from '@/lib/portalCalls';
 
 // ---------------------------------------------------------------------------
 // localStorage key helper — chave por usuário para não vazar entre contas
 // ---------------------------------------------------------------------------
 
-function storageKey(userId: string): string {
-  return `dominex:portal-tickets-seen:${userId}`;
+function storageKey(userId: string, companyId: string): string {
+  return `dominex:portal-tickets-seen:${companyId}:${userId}`;
 }
 
-function getSeenMark(userId: string): Date | null {
+function getSeenMark(userId: string, companyId: string): Date | null {
   try {
-    const raw = localStorage.getItem(storageKey(userId));
+    const raw = localStorage.getItem(storageKey(userId, companyId));
     if (!raw) return null;
     const d = new Date(raw);
     return isNaN(d.getTime()) ? null : d;
@@ -47,16 +46,16 @@ function getSeenMark(userId: string): Date | null {
   }
 }
 
-function setSeenMark(userId: string, mark: Date): void {
+function setSeenMark(userId: string, companyId: string, mark: Date): void {
   try {
-    localStorage.setItem(storageKey(userId), mark.toISOString());
+    localStorage.setItem(storageKey(userId, companyId), mark.toISOString());
   } catch {
     // localStorage pode falhar em modo privado com storage cheio — ignora silenciosamente
   }
 }
 
 /** Calcula o maior created_at entre os chamados, ou agora como fallback. */
-function latestCreatedAt(calls: ServiceOrder[]): Date {
+function latestCreatedAt(calls: PortalCall[]): Date {
   if (calls.length === 0) return new Date();
   const max = calls.reduce((best, os) => {
     const d = new Date(os.created_at);
@@ -71,11 +70,13 @@ function latestCreatedAt(calls: ServiceOrder[]): Date {
 
 interface PortalCallsAlertProps {
   /** Lista completa de chamados abertos (de useDashboardStats.portalCalls). */
-  portalCalls: ServiceOrder[];
+  portalCalls: PortalCall[];
   /** true enquanto os stats ainda estão carregando — não exibe durante loading. */
   isLoading: boolean;
   /** ID do usuário logado (de useAuth().user.id). */
   userId: string;
+  /** Empresa ativa; evita compartilhar a marca de leitura entre tenants. */
+  companyId: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -142,6 +143,7 @@ export function PortalCallsAlert({
   portalCalls,
   isLoading,
   userId,
+  companyId,
 }: PortalCallsAlertProps) {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
@@ -151,8 +153,8 @@ export function PortalCallsAlert({
 
   // Chamados NÃO vistos: created_at posterior à marca localStorage
   const unseenCalls = (() => {
-    if (!userId || portalCalls.length === 0) return [];
-    const mark = getSeenMark(userId);
+    if (!userId || !companyId || portalCalls.length === 0) return [];
+    const mark = getSeenMark(userId, companyId);
     if (!mark) return portalCalls; // nunca marcou → todos são novos
     return portalCalls.filter((os) => new Date(os.created_at) > mark);
   })();
@@ -160,21 +162,21 @@ export function PortalCallsAlert({
   // Mostra o aviso uma única vez após o carregamento dos stats
   useEffect(() => {
     if (isLoading) return;
-    if (!userId) return;
+    if (!userId || !companyId) return;
     if (unseenCalls.length > 0) {
       setOpen(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading, userId]);
+  }, [isLoading, userId, companyId]);
   // Nota: `unseenCalls` não entra nas deps propositalmente — o aviso deve
   // aparecer somente UMA vez ao montar, não reabrir se a lista mudar depois.
 
   const dismiss = useCallback(() => {
-    if (userId && portalCalls.length > 0) {
-      setSeenMark(userId, latestCreatedAt(portalCalls));
+    if (userId && companyId && portalCalls.length > 0) {
+      setSeenMark(userId, companyId, latestCreatedAt(portalCalls));
     }
     setOpen(false);
-  }, [userId, portalCalls]);
+  }, [userId, companyId, portalCalls]);
 
   const viewCalls = useCallback(() => {
     dismiss();

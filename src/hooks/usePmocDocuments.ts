@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { getInvokeErrorMessage } from '@/utils/errorMessages';
 
 /**
  * Lista versões de documentos PMOC vinculadas a um contrato (Onda C — v1.9.x).
@@ -84,6 +85,37 @@ export function buildPmocDocumentDownloadName(
 }
 
 /**
+ * Solicita ao backend uma URL curta para um documento já autorizado.
+ *
+ * O browser nunca assina o caminho do bucket diretamente: a edge relê o
+ * documento pelo ID e valida sessão, tenant, permissão, licença e contrato.
+ */
+export async function requestPmocDocumentDownloadUrl(
+  document: Pick<PmocDocument, 'id' | 'contract_id'>,
+  activeContractId: string,
+): Promise<string> {
+  if (document.contract_id !== activeContractId) {
+    throw new Error('Documento não pertence ao contrato aberto.');
+  }
+
+  const { data, error } = await supabase.functions.invoke('pmoc-document-download', {
+    body: { documentId: document.id, contractId: activeContractId },
+  });
+  if (error) {
+    const detail = await getInvokeErrorMessage(error);
+    throw new Error(detail ?? 'Não foi possível preparar o download.');
+  }
+
+  const url = data && typeof data === 'object' && 'url' in data
+    ? (data as { url?: unknown }).url
+    : null;
+  if (typeof url !== 'string' || !url.startsWith('https://')) {
+    throw new Error('Não foi possível preparar o download.');
+  }
+  return url;
+}
+
+/**
  * Parser defensivo do `notes` pra extrair o status da assinatura.
  *
  * Formato esperado (case-insensitive): `signature:signed` ou `signature:pending`.
@@ -144,20 +176,11 @@ export function usePmocDocuments(contractId: string | null | undefined) {
     refetch: query.refetch,
     error: query.error as Error | null,
     getSignedDownloadUrl: async (
-      document: Pick<PmocDocument, 'contract_id' | 'doc_type' | 'version' | 'generated_at' | 'pdf_storage_path'>,
-      establishmentName?: string | null,
+      document: Pick<PmocDocument, 'id' | 'contract_id'>,
+      _establishmentName?: string | null,
     ) => {
-      if (!contractId || document.contract_id !== contractId) {
-        throw new Error('Documento não pertence ao contrato aberto.');
-      }
-      const fileName = buildPmocDocumentDownloadName(document, establishmentName);
-      const { data, error } = await supabase.storage
-        .from('pmoc-documents')
-        .createSignedUrl(document.pdf_storage_path, 60, { download: fileName });
-      if (error || !data?.signedUrl) {
-        throw error ?? new Error('Não foi possível preparar o download.');
-      }
-      return data.signedUrl;
+      if (!contractId) throw new Error('Contrato não identificado.');
+      return requestPmocDocumentDownloadUrl(document, contractId);
     },
   };
 }

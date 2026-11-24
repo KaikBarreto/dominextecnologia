@@ -42,7 +42,7 @@ describe('cache autorizado do contexto de compra no caixa', () => {
       message: 'saldo interno',
       details: 'code=pdv_supplier_credit_insufficient',
     });
-    expect(supplierBalance).toBe('O saldo do fornecedor não cobre o total desta compra.');
+    expect(supplierBalance).toBe('O saldo do fornecedor não cobre o valor aplicado nesta compra.');
     expect(supplierBalance).not.toContain('pdv_');
   });
 });

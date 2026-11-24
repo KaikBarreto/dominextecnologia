@@ -196,8 +196,8 @@ describe('change-subscription-plan — valor antes de histórico', () => {
   it('força todos os recursos-base no personalizado sem confiar no payload', () => {
     expect(src).toContain('const CUSTOMER_PORTAL_MODULE = "customer_portal"');
     expect(src).toContain('const BASE_INCLUDED_MODULES = [BASE_MODULE, ...FREE_BASE_MODULES] as const');
-    expect(src).toContain('new Set<string>(BASE_INCLUDED_MODULES)');
-    expect(src).toContain('FREE_BASE_MODULES.every(');
+    expect(src).toContain('new Set<string>(requiredCustomModulesForCore(businessCore,normalizedCustomModules))');
+    expect(src).toContain('requiredCustomModulesForCore(businessCore,normalizedCustomModules).filter(code=>code!==BASE_MODULE).every(');
     expect(src).toContain('!Number.isFinite(basePrice) || basePrice <= 0 || !freeBaseModulesAreValid');
     expect(src).toContain('Os módulos obrigatórios do plano personalizado não estão configurados corretamente.');
   });
@@ -263,8 +263,10 @@ describe('create-asaas-payment — a fronteira é a criação da cobrança no ga
     // Depois da cobrança criada, um erro devolvido ao front faz o cliente tentar de
     // novo e gerar uma SEGUNDA cobrança. Cobrar duas vezes é pior que reconciliar.
     const labels = src.match(/registro local da cobrança[^"]*/g) ?? [];
-    // PIX automático, fallback PIX, cartão, avulsa e upgrade proporcional.
-    expect(labels).toHaveLength(5);
+    // Cartão, cobrança avulsa e upgrade proporcional. Pix Automático não é
+    // dinheiro: agora persiste uma tentativa/consentimento separado e só cria
+    // subscription_payments quando o webhook recebe um pay_* real.
+    expect(labels).toHaveLength(3);
     for (const label of labels) {
       const i = src.indexOf(label);
       expect(src.slice(i - 200, i), label).toContain('tryWriteReturning');
@@ -274,7 +276,17 @@ describe('create-asaas-payment — a fronteira é a criação da cobrança no ga
 
   it('as respostas com local_payment_id carregam os avisos', () => {
     const respostas = src.match(/local_payment_id: savedPayment\?\.id,\s*\n\s*\.\.\.warnings\.toBody\(\),/g) ?? [];
-    expect(respostas).toHaveLength(5);
+    expect(respostas).toHaveLength(3);
+  });
+
+  it('Pix Automático reserva a tentativa antes do POST e não grava authorization em asaas_payment_id', () => {
+    const claim = src.indexOf('claim_subscription_pix_automatic_checkout');
+    const post = src.indexOf('asaas.post(`/pix/automatic/authorizations`');
+    expect(claim).toBeGreaterThan(-1);
+    expect(post).toBeGreaterThan(claim);
+    const bloco = src.slice(claim, src.indexOf('// CARTÃO DE CRÉDITO recorrente', claim));
+    expect(bloco).toContain('buildPixAutomaticAuthorizationPayload');
+    expect(bloco).not.toContain('asaas_payment_id: correlation.authorizationId');
   });
 });
 

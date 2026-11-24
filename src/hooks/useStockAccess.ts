@@ -11,7 +11,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { getErrorMessage } from '@/utils/errorMessages';
+import { getStockManagementError, invalidateStockDependents, useStockManagement } from '@/hooks/useStocks';
 
 export interface StockAccess {
   restricted: boolean;
@@ -32,9 +32,10 @@ interface UseStockAccessOptions {
 export function useStockAccess(stockId: string | undefined, open: boolean, opts?: UseStockAccessOptions) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { scope, ready, canManageAccess } = useStockManagement();
 
   const query = useQuery<StockAccess>({
-    queryKey: ['stock-access', stockId],
+    queryKey: ['stock-access', stockId, ...scope],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_stock_access', { p_stock_id: stockId! });
       if (error) throw error;
@@ -44,11 +45,13 @@ export function useStockAccess(stockId: string | undefined, open: boolean, opts?
         user_ids: Array.isArray(raw.user_ids) ? raw.user_ids : [],
       };
     },
-    enabled: !!stockId && open,
+    enabled: !!stockId && open && ready && canManageAccess,
   });
 
   const setAccess = useMutation({
     mutationFn: async ({ stockId, restricted, userIds }: SetAccessArgs) => {
+      if (!canManageAccess) throw new Error('Você não tem permissão para gerenciar o acesso deste local.');
+      if (restricted && userIds.length === 0) throw new Error('Selecione pelo menos uma pessoa para restringir o acesso.');
       const { error } = await supabase.rpc('set_stock_access', {
         p_stock_id: stockId,
         p_restricted: restricted,
@@ -58,20 +61,20 @@ export function useStockAccess(stockId: string | undefined, open: boolean, opts?
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['stock-access', variables.stockId] });
-      queryClient.invalidateQueries({ queryKey: ['stocks'] });
+      invalidateStockDependents(queryClient);
       toast({ title: opts?.successMessage ?? 'Acesso atualizado' });
     },
     onError: (error) => {
       toast({
         title: opts?.errorMessage ?? 'Erro ao salvar acesso',
-        description: getErrorMessage(error),
+        description: getStockManagementError(error),
         variant: 'destructive',
       });
     },
   });
 
   return {
-    access: query.data,
+    access: ready && canManageAccess ? query.data : undefined,
     isLoading: query.isLoading,
     error: query.error,
     setAccess,

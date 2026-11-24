@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { HorizontalTabBar } from '@/components/ui/HorizontalTabBar';
+import { useState } from 'react';
 import { Plus, Settings2 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -55,13 +56,11 @@ interface PipelineTabsBarProps {
  * sem affordance), a engrenagem fica SEMPRE VISÍVEL na aba ATIVA — tocar numa
  * aba inativa primeiro a seleciona, e aí a engrenagem dela aparece. Isso
  * mantém uma engrenagem só na tela (não polui 8 abas com 8 ícones) e nenhum
- * caminho fica inalcançável no toque. O container é o `MobilePillTabs` já
- * existente (pills roláveis com âncora à esquerda e fade nas bordas — régua do
- * projeto), usando o slot `renderSuffix`, que existe exatamente pra pendurar
- * ícone de ação na pill sem aninhar <button> dentro de <button>.
+ * caminho fica inalcançável no toque. A engrenagem continua irmã do botão da
+ * aba, sem aninhar <button> dentro de <button>.
  *
- * Muitos funis não estouram a faixa: as abas rolam na horizontal com fade nas
- * bordas, e o "+" fica FORA da área rolável (sempre alcançável).
+ * O HorizontalTabBar compartilha a rolagem e as setas com o restante do sistema.
+ * O "+" fica FORA da área rolável (sempre alcançável).
  */
 export function PipelineTabsBar({
   pipelines,
@@ -85,48 +84,6 @@ export function PipelineTabsBar({
   // Qual engrenagem está com o menu aberto — o ícone não pode sumir embaixo do
   // próprio menu quando o mouse sai da aba.
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [showLeft, setShowLeft] = useState(false);
-  const [showRight, setShowRight] = useState(false);
-
-  const updateFades = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    setShowLeft(el.scrollLeft > 1);
-    setShowRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
-  }, []);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    el.addEventListener('scroll', updateFades, { passive: true });
-    const ro = new ResizeObserver(updateFades);
-    ro.observe(el);
-    updateFades();
-    return () => {
-      el.removeEventListener('scroll', updateFades);
-      ro.disconnect();
-    };
-  }, [updateFades, visiblePipelines.length]);
-
-  // Mesma máscara do MobilePillTabs (superfície-agnóstica): borda transparente
-  // só do lado que tem conteúdo escondido.
-  const maskStyle: React.CSSProperties = (() => {
-    if (showLeft && showRight) {
-      const g = 'linear-gradient(to right, transparent 0, black 20px, black calc(100% - 20px), transparent 100%)';
-      return { WebkitMaskImage: g, maskImage: g };
-    }
-    if (showLeft) {
-      const g = 'linear-gradient(to right, transparent 0, black 20px)';
-      return { WebkitMaskImage: g, maskImage: g };
-    }
-    if (showRight) {
-      const g = 'linear-gradient(to left, transparent 0, black 20px)';
-      return { WebkitMaskImage: g, maskImage: g };
-    }
-    return {};
-  })();
 
   const gearFor = (pipeline: PipelineTabItem, isActive: boolean, forMobile: boolean) => {
     const actions = menuActions(pipeline).filter((a) => !a.hidden);
@@ -228,29 +185,31 @@ export function PipelineTabsBar({
     return (
       <div className={cn('flex items-center gap-2 min-w-0', className)}>
         {selectedPipeline && gearFor(selectedPipeline, true, true)}
-        <div className="min-w-0 flex-1 overflow-x-auto scrollbar-none">
-          <div className="flex w-max items-center gap-1.5 pb-1">
-            {visiblePipelines.map((pipeline) => {
-              const isActive = pipeline.id === selectedId;
-              return (
-                <div key={pipeline.id} data-pipeline-item={pipeline.id} className="group flex shrink-0 items-center bg-transparent">
-                  <button type="button" role="tab" aria-selected={isActive} onClick={() => onSelect(pipeline.id)} className={cn('flex h-10 flex-col items-start justify-center gap-1 px-3 text-sm font-medium transition-colors', isActive ? 'text-foreground' : 'text-muted-foreground')}>
-                    <span className="whitespace-nowrap">{pipeline.name}</span>
-                    <span
-                      data-pipeline-color={pipeline.id}
-                      className={cn(
-                        'h-0.5 rounded-full transition-all',
-                        isActive ? 'w-full opacity-100' : 'w-5 opacity-35',
-                      )}
-                      style={{ backgroundColor: pipeline.color ?? '#2563EB' }}
-                    />
-                  </button>
-                  {isActive && <span className="pr-1">{gearFor(pipeline, true, true)}</span>}
-                </div>
-              );
-            })}
+        <HorizontalTabBar asChild className="min-w-0 flex-1">
+          <div role="tablist" aria-label={listLabel} className="min-w-0 flex-1 overflow-x-auto scrollbar-none">
+            <div className="flex w-max items-center gap-1.5 pb-1">
+              {visiblePipelines.map((pipeline) => {
+                const isActive = pipeline.id === selectedId;
+                return (
+                  <div key={pipeline.id} data-pipeline-item={pipeline.id} className="group flex shrink-0 items-center bg-transparent">
+                    <button type="button" role="tab" aria-selected={isActive} onClick={() => onSelect(pipeline.id)} className={cn('flex h-10 flex-col items-start justify-center gap-1 px-3 text-sm font-medium transition-colors', isActive ? 'text-foreground' : 'text-muted-foreground')}>
+                      <span className="whitespace-nowrap">{pipeline.name}</span>
+                      <span
+                        data-pipeline-color={pipeline.id}
+                        className={cn(
+                          'h-0.5 rounded-full transition-all',
+                          isActive ? 'w-full opacity-100' : 'w-5 opacity-35',
+                        )}
+                        style={{ backgroundColor: pipeline.color ?? '#2563EB' }}
+                      />
+                    </button>
+                    {isActive && <span className="pr-1">{gearFor(pipeline, true, true)}</span>}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        </HorizontalTabBar>
         {createButton}
       </div>
     );
@@ -259,49 +218,49 @@ export function PipelineTabsBar({
   return (
     <div className={cn('flex items-center gap-1 min-w-0', className)}>
       {selectedPipeline && gearFor(selectedPipeline, true, false)}
-      <div
-        ref={scrollRef}
-        role="tablist"
-        aria-label={listLabel}
-        style={maskStyle}
-        className="flex items-end gap-1 min-w-0 overflow-x-auto scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      >
-        {visiblePipelines.map((p) => {
-          const isActive = selectedId === p.id;
-          return (
-            <div
-              key={p.id}
-              data-pipeline-item={p.id}
-              className="group flex shrink-0 items-center gap-0.5 bg-transparent pr-1"
-            >
-              <button
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                data-pipeline-tab={p.id}
-                onClick={() => onSelect(p.id)}
-                className={cn(
-                  'h-9 px-2.5 rounded-none text-sm font-medium whitespace-nowrap transition-colors',
-                  isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
-                )}
+      <HorizontalTabBar asChild className="min-w-0 flex-1">
+        <div
+          role="tablist"
+          aria-label={listLabel}
+          className="flex items-end gap-1 min-w-0 overflow-x-auto scrollbar-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {visiblePipelines.map((p) => {
+            const isActive = selectedId === p.id;
+            return (
+              <div
+                key={p.id}
+                data-pipeline-item={p.id}
+                className="group flex shrink-0 items-center gap-0.5 bg-transparent pr-1"
               >
-                <span className="flex flex-col items-start gap-1">
-                  <span>{p.name}</span>
-                  <span
-                    data-pipeline-color={p.id}
-                    className={cn(
-                      'h-0.5 rounded-full transition-all',
-                      isActive ? 'w-full opacity-100' : 'w-5 opacity-30 group-hover:w-full group-hover:opacity-60',
-                    )}
-                    style={{ backgroundColor: p.color ?? '#2563EB' }}
-                  />
-                </span>
-              </button>
-              {gearFor(p, isActive, false)}
-            </div>
-          );
-        })}
-      </div>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  data-pipeline-tab={p.id}
+                  onClick={() => onSelect(p.id)}
+                  className={cn(
+                    'h-9 px-2.5 rounded-none text-sm font-medium whitespace-nowrap transition-colors',
+                    isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  <span className="flex flex-col items-start gap-1">
+                    <span>{p.name}</span>
+                    <span
+                      data-pipeline-color={p.id}
+                      className={cn(
+                        'h-0.5 rounded-full transition-all',
+                        isActive ? 'w-full opacity-100' : 'w-5 opacity-30 group-hover:w-full group-hover:opacity-60',
+                      )}
+                      style={{ backgroundColor: p.color ?? '#2563EB' }}
+                    />
+                  </span>
+                </button>
+                {gearFor(p, isActive, false)}
+              </div>
+            );
+          })}
+        </div>
+      </HorizontalTabBar>
       {createButton}
     </div>
   );

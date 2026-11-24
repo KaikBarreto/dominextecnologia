@@ -25,7 +25,7 @@ export const GLOSSARIO_CICLO: TermoCiclo[] = [
     descricao:
       'É o coração do sistema. Ele aspira o gás frio e de baixa pressão que vem do evaporador e o comprime, deixando-o quente e em alta pressão. É o que faz o gás circular por todo o ciclo.',
     exemplo:
-      'Compressor que não parte ou desarma geralmente é capacitor, falta de gás ou trava mecânica.',
+      'Se o compressor não parte ou desarma, verifique alimentação, proteções e componentes de partida conforme o modelo. O sintoma sozinho não identifica a causa.',
   },
   {
     id: 'condensador',
@@ -73,7 +73,7 @@ export const GLOSSARIO_CICLO: TermoCiclo[] = [
     descricao:
       'Tubo que leva o gás frio e de baixa pressão do evaporador de volta pro compressor. Costuma ser o tubo mais grosso e fica gelado/suado quando o sistema está com carga certa.',
     exemplo:
-      'Linha de sucção sem suar (seca e morna) é sinal clássico de pouco gás.',
+      'A condensação na sucção depende da temperatura do tubo e da umidade do ambiente. Tubo seco, sozinho, não indica falta de refrigerante.',
   },
   {
     id: 'linha-liquido',
@@ -95,7 +95,7 @@ export const GLOSSARIO_CICLO: TermoCiclo[] = [
     id: 'superaquecimento',
     termo: 'Superaquecimento (SH)',
     descricao:
-      'É o quanto o gás na linha de sucção está mais quente que a temperatura de saturação da baixa pressão. Garante que só chega gás (e não líquido) no compressor. SH muito alto = pouco gás; muito baixo = gás demais.',
+      'É a diferença entre a temperatura medida na sucção e a saturação do vapor (dew) na mesma pressão. Ajuda a avaliar o estado do refrigerante na entrada do compressor. Valores altos ou baixos podem ter várias causas; compare com o alvo do fabricante e as condições de operação antes de concluir sobre a carga.',
     exemplo:
       'Calcule na aba Superaquecimento: T. da sucção menos a saturação da baixa.',
   },
@@ -103,7 +103,7 @@ export const GLOSSARIO_CICLO: TermoCiclo[] = [
     id: 'subresfriamento',
     termo: 'Subresfriamento (SC)',
     descricao:
-      'É o quanto o líquido na linha de líquido está mais frio que a temperatura de saturação da alta pressão. Mostra que o gás condensou bem. SC baixo = pouca carga; alto = carga em excesso ou condensador com problema.',
+      'É a diferença entre a saturação do líquido (bubble) na alta pressão e a temperatura medida na linha de líquido. Indica o resfriamento do líquido após a condensação. O alvo e a interpretação dependem do equipamento; uma leitura isolada não determina falta ou excesso de refrigerante.',
     exemplo:
       'Calcule na aba Superaquecimento: saturação da alta menos a T. da linha de líquido.',
   },

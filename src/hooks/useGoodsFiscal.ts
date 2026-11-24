@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { GOODS_FISCAL_ROOT, useGoodsFiscalAccess } from "@/hooks/useGoodsFiscalAccess";
 import { goodsFiscalError } from "@/lib/fiscal/goodsErrors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -8,6 +8,7 @@ export type GoodsDirection = "entrada" | "saida";
 export type GoodsSourceType =
   "manual" | "pdv_sale" | "pdv_purchase" | "inventory_purchase";
 export type GoodsModel = 55 | 65;
+export type GoodsFiscalEnvironment = "homologacao" | "producao";
 
 export interface GoodsFiscalSource {
   sourceType: Exclude<GoodsSourceType, "manual">;
@@ -71,15 +72,21 @@ export interface GoodsFiscalPayment {
   method: string;
   amount: number;
   change?: number;
+  deferred?: boolean;
 }
 
 export interface GoodsFiscalDraft {
   id?: string | null;
   model: GoodsModel;
   direction: GoodsDirection;
+  stockId?: string | null;
+  seriesId?: string | null;
+  carrierId?: string | null;
+  environment?: GoodsFiscalEnvironment;
   sourceType: GoodsSourceType;
   sourceId?: string | null;
   nature: string;
+  finalConsumer?: boolean;
   party: GoodsFiscalParty | null;
   items: GoodsFiscalItem[];
   payments: GoodsFiscalPayment[];
@@ -189,14 +196,26 @@ export function projectGoodsSnapshot(
           method: text(payment.method),
           amount: number(payment.amount),
           change: number(payment.change),
+          deferred: payment.deferred === true,
         };
       })
     : [];
   return {
     id: null,
     direction: root.direction === "entrada" ? "entrada" : "saida",
+    stockId: text(root.stockId) || null,
+    seriesId: text(root.seriesId) || null,
+    carrierId: text(root.carrierId) || null,
+    environment:
+      root.environment === "producao"
+        ? "producao"
+        : root.environment === "homologacao"
+          ? "homologacao"
+          : undefined,
     sourceType: text(root.sourceType) as GoodsSourceType,
     sourceId: text(root.sourceId) || null,
+    finalConsumer:
+      typeof root.finalConsumer === "boolean" ? root.finalConsumer : undefined,
     party,
     items,
     payments,
@@ -219,21 +238,38 @@ export function useGoodsFiscalSources(direction: GoodsDirection, query: string, 
 // Respostas de uma identidade anterior nunca são entregues ao formulário atual.
 function useFiscalGuard() {
   const access = useGoodsFiscalAccess();
-  const current = useRef(access); current.current = access;
+  const current = useRef({access,epoch:0});
+  if (current.current.access.scopeId !== access.scopeId || current.current.access.allowed !== access.allowed) current.current={access,epoch:current.current.epoch+1};
+  else current.current.access=access;
+  const mounted=useRef(true);
+  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;current.current.epoch++;};},[]);
   return () => {
-    const before = current.current;
-    if (!before.allowed) throw new Error('Você não tem acesso à emissão fiscal.');
-    return () => { if (!current.current.allowed || current.current.scopeId !== before.scopeId) throw new Error('Seu contexto de acesso mudou. Abra a nota novamente.'); };
+    const before=current.current;
+    const epoch=before.epoch;
+    if (!mounted.current || !before.access.allowed) throw new Error('Você não tem acesso à emissão fiscal.');
+    return () => { if (!mounted.current || !current.current.access.allowed || current.current.epoch !== epoch) throw new Error('Seu contexto de acesso mudou. Abra a nota novamente.'); };
   };
 }
 export function useGoodsFiscalSourceImport() {
   const guard = useFiscalGuard();
   return useMutation({ mutationFn: async (source: Pick<GoodsFiscalSource, 'sourceType' | 'sourceId'>) => {
     const assertCurrent = guard();
-    const { data, error } = await rpc('fiscal_get_goods_source_snapshot', { p_source_type: source.sourceType, p_source_id: source.sourceId });
+    const snapshotResult = await rpc('fiscal_get_goods_source_snapshot', {
+      p_source_type: source.sourceType,
+      p_source_id: source.sourceId,
+    });
     assertCurrent();
-    if (error) throw new Error('Não foi possível importar esta venda ou compra. Confira a confirmação e o acesso fiscal.');
-    return projectGoodsSnapshot(data);
+    if (snapshotResult.error) throw new Error('Não foi possível importar esta venda ou compra. Confira a confirmação e o acesso fiscal.');
+    const stockResult = await rpc('fiscal_resolve_source_stock', {
+      p_source_type: source.sourceType,
+      p_source_id: source.sourceId,
+    });
+    assertCurrent();
+    if (stockResult.error) throw new Error('Não foi possível identificar o local de estoque desta venda ou compra.');
+    return {
+      ...projectGoodsSnapshot(snapshotResult.data),
+      stockId: text(stockResult.data) || null,
+    };
   }});
 }
 
@@ -246,7 +282,7 @@ export function useGoodsFiscalDocuments(model: GoodsModel, sourceId?: string | n
       type Builder = { eq: (column: string, value: string) => Builder; order: (column: string, options: { ascending: boolean }) => Builder; limit: (count: number) => Promise<RpcResult> };
       const client = supabase as unknown as { from: (name: string) => { select: (fields: string) => Builder } };
       let builder = client.from(model === 55 ? 'nfe_documents' : 'nfce_documents')
-        .select(`id,status,official_status,environment,series,number,access_key,protocol,draft_payload,source_type,source_id,processed_xml_path,${model === 55 ? 'danfe_pdf_path' : 'danfce_pdf_path'},last_error_code,last_error_message,created_at,updated_at`)
+        .select(`id,status,official_status,environment,series,number,access_key,protocol,draft_payload,stock_id,source_type,source_id,processed_xml_path,${model === 55 ? 'danfe_pdf_path' : 'danfce_pdf_path'},last_error_code,last_error_message,created_at,updated_at`)
         .eq('company_id', access.companyId!);
       if (sourceId) builder = builder.eq('source_type', 'pdv_sale').eq('source_id', sourceId);
       const { data, error } = await builder.order('created_at', { ascending: false }).limit(sourceId ? 1 : 100);
@@ -274,11 +310,17 @@ export function useSaveGoodsFiscalDocument() {
     const assertCurrent = guard();
     const result = await invokeGoods({ action: emit ? 'emit' : 'save_draft', draft });
     assertCurrent(); return result;
-  }, onSettled: () => client.invalidateQueries({ queryKey: GOODS_FISCAL_ROOT }), retry: false });
+  }, onSettled: () => {
+    void client.invalidateQueries({ queryKey: GOODS_FISCAL_ROOT });
+    void client.invalidateQueries({ queryKey: ['fiscal-inventory'] });
+  }, retry: false });
 }
 export function useGoodsFiscalDocumentAction() {
   const client = useQueryClient(); const guard = useFiscalGuard();
-  return useMutation({ mutationFn: async (input: { model: GoodsModel; documentId: string; action: 'consult' | 'artifact' | 'cancel'; kind?: 'xml' | 'pdf'; reason?: string }) => {
+  return useMutation({ mutationFn: async (input: { model: GoodsModel; documentId: string; action: 'consult' | 'artifact' | 'cancel' | 'revise' | 'resume'; kind?: 'xml' | 'pdf'; reason?: string }) => {
     const assertCurrent = guard(); const result = await invokeGoods(input); assertCurrent(); return result;
-  }, onSettled: () => client.invalidateQueries({ queryKey: GOODS_FISCAL_ROOT }), retry: false });
+  }, onSettled: () => {
+    void client.invalidateQueries({ queryKey: GOODS_FISCAL_ROOT });
+    void client.invalidateQueries({ queryKey: ['fiscal-inventory'] });
+  }, retry: false });
 }

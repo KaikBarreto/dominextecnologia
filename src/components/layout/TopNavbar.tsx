@@ -8,7 +8,7 @@ import {
   Package,
   DollarSign,
   FileText,
-  Receipt,
+  TicketPercent,
   Settings as SettingsIcon,
   User,
   TrendingUp,
@@ -72,12 +72,14 @@ import { useCompanyModules, type ModuleCode } from '@/hooks/useCompanyModules';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useLogoInk } from '@/hooks/useLogoInk';
+import { getContrastingLogoSurfaceTone } from '@/utils/logoInk';
 import { HelpCenterDrawer } from '@/components/layout/HelpCenterDrawer';
 import { AccountSwitcherDropdown } from '@/components/account-switcher/AccountSwitcherDropdown';
 import { NotificationsBell } from '@/components/notifications/NotificationsBell';
 import { AdminNotificationBell } from '@/components/admin/AdminNotificationBell';
 import { getCompanyWhatsAppNumber } from '@/components/landing/whatsappNumbers';
 import { cn } from '@/lib/utils';
+import { fiscalNavigationItem } from '@/config/fiscalNavigation';
 
 interface MenuItem {
   title: string;
@@ -122,7 +124,7 @@ const tenantMenuItems: MenuItem[] = [
   // permissões próprias. "Caixa" (/pdv) é o PAINEL; a venda (/pdv/venda) é
   // sub-tela sem item de menu — ver o sidebar.
   {
-    title: 'PDV',
+    title: 'PDV (Loja)',
     icon: Store,
     moduleKey: 'pdv',
     children: [
@@ -130,9 +132,11 @@ const tenantMenuItems: MenuItem[] = [
       { title: 'Orçamentos', icon: ClipboardList, path: '/pdv/pre-pedidos', screenKeys: ['screen:pdv', 'screen:pdv_orders'], moduleKey: 'pdv', requiresPdvCounter: true },
       { title: 'Pedidos', icon: ListOrdered, path: '/pdv/pedidos', screenKey: 'screen:pdv_orders', moduleKey: 'pdv' },
       { title: 'Expedição', icon: PackageCheck, path: '/pdv/expedicao', screenKey: 'screen:pdv_dispatch', moduleKey: 'pdv', requiresPdvCounter: true },
+      { title: 'Estoque da loja', icon: Package, path: '/pdv/estoque', screenKey: 'screen:inventory', moduleKey: 'pdv' },
       { title: 'Histórico de Caixa', icon: HistoryIcon, path: '/pdv/caixas', screenKey: 'screen:pdv_cash_history', moduleKey: 'pdv' },
       { title: 'Relatórios da Loja', icon: BarChart3, path: '/pdv/relatorios', screenKey: 'screen:pdv_reports', moduleKey: 'pdv' },
-      { title: 'Configurações do PDV', icon: SettingsIcon, path: '/pdv/configuracoes', screenKey: 'screen:pdv_settings', moduleKey: 'pdv' },
+      { title: 'Cupons promocionais', icon: TicketPercent, path: '/pdv/cupons', screenKey: 'screen:pdv_settings', moduleKey: 'pdv' },
+      { title: 'Configurações do PDV (Loja)', icon: SettingsIcon, path: '/pdv/configuracoes', screenKey: 'screen:pdv_settings', moduleKey: 'pdv' },
     ],
   },
   // Os dois são quadros Kanban e andam juntos (um projeto AGRUPA funis), mas
@@ -149,14 +153,14 @@ const tenantMenuItems: MenuItem[] = [
     ],
   },
   { title: 'Financeiro', icon: DollarSign, path: '/financeiro', screenKey: 'screen:finance' },
-  { title: 'Notas Fiscais', icon: Receipt, path: '/notas-fiscais', screenKey: 'screen:fiscal_notes', moduleKey: 'nfe' },
+  fiscalNavigationItem,
 ];
 
 const adminMenuItems: (MenuItem & { masterOnly?: boolean })[] = [
   { title: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard', screenKey: 'admin_dashboard' },
   { title: 'CRM/Tarefas', icon: Target, path: '/admin/crm', screenKey: 'admin_crm' },
   { title: 'Empresas', icon: Building2, path: '/admin/empresas', screenKey: 'admin_empresas' },
-  { title: 'Vendedores', icon: Briefcase, path: '/admin/vendedores', screenKey: 'admin_vendedores' },
+  { title: 'Equipe', icon: Briefcase, path: '/admin/vendedores', screenKey: 'admin_vendedores' },
   { title: 'Afiliados', icon: Handshake, path: '/admin/afiliados', screenKey: 'admin_afiliados' },
   { title: 'Financeiro', icon: DollarSign, path: '/admin/financeiro', screenKey: 'admin_financeiro' },
   { title: 'Avisos e NPS', icon: Megaphone, path: '/admin/avisos', screenKey: 'admin_avisos', masterOnly: true },
@@ -193,8 +197,8 @@ export const TopNavbar = memo(() => {
   const tMenu = (title: string) => translateMenuLabel(title, shellT);
   const L = (path: string) => localizeAppPath(path, locale);
   const { logoUrl, defaultLogoDark, defaultLogoWhite, isLoading: logoLoading } = useWhiteLabel();
-  // A barra de topo também é escura por padrão (Fase 2), nos dois temas. Logo
-  // de tinta escura precisa de placa clara atrás pra não sumir.
+  // A mesma arte atende barra clara e escura; sua tinta define o contraste da
+  // faixa inteira do menu, sem criar uma placa local ao redor da imagem.
   const logoInk = useLogoInk(logoUrl);
   const location = useLocation();
   const navigate = useNavigate();
@@ -205,6 +209,9 @@ export const TopNavbar = memo(() => {
     }
     return 'light';
   });
+  const logoSurfaceTone = logoUrl
+    ? getContrastingLogoSurfaceTone(logoInk) ?? undefined
+    : undefined;
 
   const applyTheme = (next: 'light' | 'dark') => {
     setTheme(next);
@@ -263,17 +270,16 @@ export const TopNavbar = memo(() => {
   return (
     <>
       <TooltipProvider delayDuration={200}>
-        <header data-nav-surface className="hidden xl:flex h-14 items-center justify-between border-b border-border bg-background px-4 text-foreground">
+        <header
+          data-nav-surface
+          data-tenant-logo-surface={logoSurfaceTone}
+          className="tenant-logo-surface hidden xl:flex h-14 items-center justify-between border-b border-border bg-background px-4 text-foreground transition-colors duration-300"
+        >
           <div className="flex items-center gap-6 min-w-0 flex-1">
             {logoLoading ? (
               <div className="h-7 w-28 rounded bg-muted animate-pulse shrink-0" />
             ) : logoUrl ? (
-              <span
-                className={cn(
-                  'flex shrink-0 items-center',
-                  logoInk === 'dark' && 'rounded-lg bg-white px-2 py-1'
-                )}
-              >
+              <span className="flex shrink-0 items-center">
                 <img
                   src={logoUrl}
                   alt="Logo"

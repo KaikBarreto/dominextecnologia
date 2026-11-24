@@ -1,5 +1,5 @@
 import { useSearchParams } from 'react-router-dom';
-import { BarChart3, Database, Server, ShieldAlert } from 'lucide-react';
+import { BarChart3, Database, MessagesSquare, Server, ShieldAlert } from 'lucide-react';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -7,6 +7,7 @@ import { typography } from '@/lib/typography';
 import { useAuth } from '@/contexts/AuthContext';
 import { EstatisticasSistemaTab } from '@/components/admin/estatisticas/EstatisticasSistemaTab';
 import { EstatisticasInfraTab } from '@/components/admin/estatisticas/EstatisticasInfraTab';
+import { EstatisticasComunicacoesTab } from '@/components/admin/estatisticas/EstatisticasComunicacoesTab';
 import AdminMonitoramento from './AdminMonitoramento';
 
 /**
@@ -36,7 +37,7 @@ import AdminMonitoramento from './AdminMonitoramento';
  * PT-BR chumbado: painel Auctus não entra no i18n de 4 idiomas.
  */
 
-const ABAS = ['sistema', 'banco', 'infra'] as const;
+const ABAS = ['sistema', 'comunicacoes', 'banco', 'infra'] as const;
 type Aba = (typeof ABAS)[number];
 
 export default function AdminEstatisticas() {
@@ -80,17 +81,21 @@ export default function AdminEstatisticas() {
           Estatísticas
         </h1>
         <p className={typography.pageSubtitle}>
-          Uso da base de clientes, saúde do banco e da infraestrutura.
+          Uso da base, comunicações, saúde do banco e da infraestrutura.
         </p>
       </div>
 
       <Tabs value={aba} onValueChange={trocarAba}>
-        {/* Pills roláveis no mobile, ancoradas à esquerda. */}
-        <div className="-mx-4 px-4 overflow-x-auto md:mx-0 md:px-0">
-          <TabsList variant="underline" className="w-max">
+        {/* Abas com rolagem e controles compartilhados. */}
+        <div className="-mx-4 min-w-0 px-4 md:mx-0 md:px-0">
+          <TabsList variant="underline" className="w-full">
             <TabsTrigger variant="underline" level="screen" value="sistema" className="gap-1.5">
               <BarChart3 className="h-4 w-4" />
               Sistema
+            </TabsTrigger>
+            <TabsTrigger variant="underline" level="screen" value="comunicacoes" className="gap-1.5">
+              <MessagesSquare className="h-4 w-4" />
+              Comunicações
             </TabsTrigger>
             <TabsTrigger variant="underline" level="screen" value="banco" className="gap-1.5">
               <Database className="h-4 w-4" />
@@ -105,6 +110,10 @@ export default function AdminEstatisticas() {
 
         <TabsContent value="sistema" className="mt-6">
           <EstatisticasSistemaTab />
+        </TabsContent>
+
+        <TabsContent value="comunicacoes" className="mt-6">
+          <EstatisticasComunicacoesTab />
         </TabsContent>
 
         {/* A tela de monitoramento inteira, como aba. Ela tem sub-abas próprias

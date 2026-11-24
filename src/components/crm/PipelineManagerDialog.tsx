@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, GripVertical, Pencil, Trash2, Check, X, Star, Lock, Users, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
-import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { AlertTriangle, ChevronDown, ChevronUp, GripVertical, Lock, Pencil, Plus, Star, Trash2, Users, Workflow } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -14,10 +13,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
+import { RowActionsMenu, type RowAction } from '@/components/ui/RowActionsMenu';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { PipelineAccessDialog } from '@/components/crm/PipelineAccessDialog';
 import { StageManagerDialog } from '@/components/crm/StageManagerDialog';
+import {
+  CrmSettingsDetailEmpty,
+  CrmSettingsListDetail,
+  CrmSettingsListRow,
+} from '@/components/crm/CrmSettingsListDetail';
 import { Label } from '@/components/ui/label';
 import { useCrmPipelines, type CrmPipeline } from '@/hooks/useCrmPipelines';
 import { useCrmPipelineAccess } from '@/hooks/useCrmPipelineAccess';
@@ -28,40 +32,112 @@ import { cn } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 
+const DEFAULT_COLOR = '#2563EB';
+
 interface PipelineManagerDialogProps {
-  /** Renderiza o CRUD dentro da área unificada de configurações. */
-  embedded?: boolean;
-  /** Gatilho embutido (padrão histórico). Omitir quando o diálogo é aberto de
-   *  fora, por `open`/`onOpenChange` (botão "+" das abas de funil). */
-  children?: React.ReactNode;
-  /** Modo controlado. Ausente = o diálogo controla o próprio estado. */
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
   /** Chamado com o id do funil recém-criado. A tela usa pra JÁ ABRIR o funil
    *  novo: criar um funil e continuar olhando pro antigo fazia o usuário
    *  cadastrar as etapas no funil errado. */
   onCreated?: (pipelineId: string) => void;
-  /** Funil que deve abrir expandido quando as configurações forem acionadas pela engrenagem da aba. */
-  initialExpandedPipelineId?: string;
+  /** Funil que já abre selecionado quando as configurações são acionadas pela engrenagem da aba. */
+  initialPipelineId?: string;
+}
+
+interface PipelineFormValues {
+  name: string;
+  color: string;
+  tracksValue: boolean;
+}
+
+interface PipelineFormProps {
+  title: string;
+  initial: PipelineFormValues;
+  /** O interruptor de valores só existe na edição: funil novo nasce acompanhando valores. */
+  showTracksValue: boolean;
+  submitLabel: string;
+  hint?: string;
+  isPending: boolean;
+  onSubmit: (values: PipelineFormValues) => void;
+  onCancel: () => void;
 }
 
 /**
- * CRUD de funis do CRM (Onda D — multi-pipeline). Diálogo IRMÃO do
- * StageManagerDialog, não uma aba dentro dele: funil é um nível acima de
- * etapa (funil CONTÉM etapas), e o StageManagerDialog já passou a operar
- * "dentro" de um funil selecionado — misturar os dois CRUDs no mesmo diálogo
- * obrigaria a navegar entre dois contextos diferentes na mesma tela. Dois
- * botões lado a lado ("Gerenciar Estágios" / "Gerenciar Funis") deixam claro
- * que são coisas diferentes, do jeito que Kommo/RD Station também separam.
+ * Formulário de funil (criar e editar). Fica FORA do componente principal: um
+ * componente declarado dentro do render é recriado a cada atualização e perde
+ * o que a pessoa está digitando.
  */
-export function PipelineManagerDialog({
-  embedded = false,
-  children,
-  open: openProp,
-  onOpenChange,
-  onCreated,
-  initialExpandedPipelineId,
-}: PipelineManagerDialogProps) {
+function PipelineForm({ title, initial, showTracksValue, submitLabel, hint, isPending, onSubmit, onCancel }: PipelineFormProps) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.crm.pipelines;
+  const [values, setValues] = useState(initial);
+  const submit = () => {
+    if (!values.name.trim()) return;
+    onSubmit({ ...values, name: values.name.trim() });
+  };
+
+  return (
+    <div className="space-y-4">
+      <h3 className="text-lg font-semibold">{title}</h3>
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="space-y-1.5">
+          <Label htmlFor="crm-pipeline-name">{t.nameLabel}</Label>
+          <Input
+            id="crm-pipeline-name"
+            autoFocus
+            value={values.name}
+            onChange={(event) => setValues({ ...values, name: event.target.value })}
+            placeholder={t.namePlaceholder}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                submit();
+              }
+            }}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="crm-pipeline-color">{t.colorLabel}</Label>
+          <input
+            id="crm-pipeline-color"
+            type="color"
+            value={values.color}
+            onChange={(event) => setValues({ ...values, color: event.target.value })}
+            className="block h-10 w-14 cursor-pointer rounded-lg border border-input bg-background p-1"
+          />
+        </div>
+      </div>
+      {showTracksValue && (
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-sm font-medium">{t.tracksValueLabel}</p>
+            <p className="text-xs text-muted-foreground">{t.tracksValueHint}</p>
+          </div>
+          <LabeledSwitch
+            value={values.tracksValue ? 'sim' : 'nao'}
+            onChange={(next) => setValues({ ...values, tracksValue: next === 'sim' })}
+            off={{ value: 'nao', label: t.switchNo }}
+            on={{ value: 'sim', label: t.switchYes }}
+            aria-label={t.tracksValueLabel}
+            className="shrink-0"
+          />
+        </div>
+      )}
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+      <div className="flex justify-end gap-2 border-t pt-4">
+        <Button variant="ghost" onClick={onCancel}>{t.cancel}</Button>
+        <Button onClick={submit} disabled={!values.name.trim() || isPending}>{submitLabel}</Button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Funis do CRM dentro das configurações: lista de funis à esquerda e, à
+ * direita, o funil escolhido com suas etapas. Trocar de funil não fecha nada,
+ * e as etapas ganham a largura inteira do painel em vez de viverem dentro de
+ * uma sanfona recuada.
+ */
+export function PipelineManagerDialog({ onCreated, initialPipelineId }: PipelineManagerDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.crm;
   const tAccess = t.pipelineAccess;
@@ -94,325 +170,271 @@ export function PipelineManagerDialog({
     return map;
   }, [stages, leads]);
 
-  const [internalOpen, setInternalOpen] = useState(false);
-  const isControlled = openProp !== undefined;
-  const open = isControlled ? openProp : internalOpen;
-  const setOpen = (next: boolean) => {
-    if (!isControlled) setInternalOpen(next);
-    onOpenChange?.(next);
-  };
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(initialPipelineId ?? null);
+  // No celular, quem chega pela engrenagem de um funil já cai nas etapas dele.
+  const [mobileDetailOpen, setMobileDetailOpen] = useState(Boolean(initialPipelineId));
+  const [mode, setMode] = useState<'view' | 'edit' | 'create'>('view');
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [accessPipelineId, setAccessPipelineId] = useState<string | null>(null);
-  const [newName, setNewName] = useState('');
-  const [newColor, setNewColor] = useState('#2563EB');
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [expandedPipelineId, setExpandedPipelineId] = useState<string | null>(initialExpandedPipelineId ?? null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (initialExpandedPipelineId) setExpandedPipelineId(initialExpandedPipelineId);
-  }, [initialExpandedPipelineId]);
+    if (!initialPipelineId) return;
+    setSelectedId(initialPipelineId);
+    setMobileDetailOpen(true);
+    setMode('view');
+  }, [initialPipelineId]);
 
-  const handleCreate = () => {
-    if (!newName.trim()) return;
+  // Sem escolha (ou com o escolhido excluído), o painel mostra o funil padrão:
+  // um detalhe vazio ao abrir obrigaria um clique a mais em toda visita.
+  const selected: CrmPipeline | null =
+    pipelines.find((pipeline) => pipeline.id === selectedId)
+    ?? pipelines.find((pipeline) => pipeline.is_default)
+    ?? pipelines[0]
+    ?? null;
+  const pipelineCounts = (id: string) => countsByPipeline.get(id) ?? { stages: 0, leads: 0 };
+  const countsLine = (id: string) => {
+    const counts = pipelineCounts(id);
+    return t.pipelines.countsLine
+      .replace('{stages}', String(counts.stages))
+      .replace('{leads}', String(counts.leads));
+  };
+  const isRestricted = (id: string) => pipelineAccessRows.some((row) => row.pipeline_id === id);
+
+  const selectPipeline = (id: string) => {
+    setSelectedId(id);
+    setMode('view');
+    setMobileDetailOpen(true);
+  };
+
+  const handleCreate = (values: PipelineFormValues) => {
     createPipeline.mutate(
-      { name: newName.trim(), color: newColor },
+      { name: values.name, color: values.color },
       {
         onSuccess: (created) => {
-          setNewName('');
-          setNewColor('#2563EB');
-          setShowCreateForm(false);
-          if (created?.id) setExpandedPipelineId(created.id);
-          if (created?.id) onCreated?.(created.id);
+          setMode('view');
+          if (!created?.id) return;
+          setSelectedId(created.id);
+          onCreated?.(created.id);
         },
       },
     );
   };
 
   const handleDelete = () => {
-    if (deleteId) {
-      deletePipeline.mutate(deleteId, { onSuccess: () => setDeleteId(null) });
-    }
+    if (!deleteId) return;
+    deletePipeline.mutate(deleteId, {
+      onSuccess: () => {
+        setDeleteId(null);
+        setMode('view');
+        setMobileDetailOpen(false);
+      },
+    });
   };
 
-  const handleDragStart = (e: React.DragEvent, id: string) => {
-    setDraggedId(id);
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', id);
-  };
-  const handleDragEnd = () => {
-    setDraggedId(null);
-    setDragOverId(null);
-  };
-  const handleDragOver = (e: React.DragEvent, id: string) => {
-    e.preventDefault();
-    if (draggedId && draggedId !== id) setDragOverId(id);
-  };
-  const handleDragLeave = () => setDragOverId(null);
-  const handleDrop = (e: React.DragEvent, targetId: string) => {
-    e.preventDefault();
-    if (!draggedId || draggedId === targetId) return;
-    const draggedIndex = pipelines.findIndex((p) => p.id === draggedId);
-    const targetIndex = pipelines.findIndex((p) => p.id === targetId);
-    if (draggedIndex === -1 || targetIndex === -1) return;
-    const newOrder = [...pipelines];
-    const [removed] = newOrder.splice(draggedIndex, 1);
-    newOrder.splice(targetIndex, 0, removed);
-    reorderPipelines.mutate(newOrder.map((p) => p.id));
-    setDraggedId(null);
-    setDragOverId(null);
-  };
-
-  const movePipeline = (id: string, offset: number) => {
-    const currentIndex = pipelines.findIndex((pipeline) => pipeline.id === id);
-    const targetIndex = currentIndex + offset;
-    if (currentIndex < 0 || targetIndex < 0 || targetIndex >= pipelines.length) return;
+  const applyOrder = (movedId: string, targetIndex: number) => {
+    const currentIndex = pipelines.findIndex((pipeline) => pipeline.id === movedId);
+    if (currentIndex < 0 || targetIndex < 0 || targetIndex >= pipelines.length || currentIndex === targetIndex) return;
     const next = [...pipelines];
     const [moved] = next.splice(currentIndex, 1);
     next.splice(targetIndex, 0, moved);
     reorderPipelines.mutate(next.map((pipeline) => pipeline.id));
   };
+  const movePipeline = (id: string, offset: number) =>
+    applyOrder(id, pipelines.findIndex((pipeline) => pipeline.id === id) + offset);
 
-  const Row = ({ pipeline }: { pipeline: CrmPipeline }) => {
-    const [name, setName] = useState(pipeline.name);
-    const [color, setColor] = useState(pipeline.color ?? '#2563EB');
-    const [tracksValue, setTracksValue] = useState(pipeline.tracks_value !== false);
-    const isEditing = editingId === pipeline.id;
-    const isDragging = draggedId === pipeline.id;
-    const isDragOver = dragOverId === pipeline.id;
-    const counts = countsByPipeline.get(pipeline.id) ?? { stages: 0, leads: 0 };
+  const handleDragStart = (event: React.DragEvent, id: string) => {
+    setDraggedId(id);
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', id);
+  };
+  const handleDragEnd = () => {
+    setDraggedId(null);
+    setDragOverId(null);
+  };
+  const handleDragOver = (event: React.DragEvent, id: string) => {
+    event.preventDefault();
+    if (draggedId && draggedId !== id) setDragOverId(id);
+  };
+  const handleDrop = (event: React.DragEvent, targetId: string) => {
+    event.preventDefault();
+    if (draggedId) applyOrder(draggedId, pipelines.findIndex((pipeline) => pipeline.id === targetId));
+    handleDragEnd();
+  };
 
-    if (isEditing) {
-      return (
-        <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl bg-muted/35">
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={t.pipelines.namePlaceholder}
-            className="flex-1"
-            autoFocus
-          />
-          <input aria-label="Cor do funil" type="color" value={color} onChange={(e) => setColor(e.target.value)} className="h-9 w-11 cursor-pointer rounded border bg-transparent p-1" />
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => {
-              setName(pipeline.name);
-              setColor(pipeline.color ?? '#2563EB');
-              setTracksValue(pipeline.tracks_value !== false);
-              setEditingId(null);
-            }}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            disabled={!name.trim()}
-            onClick={() => {
-              updatePipeline.mutate({ id: pipeline.id, name: name.trim(), color, tracks_value: tracksValue });
-              setEditingId(null);
-            }}
-          >
-            <Check className="h-4 w-4 text-success" />
-          </Button>
-          {/* `LabeledSwitch` é `inline-flex`; num container que use `space-y-*`
-              ele colaria na linha anterior. Aqui o pai é `flex flex-wrap`, mas
-              forçamos quebra de linha com `w-full` pra não competir com
-              nome/cor/ações na mesma fileira. */}
-          <div className="w-full flex items-start justify-between gap-3 pt-1">
-            <div className="min-w-0">
-              <p className="text-sm font-medium">{t.pipelines.tracksValueLabel}</p>
-              <p className="text-xs text-muted-foreground">{t.pipelines.tracksValueHint}</p>
+  const list = pipelines.map((pipeline, index) => (
+    <CrmSettingsListRow
+      key={pipeline.id}
+      selected={mode !== 'create' && selected?.id === pipeline.id}
+      onSelect={() => selectPipeline(pipeline.id)}
+      title={pipeline.name}
+      subtitle={countsLine(pipeline.id)}
+      draggable
+      onDragStart={(event) => handleDragStart(event, pipeline.id)}
+      onDragEnd={handleDragEnd}
+      onDragOver={(event) => handleDragOver(event, pipeline.id)}
+      onDragLeave={() => setDragOverId(null)}
+      onDrop={(event) => handleDrop(event, pipeline.id)}
+      className={cn(
+        draggedId === pipeline.id && 'opacity-50',
+        dragOverId === pipeline.id && 'bg-primary/5 ring-2 ring-inset ring-primary',
+      )}
+      leading={(
+        <>
+          <GripVertical className="hidden h-4 w-4 shrink-0 cursor-grab text-muted-foreground active:cursor-grabbing lg:block" />
+          <div className="flex shrink-0 flex-col lg:hidden">
+            <button type="button" className="p-0.5 disabled:opacity-30" aria-label={`Mover ${pipeline.name} para cima`} disabled={index === 0} onClick={(event) => { event.stopPropagation(); movePipeline(pipeline.id, -1); }}><ChevronUp className="h-3.5 w-3.5" /></button>
+            <button type="button" className="p-0.5 disabled:opacity-30" aria-label={`Mover ${pipeline.name} para baixo`} disabled={index === pipelines.length - 1} onClick={(event) => { event.stopPropagation(); movePipeline(pipeline.id, 1); }}><ChevronDown className="h-3.5 w-3.5" /></button>
+          </div>
+          <span className="h-8 w-1 shrink-0 rounded-full" style={{ backgroundColor: pipeline.color ?? DEFAULT_COLOR }} />
+        </>
+      )}
+      trailing={(
+        <>
+          {pipelineCounts(pipeline.id).stages === 0 && (
+            <span title={t.pipelines.noStagesBadge}><AlertTriangle className="h-3.5 w-3.5 text-warning" aria-label={t.pipelines.noStagesBadge} /></span>
+          )}
+          {isRestricted(pipeline.id) && (
+            <span title={tAccess.restrictedBadge}><Lock className="h-3.5 w-3.5 text-warning" aria-label={tAccess.restrictedBadge} /></span>
+          )}
+          {pipeline.is_default && (
+            <span title={t.pipelines.defaultBadge}><Star className="h-3.5 w-3.5 fill-primary text-primary" aria-label={t.pipelines.defaultBadge} /></span>
+          )}
+        </>
+      )}
+    />
+  ));
+
+  const secondaryActions: RowAction[] = selected ? [
+    {
+      label: t.pipelines.setDefaultAction,
+      icon: Star,
+      variant: 'default',
+      hidden: selected.is_default,
+      disabled: setDefaultPipeline.isPending,
+      onClick: () => setDefaultPipeline.mutate(selected.id),
+    },
+    {
+      label: tAccess.menuLabel,
+      icon: Users,
+      variant: 'default',
+      hidden: !canManagePipelineAccess,
+      onClick: () => setAccessPipelineId(selected.id),
+    },
+  ] : [];
+
+  let detail: React.ReactNode;
+  if (mode === 'create') {
+    detail = (
+      <PipelineForm
+        key="create"
+        title={t.pipelines.newPipelineLabel}
+        initial={{ name: '', color: DEFAULT_COLOR, tracksValue: true }}
+        showTracksValue={false}
+        submitLabel={t.pipelines.createAction}
+        hint={t.pipelines.createHint}
+        isPending={createPipeline.isPending}
+        onSubmit={handleCreate}
+        onCancel={() => {
+          setMode('view');
+          if (!selected) setMobileDetailOpen(false);
+        }}
+      />
+    );
+  } else if (!selected) {
+    detail = (
+      <CrmSettingsDetailEmpty
+        icon={<Workflow className="h-8 w-8" />}
+        title={t.pipelines.emptyTitle}
+        description={t.pipelines.emptyDesc}
+      >
+        <Button size="sm" onClick={() => setMode('create')}><Plus className="mr-1.5 h-4 w-4" />{t.pipelines.newAction}</Button>
+      </CrmSettingsDetailEmpty>
+    );
+  } else if (mode === 'edit') {
+    detail = (
+      <PipelineForm
+        key={`edit-${selected.id}`}
+        title={`${t.pipelines.editLabel}: ${selected.name}`}
+        initial={{ name: selected.name, color: selected.color ?? DEFAULT_COLOR, tracksValue: selected.tracks_value !== false }}
+        showTracksValue
+        submitLabel={t.pipelines.saveAction}
+        isPending={updatePipeline.isPending}
+        onSubmit={(values) => {
+          updatePipeline.mutate({ id: selected.id, name: values.name, color: values.color, tracks_value: values.tracksValue });
+          setMode('view');
+        }}
+        onCancel={() => setMode('view')}
+      />
+    );
+  } else {
+    detail = (
+      <div className="min-w-0 space-y-5">
+        <div className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: selected.color ?? DEFAULT_COLOR }} />
+              <h3 className="min-w-0 truncate text-lg font-semibold">{selected.name}</h3>
+              {selected.is_default && (
+                <Badge className="shrink-0 gap-1 bg-primary text-primary-foreground hover:bg-primary"><Star className="h-3 w-3" />{t.pipelines.defaultBadge}</Badge>
+              )}
+              {isRestricted(selected.id) && (
+                <Badge className="shrink-0 gap-1 bg-warning text-white"><Lock className="h-3 w-3" />{tAccess.restrictedBadge}</Badge>
+              )}
+              {pipelineCounts(selected.id).stages === 0 && (
+                <Badge className="shrink-0 gap-1 bg-warning text-white"><AlertTriangle className="h-3 w-3" />{t.pipelines.noStagesBadge}</Badge>
+              )}
             </div>
-            <LabeledSwitch
-              value={tracksValue ? 'sim' : 'nao'}
-              onChange={(v) => setTracksValue(v === 'sim')}
-              off={{ value: 'nao', label: t.pipelines.switchNo }}
-              on={{ value: 'sim', label: t.pipelines.switchYes }}
-              aria-label={t.pipelines.tracksValueLabel}
-              className="shrink-0"
-            />
+            <p className="mt-1 text-xs text-muted-foreground">{countsLine(selected.id)}</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            <Button variant="edit-ghost" size="sm" onClick={() => setMode('edit')}><Pencil className="mr-1.5 h-4 w-4" />{t.pipelines.editLabel}</Button>
+            <Button variant="destructive-ghost" size="sm" onClick={() => setDeleteId(selected.id)}><Trash2 className="mr-1.5 h-4 w-4" />{t.pipelines.deleteLabel}</Button>
+            {secondaryActions.some((action) => !action.hidden) && <RowActionsMenu actions={secondaryActions} />}
           </div>
         </div>
-      );
-    }
-
-    return (
-      <div className={cn('rounded-xl bg-muted/20 transition-colors', isDragOver && 'ring-2 ring-primary')}>
-      <div
-        draggable
-        onDragStart={(e) => handleDragStart(e, pipeline.id)}
-        onDragEnd={handleDragEnd}
-        onDragOver={(e) => handleDragOver(e, pipeline.id)}
-        onDragLeave={handleDragLeave}
-        onDrop={(e) => handleDrop(e, pipeline.id)}
-        className={cn(
-          'flex items-center gap-2 px-2 py-3 sm:gap-3 sm:px-3 group',
-          isDragging && 'opacity-50',
-          isDragOver && 'bg-primary/5',
-          !isDragging && !isDragOver && 'hover:bg-muted/30',
-        )}
-      >
-        <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab active:cursor-grabbing shrink-0" />
-        <div className="flex shrink-0 flex-col md:hidden">
-          <button type="button" className="p-0.5 disabled:opacity-30" aria-label={`Mover ${pipeline.name} para cima`} disabled={pipelines[0]?.id === pipeline.id} onClick={() => movePipeline(pipeline.id, -1)}><ChevronUp className="h-3.5 w-3.5" /></button>
-          <button type="button" className="p-0.5 disabled:opacity-30" aria-label={`Mover ${pipeline.name} para baixo`} disabled={pipelines[pipelines.length - 1]?.id === pipeline.id} onClick={() => movePipeline(pipeline.id, 1)}><ChevronDown className="h-3.5 w-3.5" /></button>
-        </div>
-        <button
-          type="button"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg hover:bg-muted"
-          onClick={() => setExpandedPipelineId((current) => current === pipeline.id ? null : pipeline.id)}
-          aria-expanded={expandedPipelineId === pipeline.id}
-          aria-label={expandedPipelineId === pipeline.id ? `Recolher ${pipeline.name}` : `Expandir ${pipeline.name}`}
-        >
-          {expandedPipelineId === pipeline.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-        </button>
-        {/* Nome + o que tem DENTRO do funil. Antes a linha era só o nome: não
-            dava pra saber qual funil era qual, nem por que a exclusão era
-            recusada (é o funil com etapas/oportunidades que o banco segura). */}
-        <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm truncate">{pipeline.name}</p>
-          <span className="mt-1 block h-1 w-16 rounded-full" style={{ backgroundColor: pipeline.color ?? '#2563EB' }} />
-          <p className="text-xs text-muted-foreground truncate">
-            {t.pipelines.countsLine
-              .replace('{stages}', String(counts.stages))
-              .replace('{leads}', String(counts.leads))}
-          </p>
-        </div>
-        {counts.stages === 0 && (
-          <Badge className="bg-warning text-white gap-1 shrink-0">
-            <AlertTriangle className="h-3 w-3" />
-            {t.pipelines.noStagesBadge}
-          </Badge>
-        )}
-        {pipelineAccessRows.some((a) => a.pipeline_id === pipeline.id) && (
-          <Badge className="bg-warning text-white gap-1 shrink-0">
-            <Lock className="h-3 w-3" />
-            {tAccess.restrictedBadge}
-          </Badge>
-        )}
-        {pipeline.is_default && (
-          <Badge className="bg-primary text-white gap-1 shrink-0">
-            <Star className="h-3 w-3" />
-            {t.pipelines.defaultBadge}
-          </Badge>
-        )}
-        {/* Menu SEMPRE visível no toque: com `opacity-0 + group-hover`,
-            editar / quem pode ver / excluir ficavam INALCANÇÁVEIS no celular. */}
-        <div className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0">
-          <RowActionsMenu
-            actions={[
-              {
-                label: t.pipelines.editLabel,
-                icon: Pencil,
-                variant: 'edit',
-                onClick: () => setEditingId(pipeline.id),
-              },
-              {
-                label: t.pipelines.setDefaultAction,
-                icon: Star,
-                variant: 'default',
-                hidden: pipeline.is_default,
-                disabled: setDefaultPipeline.isPending,
-                onClick: () => setDefaultPipeline.mutate(pipeline.id),
-              },
-              {
-                label: tAccess.menuLabel,
-                icon: Users,
-                variant: 'default',
-                hidden: !canManagePipelineAccess,
-                onClick: () => setAccessPipelineId(pipeline.id),
-              },
-              {
-                label: t.pipelines.deleteLabel,
-                icon: Trash2,
-                variant: 'delete',
-                onClick: () => setDeleteId(pipeline.id),
-              },
-            ]}
-          />
-        </div>
-      </div>
-      {expandedPipelineId === pipeline.id && (
-        <div className="px-3 pb-4 pt-1 sm:pl-12">
-          <StageManagerDialog embedded compact pipelineId={pipeline.id} pipelineName={pipeline.name} />
-        </div>
-      )}
+        <StageManagerDialog key={selected.id} embedded compact pipelineId={selected.id} pipelineName={selected.name} />
       </div>
     );
-  };
+  }
 
   return (
     <>
-      {!embedded && children && <span onClick={() => setOpen(true)}>{children}</span>}
-      {embedded ? <section className="space-y-5">
-        <div><h2 className="text-xl font-semibold">{t.pipelines.title}</h2><p className="text-sm text-muted-foreground mt-1">{t.pipelines.subtitle}</p></div>
-        {!showCreateForm ? (
-          <Button variant="outline" onClick={() => setShowCreateForm(true)} className="gap-2">
-            <Plus className="h-4 w-4" /> Novo funil
-          </Button>
-        ) : <div className="space-y-3 rounded-xl bg-muted/35 p-3 sm:p-4">
-          <div className="flex items-center justify-between gap-2"><Label className="text-sm font-medium">{t.pipelines.newPipelineLabel}</Label><Button variant="ghost" size="icon" onClick={() => setShowCreateForm(false)}><X className="h-4 w-4" /></Button></div>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder={t.pipelines.namePlaceholder} className="flex-1 min-w-[170px]" />
-            <input aria-label="Cor do novo funil" type="color" value={newColor} onChange={(e) => setNewColor(e.target.value)} className="h-9 w-11 cursor-pointer rounded border bg-transparent p-1" />
-            <Button onClick={handleCreate} disabled={!newName.trim() || createPipeline.isPending} className="gap-2"><Plus className="h-4 w-4" />{t.pipelines.createAction}</Button>
-          </div>
-        </div>}
-        <div className="space-y-2"><p className="text-xs text-muted-foreground">{t.pipelines.dragHint} {t.pipelines.defaultHint}</p>{pipelines.map((pipeline) => <Row key={pipeline.id} pipeline={pipeline} />)}</div>
-      </section> : <ResponsiveModal open={open} onOpenChange={setOpen} title={t.pipelines.title}>
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">{t.pipelines.subtitle}</p>
-
-          {/* Bloco de criar com RÓTULO: antes era um campo solto com um "+" ao
-              lado, e ninguém sabia se aquilo criava ou filtrava. */}
-          <div className="space-y-2 p-3 rounded-lg border-2 border-dashed border-muted">
-            <Label className="text-sm font-medium">{t.pipelines.newPipelineLabel}</Label>
-            <div className="flex gap-2">
-              <Input
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                placeholder={t.pipelines.namePlaceholder}
-                className="flex-1"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleCreate();
-                  }
-                }}
-              />
-              <input
-                aria-label="Cor do novo funil"
-                type="color"
-                value={newColor}
-                onChange={(e) => setNewColor(e.target.value)}
-                className="h-9 w-11 cursor-pointer rounded border bg-transparent p-1"
-              />
-              <Button
-                onClick={handleCreate}
-                disabled={!newName.trim() || createPipeline.isPending}
-                className="gap-2 shrink-0"
-              >
-                <Plus className="h-4 w-4" />
-                {t.pipelines.createAction}
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">{t.pipelines.createHint}</p>
-          </div>
-
-          <div className="space-y-2 max-h-[400px] overflow-y-auto">
-            <p className="text-xs text-muted-foreground mb-2">
-              {t.pipelines.dragHint} {t.pipelines.defaultHint}
-            </p>
-            {pipelines.map((pipeline) => (
-              <Row key={pipeline.id} pipeline={pipeline} />
-            ))}
-          </div>
+      <section className="space-y-5">
+        <div>
+          <h2 className="text-xl font-semibold">{t.pipelines.title}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t.pipelines.subtitle}</p>
         </div>
-      </ResponsiveModal>}
+        <CrmSettingsListDetail
+          listTitle={t.pipelines.listTitle}
+          count={pipelines.length}
+          listAction={(
+            <Button
+              size="sm"
+              aria-label={t.pipelines.newAction}
+              onClick={() => {
+                setMode('create');
+                setMobileDetailOpen(true);
+              }}
+            >
+              <Plus className="mr-1.5 h-4 w-4" />
+              {t.pipelines.newShort}
+            </Button>
+          )}
+          list={list}
+          emptyList={<p className="py-6 text-sm text-muted-foreground">{t.pipelines.emptyTitle}</p>}
+          listHint={pipelines.length > 1 ? `${t.pipelines.dragHint}. ${t.pipelines.defaultHint}` : undefined}
+          detailOpen={mobileDetailOpen}
+          onBack={() => {
+            setMode('view');
+            setMobileDetailOpen(false);
+          }}
+          backLabel={t.pipelines.backToList}
+        >
+          {detail}
+        </CrmSettingsListDetail>
+      </section>
 
       <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
         <AlertDialogContent>

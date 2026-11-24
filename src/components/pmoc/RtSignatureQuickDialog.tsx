@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { PmocSignatureCanvas, dataUrlToFile } from '@/components/pmoc/PmocSignatureCanvas';
 import { cn } from '@/lib/utils';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 /**
  * Dialog rápido pra cadastrar/atualizar a assinatura do RT direto da aba
@@ -143,11 +144,13 @@ export function RtSignatureQuickDialog({
       // UPDATE parcial: só `signature_image_url`. Não usamos `updateTechnician`
       // do hook porque o tipo do input exige `full_name` e o spread sobreescreveria
       // o nome com string vazia. Aqui vamos direto no client com payload mínimo.
-      const { error } = await supabase
-        .from('responsible_technicians')
-        .update({ signature_image_url } as never)
-        .eq('id', responsibleTechnicianId);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('responsible_technicians')
+          .update({ signature_image_url } as never, { count: 'exact' })
+          .eq('id', responsibleTechnicianId),
+        'update',
+      );
 
       // Invalida caches que dependem da assinatura. A próxima chamada de
       // generate-pmoc-* recalcula hash e gera versão nova.

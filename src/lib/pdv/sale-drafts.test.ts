@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { addItem, setCartCustomer, setDiscount } from '@/lib/pdv/cart';
 import {
   addPdvSaleDraft,
+  getAppliedVouchers,
+  clampAppliedVouchers,
   createPdvSaleWorkspace,
   deletePdvSaleDraft,
   parsePdvSaleWorkspace,
@@ -159,4 +161,17 @@ describe('rascunhos simultâneos da venda PDV', () => {
     expect(addPdvSaleDraft(restored, '2026-10-19')).toBe(restored);
   });
 
+});
+
+it('recupera array de vouchers, conserva contrato antigo e remove todo o lote ao trocar cliente', () => {
+  const workspace = createPdvSaleWorkspace('2026-11-16');
+  const first = { voucherId: 'v1', code: 'V1', amount: 30, balance: 50, expiresOn: null };
+  const second = { ...first, voucherId: 'v2', code: 'V2', amount: 20 };
+  workspace.drafts[0].appliedVoucher = first;
+  expect(getAppliedVouchers(parsePdvSaleWorkspace(JSON.stringify(workspace), '2026-11-16').drafts[0])).toEqual([first]);
+  workspace.drafts[0].appliedVouchers = [first, second];
+  const restored = parsePdvSaleWorkspace(JSON.stringify(workspace), '2026-11-16').drafts[0];
+  expect(getAppliedVouchers(restored)).toEqual([first, second]);
+  expect(getAppliedVouchers(setPdvSaleDraftCustomer(restored, 'other-customer'))).toEqual([]);
+  expect(clampAppliedVouchers([first, second], 40)).toEqual([first, { ...second, amount: 10 }]);
 });

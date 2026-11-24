@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import type { Json } from '@/integrations/supabase/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -94,13 +95,15 @@ export function useAdminNpsSurveys() {
 
   const update = useMutation({
     mutationFn: async ({ id, ...input }: AdminNpsSurveyInput & { id: string }) => {
-      const { error } = await supabase.from('admin_nps_surveys')
-        .update({
-          ...input,
-          audience_snapshot: input.audience_snapshot as Json,
-        })
-        .eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('admin_nps_surveys')
+          .update({
+            ...input,
+            audience_snapshot: input.audience_snapshot as Json,
+          }, { count: 'exact' })
+          .eq('id', id),
+        'update',
+      );
     },
     onSuccess: () => {
       invalidate();
@@ -111,10 +114,12 @@ export function useAdminNpsSurveys() {
 
   const toggle = useMutation({
     mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
-      const { error } = await supabase.from('admin_nps_surveys')
-        .update({ is_active: isActive })
-        .eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('admin_nps_surveys')
+          .update({ is_active: isActive }, { count: 'exact' })
+          .eq('id', id),
+        'update',
+      );
     },
     onSuccess: (_data, variables) => {
       invalidate();
@@ -125,8 +130,10 @@ export function useAdminNpsSurveys() {
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('admin_nps_surveys').delete().eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('admin_nps_surveys').delete({ count: 'exact' }).eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => {
       invalidate();

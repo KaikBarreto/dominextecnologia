@@ -4,7 +4,6 @@ import { supabase } from '@/integrations/supabase/client';
 import type { ContractFinanceRule } from '@/lib/contract-billing';
 import type { ContractNfseAutoRule } from '@/lib/contract-nfse-auto';
 import { useToast } from '@/hooks/use-toast';
-import { useFeatureFlag, isFlagEnabledFor } from './useFeatureFlag';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -18,6 +17,11 @@ import {
   type VisitInput,
 } from '@/components/contracts/visitScheduleEngine';
 import type { ServiceOrderScheduleSlot } from '@/types/database';
+import { allOrNothingDeleteError, assertRowsAffected } from '@/lib/supabaseMutation';
+import {
+  ScheduleConflictError,
+  normalizeScheduleBookingError,
+} from '@/lib/scheduleBooking';
 
 export interface Contract {
   id: string;
@@ -76,7 +80,18 @@ export interface Contract {
   nfse_codigo_tributacao_municipal: string | null;
   nfse_codigo_nbs: string | null;
   nfse_iss_aliquota: number | null;
-  customers?: { id: string; name: string; document?: string | null; address?: string | null; city?: string | null; state?: string | null } | null;
+  customers?: {
+    id: string;
+    name: string;
+    document?: string | null;
+    address?: string | null;
+    address_number?: string | null;
+    neighborhood?: string | null;
+    complement?: string | null;
+    city?: string | null;
+    state?: string | null;
+    zip_code?: string | null;
+  } | null;
   // Alias singular do MESMO cliente do contrato (FK customer_id). Existe porque
   // alguns consumidores (ex.: select "Contrato vinculado" no financeiro) leem
   // `contract.customer?.name`. Sem este alias o label caía em "Sem cliente".
@@ -1127,12 +1142,13 @@ async function runWithConcurrency<T>(
  * usuário receber toast de sucesso. Aqui propagamos um erro PT-BR que o
  * `onError` do mutation transforma em toast destrutivo.
  */
-function assertAllVisitsPersisted(createdCount: number, expected: number): void {
-  if (createdCount >= expected) return;
+export function assertAllVisitsPersisted(createdCount: number, expected: number): void {
+  if (createdCount === expected) return;
   const faltam = expected - createdCount;
   throw new Error(
     `Falha ao gerar as visitas do contrato: ${createdCount} de ${expected} criada(s) ` +
-      `(${faltam} não foram salvas). Tente salvar novamente; se persistir, contate o suporte.`,
+      `(${Math.abs(faltam)} divergente(s)). Nenhuma alteração parcial foi mantida. ` +
+      `Tente salvar novamente; se persistir, contate o suporte.`,
   );
 }
 
@@ -1689,30 +1705,53 @@ export function buildRegenerationPayload(input: BuildRegenerationPayloadArgs): R
   };
 }
 
-export interface RegenViaRpcArgs {
-  enabled: boolean;
+export interface RegenerateContractVisitsAtomicArgs {
   payload: RegenerationRpcPayload;
-  // `any` intencional: a RPC ainda não está nos types gerados; assinatura genérica
-  // espelha a forma { data, error } do supabase-js e é injetada nos call-sites.
+  expectedOsCount: number;
+  overrideReason?: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   rpc: (fn: string, params: any) => Promise<{ data: any; error: any }>;
-  fallback: () => Promise<{ createdCount: number; deletedCount: number }>;
 }
 
 /**
- * Flag desligada usa o caminho legado. Com a RPC habilitada, qualquer erro e
- * propagado: repetir a mesma regeneracao no cliente depois de uma falha de
- * validacao/seguranca poderia deixar OSs parciais, duplicadas ou apagar uma
- * visita personalizada em corrida. A transacao server-side e a unica fonte
- * segura quando o rollout esta ativo.
+ * Fonte única para persistir visitas contratuais. A RPC cria/substitui o lote
+ * inteiro na mesma transação; conflito, RLS, validação ou contagem divergente
+ * revertem tudo. Não existe fallback client-side nem sucesso parcial.
  */
-export async function regenerateViaRpcOrFallback(
-  a: RegenViaRpcArgs,
+export async function regenerateContractVisitsAtomic(
+  a: RegenerateContractVisitsAtomicArgs,
 ): Promise<{ createdCount: number; deletedCount: number }> {
-  if (!a.enabled) return a.fallback();
-  const { data, error } = await a.rpc('regenerate_contract_visits', a.payload);
-  if (error) throw error;
-  return { createdCount: data?.created_count ?? 0, deletedCount: data?.deleted_count ?? 0 };
+  const reason = a.overrideReason?.trim() || null;
+  if (reason && reason.length < 10) {
+    throw new Error('A justificativa do conflito deve ter pelo menos 10 caracteres.');
+  }
+
+  const { data, error } = await a.rpc('regenerate_contract_visits_with_override', {
+    ...a.payload,
+    p_override_justification: reason,
+  });
+  if (error) throw normalizeScheduleBookingError(error);
+
+  const createdCount = data?.created_count ?? 0;
+  const deletedCount = data?.deleted_count ?? 0;
+  assertAllVisitsPersisted(createdCount, a.expectedOsCount);
+  return { createdCount, deletedCount };
+}
+
+export interface ContractVisitGenerationAttempt {
+  contractId: string;
+  payload: RegenerationRpcPayload;
+  expectedOsCount: number;
+}
+
+export class ContractVisitScheduleConflictError extends ScheduleConflictError {
+  readonly attempt: ContractVisitGenerationAttempt;
+
+  constructor(conflicts: ConstructorParameters<typeof ScheduleConflictError>[0], attempt: ContractVisitGenerationAttempt) {
+    super(conflicts);
+    this.name = 'ContractVisitScheduleConflictError';
+    this.attempt = attempt;
+  }
 }
 
 /**
@@ -1920,10 +1959,6 @@ export function useContracts() {
   const { user } = useAuth();
   const { timezone } = useAppLocaleContext();
   const queryClient = useQueryClient();
-  // Flag de rollout da RPC server-side de regeneração de visitas. Lida no TOP do
-  // hook (regra dos hooks); cada call-site decide via isFlagEnabledFor(flag, id).
-  const { data: regenFlag } = useFeatureFlag('regenerate_contract_visits_rpc');
-
   const { data: contracts = [], isLoading } = useQuery({
     queryKey: ['contracts'],
     queryFn: async () => {
@@ -1931,7 +1966,7 @@ export function useContracts() {
         .from('contracts')
         .select(`
           *,
-          customers (id, name, document, phone, celular, email, address, city, state),
+          customers (id, name, document, phone, celular, email, address, address_number, neighborhood, complement, city, state, zip_code),
           customer:customers (id, name),
           responsible_technicians:responsible_technician_id (id, full_name, cft_crea, modality),
           contract_items (id, contract_id, equipment_id, environment_id, item_name, item_description, form_template_id, form_template_ids, first_os_excluded_questions, pmoc_scope, pmoc_start_visit, sort_order, equipment:equipment(id, name, brand, model)),
@@ -1942,6 +1977,21 @@ export function useContracts() {
 
       if (error) throw error;
       return data as unknown as Contract[];
+    },
+  });
+
+  const generateContractVisits = useMutation({
+    mutationFn: async (input: ContractVisitGenerationAttempt & { overrideReason?: string }) =>
+      regenerateContractVisitsAtomic({
+        payload: input.payload,
+        expectedOsCount: input.expectedOsCount,
+        overrideReason: input.overrideReason,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- migration adiciona a RPC antes da regeneração dos types
+        rpc: async (fn, params) => await supabase.rpc(fn as any, params),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contracts'] });
+      queryClient.invalidateQueries({ queryKey: ['service-orders'] });
     },
   });
 
@@ -2236,7 +2286,6 @@ export function useContracts() {
       }
 
       let osCreatedCount = 0;
-      let osErrorCount = 0;
       let expectedOsCount = 0;
 
       // Geração imediata de OSs para TODOS os contratos ativos (PMOC ou comum).
@@ -2292,15 +2341,10 @@ export function useContracts() {
           ? input.assignee_user_ids
           : (input.technician_id ? [input.technician_id] : []);
 
-        // persistContractVisit é a fonte única do payload da OS (mesma usada na
-        // regeneração da edição). RLS de service_orders exige company_id no INSERT
-        // (garantido lá dentro). Cada visita é independente → persiste EM PARALELO
-        // (concorrência limitada) preservando o visitIndex pra numeração/ordem.
-        //
-        // Caminho novo (RPC server-side) com rede de segurança: flag ligada pro
-        // contrato → tenta a RPC; flag off/erro → cai no fallback client-side
-        // (runWithConcurrency), byte-idêntico ao antigo. Criação não apaga nada
-        // (oldRegenerableIds vazio → p_delete_ids vazio, deletedCount 0).
+        // Monta o lote canônico das visitas e persiste tudo na RPC transacional.
+        // Criação não apaga nada (p_delete_ids vazio). Se houver conflito, o
+        // contrato já criado é preservado e a UI repete SOMENTE este lote com a
+        // justificativa — nunca recria o contrato nem aceita OSs parciais.
         const persistArgs = {
           companyId: profile.company_id,
           contractId: (contract as any).id,
@@ -2322,28 +2366,24 @@ export function useContracts() {
           visits,
           oldRegenerableIds: [],
         });
-        const { createdCount } = await regenerateViaRpcOrFallback({
-          enabled: isFlagEnabledFor(regenFlag ?? null, rpcPayload.p_contract_id),
+        const attempt: ContractVisitGenerationAttempt = {
+          contractId: (contract as any).id,
           payload: rpcPayload,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- RPC nova ainda fora dos types gerados
-          rpc: (fn, params) => supabase.rpc(fn as any, params),
-          fallback: async () => {
-            const created = await runWithConcurrency(visits, async (visit, i) => {
-              const ok = await persistContractVisit({
-                ...persistArgs,
-                visit,
-                visitIndex: i,
-              });
-              return ok != null;
-            });
-            return { createdCount: created, deletedCount: 0 };
-          },
-        });
-        osCreatedCount = createdCount;
-        osErrorCount = visits.length - osCreatedCount;
-
-        if (osErrorCount > 0) {
-          toast({ variant: 'destructive', title: `${osErrorCount} OS(s) falharam ao ser criadas`, description: `${osCreatedCount} de ${expectedOsCount} criadas com sucesso.` });
+          expectedOsCount,
+        };
+        try {
+          const { createdCount } = await regenerateContractVisitsAtomic({
+            payload: rpcPayload,
+            expectedOsCount,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- migration adiciona a RPC antes da regeneração dos types
+            rpc: async (fn, params) => await supabase.rpc(fn as any, params),
+          });
+          osCreatedCount = createdCount;
+        } catch (generationError) {
+          if (generationError instanceof ScheduleConflictError) {
+            throw new ContractVisitScheduleConflictError(generationError.conflicts, attempt);
+          }
+          throw generationError;
         }
       }
 
@@ -2358,7 +2398,10 @@ export function useContracts() {
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
       toast({ title: 'Contrato criado com sucesso!' });
     },
-    onError: (e: Error) => toast({ variant: 'destructive', title: 'Erro ao criar contrato', description: getErrorMessage(e) }),
+    onError: (e: Error) => {
+      if (e instanceof ContractVisitScheduleConflictError) return;
+      toast({ variant: 'destructive', title: 'Erro ao criar contrato', description: getErrorMessage(e) });
+    },
   });
 
   /**
@@ -2474,11 +2517,13 @@ export function useContracts() {
    */
   const updateContractFinanceRule = useMutation({
     mutationFn: async (input: { contractId: string; rule: ContractFinanceRule }) => {
-      const { error } = await supabase
-        .from('contracts')
-        .update(input.rule as any)
-        .eq('id', input.contractId);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('contracts')
+          .update(input.rule as any, { count: 'exact' })
+          .eq('id', input.contractId),
+        'update',
+      );
       return input.rule;
     },
     onSuccess: () => {
@@ -2506,11 +2551,13 @@ export function useContracts() {
    */
   const updateContractNfseAutoRule = useMutation({
     mutationFn: async (input: { contractId: string; rule: ContractNfseAutoRule }) => {
-      const { error } = await supabase
-        .from('contracts')
-        .update(input.rule as any)
-        .eq('id', input.contractId);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('contracts')
+          .update(input.rule as any, { count: 'exact' })
+          .eq('id', input.contractId),
+        'update',
+      );
       return input.rule;
     },
     onSuccess: () => {
@@ -2558,8 +2605,10 @@ export function useContracts() {
 
   const updateContractStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase.from('contracts').update({ status } as any).eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('contracts').update({ status } as any, { count: 'exact' }).eq('id', id),
+        'update',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
@@ -2695,8 +2744,10 @@ export function useContracts() {
       // (sem campo de contrato) — nesse caso `payload` fica vazio e um update({})
       // é inútil/arriscado (PostgREST/RLS). Itens+plano+visitas seguem normais.
       if (Object.keys(payload).length > 0) {
-        const { error: updErr } = await supabase.from('contracts').update(payload).eq('id', id);
-        if (updErr) throw updErr;
+        assertRowsAffected(
+          await supabase.from('contracts').update(payload, { count: 'exact' }).eq('id', id),
+          'update',
+        );
       }
 
       // 1.5) Propagar os responsáveis pela execução para as OSs ainda NÃO
@@ -3140,10 +3191,8 @@ export function useContracts() {
 
       const effName = (input.name ?? current.name ?? '') || 'Contrato';
       const effCustomerId = (input.customer_id ?? current.customer_id) as string;
-      // Regeneração SEGURA (P0/P1): gera+valida as novas e SÓ DEPOIS apaga as
-      // antigas (regenerableIds). Caminho novo (RPC server-side) com rede de
-      // segurança: flag ligada pro contrato → tenta a RPC; flag off/erro → cai
-      // no fallback client-side (regenerateFutureVisits), byte-idêntico ao antigo.
+      // Regeneração atômica: a RPC cria e valida o lote completo e só então
+      // substitui as antigas. Qualquer falha reverte a transação inteira.
       const rpcPayload = buildRegenerationPayload({
         args: {
           companyId: profile.company_id,
@@ -3165,30 +3214,11 @@ export function useContracts() {
         oldRegenerableIds: regenerableIds,
         oldRegenerableOss: regenerableOldOss,
       });
-      const { createdCount, deletedCount } = await regenerateViaRpcOrFallback({
-        enabled: isFlagEnabledFor(regenFlag ?? null, id),
+      const { createdCount, deletedCount } = await regenerateContractVisitsAtomic({
         payload: rpcPayload,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- RPC nova ainda fora dos types gerados
-        rpc: (fn, params) => supabase.rpc(fn as any, params),
-        fallback: () => regenerateFutureVisits({
-          companyId: profile.company_id,
-          contractId: id,
-          visits,
-          oldRegenerableIds: regenerableIds,
-          oldRegenerableOss: regenerableOldOss,
-          contractName: effName,
-          useGroupedEngine,
-          customerId: effCustomerId,
-          technicianId: effTechnicianId,
-          teamId: effTeamId,
-          serviceTypeId: input.service_type_id ?? null,
-          formTemplateId: input.form_template_id ?? null,
-          equipmentIds,
-          itemEquipmentMap,
-          equipmentTemplateMap,
-          assigneeUserIds,
-          createdBy: user?.id || null,
-        }),
+        expectedOsCount: visits.length,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- migration adiciona a RPC antes da regeneração dos types
+        rpc: async (fn, params) => await supabase.rpc(fn as any, params),
       });
 
       return { regenerated: true, deletedCount, createdCount, reassignedCount };
@@ -3415,8 +3445,7 @@ export function useContracts() {
       const assigneeUserIds = effTechnicianId ? [effTechnicianId] : [];
       const effName = (current.name as string | null) || 'Contrato';
 
-      // Regeneração SEGURA (P0/P1): gera+valida antes de apagar as antigas.
-      // Caminho novo (RPC) com fallback client-side idêntico ao antigo.
+      // Regeneração atômica: gera e valida antes de substituir as antigas.
       const rpcPayload = buildRegenerationPayload({
         args: {
           companyId: profile.company_id,
@@ -3438,30 +3467,11 @@ export function useContracts() {
         oldRegenerableIds: regenerableIds,
         oldRegenerableOss: regenerableOldOss,
       });
-      const { createdCount, deletedCount } = await regenerateViaRpcOrFallback({
-        enabled: isFlagEnabledFor(regenFlag ?? null, id),
+      const { createdCount, deletedCount } = await regenerateContractVisitsAtomic({
         payload: rpcPayload,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- RPC nova ainda fora dos types gerados
-        rpc: (fn, params) => supabase.rpc(fn as any, params),
-        fallback: () => regenerateFutureVisits({
-          companyId: profile.company_id,
-          contractId: id,
-          visits,
-          oldRegenerableIds: regenerableIds,
-          oldRegenerableOss: regenerableOldOss,
-          contractName: effName,
-          useGroupedEngine,
-          customerId: current.customer_id as string,
-          technicianId: effTechnicianId,
-          teamId: effTeamId,
-          serviceTypeId: (current.service_type_id as string | null) ?? null,
-          formTemplateId: (current.form_template_id as string | null) ?? null,
-          equipmentIds,
-          itemEquipmentMap,
-          equipmentTemplateMap,
-          assigneeUserIds,
-          createdBy: user?.id || null,
-        }),
+        expectedOsCount: visits.length,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- migration adiciona a RPC antes da regeneração dos types
+        rpc: async (fn, params) => await supabase.rpc(fn as any, params),
       });
 
       return { regenerated: true, deletedCount, createdCount };
@@ -3527,11 +3537,13 @@ export function useContracts() {
       const newHorizon = (current.horizon_months as number) + extraMonths;
 
       // Estende o horizonte do contrato.
-      const { error: updErr } = await supabase
-        .from('contracts')
-        .update({ horizon_months: newHorizon } as any)
-        .eq('id', id);
-      if (updErr) throw updErr;
+      assertRowsAffected(
+        await supabase
+          .from('contracts')
+          .update({ horizon_months: newHorizon } as any, { count: 'exact' })
+          .eq('id', id),
+        'update',
+      );
 
       // A renovacao segue a referencia imutavel do contrato, nao a data
       // operacional reagendada. Antecipar/adiar uma visita individual nao pode
@@ -3634,29 +3646,34 @@ export function useContracts() {
       const assigneeUserIds = effTechnicianId ? [effTechnicianId] : [];
       const effName = (current.name as string | null) || 'Contrato';
 
-      // Reusa a fonte única de persistência (P1) com deleteOld=false: a
-      // renovação SÓ gera o tail novo (numerado a partir de baseIndex) e NÃO
-      // apaga nenhuma OS existente. A validação assertAllVisitsPersisted está
-      // embutida em regenerateFutureVisits.
-      const { createdCount: addedCount } = await regenerateFutureVisits({
-        companyId: profile.company_id,
-        contractId: id,
+      // Renovação também usa o lote transacional: gera somente o tail novo,
+      // numerado após as visitas existentes, sem apagar nenhuma OS anterior.
+      const renewalPayload = buildRegenerationPayload({
+        args: {
+          companyId: profile.company_id,
+          contractId: id,
+          contractName: effName,
+          useGroupedEngine,
+          customerId: current.customer_id as string,
+          technicianId: effTechnicianId,
+          teamId: effTeamId,
+          serviceTypeId: (current.service_type_id as string | null) ?? null,
+          formTemplateId: (current.form_template_id as string | null) ?? null,
+          equipmentIds,
+          itemEquipmentMap,
+          equipmentTemplateMap,
+          assigneeUserIds,
+          createdBy: user?.id || null,
+        },
         visits,
-        oldRegenerableIds: [],
         baseVisitIndex: baseIndex,
-        deleteOld: false,
-        contractName: effName,
-        useGroupedEngine,
-        customerId: current.customer_id as string,
-        technicianId: effTechnicianId,
-        teamId: effTeamId,
-        serviceTypeId: (current.service_type_id as string | null) ?? null,
-        formTemplateId: (current.form_template_id as string | null) ?? null,
-        equipmentIds,
-        itemEquipmentMap,
-        equipmentTemplateMap,
-        assigneeUserIds,
-        createdBy: user?.id || null,
+        oldRegenerableIds: [],
+      });
+      const { createdCount: addedCount } = await regenerateContractVisitsAtomic({
+        payload: renewalPayload,
+        expectedOsCount: visits.length,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- migration adiciona a RPC antes da regeneração dos types
+        rpc: async (fn, params) => await supabase.rpc(fn as any, params),
       });
 
       // Data final do contrato após a renovação (maior data entre as novas).
@@ -3704,11 +3721,13 @@ export function useContracts() {
    */
   const setPortalDocumentsReleased = useMutation({
     mutationFn: async ({ contractId, released }: { contractId: string; released: boolean }) => {
-      const { error } = await supabase
-        .from('contracts')
-        .update({ portal_documents_released: released } as any)
-        .eq('id', contractId);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('contracts')
+          .update({ portal_documents_released: released } as any, { count: 'exact' })
+          .eq('id', contractId),
+        'update',
+      );
       return { contractId, released };
     },
     onSuccess: ({ contractId, released }) => {
@@ -3728,91 +3747,25 @@ export function useContracts() {
   });
 
   const executeDeleteContract = async (id: string): Promise<{ deletedOsCount: number; unlinkedOsCount: number; preservedTxCount: number; deletedTxCount: number }> => {
+    // "Hoje" pelo relógio do aparelho, como sempre foi: separa OS futuras
+    // (apagadas) das passadas (mantidas no histórico como avulsas).
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
-    // Fonte única: service_orders do contrato (a tabela-sombra de ocorrências
-    // foi aposentada). Futuras (scheduled_date >= hoje) são apagadas; passadas
-    // são desvinculadas pra continuarem no histórico como OS avulsas.
-    const { data: contractOss } = await supabase
-      .from('service_orders')
-      .select('id, scheduled_date')
-      .eq('contract_id', id);
-
-    const futureOsIds = (contractOss || [])
-      .filter(o => (o.scheduled_date ?? '') >= todayStr)
-      .map(o => o.id)
-      .filter(Boolean) as string[];
-
-    const pastOsIds = (contractOss || [])
-      .filter(o => (o.scheduled_date ?? '') < todayStr)
-      .map(o => o.id)
-      .filter(Boolean) as string[];
-
-    const deletedOsCount = futureOsIds.length;
-    const unlinkedOsCount = pastOsIds.length;
-
-    // Transações financeiras do contrato: ESPELHA o tratamento das OS.
-    // Receita realizada (is_paid=true) NUNCA pode ser destruída por exclusão de
-    // contrato — os relatórios de faturamento contam por is_paid+transaction_date,
-    // não por contract_id. Então preservamos as pagas DESVINCULANDO (contract_id=null)
-    // e apagamos só as cobranças não realizadas (em aberto / agendadas).
-    // is_paid=NULL é tratado como NÃO realizado (cobrança futura) → apagável.
-    const { data: contractTxs } = await supabase
-      .from('financial_transactions')
-      .select('id, is_paid')
-      .eq('contract_id', id);
-
-    const paidTxIds = (contractTxs || [])
-      .filter(t => t.is_paid === true)
-      .map(t => t.id)
-      .filter(Boolean) as string[];
-
-    const unpaidTxIds = (contractTxs || [])
-      .filter(t => t.is_paid !== true)
-      .map(t => t.id)
-      .filter(Boolean) as string[];
-
-    const preservedTxCount = paidTxIds.length;
-    const deletedTxCount = unpaidTxIds.length;
-
-    // Preserva (desvincula) recebimentos já realizados → ficam no caixa como avulsos
-    if (paidTxIds.length > 0) {
-      await supabase.from('financial_transactions').update({ contract_id: null } as any).in('id', paidTxIds);
-    }
-    // Apaga só as cobranças não realizadas
-    if (unpaidTxIds.length > 0) {
-      await supabase.from('financial_transactions').delete().in('id', unpaidTxIds);
-    }
-
-    // Delete related records
-    await supabase.from('contract_items').delete().eq('contract_id', id);
-    // Ambientes climatizados do contrato (multi-ambiente PMOC).
-    await supabase.from('contract_environments').delete().eq('contract_id', id);
-
-    // Delete future linked service orders (and their junction rows)
-    if (futureOsIds.length > 0) {
-      await supabase.from('service_order_assignees').delete().in('service_order_id', futureOsIds);
-      await supabase.from('service_order_equipment').delete().in('service_order_id', futureOsIds);
-      await supabase.from('form_responses').delete().in('service_order_id', futureOsIds);
-      await supabase.from('os_photos').delete().in('service_order_id', futureOsIds);
-      await supabase.from('service_ratings').delete().in('service_order_id', futureOsIds);
-      await supabase.from('service_orders').delete().in('id', futureOsIds);
-    }
-
-    // Unlink past OS from this contract so they remain as standalone records
-    if (pastOsIds.length > 0) {
-      await supabase.from('service_orders').update({
-        contract_id: null,
-        contract_reference_date: null,
-        contract_visit_customized_at: null,
-      } as any).in('id', pastOsIds);
-    }
-
-    const { error } = await supabase.from('contracts').delete().eq('id', id);
-    if (error) throw error;
-
-    return { deletedOsCount, unlinkedOsCount, preservedTxCount, deletedTxCount };
+    // Tudo ou nada no banco (delete_contract_cascade): cobranças em aberto,
+    // itens, ambientes e OS futuras são apagados; recebimentos já realizados e
+    // OS passadas são preservados e desvinculados. Tudo numa transação só,
+    // respeitando a permissão de quem chama: se algo for barrado, nada muda.
+    const { data, error } = await supabase.rpc('delete_contract_cascade', { p_contract_id: id, p_today: todayStr });
+    if (error) throw allOrNothingDeleteError(error);
+    const result = (data ?? {}) as Record<string, unknown>;
+    const count = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) ? value : 0);
+    return {
+      deletedOsCount: count(result.deleted_os_count),
+      unlinkedOsCount: count(result.unlinked_os_count),
+      preservedTxCount: count(result.preserved_tx_count),
+      deletedTxCount: count(result.deleted_tx_count),
+    };
   };
 
   const deleteContractMutation = useMutation({
@@ -3892,6 +3845,7 @@ export function useContracts() {
     contracts: visibleContracts,
     isLoading,
     createContract,
+    generateContractVisits,
     updateContract,
     updateContractEquipment,
     updateContractStatus,

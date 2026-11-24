@@ -80,6 +80,13 @@
 .pdv-preview-sale [data-testid="pdv-cart-workspace"]:has(.itemeditor) .cartsummary>:not(.total){display:none}
 .pdv-preview-sale [data-testid="pdv-cart-workspace"]:has(.itemeditor) .cartsummary{max-height:70px}
 .pdv-preview-sale [data-testid="pdv-cart-workspace"]:has(.itemeditor) .cartbody{min-height:220px}
+.pdv-preview-sale input.pdv-inline-value-input:focus-visible{outline:none}
+.pdv-preview-sale svg.pdv-inline-value-pencil{width:10px;height:10px}
+.pdv-preview-sale svg.pdv-value-mode-icon{width:12px;height:12px}
+.pdv-preview-sale svg.pdv-value-mode-help{width:14px;height:14px}
+.pdv-preview-sale .cartfooter .btn.primary{background:hsl(var(--foreground));border-color:hsl(var(--foreground));color:hsl(var(--background))}
+.pdv-preview-sale .cartfooter .btn.primary:hover{opacity:.92}
+.pdv-preview-sale :where(input,select,textarea,[role="combobox"]):focus-visible{outline:none!important;box-shadow:none!important;border-color:hsl(var(--ring))!important}
 @media (max-width: 800px) {
   .pdv-preview-sale[data-vaul-drawer] [data-testid="pdv-cart-workspace"] { min-height: 0; height: 100%; }
   .pdv-preview-sale[data-vaul-drawer] .cartbody { flex: 1; min-height: 100px; overflow-y: auto; }
@@ -116,39 +123,3 @@
 .pdv-preview-sale .productart > .pdv-product-placeholder {width:100%;height:100%}
 .pdv-preview-sale .cartthumbnail {width:30px;height:30px}
 .pdv-preview-sale .cartthumbnail > .pdv-product-thumbnail {width:30px;height:30px}
-.pdv-preview-sale input.pdv-inline-value-input:focus-visible{outline:none}
-.pdv-preview-sale svg.pdv-inline-value-pencil{width:10px;height:10px}
-.pdv-preview-sale svg.pdv-value-mode-icon{width:12px;height:12px}
-.pdv-preview-sale svg.pdv-value-mode-help{width:14px;height:14px}
-.pdv-preview-sale .cartfooter .btn.primary{background:hsl(var(--foreground));border-color:hsl(var(--foreground));color:hsl(var(--background))}
-.pdv-preview-sale .cartfooter .btn.primary:hover{opacity:.92}
-.pdv-preview-sale :where(input,select,textarea,[role="combobox"]):focus-visible{outline:none!important;box-shadow:none!important;border-color:hsl(var(--ring))!important}
-
-/* Ordenação é uma ação auxiliar da lista, não um campo do formulário. */
-.pdv-preview-sale .cartlistcaption .cartordertrigger{
-  width:auto;
-  height:30px;
-  min-height:30px;
-  gap:4px;
-  border:0;
-  border-radius:2px;
-  background:transparent;
-  padding:0 2px;
-  color:var(--pdv-muted);
-  font-size:9px!important;
-  line-height:1;
-  box-shadow:none;
-}
-.pdv-preview-sale .cartlistcaption .cartordertrigger:hover{
-  background:transparent;
-  color:var(--pdv-ink);
-}
-.pdv-preview-sale .cartlistcaption .cartordertrigger:focus-visible{
-  border-color:transparent!important;
-  background:hsl(var(--muted)/.45);
-  box-shadow:none!important;
-}
-.pdv-preview-sale .cartlistcaption .cartordertrigger svg{
-  width:11px;
-  height:11px;
-}

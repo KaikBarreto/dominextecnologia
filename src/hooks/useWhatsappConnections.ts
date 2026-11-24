@@ -45,6 +45,12 @@ export interface WhatsappSendJob {
   last_error: string | null;
   created_at: string;
   sent_at: string | null;
+  recipient_kind: 'customer_primary' | 'customer_contact';
+  customer_contact_id: string | null;
+  customer_contact: {
+    name: string;
+    phone: string | null;
+  } | null;
 }
 
 export interface WhatsappQrPayload {
@@ -102,7 +108,19 @@ export function useWhatsappConnections() {
       if (!companyId) return [];
       const { data, error } = await supabase
         .from('whatsapp_send_jobs')
-        .select('id, event_key, provider, status, attempts, last_error, created_at, sent_at')
+        .select(`
+          id,
+          event_key,
+          provider,
+          status,
+          attempts,
+          last_error,
+          created_at,
+          sent_at,
+          recipient_kind,
+          customer_contact_id,
+          customer_contact:customer_contacts!whatsapp_send_jobs_customer_contact_id_fkey(name, phone)
+        `)
         .eq('company_id', companyId)
         .order('created_at', { ascending: false })
         .limit(50);

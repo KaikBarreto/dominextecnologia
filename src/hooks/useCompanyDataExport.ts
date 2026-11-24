@@ -8,6 +8,7 @@ import { formatDate, formatDateTime } from '@/lib/format';
 import { MESSAGES } from '@/lib/i18n/messages';
 import type { LocaleCode } from '@/lib/i18n/locales';
 import { normalizePaymentMethod } from '@/lib/finance-payment-methods';
+import { useCanManageEmployees } from '@/hooks/useCanManageEmployees';
 import {
   generateCompanyBackupExcel,
   type BackupCell,
@@ -286,6 +287,7 @@ export function useCompanyDataExport(): UseCompanyDataExportResult {
   const { locale, currency, timezone } = useAppLocaleContext();
   const { settings } = useCompanySettings();
   const { hasModule } = useCompanyModules();
+  const canReadEmployeeHr = useCanManageEmployees();
   const [progress, setProgress] = useState<ExportProgress | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -326,6 +328,7 @@ export function useCompanyDataExport(): UseCompanyDataExportResult {
           currency,
           timezone,
           onProgress: setProgress,
+          canReadEmployeeHr,
         });
 
         await generateCompanyBackupExcel({
@@ -344,7 +347,7 @@ export function useCompanyDataExport(): UseCompanyDataExportResult {
         setIsRunning(false);
       }
     },
-    [locale, currency, timezone, settings?.name, availableGroups],
+    [locale, currency, timezone, settings?.name, availableGroups, canReadEmployeeHr],
   );
 
   return { groups: availableGroups, run, progress, isRunning, error, reset };
@@ -360,6 +363,12 @@ interface CollectParams {
   currency: string;
   timezone: string;
   onProgress: (progress: ExportProgress) => void;
+  /**
+   * Quem exporta tem permissão de RH? Decide a aba Funcionários: RH exporta o
+   * cadastro completo (get_employees_hr); os demais exportam só as colunas não
+   * sensíveis, sem as colunas de salário/CPF/PIX etc. na planilha.
+   */
+  canReadEmployeeHr: boolean;
 }
 
 async function collectSheets({
@@ -367,6 +376,7 @@ async function collectSheets({
   locale,
   timezone,
   onProgress,
+  canReadEmployeeHr,
 }: CollectParams): Promise<BackupSheet[]> {
   const common = MESSAGES[locale].app.common;
   const yes = common?.yes ?? 'Sim';
@@ -621,7 +631,8 @@ async function collectSheets({
             'customers',
             'id, name, nome_fantasia, company_name, customer_type, document, inscricao_estadual, ' +
               'inscricao_municipal, email, phone, celular, address, address_number, complement, ' +
-              'neighborhood, city, state, zip_code, origin, birth_date, notes, created_at',
+              'neighborhood, city, state, zip_code, origin, birth_date, notes, ' +
+              'whatsapp_notifications_enabled, created_at',
             {
               orderBy: ['name', 'id'],
               // Lixeira não é backup.
@@ -630,6 +641,45 @@ async function collectSheets({
             },
           ),
         );
+        // As preferências de destinatários também fazem parte da portabilidade.
+        // Sem rota explícita, só o contato principal recebe (legado).
+        const whatsappRoutes = await fetchAllPaged(
+          'customer_whatsapp_routes',
+          'id, customer_id, category, enabled',
+          { orderBy: ['id'] },
+        );
+        const whatsappRecipients = await fetchAllPaged(
+          'customer_whatsapp_route_recipients',
+          'id, route_id, recipient_kind, customer_contact_id',
+          { orderBy: ['id'] },
+        );
+        const routeByCustomerCategory = new Map<string, DbRow>();
+        for (const route of whatsappRoutes) {
+          routeByCustomerCategory.set(`${route.customer_id}:${route.category}`, route);
+        }
+        const recipientsByRoute = new Map<string, DbRow[]>();
+        for (const recipient of whatsappRecipients) {
+          const key = String(recipient.route_id);
+          recipientsByRoute.set(key, [...(recipientsByRoute.get(key) ?? []), recipient]);
+        }
+        const customerWhatsappEnabled = new Map(
+          rows.map((customer) => [String(customer.id), customer.whatsapp_notifications_enabled === true]),
+        );
+        const receivesWhatsapp = (
+          customerId: unknown,
+          category: 'service_order' | 'billing',
+          kind: 'customer_primary' | 'customer_contact',
+          contactId?: unknown,
+        ): boolean => {
+          if (customerWhatsappEnabled.get(String(customerId)) !== true) return false;
+          const route = routeByCustomerCategory.get(`${customerId}:${category}`);
+          if (!route) return kind === 'customer_primary';
+          if (route.enabled !== true) return false;
+          return (recipientsByRoute.get(String(route.id)) ?? []).some((recipient) =>
+            recipient.recipient_kind === kind
+            && (kind === 'customer_primary' || recipient.customer_contact_id === contactId),
+          );
+        };
         sheets.push({
           key: 'customers',
           columns: [
@@ -638,7 +688,8 @@ async function collectSheets({
             T('email', 28), T('phone'), T('celular'),
             T('address', 32), T('address_number'), T('complement'), T('neighborhood'),
             T('city'), T('state'), T('zip_code'),
-            T('origin'), T('birth_date'), T('notes', 40), T('created_at'),
+            T('origin'), T('birth_date'), T('notes', 40),
+            T('whatsapp_service_order'), T('whatsapp_billing'), T('created_at'),
           ],
           rows: rows.map((r) => [
             s(r.name), s(r.nome_fantasia), s(r.company_name), s(r.customer_type),
@@ -646,7 +697,10 @@ async function collectSheets({
             s(r.email), s(r.phone), s(r.celular),
             s(r.address), s(r.address_number), s(r.complement), s(r.neighborhood),
             s(r.city), s(r.state), s(r.zip_code),
-            s(r.origin), d(r.birth_date), s(r.notes), d(r.created_at),
+            s(r.origin), d(r.birth_date), s(r.notes),
+            b(receivesWhatsapp(r.id, 'service_order', 'customer_primary')),
+            b(receivesWhatsapp(r.id, 'billing', 'customer_primary')),
+            d(r.created_at),
           ]),
         });
 
@@ -668,11 +722,14 @@ async function collectSheets({
           key: 'customerContacts',
           columns: [
             T('customer', 32), T('name', 28), T('position'), T('phone'), T('email', 28),
-            T('notes', 40), T('created_at'),
+            T('notes', 40), T('whatsapp_service_order'), T('whatsapp_billing'), T('created_at'),
           ],
           rows: contacts.map((r) => [
             ref(customers, r.customer_id), s(r.name), s(r.position), s(r.phone), s(r.email),
-            s(r.notes), d(r.created_at),
+            s(r.notes),
+            b(receivesWhatsapp(r.customer_id, 'service_order', 'customer_contact', r.id)),
+            b(receivesWhatsapp(r.customer_id, 'billing', 'customer_contact', r.id)),
+            d(r.created_at),
           ]),
         });
         break;
@@ -1267,34 +1324,62 @@ async function collectSheets({
       case 'employees': {
         // `user_id`, `ponto_slug`, `public_short_code` e `monthly_cost_breakdown`
         // NÃO entram (id interno, credencial de link público e JSONB).
-        const rows = await readSheet('employees', (onPage) =>
-          fetchAllPaged(
+        //
+        // Dados de RH (CPF, telefone, endereço, salário, custo, dependentes,
+        // calendário de pagamento, VT, PIX) só para quem tem permissão de RH:
+        // vêm da RPC get_employees_hr. Para os demais a aba sai com as colunas
+        // não sensíveis apenas: a coluna some, em vez de ficar vazia e parecer
+        // que o cadastro está incompleto. O select direto de coluna sensível
+        // falha depois da migration 20261122090000.
+        const rows = await readSheet('employees', async (onPage) => {
+          if (canReadEmployeeHr) {
+            const { data, error } = await supabase.rpc('get_employees_hr', {});
+            if (error) throw new Error(error.message);
+            const all = ((data ?? []) as unknown as DbRow[])
+              .slice()
+              .sort((a, b) =>
+                String(a.name ?? '').localeCompare(String(b.name ?? '')) ||
+                String(a.id ?? '').localeCompare(String(b.id ?? '')));
+            onPage(all.length);
+            return all;
+          }
+          return fetchAllPaged(
             'employees',
-            'id, name, matricula, cpf, position, cbo, employment_regime, hire_date, is_active, ' +
-              'email, phone, address, salary, monthly_cost, dependents_count, payment_frequency, ' +
-              'payment_day, payment_day_2, payment_day_type, payment_weekday, vt_enabled, ' +
-              'vt_monthly_value, pix_key, created_at',
+            'id, name, matricula, position, cbo, employment_regime, hire_date, is_active, email, created_at',
             { orderBy: ['name', 'id'], onPage },
-          ),
-        );
+          );
+        });
+        type EmployeeExportColumn = { column: BackupColumn; cell: (r: DbRow) => BackupCell; hr?: true };
+        const employeeColumns: EmployeeExportColumn[] = [
+          { column: T('name', 30), cell: (r) => s(r.name) },
+          { column: T('matricula'), cell: (r) => s(r.matricula) },
+          { column: T('cpf'), cell: (r) => s(r.cpf), hr: true },
+          { column: T('position', 24), cell: (r) => s(r.position) },
+          { column: T('cbo'), cell: (r) => s(r.cbo) },
+          { column: T('employment_regime'), cell: (r) => enumLabel(employmentRegimeMap, r.employment_regime) },
+          { column: T('hire_date'), cell: (r) => d(r.hire_date) },
+          { column: T('is_active'), cell: (r) => b(r.is_active) },
+          { column: T('email', 28), cell: (r) => s(r.email) },
+          { column: T('phone'), cell: (r) => s(r.phone), hr: true },
+          { column: T('address', 32), cell: (r) => s(r.address), hr: true },
+          { column: M('salary'), cell: (r) => n(r.salary), hr: true },
+          { column: M('monthly_cost'), cell: (r) => n(r.monthly_cost), hr: true },
+          { column: N('dependents_count'), cell: (r) => n(r.dependents_count), hr: true },
+          { column: T('payment_frequency'), cell: (r) => enumLabel(paymentFrequencyMap, r.payment_frequency), hr: true },
+          { column: N('payment_day'), cell: (r) => n(r.payment_day), hr: true },
+          { column: N('payment_day_2'), cell: (r) => n(r.payment_day_2), hr: true },
+          { column: T('payment_day_type'), cell: (r) => enumLabel(paymentDayTypeMap, r.payment_day_type), hr: true },
+          { column: N('payment_weekday'), cell: (r) => n(r.payment_weekday), hr: true },
+          { column: T('vt_enabled'), cell: (r) => b(r.vt_enabled), hr: true },
+          { column: M('vt_monthly_value'), cell: (r) => n(r.vt_monthly_value), hr: true },
+          { column: T('pix_key', 26), cell: (r) => s(r.pix_key), hr: true },
+          { column: T('created_at'), cell: (r) => d(r.created_at) },
+        ];
+        const visibleEmployeeColumns = employeeColumns.filter((c) => canReadEmployeeHr || !c.hr);
         sheets.push({
           key: 'employees',
-          columns: [
-            T('name', 30), T('matricula'), T('cpf'), T('position', 24), T('cbo'),
-            T('employment_regime'), T('hire_date'), T('is_active'),
-            T('email', 28), T('phone'), T('address', 32),
-            M('salary'), M('monthly_cost'), N('dependents_count'),
-            T('payment_frequency'), N('payment_day'), N('payment_day_2'), T('payment_day_type'),
-            N('payment_weekday'), T('vt_enabled'), M('vt_monthly_value'), T('pix_key', 26), T('created_at'),
-          ],
-          rows: rows.map((r) => [
-            s(r.name), s(r.matricula), s(r.cpf), s(r.position), s(r.cbo),
-            enumLabel(employmentRegimeMap, r.employment_regime), d(r.hire_date), b(r.is_active),
-            s(r.email), s(r.phone), s(r.address),
-            n(r.salary), n(r.monthly_cost), n(r.dependents_count),
-            enumLabel(paymentFrequencyMap, r.payment_frequency), n(r.payment_day), n(r.payment_day_2), enumLabel(paymentDayTypeMap, r.payment_day_type),
-            n(r.payment_weekday), b(r.vt_enabled), n(r.vt_monthly_value), s(r.pix_key), d(r.created_at),
-          ]),
+          columns: visibleEmployeeColumns.map((c) => c.column),
+          rows: rows.map((r) => visibleEmployeeColumns.map((c) => c.cell(r))),
         });
         break;
       }

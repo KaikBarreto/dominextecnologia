@@ -12,13 +12,31 @@ export function goodsOutcome(result: Record<string, unknown>) {
   if (official === 'autorizada' || outcome === 'authorized') return { status: 'authorized', official: 'autorizada' };
   return { status: 'uncertain', official: official || 'aguardando_confirmacao' };
 }
+/** Rateio em centavos por maior resto; a ordem original desempata. Nunca deixa item negativo. */
+export function canonicalGoodsSourceTotals(items: Record<string, unknown>[], orderTotal: number): number[] | null {
+  const cents = (value: unknown) => Math.round(Number(value) * 100);
+  const totals = items.map(i => cents(i.total)); const target = cents(orderTotal);
+  if (!Number.isSafeInteger(target) || target < 0 || totals.some(n => !Number.isSafeInteger(n) || n < 0)) return null;
+  const sum = totals.reduce((n,value) => n+value,0);
+  if (!Number.isSafeInteger(sum) || target > sum) return null;
+  if (!sum) return totals.map(() => 0);
+  const discount = BigInt(sum-target); const denominator = BigInt(sum);
+  const shares = totals.map((value,index) => ({index, cents:Number(discount*BigInt(value)/denominator), remainder:discount*BigInt(value)%denominator}));
+  let pending = sum-target-shares.reduce((n,s) => n+s.cents,0);
+  const ranked = [...shares].sort((a,b) => a.remainder === b.remainder ? a.index-b.index : a.remainder>b.remainder ? -1 : 1);
+  for (const entry of ranked) { if (!pending) break; entry.cents++; pending--; }
+  if (pending) return null;
+  return totals.map((value,index) => (value-shares[index].cents)/100);
+}
 export function sourceFinancialsMatch(draft: { items: Record<string, unknown>[]; payments: Record<string, unknown>[] }, orderTotal: number, sourceItems: Record<string, unknown>[], sourcePayments: Record<string, unknown>[]) {
   const cents = (n: unknown) => Math.round(Number(n) * 100);
   if (draft.items.length !== sourceItems.length || draft.payments.length !== sourcePayments.length) return false;
   const ids = new Set(draft.items.map(i => i.sourceItemId));
   if (ids.size !== sourceItems.length) return false;
-  if (sourceItems.some(source => !draft.items.some(item => item.sourceItemId === source.id && item.inventoryId === source.inventory_id && Number(item.quantity) === Number(source.quantity) && Number(item.unitPrice) === Number(source.unit_price)))) return false;
+  const expectedTotals = canonicalGoodsSourceTotals(sourceItems,orderTotal);
+  if (!expectedTotals) return false;
+  if (sourceItems.some((source,index) => !draft.items.some(item => item.sourceItemId === source.id && item.inventoryId === source.inventory_id && Number(item.quantity) === Number(source.quantity) && Number(item.unitPrice) === Number(source.unit_price) && cents(item.total) === cents(expectedTotals[index])))) return false;
   if (cents(draft.items.reduce((sum, i) => sum + Number(i.total), 0)) !== cents(orderTotal)) return false;
-  const normalize = (rows: Record<string, unknown>[], source: boolean) => rows.map(p => `${source ? goodsPaymentCode(p.method) : p.method}:${cents(source ? Number(p.amount) + Number(p.change_amount) : p.amount)}:${cents(source ? p.change_amount : p.change)}`).sort();
+  const normalize = (rows: Record<string, unknown>[], source: boolean) => rows.map(p => `${source ? goodsPaymentCode(p.method) : p.method}:${cents(source ? Number(p.amount) + Number(p.change_amount) : p.amount)}:${cents(source ? p.change_amount : p.change)}:${source ? p.method === 'fiado' : p.deferred === true}`).sort();
   return JSON.stringify(normalize(draft.payments, false)) === JSON.stringify(normalize(sourcePayments, true));
 }

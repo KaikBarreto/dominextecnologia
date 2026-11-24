@@ -417,8 +417,8 @@ describe('pdv/payment — fiado', () => {
     expect(codes(result.issues)).toContain('fiado_sem_cliente');
   });
 
-  it('fiado sem vencimento: bloqueia apontando a linha', () => {
-    const fiado = row({ id: 'f1', method: 'fiado', amount: 100 });
+  it('fiado parcelado sem primeiro vencimento: bloqueia apontando a linha', () => {
+    const fiado = row({ id: 'f1', method: 'fiado', amount: 100, installmentCount: 2 });
     const result = validatePayments([fiado], ctx());
     expect(result.issues).toEqual(
       expect.arrayContaining([{ code: 'fiado_sem_vencimento', rowId: 'f1' }]),
@@ -500,4 +500,24 @@ describe('pdv/payment — payload da RPC', () => {
     const rows = [row({ method: 'pix', amount: 33.333, accountId: 'a' })];
     expect(toSettlePayload(rows)[0].amount).toBe(33.33);
   });
+});
+
+describe('fiado com intenção explícita de vencimento', () => {
+  it('envia sem vencimento somente para parcela única e não depende do default legado', () => {
+    const row = { ...newPaymentRow('fiado', 10), dueDate: null };
+    expect(toSettlePayload([row])).toEqual([{ method: 'fiado', amount: 10, due_date_mode: 'none' }]);
+  });
+  it('exige primeiro vencimento para fiado parcelado', () => {
+    const row = { ...newPaymentRow('fiado', 10), dueDate: null, installmentCount: 2 };
+    expect(() => toSettlePayload([row])).toThrow('primeiro vencimento');
+  });
+  it('não normaliza uma data civil impossível em outra data', () => {
+    const row = { ...newPaymentRow('fiado', 10), dueDate: '2026-02-30' };
+    expect(() => toSettlePayload([row])).toThrow('vencimento válido');
+  });
+});
+
+it('não cria parcelas de valor zero quando o carnê possui mais parcelas que centavos', () => {
+  const value = { ...newPaymentRow('fiado', 0.05), installmentCount: 6 };
+  expect(() => toSettlePayload([value])).toThrow('R$ 0,01');
 });

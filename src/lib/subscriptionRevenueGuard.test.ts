@@ -26,8 +26,8 @@ describe('guardas de receita da assinatura', () => {
     expect(src).toContain('Math.abs(amount - expected) > 0.02');
     expect(src).toContain('requestRow.amount_due');
     expect(src).toContain('externalReference = `upgrade:${upgradeRequest.id}:${company_id}`');
-    expect(src).toContain('if (upgradeRequest)');
-    expect(src).toContain('const payment = await asaas.post(`/payments`, paymentPayload)');
+    expect(src).toContain('if (upgradeRequest && !(upgradeRequest.initial_activation && billing_type === "CREDIT_CARD"))');
+    expect(src).toContain('const payment = await postCharge(`/payments`, paymentPayload)');
   });
 
   it('cobrança pendente só é reutilizada depois da reconciliação server-side', () => {
@@ -93,11 +93,11 @@ describe('guardas de receita da assinatura', () => {
 
   it('cartão cria recorrência mensal por padrão e upgrade cobra somente o pro-rata avulso', () => {
     const payment = edge('create-asaas-payment');
-    const upgradeBranch = payment.indexOf('if (upgradeRequest)');
+    const upgradeBranch = payment.indexOf('if (upgradeRequest && !(upgradeRequest.initial_activation && billing_type === "CREDIT_CARD"))');
     const recurringCardBranch = payment.indexOf('if (billing_type === "CREDIT_CARD" && body.card_number)');
     expect(upgradeBranch).toBeGreaterThan(-1);
-    expect(payment.slice(upgradeBranch, recurringCardBranch)).toContain('asaas.post(`/payments`, paymentPayload)');
-    expect(payment.slice(recurringCardBranch)).toContain('asaas.post(`/subscriptions`, subscriptionPayload)');
+    expect(payment.slice(upgradeBranch, recurringCardBranch)).toContain('postCharge(`/payments`, paymentPayload)');
+    expect(payment.slice(recurringCardBranch)).toContain('postCharge(`/subscriptions`, subscriptionPayload)');
     expect(payment.slice(recurringCardBranch)).toContain('cycle: "MONTHLY"');
     expect(payment.slice(recurringCardBranch)).toContain('nextDueDate: todayBRT');
   });

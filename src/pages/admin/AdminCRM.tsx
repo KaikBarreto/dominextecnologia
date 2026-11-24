@@ -16,7 +16,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/com
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FilterCheckboxGroup, type FilterCheckboxOption } from '@/components/mobile/FilterCheckboxGroup';
-import { useAdminLeads, useAdminCrmStages, useAdminCrmPipelines, type AdminLead } from '@/hooks/useAdminCrm';
+import { useAdminLead, useAdminLeads, useAdminCrmStages, useAdminCrmPipelines, type AdminLead } from '@/hooks/useAdminCrm';
 import { useCompanyOrigins } from '@/hooks/useCompanyOrigins';
 import { resolveOrigin } from '@/utils/companyOriginCatalog';
 import { AdminLeadFormDialog } from '@/components/admin/AdminLeadFormDialog';
@@ -34,7 +34,9 @@ import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
 import { MobileListItem } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { AdminTasksTab } from '@/components/admin/tasks/AdminTasksTab';
+import { adminKpiClass } from '@/components/admin/adminKpiStyles';
 import { useAdminTasksCount } from '@/hooks/useAdminTasks';
+import { useAdminPermissions } from '@/hooks/useAdminPermissions';
 import { PipelineTabsBar, type PipelineTabItem } from '@/components/crm/PipelineTabsBar';
 import { AdminCrmSettingsDialog, type AdminCrmSettingsSection } from '@/components/admin/AdminCrmSettingsDialog';
 import type { RowAction } from '@/components/ui/RowActionsMenu';
@@ -160,6 +162,8 @@ export default function AdminCRM() {
 
 function CrmTab() {
   const { user } = useAuth();
+  const { hasFunctionAccess } = useAdminPermissions();
+  const canCreateLead = hasFunctionAccess('admin_crm_criar_lead');
   const { leads, isLoading, updateLead } = useAdminLeads();
   const {
     pipelines,
@@ -237,11 +241,24 @@ function CrmTab() {
   // Guarda apenas o id e deriva o objeto da query viva: qualquer edição passa
   // a aparecer no card e no modal assim que o cache é revalidado.
   const [detailLeadId, setDetailLeadId] = useState<string | null>(null);
-  const detailLead = useMemo(
-    () => leads.find((lead) => lead.id === detailLeadId) ?? null,
-    [detailLeadId, leads],
-  );
   const [detailOpen, setDetailOpen] = useState(false);
+  const leadIdFromUrl = searchParams.get('lead');
+  const requestedLeadId = leadIdFromUrl ?? detailLeadId;
+  const listedLead = leads.find((lead) => lead.id === requestedLeadId) ?? null;
+  const { lead: fetchedLead } = useAdminLead(listedLead ? undefined : requestedLeadId ?? undefined);
+  const detailLead = listedLead ?? (fetchedLead?.id === requestedLeadId ? fetchedLead : null);
+
+  // O link consulta o item exato quando ele não estiver no recorte da lista.
+  useEffect(() => {
+    if (!leadIdFromUrl || detailLead?.id !== leadIdFromUrl) return;
+    setSelectedPipelineId(detailLead.pipeline_id);
+    localStorage.setItem('admin-crm-selected-pipeline', detailLead.pipeline_id);
+    setDetailLeadId(detailLead.id);
+    setDetailOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete('lead');
+    setSearchParams(next, { replace: true });
+  }, [leadIdFromUrl, detailLead, searchParams, setSearchParams]);
   const [search, setSearch] = useState('');
   const [lossDialogOpen, setLossDialogOpen] = useState(false);
   const [pendingLossDrop, setPendingLossDrop] = useState<{ leadId: string; stageId: string; leadTitle: string } | null>(null);
@@ -613,13 +630,13 @@ function CrmTab() {
         {/* Stats: mobile = carrossel (Total + Negociação + Ganhos + 1 chip por estágio).
             Desktop = grid 4 cards original (inclui Valor Total). */}
         {isMobile ? (
-          <StatCarousel items={statItems} loading={isLoading || stagesLoading} />
+          <StatCarousel items={statItems} loading={isLoading || stagesLoading} variant="saturated" />
         ) : (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <Card className="border-0 bg-primary text-white"><CardContent className="p-3"><div className="flex items-center gap-2"><Users className="h-4 w-4 text-white/80" /><div><p className="text-xs text-white/75">Total de Leads</p><p className="text-lg font-bold">{filteredLeads.length}</p></div></div></CardContent></Card>
-            <Card className="border-0 bg-info text-white"><CardContent className="p-3"><div className="flex items-center gap-2"><TrendingUp className="h-4 w-4 text-white/80" /><div><p className="text-xs text-white/75">Em Negociação</p><p className="text-lg font-bold">{activeLeads.length}</p></div></div></CardContent></Card>
-            <Card className="border-0 bg-success text-white"><CardContent className="p-3"><div className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-white/80" /><div><p className="text-xs text-white/75">Valor Total</p><p className="text-lg font-bold">{formatCurrency(totalValue)}</p></div></div></CardContent></Card>
-            <Card className="border-0 bg-warning text-white"><CardContent className="p-3"><div className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-white/80" /><div><p className="text-xs text-white/75">Ganhos</p><p className="text-lg font-bold">{wonLeadsCount}</p></div></div></CardContent></Card>
+            <Card className={adminKpiClass('blue')}><CardContent className="p-3"><div className="flex items-center gap-2"><Users className="h-4 w-4 text-white/80" /><div><p className="text-xs text-white/75">Total de Leads</p><p className="text-lg font-bold">{filteredLeads.length}</p></div></div></CardContent></Card>
+            <Card className={adminKpiClass('cyan')}><CardContent className="p-3"><div className="flex items-center gap-2"><TrendingUp className="h-4 w-4 text-white/80" /><div><p className="text-xs text-white/75">Em Negociação</p><p className="text-lg font-bold">{activeLeads.length}</p></div></div></CardContent></Card>
+            <Card className={adminKpiClass('emerald')}><CardContent className="p-3"><div className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-white/80" /><div><p className="text-xs text-white/75">Valor Total</p><p className="text-lg font-bold">{formatCurrency(totalValue)}</p></div></div></CardContent></Card>
+            <Card className={adminKpiClass('amber')}><CardContent className="p-3"><div className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-white/80" /><div><p className="text-xs text-white/75">Ganhos</p><p className="text-lg font-bold">{wonLeadsCount}</p></div></div></CardContent></Card>
           </div>
         )}
 
@@ -638,16 +655,18 @@ function CrmTab() {
             >
               {filtersContent}
             </FilterSheet>
-            <Button
-              size="sm"
-              className="h-10 shrink-0 gap-2 px-3"
-              onClick={() => { setEditingLead(null); setDialogOpen(true); }}
-              aria-label="Nova oportunidade"
-              title="Nova oportunidade"
-            >
-              <Plus className="h-4 w-4" />
-              <span className="hidden min-[340px]:inline">Nova</span>
-            </Button>
+            {canCreateLead && (
+              <Button
+                size="sm"
+                className="h-10 shrink-0 gap-2 px-3"
+                onClick={() => { setEditingLead(null); setDialogOpen(true); }}
+                aria-label="Nova oportunidade"
+                title="Nova oportunidade"
+              >
+                <Plus className="h-4 w-4" />
+                <span className="hidden min-[340px]:inline">Nova</span>
+              </Button>
+            )}
           </MobileListToolbar>
         ) : (
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
@@ -668,9 +687,11 @@ function CrmTab() {
                 activeFilterCount={activeFilterCount}
                 onClear={clearFilters}
               />
-              <Button onClick={() => { setEditingLead(null); setDialogOpen(true); }}>
-                <Plus className="h-4 w-4 mr-2" /> Nova oportunidade
-              </Button>
+              {canCreateLead && (
+                <Button onClick={() => { setEditingLead(null); setDialogOpen(true); }}>
+                  <Plus className="h-4 w-4 mr-2" /> Nova oportunidade
+                </Button>
+              )}
             </div>
           </div>
         )}

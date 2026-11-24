@@ -74,7 +74,7 @@ describe('PartyAccountPanel', () => {
     expect(screen.getAllByText('Adiantamento').length).toBeGreaterThan(0);
     expect(screen.getByText(/999\.999\.999,99/)).toBeInTheDocument();
     expect(screen.getByText('A pagar').parentElement?.parentElement).toHaveClass('grid-cols-1');
-    expect(screen.getByRole('button', { name: /Registrar adiantamento/ })).toHaveClass('whitespace-normal');
+    expect(screen.getByRole('button', { name: /Registrar crédito/ })).toHaveClass('whitespace-normal');
     expect(screen.queryByText('Limite de fiado')).not.toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Contas' })).toHaveAttribute('aria-selected', 'true');
     fireEvent.click(screen.getByRole('tab', { name: 'Saldo' }));

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { toast } from 'sonner';
 
 /**
@@ -518,8 +519,10 @@ export function useUpdateAffiliate() {
   return useMutation({
     mutationFn: async (data: AffiliateFormInput & { id: string }) => {
       const { id, ...updateData } = data;
-      const { error } = await supabase.from('affiliates').update(updateData).eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('affiliates').update(updateData, { count: 'exact' }).eq('id', id),
+        'update',
+      );
       return id;
     },
     onSuccess: (id) => {
@@ -545,8 +548,10 @@ export function useDeleteAffiliate() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('affiliates').delete().eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('affiliates').delete({ count: 'exact' }).eq('id', id),
+        'delete',
+      );
       return id;
     },
     onSuccess: () => {

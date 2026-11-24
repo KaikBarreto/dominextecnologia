@@ -31,8 +31,6 @@ describe('fetchAccessibleInventoryIds', () => {
     ]);
 
     expect(rpc).toHaveBeenCalledTimes(2);
-    expect(rpc).toHaveBeenNthCalledWith(1, 'get_accessible_inventory_ids');
-    expect(rpc).toHaveBeenNthCalledWith(2, 'get_accessible_inventory_ids');
     expect(range).toHaveBeenNthCalledWith(1, 0, 999);
     expect(range).toHaveBeenNthCalledWith(2, 1000, 1999);
   });

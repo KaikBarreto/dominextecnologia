@@ -22,8 +22,8 @@ interface CargaTermicaProps {
 
 /** Converte string crua de input numérico em number, com default seguro. */
 function num(str: string, def = 0): number {
-  const parsed = Number(str.replace(',', '.'));
-  return Number.isFinite(parsed) ? parsed : def;
+  if (str.trim() === '') return def;
+  return Number(str.replace(',', '.'));
 }
 
 interface CampoNum {
@@ -75,7 +75,7 @@ export function CargaTermica({ onApply }: CargaTermicaProps = {}) {
     const largura = num(valores.largura);
     const comprimento = num(valores.comprimento);
     const resultado = calcularCargaTermica({
-      altura: num(valores.altura),
+      altura: num(valores.altura, 3),
       largura,
       comprimento,
       pessoas: num(valores.pessoas),
@@ -83,13 +83,13 @@ export function CargaTermica({ onApply }: CargaTermicaProps = {}) {
       janelas: num(valores.janelas),
       ensolarado,
     });
-    return { btus: resultado, temArea: largura * comprimento > 0 };
+    return { btus: resultado ?? 0, temArea: resultado !== null };
   }, [valores, ensolarado]);
 
   return (
     <div className="space-y-4 pb-4">
       <div>
-        <h2 className="text-base font-semibold tracking-tight md:text-xl">{t.title}</h2>
+        <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">{t.title}</h2>
         <p className="text-sm text-muted-foreground md:text-base">{t.subtitle}</p>
       </div>
 
@@ -98,7 +98,7 @@ export function CargaTermica({ onApply }: CargaTermicaProps = {}) {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {CAMPOS.map((campo) => (
             <div key={campo.id} className="space-y-1.5">
-              <Label htmlFor={campo.id} className="text-base text-muted-foreground md:text-lg">
+              <Label htmlFor={campo.id} className="text-base font-medium text-foreground">
                 {campo.label}
               </Label>
               <Input
@@ -135,10 +135,10 @@ export function CargaTermica({ onApply }: CargaTermicaProps = {}) {
       <div className="rounded-lg border border-border bg-background p-5 text-center">
         {/* Switch BTU ↔ TR no canto */}
         <div className="mb-1 flex justify-end">
-          <LabeledSwitch
+          <LabeledSwitch<'btu' | 'tr'>
             value={unidadeResultado}
             onChange={setUnidadeResultado}
-            off={{ value: 'btu', label: 'BTU' }}
+            off={{ value: 'btu', label: 'BTU/h' }}
             on={{ value: 'tr', label: 'TR' }}
             aria-label="Unidade do resultado: BTU ou Tonelada de Refrigeração"
           />
@@ -150,7 +150,7 @@ export function CargaTermica({ onApply }: CargaTermicaProps = {}) {
           {unidadeResultado === 'btu' ? (
             <>
               {formatarBtus(temArea ? btus : 0)}
-              <span className="ml-2 text-2xl font-semibold sm:text-3xl">BTUs</span>
+              <span className="ml-2 text-2xl font-semibold sm:text-3xl">BTU/h</span>
             </>
           ) : (
             <>
@@ -161,6 +161,9 @@ export function CargaTermica({ onApply }: CargaTermicaProps = {}) {
             </>
           )}
         </p>
+        {!temArea && Object.values(valores).some((value) => value.trim() !== '') && (
+          <p className="mt-3 text-sm font-medium text-destructive" role="status">{t.invalidInput}</p>
+        )}
         {temArea && (
           <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
             {unidadeResultado === 'tr' ? t.trNote : t.btuNote}

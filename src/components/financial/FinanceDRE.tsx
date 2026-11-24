@@ -1,3 +1,6 @@
+import { FinancePdvReconciliation } from './FinancePdvReconciliation';
+import { FinancePdvCoverageNotice } from './FinancePdvCoverageNotice';
+import { FINANCE_PDV_COVERAGE_NOTE, hasPdvFinancialSources } from '@/lib/finance-pdv-coverage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -48,7 +51,7 @@ import {
   isPayrollAdvance,
   isFutureCashDate,
   isDreExcludedGroup,
-  isDreCashFlowOnlyPdvRole,
+  isPdvRoleExcludedFromDre,
   classifyDreCategory,
   type DreRegime,
 } from '@/lib/dre-regime';
@@ -342,7 +345,7 @@ export function FinanceDRE({
         // Refund/estorno são somente custódia + DFC. A devolução W5 já
         // recompôs receita/CMV; este corte estrutural vem antes de categoria,
         // regime, layout personalizado, comparativo e exportação.
-        if (isDreCashFlowOnlyPdvRole(t.pdv_financial_role)) continue;
+        if (isPdvRoleExcludedFromDre(t.pdv_financial_role, regime)) continue;
         // Lançamento CANCELADO não é resultado. Quando um funcionário é
         // desativado, o gatilho do banco marca as folhas futuras com
         // `cancelled_at` e DEIXA a linha viva (pra não sumir com o histórico).
@@ -1276,6 +1279,7 @@ export function FinanceDRE({
       logo_url: settings?.logo_url || undefined,
     },
     period: periodLabel,
+    coverageNotice: hasPdvFinancialSources(rawTransactions) ? FINANCE_PDV_COVERAGE_NOTE : undefined,
     regime,
     receitaBruta: dre.receitaBruta,
     receitaCategories,
@@ -1380,6 +1384,7 @@ export function FinanceDRE({
           periodLabels: [periodLabel, ...comparisonPeriodLabels],
           regime,
           currency,
+          coverageNotice: data.coverageNotice,
           rows,
         };
         await generateDrePdf(pdfData);
@@ -1762,6 +1767,7 @@ export function FinanceDRE({
 
   return (
     <div className="space-y-5 sm:space-y-6">
+      <FinancePdvCoverageNotice transactions={rawTransactions} />
       {/* Filtro por centro de custo — corta o conjunto ANTES de qualquer soma,
           então demonstrativo e quebra por centro respondem juntos a ele.
           Só aparece pra quem usa centro de custo. */}
@@ -1780,6 +1786,8 @@ export function FinanceDRE({
           />
         </div>
       )}
+
+      {costCenterFilter.length===0 && <FinancePdvReconciliation range={range} regime={regime} startDate={dreStartDate} asOf={today} />}
 
       {/* DRE Table */}
       <Card className="border-0 shadow-none overflow-visible bg-muted/15">

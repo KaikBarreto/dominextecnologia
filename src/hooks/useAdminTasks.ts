@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessages';
@@ -345,7 +346,7 @@ export function useAdminTasks(filters?: TaskFilters, options?: UseAdminTasksOpti
     const channel = supabase
       .channel('admin-tasks')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_tasks' }, () => {
-        qc.invalidateQueries({ queryKey: ['admin-tasks'] });
+        qc.invalidateQueries({ predicate: (query) => ["admin-tasks", "admin-company-next-success-task"].includes(String(query.queryKey[0])) });
         qc.invalidateQueries({ queryKey: ['admin-tasks-count'] });
         qc.invalidateQueries({ queryKey: ['admin-tasks-resolved-count'] });
       })
@@ -374,7 +375,7 @@ export function useAdminTasks(filters?: TaskFilters, options?: UseAdminTasksOpti
       return data;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin-tasks'] });
+      qc.invalidateQueries({ predicate: (query) => ["admin-tasks", "admin-company-next-success-task"].includes(String(query.queryKey[0])) });
       qc.invalidateQueries({ queryKey: ['admin-tasks-count'] });
       qc.invalidateQueries({ queryKey: ['admin-tasks-resolved-count'] });
       toast({ title: 'Tarefa criada!' });
@@ -398,11 +399,13 @@ export function useAdminTasks(filters?: TaskFilters, options?: UseAdminTasksOpti
         patch.completed_by = null;
       }
 
-      const { error } = await supabase.from('admin_tasks').update(patch).eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('admin_tasks').update(patch, { count: 'exact' }).eq('id', id),
+        'update',
+      );
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin-tasks'] });
+      qc.invalidateQueries({ predicate: (query) => ["admin-tasks", "admin-company-next-success-task"].includes(String(query.queryKey[0])) });
       qc.invalidateQueries({ queryKey: ['admin-tasks-count'] });
       qc.invalidateQueries({ queryKey: ['admin-tasks-resolved-count'] });
     },
@@ -411,11 +414,13 @@ export function useAdminTasks(filters?: TaskFilters, options?: UseAdminTasksOpti
 
   const deleteTask = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('admin_tasks').delete().eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('admin_tasks').delete({ count: 'exact' }).eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin-tasks'] });
+      qc.invalidateQueries({ predicate: (query) => ["admin-tasks", "admin-company-next-success-task"].includes(String(query.queryKey[0])) });
       qc.invalidateQueries({ queryKey: ['admin-tasks-count'] });
       qc.invalidateQueries({ queryKey: ['admin-tasks-resolved-count'] });
       toast({ title: 'Tarefa removida!' });

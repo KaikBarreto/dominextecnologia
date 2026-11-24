@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   toast: vi.fn(),
 }));
 
+vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'user-fixture' }, profile: { user_id: 'user-fixture', company_id: 'company-fixture', is_active: true }, roles: ['admin'], permissions: [], hasPermissionRecord: false, loading: false, profileLoading: false }) }));
 vi.mock('@/hooks/usePdvOrderReceiptSnapshot', () => ({
   fetchPdvOrderReceiptSnapshot: mocks.fetchSnapshot,
 }));
@@ -36,13 +37,21 @@ describe('PdvOrderReceiptButton', () => {
     mocks.openPending.mockReturnValue(null);
   });
 
+  it('encaminha o mesmo PDF autorizado para a saída local, sem abrir outra via', async () => {
+    const output = vi.fn().mockResolvedValue(undefined);
+    await openPdvOrderReceipt('pedido-1042', '80mm', { output, isCurrent: () => true });
+    expect(output).toHaveBeenCalledOnce();
+    expect(output.mock.calls[0][0]).toBe(mocks.generatePdf.mock.results[0].value);
+    expect(mocks.openPdf).not.toHaveBeenCalled();
+  });
+
   it('consulta o snapshot imutável pelo pedido e apenas abre o PDF', async () => {
     render(<PdvOrderReceiptButton orderId="pedido-1042" format="80mm" />);
 
     fireEvent.click(screen.getByRole('button', { name: /reimprimir comprovante/i }));
 
     await waitFor(() => expect(mocks.openPdf).toHaveBeenCalledOnce());
-    expect(mocks.fetchSnapshot).toHaveBeenCalledWith('pedido-1042');
+    expect(mocks.fetchSnapshot).toHaveBeenCalledWith('pedido-1042', expect.any(AbortSignal));
     expect(mocks.generatePdf).toHaveBeenCalledWith({ ...PDV_RECEIPT_PREVIEW_FIXTURE, documentKind: 'pickup' }, '80mm');
     expect(mocks.openPdf.mock.calls[0]?.[1]).toBe('Pedido para Retirada 1042 - Cliente exemplo');
   });

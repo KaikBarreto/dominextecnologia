@@ -16,6 +16,7 @@ import {
   projectPdvCashHistoryV2Page,
   projectPdvCashReopenV2Result,
   projectPdvCashV2SessionReport,
+  projectPdvCashV2SessionSales,
   projectPdvCashV2Session,
   projectPdvCashV2SessionList,
   projectPdvCashV2Snapshot,
@@ -24,6 +25,15 @@ import {
   selectPdvCashV2Gate,
   selectPdvCashV2Route,
 } from './usePdvCashSessionsV2';
+
+const reportSales = {
+  count: 2, total: 50.1,
+  by_method: [{ method: 'pix', count: 1, amount: 35.1 }, { method: 'dinheiro', count: 1, amount: 15 }],
+  orders: [
+    { number: 4, created_at: '2026-11-07T11:22:06Z', status: 'entregue', total: 15, methods: ['dinheiro'] },
+    { number: 5, created_at: '2026-11-07T11:13:54Z', status: 'entregue', total: 35.1, methods: ['pix'] },
+  ],
+};
 
 describe('W1A-04 caixa multissessão v2', () => {
   it.each([
@@ -241,10 +251,24 @@ describe('W1A-04 caixa multissessão v2', () => {
       cash_receipts: 10, cash_payments: 0, supplies: 0, withdrawals: 10, refunds: 0,
       final_position: 0, notes: null,
       entries: [{ id: 'e1', kind: 'opening', amount: 100, created_at: '2026-11-07T08:00:00Z', description: null, notes: null, payment_method: null }],
+      sales: reportSales,
     });
     expect(report.sessionId).toBe('s1');
     expect(report.entries).toHaveLength(1);
     expect(report.difference).toBe(-2);
+    expect(report.sales.count).toBe(2);
+    expect(report.sales.byMethod).toEqual([{ method: 'pix', count: 1, amount: 35.1 }, { method: 'dinheiro', count: 1, amount: 15 }]);
+    expect(report.sales.orders[1]).toEqual({ number: 5, createdAt: '2026-11-07T11:13:54Z', status: 'entregue', total: 35.1, methods: ['pix'] });
+  });
+
+  it.each([
+    ['sem vendas', undefined],
+    ['by_method nulo', { ...reportSales, by_method: null }],
+    ['contagem diferente da lista', { ...reportSales, count: 3 }],
+    ['número de venda fracionado', { ...reportSales, orders: [{ ...reportSales.orders[0], number: 4.5 }, reportSales.orders[1]] }],
+    ['forma de pagamento vazia', { ...reportSales, orders: [{ ...reportSales.orders[0], methods: [' '] }, reportSales.orders[1]] }],
+  ])('falha fechado nas vendas do relatório: %s', (_name, sales) => {
+    expect(() => projectPdvCashV2SessionSales(sales)).toThrow();
   });
 
   it('falha fechado em terminais ou lista de sessões com formato inesperado', () => {

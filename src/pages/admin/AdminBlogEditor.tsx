@@ -3,6 +3,7 @@ import { typography } from "@/lib/typography";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { assertRowsAffected } from "@/lib/supabaseMutation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { LOCALES, type LocaleCode } from "@/lib/i18n/locales";
 import { notifyIndexNow, publicBlogPostUrl } from "@/lib/indexNow";
+import { sanitizeBlogHtml } from "@/lib/blogContent";
 
 function slugify(text: string) {
   return text
@@ -228,7 +230,7 @@ export default function AdminBlogEditor() {
       const basePayload = {
         title,
         slug,
-        content,
+        content: sanitizeBlogHtml(content),
         excerpt,
         cover_image_url: coverImageUrl || null,
         category: category || null,
@@ -237,7 +239,14 @@ export default function AdminBlogEditor() {
         status,
         author_name: selectedAuthor?.name || user?.email?.split("@")[0] || "Admin",
         author_id: authorId || null,
-        published_at: status === "published" ? new Date().toISOString() : null,
+        // A primeira publicacao e um sinal editorial/SEO historico. Editar ou
+        // despublicar temporariamente um artigo nao pode reescrever
+        // `datePublished`; `updated_at` ja e mantido pelo trigger do banco e
+        // alimenta `dateModified` no JSON-LD.
+        published_at:
+          status === "published"
+            ? post?.published_at || new Date().toISOString()
+            : post?.published_at || null,
         locale,
       };
 
@@ -312,9 +321,15 @@ export default function AdminBlogEditor() {
   const updateCategory = async (catId: string) => {
     const name = editingCatName.trim();
     if (!name) return;
-    const { error } = await supabase.from("blog_categories").update({ name }).eq("id", catId);
-    if (error) {
+    const result = await supabase.from("blog_categories").update({ name }, { count: "exact" }).eq("id", catId);
+    if (result.error) {
       toast.error("Erro ao renomear categoria");
+      return;
+    }
+    try {
+      assertRowsAffected(result, "update");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao renomear categoria");
       return;
     }
     queryClient.invalidateQueries({ queryKey: ["blog-categories"] });
@@ -324,9 +339,15 @@ export default function AdminBlogEditor() {
 
   const deleteCategory = async (catId: string, catName: string) => {
     if (!confirm(`Excluir a categoria "${catName}"?`)) return;
-    const { error } = await supabase.from("blog_categories").delete().eq("id", catId);
-    if (error) {
+    const result = await supabase.from("blog_categories").delete({ count: "exact" }).eq("id", catId);
+    if (result.error) {
       toast.error("Erro ao excluir categoria");
+      return;
+    }
+    try {
+      assertRowsAffected(result, "delete");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao excluir categoria");
       return;
     }
     if (category === catName) setCategory("");

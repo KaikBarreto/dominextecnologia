@@ -132,6 +132,11 @@ export interface NfseValores {
   valorPis?: number;
   valorCofins?: number;
   valorCsll?: number;
+  valorInss?: number;
+  valorIrrf?: number;
+  deducoes?: number;
+  descontoCondicionado?: number;
+  descontoIncondicionado?: number;
   /** Percentual total de tributos (Simples Nacional). */
   percentualTotalTributosSimplesNacional?: number;
 }
@@ -174,6 +179,9 @@ export interface NfseServico {
    * serviço) e já entrega validado; ausente = NÃO enviar.
    */
   codigoTributacaoMunicipal?: string;
+  documentoResponsabilidadeTecnica?: string;
+  documentoReferencia?: string;
+  informacoesComplementares?: string;
 }
 
 /** Cabeçalho da DPS (dados do prestador/emissor e numeração). */
@@ -210,6 +218,7 @@ export interface NfseEmitirInput {
   idempotencyKey: string;
   dps: NfseDps;
   tomador: NfseTomador;
+  intermediario?: NfseTomador;
   servico: NfseServico;
   valores: NfseValores;
 }

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { PdvAppliedVoucherControl } from './PdvAppliedVoucherControl';
+import { PdvAppliedVoucherControl, PdvAppliedVouchersControl } from './PdvAppliedVoucherControl';
 
 interface VoucherOption {
   id: string;
@@ -355,4 +355,17 @@ describe('PdvAppliedVoucherControl', () => {
 
     expect(screen.getByText('O saldo deste voucher mudou')).toBeInTheDocument();
   });
+});
+
+
+it('adiciona um segundo voucher sem oferecer novamente o crédito já aplicado', () => {
+  hookResult.data.vouchers = multipleVouchers;
+  const first = { voucherId: 'voucher-1', code: 'DEV-1042', amount: 70, balance: 150, expiresOn: null };
+  const onChange = vi.fn();
+  render(<PdvAppliedVouchersControl enabled customerId="customer-1" total={100} values={[first]} formatCurrency={money} onChange={onChange} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar voucher' }));
+  expect(screen.queryByRole('radio', { name: /DEV-1042/ })).not.toBeInTheDocument();
+  expect(screen.getByRole('radio', { name: /RETORNO-35/ })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Aplicar voucher' }));
+  expect(onChange).toHaveBeenCalledWith([first, expect.objectContaining({ voucherId: 'voucher-2', amount: 30 })]);
 });

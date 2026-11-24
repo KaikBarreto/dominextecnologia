@@ -563,7 +563,7 @@ const ptBr: ModuleContentMap = {
       { icon: MapPin, title: 'Geolocalização', desc: 'A localização da batida fica registrada junto ao ponto.' },
       { icon: Clock, title: 'Banco de horas', desc: 'Extras e faltas calculados a partir das batidas, sem planilha.' },
       { icon: Banknote, title: 'Folha de pagamento', desc: 'Fechamento por funcionário com recibo pronto.' },
-      { icon: HandCoins, title: 'Vales descontados', desc: 'Cada vale registrado é descontado no pagamento do salário.' },
+      { icon: HandCoins, title: 'Vales/Adiantamentos descontados', desc: 'Cada Vale/Adiantamento registrado é descontado no pagamento do salário.' },
       { icon: Users, title: 'Cadastro de funcionários', desc: 'Salário, função, vales e extrato centralizados por pessoa.' },
       { icon: FileText, title: 'Extrato do funcionário', desc: 'Entradas e saídas em cards, com o sinal certo de cada lançamento.' },
     ],
@@ -1435,7 +1435,7 @@ const ptBr: ModuleContentMap = {
     metaDescription:
       'PDV e loja com venda rápida, leitor de código de barras, pagamento misto, fiado, abertura e fechamento de caixa, estoque e financeiro integrados.',
     hero: {
-      eyebrow: 'PDV & Loja',
+      eyebrow: 'PDV (Loja)',
       h1: 'PDV para vender no balcão sem separar loja e serviço',
       h1Highlight: 'PDV',
       subtitle:

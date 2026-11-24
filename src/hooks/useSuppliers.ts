@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Json, Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 export type Supplier = Tables<'suppliers'>;
 export type SupplierInsert = TablesInsert<'suppliers'>;
@@ -69,11 +70,14 @@ export function useSuppliers() {
 
   const updateSupplier = useMutation({
     mutationFn: async ({ id, ...updates }: SupplierInput & { id: string }) => {
-      const { error } = await supabase
-        .from('suppliers')
-        .update(updates as SupplierUpdate)
-        .eq('id', id);
-      if (error) throw error;
+      // RLS barrando não dá erro, só altera zero linhas: conferir.
+      assertRowsAffected(
+        await supabase
+          .from('suppliers')
+          .update(updates as SupplierUpdate, { count: 'exact' })
+          .eq('id', id),
+        'update',
+      );
       return { id };
     },
     onSuccess: () => {
@@ -87,11 +91,14 @@ export function useSuppliers() {
 
   const deleteSupplier = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('suppliers')
-        .delete()
-        .eq('id', id);
-      if (error) throw error;
+      // RLS barrando não dá erro, só apaga zero linhas: conferir.
+      assertRowsAffected(
+        await supabase
+          .from('suppliers')
+          .delete({ count: 'exact' })
+          .eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['suppliers'] });

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { fuzzyIncludes, cn } from '@/lib/utils';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import {
   Plus,
   Filter,
@@ -117,6 +118,9 @@ export default function AdminCompanies() {
   // -----------------------------------------------------------------
   const { hasMasterAccess: isSuperAdmin, hasFunctionAccess } = useAdminPermissions();
   const canSeeCompanyTotals = isSuperAdmin || hasFunctionAccess('admin_financeiro_totais');
+  const canCreateCompany = isSuperAdmin || hasFunctionAccess('admin_empresas_criar');
+  const canEditCompany = isSuperAdmin || hasFunctionAccess('admin_empresas_editar');
+  const canDeleteCompany = isSuperAdmin || hasFunctionAccess('admin_empresas_excluir');
   const [search, setSearch] = useState('');
   // Filtros multi-select: array vazio = filtro inativo (mostra todos).
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
@@ -243,8 +247,10 @@ export default function AdminCompanies() {
   // Toggle bloquear/desbloquear (mobile) — alterna entre 'active' e 'inactive'.
   const toggleStatusMutation = useMutation({
     mutationFn: async ({ id, newStatus }: { id: string; newStatus: 'active' | 'inactive' }) => {
-      const { error } = await supabase.from('companies').update({ subscription_status: newStatus }).eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('companies').update({ subscription_status: newStatus }, { count: 'exact' }).eq('id', id),
+        'update',
+      );
     },
     onSuccess: (_data, vars) => {
       toast({
@@ -525,7 +531,7 @@ export default function AdminCompanies() {
             )}
           </MobileListToolbar>
 
-          <StatCarousel items={statItems} loading={isLoading} />
+          <StatCarousel items={statItems} loading={isLoading} variant="saturated" />
         </>
       ) : (
         // -----------------------------------------------------------------
@@ -567,12 +573,12 @@ export default function AdminCompanies() {
               </Button>
             )}
 
-            <Button
+            {canCreateCompany && <Button
               onClick={() => { setEditingCompany(null); setShowForm(true); }}
               className={cn('gap-2 w-full sm:w-auto', !isSuperAdmin && 'sm:ml-auto')}
             >
               <Plus className="h-4 w-4" /> Nova Empresa
-            </Button>
+            </Button>}
           </div>
         </div>
       )}
@@ -603,8 +609,10 @@ export default function AdminCompanies() {
             masterUserMap={masterUserMap}
             salespersonMap={salespersonMap}
             canSeeTotals={canSeeCompanyTotals}
-            onEdit={handleEdit}
-            onDelete={handleDeleteFromKanban}
+            canEdit={canEditCompany}
+            canDelete={canDeleteCompany}
+            onEdit={canEditCompany ? handleEdit : () => undefined}
+            onDelete={canDeleteCompany ? handleDeleteFromKanban : () => undefined}
           />
         ) : (
           <div className="rounded-xl border bg-card overflow-hidden">
@@ -635,14 +643,14 @@ export default function AdminCompanies() {
                   icon: <Eye className="h-4 w-4" />,
                   onClick: () => navigate(`/admin/empresas/${company.id}`),
                 },
-                {
+                ...(canEditCompany ? [{
                   key: 'edit',
                   label: 'Editar',
                   icon: <Pencil className="h-4 w-4" />,
                   variant: 'edit',
                   onClick: () => handleEdit(company),
-                },
-                {
+                }] : []),
+                ...(canEditCompany ? [{
                   key: 'toggle-status',
                   label: isInactive ? 'Desbloquear' : 'Bloquear',
                   icon: isInactive ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />,
@@ -651,14 +659,14 @@ export default function AdminCompanies() {
                       id: company.id,
                       newStatus: isInactive ? 'active' : 'inactive',
                     }),
-                },
-                {
+                }] : []),
+                ...(canDeleteCompany ? [{
                   key: 'delete',
                   label: 'Excluir',
                   icon: <Trash2 className="h-4 w-4" />,
                   variant: 'destructive',
                   onClick: () => handleDeleteFromKanban(company),
-                },
+                }] : []),
               ];
 
               return (
@@ -720,8 +728,10 @@ export default function AdminCompanies() {
             masterUserMap={masterUserMap}
             salespersonMap={salespersonMap}
             canSeeTotals={canSeeCompanyTotals}
-            onEdit={handleEdit}
-            onDelete={handleDeleteFromKanban}
+            canEdit={canEditCompany}
+            canDelete={canDeleteCompany}
+            onEdit={canEditCompany ? handleEdit : () => undefined}
+            onDelete={canDeleteCompany ? handleDeleteFromKanban : () => undefined}
           />
         ) : (
           <CompanyTable
@@ -730,14 +740,16 @@ export default function AdminCompanies() {
             origins={origins || undefined}
             salespersonMap={salespersonMap}
             canSeeTotals={canSeeCompanyTotals}
-            onEdit={handleEdit}
+            canEdit={canEditCompany}
+            canDelete={canDeleteCompany}
+            onEdit={canEditCompany ? handleEdit : () => undefined}
             onRefetch={() => refetch()}
           />
         )
       )}
 
       {/* FAB mobile-only */}
-      {isMobile && (
+      {isMobile && canCreateCompany && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
           label="Empresa"

@@ -12,6 +12,7 @@ import {
   Lightbulb,
   Link2,
   Lock,
+  Mail,
   MessageSquareText,
   Megaphone,
   PlugZap,
@@ -27,6 +28,8 @@ import { DomiLinkIntegrationContent } from '@/components/settings/domilink/DomiL
 import { DomiLinkSymbol } from '@/components/pdv/domilink/DomiLinkBrand';
 import { SettingsAsaasContent } from '@/components/settings/SettingsAsaasContent';
 import { SettingsAsaasSimulator } from '@/components/settings/SettingsAsaasSimulator';
+import { SettingsEmailContent } from '@/components/settings/SettingsEmailContent';
+import { useWhatsappCompanyIdentity } from '@/hooks/useWhatsappCompanyIdentity';
 import { WhatsappAutomationSettings } from '@/components/settings/whatsapp/WhatsappAutomationSettings';
 import { WhatsappProtectionSettings } from '@/components/settings/whatsapp/WhatsappProtectionSettings';
 import { SettingsPublicApiContent } from '@/components/settings/SettingsPublicApiContent';
@@ -62,7 +65,7 @@ import {
   type WhatsappAutomationPreferences,
 } from '@/lib/whatsappAutomation';
 
-type IntegrationSubTab = 'whatsapp' | 'asaas' | 'printer' | 'api' | 'domilink';
+type IntegrationSubTab = 'whatsapp' | 'email' | 'asaas' | 'printer' | 'api' | 'domilink';
 type AsaasSection = 'settings' | 'simulator';
 type WhatsappSection = 'automations' | 'inbox' | 'templates' | 'campaigns' | 'history' | 'connection';
 
@@ -143,7 +146,7 @@ export function SettingsIntegrationContent() {
   const t = MESSAGES[locale].app.settings.integrations;
   const [searchParams, setSearchParams] = useSearchParams();
   const integrationParam = searchParams.get('integration');
-  const activeSubTab: IntegrationSubTab = integrationParam === 'domilink' || integrationParam === 'asaas' || integrationParam === 'printer' || integrationParam === 'api'
+  const activeSubTab: IntegrationSubTab = integrationParam === 'domilink' || integrationParam === 'email' || integrationParam === 'asaas' || integrationParam === 'printer' || integrationParam === 'api'
     ? integrationParam
     : 'whatsapp';
 
@@ -157,6 +160,7 @@ export function SettingsIntegrationContent() {
   const subTabs = [
     { value: 'domilink' as const, label: 'DomiLink', icon: <DomiLinkSymbol className="!h-4 !w-4 shrink-0" /> },
     { value: 'whatsapp' as const, label: t.subTabs.whatsapp, icon: <WhatsAppIcon className="h-4 w-4 shrink-0" /> },
+    { value: 'email' as const, label: t.subTabs.email, icon: <Mail className="h-4 w-4 shrink-0" /> },
     { value: 'asaas' as const, label: t.subTabs.asaas, icon: <CreditCard className="h-4 w-4 shrink-0" /> },
     { value: 'printer' as const, label: locale === 'pt-br' ? 'Impressora fiscal' : locale === 'es' ? 'Impresora fiscal' : locale === 'fr' ? 'Imprimante fiscale' : 'Fiscal printer', icon: <Printer className="h-4 w-4 shrink-0" /> },
     { value: 'api' as const, label: 'API Pública', icon: <Code2 className="h-4 w-4 shrink-0" /> },
@@ -173,6 +177,7 @@ export function SettingsIntegrationContent() {
 
       {activeSubTab === 'domilink' && <DomiLinkIntegrationContent />}
       {activeSubTab === 'whatsapp' && <WhatsappContent />}
+      {activeSubTab === 'email' && <SettingsEmailContent />}
       {activeSubTab === 'asaas' && <AsaasContent />}
       {activeSubTab === 'printer' && <FiscalPrinterIntegrationSettings />}
       {activeSubTab === 'api' && <SettingsPublicApiContent />}
@@ -217,6 +222,7 @@ function WhatsappContent() {
   const { hasModule, isLoading: modulesLoading } = useCompanyModules();
   const { settings, isLoading, update } = useWhatsappSettings();
   const whatsappConnections = useWhatsappConnections();
+  const companyIdentity = useWhatsappCompanyIdentity();
   const [requestedSection, setRequestedSection] = useState<WhatsappSection | null>(null);
 
   const persistedPreferences = useMemo(
@@ -240,6 +246,10 @@ function WhatsappContent() {
   const current = JSON.stringify({ enabled, preferences });
   const isDirty = current !== baseline;
   const moduleActive = hasModule('whatsapp');
+  const availableAutomationDomains = [
+    ...(hasModule('service_operations') ? ['os' as const] : []),
+    ...(hasModule('cobrancas') ? ['billing' as const] : []),
+  ];
   const readOnly = !moduleActive || !canManage;
   const isConnected = whatsappConnections.connections.some(
     (connection) => connection.id === settings?.active_connection_id
@@ -320,20 +330,24 @@ function WhatsappContent() {
         <>
           {/* Horário e ritmo vêm antes do conteúdo: é a régua que protege o número.
               O botão de salvar é o do card de automações, logo abaixo. */}
-          <WhatsappProtectionSettings
-            locale={locale}
-            preferences={preferences}
-            readOnly={readOnly}
-            isSaving={update.isPending}
-            onPreferencesChange={setPreferences}
-          />
+          {availableAutomationDomains.length > 0 && (
+            <WhatsappProtectionSettings
+              locale={locale}
+              preferences={preferences}
+              readOnly={readOnly}
+              isSaving={update.isPending}
+              onPreferencesChange={setPreferences}
+            />
+          )}
           <WhatsappAutomationSettings
             locale={locale}
+            availableDomains={availableAutomationDomains}
             enabled={enabled}
             preferences={preferences}
             isSaving={update.isPending}
             isDirty={isDirty}
             readOnly={readOnly}
+            companyValues={companyIdentity}
             onEnabledChange={setEnabled}
             onPreferencesChange={setPreferences}
             onSave={handleSave}
@@ -638,7 +652,16 @@ function WhatsappOperationalHistory({ jobs, isLoading }: { jobs: ConnectionState
           <div className="divide-y rounded-lg bg-muted/20">
             {jobs.slice(0, 15).map((job) => (
               <div key={job.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 text-sm">
-                <div><p className="font-medium">{job.event_key.replace('os.', 'OS · ').replace('billing.', 'Cobrança · ')}</p><p className="text-xs text-muted-foreground">{new Date(job.created_at).toLocaleString('pt-BR')}{job.last_error ? ` · ${job.last_error}` : ''}</p></div>
+                <div>
+                  <p className="font-medium">{job.event_key.replace('os.', 'OS · ').replace('billing.', 'Cobrança · ')}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {job.recipient_kind === 'customer_contact'
+                      ? job.customer_contact?.name ?? 'Contato removido'
+                      : 'Contato principal'}
+                    {' · '}{new Date(job.created_at).toLocaleString('pt-BR')}
+                    {job.last_error ? ` · ${job.last_error}` : ''}
+                  </p>
+                </div>
                 <Badge variant="outline">{labels[job.status] ?? job.status}</Badge>
               </div>
             ))}

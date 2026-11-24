@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { ArrowLeft, FileText, Building2, CheckCircle2, AlertCircle, AlertTriangle, Info, Landmark, Loader2, MapPin, RefreshCw, Shield, Wrench } from 'lucide-react';
+import { ArrowLeft, Building2, CheckCircle2, AlertCircle, AlertTriangle, Info, Landmark, Loader2, MapPin, RefreshCw, Shield, Wrench, ReceiptText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
@@ -32,19 +32,21 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { FISCAL_SCREEN_PERMISSION } from '@/components/fiscal/fiscalPermissions';
 import { EmpresaSection } from '@/components/fiscal/EmpresaSection';
-import { GoodsSettingsSection } from '@/components/fiscal/GoodsSettingsSection';
 import { CertificadoSection } from '@/components/fiscal/CertificadoSection';
 import { ImpostosSection, type IeHint, type RegimeHint } from '@/components/fiscal/ImpostosSection';
 import { ServicosSection } from '@/components/fiscal/ServicosSection';
 import { automaticCoverageCheckKey } from '@/lib/fiscal/automaticCoverage';
+import { GoodsSettingsSection } from '@/components/fiscal/GoodsSettingsSection';
+import { resolveAppSlug } from '@/lib/i18n/appRouteSlugs';
 
 export { FISCAL_SCREEN_PERMISSION };
 
 /** Seções da tela de Configurações fiscais. */
-export type FiscalSettingsSection = 'empresa' | 'certificado' | 'impostos' | 'servicos' | 'mercadorias';
+export type FiscalSettingsSection = 'empresa' | 'certificado' | 'mercadorias' | 'impostos' | 'servicos';
 
-function normalizeSection(raw: string | null): FiscalSettingsSection {
-  return raw === 'certificado' || raw === 'impostos' || raw === 'servicos' || raw === 'mercadorias' ? raw : 'empresa';
+function normalizeSection(raw: string | null, scenariosPage: boolean): FiscalSettingsSection {
+  if (scenariosPage) return raw === 'impostos' ? 'impostos' : 'mercadorias';
+  return raw === 'certificado' || raw === 'mercadorias' || raw === 'servicos' ? raw : 'empresa';
 }
 
 /** Form local — strings cruas pra inputs controlados (evita o "0" preso). */
@@ -121,9 +123,11 @@ function percentualTribSnFromDisplay(s: string): number | null {
 export default function FiscalSettings() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { locale, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.nfse;
+  const scenariosPage = resolveAppSlug(location.pathname, locale) === 'fiscalScenarios';
 
   const {
     settings,
@@ -143,7 +147,7 @@ export default function FiscalSettings() {
   } = useCompanySettings();
 
   const [section, setSectionState] = useState<FiscalSettingsSection>(() =>
-    normalizeSection(searchParams.get('tab')),
+    normalizeSection(searchParams.get('tab'), scenariosPage),
   );
   const setSection = useCallback(
     (next: FiscalSettingsSection) => {
@@ -154,6 +158,11 @@ export default function FiscalSettings() {
     },
     [searchParams, setSearchParams],
   );
+
+  useEffect(() => {
+    const next = normalizeSection(searchParams.get('tab'), scenariosPage);
+    if (next !== section) setSectionState(next);
+  }, [scenariosPage, searchParams, section]);
 
   const [form, setForm] = useState<FiscalForm>(EMPTY_FORM);
   const setField = useCallback((patch: Partial<FiscalForm>) => {
@@ -663,13 +672,17 @@ export default function FiscalSettings() {
     regime_tributario: form.regime_tributario,
   });
 
-  const navTabs: SettingsTab[] = [
-    { value: 'empresa', label: t.settings.sections.empresa, icon: Building2 },
-    { value: 'certificado', label: t.settings.sections.certificado, icon: Shield },
-    { value: 'impostos', label: t.settings.sections.impostos, icon: Landmark },
-    { value: 'mercadorias', label: 'NF-e e NFC-e', icon: FileText },
-    { value: 'servicos', label: t.settings.sections.servicos, icon: Wrench },
-  ];
+  const navTabs: SettingsTab[] = scenariosPage
+    ? [
+        { value: 'mercadorias', label: 'Cenários NF-e/NFC-e', icon: ReceiptText },
+        { value: 'impostos', label: 'Tributação empresarial', icon: Landmark },
+      ]
+    : [
+        { value: 'empresa', label: t.settings.sections.empresa, icon: Building2 },
+        { value: 'certificado', label: t.settings.sections.certificado, icon: Shield },
+        { value: 'mercadorias', label: 'NF-e e NFC-e', icon: ReceiptText },
+        { value: 'servicos', label: t.settings.sections.servicos, icon: Wrench },
+      ];
 
   const anyLoading = isLoading || isLoadingCompany;
   const loadError = isError || isCompanyError;
@@ -681,16 +694,20 @@ export default function FiscalSettings() {
           variant="ghost"
           size="sm"
           className="gap-1.5 -ml-2 text-muted-foreground"
-          onClick={() => navigate('/notas-fiscais')}
+          onClick={() => navigate('/notas-fiscais/nfe')}
         >
           <ArrowLeft className="h-4 w-4" />
           {t.settings.back}
         </Button>
       </div>
 
-      <MobilePageHeader title={t.settings.title} subtitle={t.settings.pageSubtitle} icon={Shield} />
+      <MobilePageHeader
+        title={scenariosPage ? 'Cenários e Tributação' : t.settings.title}
+        subtitle={scenariosPage ? 'Regras fiscais de mercadorias e tributação da empresa, separadas das configurações de emissão.' : t.settings.pageSubtitle}
+        icon={scenariosPage ? Landmark : Shield}
+      />
 
-      {!anyLoading && !loadError && (
+      {!scenariosPage && !anyLoading && !loadError && (
         <div className="rounded-lg border border-border p-3 space-y-3">
           <div className="flex items-center gap-2 text-sm font-semibold">
             {readyToEmit ? (
@@ -830,6 +847,14 @@ export default function FiscalSettings() {
               />
             )}
 
+            {section === 'mercadorias' && (
+              <GoodsSettingsSection
+                environment={form.fiscal_ambiente}
+                certificateReady={certificateReady}
+                mode={scenariosPage ? 'scenarios' : 'configuration'}
+              />
+            )}
+
             {section === 'impostos' && (
               <ImpostosSection
                 t={t}
@@ -844,7 +869,6 @@ export default function FiscalSettings() {
               />
             )}
 
-            {section === 'mercadorias' && <GoodsSettingsSection environment={settings.fiscal_ambiente} certificateReady={certificateReady} />}
             {section === 'servicos' && <ServicosSection t={t} />}
           </div>
         </SettingsSidebarLayout>

@@ -155,6 +155,10 @@ export const frOverrides: MessagesOverride = {
 
     errorUnexpected: "Une erreur inattendue s'est produite. Veuillez réessayer.",
     errorContinueLogin: 'Erreur lors de la poursuite de la connexion.',
+    errorLoginTimeout: 'Impossible de se connecter au serveur. Le service est temporairement indisponible; réessayez dans quelques instants.',
+    errorSessionRestore: 'Impossible de rétablir votre session pour le moment. Mettez à jour l’application et réessayez.',
+    refreshAndRetry: 'Mettre à jour et réessayer',
+    refreshingConnection: 'Mise à jour de la connexion...',
 
     gotrueErrors: {
       invalidCredentials: 'E-mail ou mot de passe incorrect. Vérifiez vos identifiants et réessayez.',

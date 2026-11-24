@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { assertRowsAffected } from "@/lib/supabaseMutation";
 import { toast } from "sonner";
 
 export interface DomiflixSection {
@@ -107,11 +108,13 @@ export function useUpdateSection() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...patch }: Partial<DomiflixSection> & { id: string }) => {
-      const { error } = await supabase
-        .from("domiflix_sections" as any)
-        .update(patch as any)
-        .eq("id", id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from("domiflix_sections" as any)
+          .update(patch as any, { count: "exact" })
+          .eq("id", id),
+        "update",
+      );
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: SECTIONS_KEY }),
     onError: () => toast.error("Erro ao atualizar seção"),
@@ -122,8 +125,10 @@ export function useDeleteSection() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("domiflix_sections" as any).delete().eq("id", id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from("domiflix_sections" as any).delete({ count: "exact" }).eq("id", id),
+        "delete",
+      );
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: SECTIONS_KEY });
@@ -138,11 +143,15 @@ export function useReorderSections() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (orderedIds: string[]) => {
-      await Promise.all(
+      const results = await Promise.all(
         orderedIds.map((id, index) =>
-          supabase.from("domiflix_sections" as any).update({ order_index: index } as any).eq("id", id)
+          supabase.from("domiflix_sections" as any).update({ order_index: index } as any, { count: "exact" }).eq("id", id)
         )
       );
+      // Lote com ids conhecidos: cada seção precisa ter sido gravada.
+      const failed = results.find((result) => result.error);
+      const count = results.reduce((total, result) => total + (result.count ?? 0), 0);
+      assertRowsAffected({ error: failed?.error ?? null, count }, "update", undefined, orderedIds.length);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: SECTIONS_KEY }),
     onError: () => toast.error("Erro ao reordenar seções"),

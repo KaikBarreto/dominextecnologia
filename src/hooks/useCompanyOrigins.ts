@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
 
@@ -86,8 +87,10 @@ export function useCompanyOrigins() {
 
   const updateOrigin = useMutation({
     mutationFn: async ({ id, ...input }: OriginFields & { id: string }) => {
-      const { error } = await supabase.from('company_origins').update(input).eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('company_origins').update(input, { count: 'exact' }).eq('id', id),
+        'update',
+      );
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['company-origins'] });
@@ -130,8 +133,10 @@ export function useCompanyOrigins() {
 
   const deleteOrigin = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('company_origins').delete().eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('company_origins').delete({ count: 'exact' }).eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['company-origins'] }); toast({ title: 'Origem removida!' }); },
     onError: (e) => toast({ variant: 'destructive', title: 'Erro', description: getErrorMessage(e) }),
@@ -166,8 +171,10 @@ export function useCompanyOrigins() {
         );
       }
 
-      const { error: deleteError } = await supabase.from('company_origins').delete().eq('id', id);
-      if (deleteError) throw deleteError;
+      assertRowsAffected(
+        await supabase.from('company_origins').delete({ count: 'exact' }).eq('id', id),
+        'delete',
+      );
     },
     onSuccess: (_d, vars) => {
       qc.invalidateQueries({ queryKey: ['company-origins'] });

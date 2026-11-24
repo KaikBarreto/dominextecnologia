@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 export interface CrmPipelineAccessRow {
   pipeline_id: string;
@@ -65,12 +66,14 @@ export function useCrmPipelineAccess() {
       const toAdd = userIds.filter((id) => !current.includes(id));
 
       if (toRemove.length > 0) {
-        const { error } = await supabase
-          .from('crm_pipeline_access')
-          .delete()
-          .eq('pipeline_id', pipelineId)
-          .in('user_id', toRemove);
-        if (error) throw error;
+        assertRowsAffected(
+          await supabase
+            .from('crm_pipeline_access')
+            .delete({ count: 'exact' })
+            .eq('pipeline_id', pipelineId)
+            .in('user_id', toRemove),
+          'delete',
+        );
       }
 
       if (toAdd.length > 0) {

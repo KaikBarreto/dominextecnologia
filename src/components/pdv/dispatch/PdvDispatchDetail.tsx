@@ -1,3 +1,4 @@
+import { HorizontalTabBar } from '@/components/ui/HorizontalTabBar';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, ArrowLeft, CheckCircle2, Loader2, PackageCheck, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -5,8 +6,7 @@ import { Input } from '@/components/ui/input';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { PdvDispatchStatusBadge } from './PdvDispatchStatusBadge';
 import { usePdvStageReceiptAuto } from '@/hooks/usePdvStageReceiptAuto';
-import { usePdvReceiptCompany } from '@/hooks/usePdvReceiptCompany';
-import { PdvDeliveryReceiptButton, openPdvDeliveryReceipt } from './PdvDeliveryReceiptButton';
+import { PdvDeliveryReceiptButton, usePdvDeliveryReceiptOpener } from './PdvDeliveryReceiptButton';
 import { PdvReturnsPanel, type PdvReturnsAccess } from '@/components/pdv/returns/PdvReturnsPanel';
 import { stablePdvAttempt, usePdvCompleteDispatch, type PdvDispatchDetail as Detail } from '@/hooks/usePdvDispatch';
 import { useToast } from '@/hooks/use-toast';
@@ -18,7 +18,7 @@ export function PdvDispatchDetail({ detail, canDeliver, returnsAccess, afterSale
   const { toast } = useToast();
   const mutation = usePdvCompleteDispatch();
   const autoReceipt = usePdvStageReceiptAuto();
-  const receiptCompany = usePdvReceiptCompany();
+  const receiptOpener = usePdvDeliveryReceiptOpener(detail.order.id);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [deliveryId, setDeliveryId] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<'dispatch' | 'returns' | 'values'>('dispatch');
@@ -48,18 +48,21 @@ export function PdvDispatchDetail({ detail, canDeliver, returnsAccess, afterSale
   async function deliver() {
     const signature = JSON.stringify(lines);
     attempt.current = stablePdvAttempt(attempt.current, signature, () => crypto.randomUUID());
-    const receiptAttempt = autoReceipt.prepare('delivery');
+    const receiptAttempt = receiptOpener.guardAttempt(autoReceipt.prepare('delivery'));
     try {
       const result = await mutation.mutateAsync({ orderId: detail.order.id, lines, attemptId: attempt.current.id });
+      if (!receiptOpener.isCurrent()) { receiptAttempt.cancel(); return; }
       const id = typeof result.delivery_id === 'string' ? result.delivery_id : null;
       setDeliveryId(id);
-      if (id) void receiptAttempt.commit(`delivery:${id}`, (format, options) => openPdvDeliveryReceipt(id, format, { ...options, company: receiptCompany }), result.idempotent === true);
+      if (id) void receiptAttempt.commit(`delivery:${id}`, (format, options) => receiptOpener.open(id, format, options), result.idempotent === true);
       else receiptAttempt.cancel();
+      if (!receiptOpener.isCurrent()) return;
       toast({ title: result.status === 'entregue' ? 'Pedido entregue' : 'Retirada parcial registrada', description: 'O estoque e o histórico foram atualizados.' });
       onReload();
       if (result.status === 'entregue') onCompleted?.(id);
     } catch (error) {
       receiptAttempt.cancel();
+      if (!receiptOpener.isCurrent()) return;
       toast({ title: 'Retirada não registrada', description: error instanceof Error ? error.message : 'Tente novamente.', variant: 'destructive' });
     }
   }
@@ -73,15 +76,19 @@ export function PdvDispatchDetail({ detail, canDeliver, returnsAccess, afterSale
       <Button variant="outline" size="sm" onClick={onReload}><RefreshCw className="mr-2 h-4 w-4" />Atualizar</Button>
     </header>
 
-    <nav className="flex gap-6 overflow-x-auto border-b" aria-label="Áreas do pedido">
-      <DetailTabButton active={activeTab === 'dispatch'} onClick={() => setDetailTab('dispatch')}>Retirada</DetailTabButton>
-      {canViewReturns && <DetailTabButton active={activeTab === 'returns'} onClick={() => setDetailTab('returns')}>Devoluções</DetailTabButton>}
-      {canViewValues && <DetailTabButton active={activeTab === 'values'} onClick={() => setDetailTab('values')}>Créditos e reembolsos</DetailTabButton>}
-    </nav>
+    <HorizontalTabBar asChild>
+
+      <nav className="flex gap-6 overflow-x-auto border-b" aria-label="Áreas do pedido">
+        <DetailTabButton active={activeTab === 'dispatch'} onClick={() => setDetailTab('dispatch')}>Retirada</DetailTabButton>
+        {canViewReturns && <DetailTabButton active={activeTab === 'returns'} onClick={() => setDetailTab('returns')}>Devoluções</DetailTabButton>}
+        {canViewValues && <DetailTabButton active={activeTab === 'values'} onClick={() => setDetailTab('values')}>Créditos e reembolsos</DetailTabButton>}
+      </nav>
+
+    </HorizontalTabBar>
 
     {activeTab === 'dispatch' && <>
       {hasConflict && <NoticeBanner variant="warning"><AlertTriangle className="mr-2 inline h-4 w-4" />O estoque mudou. Atualize ou reconcilie as reservas antes de entregar.</NoticeBanner>}
-      {deliveryId && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-success p-4 text-success-foreground"><span className="flex items-center gap-2 font-semibold"><CheckCircle2 className="h-5 w-5" />Retirada registrada</span><PdvDeliveryReceiptButton deliveryId={deliveryId} /></div>}
+      {deliveryId && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-success p-4 text-success-foreground [&_button]:text-foreground [&_button:disabled]:opacity-70"><span className="flex items-center gap-2 font-semibold"><CheckCircle2 className="h-5 w-5" />Retirada registrada</span><PdvDeliveryReceiptButton deliveryId={deliveryId} /></div>}
 
       <section aria-label="Itens da retirada" className="divide-y rounded-xl border">
       {detail.items.map((item) => {
@@ -105,5 +112,5 @@ export function PdvDispatchDetail({ detail, canDeliver, returnsAccess, afterSale
 }
 
 function DetailTabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return <button type="button" onClick={onClick} className={`shrink-0 border-b-2 pb-2 text-sm font-semibold ${active ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>{children}</button>;
+  return <button type="button" aria-current={active ? 'page' : undefined} onClick={onClick} className={`shrink-0 border-b-2 pb-2 text-sm font-semibold ${active ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>{children}</button>;
 }

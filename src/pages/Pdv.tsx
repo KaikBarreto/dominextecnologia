@@ -1,3 +1,8 @@
+import { PdvCouponControl } from '@/components/pdv/coupons/PdvCouponControl';
+import { couponCartReady, confirmedCouponDiscount } from '@/lib/pdv/cart';
+import { usePdvPaymentVoucher } from '@/hooks/usePdvPaymentVoucher';
+import { useGoodsFiscalAccess } from '@/hooks/useGoodsFiscalAccess';
+import { PdvNfceSaleAction } from '@/components/fiscal/goods/PdvNfceSaleAction';
 import { canCapturePdvCatalogScan } from '@/lib/pdv/catalogKeyboard';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type SetStateAction } from 'react';
 import { createPortal } from 'react-dom';
@@ -88,17 +93,17 @@ import {
   type PdvGridItemRect,
 } from '@/lib/pdv/keyboard';
 import type { PdvGridProduct } from '@/components/pdv/PdvProductCard';
-import { PdvSalePreviewView } from '@/components/pdv/PdvSalePreviewView';
+import { PdvSaleWorkspace as PdvSaleEditorLayout } from '@/components/pdv/PdvSaleWorkspace';
 import { PdvCartPanel } from '@/components/pdv/PdvCartPanel';
 import { PdvSkeleton } from '@/components/pdv/PdvSkeleton';
 import { PdvPaymentDialog } from '@/components/pdv/PdvPaymentDialog';
-import { PdvAppliedVoucherControl } from '@/components/pdv/PdvAppliedVoucherControl';
+import { PdvAppliedVouchersControl } from '@/components/pdv/PdvAppliedVoucherControl';
 import { PdvAdvancedOptionsDialog, type PdvPendingAttachment } from '@/components/pdv/PdvAdvancedOptionsDialog';
 import { PdvOrderSwitcher } from '@/components/pdv/PdvOrderSwitcher';
 import { PdvDraftSyncNotice } from '@/components/pdv/PdvDraftSyncNotice';
 import { transferRecoveredDraftAttachments } from '@/lib/pdv/draft-attachments';
 import { PdvShortcutHelpDialog } from '@/components/pdv/PdvShortcutHelpDialog';
-import { PdvOrderReceiptButton, openPdvOrderReceipt } from '@/components/pdv/receipt/PdvOrderReceiptButton';
+import { PdvOrderReceiptButton, usePdvOrderReceiptOpener } from '@/components/pdv/receipt/PdvOrderReceiptButton';
 import { PdvDirectSalePostSaleDialog } from '@/components/pdv/direct-sale-v2/PdvDirectSalePostSaleDialog';
 import { InventoryIdentifierCameraScanner } from '@/components/inventory/identifiers/InventoryIdentifierCameraScanner';
 import {
@@ -120,7 +125,7 @@ import {
   type PdvCompleteDirectSaleV2Result,
 } from '@/hooks/usePdvDirectSaleV2';
 import type { Customer } from '@/types/database';
-import { hasPdvSaleDraftContent, MAX_PDV_SALE_DRAFTS, setPdvSaleDraftCustomer, type PdvAppliedVoucher, type PdvSaleAttempt, type PdvSaleDraft } from '@/lib/pdv/sale-drafts';
+import { getAppliedVouchers, clampAppliedVouchers, hasPdvSaleDraftContent, MAX_PDV_SALE_DRAFTS, setPdvSaleDraftCustomer, type PdvAppliedVoucher, type PdvSaleAttempt, type PdvSaleDraft } from '@/lib/pdv/sale-drafts';
 import { resolvePdvScannedSelection } from '@/lib/pdv/identifierSelection';
 import { clampStoredValueApplication } from '@/lib/pdv/payment';
 import {
@@ -172,20 +177,28 @@ export function PdvLastSaleHeader({ completedSale, scopeKey, receiptFormat, canO
   children: ReactNode;
 }) {
   const { currency, locale } = useAppLocaleContext();
+  const fiscalAccess = useGoodsFiscalAccess();
   const [lastSaleMenuOpen, setLastSaleMenuOpen] = useState(false);
-  useEffect(() => setLastSaleMenuOpen(false), [scopeKey]);
+  const promptedFiscalSales = useRef(new Set<string>());
+  const [fiscalTarget, setFiscalTarget] = useState<{ orderId: string; scopeKey: string } | null>(null);
+  useEffect(() => { setLastSaleMenuOpen(false); setFiscalTarget(null); }, [scopeKey, fiscalAccess.scopeId, fiscalAccess.allowed]);
   return <>
-      {completedSale && completedSale.scopeKey === scopeKey ? <div className="flex min-w-0 items-center border-b border-border bg-card pr-2 [&_.pdv-order-switcher]:border-b-0">
+      {completedSale && completedSale.scopeKey === scopeKey ? <><div className="flex min-w-0 items-center border-b border-border bg-card pr-2 [&_.pdv-order-switcher]:border-b-0">
         <div className="min-w-0 flex-1">{children}</div>
         <Popover open={lastSaleMenuOpen} onOpenChange={setLastSaleMenuOpen}>
           <PopoverTrigger asChild><Button type="button" variant="ghost" size="sm" className="shrink-0 gap-1 px-2 text-xs" data-testid="pdv-last-sale-trigger" aria-label={`Último pedido #${completedSale.orderNumber}`}><span className="hidden sm:inline">Último pedido</span><span className="sm:hidden">Último</span><strong>#{completedSale.orderNumber}</strong></Button></PopoverTrigger>
           <PopoverContent align="end" aria-label="Ações do último pedido" className="w-72 max-w-[calc(100vw-2rem)] space-y-3">
             <div><p className="font-semibold">Pedido #{completedSale.orderNumber} concluído</p><p className="text-sm tabular-nums text-muted-foreground">{formatMoney(completedSale.total, currency, locale)}</p></div>
             <PdvOrderReceiptButton orderId={completedSale.orderId} format={receiptFormat} documentKind="sale" label="Comprovante" className="w-full" />
+            {fiscalAccess.allowed && <Button type="button" variant="outline" className="w-full" onClick={() => { setLastSaleMenuOpen(false); setFiscalTarget({ orderId: completedSale.orderId, scopeKey: completedSale.scopeKey }); }}>NFC-e desta venda</Button>}
             {canOpenPostSale && <Button type="button" variant="outline" className="w-full" onClick={() => { setLastSaleMenuOpen(false); onOpenPostSale(); }}>Abrir pós-venda</Button>}
           </PopoverContent>
         </Popover>
-      </div> : children}
+      </div>
+      {fiscalAccess.allowed && <PdvNfceSaleAction orderId={completedSale.orderId} confirmed promptAfterPayment={!promptedFiscalSales.current.has(`${completedSale.scopeKey}:${completedSale.orderId}`)} onPromptShown={() => promptedFiscalSales.current.add(`${completedSale.scopeKey}:${completedSale.orderId}`)} contextKey={completedSale.scopeKey}
+        detailsOpen={fiscalTarget?.orderId === completedSale.orderId && fiscalTarget.scopeKey === scopeKey}
+        onDetailsOpenChange={open => setFiscalTarget(open ? {orderId:completedSale.orderId,scopeKey:completedSale.scopeKey} : null)} />}
+      </> : children}
   </>;
 }
 
@@ -220,6 +233,7 @@ function cartSignature(
     stock: stockId,
     session: sessionId,
     discount: cart.discount,
+    ...(cart.coupon ? { coupon: [cart.coupon.id, cart.coupon.discountCents, cart.coupon.baseSignature] } : {}),
     customer: cart.customerId,
     notes,
     transactionDate,
@@ -554,16 +568,8 @@ function PdvSaleWorkspace({
         const nextCart = typeof next === 'function' ? next(draft.cart) : next;
         liveCartRef.current = nextCart;
         const nextTotal = computeTotal(nextCart);
-        const nextVoucherAmount = draft.appliedVoucher
-          ? clampStoredValueApplication(nextTotal, draft.appliedVoucher.balance, draft.appliedVoucher.amount)
-          : 0;
-        const appliedVoucher = draft.appliedVoucher && nextVoucherAmount > 0
-          ? {
-              ...draft.appliedVoucher,
-              amount: nextVoucherAmount,
-            }
-          : null;
-        return { cart: nextCart, appliedVoucher };
+        const appliedVouchers = clampAppliedVouchers(getAppliedVouchers(draft), nextTotal);
+        return { cart: nextCart, appliedVoucher: appliedVouchers[0] ?? null, appliedVouchers };
       })(),
       // Alterar qualquer dado material invalida a tentativa anterior deste
       // pedido, mas não toca nas tentativas dos outros rascunhos.
@@ -650,6 +656,7 @@ function PdvSaleWorkspace({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const autoReceipt = usePdvStageReceiptAuto();
+  const receiptOpener = usePdvOrderReceiptOpener();
   const receiptFormat = readDeviceReceiptFormat()
     ?? resolvePdvReceiptStagePolicy(receiptSettings.data, 'sale').format;
   const hasPostSaleAccess = (
@@ -675,6 +682,7 @@ function PdvSaleWorkspace({
     notes: string;
     transactionDate: string;
     appliedVoucher: PdvAppliedVoucher | null;
+    appliedVouchers?: PdvAppliedVoucher[];
     editDraft: PdvSaleEditDraft | null;
     attachments: PdvPendingAttachment[];
   } | null>(null);
@@ -1264,7 +1272,7 @@ function PdvSaleWorkspace({
 
   const itemCount = cart.lines.length;
   const total = computeTotal(cart);
-  const canPay = cart.lines.length > 0 && total > 0 && !directSaleNeedsReview;
+  const canPay = cart.lines.length > 0 && total > 0 && !directSaleNeedsReview && couponCartReady(cart);
 
   // No v2, terminal, sessão e conta da gaveta vêm juntos da projeção
   // fechada. O hook legado exclui caixas contract_version=2 de propósito.
@@ -1340,7 +1348,24 @@ function PdvSaleWorkspace({
   const paymentCart = paymentOpen && paymentSnapshotRef.current
     ? paymentSnapshotRef.current.cart
     : cart;
-  const { credit: customerCredit } = usePdvCustomerCredit(paymentCart.customerId);
+  const paymentVoucher = usePdvPaymentVoucher({
+    open: paymentOpen,
+    enabled: isV2,
+    scopeKey: completedSaleScope,
+    snapshotRef: paymentSnapshotRef,
+    drafts: draftWorkspace.drafts,
+    conflictingDraftIds: draftConflicts.map(conflict => conflict.id),
+    hasAttempt: draftId => attemptByDraftRef.current.has(draftId),
+    updateDraft,
+  });
+  useEffect(() => {
+    if (paymentOpen && !paymentVoucher.inScope) {
+      setPaymentOpen(false);
+      paymentVoucher.reset();
+      paymentSnapshotRef.current = null;
+    }
+  }, [paymentOpen, paymentVoucher]);
+  const { credit: customerCredit, isLoading: customerCreditPending, isError: customerCreditError, errorMessage: customerCreditErrorMessage, refetch: retryCustomerCredit } = usePdvCustomerCredit(paymentCart.customerId, paymentOpen);
   const customerName = useMemo(
     () => customers.find((c) => c.id === paymentCart.customerId)?.name ?? null,
     [customers, paymentCart.customerId],
@@ -1402,9 +1427,11 @@ function PdvSaleWorkspace({
       notes: activeDraft.notes,
       transactionDate: activeDraft.transactionDate,
       appliedVoucher: activeDraft.appliedVoucher ? { ...activeDraft.appliedVoucher } : null,
+      appliedVouchers: getAppliedVouchers(activeDraft).map(value => ({ ...value })),
       editDraft: saleEditDrafts[activeDraft.id] ?? null,
       attachments: [...(attachmentsByDraft[activeDraft.id] ?? [])],
     };
+    paymentVoucher.capture(paymentSnapshotRef.current, receiptOpener.isCurrent);
     setCartDrawerOpen(false);
     setPaymentOpen(true);
   }
@@ -1437,7 +1464,7 @@ function PdvSaleWorkspace({
       discountAmount: line.discountAmount,
     }));
 
-    const receiptAttempt = autoReceipt.prepare('sale', !editDraft);
+    const receiptAttempt = receiptOpener.guardAttempt(autoReceipt.prepare('sale', !editDraft));
     try {
     let result: PdvSettleResult;
     let preserveConfirmedDraft = false;
@@ -1522,6 +1549,7 @@ function PdvSaleWorkspace({
               unitPrice: line.unitPrice, discountAmount: line.discountAmount,
             })),
             orderDiscountAmount: paymentCart.discount, notes,
+            couponId: paymentCart.coupon?.id ?? null, couponDiscountCents: Math.round(confirmedCouponDiscount(paymentCart) * 100),
             transactionDate: paymentDate === maxTransactionDate ? null : paymentDate,
             payments,
           });
@@ -1620,8 +1648,8 @@ function PdvSaleWorkspace({
       });
     }
 
-    if (isV2 && completedSaleScopeRef.current !== completedSaleScope) { receiptAttempt.cancel(); return; }
-    if (!editDraft) void receiptAttempt.commit(`sale:${result.order_id}`, (format, options) => openPdvOrderReceipt(result.order_id, format, { ...options, documentKind: 'sale' }), result.idempotente);
+    if (!receiptOpener.isCurrent() || isV2 && completedSaleScopeRef.current !== completedSaleScope) { receiptAttempt.cancel(); return; }
+    if (!editDraft) void receiptAttempt.commit(`sale:${result.order_id}`, (format, options) => receiptOpener.open(result.order_id, format, { ...options, documentKind: 'sale' }), result.idempotente);
     else receiptAttempt.cancel();
 
     const change = (result.pagamentos ?? []).reduce(
@@ -1688,8 +1716,8 @@ function PdvSaleWorkspace({
       // tempo na tela que o padrão (5s) pra o operador conferir sem correr.
       duration: saleChange > 0 || saleWarnings.length > 0 ? 15000 : 8000,
       action: <ToastAction altText={`Abrir comprovante do pedido ${saleNumber}`} onClick={() => {
-        if (completedSaleScopeRef.current !== completedSaleScope) return;
-        void openPdvOrderReceipt(result.order_id, receiptFormat, { documentKind: 'sale' }).catch(() => {
+        if (!receiptOpener.isCurrent() || completedSaleScopeRef.current !== completedSaleScope) return;
+        void receiptOpener.open(result.order_id, receiptFormat, { documentKind: 'sale' }).catch(() => {
           if (completedSaleScopeRef.current === completedSaleScope) toast({ title: 'Não foi possível gerar o comprovante', description: 'Tente novamente pelo atalho do último pedido.', variant: 'destructive' });
         });
       }}>Comprovante</ToastAction>,
@@ -1697,7 +1725,7 @@ function PdvSaleWorkspace({
       setTimeout(() => searchInputRef.current?.focus(), 0);
     }
 
-    } catch (error) { receiptAttempt.cancel(); throw error; }
+    } catch (error) { receiptAttempt.cancel(); if (receiptOpener.isCurrent()) throw error; return; }
   }
 
   // Atalhos operacionais do balcão. Teclas imprimíveis nunca atravessam campos;
@@ -1771,24 +1799,6 @@ function PdvSaleWorkspace({
   // pedido têm rolagem própria; não reservamos mais uma tabela na coluna esquerda.
   const desktopRowRef = useRef<HTMLDivElement>(null);
   const topControlsRef = useRef<HTMLDivElement>(null);
-  const [desktopCompositionHeight, setDesktopCompositionHeight] = useState<number | null>(null);
-  useLayoutEffect(() => {
-    if (isMobileCart) { setDesktopCompositionHeight(null); return; }
-    const row = desktopRowRef.current;
-    if (!row) return;
-    const recompute = () => {
-      const height = window.visualViewport?.height ?? window.innerHeight;
-      const available = Math.floor(height - row.getBoundingClientRect().top - 52 - 24);
-      // Em janelas muito baixas, rolar a página preserva os controles e valores.
-      setDesktopCompositionHeight(available >= 400 ? available : null);
-    };
-    recompute();
-    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(recompute);
-    if (topControlsRef.current) observer?.observe(topControlsRef.current);
-    window.addEventListener('resize', recompute);
-    window.visualViewport?.addEventListener('resize', recompute);
-    return () => { observer?.disconnect(); window.removeEventListener('resize', recompute); window.visualViewport?.removeEventListener('resize', recompute); };
-  }, [isMobileCart, isLoadingPdv, catalogMode, categoryTabs.length, hasOpenCashSession, syncIssue, localPersistenceIssue, draftConflicts.length]);
 
   function handleConfirmClearCart() {
     if (!activeDraftId) return;
@@ -1879,10 +1889,11 @@ function PdvSaleWorkspace({
 
   const cartPanelProps = {
     layout: 'workspace' as const,
+    couponContent: isV2 ? <PdvCouponControl cart={cart} disabled={directSaleNeedsReview || paymentOpen} onChange={coupon => setCart(current => ({ ...current, coupon }))} /> : undefined,
     readOnly: directSaleNeedsReview,
     onCloseOrder: activeDraftId ? () => handleDeleteDraft(activeDraftId) : undefined,
     hasOrderContent: Boolean(activeDraft && (hasPdvSaleDraftContent(activeDraft) || pendingAttachments.length > 0 || saleEditDraft)),
-    appliedCreditAmount: activeDraft?.appliedVoucher?.amount ?? 0,
+    appliedCreditAmount: getAppliedVouchers(activeDraft).reduce((sum, value) => sum + value.amount, 0),
     orderSwitcher: undefined,
     cart,
     customers,
@@ -1920,17 +1931,18 @@ function PdvSaleWorkspace({
     onOpenAdvancedOptions: () => setAdvancedOptionsOpen(true),
     advancedOptionsActive: advancedOptionsSummary.length > 0,
     advancedOptionsSummary,
-    appliedCreditContent: isV2 && activeDraft && activeDraftId ? (
-      <PdvAppliedVoucherControl
+    appliedCreditContent: isV2 && !paymentOpen && activeDraft && activeDraftId ? (
+      <PdvAppliedVouchersControl
         key={`${activeDraftId}:${activeDraft.cart.customerId ?? 'sem-cliente'}`}
         enabled
         customerId={activeDraft.cart.customerId}
         total={computeTotal(activeDraft.cart)}
-        value={activeDraft.appliedVoucher}
+        values={getAppliedVouchers(activeDraft)}
         formatCurrency={formatCurrency}
-        onChange={(appliedVoucher) => updateDraft(activeDraftId, (draft) => ({
+        onChange={(appliedVouchers) => updateDraft(activeDraftId, (draft) => ({
           ...draft,
-          appliedVoucher,
+          appliedVoucher: appliedVouchers[0] ?? null,
+          appliedVouchers,
           attempt: isV2 ? draft.attempt : null,
         }))}
       />
@@ -2124,89 +2136,45 @@ function PdvSaleWorkspace({
       )}
 
 
-      <PdvSalePreviewView
-        rowRef={desktopRowRef}
-        controlsRef={topControlsRef}
-        gridRef={gridRef}
-        searchInputRef={searchInputRef}
-        mode={catalogMode}
-        onModeChange={mode => { setCatalogMode(mode); if (mode === 'quick') setActiveCategory('all'); }}
-        search={search}
-        onSearchChange={setSearch}
-        onSearchKeyDown={handleSearchKeyDown}
-        onSearchConfirm={handleSearchEnter}
-        onGridKeyDown={handleGridKeyDown}
-        products={visibleProducts}
-        disabled={directSaleNeedsReview || createOrder.isPending || settleOrder.isPending || replaceOrder.isPending || directSale.complete.isPending}
-        catalogLoading={isLoadingPdv}
-        activeProductId={activeProductId}
-        keyboardHighlight={catalogKeyboardActive}
-        onProductFocus={id => { const index = keyboardProducts.findIndex(product => product.inventoryId === id); if (index >= 0) setActiveProductIndex(index); setCatalogKeyboardActive(true); }}
-        onProductSelect={handleProductSelect}
-        formatCurrency={formatCurrency}
-        onExit={() => navigate(PDV_PANEL_PATH)}
-        style={desktopCompositionHeight != null ? { height: desktopCompositionHeight } : undefined}
-        camera={isV2 ? <InventoryIdentifierCameraScanner triggerVariant="icon" onScan={code => { void handleBarcodeScan(code); }} disabled={directSaleNeedsReview || confirmClearOpen || paymentOpen || advancedOptionsOpen || shortcutHelpOpen || identifiers.resolve.isPending} /> : undefined}
-        filters={<>
+      <PdvSaleEditorLayout
+        hardwareContextKey={JSON.stringify([profile?.company_id, user?.id, activeDraftId, selectedStockId, resolvedV2CashContext.status === 'resolved' ? resolvedV2CashContext.context.sessionId : null])}
+        hardwareBlocked={confirmClearOpen || paymentOpen || advancedOptionsOpen || shortcutHelpOpen || identifiers.resolve.isPending}
+        catalog={{
+          rowRef: desktopRowRef,
+          controlsRef: topControlsRef,
+          gridRef: gridRef,
+          searchInputRef: searchInputRef,
+          mode: catalogMode,
+          onModeChange: mode => { setCatalogMode(mode); if (mode === 'quick') setActiveCategory('all'); },
+          search: search,
+          onSearchChange: setSearch,
+          onSearchKeyDown: handleSearchKeyDown,
+          onSearchConfirm: handleSearchEnter,
+          onGridKeyDown: handleGridKeyDown,
+          products: visibleProducts,
+          disabled: directSaleNeedsReview || createOrder.isPending || settleOrder.isPending || replaceOrder.isPending || directSale.complete.isPending,
+          catalogLoading: isLoadingPdv,
+          activeProductId: activeProductId,
+          keyboardHighlight: catalogKeyboardActive,
+          onProductFocus: id => { const index = keyboardProducts.findIndex(product => product.inventoryId === id); if (index >= 0) setActiveProductIndex(index); setCatalogKeyboardActive(true); },
+          onProductSelect: handleProductSelect,
+          formatCurrency: formatCurrency,
+          onExit: () => navigate(PDV_PANEL_PATH),
+          camera: isV2 ? <InventoryIdentifierCameraScanner triggerVariant="icon" onScan={code => { void handleBarcodeScan(code); }} disabled={directSaleNeedsReview || confirmClearOpen || paymentOpen || advancedOptionsOpen || shortcutHelpOpen || identifiers.resolve.isPending} /> : undefined,
+          filters: <>
           {pdvStocks.length > 1 && <Select value={selectedStockId ?? undefined} onValueChange={setSelectedStockId} disabled={isV2 && resolvedV2CashContext.status === 'resolved'}><SelectTrigger className="h-10 w-48"><SelectValue placeholder={t.stock.locationLabel} /></SelectTrigger><SelectContent>{pdvStocks.map(stock => <SelectItem key={stock.id} value={stock.id}>{stock.name}</SelectItem>)}</SelectContent></Select>}
           {categoryTabs.map(tab => <button type="button" key={tab.value} className={'chip ' + (activeCategory === tab.value ? 'active' : '')} onClick={() => setActiveCategory(tab.value)}>{tab.label}</button>)}
-        </>}
-        cart={!isMobileCart ? <PdvCartPanel {...cartPanelProps} /> : null}
-      />
-
-      {/* Barra fixa + drawer do carrinho (mobile) */}
-      {isMobileCart && (
-        <>
-          {createPortal(
-            <button
-              type="button"
-              onClick={() => setCartDrawerOpen(true)}
-              className="fixed inset-x-0 z-40 flex items-center justify-between gap-3 rounded-t-xl border-t border-border bg-primary px-4 py-3 text-primary-foreground shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-              // Portal pro <body>: `MobileTabletShell` envolve o `<Outlet />` com
-              // `MobilePullToRefresh`, que aplica `transform: translateY(...)` no
-              // wrapper do conteúdo (mesmo com valor 0, parado) — isso cria um
-              // containing block novo pra qualquer `position: fixed` descendente,
-              // e aí o `bottom` deixa de ser relativo à viewport e passa a ser
-              // relativo ao fim do conteúdo da página (medido: barra aparecia a
-              // ~6000px do topo). Mesma causa e mesmo remédio já documentados em
-              // `FABButton.tsx`. Sem o portal, no mobile o carrinho simplesmente
-              // não aparece: toca no produto e nada acontece na tela.
-              //
-              // Offset medido (não é mais o "96px" copiado sem medir do FAB):
-              // `MobileBottomNav` ocupa 98px do rodapé da viewport (medido em
-              // devtools, 844px de altura). 96px deixava a barra colada/atrás do
-              // nav. 104px dá ~6px de respiro real acima do nav.
-              style={{ bottom: 'calc(104px + env(safe-area-inset-bottom))' }}
-            >
-              <span className="flex items-center gap-2 text-sm font-semibold">
-                <ShoppingCart className="h-4 w-4" />
-                {/* key={itemCount}: reinicia a animação de entrada a cada mudança
-                    de quantidade, pra dar um retorno visual imediato ao operador
-                    de que o toque no produto bipou mesmo (sem precisar de toast
-                    a cada item, que seria ruído em venda rápida de balcão). */}
-                <span key={itemCount} className="animate-in zoom-in-90 duration-200">
-                  {itemCount === 1
-                    ? t.cart.itemsCountOne
-                    : t.cart.itemsCount.replace('{count}', String(itemCount))}
-                </span>
-              </span>
-              <span key={total} className="animate-in zoom-in-90 duration-200 text-lg font-extrabold tabular-nums">
-                {formatCurrency(total)}
-              </span>
-            </button>,
-            document.body,
-          )}
-
-          <Drawer open={cartDrawerOpen} onOpenChange={setCartDrawerOpen}>
-            <DrawerContent className="pdv-preview-sale flex max-h-[85dvh] flex-col">
-              <DrawerHeader className="sr-only">
-                <DrawerTitle>{t.cart.title}</DrawerTitle>
-              </DrawerHeader>
-              <PdvCartPanel {...cartPanelProps} className="flex-1 overflow-hidden" />
-            </DrawerContent>
-          </Drawer>
         </>
-      )}
+        }}
+        cart={cartPanelProps}
+        mobile={isMobileCart}
+        drawerOpen={cartDrawerOpen}
+        onDrawerOpenChange={setCartDrawerOpen}
+        itemCount={itemCount}
+        itemCountLabel={itemCount === 1 ? t.cart.itemsCountOne : t.cart.itemsCount.replace('{count}', String(itemCount))}
+        formattedTotal={formatCurrency(total)}
+        drawerTitle={t.cart.title}
+      />
 
       <PdvShortcutHelpDialog
         open={shortcutHelpOpen}
@@ -2228,10 +2196,10 @@ function PdvSaleWorkspace({
       />
 
       <PdvPaymentDialog
-        open={paymentOpen}
+        open={paymentOpen && paymentVoucher.inScope}
         onOpenChange={(open) => {
           setPaymentOpen(open);
-          if (!open) paymentSnapshotRef.current = null;
+          if (!open) { paymentVoucher.reset(); paymentSnapshotRef.current = null; }
         }}
         texts={t.payment}
         total={computeTotal(paymentCart)}
@@ -2242,10 +2210,27 @@ function PdvSaleWorkspace({
         customerName={customerName}
         customerId={paymentCart.customerId}
         advancedPaymentsEnabled={isV2}
-        appliedVoucher={paymentOpen
-          ? paymentSnapshotRef.current?.appliedVoucher ?? null
-          : activeDraft?.appliedVoucher ?? null}
+        appliedVouchers={getAppliedVouchers(paymentOpen ? paymentSnapshotRef.current : activeDraft)}
+        embeddedEditorOpen={paymentVoucher.pickerOpen}
+        appliedCreditContent={isV2 && paymentOpen && paymentVoucher.inScope && paymentSnapshotRef.current ? (
+          <fieldset disabled={!paymentVoucher.canEdit} className="min-w-0">
+            <PdvAppliedVouchersControl
+              key={`${paymentSnapshotRef.current.draftId}:${paymentSnapshotRef.current.cart.customerId ?? 'sem-cliente'}:${paymentVoucher.canEdit}`}
+              enabled
+              customerId={paymentSnapshotRef.current.cart.customerId}
+              total={computeTotal(paymentSnapshotRef.current.cart)}
+              values={getAppliedVouchers(paymentSnapshotRef.current)}
+              formatCurrency={formatCurrency}
+              onChange={paymentVoucher.onChanges}
+              onPickerOpenChange={paymentVoucher.onPickerOpenChange}
+            />
+          </fieldset>
+        ) : undefined}
         customerCredit={customerCredit}
+        customerCreditPending={customerCreditPending}
+        customerCreditError={customerCreditError}
+        customerCreditErrorMessage={customerCreditErrorMessage}
+        onRetryCustomerCredit={() => retryCustomerCredit()}
         accounts={paymentAccounts}
         canUseBankAccounts={canUseBankAccounts}
         hasOpenCashSession={hasOpenCashSession}

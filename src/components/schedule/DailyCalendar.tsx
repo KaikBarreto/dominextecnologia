@@ -7,6 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { EventCard } from './EventCard';
+import { shouldUseCompactDailyEventCard } from './dailyCalendarDensity';
 import type { ServiceOrder } from '@/types/database';
 import type { Holiday } from '@/utils/holidays';
 import { buildHourRange } from '@/lib/scheduleHours';
@@ -219,6 +220,7 @@ export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick,
               const height = Math.max((duration / 60) * SLOT_HEIGHT, 28);
               const widthPercent = 100 / totalCols;
               const leftPercent = col * widthPercent;
+              const compact = shouldUseCompactDailyEventCard(totalCols, height, isMobile);
 
               if (isMobile) {
                 // Mobile (v1.9.35): tap SEMPRE rola pro detalhe abaixo.
@@ -239,6 +241,7 @@ export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick,
                       draggable={(order._scheduledSpanTotalDays ?? 1) === 1}
                       onDragStart={(order._scheduledSpanTotalDays ?? 1) > 1 ? undefined : (e) => e.dataTransfer.setData('text/plain', order.id)}
                       fillHeight
+                      compact={compact}
                       colorShift={col}
                       isMoving={movingOrderId === order.id}
                     />
@@ -261,6 +264,7 @@ export function DailyCalendar({ currentDate, orders, onOrderSelect, onSlotClick,
                     draggable={(order._scheduledSpanTotalDays ?? 1) === 1}
                     onDragStart={(order._scheduledSpanTotalDays ?? 1) > 1 ? undefined : (e) => e.dataTransfer.setData('text/plain', order.id)}
                     fillHeight
+                    compact={compact}
                     colorShift={col}
                   />
                 </div>

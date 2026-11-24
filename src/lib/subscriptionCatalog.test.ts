@@ -8,6 +8,7 @@ import {
   planAllowsScreen,
   resolveExtraUserPrice,
   resolveProposalWhatsappPrice,
+  subscriptionModuleDisplayName,
   withRequiredCustomModules,
 } from './subscriptionCatalog';
 
@@ -37,6 +38,13 @@ describe('subscriptionCatalog', () => {
       ['basic', 'customer_portal', 'finance_advanced', 'pricing_advanced', 'video_questions', 'crm'],
       [{ code: 'crm', name: 'CRM Completo' }],
     )).toEqual([...BASIC_BUNDLE_FEATURES, 'CRM Completo']);
+  });
+
+  it('usa PDV (Loja) como nome comercial sem alterar o código do módulo', () => {
+    expect(subscriptionModuleDisplayName('pdv', 'PDV e Loja')).toBe('PDV (Loja)');
+    expect(buildCommercialModuleFeatures(['pdv'], [{ code: 'pdv', name: 'Nome legado' }]))
+      .toEqual(['PDV (Loja)']);
+    expect(subscriptionModuleDisplayName('crm', 'CRM')).toBe('CRM');
   });
 
   it('usa o preço de extra_user do catálogo', () => {

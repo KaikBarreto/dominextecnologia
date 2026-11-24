@@ -1,3 +1,4 @@
+import { HorizontalTabBar } from '@/components/ui/HorizontalTabBar';
 import '@/components/pdv/PdvWorkspace.css';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -19,7 +20,7 @@ import { usePdvOrderWorkspace } from '@/hooks/usePdvOrdersList';
 import { derivePdvReturnsAccess, usePdvReturnsFeature } from '@/hooks/usePdvReturns';
 import { derivePdvAfterSaleAccess, usePdvAfterSaleFeature } from '@/hooks/usePdvAfterSale';
 import { usePdvReceiptSettings } from '@/hooks/usePdvReceiptSettings';
-import { openPdvOrderReceipt } from '@/components/pdv/receipt/PdvOrderReceiptButton';
+import { usePdvOrderReceiptOpener } from '@/components/pdv/receipt/PdvOrderReceiptButton';
 import { DEFAULT_PDV_RECEIPT_SETTINGS } from '@/lib/pdv/receipt/model';
 import { useToast } from '@/hooks/use-toast';
 import type { PdvCustomerHistoryRow } from '@/hooks/usePdvCustomerHistory';
@@ -47,7 +48,7 @@ export function PdvCustomerProfileDialog({ customer }: { customer: Customer }) {
     <PdvPartyProfileButton label="Ver ficha do cliente" onClick={() => { setTab('Dados'); setOpen(true); }} />
     <ResponsiveModal drawerClassName="pdv-dialog" open={open} onOpenChange={setOpen} title="Ficha do cliente" className="pdv-dialog sm:max-w-[880px]" footer={<Button variant="cancel-ghost" className="w-full" onClick={() => setOpen(false)}>Voltar ao atendimento</Button>}>
       <div className="flex items-center gap-3"><CustomerAvatar name={customer.name} photoUrl={customer.photo_url} /><div className="min-w-0 flex-1"><h3 className="font-bold">{customer.name}</h3><p className="text-xs text-muted-foreground">{formatCustomerDocument(customer.document) || 'Cliente da loja'}</p></div></div>
-      <nav className="my-5 flex gap-6 overflow-x-auto border-b" role="tablist" aria-label="Ficha do cliente">{['Dados', 'Saldo e créditos', 'Histórico'].map(name => <button type="button" role="tab" aria-selected={tab === name} key={name} onClick={() => setTab(name)} className={'shrink-0 border-b-2 pb-3 text-sm font-semibold ' + (tab === name ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground')}>{name}</button>)}</nav>
+      <HorizontalTabBar asChild className="my-5"><nav className="flex gap-6 overflow-x-auto border-b" role="tablist" aria-label="Ficha do cliente">{['Dados', 'Saldo e créditos', 'Histórico'].map(name => <button type="button" role="tab" aria-selected={tab === name} key={name} onClick={() => setTab(name)} className={'shrink-0 border-b-2 pb-3 text-sm font-semibold ' + (tab === name ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground')}>{name}</button>)}</nav></HorizontalTabBar>
       <div role="tabpanel" aria-label={tab}>
         {tab === 'Dados' && <div className="grid gap-5 sm:grid-cols-2">{[['CPF/CNPJ', formatCustomerDocument(customer.document)], ['Telefone', formatCustomerPhone(customer.celular || customer.phone)], ['E-mail', customer.email], ['Endereço', [customer.address, customer.address_number, customer.neighborhood, customer.city, customer.state].filter(Boolean).join(', ')]].map(([label, value]) => <div key={label}><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 break-words text-sm font-semibold">{value || 'Não informado'}</p></div>)}{hasScreenAccess('screen:customers') && <Button variant="outline" onClick={() => go('/clientes/' + customer.id)}><ExternalLink className="h-4 w-4" />Abrir cadastro completo</Button>}</div>}
         {tab === 'Saldo e créditos' && <div className="space-y-6"><PartyAccountPanel partyType="customer" partyId={customer.id} enabled={open} /><CustomerVouchers customerId={customer.id} /></div>}
@@ -75,6 +76,7 @@ function CustomerOrderActions({ order, go, canReceive, canPickup, canReturn, can
   const [menuOpen, setMenuOpen] = useState(false);
   const detail = usePdvOrderWorkspace(menuOpen ? order.id : null);
   const receiptSettings = usePdvReceiptSettings();
+  const receiptOpener = usePdvOrderReceiptOpener(order.id);
   const { toast } = useToast();
   const current = detail.data?.order;
   const confirmed = current && !['rascunho', 'aguardando_pagamento', 'cancelado'].includes(current.commercialStatus);
@@ -84,7 +86,7 @@ function CustomerOrderActions({ order, go, canReceive, canPickup, canReturn, can
   }, [detail.isError, toast]);
   async function receipt() {
     try {
-      await openPdvOrderReceipt(order.id, receiptSettings.data?.defaultFormat ?? DEFAULT_PDV_RECEIPT_SETTINGS.defaultFormat);
+      await receiptOpener.open(order.id, receiptSettings.data?.defaultFormat ?? DEFAULT_PDV_RECEIPT_SETTINGS.defaultFormat);
     } catch {
       toast({ variant: 'destructive', title: 'Não foi possível gerar o comprovante', description: 'Tente novamente pela tela de pedidos.' });
     }

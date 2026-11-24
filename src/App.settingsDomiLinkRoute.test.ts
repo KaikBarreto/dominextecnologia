@@ -2,9 +2,9 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 describe('rota canônica da configuração do DomiLink', () => {
-  it('aplica exceção restrita antes do gate global, mantendo Settings protegido', () => {
+  it('aplica exceção restrita sem bloquear preferências pessoais protegidas pelo Settings', () => {
     const source = readFileSync(`${process.cwd()}/src/App.tsx`, 'utf8');
-    expect(source).toContain("localizedAppRoutes('settings', <SettingsDomiLinkRoute><PermissionRoute screenKey=\"screen:settings\"><Settings /></PermissionRoute></SettingsDomiLinkRoute>)");
+    expect(source).toContain("localizedAppRoutes('settings', <SettingsDomiLinkRoute><Settings /></SettingsDomiLinkRoute>)");
   });
 
   it('mantém somente o atalho na aba Equipamentos do PDV', () => {

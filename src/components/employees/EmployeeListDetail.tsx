@@ -34,6 +34,12 @@ interface EmployeeListDetailProps {
   onPayment: () => void;
   onExtract: () => void;
   onCopyTimeclockLink: () => void;
+  /**
+   * Permissão de RH (`useCanManageEmployees`). Sem ela a ficha mostra só o
+   * cadastro básico: nada de salário, saldo, CPF, PIX, telefone, endereço,
+   * movimentações, pagamento, extrato, editar ou arquivar.
+   */
+  canManage: boolean;
 }
 
 function DetailRow({ label, value, icon }: { label: string; value?: string | null; icon?: React.ReactNode }) {
@@ -65,6 +71,7 @@ export function EmployeeListDetail({
   onPayment,
   onExtract,
   onCopyTimeclockLink,
+  canManage,
 }: EmployeeListDetailProps) {
   const { locale, currency, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.employees;
@@ -106,6 +113,7 @@ export function EmployeeListDetail({
           </div>
         </div>
 
+        {canManage ? (
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <Button type="button" variant="outline" size="sm" className="gap-2" onClick={onEdit}>
             <Pencil className="h-4 w-4" />
@@ -120,8 +128,17 @@ export function EmployeeListDetail({
             {t.actions.delete}
           </Button>
         </div>
+        ) : employee.ponto_enabled && employee.ponto_slug ? (
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <Button type="button" variant="outline" size="sm" className="gap-2" onClick={onCopyTimeclockLink}>
+              <Link2 className="h-4 w-4" /> {t.actions.timeclockLink}
+            </Button>
+          </div>
+        ) : null}
       </header>
 
+      {canManage && (
+      <>
       <section className="border-b border-border/60 px-4 py-3 sm:px-6">
         <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">{t.listDetail.movements}</p>
         <div className="flex flex-wrap items-center gap-2">
@@ -147,7 +164,7 @@ export function EmployeeListDetail({
 
       <section className="grid grid-cols-2 border-b border-border/60 lg:grid-cols-3">
         {[
-            { label: t.paymentModal.summary.salary, value: fmt(employee.salary || 0) },
+            { label: t.paymentModal.summary.salary, value: fmt(employee.salary ?? 0) },
             {
               label: t.card.currentBalance,
               value: fmt(balance.currentBalance),
@@ -175,6 +192,8 @@ export function EmployeeListDetail({
           </div>
         ))}
       </section>
+      </>
+      )}
 
       <div className="grid border-b border-border/60 lg:grid-cols-2 lg:divide-x lg:divide-border/60">
         <section className="px-4 py-5 sm:px-6">
@@ -184,17 +203,21 @@ export function EmployeeListDetail({
             <DetailRow label={t.form.clt.regimeLabel} value={regimeLabel} />
             <DetailRow label={t.form.clt.matriculaLabel} value={employee.matricula} />
             <DetailRow label={t.form.clt.cboLabel} value={employee.cbo} />
-            <DetailRow label={t.form.fields.cpf} value={employee.cpf} icon={<UserRound className="h-4 w-4" />} />
-            <DetailRow label={t.form.fields.pixKey} value={employee.pix_key} />
+            {canManage && (
+              <>
+                <DetailRow label={t.form.fields.cpf} value={employee.cpf} icon={<UserRound className="h-4 w-4" />} />
+                <DetailRow label={t.form.fields.pixKey} value={employee.pix_key} />
+              </>
+            )}
           </dl>
         </section>
 
         <section className="border-t border-border/60 px-4 py-5 sm:px-6 lg:border-t-0">
           <h3 className="text-sm font-semibold">{t.form.tabData}</h3>
           <dl className="mt-3 divide-y divide-border/60">
-            <DetailRow label={t.form.fields.phone} value={employee.phone} icon={<Phone className="h-4 w-4" />} />
+            {canManage && <DetailRow label={t.form.fields.phone} value={employee.phone} icon={<Phone className="h-4 w-4" />} />}
             <DetailRow label={t.form.fields.email} value={employee.email} icon={<Mail className="h-4 w-4" />} />
-            <DetailRow label={t.form.fields.address} value={employee.address} icon={<MapPin className="h-4 w-4" />} />
+            {canManage && <DetailRow label={t.form.fields.address} value={employee.address} icon={<MapPin className="h-4 w-4" />} />}
           </dl>
         </section>
       </div>

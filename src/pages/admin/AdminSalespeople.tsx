@@ -32,9 +32,22 @@ import { StatCarousel, type StatCarouselItem } from '@/components/mobile/StatCar
 import { FABButton } from '@/components/mobile/FABButton';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
+import { CommercialActionQueue } from '@/components/admin/salesperson/CommercialActionQueue';
 
 const fmtBRL = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+const TEAM_AREA_LABELS: Record<string, string> = {
+  sales: 'Comercial', customer_success: 'Sucesso do Cliente', support: 'Suporte', financial: 'Financeiro',
+  admin: 'Administrativo', partner: 'Sócio / Pró-labore', other: 'Outro',
+};
+
+function rotationStatus(person: Salesperson) {
+  const eligible = Boolean(person.is_active && person.can_receive_sales && person.in_rotation && person.phone?.trim());
+  const lastAssignment = person.last_lead_assigned_at
+    ? new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(person.last_lead_assigned_at))
+    : null;
+  return { eligible, lastAssignment };
+}
 
 export default function AdminSalespeople() {
   const navigate = useNavigate();
@@ -54,6 +67,7 @@ export default function AdminSalespeople() {
   // então esta variável única cobre a regra do briefing
   // `hasMasterAccess || hasFunctionAccess('admin_vendedores_ver_todos')`.
   const canSeeAll = hasFunctionAccess('admin_vendedores_ver_todos');
+  const canManageTeam = hasFunctionAccess('admin_vendedores_gerenciar');
 
   // Vendedor restrito → redireciona para a própria página de detalhes
   useEffect(() => {
@@ -84,10 +98,11 @@ export default function AdminSalespeople() {
   // Agregações para stats (compartilhadas com desktop via componente original)
   // ---------------------------------------------------------------------------
   const activeCount = salespeople.filter((s) => s.is_active !== false).length;
+  const activeCommercialCount = salespeople.filter((s) => s.is_active !== false && s.can_receive_sales !== false).length;
   const totalCount = salespeople.length;
   const totalSales = filteredSales.length;
   const totalCommission = filteredSales.reduce((sum, s) => sum + (s.commission_amount || 0), 0);
-  const avgPerSeller = activeCount > 0 ? totalSales / activeCount : 0;
+  const avgPerSeller = activeCommercialCount > 0 ? totalSales / activeCommercialCount : 0;
 
   // Stats para o carrossel mobile (numéricos puros, compatíveis com o primitivo).
   const mobileStats: StatCarouselItem[] = [
@@ -114,7 +129,7 @@ export default function AdminSalespeople() {
     },
     {
       key: 'media',
-      label: 'Média/Vendedor',
+      label: 'Média comercial',
       count: Math.round(avgPerSeller * 10) / 10,
       icon: <Target className="h-4 w-4" />,
       accentColor: '#F97316',
@@ -161,7 +176,7 @@ export default function AdminSalespeople() {
           {isLoading ? (
             <StatCarousel items={[]} loading />
           ) : (
-            <StatCarousel items={mobileStats} />
+            <StatCarousel items={mobileStats} variant="saturated" />
           )}
 
           <DateRangeFilter
@@ -174,7 +189,7 @@ export default function AdminSalespeople() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar vendedor..."
+              placeholder="Buscar pessoa..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
@@ -190,12 +205,12 @@ export default function AdminSalespeople() {
           ) : filtered.length === 0 ? (
             <EmptyState
               icon={<Users className="h-12 w-12" />}
-              title={search ? 'Nenhum vendedor encontrado' : 'Nenhum vendedor cadastrado'}
+              title={search ? 'Nenhuma pessoa encontrada' : 'Nenhuma pessoa cadastrada'}
               description={
                 search
                   ? 'Tente uma busca diferente'
                   : canSeeAll
-                      ? 'Toque em "Novo Vendedor" para começar'
+                      ? 'Toque em "Nova pessoa" para começar'
                     : 'Aguardando cadastro pela coordenação'
               }
             />
@@ -206,6 +221,8 @@ export default function AdminSalespeople() {
                 const goal = p.monthly_goal || 30;
                 const pct = goal > 0 ? Math.min((st.totalSalesSeller / goal) * 100, 100) : 0;
                 const isInactive = p.is_active === false;
+                const canReceiveSales = p.can_receive_sales !== false;
+                const rotation = rotationStatus(p);
 
                 const actions: ItemAction[] = [
                   {
@@ -214,7 +231,7 @@ export default function AdminSalespeople() {
                     icon: <Eye className="h-4 w-4" />,
                     onClick: () => navigate(`/admin/vendedores/${p.id}`),
                   },
-                  ...(canSeeAll
+                  ...(canManageTeam
                     ? [
                         {
                           key: 'edit',
@@ -236,9 +253,10 @@ export default function AdminSalespeople() {
 
                 const subtitleParts = [
                   p.email || '—',
-                  `${st.totalSalesSeller} vendas`,
-                  fmtBRL(st.totalCommissionSeller),
-                ];
+                  TEAM_AREA_LABELS[p.person_type || 'sales'] || 'Outro',
+                  canReceiveSales ? `${st.totalSalesSeller} vendas` : 'Não recebe vendas',
+                  rotation.lastAssignment ? `Último lead: ${rotation.lastAssignment}` : null,
+                ].filter(Boolean);
 
                 return (
                   <MobileListItem
@@ -258,6 +276,9 @@ export default function AdminSalespeople() {
                         >
                           {isInactive ? 'Inativo' : 'Ativo'}
                         </Badge>
+                        {rotation.eligible ? (
+                          <span className="rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">Próximo lead</span>
+                        ) : canReceiveSales && (
                         <span
                           className={cn(
                             'text-[10px] font-semibold tabular-nums',
@@ -266,6 +287,7 @@ export default function AdminSalespeople() {
                         >
                           {pct.toFixed(0)}% meta
                         </span>
+                        )}
                       </div>
                     }
                   />
@@ -290,6 +312,7 @@ export default function AdminSalespeople() {
                 sales={filteredSales}
                 advances={filteredAdvances}
               />
+              <CommercialActionQueue enabled={canSeeAll} />
 
               <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -309,21 +332,22 @@ export default function AdminSalespeople() {
                     sales={filteredSales}
                     advances={filteredAdvances}
                     onEdit={handleEdit}
-                    onDelete={setDeleteId}
+                onDelete={setDeleteId}
+                canManage={canManageTeam}
                   />
                 ) : (
                   <div className="rounded-lg border bg-card">
                     <EmptyState
                       icon={<Users className="h-12 w-12" />}
-                      title={search ? 'Nenhum vendedor encontrado' : 'Nenhum vendedor cadastrado'}
+                      title={search ? 'Nenhuma pessoa encontrada' : 'Nenhuma pessoa cadastrada'}
                       description={
                         search
                           ? 'Tente uma busca diferente'
-                          : canSeeAll
-                              ? 'Clique em "Novo Vendedor" para começar'
+                          : canManageTeam
+                              ? 'Clique em "Nova pessoa" para começar'
                             : 'Aguardando cadastro pela coordenação'
                       }
-                      action={!search && canSeeAll ? { label: 'Novo Vendedor', onClick: openNew } : undefined}
+                      action={!search && canManageTeam ? { label: 'Nova pessoa', onClick: openNew } : undefined}
                     />
                   </div>
                 )}
@@ -346,11 +370,11 @@ export default function AdminSalespeople() {
       )}
     >
       <MobilePageHeader
-        title="Vendedores"
+        title="Equipe"
         subtitle={
           isMobile
-            ? 'Equipe comercial Auctus'
-            : 'Dashboard de controle gerencial da equipe comercial'
+            ? 'Equipe interna Dominex'
+            : 'Pessoas, atuação comercial e resultados da equipe'
         }
         icon={Users}
         actions={
@@ -362,9 +386,9 @@ export default function AdminSalespeople() {
                 onPresetChange={setPreset}
                 onRangeChange={setRange}
               />
-              {canSeeAll && activeTab === 'vendedores' && (
+              {canManageTeam && activeTab === 'vendedores' && (
                 <Button onClick={openNew} className="gap-2">
-                  <Plus className="h-4 w-4" /> Novo Vendedor
+                  <Plus className="h-4 w-4" /> Nova pessoa
                 </Button>
               )}
             </div>
@@ -384,7 +408,7 @@ export default function AdminSalespeople() {
               variant="underline"
               level="screen"
               tabs={[
-                { value: 'vendedores', label: 'Vendedores' },
+                { value: 'vendedores', label: 'Pessoas' },
                 { value: 'activity', label: 'Atividade Comercial' },
               ]}
               activeTab={activeTab}
@@ -392,7 +416,7 @@ export default function AdminSalespeople() {
             />
           ) : (
             <TabsList variant="underline" className="grid w-full max-w-[420px] grid-cols-2">
-              <TabsTrigger variant="underline" value="vendedores">Vendedores</TabsTrigger>
+              <TabsTrigger variant="underline" value="vendedores">Pessoas</TabsTrigger>
               <TabsTrigger variant="underline" value="activity">
                 <BarChart3 className="mr-1.5 h-3.5 w-3.5" /> Atividade Comercial
               </TabsTrigger>
@@ -418,10 +442,10 @@ export default function AdminSalespeople() {
 
       {/* FAB mobile-only — desktop usa botão inline no header. Só na aba
           "Vendedores": na "Atividade Comercial" não existe ação de criar. */}
-      {isMobile && canSeeAll && activeTab === 'vendedores' && (
+      {isMobile && canManageTeam && activeTab === 'vendedores' && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
-          label="Vendedor"
+          label="Pessoa"
           onClick={openNew}
         />
       )}

@@ -1,3 +1,4 @@
+import { HorizontalTabBar } from '@/components/ui/HorizontalTabBar';
 import { useMemo, useState } from 'react';
 import { AlertTriangle, Car, ChevronDown, ChevronLeft, ChevronRight, Gift, HardHat, Package, Pencil, Search, Trash2, Wrench, X } from 'lucide-react';
 
@@ -101,16 +102,20 @@ export function QuoteServiceResourcesEditor({ lines, resources, hours, formatMon
           </Button>
         </div>
 
-        <div className="flex min-w-0 gap-1 overflow-x-auto border-b no-scrollbar" aria-label="Categorias de recursos">
-          {(['all', ...categoryOrder] as const).map(key => {
-            const count = key === 'all' ? candidates.length : candidates.filter(resource => resource.category === key).length;
-            const meta = key === 'all' ? { label: 'Todos', icon: Package } : categoryMeta[key];
-            const Icon = meta.icon;
-            return <button key={key} type="button" aria-pressed={category === key} onClick={() => { setCategory(key); setPage(0); }} className={cn('flex min-h-12 shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 py-3 text-sm font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-zinc-950 dark:focus-visible:ring-zinc-100', category === key ? 'border-zinc-950 text-foreground dark:border-zinc-100' : 'border-transparent text-muted-foreground hover:text-foreground')}>
-              <Icon className="h-4 w-4" aria-hidden="true" /><span>{meta.label}</span><span className="text-xs font-normal tabular-nums">{count}</span>
-            </button>;
-          })}
-        </div>
+        <HorizontalTabBar asChild>
+
+          <div className="flex min-w-0 gap-1 overflow-x-auto border-b no-scrollbar" aria-label="Categorias de recursos">
+            {(['all', ...categoryOrder] as const).map(key => {
+              const count = key === 'all' ? candidates.length : candidates.filter(resource => resource.category === key).length;
+              const meta = key === 'all' ? { label: 'Todos', icon: Package } : categoryMeta[key];
+              const Icon = meta.icon;
+              return <button key={key} type="button" aria-pressed={category === key} onClick={() => { setCategory(key); setPage(0); }} className={cn('flex min-h-12 shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 py-3 text-sm font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-zinc-950 dark:focus-visible:ring-zinc-100', category === key ? 'border-zinc-950 text-foreground dark:border-zinc-100' : 'border-transparent text-muted-foreground hover:text-foreground')}>
+                <Icon className="h-4 w-4" aria-hidden="true" /><span>{meta.label}</span><span className="text-xs font-normal tabular-nums">{count}</span>
+              </button>;
+            })}
+          </div>
+
+        </HorizontalTabBar>
       </div>
 
       {unavailableLines.length > 0 && <section aria-label="Recursos selecionados indisponíveis">

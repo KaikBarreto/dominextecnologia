@@ -46,6 +46,7 @@ export interface DfcTransaction {
   category?: string | null;
   credit_card_bill_date?: string | null;
   bill_id?: string | null;
+  pdv_financial_role?: string | null;
   /** Campo enriquecido a partir de `financial_categories.dfc_group`. */
   dfc_group?: DfcGroupKey | string | null;
 }
@@ -137,6 +138,8 @@ function amountToCents(amount: number | string): number | null {
 }
 
 function prepareTransaction(transaction: DfcTransaction): PreparedTransaction | null {
+  // Obrigação quitada por adiantamento não é nova saída de dinheiro.
+  if (transaction.pdv_financial_role === 'pdv_supplier_obligation') return null;
   if (transaction.is_paid !== true) return null;
   if (transaction.cancelled_at) return null;
 

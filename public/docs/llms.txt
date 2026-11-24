@@ -10,7 +10,7 @@
 - Human language: Portuguese (Brazil)
 - API field and endpoint language: English
 - API version: v1, independent from the Dominex application version
-- Last documentation review: 2026-10-29
+- Last documentation review: 2026-11-16
 - This file: https://www.dominex.app/docs/llms.txt
 
 Treat the OpenAPI document as the canonical machine-readable contract. Treat the most specific documentation page as the canonical explanation. If this file and the OpenAPI disagree about an accepted field, schema, enum, or response, follow the OpenAPI and report the inconsistency.
@@ -40,6 +40,10 @@ No. A key in the format `dmx_live_<public_id>.<secret>` is a server secret. Stor
 ### How are duplicate work orders prevented?
 
 `POST /service-orders` requires an `Idempotency-Key`. The same key with exactly the same JSON returns the persisted result. The same key with a different payload returns `409 idempotency_conflict`. After a timeout or transient error, retry with the same key and the exact same payload.
+
+### Does an API key grant service operations to a Retail tenant?
+
+No. `/service-types`, `/booking-resources`, `/availability`, and service-order creation/read require the Services core in addition to key scopes and a current subscription. Missing Services returns `403 module_not_contracted`; stop and review the subscription instead of retrying. Customer and CRM requirements are unchanged. `/capabilities` remains available with `booking=null` and `schedule_configured=false` when Services is absent.
 
 ### How are tenants isolated?
 

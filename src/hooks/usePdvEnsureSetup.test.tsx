@@ -84,6 +84,12 @@ describe('usePdvEnsureSetup', () => {
     }));
   });
 
+  it('orienta o usuário desativado sem expor detalhes internos', async () => {
+    rpc.mockResolvedValue({data:null,error:{code:'42501',details:'code=pdv_setup_user_inactive',message:'internal'}});
+    const {result}=renderHook(() => usePdvEnsureSetup(),{wrapper});
+    await expect(result.current.mutateAsync()).rejects.toThrow('Seu acesso está desativado. Peça ao administrador para conferir seu cadastro.');
+  });
+
   it('não expõe erro interno de permissão', async () => {
     rpc.mockResolvedValue({ data: null, error: { code: '42501', details: 'code=pdv_setup_permission_denied', message: 'internal' } });
     const { result } = renderHook(() => usePdvEnsureSetup(), { wrapper });

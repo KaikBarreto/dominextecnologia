@@ -12,6 +12,11 @@ import type {
 export const DOMILINK_BASE_URL = 'http://127.0.0.1:8765' as const;
 
 const FRIENDLY_ERRORS: Record<string, string> = {
+  invalid_pairing_code: 'Código inválido. Confira o código mostrado no DomiLink.',
+  pairing_expired: 'O código venceu. Gere outro no DomiLink e tente novamente.',
+  pairing_locked: 'Muitas tentativas. Gere outro código no DomiLink para conectar.',
+  invalid_session: 'A conexão expirou. Faça o pareamento novamente.',
+  missing_session: 'Faça o pareamento com o DomiLink antes de continuar.',
   pair_code_invalid: 'Código inválido ou vencido. Confira o DomiLink e tente novamente.',
   pair_locked: 'Muitas tentativas. Reinicie o DomiLink para gerar outro código.',
   invalid_token: 'A conexão expirou. Faça o pareamento novamente.',
@@ -47,6 +52,19 @@ async function readError(response: Response): Promise<DomiLinkError> {
   return new DomiLinkError(code, FRIENDLY_ERRORS[code] ?? 'Não foi possível falar com o DomiLink.', response.status);
 }
 
+async function localAccessDenied(): Promise<boolean> {
+  if (!navigator.permissions?.query) return false;
+  // Chromium recente separa loopback da rede local. O nome antigo é fallback
+  // somente quando o navegador não reconhece a permissão específica.
+  for (const name of ['loopback-network', 'local-network-access']) {
+    try {
+      const permission = await navigator.permissions.query({ name } as PermissionDescriptor);
+      return permission.state === 'denied';
+    } catch { /* permissão não suportada: não inferir bloqueio */ }
+  }
+  return false;
+}
+
 async function request<T>(
   path: string,
   options: RequestInit & { token?: string | null; timeoutMs?: number; retryGet?: boolean } = {},
@@ -60,7 +78,16 @@ async function request<T>(
   const execute = async () => {
     const timeout = timeoutSignal(timeoutMs);
     try {
-      const response = await fetch(`${DOMILINK_BASE_URL}${path}`, { ...init, headers, signal: timeout.signal, cache: 'no-store', credentials: 'omit' });
+      let response: Response;
+      try {
+        response = await fetch(`${DOMILINK_BASE_URL}${path}`, { ...init, headers, signal: timeout.signal, cache: 'no-store', credentials: 'omit' });
+      } catch (error) {
+        // Abort/timeout e erros HTTP não comprovam uma permissão negada.
+        if (error instanceof TypeError && !timeout.signal.aborted && await localAccessDenied() && !timeout.signal.aborted) {
+          throw new DomiLinkError('local_access_denied', 'Seu navegador bloqueou a conexão com o DomiLink. Nas configurações deste site, permita o acesso à rede local e tente novamente.');
+        }
+        throw error;
+      }
       if (!response.ok) throw await readError(response);
       if (response.status === 204) return undefined as T;
       return await response.json() as T;
@@ -78,7 +105,7 @@ async function request<T>(
         if (retryError instanceof DomiLinkError) throw retryError;
       }
     }
-    throw new DomiLinkError('offline', 'DomiLink não encontrado neste computador. Abra o utilitário e tente novamente.');
+    throw new DomiLinkError('offline', 'Não foi possível conectar ao DomiLink. Confira se o DomiLink está aberto e se o navegador permite acesso local.');
   }
 }
 
@@ -169,6 +196,22 @@ export function getDomiLinkPrintJob(token: string, jobId: string) {
   return request<{ job: DomiLinkPrintJob }>(`/v1/print/jobs/${encodeURIComponent(jobId)}`, { token, timeoutMs: 5_000 });
 }
 
+/** Documento real: uma intenção explícita; falha de transporte nunca dispara outra impressão. */
+export async function queueDomiLinkDocumentPrint(token: string, device: DomiLinkDevice, document: Blob, idempotencyKey: string, assertCurrent: () => void = () => undefined) {
+  assertCurrent();
+  if (!device.capabilities.print_formats?.includes('pdf')) throw new DomiLinkError('unsupported_format', 'Escolha uma impressora do sistema que aceite PDF.');
+  if (document.size > 5 * 1024 * 1024) throw new DomiLinkError('body_too_large', FRIENDLY_ERRORS.body_too_large);
+  const bytes = new Uint8Array(await document.arrayBuffer());
+  assertCurrent();
+  let binary = '';
+  for (let offset = 0; offset < bytes.length; offset += 32768) binary += String.fromCharCode(...bytes.subarray(offset, offset + 32768));
+  return request<{ job: DomiLinkPrintJob; replayed: boolean }>('/v1/print/jobs', {
+    method: 'POST', token, timeoutMs: 12_000, retryGet: false,
+    headers: { 'Idempotency-Key': idempotencyKey },
+    body: JSON.stringify({ device_id: device.id, format: 'pdf', content_base64: btoa(binary), copies: 1, title: 'Comprovante' }),
+  });
+}
+
 export async function waitForDomiLinkPrintJob(token: string, initial: DomiLinkPrintJob, assertCurrent: () => void = () => undefined) {
   let job = initial;
   for (let attempt = 0; attempt < 40; attempt += 1) {
@@ -188,6 +231,10 @@ export async function waitForDomiLinkPrintJob(token: string, initial: DomiLinkPr
 export async function readDomiLinkScale(token: string, deviceId: string) {
   const payload = await request<{ reading: DomiLinkScaleReading }>(`/v1/scales/${encodeURIComponent(deviceId)}/read`, { token, timeoutMs: 5_000 });
   return payload.reading;
+}
+
+export function tareDomiLinkScale(token: string, deviceId: string) {
+  return request<void>(`/v1/scales/${encodeURIComponent(deviceId)}/tare`, { method: 'POST', token, timeoutMs: 5_000, retryGet: false });
 }
 
 export async function readDomiLinkBarcode(token: string, deviceId: string) {

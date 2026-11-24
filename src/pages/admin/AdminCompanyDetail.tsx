@@ -1,6 +1,10 @@
+import { CompanyOriginDetails } from "@/components/admin/CompanyOriginDetails";
+import { CompanyBillingStatus } from "@/components/admin/CompanyBillingStatus";
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
+import { deleteCompanyAsAdmin } from '@/lib/adminDeleteCompany';
 import { ArrowLeft, Edit, Trash2, AlertTriangle, Loader2, Pencil, X, Check, XCircle, Package, Users, RefreshCw, Handshake, Settings2 } from 'lucide-react';
 import { SelfServiceBadge } from '@/components/admin/company-lead/SelfServiceBadge';
 import { LeadWhatsAppButton } from '@/components/admin/company-lead/LeadWhatsAppButton';
@@ -37,6 +41,11 @@ import { OriginBadge } from '@/components/admin/OriginBadge';
 import { useAffiliate } from '@/hooks/useAffiliateData';
 import { getEffectiveSubscriptionValue } from '@/utils/subscriptionPricing';
 import { CompanyTutorialSuccessTab } from '@/components/admin/CompanyTutorialSuccessTab';
+import { useAdminCompanySubscriptionPromotions } from '@/hooks/useAdminCompanySubscriptionPromotions';
+import {
+  calculatePromotionalMonthlyValue,
+  remainingPromotionCycles,
+} from '@/lib/subscriptionPromotions';
 
 export default function AdminCompanyDetail() {
   const { id } = useParams();
@@ -121,9 +130,9 @@ export default function AdminCompanyDetail() {
   const asaasSubscriptionId = company?.asaas_subscription_id ?? null;
   const hasRecurrence = !!asaasSubscriptionId;
   const recurrenceLabel = (() => {
-    if (!asaasSubscriptionId) return 'Sem recorrência automática';
-    if (asaasSubscriptionId.startsWith('sub_')) return 'Cartão recorrente ativo';
-    return 'Pix Automático ativo';
+    if (!asaasSubscriptionId) return 'Sem recorrência vinculada';
+    if (asaasSubscriptionId.startsWith('sub_')) return 'Recorrência cadastrada';
+    return 'Autorização Pix cadastrada';
   })();
 
   // ===== Módulos do Plano (empresa arbitrária vista no admin) =====
@@ -157,6 +166,12 @@ export default function AdminCompanyDetail() {
     enabled: !!id,
   });
 
+  const {
+    data: activePromotions = [],
+    isLoading: promotionsLoading,
+    isError: promotionsError,
+  } = useAdminCompanySubscriptionPromotions(id, !!id);
+
   const modulesLoading = modulesCatalogLoading || plansLoading || addonsLoading;
 
   // Plano da empresa + rótulo amigável.
@@ -180,14 +195,19 @@ export default function AdminCompanyDetail() {
     .filter((m) => allCodes.has(m.code))
     .map((m) => ({ ...m, fromPlan: planCodes.includes(m.code) }))
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  const extraUsersPromotion = activePromotions.find(promotion => promotion.scope_type === 'extra_users');
+  const normalMonthlyValue = Number(company?.subscription_value) || 0;
+  const promotionalMonthlyValue = calculatePromotionalMonthlyValue(normalMonthlyValue, activePromotions);
 
+  // Mesma RPC da lista (admin_delete_company): confere permissão no servidor e
+  // apaga todo o tenant em transação. Nunca DELETE direto em `companies`.
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('companies').delete().eq('id', id!);
-      if (error) throw error;
+      await deleteCompanyAsAdmin(id!);
     },
     onSuccess: () => {
       toast({ title: 'Empresa excluída' });
+      queryClient.invalidateQueries({ queryKey: ['admin-companies'] });
       navigate('/admin/empresas');
     },
     onError: () => toast({ variant: 'destructive', title: 'Erro ao excluir' }),
@@ -197,8 +217,10 @@ export default function AdminCompanyDetail() {
     if (!id) return;
     setIsSavingNotes(true);
     try {
-      const { error } = await supabase.from('companies').update({ notes: notesValue || null }).eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('companies').update({ notes: notesValue || null }, { count: 'exact' }).eq('id', id),
+        'update',
+      );
       toast({ title: 'Observações salvas!' });
       setIsEditingNotes(false);
       refetch();
@@ -268,7 +290,7 @@ export default function AdminCompanyDetail() {
             variant="underline"
             tabs={[
               { value: 'info', label: 'Informações' },
-              { value: 'plano', label: 'Plano e Histórico' },
+              { value: 'plano', label: 'Plano e cobrança' },
               { value: 'atividade', label: 'Atividade' },
               { value: 'sucesso', label: 'Sucesso' },
             ]}
@@ -278,7 +300,7 @@ export default function AdminCompanyDetail() {
         ) : (
           <TabsList variant="underline">
             <TabsTrigger variant="underline" value="info">Informações</TabsTrigger>
-            <TabsTrigger variant="underline" value="plano">Plano e Histórico</TabsTrigger>
+            <TabsTrigger variant="underline" value="plano">Plano e cobrança</TabsTrigger>
             <TabsTrigger variant="underline" value="atividade">Atividade</TabsTrigger>
             <TabsTrigger variant="underline" value="sucesso">Sucesso</TabsTrigger>
           </TabsList>
@@ -333,7 +355,7 @@ export default function AdminCompanyDetail() {
                   </p>
                 </div>
                 <div>
-                  <span className="text-xs text-muted-foreground uppercase tracking-wider">Origem</span>
+                  <div className="flex items-center justify-between gap-2"><span className="text-xs text-muted-foreground uppercase tracking-wider">Origem</span><CompanyOriginDetails companyId={company.id} origin={company.origin} /></div>
                   <div className="mt-0.5 flex items-center gap-2 min-w-0">
                     <OriginBadge
                       name={company.origin}
@@ -482,7 +504,7 @@ export default function AdminCompanyDetail() {
               <span className="text-xs text-muted-foreground uppercase tracking-wider">Recorrência</span>
               <div className="flex flex-wrap items-center gap-2 mt-1">
                 {hasRecurrence ? (
-                  <Badge className="text-xs text-white border-0 bg-emerald-500 hover:bg-emerald-500 gap-1">
+                  <Badge className="text-xs text-white border-0 bg-slate-600 hover:bg-slate-600 gap-1">
                     <RefreshCw className="h-3 w-3" />
                     {recurrenceLabel}
                   </Badge>
@@ -547,8 +569,46 @@ export default function AdminCompanyDetail() {
               <Users className="h-4 w-4 text-muted-foreground" />
               <span className="text-xs text-muted-foreground uppercase tracking-wider">Usuários:</span>
               <span className="font-semibold">{company.max_users || 5}</span>
+              {extraUsersPromotion && (
+                <Badge className="border-0 bg-amber-500 text-xs text-white hover:bg-amber-500">
+                  {extraUsersPromotion.promotional_unit_price === 0
+                    ? `Usuários grátis por ${remainingPromotionCycles(extraUsersPromotion)} cobranças`
+                    : `${extraUsersPromotion.promotional_unit_price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/usuário por ${remainingPromotionCycles(extraUsersPromotion)} cobranças`}
+                </Badge>
+              )}
             </div>
           </div>
+
+          {promotionsError && (
+            <div role="alert" className="flex items-start gap-2 rounded-lg border p-3">
+              <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" aria-hidden="true" />
+              <div>
+                <p className="text-sm font-semibold">Condições promocionais indisponíveis</p>
+                <p className="text-xs leading-5 text-muted-foreground">
+                  Recarregue a ficha antes de alterar módulos ou usuários desta empresa.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {promotionsLoading ? (
+            <Skeleton className="h-16 w-full rounded-lg" />
+          ) : activePromotions.length > 0 ? (
+            <div className="grid gap-3 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 sm:grid-cols-2">
+              <div>
+                <p className="text-xs text-muted-foreground">Próxima mensalidade</p>
+                <p className="text-lg font-semibold tabular-nums">
+                  {promotionalMonthlyValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </p>
+              </div>
+              <div className="sm:text-right">
+                <p className="text-xs text-muted-foreground">Após todas as promoções</p>
+                <p className="text-lg font-semibold tabular-nums">
+                  {normalMonthlyValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </p>
+              </div>
+            </div>
+          ) : null}
 
           {/* Lista de módulos */}
           {modulesLoading ? (
@@ -584,6 +644,20 @@ export default function AdminCompanyDetail() {
                       <Badge variant="secondary" className="text-xs">
                         {mod.fromPlan ? 'Incluso no plano' : 'Adicional'}
                       </Badge>
+                      {(() => {
+                        const promotion = activePromotions.find(item => (
+                          item.scope_type === 'module' && item.module_code === mod.code
+                        ));
+                        if (!promotion) return null;
+                        const remaining = remainingPromotionCycles(promotion);
+                        return (
+                          <Badge className="border-0 bg-amber-500 text-xs text-white hover:bg-amber-500">
+                            {promotion.promotional_unit_price === 0
+                              ? `Grátis por ${remaining} ${remaining === 1 ? 'cobrança' : 'cobranças'}`
+                              : `${promotion.promotional_unit_price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} por ${remaining} ${remaining === 1 ? 'cobrança' : 'cobranças'}`}
+                          </Badge>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -604,6 +678,7 @@ export default function AdminCompanyDetail() {
         </TabsContent>
 
         <TabsContent value="plano" className="mt-4">
+          <CompanyBillingStatus companyId={id!} />
           <SubscriptionHistoryTab companyId={id!} />
         </TabsContent>
 

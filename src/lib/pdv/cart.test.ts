@@ -6,6 +6,7 @@ import {
   computeItemDiscountTotal,
   computeSubtotal,
   computeTotal,
+  couponCartSignature,
   countItems,
   incrementLineQuantity,
   removeItem,
@@ -221,7 +222,7 @@ describe('subtotal e total', () => {
     expect(result.discount).toBe(0);
   });
 
-  it('edita o valor final da linha como preço desta operação sem expor desconto', () => {
+  it('edita o valor final da linha como preço deste pedido sem expor desconto', () => {
     const cart = addItem(EMPTY_CART, product({ unitPrice: 25 }), 2).cart;
     const result = setLineFinalAmount(cart, 'p1', 40, 'price');
     expect(result.lines[0]).toMatchObject({ unitPrice: 20, discountAmount: 0 });
@@ -235,24 +236,17 @@ describe('subtotal e total', () => {
     expect(computeTotal(result)).toBe(40);
   });
 
-  it('edita o total como desconto geral quando a pessoa escolhe exibi-lo', () => {
-    let cart = addItem(EMPTY_CART, product({ inventoryId: 'p1', unitPrice: 25 }), 2).cart;
-    cart = addItem(cart, product({ inventoryId: 'p2', unitPrice: 50 }), 1).cart;
+  it('edita o total como desconto geral sem duplicar o cupom confirmado', () => {
+    let cart = addItem(EMPTY_CART, product({ unitPrice: 100 }), 1).cart;
+    cart = { ...cart, coupon: { id: 'coupon', code: 'CUPOM10', discountCents: 1000, eligible: true, baseSignature: couponCartSignature(cart) } };
     const result = setCartFinalAmount(cart, 80, 'discount');
     expect(result.discount).toBe(20);
-    expect(result.lines.map(line => line.unitPrice)).toEqual([25, 50]);
     expect(computeTotal(result)).toBe(80);
   });
 
-  it('edita o total rateando preços da operação e removendo descontos anteriores', () => {
-    let cart = addItem(EMPTY_CART, product({ inventoryId: 'p1', unitPrice: 25 }), 2).cart;
-    cart = addItem(cart, product({ inventoryId: 'p2', unitPrice: 50 }), 1).cart;
-    cart = setLineDiscount(cart, 'p1', 5);
-    cart = setDiscount(cart, 5);
-    const result = setCartFinalAmount(cart, 80, 'price');
-    expect(result.discount).toBe(0);
-    expect(result.lines.every(line => line.discountAmount === 0)).toBe(true);
-    expect(computeTotal(result)).toBe(80);
+  it('não aumenta o total pelo campo que representa desconto geral', () => {
+    const cart = addItem(EMPTY_CART, product({ unitPrice: 25 }), 2).cart;
+    expect(setCartFinalAmount(cart, 60, 'discount')).toBe(cart);
   });
 });
 

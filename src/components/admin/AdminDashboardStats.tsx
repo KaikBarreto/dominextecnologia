@@ -7,6 +7,7 @@ import type {
   AdminDashboardTransaction,
 } from '@/hooks/useAdminDashboardData';
 import { calculateAdminDashboardPeriodMetrics } from '@/lib/adminDashboardMetrics';
+import { adminKpiClass } from '@/components/admin/adminKpiStyles';
 
 interface AdminDashboardStatsProps {
   companies: AdminDashboardCompany[];
@@ -83,23 +84,26 @@ export function AdminDashboardStats({
   const renderCard = (stat: (typeof stats)[number]) => (
     <Card
       key={stat.title}
-      className={`relative h-full overflow-hidden border-0 shadow-lg ${stat.bgColor} text-white dark:border dark:bg-card dark:text-card-foreground ${stat.darkBorder}`}
+      className={adminKpiClass(
+        stat.title === 'Receita' ? 'emerald' : stat.title === 'Empresas Ativas' ? 'blue' : stat.title === 'Vendas' ? 'violet' : 'amber',
+        'relative h-full overflow-hidden shadow-lg',
+      )}
     >
       <CardContent className="p-4 lg:p-6">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 space-y-1 lg:space-y-2">
-            <p className="text-xs font-medium text-white/80 dark:text-muted-foreground lg:text-sm">
+            <p className="text-xs font-medium text-white/80 lg:text-sm">
               {stat.title}
             </p>
-            <p className={`truncate text-lg font-bold tracking-tight tabular-nums lg:text-2xl ${stat.darkValueColor}`}>
+            <p className="truncate text-lg font-bold tracking-tight tabular-nums lg:text-2xl">
               {stat.value}
             </p>
             {stat.subtitle && (
-              <p className="text-xs text-white/70 dark:text-muted-foreground">{stat.subtitle}</p>
+              <p className="text-xs text-white/70">{stat.subtitle}</p>
             )}
           </div>
-          <div className={`shrink-0 rounded-xl p-2 ${stat.iconBg} ${stat.darkIconBg}`}>
-            <stat.icon className={`h-4 w-4 text-white ${stat.darkIconColor}`} />
+          <div className="shrink-0 rounded-xl bg-black/20 p-2">
+            <stat.icon className="h-4 w-4 text-white" />
           </div>
         </div>
       </CardContent>

@@ -2,8 +2,8 @@
 // _shared/dfe-client.ts — adaptador HTTP das rotas de DF-e do motor próprio.
 // =============================================================================
 // DF-e = Documentos Fiscais eletrônicos DESTINADOS ao CNPJ do cliente (notas que
-// OUTROS emitiram contra ele). Quatro rotas no `dominex-fiscal`
-// (services/dominex-fiscal, §10 do RUNBOOK.md):
+// OUTROS emitiram contra ele). Quatro rotas na API compartilhada `motor-fiscal`
+// (github.com/KaikBarreto/motor-fiscal):
 //
 //   POST /v1/dfe/distribuicao        → fila de NF-e destinada (cursor de NSU, SEFAZ)
 //   POST /v1/dfe/consulta-chave      → diagnóstico por chave (não mexe no cursor)

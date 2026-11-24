@@ -2,10 +2,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
 import { toast } from 'sonner';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { format } from 'date-fns';
 import { brtDateOnlyToTimestamp } from '@/lib/date-br';
 
 export type SalespersonRole = 'sdr' | 'closer';
+export type SalespersonPersonType = 'sales' | 'customer_success' | 'support' | 'financial' | 'admin' | 'partner' | 'other';
 
 export interface Salesperson {
   id: string;
@@ -20,6 +22,11 @@ export interface Salesperson {
   daily_goal_meetings_scheduled: number;
   is_active: boolean;
   no_commission: boolean;
+  /** Estado e carimbo usados exclusivamente pelo rodízio de leads self-service. */
+  in_rotation?: boolean;
+  last_lead_assigned_at?: string | null;
+  person_type?: SalespersonPersonType;
+  can_receive_sales?: boolean;
   referral_code: string | null;
   notes: string | null;
   photo_url: string | null;
@@ -36,6 +43,8 @@ export interface SalespersonBasic {
   photo_url: string | null;
   is_active: boolean | null;
   role: SalespersonRole | null;
+  can_receive_sales?: boolean | null;
+  person_type?: SalespersonPersonType | null;
   user_id: string | null;
   /** Metas diárias do diário comercial — não são dado sensível, por isso
    * entraram na view enxuta junto com o resto. */
@@ -160,12 +169,14 @@ export function salesForPerson(sales: SalespersonSale[], personId: string): Sale
 
 // ==================== Queries ====================
 
-export function useSalespeople(activeOnly = false) {
+export function useSalespeople(activeOnly = false, onlyId?: string, enabled = true) {
   return useQuery({
-    queryKey: ['salespeople', { activeOnly }],
+    queryKey: ['salespeople', { activeOnly, onlyId: onlyId ?? null }],
+    enabled,
     queryFn: async () => {
       let q = supabase.from('salespeople').select('*').order('name');
       if (activeOnly) q = q.eq('is_active', true);
+      if (onlyId) q = q.eq('id', onlyId);
       const { data, error } = await q;
       if (error) throw error;
       return (data || []) as Salesperson[];
@@ -183,9 +194,9 @@ export function useSalespeopleBasic(activeOnly = true) {
     queryFn: async () => {
       let q = supabase
         .from('salespeople_basic')
-        .select('id, name, email, photo_url, is_active, role, user_id')
+        .select('id, name, email, photo_url, is_active, role, user_id, can_receive_sales, person_type')
         .order('name');
-      if (activeOnly) q = q.eq('is_active', true);
+      if (activeOnly) q = q.eq('is_active', true).filter('can_receive_sales', 'eq', true);
       const { data, error } = await q;
       if (error) throw error;
       return (data || []) as SalespersonBasic[];
@@ -254,9 +265,10 @@ export function useSalespersonPayments(salespersonId: string | undefined) {
   });
 }
 
-export function useAllSalespersonSales() {
+export function useAllSalespersonSales(enabled = true) {
   return useQuery({
     queryKey: ['all_salesperson_sales'],
+    enabled,
     queryFn: async () => {
       const data = await fetchAllPaginated<SalespersonSale>(() =>
         supabase.from('salesperson_sales').select('*').order('created_at', { ascending: false })
@@ -266,9 +278,10 @@ export function useAllSalespersonSales() {
   });
 }
 
-export function useAllSalespersonAdvances() {
+export function useAllSalespersonAdvances(enabled = true) {
   return useQuery({
     queryKey: ['all_salesperson_advances'],
+    enabled,
     queryFn: async () => {
       const data = await fetchAllPaginated<SalespersonAdvance>(() =>
         supabase.from('salesperson_advances').select('*').order('created_at', { ascending: false })
@@ -298,7 +311,8 @@ export function useSaveSalesperson() {
     mutationFn: async (payload: Partial<Salesperson> & { id?: string }) => {
       const { id, ...rest } = payload;
       if (id) {
-        const { data, error } = await supabase.from('salespeople').update(rest).eq('id', id).select().single();
+        // Tipos gerados ainda não conhecem as colunas aditivas desta migration.
+        const { data, error } = await supabase.from('salespeople').update(rest as unknown as never).eq('id', id).select().single();
         if (error) throw error;
         return data;
       }
@@ -318,8 +332,11 @@ export function useDeleteSalesperson() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('salespeople').delete().eq('id', id);
-      if (error) throw error;
+      // RLS barrando não dá erro, só apaga zero linhas: conferir.
+      assertRowsAffected(
+        await supabase.from('salespeople').delete({ count: 'exact' }).eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['salespeople'] });
@@ -373,8 +390,11 @@ export function useDeleteSale() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('salesperson_sales').delete().eq('id', id);
-      if (error) throw error;
+      // RLS barrando não dá erro, só apaga zero linhas: conferir.
+      assertRowsAffected(
+        await supabase.from('salesperson_sales').delete({ count: 'exact' }).eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['salesperson_sales'] });
@@ -440,7 +460,7 @@ export function useCreateAdvance() {
       qc.invalidateQueries({ queryKey: ['salesperson_advances'] });
       qc.invalidateQueries({ queryKey: ['all_salesperson_advances'] });
       invalidateAdminFinancials(qc);
-      toast.success('Vale registrado');
+      toast.success('Vale/Adiantamento registrado');
     },
     onError: (e: any) => toast.error(e?.message || 'Erro ao registrar vale'),
   });
@@ -450,21 +470,27 @@ export function useDeleteAdvance() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      // Remove a despesa espelhada primeiro pra não deixar lançamento órfão.
-      await supabase
+      // O vale primeiro, conferindo: RLS barrando não dá erro, só apaga zero
+      // linhas, e aí a despesa espelhada não pode sumir. Não há FK entre os dois
+      // (vínculo é reference_id + reference_type), então a ordem é livre.
+      assertRowsAffected(
+        await supabase.from('salesperson_advances').delete({ count: 'exact' }).eq('id', id),
+        'delete',
+      );
+
+      // Depois a despesa espelhada, pra não deixar lançamento órfão.
+      const { error: mirrorErr } = await supabase
         .from('admin_financial_transactions')
         .delete()
         .eq('reference_id', id)
         .eq('reference_type', 'salesperson_advance');
-
-      const { error } = await supabase.from('salesperson_advances').delete().eq('id', id);
-      if (error) throw error;
+      if (mirrorErr) throw mirrorErr;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['salesperson_advances'] });
       qc.invalidateQueries({ queryKey: ['all_salesperson_advances'] });
       invalidateAdminFinancials(qc);
-      toast.success('Vale removido');
+      toast.success('Vale/Adiantamento removido');
     },
     onError: (e: any) => toast.error(e?.message || 'Erro ao remover vale'),
   });
@@ -559,11 +585,15 @@ export function useUpdatePaymentDate() {
     mutationFn: async ({ id, paidAt }: { id: string; paidAt: string }) => {
       // paidAt chega como ISO completo já ancorado ao meio-dia BRT (ver
       // SalespersonPaymentControl). Usa direto, sem reformatar pra 'yyyy-MM-dd'.
-      const { error } = await supabase
-        .from('salesperson_payments')
-        .update({ paid_at: paidAt })
-        .eq('id', id);
-      if (error) throw error;
+      // RLS barrando não dá erro, só altera zero linhas: conferir antes de
+      // propagar a data pro financeiro.
+      assertRowsAffected(
+        await supabase
+          .from('salesperson_payments')
+          .update({ paid_at: paidAt }, { count: 'exact' })
+          .eq('id', id),
+        'update',
+      );
 
       // Propaga pro financeiro: salário + comissão deste pagamento.
       const { error: salErr } = await supabase
@@ -588,14 +618,20 @@ export function useDeletePayment() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      await supabase
+      // O pagamento primeiro, conferindo: RLS barrando não dá erro, só apaga
+      // zero linhas, e aí as despesas espelhadas não podem sumir. Não há FK
+      // entre os dois (reference_id + reference_type), então a ordem é livre.
+      assertRowsAffected(
+        await supabase.from('salesperson_payments').delete({ count: 'exact' }).eq('id', id),
+        'delete',
+      );
+
+      const { error: mirrorErr } = await supabase
         .from('admin_financial_transactions')
         .delete()
         .eq('reference_id', id)
         .in('reference_type', ['salesperson_payment_salary', 'salesperson_payment_commission']);
-
-      const { error } = await supabase.from('salesperson_payments').delete().eq('id', id);
-      if (error) throw error;
+      if (mirrorErr) throw mirrorErr;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['salesperson_payments'] });

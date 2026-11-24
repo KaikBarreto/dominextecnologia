@@ -16,10 +16,12 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
 } from '@/components/ui/dialog';
 import {
   Drawer,
   DrawerContent,
+  DrawerTitle,
 } from '@/components/ui/drawer';
 import { useIsCompact } from '@/hooks/use-mobile';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -136,12 +138,17 @@ export function DailyTasksPopup({ userId, onOpenDrawer }: DailyTasksPopupProps) 
     if (totalCount === 0) return;
     if (hasShownToday(userId, today)) return;
 
-    markShownToday(userId, today);
     setOpen(true);
-    // Intencional: deps não incluem `todayAndOverdue` para não reabrir se a
-    // lista mudar depois de montado. O popup abre UMA vez após os dados chegarem.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, userId, totalCount, today]);
+
+  // Só consome a frequência diária quando o popup chegou de fato à frente da
+  // fila. Tutorial, NPS ou um bloqueio crítico podem mantê-lo suspenso por
+  // vários minutos; marcar antes faria o lembrete sumir num refresh sem nunca
+  // ter sido visto.
+  useEffect(() => {
+    if (!open || !isActiveOverlay || !userId || !today) return;
+    markShownToday(userId, today);
+  }, [isActiveOverlay, open, today, userId]);
 
   const dismiss = useCallback(() => {
     setOpen(false);
@@ -168,6 +175,7 @@ export function DailyTasksPopup({ userId, onOpenDrawer }: DailyTasksPopupProps) 
     return (
       <Drawer open={visibleOpen} onOpenChange={(v) => { if (!v && isActiveOverlay) dismiss(); }}>
         <DrawerContent className="pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+          <DrawerTitle className="sr-only">{t.drawerTitle}</DrawerTitle>
           <div className="px-4 pt-2 pb-4">{body}</div>
         </DrawerContent>
       </Drawer>
@@ -180,6 +188,7 @@ export function DailyTasksPopup({ userId, onOpenDrawer }: DailyTasksPopupProps) 
         className="sm:max-w-md p-0 overflow-hidden border-0 bg-transparent shadow-none"
         aria-describedby={undefined}
       >
+        <DialogTitle className="sr-only">{t.drawerTitle}</DialogTitle>
         <div className="p-2">{body}</div>
       </DialogContent>
     </Dialog>

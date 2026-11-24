@@ -1,3 +1,6 @@
+import { BusinessCoreSelect } from '@/components/company/BusinessCoreSelect';
+import { useCreateRegistrationCoreOffer } from '@/hooks/useRegistrationCoreOffer';
+import type { BusinessCore } from '@/lib/businessCore';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -47,6 +50,8 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
   const [selectedOrigin, setSelectedOrigin] = useState('');
   const [selectedSalesperson, setSelectedSalesperson] = useState(''); // Vendedor
   const [selectedAffiliate, setSelectedAffiliate] = useState(''); // Afiliado (opcional)
+  const [businessCore, setBusinessCore] = useState<BusinessCore>('services');
+  const offerMutation = useCreateRegistrationCoreOffer();
   const [linkType, setLinkType] = useState<'teste' | 'venda'>('teste');
   const [trialDays, setTrialDays] = useState(7);
   const [isCustomTrialDays, setIsCustomTrialDays] = useState(false);
@@ -119,6 +124,7 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
         .from('salespeople_basic')
         .select('id, name, referral_code, role')
         .eq('is_active', true)
+        .filter('can_receive_sales', 'eq', true)
         .order('name');
       if (error) throw error;
       return data || [];
@@ -142,11 +148,11 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
   }, [open, linkedSalespersonId, salespeople]);
 
   const { data: plans = [] } = useQuery({
-    queryKey: ['subscription-plans-link'],
+    queryKey: ['subscription-plans','registration-links'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('subscription_plans')
-        .select('code, name, price, max_users, description')
+        .select('code, name, price, max_users, description, business_core')
         .eq('is_active', true)
         .order('price');
       if (error) throw error;
@@ -156,17 +162,18 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
 
   // Plano "personalizado" do banco não entra na lista de planos pré-definidos
   // (ele tem o modo próprio com grade de módulos).
-  const standardPlans = plans.filter((p: any) => p.code !== 'personalizado');
+  const standardPlans = plans.filter((p: any) => p.code !== 'personalizado' && (p.business_core || 'services') === businessCore);
   const selectedPlan = standardPlans.find((p: any) => p.code === selectedPlanCode);
 
   // Catálogo de módulos (modo Personalizado).
-  const { data: allModules = [] } = useSubscriptionModules();
+  const { data: allModules = [] } = useSubscriptionModules(businessCore);
   const suggestedModulesPrice = sumModulesPrice(
     allModules,
     customModules,
     undefined,
     undefined,
     Number(customMaxUsers),
+    businessCore,
   );
   const finalCustomPlanPrice = useCustomPrice && customPriceValue
     ? parseFloat(customPriceValue) || 0
@@ -176,7 +183,7 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
   const affiliateOriginName = selectedAffiliate
     ? resolveAffiliateOriginName(origins as CatalogOrigin[])
     : null;
-  const configuredModuleCodes = withBaseModules(customModules);
+  const configuredModuleCodes = withBaseModules(customModules,businessCore);
   const configuredModuleNames = allModules
     .filter((module) => configuredModuleCodes.includes(module.code))
     .map((module) => module.name);
@@ -187,6 +194,7 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
   // assinatura para cobrir também refetch de vendedor, afiliado, plano e módulo.
   const configurationSignature = JSON.stringify({
     linkType,
+    businessCore,
     trialDays,
     selectedOrigin,
     selectedSalesperson,
@@ -212,6 +220,11 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
     finalCustomPlanPrice,
   });
 
+  const liveConfiguration=useRef(configurationSignature);
+  liveConfiguration.current=configurationSignature;
+  const openRef=useRef(open);
+  openRef.current=open;
+
   useEffect(() => {
     setGeneratedSnapshot((current) => (
       current && current.configurationSignature !== configurationSignature ? null : current
@@ -224,7 +237,7 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
 
   const handleToggleModule = (code: string) => {
     setCustomModules(prev => withBaseModules(
-      prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code],
+      prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code], businessCore,
     ));
   };
 
@@ -272,8 +285,17 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
       }
     }
 
+    let offerToken: string;
+    try { offerToken = await offerMutation.mutateAsync({core:businessCore,params}); }
+    catch { toast({variant:'destructive',title:'Não foi possível gerar o link',description:'Tente novamente. As condições não foram salvas.'}); return; }
+    if(!openRef.current || liveConfiguration.current!==configurationSignature) {
+      toast({title:'As opções mudaram',description:'Gere novamente para copiar as condições atuais.'});return;
+    }
+    params.set('nucleo',businessCore);
+    params.set('oferta',offerToken);
     const link = params.toString() ? `${baseUrl}/cadastro?${params.toString()}` : `${baseUrl}/cadastro`;
     const summaryLines = [
+      `Núcleo: ${businessCore === 'retail' ? 'Loja' : 'Serviços'}`,
       `Tipo: ${linkType === 'teste' ? `Teste (${trialDays} dias)` : 'Venda direta'}`,
     ];
     if (selectedAffiliate || selectedOrigin) {
@@ -339,6 +361,7 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
     setSelectedSalesperson('');
     setSelectedAffiliate('');
     setLinkType('teste');
+    setBusinessCore('services');
     setTrialDays(7);
     setIsCustomTrialDays(false);
     setGeneratedSnapshot(null);
@@ -369,6 +392,7 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
 
         {/* GERAL */}
         <TabsContent value="geral" className="space-y-4 pt-4">
+          <BusinessCoreSelect value={businessCore} onChange={core=>{setBusinessCore(core);setSelectedPlanCode('');setCustomModules(withBaseModules([],core));}} disabled={offerMutation.isPending}/>
           <div className="space-y-2">
             <Label>Tipo de Link</Label>
             <RadioGroup
@@ -689,6 +713,7 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
                   </span>
                 </div>
                 <ModuleGrid
+                businessCore={businessCore}
                   modules={allModules}
                   selected={customModules}
                   onToggle={handleToggleModule}
@@ -795,7 +820,7 @@ export function GenerateLinkModal({ open, onOpenChange }: Props) {
       </Tabs>
 
       <div className="space-y-4 pt-4 border-t">
-        <Button type="button" onClick={handleGenerateLink} className="w-full">
+        <Button type="button" onClick={handleGenerateLink} disabled={offerMutation.isPending} className="w-full">
           <LinkIcon className="h-4 w-4 mr-2" />Gerar Link
         </Button>
 

@@ -5,6 +5,7 @@ import base64
 import binascii
 import json
 import logging
+import re
 from collections.abc import Mapping
 from dataclasses import asdict
 from typing import Any, AsyncIterator, Dict, Optional
@@ -275,7 +276,7 @@ def create_app(
             ) from exc
         if payload.format == "pdf" and (
             not content.startswith(b"%PDF-")
-            or b"/Type /Page " not in content
+            or re.search(rb"/Type\s*/Page(?=[\s/>])", content) is None
             or not content.rstrip().endswith(b"%%EOF")
         ):
             raise HTTPException(
@@ -339,10 +340,10 @@ def create_app(
 
     @app.get(f"{API_PREFIX}/print/jobs/{{job_id}}")
     async def print_status(
-        job_id: str, _auth: tuple[Session, str] = Depends(current_auth)
+        job_id: str, auth: tuple[Session, str] = Depends(current_auth)
     ) -> Dict[str, Any]:
         try:
-            job = app.state.jobs.get(job_id)
+            job = app.state.jobs.get(job_id, scope=auth[0].id)
         except KeyError as exc:
             raise HTTPException(
                 status_code=404,

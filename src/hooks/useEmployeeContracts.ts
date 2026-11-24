@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 export type ContractBillingType = 'monthly' | 'per_order' | 'hourly' | 'daily';
 export type ContractStatus = 'active' | 'ended';
@@ -108,11 +109,15 @@ export function useEmployeeContracts(employeeId: string | null) {
 
   const endContract = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('employee_contracts')
-        .update({ status: 'ended' } as any)
-        .eq('id', id);
-      if (error) throw error;
+      // RLS barrando o update não dá erro, só altera zero linhas: conferir.
+      assertRowsAffected(
+        await supabase
+          .from('employee_contracts')
+          .update({ status: 'ended' } as any, { count: 'exact' })
+          .eq('id', id),
+        'update',
+        'Não foi possível encerrar o contrato: você não tem permissão para esta ação ou o contrato já não existe. Atualize a tela e tente de novo.',
+      );
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey });
@@ -129,11 +134,16 @@ export function useEmployeeContracts(employeeId: string | null) {
   const renewContract = useMutation({
     mutationFn: async (input: { previousId?: string | null; next: EmployeeContractInput }) => {
       if (input.previousId) {
-        const { error: endError } = await supabase
-          .from('employee_contracts')
-          .update({ status: 'ended' } as any)
-          .eq('id', input.previousId);
-        if (endError) throw endError;
+        // Conferir antes de inserir o novo: encerrar barrado pela RLS não dá
+        // erro, e seguir deixaria dois contratos vigentes.
+        assertRowsAffected(
+          await supabase
+            .from('employee_contracts')
+            .update({ status: 'ended' } as any, { count: 'exact' })
+            .eq('id', input.previousId),
+          'update',
+          'Não foi possível encerrar o contrato atual: você não tem permissão para esta ação ou o contrato já não existe. Atualize a tela e tente de novo.',
+        );
       }
       const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
       const company_id = await getCurrentUserCompanyId();

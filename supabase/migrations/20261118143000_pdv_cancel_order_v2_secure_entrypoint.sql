@@ -1,7 +1,6 @@
--- Reabre o cancelamento de venda para o cliente autenticado sem devolver
--- acesso ao core legado. O wrapper aplica primeiro a custodia do caixa:
--- operador cancela somente pedido do proprio caixa; perfis autorizados a
--- operar outros caixas preservam esse alcance.
+-- Publica o cancelamento para o cliente autenticado sem reabrir o core legado.
+-- O wrapper aplica primeiro a custódia do caixa; o core permanece atômico e
+-- responsável pelos estornos de estoque, financeiro e fiado.
 CREATE OR REPLACE FUNCTION public.pdv_cancel_order_v2(
   p_order_id uuid,
   p_reason text
@@ -18,7 +17,7 @@ END
 $fn$;
 
 COMMENT ON FUNCTION public.pdv_cancel_order_v2(uuid, text) IS
-  'Cancela atomicamente um pedido acessivel ao caixa do ator. Mantem o core pdv_cancel_order sem EXECUTE para authenticated e preserva estoque, financeiro e auditoria.';
+  'Cancela atomicamente um pedido acessível ao caixa do ator. Mantém o core pdv_cancel_order fechado e preserva estoque, financeiro e auditoria.';
 
 REVOKE ALL ON FUNCTION public.pdv_cancel_order_v2(uuid, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.pdv_cancel_order_v2(uuid, text) TO authenticated, service_role;

@@ -1,214 +1,186 @@
-import { useMemo, useState } from 'react';
-import { Eye, Megaphone, Search } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { EmptyState } from '@/components/mobile/EmptyState';
-import { Input } from '@/components/ui/input';
+import { useEffect, useMemo, useState } from 'react';
+import { Inbox, Megaphone, RotateCw } from 'lucide-react';
+import { FilterButton } from '@/components/ui/FilterButton';
+import { ListDetailLayout, type ListDetailItem, type ListDetailSortOption } from '@/components/ui/ListDetailLayout';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { EmptyState } from '@/components/mobile/EmptyState';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { formatDateTime } from '@/lib/format';
 import { MESSAGES } from '@/lib/i18n/messages';
-import { fuzzyIncludes } from '@/lib/utils';
-import { getPortalCallSource, isOpenPortalCall, isPortalCall, type PortalCallSource } from '@/lib/portalCalls';
-import { formatOSNumber } from '@/lib/osNumber';
-import type { ServiceOrder } from '@/types/database';
+import type { PortalCall, PortalCallSource, PortalCallStatus } from '@/lib/portalCalls';
+import { PortalCallDetailPanel, PortalCallStatusBadge } from './PortalCallDetailPanel';
 
-type CallView = 'open' | 'all';
+type StatusFilter = 'all' | PortalCallStatus;
 type SourceFilter = 'all' | PortalCallSource;
+type PortalCallsMessages = typeof MESSAGES['pt-br']['app']['os']['calls'];
 
 interface PortalCallsPanelProps {
-  items: ServiceOrder[];
-  isLoading?: boolean;
-  defaultView?: CallView;
-  onOpenCall: (order: ServiceOrder) => void;
-}
-
-function relationName(value: unknown): string | undefined {
-  if (!value || typeof value !== 'object') return undefined;
-  const name = (value as { name?: unknown }).name;
-  return typeof name === 'string' ? name : undefined;
+  calls: PortalCall[];
+  isLoading: boolean;
+  isError: boolean;
+  selectedCallId?: string | null;
+  canManage: boolean;
+  isConverting: boolean;
+  isClosing: boolean;
+  onRetry: () => void;
+  onConvert: (callId: string) => Promise<unknown>;
+  onCloseWithoutOs: (callId: string) => Promise<unknown>;
+  onOpenServiceOrder: (serviceOrderId: string) => void;
 }
 
 export function PortalCallsPanel({
-  items,
-  isLoading = false,
-  defaultView = 'open',
-  onOpenCall,
+  calls,
+  isLoading,
+  isError,
+  selectedCallId,
+  canManage,
+  isConverting,
+  isClosing,
+  onRetry,
+  onConvert,
+  onCloseWithoutOs,
+  onOpenServiceOrder,
 }: PortalCallsPanelProps) {
-  const isMobile = useIsMobile();
-  const { locale, timezone } = useAppLocaleContext();
-  const t = MESSAGES[locale].app.os;
-  const tc = t.calls;
-  const [view, setView] = useState<CallView>(defaultView);
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.os.calls as PortalCallsMessages;
+  const [selectedId, setSelectedId] = useState<string | undefined>(selectedCallId ?? undefined);
+  const [status, setStatus] = useState<StatusFilter>('aguardando_analise');
   const [source, setSource] = useState<SourceFilter>('all');
-  const [search, setSearch] = useState('');
 
-  const portalCalls = useMemo(() => items.filter(isPortalCall), [items]);
-  const filteredCalls = useMemo(() => {
-    const term = search.trim();
-    return portalCalls.filter((order) => {
-      if (view === 'open' && !isOpenPortalCall(order)) return false;
-      if (source !== 'all' && getPortalCallSource(order) !== source) return false;
-      if (!term) return true;
-      return (
-        fuzzyIncludes(String(order.order_number), term)
-        || fuzzyIncludes(order.description, term)
-        || fuzzyIncludes(order.customer?.name, term)
-        || fuzzyIncludes(order.equipment?.name, term)
-        || fuzzyIncludes(relationName((order as ServiceOrder & { contract?: unknown }).contract), term)
-      );
-    });
-  }, [portalCalls, search, source, view]);
+  useEffect(() => {
+    if (selectedCallId) setSelectedId(selectedCallId);
+  }, [selectedCallId]);
 
-  const sourceLabel = (order: ServiceOrder) => (
-    getPortalCallSource(order) === 'contract' ? tc.sourceContract : tc.sourceCustomer
+  const selectedCall = calls.find((call) => call.id === selectedId);
+  const filteredCalls = useMemo(
+    () => calls.filter((call) => (
+      (status === 'all' || call.status === status)
+      && (source === 'all' || call.source === source)
+    )),
+    [calls, source, status],
   );
-  const statusLabel = (order: ServiceOrder) => (
-    t.statusFallback[order.status] ?? order.status
-  );
+
+  const callById = useMemo(() => new Map(calls.map((call) => [call.id, call])), [calls]);
+  const listItems: ListDetailItem[] = useMemo(() => filteredCalls.map((call) => {
+    const protocol = call.protocol_number ? `CH-${call.protocol_number}` : `CH-${call.id.slice(0, 8)}`;
+    return {
+      id: call.id,
+      title: call.customer?.name || t.customerFallback,
+      subtitle: `${protocol} · ${call.description || t.noDescription}`,
+      searchText: [protocol, call.description, call.customer?.name, call.equipment?.name, call.contract?.name]
+        .filter(Boolean).join(' '),
+      leading: (
+        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+          <Megaphone className="h-4 w-4" />
+        </span>
+      ),
+      trailing: <PortalCallStatusBadge status={call.status} className="text-[10px]" />,
+    };
+  }), [filteredCalls, t.customerFallback, t.noDescription]);
+
+  const sortOptions: ListDetailSortOption[] = useMemo(() => [
+    {
+      value: 'newest', label: t.newestFirst, shortLabel: '↓',
+      compare: (a, b) => new Date(callById.get(b.id)?.created_at ?? 0).getTime()
+        - new Date(callById.get(a.id)?.created_at ?? 0).getTime(),
+    },
+    {
+      value: 'oldest', label: t.oldestFirst, shortLabel: '↑',
+      compare: (a, b) => new Date(callById.get(a.id)?.created_at ?? 0).getTime()
+        - new Date(callById.get(b.id)?.created_at ?? 0).getTime(),
+    },
+    {
+      value: 'customer', label: t.customerAsc, shortLabel: 'A–Z',
+      compare: (a, b) => a.title.localeCompare(b.title, locale, { sensitivity: 'base' }),
+    },
+  ], [callById, locale, t.customerAsc, t.newestFirst, t.oldestFirst]);
 
   if (isLoading) {
     return (
-      <div className="space-y-3">
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-24 w-full" />
-        <Skeleton className="h-24 w-full" />
+      <div className="grid gap-5 lg:grid-cols-[minmax(20rem,24rem)_minmax(0,1fr)]">
+        <div className="space-y-3">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+        </div>
+        <Skeleton className="hidden h-80 w-full lg:block" />
       </div>
     );
   }
 
+  if (isError) {
+    return <EmptyState icon={<RotateCw className="h-10 w-10" />} title={t.errorTitle} description={t.errorDescription} action={{ label: t.retry, onClick: onRetry }} />;
+  }
+
+  if (calls.length === 0) {
+    return <EmptyState icon={<Inbox className="h-10 w-10" />} title={t.emptyTitle} description={t.emptyDescription} />;
+  }
+
+  const activeFilterCount = (status === 'all' ? 0 : 1) + (source === 'all' ? 0 : 1);
+  const filters = (
+    <FilterButton embedded activeCount={activeFilterCount} onClear={() => { setStatus('all'); setSource('all'); }}>
+      <div className="space-y-2">
+        <label className="text-sm font-medium">{t.filterStatus}</label>
+        <Select value={status} onValueChange={(value) => setStatus(value as StatusFilter)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t.filterAll}</SelectItem>
+            <SelectItem value="aguardando_analise">{t.statusAwaiting}</SelectItem>
+            <SelectItem value="convertido">{t.statusConverted}</SelectItem>
+            <SelectItem value="encerrado_sem_os">{t.statusClosed}</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <label className="text-sm font-medium">{t.source}</label>
+        <Select value={source} onValueChange={(value) => setSource(value as SourceFilter)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t.sourceAll}</SelectItem>
+            <SelectItem value="customer">{t.sourceCustomer}</SelectItem>
+            <SelectItem value="contract">{t.sourceContract}</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </FilterButton>
+  );
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-        <div className="relative min-w-0 flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder={tc.searchPlaceholder}
-            className="pl-10"
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-2 sm:flex">
-          <Select value={view} onValueChange={(value) => setView(value as CallView)}>
-            <SelectTrigger className="w-full sm:w-[150px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="open">{tc.filterOpen}</SelectItem>
-              <SelectItem value="all">{tc.filterAll}</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={source} onValueChange={(value) => setSource(value as SourceFilter)}>
-            <SelectTrigger className="w-full sm:w-[190px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{tc.sourceAll}</SelectItem>
-              <SelectItem value="customer">{tc.sourceCustomer}</SelectItem>
-              <SelectItem value="contract">{tc.sourceContract}</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      <div>
+        <h2 className="text-lg font-semibold tracking-tight">{t.heading}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{t.description}</p>
       </div>
-
-      {filteredCalls.length === 0 ? (
-        <EmptyState
-          size="compact"
-          icon={<Megaphone className="h-10 w-10" />}
-          title={portalCalls.length === 0 ? tc.emptyTitle : tc.noResultsTitle}
-          description={portalCalls.length === 0 ? tc.emptyDescription : tc.noResultsDescription}
-        />
-      ) : isMobile ? (
-        <div className="space-y-2">
-          {filteredCalls.map((order) => (
-            <Card
-              key={order.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => onOpenCall(order)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault();
-                  onOpenCall(order);
-                }
-              }}
-              className="cursor-pointer rounded-2xl active:scale-[0.99]"
-            >
-              <CardContent className="space-y-2 p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="font-mono text-xs text-muted-foreground">{formatOSNumber(order.order_number)}</p>
-                    <p className="truncate font-semibold">{order.customer?.name || tc.customerFallback}</p>
-                  </div>
-                  <Badge variant="outline" className="shrink-0">{statusLabel(order)}</Badge>
-                </div>
-                <p className="line-clamp-2 text-sm text-muted-foreground">{order.description || tc.noDescription}</p>
-                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-                  <Badge variant="secondary">{sourceLabel(order)}</Badge>
-                  <span>{formatDateTime(order.created_at, locale, timezone)}</span>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <Card className="border-0 bg-transparent shadow-none">
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{tc.colOs}</TableHead>
-                    <TableHead>{tc.colCustomer}</TableHead>
-                    <TableHead>{tc.colDescription}</TableHead>
-                    <TableHead>{tc.colSource}</TableHead>
-                    <TableHead>{tc.colOpenedAt}</TableHead>
-                    <TableHead>{tc.colStatus}</TableHead>
-                    <TableHead className="w-16 text-right">{tc.colActions}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredCalls.map((order) => (
-                    <TableRow
-                      key={order.id}
-                      className="cursor-pointer"
-                      onClick={() => onOpenCall(order)}
-                    >
-                      <TableCell className="font-mono font-medium">{formatOSNumber(order.order_number)}</TableCell>
-                      <TableCell>
-                        <p className="font-medium">{order.customer?.name || tc.customerFallback}</p>
-                        {order.equipment?.name && <p className="text-xs text-muted-foreground">{order.equipment.name}</p>}
-                      </TableCell>
-                      <TableCell><p className="max-w-[280px] truncate">{order.description || tc.noDescription}</p></TableCell>
-                      <TableCell><Badge variant="secondary">{sourceLabel(order)}</Badge></TableCell>
-                      <TableCell className="whitespace-nowrap">{formatDateTime(order.created_at, locale, timezone)}</TableCell>
-                      <TableCell><Badge variant="outline">{statusLabel(order)}</Badge></TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label={tc.openCall}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onOpenCall(order);
-                          }}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <ListDetailLayout
+        items={listItems}
+        selectedId={selectedId}
+        listTitle={t.inboxTitle}
+        listDescription={t.listDescription}
+        listFilters={filters}
+        sortOptions={sortOptions}
+        pageSize={25}
+        storageKey="portal-calls"
+        searchPlaceholder={t.searchPlaceholder}
+        emptyLabel={t.noResultsTitle}
+        onSelect={setSelectedId}
+        mobileDetailOpen={Boolean(selectedCall)}
+      >
+        {selectedCall ? (
+          <PortalCallDetailPanel
+            call={selectedCall}
+            canManage={canManage}
+            isConverting={isConverting}
+            isClosing={isClosing}
+            onBack={() => setSelectedId(undefined)}
+            onConvert={onConvert}
+            onCloseWithoutOs={onCloseWithoutOs}
+            onOpenServiceOrder={onOpenServiceOrder}
+          />
+        ) : (
+          <EmptyState icon={<Megaphone className="h-10 w-10" />} title={t.emptySelectionTitle} description={t.emptySelectionDescription} />
+        )}
+      </ListDetailLayout>
     </div>
   );
 }

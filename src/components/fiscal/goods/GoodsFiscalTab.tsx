@@ -1,5 +1,9 @@
+import { cloneGoodsDraftForReissue, goodsDocumentRecovery } from '@/lib/fiscal/pdvNfce';
+import { useGoodsFiscalAccess } from '@/hooks/useGoodsFiscalAccess';
 import { goodsRejectionGuidance } from "@/lib/fiscal/goodsRejectionGuidance";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { openPendingPdfTab } from "@/utils/openPdfInTab";
+import { goodsArtifactUrl, showGoodsArtifact } from "@/lib/fiscal/goodsArtifact";
 import { toast } from "sonner";
 import {
   AlertTriangle,
@@ -33,6 +37,7 @@ import {
   useGoodsFiscalDocuments,
   type GoodsDirection,
   type GoodsModel,
+  type GoodsFiscalDraft,
 } from "@/hooks/useGoodsFiscal";
 import { GoodsFiscalWizard } from "./GoodsFiscalWizard";
 import { GoodsInvoiceTypeSelector } from "./GoodsInvoiceTypeSelector";
@@ -57,7 +62,16 @@ const STATUS: Record<string, { label: string; className: string }> = {
 };
 
 export function GoodsFiscalTab({ model }: { model: GoodsModel }) {
+  const access = useGoodsFiscalAccess();
+  if (!access.allowed) return <p role={access.isLoading ? 'status' : 'alert'} className="py-6 text-sm text-muted-foreground">{access.isLoading ? 'Verificando acesso fiscal…' : 'Você precisa de permissão para emitir notas fiscais de mercadorias. Peça ao administrador para conferir seu acesso.'}</p>;
+  return <GoodsFiscalTabContext key={`${access.scopeId}:${model}`} model={model} />;
+}
+function GoodsFiscalTabContext({ model }: { model: GoodsModel }) {
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<{id:string | null;draft:GoodsFiscalDraft} | null>(null);
+  const [artifact,setArtifact] = useState<{documentId:string;url:string;kind:'xml'|'pdf';expiresAt:number} | null>(null);
+  const alive = useRef(true);
+  useEffect(()=>{alive.current=true;return()=>{alive.current=false;};},[]);
   const [typeSelectorOpen, setTypeSelectorOpen] = useState(false);
   const [direction, setDirection] = useState<GoodsDirection>("saida");
   const [cancelDocumentId, setCancelDocumentId] = useState<string | null>(null);
@@ -67,6 +81,7 @@ export function GoodsFiscalTab({ model }: { model: GoodsModel }) {
   const { locale, timezone } = useAppLocaleContext();
   const label = model === 65 ? "NFC-e" : "NF-e";
   const startNew = () => {
+    setEditing(null);
     if (model === 55) setTypeSelectorOpen(true);
     else {
       setDirection("saida");
@@ -79,6 +94,8 @@ export function GoodsFiscalTab({ model }: { model: GoodsModel }) {
     name: "consult" | "artifact",
     kind?: "xml" | "pdf",
   ) => {
+    if (action.isPending) return;
+    const pending = name === 'artifact' ? openPendingPdfTab(kind === 'xml' ? 'Preparando XML fiscal…' : `Preparando ${model === 55 ? 'DANFE' : 'DANFC-e'}…`) : null;
     try {
       const result = await action.mutateAsync({
         model,
@@ -86,11 +103,16 @@ export function GoodsFiscalTab({ model }: { model: GoodsModel }) {
         action: name,
         kind,
       });
-      if (name === "artifact" && typeof result.url === "string")
-        window.open(result.url, "_blank", "noopener,noreferrer");
-      else toast.success("Situação atualizada com a SEFAZ.");
+      if (!alive.current) { pending?.close(); return; }
+      if (name === 'artifact') {
+        const url = goodsArtifactUrl(result.url);
+        if (!url) throw new Error('Não foi possível liberar o arquivo fiscal. Tente novamente.');
+        setArtifact({documentId,url,kind:kind ?? 'pdf',expiresAt:Date.now()+Math.min(300,Number(result.expiresIn)||300)*1000});
+        if (!showGoodsArtifact(pending,url)) toast.message('O navegador não abriu a nova aba. Use o link disponível na nota.');
+      } else toast.message('Situação fiscal consultada.');
     } catch (error) {
-      toast.error((error as Error).message);
+      pending?.close();
+      if (alive.current) toast.error((error as Error).message);
     }
   };
 
@@ -103,7 +125,8 @@ export function GoodsFiscalTab({ model }: { model: GoodsModel }) {
         action: "cancel",
         reason: cancelReason.trim(),
       });
-      toast.success(
+      if (!alive.current) return;
+      toast.message(
         result.status === "cancelled"
           ? "Cancelamento confirmado pela SEFAZ."
           : "Cancelamento enviado e mantido sob consulta.",
@@ -181,6 +204,7 @@ export function GoodsFiscalTab({ model }: { model: GoodsModel }) {
                 }, 0)
               : 0;
             const id = String(document.id);
+            const recovery = goodsDocumentRecovery(document);
             const isAuthorized = document.status === "authorized";
             return (
               <article
@@ -218,7 +242,29 @@ export function GoodsFiscalTab({ model }: { model: GoodsModel }) {
                     </p>
                   ) : null}
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {document.access_key ? (
+                    {recovery && <Button size="sm" variant="outline" disabled={action.isPending} onClick={async()=>{
+                      try {
+                        if (recovery.action === 'reissue') {
+                          const cloned = cloneGoodsDraftForReissue(payload) as unknown as GoodsFiscalDraft;
+                          setEditing({id:null,draft:cloned});
+                          setDirection(cloned.direction === 'entrada' ? 'entrada' : 'saida');
+                          setOpen(true);
+                          return;
+                        }
+                        await action.mutateAsync({model,documentId:id,action:recovery.action});
+                        if(!alive.current)return;
+                        await documents.refetch();
+                        if(!alive.current)return;
+                        if(recovery.action==='revise'){setEditing({id,draft:payload as unknown as GoodsFiscalDraft});setDirection(payload.direction==='entrada'?'entrada':'saida');setOpen(true);}
+                        else toast.message('Emissão retomada. Acompanhe a situação desta mesma nota.');
+                      }catch(error){if(alive.current)toast.error((error as Error).message);}
+                    }}><ReceiptText className="mr-2 h-4 w-4" />{recovery.label}</Button>}
+
+                    {document.status === 'draft' && <Button size="sm" variant="outline" onClick={()=>{
+                      const draft = payload as unknown as GoodsFiscalDraft;
+                      setEditing({id,draft});setDirection(draft.direction === 'entrada' ? 'entrada' : 'saida');setOpen(true);
+                    }}><FileText className="mr-2 h-4 w-4" />Continuar rascunho</Button>}
+                    {document.access_key && document.status !== 'signed' ? (
                       <Button
                         size="sm"
                         variant="outline"
@@ -265,6 +311,7 @@ export function GoodsFiscalTab({ model }: { model: GoodsModel }) {
                       </Button>
                     ) : null}
                   </div>
+                  {artifact?.documentId === id && artifact.expiresAt > Date.now() && <p className="mt-2 text-sm"><a href={artifact.url} target="_blank" rel="noopener noreferrer" className="font-semibold underline underline-offset-4">Abrir {artifact.kind === 'xml' ? 'XML' : model === 55 ? 'DANFE' : 'DANFC-e'}</a></p>}
                 </div>
                 <div className="text-left sm:text-right">
                   <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -291,6 +338,10 @@ export function GoodsFiscalTab({ model }: { model: GoodsModel }) {
       <GoodsFiscalWizard
         model={model}
         direction={direction}
+        documentId={editing?.id}
+        initialDraft={editing?.draft}
+        sourceType={editing?.draft.sourceType && editing.draft.sourceType !== 'manual' ? editing.draft.sourceType : undefined}
+        sourceId={editing?.draft.sourceId}
         open={open}
         onOpenChange={setOpen}
         onSaved={() => documents.refetch()}

@@ -100,7 +100,7 @@ export const TECH_TOOLS_BY_SEGMENT: Partial<Record<string, TechTool[]>> = {
     {
       id: 'carga-termica',
       label: 'Carga Térmica',
-      descricao: 'Calcule os BTUs ideais para o ambiente.',
+      descricao: 'Estime a capacidade de refrigeração do ambiente.',
       icon: Thermometer,
       accent: 'hsl(0 84% 60%)',
     },
@@ -113,8 +113,8 @@ export const TECH_TOOLS_BY_SEGMENT: Partial<Record<string, TechTool[]>> = {
     },
     {
       id: 'calculo-capacitor',
-      label: 'Cálculo de Capacitor',
-      descricao: 'Encontre o capacitor certo pelo BTU e tensão.',
+      label: 'Capacitor e contator',
+      descricao: 'Consulte a especificação do capacitor e estime o contator.',
       icon: Zap,
       accent: 'hsl(38 92% 50%)',
     },

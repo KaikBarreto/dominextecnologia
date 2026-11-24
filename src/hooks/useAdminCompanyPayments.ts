@@ -28,6 +28,136 @@ export interface UnifiedCompanyPayment {
   notes: string | null;
 }
 
+export interface AdminPaymentDetailResponse {
+  payment_source: 'manual' | 'asaas';
+  payment_id: string;
+  company_id: string;
+  quality: 'exact' | 'partial' | 'legacy_unavailable';
+  captured_at: string;
+  snapshot: {
+    plan?: { code?: string | null; label?: string | null } | null;
+    billing_cycle?: string | null;
+    users?: { limit?: number | null; extra?: number | null; extra_unit_price?: number | null } | null;
+    modules?: Array<{
+      code: string;
+      name: string;
+      quantity?: number | null;
+      unit_price?: number | null;
+      price_detail?: string | null;
+    }>;
+    promotions?: Array<{
+      scope_type: string;
+      module_code?: string | null;
+      module_name?: string | null;
+      quantity: number;
+      standard_unit_price: number;
+      promotional_unit_price: number;
+      discount: number;
+      billing_cycles: number;
+      cycle_number: number;
+      reason?: string | null;
+    }>;
+    installment?: { number: number; total: number; new_expires_at?: string | null } | null;
+    amounts?: { paid?: number | null; subscription?: number | null; base?: number | null; discount?: number | null };
+    change?: { kind?: string | null; credit_amount?: number | null; amount_due?: number | null } | null;
+  };
+  sale?: AdminSaleDetail | null;
+}
+
+export interface AdminSaleDetail {
+  is_sale: true;
+  payment: {
+    id: string;
+    source: 'manual' | 'asaas';
+    type?: string | null;
+    amount: number;
+    payment_date?: string | null;
+    created_at?: string | null;
+    payment_method?: string | null;
+    origin?: string | null;
+    asaas_payment_id?: string | null;
+    status?: string | null;
+    due_date?: string | null;
+    paid_at?: string | null;
+    registered_by?: { id: string; name?: string | null } | null;
+    fiscal?: SaleFiscal | null;
+  };
+  commercial_match_quality: 'date_amount' | 'unique_company_sale' | 'ambiguous' | 'none';
+  commercial_candidate_count: number;
+  commercial?: {
+    id: string;
+    seller: { id: string; name: string };
+    sdr?: { id: string; name: string } | null;
+    customer_origin?: string | null;
+    commission_base?: number | null;
+    paid_amount?: number | null;
+    commission_amount?: number | null;
+    seller_commission?: number | null;
+    sdr_commission?: number | null;
+    billing_cycle?: string | null;
+    status?: string | null;
+    released_at?: string | null;
+    created_at?: string | null;
+    registered_by?: { id: string; name?: string | null } | null;
+  } | null;
+  affiliate_commission?: {
+    id: string;
+    affiliate: { id: string; name: string };
+    kind: string;
+    base_amount: number;
+    pct_applied: number;
+    commission_amount: number;
+    reference_month?: string | null;
+    status: string;
+    affiliate_payment_id?: string | null;
+    created_at?: string | null;
+  } | null;
+  financial_match_quality: 'exact_reference' | 'legacy_unique_date_amount' | 'ambiguous' | 'none';
+  financial_transaction?: {
+    id: string;
+    category?: string | null;
+    amount: number;
+    description?: string | null;
+    notes?: string | null;
+    transaction_date?: string | null;
+    asaas_transaction_id?: string | null;
+    created_at?: string | null;
+    registered_by?: { id: string; name?: string | null } | null;
+  } | null;
+  processor?: {
+    id: string;
+    asaas_payment_id?: string | null;
+    status?: string | null;
+    amount?: number | null;
+    billing_type?: string | null;
+    billing_cycle?: string | null;
+    payment_method?: string | null;
+    due_date?: string | null;
+    paid_at?: string | null;
+    invoice_url?: string | null;
+    created_at?: string | null;
+    fiscal?: SaleFiscal | null;
+  } | null;
+}
+
+interface SaleFiscal {
+  status?: string | null;
+  number?: string | null;
+  invoice_id?: string | null;
+  pdf_url?: string | null;
+  xml_url?: string | null;
+  error?: string | null;
+}
+
+const getAdminPaymentDetail = (
+  functionName: 'get_admin_payment_detail',
+  args: { p_company_id: string; p_payment_source: 'manual' | 'asaas'; p_payment_id: string },
+): Promise<{ data: AdminPaymentDetailResponse | null; error: unknown }> =>
+  supabase.rpc(functionName, args) as unknown as Promise<{
+    data: AdminPaymentDetailResponse | null;
+    error: unknown;
+  }>;
+
 export interface RegisterCompanyPaymentInput {
   amount: number;
   /** 'YYYY-MM-DD' */
@@ -47,6 +177,7 @@ const RPC_ERROR_MESSAGES: Record<string, string> = {
   empresa_nao_encontrada: 'Empresa não encontrada.',
   pagamento_nao_encontrado: 'Pagamento não encontrado. Atualize a página e tente novamente.',
   pagamento_asaas_nao_excluivel: 'Cobranças do Asaas não podem ser excluídas por aqui.',
+  pagamento_promocional_nao_e_ultimo: 'Este pagamento consumiu uma condição promocional e só pode ser excluído depois dos pagamentos posteriores.',
 };
 
 /** Traduz erros das RPCs de pagamento pra PT-BR sem expor detalhe técnico. */
@@ -64,6 +195,25 @@ function toSortableDate(value: string | null): number {
   return Number.isNaN(ms) ? 0 : ms;
 }
 
+export function useAdminCompanyPaymentDetail(
+  companyId: string,
+  payment: Pick<UnifiedCompanyPayment, 'id' | 'source'>,
+) {
+  return useQuery({
+    queryKey: ['admin-payment-detail', companyId, payment.source, payment.id],
+    queryFn: async (): Promise<AdminPaymentDetailResponse> => {
+      const { data, error } = await getAdminPaymentDetail('get_admin_payment_detail', {
+        p_company_id: companyId,
+        p_payment_source: payment.source,
+        p_payment_id: payment.id,
+      });
+      if (error) throw error;
+      if (!data) throw new Error('payment_detail_not_found');
+      return data;
+    },
+  });
+}
+
 export function useAdminCompanyPayments(companyId: string | undefined) {
   const queryClient = useQueryClient();
 
@@ -78,7 +228,7 @@ export function useAdminCompanyPayments(companyId: string | undefined) {
           .order('payment_date', { ascending: false }),
         supabase
           .from('subscription_payments')
-          .select('id, amount, status, billing_type, due_date, paid_at, invoice_url, type, payment_method, created_at, asaas_payment_id')
+          .select('id, amount, status, billing_type, due_date, paid_at, invoice_url, type, payment_method, created_at, asaas_payment_id, pix_expiration_date')
           .eq('company_id', companyId!)
           .order('created_at', { ascending: false }),
       ]);
@@ -105,6 +255,41 @@ export function useAdminCompanyPayments(companyId: string | undefined) {
         notes: p.notes,
       }));
 
+      const paymentDay = (value: string | null | undefined) => (value || '').slice(0, 10);
+      const paidCandidates = [
+        ...manual.map((p) => ({
+          id: p.id,
+          asaasPaymentId: p.asaas_payment_id,
+          amount: Number(p.amount) || 0,
+          day: paymentDay(p.payment_date),
+        })),
+        ...asaas
+          .filter((p) => ['RECEIVED', 'CONFIRMED'].includes((p.status || '').toUpperCase()))
+          .map((p) => ({
+            id: p.id,
+            asaasPaymentId: p.asaas_payment_id,
+            amount: Number(p.amount) || 0,
+            day: paymentDay(p.due_date ?? p.paid_at ?? p.created_at),
+          })),
+      ];
+
+      const presentationStatus = (payment: (typeof asaas)[number]): string => {
+        const rawStatus = (payment.status || 'PENDING').toUpperCase();
+        if (!['PENDING', 'CREATED', 'OVERDUE'].includes(rawStatus)) return rawStatus;
+        const referenceDay = paymentDay(payment.due_date ?? payment.created_at);
+        const replaced = paidCandidates.some((paid) =>
+          paid.id !== payment.id
+          && paid.asaasPaymentId !== payment.asaas_payment_id
+          && Math.abs(paid.amount - (Number(payment.amount) || 0)) <= 0.01
+          && paid.day === referenceDay
+        );
+        if (replaced) return 'SUPERSEDED';
+        if (payment.billing_type?.toUpperCase() === 'PIX'
+          && payment.pix_expiration_date
+          && new Date(payment.pix_expiration_date).getTime() < Date.now()) return 'EXPIRED';
+        return rawStatus;
+      };
+
       const asaasItems: UnifiedCompanyPayment[] = asaas
         .filter((p) => {
           const status = (p.status || '').toUpperCase();
@@ -118,7 +303,7 @@ export function useAdminCompanyPayments(companyId: string | undefined) {
           source: 'asaas' as const,
           type: p.type,
           amount: Number(p.amount) || 0,
-          status: (p.status || '').toUpperCase(),
+          status: presentationStatus(p),
           paymentMethod: p.payment_method || p.billing_type,
           date: p.paid_at ?? p.due_date ?? p.created_at,
           invoiceUrl: p.invoice_url,
@@ -140,6 +325,7 @@ export function useAdminCompanyPayments(companyId: string | undefined) {
     queryClient.invalidateQueries({ queryKey: ['admin-subscriptions'] });
     queryClient.invalidateQueries({ queryKey: ['admin-payments'] });
     queryClient.invalidateQueries({ queryKey: ['subscription_history', companyId] });
+    queryClient.invalidateQueries({ queryKey: ['admin-company-subscription-promotions', companyId] });
   };
 
   const registerPayment = useMutation({
@@ -158,7 +344,32 @@ export function useAdminCompanyPayments(companyId: string | undefined) {
         // omitir é seguro e o vendedor leva 100% da comissão da 1ª venda.
       });
       if (error) throw error;
-      return data;
+
+      // O trigger do pagamento já consome a cobrança promocional de forma
+      // atômica. Se isso gerou uma virada de preço, tentamos sincronizar a
+      // recorrência agora; falhar aqui NÃO desfaz nem repete o pagamento.
+      const { data: pendingSync, error: pendingSyncError } = await supabase
+        .from('company_subscription_price_sync')
+        .select('status')
+        .eq('company_id', companyId!)
+        .in('status', ['pending', 'failed'])
+        .maybeSingle();
+
+      let syncWarning: string | null = null;
+      if (pendingSyncError) {
+        syncWarning = 'O pagamento foi registrado, mas não foi possível conferir a atualização da cobrança automática.';
+      } else if (pendingSync) {
+        const { data: syncResult, error: syncError } = await supabase.functions.invoke(
+          'sync-company-subscription-price',
+          { body: { company_id: companyId } },
+        );
+        if (syncError || syncResult?.success === false) {
+          syncWarning = syncResult?.warning
+            || 'O pagamento foi registrado, mas a cobrança automática ainda precisa ser sincronizada.';
+        }
+      }
+
+      return { paymentId: data, syncWarning };
     },
     onSuccess: invalidateAll,
   });
@@ -169,6 +380,28 @@ export function useAdminCompanyPayments(companyId: string | undefined) {
         p_payment_id: paymentId,
       });
       if (error) throw error;
+
+      const { data: pendingSync, error: pendingSyncError } = await supabase
+        .from('company_subscription_price_sync')
+        .select('status')
+        .eq('company_id', companyId!)
+        .in('status', ['pending', 'failed'])
+        .maybeSingle();
+
+      let syncWarning: string | null = null;
+      if (pendingSyncError) {
+        syncWarning = 'O pagamento foi excluído, mas não foi possível conferir a atualização da cobrança automática.';
+      } else if (pendingSync) {
+        const { data: syncResult, error: syncError } = await supabase.functions.invoke(
+          'sync-company-subscription-price',
+          { body: { company_id: companyId } },
+        );
+        if (syncError || syncResult?.success === false) {
+          syncWarning = syncResult?.warning
+            || 'O pagamento foi excluído, mas a cobrança automática ainda precisa ser sincronizada.';
+        }
+      }
+      return { syncWarning };
     },
     onSuccess: invalidateAll,
   });

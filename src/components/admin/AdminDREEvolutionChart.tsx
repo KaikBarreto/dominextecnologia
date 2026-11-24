@@ -4,6 +4,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { format, startOfMonth, endOfMonth, eachMonthOfInterval, setMonth, setYear } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { classifyForDre, type DreCategoryIndex } from '@/lib/adminDreBuckets';
 
 interface Transaction {
   id: string;
@@ -13,19 +14,16 @@ interface Transaction {
   transaction_date: string;
 }
 
-const REVENUE_CATEGORIES = ['sale', 'first_sale', 'renewal', 'partner_contribution', 'other_income', 'upgrade'];
-const TAX_CATEGORIES = ['asaas_fee', 'tax', 'impostos'];
-
 const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-export function AdminDREEvolutionChart({ transactions }: { transactions: Transaction[] }) {
+export function AdminDREEvolutionChart({ transactions, categoryIndex, periodStart, periodEnd }: { transactions: Transaction[]; categoryIndex: DreCategoryIndex; periodStart?: Date | null; periodEnd?: Date | null }) {
   const isMobile = useIsMobile();
 
   const chartData = useMemo(() => {
     const now = new Date();
     const currentYear = now.getFullYear();
-    const startDate = startOfMonth(setMonth(setYear(new Date(), currentYear - 1), 11));
-    const endDate = endOfMonth(setMonth(setYear(new Date(), currentYear), 11));
+    const startDate = periodStart ? startOfMonth(periodStart) : startOfMonth(setMonth(setYear(new Date(), currentYear - 1), 11));
+    const endDate = periodEnd ? endOfMonth(periodEnd) : endOfMonth(setMonth(setYear(new Date(), currentYear), 11));
     const months = eachMonthOfInterval({ start: startDate, end: endDate });
 
     return months.map((date) => {
@@ -35,33 +33,37 @@ export function AdminDREEvolutionChart({ transactions }: { transactions: Transac
         const d = new Date(t.transaction_date);
         return d >= mStart && d <= mEnd;
       });
-      const receitaBruta = txs
-        .filter((t) => t.type === 'income' && REVENUE_CATEGORIES.includes(t.category || ''))
-        .reduce((s, t) => s + Number(t.amount), 0);
-      const impostos = txs
-        .filter((t) => t.type === 'expense' && TAX_CATEGORIES.includes(t.category || ''))
-        .reduce((s, t) => s + Number(t.amount), 0);
-      const receitaLiquida = receitaBruta - impostos;
-      const despesas = txs
-        .filter((t) => t.type === 'expense' && !TAX_CATEGORIES.includes(t.category || ''))
-        .reduce((s, t) => s + Number(t.amount), 0);
+      let receitaBruta = 0, estornos = 0, impostos = 0, despesas = 0, naoOperacionais = 0;
+      txs.forEach((t) => {
+        const amount = Number(t.amount) || 0;
+        switch (classifyForDre(t, categoryIndex).bucket) {
+          case 'revenue': receitaBruta += amount; break;
+          case 'revenue_reduction': estornos += amount; break;
+          case 'tax': impostos += amount; break;
+          case 'cpv': case 'opex': despesas += amount; break;
+          case 'non_operating': naoOperacionais += amount; break;
+          case null: break;
+        }
+      });
+      const receitaLiquida = receitaBruta - estornos - impostos;
       return {
         month: format(date, 'MMM/yy', { locale: ptBR }),
         receita: receitaLiquida,
         despesas,
-        resultado: receitaLiquida - despesas,
+        resultado: receitaLiquida - despesas - naoOperacionais,
       };
     });
-  }, [transactions]);
+  }, [transactions, categoryIndex, periodStart, periodEnd]);
 
   const tickFmt = (v: number) => `${(v / 1000).toFixed(0)}k`;
   const currentYear = new Date().getFullYear();
+  const rangeTitle = periodStart && periodEnd ? `${format(periodStart, 'MMM/yy', { locale: ptBR })} a ${format(periodEnd, 'MMM/yy', { locale: ptBR })}` : `Dez/${currentYear - 1} a Dez/${currentYear}`;
 
   return (
     <Card className="border-0 shadow-lg">
       <CardHeader className="pb-3 px-3 sm:px-6">
         <CardTitle className="text-base sm:text-lg font-semibold">
-          {isMobile ? `Evolução Dez/${currentYear - 1} - Dez/${currentYear}` : `Evolução - Receita vs Despesas (Dez/${currentYear - 1} a Dez/${currentYear})`}
+          {isMobile ? `Evolução ${rangeTitle}` : `Evolução - Receita vs Despesas (${rangeTitle})`}
         </CardTitle>
       </CardHeader>
       <CardContent className="px-2 sm:px-6">

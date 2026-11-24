@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 export interface EquipmentTask {
   id: string;
@@ -51,8 +52,7 @@ export function useEquipmentTasks(equipmentId?: string) {
 
   const toggleTask = useMutation({
     mutationFn: async ({ id, is_completed }: { id: string; is_completed: boolean }) => {
-      const { error } = await supabase.from('equipment_tasks').update({ is_completed }).eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(await supabase.from('equipment_tasks').update({ is_completed }, { count: 'exact' }).eq('id', id), 'update');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['equipment-tasks', equipmentId] });
@@ -61,8 +61,7 @@ export function useEquipmentTasks(equipmentId?: string) {
 
   const deleteTask = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('equipment_tasks').delete().eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(await supabase.from('equipment_tasks').delete({ count: 'exact' }).eq('id', id), 'delete');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['equipment-tasks', equipmentId] });

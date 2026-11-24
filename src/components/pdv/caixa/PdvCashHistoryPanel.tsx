@@ -51,7 +51,7 @@ import {
 import { PdvMoneyInput } from '@/components/pdv/caixa/PdvMoneyInput';
 import { PDV_HISTORY_ROW_MOTION, PDV_MOTION_EASE } from '@/lib/pdv/motion';
 import { UserAvatarTooltip } from '@/components/ui/UserAvatarTooltip';
-import { openPdvOrderReceipt } from '@/components/pdv/receipt/PdvOrderReceiptButton';
+import { usePdvOrderReceiptOpener } from '@/components/pdv/receipt/PdvOrderReceiptButton';
 import { DEFAULT_PDV_RECEIPT_SETTINGS, type PdvReceiptFormat } from '@/lib/pdv/receipt/model';
 
 type HistoryTexts = (typeof pdv)['pt-br']['cashPanel']['history'];
@@ -125,7 +125,10 @@ export function PdvCashHistoryPanel({
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [exporting, setExporting] = useState<'excel' | 'pdf' | null>(null);
-  const [receiptLoadingId, setReceiptLoadingId] = useState<string | null>(null);
+  const receiptOpener = usePdvOrderReceiptOpener();
+  const [receiptLoading, setReceiptLoading] = useState<{ id: string; isCurrent: () => boolean } | null>(null);
+  const receiptLoadingId = receiptLoading?.isCurrent() ? receiptLoading.id : null;
+  const setReceiptLoadingId = (id: string | null) => setReceiptLoading(id ? { id, isCurrent: receiptOpener.isCurrent } : null);
   const previousEntryKeysRef = useRef<Set<string>>(new Set());
   const hasLoadedEntriesRef = useRef(false);
 
@@ -376,16 +379,17 @@ export function PdvCashHistoryPanel({
         disabled: receiptLoadingId === entry.id,
         onClick: () => {
           setReceiptLoadingId(entry.id);
-          void openPdvOrderReceipt(
+          void receiptOpener.open(
             entry.id,
             receiptFormat,
           ).catch((error) => {
+            if (!receiptOpener.isCurrent()) return;
             toast({
               variant: 'destructive',
               title: 'Não foi possível gerar o comprovante',
               description: error instanceof Error ? error.message : 'Tente novamente.',
             });
-          }).finally(() => setReceiptLoadingId(null));
+          }).finally(() => { if (receiptOpener.isCurrent()) setReceiptLoadingId(null); });
         },
       });
     }

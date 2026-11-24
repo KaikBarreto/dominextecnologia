@@ -8,6 +8,7 @@ import {
   ChevronUp,
   FileText,
   History,
+  Download,
   Loader2,
   MoreHorizontal,
   Printer,
@@ -22,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { SearchField, SearchFieldAction } from '@/components/ui/search-field-actions';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { PdvCashExportDialog } from '@/components/pdv/caixa-v2/PdvCashExportDialog';
 import { PdvPageSkeleton } from '@/components/pdv/loading/PdvPageSkeleton';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -93,6 +95,8 @@ export default function PdvCashHistory() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
   const [reportLoadingId, setReportLoadingId] = useState<string | null>(null);
+  const [exportTarget, setExportTarget] = useState<PdvCashV2Session | null>(null);
+  const [periodExportOpen, setPeriodExportOpen] = useState(false);
   const [reopenTarget, setReopenTarget] = useState<PdvCashV2Session | null>(null);
   const [reopenReason, setReopenReason] = useState('');
   const attempts = usePdvCashV2AttemptRegistry();
@@ -215,6 +219,9 @@ export default function PdvCashHistory() {
         <DropdownMenuItem disabled={reportLoadingId === row.id} onSelect={() => void showReport(row, true)}>
           <Printer className="mr-2 h-4 w-4" /> Imprimir
         </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => setExportTarget(row)}>
+          <Download className="mr-2 h-4 w-4" /> Exportar
+        </DropdownMenuItem>
         {canReopen ? (
           <>
             <DropdownMenuSeparator />
@@ -241,14 +248,18 @@ export default function PdvCashHistory() {
         subtitle="Consulte as conferências dos caixas já fechados."
         icon={History}
         actions={(
-          <Button
-            type="button"
-            variant="outline"
-            className="print:hidden"
-            onClick={() => window.print()}
-          >
-            <Printer className="h-4 w-4" /> Imprimir
-          </Button>
+          <div className="flex flex-wrap gap-2 print:hidden">
+            <Button type="button" variant="outline" onClick={() => setPeriodExportOpen(true)}>
+              <Download className="h-4 w-4" /> Exportar
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => window.print()}
+            >
+              <Printer className="h-4 w-4" /> Imprimir
+            </Button>
+          </div>
         )}
       />
 
@@ -487,6 +498,27 @@ export default function PdvCashHistory() {
           ) : null}
       </section>
 
+      <PdvCashExportDialog
+        open={!!exportTarget}
+        onOpenChange={(open) => { if (!open) setExportTarget(null); }}
+        mode="session"
+        session={exportTarget ? {
+          id: exportTarget.id,
+          terminalName: terminalName(exportTarget.terminalId),
+          operatorName: operatorName(exportTarget.openedBy),
+          closedAt: exportTarget.closedAt,
+        } : null}
+      />
+      <PdvCashExportDialog
+        open={periodExportOpen}
+        onOpenChange={setPeriodExportOpen}
+        mode="period"
+        terminals={cash.terminals.map((terminal) => ({ id: terminal.id, name: terminal.name }))}
+        operators={operatorOptions}
+        canManageOthers={canManageOthers}
+        initialTerminalId={filters.terminalId}
+        initialOperatorId={filters.operatorId}
+      />
       <Dialog open={!!reopenTarget} onOpenChange={(open) => { if (!open && !cash.reopenSession.isPending) setReopenTarget(null); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

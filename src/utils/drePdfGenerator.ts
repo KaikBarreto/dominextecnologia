@@ -22,6 +22,7 @@ export interface DrePdfRow {
 }
 
 export interface DrePdfData {
+  coverageNotice?: string;
   company: {
     name: string;
     document?: string;
@@ -184,6 +185,14 @@ export async function buildDrePdf(data: DrePdfData): Promise<jsPDF> {
   document.setTextColor(...COLORS.muted);
   document.text(companyDetails.join('  |  ') || 'Dados cadastrais não informados', margin, margin + 30.5, { maxWidth: contentWidth });
 
+  let tableStartY = margin + 34;
+  if (data.coverageNotice) {
+    document.setFontSize(8);
+    const lines = document.splitTextToSize(data.coverageNotice, contentWidth) as string[];
+    document.text(lines, margin, tableStartY + 2);
+    tableStartY += lines.length * 3.5 + 4;
+  }
+
   const body: RowInput[] = data.rows.map((row) => {
     const resultSigned = row.level === 'result';
     const cells: CellDef[] = [{ content: rowLabel(row) }];
@@ -205,7 +214,7 @@ export async function buildDrePdf(data: DrePdfData): Promise<jsPDF> {
   });
 
   autoTable(document, {
-    startY: margin + 34,
+    startY: tableStartY,
     margin: { top: margin, right: margin, bottom: 12, left: margin },
     head: [[
       'ESTRUTURA DO DRE',

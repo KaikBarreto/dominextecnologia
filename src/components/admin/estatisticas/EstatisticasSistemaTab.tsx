@@ -48,6 +48,7 @@ import { EmptyState } from '@/components/mobile/EmptyState';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn, fuzzyIncludes } from '@/lib/utils';
 import { typography } from '@/lib/typography';
+import { adminKpiClass, type AdminKpiTone } from '@/components/admin/adminKpiStyles';
 import {
   useAdminUsageStatistics,
   usagePeriodRange,
@@ -104,18 +105,16 @@ function StatCard({
   value,
   subtitle,
   icon: Icon,
-  bg,
-  iconBg,
+  tone,
 }: {
   title: string;
   value: string | number;
   subtitle?: string;
   icon: React.ElementType;
-  bg: string;
-  iconBg: string;
+  tone: AdminKpiTone;
 }) {
   return (
-    <Card className={cn('relative overflow-hidden border-0 shadow-lg text-white', bg)}>
+    <Card className={adminKpiClass(tone, 'relative overflow-hidden shadow-lg')}>
       <CardContent className="p-4 lg:p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 space-y-1">
@@ -123,7 +122,7 @@ function StatCard({
             <p className="text-xl lg:text-2xl font-bold tracking-tight tabular-nums">{value}</p>
             {subtitle && <p className="text-xs text-white/75">{subtitle}</p>}
           </div>
-          <div className={cn('p-2 rounded-xl shrink-0', iconBg)}>
+          <div className="rounded-xl bg-black/20 p-2 shrink-0">
             <Icon className="h-4 w-4 text-white" />
           </div>
         </div>
@@ -331,32 +330,28 @@ export function EstatisticasSistemaTab() {
                 value={fmtInt(data.empresas.total)}
                 subtitle={`${data.empresas.novas_no_periodo} nova(s) no período`}
                 icon={Building2}
-                bg="bg-slate-600"
-                iconBg="bg-slate-700"
+                tone="slate"
               />
               <StatCard
                 title="Assinatura ativa"
                 value={fmtInt(data.empresas.ativas)}
                 subtitle={`${data.empresas.testando} testando · ${data.empresas.inativas} inativa(s)`}
                 icon={Zap}
-                bg="bg-emerald-500"
-                iconBg="bg-emerald-600"
+                tone="emerald"
               />
               <StatCard
                 title="Com uso no período"
                 value={fmtInt(data.empresas.com_uso_no_periodo)}
                 subtitle={`${data.totais.usuarios_ativos} usuário(s) ativo(s)`}
                 icon={Users}
-                bg="bg-blue-500"
-                iconBg="bg-blue-600"
+                tone="blue"
               />
               <StatCard
                 title="Sem nenhum uso"
                 value={fmtInt(semUso)}
                 subtitle="Não criaram nada no período"
                 icon={MoonStar}
-                bg="bg-red-500"
-                iconBg="bg-red-600"
+                tone="rose"
               />
             </div>
           </section>

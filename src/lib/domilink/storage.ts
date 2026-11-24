@@ -33,6 +33,7 @@ export function writeDomiLinkEnabled(enabled: boolean, storage = typeof window !
   if (!storage) return;
   if (enabled) storage.setItem(ENABLED_KEY, 'true');
   else storage.removeItem(ENABLED_KEY);
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event('domilink:preferences-changed'));
 }
 
 /** Invalida também operações em voo, mesmo antes de o React renderizar o logout. */
@@ -67,3 +68,19 @@ export function writeDomiLinkSession(token: string, scope: DomiLinkSessionScope,
 }
 
 export const DOMILINK_STORAGE_KEYS = { enabled: ENABLED_KEY, session: SESSION_KEY } as const;
+
+function receiptPrinterKey(scope: DomiLinkSessionScope) {
+  return `dominex:domilink:receipt-printer:v1:${JSON.stringify([scope.userId, scope.companyId])}`;
+}
+
+export function readDomiLinkReceiptPrinter(scope: DomiLinkSessionScope, storage = typeof window !== 'undefined' ? window.localStorage : undefined) {
+  const value = storage?.getItem(receiptPrinterKey(scope));
+  return value && /^[A-Za-z0-9_.-]{1,64}$/.test(value) ? value : null;
+}
+
+export function writeDomiLinkReceiptPrinter(scope: DomiLinkSessionScope, deviceId: string | null, storage = typeof window !== 'undefined' ? window.localStorage : undefined) {
+  if (!storage) return;
+  if (deviceId && /^[A-Za-z0-9_.-]{1,64}$/.test(deviceId)) storage.setItem(receiptPrinterKey(scope), deviceId);
+  else storage.removeItem(receiptPrinterKey(scope));
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event('domilink:preferences-changed'));
+}

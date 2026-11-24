@@ -1,3 +1,5 @@
+import { useInventoryIdentifiers } from '@/hooks/useInventoryIdentifiers';
+import { usePdvDomiLinkWorkspace } from '@/hooks/usePdvDomiLinkWorkspace';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { PdvPageSkeleton } from '@/components/pdv/loading/PdvPageSkeleton';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
@@ -110,6 +112,7 @@ export default function PdvPurchase() {
   const cashMode = parsedCashContext.kind !== 'absent';
   const confirmedCashContext = parsedCashContext.kind === 'present' ? cashContextQuery.data ?? null : null;
   const submittingDraftIdRef = useRef<string | null>(null);
+  const [editingItemValueId, setEditingItemValueId] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
@@ -135,7 +138,6 @@ export default function PdvPurchase() {
   const [supplierProfileOpen, setSupplierProfileOpen] = useState(false);
   const [draftToFinalize, setDraftToFinalize] = useState<PdvPurchaseDraft | null>(null);
   const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
-  const [editingItemValueId, setEditingItemValueId] = useState<string | null>(null);
 
   const today = todayInTz(timezone);
   const eligibleAccounts = useMemo(
@@ -206,7 +208,9 @@ export default function PdvPurchase() {
   }));
 
   const patchDraft = (draftId: string, patch: Partial<PdvPurchaseDraft>) => {
-    updateDraft(draftId, (draft) => ({ ...draft, ...patch }));
+    updateDraft(draftId, (draft) => ({ ...draft, ...patch,
+      ...((patch.supplierId !== undefined && patch.supplierId !== draft.supplierId) || patch.paymentStatus === 'pending' || patch.paymentMethod === 'saldo_fornecedor' ? { supplierCreditAmount: 0 } : {}),
+    }));
   };
 
   const updateItem = (
@@ -267,6 +271,12 @@ export default function PdvPurchase() {
       if (supplierCredit.isLoading) return 'Aguarde a consulta do saldo do fornecedor.';
       if (supplierCredit.isError) return 'Não foi possível confirmar o saldo do fornecedor.';
       if ((supplierCredit.data ?? 0) < total) return 'O saldo do fornecedor não cobre o total desta compra.';
+    }
+    if ((draft.supplierCreditAmount ?? 0) > 0) {
+      if (draft.paymentStatus !== 'paid' || !Number.isFinite(draft.supplierCreditAmount)
+        || (draft.supplierCreditAmount ?? 0) > total) return 'Revise o valor do saldo aplicado nesta compra.';
+      if (!supplierCredit.isSuccess) return 'Consulte o saldo do fornecedor antes de finalizar.';
+      if ((draft.supplierCreditAmount ?? 0) > (supplierCredit.data ?? 0)) return 'O saldo do fornecedor não cobre o valor aplicado.';
     }
     if (draft.paymentStatus === 'pending' && !draft.dueDate) return t.validation.dueDate;
     return '';
@@ -329,6 +339,7 @@ export default function PdvPurchase() {
         paidDate: draft.paymentStatus === 'paid' ? draft.paidDate : null,
         dueDate: draft.paymentStatus === 'pending' ? draft.dueDate : null,
         paymentMethod: draft.paymentStatus === 'paid' ? draft.paymentMethod : null,
+        supplierCreditAmount: draft.paymentStatus === 'paid' ? draft.supplierCreditAmount ?? 0 : 0,
         description: draft.description.trim() || null,
         notes: draft.notes.trim() || null,
         cashContext: submittedCashContext,
@@ -452,12 +463,12 @@ export default function PdvPurchase() {
     window.addEventListener('resize', measure);
     return () => { window.cancelAnimationFrame(frame); observer?.disconnect(); window.removeEventListener('resize', measure); };
   }, [mobileCart, activeDraft?.id, confirmedCashContext?.sessionId, syncIssue, localPersistenceIssue, draftConflicts.length]);
-  const addProduct = (product: PdvGridProduct) => {
+  const addProduct = (product: PdvGridProduct, quantity = 1) => {
     if (!activeDraft || registerPurchase.isPending || submittingDraftId != null) return;
     updateDraft(activeDraft.id, draft => {
       const existing = draft.items.find(item => item.inventoryId === product.inventoryId);
-      if (existing) { return { ...draft, items: draft.items.map(item => item.id === existing.id ? { ...item, quantityText: String(parsePdvPurchaseNumber(item.quantityText) + 1) } : item) }; }
-      const blank = draft.items.find(isBlankItem), added = { ...(blank ?? createPdvPurchaseItem()), inventoryId: product.inventoryId, quantityText: '1', unitPriceText: String(product.unitPrice) };
+      if (existing) { return { ...draft, items: draft.items.map(item => item.id === existing.id ? { ...item, quantityText: String(parsePdvPurchaseNumber(item.quantityText) + quantity) } : item) }; }
+      const blank = draft.items.find(isBlankItem), added = { ...(blank ?? createPdvPurchaseItem()), inventoryId: product.inventoryId, quantityText: String(quantity), unitPriceText: String(product.unitPrice) };
       return { ...draft, items: blank ? draft.items.map(item => item.id === blank.id ? added : item) : [...draft.items, added] };
     });
     setLastAddedItem(product.inventoryId); setSearch(''); setKeyboardHighlight(false); focusMaterialSearch();
@@ -474,8 +485,39 @@ export default function PdvPurchase() {
   const catalogKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
     const direction = ({ ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' } as const)[event.key];
     if (direction && (!(event.target instanceof HTMLInputElement) || shouldNavigatePdvCatalogFromSearch(event.key, search))) { event.preventDefault(); navigateCatalog(direction); }
-    else if (event.key === 'Enter' && event.target === searchInputRef.current) { event.preventDefault(); const product = visibleProducts.find(item => item.inventoryId === activeProductId) ?? visibleProducts[0]; if (product && search.trim()) addProduct(product); }
+    else if (event.key === 'Enter' && event.target === searchInputRef.current) { event.preventDefault(); const product = visibleProducts.find(item => item.inventoryId === activeProductId) ?? visibleProducts[0]; if (product && search.trim()) addProduct(product); else if (search.trim()) void addIdentifier(search.trim()); }
   };
+
+  const identifierLookup = useInventoryIdentifiers(null, canRegister);
+  const latestSearch = useRef(search);
+  latestSearch.current = search;
+  const hardware = usePdvDomiLinkWorkspace({
+    identity: activeDraft,
+    contextKey: JSON.stringify([owner?.companyId, owner?.userId, activeDraft?.id, confirmedCashContext?.sessionId, activeDraft?.stockId]),
+    blocked: financialOpen || closeDraftOpen || shortcutHelpOpen || registerPurchase.isPending || submittingDraftId != null || !activeDraft || !canRegister || (cashMode && !confirmedCashContext),
+    getLine: id => {
+      const item = activeDraft?.items.find(candidate => candidate.id === id);
+      const material = inventory.find(candidate => candidate.id === item?.inventoryId);
+      return item && material ? { inventoryId: item.id, name: material.name, unit: material.unit, availableQuantity: Number.MAX_SAFE_INTEGER } : undefined;
+    },
+    onSetQuantity: (id, value) => { if (activeDraft) updateItem(activeDraft.id, id, { quantityText: String(value) }); },
+    onSearchChange: setSearch, searchInputRef,
+  });
+
+  async function addIdentifier(code: string) {
+    if (!activeDraft || financialOpen || registerPurchase.isPending || submittingDraftId != null) return;
+    const isCurrent = hardware.capture(false);
+    try {
+      const resolved = await identifierLookup.resolve.mutateAsync({ code });
+      if (!isCurrent() || latestSearch.current.trim() !== code) return;
+      const material = resolved && inventory.find(item => item.id === resolved.material.id && accessibleIds.has(item.id) && !item.archived_at);
+      if (!resolved || !material) throw new Error('Material não encontrado neste estoque.');
+      addProduct({ inventoryId: material.id, name: material.name, sku: material.sku, imageUrl: material.image_url,
+        unit: material.unit, unitPrice: Number(material.cost_price ?? 0), availableQuantity: getQuantityForStock(material.id, activeDraft.stockId) }, resolved.unitFactor);
+    } catch (error) {
+      if (isCurrent()) toast({ title: 'Código não incluído', description: error instanceof Error ? error.message : 'Confira o código e tente novamente.', variant: 'destructive' });
+    }
+  }
 
   if (cashMode && parsedCashContext.kind === 'invalid') {
     return <CashPurchaseContextError onBack={() => navigate(localizeAppPath('/pdv', locale))} onRetry={null} />;
@@ -535,7 +577,7 @@ export default function PdvPurchase() {
     <div className="cartbody" ref={cartItemsRef}>
       {selectedItems.map(item => { const material = inventory.find(candidate => candidate.id === item.inventoryId), quantity = parsePdvPurchaseNumber(item.quantityText), unitPrice = parsePdvPurchaseNumber(item.unitPriceText), editingItemValue = editingItemValueId === item.id; return <div className="cartitem" key={item.id} data-purchase-item-id={item.id} data-purchase-inventory-id={item.inventoryId}>
         <div className={cn('row', editingItemValue && 'flex-wrap')}><div className="cartthumbnail">{material?.image_url ? <SignedImg src={material.image_url} alt="" className="h-full w-full object-contain" fallbackLabel="" /> : <Package />}</div><div className="grow"><strong>{material?.sku && <span className="productcode">{material.sku} · </span>}{material?.name ?? 'Material'}</strong><small className="purchase-item-unit">{material?.unit ?? 'un'}</small></div><div className={cn(editingItemValue && 'w-full min-w-0 pt-1')}><PdvInlineValueEditor label={`valor de ${material?.name ?? 'material'}`} value={quantity * unitPrice} baseAmount={quantity * unitPrice} formatCurrency={formatCurrency} adjustmentPolicy="price" disabled={busy || quantity <= 0} onApply={value => updateDraft(draftId, draft => setPdvPurchaseItemFinalAmount(draft, item.id, value))} onEditingChange={editing => setEditingItemValueId(editing ? item.id : null)} className="amount font-bold" /></div></div>
-        <div className="row between itemcontrols"><div className="qty"><button type="button" disabled={busy || quantity <= 0} aria-label={`Diminuir ${material?.name ?? 'quantidade'}`} onClick={() => updateItem(draftId, item.id, { quantityText: String(Math.max(0, quantity - 1)) })}><Minus /></button><NumericInput ref={node => { if (node) quantityInputRefs.current.set(item.id, node); else quantityInputRefs.current.delete(item.id); }} value={item.quantityText} decimal maxDecimals={4} disabled={busy} onValueChange={quantityText => updateItem(draftId, item.id, { quantityText })} aria-label={`Quantidade de ${material?.name ?? 'material'}`} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); focusMaterialSearch(); } }} /><button type="button" disabled={busy} aria-label={`Aumentar ${material?.name ?? 'quantidade'}`} onClick={() => updateItem(draftId, item.id, { quantityText: String(quantity + 1) })}><Plus /></button></div><label className="purchase-unit-price"><span>Custo unitário</span><PdvMoneyInput id={`purchase-unit-cost-${item.id}`} value={unitPrice} disabled={busy} selectOnFocus onChange={value => updateItem(draftId, item.id, { unitPriceText: String(value) })} onEnter={focusMaterialSearch} /></label><button type="button" className="iconbtn negative removeitem" disabled={busy} aria-label={`${t.items.remove}: ${material?.name ?? 'material'}`} onClick={() => updateDraft(draftId, draft => { const remaining = draft.items.filter(candidate => candidate.id !== item.id); return { ...draft, items: remaining.length ? remaining : [createPdvPurchaseItem()] }; })}><Trash2 /></button></div>
+        <div className="row between itemcontrols"><div className="qty"><button type="button" disabled={busy || quantity <= 0} aria-label={`Diminuir ${material?.name ?? 'quantidade'}`} onClick={() => updateItem(draftId, item.id, { quantityText: String(Math.max(0, quantity - 1)) })}><Minus /></button><NumericInput ref={node => { if (node) quantityInputRefs.current.set(item.id, node); else quantityInputRefs.current.delete(item.id); }} value={item.quantityText} decimal maxDecimals={4} disabled={busy} onValueChange={quantityText => updateItem(draftId, item.id, { quantityText })} aria-label={`Quantidade de ${material?.name ?? 'material'}`} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); focusMaterialSearch(); } }} /><button type="button" disabled={busy} aria-label={`Aumentar ${material?.name ?? 'quantidade'}`} onClick={() => updateItem(draftId, item.id, { quantityText: String(quantity + 1) })}><Plus /></button></div><label className="purchase-unit-price"><span>Custo unitário</span><PdvMoneyInput id={`purchase-unit-cost-${item.id}`} value={unitPrice} disabled={busy} selectOnFocus onChange={value => updateItem(draftId, item.id, { unitPriceText: String(value) })} onEnter={focusMaterialSearch} /></label>{hardware.weighControl?.(item.id)}<button type="button" className="iconbtn negative removeitem" disabled={busy} aria-label={`${t.items.remove}: ${material?.name ?? 'material'}`} onClick={() => updateDraft(draftId, draft => { const remaining = draft.items.filter(candidate => candidate.id !== item.id); return { ...draft, items: remaining.length ? remaining : [createPdvPurchaseItem()] }; })}><Trash2 /></button></div>
       </div>; })}
       {!selectedItems.length && <div className="empty"><Package className="mx-auto mb-3 h-8 w-8" />Escolha os materiais que chegaram à loja.</div>}
     </div>
@@ -562,7 +604,7 @@ export default function PdvPurchase() {
         onRetry={() => retrySync?.()}
         onResolve={(id, choice) => resolveDraftConflict?.(id, choice) ?? Promise.resolve('unavailable')}
       />
-      <PdvSalePreviewView title="Nova compra" exitLabel="Sair da compra" footerHint="↑ ↓ ← → navegar · Enter incluir · / buscar · F9 conferir compra" mode={catalogMode} onModeChange={setCatalogMode} search={search} onSearchChange={setSearch} onSearchKeyDown={catalogKeyDown} searchInputRef={searchInputRef} gridRef={gridRef} controlsRef={controlsRef} rowRef={rowRef} onGridKeyDown={catalogKeyDown} products={visibleProducts} activeProductId={activeProductId ?? visibleProducts[0]?.inventoryId ?? null} keyboardHighlight={keyboardHighlight} onProductFocus={id => { setActiveProductId(id); setKeyboardHighlight(true); }} onProductSelect={addProduct} formatCurrency={formatCurrency} onExit={() => navigate(localizeAppPath('/pdv', locale))} allowUnavailableProducts disabled={busy} catalogLoading={inventoryLoading || loadingAccessibleInventory} style={compositionHeight ? { height: compositionHeight } : undefined} filters={<><button type="button" className={cn('chip', activeCategory === 'all' && 'active')} onClick={() => setActiveCategory('all')}>Todos</button>{categoriesInCatalog.map(category => <button type="button" key={category} className={cn('chip', activeCategory === category && 'active')} onClick={() => setActiveCategory(category)}>{category}</button>)}</>} cart={!mobileCart ? purchaseCart : null} />
+      <PdvSalePreviewView camera={hardware.scannerControl} title="Nova compra" exitLabel="Sair da compra" footerHint="↑ ↓ ← → navegar · Enter incluir · / buscar · F9 conferir compra" mode={catalogMode} onModeChange={setCatalogMode} search={search} onSearchChange={setSearch} onSearchKeyDown={catalogKeyDown} searchInputRef={searchInputRef} gridRef={gridRef} controlsRef={controlsRef} rowRef={rowRef} onGridKeyDown={catalogKeyDown} products={visibleProducts} activeProductId={activeProductId ?? visibleProducts[0]?.inventoryId ?? null} keyboardHighlight={keyboardHighlight} onProductFocus={id => { setActiveProductId(id); setKeyboardHighlight(true); }} onProductSelect={addProduct} formatCurrency={formatCurrency} onExit={() => navigate(localizeAppPath('/pdv', locale))} allowUnavailableProducts disabled={busy} catalogLoading={inventoryLoading || loadingAccessibleInventory} style={compositionHeight ? { height: compositionHeight } : undefined} filters={<><button type="button" className={cn('chip', activeCategory === 'all' && 'active')} onClick={() => setActiveCategory('all')}>Todos</button>{categoriesInCatalog.map(category => <button type="button" key={category} className={cn('chip', activeCategory === category && 'active')} onClick={() => setActiveCategory(category)}>{category}</button>)}</>} cart={!mobileCart ? purchaseCart : null} />
       {mobileCart && <>{createPortal(<button type="button" className="fixed inset-x-0 z-40 flex items-center justify-between gap-3 rounded-t-xl border-t border-border bg-primary px-4 py-3 text-primary-foreground shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background" style={{ bottom: 'calc(104px + env(safe-area-inset-bottom))' }} onClick={() => setCartDrawerOpen(true)}><span className="flex items-center gap-2 text-sm font-semibold"><ShoppingCart className="h-4 w-4" />{selectedItems.length} {selectedItems.length === 1 ? 'material' : 'materiais'}</span><strong className="text-lg tabular-nums">{formatCurrency(total)}</strong></button>, document.body)}<Drawer open={cartDrawerOpen} onOpenChange={setCartDrawerOpen}><DrawerContent className="pdv-preview-sale flex max-h-[85dvh] flex-col"><DrawerHeader className="sr-only"><DrawerTitle>Compra atual</DrawerTitle></DrawerHeader>{purchaseCart}</DrawerContent></Drawer></>}
       <ResponsiveModal open={financialOpen} onOpenChange={setFinancialOpen} title="Conferir compra" fullScreen={expanded} className={cn("pdv-checkout-dialog pdv-purchase-review sm:max-w-[1000px]", expanded && "paymentfullscreen")} bodyClassName={expanded ? "pdv-checkout-body" : undefined} headerActions={<Button type="button" variant="ghost" size="sm" onClick={() => setExpanded(false)}><Minimize2 className="h-4 w-4" />Reduzir</Button>} footer={<div className="flex gap-3"><Button type="button" className="h-[52px] font-bold sm:h-14" variant="cancel-ghost" disabled={busy} onClick={() => setFinancialOpen(false)}>Cancelar</Button><Button type="button" className="h-[52px] flex-1 font-bold sm:h-14" disabled={busy || eligibleAccounts.length === 0} onClick={() => { const message = validationMessageFor(activeDraft); if (message) { toast({ title: t.validation.title, description: message, variant: 'destructive' }); return; } setFinancialOpen(false); requestFinalize(activeDraft); }}>Registrar compra</Button></div>}>
         <div className={cn("grid gap-6 lg:grid-cols-[minmax(0,.9fr)_minmax(0,1.3fr)]", expanded && "paymentfullbody")}><aside className="paymentleftsummary min-w-0 space-y-5"><div className="flex items-center justify-between gap-3"><h3 className={expanded ? 'text-xl font-bold' : 'font-bold'}>{selectedSupplier || 'Selecione o fornecedor'}</h3>{!expanded && <Button type="button" size="sm" variant="ghost" onClick={() => setExpanded(true)}><Maximize2 className="h-4 w-4" />Ampliar</Button>}</div>{supplierSelector(`purchase-review-supplier-${draftId}`)}<div className="divide-y">{selectedItems.map(item => { const material = inventory.find(candidate => candidate.id === item.inventoryId); return <div key={item.id} className="flex items-center gap-3 py-3"><SignedImg src={material?.image_url} alt="" className="h-10 w-10 shrink-0 object-contain" fallbackLabel="" /><div className="min-w-0 flex-1"><strong className="text-xs">{material?.name}</strong><small className="block text-xs text-muted-foreground">{item.quantityText} {material?.unit} × {formatCurrency(parsePdvPurchaseNumber(item.unitPriceText))}</small></div><strong className="whitespace-nowrap text-xs tabular-nums">{formatCurrency(parsePdvPurchaseNumber(item.quantityText) * parsePdvPurchaseNumber(item.unitPriceText))}</strong></div>; })}</div><div className="flex items-center justify-between gap-4 border-y py-4"><strong>Total da compra</strong><strong className="whitespace-nowrap text-2xl tabular-nums">{formatCurrency(total)}</strong></div><div className="space-y-1.5"><Label htmlFor={`purchase-description-${draftId}`}>{t.fields.description}</Label><Input id={`purchase-description-${draftId}`} value={activeDraft.description} disabled={busy} onChange={event => patchDraft(draftId, { description: event.target.value })} placeholder={t.fields.descriptionPlaceholder} /></div><div className="space-y-1.5"><Label>{t.fields.stock}</Label><Select value={activeDraft.stockId} disabled={busy || cashMode} onValueChange={stockId => patchDraft(draftId, { stockId })}><SelectTrigger><SelectValue placeholder={t.fields.stockPlaceholder} /></SelectTrigger><SelectContent>{stocks.map(stock => <SelectItem key={stock.id} value={stock.id}>{stock.name}</SelectItem>)}</SelectContent></Select></div><div className="space-y-1.5"><Label>{t.fields.purchaseDate}</Label><DatePicker value={activeDraft.purchaseDate} disabled={busy} max={today} onValueChange={purchaseDate => updateDraft(draftId, draft => ({ ...draft, paidDate: draft.paidDate === draft.purchaseDate ? purchaseDate : draft.paidDate, purchaseDate, purchaseDateTouched: true }))} /></div>{confirmedCashContext && <p className="text-xs text-muted-foreground">{confirmedCashContext.terminalName} · dinheiro registrado somente neste caixa.</p>}</aside><section className="paymentright min-w-0 space-y-4">
@@ -603,6 +645,19 @@ export default function PdvPurchase() {
                     >
                       Use outra forma de pagamento ou tente consultar de novo.
                     </NoticeBanner>
+                  )}
+                  {activeDraft.paymentMethod !== 'saldo_fornecedor' && supplierCredit.isSuccess && (supplierCredit.data ?? 0) > 0 && (
+                    <div className="space-y-2 border-t pt-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <Label htmlFor="purchase-supplier-credit">Saldo do fornecedor</Label>
+                        <span className="text-xs text-muted-foreground">Disponível: {formatCurrency(supplierCredit.data ?? 0)}</span>
+                      </div>
+                      {(activeDraft.supplierCreditAmount ?? 0) > 0 ? <>
+                        <PdvMoneyInput id="purchase-supplier-credit" value={activeDraft.supplierCreditAmount ?? 0} disabled={busy} selectOnFocus onChange={supplierCreditAmount => patchDraft(draftId, { supplierCreditAmount })} />
+                        <p className="text-xs text-muted-foreground">Complemento na forma escolhida: <strong className="text-foreground">{formatCurrency(Math.max(0, pdvPurchaseDraftTotal(activeDraft) - (activeDraft.supplierCreditAmount ?? 0)))}</strong></p>
+                        <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => patchDraft(draftId, { supplierCreditAmount: 0 })}>Remover saldo aplicado</Button>
+                      </> : <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => patchDraft(draftId, { supplierCreditAmount: Math.min(supplierCredit.data ?? 0, pdvPurchaseDraftTotal(activeDraft)) })}>Usar saldo do fornecedor</Button>}
+                    </div>
                   )}
                   {activeDraft.paymentMethod === 'saldo_fornecedor' && supplierCredit.isSuccess && (
                     <NoticeBanner variant="info" title={`Saldo disponível: ${formatCurrency(supplierCredit.data ?? 0)}`}>

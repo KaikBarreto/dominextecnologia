@@ -15,7 +15,6 @@ describe('invalidação canônica do cancelamento de pedido PDV', () => {
     for (const queryKey of PDV_ORDER_CANCELLATION_QUERY_ROOTS) {
       expect(invalidate).toHaveBeenCalledWith({ queryKey });
     }
-
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['pdv', 'reports-v2'] });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['material-purchase-report'] });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['inventory', 'abc-report'] });

@@ -1,3 +1,4 @@
+import { safePdvCouponError, PDV_COUPONS_ROOT } from '@/hooks/usePdvCoupons';
 import { projectPdvCatalogCustomer, type PdvCatalogCustomer } from '@/lib/pdv/catalogCustomer';
 import { pdvDirectSaleIdempotencyKey } from '@/lib/pdv/directSaleRecovery';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -42,6 +43,7 @@ export interface PdvDirectSaleItemV2 {
 export interface PdvCompleteDirectSaleV2Input {
   attemptId: string; terminalId: string; cashSessionId: string; cashAccountId: string;
   customerId: string | null; items: PdvDirectSaleItemV2[];
+  couponId?: string | null; couponDiscountCents?: number;
   orderDiscountAmount: number; notes?: string | null; transactionDate?: string | null;
   payments: SettlePaymentPayload[];
   /** Chave histórica já conhecida ou chave versionada persistida antes da RPC. */
@@ -69,7 +71,10 @@ function detailCode(error: RpcError): string {
 
 export function mapPdvDirectSaleV2Error(error: RpcError): PdvDirectSaleV2Error {
   const code = detailCode(error);
+  if (code.startsWith('pdv_coupon_')) return new PdvDirectSaleV2Error(safePdvCouponError(error).message, code);
   const messages: Record<string, string> = {
+    pdv_fiado_due_date_invalid: 'Revise o vencimento do fiado.',
+    pdv_fiado_installments_due_required: 'Informe o primeiro vencimento para parcelar o fiado.',
     pdv_direct_sale_rollout_disabled: 'A nova venda direta ainda não está liberada para esta empresa.',
     pdv_direct_sale_screen_denied: 'Você não tem permissão para operar a venda do PDV.',
     pdv_direct_sale_forbidden: 'Você não tem permissão para concluir esta venda.',
@@ -139,6 +144,7 @@ export function canonicalizePdvDirectSalePayments(payments: SettlePaymentPayload
       change_amount: payment.change_amount ?? 0,
       account_id: payment.account_id ?? null,
       due_date: payment.due_date ?? null,
+      ...(payment.due_date_mode === 'none' ? { due_date_mode: 'none' as const } : {}),
       reference_id: payment.reference_id ?? null,
     }))
     .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
@@ -206,6 +212,7 @@ export function buildPdvDirectSaleV2RpcPayload(input: PdvCompleteDirectSaleV2Inp
         unit_price: item.unitPrice, discount_amount: item.discountAmount,
       })),
       order_discount_amount: input.orderDiscountAmount,
+      ...(input.couponId ? { coupon_id: input.couponId, coupon_discount_cents: input.couponDiscountCents ?? 0 } : {}),
       notes: input.notes?.trim() || null,
       transaction_date: input.transactionDate || null,
     },
@@ -214,6 +221,7 @@ export function buildPdvDirectSaleV2RpcPayload(input: PdvCompleteDirectSaleV2Inp
       ...(payment.change_amount ? { change_amount: payment.change_amount } : {}),
       ...(payment.account_id ? { account_id: payment.account_id } : {}),
       ...(payment.due_date ? { due_date: payment.due_date } : {}),
+      ...(payment.due_date_mode === 'none' ? { due_date_mode: 'none' } : {}),
       ...(payment.reference_id ? { reference_id: payment.reference_id } : {}),
     })),
     p_idempotency_key: idempotencyKey,
@@ -261,7 +269,7 @@ export function usePdvDirectSaleV2() {
         ['pdv-stock-reservations'],['pdv-stock-availability'],['financial-accounts'],
         ['account-balances'],['financial-transactions'],['financial-summary'],['pdv-cofre-balance'],
         ['pdv-cash-sessions'],['pdv-cash-session-detail'],['pdv-customer-credit'],['pdv-customer-payment-options'],['party-account-v2'],['pdv-orders'],
-        ['pdv-direct-sale-v2'],PDV_CASH_V2_QUERY_ROOT] as const).map((key) => queryClient.invalidateQueries({ queryKey: [...key] }));
+        ['pdv-direct-sale-v2'],PDV_COUPONS_ROOT,PDV_CASH_V2_QUERY_ROOT] as const).map((key) => queryClient.invalidateQueries({ queryKey: [...key] }));
       // A venda já foi confirmada pelo servidor. Marcar todas as leituras
       // como desatualizadas é imediato; refazer relatórios em segundo plano
       // não pode manter o caixa em "Finalizando" nem sugerir um novo envio.

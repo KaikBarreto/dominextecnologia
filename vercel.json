@@ -1,18 +1,42 @@
 {
   "redirects": [
     {
-      "source": "/:path*",
-      "has": [{ "type": "host", "value": "dominex.app" }],
-      "destination": "https://www.dominex.app/:path*",
-      "permanent": true
-    },
-    {
       "source": "/v1/docs",
       "destination": "/docs",
       "permanent": true
     }
   ],
   "headers": [
+    {
+      "source": "/sw.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0, must-revalidate"
+        },
+        {
+          "key": "CDN-Cache-Control",
+          "value": "no-store"
+        },
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/"
+        }
+      ]
+    },
+    {
+      "source": "/sw-origin-guard.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0, must-revalidate"
+        },
+        {
+          "key": "CDN-Cache-Control",
+          "value": "no-store"
+        }
+      ]
+    },
     {
       "source": "/(.*)",
       "headers": [
@@ -41,7 +65,6 @@
   ],
   "rewrites": [
     { "source": "/v1/openapi.json", "destination": "/api/openapi-v1" },
-    { "source": "/llms.txt", "destination": "/docs/llms.txt" },
     { "source": "/v1/:path*", "destination": "/api/public-v1?path=:path*" },
     { "source": "/os-tecnico/:id", "destination": "/api/public-os?id=:id" },
     { "source": "/blog/:slug", "destination": "/api/blog-post?slug=:slug&locale=pt-br" },

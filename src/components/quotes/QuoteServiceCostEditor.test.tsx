@@ -48,11 +48,14 @@ describe('QuoteServiceCostEditor', () => {
       value={{ serviceTypeId: 'service-1', composition }} onChange={onChange}
       bdiFactor={0.68} formatMoney={value => `R$ ${value}`} currencySymbol="R$"
     />));
-    const checkbox = container.querySelector<HTMLButtonElement>('[role="checkbox"]');
-    expect(checkbox?.getAttribute('data-state')).toBe('unchecked');
-    expect(container.textContent).toContain('a composição vale apenas para este orçamento');
+    const quoteOnly = container.querySelector<HTMLButtonElement>('[role="radio"][value="quote"]');
+    const catalog = container.querySelector<HTMLButtonElement>('[role="radio"][value="catalog"]');
+    expect(quoteOnly?.getAttribute('aria-checked')).toBe('true');
+    expect(catalog?.getAttribute('aria-checked')).toBe('false');
+    expect(container.textContent).toContain('Só neste orçamento');
+    expect(container.textContent).toContain('O custo cadastrado do serviço continua igual.');
     expect(onChange).not.toHaveBeenCalled();
-    act(() => checkbox?.click());
+    act(() => catalog?.click());
     expect(onChange).toHaveBeenCalledWith({ serviceTypeId: 'service-1', composition, saveAsCatalogDefault: true });
   });
 

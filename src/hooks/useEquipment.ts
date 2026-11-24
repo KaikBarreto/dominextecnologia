@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import type { Equipment } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
@@ -70,11 +71,13 @@ export function useEquipment(customerId?: string) {
 
   const deleteEquipment = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('equipment')
-        .delete()
-        .eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('equipment')
+          .delete({ count: 'exact' })
+          .eq('id', id),
+        'delete',
+      );
       return id;
     },
     onSuccess: () => {

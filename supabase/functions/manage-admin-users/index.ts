@@ -34,10 +34,28 @@ interface Payload {
 
 const JSON_HEADERS = { ...corsHeaders, 'Content-Type': 'application/json' };
 const SALESPERSON_REQUIRED_PERMISSION = 'admin_empresas_acesso';
+const ALLOWED_ADMIN_PERMISSIONS = new Set([
+  'admin_dashboard', 'admin_crm', 'admin_empresas', 'admin_health_score',
+  'admin_vendedores', 'admin_afiliados', 'admin_financeiro', 'admin_domiflix',
+  'admin_configuracoes', 'admin_usuarios', 'admin_empresas_criar',
+  'admin_empresas_editar', 'admin_empresas_excluir', 'admin_empresas_pagamento',
+  'admin_empresas_acesso',
+  'admin_financeiro_lancamentos', 'admin_financeiro_totais',
+  'admin_vendedores_ver_todos', 'admin_vendedores_gerenciar',
+  'admin_crm_criar_lead', 'admin_crm_excluir_lead',
+]);
 
 /** Mesma forma de resposta das actions antigas (`{ error }` / payload cru). */
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
+}
+
+function sanitizePermissions(raw: unknown): string[] | null {
+  if (raw === undefined) return [];
+  if (!Array.isArray(raw) || raw.some((permission) => typeof permission !== 'string' || !ALLOWED_ADMIN_PERMISSIONS.has(permission))) {
+    return null;
+  }
+  return [...new Set(raw)];
 }
 
 Deno.serve(async (req) => {
@@ -106,6 +124,8 @@ Deno.serve(async (req) => {
       if (!body.email || !body.password) {
         return new Response(JSON.stringify({ error: 'Email e senha obrigatórios' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
+      const requestedPermissions = sanitizePermissions(body.permissions);
+      if (!requestedPermissions) return json({ error: 'Permissão inválida' }, 400);
       const { data: created, error: createErr } = await admin.auth.admin.createUser({
         email: body.email,
         password: body.password,
@@ -115,7 +135,7 @@ Deno.serve(async (req) => {
       if (createErr) throw createErr;
       const newUserId = created.user!.id;
 
-      const permissions = new Set(body.permissions ?? []);
+      const permissions = new Set(requestedPermissions);
       if (body.link_salesperson_id) permissions.add(SALESPERSON_REQUIRED_PERMISSION);
       if (permissions.size) {
         await admin.from('admin_permissions').insert(
@@ -130,8 +150,10 @@ Deno.serve(async (req) => {
 
     if (body.action === 'update_permissions') {
       if (!body.user_id) return new Response(JSON.stringify({ error: 'user_id obrigatório' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      const requestedPermissions = sanitizePermissions(body.permissions);
+      if (!requestedPermissions) return json({ error: 'Permissão inválida' }, 400);
       await admin.from('admin_permissions').delete().eq('user_id', body.user_id);
-      const permissions = new Set(body.permissions ?? []);
+      const permissions = new Set(requestedPermissions);
       if (body.link_salesperson_id) permissions.add(SALESPERSON_REQUIRED_PERMISSION);
       if (permissions.size) {
         await admin.from('admin_permissions').insert(

@@ -13,7 +13,7 @@ vi.mock('@/contexts/AppLocaleContext', () => ({
 }));
 
 import { PermissionsEditor } from './PermissionsEditor';
-import { getAllPermissionKeys, getFunctionsByScreen } from '@/hooks/usePermissions';
+import { getAllPermissionKeys, getFunctionsByScreen, normalizePermissionDependencies } from '@/hooks/usePermissions';
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -142,6 +142,23 @@ describe('PermissionsEditor', () => {
     expect(sw.hasAttribute('disabled')).toBe(false);
     click(sw);
     expect(current).toEqual(['fn:create_os']);
+  });
+
+  it('inclui e trava o uso de contas ao liberar lançamentos financeiros', () => {
+    mount();
+    click(byLabel('Ver ações de Financeiro'));
+    click(byLabel('Criar e editar lançamentos financeiros'));
+
+    expect(current).toEqual(['fn:manage_finance', 'fn:use_bank_accounts']);
+    expect(byLabel('Usar contas e caixas')?.hasAttribute('disabled')).toBe(true);
+  });
+
+  it('normaliza a dependência também fora do editor', () => {
+    expect(normalizePermissionDependencies(['screen:finance', 'fn:manage_finance']))
+      .toEqual(['screen:finance', 'fn:manage_finance', 'fn:use_bank_accounts']);
+    expect(normalizePermissionDependencies(['fn:manage_bank_accounts']))
+      .toEqual(['fn:manage_bank_accounts', 'fn:use_bank_accounts']);
+    expect(normalizePermissionDependencies(['*'])).toEqual(['*']);
   });
 
   it('tela sem ações não tem trigger de expandir', () => {

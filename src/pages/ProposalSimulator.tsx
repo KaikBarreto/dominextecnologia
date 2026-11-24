@@ -1,3 +1,6 @@
+import { BUSINESS_CORE_BUNDLES } from '@/lib/businessCoreCatalog';
+import { parseBusinessCore, corePlanCode, SERVICE_DEPENDENT_MODULE_CODES, type BusinessCore } from '@/lib/businessCore';
+import { customCommercialModulesForCore, requiredCustomModulesForCore } from '@/lib/businessCorePricing';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -13,6 +16,7 @@ import {
   Moon,
   Plus,
   FileDown,
+  FileSignature,
   Loader2,
   Sparkles,
   Trash2,
@@ -40,11 +44,7 @@ import {
 } from '@/hooks/usePublicSubscriptionPlans';
 import { cn } from '@/lib/utils';
 import {
-  BASIC_BUNDLE_DESCRIPTION,
-  BASIC_BUNDLE_FEATURES,
-  BASIC_BUNDLE_LABEL,
   EXTRA_USER_MODULE_CODE,
-  REQUIRED_CUSTOM_MODULE_CODES,
   isRequiredCustomModule,
   isRetiredProposalModule,
 } from '@/lib/subscriptionCatalog';
@@ -75,8 +75,10 @@ import { formatBRL } from '@/utils/currency';
 import logoWhite from '@/assets/logo-white-horizontal.png';
 import {
   generateProposalSimulatorPdf,
+  type GenerateProposalPdfInput,
   type ProposalPdfModuleValue,
 } from '@/utils/proposalSimulatorPdf';
+import { generateProposalContractPdf } from '@/utils/proposalContractPdf';
 
 type ModulePricePeriod = 'monthly' | 'annual';
 
@@ -106,6 +108,7 @@ const MODULE_LABELS: Record<string, string> = {
   white_label: 'White Label',
   whatsapp: 'Integração com o WhatsApp',
   cobrancas: 'Cobranças',
+  pdv: 'PDV (Loja)',
 };
 
 const PLAN_ACCENTS: Record<string, { icon: typeof Zap; className: string }> = {
@@ -121,7 +124,7 @@ const PROPOSAL_BENEFITS = [
 ];
 
 function planAccent(code: string) {
-  return PLAN_ACCENTS[code] ?? { icon: Sparkles, className: 'bg-primary text-primary-foreground' };
+  return PLAN_ACCENTS[code.replace(/^retail_/, '')] ?? { icon: Sparkles, className: 'bg-primary text-primary-foreground' };
 }
 
 function money(value: number) {
@@ -131,18 +134,21 @@ function money(value: number) {
 function moduleBenefits(
   moduleCodes: string[],
   catalogModules: Array<{ code: string; name: string }> = [],
+  businessCore:BusinessCore='services',
 ): string[] {
   const catalogNames = new Map(catalogModules.map((module) => [module.code, module.name]));
   return Array.from(new Set(moduleCodes.flatMap((code) => {
     if (isRetiredProposalModule(code)) return [];
-    if (code === BASE_MODULE_CODE) return [...BASIC_BUNDLE_FEATURES];
+    if (code === BASE_MODULE_CODE) return [...BUSINESS_CORE_BUNDLES[businessCore].features];
+    if(businessCore==='retail' && !moduleCodes.includes('service_operations') && (SERVICE_DEPENDENT_MODULE_CODES as readonly string[]).includes(code)) return [];
     if (isRequiredCustomModule(code)) return [];
     const label = MODULE_LABELS[code] ?? catalogNames.get(code);
     return label ? [label] : [];
   })));
 }
 
-function moduleDisplayName(module: { code: string; name: string }): string {
+function moduleDisplayName(module: { code: string; name: string },businessCore:BusinessCore='services'): string {
+  if(module.code==='basic')return BUSINESS_CORE_BUNDLES[businessCore].label;
   return MODULE_LABELS[module.code] ?? module.name;
 }
 
@@ -182,7 +188,7 @@ function PricingTableRow({
   );
 }
 
-function planModules(plan: PublicSubscriptionPlan): string[] {
+function planModules(plan: PublicSubscriptionPlan,businessCore:BusinessCore='services'): string[] {
   if (plan.code === 'excecao') {
     return [
       'Ordens de Serviço e rastreamento',
@@ -191,7 +197,7 @@ function planModules(plan: PublicSubscriptionPlan): string[] {
       'Clientes',
     ];
   }
-  return moduleBenefits([BASE_MODULE_CODE, ...plan.includedModules]);
+  return moduleBenefits([BASE_MODULE_CODE, ...plan.includedModules],[],businessCore);
 }
 
 function discountLabel(discount: ProposalDiscount, appliedAmount: number): string {
@@ -397,6 +403,8 @@ function PlanFeatureList({ modules, users, planCode }: { modules: string[]; user
 
 export default function ProposalSimulator() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const [businessCore,setBusinessCore]=useState<BusinessCore>(()=>parseBusinessCore(searchParams.get('nucleo'))??'services');
+  const coreBundle=BUSINESS_CORE_BUNDLES[businessCore];
   const initialState = useMemo(() => parsePublicProposal(searchParams), []); // eslint-disable-line react-hooks/exhaustive-deps
   const [clientName, setClientName] = useState(initialState.clientName);
   const [units, setUnits] = useState<ProposalUnit[]>(initialState.units);
@@ -419,8 +427,9 @@ export default function ProposalSimulator() {
   const [openUnitId, setOpenUnitId] = useState<string | undefined>(initialState.units[0]?.id);
   const [modulePickerUnitId, setModulePickerUnitId] = useState<string | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isGeneratingContractPdf, setIsGeneratingContractPdf] = useState(false);
   const didMount = useRef(false);
-  const { data: catalog, isLoading, isError } = usePublicSubscriptionCatalog();
+  const { data: catalog, isLoading, isError } = usePublicSubscriptionCatalog(businessCore);
   const plans = useMemo(() => catalog?.plans ?? [], [catalog?.plans]);
   const modules = useMemo(() => catalog?.modules ?? [], [catalog?.modules]);
   const proposalModules = useMemo(
@@ -461,11 +470,10 @@ export default function ProposalSimulator() {
       didMount.current = true;
       return;
     }
-    setSearchParams(
-      serializePublicProposal({ clientName, units, pricesHidden, annualDiscount, monthlyDiscount, installments }),
-      { replace: true },
-    );
-  }, [annualDiscount, clientName, installments, monthlyDiscount, pricesHidden, setSearchParams, units]);
+    const params=serializePublicProposal({ clientName, units, pricesHidden, annualDiscount, monthlyDiscount, installments });
+    params.set('nucleo',businessCore);
+    setSearchParams(params,{replace:true});
+  }, [annualDiscount, businessCore, clientName, installments, monthlyDiscount, pricesHidden, setSearchParams, units]);
 
   useEffect(() => {
     if (plans.length === 0) return;
@@ -495,13 +503,13 @@ export default function ProposalSimulator() {
         unit,
         code: CUSTOM_PLAN_CODE,
         name: 'Personalizado',
-        modules: moduleBenefits(unit.moduleCodes, selectedModules),
+        modules: moduleBenefits(unit.moduleCodes, selectedModules,businessCore),
         users: unit.users,
         monthly,
         moduleValues: selectedModules
           .filter((module) => module.price > 0)
           .map((module): ProposalPdfModuleValue => ({
-            name: moduleDisplayName(module),
+            name: moduleDisplayName(module,businessCore),
             monthlyPrice: module.price,
           })),
       };
@@ -512,17 +520,17 @@ export default function ProposalSimulator() {
       unit,
       code: plan?.code ?? unit.planCode,
       name: plan?.name ?? 'Plano',
-      modules: plan ? planModules(plan) : [],
+      modules: plan ? planModules(plan,businessCore) : [],
       users: plan?.maxUsers ?? 0,
       monthly: plan?.price ?? 0,
       moduleValues: proposalModules
         .filter((module) => planModuleCodes.has(module.code) && module.price > 0)
         .map((module): ProposalPdfModuleValue => ({
-          name: moduleDisplayName(module),
+          name: moduleDisplayName(module,businessCore),
           monthlyPrice: module.price,
         })),
     };
-  }), [extraUserPrice, plans, proposalModules, units]);
+  }), [extraUserPrice, plans, proposalModules, units,businessCore]);
   const totals = useMemo(
     () => calculateProposalTotals(
       units,
@@ -554,7 +562,8 @@ export default function ProposalSimulator() {
     ? proposalModules.filter(
         (module) => module.code !== EXTRA_USER_MODULE_CODE
           && !isRequiredCustomModule(module.code)
-          && !modulePickerUnit.moduleCodes.includes(module.code),
+          && !modulePickerUnit.moduleCodes.includes(module.code)
+          && (businessCore==='services'||modulePickerUnit.moduleCodes.includes('service_operations')||module.code!=='contracts'),
       )
     : [];
 
@@ -580,7 +589,7 @@ export default function ProposalSimulator() {
     if (planCode === CUSTOM_PLAN_CODE) {
       updateUnit(unit.id, {
         planCode,
-        moduleCodes: [...REQUIRED_CUSTOM_MODULE_CODES],
+        moduleCodes: requiredCustomModulesForCore(businessCore),
         users: CUSTOM_PLAN_INCLUDED_USERS,
       });
       return;
@@ -626,48 +635,58 @@ export default function ProposalSimulator() {
 
   async function copyLink() {
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      const url=new URL(window.location.href);url.searchParams.set('nucleo',businessCore);
+      await navigator.clipboard.writeText(url.toString());
       toast.success('Link da proposta copiado');
     } catch {
       toast.error('Não foi possível copiar o link');
     }
   }
 
-  async function generatePdf(settings: ProposalExportSettings) {
+  function buildPdfInput(settings: ProposalExportSettings): GenerateProposalPdfInput {
+    return {
+      clientName,
+      logoUrl: logoWhite,
+      units: unitViews.map((view) => {
+        const unitTotals = calculateProposalTotals(
+          [view.unit],
+          plans,
+          proposalModules,
+          extraUserPrice,
+        );
+        return {
+          name: view.unit.name,
+          planName: view.name,
+          modules: view.modules,
+          users: view.users,
+          monthly: unitTotals.monthlyFull,
+          yearlyFull: unitTotals.yearlyFull,
+          yearlyDiscounted: unitTotals.yearlyFull,
+          moduleValues: view.moduleValues,
+        };
+      }),
+      totals,
+      showModulePrices: settings.showModulePrices,
+      modulePricePeriod: settings.modulePricePeriod,
+      showMonthlyPrice: settings.showMonthlyPrice,
+      showPixInstallments: settings.showPixInstallments,
+    };
+  }
+
+  function validatePdfClient(documentLabel: string): boolean {
     if (!clientName.trim()) {
-      toast.error('Informe o nome do cliente antes de gerar a proposta.');
-      return;
+      toast.error(`Informe o nome do cliente antes de gerar ${documentLabel}.`);
+      return false;
     }
+    return true;
+  }
+
+  async function generatePdf(settings: ProposalExportSettings) {
+    if (!validatePdfClient('a proposta')) return;
 
     setIsGeneratingPdf(true);
     try {
-      await generateProposalSimulatorPdf({
-        clientName,
-        logoUrl: logoWhite,
-        units: unitViews.map((view) => {
-          const unitTotals = calculateProposalTotals(
-            [view.unit],
-            plans,
-            proposalModules,
-            extraUserPrice,
-          );
-          return {
-            name: view.unit.name,
-            planName: view.name,
-            modules: view.modules,
-            users: view.users,
-            monthly: unitTotals.monthlyFull,
-            yearlyFull: unitTotals.yearlyFull,
-            yearlyDiscounted: unitTotals.yearlyFull,
-            moduleValues: view.moduleValues,
-          };
-        }),
-        totals,
-        showModulePrices: settings.showModulePrices,
-        modulePricePeriod: settings.modulePricePeriod,
-        showMonthlyPrice: settings.showMonthlyPrice,
-        showPixInstallments: settings.showPixInstallments,
-      });
+      await generateProposalSimulatorPdf(buildPdfInput(settings));
       setExportDialogOpen(false);
       toast.success('Proposta em PDF gerada com sucesso.');
     } catch (error) {
@@ -678,11 +697,37 @@ export default function ProposalSimulator() {
     }
   }
 
+  async function generateContractPdf(settings: ProposalExportSettings) {
+    if (!validatePdfClient('a minuta')) return;
+
+    setIsGeneratingContractPdf(true);
+    try {
+      await generateProposalContractPdf(buildPdfInput(settings));
+      setExportDialogOpen(false);
+      toast.success('Minuta contratual em PDF gerada com sucesso.');
+    } catch (error) {
+      console.error(error);
+      toast.error('Não foi possível gerar a minuta contratual em PDF. Tente novamente.');
+    } finally {
+      setIsGeneratingContractPdf(false);
+    }
+  }
+
+  const selectCore=(next:BusinessCore)=>{
+    setBusinessCore(next);
+    setUnits(current=>current.map(unit=>{
+      const chosen=unit.moduleCodes.filter(code=>next==='services'||unit.moduleCodes.includes('service_operations')||!(SERVICE_DEPENDENT_MODULE_CODES as readonly string[]).includes(code));
+      return {...unit,planCode:corePlanCode(next,unit.planCode),moduleCodes:customCommercialModulesForCore(next,chosen)};
+    }));
+  };
+  const coreSelector=<div className="space-y-1.5 print:hidden"><Label htmlFor="proposal-business-core">Perfil da empresa</Label><Select value={businessCore} onValueChange={value=>selectCore(value as BusinessCore)}><SelectTrigger id="proposal-business-core" className="w-48"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="services">Serviços</SelectItem><SelectItem value="retail">Loja</SelectItem></SelectContent></Select></div>;
+
   if (isError) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-background p-6 text-center">
         <div className="max-w-md space-y-3">
           <h1 className="text-xl font-semibold">Não foi possível carregar os planos</h1>
+          {coreSelector}
           <p className="text-sm text-muted-foreground">Recarregue a página para tentar novamente.</p>
           <Button onClick={() => window.location.reload()}>Recarregar</Button>
         </div>
@@ -725,31 +770,32 @@ export default function ProposalSimulator() {
               <Copy className="mr-2 h-4 w-4" />
               Link
             </Button>
-            <Button size="sm" onClick={() => setExportDialogOpen(true)} disabled={isGeneratingPdf || isLoading}>
-              {isGeneratingPdf ? (
+            <Button size="sm" onClick={() => setExportDialogOpen(true)} disabled={isGeneratingPdf || isGeneratingContractPdf || isLoading}>
+              {isGeneratingPdf || isGeneratingContractPdf ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <FileDown className="mr-2 h-4 w-4" />
               )}
-              <span className="hidden sm:inline">{isGeneratingPdf ? 'Gerando...' : 'Gerar proposta'}</span>
+              <span className="hidden sm:inline">{isGeneratingPdf || isGeneratingContractPdf ? 'Gerando...' : 'Gerar documentos'}</span>
               <span className="sm:hidden">Gerar</span>
             </Button>
           </div>
         </header>
 
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">{coreSelector}<p className="max-w-md text-xs text-muted-foreground">Valores estimados da proposta. A contratação confirma as condições no cadastro.</p></div>
         <ResponsiveModal
           open={exportDialogOpen}
           onOpenChange={setExportDialogOpen}
-          title="Configurar proposta"
-          description="Escolha como os valores vão aparecer no PDF."
+          title="Configurar documentos"
+          description="Escolha como os valores vão aparecer e gere a proposta ou a minuta contratual."
           footer={(
-            <div className="flex gap-2">
+            <div className="grid w-full gap-2 sm:grid-cols-3">
               <Button
                 type="button"
                 variant="outline"
                 className="flex-1 hover:border-red-600 hover:bg-red-600 hover:text-white dark:hover:border-red-600 dark:hover:bg-red-600 dark:hover:text-white"
                 onClick={() => setExportDialogOpen(false)}
-                disabled={isGeneratingPdf}
+                disabled={isGeneratingPdf || isGeneratingContractPdf}
               >
                 Cancelar
               </Button>
@@ -757,18 +803,27 @@ export default function ProposalSimulator() {
                 type="button"
                 className="flex-1"
                 onClick={() => void generatePdf(exportSettings)}
-                disabled={isGeneratingPdf}
+                disabled={isGeneratingPdf || isGeneratingContractPdf}
               >
                 {isGeneratingPdf ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                {isGeneratingPdf ? 'Gerando...' : 'Gerar PDF'}
+                {isGeneratingPdf ? 'Gerando...' : 'Gerar proposta'}
+              </Button>
+              <Button
+                type="button"
+                className="flex-1 bg-emerald-600 text-white hover:bg-emerald-700"
+                onClick={() => void generateContractPdf(exportSettings)}
+                disabled={isGeneratingPdf || isGeneratingContractPdf}
+              >
+                {isGeneratingContractPdf ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSignature className="mr-2 h-4 w-4" />}
+                {isGeneratingContractPdf ? 'Gerando...' : 'Gerar minuta'}
               </Button>
             </div>
           )}
         >
           <div className="space-y-5 py-2">
             <div className="rounded-lg bg-emerald-600 p-3 text-white">
-              <p className="text-sm font-semibold">Valor anual sempre incluído</p>
-              <p className="mt-1 text-xs text-white/80">A proposta sempre mostra o total anual e a economia negociada.</p>
+              <p className="text-sm font-semibold">Uma configuração, dois documentos</p>
+              <p className="mt-1 text-xs text-white/80">A proposta e a minuta usam o mesmo escopo e os mesmos valores negociados.</p>
             </div>
 
             <div className="divide-y divide-border/50">
@@ -832,7 +887,7 @@ export default function ProposalSimulator() {
         </ResponsiveModal>
 
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)}>
-          <TabsList variant="underline" className="mb-6 w-full print:hidden">
+          <TabsList variant="underline" wrapperClassName="mb-6 print:hidden" className="w-full">
             <TabsTrigger variant="underline" value="proposal">Proposta</TabsTrigger>
             <TabsTrigger variant="underline" value="structure">Organograma</TabsTrigger>
             <TabsTrigger variant="underline" value="pricing">Tabela</TabsTrigger>
@@ -918,9 +973,9 @@ export default function ProposalSimulator() {
                               <div className="flex items-start gap-3 rounded-lg bg-emerald-600 p-3 text-white">
                                 <Check className="mt-0.5 h-4 w-4 shrink-0" />
                                 <div className="min-w-0">
-                                  <p className="text-sm font-semibold">{BASIC_BUNDLE_LABEL}</p>
+                                  <p className="text-sm font-semibold">{coreBundle.label}</p>
                                   <p className="mt-0.5 text-xs leading-relaxed text-white/80">
-                                    {BASIC_BUNDLE_DESCRIPTION}
+                                    {coreBundle.description}
                                   </p>
                                 </div>
                               </div>
@@ -933,7 +988,7 @@ export default function ProposalSimulator() {
                                   <div key={module.code} className="flex items-start gap-3 rounded-lg border border-border/60 bg-card p-3">
                                     <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
                                     <div className="min-w-0 flex-1">
-                                      <p className="text-sm font-semibold">{moduleDisplayName(module)}</p>
+                                      <p className="text-sm font-semibold">{moduleDisplayName(module,businessCore)}</p>
                                       {module.description && <p className="mt-0.5 text-xs text-muted-foreground">{module.description}</p>}
                                     </div>
                                     <Button
@@ -942,7 +997,7 @@ export default function ProposalSimulator() {
                                       size="icon"
                                       className="h-8 w-8 shrink-0 text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"
                                       onClick={() => toggleModule(unit, module.code)}
-                                      aria-label={`Remover ${moduleDisplayName(module)}`}
+                                      aria-label={`Remover ${moduleDisplayName(module,businessCore)}`}
                                     >
                                       <X className="h-4 w-4" />
                                     </Button>
@@ -1233,8 +1288,8 @@ export default function ProposalSimulator() {
                       </TableCell>
                     </TableRow>
                     <PricingTableRow
-                      name={BASIC_BUNDLE_LABEL}
-                      description={BASIC_BUNDLE_DESCRIPTION}
+                      name={coreBundle.label}
+                      description={coreBundle.description}
                       price={baseModule?.price ?? plans.find((plan) => plan.code === 'start')?.price ?? 0}
                       hidden={pricesHidden}
                     />
@@ -1247,7 +1302,7 @@ export default function ProposalSimulator() {
                     {paidAddonModules.map((module) => (
                       <PricingTableRow
                         key={module.code}
-                        name={moduleDisplayName(module)}
+                        name={moduleDisplayName(module,businessCore)}
                         description={module.description || 'Funcionalidade adicional contratada por unidade.'}
                         price={module.price}
                         hidden={pricesHidden}
@@ -1295,7 +1350,7 @@ export default function ProposalSimulator() {
               >
                 <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
                 <span className="min-w-0">
-                  <span className="block text-sm font-semibold">{moduleDisplayName(module)}</span>
+                  <span className="block text-sm font-semibold">{moduleDisplayName(module,businessCore)}</span>
                   {module.description && <span className="mt-0.5 block text-xs text-muted-foreground">{module.description}</span>}
                 </span>
               </button>

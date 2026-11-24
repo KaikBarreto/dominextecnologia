@@ -7,6 +7,7 @@ import type { LocaleCode } from '@/lib/i18n/locales';
 import { safeTimeZone } from '@/lib/timezone';
 import { pdfDownloadAssets } from '@/utils/pdfDownloadButton';
 import { formatMoney } from '@/lib/format';
+import { normalizeFinancialCategoryColor } from '@/lib/financial-category-display';
 
 /**
  * Relatório HTML printável das Movimentações financeiras.
@@ -27,6 +28,8 @@ export interface MovimentacaoReportRow {
   type: 'entrada' | 'saida';
   description: string;
   category: string;
+  /** Cor hexadecimal cadastrada da categoria; fallback cinza no gerador. */
+  categoryColor?: string;
   account: string;
   amount: number;
   isPaid: boolean;
@@ -175,7 +178,9 @@ export function generateMovimentacoesReportHtml(data: MovimentacoesReportData): 
         <td>${formatDateBR(r.date)}</td>
         <td><span class="tipo-badge ${tipoClass}">${tipoLabel}</span></td>
         <td>${escapeHtml(r.description) || '—'}</td>
-        <td>${escapeHtml(r.category) || '—'}</td>
+        <td>${r.category
+          ? `<span class="category-badge" style="background-color:${normalizeFinancialCategoryColor(r.categoryColor)}">${escapeHtml(r.category)}</span>`
+          : '—'}</td>
         <td>${escapeHtml(r.account) || '—'}</td>
         <td class="right ${valorClass}">${sinal}${formatCurrencyBR(r.amount)}</td>
         <td class="center"><span class="status-badge ${r.isPaid ? 'status-paid' : 'status-unpaid'}">${r.isPaid ? t.labelPaid : t.labelPending}</span></td>
@@ -225,6 +230,7 @@ export function generateMovimentacoesReportHtml(data: MovimentacoesReportData): 
     .tipo-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 9px; font-weight: 700; color: #fff; }
     .tipo-entrada { background: #16a34a; }
     .tipo-saida { background: #dc2626; }
+    .category-badge { display: inline-block; max-width: 100%; padding: 2px 8px; border-radius: 999px; color: #fff; font-size: 9px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
     .status-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 9px; font-weight: 600; }
     .status-paid { background: #dcfce7; color: #166534; }
     .status-unpaid { background: #f3f4f6; color: #4b5563; }

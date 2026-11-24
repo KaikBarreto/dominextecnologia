@@ -143,7 +143,7 @@ export default function AdminAffiliates() {
 
       {isMobile ? (
         <>
-          {isLoading ? <StatCarousel items={[]} loading /> : <StatCarousel items={mobileStats} />}
+          {isLoading ? <StatCarousel items={[]} loading /> : <StatCarousel items={mobileStats} variant="saturated" />}
 
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

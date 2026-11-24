@@ -48,18 +48,19 @@ export async function authorizeAsaasCompany(
     return { ok: false, status: 401, message: "Token inválido." };
   }
 
-  // super_admin via has_role (bypass de tenant — pode agir sobre qualquer empresa).
-  const { data: isSuperAdmin } = await supabase.rpc("has_role", {
-    _user_id: user.id,
-    _role: "super_admin",
-  });
-
   // Tenant do usuário (mecanismo canônico: profiles.company_id pelo user_id).
-  const { data: profileRow } = await supabase
+  const { data: profileRow, error: profileError } = await supabase
     .from("profiles")
-    .select("company_id")
+    .select("company_id,is_active")
     .eq("user_id", user.id)
     .maybeSingle();
+  if (profileError) return { ok: false, status: 503, message: "Não foi possível validar seu acesso. Tente novamente." };
+  if (profileRow?.is_active !== true) return { ok: false, status: 403, message: "Seu acesso está desativado. Fale com o administrador." };
+  // Inclusive o bypass de super_admin exige um perfil ativo confirmado.
+  const { data: isSuperAdmin, error: roleError } = await supabase.rpc("has_role", {
+    _user_id: user.id, _role: "super_admin",
+  });
+  if (roleError) return { ok: false, status: 503, message: "Não foi possível validar suas permissões. Tente novamente." };
   const userCompanyId = profileRow?.company_id ?? null;
 
   if (!companyId) {
@@ -69,12 +70,12 @@ export async function authorizeAsaasCompany(
       ok: true,
       userId: user.id,
       userCompanyId,
-      isSuperAdmin: Boolean(isSuperAdmin),
+      isSuperAdmin: isSuperAdmin === true,
     };
   }
 
   const sameCompany = userCompanyId != null && userCompanyId === companyId;
-  if (!isSuperAdmin && !sameCompany) {
+  if (isSuperAdmin !== true && !sameCompany) {
     return { ok: false, status: 403, message: "Você não tem permissão para esta empresa." };
   }
 
@@ -82,7 +83,7 @@ export async function authorizeAsaasCompany(
     ok: true,
     userId: user.id,
     userCompanyId,
-    isSuperAdmin: Boolean(isSuperAdmin),
+    isSuperAdmin: isSuperAdmin === true,
   };
 }
 
@@ -99,12 +100,13 @@ export async function authorizeAsaasCompanyManager(
   const base = await authorizeAsaasCompany(supabase, authHeader, companyId);
   if (!base.ok || base.isSuperAdmin || !base.userId) return base;
 
-  const [{ data: isAdmin }, { data: isGestor }] = await Promise.all([
+  const [{ data: isAdmin, error: adminError }, { data: isGestor, error: gestorError }] = await Promise.all([
     supabase.rpc("has_role", { _user_id: base.userId, _role: "admin" }),
     supabase.rpc("has_role", { _user_id: base.userId, _role: "gestor" }),
   ]);
+  if (adminError || gestorError) return { ok: false, status: 503, message: "Não foi possível validar suas permissões. Tente novamente." };
 
-  if (!isAdmin && !isGestor) {
+  if (isAdmin !== true && isGestor !== true) {
     return {
       ok: false,
       status: 403,

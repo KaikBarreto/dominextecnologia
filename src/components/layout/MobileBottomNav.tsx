@@ -64,7 +64,7 @@ const adminNavItems: NavItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/admin/dashboard', screenKey: 'admin_dashboard' },
   { icon: Target, label: 'CRM/Tarefas', path: '/admin/crm', screenKey: 'admin_crm' },
   { icon: Building2, label: 'Empresas', path: '/admin/empresas', special: true, screenKey: 'admin_empresas' },
-  { icon: Briefcase, label: 'Vendedores', path: '/admin/vendedores', screenKey: 'admin_vendedores' },
+  { icon: Briefcase, label: 'Equipe', path: '/admin/vendedores', screenKey: 'admin_vendedores' },
   { icon: Menu, label: 'Menu', bottomNavKey: 'menu', action: 'openMore' },
 ];
 

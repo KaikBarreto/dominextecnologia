@@ -20,6 +20,10 @@ export function mapPdvOrderCancellationError(error: unknown): Error {
   if (code === 'pdv_order_cash_access_denied') {
     return new Error('Este pedido pertence a outro caixa e não pode ser cancelado pelo seu perfil.');
   }
+  // Recusas de regra do cancelamento (venda com devolução, vale, saldo do
+  // cliente, cartão não liquidado, gaveta sem dinheiro). O servidor já explica
+  // em PT-BR o que fazer; a mensagem genérica abaixo esconderia o motivo.
+  if (code.startsWith('pdv_order_cancel_') && message.trim()) return new Error(message.trim());
   if (raw.code === 'P0002') return new Error('Este pedido não foi encontrado. Atualize a lista.');
   if (raw.code === '42501') return new Error('Seu perfil não permite cancelar este pedido.');
   if (/já está cancelado/i.test(message)) return new Error('Este pedido já foi cancelado. Atualize a lista.');

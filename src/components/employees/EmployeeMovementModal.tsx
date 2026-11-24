@@ -193,7 +193,12 @@ export function EmployeeMovementModal({
   const footer = (
     <div className="flex justify-end gap-2">
       <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t.cancelLabel}</Button>
-      <Button type="submit" form="employee-movement-form" disabled={isPending}>
+      <Button
+        type="submit"
+        form="employee-movement-form"
+        disabled={isPending}
+        className="bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90"
+      >
         {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         {t.submitLabel.replace('{type}', typeLabels[type])}
       </Button>
@@ -201,7 +206,13 @@ export function EmployeeMovementModal({
   );
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={`${t.titlePrefix} ${typeLabels[type]} — ${employeeName}`} footer={footer}>
+    <ResponsiveModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title={`${t.titlePrefix} ${typeLabels[type]} — ${employeeName}`}
+      footer={footer}
+      className={type === 'vale' ? 'sm:max-w-2xl' : undefined}
+    >
       <DraftResumeDialog
         open={draft.showResumePrompt}
         onResume={() => {

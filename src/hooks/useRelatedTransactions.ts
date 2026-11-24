@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { assertRowsAffected, NoRowsAffectedError, PARTIAL_ROWS_AFFECTED_MESSAGES } from '@/lib/supabaseMutation';
 import type { FinancialTransaction } from '@/types/database';
 
 /**
@@ -152,10 +153,12 @@ export async function deleteTransactionCascade(
       .eq('financial_transaction_id', transactionId);
 
     // Just delete this one. Children get parent set to null automatically.
-    const { error } = await supabase.from('financial_transactions').delete().eq('id', transactionId);
-    // DELETE falhou: nada foi apagado e o orçamento continua intacto, então sai sem
-    // tocar em `quotes`.
-    if (error) throw error;
+    // DELETE falhou ou foi barrado pela permissão (0 linhas, sem erro do banco):
+    // nada foi apagado e o orçamento continua intacto, então sai sem tocar em `quotes`.
+    assertRowsAffected(
+      await supabase.from('financial_transactions').delete({ count: 'exact' }).eq('id', transactionId),
+      'delete',
+    );
 
     // If this was a root referenced by a quote, clear the link
     const quoteIds = (linkedQuotes || []).map((q) => q.id);
@@ -173,18 +176,34 @@ export async function deleteTransactionCascade(
   const ids = new Set<string>([transactionId, ...related.map((r) => r.id)]);
   if (root) ids.add(root.id);
 
-  const { error } = await supabase
+  const deleteResult = await supabase
     .from('financial_transactions')
-    .delete()
+    .delete({ count: 'exact' })
     .in('id', Array.from(ids));
-  if (error) throw error;
+  // Nenhuma linha apagada (permissão barrou): para aqui, sem mexer no orçamento.
+  const deleted = assertRowsAffected(deleteResult, 'delete');
+  const partial = deleted < ids.size;
 
-  if (linkedQuote) {
+  // Só destrava o orçamento se a receita-mãe realmente sumiu. Em exclusão
+  // parcial (parte barrada pela permissão) confere se a raiz foi junto.
+  let rootGone = !partial;
+  if (partial && root) {
+    const { data: rootStill } = await supabase
+      .from('financial_transactions')
+      .select('id')
+      .eq('id', root.id)
+      .maybeSingle();
+    rootGone = !rootStill;
+  }
+
+  if (linkedQuote && rootGone) {
     await supabase
       .from('quotes')
       .update({ financial_transaction_id: null, financial_generated_at: null, status: 'enviado' } as any)
       .eq('id', linkedQuote.id);
   }
+
+  if (partial) throw new NoRowsAffectedError('delete', PARTIAL_ROWS_AFFECTED_MESSAGES.delete);
 }
 
 /**
@@ -196,11 +215,13 @@ export async function unmarkTransactionCascade(
   unmarkAllRelated: boolean,
 ): Promise<void> {
   if (!unmarkAllRelated) {
-    const { error } = await supabase
-      .from('financial_transactions')
-      .update({ is_paid: false, paid_date: null } as any)
-      .eq('id', transactionId);
-    if (error) throw error;
+    assertRowsAffected(
+      await supabase
+        .from('financial_transactions')
+        .update({ is_paid: false, paid_date: null } as any, { count: 'exact' })
+        .eq('id', transactionId),
+      'update',
+    );
     return;
   }
 
@@ -208,9 +229,14 @@ export async function unmarkTransactionCascade(
   const ids = new Set<string>([transactionId, ...related.map((r) => r.id)]);
   if (root) ids.add(root.id);
 
-  const { error } = await supabase
-    .from('financial_transactions')
-    .update({ is_paid: false, paid_date: null } as any)
-    .in('id', Array.from(ids));
-  if (error) throw error;
+  // Lote com ids conhecidos: afetar menos linhas que o pedido também é erro.
+  assertRowsAffected(
+    await supabase
+      .from('financial_transactions')
+      .update({ is_paid: false, paid_date: null } as any, { count: 'exact' })
+      .in('id', Array.from(ids)),
+    'update',
+    undefined,
+    ids.size,
+  );
 }

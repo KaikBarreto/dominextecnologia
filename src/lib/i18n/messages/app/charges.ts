@@ -179,6 +179,7 @@ export const charges = {
         category: 'Categoria',
         categoryHint: 'Opcional. Se não escolher, usa a categoria padrão da conta de recebimento.',
         costCenterHint: 'Opcional. Vale só para esta cobrança.',
+        totalValue: 'Valor total',
       },
       // Decisão por cobrança: gerar (ou não) o lançamento no Financeiro. O
       // padrão inicial vem da configuração da conta de recebimento.
@@ -215,6 +216,8 @@ export const charges = {
       installments: {
         label: 'Parcelas',
         hint: 'Parcelamento disponível no cartão',
+        cardHint: 'Uma cobrança no cartão',
+        batchHint: 'Uma cobrança por mês',
         placeholder: 'Número de parcelas',
         once: '1x (à vista)',
         times: (n: number) => `${n}x`,
@@ -231,6 +234,34 @@ export const charges = {
         feePayerLoading: 'Consultando a taxa do seu Asaas…',
         feePayerCustomerSummary: (n: number, installment: string, total: string, fee: string) =>
           `Cliente paga ${total} em ${n}x de ${installment} — você recebe o valor cheio (taxa repassada: ${fee}).`,
+        batchPreviewSummary: (n: number, total: string) =>
+          `${n} cobranças mensais · total ${total}`,
+        batchPreviewEqual: (n: number, value: string) =>
+          `${n}x de ${value}`,
+        batchPreviewRemainder: (regularCount: number, regularValue: string, lastValue: string) =>
+          `${regularCount}x de ${regularValue} + última de ${lastValue}`,
+        batchPreviewDates: (first: string, last: string) =>
+          `Primeiro vencimento ${first} · último ${last}`,
+        batchFeesHint: 'As taxas são aplicadas em cada cobrança. O valor líquido é confirmado pela Asaas ao gerar.',
+        minimumTitle: 'Valor por parcela muito baixo',
+        minimumDescription: 'Cada parcela precisa ter pelo menos R$ 5,00. Reduza a quantidade de parcelas ou aumente o valor total.',
+        batchSuccessTitle: 'Parcelas geradas',
+        batchSuccessDescription: (n: number) =>
+          `${n} cobrança${n !== 1 ? 's foram geradas' : ' foi gerada'} com vencimentos mensais.`,
+        batchPartialTitle: 'Algumas parcelas não foram geradas',
+        batchPartialDescription: (created: number, failed: number) =>
+          `${created} gerada${created !== 1 ? 's' : ''} · ${failed} pendente${failed !== 1 ? 's' : ''}`,
+        batchPartialNoticeTitle: 'O que já foi gerado está preservado',
+        batchPartialNotice: 'Tente novamente para gerar somente as parcelas pendentes, sem duplicar as anteriores.',
+        batchItem: (number: number, total: number) => `Parcela ${number} de ${total}`,
+        batchStatusCreated: 'Gerada',
+        batchStatusExisting: 'Já gerada',
+        batchStatusFailed: 'Pendente',
+        openInstallment: (number: number) => `Abrir link da parcela ${number}`,
+        copyInstallment: (number: number) => `Copiar link da parcela ${number}`,
+        retryFailed: (n: number) => `Tentar novamente (${n})`,
+        retrying: 'Tentando novamente…',
+        retryErrorTitle: 'Não foi possível tentar novamente',
       },
       quickCustomer: {
         title: 'Novo cliente',
@@ -879,6 +910,7 @@ export const charges = {
         category: 'Category',
         categoryHint: 'Optional. If left empty, uses the payment account\'s default category.',
         costCenterHint: 'Optional. Applies only to this charge.',
+        totalValue: 'Total amount',
       },
       postToFinance: {
         label: 'Post to your finances',
@@ -910,6 +942,8 @@ export const charges = {
       installments: {
         label: 'Installments',
         hint: 'Installment plan available for card payments',
+        cardHint: 'One card charge',
+        batchHint: 'One charge per month',
         placeholder: 'Number of installments',
         once: '1x (full amount)',
         times: (n: number) => `${n}x`,
@@ -926,6 +960,30 @@ export const charges = {
         feePayerLoading: 'Checking your Asaas fee…',
         feePayerCustomerSummary: (n: number, installment: string, total: string, fee: string) =>
           `Customer pays ${total} in ${n}x of ${installment} — you receive the full amount (fee passed on: ${fee}).`,
+        batchPreviewSummary: (n: number, total: string) => `${n} monthly charges · ${total} total`,
+        batchPreviewEqual: (n: number, value: string) => `${n}x of ${value}`,
+        batchPreviewRemainder: (regularCount: number, regularValue: string, lastValue: string) =>
+          `${regularCount}x of ${regularValue} + final charge of ${lastValue}`,
+        batchPreviewDates: (first: string, last: string) => `First due date ${first} · last ${last}`,
+        batchFeesHint: 'Fees apply to each charge. The net amount is confirmed by Asaas when the charges are created.',
+        minimumTitle: 'Installment amount is too low',
+        minimumDescription: 'Each installment must be at least R$ 5.00. Reduce the number of installments or increase the total amount.',
+        batchSuccessTitle: 'Installments created',
+        batchSuccessDescription: (n: number) => `${n} monthly charge${n !== 1 ? 's were' : ' was'} created.`,
+        batchPartialTitle: 'Some installments were not created',
+        batchPartialDescription: (created: number, failed: number) =>
+          `${created} created · ${failed} pending`,
+        batchPartialNoticeTitle: 'Previously created charges are preserved',
+        batchPartialNotice: 'Try again to create only the pending installments without duplicating the others.',
+        batchItem: (number: number, total: number) => `Installment ${number} of ${total}`,
+        batchStatusCreated: 'Created',
+        batchStatusExisting: 'Already created',
+        batchStatusFailed: 'Pending',
+        openInstallment: (number: number) => `Open installment ${number} link`,
+        copyInstallment: (number: number) => `Copy installment ${number} link`,
+        retryFailed: (n: number) => `Try again (${n})`,
+        retrying: 'Trying again…',
+        retryErrorTitle: 'Could not try again',
       },
       quickCustomer: {
         title: 'New customer',
@@ -1540,6 +1598,7 @@ export const charges = {
         category: 'Categoría',
         categoryHint: 'Opcional. Si no eliges una, se usa la categoría predeterminada de la cuenta de cobro.',
         costCenterHint: 'Opcional. Aplica solo a este cobro.',
+        totalValue: 'Importe total',
       },
       postToFinance: {
         label: 'Registrar en tus finanzas',
@@ -1571,6 +1630,8 @@ export const charges = {
       installments: {
         label: 'Cuotas',
         hint: 'Pago en cuotas disponible con tarjeta',
+        cardHint: 'Un cobro en la tarjeta',
+        batchHint: 'Un cobro por mes',
         placeholder: 'Número de cuotas',
         once: '1x (contado)',
         times: (n: number) => `${n}x`,
@@ -1587,6 +1648,29 @@ export const charges = {
         feePayerLoading: 'Consultando la tarifa de tu Asaas…',
         feePayerCustomerSummary: (n: number, installment: string, total: string, fee: string) =>
           `El cliente paga ${total} en ${n}x de ${installment} — tú recibes el importe completo (tarifa trasladada: ${fee}).`,
+        batchPreviewSummary: (n: number, total: string) => `${n} cobros mensuales · total ${total}`,
+        batchPreviewEqual: (n: number, value: string) => `${n}x de ${value}`,
+        batchPreviewRemainder: (regularCount: number, regularValue: string, lastValue: string) =>
+          `${regularCount}x de ${regularValue} + última de ${lastValue}`,
+        batchPreviewDates: (first: string, last: string) => `Primer vencimiento ${first} · último ${last}`,
+        batchFeesHint: 'Las tarifas se aplican a cada cobro. Asaas confirma el importe neto al generarlos.',
+        minimumTitle: 'El importe por cuota es muy bajo',
+        minimumDescription: 'Cada cuota debe ser de al menos R$ 5,00. Reduce la cantidad de cuotas o aumenta el importe total.',
+        batchSuccessTitle: 'Cuotas generadas',
+        batchSuccessDescription: (n: number) => `Se ${n !== 1 ? 'generaron' : 'generó'} ${n} cobro${n !== 1 ? 's' : ''} con vencimientos mensuales.`,
+        batchPartialTitle: 'Algunas cuotas no se generaron',
+        batchPartialDescription: (created: number, failed: number) => `${created} generadas · ${failed} pendientes`,
+        batchPartialNoticeTitle: 'Los cobros ya generados están preservados',
+        batchPartialNotice: 'Inténtalo de nuevo para generar solo las cuotas pendientes, sin duplicar las anteriores.',
+        batchItem: (number: number, total: number) => `Cuota ${number} de ${total}`,
+        batchStatusCreated: 'Generada',
+        batchStatusExisting: 'Ya generada',
+        batchStatusFailed: 'Pendiente',
+        openInstallment: (number: number) => `Abrir enlace de la cuota ${number}`,
+        copyInstallment: (number: number) => `Copiar enlace de la cuota ${number}`,
+        retryFailed: (n: number) => `Intentar de nuevo (${n})`,
+        retrying: 'Intentando de nuevo…',
+        retryErrorTitle: 'No se pudo intentar de nuevo',
       },
       quickCustomer: {
         title: 'Nuevo cliente',
@@ -2201,6 +2285,7 @@ export const charges = {
         category: 'Catégorie',
         categoryHint: 'Facultatif. Si vous n`en choisissez pas, la catégorie par défaut du compte d`encaissement est utilisée.',
         costCenterHint: `Facultatif. S'applique uniquement à cette facture.`,
+        totalValue: 'Montant total',
       },
       postToFinance: {
         label: 'Enregistrer dans vos finances',
@@ -2232,6 +2317,8 @@ export const charges = {
       installments: {
         label: 'Mensualités',
         hint: 'Paiement en plusieurs fois disponible par carte',
+        cardHint: 'Une seule facture par carte',
+        batchHint: 'Une facture par mois',
         placeholder: 'Nombre de mensualités',
         once: '1x (comptant)',
         times: (n: number) => `${n}x`,
@@ -2248,6 +2335,29 @@ export const charges = {
         feePayerLoading: 'Consultation des frais de votre Asaas…',
         feePayerCustomerSummary: (n: number, installment: string, total: string, fee: string) =>
           `Le client paie ${total} en ${n}x de ${installment} — vous recevez le montant total (frais répercutés : ${fee}).`,
+        batchPreviewSummary: (n: number, total: string) => `${n} factures mensuelles · total ${total}`,
+        batchPreviewEqual: (n: number, value: string) => `${n}x de ${value}`,
+        batchPreviewRemainder: (regularCount: number, regularValue: string, lastValue: string) =>
+          `${regularCount}x de ${regularValue} + dernière de ${lastValue}`,
+        batchPreviewDates: (first: string, last: string) => `Première échéance ${first} · dernière ${last}`,
+        batchFeesHint: `Les frais s'appliquent à chaque facture. Le montant net est confirmé par Asaas lors de la création.`,
+        minimumTitle: 'Le montant par mensualité est trop faible',
+        minimumDescription: 'Chaque mensualité doit être d’au moins 5,00 R$. Réduisez le nombre de mensualités ou augmentez le montant total.',
+        batchSuccessTitle: 'Mensualités créées',
+        batchSuccessDescription: (n: number) => `${n} facture${n !== 1 ? 's ont été créées' : ' a été créée'} avec des échéances mensuelles.`,
+        batchPartialTitle: `Certaines mensualités n'ont pas été créées`,
+        batchPartialDescription: (created: number, failed: number) => `${created} créées · ${failed} en attente`,
+        batchPartialNoticeTitle: 'Les factures déjà créées sont conservées',
+        batchPartialNotice: `Réessayez pour créer uniquement les mensualités en attente, sans dupliquer les autres.`,
+        batchItem: (number: number, total: number) => `Mensualité ${number} sur ${total}`,
+        batchStatusCreated: 'Créée',
+        batchStatusExisting: 'Déjà créée',
+        batchStatusFailed: 'En attente',
+        openInstallment: (number: number) => `Ouvrir le lien de la mensualité ${number}`,
+        copyInstallment: (number: number) => `Copier le lien de la mensualité ${number}`,
+        retryFailed: (n: number) => `Réessayer (${n})`,
+        retrying: 'Nouvelle tentative…',
+        retryErrorTitle: 'Impossible de réessayer',
       },
       quickCustomer: {
         title: 'Nouveau client',

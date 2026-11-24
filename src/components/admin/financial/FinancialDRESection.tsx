@@ -1,4 +1,8 @@
+import { adminKpiClass } from "@/components/admin/adminKpiStyles";
 import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { format } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp, PieChart, ExternalLink } from 'lucide-react';
@@ -6,6 +10,7 @@ import { cn } from '@/lib/utils';
 import type { AdminFinancialCategory } from '@/hooks/useAdminFinancialCategories';
 import { generateAdminDreHtml } from '@/utils/adminDreHtmlGenerator';
 import { AdminDREEvolutionChart } from '@/components/admin/AdminDREEvolutionChart';
+import { aggregateDre, buildDreCategoryIndex, labelForCategory } from '@/lib/adminDreBuckets';
 
 interface Transaction {
   id: string;
@@ -20,76 +25,54 @@ interface Props {
   transactions: Transaction[];
   categories: AdminFinancialCategory[];
   periodLabel: string;
+  /** Mesmo recorte do período anterior, fornecido paginado pela página pai. */
+  comparisonTransactions?: Transaction[];
+  comparisonLabel?: string;
+  periodStart?: Date | null;
+  periodEnd?: Date | null;
 }
-
-// Hierarquia DRE — espelha EcoSistema
-const REVENUE_CATEGORIES = ['sale', 'first_sale', 'renewal', 'partner_contribution', 'other_income', 'upgrade'];
-const TAX_CATEGORIES = ['asaas_fee', 'tax', 'impostos'];
-const CPV_CATEGORIES = ['infrastructure'];
-const OPEX_CATEGORIES = ['salary', 'marketing', 'development', 'commission', 'advance', 'tools', 'administrative', 'other_expense'];
 
 const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-export function FinancialDRESection({ transactions, categories, periodLabel }: Props) {
+export function FinancialDRESection({ transactions, categories, periodLabel, comparisonTransactions, comparisonLabel, periodStart, periodEnd }: Props) {
   const [showRevenue, setShowRevenue] = useState(false);
   const [showTax, setShowTax] = useState(false);
   const [showCPV, setShowCPV] = useState(false);
   const [showOpex, setShowOpex] = useState(false);
+  const [showNonOperating, setShowNonOperating] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [drilldownCategory, setDrilldownCategory] = useState<string | null>(null);
 
-  const labelFor = (name: string) => categories.find((c) => c.name === name)?.label ?? name;
-
-  const dre = useMemo(() => {
-    const sumByCat = (allowed: string[], type: 'income' | 'expense') => {
-      const map: Record<string, number> = {};
-      allowed.forEach((c) => { map[c] = 0; });
-      transactions
-        .filter((t) => t.type === type && allowed.includes(t.category || ''))
-        .forEach((t) => {
-          // Merge first_sale into sale for visualization
-          const k = t.category === 'first_sale' ? 'sale' : (t.category as string);
-          map[k] = (map[k] || 0) + Number(t.amount);
-        });
-      return map;
-    };
-
-    const revenueByCategory = sumByCat(REVENUE_CATEGORIES, 'income');
-    const receitaBruta = Object.values(revenueByCategory).reduce((s, v) => s + v, 0);
-
-    const taxesByCategory = sumByCat(TAX_CATEGORIES, 'expense');
-    const impostos = Object.values(taxesByCategory).reduce((s, v) => s + v, 0);
-    const receitaLiquida = receitaBruta - impostos;
-
-    const cpvByCategory = sumByCat(CPV_CATEGORIES, 'expense');
-    const cpv = Object.values(cpvByCategory).reduce((s, v) => s + v, 0);
-    const lucroBruto = receitaLiquida - cpv;
-    const margemBruta = receitaLiquida > 0 ? (lucroBruto / receitaLiquida) * 100 : 0;
-
-    const opexByCategory = sumByCat(OPEX_CATEGORIES, 'expense');
-    const opex = Object.values(opexByCategory).reduce((s, v) => s + v, 0);
-
-    const ebitda = lucroBruto - opex;
-    const margem = receitaBruta > 0 ? (ebitda / receitaBruta) * 100 : 0;
-
-    const breakdown = (m: Record<string, number>) =>
-      Object.entries(m).filter(([_, v]) => v > 0).map(([category, value]) => ({ category, value })).sort((a, b) => b.value - a.value);
-
-    return {
-      receitaBruta,
-      revenueByCategory: breakdown(revenueByCategory),
-      impostos,
-      taxesByCategory: breakdown(taxesByCategory),
-      receitaLiquida,
-      cpv,
-      cpvByCategory: breakdown(cpvByCategory),
-      lucroBruto,
-      margemBruta,
-      opex,
-      opexByCategory: breakdown(opexByCategory),
-      ebitda,
-      margem,
-    };
-  }, [transactions]);
+  const categoryIndex = useMemo(() => buildDreCategoryIndex(categories), [categories]);
+  const comparisonBounds = useMemo(() => {
+    if (!periodStart || !periodEnd) return null;
+    const end = new Date(periodStart); end.setDate(end.getDate() - 1);
+    const start = new Date(end); start.setDate(start.getDate() - Math.round((periodEnd.getTime() - periodStart.getTime()) / 86400000));
+    const afterEnd = new Date(end); afterEnd.setDate(afterEnd.getDate() + 1);
+    return { start: `${format(start, 'yyyy-MM-dd')}T00:00:00-03:00`, endExclusive: `${format(afterEnd, 'yyyy-MM-dd')}T00:00:00-03:00` };
+  }, [periodStart, periodEnd]);
+  const comparisonAvailable = Boolean(comparisonBounds) && periodLabel !== 'Todos os tempos';
+  const comparisonQuery = useQuery({
+    queryKey: ['admin-dre-comparison', comparisonBounds?.start, comparisonBounds?.endExclusive],
+    enabled: comparisonAvailable && !comparisonTransactions,
+    queryFn: async () => {
+      const rows: Transaction[] = [];
+      for (let page = 0; page < 100; page += 1) {
+        const { data, error } = await supabase.from('admin_financial_transactions').select('id,type,category,amount,description,transaction_date')
+          .gte('transaction_date', comparisonBounds!.start).lt('transaction_date', comparisonBounds!.endExclusive)
+          .order('transaction_date', { ascending: false }).order('id', { ascending: false }).range(page * 500, page * 500 + 499);
+        if (error) throw error;
+        rows.push(...((data ?? []) as Transaction[]));
+        if (!data || data.length < 500) return rows;
+      }
+      throw new Error('O período anterior tem mais de 50 mil lançamentos; escolha um intervalo menor para comparar.');
+    },
+  });
+  const dre = useMemo(() => aggregateDre(transactions, categoryIndex), [transactions, categoryIndex]);
+  const effectiveComparisonTransactions = comparisonTransactions ?? comparisonQuery.data;
+  const comparisonDre = useMemo(() => effectiveComparisonTransactions ? aggregateDre(effectiveComparisonTransactions, categoryIndex) : null, [effectiveComparisonTransactions, categoryIndex]);
+  const drilldownTransactions = useMemo(() => drilldownCategory ? transactions.filter((transaction) => transaction.category === drilldownCategory) : [], [drilldownCategory, transactions]);
+  const labelFor = (name: string) => labelForCategory(name, categoryIndex);
 
   const handleExport = () => {
     if (exporting) return;
@@ -97,10 +80,15 @@ export function FinancialDRESection({ transactions, categories, periodLabel }: P
     try {
       const html = generateAdminDreHtml({
         ...dre,
-        revenueLines: dre.revenueByCategory.map((c) => ({ name: labelFor(c.category), value: c.value })),
-        taxLines: dre.taxesByCategory.map((c) => ({ name: labelFor(c.category), value: c.value })),
-        cpvLines: dre.cpvByCategory.map((c) => ({ name: labelFor(c.category), value: c.value })),
-        opexLines: dre.opexByCategory.map((c) => ({ name: labelFor(c.category), value: c.value })),
+        revenueLines: dre.revenueByCategory.map((c) => ({ name: c.label, value: c.value })),
+        estornos: dre.estornos,
+        estornoLines: dre.estornosByCategory.map((c) => ({ name: c.label, value: c.value })),
+        taxLines: dre.taxesByCategory.map((c) => ({ name: c.label, value: c.value })),
+        cpvLines: dre.cpvByCategory.map((c) => ({ name: c.label, value: c.value })),
+        opexLines: dre.opexByCategory.map((c) => ({ name: c.label, value: c.value })),
+        nonOperating: dre.nonOperating,
+        nonOperatingLines: dre.nonOperatingByCategory.map((c) => ({ name: c.label, value: c.value })),
+        resultadoFinal: dre.resultadoFinal,
         grossRevenue: dre.receitaBruta,
         taxes: dre.impostos,
         netRevenue: dre.receitaLiquida,
@@ -114,13 +102,13 @@ export function FinancialDRESection({ transactions, categories, periodLabel }: P
     }
   };
 
-  const ResultIcon = dre.ebitda > 0 ? TrendingUp : dre.ebitda < 0 ? TrendingDown : Minus;
+  const ResultIcon = dre.resultadoFinal > 0 ? TrendingUp : dre.resultadoFinal < 0 ? TrendingDown : Minus;
 
   return (
     <div className="space-y-6">
       {/* Cards de métrica principais */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-        <Card className={cn('relative overflow-hidden border-0 shadow-lg text-white', dre.margem >= 0 ? 'bg-emerald-500' : 'bg-red-500')}>
+        <Card className={adminKpiClass(dre.margem >= 0 ? 'emerald' : 'rose', 'relative overflow-hidden border-0 shadow-lg')}>
           <CardContent className="p-4 lg:p-6">
             <div className="flex items-start justify-between">
               <div className="space-y-1 lg:space-y-2">
@@ -134,7 +122,7 @@ export function FinancialDRESection({ transactions, categories, periodLabel }: P
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 shadow-lg bg-blue-500 text-white">
+        <Card className={adminKpiClass("blue", "relative overflow-hidden border-0 shadow-lg")}>
           <CardContent className="p-4 lg:p-6">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1 space-y-1 lg:space-y-2">
@@ -146,14 +134,14 @@ export function FinancialDRESection({ transactions, categories, periodLabel }: P
           </CardContent>
         </Card>
 
-        <Card className={cn('relative overflow-hidden border-0 shadow-lg text-white', dre.ebitda >= 0 ? 'bg-emerald-500' : 'bg-red-500')}>
+        <Card className={adminKpiClass(dre.resultadoFinal >= 0 ? 'emerald' : 'rose', 'relative overflow-hidden border-0 shadow-lg')}>
           <CardContent className="p-4 lg:p-6">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1 space-y-1 lg:space-y-2">
-                <p className="text-xs lg:text-sm font-medium text-white/80">Resultado Líquido</p>
-                <p className="break-words text-lg font-bold tracking-tight tabular-nums lg:text-2xl">{fmt(dre.ebitda)}</p>
+                <p className="text-xs lg:text-sm font-medium text-white/80">Resultado final</p>
+                <p className="break-words text-lg font-bold tracking-tight tabular-nums lg:text-2xl">{fmt(dre.resultadoFinal)}</p>
               </div>
-              <div className={cn('shrink-0 p-2 rounded-xl', dre.ebitda >= 0 ? 'bg-emerald-600' : 'bg-red-600')}>
+              <div className={cn('shrink-0 p-2 rounded-xl', dre.resultadoFinal >= 0 ? 'bg-emerald-600' : 'bg-red-600')}>
                 <ResultIcon className="h-4 w-4 text-white" />
               </div>
             </div>
@@ -161,16 +149,25 @@ export function FinancialDRESection({ transactions, categories, periodLabel }: P
         </Card>
       </div>
 
+      {comparisonDre && (
+        <Card className="border bg-white shadow-sm"><CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div><p className="text-sm font-semibold">Comparação de período</p><p className="text-xs text-muted-foreground">Atual × {comparisonLabel ?? 'período anterior equivalente'}</p></div>
+          <div className="grid grid-cols-2 gap-4 text-sm"><div><p className="text-xs text-muted-foreground">Receita líquida</p><p className={cn('font-semibold', dre.receitaLiquida - comparisonDre.receitaLiquida >= 0 ? 'text-emerald-700' : 'text-red-700')}>{fmt(dre.receitaLiquida - comparisonDre.receitaLiquida)}</p></div><div><p className="text-xs text-muted-foreground">Resultado final</p><p className={cn('font-semibold', dre.resultadoFinal - comparisonDre.resultadoFinal >= 0 ? 'text-emerald-700' : 'text-red-700')}>{fmt(dre.resultadoFinal - comparisonDre.resultadoFinal)}</p></div></div>
+        </CardContent></Card>
+      )}
+      {comparisonQuery.isError ? <p role="alert" className="text-xs text-red-700">Não foi possível carregar o período anterior para comparação. Tente novamente.</p> : null}
+      {!comparisonAvailable && !comparisonTransactions ? <p className="text-xs text-muted-foreground">Escolha um período fechado para comparar a DRE com o intervalo anterior equivalente.</p> : null}
+
       {/* Evolution chart */}
-      <AdminDREEvolutionChart transactions={transactions} />
+      <AdminDREEvolutionChart transactions={transactions} categoryIndex={categoryIndex} periodStart={periodStart} periodEnd={periodEnd} />
 
       {/* DRE Card */}
       <Card className="border-0 shadow-lg overflow-hidden">
-        <CardHeader className="bg-gradient-to-r from-gray-900 to-gray-800 pb-4">
+        <CardHeader className="bg-slate-950 pb-4">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg font-semibold text-white">DRE - Demonstrativo de Resultados</CardTitle>
             <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}
-              className="gap-2 text-xs bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white">
+              className="gap-2 text-xs bg-white border-white text-black hover:bg-white hover:text-black">
               <ExternalLink className="h-3.5 w-3.5" />{exporting ? 'Exportando...' : 'Exportar'}
             </Button>
           </div>
@@ -180,13 +177,13 @@ export function FinancialDRESection({ transactions, categories, periodLabel }: P
           <Section
             label="(+) RECEITA BRUTA" value={dre.receitaBruta} positive
             expanded={showRevenue} onToggle={() => setShowRevenue((v) => !v)}
-            items={dre.revenueByCategory} labelFor={labelFor} sign="+"
+            items={dre.revenueByCategory} labelFor={labelFor} sign="+" onDrilldown={setDrilldownCategory}
           />
           {/* Impostos */}
           <Section
             label="(-) IMPOSTOS E DEDUÇÕES" value={dre.impostos} negative
             expanded={showTax} onToggle={() => setShowTax((v) => !v)}
-            items={dre.taxesByCategory} labelFor={labelFor} sign="-"
+            items={dre.taxesByCategory} labelFor={labelFor} sign="-" onDrilldown={setDrilldownCategory}
           />
           {/* Receita Líquida */}
           <div className="border-b border-border/50 bg-blue-600">
@@ -199,7 +196,7 @@ export function FinancialDRESection({ transactions, categories, periodLabel }: P
           <Section
             label="(-) CPV (Custo do Serviço)" value={dre.cpv} negative
             expanded={showCPV} onToggle={() => setShowCPV((v) => !v)}
-            items={dre.cpvByCategory} labelFor={labelFor} sign="-"
+            items={dre.cpvByCategory} labelFor={labelFor} sign="-" onDrilldown={setDrilldownCategory}
           />
           {/* Lucro Bruto */}
           <div className={cn('border-b border-border/50', dre.lucroBruto > 0 ? 'bg-green-600' : dre.lucroBruto < 0 ? 'bg-red-600' : 'bg-gray-800')}>
@@ -215,27 +212,45 @@ export function FinancialDRESection({ transactions, categories, periodLabel }: P
           <Section
             label="(-) DESPESAS OPERACIONAIS (OPEX)" value={dre.opex} negative
             expanded={showOpex} onToggle={() => setShowOpex((v) => !v)}
-            items={dre.opexByCategory} labelFor={labelFor} sign="-"
+            items={dre.opexByCategory} labelFor={labelFor} sign="-" onDrilldown={setDrilldownCategory}
           />
+          {dre.nonOperating !== 0 && <Section
+            label="(-) ITENS NÃO OPERACIONAIS" value={dre.nonOperating} negative
+            expanded={showNonOperating} onToggle={() => setShowNonOperating((v) => !v)}
+            items={dre.nonOperatingByCategory} labelFor={labelFor} sign="-" onDrilldown={setDrilldownCategory}
+          />}
           {/* Resultado líquido */}
           <div className={cn('px-4 py-5 flex items-center justify-between',
-            dre.ebitda >= 0 ? 'bg-gradient-to-r from-green-600 to-green-500' : 'bg-gradient-to-r from-red-600 to-red-500')}>
+            dre.resultadoFinal >= 0 ? 'bg-emerald-500' : 'bg-red-500')}>
             <div className="flex items-center gap-3">
               <ResultIcon className="h-5 w-5 text-white" />
               <div className="flex flex-col">
-                <span className="text-base font-bold text-white">(=) RESULTADO LÍQUIDO</span>
-                <span className="text-xs text-white/80">{dre.ebitda >= 0 ? 'Lucro' : 'Prejuízo'} do Período</span>
+                <span className="text-base font-bold text-white">(=) RESULTADO FINAL</span>
+                <span className="text-xs text-white/80">EBITDA {fmt(dre.ebitda)} após itens não operacionais</span>
               </div>
             </div>
-            <span className="text-xl font-bold text-white">{fmt(dre.ebitda)}</span>
+            <span className="text-xl font-bold text-white">{fmt(dre.resultadoFinal)}</span>
           </div>
         </CardContent>
       </Card>
+
+      {drilldownCategory && (
+        <Card className="border bg-white shadow-sm">
+          <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
+            <div><CardTitle className="text-base">Lançamentos em {labelFor(drilldownCategory)}</CardTitle><p className="mt-1 text-xs text-muted-foreground">Origem identificada pelo ID do lançamento; clique em uma categoria para trocar o detalhe.</p></div>
+            <Button variant="ghost" size="sm" onClick={() => setDrilldownCategory(null)}>Fechar</Button>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            {drilldownTransactions.slice(0, 100).map((transaction) => <div key={transaction.id} className="flex items-center justify-between gap-3 border-t py-2 text-sm"><span className="min-w-0 text-muted-foreground">{new Date(transaction.transaction_date).toLocaleDateString('pt-BR')} · #{transaction.id.slice(0, 8)}</span><span className="shrink-0 font-medium tabular-nums">{fmt(Number(transaction.amount) || 0)}</span></div>)}
+            {drilldownTransactions.length > 100 && <p className="pt-2 text-xs text-muted-foreground">Mostrando os primeiros 100 de {drilldownTransactions.length} lançamentos do período.</p>}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
 
-function Section({ label, value, positive, negative, expanded, onToggle, items, labelFor, sign }: {
+function Section({ label, value, positive, negative, expanded, onToggle, items, labelFor, sign, onDrilldown }: {
   label: string;
   value: number;
   positive?: boolean;
@@ -245,10 +260,11 @@ function Section({ label, value, positive, negative, expanded, onToggle, items, 
   items: { category: string; value: number }[];
   labelFor: (n: string) => string;
   sign: '+' | '-';
+  onDrilldown: (category: string) => void;
 }) {
   return (
     <div className="border-b border-border/50">
-      <button onClick={onToggle} className="w-full px-4 py-3 bg-background flex items-center justify-between hover:bg-muted/50 transition-colors">
+      <button onClick={onToggle} className="w-full px-4 py-3 bg-background flex items-center justify-between hover:bg-white transition-colors">
         <span className="text-sm font-semibold text-foreground">{label}</span>
         <div className="flex items-center gap-2">
           <span className={cn('text-sm font-bold', positive ? 'text-green-600' : 'text-red-600')}>
@@ -260,12 +276,12 @@ function Section({ label, value, positive, negative, expanded, onToggle, items, 
       {expanded && items.length > 0 && (
         <div className="divide-y divide-border/30">
           {items.map((c) => (
-            <div key={c.category} className="px-4 py-2 flex items-center justify-between bg-background/50">
+            <button type="button" key={c.category} onClick={() => onDrilldown(c.category)} className="w-full px-4 py-2 flex items-center justify-between bg-white text-left hover:bg-white">
               <span className="text-xs text-muted-foreground pl-4">{labelFor(c.category)}</span>
               <span className={cn('text-xs font-medium', positive ? 'text-green-600' : 'text-red-600')}>
                 {sign === '-' ? '-' : ''}{fmt(c.value)}
               </span>
-            </div>
+            </button>
           ))}
         </div>
       )}

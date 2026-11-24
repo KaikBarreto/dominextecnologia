@@ -21,6 +21,10 @@ Contrato canônico: https://api.dominex.app/v1/openapi.json
 | PATCH | `/crm/cards/{id}` | `crm_cards:write` | atualização ou movimento idempotente |
 | GET | `/crm/cards/by-external-id/{external_id}` | `crm_cards:read` | consulta pela referência externa |
 
+## Núcleo contratado
+
+`/service-types`, `/booking-resources`, `/availability` e criação/consulta em `/service-orders` exigem o núcleo Serviços, além dos escopos da chave e assinatura vigente. Sem o núcleo, retornam `403 module_not_contracted`; conceder escopo à chave não concede o núcleo. `/capabilities` continua disponível, com `booking=null` e `schedule_configured=false` sem Serviços. Clientes e CRM preservam seus requisitos próprios. A licença também é revalidada antes de devolver um replay idempotente de OS.
+
 ## Cards do CRM
 
 POST exige `title` e `stage_id`; PATCH aceita um subconjunto não vazio dos campos públicos. Ambos exigem `Idempotency-Key`. O servidor deriva `pipeline_id` da etapa, restringe a operação a funis comerciais e revalida etapa e cliente no tenant da chave. A v1 não oferece exclusão física de cards.

@@ -26,5 +26,8 @@ origem (mudanças cosméticas de import, quebra de linhas e comentários).
 O extra Windows usa PyMuPDF, cuja distribuição é AGPL ou comercial; é necessário
 escolher licença compatível antes de distribuir um aplicativo proprietário com essa
 dependência. A autorização de reutilização do EcoTray não altera a licença de terceiros.
-Pillow e pywin32 também mantêm suas licenças próprias. Nenhum pacote foi instalado
-ou hardware acionado para executar os testes; raster/GDI e serial usam fakes.
+Pillow e pywin32 também mantêm suas licenças próprias. Na revisão final foram
+instaladas dependências em ambientes virtuais descartáveis para conferir o
+pacote de fontes e os transportes opcionais. Raster/GDI e USB usam mocks;
+serial também foi validado com PTY virtual do SO e rede com socket simulado.
+Nenhum equipamento físico foi aberto nem documento enviado ao spooler real.

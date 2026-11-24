@@ -17,7 +17,8 @@ describe('projeções seguras dos relatórios PDV v2', () => {
     expect(source).toContain("call('pdv_partial_projection_report_v4'");
     expect(source).toContain("call('pdv_global_event_history_v3'");
     expect(source).toContain("call('pdv_document_index_v3'");
-    expect(source.match(/\.\.\.scope\.key/g)).toHaveLength(3);
+    expect(source).toContain("call('pdv_sales_report_v1'");
+    expect(source.match(/\.\.\.scope\.key/g)).toHaveLength(4);
     expect(source).not.toMatch(/call\('pdv_(partial_projection_report|global_event_history|document_index)_v2'/);
   });
 
@@ -80,6 +81,9 @@ describe('projeções seguras dos relatórios PDV v2', () => {
   it('mapeia origem interna por allowlist e nunca expõe código desconhecido', () => {
     expect(pdvProjectionSourceLabel('pdv_card_fee')).toBe('Taxa de cartão');
     expect(pdvProjectionSourceLabel('internal_new_code')).toBe('Outro evento do PDV');
+    expect(pdvProjectionSourceLabel('commercial_return_v2')).toBe('Devolução');
+    expect(pdvProjectionSourceLabel('commercial_return_reversal_v2')).toBe('Estorno de devolução');
+    expect(pdvProjectionSourceLabel('legacy_financial')).not.toMatch(/legado/i);
   });
 
   it('preserva página com mais de 25 eventos e aceita página vazia válida', () => {

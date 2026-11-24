@@ -1,3 +1,6 @@
+import { getAcquisitionAttribution } from "@/lib/acquisitionAttribution";
+import { BusinessCoreSelect } from '@/components/company/BusinessCoreSelect';
+import { parseBusinessCore, registrationOfferSearchParams, type BusinessCore } from '@/lib/businessCore';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -18,7 +21,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { useToast } from '@/hooks/use-toast';
 import { phoneMask, cepMask } from '@/utils/masks';
 import { cn } from '@/lib/utils';
-import { captureUtmParams, getAcquisitionAttribution, resolveCompanyOriginKey, type OriginUtmKey } from '@/lib/whatsapp';
+import { captureUtmParams, resolveCompanyOriginKey, type OriginUtmKey } from '@/lib/whatsapp';
 import { trackSignupConversion } from '@/lib/gtag';
 import logoWhite from '@/assets/logo-horizontal-verde.png';
 import DarkVeil from '@/components/ui/DarkVeil';
@@ -156,7 +159,24 @@ export default function Registration() {
     }
   });
   const countryOptions = useMemo(() => getCountryOptions(locale), [locale]);
-  const [step, setStep] = useState(1);
+  const offerToken = searchParams.get('oferta');
+  const hasOfferParam=searchParams.has('oferta');
+  const coreHint = parseBusinessCore(searchParams.get('nucleo'));
+  const {data:coreOffer,isLoading:coreOfferLoading,error:coreOfferError} = useQuery({
+    queryKey:['public-registration-core-offer',offerToken],enabled:hasOfferParam,retry:false,
+    queryFn:async()=>{
+      const {data,error}=await supabase.rpc('get_public_registration_core_offer_v1',{p_token:offerToken!});
+      if(error||!data) throw new Error('Este link não está mais disponível. Peça um novo link.');
+      return data as {business_core:string;configuration:Record<string,unknown>};
+    },
+  });
+  const registrationParams = useMemo(()=>registrationOfferSearchParams(searchParams,coreOffer),[searchParams,coreOffer]);
+  const coreFromLink = parseBusinessCore(coreOffer?.business_core) ?? coreHint;
+  const [businessCore,setBusinessCore] = useState<BusinessCore|null>(coreHint);
+  const [step, setStep] = useState(coreHint ? 1 : 0);
+  useEffect(()=>{
+    if(coreFromLink){setBusinessCore(coreFromLink);setStep(current=>current===0?1:current);}
+  },[coreFromLink]);
   const [selectedOrigin, setSelectedOrigin] = useState('');
   const [utmOriginKey, setUtmOriginKey] = useState<OriginUtmKey | null>(() => resolveCompanyOriginKey());
   // Segmento de atuação — obrigatório no cadastro da empresa. Só a Dominex
@@ -297,19 +317,19 @@ export default function Registration() {
   //    outro sinal (ver genericSiteOriginOnly abaixo).
   // Origem vinda da URL: truthy SÓ quando há param/UTM real. Sem isso é null
   // → a etapa Origem APARECE no cadastro normal (`/cadastro` puro).
-  const explicitOrigin = searchParams.get('origem');
+  const explicitOrigin = registrationParams.get('origem');
   // Segmento vindo de uma página de nicho do site (?segmento=cftv, etc.).
   // Só é aceito se for um segmento SELECIONÁVEL (os 9 do site + 'outro'); valores
   // inválidos/legados são ignorados. Pré-seleciona o card na etapa Segmento sem
   // auto-avançar — a pessoa confirma no Continuar.
-  const segmentFromUrl = searchParams.get('segmento');
-  const refCode = searchParams.get('ref'); // referral_code de indicação
+  const segmentFromUrl = registrationParams.get('segmento');
+  const refCode = registrationParams.get('ref'); // referral_code de indicação
   // Afiliado (Programa de Afiliados): slug OU uuid, propagado pelo "Gerar Link"
   // do painel master (GenerateLinkModal). A origem é TRAVADA na de afiliado —
   // prioridade sobre qualquer `?origem=` manual, mesma régua de prioridade do
   // link (ver handleGenerateLink lá). affiliate_id vai cru no body do
   // self-register, que resolve slug/uuid e grava companies.affiliate_id.
-  const affiliateParam = searchParams.get('afiliado');
+  const affiliateParam = registrationParams.get('afiliado');
   const utmOriginName = utmOriginKey
     ? originCatalog.find((o) => o.utm_key === utmOriginKey)?.name ?? null
     : null;
@@ -336,7 +356,7 @@ export default function Registration() {
   // antes: o sinal bom é o outro parâmetro, e ele manda.
   // Lê `vendedor` direto do searchParams porque `referrer` só é declarado abaixo.
   const genericSiteOriginOnly =
-    explicitOrigin === 'Site' && !utmOriginName && !refCode && !searchParams.get('vendedor');
+    explicitOrigin === 'Site' && !utmOriginName && !refCode && !registrationParams.get('vendedor');
   const originFromUrl = affiliateOriginName
     ? affiliateOriginName
     : genericSiteOriginOnly
@@ -350,14 +370,14 @@ export default function Registration() {
   // são opção do catálogo (UTM mapeada, string livre, etc.) mantém-se o pulo histórico.
   const originIsCatalogOption = !!originFromUrl && signupOriginCards.some((o) => o.name === originFromUrl);
   // Sales-link params
-  const linkType = searchParams.get('tipo'); // 'teste' | 'venda'
-  const lockedPlan = searchParams.get('plano') || null;
-  const isLocked = searchParams.get('bloqueado') === '1';
-  const lockedPrice = searchParams.get('preco');
-  const lockedCycle = (searchParams.get('ciclo') as 'monthly' | 'yearly' | null) || null;
-  const promoMonths = searchParams.get('meses_promo');
-  const trialDaysParam = searchParams.get('dias');
-  const referrer = searchParams.get('vendedor'); // referral_code do vendedor
+  const linkType = registrationParams.get('tipo'); // 'teste' | 'venda'
+  const lockedPlan = registrationParams.get('plano') || null;
+  const isLocked = registrationParams.get('bloqueado') === '1';
+  const lockedPrice = registrationParams.get('preco');
+  const lockedCycle = (registrationParams.get('ciclo') as 'monthly' | 'yearly' | null) || null;
+  const promoMonths = registrationParams.get('meses_promo');
+  const trialDaysParam = registrationParams.get('dias');
+  const referrer = registrationParams.get('vendedor'); // referral_code do vendedor
   // Pula a etapa Origem quando a origem veio de algum param de URL
   // (origem explícita/UTM, indicação `ref` ou vendedor) — EXCETO em dois casos:
   //   • a origem é uma opção do catálogo (ex.: ?origem=Indicação): a etapa fica
@@ -366,11 +386,11 @@ export default function Registration() {
   //     acima, então a etapa aparece em branco e a pessoa escolhe.
   // Link de vendedor, `ref` e origem fora do catálogo (ex.: ?origem=BNI) seguem
   // pulando como antes.
-  const skipOriginStep = !originIsCatalogOption && !!(originFromUrl || refCode || referrer);
+  const skipOriginStep = !!offerToken || (!originIsCatalogOption && !!(originFromUrl || refCode || referrer));
   const isSale = linkType === 'venda';
   // Plano personalizado: módulos à la carte + máx. usuários vindos do link
-  const lockedModulesParam = searchParams.get('modulos');
-  const lockedUsersParam = searchParams.get('usuarios');
+  const lockedModulesParam = registrationParams.get('modulos');
+  const lockedUsersParam = registrationParams.get('usuarios');
   const lockedModuleCodes = lockedModulesParam
     ? lockedModulesParam.split(',').map(m => m.trim()).filter(Boolean)
     : null;
@@ -423,6 +443,8 @@ export default function Registration() {
       const regional = getCountryDef(countryCode);
       const { data: result, error } = await supabase.functions.invoke('self-register', {
         body: {
+          business_core: businessCore,
+          registration_offer_token: offerToken,
           company_name: data.company_name,
           company_cnpj: data.company_cnpj,
           company_email: data.company_email,
@@ -573,7 +595,10 @@ export default function Registration() {
   };
 
   const onSubmit = async (data: RegistrationFormData) => {
-    if (step === 1) {
+    if (step === 0) {
+      if(!businessCore) {toast({variant:'destructive',title:'Escolha Loja ou Serviços para continuar.'});return;}
+      setStep(1);
+    } else if (step === 1) {
       // Etapa Dados — valida campos obrigatórios. Endereço é opcional (não trava).
       const valid = await trigger(['company_name', 'contact_name', 'company_email', 'company_phone']);
       if (!valid) return;
@@ -607,14 +632,17 @@ export default function Registration() {
 
   const handlePrevious = () => {
     if (step === 4 && skipOriginStep) setStep(2);
-    else if (step > 1) setStep(step - 1);
+    else if (step > 1 || (step === 1 && !coreFromLink)) setStep(step - 1);
   };
 
   // Dynamic step labels — quando a origem vem da URL, a etapa Origem some.
-  const displayLabels = skipOriginStep
+  const formStepLabels = skipOriginStep
     ? [t.steps.data, t.steps.segment, t.steps.access, t.steps.success]
     : [t.steps.data, t.steps.segment, t.steps.origin, t.steps.access, t.steps.success];
-  const displayStep = skipOriginStep && step >= 4 ? step - 1 : step;
+  const displayLabels = coreFromLink ? formStepLabels : ['Perfil',...formStepLabels];
+  const displayStep = (skipOriginStep && step >= 4 ? step - 1 : step) + (coreFromLink ? 0 : 1);
+
+  if(hasOfferParam&&(coreOfferLoading||coreOfferError)) return <div className="flex min-h-screen items-center justify-center p-6"><p role="status">{coreOfferError ? 'Este link não está mais disponível. Peça um novo link.' : 'Conferindo as condições do seu link…'}</p></div>;
 
   return (
     <div className="relative min-h-[100dvh] flex flex-col sm:items-center sm:justify-center sm:p-4 overflow-hidden">
@@ -703,6 +731,7 @@ export default function Registration() {
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <StepTransition stepKey={String(step)} index={step} className="space-y-4">
                 {/* Step 1: Company Data */}
+                {step === 0 && <BusinessCoreSelect value={businessCore} onChange={setBusinessCore} dark/>}
                 {step === 1 && (
                   <div className="space-y-4">
                     <div>
@@ -1056,7 +1085,7 @@ export default function Registration() {
                 {/* Navigation Buttons */}
                 {step <= 4 && (
                   <div className="flex gap-2 pt-2">
-                    {step > 1 && (
+                    {(step > 1 || (step === 1 && !coreFromLink)) && (
                       <Button
                         type="button"
                         variant="outline"

@@ -11,6 +11,7 @@ vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ isAdminOrGestor: () => mocks.canManage, hasPermission: () => false, hasPermissionRecord: true }) }));
 vi.mock('@/components/layout/PageHeader', () => ({ PageHeader: ({ title, actions }: { title: string; actions: ReactNode }) => <header><h1>{title}</h1>{actions}</header> }));
 vi.mock('@/components/settings/domilink/DomiLinkDeviceShortcut', () => ({ DomiLinkDeviceShortcut: () => <span>DomiLink</span> }));
+vi.mock('@/components/pdv/settings/PdvStoreStockSettings', () => ({ PdvStoreStockSettings: () => null }));
 vi.mock('@/components/pdv/settings/PdvTerminalSettings', () => ({ PdvTerminalSettings: () => null }));
 vi.mock('@/components/pdv/settings/PdvCashAccountSettings', () => ({ PdvCashAccountSettings: () => null }));
 vi.mock('@/hooks/usePdvCounterFlow', () => ({ usePdvWorkflowSettings: () => ({ data: { pdvMode: 'balcao', fulfillmentMode: mocks.mode }, save: { mutateAsync: vi.fn() } }) }));

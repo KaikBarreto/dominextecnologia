@@ -49,6 +49,19 @@ describe("canReachAppShell (proteção antes do reload)", () => {
 
     await expect(canReachAppShell(fetcher, "https://www.dominex.app/", 123)).resolves.toBe(false);
   });
+
+  it("rejeita HTML obtido após redirecionamento para outra origem", async () => {
+    const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => ({
+      ok: true,
+      redirected: true,
+      url: "https://www.dominex.app/dashboard?__dominex_reload_probe=123",
+      headers: new Headers({ "content-type": "text/html; charset=utf-8" }),
+    }));
+
+    await expect(
+      canReachAppShell(fetcher, "https://dominex.app/dashboard", 123),
+    ).resolves.toBe(false);
+  });
 });
 
 // Storage falso em memória pra exercitar a lógica pura da trava anti-loop sem

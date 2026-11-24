@@ -20,6 +20,9 @@ interface DataTablePaginationProps {
   pageSize: PageSizeOption;
   onPageChange: (page: number) => void;
   onPageSizeChange: (value: PageSizeOption) => void;
+  /** Listagens com mídia podem limitar a renderização a páginas finitas. */
+  allowAll?: boolean;
+  compact?: boolean;
 }
 
 export function DataTablePagination({
@@ -31,6 +34,8 @@ export function DataTablePagination({
   pageSize,
   onPageChange,
   onPageSizeChange,
+  allowAll = true,
+  compact = false,
 }: DataTablePaginationProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.common;
@@ -40,12 +45,12 @@ export function DataTablePagination({
     .replace('{total}', formatNumber(totalItems, locale));
 
   return (
-    <div className="flex flex-col gap-3 border-t px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className={`flex flex-col gap-3 border-t px-4 py-3 ${compact ? '' : 'sm:flex-row sm:items-center sm:justify-between'}`}>
       <div className="text-xs text-muted-foreground text-center sm:text-left">
         {showingText}
       </div>
 
-      <div className="flex flex-col gap-2 items-center sm:flex-row sm:items-center">
+      <div className={`flex flex-col gap-2 items-center ${compact ? '' : 'sm:flex-row sm:items-center'}`}>
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground whitespace-nowrap">{t.pagination.perPage}</span>
           <Select
@@ -60,7 +65,7 @@ export function DataTablePagination({
               <SelectItem value="25">25</SelectItem>
               <SelectItem value="50">50</SelectItem>
               <SelectItem value="100">100</SelectItem>
-              <SelectItem value="all">{t.pagination.all}</SelectItem>
+              {allowAll && <SelectItem value="all">{t.pagination.all}</SelectItem>}
             </SelectContent>
           </Select>
         </div>

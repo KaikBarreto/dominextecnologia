@@ -1,3 +1,4 @@
+import { captureAcquisitionAttribution } from "./acquisitionAttribution";
 // Helper central das CTAs de WhatsApp da landing / páginas públicas de aquisição.
 //
 // Objetivo: montar a URL final do WhatsApp (wa.me) com uma mensagem que reflete
@@ -138,6 +139,7 @@ export function getAcquisitionAttribution(): AcquisitionAttribution | null {
  * Chamar cedo, no mount da landing/páginas públicas.
  */
 export function captureUtmParams(search?: string): void {
+  captureAcquisitionAttribution(search);
   try {
     const params = new URLSearchParams(
       search ?? (typeof window !== "undefined" ? window.location.search : "")

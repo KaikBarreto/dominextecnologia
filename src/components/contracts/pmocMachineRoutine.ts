@@ -204,6 +204,30 @@ export interface MachineConfig {
   normTemplateIds?: string[];
 }
 
+// O resumo distingue atividades avulsas de checklists completos. Os templates
+// personalizados vivem fora de `activities`; contar só esse array exibia zero
+// mesmo com um checklist aplicado. Templates de norma substituem o catálogo no
+// motor novo, portanto atividades antigas não devem inflar esse resumo.
+export function machineChecklistSummary(
+  config: MachineConfig | undefined,
+  labels: {
+    machineNormActivitiesLabel: string;
+    machineNormChecklistsLabel: string;
+    machineCustomChecklistsLabel: string;
+  },
+): string {
+  if (!config) return '—';
+  const normCount = new Set(config.normTemplateIds ?? []).size;
+  const customCount = new Set(config.customTemplateIds ?? []).size;
+  const parts: string[] = [];
+  if (normCount > 0) parts.push(`${labels.machineNormChecklistsLabel}: ${normCount}`);
+  else if (config.activities.length > 0 || customCount === 0) {
+    parts.push(`${labels.machineNormActivitiesLabel}: ${config.activities.length}`);
+  }
+  if (customCount > 0) parts.push(`${labels.machineCustomChecklistsLabel}: ${customCount}`);
+  return parts.join(' · ');
+}
+
 // Item/equipamento do contrato no formato mínimo usado pelos builders.
 export interface MachineItemRef {
   equipment_id: string;
@@ -393,17 +417,19 @@ export function reconstructMachineConfigs(args: {
       // só por causa da mudança de default. Com ele, tanto a máquina nova
       // (essencial) quanto a legada (norma cheia) abrem limpas; só uma curadoria
       // de verdade (subset/adição parcial) marca como personalizado. Quando o
-      // plano não tem atividade do catálogo (acts vazio), caímos no fallback de
-      // norma cheia → não-personalizado. Decisão do plano 2026-06-28.
+      // plano não tem atividade do catálogo nem personalizado, caímos no
+      // fallback legado. Com personalizado explícito e acts vazio, preservamos
+      // a escolha de usar só esse checklist, sem repor atividades da norma.
       const essentialCount = essentialMachineActivities(catalogActivities, meta.scope).length;
       const normaCount = machineCatalogActivities(catalogActivities, meta.scope).length;
       configs[it.equipment_id] = {
         scope: meta.scope,
         startVisit: meta.startVisit,
-        activities: acts.length > 0
+        activities: acts.length > 0 || (customByEquip[it.equipment_id] ?? []).length > 0
           ? acts
           : machineCatalogActivities(catalogActivities, meta.scope).map(a => ({ ...catalogToPlanRow(a), applies_per_equipment: true, equipment_ref: it.equipment_id! })),
-        customized: acts.length > 0 && acts.length !== essentialCount && acts.length !== normaCount,
+        customized: (customByEquip[it.equipment_id] ?? []).length > 0 ||
+          (acts.length > 0 && acts.length !== essentialCount && acts.length !== normaCount),
         customTemplateIds: customByEquip[it.equipment_id] ?? [],
         firstOsExcludedQuestions: meta.firstOsExcludedQuestions,
         normTemplateIds: meta.normTemplateIds,

@@ -18,6 +18,15 @@ describe('chooseSocialBackground', () => {
     expect(chooseSocialBackground(new Uint8ClampedArray([245, 248, 247, 255]))).toBe('#0d1714');
   });
 
+  it('escolhe fundo escuro para logo misto com lettering branco relevante', () => {
+    expect(chooseSocialBackground(new Uint8ClampedArray([
+      12, 12, 12, 255,
+      12, 12, 12, 255,
+      12, 12, 12, 255,
+      255, 255, 255, 255,
+    ]))).toBe('#0d1714');
+  });
+
   it('ignora pixels transparentes', () => {
     expect(chooseSocialBackground(new Uint8ClampedArray([
       255, 255, 255, 0,

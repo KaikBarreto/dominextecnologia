@@ -16,7 +16,10 @@ const publicReference = await readFile(new URL('public/docs/api/referencia.md', 
 const llmsDocumentation = await readFile(new URL('public/docs/llms.txt', root), 'utf8');
 const bookingMigration = await readFile(new URL('supabase/migrations/20261017122000_public_api_v1_booking_engine.sql', root), 'utf8');
 const multiDayBookingMigration = await readFile(new URL('supabase/migrations/20261019173000_os_multiplos_dias_na_agenda.sql', root), 'utf8');
+const companyScheduleConflictsMigration = await readFile(new URL('supabase/migrations/20261123221500_company_schedule_conflicts_setting.sql', root), 'utf8');
+const permissionsHook = await readFile(new URL('src/hooks/usePermissions.ts', root), 'utf8');
 const crmCardsMigration = await readFile(new URL('supabase/migrations/20261029120000_public_api_v1_crm_cards.sql', root), 'utf8');
+const canonicalOriginMigration = await readFile(new URL('supabase/migrations/20261115013000_normalize_public_tracking_url_origin.sql', root), 'utf8');
 const contract = parse(openapiSource);
 
 test('OpenAPI servido pelo gateway e identico a fonte YAML canonica', () => {
@@ -122,6 +125,19 @@ test('RPCs do CRM derivam tenant e escopo no servidor e excluem funis de projeto
   assert.ok(updateRpc.indexOf('FROM public.public_api_idempotency') < updateRpc.indexOf('FROM public.leads l'));
 });
 
+test('link público de OS usa a origem canônica sem ampliar a superfície da RPC', () => {
+  assert.match(canonicalOriginMigration, /https:\/\/www\.dominex\.app\/os-tecnico\//);
+  assert.doesNotMatch(canonicalOriginMigration, /https:\/\/dominex\.app\/os-tecnico\//);
+  assert.match(
+    canonicalOriginMigration,
+    /REVOKE ALL ON FUNCTION public\.public_api_service_order_response\(uuid, uuid, boolean\)[\s\S]+FROM PUBLIC, anon, authenticated, service_role/i,
+  );
+  assert.deepEqual(
+    contract.components.schemas.ServiceOrder.properties.public_tracking_url,
+    { type: 'string', format: 'uri' },
+  );
+});
+
 test('nenhuma edge registra segredo, Authorization ou corpo integral', () => {
   for (const source of [publicEdge, managerEdge]) {
     assert.doesNotMatch(source, /console\.(?:log|error)\([^\n]*(?:authorization|secret_hash|api_key|rawBody|body\b)/i);
@@ -133,6 +149,11 @@ test('override interno nao fica acessivel a service role nem a API publica', () 
   assert.match(multiDayBookingMigration, /REVOKE ALL ON FUNCTION public\.schedule_book_service_order_plan\(uuid,\s*text,\s*uuid,\s*timestamptz,\s*jsonb,\s*text\)\s+FROM PUBLIC, anon, service_role/i);
   assert.match(multiDayBookingMigration, /REVOKE ALL ON FUNCTION public\.schedule_create_service_order_plan_with_override\(jsonb,\s*text,\s*jsonb,\s*uuid\[\]\)\s+FROM PUBLIC, anon, service_role/i);
   assert.doesNotMatch(publicEdge, /schedule_create_service_order_with_override|schedule_book_service_order/i);
+  assert.match(companyScheduleConflictsMigration, /ADD COLUMN allow_schedule_conflicts boolean NOT NULL DEFAULT false/i);
+  assert.match(companyScheduleConflictsMigration, /cs\.allow_schedule_conflicts IS TRUE/i);
+  assert.match(companyScheduleConflictsMigration, /auth\.role\(\)\) = 'authenticated'/i);
+  assert.match(companyScheduleConflictsMigration, /permissions = permissions - 'fn:override_schedule_conflict'[\s\S]+UPDATE public\.permission_presets/i);
+  assert.doesNotMatch(permissionsHook, /fn:override_schedule_conflict/i);
 });
 
 test('edge publica exige proxy autenticado e recebe IP apenas da borda confiavel', () => {
@@ -145,4 +166,17 @@ test('edge publica exige proxy autenticado e recebe IP apenas da borda confiavel
   assert.match(publicEdge, /PUBLIC_API_PROXY_SECRET/);
   assert.match(publicEdge, /timingSafeEqual\(providedProxySecret, expectedProxySecret\)/);
   assert.doesNotMatch(publicEdge, /const ip = requestIp\(req\)/);
+});
+
+test('contratação de Serviços acompanha banco, edge e documentação sem alterar rotas', async () => {
+  const coreMigration = await readFile(new URL('supabase/migrations/20261116213000_public_api_service_core_entitlement.sql', root), 'utf8');
+  assert.match(coreMigration, /company_has_module\(v_company_id,'service_operations'\) IS NOT TRUE/);
+  assert.match(coreMigration, /'catalogs:read','availability:read','service_orders:create','service_orders:read'/);
+  assert.match(coreMigration, /REVOKE ALL ON FUNCTION public\.public_api_assert_integration\(uuid, text\) FROM PUBLIC, anon, authenticated, service_role/);
+  assert.match(publicEdge, /public_api_get_catalogs/);
+  assert.doesNotMatch(publicEdge, /ctx\.admin\.from\("service_types"\)/);
+  for (const source of [openapiSource, docsContent, publicReference, llmsDocumentation]) {
+    assert.match(source, /module_not_contracted/);
+    assert.match(source, /schedule_configured=false/);
+  }
 });

@@ -43,6 +43,7 @@ type SegmentTranslations = Partial<Record<LocaleCode, string>>;
 // Traduções SEMÂNTICAS (termo de mercado por idioma), não palavra-a-palavra.
 
 const SEGMENTS: Record<string, SegmentTranslations> = {
+  cupons: { en: 'coupons', es: 'cupones', fr: 'coupons' },
   // Raízes (1º segmento das telas)
   dashboard: { en: 'dashboard', es: 'panel', fr: 'tableau-de-bord' },
   agenda: { en: 'schedule', es: 'agenda', fr: 'agenda' },
@@ -77,6 +78,8 @@ const SEGMENTS: Record<string, SegmentTranslations> = {
   // reaproveitando o dicionário. Ex.: /financeiro/relatorio → /finance/report.
   relatorio: { en: 'report', es: 'informe', fr: 'rapport' },
   relatorios: { en: 'reports', es: 'informes', fr: 'rapports' },
+  'estoque-fiscal': { en: 'fiscal-inventory', es: 'inventario-fiscal', fr: 'stock-fiscal' },
+  cenarios: { en: 'scenarios', es: 'escenarios', fr: 'scenarios' },
   movimentacoes: { en: 'movements', es: 'movimientos', fr: 'mouvements' },
   contas: { en: 'accounts', es: 'cuentas', fr: 'comptes' },
   cobrancas: { en: 'charges', es: 'cobros', fr: 'encaissements' },
@@ -153,6 +156,8 @@ const ROUTES: AppRouteDef[] = [
   { key: 'pdvDispatch', base: '/pdv/expedicao' },
   { key: 'pdvCashHistory', base: '/pdv/caixas' },
   { key: 'pdvReports', base: '/pdv/relatorios' },
+  { key: 'pdvCoupons', base: '/pdv/cupons' },
+  { key: 'pdvStock', base: '/pdv/estoque' },
   { key: 'pdvSettings', base: '/pdv/configuracoes' },
   // Financeiro é um GRUPO: raiz + telas operacionais, cobrança, relatórios e
   // configurações próprias. Todos os segmentos traduzem.
@@ -163,8 +168,14 @@ const ROUTES: AppRouteDef[] = [
   { key: 'financeCharges', base: '/financeiro/cobrancas' },
   { key: 'financeReports', base: '/financeiro/relatorios' },
   { key: 'financeSettings', base: '/financeiro/configuracoes-financeiras' },
-  { key: 'fiscalSettings', base: '/notas-fiscais/configuracoes' },
   { key: 'fiscalNotes', base: '/notas-fiscais' },
+  { key: 'fiscalNfe', base: '/notas-fiscais/nfe' },
+  { key: 'fiscalNfce', base: '/notas-fiscais/nfce' },
+  { key: 'fiscalNfse', base: '/notas-fiscais/nfse' },
+  { key: 'fiscalInventory', base: '/notas-fiscais/estoque-fiscal' },
+  { key: 'fiscalReports', base: '/notas-fiscais/relatorios' },
+  { key: 'fiscalScenarios', base: '/notas-fiscais/cenarios' },
+  { key: 'fiscalSettings', base: '/notas-fiscais/configuracoes' },
   { key: 'pmoc', base: '/pmoc' },
   { key: 'contracts', base: '/contratos' },
   { key: 'contractDetail', base: '/contratos/:id' },
@@ -369,11 +380,16 @@ const TELAS_LISTA_FICHA: Record<string, string> = {
  * Chave de TELA de um pathname, pra animação/remontagem de rota.
  *
  * `/clientes` e `/clientes/abc` (em qualquer idioma) devolvem a MESMA chave.
+ * A consulta do catálogo técnico também conserva sua lista, marca e ficha.
  * Qualquer outra rota devolve o próprio pathname, mantendo o comportamento de
  * antes — sub-rotas diferentes continuam ganhando a transição.
  */
 export function appScreenKey(pathname: string): string {
   const key = resolveAppSlug(pathname);
+  // Catálogo, marca e diagnóstico são uma única consulta. Preservar a árvore
+  // permite voltar à busca/prévia sem perder filtros, página ou contexto.
+  // O ownerKey do AppRouteTransition continua descartando a sessão no logout.
+  if (key === 'technicianArea' && splitPath(pathname)[1] === 'catalogo') return 'tela:catalogo';
   return (key && TELAS_LISTA_FICHA[key]) || pathname;
 }
 

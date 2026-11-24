@@ -1,7 +1,6 @@
 -- Quantidade de permissões não é uma concessão de acesso total. O contrato
 -- explícito '*' permanece; cargos e permissões nominais continuam sendo
 -- avaliados pelos consumidores existentes. Não altera papéis nem registros.
-BEGIN;
 
 CREATE OR REPLACE FUNCTION public.has_full_permissions(_user_id uuid)
 RETURNS boolean
@@ -19,5 +18,4 @@ $function$;
 
 COMMENT ON FUNCTION public.has_full_permissions(uuid) IS
   'Acesso total requer curinga explícito em concessão ativa; contar permissões não amplia privilégios.';
-
-COMMIT;
+;

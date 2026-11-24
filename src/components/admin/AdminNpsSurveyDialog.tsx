@@ -189,8 +189,8 @@ export function AdminNpsSurveyDialog({ open, onOpenChange, survey, onSubmit, isS
       )}
     >
       <Tabs value={tab} onValueChange={setTab}>
-        <div className="overflow-x-auto">
-          <TabsList variant="underline" className="w-max">
+        <div className="min-w-0">
+          <TabsList variant="underline" className="w-full">
             <TabsTrigger variant="underline" value="conteudo">Conteúdo</TabsTrigger>
             <TabsTrigger variant="underline" value="publico">Público</TabsTrigger>
             <TabsTrigger variant="underline" value="programacao">Programação</TabsTrigger>

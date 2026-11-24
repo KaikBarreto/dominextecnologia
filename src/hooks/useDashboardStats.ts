@@ -4,10 +4,11 @@ import { useMemo } from 'react';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import type { PortalCall } from '@/lib/portalCalls';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
 import type { ServiceOrder } from '@/types/database';
 
-const PORTAL_CALL_CLOSED_STATUSES = ['concluida', 'cancelada'];
+const CLOSED_ORDER_STATUSES = ['concluida', 'cancelada'];
 const ACTIVE_FIELD_STATUSES = ['a_caminho', 'em_andamento'] as const;
 
 type DashboardOrder = Pick<
@@ -136,15 +137,20 @@ export function useDashboardStats(window: DashboardStatsWindow) {
         supabase
           .from('service_orders')
           .select(ORDER_SELECT, { count: 'exact' })
-          .not('status', 'in', `(${PORTAL_CALL_CLOSED_STATUSES.join(',')})`)
+          .not('status', 'in', `(${CLOSED_ORDER_STATUSES.join(',')})`)
           .lt('scheduled_date', today)
           .order('scheduled_date', { ascending: true })
           .limit(5),
         supabase
-          .from('service_orders')
-          .select(ORDER_SELECT, { count: 'exact' })
-          .eq('origin', 'portal')
-          .not('status', 'in', `(${PORTAL_CALL_CLOSED_STATUSES.join(',')})`)
+          .from('portal_calls')
+          .select(`
+            *,
+            customer:customers(id, name, phone, celular),
+            equipment:equipment(id, name, brand, model),
+            contract:contracts(id, name),
+            service_order:service_orders(id, order_number, status, scheduled_date)
+          `, { count: 'exact' })
+          .eq('status', 'aguardando_analise')
           .order('created_at', { ascending: false })
           .limit(5),
         fetchAllPaginated<DashboardOrder>(() => supabase
@@ -175,7 +181,7 @@ export function useDashboardStats(window: DashboardStatsWindow) {
       if (portalCallsResult.error) throw portalCallsResult.error;
       if (customerResult.error) throw customerResult.error;
 
-      const portalCalls = (portalCallsResult.data ?? []) as unknown as ServiceOrder[];
+      const portalCalls = (portalCallsResult.data ?? []) as PortalCall[];
       const allOS = uniqueOrders([
         periodOrders,
         criticalOrdersResult.data ?? [],

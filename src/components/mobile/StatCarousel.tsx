@@ -41,6 +41,8 @@ function getChipValueSizeClass(value: string): string {
 export function StatCarousel({ items, loading = false, variant = 'default' }: StatCarouselProps) {
   const isMobile = useIsMobile();
   const saturated = variant === 'saturated';
+  const saturatedBackground = (accentColor?: string) =>
+    `color-mix(in srgb, ${accentColor || 'hsl(var(--primary))'} 62%, black)`;
 
   if (loading) {
     return isMobile ? (
@@ -69,7 +71,7 @@ export function StatCarousel({ items, loading = false, variant = 'default' }: St
               key={item.key}
               type="button"
               onClick={item.onClick}
-              style={saturated ? { backgroundColor: item.accentColor || 'hsl(var(--primary))' } : undefined}
+              style={saturated ? { backgroundColor: saturatedBackground(item.accentColor) } : undefined}
               className={cn(
                 'snap-start shrink-0 flex flex-col items-center justify-center gap-1.5 h-[120px] min-w-[112px] max-w-[140px] p-3 rounded-2xl text-center transition-all active:scale-95',
                 saturated
@@ -112,7 +114,7 @@ export function StatCarousel({ items, loading = false, variant = 'default' }: St
       {items.map((item) => (
         <Card
           key={item.key}
-          style={saturated ? { backgroundColor: item.accentColor || 'hsl(var(--primary))' } : undefined}
+          style={saturated ? { backgroundColor: saturatedBackground(item.accentColor) } : undefined}
           className={cn(
             'h-full cursor-pointer overflow-hidden rounded-2xl transition-all',
             saturated

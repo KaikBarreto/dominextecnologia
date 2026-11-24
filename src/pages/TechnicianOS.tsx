@@ -98,6 +98,7 @@ import { isUuid, extractShortCode, buildSlugSegment } from '@/utils/prettyLinks'
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { cn } from '@/lib/utils';
 import { SpeedDialFAB, type SpeedDialAction } from '@/components/mobile/SpeedDialFAB';
 import { OsEquipmentSidebar, OsActionFooter, type OsSidebarItem, type OsSidebarStatus } from '@/components/technician/OsDesktopShell';
@@ -200,6 +201,7 @@ function OsEquipmentAccordionItem({
   environmentName,
   onPreviewPhoto,
   onValidationChange,
+  onSavingChange,
   registerAutoFill,
   visibility,
   validations,
@@ -226,6 +228,8 @@ function OsEquipmentAccordionItem({
   onPreviewPhoto: (url: string) => void;
   /** Callback de validação POR par (itemKey + resultado). */
   onValidationChange: (itemKey: string, result: FormValidationResult) => void;
+  /** Propaga gravações pendentes para bloquear a finalização da OS. */
+  onSavingChange: (itemKey: string, saving: boolean) => void;
   /** Registra/limpa a função de auto-preenchimento POR par (itemKey + fn|null). */
   registerAutoFill: (itemKey: string, fn: (() => Promise<void>) | null) => void;
   /** Resolve o contexto de visibilidade POR equipamento. Undefined = OS avulsa. */
@@ -439,6 +443,7 @@ function OsEquipmentAccordionItem({
                       plainQuestionSurface
                       readOnly={readOnly}
                       onValidationChange={(result) => onValidationChange(itemKey, result)}
+                      onSavingChange={(saving) => onSavingChange(itemKey, saving)}
                       registerAutoFill={(fn) => registerAutoFill(itemKey, fn)}
                       visibility={visibility}
                     />
@@ -455,6 +460,7 @@ function OsEquipmentAccordionItem({
             plainQuestionSurface
             readOnly={readOnly}
             onValidationChange={(result) => onValidationChange(checklists[0].itemKey, result)}
+            onSavingChange={(saving) => onSavingChange(checklists[0].itemKey, saving)}
             registerAutoFill={(fn) => registerAutoFill(checklists[0].itemKey, fn)}
             visibility={visibility}
           />
@@ -485,9 +491,8 @@ function TechnicianOSInner() {
     profile: currentUserProfile,
     isAdminOrGestor,
     hasPermission,
-    permissions,
-    hasPermissionRecord,
   } = useAuth();
+  const { settings } = useCompanySettings();
   // Bloqueio por assinatura do TENANT DO USUÁRIO LOGADO (profile.company_id),
   // reusando a mesma decisão do SubscriptionGate. Só é APLICADO no modo técnico
   // autenticado (ver abaixo) — o hook em si não bloqueia anônimo (sem profile)
@@ -587,6 +592,19 @@ function TechnicianOSInner() {
   const [trackingLinkCopied, setTrackingLinkCopied] = useState(false);
   
   const [formValidations, setFormValidations] = useState<Record<string, FormValidationResult>>({});
+  const [formSavingState, setFormSavingState] = useState<Record<string, boolean>>({});
+  const updateFormSaving = useCallback((itemKey: string, saving: boolean) => {
+    setFormSavingState((current) => {
+      if (current[itemKey] === saving) return current;
+      if (!saving) {
+        const next = { ...current };
+        delete next[itemKey];
+        return next;
+      }
+      return { ...current, [itemKey]: true };
+    });
+  }, []);
+  const hasPendingFormSaves = Object.values(formSavingState).some(Boolean);
 
   // Registro das funções de auto-preenchimento POR checklist (itemKey → fn). Cada
   // DynamicFormQuestions se registra ao montar e se remove ao desmontar. O atalho
@@ -824,9 +842,7 @@ function TechnicianOSInner() {
   // botão nem aparece offline (a edição de escopo exige internet no v1).
   const canEditarOsCampo = isAdminOrGestor() || hasPermission('fn:editar_os_campo');
   const canEditScheduleInOs = isAdminOrGestor() || hasPermission('fn:edit_os');
-  const canOverrideScheduleConflict = hasPermissionRecord && (
-    permissions.includes('*') || permissions.includes('fn:override_schedule_conflict')
-  );
+  const allowScheduleConflicts = settings?.allow_schedule_conflicts === true;
   const showEditScopeAction = canEditarOsCampo && !isPmocOrder;
 
   // "Consumir do estoque" no menu de mais-ações (v1.22.0).
@@ -1027,7 +1043,6 @@ function TechnicianOSInner() {
     return () => window.removeEventListener('keydown', onKey);
   }, [routeFullscreen]);
   // A Área do Técnico aparece quando qualquer segmento contratado tem ferramentas.
-  const { settings } = useCompanySettings();
   const companySegments = normalizeCompanySegments(settings?.segments, settings?.segment);
   const toolsSegment = companySegments.find(segmentHasTechTools) ?? companySegments[0];
   const showTools = segmentsHaveTechTools(companySegments);
@@ -1795,17 +1810,18 @@ function TechnicianOSInner() {
       // carimba auth.uid() como rede de segurança se vier null.
       const checkInAuthorId = currentUser?.id ?? null;
 
-      const { error } = await supabase
-        .from('service_orders')
-        .update({
-          check_in_time: now,
-          check_in_location: location,
-          check_in_by: checkInAuthorId,
-          status: 'em_andamento',
-        })
-        .eq('id', resolvedOsId);
-
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('service_orders')
+          .update({
+            check_in_time: now,
+            check_in_location: location,
+            check_in_by: checkInAuthorId,
+            status: 'em_andamento',
+          }, { count: 'exact' })
+          .eq('id', resolvedOsId),
+        'update',
+      );
 
       if (resolvedOsId) {
         recordLocationEvent(resolvedOsId, location.lat, location.lng, 'check_in');
@@ -1882,6 +1898,9 @@ function TechnicianOSInner() {
   };
 
   const handleFinishOS = async () => {
+    // Não deixa a OS ultrapassar a gravação da última resposta/assinatura. Os
+    // botões também ficam desabilitados, mas este gate cobre chamadas indiretas.
+    if (hasPendingFormSaves) return;
     if (!allFormsValid) {
       // Item 7: se TODAS as obrigatórias pendentes forem auto-preenchíveis
       // (conformidade/boolean) e NENHUMA for de texto/número/seleção, oferecemos o
@@ -2034,12 +2053,13 @@ function TechnicianOSInner() {
         updateData.pmoc_conformity_status = checklistRollup;
       }
 
-      const { error } = await supabase
-        .from('service_orders')
-        .update(updateData)
-        .eq('id', resolvedOsId);
-
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('service_orders')
+          .update(updateData, { count: 'exact' })
+          .eq('id', resolvedOsId),
+        'update',
+      );
 
       // Instrumentação MVP — fire-and-forget, não bloqueia UX
       trackUsage('os_completion', { os_id: resolvedOsId });
@@ -3365,11 +3385,13 @@ function TechnicianOSInner() {
   // rodapé de ações fixo (desktop) — mesma lógica, sem duplicar.
   const handlePauseOS = async () => {
     try {
-      const { error } = await supabase
-        .from('service_orders')
-        .update({ status: 'pausada' } as any)
-        .eq('id', resolvedOsId);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('service_orders')
+          .update({ status: 'pausada' } as any, { count: 'exact' })
+          .eq('id', resolvedOsId),
+        'update',
+      );
       setServiceOrder((prev) => prev ? { ...prev, status: 'pausada' as OsStatus } : null);
       toast({ title: tFlow.toastPauseDone });
     } catch (error: any) {
@@ -3378,11 +3400,13 @@ function TechnicianOSInner() {
   };
   const handleResumeOS = async () => {
     try {
-      const { error } = await supabase
-        .from('service_orders')
-        .update({ status: 'em_andamento' })
-        .eq('id', resolvedOsId);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('service_orders')
+          .update({ status: 'em_andamento' }, { count: 'exact' })
+          .eq('id', resolvedOsId),
+        'update',
+      );
       setServiceOrder((prev) => prev ? { ...prev, status: 'em_andamento' as OsStatus } : null);
       toast({ title: tFlow.toastResumeDone });
     } catch (error: any) {
@@ -3395,13 +3419,16 @@ function TechnicianOSInner() {
   // intencionalmente incompleta); o progresso já é auto-salvo. Não faz check-out.
   // A marca persiste até a conclusão real (proceedFinishOS limpa partial_finish).
   const handleFinishPartially = async () => {
+    if (hasPendingFormSaves) return;
     setFinishingPartial(true);
     try {
-      const { error } = await supabase
-        .from('service_orders')
-        .update({ status: 'pausada', partial_finish: true } as any)
-        .eq('id', resolvedOsId);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('service_orders')
+          .update({ status: 'pausada', partial_finish: true } as any, { count: 'exact' })
+          .eq('id', resolvedOsId),
+        'update',
+      );
       setServiceOrder((prev) => prev ? { ...prev, status: 'pausada' as OsStatus, partial_finish: true } as any : null);
       setPartialConfirmOpen(false);
       toast({ title: tFlow.toastPartialDone });
@@ -3544,12 +3571,13 @@ function TechnicianOSInner() {
         await recordLocationEvent(resolvedOsId, location.lat, location.lng, 'en_route');
       }
 
-      const { error } = await supabase
-        .from('service_orders')
-        .update({ status: 'a_caminho' })
-        .eq('id', resolvedOsId);
-
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('service_orders')
+          .update({ status: 'a_caminho' }, { count: 'exact' })
+          .eq('id', resolvedOsId),
+        'update',
+      );
 
       setServiceOrder((prev) => prev ? { ...prev, status: 'a_caminho' as OsStatus } : null);
       toast({ title: tFlow.toastEnRouteDone });
@@ -4182,6 +4210,7 @@ function TechnicianOSInner() {
                       onValidationChange={(itemKey, result) =>
                         setFormValidations(prev => ({ ...prev, [itemKey]: result }))
                       }
+                      onSavingChange={updateFormSaving}
                       registerAutoFill={registerFormAutoFill}
                       visibility={visibilityForEquipment(firstItem.equipment_id)}
                       validations={formValidations}
@@ -4264,6 +4293,7 @@ function TechnicianOSInner() {
                   plainQuestionSurface
                   readOnly={isPaused}
                   onValidationChange={(result) => setFormValidations(prev => ({ ...prev, legacy: result }))}
+                  onSavingChange={(saving) => updateFormSaving('legacy', saving)}
                   registerAutoFill={(fn) => registerFormAutoFill('legacy', fn)}
                   visibility={visibilityForEquipment((serviceOrder as any)?.equipment_id ?? null)}
                 />
@@ -4482,7 +4512,7 @@ function TechnicianOSInner() {
           <Button
             className="flex-1 bg-success hover:bg-success/90 text-success-foreground font-bold"
             onClick={handleFinishOS}
-            disabled={finishing}
+            disabled={finishing || hasPendingFormSaves}
           >
             <BadgeCheck className="h-4 w-4 mr-2" />
             {finishing ? tFlow.btnFinishing : tFlow.btnFinishOS}
@@ -4492,7 +4522,7 @@ function TechnicianOSInner() {
             variant="outline"
             className="flex-none border-orange-600/40 text-orange-600 hover:bg-orange-600 hover:text-white"
             onClick={() => setPartialConfirmOpen(true)}
-            disabled={finishingPartial}
+            disabled={finishingPartial || hasPendingFormSaves}
           >
             <Pause className="h-4 w-4 mr-2" />
             {tFlow.btnPartialFinish}
@@ -4685,7 +4715,7 @@ function TechnicianOSInner() {
               <button
                 type="button"
                 onClick={() => { closeMobileActions(); handleFinishOS(); }}
-                disabled={finishing}
+                disabled={finishing || hasPendingFormSaves}
                 className={cn(
                   OS_ACTION_CHIP_CLASS,
                   'disabled:opacity-60',
@@ -4759,7 +4789,7 @@ function TechnicianOSInner() {
                   className="flex-[2] gap-1.5 bg-success hover:bg-success/90 text-success-foreground font-bold"
                   size="lg"
                   onClick={handleFinishOS}
-                  disabled={finishing}
+                  disabled={finishing || hasPendingFormSaves}
                 >
                   <BadgeCheck className="h-4 w-4" />
                   {finishing ? tFlow.btnFinishing : tFlow.btnFinishOS}
@@ -4772,7 +4802,7 @@ function TechnicianOSInner() {
                   className="flex-none gap-1 px-2.5 bg-orange-600 text-white hover:bg-orange-700"
                   size="lg"
                   onClick={() => setPartialConfirmOpen(true)}
-                  disabled={finishingPartial}
+                  disabled={finishingPartial || hasPendingFormSaves}
                 >
                   <Pause className="h-4 w-4" />
                   {tFlow.btnPartialFinish}
@@ -4827,7 +4857,7 @@ function TechnicianOSInner() {
             team_id: serviceOrder?.team_id,
           }}
           canEditSchedule={canEditScheduleInOs}
-          canOverrideScheduleConflict={canOverrideScheduleConflict}
+          allowScheduleConflicts={allowScheduleConflicts}
           onSaved={async () => {
             await Promise.all([
               fetchServiceOrder(),
@@ -4905,14 +4935,14 @@ function TechnicianOSInner() {
             <Button
               variant="outline"
               className="w-full sm:flex-1"
-              disabled={finishingPartial}
+              disabled={finishingPartial || hasPendingFormSaves}
               onClick={() => setPartialConfirmOpen(false)}
             >
               {tFlow.modalPartialBtnCancel}
             </Button>
             <Button
               className="w-full sm:flex-1 bg-orange-600 hover:bg-orange-700 text-white"
-              disabled={finishingPartial}
+              disabled={finishingPartial || hasPendingFormSaves}
               onClick={handleFinishPartially}
             >
               {finishingPartial ? tFlow.modalPartialBtnConfirming : tFlow.modalPartialBtnConfirm}
@@ -4942,14 +4972,14 @@ function TechnicianOSInner() {
             <Button
               variant="outline"
               className="w-full sm:flex-1"
-              disabled={finishing}
+              disabled={finishing || hasPendingFormSaves}
               onClick={() => setFinishConfirmOpen(false)}
             >
               {tFlow.modalFinishBtnCancel}
             </Button>
             <Button
               className="w-full sm:flex-1 bg-success hover:bg-success/90 text-success-foreground"
-              disabled={finishing}
+              disabled={finishing || hasPendingFormSaves}
               onClick={handleConfirmFinish}
             >
               {finishing ? tFlow.modalFinishBtnConfirming : tFlow.modalFinishBtnConfirm}

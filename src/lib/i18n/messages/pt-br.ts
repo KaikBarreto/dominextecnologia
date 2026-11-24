@@ -96,7 +96,7 @@ export const ptBr = {
     'area-do-tecnico': 'Área do Técnico™',
     'integracao-whatsapp': 'WhatsApp integrado',
     'cobrancas-automaticas': 'Cobranças',
-    'pdv-e-loja': 'PDV & Loja',
+    'pdv-e-loja': 'PDV (Loja)',
   },
 
   // ── Nomes exibidos dos segmentos no menu/rodapé/home, pelo slug ───────────
@@ -360,7 +360,7 @@ export const ptBr = {
             'Gere cobranças avulsas ou recorrentes, compartilhe o link de pagamento e mantenha o recebimento conciliado com o financeiro.',
         },
         {
-          title: 'PDV, caixa e loja',
+          title: 'PDV (Loja), caixa e operação de balcão',
           description:
             'Venda no balcão com código de barras, pagamento misto, fiado, baixa de estoque e controle do turno de caixa na mesma operação.',
         },
@@ -903,6 +903,10 @@ export const ptBr = {
     // Erros do login (Alert)
     errorUnexpected: 'Ocorreu um erro inesperado. Tente novamente.',
     errorContinueLogin: 'Erro ao continuar login.',
+    errorLoginTimeout: 'Não foi possível conectar ao servidor. O serviço está temporariamente indisponível; tente novamente em instantes.',
+    errorSessionRestore: 'Não foi possível restaurar sua sessão agora. Atualize o aplicativo e tente novamente.',
+    refreshAndRetry: 'Atualizar e tentar novamente',
+    refreshingConnection: 'Atualizando conexão...',
 
     // Mensagens de erro do Supabase Auth (recebidas em inglês) → localizadas.
     // Casamento por substring; `generic` é o fallback quando nada bate.

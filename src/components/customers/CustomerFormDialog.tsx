@@ -348,8 +348,9 @@ export function CustomerFormDialog({
           ...data,
           label_id: selectedLabelIds[0] ?? null,
           custom_fields: customFieldValues,
-          whatsapp_notifications_enabled:
-            data.whatsapp_notifications_enabled && (data.celular || '').replace(/\D/g, '').length >= 10,
+          // Este é o gate geral do cliente. O destinatário pode ser um contato
+          // adicional configurado na ficha, mesmo sem celular principal.
+          whatsapp_notifications_enabled: data.whatsapp_notifications_enabled,
           birth_date: data.birth_date || undefined,
           // Espelha o número do endereço na coluna fiscal usada pela emissão de NFS-e.
           street_number: data.address_number || undefined,
@@ -592,7 +593,6 @@ export function CustomerFormDialog({
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="whatsapp_notifications_enabled" render={({ field }) => {
-                  const hasMobile = (form.watch('celular') || '').replace(/\D/g, '').length >= 10;
                   return (
                     <FormItem className="sm:col-span-2 rounded-lg border bg-muted/20 px-4 py-3">
                       <div className="flex items-start justify-between gap-4">
@@ -603,7 +603,7 @@ export function CustomerFormDialog({
                           <div className="min-w-0">
                             <FormLabel className="text-sm font-medium">{t.whatsappOptInTitle}</FormLabel>
                             <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-                              {hasMobile ? t.whatsappOptInDescription : t.whatsappOptInPhoneHint}
+                              {t.whatsappOptInDescription}
                             </p>
                           </div>
                         </div>
@@ -611,7 +611,6 @@ export function CustomerFormDialog({
                           <Switch
                             checked={field.value}
                             onCheckedChange={field.onChange}
-                            disabled={!hasMobile}
                             aria-label={t.whatsappOptInTitle}
                           />
                         </FormControl>

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 export interface OsStatusRecord {
   id: string;
@@ -59,8 +60,7 @@ export function useOsStatuses() {
   const updateStatus = useMutation({
     mutationFn: async (input: { id: string; label?: string; color?: string; key?: string }) => {
       const { id, ...rest } = input;
-      const { error } = await supabase.from('os_statuses').update(rest).eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(await supabase.from('os_statuses').update(rest, { count: 'exact' }).eq('id', id), 'update');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['os_statuses'] });
@@ -73,8 +73,7 @@ export function useOsStatuses() {
 
   const deleteStatus = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('os_statuses').delete().eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(await supabase.from('os_statuses').delete({ count: 'exact' }).eq('id', id), 'delete');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['os_statuses'] });
@@ -87,11 +86,12 @@ export function useOsStatuses() {
 
   const reorderStatuses = useMutation({
     mutationFn: async (orderedIds: string[]) => {
-      await Promise.all(
+      const results = await Promise.all(
         orderedIds.map((id, index) =>
-          supabase.from('os_statuses').update({ position: index }).eq('id', id)
+          supabase.from('os_statuses').update({ position: index }, { count: 'exact' }).eq('id', id)
         )
       );
+      results.forEach((result) => assertRowsAffected(result, 'update'));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['os_statuses'] });

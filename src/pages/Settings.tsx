@@ -4,7 +4,7 @@ import { MESSAGES } from '@/lib/i18n';
 import { Badge } from '@/components/ui/badge';
 import { useSearchParams } from 'react-router-dom';
 import { cpfCnpjMask, phoneMask } from '@/utils/masks';
-import { Settings as SettingsIcon, Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw, Paintbrush, Image, FileText, MapPin, Phone, Mail, ClipboardList, ShieldCheck, TableProperties, Camera, PenTool, Calendar, Keyboard, UserCircle, CheckCircle2, Tags, Globe, Plug, Receipt, CreditCard } from 'lucide-react';
+import { Settings as SettingsIcon, Building, SlidersHorizontal, Palette, Loader2, Upload, Trash2, RefreshCw, Paintbrush, Image, FileText, MapPin, Phone, Mail, ClipboardList, ShieldCheck, TableProperties, Camera, PenTool, Calendar, Keyboard, UserCircle, CheckCircle2, Tags, Globe, Plug, Receipt, CreditCard, BellRing } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { BrandedQRCode, type QRDotStyle, type QRCornerStyle } from '@/components/BrandedQRCode';
@@ -13,7 +13,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { normalizeCompanySegments } from '@/utils/companySegments';
@@ -53,10 +52,12 @@ import * as LucideIcons from 'lucide-react';
 import type { AppRole } from '@/types/database';
 import { tenantFileOptions } from '@/utils/tenantStorage';
 import { createCustomOsSocialImage, createOsSocialImageFromLogo } from '@/utils/osSocialImage';
+import { NotificationSettingsContent } from '@/components/settings/notifications/NotificationSettingsContent';
+import { canManageCompanyNotificationRules, canSaveCompanySettings } from '@/components/settings/notifications/notificationSettingsAccess';
 
 const UsersPage = lazy(() => import('@/pages/Users'));
 
-const ALL_TABS = ['empresa', 'regional', 'usuarios', 'usabilidade', 'atalhos', 'aparencia', 'integracoes'];
+const ALL_TABS = ['empresa', 'regional', 'usuarios', 'usabilidade', 'atalhos', 'aparencia', 'integracoes', 'notificacoes'];
 
 // Snapshot canônico de `settings` no MESMO shape/ordem do payload salvo
 // (buildPayload). Usado em 2 lugares: baseline do auto-save (lastSavedJsonRef)
@@ -99,7 +100,41 @@ function settingsToJson(settings: any): string {
   });
 }
 
+function PersonalNotificationSettingsPage({ canManageRules }: { canManageRules: boolean }) {
+  const { locale } = useAppLocaleContext();
+  const t = MESSAGES[locale].app.settings;
+
+  return (
+    <div className="space-y-6">
+      <PageHeader title={t.page.title} subtitle={t.page.subtitle} icon={SettingsIcon} />
+      <NotificationSettingsContent canManageRules={canManageRules} />
+    </div>
+  );
+}
+
+/**
+ * Porta de entrada da rota. A árvore administrativa é deliberadamente outro
+ * componente para que usuários sem `screen:settings` não montem sequer os
+ * hooks de company_settings, termos, origens, módulos, logos ou auto-save.
+ */
 export default function Settings() {
+  const { hasScreenAccess, hasRole, hasPermission, hasPermissionRecord, isAdminOrGestor } = useAuth();
+  const canAccessSettingsScreen = hasScreenAccess('screen:settings');
+  const canManageNotificationRules = canManageCompanyNotificationRules({
+    isAdminOrGestor: isAdminOrGestor(),
+    isSuperAdmin: hasRole('super_admin' as AppRole),
+    hasPermissionRecord,
+    hasManageSettingsPermission: hasPermission('fn:manage_settings'),
+  });
+
+  if (!canAccessSettingsScreen) {
+    return <PersonalNotificationSettingsPage canManageRules={canManageNotificationRules} />;
+  }
+
+  return <AdministrativeSettings />;
+}
+
+function AdministrativeSettings() {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.settings;
   // Rótulo/descrição do toggle são os MESMOS textos que a tela de Movimentações
@@ -114,10 +149,12 @@ export default function Settings() {
     { value: 'atalhos', label: t.page.tabs.atalhos, icon: Keyboard },
     { value: 'aparencia', label: t.page.tabs.aparencia, icon: Palette },
     { value: 'integracoes', label: t.page.tabs.integracoes, icon: Plug },
+    { value: 'notificacoes', label: t.page.tabs.notificacoes, icon: BellRing },
   ];
 
-  const { hasScreenAccess, hasRole, hasPermission, hasPermissionRecord } = useAuth();
+  const { hasScreenAccess, hasRole, hasPermission, hasPermissionRecord, isAdminOrGestor } = useAuth();
   const { hasModule } = useCompanyModules();
+  const hasServiceOperations=hasModule('service_operations');
   const { companyId } = useUserCompany();
   // Gate da Zona de Perigo: admin do tenant OR super_admin Auctus.
   // Backend rechecka via RPC SECURITY DEFINER (regra-lei #1 — filtro client é UX).
@@ -129,6 +166,13 @@ export default function Settings() {
   // QUALQUER key, entregando a exportação sozinha a quem ninguém autorizou.
   const canExportData =
     canResetSystem || (hasPermissionRecord && hasPermission('fn:export_company_data'));
+  const canAccessSettingsScreen = hasScreenAccess('screen:settings');
+  const canManageNotificationRules = canManageCompanyNotificationRules({
+    isAdminOrGestor: isAdminOrGestor(),
+    isSuperAdmin: hasRole('super_admin' as AppRole),
+    hasPermissionRecord,
+    hasManageSettingsPermission: hasPermission('fn:manage_settings'),
+  });
   const [wlGateOpen, setWlGateOpen] = useState(false);
   const [termsModalOpen, setTermsModalOpen] = useState(false);
   const [originManagerOpen, setOriginManagerOpen] = useState(false);
@@ -136,10 +180,16 @@ export default function Settings() {
   const { acceptedAt: termsAcceptedAt } = useTermsOfService();
   const termsAcceptedLabel = formatBrtDateTime(termsAcceptedAt);
   const [searchParams, setSearchParams] = useSearchParams();
-  const tabFromUrl = searchParams.get('tab');
-  const activeTab = tabFromUrl && ALL_TABS.includes(tabFromUrl) ? tabFromUrl : 'empresa';
+  const [activeTab, setActiveTabState] = useState(() => {
+    const tabFromUrl = searchParams.get('tab');
+    if (!canAccessSettingsScreen) return 'notificacoes';
+    return tabFromUrl && ALL_TABS.includes(tabFromUrl) ? tabFromUrl : 'empresa';
+  });
 
   const visibleTabs = settingsTabs.filter(t => {
+    // Preferências próprias ficam acessíveis sem liberar dados/configurações da
+    // empresa. O backend ainda aplica own-row nas preferências e RLS nas regras.
+    if (!canAccessSettingsScreen) return t.value === 'notificacoes';
     if (t.value === 'usuarios') return hasScreenAccess('screen:users');
     // Regional: aba visível para TODOS (qualquer usuário muda o próprio idioma).
     // Dentro da aba, campos da empresa (idioma padrão, moeda, fuso) continuam
@@ -148,15 +198,28 @@ export default function Settings() {
     return true;
   });
   const setActiveTab = (tab: string) => {
+    if (!canAccessSettingsScreen && tab !== 'notificacoes') return;
+    setActiveTabState(tab);
     const next = new URLSearchParams(searchParams);
     next.set('tab', tab);
     if (tab !== 'integracoes') next.delete('integration');
     setSearchParams(next, { replace: true });
   };
+
+  useEffect(() => {
+    if (canAccessSettingsScreen || activeTab === 'notificacoes') return;
+    setActiveTabState('notificacoes');
+    setSearchParams({ tab: 'notificacoes' }, { replace: true });
+  }, [activeTab, canAccessSettingsScreen, setSearchParams]);
   // canSave: query terminou e o usuário é de tenant com empresa — mesmo sem
   // linha em company_settings (o hook auto-cria via INSERT no primeiro save).
   // super_admin fica canSave=false e o auto-save continua morto pra ele.
   const { settings, isLoading, updateSettings, canSave } = useCompanySettings();
+  // A rota agora também atende preferências PESSOAIS de notificação. Portanto,
+  // estar associado a um tenant não basta para habilitar writes de
+  // company_settings: técnicos sem `screen:settings` não podem disparar save
+  // por debounce, blur ou unmount enquanto usam a aba pessoal.
+  const canSaveSettings = canSaveCompanySettings(canAccessSettingsScreen, canSave);
   const { toast } = useToast();
   // "Incluir compras no cartão nas Movimentações" é preferência PESSOAL (não
   // da empresa), por isso vem de user_preferences (own-row), diferente dos
@@ -326,7 +389,7 @@ export default function Settings() {
     // `settings` é truthy — empresa sem linha em company_settings também
     // precisa conseguir salvar (o hook cria a linha via INSERT).
     // canSave é false pra super_admin: o auto-save continua morto pra ele.
-    if (!canSave) return;
+    if (!canSaveSettings) return;
     settingsLoadedRef.current = true;
     if (!settings) {
       // Sem linha ainda: baseline = estado atual do form (defaults vazios).
@@ -342,10 +405,10 @@ export default function Settings() {
     // buildPayload muda a cada keystroke, mas o único ramo que o usa (sem
     // linha) é protegido por `!lastSavedJsonRef.current` — roda uma vez só;
     // o ramo com settings apenas re-escreve o mesmo baseline (idempotente).
-  }, [settings, canSave, buildPayload]);
+  }, [settings, canSaveSettings, buildPayload]);
 
   const debouncedSave = useCallback(() => {
-    if (!settingsLoadedRef.current || isHydratingRef.current) return;
+    if (!canSaveSettings || !settingsLoadedRef.current || isHydratingRef.current) return;
     // Marca "sujo" assim que algo muda; o indicador reflete na hora.
     const dirty = JSON.stringify(buildPayload()) !== lastSavedJsonRef.current;
     setIsDirty(dirty);
@@ -359,7 +422,7 @@ export default function Settings() {
       setIsDirty(false);
       updateSettings.mutate(payload as any);
     }, 800);
-  }, [buildPayload, updateSettings]);
+  }, [buildPayload, canSaveSettings, updateSettings]);
 
   useEffect(() => {
     debouncedSave();
@@ -370,7 +433,7 @@ export default function Settings() {
   // Não pode ser chamado no cleanup do efeito de debounce (roda a cada render
   // e mataria o debounce); só em onBlur e no unmount real.
   const flushSave = useCallback(() => {
-    if (!settingsLoadedRef.current || isHydratingRef.current) return;
+    if (!canSaveSettings || !settingsLoadedRef.current || isHydratingRef.current) return;
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     const payload = buildPayload();
     const json = JSON.stringify(payload);
@@ -379,7 +442,7 @@ export default function Settings() {
     setIsDirty(false);
     // Fire-and-forget: a requisição HTTP sai mesmo se o componente desmontar.
     updateSettings.mutate(payload as any);
-  }, [buildPayload, updateSettings]);
+  }, [buildPayload, canSaveSettings, updateSettings]);
 
   // Ref sempre apontando pra versão mais recente de flushSave, pra usar no
   // efeito de unmount (deps vazias) sem capturar uma closure obsoleta.
@@ -392,10 +455,12 @@ export default function Settings() {
       ? settings.white_label_logo_url
       : settings?.logo_url || null;
   const socialPreviewSource = socialDraftUrl || settings?.os_social_image_url || currentBrandLogo;
-  const logoInk = useLogoInk(settings?.logo_url);
+  const companyLogoInk = useLogoInk(settings?.logo_url);
+  const whiteLabelLogoUrl = settings?.white_label_logo_url || settings?.logo_url || null;
+  const whiteLabelLogoInk = useLogoInk(whiteLabelLogoUrl);
 
   useEffect(() => {
-    if (!socialEditorOpen || !currentBrandLogo) {
+    if (!hasServiceOperations || !socialEditorOpen || !currentBrandLogo) {
       setSocialDraftFile(null);
       setSocialDraftUrl(null);
       setSocialPreviewLoading(false);
@@ -431,7 +496,7 @@ export default function Settings() {
       window.clearTimeout(timer);
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [currentBrandLogo, socialBackgroundColor, socialBackgroundMode, socialCompactSafeArea, socialEditorOpen, socialLogoScale, wlColor]);
+  }, [hasServiceOperations,currentBrandLogo, socialBackgroundColor, socialBackgroundMode, socialCompactSafeArea, socialEditorOpen, socialLogoScale, wlColor]);
 
   const persistOsSocialImage = async (
     file: File,
@@ -442,7 +507,6 @@ export default function Settings() {
     const filePath = `os_social_${Date.now()}.${isPng ? 'png' : 'jpg'}`;
     const options = await tenantFileOptions({
       contentType: isPng ? 'image/png' : 'image/jpeg',
-      cacheControl: '3600',
     });
     const { error: uploadError } = await supabase.storage
       .from('company-logos')
@@ -683,13 +747,22 @@ export default function Settings() {
     );
   };
 
+  // Politica da EMPRESA. O backend usa o mesmo campo para autorizar (ou negar)
+  // a justificativa de conflito; desligado/ausente falha fechado.
+  const handleToggleScheduleConflicts = (checked: boolean) => {
+    updateSettings.mutate(
+      { allow_schedule_conflicts: checked },
+      { onSuccess: () => toast({ title: t.usability.preferenceSaved }) }
+    );
+  };
+
   // Mesmo padrão do os_stock_consumption_enabled acima: decisão da EMPRESA, no
-  // servidor. O Switch/LabeledSwitch é controlado por `settings?.<campo>` (não
+  // servidor. O controle é alimentado por `settings?.<campo>` (não
   // por estado local) porque o optimistic update do useCompanySettings já
   // reverte o cache sozinho no erro. Não duplicar tratamento de erro aqui.
-  const handleChangeQuoteApprovalMode = (mode: 'recebido' | 'a_receber') => {
+  const handleChangeQuoteApprovalMode = (mode: 'apenas_aprovar' | 'recebido' | 'a_receber') => {
     updateSettings.mutate(
-      { quote_approval_revenue_mode: mode } as any,
+      { quote_approval_revenue_mode: mode },
       { onSuccess: () => toast({ title: t.usability.preferenceSaved }) }
     );
   };
@@ -758,6 +831,7 @@ export default function Settings() {
       description: t.usability.sections.schedule.description,
       items: [
         { key: 'showHolidays', title: t.usability.sections.schedule.showHolidays.title, description: t.usability.sections.schedule.showHolidays.description },
+        { key: 'allowScheduleConflicts', title: t.usability.sections.schedule.allowScheduleConflicts.title, description: t.usability.sections.schedule.allowScheduleConflicts.description },
       ],
     },
   ];
@@ -793,10 +867,11 @@ export default function Settings() {
                         <div
                           className={cn(
                             'flex h-28 w-28 shrink-0 items-center justify-center rounded-2xl p-3',
-                            // A prévia tem que mostrar o arquivo como ele é. Logo de
-                            // tinta escura sobre `bg-muted` sumia no tema escuro; aqui
-                            // o fundo acompanha a arte, igual ao menu.
-                            logoInk === 'dark' ? 'bg-white' : 'bg-muted/40'
+                            // A prévia usa o fundo ideal da própria arte, sem depender
+                            // do tema atual das Configurações.
+                            companyLogoInk === 'dark' && 'bg-white',
+                            companyLogoInk === 'light' && 'bg-zinc-950',
+                            companyLogoInk === null && 'bg-muted/40',
                           )}
                         >
                           <img src={settings.logo_url} alt="Logo" className="max-h-full max-w-full object-contain" />
@@ -1049,7 +1124,7 @@ export default function Settings() {
                     <Separator className="opacity-50" />
 
                     {/* A imagem social da OS é um recurso exclusivo do White Label. */}
-                    <div className="space-y-5 rounded-2xl bg-muted/25 p-4 sm:p-5">
+                    {hasServiceOperations && <div className="space-y-5 rounded-2xl bg-muted/25 p-4 sm:p-5">
                       <div className="space-y-1">
                         <h4 className="flex items-center gap-2 text-sm font-semibold text-foreground">
                           <Image className="h-4 w-4 text-primary" />
@@ -1294,7 +1369,7 @@ export default function Settings() {
                           </div>
                         </div>
                       )}
-                    </div>
+                    </div>}
 
                     <Separator className="opacity-50" />
 
@@ -1310,12 +1385,17 @@ export default function Settings() {
                               ? t.company.whiteLabelSection.fullLogoUsingCompany
                               : t.company.whiteLabelSection.fullLogoFallback}
                         </p>
-                        {(settings?.white_label_logo_url || settings?.logo_url) ? (
+                        {whiteLabelLogoUrl ? (
                           <div className="flex items-center gap-4">
                             <img
-                              src={settings?.white_label_logo_url || settings?.logo_url}
+                              src={whiteLabelLogoUrl}
                               alt="WL Logo"
-                              className="h-16 w-auto max-w-[200px] rounded-lg object-contain border bg-white p-1"
+                              className={cn(
+                                'h-16 w-auto max-w-[200px] rounded-lg border object-contain p-1',
+                                whiteLabelLogoInk === 'dark' && 'bg-white',
+                                whiteLabelLogoInk === 'light' && 'bg-zinc-950',
+                                whiteLabelLogoInk === null && 'bg-muted/40',
+                              )}
                               crossOrigin="anonymous"
                               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                             />
@@ -1455,7 +1535,7 @@ export default function Settings() {
                         {/* Preview ao vivo */}
                         <div className="flex flex-col items-center justify-center gap-2 rounded-lg border bg-white p-4">
                           <BrandedQRCode
-                            value="https://dominex.app"
+                            value="https://www.dominex.app"
                             size={140}
                             logoUrl={settings?.white_label_logo_url || settings?.logo_url || null}
                             dotStyle={wlQrDotStyle}
@@ -1662,7 +1742,7 @@ export default function Settings() {
               <CardDescription>{t.usability.cardDescription}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {usabilitySections.map((section, sIdx) => (
+              {usabilitySections.filter(section=>hasServiceOperations||(!section.items.some(item=>['autoSaveOS','showHolidays'].includes(item.key)))).map(section=>({...section,items:section.items.filter(item=>hasServiceOperations||item.key!=='showEquipmentPhotos')})).map((section, sIdx) => (
                 <div key={section.title}>
                   {sIdx > 0 && <Separator className="my-6" />}
 
@@ -1684,7 +1764,7 @@ export default function Settings() {
                             <Label className="text-sm font-medium">{item.title}</Label>
                             <p className="text-xs text-muted-foreground">{item.description}</p>
                           </div>
-                          {item.key === 'osStockConsumptionEnabled' ? (
+                          {item.key === 'osStockConsumptionEnabled' || item.key === 'allowScheduleConflicts' ? (
                             isLoading ? (
                               // Valor vem do servidor (não do localStorage como os
                               // vizinhos) — enquanto a query carrega, não sabemos o
@@ -1695,9 +1775,13 @@ export default function Settings() {
                               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                             ) : (
                               <Switch
-                                checked={!!settings?.os_stock_consumption_enabled}
-                                disabled={!canSave || updateSettings.isPending}
-                                onCheckedChange={handleToggleStockConsumption}
+                                checked={item.key === 'osStockConsumptionEnabled'
+                                  ? !!settings?.os_stock_consumption_enabled
+                                  : !!settings?.allow_schedule_conflicts}
+                                disabled={!canSaveSettings || updateSettings.isPending}
+                                onCheckedChange={item.key === 'osStockConsumptionEnabled'
+                                  ? handleToggleStockConsumption
+                                  : handleToggleScheduleConflicts}
                               />
                             )
                           ) : (
@@ -1717,7 +1801,7 @@ export default function Settings() {
           </Card>
 
           {/* Orçamento e OS → Financeiro (decisão da EMPRESA, salva no servidor) */}
-          <Card>
+          {hasServiceOperations && <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Receipt className="h-5 w-5 text-primary" />
@@ -1736,21 +1820,33 @@ export default function Settings() {
                   // controle nunca mentir sobre o estado real.
                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />
                 ) : (
-                  <LabeledSwitch<'recebido' | 'a_receber'>
-                    className="shrink-0 self-start sm:self-auto"
-                    value={settings?.quote_approval_revenue_mode === 'recebido' ? 'recebido' : 'a_receber'}
-                    onChange={handleChangeQuoteApprovalMode}
-                    off={{ value: 'recebido', label: t.usability.quoteFinance.modeReceived }}
-                    on={{ value: 'a_receber', label: t.usability.quoteFinance.modeReceivable }}
-                    disabled={!canSave || updateSettings.isPending}
-                    aria-label={t.usability.quoteFinance.modeTitle}
-                  />
+                  <Select
+                    value={settings?.quote_approval_revenue_mode ?? 'apenas_aprovar'}
+                    onValueChange={(value) => handleChangeQuoteApprovalMode(
+                      value as 'apenas_aprovar' | 'recebido' | 'a_receber',
+                    )}
+                    disabled={!canSaveSettings || updateSettings.isPending}
+                  >
+                    <SelectTrigger
+                      className="w-full shrink-0 sm:w-[220px]"
+                      aria-label={t.usability.quoteFinance.modeTitle}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="apenas_aprovar">{t.usability.quoteFinance.modeOnlyApprove}</SelectItem>
+                      <SelectItem value="a_receber">{t.usability.quoteFinance.modeReceivable}</SelectItem>
+                      <SelectItem value="recebido">{t.usability.quoteFinance.modeReceived}</SelectItem>
+                    </SelectContent>
+                  </Select>
                 )}
               </div>
               <p className="text-xs text-muted-foreground pb-1">
                 {settings?.quote_approval_revenue_mode === 'recebido'
                   ? t.usability.quoteFinance.modeReceivedHint
-                  : t.usability.quoteFinance.modeReceivableHint}
+                  : settings?.quote_approval_revenue_mode === 'a_receber'
+                    ? t.usability.quoteFinance.modeReceivableHint
+                    : t.usability.quoteFinance.modeOnlyApproveHint}
               </p>
 
               <Separator className="opacity-50" />
@@ -1765,7 +1861,7 @@ export default function Settings() {
                 ) : (
                   <Switch
                     checked={!!settings?.quote_public_approval_creates_receivable}
-                    disabled={!canSave || updateSettings.isPending}
+                    disabled={!canSaveSettings || updateSettings.isPending}
                     onCheckedChange={handleTogglePublicApprovalReceivable}
                   />
                 )}
@@ -1786,13 +1882,13 @@ export default function Settings() {
                 ) : (
                   <Switch
                     checked={!!settings?.os_finish_revenue_prompt_enabled}
-                    disabled={!canSave || updateSettings.isPending}
+                    disabled={!canSaveSettings || updateSettings.isPending}
                     onCheckedChange={handleToggleOsFinishRevenuePrompt}
                   />
                 )}
               </div>
             </CardContent>
-          </Card>
+          </Card>}
 
           {/* Movimentações financeiras (preferência PESSOAL do usuário, salva
               em user_preferences — NÃO é company_settings nem localStorage,
@@ -1899,6 +1995,9 @@ export default function Settings() {
       case 'integracoes':
         return <SettingsIntegrationContent />;
 
+      case 'notificacoes':
+        return <NotificationSettingsContent canManageRules={canManageNotificationRules} />;
+
       default:
         return null;
     }
@@ -1940,7 +2039,7 @@ export default function Settings() {
         title={t.page.title}
         subtitle={t.page.subtitle}
         icon={SettingsIcon}
-        actions={saveStatus}
+        actions={activeTab === 'notificacoes' ? undefined : saveStatus}
       />
 
       {/* onBlur no container captura o blur dos inputs filhos (bubbles) e faz

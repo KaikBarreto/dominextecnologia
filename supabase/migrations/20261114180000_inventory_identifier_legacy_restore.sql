@@ -2,7 +2,6 @@
 -- segunda linha e colidir com a UNIQUE canônica. Preserva tenant e ACLs do
 -- trigger interno; não faz backfill, rollout de módulo ou alteração de saldo.
 -- Regressão: inventory_identifiers_v2.sql (legado inativo/não principal).
-BEGIN;
 
 CREATE OR REPLACE FUNCTION public.inventory_sync_primary_identifiers_v2()
 RETURNS trigger
@@ -107,5 +106,4 @@ $function$;
 
 REVOKE ALL ON FUNCTION public.inventory_sync_primary_identifiers_v2()
   FROM PUBLIC, anon, authenticated, service_role;
-
-COMMIT;
+;

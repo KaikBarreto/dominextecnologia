@@ -1,3 +1,4 @@
+import { HorizontalTabBar } from '@/components/ui/HorizontalTabBar';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { Calculator, Plus, Trash2 } from 'lucide-react';
 
@@ -7,7 +8,7 @@ import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { CostCustomerComparison } from '@/components/pricing/CostCustomerComparison';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { CurrencyField } from '@/components/ui/CurrencyField';
 import { InventoryItemThumbnail } from '@/components/inventory/InventoryItemThumbnail';
 import { Input } from '@/components/ui/input';
@@ -209,12 +210,24 @@ export function QuoteServiceCostEditor({ value, onChange, bdiFactor, formatMoney
     <div className="space-y-5">
       <div className="grid gap-4 border-b pb-5 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)] lg:items-start">
         <div className="min-w-0"><h4 className="text-xl font-semibold leading-tight">Composição de custos deste serviço</h4><p className="mt-1 text-sm leading-relaxed text-muted-foreground">Mão de obra, insumos e quantidades são ajustados para este orçamento. Editar o cadastro de um recurso é uma ação compartilhada, indicada no próprio editor.</p></div>
-        {value.serviceTypeId && <label className={cn('flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 text-sm', value.saveAsCatalogDefault ? 'border-primary' : 'border-border')}><Checkbox checked={value.saveAsCatalogDefault === true} onCheckedChange={checked => onChange({ ...value, saveAsCatalogDefault: checked === true })} /><span><span className="block font-semibold">Atualizar também o custo cadastrado do serviço</span><span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{value.saveAsCatalogDefault ? 'Ao salvar este orçamento, esta composição será o padrão para os próximos orçamentos.' : 'Desmarcado: a composição vale apenas para este orçamento.'}</span></span></label>}
+        {value.serviceTypeId && <fieldset className="min-w-0 space-y-3">
+          <legend className="text-sm font-semibold">Onde salvar estes custos?</legend>
+          <RadioGroup value={value.saveAsCatalogDefault ? 'catalog' : 'quote'} onValueChange={next => onChange({ ...value, saveAsCatalogDefault: next === 'catalog' })} className="gap-3">
+            <div className="flex items-start gap-3">
+              <RadioGroupItem id={`${laborFieldId}-quote-only`} value="quote" className="mt-0.5 shrink-0" />
+              <Label htmlFor={`${laborFieldId}-quote-only`} className="cursor-pointer text-sm leading-5"><span className="block font-semibold">Só neste orçamento</span><span className="mt-0.5 block font-normal text-muted-foreground">O custo cadastrado do serviço continua igual.</span></Label>
+            </div>
+            <div className="flex items-start gap-3">
+              <RadioGroupItem id={`${laborFieldId}-catalog`} value="catalog" className="mt-0.5 shrink-0" />
+              <Label htmlFor={`${laborFieldId}-catalog`} className="cursor-pointer text-sm leading-5"><span className="block font-semibold">Também no cadastro do serviço</span><span className="mt-0.5 block font-normal text-muted-foreground">Ao salvar o orçamento, estes custos viram o padrão para os próximos.</span></Label>
+            </div>
+          </RadioGroup>
+        </fieldset>}
       </div>
 
       <Tabs value={activeSection} onValueChange={next => setActiveSection(next as CostSection)}>
         {isMobile ? <MobilePillTabs variant="underline" tabs={tabs} activeTab={activeSection} onTabChange={next => setActiveSection(next as CostSection)} /> : (
-          <div className="flex gap-1 overflow-x-auto border-b no-scrollbar">{tabs.map(tab => <button key={tab.value} type="button" onClick={() => setActiveSection(tab.value)} className={cn('mb-[-1px] shrink-0 whitespace-nowrap border-b-2 px-5 py-3 text-sm font-medium transition-colors', activeSection === tab.value ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground')}>{tab.label}</button>)}</div>
+          <HorizontalTabBar asChild><div className="flex gap-1 overflow-x-auto border-b no-scrollbar">{tabs.map(tab => <button key={tab.value} type="button" aria-current={activeSection === tab.value ? 'page' : undefined} onClick={() => setActiveSection(tab.value)} className={cn('mb-[-1px] shrink-0 whitespace-nowrap border-b-2 px-5 py-3 text-sm font-medium transition-colors', activeSection === tab.value ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground')}>{tab.label}</button>)}</div></HorizontalTabBar>
         )}
 
         <TabsContent value="labor" className="mt-4">

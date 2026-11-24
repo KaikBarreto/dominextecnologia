@@ -37,6 +37,10 @@ vi.mock('@/components/settings/SettingsAsaasSimulator', () => ({
   SettingsAsaasSimulator: () => <div>Conteúdo do simulador Asaas</div>,
 }));
 
+vi.mock('@/components/settings/SettingsEmailContent', () => ({
+  SettingsEmailContent: () => <div>Configuração do canal de e-mail</div>,
+}));
+
 vi.mock('@/components/settings/domilink/DomiLinkIntegrationContent', () => ({
   DomiLinkIntegrationContent: () => <div>Integração canônica do DomiLink</div>,
 }));
@@ -190,5 +194,26 @@ describe('SettingsIntegrationContent', () => {
     expect(container.textContent).toContain('Configuração da conta Asaas');
     expect(container.querySelector('[data-testid="location"]')?.textContent).toContain('integration=asaas');
     expect(container.querySelector('[data-testid="location"]')?.textContent).toContain('tab=integracoes');
+  });
+
+  it('abre E-mail por deep-link e mantém o canal separado das cobranças', () => {
+    act(() => {
+      root.render(
+        <MemoryRouter initialEntries={['/configuracoes?tab=integracoes&integration=email']}>
+          <SettingsIntegrationContent />
+          <LocationProbe />
+        </MemoryRouter>,
+      );
+    });
+
+    expect(container.textContent).toContain('Configuração do canal de e-mail');
+    expect(container.querySelector('[data-testid="location"]')?.textContent).toContain('integration=email');
+
+    const chargesTab = [...container.querySelectorAll('button')]
+      .find((button) => button.textContent?.includes('Cobranças'));
+    act(() => chargesTab?.click());
+
+    expect(container.textContent).toContain('Configuração da conta Asaas');
+    expect(container.textContent).not.toContain('Configuração do canal de e-mail');
   });
 });

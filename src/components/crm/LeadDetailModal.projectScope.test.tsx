@@ -75,8 +75,12 @@ vi.mock('@/hooks/useProjectPipelines', () => ({
 }));
 
 vi.mock('@/contexts/AuthContext', () => ({
-  useAuth: () => ({ user: { id: 'user-1' }, isAdminOrGestor: () => true, hasPermission: () => true }),
+  useAuth: () => ({ user: { id: 'user-1' }, isAdminOrGestor: () => true, hasPermission: () => true, hasScreenAccess: () => false }),
 }));
+vi.mock('@/hooks/useCompanyModules', () => ({ useCompanyModules: () => ({ hasScreen: () => false, isLoading: false }) }));
+vi.mock('@/hooks/useQuotes', () => ({ useQuotes: () => ({ quotes: [] }), getQuoteStatusLabels: () => ({}), STATUS_COLORS: {} }));
+vi.mock('@/components/quotes/QuoteFormDialog', () => ({ QuoteFormDialog: () => null }));
+vi.mock('@/components/quotes/QuoteViewDialog', () => ({ QuoteViewDialog: () => null }));
 vi.mock('@/hooks/useCrmPipelineAccess', () => ({
   useCrmPipelineAccess: () => ({ access: [], getPipelineAccessUserIds: () => [], setPipelineAccess: { mutate: vi.fn() } }),
 }));

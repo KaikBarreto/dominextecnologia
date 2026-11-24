@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { AlertTriangle, Star } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import {
@@ -104,9 +105,9 @@ function PressaoTrabalhoOpcao({
   // Sem curva firme do substituto → mantém o comportamento qualitativo de hoje.
   if (!temAlgumaPressao(pSub)) {
     return (
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-x-2 gap-y-1">
         <dt className="shrink-0 font-medium text-muted-foreground">{t.pressure}</dt>
-        <dd className="text-foreground">{op.pressao}</dd>
+        <dd className="min-w-0 text-foreground">{op.pressao}</dd>
       </div>
     );
   }
@@ -122,13 +123,13 @@ function PressaoTrabalhoOpcao({
             .replace('{unit}', unidade)})
         </span>
       </p>
-      <div className="mt-1 flex items-baseline gap-1.5">
+      <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
         <BolinhaGas cor={op.cor} />
         <span className="text-sm font-bold text-foreground">{op.gasNovo}</span>
         <span className="text-sm font-semibold text-foreground">{textoPressoes(pSub, unidade, t)}</span>
       </div>
       {temAlgumaPressao(pLegado) && (
-        <div className="mt-0.5 flex items-baseline gap-1.5">
+        <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
           <BolinhaGas cor={gas.cor} />
           <span className="text-xs font-medium text-muted-foreground">{gas.nome}</span>
           <span className="text-xs text-muted-foreground">{textoPressoes(pLegado, unidade, t)}</span>
@@ -151,6 +152,7 @@ function PressaoTrabalhoOpcao({
  * qualitativo. A unidade (psi/bar) é uma alavanca persistida.
  */
 export function RetrofitGas() {
+  const gasFieldId = useId();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.technicianTools.refrigerantRetrofit;
   const [primeiro] = RETROFIT_GASES;
@@ -169,21 +171,22 @@ export function RetrofitGas() {
   return (
     <div className="space-y-4 pb-4">
       <div>
-        <h2 className="text-base font-semibold tracking-tight md:text-xl">{t.title}</h2>
-        <p className="text-sm text-muted-foreground md:text-base">
+        <h2 className="text-2xl font-bold tracking-tight md:text-3xl">{t.title}</h2>
+        <p className="mt-1 text-base text-muted-foreground">
           {t.subtitle}
         </p>
       </div>
 
       {/* Card de entrada — seletor do gás atual + unidade de pressão */}
       <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
-        <div className="flex items-center justify-between gap-3">
-          <Label className="shrink-0 text-xl font-bold leading-tight text-foreground md:text-2xl">
+        <div className="grid gap-3 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center">
+          <Label htmlFor={gasFieldId} className="shrink-0 text-xl font-bold leading-tight text-foreground md:text-2xl">
             {t.currentGas}
           </Label>
           <Select value={gas.refrigeranteId} onValueChange={setGasSel}>
             <SelectTrigger
-              className="h-14 max-w-[60%] text-xl [&>span]:flex [&>span]:items-center [&_svg]:h-6 [&_svg]:w-6 md:h-16 md:text-2xl"
+              id={gasFieldId}
+              className="h-14 min-w-0 w-full text-xl [&>span]:flex [&>span]:items-center [&_svg]:h-6 [&_svg]:w-6 md:h-16 md:text-2xl"
               aria-label={t.gasSelectLabel}
             >
               <SelectValue />
@@ -218,7 +221,7 @@ export function RetrofitGas() {
       <div className="flex gap-2.5 rounded-lg border border-border bg-muted p-3">
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
         <p className="text-xs leading-relaxed text-muted-foreground">
-          <span className="font-semibold text-foreground">Drop-in</span> {t.dropInNote}
+          {t.dropInNote}
         </p>
       </div>
 
@@ -278,9 +281,9 @@ export function RetrofitGas() {
 
               {/* Óleo + pressão de trabalho (número onde há curva; texto onde não há) */}
               <dl className="mt-3 space-y-2 text-sm">
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-x-2 gap-y-1">
                   <dt className="shrink-0 font-medium text-muted-foreground">{t.oil}</dt>
-                  <dd className="text-foreground">{op.oleo}</dd>
+                  <dd className="min-w-0 text-foreground">{op.oleo}</dd>
                 </div>
                 <PressaoTrabalhoOpcao op={op} gas={gas} unidade={unidade} t={t} />
               </dl>

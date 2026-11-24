@@ -13,6 +13,63 @@
 import { supabase } from "@/integrations/supabase/client";
 import { generateSessionToken, getDeviceInfo } from "@/lib/sessionUtils";
 
+export const POST_LOGIN_TIMEOUT_MS = 12_000;
+
+export class PostLoginTimeoutError extends Error {
+  constructor(public readonly step: string) {
+    super(`Post-login step timed out: ${step}`);
+    this.name = "PostLoginTimeoutError";
+  }
+}
+
+export async function withPostLoginTimeout<T>(
+  operation: PromiseLike<T>,
+  step: string,
+  timeoutMs = POST_LOGIN_TIMEOUT_MS,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      Promise.resolve(operation),
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new PostLoginTimeoutError(step)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+async function removeRegisteredSession(userId: string, sessionToken: string): Promise<void> {
+  // O monitor realtime interpreta o DELETE da linha cujo token ainda está no
+  // navegador como uma expulsão remota. Limpar primeiro transforma este caso
+  // em self-deletion e evita que o rollback dispare um segundo signOut.
+  if (localStorage.getItem("session_token") === sessionToken) {
+    localStorage.removeItem("session_token");
+  }
+  const { error } = await supabase
+    .from("active_sessions")
+    .delete()
+    .eq("user_id", userId)
+    .eq("session_token", sessionToken);
+  if (error) throw error;
+}
+
+async function disconnectOtherRegisteredSessions(
+  userId: string,
+  currentToken: string,
+): Promise<void> {
+  const { error } = await withPostLoginTimeout(
+    supabase
+      .from("active_sessions")
+      .delete()
+      .eq("user_id", userId)
+      .neq("session_token", currentToken),
+    "disconnect-other-sessions",
+  );
+  if (error) throw error;
+}
+
 /**
  * Cria a linha em `active_sessions` pro usuário e persiste o `session_token` no
  * localStorage. Corpo idêntico ao `registerSession` histórico do `Auth.tsx`.
@@ -26,13 +83,35 @@ export async function registerSession(userId: string): Promise<string | null> {
     return null;
   }
   const sessionToken = generateSessionToken();
-  await supabase.from("active_sessions").insert({
+  const previousToken = localStorage.getItem("session_token");
+  const insertPromise = Promise.resolve(supabase.from("active_sessions").insert({
     user_id: userId,
     session_token: sessionToken,
     device_info: getDeviceInfo(),
     last_activity: new Date().toISOString(),
-  });
+  }));
+
+  try {
+    const { error } = await withPostLoginTimeout(insertPromise, "register-active-session");
+    if (error) throw error;
+  } catch (error) {
+    // O fetch não é cancelável. Se ele concluir após o timeout, removemos a
+    // linha que teria ficado órfã sem liberar a sessão local.
+    void insertPromise.then(({ error: lateError }) => {
+      if (!lateError) void removeRegisteredSession(userId, sessionToken);
+    });
+    throw error;
+  }
+
   localStorage.setItem("session_token", sessionToken);
+
+  // Um reload interrompido podia deixar o token anterior deste dispositivo
+  // na tabela. A limpeza é best-effort e não segura o caminho feliz.
+  if (previousToken && previousToken !== sessionToken) {
+    void removeRegisteredSession(userId, previousToken).catch((error) =>
+      console.warn("[postLogin] stale active session cleanup failed:", error),
+    );
+  }
   return sessionToken;
 }
 
@@ -46,10 +125,10 @@ export async function registerSession(userId: string): Promise<string | null> {
  */
 export async function hasSystemAccess(userId: string): Promise<boolean> {
   try {
-    const { data, error } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId);
+    const { data, error } = await withPostLoginTimeout(
+      supabase.from("user_roles").select("role").eq("user_id", userId),
+      "check-system-access",
+    );
     if (error) {
       console.warn("[postLogin] hasSystemAccess query failed:", error.message);
       return false;
@@ -70,32 +149,49 @@ export async function hasSystemAccess(userId: string): Promise<boolean> {
  *   - demais → /dashboard
  */
 export async function resolvePostLoginRedirect(userId: string): Promise<string> {
-  const { data: rolesData } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId);
-  const userRoles = (rolesData ?? []).map((r: any) => r.role as string);
+  const [rolesResult, profileResult] = await Promise.all([
+    withPostLoginTimeout(
+      supabase.from("user_roles").select("role").eq("user_id", userId),
+      "load-login-roles",
+    ),
+    withPostLoginTimeout(
+      supabase.from("profiles").select("company_id").eq("user_id", userId).maybeSingle(),
+      "load-login-profile",
+    ),
+  ]);
+
+  if (rolesResult.error) throw rolesResult.error;
+  if (profileResult.error) throw profileResult.error;
+
+  const rolesData = rolesResult.data;
+  const userRoles = (rolesData ?? []).map((row) => row.role);
+
+  // O app e as policies consideram acesso real somente com papel explícito.
+  // Em estado desconhecido ou sem vínculo, nunca cair no dashboard por padrão.
+  if (userRoles.length === 0) {
+    throw new Error("Authenticated user has no system role");
+  }
 
   if (userRoles.includes("super_admin")) {
     return "/admin/empresas";
   }
 
-  const { data: profileData } = await supabase
-    .from("profiles")
-    .select("company_id")
-    .eq("user_id", userId)
-    .maybeSingle();
+  const profileData = profileResult.data;
 
   if (profileData?.company_id) {
-    const { data: companyData } = await supabase
-      .from("companies")
-      .select("subscription_status, payment_lock_bypass")
-      .eq("id", profileData.company_id)
-      .maybeSingle();
+    const { data: companyData, error: companyError } = await withPostLoginTimeout(
+      supabase
+        .from("companies")
+        .select("subscription_status, payment_lock_bypass")
+        .eq("id", profileData.company_id)
+        .maybeSingle(),
+      "load-login-company",
+    );
+    if (companyError) throw companyError;
     // pending_payment manda pro checkout, EXCETO se a empresa tem bypass
-    // liberado (payment_lock_bypass === true). Cast as any: coluna ainda não
-    // está no types.ts. Comparação estrita: null/undefined nunca abre exceção.
-    const hasBypass = (companyData as any)?.payment_lock_bypass === true;
+    // liberado (payment_lock_bypass === true). Comparação estrita:
+    // null/undefined nunca abre exceção.
+    const hasBypass = companyData?.payment_lock_bypass === true;
     if (companyData?.subscription_status === "pending_payment" && !hasBypass) {
       return "/checkout";
     }
@@ -105,4 +201,79 @@ export async function resolvePostLoginRedirect(userId: string): Promise<string> 
     return "/agenda";
   }
   return "/dashboard";
+}
+
+export type RecentActiveSession = {
+  device_info: string | null;
+  last_activity: string;
+};
+
+export async function findRecentOtherSessions(
+  userId: string,
+  currentToken: string | null,
+): Promise<RecentActiveSession[]> {
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const { data, error } = await withPostLoginTimeout(
+    supabase
+      .from("active_sessions")
+      .select("device_info, last_activity")
+      .eq("user_id", userId)
+      .neq("session_token", currentToken || "___none___")
+      .gte("last_activity", oneHourAgo)
+      .order("last_activity", { ascending: false })
+      .limit(10),
+    "check-active-sessions",
+  );
+  if (error) throw error;
+  return (data ?? []) as RecentActiveSession[];
+}
+
+/**
+ * Executa os dois ramos independentes do bootstrap em paralelo. Em falha,
+ * desfaz o registro local criado nesta tentativa para não deixar sessão órfã.
+ */
+export async function bootstrapPostLoginSession(
+  userId: string,
+  options?: { disconnectOthers?: boolean },
+): Promise<{
+  destination: string;
+  sessionToken: string | null;
+}> {
+  let registeredToken: string | null = null;
+  const registration = registerSession(userId).then((token) => {
+    registeredToken = token;
+    return token;
+  });
+  const redirect = resolvePostLoginRedirect(userId);
+  const [registrationResult, redirectResult] = await Promise.allSettled([
+    registration,
+    redirect,
+  ]);
+
+  if (registrationResult.status === "rejected" || redirectResult.status === "rejected") {
+    if (registeredToken) {
+      await removeRegisteredSession(userId, registeredToken).catch((cleanupError) =>
+        console.warn("[postLogin] failed bootstrap cleanup failed:", cleanupError),
+      );
+    }
+    if (registrationResult.status === "rejected") throw registrationResult.reason;
+    throw redirectResult.status === "rejected" ? redirectResult.reason : new Error("Post-login failed");
+  }
+
+  const sessionToken = registrationResult.value;
+  if (options?.disconnectOthers && sessionToken) {
+    try {
+      await disconnectOtherRegisteredSessions(userId, sessionToken);
+    } catch (error) {
+      await removeRegisteredSession(userId, sessionToken).catch((cleanupError) =>
+        console.warn("[postLogin] failed disconnect rollback cleanup failed:", cleanupError),
+      );
+      throw error;
+    }
+  }
+
+  return {
+    destination: redirectResult.value,
+    sessionToken,
+  };
 }

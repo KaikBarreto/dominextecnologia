@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useId, useLayoutEffect, useMemo, useState } from "react";
 
 export const OVERLAY_PRIORITY = {
+  backgroundPrompt: 5,
   marketing: 10,
   reminder: 20,
   tutorial: 30,

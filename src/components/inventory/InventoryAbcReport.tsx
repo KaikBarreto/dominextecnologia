@@ -110,13 +110,13 @@ export function InventoryAbcReport() {
     [report.data, view],
   );
   const filtered = useMemo(() => classified.filter((row) => {
-    if (hideZero && row.metricValue <= 0) return false;
+    if (hideZero && row.metricValue === 0) return false;
     return !search || fuzzyIncludesAny([row.material_name, row.sku, row.group_name], search);
   }), [classified, hideZero, search]);
   const { sortedItems, sortConfig, handleSort } = useTableSort(filtered, 'metricValue', 'desc');
   const pagination = useDataPagination(sortedItems, 25, `inventory-abc:${view}`);
   const setAbcPage = pagination.setPage;
-  const summary = useMemo(() => summarizeInventoryAbc(classified.filter((row) => row.metricValue > 0)), [classified]);
+  const summary = useMemo(() => summarizeInventoryAbc(classified.filter((row) => row.metricValue !== 0)), [classified]);
   const totalValue = classified.reduce((sum, row) => sum + row.metricValue, 0);
   const riskCount = classified.filter((row) => rowInsight(row, view).warning).length;
 
@@ -185,13 +185,13 @@ export function InventoryAbcReport() {
         )}
       </div>
 
-      <div className="flex flex-col gap-3 border-y border-border py-3 sm:flex-row sm:flex-wrap sm:items-center">
+      {!report.isLoading && !report.error && <div className="flex flex-col gap-3 border-y border-border py-3 sm:flex-row sm:flex-wrap sm:items-center">
         <div className="min-w-[12rem] sm:pr-4">
           <p className="text-xs font-medium text-muted-foreground">{metricCopy.metric}</p>
           <div className="flex flex-wrap items-baseline gap-x-2">
             <p className="text-xl font-bold tabular-nums">{money(totalValue)}</p>
             <span className="text-xs text-muted-foreground">
-              {number(classified.filter((row) => row.metricValue > 0).length)} materiais
+              {number(classified.filter((row) => row.metricValue !== 0).length)} materiais
             </span>
           </div>
         </div>
@@ -214,11 +214,17 @@ export function InventoryAbcReport() {
             </span>
           )}
         </div>
-      </div>
+      </div>}
 
       {report.error && (
         <NoticeBanner variant="destructive" action="Tentar novamente" onClick={() => void report.refetch()}>
           Não foi possível carregar a Curva ABC agora. Tente novamente em instantes.
+        </NoticeBanner>
+      )}
+
+      {!report.error && classified.some(row => row.metricValue < 0) && (
+        <NoticeBanner variant="warning">
+          A participação das classes usa somente valores positivos. Devoluções e ajustes negativos continuam no total líquido e na lista.
         </NoticeBanner>
       )}
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ClipboardList, Plus, Settings2, Truck, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCustomers, type CustomerInput } from '@/hooks/useCustomers';
@@ -42,6 +42,28 @@ export function CustomersPageChrome({ activeTab, onTabChange }: CustomersPageChr
   const [novoOpen, setNovoOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [leadFormsOpen, setLeadFormsOpen] = useState(false);
+  const notificationParams = new URLSearchParams(
+    typeof window === 'undefined' ? '' : window.location.search,
+  );
+  const shouldOpenLeadForms = notificationParams.get('leadForms') === '1';
+  const requestedFormId = notificationParams.get('form');
+  const requestedSubmissionId = notificationParams.get('submission');
+
+  useEffect(() => {
+    if (activeTab === 'clientes' && shouldOpenLeadForms) {
+      setLeadFormsOpen(true);
+    }
+  }, [activeTab, shouldOpenLeadForms]);
+
+  const handleLeadFormsOpenChange = (open: boolean) => {
+    setLeadFormsOpen(open);
+    if (open || typeof window === 'undefined') return;
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.delete('leadForms');
+    nextUrl.searchParams.delete('form');
+    nextUrl.searchParams.delete('submission');
+    window.history.replaceState(window.history.state, '', `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+  };
 
   // No celular as ações da tela vivem na toolbar/FAB da própria lista, não aqui.
   const showActions = !isMobile;
@@ -99,7 +121,12 @@ export function CustomersPageChrome({ activeTab, onTabChange }: CustomersPageChr
 
       <CustomerSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
 
-      <LeadCaptureManagerDialog open={leadFormsOpen} onOpenChange={setLeadFormsOpen} />
+      <LeadCaptureManagerDialog
+        open={leadFormsOpen}
+        onOpenChange={handleLeadFormsOpenChange}
+        initialFormId={requestedFormId}
+        initialSubmissionId={requestedSubmissionId}
+      />
     </>
   );
 }

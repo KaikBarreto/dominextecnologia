@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({
   rpc: vi.fn(),
-  auth: { user: { id: 'user' }, profile: { company_id: 'company' }, roles: ['admin'], permissions: ['*'], hasPermissionRecord: true, loading: false, profileLoading: false },
+  auth: { user: { id: 'user' }, profile: { company_id: 'company', user_id: 'user', is_active: true }, roles: ['admin'], permissions: ['*'], hasPermissionRecord: true, loading: false, profileLoading: false },
 }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => state.auth }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc: state.rpc } }));

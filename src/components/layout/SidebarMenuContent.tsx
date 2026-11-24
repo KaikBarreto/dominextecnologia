@@ -6,7 +6,7 @@ import {
   Package,
   DollarSign,
   FileText,
-  Receipt,
+  TicketPercent,
   Settings as SettingsIcon,
   User,
   TrendingUp,
@@ -74,12 +74,14 @@ import { segmentsHaveTechTools } from '@/config/technicianArea';
 import { companyHasSegment, normalizeCompanySegments } from '@/utils/companySegments';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useLogoInk } from '@/hooks/useLogoInk';
+import { getContrastingLogoSurfaceTone } from '@/utils/logoInk';
 import { useSidebar } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 import { HelpCenterDrawer } from '@/components/layout/HelpCenterDrawer';
 import { AccountSwitcherDropdown } from '@/components/account-switcher/AccountSwitcherDropdown';
 import { getCompanyWhatsAppNumber } from '@/components/landing/whatsappNumbers';
 import { podeAcessarDomiflixAdmin } from '@/lib/adminDomiflixAccess';
+import { fiscalNavigationItem } from '@/config/fiscalNavigation';
 import iconePreto from '@/assets/icone_preto.png';
 import iconeVerde from '@/assets/icone_verde.png';
 import logoHorizontalVerde from '@/assets/logo-horizontal-verde.png';
@@ -146,7 +148,7 @@ const tenantMenuItems: MenuItem[] = [
   // de menu pra ela — daria dois caminhos pro mesmo fluxo e deixaria vender com
   // o caixa fechado como se fosse normal.
   {
-    title: 'PDV',
+    title: 'PDV (Loja)',
     icon: Store,
     moduleKey: 'pdv',
     children: [
@@ -154,9 +156,11 @@ const tenantMenuItems: MenuItem[] = [
       { title: 'Orçamentos', icon: ClipboardList, path: '/pdv/pre-pedidos', screenKeys: ['screen:pdv', 'screen:pdv_orders'], moduleKey: 'pdv', requiresPdvCounter: true },
       { title: 'Pedidos', icon: ListOrdered, path: '/pdv/pedidos', screenKey: 'screen:pdv_orders', moduleKey: 'pdv' },
       { title: 'Expedição', icon: PackageCheck, path: '/pdv/expedicao', screenKey: 'screen:pdv_dispatch', moduleKey: 'pdv', requiresPdvCounter: true },
+      { title: 'Estoque da loja', icon: Package, path: '/pdv/estoque', screenKey: 'screen:inventory', moduleKey: 'pdv' },
       { title: 'Histórico de Caixa', icon: HistoryIcon, path: '/pdv/caixas', screenKey: 'screen:pdv_cash_history', moduleKey: 'pdv' },
       { title: 'Relatórios da Loja', icon: BarChart3, path: '/pdv/relatorios', screenKey: 'screen:pdv_reports', moduleKey: 'pdv' },
-      { title: 'Configurações do PDV', icon: SettingsIcon, path: '/pdv/configuracoes', screenKey: 'screen:pdv_settings', moduleKey: 'pdv' },
+      { title: 'Cupons promocionais', icon: TicketPercent, path: '/pdv/cupons', screenKey: 'screen:pdv_settings', moduleKey: 'pdv' },
+      { title: 'Configurações do PDV (Loja)', icon: SettingsIcon, path: '/pdv/configuracoes', screenKey: 'screen:pdv_settings', moduleKey: 'pdv' },
     ],
   },
   // Os dois são quadros Kanban e andam juntos (um projeto AGRUPA funis), mas
@@ -186,16 +190,14 @@ const tenantMenuItems: MenuItem[] = [
       { title: 'Relatórios', icon: BarChart3, path: '/financeiro/relatorios', screenKey: 'screen:finance' },
     ],
   },
-  // Módulo fiscal no primeiro nível do menu, independente do grupo Financeiro.
-  // Mantém o gate duplo: módulo pago `nfe` + permissão de tela dedicada.
-  { title: 'Notas Fiscais', icon: Receipt, path: '/notas-fiscais', screenKey: 'screen:fiscal_notes', moduleKey: 'nfe' },
+  fiscalNavigationItem,
 ];
 
 const adminMenuItems: (MenuItem & { masterOnly?: boolean })[] = [
   { title: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard', screenKey: 'admin_dashboard' },
   { title: 'CRM/Tarefas', icon: Target, path: '/admin/crm', screenKey: 'admin_crm' },
   { title: 'Empresas', icon: Building2, path: '/admin/empresas', screenKey: 'admin_empresas' },
-  { title: 'Vendedores', icon: Briefcase, path: '/admin/vendedores', screenKey: 'admin_vendedores' },
+  { title: 'Equipe', icon: Briefcase, path: '/admin/vendedores', screenKey: 'admin_vendedores' },
   { title: 'Afiliados', icon: Handshake, path: '/admin/afiliados', screenKey: 'admin_afiliados' },
   { title: 'Financeiro', icon: DollarSign, path: '/admin/financeiro', screenKey: 'admin_financeiro' },
   { title: 'Health Score', icon: HeartPulse, path: '/admin/health-score', screenKey: 'admin_health_score' },
@@ -251,16 +253,13 @@ export function SidebarMenuContent() {
   const { hasModule, hasScreen } = useCompanyModules();
   const { settings } = useCompanySettings();
   const { logoUrl, iconUrl, enabled: wlEnabled, defaultLogoDark, isLoading: logoLoading } = useWhiteLabel();
-  // Logo do tenant é UM arquivo só, desenhado tanto no menu escuro quanto no
-  // claro. Arte de tinta escura some no menu escuro (que é o padrão, nos dois
-  // temas do app), então ela ganha uma placa clara atrás. Arte clara segue
-  // direto no fundo escuro, sem placa.
+  // Logo do tenant é UM arquivo só para as duas superfícies. A tinta e o tom
+  // efetivo da nav decidem a placa: clara para arte escura sobre fundo escuro,
+  // escura para arte clara sobre fundo claro, e nenhuma quando já há contraste.
   const tenantLogoUrl = !isAdminUser ? logoUrl : null;
   const tenantLogoInk = useLogoInk(tenantLogoUrl);
-  const needsLogoPlate = Boolean(tenantLogoUrl) && tenantLogoInk === 'dark';
   const tenantIconUrl = !isAdminUser && wlEnabled ? iconUrl : null;
   const tenantIconInk = useLogoInk(tenantIconUrl);
-  const needsIconPlate = Boolean(tenantIconUrl) && tenantIconInk === 'dark';
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -290,6 +289,9 @@ export function SidebarMenuContent() {
     }
     return 'light';
   });
+  const tenantLogoSurface = !isAdminUser && wlEnabled && (collapsed ? tenantIconUrl : tenantLogoUrl)
+    ? getContrastingLogoSurfaceTone(collapsed ? tenantIconInk : tenantLogoInk) ?? undefined
+    : undefined;
 
   // ResizeObserver no trigger do rodapé — mede a altura em runtime pra que
   // o DropdownMenuContent receba `sideOffset={-profileTriggerHeight}` e fique
@@ -384,7 +386,8 @@ export function SidebarMenuContent() {
         {/* Logo */}
         <NavLink
           to={showAdminMenu ? adminHomePath : L('/dashboard')}
-          className="nav-logo-area relative h-16 flex items-center justify-center border-b border-border shrink-0 overflow-hidden bg-white dark:bg-sidebar px-2"
+          data-tenant-logo-surface={tenantLogoSurface}
+          className="nav-logo-area tenant-logo-surface relative h-16 flex items-center justify-center border-b border-border shrink-0 overflow-hidden bg-white dark:bg-sidebar px-2 transition-colors duration-300"
         >
           {showLogoLoading ? (
             collapsed
@@ -400,9 +403,7 @@ export function SidebarMenuContent() {
               >
                 {!isAdminUser && wlEnabled ? (
                   iconUrl ? (
-                    <span className={cn(needsIconPlate && 'rounded-md bg-white p-1')}>
-                      <img src={iconUrl} alt="Icon" className="h-7 w-7 object-contain" />
-                    </span>
+                    <img src={iconUrl} alt="Icon" className="h-7 w-7 object-contain" />
                   ) : null
                 ) : (
                   <>
@@ -417,10 +418,9 @@ export function SidebarMenuContent() {
                   collapsed ? 'opacity-0 pointer-events-none' : 'opacity-100'
                 )}
               >
-                {/* `min-w-0 max-w-full`: a placa vira o novo pai do `max-w-full`
-                    das imagens. Sem isso um logo largo passaria por cima da
-                    borda da sidebar em vez de encolher. */}
-                <div className={cn('flex min-w-0 max-w-full items-center justify-center', needsLogoPlate && 'rounded-lg bg-white px-2.5 py-1')}>
+                {/* O contraste pertence à faixa inteira do cabeçalho. O wrapper
+                    existe só para limitar logos largos à largura da sidebar. */}
+                <div className="flex min-w-0 max-w-full items-center justify-center">
                   <img src={isAdminUser ? defaultLogoDark : logoUrl || defaultLogoDark} alt="Logo" className="nav-logo-light max-h-11 w-auto max-w-full object-contain dark:hidden" />
                   <img src={isAdminUser ? logoHorizontalVerde : logoUrl || logoHorizontalVerde} alt="Logo" className="nav-logo-dark max-h-11 w-auto max-w-full object-contain hidden dark:block" />
                 </div>

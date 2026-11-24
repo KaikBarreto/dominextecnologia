@@ -1,4 +1,5 @@
 import { usePublicSubscriptionCatalog } from '@/hooks/usePublicSubscriptionPlans';
+import { useCompanyModules } from '@/hooks/useCompanyModules';
 
 export interface SubscriptionModuleRow {
   code: string;
@@ -21,7 +22,8 @@ export interface SubscriptionModuleRow {
  * os demais continuam vindo de `subscription_modules`.
  */
 export function useModuleCatalog() {
-  const { data, isLoading } = usePublicSubscriptionCatalog();
+  const { businessCore } = useCompanyModules();
+  const { data, isLoading } = usePublicSubscriptionCatalog(businessCore);
   const catalog: SubscriptionModuleRow[] = (data?.allModules ?? []).map((module) => ({
     code: module.code,
     name: module.name,

@@ -22,7 +22,7 @@ function mapError(error: RpcError) {
   const messages: Record<string, string> = {
     pdv_receipt_auth_required: 'Sua sessão expirou. Entre novamente.',
     pdv_receipt_company_required: 'Seu usuário não possui uma empresa ativa.',
-    pdv_receipt_module_denied: 'O módulo PDV não está disponível para esta empresa.',
+    pdv_receipt_module_denied: 'O módulo PDV (Loja) não está disponível para esta empresa.',
     pdv_receipt_screen_denied: 'Você não tem permissão para consultar os comprovantes do PDV.',
     pdv_receipt_settings_invalid: 'Revise o formato, a abertura automática e a quantidade de vias de cada etapa.',
     pdv_receipt_manage_denied: 'Você não tem permissão para alterar as configurações do PDV.',

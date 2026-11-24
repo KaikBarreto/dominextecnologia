@@ -1,7 +1,7 @@
 // admin-infra-metrics
 // -------------------
 // Proxy autenticado entre o painel master Auctus (aba Infra de /admin/estatisticas)
-// e a rota `GET /v1/infra/metricas` do motor fiscal (`dominex-fiscal`, na VPS).
+// e a rota `GET /v1/infra/metricas` da API compartilhada `motor-fiscal`, na VPS.
 //
 // POR QUE ESTA FUNÇÃO EXISTE, e não um fetch direto do browser:
 //   o motor fiscal autentica com `FISCAL_SERVICE_TOKEN`, um segredo de SERVIÇO.

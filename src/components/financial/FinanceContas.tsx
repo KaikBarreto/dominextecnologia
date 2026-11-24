@@ -2,6 +2,7 @@ import { Fragment, useState, useMemo, useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -38,6 +39,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { useCanManageFinanceSettings } from '@/hooks/useCanManageFinanceSettings';
+import { useCanManageFinanceTransactions } from '@/hooks/useCanManageFinanceTransactions';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAllCreditCardBills, type CreditCardBillWithTransactions } from '@/hooks/useCreditCardBills';
 import { isTransactionInDateRange } from '@/lib/finance-date';
@@ -46,6 +48,18 @@ import { useCostCenters } from '@/hooks/useCostCenters';
 import { useFinancialCategories } from '@/hooks/useFinancialCategories';
 import { filterByCostCenters, NO_COST_CENTER } from '@/lib/cost-center-breakdown';
 import { CreditCardInvoiceRow } from './CreditCardInvoiceRow';
+import { FinancePdvUndoDialog } from './FinancePdvUndoDialog';
+import { PaidMarker } from './PaidMarker';
+import { isPdvFinancialRow } from '@/hooks/useFinancePdvUndo';
+
+function canAdjustManualOccurrence(transaction: FinancialTransaction | null): boolean {
+  if (!transaction) return false;
+  const row = transaction as FinancialTransaction & { origin?: string; payroll_kind?: string; cancelled_at?: string };
+  return !row.is_paid && !row.paid_date && !row.cancelled_at && !row.amount_received
+    && !row.parent_transaction_id && !row.payment_group_id && !row.transfer_pair_id
+    && !row.bill_id && !row.credit_card_bill_date && !row.employee_id && !row.payroll_kind
+    && !row.contract_id && !row.service_order_id && row.origin !== 'pdv';
+}
 
 /** Parse a YYYY-MM-DD string as a local date (avoids UTC-offset shift) */
 function parseLocalDate(dateStr: string): Date {
@@ -56,16 +70,17 @@ import { AccountFormDialog } from './AccountFormDialog';
 import { ReceivePaymentModal } from './ReceivePaymentModal';
 import { ReceivableDetailModal } from './ReceivableDetailModal';
 import type { TransactionType } from '@/types/database';
-import { useFinancial } from '@/hooks/useFinancial';
+import { useFinancial, type FinancialSeriesScope } from '@/hooks/useFinancial';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { EmployeePaymentModal, PaymentPayload } from '@/components/employees/EmployeePaymentModal';
 import { useEmployeeMovements } from '@/hooks/useEmployeeMovements';
 import { calculateEmployeeBalance } from '@/utils/employeeCalculations';
+import { useEmployeeHrDetails } from '@/hooks/useEmployees';
 import { Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useQueryClient } from '@tanstack/react-query';
+import { useIsFetching, useQueryClient } from '@tanstack/react-query';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
@@ -91,6 +106,7 @@ import { generateMovimentacoesReportPdf } from '@/utils/movimentacoesPdfGenerato
 import { generateMovimentacoesExcel } from '@/utils/movimentacoesExcelGenerator';
 import { generateMovimentacoesCsv } from '@/utils/movimentacoesCsvGenerator';
 import { FinanceAccountsCalendar, type FinanceCalendarItem } from './FinanceAccountsCalendar';
+import { selectFinanceCalendarTransactions } from '@/lib/finance-calendar';
 import {
   getFinancialAccountPriority,
   sortFinancialAccountsByPriority,
@@ -105,6 +121,15 @@ import {
 import { ReceivableBalanceChargeDialogs } from './ReceivableBalanceChargeDialogs';
 import { getCategoryIcon, getCostCenterIcon } from './categoryIcons';
 import type { LucideIcon } from 'lucide-react';
+import {
+  buildFinancialCategoryLookup,
+  resolveFinancialCategoryDisplay,
+} from '@/lib/financial-category-display';
+import {
+  DEFAULT_FINANCE_ACCOUNTS_SUBTAB,
+  matchesFinanceAccountsSubTab,
+  type FinanceAccountsSubTab,
+} from '@/lib/finance-accounts-subtab';
 
 /**
  * Círculo cor+ícone pro filtro multi-select (categoria/centro de custo).
@@ -122,19 +147,18 @@ function filterIconNode(color: string, Icon: LucideIcon | null) {
   );
 }
 
-type SubTab = 'todas' | 'pagar' | 'receber';
 type FilterStatus = 'pendentes' | 'vencidas' | 'pagas' | 'todas';
 type AccountsView = 'list' | 'calendar';
 
-type PayrollTxn = FinancialTransaction & { customer?: any; supplier?: any; employee?: { id: string; name: string; salary: number; photo_url: string | null } };
+type PayrollTxn = FinancialTransaction & { customer?: any; supplier?: any; employee?: { id: string; name: string; photo_url: string | null } };
 
 interface FinanceContasProps {
   /** Transações já filtradas pelo período selecionado no parent. */
   transactions: PayrollTxn[];
   /**
-   * Dataset COMPLETO (sem filtro de período), usado só pela busca textual
-   * universal — pra achar a conta mesmo em outro mês. Opcional: se ausente,
-   * a busca cai pra `transactions` (comportamento period-bound).
+   * Dataset COMPLETO (sem filtro de período), usado pela busca textual
+   * universal e pelo calendário navegável. Opcional: se ausente, ambos caem
+   * para `transactions` (comportamento limitado ao período).
    */
   allTransactions?: PayrollTxn[];
   /**
@@ -156,7 +180,7 @@ export function FinanceContas({
   onMarkAsPaid,
   dateRange,
 }: FinanceContasProps) {
-  const [subTab, setSubTab] = useState<SubTab>('todas');
+  const [subTab, setSubTab] = useState<FinanceAccountsSubTab>(DEFAULT_FINANCE_ACCOUNTS_SUBTAB);
   const [filter, setFilter] = useState<FilterStatus>('todas');
   const [view, setView] = useState<AccountsView>('list');
   // Filtro multi-select: vazio = todas as categorias. Pattern FilterCheckboxGroup.
@@ -170,7 +194,12 @@ export function FinanceContas({
   const [search, setSearch] = useState('');
   const [contaFormOpen, setContaFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | null>(null);
+  const [editingScope, setEditingScope] = useState<FinancialSeriesScope>('single');
+  const [seriesAction, setSeriesAction] = useState<{ transaction: FinancialTransaction; action: 'edit' | 'delete' } | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  // Lançamento que veio do PDV não passa pelo DELETE comum: excluir desfaz a
+  // origem inteira (venda cancelada, estoque e gaveta de volta).
+  const [pdvUndoId, setPdvUndoId] = useState<string | null>(null);
   const [receivingTxn, setReceivingTxn] = useState<PayrollTxn | null>(null);
   const [payingDespesaTxn, setPayingDespesaTxn] = useState<FinancialTransaction | null>(null);
   const [payrollTxn, setPayrollTxn] = useState<PayrollTxn | null>(null);
@@ -180,6 +209,13 @@ export function FinanceContas({
   const [payDespDate, setPayDespDate] = useState('');
   const [payDespMethod, setPayDespMethod] = useState('pix');
   const [payDespNotes, setPayDespNotes] = useState('');
+  const [payDespAmount, setPayDespAmount] = useState('');
+  const [payDespUpdateFuture, setPayDespUpdateFuture] = useState(false);
+  const [payDespSubmitting, setPayDespSubmitting] = useState(false);
+  const payDespCanAdjust = canAdjustManualOccurrence(payingDespesaTxn);
+  const payDespActual = Number(payDespAmount);
+  const payDespAmountChanged = payDespCanAdjust && Math.abs(payDespActual - Number(payingDespesaTxn?.amount ?? 0)) >= 0.005;
+  const payDespAmountInvalid = payDespCanAdjust && (!Number.isFinite(payDespActual) || payDespActual <= 0 || Math.abs(payDespActual * 100 - Math.round(payDespActual * 100)) > 0.00001);
   const [payDespAccountFormOpen, setPayDespAccountFormOpen] = useState(false);
   const [payDespAccountInitialName, setPayDespAccountInitialName] = useState('');
   const [payDespAccountQuery, setPayDespAccountQuery] = useState('');
@@ -209,12 +245,13 @@ export function FinanceContas({
   const { locale, currency, timezone } = useAppLocaleContext();
   const fin = MESSAGES[locale].app.finance;
   const fmt = (v: number) => formatMoney(v, currency, locale);
-  const { deleteTransaction, payTransactionsBatch } = useFinancial();
+  const { deleteTransaction, deleteInstallmentGroup, payTransactionsBatch } = useFinancial();
   const { hasPermission, isAdminOrGestor, hasPermissionRecord } = useAuth();
   // Quem não gerencia configuração não vê o "+" de criar conta/categoria na
   // hora: o banco recusa (RLS pede `can_manage_system`) e o erro chegava sem
   // explicação. Mesmo critério do CostCenterSelect.
   const canManageFinanceSettings = useCanManageFinanceSettings();
+  const canManageFinanceTransactions = useCanManageFinanceTransactions();
   // Espelha `public.can_delete_finance` (RLS de DELETE em financial_transactions):
   // admin/gestor sempre; para os demais, SÓ com registro em user_permissions
   // contendo a permissão (ou o curinga '*'). O fallback legado do
@@ -224,8 +261,8 @@ export function FinanceContas({
   const { accounts: allAccounts } = useFinancialAccounts();
   const { costCenters } = useCostCenters();
   const { categories: financialCategories } = useFinancialCategories();
-  const categoriesByName = useMemo(
-    () => new Map(financialCategories.map((category) => [category.name, category])),
+  const categoryLookup = useMemo(
+    () => buildFinancialCategoryLookup(financialCategories),
     [financialCategories],
   );
   const costCentersById = useMemo(
@@ -243,12 +280,23 @@ export function FinanceContas({
   // v1.9.15 — refactor cartão/faturas.
   const { bills: allBills } = useAllCreditCardBills();
   const { movements: payrollEmpMovements } = useEmployeeMovements(payrollTxn?.employee?.id);
+  // Salário-base da folha: só RH lê o cadastro (get_employees_hr). Para quem
+  // paga a folha sem ser RH, a base é o valor do próprio lançamento, que a
+  // pessoa já vê na lista (o banco gera esse valor a partir do salário).
+  const {
+    employee: payrollEmployeeHr,
+    isLoading: payrollEmployeeHrLoading,
+  } = useEmployeeHrDetails(payrollTxn?.employee?.id);
+  const payrollSalary = payrollTxn
+    ? (payrollEmployeeHr?.salary ?? Number(payrollTxn.amount))
+    : 0;
   const payrollBalance = useMemo(() => {
     if (!payrollTxn?.employee) return calculateEmployeeBalance([], 0);
-    return calculateEmployeeBalance(payrollEmpMovements ?? [], payrollTxn.employee.salary);
-  }, [payrollEmpMovements, payrollTxn?.employee]);
+    return calculateEmployeeBalance(payrollEmpMovements ?? [], payrollSalary);
+  }, [payrollEmpMovements, payrollTxn?.employee, payrollSalary]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const financialTransactionsFetching = useIsFetching({ queryKey: ['financial-transactions'] });
   const { settings: companySettings } = useCompanySettings();
   const { enabled: whiteLabelEnabled } = useWhiteLabel();
 
@@ -256,6 +304,7 @@ export function FinanceContas({
     t.payroll_kind === 'salary' && !!t.employee_id && !t.is_paid;
 
   const handleMarkAsPaidClick = (t: PayrollTxn) => {
+    if (!canManageFinanceTransactions) return;
     if (isPayrollSalaryRow(t)) {
       setPayrollTxn(t);
       return;
@@ -269,15 +318,25 @@ export function FinanceContas({
       // chumbado tinha o mesmo efeito pra empresa em Cuiabá (UTC-4) às 23h15
       // do dia 30, que gravava dia 31.
       setPayDespDate(todayInTz(timezone));
-      setPayDespAccountId(cashBankAccounts[0]?.id ?? '');
+      // A conta já vinculada ao lançamento é a escolha mais segura. O fallback
+      // antigo pegava a primeira conta ativa e podia selecionar por engano o
+      // cofre de custódia do PDV, que o banco corretamente recusa movimentar.
+      const transactionAccountId = t.account_id ?? '';
+      setPayDespAccountId(
+        cashBankAccounts.some((account) => account.id === transactionAccountId)
+          ? transactionAccountId
+          : '',
+      );
       setPayDespMethod('pix');
       setPayDespNotes('');
+      setPayDespAmount(Number(t.amount).toFixed(2));
+      setPayDespUpdateFuture(false);
     }
   };
 
   const handleConfirmPayrollPayment = async (payload: PaymentPayload) => {
     if (!payrollTxn) return;
-    const subtotal = (payrollTxn.employee?.salary ?? Number(payrollTxn.amount))
+    const subtotal = payrollSalary
       + payrollBalance.totalBonus
       - payrollBalance.totalFaltas;
     const netAmount = subtotal - payload.valeDiscount;
@@ -322,8 +381,7 @@ export function FinanceContas({
   // representa elas é o agregado em `cardInvoices`. Em subTab='receber' não tem cartão.
   const baseFiltered = useMemo(() => {
     return transactions.filter((t) => {
-      const correctType = subTab === 'todas'
-        || (subTab === 'pagar' ? t.transaction_type === 'saida' : t.transaction_type === 'entrada');
+      const correctType = matchesFinanceAccountsSubTab(t.transaction_type, subTab);
       if (!correctType) return false;
       // Despesas de cartão viram uma única linha de fatura em "Todas" e "A Pagar".
       if (t.transaction_type === 'saida' && t.credit_card_bill_date) return false;
@@ -340,6 +398,27 @@ export function FinanceContas({
     return map;
   }, [allAccounts]);
 
+  // Faturas elegíveis pra subTab='pagar'. O recorte de período é aplicado só
+  // em `cardInvoices`; o calendário usa esta base completa porque a navegação
+  // mensal não pode herdar o filtro de datas da lista.
+  const eligibleCardInvoices = useMemo<CreditCardBillWithTransactions[]>(() => {
+    if (subTab === 'receber') return [];
+    return allBills.filter((bill) => {
+      if (!cardAccountMap[bill.account_id]) return false;
+      return (bill.total_amount ?? 0) > 0 || Number(bill.amount_paid ?? 0) > 0;
+    });
+  }, [allBills, cardAccountMap, subTab]);
+
+  const matchesInvoiceStatus = (bill: CreditCardBillWithTransactions) => {
+    if (filter === 'todas') return true;
+    if (filter === 'pagas') return bill.status === 'paid';
+    if (filter === 'pendentes') return bill.status !== 'paid';
+    if (filter === 'vencidas') {
+      return bill.status !== 'paid' && isBefore(parseLocalDate(bill.due_date), today);
+    }
+    return true;
+  };
+
   // Faturas filtradas pra subTab='pagar'. Status semântico:
   // - pendentes = aberta + parcial + fechada (qualquer não-paga)
   // - vencidas = não-paga com due_date < hoje
@@ -348,31 +427,23 @@ export function FinanceContas({
   // Só inclui faturas com pelo menos 1 transação ou amount_paid > 0
   // (filtra bills "vazias" que ficaram órfãs).
   const cardInvoices = useMemo<CreditCardBillWithTransactions[]>(() => {
-    if (subTab === 'receber') return [];
-    const eligible = allBills.filter((b) => {
-      const account = cardAccountMap[b.account_id];
-      if (!account) return false;
-      const hasContent = (b.total_amount ?? 0) > 0 || Number(b.amount_paid ?? 0) > 0;
-      return hasContent;
-    });
     // Filtra faturas pelo periodo selecionado (comparando due_date da fatura
     // contra o range do DateRangeFilter do parent). Sem isso, todas as faturas
     // de todos os meses apareciam — CEO reportou como bug.
-    const inRange = eligible.filter((b) => {
+    const inRange = eligibleCardInvoices.filter((b) => {
       if (!dateRange?.from && !dateRange?.to) return true;
       const dueDate = parseLocalDate(b.due_date);
       return isDateInCivilRange(dueDate, dateRange);
     });
-    return inRange.filter((b) => {
-      if (filter === 'todas') return true;
-      if (filter === 'pagas') return b.status === 'paid';
-      if (filter === 'pendentes') return b.status !== 'paid';
-      if (filter === 'vencidas') {
-        return b.status !== 'paid' && isBefore(parseLocalDate(b.due_date), today);
-      }
-      return true;
-    });
-  }, [allBills, cardAccountMap, subTab, filter, today, dateRange]);
+    return inRange.filter(matchesInvoiceStatus);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eligibleCardInvoices, filter, today, dateRange]);
+
+  const calendarCardInvoices = useMemo(
+    () => eligibleCardInvoices.filter(matchesInvoiceStatus),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [eligibleCardInvoices, filter, today],
+  );
 
   const searchActive = search.trim().length > 0;
 
@@ -383,6 +454,7 @@ export function FinanceContas({
     return (
       fuzzyIncludes(t.description, search)
       || fuzzyIncludes(t.category, search)
+      || fuzzyIncludes(resolveFinancialCategoryDisplay(t.category, categoryLookup).name, search)
       || fuzzyIncludes(t.customer?.name, search)
       || fuzzyIncludes(t.supplier?.name, search)
       || fuzzyIncludes(t.employee?.name, search)
@@ -398,8 +470,7 @@ export function FinanceContas({
   const searchBase = useMemo(() => {
     const pool = allTransactions ?? transactions;
     return pool.filter((t) => {
-      const correctType = subTab === 'todas'
-        || (subTab === 'pagar' ? t.transaction_type === 'saida' : t.transaction_type === 'entrada');
+      const correctType = matchesFinanceAccountsSubTab(t.transaction_type, subTab);
       if (!correctType) return false;
       if (t.transaction_type === 'saida' && t.credit_card_bill_date) return false;
       return true;
@@ -465,6 +536,23 @@ export function FinanceContas({
     return filterByCostCenters(byStatusAndCategory, costCenterFilter);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseFiltered, searchBase, filter, today, categoryFilter, costCenterFilter, searchActive, search]);
+
+  const calendarTransactions = useMemo(
+    () => selectFinanceCalendarTransactions({
+      periodTransactions: transactions,
+      allTransactions,
+      subTab,
+      status: filter,
+      categoryFilter,
+      costCenterFilter,
+      today,
+      searchActive,
+      matchesSearch,
+    }),
+    // `matchesSearch` depende destas entradas e é recriada a cada render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [transactions, allTransactions, subTab, filter, categoryFilter, costCenterFilter, today, searchActive, search, categoryLookup],
+  );
 
   // Summary: somar TODAS as fontes (txns + faturas) pra refletir "movimento total"
   // — pendente/vencido/7dias/pago. Caso contrário o card "Pago" zeraria pra clientes
@@ -589,15 +677,13 @@ export function FinanceContas({
     for (const t of pool) {
       if (t.category) set.add(t.category);
     }
-    return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'));
-  }, [baseFiltered, filter, today]);
-
-  // Resumo da categoria ativa: total + quantidade de lancamentos.
-  const categorySummary = useMemo(() => {
-    if (categoryFilter.length === 0) return null;
-    const total = filtered.reduce((s, t) => s + Number(t.amount), 0);
-    return { total, count: filtered.length };
-  }, [filtered, categoryFilter]);
+    return Array.from(set).sort((a, b) => (
+      resolveFinancialCategoryDisplay(a, categoryLookup).name.localeCompare(
+        resolveFinancialCategoryDisplay(b, categoryLookup).name,
+        'pt-BR',
+      )
+    ));
+  }, [baseFiltered, filter, today, categoryLookup]);
 
   // Centros ofertados: ativos + qualquer um já usado nas contas da tela (mesmo
   // desativado depois) — senão a conta antiga ficaria sem como ser filtrada.
@@ -619,12 +705,25 @@ export function FinanceContas({
     }));
   }, [costCenters, baseFiltered, fin.costCenters.inactiveSuffix]);
 
-  // Resumo do centro de custo ativo: total + quantidade (espelha o de categoria).
-  const costCenterSummary = useMemo(() => {
-    if (costCenterFilter.length === 0) return null;
-    const total = filtered.reduce((s, t) => s + Number(t.amount), 0);
-    return { total, count: filtered.length };
-  }, [filtered, costCenterFilter]);
+  // Resumo do RESULTADO filtrado, antes da paginação. Assim a soma não muda ao
+  // trocar de página e responde exatamente à pergunta "quanto dá o que filtrei?".
+  // `amount_received` cobre baixas parciais; contas quitadas usam o valor cheio.
+  const filteredResultSummary = useMemo(() => filtered.reduce((summary, transaction) => {
+    const amount = Number(transaction.amount) || 0;
+    const partialAmount = Math.max(0, Number(transaction.amount_received ?? 0) || 0);
+    const settledAmount = transaction.is_paid ? amount : Math.min(amount, partialAmount);
+    return {
+      count: summary.count + 1,
+      total: summary.total + amount,
+      settled: summary.settled + settledAmount,
+      open: summary.open + Math.max(0, amount - settledAmount),
+    };
+  }, { count: 0, total: 0, settled: 0, open: 0 }), [filtered]);
+
+  const hasActiveResultFilter = searchActive
+    || filter !== 'todas'
+    || categoryFilter.length > 0
+    || costCenterFilter.length > 0;
 
   // Ordem operacional padrão, igual no desktop e no mobile: vencidas primeiro,
   // depois pendentes e só então pagas/recebidas. Dentro dos grupos, o helper
@@ -688,7 +787,7 @@ export function FinanceContas({
   // (`useCanLaunchLeadRevenue`), que é a condição que a RPC checa no servidor:
   // quem não pode gerenciar o Financeiro não vê checkbox nenhum, em vez de
   // marcar 40 contas e levar um 42501 no clique.
-  const batchEnabled = isAdminOrGestor() || (hasPermissionRecord && hasPermission('fn:manage_finance'));
+  const batchEnabled = canManageFinanceTransactions;
 
   /** Contas que JÁ têm filha de baixa parcial (mesmo teste estrutural da RPC). */
   const partialParentIds = useMemo(() => {
@@ -864,8 +963,49 @@ export function FinanceContas({
   ];
 
   const handleEdit = (t: FinancialTransaction) => {
+    if (!canManageFinanceTransactions) return;
+    if (t.installment_group_id && canAdjustManualOccurrence(t)) {
+      setSeriesAction({ transaction: t, action: 'edit' });
+      return;
+    }
+    setEditingScope('single');
     setEditingTransaction(t);
     setContaFormOpen(true);
+  };
+
+  const requestDelete = (t: FinancialTransaction) => {
+    if (isPdvFinancialRow(t)) {
+      setPdvUndoId(t.id);
+      return;
+    }
+    if (t.installment_group_id && canAdjustManualOccurrence(t)) {
+      setSeriesAction({ transaction: t, action: 'delete' });
+      return;
+    }
+    setDeletingId(t.id);
+  };
+
+  const handleSeriesScope = async (scope: FinancialSeriesScope) => {
+    if (!seriesAction) return;
+    const { transaction, action } = seriesAction;
+    setSeriesAction(null);
+    if (action === 'edit') {
+      setEditingScope(scope);
+      setEditingTransaction(transaction);
+      setContaFormOpen(true);
+      return;
+    }
+    try {
+      const result = await deleteInstallmentGroup.mutateAsync({ id: transaction.id, scope });
+      if (result.deleted > 0) {
+        toast({ title: result.deleted === 1 ? 'Parcela excluída' : `${result.deleted} parcelas excluídas` });
+      }
+      if (result.skipped > 0) {
+        toast({ title: `${result.skipped} parcela${result.skipped === 1 ? ' foi mantida' : 's foram mantidas'}`, description: 'Contas pagas ou vinculadas permanecem no histórico.' });
+      }
+    } catch {
+      // O mutation exibe a mensagem segura retornada pelo banco.
+    }
   };
 
   const toggleRowDetails = (transactionId: string) => {
@@ -910,11 +1050,13 @@ export function FinanceContas({
           onChange={setCategoryFilter}
           emptyLabel={fin.accounts.categoryFilter.emptyLabel}
           options={availableCategories.map((category) => {
-            const known = categoriesByName.get(category);
+            const display = resolveFinancialCategoryDisplay(category, categoryLookup);
             return {
               value: category,
-              label: category,
-              icon: known ? filterIconNode(known.color, getCategoryIcon(known.icon)) : undefined,
+              label: display.name,
+              icon: display.category
+                ? filterIconNode(display.color, getCategoryIcon(display.category.icon))
+                : undefined,
             };
           })}
         />
@@ -952,22 +1094,32 @@ export function FinanceContas({
   const visibleInvoices = !searchActive && categoryFilter.length === 0 && costCenterFilter.length === 0
     ? cardInvoices
     : [];
+  const calendarVisibleInvoices = !searchActive && categoryFilter.length === 0 && costCenterFilter.length === 0
+    ? calendarCardInvoices
+    : [];
 
   const buildExportRows = (): MovimentacaoReportRow[] => [
-    ...filtered.map((t) => ({
-      date: t.due_date ?? t.transaction_date,
-      type: t.transaction_type === 'entrada' ? 'entrada' as const : 'saida' as const,
-      description: t.description || '',
-      category: t.category || '',
-      account: allAccounts.find((account) => account.id === t.account_id)?.name ?? '',
-      amount: Number(t.amount),
-      isPaid: !!t.is_paid,
-    })),
+    // Defesa adicional do documento: mesmo que a lista mude no futuro, o PDF
+    // de "A Pagar" nunca recebe entradas e o de "A Receber" nunca recebe saídas.
+    ...filtered.filter((t) => matchesFinanceAccountsSubTab(t.transaction_type, subTab)).map((t) => {
+      const category = resolveFinancialCategoryDisplay(t.category, categoryLookup);
+      return {
+        date: t.due_date ?? t.transaction_date,
+        type: t.transaction_type === 'entrada' ? 'entrada' as const : 'saida' as const,
+        description: t.description || '',
+        category: category.name,
+        categoryColor: category.color,
+        account: allAccounts.find((account) => account.id === t.account_id)?.name ?? '',
+        amount: Number(t.amount),
+        isPaid: !!t.is_paid,
+      };
+    }),
     ...visibleInvoices.map((bill) => ({
       date: bill.due_date,
       type: 'saida' as const,
       description: `${fin.accounts.cardInvoices.invoice} — ${cardAccountMap[bill.account_id]?.name ?? ''}`,
       category: fin.accounts.cardInvoices.sectionTitle,
+      categoryColor: '#64748b',
       account: cardAccountMap[bill.account_id]?.name ?? '',
       amount: Math.max(0, Number(bill.total_amount ?? 0) - Number(bill.amount_paid ?? 0)),
       isPaid: bill.status === 'paid',
@@ -980,7 +1132,17 @@ export function FinanceContas({
       ? 'Contas a Receber'
       : 'Contas a Pagar e Receber';
 
+  const canExportCurrentData = () => {
+    if (!isLoading && financialTransactionsFetching === 0) return true;
+    toast({
+      title: 'Atualizando dados financeiros',
+      description: 'Aguarde a atualização terminar para exportar o relatório completo.',
+    });
+    return false;
+  };
+
   const handleExportPDF = async () => {
+    if (!canExportCurrentData()) return;
     try {
       await generateMovimentacoesReportPdf({
         company: companySettings,
@@ -997,6 +1159,7 @@ export function FinanceContas({
   };
 
   const handleExportExcel = async () => {
+    if (!canExportCurrentData()) return;
     try {
       await generateMovimentacoesExcel({ title: exportTitle, rows: buildExportRows(), locale, currency, timezone });
     } catch (error) {
@@ -1005,6 +1168,7 @@ export function FinanceContas({
   };
 
   const handleExportCsv = () => {
+    if (!canExportCurrentData()) return;
     try {
       generateMovimentacoesCsv({ title: exportTitle, rows: buildExportRows(), locale, timezone });
     } catch (error) {
@@ -1013,7 +1177,7 @@ export function FinanceContas({
   };
 
   const calendarItems: FinanceCalendarItem[] = [
-    ...filtered.filter((t) => !!t.due_date).map((t) => ({
+    ...calendarTransactions.filter((t) => !!t.due_date).map((t) => ({
       id: t.id,
       title: t.description,
       date: t.due_date as string,
@@ -1022,7 +1186,7 @@ export function FinanceContas({
       status: getStatus(t),
       subtitle: t.customer?.name ?? t.supplier?.name ?? t.employee?.name,
     })),
-    ...visibleInvoices.map((bill) => ({
+    ...calendarVisibleInvoices.map((bill) => ({
       id: `bill-${bill.id}`,
       title: `${fin.accounts.cardInvoices.invoice} ${cardAccountMap[bill.account_id]?.name ?? ''}`.trim(),
       date: bill.due_date,
@@ -1072,7 +1236,7 @@ export function FinanceContas({
             variant="underline"
             tabs={directionTabs}
             activeTab={subTab}
-            onTabChange={(value) => { setSubTab(value as SubTab); setFilter('todas'); setCategoryFilter([]); setCostCenterFilter([]); setSearch(''); }}
+            onTabChange={(value) => { setSubTab(value as FinanceAccountsSubTab); setFilter('todas'); setCategoryFilter([]); setCostCenterFilter([]); setSearch(''); }}
           />
         </div>
         <div className="hidden lg:flex self-stretch shrink-0" role="tablist" aria-label="Tipo de conta">
@@ -1082,7 +1246,7 @@ export function FinanceContas({
               type="button"
               role="tab"
               aria-selected={subTab === tab.value}
-              onClick={() => { setSubTab(tab.value as SubTab); setFilter('todas'); setCategoryFilter([]); setCostCenterFilter([]); setSearch(''); }}
+              onClick={() => { setSubTab(tab.value as FinanceAccountsSubTab); setFilter('todas'); setCategoryFilter([]); setCostCenterFilter([]); setSearch(''); }}
               className={cn(
                 'inline-flex min-h-11 items-center gap-2 border-b-2 px-3 text-sm font-medium transition-colors',
                 subTab === tab.value
@@ -1112,7 +1276,12 @@ export function FinanceContas({
           </ToggleGroup>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-10 w-full shrink-0 gap-2 sm:h-9 sm:w-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isLoading || financialTransactionsFetching > 0}
+                className="h-10 w-full shrink-0 gap-2 sm:h-9 sm:w-auto"
+              >
                 <FileDown className="h-4 w-4" />Exportar<ChevronDown className="ml-auto h-3.5 w-3.5 opacity-60 sm:ml-1" />
               </Button>
             </DropdownMenuTrigger>
@@ -1126,7 +1295,7 @@ export function FinanceContas({
                 linha inteira de toolbar e saía da tela ao rolar a lista. Sem ele
                 a 2ª linha fica com os 3 controles da régua (Exportar, Filtros,
                 lista/calendário). Desktop segue com o botão inline. */}
-            {!isMobile && (
+            {!isMobile && canManageFinanceTransactions && (
               <Button onClick={() => { setEditingTransaction(null); setContaFormOpen(true); }} size="sm" className="col-span-2 h-10 w-full gap-2 shrink-0 bg-foreground text-background hover:bg-foreground/90 sm:col-span-1 sm:h-9 sm:w-auto">
                 <Plus className="h-4 w-4" /> {fin.accounts.header.newButton}
               </Button>
@@ -1186,14 +1355,49 @@ export function FinanceContas({
         ))}
       </section>
 
-      {(categorySummary || costCenterSummary || (filter !== 'todas' && !searchActive)) && (
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <SlidersHorizontal className="h-3.5 w-3.5" />
-          {filter !== 'todas' && <Badge variant="secondary">{filters.find((item) => item.key === filter)?.label}</Badge>}
-          {categorySummary && <Badge variant="secondary">{categoryFilter.length} categoria(s) · {fmt(categorySummary.total)}</Badge>}
-          {costCenterSummary && <Badge variant="secondary">{costCenterFilter.length} centro(s) · {fmt(costCenterSummary.total)}</Badge>}
-          <button type="button" className="font-medium text-primary hover:underline" onClick={resetFilters}>Limpar filtros</button>
-        </div>
+      {hasActiveResultFilter && filteredResultSummary.count > 0 && (
+        <section
+          className="space-y-3 border-y border-border/70 bg-muted/20 px-3 py-3 sm:flex sm:items-center sm:justify-between sm:gap-5 sm:space-y-0"
+          aria-label="Resumo dos resultados filtrados"
+          aria-live="polite"
+        >
+          <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" />
+            {searchActive && <Badge variant="secondary" className="max-w-full truncate">Busca: {search.trim()}</Badge>}
+            {filter !== 'todas' && <Badge variant="secondary">{filters.find((item) => item.key === filter)?.label}</Badge>}
+            {categoryFilter.length > 0 && <Badge variant="secondary">{categoryFilter.length} categoria(s)</Badge>}
+            {costCenterFilter.length > 0 && <Badge variant="secondary">{costCenterFilter.length} centro(s)</Badge>}
+            <button type="button" className="font-medium text-primary hover:underline" onClick={resetFilters}>Limpar filtros</button>
+          </div>
+
+          <dl className="grid grid-cols-2 gap-x-5 gap-y-2 text-xs sm:flex sm:shrink-0 sm:items-center sm:gap-0 sm:divide-x sm:divide-border">
+            <div className="sm:px-4 sm:first:pl-0">
+              <dt className="text-muted-foreground">Resultados</dt>
+              <dd className="font-semibold tabular-nums text-foreground">
+                {filteredResultSummary.count} {filteredResultSummary.count === 1 ? 'conta' : 'contas'}
+              </dd>
+            </div>
+            <div className="sm:px-4">
+              <dt className="text-muted-foreground">Soma dos valores</dt>
+              <dd className="font-semibold tabular-nums text-foreground">{fmt(filteredResultSummary.total)}</dd>
+            </div>
+            <div className="sm:px-4">
+              <dt className="text-muted-foreground">
+                {subTab === 'pagar' ? 'Pago' : subTab === 'receber' ? 'Recebido' : 'Pago/recebido'}
+              </dt>
+              <dd className="font-semibold tabular-nums text-success">{fmt(filteredResultSummary.settled)}</dd>
+            </div>
+            <div className="sm:px-4 sm:last:pr-0">
+              <dt className="text-muted-foreground">Em aberto</dt>
+              <dd className={cn(
+                'font-semibold tabular-nums',
+                filteredResultSummary.open > 0 ? 'text-warning' : 'text-muted-foreground',
+              )}>
+                {fmt(filteredResultSummary.open)}
+              </dd>
+            </div>
+          </dl>
+        </section>
       )}
 
       {/* Bloco "Faturas de Cartão" — só aparece em subTab='pagar' quando há faturas
@@ -1289,7 +1493,9 @@ export function FinanceContas({
             icon={subTab === 'receber' ? <ArrowUpCircle className="h-10 w-10" /> : subTab === 'pagar' ? <ArrowDownCircle className="h-10 w-10" /> : <DollarSign className="h-10 w-10" />}
             title={subTab === 'receber' ? fin.accounts.empty.noReceivableTitle : subTab === 'pagar' ? fin.accounts.empty.noPayableTitle : 'Nenhuma conta por aqui'}
             description={subTab === 'receber' ? fin.accounts.empty.noReceivableDescription : subTab === 'pagar' ? fin.accounts.empty.noPayableDescription : 'Crie uma conta a pagar ou a receber para começar.'}
-            action={{ label: fin.accounts.actions.newAccount, onClick: () => { setEditingTransaction(null); setContaFormOpen(true); } }}
+            action={canManageFinanceTransactions
+              ? { label: fin.accounts.actions.newAccount, onClick: () => { setEditingTransaction(null); setContaFormOpen(true); } }
+              : undefined}
           />
         )
       ) : filtered.length === 0 ? (
@@ -1333,8 +1539,9 @@ export function FinanceContas({
               const chargeRow = t as unknown as ReceivableChargeRow;
               const chargeAction = receivableCharge.actionFor(chargeRow);
               const chargeBadge = receivableCharge.onlineChargeBadgeFor(chargeRow);
+              const categoryDisplay = resolveFinancialCategoryDisplay(t.category, categoryLookup);
               const itemActions: ItemAction[] = [
-                ...(!t.is_paid ? [{
+                ...(!t.is_paid && canManageFinanceTransactions ? [{
                   key: 'mark-paid',
                   label: t.transaction_type === 'entrada' ? fin.accounts.actions.markReceived : fin.accounts.actions.markPaid,
                   icon: <Check className="h-4 w-4" />,
@@ -1355,19 +1562,19 @@ export function FinanceContas({
                   icon: <Receipt className="h-4 w-4" />,
                   onClick: () => setViewingTxn(t),
                 }] : []),
-                {
+                ...(canManageFinanceTransactions ? [{
                   key: 'edit',
                   label: fin.accounts.actions.edit,
                   icon: <Pencil className="h-4 w-4" />,
                   variant: 'edit' as const,
                   onClick: () => handleEdit(t),
-                },
+                }] : []),
                 ...(canDeleteFinance ? [{
                   key: 'delete',
                   label: fin.accounts.actions.delete,
                   icon: <Trash2 className="h-4 w-4" />,
                   variant: 'destructive' as const,
-                  onClick: () => setDeletingId(t.id),
+                  onClick: () => requestDelete(t),
                 }] : []),
               ];
               const statusColor =
@@ -1459,7 +1666,9 @@ export function FinanceContas({
                         </div>
                         <div className="flex flex-wrap items-center gap-1.5">
                           {status === 'paga' ? (
-                            <Badge className="bg-success text-white text-[10px] px-1.5 py-0">{fin.accounts.status.paid}</Badge>
+                            <PaidMarker transaction={t} inline>
+                              <Badge className="bg-success text-white text-[10px] px-1.5 py-0">{fin.accounts.status.paid}</Badge>
+                            </PaidMarker>
                           ) : status === 'vencida' ? (
                             <Badge className="bg-destructive text-white text-[10px] px-1.5 py-0">{fin.accounts.status.overdue}</Badge>
                           ) : status === 'parcial' ? (
@@ -1467,7 +1676,7 @@ export function FinanceContas({
                           ) : (
                             <Badge className="bg-slate-500 text-white text-[10px] px-1.5 py-0">{fin.accounts.status.pending}</Badge>
                           )}
-                          {t.category && <FinancialCategoryPill name={t.category} category={categoriesByName.get(t.category)} size="sm" />}
+                          {t.category && <FinancialCategoryPill name={categoryDisplay.name} category={categoryDisplay.category} size="sm" />}
                         </div>
                         {partial && <span className="text-warning text-[11px]">{fin.accounts.table.received}: {fmt(received)} {fin.accounts.table.of} {fmt(Number(t.amount))}</span>}
                         {receiptBreakdown && (
@@ -1483,7 +1692,7 @@ export function FinanceContas({
                     <>
                       <FinancialTransactionDetailsPanel
                         transaction={t}
-                        category={t.category ? categoriesByName.get(t.category) : null}
+                        category={categoryDisplay.category}
                         costCenter={t.cost_center_id ? costCentersById.get(t.cost_center_id) : null}
                         onViewPartialHistory={partial ? () => setViewingTxn(t) : undefined}
                         onlineCharge={chargeBadge}
@@ -1543,6 +1752,7 @@ export function FinanceContas({
                     const chargeRow = t as unknown as ReceivableChargeRow;
                     const chargeAction = receivableCharge.actionFor(chargeRow);
                     const chargeBadge = receivableCharge.onlineChargeBadgeFor(chargeRow);
+                    const categoryDisplay = resolveFinancialCategoryDisplay(t.category, categoryLookup);
                     return (
                     <Fragment key={t.id}>
                     <TableRow
@@ -1591,7 +1801,7 @@ export function FinanceContas({
                         </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
-                        {t.category && <FinancialCategoryPill name={t.category} category={categoriesByName.get(t.category)} />}
+                        {t.category && <FinancialCategoryPill name={categoryDisplay.name} category={categoryDisplay.category} />}
                       </TableCell>
                       <TableCell className="text-sm">
                         {t.due_date ? (
@@ -1603,7 +1813,7 @@ export function FinanceContas({
                           <span className="text-muted-foreground text-xs">{fin.accounts.table.noDueDate}</span>
                         )}
                       </TableCell>
-                      <TableCell onClick={(event) => event.stopPropagation()}>
+                      <TableCell>
                         <div className="flex flex-col gap-0.5">
                           {receiptBreakdown ? (
                             <>
@@ -1631,7 +1841,9 @@ export function FinanceContas({
                       </TableCell>
                       <TableCell>
                         {status === 'paga' ? (
-                          <Badge className="bg-success text-white">{fin.accounts.status.paid}</Badge>
+                          <PaidMarker transaction={t}>
+                            <Badge className="bg-success text-white">{fin.accounts.status.paid}</Badge>
+                          </PaidMarker>
                         ) : status === 'vencida' ? (
                           <Badge className="bg-destructive text-white">{fin.accounts.status.overdue}</Badge>
                         ) : status === 'parcial' ? (
@@ -1640,14 +1852,14 @@ export function FinanceContas({
                           <Badge className="bg-slate-500 text-white">{fin.accounts.status.pending}</Badge>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
                         <RowActionsMenu
                           actions={[
                             {
                               label: t.transaction_type === 'entrada' ? fin.accounts.actions.markAsReceived : fin.accounts.actions.markAsPaid,
                               icon: Check,
                               onClick: () => handleMarkAsPaidClick(t),
-                              hidden: t.is_paid,
+                              hidden: t.is_paid || !canManageFinanceTransactions,
                             },
                             {
                               label: fin.accounts.actions.viewHistory,
@@ -1669,12 +1881,13 @@ export function FinanceContas({
                               icon: Pencil,
                               variant: 'edit',
                               onClick: () => handleEdit(t),
+                              hidden: !canManageFinanceTransactions,
                             },
                             {
                               label: fin.accounts.actions.delete,
                               icon: Trash2,
                               variant: 'delete',
-                              onClick: () => setDeletingId(t.id),
+                              onClick: () => requestDelete(t),
                               hidden: !canDeleteFinance,
                             },
                           ] satisfies RowAction[]}
@@ -1686,7 +1899,7 @@ export function FinanceContas({
                         <TableCell colSpan={batchEnabled ? 7 : 6} className="p-0">
                           <FinancialTransactionDetailsPanel
                             transaction={t}
-                            category={t.category ? categoriesByName.get(t.category) : null}
+                            category={categoryDisplay.category}
                             costCenter={t.cost_center_id ? costCentersById.get(t.cost_center_id) : null}
                             onViewPartialHistory={partial ? () => setViewingTxn(t) : undefined}
                             onlineCharge={chargeBadge}
@@ -1771,7 +1984,28 @@ export function FinanceContas({
         onOpenChange={handleCloseForm}
         defaultType={contaDefaultType}
         editingTransaction={editingTransaction}
+        editScope={editingScope}
       />
+
+      <AlertDialog open={!!seriesAction} onOpenChange={(open) => !open && setSeriesAction(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{seriesAction?.action === 'delete' ? 'Excluir parcelas' : 'Editar parcelas'}</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta conta faz parte de uma série. Escolha quais parcelas pendentes devem ser alteradas.
+              {seriesAction?.action === 'delete' && ' Parcelas pagas ou vinculadas serão preservadas.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex flex-col gap-2 py-2">
+            <Button variant="outline" onClick={() => handleSeriesScope('single')}>Só esta parcela</Button>
+            <Button variant={seriesAction?.action === 'delete' ? 'destructive' : 'default'} onClick={() => handleSeriesScope('future')}>Esta e as próximas pendentes</Button>
+            <Button variant={seriesAction?.action === 'delete' ? 'destructive' : 'default'} onClick={() => handleSeriesScope('all_pending')}>Todas as parcelas pendentes</Button>
+          </div>
+          <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel></AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <FinancePdvUndoDialog transactionId={pdvUndoId} onClose={() => setPdvUndoId(null)} />
 
       <AlertDialog open={!!deletingId} onOpenChange={() => setDeletingId(null)}>
         <AlertDialogContent>
@@ -1790,12 +2024,12 @@ export function FinanceContas({
         </AlertDialogContent>
       </AlertDialog>
 
-      {payrollTxn?.employee && (
+      {payrollTxn?.employee && !payrollEmployeeHrLoading && (
         <EmployeePaymentModal
           open={!!payrollTxn}
           onOpenChange={(v) => { if (!v) setPayrollTxn(null); }}
           employeeName={payrollTxn.employee.name}
-          salary={payrollTxn.employee.salary}
+          salary={payrollSalary}
           balance={payrollBalance}
           onSubmit={handleConfirmPayrollPayment}
           financialTransactionId={payrollTxn.id}
@@ -1815,6 +2049,8 @@ export function FinanceContas({
         amount={Number(receivingTxn?.amount ?? 0)}
         amountReceived={Number((receivingTxn as any)?.amount_received ?? 0)}
         allowPartial
+        allowOccurrenceAdjustment={canAdjustManualOccurrence(receivingTxn) && !receivingLiveCharge}
+        hasRecurringSeries={!!receivingTxn?.installment_group_id}
         installmentTotal={receivingTxn?.installment_total ?? 1}
         currentDueDate={receivingTxn?.due_date}
         title={fin.accounts.payroll.receiveTitle}
@@ -1842,6 +2078,9 @@ export function FinanceContas({
             customer_id: (receivingTxn as any).customer_id,
             amountReceived: payment.amount_received,
             newDueDate: payment.new_due_date,
+            occurrenceAmount: payment.occurrence_amount,
+            expectedOccurrenceAmount: Number(receivingTxn.amount),
+            updateFutureOccurrences: payment.update_future_occurrences,
           });
           setReceivingTxn(null);
           // Com cobrança viva, pergunta o que fazer com ela: cobrar só o que
@@ -1868,25 +2107,33 @@ export function FinanceContas({
       {/* Modal: confirmar pagamento de despesa */}
       <ResponsiveModal
         open={!!payingDespesaTxn}
-        onOpenChange={(v) => { if (!v) setPayingDespesaTxn(null); }}
+        onOpenChange={(v) => { if (!v && !payDespSubmitting) setPayingDespesaTxn(null); }}
         title={fin.accounts.payExpenseModal.title}
         description={payingDespesaTxn ? `${payingDespesaTxn.description} — ${fmt(Number(payingDespesaTxn.amount))}` : undefined}
         footer={
           <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={() => setPayingDespesaTxn(null)} className="min-h-11 rounded-xl">{fin.accounts.actions.cancel}</Button>
+            <Button variant="outline" disabled={payDespSubmitting} onClick={() => setPayingDespesaTxn(null)} className="min-h-11 rounded-xl">{fin.accounts.actions.cancel}</Button>
             <Button
-              disabled={!payDespAccountId || !payDespDate || !isPaidDateAllowedInTz(payDespDate, timezone)}
+              disabled={payDespSubmitting || payDespAmountInvalid || !payDespAccountId || !payDespDate || !isPaidDateAllowedInTz(payDespDate, timezone)}
               className="min-h-11 rounded-xl"
               onClick={async () => {
                 if (!payingDespesaTxn || !payDespAccountId) return;
-                await onMarkAsPaid({
-                  id: payingDespesaTxn.id,
-                  account_id: payDespAccountId,
-                  payment_method: payDespMethod,
-                  paid_date: payDespDate,
-                  notes: payDespNotes.trim() || undefined,
-                });
-                setPayingDespesaTxn(null);
+                setPayDespSubmitting(true);
+                try {
+                  await onMarkAsPaid({
+                    id: payingDespesaTxn.id,
+                    account_id: payDespAccountId,
+                    payment_method: payDespMethod,
+                    paid_date: payDespDate,
+                    notes: payDespNotes.trim() || undefined,
+                    occurrenceAmount: payDespAmountChanged ? payDespActual : undefined,
+                    expectedOccurrenceAmount: Number(payingDespesaTxn.amount),
+                    updateFutureOccurrences: payDespAmountChanged && !!payingDespesaTxn.installment_group_id && payDespUpdateFuture,
+                  });
+                  setPayingDespesaTxn(null);
+                } finally {
+                  setPayDespSubmitting(false);
+                }
               }}
             >
               {fin.accounts.actions.confirm}
@@ -1895,6 +2142,20 @@ export function FinanceContas({
         }
       >
         <div className="space-y-4">
+          {payDespCanAdjust && <div className="space-y-2">
+            <Label htmlFor="pay-occurrence-amount">{fin.occurrenceAmount.label}</Label>
+            <Input id="pay-occurrence-amount" type="number" inputMode="decimal" min="0.01" step="0.01"
+              value={payDespAmount} disabled={payDespSubmitting}
+              onChange={e => { setPayDespAmount(e.target.value); setPayDespUpdateFuture(false); }} />
+            {payDespAmountInvalid ? <p role="alert" className="text-xs text-destructive">{fin.occurrenceAmount.invalid}</p> : payDespAmountChanged && <>
+              <p className="text-sm">{fin.occurrenceAmount.scheduled}: {fmt(Number(payingDespesaTxn.amount))} · {fin.occurrenceAmount.realized}: {fmt(payDespActual)}</p>
+              <p className="text-xs text-muted-foreground">{payDespUpdateFuture ? fin.occurrenceAmount.futureHint : fin.occurrenceAmount.onlyThis}</p>
+              {payingDespesaTxn.installment_group_id && <div className="flex items-center gap-3">
+                <Switch id="pay-update-future" checked={payDespUpdateFuture} onCheckedChange={setPayDespUpdateFuture} disabled={payDespSubmitting} />
+                <Label htmlFor="pay-update-future">{fin.occurrenceAmount.updateFuture}</Label>
+              </div>}
+            </>}
+          </div>}
           <div className="space-y-1.5">
             <Label>{fin.accounts.payExpenseModal.paidWith}</Label>
             <div className="flex items-center h-10 rounded-md border border-input bg-background ring-offset-background focus-within:border-ring focus-within:ring-1 focus-within:ring-ring focus-within:ring-offset-0">
@@ -1984,7 +2245,7 @@ export function FinanceContas({
       {/* FAB de "Nova Conta" no mobile (no desktop o botão continua na toolbar).
           Some enquanto a barra de seleção do lote está na tela: as duas moram no
           mesmo offset de 96px e o FAB cobriria o botão de pagar selecionadas. */}
-      {isMobile && !(batchEnabled && selectedRows.length > 0) && (
+      {isMobile && canManageFinanceTransactions && !(batchEnabled && selectedRows.length > 0) && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
           label={fin.accounts.header.newButton}

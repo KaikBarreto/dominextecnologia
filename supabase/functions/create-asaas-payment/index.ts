@@ -1,3 +1,4 @@
+import { resolveBusinessCore } from '../_shared/business-core.ts';
 // create-asaas-payment
 // ---------------------
 // Cria uma cobrança Asaas para a assinatura SaaS de uma empresa (tenant):
@@ -28,9 +29,15 @@ import {
   AsaasApiError,
   assertAsaasConfigured,
 } from "../_shared/asaas-client.ts";
-import { authorizeAsaasCompany } from "../_shared/asaas-auth.ts";
-import { applyWrite, tryWriteReturning, WriteWarnings } from "../_shared/db-write.ts";
-import { resolveChargeTerms, type ChargeTerms } from "./billing-rules.ts";
+import { authorizeAsaasCompany, authorizeAsaasCompanyManager } from "../_shared/asaas-auth.ts";
+import { applyWrite, tryWrite, tryWriteReturning, WriteWarnings } from "../_shared/db-write.ts";
+import {
+  buildPixAutomaticAuthorizationPayload,
+  pixAutomaticCheckoutStatus,
+  pixAutomaticCorrelation,
+  type PixAutomaticAuthorizationResponse,
+} from "../_shared/asaas-pix-automatic.ts";
+import { canInitializeRetailOffer, resolveChargeTerms, type ChargeTerms } from "./billing-rules.ts";
 
 // A edge usa service_role sem schema gerado no runtime; manter o mesmo tipo
 // inferido por createClient() evita acoplar esta função aos tipos do frontend.
@@ -76,6 +83,7 @@ interface UpgradeChangeRequest {
   amount_due: number;
   target_billing_cycle: "monthly" | "yearly";
   resets_billing_anchor: boolean;
+  initial_activation?: boolean;
 }
 
 function resolveClientIp(req: Request): string | null {
@@ -122,14 +130,6 @@ interface TokenizedCard {
   token: string;
   last4: string;
   brand: string;
-}
-
-interface PixAutomaticAuthorization {
-  id: string;
-  status?: string;
-  encodedImage?: string;
-  payload?: string;
-  immediateQrCode?: { expirationDate?: string };
 }
 
 async function tokenizeCard(
@@ -294,8 +294,8 @@ Deno.serve(async (req) => {
     } = body;
 
     if (!company_id) throw new ValidationError("company_id é obrigatório.");
-    if (!billing_type) throw new ValidationError("Forma de pagamento é obrigatória.");
-    if (!amount || amount <= 0) throw new ValidationError("Valor da cobrança inválido.");
+    if (!["PIX", "CREDIT_CARD", "BOLETO"].includes(billing_type)) throw new ValidationError("Escolha uma forma de pagamento válida.");
+    if (!Number.isFinite(amount) || amount <= 0) throw new ValidationError("Valor da cobrança inválido.");
     if (use_saved_card && (purpose !== "upgrade" || billing_type !== "CREDIT_CARD")) {
       throw new ValidationError("O cartão cadastrado só pode ser usado para pagar um upgrade.");
     }
@@ -318,13 +318,14 @@ Deno.serve(async (req) => {
     // A busca idempotente pode acontecer cedo, mas a reutilização só ocorre
     // DEPOIS da reconciliação server-side abaixo. Uma cobrança antiga nunca pode
     // pular a validação do valor/ciclo atualmente autorizado para a empresa.
-    const { data: existingPending } = await supabase
+    const { data: existingPending, error: existingPendingError } = await supabase
       .from("subscription_payments")
       .select("id, asaas_payment_id, created_at, billing_type, invoice_url, pix_qr_code, pix_copy_paste, pix_expiration_date, due_date, status, amount, subscription_change_request_id")
       .eq("company_id", company_id)
-      .eq("status", "PENDING")
+      .in("status", ["PENDING", "CREATED", "ACTIVE", "CREATING", "CREATE_UNKNOWN"])
       .order("created_at", { ascending: false })
       .limit(1);
+    if (existingPendingError) throw new ValidationError("Não foi possível conferir as cobranças existentes. Tente novamente.");
 
     // --- Empresa ---
     const { data: company, error: companyError } = await supabase
@@ -333,7 +334,7 @@ Deno.serve(async (req) => {
       .eq("id", company_id)
       .single();
     if (companyError || !company) throw new ValidationError("Empresa não encontrada.");
-
+    const businessCore = resolveBusinessCore(company.business_core);
     // ===================================================================
     // VALIDAÇÃO SERVER-SIDE DO VALOR — FAIL-CLOSED (reconcilia com a EMPRESA)
     // -------------------------------------------------------------------
@@ -378,7 +379,18 @@ Deno.serve(async (req) => {
             : "Esta cotação de upgrade não está mais disponível.",
         );
       }
-      if (requestRow.status === "pending" && new Date(requestRow.expires_at).getTime() <= Date.now()) {
+      if (requestRow.initial_activation === true) {
+        const manager = await authorizeAsaasCompanyManager(supabase, req.headers.get("Authorization"), company_id);
+        if (!manager.ok) return new Response(JSON.stringify({ error: manager.message }), {
+          status: manager.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+        if (billing_type === 'CREDIT_CARD' && (use_saved_card === true || !/^\d{13,19}$/.test(cardNumberDigits(body)))) {
+          throw new ValidationError('Informe os dados do cartão para a primeira contratação.');
+        }
+      }
+      // A RPC inicial só expira ofertas sem tentativa de gateway. Resultado
+      // incerto permanece congelado, inclusive depois de 48h, até conciliação.
+      if (requestRow.initial_activation !== true && requestRow.status === "pending" && new Date(requestRow.expires_at).getTime() <= Date.now()) {
         await applyWrite(
           "expiração da cotação de upgrade",
           supabase
@@ -400,6 +412,13 @@ Deno.serve(async (req) => {
       ) {
         throw new ValidationError("A mudança para o ciclo anual deve ser paga à vista por Pix ou boleto.");
       }
+      if (requestRow.target_plan_code !== 'personalizado') {
+        const {data: targetPlan, error: targetPlanError} = await supabase.from('subscription_plans')
+          .select('business_core').eq('code',requestRow.target_plan_code).maybeSingle();
+        if (targetPlanError || !targetPlan || targetPlan.business_core !== businessCore) {
+          throw new ValidationError('A mudança de plano não corresponde ao kit da sua empresa. Atualize a cotação.');
+        }
+      }
       upgradeRequest = requestRow as UpgradeChangeRequest;
       const upgradeCycle = requestRow.target_billing_cycle === "yearly" ? "yearly" : "monthly";
       chargeTerms = {
@@ -410,12 +429,26 @@ Deno.serve(async (req) => {
         gatewayAmount: expected,
       };
     } else {
-      // Valor efetivo mensal da empresa = fonte da verdade.
-      const cp = Number(company.custom_price) || 0;
-      const cpPermanent = company.custom_price_permanent === true;
-      const cpMonths = Number(company.custom_price_months) || 0;
-      const cpMade = Number(company.custom_price_payments_made) || 0;
-      const hasActiveCustomPrice = cp > 0 && (cpPermanent || (cpMonths > 0 && cpMade < cpMonths));
+      if (businessCore === 'retail' && company.business_core_version === 2 && Number(company.ltv) === 0) {
+        const { data: pendingInitial, error: pendingInitialError } = await supabase.from('subscription_change_requests')
+          .select('id').eq('company_id', company_id).eq('initial_activation', true)
+          .in('status', ['pending', 'payment_pending']).limit(1).maybeSingle();
+        if (pendingInitialError || pendingInitial) throw new ValidationError('Já existe uma contratação em andamento. Abra a cotação vigente antes de pagar.');
+      }
+      if (canInitializeRetailOffer(company)) {
+        throw new ValidationError('Confira e confirme a cotação do seu plano antes de seguir para o pagamento.');
+      }
+      // Valor efetivo mensal é reconciliado no servidor: preserva custom_price
+      // legado e aplica os descontos itemizados ativos sem confiar no client.
+      const { data: effectiveValueRaw, error: effectiveValueError } = await supabase.rpc(
+        "get_company_effective_subscription_value",
+        { p_company_id: company_id },
+      );
+      if (effectiveValueError || !(Number(effectiveValueRaw) > 0)) {
+        throw new ValidationError("Monte e confirme seu plano antes de seguir para o pagamento.");
+      }
+      const effectiveValue = Number(effectiveValueRaw);
+      const hasActiveCustomPrice = effectiveValue !== (Number(company.subscription_value) || 0);
       const pendingRenewalValue = purpose === "renewal"
         ? Number(company.pending_subscription_value) || 0
         : 0;
@@ -424,9 +457,7 @@ Deno.serve(async (req) => {
       // pagamento e aplicar os campos pending_*.
       const effectiveCompanyValue = pendingRenewalValue > 0
         ? pendingRenewalValue
-        : hasActiveCustomPrice
-        ? cp
-        : Number(company.subscription_value) || 0;
+        : effectiveValue;
 
       // Base mensal de reconciliação = valor efetivo da empresa. Pode ser
       // rebaseada abaixo quando o cliente troca de plano na primeira venda.
@@ -455,12 +486,14 @@ Deno.serve(async (req) => {
         company.subscription_status === "trial" ||
         company.subscription_status === "pending_payment";
       if (plan_code && company.subscription_plan && plan_code !== company.subscription_plan) {
-        const swapContextOk = isFirstSaleStatus && !hasActiveCustomPrice && plan_code !== "personalizado";
+        const swapContextOk = isFirstSaleStatus && !hasActiveCustomPrice && plan_code !== "personalizado"
+          && !(businessCore === "retail" && company.business_core_version === 2);
         // Preço de catálogo do plano escolhido (necessário pra decidir upgrade x downgrade).
         const { data: newPlanRow } = swapContextOk
           ? await supabase
               .from("subscription_plans")
-              .select("price, max_users")
+              .select("price, max_users, business_core")
+              .eq("business_core", businessCore)
               .eq("code", plan_code)
               .eq("is_active", true)
               .maybeSingle()
@@ -540,7 +573,6 @@ Deno.serve(async (req) => {
 
     // A partir daqui, payload e persistência usam somente o ciclo normalizado.
     // Em especial, CREDIT_CARD nunca propaga `yearly` controlado pelo cliente.
-    const asaasCycle = chargeTerms.asaasCycle;
     const cycleForDb = chargeTerms.billingCycle;
 
     // ========== IDEMPOTÊNCIA: reusar cobrança PENDING < 30min ==========
@@ -597,15 +629,42 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Mudança de modo recorrente → invalida a antiga pra não ser reusada.
-      if (recurringMismatch && minutesAgo < 30) {
+      // Fora da janela de reuso (ou mudou método/valor/modo), a cobrança
+      // anterior do MESMO contexto precisa ser excluída no Asaas antes de uma
+      // nova nascer. Fail-closed: se o provedor não confirmar, não duplicamos.
+      if (!changeRequestMismatch) {
+        const providerId = String(existing.asaas_payment_id || '');
+        if (!providerId) {
+          throw new ValidationError('Cobrança anterior sem identificador no Asaas. Fale com o suporte antes de gerar outra.');
+        }
+        const deletePath = providerId.startsWith('pay_')
+          ? `/payments/${providerId}`
+          : providerId.startsWith('aut_')
+          ? `/pix/automatic/authorizations/${providerId}`
+          : providerId.startsWith('sub_')
+          ? `/subscriptions/${providerId}`
+          : null;
+        if (!deletePath) {
+          throw new ValidationError('Cobrança anterior com identificador desconhecido. Fale com o suporte antes de gerar outra.');
+        }
+
+        try {
+          await asaas.delete(deletePath);
+        } catch (error) {
+          if (!(error instanceof AsaasApiError && error.status === 404)) {
+            console.error(`[superseded] Asaas recusou DELETE ${deletePath}:`, error);
+            throw new ValidationError('Não foi possível substituir a cobrança anterior. Tente novamente em instantes.');
+          }
+        }
+
         await applyWrite(
-          "invalidação da cobrança anterior (subscription_payments CANCELLED)",
+          'invalidação da cobrança anterior (subscription_payments CANCELLED)',
           supabase
-            .from("subscription_payments")
-            .update({ status: "CANCELLED" })
-            .eq("id", existing.id),
+            .from('subscription_payments')
+            .update({ status: 'CANCELLED', updated_at: new Date().toISOString() })
+            .eq('id', existing.id),
         );
+        console.log(`[superseded] cobrança anterior ${providerId} cancelada antes da regeneração.`);
       }
     }
 
@@ -694,7 +753,7 @@ Deno.serve(async (req) => {
     const isFirstSale = company.subscription_status === "testing" ||
       company.subscription_status === "Testando" ||
       company.subscription_status === "trial";
-    const paymentType = upgradeRequest ? "upgrade" : isFirstSale ? "primeira_venda" : "renovacao";
+    const paymentType = upgradeRequest?.initial_activation ? "primeira_venda" : upgradeRequest ? "upgrade" : isFirstSale ? "primeira_venda" : "renovacao";
 
     // --- Vencimento ---
     const subscriptionExpiresAt = upgradeRequest
@@ -785,13 +844,42 @@ Deno.serve(async (req) => {
       }
     }
 
+    // A ativação inicial reivindica a criação antes do POST. Resposta incerta
+    // fica congelada; retries nunca disparam outra cobrança/recorrência.
+    const postCharge = async (path: string, payload: Record<string, unknown>) => {
+      if (upgradeRequest?.initial_activation) {
+        const { data: claimed, error } = await supabase.rpc('claim_initial_subscription_activation_payment', {
+          p_request_id: upgradeRequest.id,
+        });
+        if (error || claimed !== true) throw new ValidationError('Esta contratação já está em andamento ou suas condições mudaram. Atualize a página e aguarde a conciliação antes de tentar novamente.');
+      }
+      try {
+        const result = await asaas.post(path, payload);
+        if (upgradeRequest?.initial_activation) await tryWrite('vínculo da criação inicial', supabase.from('subscription_change_requests')
+          .update({ status: 'payment_pending', payment_creation_state: 'created',
+            ...(path === '/payments' ? { asaas_payment_id: result.id } : {}),
+          }).eq('id', upgradeRequest.id).in('status', ['pending', 'payment_pending']),
+          { warnings, recovery: { change_request_id: upgradeRequest.id, gateway_id: result.id } });
+        return result;
+      } catch (error) {
+        if (upgradeRequest?.initial_activation) {
+          const definitive = error instanceof AsaasApiError && error.status >= 400 && error.status < 500;
+          await tryWrite('estado da criação da primeira cobrança', supabase.from('subscription_change_requests')
+            .update({ payment_creation_state: definitive ? 'failed' : 'unknown' })
+            .eq('id', upgradeRequest.id).eq('payment_creation_state', 'creating'),
+            { recovery: { change_request_id: upgradeRequest.id, gateway_outcome: definitive ? 'failed' : 'unknown' } });
+        }
+        throw error;
+      }
+    };
+
     // ===================================================================
     // UPGRADE: cobranca UNICA. Nunca cria/cancela recorrencia aqui.
     // A recorrencia existente so muda de valor depois que o webhook aplica
     // o upgrade. O externalReference carrega a request para recuperacao mesmo
     // se a gravacao local falhar depois da cobranca nascer no gateway.
     // ===================================================================
-    if (upgradeRequest) {
+    if (upgradeRequest && !(upgradeRequest.initial_activation && billing_type === "CREDIT_CARD")) {
       const externalReference = `upgrade:${upgradeRequest.id}:${company_id}`;
       let newlyTokenizedCard: TokenizedCard | null = null;
       const paymentPayload: Record<string, unknown> = {
@@ -838,7 +926,7 @@ Deno.serve(async (req) => {
         paymentPayload.fine = { value: 2, type: "PERCENTAGE" };
       }
 
-      const payment = await asaas.post(`/payments`, paymentPayload);
+      const payment = await postCharge(`/payments`, paymentPayload);
       if (newlyTokenizedCard) {
         await persistSavedCardToken(supabase, company_id, newlyTokenizedCard);
       }
@@ -882,7 +970,7 @@ Deno.serve(async (req) => {
             payment_method: billing_type.toLowerCase(),
             billing_type,
             billing_cycle: upgradeRequest.target_billing_cycle,
-            type: "upgrade",
+            type: upgradeRequest.initial_activation ? "primeira_venda" : "upgrade",
             pix_qr_code: pixQrCode,
             pix_copy_paste: pixCopyPaste,
             pix_expiration_date: pixExpirationDate,
@@ -907,7 +995,9 @@ Deno.serve(async (req) => {
         "vínculo da cotação com a cobrança de upgrade",
         supabase
           .from("subscription_change_requests")
-          .update({ status: "payment_pending", asaas_payment_id: payment.id })
+          .update({ status: "payment_pending", asaas_payment_id: payment.id,
+            ...(upgradeRequest.initial_activation ? { payment_creation_state: 'created' } : {}),
+          })
           .eq("id", upgradeRequest.id)
           .in("status", ["pending", "payment_pending"])
           .select("id")
@@ -948,191 +1038,176 @@ Deno.serve(async (req) => {
     // ===================================================================
     if (billing_type === "PIX" && pix_recurring) {
       const asaasFrequency = chargeTerms.pixAutomaticFrequency;
-      await cancelExistingSubscriptions(asaasCustomerId!);
-
-      const contractId = `DMX-${company_id.substring(0, 8)}-${Date.now().toString(36)}`.substring(0, 35);
-      const authorizationPayload = {
-        frequency: asaasFrequency,
-        contractId,
-        startDate: dueDateStr,
-        customerId: asaasCustomerId,
-        value: amount,
-        description: `Dominex - ${company.name}`.substring(0, 35),
-        immediateQrCode: {
-          expirationSeconds: 86400,
-          originalValue: amount,
+      const { data: claimRaw, error: claimError } = await supabase.rpc(
+        "claim_subscription_pix_automatic_checkout",
+        {
+          p_company_id: company_id,
+          p_amount: chargeTerms.expectedAmount,
+          p_billing_cycle: cycleForDb,
+          p_due_date: dueDateStr,
+          p_purpose: purpose || (paymentType === "primeira_venda" ? "first_sale" : "renewal"),
+          p_change_request_id: change_request_id ?? null,
         },
-      };
-
-      let authData: PixAutomaticAuthorization;
-      try {
-        authData = await asaas.post(`/pix/automatic/authorizations`, authorizationPayload);
-      } catch (e) {
-        // ---- Fallback: subscription PIX padrão ----
-        console.log("Pix Automático indisponível, usando subscription PIX padrão:", (e as Error).message);
-        const subscriptionData = await asaas.post(`/subscriptions`, {
-          customer: asaasCustomerId,
-          billingType: "PIX",
-          cycle: asaasCycle,
-          value: amount,
-          nextDueDate: dueDateStr,
-          description: description || `Assinatura Dominex - ${company.name}`,
-          externalReference: company_id,
-        });
-
-        await linkRecurrenceToCompany(supabase, company_id, subscriptionData.id, "pix");
-
-        // Busca primeiro payment real (pay_*) da subscription pro QR Code.
-        let firstPaymentId: string | null = null;
-        let pixQrCode: string | null = null;
-        let pixCopyPaste: string | null = null;
-        let pixExpirationDate: string | null = null;
-        try {
-          const paymentsData = await asaas.get(`/subscriptions/${subscriptionData.id}/payments`);
-          if (paymentsData?.data?.length > 0) {
-            firstPaymentId = paymentsData.data[0].id;
-            const pixData = await asaas.get(`/payments/${firstPaymentId}/pixQrCode`);
-            pixQrCode = pixData.encodedImage ?? null;
-            pixCopyPaste = pixData.payload ?? null;
-            const exp = new Date();
-            exp.setHours(exp.getHours() + 24);
-            pixExpirationDate = exp.toISOString();
-          }
-        } catch (err) {
-          console.error("Erro ao buscar QR Code do fallback PIX:", err);
+      );
+      if (claimError || !claimRaw?.attempt?.id) {
+        if (claimError?.message?.includes("pix_automatic_checkout_already_in_progress")) {
+          throw new ValidationError(
+            "Já existe um consentimento Pix Automático em andamento para esta empresa.",
+          );
         }
+        console.error("[pix-auto] falha ao reservar checkout:", claimError?.message ?? "sem tentativa");
+        throw new Error("Não foi possível preparar o Pix Automático.");
+      }
 
-        // NÃO-FATAL: a cobrança JÁ existe na Asaas. Sem esta linha o `local_payment_id`
-        // volta vazio e o webhook precisa materializar a linha quando o PAYMENT_*
-        // chegar. Falhar alto aqui faria o cliente tentar de novo e gerar uma
-        // SEGUNDA cobrança — cobrar duas vezes é pior que reconciliar depois.
-        const savedPayment = await tryWriteReturning<{ id: string }>(
-          "registro local da cobrança PIX de fallback (subscription_payments)",
-          supabase
-            .from("subscription_payments")
-            .insert({
-              company_id,
-              asaas_payment_id: firstPaymentId,
-              asaas_customer_id: asaasCustomerId,
-              amount,
-              status: "PENDING",
-              payment_method: "pix",
-              billing_type: "PIX",
-              billing_cycle: cycleForDb,
-              type: paymentType,
-              pix_qr_code: pixQrCode,
-              pix_copy_paste: pixCopyPaste,
-              pix_expiration_date: pixExpirationDate,
-              invoice_url: subscriptionData.invoiceUrl,
-              due_date: dueDateStr,
-            })
-            .select()
-            .single(),
-          {
-            warnings,
-            recovery: {
-              company_id,
-              asaas_payment_id: firstPaymentId ?? "-",
-              asaas_subscription_id: subscriptionData.id,
-              amount,
-              billing_type: "PIX",
-            },
-          },
-        );
-
+      const attempt = claimRaw.attempt as Record<string, any>;
+      const shouldCreate = claimRaw.should_create === true;
+      if (!shouldCreate) {
+        if (attempt.checkout_status === "CREATE_UNKNOWN" || attempt.checkout_status === "CREATING") {
+          return new Response(
+            JSON.stringify({
+              error: "O consentimento anterior ainda está sendo conciliado. Aguarde alguns instantes.",
+              code: "PIX_AUTOMATIC_RECONCILING",
+            }),
+            { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
         return new Response(
           JSON.stringify({
             success: true,
-            payment_id: firstPaymentId,
-            status: "PENDING",
-            invoice_url: subscriptionData.invoiceUrl,
-            pix_qr_code: pixQrCode,
-            pix_copy_paste: pixCopyPaste,
-            pix_expiration_date: pixExpirationDate,
-            due_date: dueDateStr,
-            local_payment_id: savedPayment?.id,
-            ...warnings.toBody(),
-            subscription_id: subscriptionData.id,
+            payment_id: attempt.asaas_authorization_id,
+            status: attempt.authorization_status || attempt.checkout_status,
+            pix_qr_code: attempt.pix_qr_code,
+            pix_copy_paste: attempt.pix_copy_paste,
+            pix_expiration_date: attempt.pix_expiration_date,
+            due_date: attempt.due_date,
+            checkout_attempt_id: attempt.id,
+            authorization_id: attempt.asaas_authorization_id,
+            subscription_id: attempt.asaas_subscription_id,
             is_recurring: true,
-            pix_automatic: false,
-            fallback: true,
+            pix_automatic: true,
+            reused_existing: true,
           }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
 
-      // ---- Pix Automático criado ----
-      const pixQrCode = authData.encodedImage || null;
-      const pixCopyPaste = authData.payload || null;
+      const authorizationPayload = buildPixAutomaticAuthorizationPayload({
+        frequency: asaasFrequency,
+        contractId: attempt.gateway_correlation_ref,
+        startDate: dueDateStr,
+        customerId: asaasCustomerId!,
+        value: chargeTerms.expectedAmount,
+        description: `Dominex - ${company.name}`,
+      });
+
+      let authData: PixAutomaticAuthorizationResponse;
+      try {
+        authData = await asaas.post(`/pix/automatic/authorizations`, authorizationPayload);
+      } catch (e) {
+        const definitiveFailure = e instanceof AsaasApiError && e.status >= 400 && e.status < 500;
+        await tryWrite(
+          "estado da tentativa Pix Automático após falha no gateway",
+          supabase
+            .from("subscription_checkout_attempts")
+            .update({
+              checkout_status: definitiveFailure ? "FAILED" : "CREATE_UNKNOWN",
+              last_error_code: definitiveFailure ? `HTTP_${e.status}` : "GATEWAY_UNKNOWN",
+            })
+            .eq("id", attempt.id)
+            .eq("checkout_status", "CREATING"),
+          {
+            warnings,
+            recovery: {
+              checkout_attempt_id: attempt.id,
+              target_status: definitiveFailure ? "FAILED" : "CREATE_UNKNOWN",
+            },
+          },
+        );
+        // Timeout/5xx pode ter criado a autorização remotamente. Não fazemos
+        // fallback nem novo POST: a tentativa fica bloqueada para reconciliação.
+        throw e;
+      }
+
+      const correlation = pixAutomaticCorrelation(authData);
       const pixExpirationDate = authData.immediateQrCode?.expirationDate
         ? new Date(authData.immediateQrCode.expirationDate).toISOString()
         : (() => { const d = new Date(); d.setHours(d.getHours() + 24); return d.toISOString(); })();
 
-      // Grava o id da AUTORIZAÇÃO de Pix Automático. ⚠️ É UUID, não `aut_*` (provado
-      // em 2026-09-19 na autorização real 01cf93fd-6634-43c4-894b-5bfeef52c1dc).
-      // Quem lê esta coluna deve identificar `sub_` positivamente e tratar todo o
-      // resto como autorização — ver cancel-asaas-subscription.
-      await linkRecurrenceToCompany(supabase, company_id, authData.id, "pix");
+      const { data: savedAttempt, error: saveAttemptError } = await supabase
+        .from("subscription_checkout_attempts")
+        .update({
+          checkout_status: pixAutomaticCheckoutStatus(correlation.authorizationStatus),
+          authorization_status: correlation.authorizationStatus,
+          asaas_authorization_id: correlation.authorizationId,
+          asaas_subscription_id: correlation.subscriptionId,
+          pix_conciliation_identifier: correlation.conciliationIdentifier,
+          pix_end_to_end_identifier: correlation.endToEndIdentifier,
+          pix_qr_code: correlation.qrCode,
+          pix_copy_paste: correlation.copyPaste,
+          pix_expiration_date: pixExpirationDate,
+          last_error_code: null,
+        })
+        .eq("id", attempt.id)
+        .eq("checkout_status", "CREATING")
+        .select("id")
+        .maybeSingle();
 
-      // Busca primeiro payment real (pay_*) da authorization — o webhook chega com pay_*.
-      let realFirstPaymentId: string | null = null;
-      try {
-        const subPayments = await asaas.get(`/payments`, buildQuery({ subscription: authData.id, limit: 1, order: "ASC" }));
-        if (subPayments?.data?.length > 0) realFirstPaymentId = subPayments.data[0].id;
-      } catch (e) {
-        console.log(`[pix-auto] sem payment ainda para auth ${authData.id}:`, (e as Error).message);
+      if (saveAttemptError || !savedAttempt?.id) {
+        console.error("[pix-auto] autorização criada, mas a correlação local falhou", {
+          attempt_id: attempt.id,
+          authorization_id: correlation.authorizationId,
+          error: saveAttemptError?.message ?? "sem linha",
+        });
+        try {
+          await asaas.delete(
+            `/pix/automatic/authorizations/${encodeURIComponent(correlation.authorizationId)}`,
+          );
+          await tryWrite(
+            "encerramento da tentativa Pix Automático revogada",
+            supabase
+              .from("subscription_checkout_attempts")
+              .update({ checkout_status: "FAILED", last_error_code: "LOCAL_UPDATE_FAILED" })
+              .eq("id", attempt.id),
+            {
+              warnings,
+              recovery: { checkout_attempt_id: attempt.id, target_status: "FAILED" },
+            },
+          );
+        } catch {
+          await tryWrite(
+            "quarentena da tentativa Pix Automático sem rollback confirmado",
+            supabase
+              .from("subscription_checkout_attempts")
+              .update({ checkout_status: "CREATE_UNKNOWN", last_error_code: "LOCAL_UPDATE_FAILED" })
+              .eq("id", attempt.id),
+            {
+              warnings,
+              recovery: { checkout_attempt_id: attempt.id, target_status: "CREATE_UNKNOWN" },
+            },
+          );
+        }
+        throw new Error("A autorização não pôde ser concluída com segurança.");
       }
 
-      const savedAsaasPaymentId = realFirstPaymentId || authData.id;
-      // NÃO-FATAL: a cobrança JÁ existe na Asaas. Sem esta linha o `local_payment_id`
-      // volta vazio e o webhook precisa materializar a linha quando o PAYMENT_*
-      // chegar. Falhar alto aqui faria o cliente tentar de novo e gerar uma
-      // SEGUNDA cobrança — cobrar duas vezes é pior que reconciliar depois.
-      const savedPayment = await tryWriteReturning<{ id: string }>(
-        "registro local da cobrança do Pix Automático (subscription_payments)",
-        supabase
-          .from("subscription_payments")
-          .insert({
-            company_id,
-            asaas_payment_id: savedAsaasPaymentId,
-            asaas_customer_id: asaasCustomerId,
-            amount,
-            status: "PENDING",
-            payment_method: "pix",
-            billing_type: "PIX",
-            billing_cycle: cycleForDb,
-            type: paymentType,
-            pix_qr_code: pixQrCode,
-            pix_copy_paste: pixCopyPaste,
-            pix_expiration_date: pixExpirationDate,
-            due_date: dueDateStr,
-          })
-          .select()
-          .single(),
-        {
-          warnings,
-          recovery: {
-            company_id,
-            asaas_payment_id: savedAsaasPaymentId,
-            asaas_authorization_id: authData.id,
-            amount,
-            billing_type: "PIX",
-          },
-        },
+      await linkRecurrenceToCompany(
+        supabase,
+        company_id,
+        correlation.subscriptionId || correlation.authorizationId,
+        "pix",
       );
 
       return new Response(
         JSON.stringify({
           success: true,
-          payment_id: authData.id,
-          status: authData.status || "PENDING",
-          pix_qr_code: pixQrCode,
-          pix_copy_paste: pixCopyPaste,
+          payment_id: correlation.authorizationId,
+          status: correlation.authorizationStatus,
+          pix_qr_code: correlation.qrCode,
+          pix_copy_paste: correlation.copyPaste,
           pix_expiration_date: pixExpirationDate,
           due_date: dueDateStr,
-          local_payment_id: savedPayment?.id,
-          ...warnings.toBody(),
-          authorization_id: authData.id,
+          checkout_attempt_id: attempt.id,
+          authorization_id: correlation.authorizationId,
+          subscription_id: correlation.subscriptionId,
           is_recurring: true,
           pix_automatic: true,
         }),
@@ -1144,7 +1219,7 @@ Deno.serve(async (req) => {
     // CARTÃO DE CRÉDITO recorrente (subscription)
     // ===================================================================
     if (billing_type === "CREDIT_CARD" && body.card_number) {
-      await cancelExistingSubscriptions(asaasCustomerId!);
+      if (!upgradeRequest?.initial_activation) await cancelExistingSubscriptions(asaasCustomerId!);
 
       // B9: cartão é SEMPRE mensal recorrente, sem desconto anual e sem
       // parcelamento. `resolveChargeTerms` normaliza o ciclo e usa como valor do
@@ -1163,7 +1238,7 @@ Deno.serve(async (req) => {
         value: monthlyCardValue,
         nextDueDate: todayBRT,
         description: description || `Assinatura Dominex - ${company.name}`,
-        externalReference: company_id,
+        externalReference: upgradeRequest?.initial_activation ? `upgrade:${upgradeRequest.id}:${company_id}` : company_id,
       };
       if (newlyTokenizedCard) {
         subscriptionPayload.creditCardToken = newlyTokenizedCard.token;
@@ -1173,7 +1248,7 @@ Deno.serve(async (req) => {
         subscriptionPayload.creditCardHolderInfo = buildCreditCardHolderInfo(body);
         if (clientIp) subscriptionPayload.remoteIp = clientIp;
       }
-      const subscriptionData = await asaas.post(`/subscriptions`, subscriptionPayload);
+      const subscriptionData = await postCharge(`/subscriptions`, subscriptionPayload);
 
       await linkRecurrenceToCompany(supabase, company_id, subscriptionData.id, "credit_card");
       if (newlyTokenizedCard) {
@@ -1210,6 +1285,7 @@ Deno.serve(async (req) => {
             billing_type,
             billing_cycle: "monthly",
             type: paymentType,
+            ...(upgradeRequest?.initial_activation ? { subscription_change_request_id: upgradeRequest.id } : {}),
             invoice_url: subscriptionData.invoiceUrl,
             // Cartão debita HOJE (BRT), igual ao nextDueDate enviado à Asaas.
             due_date: todayBRT,
@@ -1249,7 +1325,7 @@ Deno.serve(async (req) => {
     const payment = await asaas.post(`/payments`, {
       customer: asaasCustomerId,
       billingType: billing_type,
-      value: amount,
+      value: chargeTerms.gatewayAmount,
       dueDate: dueDateStr,
       description: description || `Assinatura Dominex - ${company.name}`,
       externalReference: company_id,
@@ -1295,7 +1371,7 @@ Deno.serve(async (req) => {
           company_id,
           asaas_payment_id: payment.id,
           asaas_customer_id: asaasCustomerId,
-          amount,
+          amount: chargeTerms.gatewayAmount,
           status: payment.status || "PENDING",
           payment_method: billing_type.toLowerCase(),
           billing_type,

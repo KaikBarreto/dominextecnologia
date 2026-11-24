@@ -370,6 +370,8 @@ export function usePartyAccountStatement({
       queryClient.invalidateQueries({ queryKey: ['customers'] }),
       queryClient.invalidateQueries({ queryKey: ['suppliers'] }),
       queryClient.invalidateQueries({ queryKey: ['pdv-customer-payment-options'] }),
+      queryClient.invalidateQueries({ queryKey: ['pdv-customer-credit'] }),
+      queryClient.invalidateQueries({ queryKey: ['pdv-supplier-credit'] }),
       queryClient.invalidateQueries({ queryKey: ['pdv-cash'] }),
       queryClient.invalidateQueries({ queryKey: ['pdv-after-sale-v2'] }),
       invalidatePdvCashV2Caches(queryClient),

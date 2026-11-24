@@ -10,6 +10,11 @@ import { getQuoteCommercialTotal } from '@/lib/quote-commercial-total';
 import type { QuoteCostComposition } from '@/components/quotes/QuoteServiceCostEditor';
 import type { Json } from '@/integrations/supabase/types';
 import { quoteNumberErrorMessage } from '@/lib/quote-number-errors';
+import {
+  QuoteApprovalRevertError,
+  normalizeQuoteApprovalRevertErrorCode,
+} from '@/lib/quote-approval-revert';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 export interface QuoteItem {
   id?: string;
@@ -41,6 +46,8 @@ export interface QuoteItem {
 export interface QuoteInput {
   /** Reserva privada; o número e a identidade são confirmados pelo servidor. */
   number_reservation_id?: string;
+  /** Oportunidade de origem. O banco valida empresa e acesso antes de vincular. */
+  lead_id?: string;
   customer_id?: string;
   prospect_name?: string;
   prospect_phone?: string;
@@ -85,6 +92,7 @@ export interface QuoteInput {
 export interface Quote {
   id: string;
   quote_number: number;
+  lead_id?: string | null;
   customer_id: string | null;
   prospect_name: string | null;
   prospect_phone: string | null;
@@ -207,13 +215,14 @@ function buildItemPayload(item: QuoteItem, quoteId: string, idx: number) {
   }, ['inventory_id', 'service_type_id']);
 }
 
-export function useQuotes() {
+export function useQuotes(options: { enabled?: boolean } = {}) {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const quotesQuery = useQuery({
     queryKey: ['quotes'],
+    enabled: options.enabled !== false,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('quotes')
@@ -229,8 +238,9 @@ export function useQuotes() {
     mutationFn: async (input: QuoteInput) => {
       const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
       const company_id = await getCurrentUserCompanyId();
-      const { items, final_price, number_reservation_id, ...quoteData } = input as any;
+      const { items, final_price, number_reservation_id, lead_id, ...quoteData } = input as any;
       const sanitizedQuoteData = normalizeOptionalForeignKeys(quoteData, [
+        'lead_id',
         'customer_id',
         'assigned_to',
         'proposal_template_id',
@@ -238,7 +248,7 @@ export function useQuotes() {
 
       if (number_reservation_id) {
         if (!user?.id) throw new Error('Entre novamente para criar o orçamento.');
-        const { data, error } = await supabase.rpc('create_reserved_quote', {
+        const rpcInput = {
           p_reservation_id: number_reservation_id,
           p_company_id: company_id,
           p_user_id: user.id,
@@ -247,7 +257,10 @@ export function useQuotes() {
             const { quote_id: _quoteId, ...row } = buildItemPayload(item, '', index);
             return row;
           }) as Json,
-        });
+        };
+        const { data, error } = lead_id
+          ? await supabase.rpc('create_reserved_quote_from_lead', { ...rpcInput, p_lead_id: lead_id })
+          : await supabase.rpc('create_reserved_quote', rpcInput);
         if (error) {
           if (error.code === 'QNR02' || error.code === 'QNR03') {
             void queryClient.invalidateQueries({ queryKey: ['quote-number-reservation', company_id, user.id, number_reservation_id], exact: true });
@@ -262,7 +275,7 @@ export function useQuotes() {
 
       const { data: quote, error } = await supabase
         .from('quotes')
-        .insert({ ...sanitizedQuoteData, created_by: user?.id, company_id } as any)
+        .insert({ ...sanitizedQuoteData, lead_id: lead_id || null, created_by: user?.id, company_id } as any)
         .select()
         .single();
 
@@ -290,17 +303,19 @@ export function useQuotes() {
   const updateQuote = useMutation({
     mutationFn: async ({ id, items, final_price, number_reservation_id: _reservationId, ...quoteData }: QuoteInput & { id: string } & { final_price?: any }) => {
       const sanitizedQuoteData = normalizeOptionalForeignKeys(quoteData as any, [
+        'lead_id',
         'customer_id',
         'assigned_to',
         'proposal_template_id',
       ]);
 
-      const { error } = await supabase
-        .from('quotes')
-        .update(sanitizedQuoteData as any)
-        .eq('id', id);
-
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('quotes')
+          .update(sanitizedQuoteData as any, { count: 'exact' })
+          .eq('id', id),
+        'update',
+      );
 
       // Replace items
       await supabase.from('quote_items').delete().eq('quote_id', id);
@@ -324,12 +339,13 @@ export function useQuotes() {
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase
-        .from('quotes')
-        .update({ status })
-        .eq('id', id);
-
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('quotes')
+          .update({ status }, { count: 'exact' })
+          .eq('id', id),
+        'update',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
@@ -340,10 +356,42 @@ export function useQuotes() {
     },
   });
 
+  const revertApproval = useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await supabase.rpc('revert_quote_approval', {
+        p_quote_id: id,
+      });
+
+      // Erro técnico do PostgREST nunca sobe para a copy final. A tela traduz
+      // apenas os códigos de domínio allowlisted pela RPC.
+      if (error) throw new QuoteApprovalRevertError('unknown');
+
+      const result = data && typeof data === 'object' && !Array.isArray(data)
+        ? data as { ok?: unknown; error?: unknown; status?: unknown; reverted?: unknown }
+        : null;
+
+      if (result?.ok !== true) {
+        throw new QuoteApprovalRevertError(
+          normalizeQuoteApprovalRevertErrorCode(result?.error),
+        );
+      }
+
+      return {
+        status: result.status === 'enviado' ? 'enviado' : null,
+        reverted: result.reverted === true,
+      };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quotes'] });
+    },
+  });
+
   const deleteQuote = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('quotes').delete().eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('quotes').delete({ count: 'exact' }).eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
@@ -361,6 +409,7 @@ export function useQuotes() {
       const { data: newQuote, error } = await supabase
         .from('quotes')
         .insert({
+          lead_id: source.lead_id,
           customer_id: source.customer_id,
           prospect_name: source.prospect_name,
           prospect_phone: source.prospect_phone,
@@ -464,9 +513,12 @@ export function useQuotes() {
   return {
     quotes,
     isLoading: quotesQuery.isLoading,
+    error: quotesQuery.error,
+    refetch: quotesQuery.refetch,
     createQuote,
     updateQuote,
     updateStatus,
+    revertApproval,
     deleteQuote,
     duplicateQuote,
     fetchQuoteByToken,

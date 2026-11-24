@@ -21,3 +21,4 @@ BEGIN
 END $constraint$;
 
 COMMIT;
+;

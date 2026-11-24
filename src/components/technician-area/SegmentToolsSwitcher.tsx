@@ -21,6 +21,8 @@ interface SegmentToolsSwitcherProps {
   /** Segmentos contratados — aparecem primeiro e ganham o selo "Incluído". */
   companySegments: string[];
   onSelect: (segment: string) => void;
+  /** Ferramenta aberta: mantém a troca de segmento em uma única faixa no celular. */
+  compactOnMobile?: boolean;
 }
 
 /**
@@ -34,12 +36,16 @@ export function SegmentToolsSwitcher({
   selected,
   companySegments,
   onSelect,
+  compactOnMobile = false,
 }: SegmentToolsSwitcherProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.technicianTools.home;
   const segmentLabels = MESSAGES[locale].app.technicianTools.segments;
   const [open, setOpen] = useState(false);
   const selectedSeg = getSegment(selected);
+  const selectedLabel = selectedSeg
+    ? segmentLabels[selectedSeg.value as keyof typeof segmentLabels] ?? selectedSeg.label
+    : t.segmentSearch;
 
   // Nichos do switcher = os 9 do site (com landing + ferramentas). "Outro" e os
   // legados não entram. Coloca o da empresa primeiro, demais na ordem do catálogo.
@@ -60,16 +66,18 @@ export function SegmentToolsSwitcher({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="rounded-full transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          aria-label={`${t.segmentSearch}: ${selectedLabel}`}
+          title={selectedLabel}
+          className="inline-flex min-h-11 max-w-full shrink-0 items-center rounded-full transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           {selectedSeg ? (
             <Badge
-              className="cursor-pointer gap-1.5 border-0 text-white lg:px-3 lg:py-1.5 lg:text-sm"
+              className={cn('max-w-full cursor-pointer gap-1.5 border-0 px-3 py-1.5 text-sm text-white', compactOnMobile && 'h-9 w-[52px] justify-center px-2 sm:h-auto sm:w-auto sm:px-3')}
               style={{ backgroundColor: selectedSeg.color }}
             >
-              <selectedSeg.icon className="h-3 w-3 lg:h-3.5 lg:w-3.5" />
-              <span className="truncate">
-                {segmentLabels[selectedSeg.value as keyof typeof segmentLabels] ?? selectedSeg.label}
+              <selectedSeg.icon aria-hidden className="h-3.5 w-3.5 shrink-0" />
+              <span className={cn('truncate', compactOnMobile && 'hidden sm:inline')}>
+                {selectedLabel}
               </span>
               <ChevronDown className="h-3 w-3 opacity-80 lg:h-3.5 lg:w-3.5" />
             </Badge>

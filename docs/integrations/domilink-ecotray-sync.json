@@ -3,7 +3,7 @@
   "source": {
     "repository": "EcoSistemaSaaS",
     "directory": "ecotray",
-    "revision": "e9629055fb3e8f9e87adfdb12f45f09066250c28",
+    "revision": "1efb2bd0c24bc8e76af078e1797173598dca34d7",
     "files": {
       "print_manager.py": "e85a0fadae46ec83b8c31169ef7159b4d333a3f0c2b5f86f8838ca3c3efd861a",
       "protocols/__init__.py": "e4933fd3ce1a86d81420a1ebf43eb5ef824442317a5255a399281cdcd65f49e1",
@@ -22,7 +22,8 @@
     "directory": "services/domilink",
     "files": {
       "services/domilink/config.example.toml": "9844402c700005674dc5dd6c857a7ef9b2200db4a3ea0c3f8d2c2d1b336d05b2",
-      "services/domilink/pyproject.toml": "31089a1c050e7999f561288a4754ab2c6a48fa41d4cf1a837e04fb26de6a99bb",
+      "services/domilink/pyproject.toml": "7ee8a5a2fcd275f8c5bf157636acc90e187a6a98330e9a299924669078c472c4",
+      "services/domilink/src/domilink/adapters/escpos.py": "2b862e8eb1bd47cfe46c5d673163c592879c39a3022514c7766bdd552f7808ff",
       "services/domilink/src/domilink/adapters/protocols/__init__.py": "432941688692ef447810149857077b268bf7ce6d7b0959828a255107d0940ea7",
       "services/domilink/src/domilink/adapters/protocols/filizola.py": "ab61e23c3345ae6d8a681f17dca606659f764aaef16478c909ae9aff7c6fbf63",
       "services/domilink/src/domilink/adapters/protocols/generic.py": "8cb73bc45c000bdccf8add7ce4ea0f2924b5d0ef3a41d042ff9a46007bd7eb1c",
@@ -31,12 +32,15 @@
       "services/domilink/src/domilink/adapters/serial.py": "1a7dfda72a28d7541d4337be5174c35f20bf143447781c2d560d146fceee90a5",
       "services/domilink/src/domilink/adapters/system_pdf.py": "eb4ecebad199aa4a77224452aeb001811c552f401fb6d661b605c17d9d6e6cff",
       "services/domilink/src/domilink/adapters/windows_gdi.py": "c366cc0a0e52e0b2682f385fdae0b076c552ba8a36894c7a90aa851b551f41f8",
-      "services/domilink/src/domilink/api.py": "8e02d8bf737e52ea448c903a8d6bd80c30ad0d3fdd4f5f7d33b468e801c6288b",
-      "services/domilink/src/domilink/cli.py": "d7b8c97e6792208efe2c4ea52889fae57ab231ab05e96592c5e3cda5a7b50144",
+      "services/domilink/src/domilink/api.py": "6f728998f98e5d224d4ee137386140a1429fbfef159099dc3bfd942ef8fc4670",
+      "services/domilink/src/domilink/cli.py": "963bbba02293bd5f4ca41aca8f47ec0f7a30adf8318ad24c81d6abb8982525af",
+      "services/domilink/src/domilink/config.py": "716fd76492b33095a32dcdb34bd0eea7d44430c85702d2c4460ae7bdd02a0f3a",
       "services/domilink/src/domilink/discovery.py": "fbe376686e294e078bca22cc6baf17b647034a8855dfb937694c8227d0d4a5b1",
-      "services/domilink/src/domilink/jobs.py": "0dde2b50e99039e5b34d608a7948786f5af728cebdab7bc3943b5decfa57ad59",
+      "services/domilink/src/domilink/jobs.py": "92763d4dec8a184b051a85d3213e342a4cc1a4eb6212a553bcf8bc528e146edc",
       "services/domilink/src/domilink/registry.py": "c40822414318b853247bceaf73392d17efeb153e16848a603525d39dd087f6dc",
-      "services/domilink/tests/test_ecotray_drivers.py": "e514aafe546b131e4c22c5b999f379d3fa59fc416204974781cb383e5731528a"
+      "services/domilink/tests/test_ecotray_drivers.py": "e514aafe546b131e4c22c5b999f379d3fa59fc416204974781cb383e5731528a",
+      "services/domilink/tests/test_security_boundaries.py": "a947b7eab4f99d78141d7d3b17307a0226cc8fd18f0c888572e7afcb529fc314",
+      "services/domilink/tests/test_virtual_transports.py": "4e26c98c7156e479489f0dbce37acbf1b27b1175d2f35748624cfa15fcb3a6dd"
     }
   },
   "adaptations": [
@@ -84,7 +88,7 @@
     }
   ],
   "review": {
-    "at": "2026-11-14T22:54:03.379734+00:00",
-    "summary": "Drivers EcoTray revisados; UPX e dimensionamento termico equivalentes por AST. 63 testes Python, Ruff, mypy e lock validados. Fronteira HTTP e isolamento de sessao revisados independentemente; hardware fisico nao homologado."
+    "at": "2026-11-16T19:25:01.646547+00:00",
+    "summary": "EcoTray origem sem alterações. Revisadas adaptações DomiLink: CLI init e diagnóstico passivo, validação de configuração e renovação pelo console; API aceita whitespace PDF canônico sem confundir Pages. Drivers e transporte loopback preservados. 96 pytest Python 3.9, ruff e mypy aprovados; 197 Vitest de integração; 12 PDFs reais em impressora virtual. Hardware físico não homologado."
   }
 }

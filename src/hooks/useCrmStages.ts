@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
 import type { CrmStageRequirements } from '@/types/crmAutomation';
 import type { Json } from '@/integrations/supabase/types';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 export interface CrmStage {
   id: string;
@@ -221,12 +222,13 @@ export function useCrmStages() {
 
   const deleteStage = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('crm_stages')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('crm_stages')
+          .delete({ count: 'exact' })
+          .eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['crm_stages'] });
@@ -244,10 +246,13 @@ export function useCrmStages() {
   const reorderStages = useMutation({
     mutationFn: async (orderedIds: string[]) => {
       const updates = orderedIds.map((id, index) => 
-        supabase.from('crm_stages').update({ position: index }).eq('id', id)
+        supabase.from('crm_stages').update({ position: index }, { count: 'exact' }).eq('id', id)
       );
-      
-      await Promise.all(updates);
+
+      // Cada etapa da lista (completa) precisa ter sido gravada: se a RLS
+      // barrar, o PostgREST responde sem erro e 0 linhas.
+      const results = await Promise.all(updates);
+      results.forEach((result) => assertRowsAffected(result, 'update'));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['crm_stages'] });

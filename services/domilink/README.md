@@ -41,17 +41,34 @@ de rede. Não exponha a porta por proxy, túnel, firewall, Docker publish ou bin
 
 Requer Python 3.9 ou mais recente.
 
+A instalação desta etapa é manual a partir do repositório. Não há download público,
+instalador compilado, GitHub Actions ou atualização automática sendo preparado nesta entrega.
+
 ```bash
 cd services/domilink
 python3 -m venv .venv
 . .venv/bin/activate              # Windows: .venv\Scripts\activate
-python -m pip install -e '.[dev]'
-cp config.example.toml config.toml
+python -m pip install -e '.[all]'
+domilink --init --origin https://app.example.invalid --config config.toml
+domilink --config config.toml --check-config
 domilink --config config.toml
 ```
 
-O terminal mostra o código de pareamento. Para gerar outro, reinicie o processo. O
-exemplo traz somente hardware virtual e permite validar todo o fluxo sem periféricos.
+Troque a origem fictícia pela origem exata do aplicativo (protocolo e domínio,
+sem caminho). `--init` cria somente impressora, balança e leitor virtuais, com
+permissão 0600 onde suportada pelo sistema; recusa sobrescrever configuração existente. Para
+usar hardware, adapte os perfis de `config.example.toml`, selecione a porta/fila
+correta e execute novamente `--check-config`.
+
+O diagnóstico valida o arquivo e as dependências sem iniciar servidor, abrir
+portas seriais, imprimir ou enviar comandos. `requirements_ready` significa
+somente pré-requisitos instalados; `hardware_tested` permanece `false`.
+Um arquivo inválido interrompe o início com orientação, sem traceback nativo.
+
+O terminal mostra o código de pareamento. Em um terminal interativo, digite
+`parear` e pressione Enter para gerar outro sem reiniciar nem perder os trabalhos
+em andamento. Sem terminal interativo, reinicie o processo. O exemplo traz somente
+hardware virtual e permite validar o fluxo sem periféricos.
 
 Extras opcionais:
 
@@ -140,7 +157,8 @@ ruff check .
 mypy src
 ```
 
-Os testes não abrem porta, não acessam hardware e não imprimem documentos. Para uma
+Os testes não acessam hardware e não imprimem documentos. O teste PTY abre somente
+uma porta serial virtual do SO; rede e USB usam socket/backend simulados. Para uma
 homologação física futura, use uma bancada separada e registre fabricante, modelo,
 firmware, conexão, driver do SO, perfil, página de código e resultados de timeout/
 reconexão.
@@ -205,3 +223,39 @@ HTTP 503 `print_queue_full`, com `Retry-After: 30`, sem criar outro trabalho.
 Replay da mesma chave continua aceito com fila cheia. Após expiração da retenção
 ou reinício do processo, a chave deixa de garantir deduplicação; não repetir
 impressões antigas automaticamente. A janela é local ao processo.
+
+O status do job só pode ser consultado pelo pareamento que o criou; rotação de
+token preserva esse escopo. Um novo pareamento não herda jobs da sessão anterior.
+USB ESC/POS usa timeout finito em milissegundos e precisa do extra `escpos`
+(inclui PyUSB) mais backend nativo libusb/driver permitido pelo SO. Serial ESC/POS
+limita também a escrita; o deadline é conferido entre cópias e não cancela uma
+chamada nativa que já está em curso. Falhas nativas viram erros seguros sem
+mensagem do driver. Sondagem verifica somente equipamentos configurados,
+sem enviar conteúdo ou imprimir.
+
+## Uso no app depois de conectar
+
+Em Configurações → Integrações → DomiLink, o operador escolhe o destino dos
+comprovantes: abrir PDF (padrão) ou uma impressora configurada que aceite PDF.
+A preferência pertence ao usuário e à empresa neste computador. Orçamentos,
+pedidos e retiradas enviam o mesmo PDF canônico, com formato e vias da etapa.
+Térmicas usam uma fila do sistema via `system-pdf`; bytes ESC/POS continuam
+disponíveis para integrações específicas e não recebem um PDF incompatível.
+
+Falha ou resposta incerta não repete uma impressão real automaticamente: abre
+o PDF e orienta conferir a fila antes de outra via. Confirmação do spooler não
+comprova papel impresso. Documentos e Base64 não entram em logs.
+
+Com leitor serial configurado, **Ler código** preenche a busca; incluir o produto
+continua uma ação do operador. Leitor USB/HID mantém a captura de teclado nativa,
+sem um segundo listener. No item em kg ou g, **Usar peso** lê uma balança escolhida
+e só preenche quantidade positiva/estável, convertendo a unidade e respeitando
+o disponível na venda. Compras não limitam a entrada ao saldo que já existia.
+Trocar atendimento/caixa/empresa, abrir finalização ou fechar a tela descarta
+respostas pendentes; nenhuma leitura confirma venda ou compra automaticamente.
+
+O atalho **Equipamentos deste computador** abre o mesmo pareamento dentro do
+atendimento, sem sair do carrinho. Operadores autorizados apenas ao caixa,
+orçamentos, pedidos ou retirada podem configurar sua conexão local quando o
+módulo estiver ativo; isso não libera configurações gerais da empresa. Mudar
+usuário/empresa limpa códigos digitados e descarta respostas do contexto anterior.

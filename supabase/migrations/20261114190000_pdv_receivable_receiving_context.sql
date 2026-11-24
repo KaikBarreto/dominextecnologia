@@ -1,7 +1,6 @@
 -- Registra o caixa que efetivamente recebeu uma baixa bancária do PDV,
 -- inclusive parcial, sem transformar Pix/transferência em dinheiro da gaveta.
 -- Não infere custódia de registros históricos nem faz backfill.
-BEGIN;
 
 -- Helper interno: vínculo explícito + tenant + operador antes de qualquer
 -- replay/estorno. Financeiro geral sem vínculo PDV continua aceitando banco
@@ -245,5 +244,4 @@ BEGIN
         )))$new$);
  EXECUTE v_source;
 END $patch$;
-
-COMMIT;
+;

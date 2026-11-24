@@ -14,6 +14,7 @@ import {
   getAllPermissionKeys,
   getFunctionsByScreen,
   getOrphanFunctions,
+  normalizePermissionDependencies,
   type FunctionPermission,
   type PermissionPreset,
   type ScreenPermission,
@@ -89,7 +90,7 @@ export function PermissionsEditor({
 
   /** Chaves efetivamente marcadas — o curinga '*' vira a lista completa. */
   const selectedKeys = useMemo(
-    () => (value.includes('*') ? allKeys : value),
+    () => (value.includes('*') ? allKeys : normalizePermissionDependencies(value)),
     [value, allKeys],
   );
   const selected = useMemo(() => new Set(selectedKeys), [selectedKeys]);
@@ -106,7 +107,11 @@ export function PermissionsEditor({
   const activePresetId = useMemo(() => {
     if (isFullAccess) return null;
     const match = presets.find(
-      p => p.permissions.length === selectedKeys.length && p.permissions.every(k => selected.has(k)),
+      (p) => {
+        const normalizedPreset = normalizePermissionDependencies(p.permissions);
+        return normalizedPreset.length === selectedKeys.length
+          && normalizedPreset.every(k => selected.has(k));
+      },
     );
     return match?.id ?? null;
   }, [presets, selectedKeys, selected, isFullAccess]);
@@ -125,14 +130,15 @@ export function PermissionsEditor({
   const toggleKey = (key: string) => {
     // Sair do "Acesso Total" expande o curinga nas chaves reais pra dar pra
     // desmarcar uma só.
-    const base = value.includes('*') ? allKeys : value;
-    onChange(base.includes(key) ? base.filter(k => k !== key) : [...base, key]);
+    const base = value.includes('*') ? allKeys : normalizePermissionDependencies(value);
+    const next = base.includes(key) ? base.filter(k => k !== key) : [...base, key];
+    onChange(normalizePermissionDependencies(next));
   };
 
   /** Aplicar cargo SUBSTITUI a seleção (não soma). */
-  const applyPreset = (preset: PermissionPreset) => onChange([...preset.permissions]);
+  const applyPreset = (preset: PermissionPreset) => onChange(normalizePermissionDependencies(preset.permissions));
   const applyFullAccess = () => onChange([...allKeys]);
-  const applyCustom = () => onChange([...lastCustomPermissions.current]);
+  const applyCustom = () => onChange(normalizePermissionDependencies(lastCustomPermissions.current));
 
   // ── Busca ─────────────────────────────────────────────────────────────────
   const searching = normalizePermissionText(query).length > 0;
@@ -149,7 +155,11 @@ export function PermissionsEditor({
   const hasResults = filteredTree.length > 0 || filteredOrphans.length > 0;
 
   // ── Linha de ação (filha ou solta no bloco "Geral") ───────────────────────
-  const renderAction = (action: FunctionPermission) => (
+  const renderAction = (action: FunctionPermission) => {
+    const isRequiredDependency = action.key === 'fn:use_bank_accounts'
+      && (selected.has('fn:manage_finance') || selected.has('fn:manage_bank_accounts'));
+
+    return (
     <div
       key={action.key}
       className="flex items-center gap-2 rounded-md px-1.5 py-1.5 transition-colors hover:bg-muted/60"
@@ -157,6 +167,7 @@ export function PermissionsEditor({
       <Switch
         checked={selected.has(action.key)}
         onCheckedChange={() => toggleKey(action.key)}
+        disabled={isRequiredDependency}
         aria-label={action.label}
       />
       <div className="min-w-0 flex-1">
@@ -166,7 +177,8 @@ export function PermissionsEditor({
         <p className="text-[11px] leading-tight text-muted-foreground">{action.description}</p>
       </div>
     </div>
-  );
+    );
+  };
 
   // ── Linha de tela ─────────────────────────────────────────────────────────
   const renderScreen = (group: ScreenGroup) => {

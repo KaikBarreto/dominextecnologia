@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { calcularDiluicao, formatarDiluicao as fmt } from '@/lib/diluicao';
 import { Info } from 'lucide-react';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
@@ -22,11 +23,6 @@ function num(s: string, fallback = NaN): number {
   if (s.trim() === '') return fallback;
   const n = Number(s.replace(',', '.'));
   return Number.isFinite(n) ? n : fallback;
-}
-
-/** Formata um número em pt-BR com até 2 casas (sem zeros à toa). */
-function fmt(n: number): string {
-  return n.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
 }
 
 /** Silhueta oficial do galão (Vector-3, viewBox 0 0 97 123), usada no clip
@@ -190,30 +186,19 @@ export function DiluicaoProduto() {
 
   const unidadeLabel = unidade === 'ml' ? 'mL' : 'L';
   const nNum = num(n);
-  const nValido = Number.isFinite(nNum) && nNum >= 0;
-
-  // Cálculo: Preparar solução → divide o volume final em produto + água.
-  const resultadoPreparar = useMemo(() => {
-    const vf = num(volumeFinal);
-    if (!nValido || !Number.isFinite(vf) || vf <= 0) return null;
-    const produto = vf / (nNum + 1);
-    const agua = vf - produto;
-    return { produto, agua, volumeFinal: vf };
-  }, [volumeFinal, nNum, nValido]);
-
-  // Cálculo: Tenho X de produto → quanto de água adicionar e volume final.
-  const resultadoTenho = useMemo(() => {
-    const p = num(produtoQtd);
-    if (!nValido || !Number.isFinite(p) || p <= 0) return null;
-    const agua = p * nNum;
-    const total = p * (nNum + 1);
-    return { produto: p, agua, volumeFinal: total };
-  }, [produtoQtd, nNum, nValido]);
+  const resultadoPreparar = useMemo(
+    () => calcularDiluicao('preparar', num(volumeFinal), nNum),
+    [volumeFinal, nNum],
+  );
+  const resultadoTenho = useMemo(
+    () => calcularDiluicao('tenho', num(produtoQtd), nNum),
+    [produtoQtd, nNum],
+  );
 
   return (
     <div className="space-y-4 pb-4">
       <div>
-        <h2 className="text-base font-semibold tracking-tight md:text-xl">{t.title}</h2>
+        <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">{t.title}</h2>
         <p className="text-sm text-muted-foreground md:text-base">
           {modo === 'preparar' ? t.subtitlePrepare : t.subtitleHave}
         </p>
@@ -223,24 +208,25 @@ export function DiluicaoProduto() {
       <div className="space-y-4 rounded-lg border border-border bg-card p-4">
         {/* Alavanca de modo */}
         <div className="flex flex-col items-center gap-1.5 border-b border-border pb-4">
-          <Label className="text-base text-muted-foreground md:text-lg">{t.modeLabel}</Label>
-          <LabeledSwitch
+          <Label className="text-base font-medium text-foreground">{t.modeLabel}</Label>
+          <LabeledSwitch<Modo>
             value={modo}
             onChange={setModo}
             off={{ value: 'preparar', label: t.modePrepare }}
             on={{ value: 'tenho', label: t.modeHave }}
             size="lg"
-            aria-label="Modo de cálculo da diluição"
+            aria-label={t.modeLabel}
           />
         </div>
 
         {/* Proporção + presets — centralizado */}
         <div className="flex flex-col items-center gap-2">
-          <Label className="text-base text-muted-foreground md:text-lg">{t.ratioLabel}</Label>
+          <Label htmlFor="diluicao-proporcao" className="text-base font-medium text-foreground">{t.ratioLabel}</Label>
           <div className="flex items-center gap-3">
             <span className="text-2xl font-bold text-muted-foreground">{t.ratioPrefix}</span>
             <NumericInput
               decimal
+              id="diluicao-proporcao"
               value={n}
               onValueChange={setN}
               placeholder="10"
@@ -256,7 +242,7 @@ export function DiluicaoProduto() {
                   type="button"
                   onClick={() => setN(String(p))}
                   className={cn(
-                    'rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
+                    'min-h-11 rounded-full border px-3 py-2 text-sm font-medium transition-colors',
                     ativo
                       ? 'border-primary bg-primary text-primary-foreground'
                       : 'border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground',
@@ -273,11 +259,13 @@ export function DiluicaoProduto() {
         {modo === 'preparar' ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:mx-auto lg:max-w-md">
             <div className="space-y-1.5">
-              <Label className="text-base text-muted-foreground md:text-lg">
+              <Label htmlFor="diluicao-volume" className="text-base font-medium text-foreground">
                 {t.volumeFinalLabel}
               </Label>
               <NumericInput
                 decimal
+                id="diluicao-volume"
+                aria-label={t.volumeFinalLabel}
                 value={volumeFinal}
                 onValueChange={setVolumeFinal}
                 placeholder="Ex: 500"
@@ -285,15 +273,15 @@ export function DiluicaoProduto() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-base text-muted-foreground md:text-lg">{t.unitLabel}</Label>
+              <Label className="text-base font-medium text-foreground">{t.unitLabel}</Label>
               <div className="flex h-14 items-center justify-center rounded-lg border border-border bg-background">
-                <LabeledSwitch
+                <LabeledSwitch<Unidade>
                   value={unidade}
                   onChange={setUnidade}
                   off={{ value: 'ml', label: 'mL' }}
                   on={{ value: 'l', label: 'L' }}
                   size="lg"
-                  aria-label="Unidade de volume"
+                  aria-label={t.unitLabel}
                 />
               </div>
             </div>
@@ -301,11 +289,13 @@ export function DiluicaoProduto() {
         ) : (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:mx-auto lg:max-w-md">
             <div className="space-y-1.5">
-              <Label className="text-base text-muted-foreground md:text-lg">
+              <Label htmlFor="diluicao-produto" className="text-base font-medium text-foreground">
                 {t.productQtyLabel}
               </Label>
               <NumericInput
                 decimal
+                id="diluicao-produto"
+                aria-label={t.productQtyLabel}
                 value={produtoQtd}
                 onValueChange={setProdutoQtd}
                 placeholder="Ex: 50"
@@ -313,15 +303,15 @@ export function DiluicaoProduto() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-base text-muted-foreground md:text-lg">{t.unitLabel}</Label>
+              <Label className="text-base font-medium text-foreground">{t.unitLabel}</Label>
               <div className="flex h-14 items-center justify-center rounded-lg border border-border bg-background">
-                <LabeledSwitch
+                <LabeledSwitch<Unidade>
                   value={unidade}
                   onChange={setUnidade}
                   off={{ value: 'ml', label: 'mL' }}
                   on={{ value: 'l', label: 'L' }}
                   size="lg"
-                  aria-label="Unidade de volume"
+                  aria-label={t.unitLabel}
                 />
               </div>
             </div>

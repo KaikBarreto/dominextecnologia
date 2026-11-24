@@ -97,8 +97,8 @@ REVOKE ALL ON FUNCTION public.fiscal_get_goods_source_snapshot_internal_v1(text,
 CREATE FUNCTION public.fiscal_get_goods_source_snapshot(p_source_type text, p_source_id uuid)
 RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = pg_catalog, public AS $$
 DECLARE
-  v_result jsonb; v_item jsonb; v_items jsonb := '[]'; v_count integer; v_index integer := 0;
-  v_items_total numeric; v_discount numeric; v_allocated numeric := 0; v_share numeric; v_net numeric;
+  v_result jsonb; v_items jsonb := '[]';
+  v_items_total numeric; v_discount numeric;
 BEGIN
   IF public.fiscal_can_emit_goods() IS NOT TRUE THEN
     RAISE EXCEPTION 'Você não tem acesso à emissão fiscal.' USING ERRCODE = '42501';
@@ -118,17 +118,27 @@ BEGIN
     IF v_discount < 0 OR v_discount > v_items_total THEN
       RAISE EXCEPTION 'Os totais da venda precisam ser revisados antes da emissão.' USING ERRCODE = '22023';
     END IF;
-    v_count := jsonb_array_length(v_result->'items');
-    FOR v_item IN SELECT value FROM jsonb_array_elements(v_result->'items') LOOP
-      v_index := v_index + 1;
-      v_share := CASE WHEN v_index = v_count THEN v_discount - v_allocated
-        WHEN v_items_total = 0 THEN 0 ELSE round(v_discount * (v_item->>'total')::numeric / v_items_total, 2) END;
-      v_allocated := v_allocated + v_share;
-      v_net := round((v_item->>'total')::numeric - v_share, 2);
-      v_item := v_item || jsonb_build_object('unit', (SELECT coalesce(nullif(oi.unit, ''), v_item->>'unit') FROM public.pdv_order_items oi WHERE oi.id = (v_item->>'sourceItemId')::uuid AND oi.company_id = public.get_user_company_id(auth.uid())));
-      v_items := v_items || jsonb_build_array(v_item || jsonb_build_object('total', v_net,
-        'discount', round((v_item->>'quantity')::numeric * (v_item->>'unitPrice')::numeric - v_net, 2)));
-    END LOOP;
+    -- Maior resto em centavos: mesmas bases por item na importação e na Edge.
+    WITH items AS (
+      SELECT item, ordinal, round((item->>'total')::numeric*100) AS net_cents
+      FROM jsonb_array_elements(v_result->'items') WITH ORDINALITY AS entries(item,ordinal)
+    ), shares AS (
+      SELECT *, coalesce(trunc(round(v_discount*100)*net_cents/nullif(round(v_items_total*100),0)),0) AS base_cents,
+        coalesce(mod(round(v_discount*100)*net_cents,nullif(round(v_items_total*100),0)),0) AS remainder
+      FROM items
+    ), ranked AS (
+      SELECT *, row_number() OVER (ORDER BY remainder DESC,ordinal) AS priority,
+        sum(base_cents) OVER () AS allocated
+      FROM shares
+    ), allocated AS (
+      SELECT *, base_cents + CASE WHEN priority <= round(v_discount*100)-allocated THEN 1 ELSE 0 END AS discount_cents FROM ranked
+    )
+    SELECT coalesce(jsonb_agg(item || jsonb_build_object(
+      'total',(net_cents-discount_cents)/100,
+      'discount',round((item->>'quantity')::numeric*(item->>'unitPrice')::numeric-(net_cents-discount_cents)/100,2),
+      'unit',(SELECT coalesce(nullif(oi.unit,''),item->>'unit') FROM public.pdv_order_items oi
+        WHERE oi.id=(item->>'sourceItemId')::uuid AND oi.company_id=public.get_user_company_id(auth.uid()))
+    ) ORDER BY ordinal),'[]'::jsonb) INTO v_items FROM allocated;
     v_result := jsonb_set(v_result, '{items}', v_items);
     -- Só cobertura válida; troco fica no valor bruto e não altera o líquido comercial.
     SELECT jsonb_set(v_result, '{payments}', coalesce(jsonb_agg(jsonb_build_object(
@@ -139,7 +149,7 @@ BEGIN
         WHEN 'credito_loja' THEN '05' WHEN 'vale_alimentacao' THEN '10' WHEN 'vale_refeicao' THEN '11'
         WHEN 'vale_presente' THEN '12' WHEN 'vale_combustivel' THEN '13' WHEN 'duplicata' THEN '14'
         WHEN 'boleto' THEN '15' WHEN 'deposito' THEN '16' WHEN 'fidelidade' THEN '19' WHEN 'pontos' THEN '19' ELSE '99' END,
-      'amount', p.amount + p.change_amount, 'change', p.change_amount) ORDER BY p.received_at, p.id), '[]'::jsonb))
+      'amount', p.amount + p.change_amount, 'change', p.change_amount, 'deferred', p.method = 'fiado') ORDER BY p.received_at, p.id), '[]'::jsonb))
       INTO v_result FROM public.pdv_order_payments p
       WHERE p.order_id = p_source_id AND p.company_id = public.get_user_company_id(auth.uid())
         AND (p.contract_version IS DISTINCT FROM 2 OR p.coverage_status = 'authorized');

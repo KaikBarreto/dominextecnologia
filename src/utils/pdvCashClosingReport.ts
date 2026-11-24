@@ -12,7 +12,7 @@ function escapeHtml(value: unknown): string {
     .split("'").join('&#039;');
 }
 
-const kindLabels: Record<string, string> = {
+export const kindLabels: Record<string, string> = {
   opening: 'Abertura',
   cash_receipt: 'Recebimento em dinheiro',
   cash_payment: 'Pagamento em dinheiro',
@@ -24,6 +24,23 @@ const kindLabels: Record<string, string> = {
   surplus: 'Sobra de caixa',
   reversal: 'Compensação',
 };
+
+// Mapa local (e não o de cashExport/labels): aquele módulo importa este, e o
+// import de volta criaria um ciclo que quebra o relatório ao carregar.
+export const salePaymentLabels: Record<string, string> = {
+  dinheiro: 'Dinheiro',
+  pix: 'Pix',
+  transferencia: 'Transferência',
+  debito: 'Cartão de débito',
+  credito: 'Cartão de crédito',
+  fiado: 'Fiado',
+  voucher: 'Voucher',
+  saldo_cliente: 'Saldo do cliente',
+  pontos: 'Pontos',
+};
+
+const salePaymentLabel = (method: string) => salePaymentLabels[method] ?? 'Outra forma';
+const salesWord = (count: number) => `${count} ${count === 1 ? 'venda' : 'vendas'}`;
 
 export function renderPdvCashClosingReportHtml(report: PdvCashV2SessionReport): string {
   const summary = [
@@ -42,6 +59,15 @@ export function renderPdvCashClosingReportHtml(report: PdvCashV2SessionReport): 
       <td class="amount ${entry.amount < 0 ? 'negative' : ''}">${escapeHtml(money.format(entry.amount))}</td>
     </tr>`).join('');
 
+  const salesByMethodBoxes = report.sales.byMethod.map((row) => `<div class="box"><span>${escapeHtml(`${salePaymentLabel(row.method)} (${salesWord(row.count)})`)}</span><strong>${escapeHtml(money.format(row.amount))}</strong></div>`).join('');
+  const saleRows = report.sales.orders.map((order) => `
+    <tr>
+      <td>${escapeHtml(`Nº ${order.number}`)}</td>
+      <td>${escapeHtml(dateTime.format(new Date(order.createdAt)))}</td>
+      <td>${escapeHtml(order.methods.length ? order.methods.map(salePaymentLabel).join(' + ') : 'Sem forma de pagamento')}${order.status === 'cancelado_parcial' ? ' <span class="hint-inline">(cancelada em parte)</span>' : ''}</td>
+      <td class="amount">${escapeHtml(money.format(order.total))}</td>
+    </tr>`).join('');
+
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
@@ -53,7 +79,7 @@ export function renderPdvCashClosingReportHtml(report: PdvCashV2SessionReport): 
     main{width:min(920px,calc(100% - 32px));margin:32px auto;background:#fff;border:1px solid #e4e4e7;border-radius:18px;padding:32px}
     header{display:flex;justify-content:space-between;gap:24px;border-bottom:2px solid #18181b;padding-bottom:20px}h1{font-size:24px;margin:0 0 6px}p{margin:4px 0;color:#52525b}.meta{text-align:right}
     .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:22px 0}.box{border:1px solid #e4e4e7;border-radius:12px;padding:14px}.box span{display:block;color:#71717a;font-size:12px}.box strong{display:block;margin-top:4px;font-size:17px}.strong{background:#18181b;color:#fff;border-color:#18181b}.strong span{color:#d4d4d8}
-    h2{font-size:15px;margin:24px 0 10px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 8px;border-bottom:1px solid #e4e4e7;text-align:left}th{color:#52525b;font-weight:700}.amount{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}.negative{color:#b91c1c}.notes{padding:14px;border:1px solid #e4e4e7;border-radius:12px;white-space:pre-wrap}
+    h2{font-size:15px;margin:24px 0 10px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 8px;border-bottom:1px solid #e4e4e7;text-align:left}th{color:#52525b;font-weight:700}.amount{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}.negative{color:#b91c1c}.hint{margin:0 0 4px;font-size:12px}.hint-inline{color:#71717a;font-size:11px}.notes{padding:14px;border:1px solid #e4e4e7;border-radius:12px;white-space:pre-wrap}
     .actions{display:flex;justify-content:flex-end;margin-top:24px}.actions button{border:0;border-radius:10px;background:#18181b;color:white;padding:12px 18px;font:inherit;font-weight:700;cursor:pointer}
     @media(max-width:680px){main{width:100%;margin:0;border:0;border-radius:0;padding:20px}.grid{grid-template-columns:1fr 1fr}header{display:block}.meta{text-align:left;margin-top:12px}table{font-size:11px}}
     @media print{body{background:#fff}main{width:100%;margin:0;border:0;border-radius:0;padding:0}.actions{display:none}@page{margin:12mm}}
@@ -71,7 +97,11 @@ export function renderPdvCashClosingReportHtml(report: PdvCashV2SessionReport): 
       <div class="box strong"><span>Contado</span><strong>${escapeHtml(money.format(report.countedAmount))}</strong></div>
       <div class="box ${report.difference !== 0 ? 'strong' : ''}"><span>Diferença</span><strong>${escapeHtml(money.format(report.difference))}</strong></div>
     </section>
-    <h2>Movimentações deste caixa</h2>
+    <h2>Vendas deste caixa</h2>
+    <p class="hint">${escapeHtml(`${salesWord(report.sales.count)}, total de ${money.format(report.sales.total)}, em todas as formas de pagamento. Só o dinheiro entra na gaveta: Pix, cartão e as demais formas aparecem aqui para conferência e não mudam o valor esperado.`)}</p>
+    ${report.sales.byMethod.length ? `<section class="grid">${salesByMethodBoxes}</section>` : ''}
+    <table><thead><tr><th>Venda</th><th>Data</th><th>Forma de pagamento</th><th class="amount">Valor</th></tr></thead><tbody>${saleRows || '<tr><td colspan="4">Nenhuma venda neste caixa.</td></tr>'}</tbody></table>
+    <h2>Movimentações da gaveta</h2>
     <table><thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th class="amount">Valor</th></tr></thead><tbody>${movementRows || '<tr><td colspan="4">Nenhuma movimentação.</td></tr>'}</tbody></table>
     <h2>Observação do fechamento</h2><div class="notes">${escapeHtml(report.notes || 'Nenhuma observação informada.')}</div>
     <div class="actions"><button type="button" onclick="window.print()">Imprimir</button></div>

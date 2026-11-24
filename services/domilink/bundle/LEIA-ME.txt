@@ -1,0 +1,67 @@
+DomiLink 0.1.0 — pacote de FONTES PYTHON
+
+Este ZIP não é um instalador nem um aplicativo assinado. Requer Python 3.9+
+instalado e internet para baixar dependências. Windows, macOS e Linux usam
+o mesmo código; drivers nativos e permissões variam por equipamento.
+
+1. Extraia TODO o ZIP em uma pasta local. Não execute dentro do ZIP.
+2. Abra o terminal nessa pasta. Confira que python (Windows) ou python3
+   (macOS/Linux) é o Python 3.9+ instalado por você.
+3. Crie um ambiente virtual:
+     Windows:      python -m venv .venv
+     macOS/Linux:  python3 -m venv .venv
+4. Instale somente os recursos necessários, usando o Python desse ambiente:
+     Windows:      .venv\Scripts\python.exe -m pip install ".[all]"
+     macOS/Linux:  .venv/bin/python -m pip install ".[all]"
+   "all" inclui suporte serial e ESC/POS; não inclui PDF/GDI do Windows.
+   Para somente dispositivos virtuais, instale "." em vez de ".[all]".
+   No macOS/Linux, PDF usa CUPS/lp, que deve estar instalado e configurado.
+   No Windows, PDF requer pywin32/Pillow/PyMuPDF:
+     .venv\Scripts\python.exe -m pip install ".[windows-print]"
+   PyMuPDF tem licença AGPL ou comercial: escolha licença compatível antes
+   de instalar/distribuir esse backend. Sem ele, texto/ESC-POS continua opcional.
+5. Crie sua configuração. Troque a URL fictícia abaixo pela ORIGEM EXATA
+   do app aberto no navegador (https://dominio e porta se houver; sem caminho):
+     Windows:      python configurar.py --origin https://app.example.invalid
+     macOS/Linux:  python3 configurar.py --origin https://app.example.invalid
+   O exemplo acima NÃO conecta ao seu app: precisa ser substituído.
+   O comando nunca sobrescreve config.toml existente.
+6. Inicie manualmente e mantenha o terminal aberto:
+     Windows:      python iniciar.py
+     macOS/Linux:  python3 iniciar.py
+7. No app, abra Configurações → Integrações → DomiLink, ative a conexão
+   e digite o código de seis números mostrado no terminal. Ele vale uma
+   vez por 120 segundos. Reinicie o DomiLink para gerar outro código.
+   Fechar o terminal encerra o serviço; a sessão do navegador também expira.
+
+O serviço escuta SOMENTE em 127.0.0.1:8765. Não exponha por rede, túnel,
+proxy ou Docker. O token é temporário, não é a senha da conta.
+Sua configuração contém somente dispositivos virtuais no primeiro uso:
+os testes não imprimem papel nem leem peso real. Para equipamentos reais,
+edite config.toml após conferir conexão, porta, perfil e manual. Nunca
+copie credenciais, certificados, dados de clientes nem conteúdo de impressão.
+
+Descoberta passiva (não abre portas nem imprime):
+  .venv/bin/domilink --list-ports
+  .venv/bin/domilink --list-printers
+No Windows use .venv\Scripts\domilink.exe.
+
+Compatibilidade IMPLEMENTADA e testada virtualmente, sem homologação física:
+- PDF: CUPS macOS/Linux; raster/GDI opcional Windows.
+- Texto/ESC-POS: rede, USB e serial, perfil e backend nativo explícitos.
+- Balança serial: UPX ASCII, Toledo ASCII, Filizola ASCII, genérico/legado;
+  não inclui BCD nem protocolos proprietários não descritos.
+- Leitor serial: frames terminados por CR/LF/ETX.
+- Leitor USB/HID funciona como teclado do sistema; câmera/QR usa navegador.
+  Esses caminhos não exigem driver do serviço e não foram testados em hardware.
+
+Aceitação do spooler não comprova papel impresso. Em erro/timeout, confira
+a fila antes de tentar novamente. Retry da mesma intenção deve manter a
+mesma chave; deduplicação só permanece no processo por pelo menos uma hora,
+não sobrevive ao reinício. Não repetir impressões antigas automaticamente.
+
+Não inclui emissão fiscal, NFC-e, SAT, certificado, serviço de background,
+atualizador ou instalador de um clique. Não promete suporte universal.
+Consulte README.md e ECOTRAY_PROVENANCE.md para contrato e limites.
+manifest.json contém SHA-256 dos arquivos do pacote; o manifest de download
+publicado ao lado do ZIP contém SHA-256 do arquivo completo.

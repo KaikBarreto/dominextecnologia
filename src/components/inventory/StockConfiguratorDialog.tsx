@@ -23,7 +23,7 @@ import { useStockAccess } from '@/hooks/useStockAccess';
 import { useToast } from '@/hooks/use-toast';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
-import { useStocks, type Stock } from '@/hooks/useStocks';
+import { useStocks, useStockManagement, type Stock } from '@/hooks/useStocks';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 
 /** Papéis que sempre têm acesso a qualquer local (o banco os libera sozinho). */
@@ -43,11 +43,12 @@ export function StockConfiguratorDialog({ open, onOpenChange, stock, onOpenTrans
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory.stockConfigurator;
   const { toast } = useToast();
-  const { items, isLoading: itemsLoading, getPresenceForStock, addGroupToStock, setStockMaterials, stockLevelsLoaded } = useInventory();
+  const { items, isLoading: itemsLoading, error: itemsError, stockLevelsError, getPresenceForStock, addGroupToStock, setStockMaterials, stockLevelsLoaded } = useInventory();
   const { groups } = useMaterialGroups();
   const { updateStockPurpose } = useStocks();
   const { hasModule } = useCompanyModules();
   const pdvEnabled = hasModule('pdv');
+  const { canManage, canManageAccess, companyId } = useStockManagement();
 
   const [search, setSearch] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
@@ -64,7 +65,7 @@ export function StockConfiguratorDialog({ open, onOpenChange, stock, onOpenTrans
   // UI usa pra skeleton/controles desabilitados e pra travar o Salvar.
   const hydratedRef = useRef(false);
   const [itemsHydrated, setItemsHydrated] = useState(false);
-  const stocksSectionReady = stockLevelsLoaded && !itemsLoading;
+  const stocksSectionReady = stockLevelsLoaded && !itemsLoading && !itemsError && !stockLevelsError;
 
   // Zera a trava a cada abertura (ou troca do local sendo configurado).
   useEffect(() => {
@@ -77,7 +78,7 @@ export function StockConfiguratorDialog({ open, onOpenChange, stock, onOpenTrans
   // o dialog antes da query de stockLevels resolver fazia getPresenceForStock
   // cair no default permissivo (true) pra todo material.
   useEffect(() => {
-    if (!open) return;
+    if (!open || !canManage) return;
     if (hydratedRef.current) return;
     if (!stocksSectionReady) return;
     const map: Record<string, boolean> = {};
@@ -92,10 +93,15 @@ export function StockConfiguratorDialog({ open, onOpenChange, stock, onOpenTrans
     // disparar o efeito em todo render; o gate real é open + stocksSectionReady,
     // com hydratedRef travando a segunda execução.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, stock.id, stocksSectionReady]);
+  }, [open, stock.id, stocksSectionReady, canManage]);
 
   // --- Aba ativa (Itens | Acesso | Tipo) ---
   const [activeTab, setActiveTab] = useState<'items' | 'access' | 'purpose'>('items');
+  useEffect(() => {
+    setActiveTab('items');
+    setSearch('');
+    setSelectedGroupId('');
+  }, [open, stock.id, canManageAccess]);
 
   // --- Tipo do local (Loja | Operacional) — só com o módulo PDV e Loja ---
   const [purpose, setPurpose] = useState<'operacional' | 'pdv'>('operacional');
@@ -108,6 +114,7 @@ export function StockConfiguratorDialog({ open, onOpenChange, stock, onOpenTrans
   }, [stock.id, stock.purpose, open]);
 
   const handleSavePurpose = async () => {
+    if (!canManage || !pdvEnabled) return;
     setIsSavingPurpose(true);
     try {
       await updateStockPurpose.mutateAsync({ id: stock.id, purpose });
@@ -120,8 +127,9 @@ export function StockConfiguratorDialog({ open, onOpenChange, stock, onOpenTrans
   };
 
   // --- Acesso por local ---
-  const { users, error: usersError } = useUsers();
-  const { access, isLoading: accessLoading, setAccess } = useStockAccess(stock.id, open, {
+  const { users: allUsers, isLoading: usersLoading, error: usersError } = useUsers();
+  const users = useMemo(() => allUsers.filter(user => user.company_id === companyId), [allUsers, companyId]);
+  const { access, isLoading: accessLoading, error: accessError, setAccess } = useStockAccess(stock.id, open && canManageAccess, {
     successMessage: t.access.successMessage,
     errorMessage: t.access.errorMessage,
   });
@@ -141,19 +149,24 @@ export function StockConfiguratorDialog({ open, onOpenChange, stock, onOpenTrans
   // { [user_id]: boolean } — só dos usuários controláveis
   const [accessMap, setAccessMap] = useState<Record<string, boolean>>({});
   const [isSavingAccess, setIsSavingAccess] = useState(false);
+  const [accessHydrated, setAccessHydrated] = useState(false);
+  const accessHydratedRef = useRef(false);
+  useEffect(() => { accessHydratedRef.current = false; setAccessHydrated(false); }, [open, stock.id]);
 
   // Hidrata o estado de acesso quando a query resolve.
   useEffect(() => {
-    if (!access) return;
+    if (!open || !access || usersLoading || usersError || accessLoading || accessError || !canManageAccess || accessHydratedRef.current) return;
     setRestricted(access.restricted);
     const map: Record<string, boolean> = {};
     for (const u of controllableUsers) {
       map[u.user_id] = access.user_ids.includes(u.user_id);
     }
     setAccessMap(map);
+    accessHydratedRef.current = true;
+    setAccessHydrated(true);
     // controllableUsers muda de referência conforme users carrega; access é a fonte.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [access, users]);
+  }, [access, users, open, usersLoading, usersError, accessError, accessLoading, canManageAccess]);
 
   // Reseta busca/grupo/aba ao abrir. A hidratação de presenceMap é feita pelo
   // efeito acima (guardado por hydratedRef) — não aqui, pra nunca rodar antes
@@ -168,6 +181,8 @@ export function StockConfiguratorDialog({ open, onOpenChange, stock, onOpenTrans
   };
 
   const handleSaveAccess = async () => {
+    if (!canManageAccess || !accessHydrated || accessLoading || accessError || usersError) return;
+    if (restricted && !controllableUsers.some(user => accessMap[user.user_id])) return;
     setIsSavingAccess(true);
     try {
       const userIds = restricted
@@ -209,7 +224,7 @@ export function StockConfiguratorDialog({ open, onOpenChange, stock, onOpenTrans
   };
 
   const handleAddGroup = async () => {
-    if (!selectedGroupId || !itemsHydrated) return;
+    if (!canManage || !selectedGroupId || !itemsHydrated) return;
     setIsAddingGroup(true);
     try {
       await addGroupToStock.mutateAsync({ stockId: stock.id, groupId: selectedGroupId });
@@ -229,7 +244,7 @@ export function StockConfiguratorDialog({ open, onOpenChange, stock, onOpenTrans
   };
 
   const handleSave = async () => {
-    if (!itemsHydrated) return;
+    if (!canManage || !itemsHydrated || !stocksSectionReady) return;
     setIsSaving(true);
     // Só considera chaves que EXISTEM no mapa — ausente do mapa nunca é
     // tratado como presente (era esse default cego que corrompia a presença
@@ -270,9 +285,10 @@ export function StockConfiguratorDialog({ open, onOpenChange, stock, onOpenTrans
 
   return (
     <ResponsiveModal
-      open={open}
+      open={open && canManage}
       onOpenChange={handleOpenChange}
-      title={t.dialogTitle.replace('{stock}', stock.name)}
+      title={t.dialogTitle}
+      description={stock.name}
       className="sm:max-w-[520px]"
       footer={
         activeTab === 'items' ? (
@@ -280,7 +296,7 @@ export function StockConfiguratorDialog({ open, onOpenChange, stock, onOpenTrans
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1" disabled={isSaving}>
               {t.cancel}
             </Button>
-            <Button onClick={handleSave} disabled={isSaving || !itemsHydrated} className="flex-1">
+            <Button onClick={handleSave} disabled={isSaving || !itemsHydrated || !stocksSectionReady} className="flex-1">
               {isSaving ? t.saving : t.save}
             </Button>
           </div>
@@ -289,7 +305,7 @@ export function StockConfiguratorDialog({ open, onOpenChange, stock, onOpenTrans
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1" disabled={isSavingAccess}>
               {t.cancel}
             </Button>
-            <Button onClick={handleSaveAccess} disabled={isSavingAccess} className="flex-1">
+            <Button onClick={handleSaveAccess} disabled={isSavingAccess || !accessHydrated || accessLoading || !!accessError || !!usersError || !canManageAccess || (restricted && !controllableUsers.some(user => accessMap[user.user_id]))} className="flex-1">
               {isSavingAccess ? t.access.saving : t.access.save}
             </Button>
           </div>
@@ -312,7 +328,7 @@ export function StockConfiguratorDialog({ open, onOpenChange, stock, onOpenTrans
           onTabChange={(v) => setActiveTab(v as 'items' | 'access' | 'purpose')}
           tabs={[
             { value: 'items', label: t.access.tabItems, icon: <Package className="h-4 w-4" /> },
-            { value: 'access', label: t.access.tabLabel, icon: <Users className="h-4 w-4" /> },
+            ...(canManageAccess ? [{ value: 'access', label: t.access.tabLabel, icon: <Users className="h-4 w-4" /> }] : []),
             // Só com o módulo PDV e Loja — sem ele a aba nem existe (a tela
             // de configuração de local fica idêntica ao que já era).
             ...(pdvEnabled
@@ -323,6 +339,7 @@ export function StockConfiguratorDialog({ open, onOpenChange, stock, onOpenTrans
 
         {activeTab === 'items' && (
         <div className="space-y-4">
+        {(itemsError || stockLevelsError) && <p role="alert" className="text-sm text-destructive">Não foi possível confirmar os materiais e saldos. Feche e tente novamente.</p>}
         {/* Adicionar por grupo */}
         {groups.length > 0 && (
           <div className="flex items-center gap-2">
@@ -452,8 +469,10 @@ export function StockConfiguratorDialog({ open, onOpenChange, stock, onOpenTrans
         </div>
         )}
 
-        {activeTab === 'access' && (
+        {activeTab === 'access' && canManageAccess && (
         <div className="space-y-4">
+          {(accessError || usersError) && <p role="alert" className="text-sm text-destructive">Não foi possível confirmar o acesso deste local. Feche e tente novamente.</p>}
+          {!accessHydrated && !accessError && !usersError && <p role="status" className="text-sm text-muted-foreground">Carregando acesso...</p>}
           {/* Toggle: aberto (padrão) vs restrito */}
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-3">
@@ -464,6 +483,7 @@ export function StockConfiguratorDialog({ open, onOpenChange, stock, onOpenTrans
                 off={{ value: 'off', label: t.access.openLabel }}
                 on={{ value: 'on', label: t.access.restrictedLabel }}
                 size="default"
+                disabled={!accessHydrated || !!accessError || !!usersError || isSavingAccess}
                 aria-label={t.access.restrictLabel}
               />
             </div>
@@ -471,6 +491,7 @@ export function StockConfiguratorDialog({ open, onOpenChange, stock, onOpenTrans
               {restricted ? t.access.restrictedHint : t.access.openHint}
             </p>
           </div>
+          {accessHydrated && restricted && !controllableUsers.some(user => accessMap[user.user_id]) && <p role="alert" className="text-sm text-destructive">Selecione pelo menos uma pessoa para restringir o acesso. Administradores e gestores sempre têm acesso.</p>}
 
           {/* Lista de usuários (só quando restrito) */}
           {restricted && (
@@ -550,6 +571,8 @@ export function StockConfiguratorButton({ stock, onOpenTransfer }: { stock: Stoc
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory.stockConfigurator;
   const [open, setOpen] = useState(false);
+  const { canManage } = useStockManagement();
+  if (!canManage) return null;
 
   return (
     <>

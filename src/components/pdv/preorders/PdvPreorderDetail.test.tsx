@@ -1,3 +1,5 @@
+vi.mock('@/hooks/usePdvDomiLinkWorkspace', () => ({ usePdvDomiLinkWorkspace: () => ({ scannerControl: null, weighControl: undefined, capture: () => () => true }) }));
+vi.mock('@/components/pdv/coupons/PdvCouponControl', () => ({ PdvCouponControl: () => null }));
 import {
   fireEvent,
   render,
@@ -6,9 +8,9 @@ import {
   within,
 } from "@testing-library/react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { PdvPreorderDetail } from "./PdvPreorderDetail";
+import { PdvPreorderDetail, projectPdvPreorderEditorSnapshot, type PdvPreorderEditorSnapshot } from "./PdvPreorderDetail";
 import detailSource from "./PdvPreorderDetail.tsx?raw";
-import type { PdvPreorderDetail as Detail } from "@/hooks/usePdvPreorders";
+import { PdvPreorderDomainError, type PdvPreorderDetail as Detail } from "@/hooks/usePdvPreorders";
 
 vi.mock("@/components/customers/CustomerSelectField", () => ({
   CustomerSelectField: ({
@@ -143,9 +145,8 @@ describe("PdvPreorderDetail", () => {
   it("oferece edição de preço somente a quem pode valorizar", () => {
     render(<PdvPreorderDetail {...baseProps} canValue />);
 
-    expect(
-      screen.getByRole("button", { name: "Salvar preços" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Gerar pedido" })).toBeDisabled();
+    expect(screen.queryByTestId("pdv-preorder-line-editor")).not.toBeInTheDocument();
     expect(screen.getAllByLabelText("Preço unitário")).toHaveLength(2);
     expect(screen.queryByText("Faltam preços")).not.toBeInTheDocument();
   });
@@ -159,6 +160,20 @@ describe("PdvPreorderDetail", () => {
     expect(action).toBeEnabled(); fireEvent.click(action);
     await waitFor(() => expect(onConvert).toHaveBeenCalledOnce());
     expect(onValue).not.toHaveBeenCalled();
+  });
+
+  it("permite salvar preços alterados no rodapé antes de converter o orçamento", async () => {
+    const onValue = vi.fn().mockResolvedValue({});
+    const onConvert = vi.fn();
+    render(<PdvPreorderDetail {...baseProps} canValue canConvert onValue={onValue} onConvert={onConvert} />);
+    expect(screen.getByRole('button', {name:'Gerar pedido'})).toBeDisabled();
+    fireEvent.change(screen.getAllByLabelText('Preço unitário')[0], {target:{value:'25,00'}});
+    const saveActions = screen.getAllByRole('button', {name:'Salvar preços'});
+    expect(saveActions).toHaveLength(1);
+    saveActions.forEach(button => expect(button).toBeEnabled());
+    fireEvent.click(saveActions[saveActions.length - 1]);
+    await waitFor(() => expect(onValue).toHaveBeenCalledOnce());
+    expect(onConvert).not.toHaveBeenCalled();
   });
 
   it("quem só valoriza pode editar preços sem receber ação Gerar pedido", () => {
@@ -327,10 +342,161 @@ describe("PdvPreorderDetail", () => {
   it("agrupa comprovante e atalhos no menu de ações sem esconder o fluxo principal", async () => {
     render(<PdvPreorderDetail {...baseProps} canValue />);
 
-    expect(screen.getByRole("button", { name: "Ações do orçamento" })).toHaveAttribute("aria-haspopup", "menu");
+    fireEvent.click(screen.getByRole("button", { name: "Observações e detalhes" }));
+    expect(await screen.findByRole("button", { name: "Ações do orçamento" })).toHaveAttribute("aria-haspopup", "menu");
     expect(detailSource).toContain("<DropdownMenuLabel>Ações</DropdownMenuLabel>");
     expect(detailSource).toContain("Atalhos do orçamento");
     expect(detailSource).toContain('label="Gerar comprovante"');
-    expect(screen.getByRole("button", { name: "Salvar preços" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Concluir" })).toBeInTheDocument();
+  });
+  it("mantém conteúdo e revisão base quando uma consulta atualiza o orçamento durante edição", async () => {
+    const onEditorSnapshotChange = vi.fn();
+    const {rerender} = render(<PdvPreorderDetail {...baseProps} canValue onEditorSnapshotChange={onEditorSnapshotChange} />);
+    fireEvent.change(screen.getAllByLabelText("Preço unitário")[0], {target:{value:"25"}});
+    rerender(<PdvPreorderDetail {...baseProps} detail={{...detail, preorder:{...detail.preorder,revision:8},items:detail.items.map(item=>({...item,unit_price:99}))}} canValue onEditorSnapshotChange={onEditorSnapshotChange} />);
+    expect(screen.getAllByLabelText("Preço unitário")[0]).toHaveValue("25");
+    await waitFor(()=>expect(onEditorSnapshotChange).toHaveBeenLastCalledWith(expect.objectContaining({dirty:true,sourceRevision:2}), expect.objectContaining({total:50,hasMissingPrices:false})));
+  });
+
+  it("aceita revisão autorizada mais nova ao reabrir um backup limpo e mantém a nova base ao valorizar", async () => {
+    let latest: PdvPreorderEditorSnapshot | undefined;
+    let revisionAtValue: number | null | undefined;
+    const onEditorSnapshotChange=vi.fn((snapshot:PdvPreorderEditorSnapshot)=>{latest=snapshot;});
+    const onValue=vi.fn().mockImplementation(async()=>{revisionAtValue=latest?.sourceRevision;return {revision:4};});
+    const cleanBackup:PdvPreorderEditorSnapshot={customerId:"none",stockId:"stock-1",targetTerminalId:"none",notes:"Backup anterior",orderDiscount:"0",coupon:null,dirty:false,sourceRevision:2,lines:[{id:"item-pending",inventoryId:"material-1",itemType:"material",description:"Cimento",quantity:"2",unitPrice:"25",discountAmount:"0",unitFactor:1,sortOrder:0}]};
+    const server={...detail,preorder:{...detail.preorder,revision:3,notes:"Revisão encaminhada"},items:[{...detail.items[0],unit_price:25}]};
+    render(<PdvPreorderDetail {...baseProps} detail={server} editorSnapshot={cleanBackup} canValue onValue={onValue} onEditorSnapshotChange={onEditorSnapshotChange} />);
+    await waitFor(()=>expect(latest).toEqual(expect.objectContaining({dirty:false,sourceRevision:3,notes:"Revisão encaminhada"})));
+    fireEvent.change(screen.getByLabelText("Preço unitário"),{target:{value:"26"}});
+    expect(latest).toEqual(expect.objectContaining({dirty:true,sourceRevision:3}));
+    fireEvent.click(screen.getByRole("button",{name:"Salvar preços"}));
+    await waitFor(()=>expect(onValue).toHaveBeenCalledWith(expect.objectContaining({items:[expect.objectContaining({unit_price:26})]})));
+    expect(revisionAtValue).toBe(3);
+  });
+
+  it("uma consulta mais recente substitui o backup limpo sem exigir alteração ou atualização manual", async () => {
+    const onEditorSnapshotChange=vi.fn();
+    const cleanBackup:PdvPreorderEditorSnapshot={customerId:"none",stockId:"stock-1",targetTerminalId:"none",notes:"Anterior",orderDiscount:"0",coupon:null,dirty:false,sourceRevision:2,lines:[{id:"item-pending",inventoryId:"material-1",itemType:"material",description:"Cimento",quantity:"2",unitPrice:"25",discountAmount:"0",unitFactor:1,sortOrder:0}]};
+    const original={...detail,preorder:{...detail.preorder,revision:2},items:[{...detail.items[0],unit_price:25}]};
+    const {rerender}=render(<PdvPreorderDetail {...baseProps} detail={original} editorSnapshot={cleanBackup} canValue onEditorSnapshotChange={onEditorSnapshotChange} />);
+    const latest={...original,preorder:{...original.preorder,revision:3,notes:"Atualizado na conta"},items:[{...original.items[0],unit_price:27}]};
+    rerender(<PdvPreorderDetail {...baseProps} detail={latest} editorSnapshot={cleanBackup} canValue onEditorSnapshotChange={onEditorSnapshotChange} />);
+    await waitFor(()=>expect(screen.getByLabelText("Preço unitário")).toHaveValue("27"));
+    expect(onEditorSnapshotChange).toHaveBeenLastCalledWith(expect.objectContaining({dirty:false,sourceRevision:3,notes:"Atualizado na conta"}),expect.objectContaining({total:54,hasMissingPrices:false}));
+  });
+
+  it.each([[1,'cash-b'],[2,'none']] as const)('inicia novo orçamento com estoque autorizado e escolhe destino somente com %s caixa(s)',async(count,expectedTerminal)=>{
+    const emit=vi.fn();const terminals=[{id:'cash-b',name:'Caixa B',stockId:'stock-b'},...(count===2?[{id:'cash-c',name:'Caixa C',stockId:'stock-b'}]:[])];
+    render(<PdvPreorderDetail {...baseProps} detail={null} draftId="fresh" preferredStockId="stock-b" stocks={[{id:'stock-a',name:'OS A'},{id:'stock-b',name:'Loja B'}]} terminals={terminals} canValue onEditorSnapshotChange={emit}/>);
+    await waitFor(()=>expect(emit).toHaveBeenLastCalledWith(expect.objectContaining({stockId:'stock-b',targetTerminalId:expectedTerminal,dirty:false}),expect.any(Object)));
+  });
+  it('não aplica local inacessível e não muda o local inicial ao chegar outra preferência',async()=>{
+    const emit=vi.fn();const props={...baseProps,detail:null,draftId:'fresh',stocks:[{id:'stock-b',name:'Loja B'}],canValue:true,onEditorSnapshotChange:emit};
+    const app=render(<PdvPreorderDetail {...props} preferredStockId="stock-hidden"/>);
+    await waitFor(()=>expect(emit).toHaveBeenLastCalledWith(expect.objectContaining({stockId:'none',targetTerminalId:'none'}),expect.any(Object)));
+    app.rerender(<PdvPreorderDetail {...props} preferredStockId="stock-b"/>);
+    expect(emit).toHaveBeenLastCalledWith(expect.objectContaining({stockId:'none',targetTerminalId:'none'}),expect.any(Object));
+  });
+  it('não substitui o estoque de snapshot recuperado nem de documento existente',async()=>{
+    const emit=vi.fn();const snapshot:PdvPreorderEditorSnapshot={customerId:'none',stockId:'chosen-stock',targetTerminalId:'chosen-cash',notes:'Local escolhido pelo usuário',orderDiscount:'0',lines:[],coupon:null,dirty:true,sourceRevision:null};
+    const app=render(<PdvPreorderDetail {...baseProps} detail={null} draftId="restored" editorSnapshot={snapshot} preferredStockId="stock-b" stocks={[{id:'stock-b',name:'Loja B'}]} canValue onEditorSnapshotChange={emit}/>);
+    await waitFor(()=>expect(emit).toHaveBeenLastCalledWith(expect.objectContaining({stockId:'chosen-stock',targetTerminalId:'chosen-cash',dirty:true}),expect.any(Object)));app.unmount();
+    render(<PdvPreorderDetail {...baseProps} preferredStockId="stock-b" stocks={[{id:'stock-b',name:'Loja B'}]} terminals={[{id:'cash-b',name:'Caixa B',stockId:'stock-b'}]} canValue onEditorSnapshotChange={emit}/>);
+    await waitFor(()=>expect(emit).toHaveBeenLastCalledWith(expect.objectContaining({stockId:'stock-1',targetTerminalId:'none',sourceRevision:2}),expect.any(Object)));
+  });
+
+  it("Atualizar aplica a revisão já presente no cache mesmo quando o refetch mantém o mesmo objeto", async () => {
+    const onReload=vi.fn();
+    const onValue=vi.fn().mockRejectedValue(new PdvPreorderDomainError("Este orçamento foi alterado. Atualize para continuar.","conflict"));
+    const onEditorSnapshotChange=vi.fn();
+    const {rerender}=render(<PdvPreorderDetail {...baseProps} canValue onReload={onReload} onValue={onValue} onEditorSnapshotChange={onEditorSnapshotChange} />);
+    fireEvent.change(screen.getAllByLabelText("Preço unitário")[0],{target:{value:"25"}});
+    const cachedDetail={...detail,preorder:{...detail.preorder,revision:8},items:detail.items.map(item=>({...item,unit_price:99}))};
+    rerender(<PdvPreorderDetail {...baseProps} detail={cachedDetail} canValue onReload={onReload} onValue={onValue} onEditorSnapshotChange={onEditorSnapshotChange} />);
+    expect(screen.getAllByLabelText("Preço unitário")[0]).toHaveValue("25");
+    fireEvent.click(screen.getByRole("button",{name:"Salvar preços"}));
+    fireEvent.click(await screen.findByRole("button",{name:"Atualizar"}));
+    // structuralSharing: a consulta devolve exatamente a referência já autorizada.
+    rerender(<PdvPreorderDetail {...baseProps} detail={cachedDetail} canValue onReload={onReload} onValue={onValue} onEditorSnapshotChange={onEditorSnapshotChange} />);
+    expect(onReload).toHaveBeenCalledOnce();
+    await waitFor(()=>expect(screen.getAllByLabelText("Preço unitário")[0]).toHaveValue("99"));
+    expect(onEditorSnapshotChange).toHaveBeenLastCalledWith(expect.objectContaining({dirty:false,sourceRevision:8}),expect.objectContaining({hasMissingPrices:false}));
+  });
+
+  it("restaura a aba local sem transformar seu conteúdo em venda financeira", () => {
+    render(<PdvPreorderDetail {...baseProps} detail={null} draftId="aba-1" canValue editorSnapshot={{customerId:"none",stockId:"stock-1",targetTerminalId:"none",notes:"Anotação local",orderDiscount:"0",coupon:null,dirty:true,sourceRevision:null,lines:[{id:"linha-local",inventoryId:"material-1",itemType:"material",description:"Cobre local",quantity:"3",unitPrice:"20",discountAmount:"0",unitFactor:1,sortOrder:0}]}} workspaceHeader={<div>Abas do orçamento</div>} />);
+    expect(screen.getByText("Abas do orçamento")).toBeInTheDocument();
+    expect(screen.getByText("Cobre local")).toBeInTheDocument();
+    expect(screen.getByRole("button",{name:"Salvar orçamento"})).toBeEnabled();
+  });
+
+  it("preserva o conteúdo local de atendimento novo mesmo quando o backup está marcado limpo", () => {
+    render(<PdvPreorderDetail {...baseProps} detail={null} draftId="novo-local" canValue editorSnapshot={{customerId:"none",stockId:"stock-1",targetTerminalId:"none",notes:"Ainda não existe na conta",orderDiscount:"0",coupon:null,dirty:false,sourceRevision:null,lines:[{id:"linha-local",inventoryId:"material-1",itemType:"material",description:"Cobre local preservado",quantity:"3",unitPrice:"20",discountAmount:"0",unitFactor:1,sortOrder:0}]}} />);
+    expect(screen.getByText("Cobre local preservado")).toBeInTheDocument();
+    expect(screen.getByLabelText("Preço unitário")).toHaveValue("20");
+    expect(screen.getByRole("button",{name:"Salvar orçamento"})).toBeEnabled();
+  });
+
+  it("traz o preço conhecido do catálogo inclusive para quem pode valorizar", async () => {
+    const onSave=vi.fn().mockResolvedValue({revision:1});
+    const {container}=render(<PdvPreorderDetail {...baseProps} detail={null} draftId="aba-catalogo" canValue onSave={onSave} inventory={[{id:"material-1",name:"Cobre",sku:"001",unit:"un",salePrice:25}]} />);
+    fireEvent.click(container.querySelector('[data-pdv-product-id="material-1"]')!);
+    expect(screen.getByLabelText("Preço unitário")).toHaveValue("25");
+    fireEvent.click(screen.getByRole("button",{name:"Salvar orçamento"}));
+    await waitFor(()=>expect(onSave).toHaveBeenCalledWith(expect.objectContaining({items:[expect.objectContaining({unit_price:25,quantity:1})]})));
+  });
+
+  it("valorização altera apenas preços e descontos, sem reabrir quantidade ou remover itens", () => {
+    render(<PdvPreorderDetail {...baseProps} canValue />);
+    expect(screen.getByTestId("pdv-cart-workspace")).toBeInTheDocument();
+    expect(screen.getAllByLabelText("Preço unitário")).toHaveLength(2);
+    expect(screen.queryByRole("button",{name:"Remover item"})).not.toBeInTheDocument();
+    expect(screen.queryByRole("button",{name:"Editar quantidade"})).not.toBeInTheDocument();
+  });
+
+  it("orienta o destino ao enviar, sem chamar o servidor antes de escolher e salvar o caixa", async () => {
+    const onForward=vi.fn();
+    render(<PdvPreorderDetail {...baseProps} detail={{...detail,preorder:{...detail.preorder,status:"edicao"},items:detail.items.map(item=>({...item,unit_price:25}))}} canValue onForward={onForward} />);
+    fireEvent.click(screen.getByRole("button",{name:"Enviar ao caixa"}));
+    expect(await screen.findByText("Escolha o caixa de destino e salve o orçamento antes de enviar.")).toBeInTheDocument();
+    await waitFor(()=>expect(screen.getByRole("combobox",{name:"Caixa de destino"})).toHaveFocus());
+    expect(onForward).not.toHaveBeenCalled();
+  });
+
+  it("oferece o mesmo carrinho em drawer no celular sem duplicar editores", async () => {
+    const previous=window.innerWidth;
+    Object.defineProperty(window,"innerWidth",{value:390,configurable:true});
+    try {
+      const {container}=render(<PdvPreorderDetail {...baseProps} canValue />);
+      expect(container.querySelectorAll('[data-testid="pdv-cart-workspace"]')).toHaveLength(0);
+      fireEvent.click(screen.getByRole("button",{name:/2 itens Valor pendente/}));
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+      expect(screen.getAllByTestId("pdv-cart-workspace")).toHaveLength(1);
+      expect(screen.getAllByLabelText("Preço unitário")).toHaveLength(2);
+    } finally {Object.defineProperty(window,"innerWidth",{value:previous,configurable:true});}
+  });
+
+  it("emite o mesmo total comercial usado pelo carrinho, junto da pendência de preços", async () => {
+    const onEditorSnapshotChange=vi.fn();
+    render(<PdvPreorderDetail {...baseProps} canValue onEditorSnapshotChange={onEditorSnapshotChange} />);
+    await waitFor(()=>expect(onEditorSnapshotChange).toHaveBeenLastCalledWith(expect.any(Object),{total:0,hasMissingPrices:true}));
+    fireEvent.change(screen.getAllByLabelText("Preço unitário")[0],{target:{value:"25"}});
+    await waitFor(()=>expect(onEditorSnapshotChange).toHaveBeenLastCalledWith(expect.any(Object),{total:50,hasMissingPrices:false}));
+  });
+
+});
+
+describe("projectPdvPreorderEditorSnapshot", () => {
+  const snapshot: PdvPreorderEditorSnapshot = {customerId:"none",stockId:"stock-1",targetTerminalId:"none",notes:"rascunho",orderDiscount:"",lines:[{id:"linha-1",inventoryId:"material-1",itemType:"material",description:"Cobre",quantity:"",unitPrice:"25,",discountAmount:"0",unitFactor:1,sortOrder:0}],coupon:{id:"cupom-1",code:"LOJA",discountCents:100,baseSignature:"assinatura",eligible:true,message:"Aplicado"},dirty:true,sourceRevision:2};
+  it("preserva campos em digitação e projeta somente o contrato conhecido sem reutilizar objetos", () => {
+    const restored=projectPdvPreorderEditorSnapshot({...snapshot,extra:"ignorar"});
+    expect(restored).toEqual(snapshot);
+    expect(restored).not.toBe(snapshot);
+    expect(restored?.lines[0]).not.toBe(snapshot.lines[0]);
+    expect(restored?.coupon).not.toBe(snapshot.coupon);
+    expect(projectPdvPreorderEditorSnapshot({...snapshot,coupon:null,sourceRevision:null})).toEqual({...snapshot,coupon:null,sourceRevision:null});
+  });
+  it.each([null,[],{}, {...snapshot,dirty:"true"},{...snapshot,sourceRevision:-1},{...snapshot,sourceRevision:1.5},{...snapshot,lines:[snapshot.lines[0],snapshot.lines[0]]},{...snapshot,lines:[{...snapshot.lines[0],unitFactor:Infinity}]},{...snapshot,lines:[{...snapshot.lines[0],itemType:"sale"}]},{...snapshot,lines:[{...snapshot.lines[0],sortOrder:"0"}]},{...snapshot,coupon:{...snapshot.coupon,discountCents:-1}},{...snapshot,coupon:{...snapshot.coupon,eligible:"true"}},{...snapshot,coupon:{...snapshot.coupon,message:3}}])("recusa estrutura não confiável %#", value => {
+    expect(projectPdvPreorderEditorSnapshot(value)).toBeUndefined();
   });
 });

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useId, useMemo, useRef } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { usePersistedState } from '@/hooks/usePersistedState';
@@ -13,7 +13,9 @@ import {
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { RefrigeranteOption } from '@/components/technician-area/RefrigeranteOption';
 import { ToolDisclaimer } from './ToolDisclaimer';
+import { SaturationTableReference } from './SaturationTableReference';
 import { cn } from '@/lib/utils';
+import { converter } from '@/lib/conversoes';
 import {
   REFRIGERANTES,
   tempParaPressao,
@@ -168,6 +170,7 @@ function ReguaDupla({
           aria-valuemin={TEMP_MIN}
           aria-valuemax={TEMP_MAX}
           aria-valuenow={tempClamped}
+          aria-orientation="vertical"
           tabIndex={0}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
@@ -180,9 +183,12 @@ function ReguaDupla({
             } else if (e.key === 'ArrowDown') {
               e.preventDefault();
               setTemp(Math.max(TEMP_MIN, tempClamped - 1));
+            } else if (e.key === 'Home' || e.key === 'End') {
+              e.preventDefault();
+              setTemp(e.key === 'Home' ? TEMP_MIN : TEMP_MAX);
             }
           }}
-          className="absolute inset-x-0 top-3 bottom-3 cursor-grab touch-none active:cursor-grabbing"
+          className="absolute inset-x-0 top-3 bottom-3 cursor-grab touch-none rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
         >
           {/* Trilho central */}
           <div className="absolute left-1/2 top-0 bottom-0 w-1.5 -translate-x-1/2 rounded-full bg-border" />
@@ -248,6 +254,7 @@ function ReguaUnificada({
   setUnidade: (u: UnidadePressao) => void;
   t: TPtChart;
 }) {
+  const fieldId = useId();
   const [tempStr, setTempStr] = usePersistedState('tt:state:regua-gases:tempStr', '5');
   const [pressaoStr, setPressaoStr] = usePersistedState('tt:state:regua-gases:pressaoStr', '');
   const [refrigId, setRefrigId] = usePersistedState<string>(
@@ -271,6 +278,9 @@ function ReguaUnificada({
 
   // A fórmula define a curva; gases sem glide caem na curva única no helper.
   const curva: Curva = formulaEfetiva;
+  const tabelaAtual = refrig?.temGlide ? (curva === 'bubble' ? refrig.bubble : refrig.dew) : refrig?.unica;
+  const limiteTempMin = tabelaAtual?.[0]?.t ?? TEMP_MIN;
+  const limiteTempMax = tabelaAtual?.[tabelaAtual.length - 1]?.t ?? TEMP_MAX;
 
   // Temperatura RESOLVIDA: posiciona a régua e alimenta o cálculo da pressão.
   // Quando a fonte é a pressão, derivamos a temperatura pela inversa.
@@ -287,7 +297,7 @@ function ReguaUnificada({
   const tempResolvida =
     ultimoEditado === 'pressao'
       ? tempDaPressao // pode ser null se pressão fora da faixa
-      : num(tempStr, 5);
+      : num(tempStr, NaN);
 
   // Posição da régua: temperatura resolvida, com clamp. Se a fonte é pressão
   // e ela está fora da faixa (tempResolvida === null), mantém a régua no último
@@ -315,8 +325,8 @@ function ReguaUnificada({
         ? Number.isFinite(pressaoDigitada)
           ? pressaoDigitada
           : null
-        : tempParaPressao(refrigId, tempClamped, unidade, curva),
-    [ultimoEditado, pressaoDigitada, refrigId, tempClamped, unidade, curva],
+        : tempParaPressao(refrigId, tempResolvida ?? NaN, unidade, curva),
+    [ultimoEditado, pressaoDigitada, refrigId, tempResolvida, unidade, curva],
   );
 
   // °C exibida nas leituras: temperatura resolvida (inteira), ou null fora de faixa.
@@ -325,7 +335,20 @@ function ReguaUnificada({
       ? tempDaPressao !== null
         ? Math.round(tempDaPressao)
         : null
-      : tempClamped;
+      : Number.isFinite(tempResolvida) ? tempResolvida : null;
+
+  const entradaInvalida = ultimoEditado === 'temp'
+    ? tempStr.trim() !== '' && !Number.isFinite(num(tempStr))
+    : pressaoStr.trim() !== '' && !Number.isFinite(pressaoDigitada);
+  const tempForaFaixa = ultimoEditado === 'temp' && Number.isFinite(tempResolvida) && pressao === null;
+  const trocarUnidade = (next: UnidadePressao) => {
+    if (next === unidade) return;
+    if (ultimoEditado === 'pressao' && Number.isFinite(pressaoDigitada)) {
+      const converted = converter('pressao', unidade, next, pressaoDigitada);
+      setPressaoStr(String(Number(converted.toFixed(8))).replace('.', ','));
+    }
+    setUnidade(next);
+  };
 
   // Aviso de fora-de-faixa quando a fonte é a pressão e a inversa falhou.
   const pressaoForaFaixa =
@@ -347,7 +370,7 @@ function ReguaUnificada({
   const secoes = useMemo(() => secoesPurosEMisturas(t.sections), [t.sections]);
 
   return (
-    <div className="mx-auto flex max-w-2xl items-center justify-center gap-3 lg:gap-6">
+    <div className="mx-auto flex w-full max-w-3xl flex-col items-center justify-center gap-6 min-[420px]:flex-row min-[420px]:items-start lg:gap-8">
       <ReguaDupla
         tempClamped={tempClamped}
         setTemp={setTemp}
@@ -358,30 +381,12 @@ function ReguaUnificada({
         ariaSlider={t.ariaSlider}
       />
 
-      <div className="flex w-40 flex-col items-stretch gap-3 lg:w-56 lg:gap-4">
-        {/* Fórmula — alavanca centralizada abaixo do label */}
-        <div className="flex flex-col items-center gap-1.5">
-          <Label className="text-xs font-semibold text-muted-foreground">{t.formulaLabel}</Label>
-          <LabeledSwitch
-            value={formulaEfetiva}
-            onChange={setFormula}
-            off={{ value: 'dew', label: 'Dew' }}
-            on={{ value: 'bubble', label: 'Bubble' }}
-            disabled={!refrig?.temGlide}
-            aria-label={t.formulaLabel}
-          />
-          {!refrig?.temGlide && (
-            <span className="text-[10px] font-medium text-muted-foreground">
-              {t.singleCurve}
-            </span>
-          )}
-        </div>
-
+      <div className="order-first flex w-full min-w-0 flex-col items-stretch gap-4 min-[420px]:order-none min-[420px]:w-auto min-[420px]:flex-1 lg:max-w-sm">
         {/* Gás */}
         <div className="space-y-1">
-          <Label className="text-xs font-semibold text-muted-foreground">{t.gasLabel}</Label>
+          <Label htmlFor={`${fieldId}-gas`} className="text-sm font-semibold text-foreground">{t.gasLabel}</Label>
           <Select value={refrigId} onValueChange={setRefrigId}>
-            <SelectTrigger className="h-11 text-sm font-semibold lg:h-12 lg:text-base">
+            <SelectTrigger id={`${fieldId}-gas`} className="h-12 text-base font-semibold">
               <SelectValue placeholder={t.gasLabel} />
             </SelectTrigger>
             <SelectContent>
@@ -397,12 +402,30 @@ function ReguaUnificada({
           </Select>
         </div>
 
+        {/* Fórmula — alavanca centralizada abaixo do label */}
+        {refrig?.temGlide && <div className="flex min-h-11 flex-wrap items-center justify-between gap-3">
+          <Label className="text-sm font-semibold text-foreground">{t.formulaLabel}</Label>
+          <LabeledSwitch<Formula>
+            value={formulaEfetiva}
+            onChange={setFormula}
+            off={{ value: 'dew', label: 'Dew' }}
+            on={{ value: 'bubble', label: 'Bubble' }}
+            disabled={!refrig?.temGlide}
+            aria-label={t.formulaLabel}
+          />
+          {!refrig?.temGlide && (
+            <span className="text-[10px] font-medium text-muted-foreground">
+              {t.singleCurve}
+            </span>
+          )}
+        </div>}
+
         {/* Unidade — alavanca centralizada abaixo do label */}
-        <div className="flex flex-col items-center gap-1.5">
-          <Label className="text-xs font-semibold text-muted-foreground">{t.unitLabel}</Label>
+        <div className="flex min-h-11 flex-wrap items-center justify-between gap-3">
+          <Label className="text-sm font-semibold text-foreground">{t.unitLabel}</Label>
           <LabeledSwitch
             value={unidade}
-            onChange={setUnidade}
+            onChange={trocarUnidade}
             off={{ value: 'psi', label: 'psi' }}
             on={{ value: 'bar', label: 'bar' }}
             aria-label={t.unitLabel}
@@ -410,9 +433,9 @@ function ReguaUnificada({
         </div>
 
         {/* Leituras ao vivo — ambos editáveis (bidirecional) */}
-        <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
+        <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-card p-3 min-[420px]:block lg:p-4">
           {/* PRESSÃO — editável */}
-          <div className="leading-tight">
+          <div className="min-w-0 leading-tight">
             <p className="text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground lg:text-xs">
               {rotuloUnidade(unidade)}
             </p>
@@ -426,17 +449,19 @@ function ReguaUnificada({
                 setUltimoEditado('pressao');
                 setPressaoStr(e.target.value);
               }}
-              className="mt-0.5 h-auto border-0 bg-transparent p-0 text-center text-3xl font-bold tabular-nums text-primary shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 lg:text-4xl"
+              aria-invalid={ultimoEditado === 'pressao' && (entradaInvalida || pressaoForaFaixa)}
+              aria-describedby={ultimoEditado === 'pressao' && (entradaInvalida || pressaoForaFaixa) ? `${fieldId}-error` : undefined}
+              className="mt-1 h-12 min-w-0 border-transparent bg-transparent px-1 text-center !text-3xl font-bold tabular-nums text-primary shadow-none focus-visible:ring-2 focus-visible:ring-ring lg:h-14 lg:!text-4xl"
             />
           </div>
           {/* TEMPERATURA — editável */}
-          <div className="mt-2 border-t border-border pt-2 leading-tight">
+          <div className="min-w-0 border-l border-border pl-3 leading-tight min-[420px]:mt-2 min-[420px]:border-l-0 min-[420px]:border-t min-[420px]:pl-0 min-[420px]:pt-2">
             <p className="text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground lg:text-xs">
               °C
             </p>
             <Input
               type="text"
-              inputMode="numeric"
+              inputMode="decimal"
               value={ultimoEditado === 'temp' ? tempStr : tempExibida !== null ? String(tempExibida) : ''}
               placeholder="—"
               aria-label="Temperatura em graus Celsius"
@@ -444,17 +469,21 @@ function ReguaUnificada({
                 setUltimoEditado('temp');
                 setTempStr(e.target.value);
               }}
-              className="mt-0.5 h-auto border-0 bg-transparent p-0 text-center text-3xl font-bold tabular-nums text-primary shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 lg:text-4xl"
+              aria-invalid={ultimoEditado === 'temp' && (entradaInvalida || tempForaFaixa)}
+              aria-describedby={ultimoEditado === 'temp' && (entradaInvalida || tempForaFaixa) ? `${fieldId}-error` : undefined}
+              className="mt-1 h-12 min-w-0 border-transparent bg-transparent px-1 text-center !text-3xl font-bold tabular-nums text-primary shadow-none focus-visible:ring-2 focus-visible:ring-ring lg:h-14 lg:!text-4xl"
             />
           </div>
           {refrig?.temGlide && (
-            <span className="mt-2 block text-center text-[11px] font-medium text-amber-600 dark:text-amber-400 lg:text-xs">
+            <span className="col-span-2 mt-2 block text-center text-[11px] font-medium text-amber-600 dark:text-amber-400 lg:text-xs">
               {formula === 'dew' ? t.vapour : t.liquid}
             </span>
           )}
+          {entradaInvalida && <p id={`${fieldId}-error`} role="alert" className="col-span-2 mt-3 text-sm font-medium text-destructive">{t.invalidInput}</p>}
+          {tempForaFaixa && <p id={`${fieldId}-error`} role="alert" className="col-span-2 mt-3 text-sm font-medium text-destructive">{t.temperatureOutsideRange.replace('{min}', limiteTempMin.toLocaleString('pt-BR', { maximumFractionDigits: 1 })).replace('{max}', limiteTempMax.toLocaleString('pt-BR', { maximumFractionDigits: 1 }))}</p>}
           {/* Aviso de pressão fora da faixa (fonte = pressão) */}
           {pressaoForaFaixa && (
-            <div className="mt-2 rounded-md border border-border bg-muted px-2 py-1.5 text-[11px] leading-snug text-muted-foreground">
+            <div id={`${fieldId}-error`} role="alert" className="col-span-2 mt-3 text-sm leading-relaxed text-destructive">
               {t.outsideRange}{' '}
               <span className="font-semibold">{unidade === 'bar' ? 'bar' : 'psi'}</span>.
               {sugestao && (
@@ -463,7 +492,7 @@ function ReguaUnificada({
                   <button
                     type="button"
                     onClick={() => setUnidade(sugestao.unidadeSugerida)}
-                    className="font-semibold underline underline-offset-2"
+                    className="inline-flex min-h-11 items-center font-semibold underline underline-offset-2"
                   >
                     {sugestao.unidadeSugerida === 'bar' ? 'bar' : 'psi'}
                   </button>{' '}
@@ -474,6 +503,7 @@ function ReguaUnificada({
           )}
         </div>
       </div>
+      {refrig && <SaturationTableReference refrigerantId={refrig.id} />}
     </div>
   );
 }
@@ -490,8 +520,8 @@ export function ReguaGases() {
   return (
     <div className="space-y-4 pb-4">
       <div>
-        <h2 className="text-base font-semibold tracking-tight md:text-xl">{t.title}</h2>
-        <p className="text-sm text-muted-foreground md:text-base">
+        <h2 className="text-2xl font-bold tracking-tight md:text-3xl">{t.title}</h2>
+        <p className="mt-1 text-base text-muted-foreground">
           {t.subtitle}
         </p>
       </div>

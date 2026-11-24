@@ -45,4 +45,9 @@ describe('preço do plano personalizado no painel master', () => {
       5,
     )).toBe(347);
   });
+  it('cobra o outro núcleo no Personalizado sem cobrar PDV novamente na Loja',()=>{
+    const both=[...catalog,moduleRow('pdv',100),moduleRow('service_operations',90)];
+    expect(sumModulesPrice(both,['basic','pdv','service_operations'],undefined,undefined,5,'retail')).toBe(287);
+    expect(sumModulesPrice(both,['basic','pdv'],undefined,undefined,5,'services')).toBe(297);
+  });
 });

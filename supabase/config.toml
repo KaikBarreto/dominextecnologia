@@ -288,6 +288,12 @@ verify_jwt = false
 [functions.tenant-asaas-create-charge]
 verify_jwt = false
 
+# tenant-asaas-create-installment-batch: cria cobranças simples em lote na conta
+# Asaas do tenant. Mesmo gate manual (Bearer + módulo 'cobrancas' +
+# can_manage_system), preservando as mensagens PT-BR da própria função.
+[functions.tenant-asaas-create-installment-batch]
+verify_jwt = false
+
 # tenant-asaas-card-fees: devolve a tabela de taxa de cartão efetiva do tenant
 # (override → cache → Asaas myAccount/fees → fallback) para o preview do repasse
 # na cobrança. Mesmo gate na própria função — por isso verify_jwt=false.
@@ -412,10 +418,40 @@ verify_jwt = false
 [functions.api-key-manager]
 verify_jwt = true
 
-# Auth, módulo e ação são verificados pelo handler fiscal (compatível com JWT ES256).
+# Assinaturas Web Push do usuário autenticado. O gateway fica aberto para que
+# a função devolva erros PT-BR, mas ela revalida Bearer via auth.getUser e deriva
+# company_id do profile antes de usar service_role.
+[functions.manage-push-subscription]
+verify_jwt = false
+
+# Worker global da fila de push. Chamado apenas por pg_cron/pg_net com
+# Authorization: Bearer <CRON_SECRET>; não aceita sessão de usuário.
+[functions.process-notification-deliveries]
+verify_jwt = false
+
+# Worker global dos e-mails transacionais de cobrança. O pg_cron envia o
+# CRON_SECRET cru e a função faz comparação timing-safe antes de usar service_role.
+[functions.process-customer-email-deliveries]
+verify_jwt = false
+
+# Diagnóstico/reparo do webhook master. Chamado por pg_cron com x-cron-secret;
+# o handler valida CRON_SECRET fail-closed e não aceita sessão de tenant.
+[functions.admin-asaas-webhook-health]
+verify_jwt = false
+
+# Reparo interno de pagamento órfão com prova Pix exata; autenticação por
+# x-cron-secret dentro do handler.
+[functions.admin-asaas-reconcile-payment]
+verify_jwt = false
+
+# O handler verifica JWT, empresa, módulo e permissão fiscal.
 [functions.fiscal-goods-document]
 verify_jwt = false
 
-# Auth, módulo e ação são verificados pelo handler fiscal (compatível com JWT ES256).
+# O handler verifica JWT, empresa, módulo e permissão fiscal.
 [functions.fiscal-goods-settings]
+verify_jwt = false
+
+# Validação de JWT, permissão financeira e escopo de empresa dentro do handler.
+[functions.admin-company-billing-status]
 verify_jwt = false

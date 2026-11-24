@@ -26,9 +26,12 @@ describe('contrato de navegação do caixa v2', () => {
     expect(pageSource).toContain('terminalId={focusedTerminal.id}');
   });
 
-  it('abre o caixa correto ao chegar pelo kanban de pedidos do balcão', () => {
+  it('resolve o destino autorizado do pedido antes de exibir seu caixa', () => {
     expect(pageSource).toContain("new URLSearchParams(location.search).get('fila') === '1'");
-    expect(pageSource).toContain('ownSession ?? (cash.openSessions.length === 1 ? cash.openSessions[0] : null)');
+    expect(pageSource).toContain('usePdvReceivingTarget');
+    expect(pageSource).toContain('requestedOrderId !== null || !selection.ready');
+    expect(pageSource).toContain('!selection.ready || receivingUnresolved');
+    expect(pageSource).toContain('Não foi possível abrir este recebimento');
     expect(pageSource).toContain('Escolha o caixa que vai receber os pedidos do balcão.');
     expect(pageSource).toContain('id="pedidos-do-balcao"');
   });

@@ -526,6 +526,21 @@ function TemplateQuestionRow({
     }
   };
 
+  // A assinatura publica um snapshot a cada traço. Ela não pode reutilizar o
+  // bloqueio `saving` dos campos de clique/blur: isso desabilitava o pad após o
+  // primeiro risco e descartava o restante da assinatura em redes mais lentas.
+  // O hook serializa os snapshots por pergunta; aqui mantemos o canvas liberado.
+  const saveSignature = (dataUrl: string | null) => {
+    if (readOnly) return;
+    void onSaveResponse(equipmentId, question.id, { response_value: dataUrl }).catch((error: unknown) => {
+      toast({
+        variant: 'destructive',
+        title: t.toastSaveResponseError,
+        description: getErrorMessage(error),
+      });
+    });
+  };
+
   const type = question.question_type;
 
   const renderInput = () => {
@@ -792,9 +807,9 @@ function TemplateQuestionRow({
             <div className="w-full max-w-md mx-auto [&_button]:mx-auto">
               <SignaturePad
                 value={value || null}
-                onChange={(dataUrl) => save({ response_value: dataUrl })}
+                onChange={saveSignature}
                 label={question.description || undefined}
-                disabled={readOnly || saving}
+                disabled={readOnly}
               />
             </div>
           </div>

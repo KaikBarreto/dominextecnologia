@@ -88,12 +88,14 @@ export const dashboard = {
       technicianFallback: 'Técnico',
     },
     portalCalls: {
-      title: 'Chamados abertos',
+      title: 'Chamados aguardando análise',
       viewAll: 'Ver todos os chamados',
-      empty: 'Nenhum chamado aberto',
+      empty: 'Nenhum chamado aguardando análise',
       emptySubtitle: 'Chamados recebidos pelo portal aparecem aqui',
       customerFallback: 'Cliente não informado',
       noDescription: 'Sem descrição',
+      protocol: 'Chamado #{number}',
+      awaitingReview: 'Aguardando análise',
       timeAgo: 'há {time}',
     },
     portalCallsAlert: {
@@ -191,6 +193,8 @@ export const dashboard = {
       emptySubtitle: 'Requests submitted via the customer portal appear here',
       customerFallback: 'Customer not provided',
       noDescription: 'No description',
+      protocol: 'Request #{number}',
+      awaitingReview: 'Awaiting review',
       timeAgo: '{time} ago',
     },
     portalCallsAlert: {
@@ -288,6 +292,8 @@ export const dashboard = {
       emptySubtitle: 'Las solicitudes recibidas por el portal aparecen aquí',
       customerFallback: 'Cliente no informado',
       noDescription: 'Sin descripción',
+      protocol: 'Solicitud #{number}',
+      awaitingReview: 'Pendiente de análisis',
       timeAgo: 'hace {time}',
     },
     portalCallsAlert: {
@@ -385,6 +391,8 @@ export const dashboard = {
       emptySubtitle: 'Les demandes reçues via le portail apparaissent ici',
       customerFallback: 'Client non renseigné',
       noDescription: 'Sans description',
+      protocol: 'Demande n° {number}',
+      awaitingReview: 'En attente d’analyse',
       timeAgo: 'il y a {time}',
     },
     portalCallsAlert: {

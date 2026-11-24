@@ -1,3 +1,4 @@
+import { NoRowsAffectedError } from '@/lib/supabaseMutation';
 const DEFAULT_MESSAGE = 'Ocorreu um erro inesperado. Tente novamente.';
 
 type ErrorLike = {
@@ -20,50 +21,37 @@ function extractErrorText(error: unknown): string {
     .join(' | ');
 }
 
-/**
- * Erros de execucao do JavaScript nunca devem virar copy de produto. A
- * classificacao fica exportada para fluxos que precisam reconciliar leituras
- * antes de orientar uma nova tentativa, sem repetir a mutacao automaticamente.
- */
+/** Erros do JavaScript são diagnóstico interno, nunca copy de produto. */
 export function isInternalRuntimeError(error: unknown): boolean {
   const raw = extractErrorText(error).toLowerCase();
   if (!raw) return false;
 
   if (
-    raw.includes('failed to fetch dynamically imported module') ||
-    raw.includes('error loading dynamically imported module')
-  ) {
-    return true;
-  }
-
-  // Falhas de rede possuem orientacao propria e nao significam, por si so,
-  // incompatibilidade de bundle/runtime.
-  if (
-    raw.includes('failed to fetch') ||
-    raw.includes('networkerror') ||
-    raw.includes('network request failed')
-  ) {
-    return false;
-  }
+    raw.includes('failed to fetch')
+    || raw.includes('networkerror')
+    || raw.includes('network request failed')
+  ) return false;
 
   return (
-    error instanceof TypeError ||
-    raw.includes('cannot read properties of undefined') ||
-    raw.includes('cannot read properties of null') ||
-    raw.includes('cannot set properties of undefined') ||
-    raw.includes('cannot set properties of null') ||
-    raw.includes('is not a function')
+    error instanceof TypeError
+    || raw.includes('cannot read properties of undefined')
+    || raw.includes('cannot read properties of null')
+    || raw.includes('cannot set properties of undefined')
+    || raw.includes('cannot set properties of null')
+    || raw.includes('is not a function')
+    || raw.includes('failed to fetch dynamically imported module')
+    || raw.includes('error loading dynamically imported module')
   );
 }
 
 export function isResetRuntimeError(error: unknown): boolean {
   const raw = extractErrorText(error).toLowerCase();
   return isInternalRuntimeError(error) && (
-    raw.includes("reading 'reset'") ||
-    raw.includes('reading "reset"') ||
-    raw.includes("setting 'reset'") ||
-    raw.includes('setting "reset"') ||
-    raw.includes('reset is not a function')
+    raw.includes("reading 'reset'")
+    || raw.includes('reading "reset"')
+    || raw.includes("setting 'reset'")
+    || raw.includes('setting "reset"')
+    || raw.includes('reset is not a function')
   );
 }
 
@@ -73,7 +61,7 @@ export interface SanitizedErrorDiagnostic {
   stack?: string;
 }
 
-/** Mantem informacao util no console sem serializar payloads/respostas inteiros. */
+/** Mantém informação útil no console sem serializar payloads ou respostas. */
 export function getSanitizedErrorDiagnostic(error: unknown): SanitizedErrorDiagnostic {
   const runtimeError = error instanceof Error ? error : null;
   const clean = (value: string, limit: number) => value
@@ -106,7 +94,7 @@ const SCHEDULE_ERROR_MESSAGES: Record<string, string> = {
   schedule_tenant_not_entitled: 'O acesso da empresa não está ativo para esta operação. Verifique a assinatura ou fale com o suporte.',
   schedule_create_permission_denied: 'Você não tem permissão para criar ordens de serviço.',
   schedule_edit_permission_denied: 'Você não tem permissão para alterar o agendamento desta ordem de serviço.',
-  schedule_override_permission_denied: 'Você não tem permissão para autorizar conflitos de agenda.',
+  schedule_override_permission_denied: 'A empresa não permite agendamentos conflitantes. Ative essa opção em Configurações > Usabilidade para autorizar a sobreposição.',
   schedule_override_justification_required: 'Informe uma justificativa com pelo menos 10 caracteres para autorizar o conflito.',
   schedule_customer_not_found: 'O cliente selecionado não está mais disponível. Atualize a seleção e tente novamente.',
   schedule_equipment_not_found: 'Um dos equipamentos desta OS não está mais disponível. Atualize a seleção e tente novamente.',
@@ -123,6 +111,31 @@ const SCHEDULE_ERROR_MESSAGES: Record<string, string> = {
   schedule_invalid_plan: 'Uma das jornadas possui data, horário ou duração inválidos. Revise o período informado.',
   schedule_invalid_order_payload: 'Alguns dados obrigatórios da ordem de serviço estão incompletos ou inválidos. Revise o formulário.',
   schedule_invalid_equipment_items: 'Não foi possível validar os equipamentos e checklists desta OS. Atualize a seleção e tente novamente.',
+};
+
+/**
+ * Códigos de domínio financeiros emitidos em `details`/`hint` pelo banco.
+ * Eles precisam vencer o SQLSTATE genérico (por exemplo, 23514), porque o
+ * código sozinho só diz que uma regra foi violada e não orienta o operador.
+ */
+const FINANCIAL_ERROR_MESSAGES: Record<string, string> = {
+  // A trava só barra o que tira dinheiro do cofre enquanto há caixa do PDV
+  // aberto contando com ele. Vale para pagar, transferir ou lançar saída, então
+  // a mensagem não pode falar só em "registrar o pagamento".
+  pdv_treasury_custody_reserved:
+    'Esse dinheiro está separado para o caixa do PDV que está aberto. Use outra conta ou feche o caixa antes de continuar.',
+  pdv_custody_financial_immutable:
+    'Este lançamento foi criado pelo caixa do PDV e não pode ser editado nem excluído aqui. Para desfazer, cancele a venda ou registre o estorno no próprio PDV.',
+};
+
+/**
+ * Regras internas do escopo da OS. A mensagem do banco é útil para proteger a
+ * integridade, mas não deve expor SQLSTATE nem pedir que o operador entenda as
+ * junctions de serviço/equipamento.
+ */
+const SERVICE_ORDER_SCOPE_ERROR_MESSAGES: Record<string, string> = {
+  'serviço do equipamento não pertence a esta ordem de serviço':
+    'Os serviços desta OS foram atualizados em outro fluxo. Reabra a OS para carregar os dados atuais e tente novamente.',
 };
 
 /**
@@ -152,6 +165,7 @@ const SQLSTATE_MESSAGES: Record<string, string> = {
   // ── Syntax error or access rule (class 42) ──
   '42P01': 'Não foi possível acessar este recurso. Atualize a página e tente novamente.',
   '42P10': 'Não foi possível salvar agora. Entre em contato com o suporte se persistir.',
+  '42804': 'Não foi possível processar os dados agora. Atualize a página e tente novamente.',
   '42703': 'Não foi possível processar a operação. Atualize a página e tente novamente.',
   '42501': 'Você não tem permissão para realizar esta ação.',
 
@@ -445,6 +459,10 @@ const CONSTRAINT_MESSAGES: Array<{ constraint: string; text: string }> = [
 ];
 
 export function getErrorMessage(error: unknown, fallback = DEFAULT_MESSAGE) {
+  // Operação que não afetou linha (RLS barrou em silêncio): a mensagem já é
+  // PT-BR e orienta o usuário, então passa inteira.
+  if (error instanceof NoRowsAffectedError) return error.message;
+
   // 0) Constraint nomeada: mais específica que o SQLSTATE, então vem antes.
   if (error && typeof error === 'object') {
     const e = error as ErrorLike;
@@ -476,7 +494,57 @@ export function getErrorMessage(error: unknown, fallback = DEFAULT_MESSAGE) {
     if (scheduleCode) return SCHEDULE_ERROR_MESSAGES[scheduleCode];
   }
 
-  // 2) SQLSTATE / PostgREST code — mais confiável que substring genérica.
+  // 2) Código de domínio financeiro: precisa vencer o SQLSTATE genérico.
+  if (error) {
+    const financialHaystack = error instanceof Error
+      ? error.message
+      : typeof error === 'string'
+        ? error
+        : typeof error === 'object'
+          ? [
+              (error as ErrorLike).message,
+              (error as ErrorLike).details,
+              (error as ErrorLike).hint,
+              (error as ErrorLike).code,
+            ].filter((value): value is string => typeof value === 'string').join(' | ')
+          : '';
+    const normalized = financialHaystack.toLowerCase();
+    const financialCode = Object.keys(FINANCIAL_ERROR_MESSAGES)
+      .find((code) => normalized.includes(code));
+    if (financialCode) return FINANCIAL_ERROR_MESSAGES[financialCode];
+  }
+
+  // 3) Regra de domínio do escopo da OS: precisa ser resolvida antes do código
+  // P0001 e nunca pode expor detalhes da estrutura interna ao usuário.
+  if (error) {
+    const scopeHaystack = error instanceof Error
+      ? error.message
+      : typeof error === 'string'
+        ? error
+        : typeof error === 'object'
+          ? [
+              (error as ErrorLike).message,
+              (error as ErrorLike).details,
+              (error as ErrorLike).hint,
+              (error as ErrorLike).code,
+            ].filter((value): value is string => typeof value === 'string').join(' | ')
+          : '';
+    const normalized = scopeHaystack.toLowerCase();
+    const scopeCode = Object.keys(SERVICE_ORDER_SCOPE_ERROR_MESSAGES)
+      .find((code) => normalized.includes(code));
+    if (scopeCode) return SERVICE_ORDER_SCOPE_ERROR_MESSAGES[scopeCode];
+  }
+
+  // 4) Requisitos de saída do CRM: a mensagem já é uma orientação em PT-BR,
+  // mas hint e SQLSTATE são diagnóstico interno e não podem aparecer no toast.
+  if (error && typeof error === 'object') {
+    const crmError = error as ErrorLike;
+    if (crmError.hint?.toLowerCase().includes('stage_requirements_pending')) {
+      return crmError.message?.trim() || 'Conclua os requisitos desta etapa antes de mover a oportunidade.';
+    }
+  }
+
+  // 5) SQLSTATE / PostgREST code — mais confiável que substring genérica.
   //    Erros do Supabase tipicamente vêm como { code, message, details, hint }.
   if (error && typeof error === 'object') {
     const code = (error as ErrorLike).code;
@@ -485,17 +553,16 @@ export function getErrorMessage(error: unknown, fallback = DEFAULT_MESSAGE) {
     }
   }
 
-  // 3) Extrai texto cru pra substring match (cobertura legada).
+  // 6) Extrai texto cru pra substring match (cobertura legada).
   const raw = extractErrorText(error);
 
-  // TypeError e falhas de runtime sao diagnostico interno, nunca copy de UI.
   if (isInternalRuntimeError(error)) return RUNTIME_INTERNAL_MESSAGE;
 
   const message = raw.toLowerCase();
   const mapped = DATABASE_ERROR_MAP.find((item) => item.test(message));
   if (mapped) return mapped.text;
 
-  // 4) Se a mensagem crua parece técnica (inglês de banco), prefere fallback PT-BR.
+  // 7) Se a mensagem crua parece técnica (inglês de banco), prefere fallback PT-BR.
   //    Heurística simples: contém termos sentinela de erro técnico não mapeado.
   if (raw && looksTechnicalEnglish(raw)) {
     return fallback;
@@ -521,6 +588,7 @@ function looksTechnicalEnglish(raw: string): boolean {
     m.includes('permission denied') ||
     m.includes('violates') ||
     m.includes('invalid input syntax') ||
+    m.includes('is of type') && (m.includes('expression is of type') || m.includes('rewrite or cast')) ||
     m.includes('constraint') && (m.includes('failed') || m.includes('violation')) ||
     /^pgrst\d+/i.test(raw) ||
     /^\d{2}[a-z0-9]{3}\s/i.test(raw) // ex: "42P10 ..."

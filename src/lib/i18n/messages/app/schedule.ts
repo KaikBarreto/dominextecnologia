@@ -18,6 +18,7 @@ export const schedule = {
     loadError: {
       title: 'Não foi possível carregar a agenda',
       description: 'Tente novamente. Se continuar, atualize a página.',
+      retry: 'Tentar novamente',
     },
     nav: {
       prevAriaLabel: 'Anterior',
@@ -209,6 +210,7 @@ export const schedule = {
     loadError: {
       title: 'The schedule could not be loaded',
       description: 'Check your connection and try again.',
+      retry: 'Try again',
     },
     header: {
       title: 'Schedule',
@@ -402,6 +404,7 @@ export const schedule = {
     loadError: {
       title: 'No se pudo cargar la agenda',
       description: 'Comprueba tu conexión e inténtalo de nuevo.',
+      retry: 'Intentar de nuevo',
     },
     header: {
       title: 'Agenda',
@@ -595,6 +598,7 @@ export const schedule = {
     loadError: {
       title: `Impossible de charger l'agenda`,
       description: 'Vérifiez votre connexion et réessayez.',
+      retry: 'Réessayer',
     },
     header: {
       title: 'Agenda',

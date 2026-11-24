@@ -40,7 +40,7 @@
 //     na hora, snapshot só desta nota — migration 20260906210000). Os dois no
 //     mesmo body = 400; nenhum dos dois = 400. A ESTRUTURA do bloco `tomador` da
 //     DPS é IDÊNTICA nos dois caminhos: muda a fonte do dado, nunca o formato.
-//   - INTERMEDIÁRIO: bloqueado na emissão (422 `intermediario_nao_suportado`)
+//   - INTERMEDIÁRIO: cadastrado ou avulso, escopado ao tenant e enviado no XML
 //     enquanto o grupo `interm` da DPS não existir ponta a ponta. Ver o gate.
 //   - Carrega customers (tomador) + company_fiscal_settings (prestador) + companies.
 //     NÃO lê service_orders — emissão é independente da Ordem de Serviço.
@@ -223,6 +223,14 @@ const COLUNAS_TOLERANTES = [
   COL_ORIGEM,
   COL_NFSE_AUTO_JOB_ID,
   "fiscal_ambiente",
+  "valor_inss",
+  "valor_irrf",
+  "deducoes",
+  "desconto_condicionado",
+  "desconto_incondicionado",
+  "documento_responsabilidade_tecnica",
+  "documento_referencia",
+  "informacoes_complementares",
 ];
 
 // ⚠️ Assimetria PROPOSITAL com `save-draft.ts`, onde as colunas do avulso NÃO
@@ -273,9 +281,40 @@ async function rodarTolerandoColunaAusente(
  */
 const STATUS_DE_TENTATIVA_FALHA = new Set<string>([
   NFSE_STATUS.REJEITADA,
-  NFSE_STATUS.CONFIRMACAO_PENDENTE,
   NFSE_STATUS.FALHOU,
 ]);
+
+/**
+ * Uma confirmação pendente não é uma rejeição segura para retransmitir: o
+ * documento pode ter sido autorizado e só a resposta ter se perdido. Esse
+ * estado precisa ser reconciliado por consulta antes de qualquer novo envio.
+ */
+const STATUS_DE_RESULTADO_INCERTO = new Set<string>([
+  NFSE_STATUS.CONFIRMACAO_PENDENTE,
+]);
+
+/**
+ * Quando uma versão antiga do front cria um rascunho antes de retentar uma
+ * rejeição, a chave determinística base já pertence à linha rejeitada. A nova
+ * tentativa recebe um sufixo estável derivado do próprio rascunho, preservando
+ * as duas trilhas e evitando a UNIQUE depois de a DPS já ter sido transmitida.
+ */
+export function retryKeyForDraft(base: string, emissionId: string): string {
+  const suffix = `#retry-${clean(emissionId)}`;
+  return `${base.slice(0, Math.max(0, 512 - suffix.length))}${suffix}`;
+}
+
+export function shouldReturnExistingEmission(input: {
+  existingId?: string | null;
+  emissionId?: string | null;
+  tentativaAnterior: string;
+  retentativaComNovoRascunho: boolean;
+  reemissaoPosCancelamento: boolean;
+}): boolean {
+  return !!input.existingId && input.existingId !== input.emissionId &&
+    !input.tentativaAnterior && !input.retentativaComNovoRascunho &&
+    !input.reemissaoPosCancelamento;
+}
 
 /**
  * Status em que a nota JÁ FOI DOCUMENTO FISCAL: existiu, tem número e chave, e
@@ -353,75 +392,43 @@ function cleanDate(v: unknown): string {
   return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : "";
 }
 
-// ─── Fuso da empresa (competência da nota) ───────────────────────────────────
+// ─── Relógio fiscal da DPS ───────────────────────────────────────────────────
 //
-// ⚠️ DUPLICAÇÃO PROPOSITAL de `src/lib/timezone.ts`. A edge roda em Deno e NÃO
-// pode importar de `src/` (o bundle da função não enxerga o app). As duas cópias
-// têm a MESMA regra: `en-CA` é o único locale que o Intl formata exatamente como
-// ISO YYYY-MM-DD, e fuso inválido cai no padrão em vez de lançar RangeError.
-//
-// Por que isto existe: o fallback da competência era
-// `new Date().toISOString().slice(0, 10)`, que é o dia EM UTC. Entre 21:00 e a
-// meia-noite de Brasília o UTC já virou, então a nota saía com a competência do
-// DIA SEGUINTE — inclusive para empresa em São Paulo, e inclusive virando o MÊS
-// fiscal no dia 30/31. Competência é campo fiscal: o dia tem que ser o dia DA
-// EMPRESA, lido de `company_settings.timezone`.
+// O motor próprio monta `dhEmi` em America/Sao_Paulo. A competência precisa
+// usar o MESMO dia civil: entre 00:00 e 02:59 UTC o UTC já virou, mas o relógio
+// fiscal ainda está no dia anterior. Usar o fuso do navegador ou até o fuso
+// operacional da empresa nessa janela produz a rejeição oficial "dCompet
+// posterior a dhEmi".
 
-const DEFAULT_TIME_ZONE = "America/Sao_Paulo";
+const NFSE_FISCAL_TIME_ZONE = "America/Sao_Paulo";
 
-/** Dia (YYYY-MM-DD) de AGORA no fuso informado. Fuso inválido cai no padrão. */
-function hojeNoFuso(timeZone: string): string {
-  const opcoes: Intl.DateTimeFormatOptions = {
+/** Dia (YYYY-MM-DD) do instante no mesmo fuso usado pelo `dhEmi` da DPS. */
+export function dataFiscalNfse(agoraMs = Date.now()): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: NFSE_FISCAL_TIME_ZONE,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  };
-  const agora = new Date();
-  try {
-    return new Intl.DateTimeFormat("en-CA", { timeZone, ...opcoes }).format(
-      agora,
-    );
-  } catch {
-    return new Intl.DateTimeFormat("en-CA", {
-      timeZone: DEFAULT_TIME_ZONE,
-      ...opcoes,
-    })
-      .format(agora);
-  }
+  }).format(new Date(agoraMs));
 }
 
-/**
- * Fuso da empresa (`company_settings.timezone`), com validação leve de nome IANA
- * no mesmo espírito de `self-register`. Empresa sem linha de settings, coluna
- * ausente, valor lixo ou falha de leitura caem em America/Sao_Paulo: o fuso é um
- * conforto, NUNCA um bloqueio de emissão.
- */
-async function fusoDaEmpresa(
-  supabase: { from: (t: string) => any },
-  companyId: string,
-): Promise<string> {
-  try {
-    const { data, error } = await supabase
-      .from("company_settings")
-      .select("timezone")
-      .eq("company_id", companyId)
-      .maybeSingle();
-    if (error) return DEFAULT_TIME_ZONE;
-    const tz = clean((data as Record<string, unknown> | null)?.timezone);
-    if (!tz || !/^[A-Za-z_]+\/[A-Za-z0-9_+\-/]+$/.test(tz)) {
-      return DEFAULT_TIME_ZONE;
-    }
-    // Confirma com o próprio Intl: nome plausível ainda pode não existir na base
-    // de fusos do runtime (aí o formatador lança e derrubaria a emissão).
-    try {
-      new Intl.DateTimeFormat("en-CA", { timeZone: tz });
-      return tz;
-    } catch {
-      return DEFAULT_TIME_ZONE;
-    }
-  } catch {
-    return DEFAULT_TIME_ZONE;
+export interface NfseCompetenceDateError {
+  error: "future_competence";
+  message: string;
+}
+
+/** Valida a regra oficial antes de idempotência, cota, numeração ou transmissão. */
+export function validarDataCompetenciaFiscal(
+  dataCompetencia: string,
+  agoraMs = Date.now(),
+): NfseCompetenceDateError | null {
+  if (dataCompetencia > dataFiscalNfse(agoraMs)) {
+    return {
+      error: "future_competence",
+      message: "A competência não pode ser uma data futura.",
+    };
   }
+  return null;
 }
 
 /**
@@ -434,7 +441,7 @@ async function fusoDaEmpresa(
  * documento continuam batendo na mesma chave, como sempre foi.
  *
  * ⚠️ `dataCompetencia` faz parte da chave. Quando ela vem do fallback, a chave
- * passa a carregar o dia DA EMPRESA em vez do dia UTC (correção de 2026-09-17),
+ * passa a carregar o dia FISCAL em vez do dia UTC,
  * então uma nota emitida na janela das 21h à meia-noite gera uma chave diferente
  * da que teria sido gerada antes. Isso NÃO cria nota duplicada:
  *   - nota que já existe com a chave antiga continua existindo e é encontrada
@@ -443,7 +450,7 @@ async function fusoDaEmpresa(
  *     idempotency_key), que continua valendo sobre o valor NOVO;
  *   - duas emissões do mesmo dia, pelo caminho novo, produzem a MESMA chave e a
  *     segunda devolve 200 "já emitida" como sempre.
- * O único efeito é na retentativa feita EXATAMENTE na virada do dia da empresa:
+ * O único efeito é na retentativa feita EXATAMENTE na virada do dia fiscal:
  * aí a competência muda e a chave muda, que é o comportamento correto e já era o
  * de antes (só que na virada do UTC).
  */
@@ -452,9 +459,13 @@ function deterministicKey(
   identidadeTomador: string,
   valor: number,
   dataCompetencia: string,
+  identidadeIntermediario = "",
 ): string {
   const cents = Math.round(valor * 100);
-  return `nfse_${companyId}_${identidadeTomador}_${cents}_${dataCompetencia}`
+  const sufixoIntermediario = identidadeIntermediario
+    ? `_interm_${identidadeIntermediario}`
+    : "";
+  return `nfse_${companyId}_${identidadeTomador}_${cents}_${dataCompetencia}${sufixoIntermediario}`
     .slice(0, 512);
 }
 
@@ -495,12 +506,10 @@ export interface EmitBody {
    * O endereço é TUDO OU NADA (ver `validarPessoaAvulsaParaEmissao`).
    */
   tomadorAvulso?: unknown;
-  /** Intermediário CADASTRADO. Ver o gate `intermediario_nao_suportado`. */
+  /** Intermediário cadastrado, opcional e escopado ao mesmo tenant. */
   intermediarioCustomerId?: string;
   /**
-   * Intermediário digitado na hora. Aceito no rascunho, mas HOJE bloqueia a
-   * emissão: o grupo `interm` da DPS ainda não é montado (ver o gate mais
-   * abaixo). Nota fiscal saindo diferente do formulário é pior que não sair.
+   * Intermediário digitado na hora. Alternativa a intermediarioCustomerId.
    */
   intermediarioAvulso?: unknown;
   servico?: {
@@ -513,6 +522,9 @@ export interface EmitBody {
     // cTribMun (3 dígitos) — código da prefeitura, complementar ao nacional.
     // number aceito porque campo numérico no front manda 101, não "101".
     codigoTributacaoMunicipal?: string | number;
+    documentoResponsabilidadeTecnica?: string;
+    documentoReferencia?: string;
+    pedidoB2b?: string;
   };
   valores?: {
     valorServico?: number | string;
@@ -526,6 +538,11 @@ export interface EmitBody {
     valorPis?: number | string;
     valorCofins?: number | string;
     valorCsll?: number | string;
+    valorInss?: number | string;
+    valorIrrf?: number | string;
+    deducoes?: number | string;
+    descontoCondicionado?: number | string;
+    descontoIncondicionado?: number | string;
     percentualTotalTributosSimplesNacional?: number | string;
     // Alias do front pro mesmo campo acima. Mesma precedência.
     percentualTribSn?: number | string;
@@ -855,32 +872,25 @@ export async function emitirNfseAutorizada(
       );
     }
 
-    // ---- INTERMEDIÁRIO: aceito no rascunho, BLOQUEADO na emissão (2026-09-06).
-    //
-    // Achado: `nfse-emit` nunca leu `intermediario_customer_id`, o contrato do
-    // motor (`NfseEmitirInput`) não tem o grupo, e o microserviço monta a DPS
-    // com `TcinfDps(prest, toma, serv, valores)` — sem `interm`. Ou seja: o
-    // usuário escolhia o intermediário, a nota ia à prefeitura SEM ele e ninguém
-    // era avisado. Documento fiscal diferente do que foi preenchido.
-    //
-    // O grupo existe no layout nacional (`infDPS/interm`, do mesmo tipo do
-    // tomador) e vem acompanhado de `vServPrest/vReceb` (valor recebido pelo
-    // intermediário) — mas montá-lo exige mexer no microserviço fiscal da VPS,
-    // que está fora deste deploy. Enquanto isso, o certo é NÃO EMITIR e dizer
-    // por quê: nota errada autorizada custa cancelamento.
-    const temIntermediario = !!clean(body?.intermediarioCustomerId) ||
-      !!normalizarPessoaAvulsa(body?.intermediarioAvulso) ||
-      !!clean(draft?.intermediario_customer_id) ||
-      !!normalizarPessoaAvulsa(draft?.intermediario_avulso);
-    if (temIntermediario) {
+    const intermediarioCustomerIdBody = clean(body?.intermediarioCustomerId);
+    const intermediarioAvulsoBody = normalizarPessoaAvulsa(body?.intermediarioAvulso);
+    if (intermediarioCustomerIdBody && intermediarioAvulsoBody) {
       return jsonResponse(
         {
-          error: "intermediario_nao_suportado",
+          error: "intermediario_ambiguo",
           message:
-            "O intermediário do serviço ainda não é enviado na nota fiscal. Remova o intermediário para emitir — os dados ficam salvos no rascunho.",
+            "Escolha o intermediário de uma forma só: selecione um cadastro ou digite os dados manualmente.",
         },
-        422,
+        400,
       );
+    }
+    let intermediarioCustomerId = intermediarioCustomerIdBody;
+    let intermediarioAvulso = intermediarioAvulsoBody;
+    if (!intermediarioCustomerId && !intermediarioAvulso) {
+      intermediarioCustomerId = clean(draft?.intermediario_customer_id);
+      if (!intermediarioCustomerId) {
+        intermediarioAvulso = normalizarPessoaAvulsa(draft?.intermediario_avulso);
+      }
     }
 
     // valorServico: body sobrescreve; senão vem do rascunho.
@@ -897,21 +907,22 @@ export async function emitirNfseAutorizada(
       );
     }
 
-    // dataCompetencia: body (YYYY-MM-DD) OU rascunho OU HOJE NO FUSO DA EMPRESA.
-    //
-    // O fallback é o caminho NORMAL, não a exceção: a tela só manda a data quando
-    // o usuário mexe no campo. Por isso ele lê `company_settings.timezone` e
-    // formata o dia da empresa, em vez do dia UTC (defeito corrigido aqui).
-    //
-    // A leitura do fuso só acontece quando o fallback é usado — nota com
-    // competência informada no body ou no rascunho não paga a consulta.
+    // dataCompetencia: body (YYYY-MM-DD) OU rascunho OU HOJE FISCAL DA DPS.
     //
     // ⚠️ Este valor entra na chave determinística de idempotência logo abaixo.
     // Ver a nota em `deterministicKey` sobre o efeito na reemissão.
+    const agoraFiscalMs = Date.now();
     let dataCompetencia = cleanDate(body?.dataCompetencia) ||
       cleanDate(draft?.data_competencia);
     if (!dataCompetencia) {
-      dataCompetencia = hojeNoFuso(await fusoDaEmpresa(supabase, companyId));
+      dataCompetencia = dataFiscalNfse(agoraFiscalMs);
+    }
+    const erroDataCompetencia = validarDataCompetenciaFiscal(
+      dataCompetencia,
+      agoraFiscalMs,
+    );
+    if (erroDataCompetencia) {
+      return jsonResponse(erroDataCompetencia, 422);
     }
 
     // ---- Config fiscal: uma única leitura define ambiente, cobertura,
@@ -954,6 +965,9 @@ export async function emitirNfseAutorizada(
         identidadeDoTomador(customerId, tomadorAvulso),
         valorServico,
         dataCompetencia,
+        intermediarioCustomerId || intermediarioAvulso
+          ? identidadeDoTomador(intermediarioCustomerId, intermediarioAvulso)
+          : "",
       );
     let idempotencyKey = scopeNfseIdempotencyKey(
       rawIdempotencyKey,
@@ -995,12 +1009,40 @@ export async function emitirNfseAutorizada(
         if (legacyEnvironment === fiscalEnvironment) existing = legacy;
       }
     }
+
+    const existingStatus = clean(existing?.status).toLowerCase();
+    if (
+      existing && existing.id !== emissionId &&
+      STATUS_DE_RESULTADO_INCERTO.has(existingStatus)
+    ) {
+      return jsonResponse(
+        {
+          error: "nfse_confirmation_pending",
+          message:
+            "A tentativa anterior ainda aguarda confirmação oficial. Atualize o status antes de emitir novamente.",
+        },
+        409,
+      );
+    }
+
+    // Compatibilidade com versões antigas do front: elas salvavam um rascunho
+    // novo antes de retentar uma rejeição. A chave base continua reservada à
+    // tentativa anterior; o novo rascunho recebe uma chave de retry própria.
+    const retentativaComNovoRascunho = !!(
+      existing && emissionId && existing.id !== emissionId &&
+      STATUS_DE_TENTATIVA_FALHA.has(existingStatus)
+    );
+    if (retentativaComNovoRascunho) {
+      idempotencyKey = retryKeyForDraft(idempotencyKey, emissionId);
+    }
+
     // Tentativa anterior que FALHOU não bloqueia: a linha é reaproveitada pela
     // nova tentativa (UPDATE), em vez de virar 200 "já emitida" ou colidir com a
     // UNIQUE (company_id, idempotency_key) num INSERT.
     const tentativaAnterior = existing &&
         existing.id !== emissionId &&
-        STATUS_DE_TENTATIVA_FALHA.has(clean(existing.status).toLowerCase())
+        !retentativaComNovoRascunho &&
+        STATUS_DE_TENTATIVA_FALHA.has(existingStatus)
       ? String(existing.id)
       : "";
 
@@ -1030,10 +1072,13 @@ export async function emitirNfseAutorizada(
       });
     }
 
-    if (
-      existing && existing.id !== emissionId && !tentativaAnterior &&
-      !reemissaoPosCancelamento
-    ) {
+    if (shouldReturnExistingEmission({
+      existingId: existing?.id,
+      emissionId,
+      tentativaAnterior,
+      retentativaComNovoRascunho,
+      reemissaoPosCancelamento,
+    })) {
       return jsonResponse(
         {
           emission: existing,
@@ -1090,9 +1135,10 @@ export async function emitirNfseAutorizada(
       }
     }
 
-    // ---- Carrega tomador (cliente) + CNPJ da empresa. A configuração fiscal
+    // ---- Carrega tomador, intermediário opcional e CNPJ da empresa. Todos os
+    // cadastros são escopados pelo mesmo company_id antes de chegar ao motor.
     // já foi carregada antes da idempotência e a mesma linha segue até o motor.
-    const [{ data: customer }, { data: companyRow }] = await Promise.all([
+    const [{ data: customer }, { data: intermediaryCustomer }, { data: companyRow }] = await Promise.all([
       // Tomador avulso não tem linha em `customers` — a consulta nem acontece.
       // (Escopada por company_id quando acontece: o tomador é do tenant.)
       customerId
@@ -1102,6 +1148,16 @@ export async function emitirNfseAutorizada(
             "id, name, company_name, customer_type, document, email, address, address_number, neighborhood, city, state, zip_code, ibge_municipality_code",
           )
           .eq("id", customerId)
+          .eq("company_id", companyId)
+          .maybeSingle()
+        : Promise.resolve({ data: null as Record<string, unknown> | null }),
+      intermediarioCustomerId
+        ? supabase
+          .from("customers")
+          .select(
+            "id, name, company_name, customer_type, document, email, address, address_number, neighborhood, city, state, zip_code, ibge_municipality_code",
+          )
+          .eq("id", intermediarioCustomerId)
           .eq("company_id", companyId)
           .maybeSingle()
         : Promise.resolve({ data: null as Record<string, unknown> | null }),
@@ -1118,6 +1174,12 @@ export async function emitirNfseAutorizada(
         404,
       );
     }
+    if (intermediarioCustomerId && !intermediaryCustomer) {
+      return jsonResponse(
+        { error: "intermediary_not_found", message: "Intermediário não encontrado." },
+        404,
+      );
+    }
 
     // ---- Tomador avulso: cobrança de campo acontece AQUI, antes de qualquer
     // coisa irreversível (a RPC de numeração da DPS só roda mais abaixo).
@@ -1129,6 +1191,18 @@ export async function emitirNfseAutorizada(
       if (erroTomador) {
         return jsonResponse(
           { error: "invalid_tomador", message: erroTomador },
+          422,
+        );
+      }
+    }
+    if (intermediarioAvulso) {
+      const erroIntermediario = validarPessoaAvulsaParaEmissao(
+        intermediarioAvulso,
+        "intermediário",
+      );
+      if (erroIntermediario) {
+        return jsonResponse(
+          { error: "invalid_intermediary", message: erroIntermediario },
           422,
         );
       }
@@ -1167,6 +1241,12 @@ export async function emitirNfseAutorizada(
       ? onlyDigits(customer?.document)
       : onlyDigits(tomadorAvulso?.documento);
     if (!tomadorDocumento) missing.push("CPF/CNPJ do cliente");
+    const intermediarioDocumentoValidacao = intermediarioCustomerId
+      ? onlyDigits(intermediaryCustomer?.document)
+      : onlyDigits(intermediarioAvulso?.documento);
+    if ((intermediarioCustomerId || intermediarioAvulso) && !intermediarioDocumentoValidacao) {
+      missing.push("CPF/CNPJ do intermediário");
+    }
 
     // Código NBS: body → rascunho → padrão da empresa. Obrigatório.
     const codigoNbs = clean(body?.servico?.codigoNbs) ||
@@ -1319,6 +1399,40 @@ export async function emitirNfseAutorizada(
           bairro: clean(tomadorAvulso?.endereco?.bairro) || undefined,
         }
         : undefined);
+    const intermediarioDocumento = intermediarioCustomerId
+      ? onlyDigits(intermediaryCustomer?.document)
+      : onlyDigits(intermediarioAvulso?.documento);
+    const enderecoIntermediario = intermediarioCustomerId
+      ? {
+        municipioIbge: cleanIbge(intermediaryCustomer?.ibge_municipality_code) || undefined,
+        cep: onlyDigits(intermediaryCustomer?.zip_code) || undefined,
+        logradouro: clean(intermediaryCustomer?.address) || undefined,
+        numero: clean(intermediaryCustomer?.address_number) || undefined,
+        bairro: clean(intermediaryCustomer?.neighborhood) || undefined,
+      }
+      : (enderecoAvulsoCompleto(intermediarioAvulso?.endereco)
+        ? {
+          municipioIbge: cleanIbge(intermediarioAvulso?.endereco?.ibge) || undefined,
+          cep: onlyDigits(intermediarioAvulso?.endereco?.cep) || undefined,
+          logradouro: clean(intermediarioAvulso?.endereco?.logradouro) || undefined,
+          numero: clean(intermediarioAvulso?.endereco?.numero) || undefined,
+          complemento: clean(intermediarioAvulso?.endereco?.complemento) || undefined,
+          bairro: clean(intermediarioAvulso?.endereco?.bairro) || undefined,
+        }
+        : undefined);
+    const intermediarioPayload = intermediarioDocumento
+      ? {
+        tipoInscricao: intermediarioDocumento.length > 11 ? "2" : "1",
+        inscricaoFederal: intermediarioDocumento,
+        razaoSocial: intermediarioCustomerId
+          ? (clean(intermediaryCustomer?.company_name) || clean(intermediaryCustomer?.name) || "Intermediário")
+          : (clean(intermediarioAvulso?.nome) || "Intermediário"),
+        email: intermediarioCustomerId
+          ? clean(intermediaryCustomer?.email) || undefined
+          : clean(intermediarioAvulso?.email) || undefined,
+        endereco: enderecoIntermediario,
+      }
+      : undefined;
     // Discriminação: body → rascunho (descricao_servico) → fallback.
     const discriminacao = clean(body?.servico?.descricao) ||
       clean(draft?.descricao_servico) ||
@@ -1422,6 +1536,24 @@ export async function emitirNfseAutorizada(
         body?.valores?.valorCsll ?? draft?.valor_csll,
       );
       if (csll != null && csll > 0) valores.valorCsll = csll;
+      const inss = parseNonNegative(body?.valores?.valorInss ?? draft?.valor_inss);
+      if (inss != null && inss > 0) valores.valorInss = inss;
+      const irrf = parseNonNegative(body?.valores?.valorIrrf ?? draft?.valor_irrf);
+      if (irrf != null && irrf > 0) valores.valorIrrf = irrf;
+      const deducoes = parseNonNegative(body?.valores?.deducoes ?? draft?.deducoes);
+      if (deducoes != null && deducoes > 0) valores.deducoes = deducoes;
+      const descontoCondicionado = parseNonNegative(
+        body?.valores?.descontoCondicionado ?? draft?.desconto_condicionado,
+      );
+      if (descontoCondicionado != null && descontoCondicionado > 0) {
+        valores.descontoCondicionado = descontoCondicionado;
+      }
+      const descontoIncondicionado = parseNonNegative(
+        body?.valores?.descontoIncondicionado ?? draft?.desconto_incondicionado,
+      );
+      if (descontoIncondicionado != null && descontoIncondicionado > 0) {
+        valores.descontoIncondicionado = descontoIncondicionado;
+      }
     }
     // Percentual total de tributos (grupo `totTrib`): já resolvido acima, junto
     // com o gate que impede a automação de mandar a nota sem ele. Campo
@@ -1453,6 +1585,15 @@ export async function emitirNfseAutorizada(
     const codigoTributacaoMunicipal = cTribMunBody.valor ||
       cleanCTribMun(draft?.codigo_tributacao_municipal) ||
       await herdarCTribMunDoTipoDeServico(supabase, companyId, codigoServico);
+    const documentoResponsabilidadeTecnica =
+      clean(body?.servico?.documentoResponsabilidadeTecnica) ||
+      clean(draft?.documento_responsabilidade_tecnica);
+    const documentoReferencia = clean(body?.servico?.documentoReferencia) ||
+      clean(draft?.documento_referencia);
+    const pedidoB2b = clean(body?.servico?.pedidoB2b);
+    const informacoesComplementares = pedidoB2b
+      ? `Pedido: ${pedidoB2b}`
+      : clean(draft?.informacoes_complementares);
 
     // ---- Persistência da linha: SUCESSO e FRACASSO passam pelo mesmo caminho.
     //
@@ -1487,6 +1628,10 @@ export async function emitirNfseAutorizada(
       // preenchidas, e um rascunho pode estar trocando de uma pra outra.
       customer_id: customerId ? clean(customer?.id) || customerId : null,
       [COL_TOMADOR_AVULSO]: tomadorAvulso,
+      intermediario_customer_id: intermediarioCustomerId
+        ? clean(intermediaryCustomer?.id) || intermediarioCustomerId
+        : null,
+      [COL_INTERMEDIARIO_AVULSO]: intermediarioAvulso,
       idempotency_key: idempotencyKey,
       // Imutável depois da transmissão: operações futuras usam este ambiente,
       // nunca o ambiente que a empresa estiver usando naquele momento.
@@ -1528,6 +1673,17 @@ export async function emitirNfseAutorizada(
       trib_issqn: valores.tribIssqn ?? null,
       tp_ret_issqn: tpRetIssqnInformado || null,
       percentual_trib_sn: percentualTotalTributos,
+      valor_pis: valores.valorPis ?? null,
+      valor_cofins: valores.valorCofins ?? null,
+      valor_csll: valores.valorCsll ?? null,
+      valor_inss: valores.valorInss ?? null,
+      valor_irrf: valores.valorIrrf ?? null,
+      deducoes: valores.deducoes ?? null,
+      desconto_condicionado: valores.descontoCondicionado ?? null,
+      desconto_incondicionado: valores.descontoIncondicionado ?? null,
+      documento_responsabilidade_tecnica: documentoResponsabilidadeTecnica || null,
+      documento_referencia: documentoReferencia || null,
+      informacoes_complementares: informacoesComplementares || null,
       // Registra o cTribMun EFETIVAMENTE enviado (pode ter vindo da herança do
       // tipo de serviço) — a linha tem que espelhar o que foi à prefeitura.
       [COL_CTRIBMUN]: codigoTributacaoMunicipal || null,
@@ -1693,12 +1849,17 @@ export async function emitirNfseAutorizada(
           // Endereço do CLIENTE (nunca do prestador). Vai no XML quando disponível.
           endereco: enderecoTomador,
         },
+        intermediario: intermediarioPayload,
         servico: {
           codigoServico,
           codigoNbs,
           municipioIncidencia,
           discriminacao,
           codigoTributacaoMunicipal: codigoTributacaoMunicipal || undefined,
+          documentoResponsabilidadeTecnica:
+            documentoResponsabilidadeTecnica || undefined,
+          documentoReferencia: documentoReferencia || undefined,
+          informacoesComplementares: informacoesComplementares || undefined,
         },
         valores,
       });

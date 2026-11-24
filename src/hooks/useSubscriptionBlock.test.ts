@@ -1,22 +1,27 @@
 import { createElement, type PropsWithChildren } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { authState, from, single } = vi.hoisted(() => ({
-  authState: {
-    user: null as { id: string } | null,
-    loading: false,
-    profile: null as { company_id: string | null } | null,
-    isAdminUser: false,
-    profileLoading: false,
-    linkedAffiliateId: null as string | null,
-    // `false` = detecção de afiliado já concluiu (o usuário não é afiliado).
-    affiliateLoading: false,
-  },
-  from: vi.fn(),
-  single: vi.fn(),
-}));
+const { authState, from, single, refreshUserData } = vi.hoisted(() => {
+  const refreshUserData = vi.fn(async () => undefined);
+  return {
+    authState: {
+      user: null as { id: string } | null,
+      loading: false,
+      profile: null as { company_id: string | null } | null,
+      isAdminUser: false,
+      profileLoading: false,
+      linkedAffiliateId: null as string | null,
+      // `false` = detecção de afiliado já concluiu (o usuário não é afiliado).
+      affiliateLoading: false,
+      refreshUserData,
+    },
+    from: vi.fn(),
+    single: vi.fn(),
+    refreshUserData,
+  };
+});
 
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => authState,
@@ -143,6 +148,7 @@ describe("useSubscriptionBlock", () => {
     authState.affiliateLoading = false;
     from.mockClear();
     single.mockReset();
+    refreshUserData.mockClear();
   });
 
   it("falha fechado para usuário autenticado sem tenant", () => {
@@ -168,6 +174,20 @@ describe("useSubscriptionBlock", () => {
     expect(from).not.toHaveBeenCalled();
   });
 
+  it("refaz a hidratação do perfil ao tentar novamente sem tenant carregado", async () => {
+    authState.user = { id: "usuario" };
+    const { result } = renderHook(() => useSubscriptionBlock(), {
+      wrapper: queryWrapper(),
+    });
+
+    await act(async () => {
+      await result.current.retry();
+    });
+
+    expect(refreshUserData).toHaveBeenCalledTimes(1);
+    expect(from).not.toHaveBeenCalled();
+  });
+
   it("não monta produto quando a consulta da assinatura falha", async () => {
     authState.user = { id: "usuario" };
     authState.profile = { company_id: "tenant" };
@@ -181,6 +201,27 @@ describe("useSubscriptionBlock", () => {
     await waitFor(() => expect(result.current.status).toBe("unavailable"));
     expect(result.current.blocked).toBe(true);
     expect(single).toHaveBeenCalledTimes(2);
+  });
+
+  it("preserva a última decisão válida e fecha as ações enquanto reconecta", async () => {
+    authState.user = { id: "usuario" };
+    authState.profile = { company_id: "tenant" };
+    single
+      .mockResolvedValueOnce({ data: company(), error: null })
+      .mockResolvedValue({ data: null, error: new Error("indisponível") });
+
+    const { result } = renderHook(() => useSubscriptionBlock(), {
+      wrapper: queryWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.status).toBe("allowed"));
+
+    await act(async () => {
+      await result.current.retry();
+    });
+
+    await waitFor(() => expect(result.current.status).toBe("reconnecting"));
+    expect(result.current.blocked).toBe(true);
   });
 
   it("libera o afiliado vinculado, que não tem assinatura de tenant", () => {

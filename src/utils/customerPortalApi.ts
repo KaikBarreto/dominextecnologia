@@ -13,7 +13,7 @@ import {
  */
 
 /**
- * Abre um chamado (OS corretiva) a partir do Portal do Cliente.
+ * Envia um chamado para a caixa de entrada do Portal do Cliente.
  *
  * A página NÃO escreve em `service_orders`: o papel `anon` não tem INSERT nessa
  * tabela (a varredura de 18/10/2026 revogou o privilégio e o botão passou a
@@ -42,13 +42,18 @@ import {
  *  - `22023` — descrição fora da faixa de 10 a 2000 caracteres, ou equipamento
  *    que não pertence ao cliente do portal.
  */
+export interface PortalTicketReceipt {
+  portalCallId: string;
+  protocolNumber: number;
+}
+
 export async function createCustomerPortalTicket(
   token: string,
   description: string,
   sessionToken: string | null,
   equipmentId?: string | null,
-): Promise<void> {
-  const { error } = await supabase.rpc('create_customer_portal_ticket', {
+): Promise<PortalTicketReceipt> {
+  const { data, error } = await supabase.rpc('create_customer_portal_ticket', {
     p_token: token,
     p_session_token: sessionToken || null,
     p_description: description.trim(),
@@ -56,6 +61,18 @@ export async function createCustomerPortalTicket(
     p_equipment_id: equipmentId || null,
   });
   if (error) throw error;
+  const payload = data as { portal_call_id?: unknown; protocol_number?: unknown } | null;
+  if (
+    !payload
+    || typeof payload.portal_call_id !== 'string'
+    || typeof payload.protocol_number !== 'number'
+  ) {
+    throw new Error('portal_ticket_receipt_invalid');
+  }
+  return {
+    portalCallId: payload.portal_call_id,
+    protocolNumber: payload.protocol_number,
+  };
 }
 
 /**

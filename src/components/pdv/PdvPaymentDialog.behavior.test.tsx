@@ -130,6 +130,17 @@ describe('PdvPaymentDialog — fechamento real da venda', () => {
     testState.storedValue.isError = false;
   });
 
+  it('retira a linha de saída da navegação e da leitura durante a animação', () => {
+    renderDialog();
+    const previous = screen.getByRole('region', { name: 'Pagamento: Dinheiro' });
+    fireEvent.click(screen.getByRole('button', { name: 'Fiado/Saldo' }));
+
+    expect(previous).toHaveAttribute('aria-hidden', 'true');
+    expect(previous).toHaveAttribute('inert');
+    expect(screen.getAllByRole('region', { name: /^Pagamento:/ })).toHaveLength(1);
+    expect(screen.getByRole('region', { name: 'Pagamento: Fiado' })).not.toBe(previous);
+  });
+
   it('envia voucher parcial e somente o restante em dinheiro', async () => {
     testState.storedValue.data.vouchers = [
       { id: 'voucher-1', code: 'DEV-1042', balance: 100, expiresOn: null },
@@ -277,7 +288,7 @@ describe('PdvPaymentDialog — fechamento real da venda', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Dinheiro' }));
     fireEvent.keyDown(window, { key: 'F9' });
 
-    expect(screen.getAllByText(/Escolha a conta do cofre em Configurações do PDV antes de receber em dinheiro/)).toHaveLength(2);
+    expect(screen.getAllByText(/Escolha a conta do cofre em Configurações do PDV \(Loja\) antes de receber em dinheiro/)).toHaveLength(2);
     expect(props.onConfirm).not.toHaveBeenCalled();
   });
 
@@ -389,4 +400,65 @@ describe('PdvPaymentDialog — fechamento real da venda', () => {
     expect(screen.getByRole('region', { name: 'Pagamento: Cartão de crédito' })).toBeInTheDocument();
   });
 
+  it('aguarda a dívida canônica antes de confirmar fiado, inclusive porF9', async () => {
+    const props=defaultProps({customerCredit:null,customerCreditPending:true});
+    const view=render(<PdvPaymentDialog {...props} />);
+    fireEvent.click(screen.getByRole('button',{name:'Fiado/Saldo'}));
+    expect(confirmButton()).toBeDisabled();
+    expect(screen.getByText('Conferindo a dívida e o limite do cliente…')).toBeVisible();
+    fireEvent.keyDown(window,{key:'F9'});expect(props.onConfirm).not.toHaveBeenCalled();
+    view.rerender(<PdvPaymentDialog {...props} customerCreditPending={false} customerCredit={{creditLimit:1000,debt:80}} />);
+    expect(screen.getByText(/já deve R\$.*80,00/)).toBeVisible();
+    expect(confirmButton()).toBeEnabled();
+    fireEvent.keyDown(window,{key:'F9'});
+    await waitFor(()=>expect(props.onConfirm).toHaveBeenCalledOnce());
+  });
+  it('oferece recuperação de falha na consulta e bloqueia somente o fiado', async () => {
+    const retry=vi.fn();const props=renderDialog({customerCredit:null,customerCreditError:true,onRetryCustomerCredit:retry});
+    fireEvent.click(screen.getByRole('button',{name:'Fiado/Saldo'}));expect(confirmButton()).toBeDisabled();
+    fireEvent.click(screen.getByRole('button',{name:'Tentar novamente'}));expect(retry).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByRole('button',{name:'Dinheiro'}));expect(confirmButton()).toBeEnabled();
+    fireEvent.click(confirmButton());await waitFor(()=>expect(props.onConfirm).toHaveBeenCalledOnce());
+  });
+
+  it('apresenta crédito assinado como saldo a favor, sem anunciar dívida negativa', () => {
+    renderDialog({customerCredit:{creditLimit:1000,debt:-15}});
+    fireEvent.click(screen.getByRole('button',{name:'Fiado/Saldo'}));
+    expect(screen.getByText(/tem R\$.*15,00 de saldo a favor/)).toBeVisible();
+    expect(screen.queryByText(/já deve/)).not.toBeInTheDocument();
+  });
+
+  it('informa a dívida mesmo quando não há limite cadastrado', () => {
+    renderDialog({customerCredit:{creditLimit:null,debt:80}});
+    fireEvent.click(screen.getByRole('button',{name:'Fiado/Saldo'}));
+    expect(screen.getByText(/já deve R\$.*80,00\./)).toBeVisible();
+  });
+
+});
+
+
+it('finaliza dois vouchers parciais e recebe somente o complemento sem reduzir a venda', async () => {
+  testState.storedValue.data.vouchers = [
+    { id: 'voucher-a', code: 'VA', balance: 50, expiresOn: null },
+    { id: 'voucher-b', code: 'VB', balance: 50, expiresOn: null },
+  ];
+  const props = renderDialog({ appliedVouchers: [
+    { voucherId: 'voucher-a', code: 'VA', amount: 20 },
+    { voucherId: 'voucher-b', code: 'VB', amount: 30 },
+  ] });
+  fireEvent.keyDown(window, { key: 'F9' });
+  await waitFor(() => expect(props.onConfirm).toHaveBeenCalledOnce());
+  expect(props.onConfirm).toHaveBeenCalledWith([
+    { method: 'voucher', amount: 20, reference_id: 'voucher-a' },
+    { method: 'voucher', amount: 30, reference_id: 'voucher-b' },
+    { method: 'dinheiro', amount: 50 },
+  ]);
+});
+
+it('envia fiado sem vencimento explícito pela interação real do operador', async () => {
+  const props = renderDialog();
+  fireEvent.click(screen.getByRole('button', { name: 'Fiado/Saldo' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Sem vencimento' }));
+  fireEvent.keyDown(window, { key: 'F9' });
+  await waitFor(() => expect(props.onConfirm).toHaveBeenCalledWith([{ method: 'fiado', amount: 100, due_date_mode: 'none' }]));
 });

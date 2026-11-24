@@ -1,7 +1,7 @@
 -- O resultado da cobertura pertence à abertura e ao ator que a confirmou.
 -- Repetir a mesma intenção não depende mais do estado pré-pagamento, sem
 -- permitir nova cobertura ou leitura de replay por outro operador/caixa.
-BEGIN;
+
 SET LOCAL lock_timeout='5s';
 SET LOCAL statement_timeout='120s';
 
@@ -92,4 +92,4 @@ END
 $fn$;
 
 -- CREATE OR REPLACE conserva owner/ACL existentes; nenhum grant ou rollout.
-COMMIT;
+;

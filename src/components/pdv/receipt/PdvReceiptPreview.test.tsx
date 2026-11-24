@@ -4,6 +4,18 @@ import { PdvReceiptPreview } from './PdvReceiptPreview';
 import { getPdvReceiptPreviewFixture, PDV_RECEIPT_PREVIEW_FIXTURE } from '@/lib/pdv/receipt/fixture';
 
 describe('PdvReceiptPreview', () => {
+  it.each(['58mm', '80mm', 'a4'] as const)('mostra o total dos vouchers em uma linha em %s', format => {
+    const snapshot = {...PDV_RECEIPT_PREVIEW_FIXTURE, payments: [
+      {method:'voucher',amount:5}, {method:'dinheiro',amount:170}, {method:'voucher',amount:10},
+    ]};
+    render(<PdvReceiptPreview snapshot={snapshot} format={format} />);
+    const payments = screen.getByRole('region', {name:'Formas de pagamento'});
+    expect(payments).toHaveTextContent('Vouchers: R$ 15,00');
+    expect(payments).toHaveTextContent('Dinheiro: R$ 170,00');
+    expect(screen.getAllByText(/Vouchers:/)).toHaveLength(1);
+    expect(screen.queryByText(/Voucher:/)).not.toBeInTheDocument();
+  });
+
   it('mostra dados operacionais sem subtítulo ou status de retirada', () => {
     render(<PdvReceiptPreview snapshot={PDV_RECEIPT_PREVIEW_FIXTURE} format="80mm" />);
     const preview = screen.getByLabelText('Prévia do comprovante 80mm');
@@ -59,16 +71,38 @@ describe('PdvReceiptPreview', () => {
     expect(screen.queryByText('PAGO')).not.toBeInTheDocument();
   });
 
-  it('comprovante mostra só quantidades do evento, saldo restante e assinatura', () => {
+  it('comprovante mostra quantidades do evento e saldo restante sem assinatura', () => {
     const snapshot = getPdvReceiptPreviewFixture('delivery');
     render(<PdvReceiptPreview snapshot={snapshot} format="a4" />);
     expect(screen.getByRole('heading', {name:/COMPROVANTE DE RETIRADA/})).toBeInTheDocument();
     expect(screen.getAllByText('RETIRADO')).toHaveLength(2);
     expect(screen.getAllByText('RESTANTE')).toHaveLength(2);
-    expect(screen.getByText(/Registro de retirada:/)).toHaveTextContent('RET-2087-01');
-    expect(screen.getByText(/Assinatura:/)).toBeInTheDocument();
+    expect(screen.queryByText(/Registro de retirada:/)).not.toBeInTheDocument();
+    expect(screen.queryByText('RET-2087-01')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Local:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Assinatura/)).not.toBeInTheDocument();
+    expect(screen.getByText('Recebido por: Cliente exemplo')).toBeInTheDocument();
     expect(screen.queryByText(/R\$/)).not.toBeInTheDocument();
     expect(screen.queryByText('TOTAL')).not.toBeInTheDocument();
+  });
+
+  it('agrupa título centralizado, cliente e operador/data como no comprovante EcoSistema', () => {
+    const {container}=render(<PdvReceiptPreview snapshot={getPdvReceiptPreviewFixture('delivery')} format="80mm" />);
+    const metadata=container.querySelector('[data-receipt-metadata]')!;
+    expect(metadata).toHaveClass('text-center');
+    expect(metadata).toContainElement(screen.getByRole('heading',{name:/COMPROVANTE DE RETIRADA/}));
+    expect(metadata).toHaveTextContent('Cliente: Cliente exemplo');
+    expect(metadata).toHaveTextContent('Operador: Maria');
+    expect(metadata).not.toHaveTextContent('Local:');
+  });
+
+  it.each(['58mm', '80mm', 'a4'] as const)('retirada não reserva área de assinatura nem exibe campos vazios em %s', format => {
+    const snapshot = getPdvReceiptPreviewFixture('delivery');
+    snapshot.withdrawal!.receivedBy = null;
+    render(<PdvReceiptPreview snapshot={snapshot} format={format} />);
+    expect(screen.queryByText(/Assinatura/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Recebido por:/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Espaço para assinatura')).not.toBeInTheDocument();
   });
 
   it('orçamento e pedido preservam as mesmas colunas e valores, com PAGO no final do pedido quitado', () => {

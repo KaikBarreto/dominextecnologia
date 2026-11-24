@@ -65,6 +65,10 @@ vi.mock('@/hooks/useCompanySettings', () => ({
   useCompanySettings: () => ({ settings: { name: 'Empresa Teste' } }),
 }));
 
+// Aba Funcionários sem permissão de RH: lê só as colunas não sensíveis
+// (o caso RH tem prova própria em useCompanyDataExport.employees.test.tsx).
+vi.mock('@/hooks/useCanManageEmployees', () => ({ useCanManageEmployees: () => false }));
+
 vi.mock('@/hooks/useCompanyModules', () => ({
   useCompanyModules: () => ({
     hasModule: (code: string) => (code === 'pdv' ? state.hasPdv : true),
@@ -257,5 +261,40 @@ describe('useCompanyDataExport — add-on PDV no "Exportar meus dados"', () => {
     // Tipo de lançamento vira rótulo em PT-BR, nunca 'venda_fiado' cru.
     expect(extrato.rows[0][kind]).toBe('Venda no Fiado');
     expect(extrato.rows[2][kind]).toBe('Pagamento');
+  });
+
+  it('exporta destinatários efetivos respeitando o gate geral do cliente', async () => {
+    state.tables = {
+      customers: [
+        { id: 'c-off', name: 'Cliente desligado', whatsapp_notifications_enabled: false },
+        { id: 'c-on', name: 'Cliente ligado', whatsapp_notifications_enabled: true },
+      ],
+      customer_contacts: [
+        { id: 'contact-off', customer_id: 'c-off', name: 'Portaria desligada' },
+        { id: 'contact-on', customer_id: 'c-on', name: 'Portaria ligada' },
+      ],
+      customer_whatsapp_routes: [
+        { id: 'route-off', customer_id: 'c-off', category: 'service_order', enabled: true },
+        { id: 'route-on', customer_id: 'c-on', category: 'service_order', enabled: true },
+      ],
+      customer_whatsapp_route_recipients: [
+        { id: 'rr-off', route_id: 'route-off', recipient_kind: 'customer_contact', customer_contact_id: 'contact-off' },
+        { id: 'rr-on', route_id: 'route-on', recipient_kind: 'customer_contact', customer_contact_id: 'contact-on' },
+      ],
+    };
+    const selection = {} as Record<ExportGroupKey, boolean>;
+    for (const key of EXPORT_GROUPS) selection[key] = false;
+    selection.customers = true;
+
+    const { result } = renderHook(() => useCompanyDataExport());
+    await act(async () => result.current.run(selection));
+
+    const customers = sheet('customers')!;
+    const customerOs = customers.columns.findIndex((column) => column.key === 'whatsapp_service_order');
+    expect(customers.rows.map((row) => row[customerOs])).toEqual(['Não', 'Não']);
+
+    const contacts = sheet('customerContacts')!;
+    const contactOs = contacts.columns.findIndex((column) => column.key === 'whatsapp_service_order');
+    expect(contacts.rows.map((row) => row[contactOs])).toEqual(['Não', 'Sim']);
   });
 });

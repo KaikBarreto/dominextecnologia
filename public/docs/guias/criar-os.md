@@ -1,5 +1,7 @@
 # Criar uma ordem de serviço
 
+Este fluxo exige o núcleo Serviços, os escopos da chave e assinatura vigente. `403 module_not_contracted` indica que é preciso revisar a contratação; repetir a chamada não libera o núcleo.
+
 Use este fluxo para integrar qualquer aplicação server-to-server — CRM, ERP,
 portal, formulário, automação, chatbot ou agente de IA — à agenda da Dominex.
 

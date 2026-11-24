@@ -5,6 +5,8 @@ import type { PdvLedgerEntry } from '@/lib/pdv/cash';
 import { pdv } from '@/lib/i18n/messages/app/pdv';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
+vi.mock('@/components/pdv/receipt/PdvOrderReceiptButton', () => ({ usePdvOrderReceiptOpener: () => ({ open: vi.fn(), isCurrent: () => true }) }));
+
 beforeEach(() => {
   vi.stubGlobal(
     'ResizeObserver',

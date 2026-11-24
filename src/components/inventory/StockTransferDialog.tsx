@@ -50,8 +50,8 @@ export function StockTransferDialog({
   useEffect(() => {
     if (!open) return;
     // initialFromStockId tem precedência: vem do atalho de presença bloqueada
-    // (local cujo saldo impede a remoção). Só cai no activeStockId/default quando
-    // o dialog é aberto pelo menu de ações "Transferir" normal.
+    // (local cujo saldo impede a remoção). Sem local ativo, a origem deve ser
+    // escolhida explicitamente no diálogo.
     setFromStockId(initialFromStockId ?? activeStockId ?? '');
     setToStockId('');
     setQuantityStr('');

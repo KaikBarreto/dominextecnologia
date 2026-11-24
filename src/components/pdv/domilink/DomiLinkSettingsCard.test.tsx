@@ -23,6 +23,17 @@ describe('DomiLinkSettingsCard', () => {
     expect(screen.getByRole('img', { name: 'DomiLink' }).closest('.domilink-brand')).toHaveClass('domilink-brand--color');
     expect(screen.getByText(/equipamentos podem ser conectados quando você precisar/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/código do DomiLink/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /baixar/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/A instalação é manual por enquanto/)).toBeVisible();
+  });
+
+  it('limpa código digitado imediatamente ao mudar usuário ou empresa', () => {
+    mocks.state = { ...base, enabled: true, status: 'pairing', scopeKey: 'owner-A' };
+    const { rerender } = render(<DomiLinkSettingsCard />);
+    fireEvent.change(screen.getByLabelText(/código do DomiLink/i), { target: { value: '123456' } });
+    mocks.state = { ...mocks.state, scopeKey: 'owner-B' };
+    rerender(<DomiLinkSettingsCard />);
+    expect(screen.getByLabelText(/código do DomiLink/i)).toHaveValue('');
   });
 
   it('só habilita pareamento com seis números', () => {

@@ -16,10 +16,17 @@ export const ADMIN_SCREEN_PERMISSIONS = [
 ] as const;
 
 export const ADMIN_FUNCTION_PERMISSIONS = [
+  { key: 'admin_empresas_criar', label: 'Criar empresa' },
+  { key: 'admin_empresas_editar', label: 'Editar empresa' },
+  { key: 'admin_empresas_excluir', label: 'Excluir empresa' },
+  { key: 'admin_empresas_pagamento', label: 'Registrar pagamento de empresa' },
   { key: 'admin_empresas_acesso', label: 'Gerar link de redefinição de senha' },
   { key: 'admin_financeiro_lancamentos', label: 'Criar lançamentos no financeiro' },
   { key: 'admin_financeiro_totais', label: 'Visualizar totais e DRE' },
   { key: 'admin_vendedores_ver_todos', label: 'Ver todos os vendedores' },
+  { key: 'admin_vendedores_gerenciar', label: 'Gerenciar equipe e comissões' },
+  { key: 'admin_crm_criar_lead', label: 'Criar lead' },
+  { key: 'admin_crm_excluir_lead', label: 'Excluir lead' },
 ] as const;
 
 export type AdminPermissionKey =

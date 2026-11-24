@@ -57,6 +57,7 @@ export interface UserRole {
 
 export interface Customer {
   id: string;
+  company_id?: string;
   customer_type: CustomerType;
   name: string;
   company_name?: string;
@@ -92,8 +93,8 @@ export interface Customer {
   is_service_customer?: boolean;
   is_store_customer?: boolean;
   // Limite de fiado da loja (módulo PDV). `null`/ausente = sem limite definido
-  // (a RPC de venda avisa). O SALDO DEVEDOR nunca vive aqui: é a soma de
-  // `customer_credit_ledger` (ver usePdvCustomerCredit).
+  // (a RPC de venda avisa). O saldo devedor vem do resumo canônico de
+  // recebíveis e créditos no servidor (ver usePdvCustomerCredit).
   credit_limit?: number | null;
   created_at: string;
   updated_at: string;
@@ -124,6 +125,7 @@ export interface ServiceOrder {
   id: string;
   order_number: number;
   entry_type?: 'os' | 'tarefa' | null;
+  show_in_schedule?: boolean;
   customer_id: string;
   equipment_id?: string;
   technician_id?: string;
@@ -201,8 +203,9 @@ export interface ServiceOrder {
   // Finalização parcial: quando true e status='pausada', a OS é exibida como
   // "Parcialmente Concluída" (finalizada parcialmente pelo técnico, aguardando conclusão).
   partial_finish?: boolean;
-  // Origem da OS: 'manual' (criada internamente) ou 'portal' (aberta pelo cliente
-  // final via portal público). Usado para distinguir chamados de clientes.
+  // Origem da OS: 'manual' (criada internamente) ou 'portal' (criada pela
+  // conversão explícita de um chamado recebido pelo portal). O chamado em si
+  // vive em `portal_calls` e nunca deve ser inferido somente por este campo.
   origin?: string | null;
   // Endereço de serviço próprio da OS (opcional). Quando preenchido, sobrepõe
   // o endereço do cliente no mapa de rota, na exibição e nos links Maps/Waze.

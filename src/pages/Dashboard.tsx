@@ -1,3 +1,8 @@
+import { Link } from 'react-router-dom';
+import { Store, ShoppingCart, Package, Users, Receipt, BarChart3, ClipboardList, Wrench } from 'lucide-react';
+import { useCompanyModules } from '@/hooks/useCompanyModules';
+import { PageLoading } from '@/components/ui/page-loading';
+import { Button } from '@/components/ui/button';
 import { useMemo, useState, useEffect } from 'react';
 import { LayoutDashboard } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -48,7 +53,7 @@ function filterByRange<T extends Record<string, any>>(items: T[], field: string,
   });
 }
 
-export default function Dashboard() {
+function ServiceDashboard() {
   const { profile, user } = useAuth();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.dashboard;
@@ -352,6 +357,7 @@ export default function Dashboard() {
         portalCalls={stats?.portalCalls ?? []}
         isLoading={isLoading}
         userId={user?.id ?? profile?.user_id ?? ''}
+        companyId={profile?.company_id ?? ''}
       />
       <MobilePageHeader
         title={t.greeting.hello.replace('{name}', firstName)}
@@ -424,4 +430,35 @@ export default function Dashboard() {
       </div>
     </div>
   );
+}
+
+/** A loja não monta consultas de OS, técnicos ou financeiro sem permissão. */
+function RetailDashboard() {
+  const {hasScreenAccess}=useAuth();
+  const {hasScreen,hasModule}=useCompanyModules();
+  const allowed=(screen:string)=>hasScreenAccess(screen)&&hasScreen(screen);
+  const actions=[
+    {screen:'screen:pdv',path:'/pdv',title:'Caixa',description:'Abra o caixa e faça uma venda.',icon:ShoppingCart},
+    {screen:'screen:pdv_orders',path:'/pdv/pedidos',title:'Pedidos',description:'Consulte pedidos e acompanhe o atendimento.',icon:ClipboardList},
+    {screen:'screen:inventory',path:'/pdv/estoque',title:'Estoque da loja',description:'Confira produtos, quantidades e locais.',icon:Package},
+    {screen:'screen:customers',path:'/clientes',title:'Clientes e fornecedores',description:'Consulte cadastros, saldos e histórico.',icon:Users},
+    {screen:'screen:pdv_reports',path:'/pdv/relatorios',title:'Relatórios da loja',description:'Acompanhe as compras e vendas.',icon:BarChart3},
+    {screen:'screen:finance',path:'/financeiro',title:'Financeiro',description:'Acompanhe contas e movimentações.',icon:Receipt},
+    ...(hasModule('service_operations')?[{screen:'screen:service_orders',path:'/ordens-servico',title:'Ordens de serviço',description:'Acompanhe os serviços contratados pela empresa.',icon:Wrench}]:[]),
+  ].filter(action=>allowed(action.screen));
+  return <div className="space-y-6">
+    <SystemNoticeBanners scope="dashboard"/>
+    <PageHeader title="Visão geral da loja" subtitle="Acesse o que precisa para atender no dia a dia." icon={Store}
+      actions={allowed('screen:pdv')?<Button asChild><Link to="/pdv"><ShoppingCart className="mr-2 h-4 w-4"/>Ir para caixa</Link></Button>:undefined}/>
+    {actions.length===0?<p className="py-8 text-muted-foreground">Peça ao responsável pela empresa para configurar seu acesso às telas da loja.</p>:<div className="grid gap-x-8 sm:grid-cols-2 lg:grid-cols-3">
+      {actions.map(({path,title,description,icon:Icon})=><Link key={path} to={path} className="group flex items-start gap-4 border-b border-border py-6 transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <Icon className="mt-1 h-5 w-5 shrink-0" aria-hidden="true"/><div><h2 className="text-base font-semibold">{title}</h2><p className="mt-1 text-sm text-muted-foreground">{description}</p></div>
+      </Link>)}
+    </div>}
+  </div>;
+}
+export default function Dashboard(){
+ const {businessCore,hasModule,isLoading}=useCompanyModules();
+ if(isLoading)return <PageLoading/>;
+ return businessCore==='retail'||!hasModule('service_operations')?<RetailDashboard/>:<ServiceDashboard/>;
 }

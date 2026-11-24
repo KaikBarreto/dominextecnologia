@@ -61,7 +61,11 @@ vi.mock('@/components/ui/SearchableSelect', () => ({
   ),
 }));
 
-import { ApproveQuoteModal } from './ApproveQuoteModal';
+import {
+  ApproveQuoteModal,
+  type ApproveQuoteMode,
+  type ApproveQuoteResult,
+} from './ApproveQuoteModal';
 import { MESSAGES } from '@/lib/i18n/messages';
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
@@ -71,7 +75,10 @@ let root: Root;
 
 const t = MESSAGES['pt-br'].app.finance.approveQuote;
 
-function mount(defaultMode: 'recebido' | 'a_receber') {
+function mount(
+  defaultMode: ApproveQuoteMode,
+  onConfirm: (result: ApproveQuoteResult) => Promise<void> | void = async () => {},
+) {
   act(() => {
     root.render(
       <ApproveQuoteModal
@@ -80,7 +87,7 @@ function mount(defaultMode: 'recebido' | 'a_receber') {
         quoteNumber={42}
         amount={1000}
         defaultMode={defaultMode}
-        onConfirm={async () => {}}
+        onConfirm={onConfirm}
       />,
     );
   });
@@ -118,5 +125,26 @@ describe('ApproveQuoteModal — aprovação de orçamento nunca lista cartão co
     const labels = optionLabelsByPlaceholder(t.expectedAccountPlaceholder);
     expect(labels).toContain('Conta PF Matheus');
     expect(labels).not.toContain('Cartão Black Elite');
+  });
+});
+
+describe('ApproveQuoteModal — aprovação sem antecipar o financeiro', () => {
+  it('aprova sem pedir conta e devolve o modo apenas_aprovar', async () => {
+    const onConfirm = vi.fn();
+    mount('apenas_aprovar', onConfirm);
+
+    expect(document.querySelectorAll('[data-testid="searchable-select"]')).toHaveLength(0);
+    expect(document.body.textContent).toContain(t.modeOnlyApproveHint);
+
+    const matchingButtons = Array.from(document.querySelectorAll('button'))
+      .filter((button) => button.textContent === t.confirmOnlyApproveLabel);
+    const confirmButton = matchingButtons[matchingButtons.length - 1];
+    expect(confirmButton).toBeDefined();
+
+    await act(async () => {
+      confirmButton?.click();
+    });
+
+    expect(onConfirm).toHaveBeenCalledWith({ mode: 'apenas_aprovar' });
   });
 });

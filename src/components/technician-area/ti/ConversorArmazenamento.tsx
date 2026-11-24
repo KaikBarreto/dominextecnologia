@@ -1,7 +1,9 @@
 import { useState, useMemo } from 'react';
 import { ArrowLeftRight } from 'lucide-react';
 import { Label } from '@/components/ui/label';
-import { NumericInput } from '@/components/ui/numeric-input';
+import { NumericInput, parseDecimalInputValue } from '@/components/ui/numeric-input';
+import { formatNumber } from '@/lib/format';
+import { convertStorage, convertSpeed, transferTimeSeconds, STORAGE_UNITS, SPEED_UNITS, type StorageUnit, type SpeedUnit } from '@/lib/technicianItCalculations';
 import {
   Select,
   SelectContent,
@@ -14,65 +16,14 @@ import { ToolDisclaimer } from '../ToolDisclaimer';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 
-// ── Unidades de armazenamento ────────────────────────────────────────────────
-type StorageUnit = 'GB' | 'GiB' | 'TB' | 'TiB' | 'MB' | 'MiB';
-
-// Tudo em bytes como base
-const TO_BYTES: Record<StorageUnit, number> = {
-  MB:  1_000_000,
-  MiB: 1_048_576,
-  GB:  1_000_000_000,
-  GiB: 1_073_741_824,
-  TB:  1_000_000_000_000,
-  TiB: 1_099_511_627_776,
-};
-
-const STORAGE_UNITS: StorageUnit[] = ['MB', 'MiB', 'GB', 'GiB', 'TB', 'TiB'];
-
-function convertStorage(value: number, from: StorageUnit, to: StorageUnit): number {
-  const bytes = value * TO_BYTES[from];
-  return bytes / TO_BYTES[to];
-}
-
-function fmt(n: number): string {
-  if (!isFinite(n)) return '—';
-  const decimals = n < 10 ? 4 : n < 100 ? 3 : 2;
-  return n.toLocaleString('pt-BR', { maximumFractionDigits: decimals });
-}
-
-// ── Unidades de velocidade/transferência ─────────────────────────────────────
-type SpeedUnit = 'Mbps' | 'MBps' | 'Kbps' | 'KBps' | 'Gbps';
-
-// Tudo em bits/s como base
-const TO_BPS: Record<SpeedUnit, number> = {
-  Kbps: 1_000,
-  KBps: 8_000,
-  Mbps: 1_000_000,
-  MBps: 8_000_000,
-  Gbps: 1_000_000_000,
-};
-
-const SPEED_UNITS: SpeedUnit[] = ['Kbps', 'Mbps', 'Gbps', 'KBps', 'MBps'];
-
-function convertSpeed(value: number, from: SpeedUnit, to: SpeedUnit): number {
-  const bps = value * TO_BPS[from];
-  return bps / TO_BPS[to];
-}
-
-function transferTime(fileSizeMB: number, speedMbps: number): string {
-  if (fileSizeMB <= 0 || speedMbps <= 0) return '—';
-  const bits = fileSizeMB * 8_000_000;
-  const seconds = bits / (speedMbps * 1_000_000);
-  if (seconds < 60) return `${seconds.toFixed(1)} s`;
-  if (seconds < 3600) return `${(seconds / 60).toFixed(1)} min`;
-  return `${(seconds / 3600).toFixed(2)} h`;
-}
-
 type Tab = 'storage' | 'speed';
 
 export function ConversorArmazenamento() {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.technicianTools.storageConverter;
+  const fmt = (value: number) => formatNumber(value, locale, { maximumSignificantDigits: 8 });
+  const fmtTime = (value: number) => formatNumber(value, locale,
+    value < 0.01 ? { maximumSignificantDigits: 2 } : { maximumFractionDigits: 2 });
 
   const [tab, setTab] = useState<Tab>('storage');
 
@@ -88,25 +39,26 @@ export function ConversorArmazenamento() {
   const [fileSize, setFileSize] = useState('1000');
 
   const storageResult = useMemo(() => {
-    const v = parseFloat(storageValue.replace(',', '.'));
-    if (!isFinite(v) || v < 0) return null;
+    const v = parseDecimalInputValue(storageValue);
+    if (v === null || v < 0) return null;
     return convertStorage(v, fromUnit, toUnit);
   }, [storageValue, fromUnit, toUnit]);
 
   const speedResult = useMemo(() => {
-    const v = parseFloat(speedValue.replace(',', '.'));
-    if (!isFinite(v) || v <= 0) return null;
+    const v = parseDecimalInputValue(speedValue);
+    if (v === null || v < 0) return null;
     return convertSpeed(v, speedFrom, speedTo);
   }, [speedValue, speedFrom, speedTo]);
 
-  const timeResult = useMemo(() => {
-    const fs = parseFloat(fileSize.replace(',', '.'));
-    const v = parseFloat(speedValue.replace(',', '.'));
-    if (!isFinite(fs) || !isFinite(v)) return '—';
-    // converte tudo pra Mbps p/ calcular
-    const mbps = convertSpeed(v, speedFrom, 'Mbps');
-    return transferTime(fs, mbps);
+  const seconds = useMemo(() => {
+    const fs = parseDecimalInputValue(fileSize);
+    const speed = parseDecimalInputValue(speedValue);
+    return fs === null || speed === null ? null : transferTimeSeconds(fs, speed, speedFrom);
   }, [fileSize, speedValue, speedFrom]);
+  const timeResult = seconds === null ? '—'
+    : seconds < 60 ? `${fmtTime(seconds)} s`
+    : seconds < 3600 ? `${fmtTime(seconds / 60)} min`
+    : `${fmtTime(seconds / 3600)} h`;
 
   const swapStorage = () => {
     const tmp = fromUnit;
@@ -123,7 +75,7 @@ export function ConversorArmazenamento() {
   return (
     <div className="space-y-4 pb-4">
       <div>
-        <h2 className="text-base font-semibold tracking-tight md:text-xl">{t.title}</h2>
+        <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">{t.title}</h2>
         <p className="text-sm text-muted-foreground md:text-base">{t.subtitle}</p>
       </div>
 
@@ -134,8 +86,9 @@ export function ConversorArmazenamento() {
             key={v}
             type="button"
             onClick={() => setTab(v)}
+            aria-pressed={tab === v}
             className={cn(
-              'flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors',
+              'min-h-12 flex-1 rounded-md border px-3 py-2 text-base font-semibold transition-colors',
               tab === v
                 ? 'bg-primary text-primary-foreground border-primary'
                 : 'border-border bg-background text-muted-foreground hover:bg-muted',
@@ -148,10 +101,12 @@ export function ConversorArmazenamento() {
 
       {tab === 'storage' && (
         <div className="space-y-4">
-          <div className="rounded-lg border border-border bg-card p-4 space-y-4">
+          <div className="space-y-5">
             <div className="space-y-1.5">
-              <Label className="text-base text-muted-foreground md:text-lg">{t.valueLabel}</Label>
+              <Label htmlFor="storage-value" className="text-base font-medium text-foreground">{t.valueLabel}</Label>
               <NumericInput
+                id="storage-value"
+                decimal
                 value={storageValue}
                 onValueChange={setStorageValue}
                 min={0}
@@ -160,9 +115,9 @@ export function ConversorArmazenamento() {
             </div>
             <div className="flex items-end gap-2">
               <div className="flex-1 space-y-1.5">
-                <Label className="text-base text-muted-foreground md:text-lg">{t.fromLabel}</Label>
+                <Label htmlFor="storage-from" className="text-base font-medium text-foreground">{t.fromLabel}</Label>
                 <Select value={fromUnit} onValueChange={(v) => setFromUnit(v as StorageUnit)}>
-                  <SelectTrigger className="h-14 text-lg">
+                  <SelectTrigger id="storage-from" className="h-14 text-lg">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -179,9 +134,9 @@ export function ConversorArmazenamento() {
                 <ArrowLeftRight className="h-4 w-4 text-muted-foreground" />
               </button>
               <div className="flex-1 space-y-1.5">
-                <Label className="text-base text-muted-foreground md:text-lg">{t.toLabel}</Label>
+                <Label htmlFor="storage-to" className="text-base font-medium text-foreground">{t.toLabel}</Label>
                 <Select value={toUnit} onValueChange={(v) => setToUnit(v as StorageUnit)}>
-                  <SelectTrigger className="h-14 text-lg">
+                  <SelectTrigger id="storage-to" className="h-14 text-lg">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -193,11 +148,11 @@ export function ConversorArmazenamento() {
           </div>
 
           {/* Resultado storage */}
-          <div className="rounded-lg border border-border bg-background p-5 text-center space-y-1">
+          <div className="space-y-2 rounded-xl bg-muted/40 p-5 text-center">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t.resultLabel}</p>
             {storageResult !== null ? (
               <>
-                <p className="text-5xl font-bold leading-none text-primary sm:text-7xl">
+                <p className="break-all text-4xl font-bold leading-tight tabular-nums text-primary sm:text-6xl">
                   {fmt(storageResult)}
                   <span className="ml-2 text-2xl font-semibold sm:text-3xl">{toUnit}</span>
                 </p>
@@ -219,10 +174,12 @@ export function ConversorArmazenamento() {
 
       {tab === 'speed' && (
         <div className="space-y-4">
-          <div className="rounded-lg border border-border bg-card p-4 space-y-4">
+          <div className="space-y-5">
             <div className="space-y-1.5">
-              <Label className="text-base text-muted-foreground md:text-lg">{t.speedValueLabel}</Label>
+              <Label htmlFor="speed-value" className="text-base font-medium text-foreground">{t.speedValueLabel}</Label>
               <NumericInput
+                id="speed-value"
+                decimal
                 value={speedValue}
                 onValueChange={setSpeedValue}
                 min={0}
@@ -231,9 +188,9 @@ export function ConversorArmazenamento() {
             </div>
             <div className="flex items-end gap-2">
               <div className="flex-1 space-y-1.5">
-                <Label className="text-base text-muted-foreground md:text-lg">{t.fromLabel}</Label>
+                <Label htmlFor="speed-from" className="text-base font-medium text-foreground">{t.fromLabel}</Label>
                 <Select value={speedFrom} onValueChange={(v) => setSpeedFrom(v as SpeedUnit)}>
-                  <SelectTrigger className="h-14 text-lg">
+                  <SelectTrigger id="speed-from" className="h-14 text-lg">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -250,9 +207,9 @@ export function ConversorArmazenamento() {
                 <ArrowLeftRight className="h-4 w-4 text-muted-foreground" />
               </button>
               <div className="flex-1 space-y-1.5">
-                <Label className="text-base text-muted-foreground md:text-lg">{t.toLabel}</Label>
+                <Label htmlFor="speed-to" className="text-base font-medium text-foreground">{t.toLabel}</Label>
                 <Select value={speedTo} onValueChange={(v) => setSpeedTo(v as SpeedUnit)}>
-                  <SelectTrigger className="h-14 text-lg">
+                  <SelectTrigger id="speed-to" className="h-14 text-lg">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -264,10 +221,10 @@ export function ConversorArmazenamento() {
           </div>
 
           {/* Resultado velocidade */}
-          <div className="rounded-lg border border-border bg-background p-5 text-center space-y-1">
+          <div className="space-y-2 rounded-xl bg-muted/40 p-5 text-center">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t.resultLabel}</p>
             {speedResult !== null ? (
-              <p className="text-5xl font-bold leading-none text-primary sm:text-7xl">
+              <p className="break-all text-4xl font-bold leading-tight tabular-nums text-primary sm:text-6xl">
                 {fmt(speedResult)}
                 <span className="ml-2 text-2xl font-semibold sm:text-3xl">{speedTo}</span>
               </p>
@@ -277,12 +234,14 @@ export function ConversorArmazenamento() {
           </div>
 
           {/* Tempo de transferência */}
-          <div className="rounded-lg border border-border bg-card p-4 space-y-4">
+          <div className="space-y-5">
             <p className="text-sm font-medium">{t.transferTimeTitle}</p>
             <div className="space-y-1.5">
-              <Label className="text-base text-muted-foreground md:text-lg">{t.fileSizeLabel}</Label>
+              <Label htmlFor="file-size" className="text-base font-medium text-foreground">{t.fileSizeLabel}</Label>
               <div className="flex items-center gap-2">
                 <NumericInput
+                  id="file-size"
+                  decimal
                   value={fileSize}
                   onValueChange={setFileSize}
                   min={0}

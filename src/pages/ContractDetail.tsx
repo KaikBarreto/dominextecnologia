@@ -87,11 +87,11 @@ import {
 import { useTenantCharges } from '@/hooks/useTenantCharges';
 import { contractFrequencyToCycle } from '@/utils/contractBillingCycle';
 import { PortalCallsPanel } from '@/components/service-orders/PortalCallsPanel';
+import { usePortalCalls } from '@/hooks/usePortalCalls';
 import { ServiceOrderFormDialog, type ServiceOrderFormData } from '@/components/service-orders/ServiceOrderFormDialog';
 import { OsPmocDocumentsDialog } from '@/components/service-orders/OsPmocDocumentsDialog';
 import { canGenerateOsPmocDocuments } from '@/lib/osPmocDocuments';
 import { LinkExistingServiceOrderDialog } from '@/components/service-orders/LinkExistingServiceOrderDialog';
-import { buildPortalCallsPath, isPortalCall } from '@/lib/portalCalls';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
@@ -134,6 +134,7 @@ import { TaxCodeCombobox } from '@/components/fiscal/TaxCodeCombobox';
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { todayInTz, dateInTz } from '@/lib/timezone';
+import { formatCustomerAddress, type CustomerAddressParts } from '@/lib/customerAddress';
 import { useDataPagination } from '@/hooks/useDataPagination';
 import { DataTablePagination } from '@/components/ui/DataTablePagination';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -142,6 +143,7 @@ import { MESSAGES } from '@/lib/i18n/messages';
 import { readPastedCents } from '@/lib/money-paste-mask';
 import { useServiceOrders } from '@/hooks/useServiceOrders';
 import { normalizeServiceOrderSchedulePlan } from '@/lib/serviceOrderSchedule';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 /** Parse a YYYY-MM-DD string as a local date (avoids UTC-offset shift) */
 function parseLocalDate(dateStr: string): Date {
@@ -243,6 +245,7 @@ export default function ContractDetail() {
   const navigate = useNavigate();
   const { id, isResolving: isResolvingId } = useResolveContractId(routeParam);
   const { contract, isLoading, cancelOccurrenceOs, linkExistingServiceOrder, stats, linkedTransactions, isLoadingTransactions } = useContractDetail(id);
+  const contractPortalCalls = usePortalCalls({ contractId: id, enabled: Boolean(id) });
   const {
     serviceOrders,
     isLoading: isLoadingServiceOrders,
@@ -445,10 +448,18 @@ export default function ContractDetail() {
     const prev = portalIsPublic;
     setPortalIsPublic(next); // otimista
     setUpdatingPortalVisibility(true);
-    const { error } = await supabase
-      .from('contracts')
-      .update({ portal_is_public: next } as any)
-      .eq('id', id);
+    let error: unknown = null;
+    try {
+      assertRowsAffected(
+        await supabase
+          .from('contracts')
+          .update({ portal_is_public: next } as any, { count: 'exact' })
+          .eq('id', id),
+        'update',
+      );
+    } catch (e) {
+      error = e;
+    }
     setUpdatingPortalVisibility(false);
     if (error) {
       setPortalIsPublic(prev); // rollback
@@ -492,12 +503,20 @@ export default function ContractDetail() {
     else next[key] = state;
     setPortalSections(next); // otimista
     setSavingPortalSections(true);
-    const { error } = await supabase
-      .from('contracts')
-      // `portal_sections` já está no types.ts (migration 20261021160000), então
-      // aqui não precisa do `as any` que o `portal_is_public` acima ainda usa.
-      .update({ portal_sections: next as unknown as Json })
-      .eq('id', id);
+    let error: unknown = null;
+    try {
+      assertRowsAffected(
+        await supabase
+          .from('contracts')
+          // `portal_sections` já está no types.ts (migration 20261021160000), então
+          // aqui não precisa do `as any` que o `portal_is_public` acima ainda usa.
+          .update({ portal_sections: next as unknown as Json }, { count: 'exact' })
+          .eq('id', id),
+        'update',
+      );
+    } catch (e) {
+      error = e;
+    }
     setSavingPortalSections(false);
     if (error) {
       setPortalSections(prev); // rollback
@@ -613,10 +632,6 @@ export default function ContractDetail() {
     });
     return orders.map((o, i) => ({ ...o, occurrence_number: i + 1 }));
   }, [contract]);
-  const contractCalls = useMemo(
-    () => ((contract?.service_orders || []) as unknown as ServiceOrder[]).filter(isPortalCall),
-    [contract],
-  );
   const { sortedItems: sortedOcc, sortConfig: occSortConfig, handleSort: handleOccSort } = useTableSort(sortedOccurrences);
   const occPagination = useDataPagination(sortedOcc);
   const recPagination = useDataPagination(linkedTransactions || []);
@@ -1436,7 +1451,10 @@ export default function ContractDetail() {
     if (!contract || !id) return;
     const newValue = !(contract as any).show_billing_in_schedule;
     try {
-      await supabase.from('contracts').update({ show_billing_in_schedule: newValue } as any).eq('id', id);
+      assertRowsAffected(
+        await supabase.from('contracts').update({ show_billing_in_schedule: newValue } as any, { count: 'exact' }).eq('id', id),
+        'update',
+      );
       queryClient.invalidateQueries({ queryKey: ['contract-detail'] });
       queryClient.invalidateQueries({ queryKey: ['contracts-billing-hidden'] });
       toast({ title: newValue ? td.toasts.billingVisible : td.toasts.billingHidden });
@@ -1579,7 +1597,7 @@ export default function ContractDetail() {
   // Os campos abaixo vivem em colunas adicionadas pela Onda A/B (RT) — usamos
   // narrowing defensivo via Record genérico até types.ts ser regenerado.
   type RtRelation = { full_name?: string; modality?: string; cft_crea?: string };
-  type CustomerExtra = { document?: string; address?: string; city?: string; state?: string };
+  type CustomerExtra = CustomerAddressParts & { document?: string };
   // PostgREST join `responsible_technicians:responsible_technician_id (...)` no useContracts
   // resulta no alias PLURAL `responsible_technicians` (não singular). Bug histórico: lia
   // singular → contractRt sempre undefined → banner pintava RT como faltando mesmo
@@ -1610,9 +1628,7 @@ export default function ContractDetail() {
         cidade: companySettings?.city ?? '',
         customer_name: customerExtra.name ?? '',
         customer_document: customerExtra.document ?? '',
-        customer_address: [customerExtra.address, customerExtra.city, customerExtra.state]
-          .filter(Boolean)
-          .join(', '),
+        customer_address: formatCustomerAddress(customerExtra),
         contract_frequency_label: getFrequencyLabel(contract.frequency_type, contract.frequency_value),
         contract_start_date_extenso: format(parseLocalDate(contract.start_date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR }),
         // ISO bruto de contracts.created_at — o PmocContractDocsTab deriva
@@ -2315,9 +2331,16 @@ export default function ContractDetail() {
 
         const callsContent = (
           <PortalCallsPanel
-            items={contractCalls}
-            defaultView="all"
-            onOpenCall={(order) => navigate(buildPortalCallsPath(order.id))}
+            calls={contractPortalCalls.calls}
+            isLoading={contractPortalCalls.isLoading}
+            isError={contractPortalCalls.isError}
+            canManage={isAdminOrGestor() || hasPermission('fn:create_os')}
+            isConverting={contractPortalCalls.convertCall.isPending}
+            isClosing={contractPortalCalls.closeCall.isPending}
+            onRetry={() => { void contractPortalCalls.refetch(); }}
+            onConvert={(callId) => contractPortalCalls.convertCall.mutateAsync(callId)}
+            onCloseWithoutOs={(callId) => contractPortalCalls.closeCall.mutateAsync(callId)}
+            onOpenServiceOrder={(serviceOrderId) => navigate(`/ordens-servico?os=${encodeURIComponent(serviceOrderId)}`)}
           />
         );
 

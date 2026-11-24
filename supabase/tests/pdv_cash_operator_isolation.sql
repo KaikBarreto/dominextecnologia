@@ -36,6 +36,13 @@ BEGIN
     RAISE EXCEPTION 'fila nao exige abertura+Caixa exatos, inclusive no mesmo estoque';
   END IF;
   SELECT pg_get_functiondef('public.pdv_cover_existing_order_v2(uuid,uuid,uuid,uuid,jsonb,text)'::regprocedure) INTO v_src;
+  -- Cupom acrescenta revisão esperada na entrada; a custódia/replay anterior
+  -- permanece no wrapper original, agora privado e compartilhado pelas entradas.
+  IF to_regprocedure('public.pdv_cover_existing_order_coupon_core_v1(uuid,uuid,uuid,uuid,jsonb,text)') IS NOT NULL THEN
+    IF position('pdv_cover_existing_order_coupon_core_v1' IN v_src)=0 OR has_function_privilege('authenticated','public.pdv_cover_existing_order_coupon_core_v1(uuid,uuid,uuid,uuid,jsonb,text)','EXECUTE') THEN
+      RAISE EXCEPTION 'A cobertura expôs ou contornou o core de custódia'; END IF;
+    v_src:=v_src||pg_get_functiondef('public.pdv_cover_existing_order_coupon_core_v1(uuid,uuid,uuid,uuid,jsonb,text)'::regprocedure);
+  END IF;
   SELECT pg_get_functiondef('public.pdv_assert_cash_session_actor_v3(uuid,uuid,boolean,boolean)'::regprocedure) INTO v_actor_src;
   -- A sessão é validada pelo helper canônico, inclusive em replay de pedido
   -- já pago. A prova de rejeição de outro destino continua no bloco abaixo.

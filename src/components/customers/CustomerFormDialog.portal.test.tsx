@@ -16,6 +16,7 @@ vi.stubGlobal('ResizeObserver', ResizeObserverMock);
 const saveSettings = vi.fn();
 const toast = vi.fn();
 const createCustomer = vi.fn();
+const { leadCaptureManagerProps } = vi.hoisted(() => ({ leadCaptureManagerProps: vi.fn() }));
 let loadedSettings: CustomerPortalSettings | null = null;
 
 const DEFAULT_SETTINGS: CustomerPortalSettings = {
@@ -100,7 +101,10 @@ vi.mock('@/hooks/usePartyFieldConfig', () => ({
   missingRequiredPartyFields: () => [],
 }));
 vi.mock('@/components/customers/LeadCaptureManagerDialog', () => ({
-  LeadCaptureManagerDialog: () => null,
+  LeadCaptureManagerDialog: (props: unknown) => {
+    leadCaptureManagerProps(props);
+    return null;
+  },
 }));
 
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast }) }));
@@ -156,6 +160,8 @@ describe('CustomerFormDialog — integração do Portal', () => {
     saveSettings.mockReset();
     toast.mockReset();
     createCustomer.mockReset();
+    leadCaptureManagerProps.mockReset();
+    window.history.replaceState({}, '', '/clientes');
   });
 
   it('recebe do wrapper desktop o ID criado e salva as configurações do portal', async () => {
@@ -174,6 +180,22 @@ describe('CustomerFormDialog — integração do Portal', () => {
       targetCustomerId: 'customer-created-on-desktop',
     })));
     expect(createCustomer).toHaveBeenCalledTimes(1);
+  });
+
+  it('abre o formulário e a resposta indicados pela notificação', async () => {
+    window.history.replaceState(
+      {},
+      '',
+      '/clientes?leadForms=1&form=form-notificado&submission=resposta-notificada',
+    );
+
+    render(<CustomersPageChrome activeTab="clientes" onTabChange={vi.fn()} />);
+
+    await waitFor(() => expect(leadCaptureManagerProps).toHaveBeenLastCalledWith(expect.objectContaining({
+      open: true,
+      initialFormId: 'form-notificado',
+      initialSubmissionId: 'resposta-notificada',
+    })));
   });
 
   it('não duplica o cliente quando salvar o portal falha e o usuário tenta novamente', async () => {
@@ -226,7 +248,7 @@ describe('CustomerFormDialog — integração do Portal', () => {
     expect(optIn).toHaveAttribute('data-state', 'unchecked');
   });
 
-  it('força o opt-in para false no payload quando o celular continua inválido', async () => {
+  it('mantém o gate geral ativo sem celular principal para permitir destinatários adicionais', async () => {
     const onSubmit = vi.fn().mockResolvedValue({ id: 'customer-with-invalid-mobile' });
     saveSettings.mockResolvedValue({ ...DEFAULT_SETTINGS, token: 'portal-token' });
 
@@ -236,11 +258,12 @@ describe('CustomerFormDialog — integração do Portal', () => {
 
     fillCustomerName();
     fillMobileDigitByDigit('1199');
+    expect(screen.getByRole('switch', { name: 'Receber mensagens pelo WhatsApp' })).not.toBeDisabled();
     submitForm();
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
-      whatsapp_notifications_enabled: false,
+      whatsapp_notifications_enabled: true,
     }));
   });
 

@@ -1,4 +1,4 @@
-import { getPayrollTables, LATEST_PAYROLL_YEAR } from "@/utils/payrollTables";
+import { getPayrollTables, hasPayrollTables } from "@/utils/payrollTables";
 
 export interface HoleriteCompany {
   name: string;
@@ -12,6 +12,12 @@ export interface HoleriteLinha {
   valor: number;
   codigo?: string;
   referencia?: string;
+}
+
+export interface HoleriteRubricaExtra {
+  label: string;
+  valor: number;
+  incideEncargos?: boolean;
 }
 
 export interface HoleriteData {
@@ -41,6 +47,10 @@ export interface HoleriteSnapshot {
   proventos: { salary: number; adicional: number; bonus: number };
   descontos: { inss: number; irrf: number; vt: number; faltas: number; vales: number };
   bases: { inss: number; irrf: number; fgts: number; fgtsValor: number };
+  proventosExtras?: HoleriteRubricaExtra[];
+  descontosExtras?: HoleriteRubricaExtra[];
+  inssCalculado?: number;
+  motivoAjusteInss?: string | null;
   liquido: number;
 }
 
@@ -77,9 +87,11 @@ export function buildHoleriteData(
   const referenciaIrrf = (): string => {
     const baseIrrf = s.bases.irrf;
     if (!baseIrrf || baseIrrf <= 0) return "";
-    const anoParsed = parseInt((s.competencia ?? "").split("/")[1] ?? "", 10);
-    const ano = Number.isNaN(anoParsed) ? LATEST_PAYROLL_YEAR : anoParsed;
-    const faixa = getPayrollTables(ano).irrf.faixas.find((f) => baseIrrf <= f.ate);
+    const [mesRaw, anoRaw] = (s.competencia ?? "").split("/");
+    const mes = parseInt(mesRaw ?? "", 10);
+    const ano = parseInt(anoRaw ?? "", 10);
+    if (!hasPayrollTables(ano, mes)) return "";
+    const faixa = getPayrollTables(ano, mes).irrf.faixas.find((f) => baseIrrf <= f.ate);
     if (!faixa || faixa.aliquota <= 0) return "";
     return fmtPct(faixa.aliquota * 100);
   };
@@ -92,10 +104,17 @@ export function buildHoleriteData(
     ...(s.proventos.bonus > 0
       ? [{ codigo: "003", label: "BÔNUS / COMISSÃO", valor: s.proventos.bonus }]
       : []),
+    ...(s.proventosExtras ?? [])
+      .filter((item) => item.valor > 0 && item.label.trim())
+      .map((item, index) => ({
+        codigo: String(10 + index).padStart(3, "0"),
+        label: item.label.trim().toLocaleUpperCase("pt-BR"),
+        valor: item.valor,
+      })),
   ];
 
   const descontos: HoleriteLinha[] = [
-    { codigo: "051", label: "INSS", valor: s.descontos.inss, referencia: aliquota(s.descontos.inss, s.bases.inss) },
+    { codigo: "051", label: s.motivoAjusteInss ? "INSS (AJUSTADO)" : "INSS", valor: s.descontos.inss, referencia: aliquota(s.descontos.inss, s.bases.inss) },
     ...(s.descontos.vt > 0
       ? [{ codigo: "052", label: "VALE-TRANSPORTE", valor: s.descontos.vt }]
       : []),
@@ -104,9 +123,27 @@ export function buildHoleriteData(
       : []),
     { codigo: "054", label: "IRRF", valor: s.descontos.irrf, referencia: referenciaIrrf() },
     ...(s.descontos.vales > 0
-      ? [{ codigo: "055", label: "VALES / ADIANTAMENTO", valor: s.descontos.vales }]
+      ? [{ codigo: "055", label: "VALES/ADIANTAMENTOS", valor: s.descontos.vales }]
       : []),
+    ...(s.descontosExtras ?? [])
+      .filter((item) => item.valor > 0 && item.label.trim())
+      .map((item, index) => ({
+        codigo: String(60 + index).padStart(3, "0"),
+        label: item.label.trim().toLocaleUpperCase("pt-BR"),
+        valor: item.valor,
+      })),
   ];
+
+  const totalProventosExtras = (s.proventosExtras ?? []).reduce(
+    (total, item) =>
+      total + (item.label.trim() && Number.isFinite(item.valor) && item.valor > 0 ? item.valor : 0),
+    0,
+  );
+  const totalDescontosExtras = (s.descontosExtras ?? []).reduce(
+    (total, item) =>
+      total + (item.label.trim() && Number.isFinite(item.valor) && item.valor > 0 ? item.valor : 0),
+    0,
+  );
 
   return {
     company: identity.company,
@@ -119,9 +156,12 @@ export function buildHoleriteData(
       `${String(new Date().getMonth() + 1).padStart(2, "0")}/${new Date().getFullYear()}`,
     proventos,
     descontos,
-    totalProventos: s.proventos.salary + s.proventos.adicional + s.proventos.bonus,
-    totalDescontos:
-      s.descontos.inss + s.descontos.irrf + s.descontos.vt + s.descontos.faltas + s.descontos.vales,
+    totalProventos: Math.round((
+      s.proventos.salary + s.proventos.adicional + s.proventos.bonus + totalProventosExtras
+    ) * 100) / 100,
+    totalDescontos: Math.round((
+      s.descontos.inss + s.descontos.irrf + s.descontos.vt + s.descontos.faltas + s.descontos.vales + totalDescontosExtras
+    ) * 100) / 100,
     liquido: s.liquido,
     baseINSS: s.bases.inss,
     baseIRRF: s.bases.irrf,

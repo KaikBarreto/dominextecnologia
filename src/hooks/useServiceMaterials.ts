@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 export type ServiceMaterial = Tables<'service_materials'>;
 export type ServiceMaterialInsert = TablesInsert<'service_materials'>;
@@ -109,8 +110,7 @@ export function useServiceMaterials(serviceId?: string | null) {
 
   const deleteMaterial = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('service_materials').delete().eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(await supabase.from('service_materials').delete({ count: 'exact' }).eq('id', id), 'delete');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-materials'] });

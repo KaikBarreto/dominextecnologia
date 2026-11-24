@@ -1,3 +1,4 @@
+vi.mock('@/hooks/useCompanySettings', () => ({ useCompanySettings: () => ({settings:null,isLoading:false,isError:false}) }));
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -8,7 +9,8 @@ const state = vi.hoisted(() => ({ retry: vi.fn(), write: vi.fn(), id: '00000000-
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ profile: { company_id: 'qa-company' }, user: { id: 'qa-user' }, roles: [], permissions: [], hasPermissionRecord: true, hasPermission: () => false, hasScreenAccess: () => true, isAdminOrGestor: () => false }) }));
 vi.mock('@/contexts/AppLocaleContext', () => ({ useAppLocaleContext: () => ({ locale: 'pt-br', timezone: 'America/Sao_Paulo' }) }));
 vi.mock('@/lib/format/hooks', () => ({ useLocaleFormatters: () => ({ money: (value: number) => String(value), dateTime: (value: unknown) => String(value ?? '') }) }));
-vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => true }));
+vi.mock('@/hooks/pdvReportCache', () => ({ usePdvAuthorizedQueryScope: () => ({ ready: true, key: ['qa-company', 'qa-user'] }) }));
+vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => true, useIsCompact: () => true }));
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
 vi.mock('@/hooks/usePdvReceiptCompany', () => ({ usePdvReceiptCompany: () => ({ data: null }) }));
 vi.mock('@/hooks/usePdvStageReceiptAuto', () => ({ usePdvStageReceiptAuto: () => ({ prepare: vi.fn() }) }));
@@ -24,21 +26,21 @@ vi.mock('@/hooks/usePdvDispatch', () => ({
 vi.mock('@/hooks/usePdvPreorders', () => ({
   usePdvPreorder: (id: string | null) => ({ data: null, isError: Boolean(id), isLoading: false, refetch: state.retry }),
   usePdvPreorderQueue: () => ({ data: state.empty, isLoading: false, isError: false, refetch: state.retry }),
-  usePdvPreorderActions: () => ({}),
+  usePdvPreorderActions: () => ({ save: { isPending: false }, value: { isPending: false }, assignTerminal: { isPending: false }, forward: { isPending: false }, convert: { isPending: false }, cancel: { isPending: false } }),
 }));
 vi.mock('@/hooks/usePdvPreorderCatalog', () => ({ usePdvPreorderCatalog: () => ({ data: { customers: [], materials: [], stocks: [], terminals: [] }, isLoading: false, isError: false, refetch: state.retry }) }));
 vi.mock('@/hooks/usePdvSalesFlow', () => ({ usePdvSalesFlow: () => ({ data: state.empty, refetch: state.retry }), usePdvSalesFlowOrder: () => ({ data: null, refetch: state.retry }), resolvePdvSalesFlowMode: () => 'dispatch' }));
-vi.mock('@/components/pdv/preorders/PdvPreorderDetail', () => ({ PdvPreorderDetail: () => null }));
-vi.mock('@/components/pdv/preorders/PdvPreorderReceiptButton', () => ({ PdvPreorderReceiptButton: () => null, openPdvPreorderReceipt: vi.fn() }));
+vi.mock('@/components/pdv/preorders/PdvPreorderDetail', () => ({ PdvPreorderDetail: () => null, projectPdvPreorderEditorSnapshot: () => undefined }));
+vi.mock('@/components/pdv/preorders/PdvPreorderReceiptButton', () => ({ PdvPreorderReceiptButton: () => null, usePdvPreorderReceiptOpener: () => ({ open: vi.fn(), isCurrent: () => true, guardAttempt: (attempt: unknown) => attempt }) }));
 vi.mock('@/components/pdv/dispatch/PdvDispatchDetail', () => ({ PdvDispatchDetail: () => null }));
-vi.mock('@/components/pdv/dispatch/PdvDeliveryReceiptButton', () => ({ PdvDeliveryReceiptButton: () => null, openPdvDeliveryReceipt: vi.fn() }));
+vi.mock('@/components/pdv/dispatch/PdvDeliveryReceiptButton', () => ({ PdvDeliveryReceiptButton: () => null, usePdvDeliveryReceiptOpener: () => ({ open: vi.fn(), isCurrent: () => true, guardAttempt: (attempt: unknown) => attempt }) }));
 // A visibilidade responsiva do layout pertence ao CSS. O stub conserva a transição lista/detalhe usada pelas páginas.
 vi.mock('@/components/ui/ListDetailLayout', () => ({ ListDetailLayout: ({ mobileDetailOpen, listTitle, children }: { mobileDetailOpen: boolean; listTitle: string; children: React.ReactNode }) => mobileDetailOpen ? <section aria-label="Detalhe mobile">{children}</section> : <section aria-label={listTitle}>Lista disponível</section> }));
 
 vi.mock('@/components/pdv/flow/PdvSalesFlowBoard', () => ({ PdvSalesFlowBoard: ({ onOpen }: { onOpen: (card: unknown) => void }) => <button onClick={() => onOpen({ stage: 'completed', fulfillmentMode: 'cashier', orderId: state.id })}>Abrir pedido concluído QA</button> }));
 
 function LocationEvidence() { const location = useLocation(); return <output aria-label="Endereço atual">{location.pathname}{location.search}</output>; }
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => { vi.clearAllMocks(); localStorage.clear(); });
 
 describe('retorno após falha de detalhe no mobile', () => {
   it('Expedição permite tentar novamente e voltar à fila limpando o pedido da URL sem registrar retirada', async () => {

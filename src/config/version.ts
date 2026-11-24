@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.0";
+export const APP_VERSION = "1.41.58";
 
 export const VERSION_NOTES =
-  "O PDV agora acompanha a loja inteira, do orçamento de balcão ao pagamento e à retirada. Caixas, estoque, financeiro, comprovantes, fiado, trocas e devoluções trabalham juntos sem misturar dados entre operadores.";
+  "O estoque separa cadastro e saldo de cada local, a primeira abertura de caixa orienta o registro do dinheiro existente e os módulos oferecem seus tutoriais após a ativação.";

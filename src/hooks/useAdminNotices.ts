@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import type { SystemNotice } from '@/lib/systemNotices';
@@ -86,10 +87,12 @@ export function useAdminNotices() {
 
   const updateNotice = useMutation({
     mutationFn: async ({ id, ...input }: AdminNoticeInput & { id: string }) => {
-      const { error } = await supabase.from('admin_notices')
-        .update(input)
-        .eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('admin_notices')
+          .update(input, { count: 'exact' })
+          .eq('id', id),
+        'update',
+      );
     },
     onSuccess: () => {
       invalidate();
@@ -101,10 +104,12 @@ export function useAdminNotices() {
 
   const toggleActive = useMutation({
     mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
-      const { error } = await supabase.from('admin_notices')
-        .update({ is_active: isActive })
-        .eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('admin_notices')
+          .update({ is_active: isActive }, { count: 'exact' })
+          .eq('id', id),
+        'update',
+      );
     },
     onSuccess: (_data, variables) => {
       invalidate();
@@ -116,8 +121,10 @@ export function useAdminNotices() {
 
   const deleteNotice = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('admin_notices').delete().eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('admin_notices').delete({ count: 'exact' }).eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => {
       invalidate();

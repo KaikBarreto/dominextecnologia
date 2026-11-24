@@ -1,3 +1,5 @@
+import { resolveBusinessCore } from '../_shared/business-core.ts';
+import { customCommercialModulesForCore, loadBusinessCoreBasePrice, requiredCustomModulesForCore } from '../_shared/business-core-pricing.ts';
 // change-subscription-plan
 // -------------------------
 // Gerencia a mudança de plano/módulos da assinatura SaaS de um tenant a partir da
@@ -52,6 +54,7 @@ import {
   subscriptionPeriodValue,
 } from "../_shared/subscription-proration.ts";
 import { resolveFirstPaidWhatsappTier } from "../_shared/whatsapp-pricing.ts";
+import { canInitializeRetailOffer, initialOfferSnapshot, resolveChargeTerms } from "../create-asaas-payment/billing-rules.ts";
 
 class ValidationError extends Error {}
 
@@ -145,13 +148,28 @@ Deno.serve(async (req) => {
     // --- Empresa atual ---
     const { data: company, error: companyError } = await supabase
       .from("companies")
-      .select(
-        "id, name, subscription_plan, subscription_value, pending_subscription_value, max_users, extra_users, billing_cycle, asaas_subscription_id, custom_price, custom_price_permanent, custom_price_months, custom_price_payments_made, subscription_status, subscription_expires_at, nfse_tier, whatsapp_tier",
-      )
+      .select("*")
       .eq("id", company_id)
       .single();
     if (companyError || !company) throw new ValidationError("Empresa não encontrada.");
 
+    const { count: activePromotionCount, error: activePromotionError } = await supabase
+      .from("company_subscription_promotions")
+      .select("id", { count: "exact", head: true })
+      .eq("company_id", company_id)
+      .eq("status", "active");
+    if (activePromotionError) throw new ValidationError("Não foi possível validar as condições promocionais da empresa.");
+    if ((activePromotionCount || 0) > 0) {
+      throw new ValidationError("Esta empresa possui uma condição promocional ativa. Ajuste-a no painel administrativo antes de trocar o plano.");
+    }
+
+    const businessCore = resolveBusinessCore(company.business_core);
+    if (custom_modules != null && (!Array.isArray(custom_modules) || custom_modules.length > 64 || !custom_modules.every(code=>typeof code==='string'))) {
+      throw new ValidationError('Revise os adicionais escolhidos.');
+    }
+    let normalizedCustomModules: string[];
+    try { normalizedCustomModules = customCommercialModulesForCore(businessCore, custom_modules ?? []); }
+    catch { throw new ValidationError('Adicione o kit Serviços para contratar recursos de prestação de serviços.'); }
     const isCustom = plan_code === "personalizado";
 
     // --- Catálogo de preços (server-side) ---
@@ -172,13 +190,18 @@ Deno.serve(async (req) => {
       modulePriceByCode = new Map<string, number>(
         (modulesCatalog ?? []).map((m) => [m.code, Number(m.price)]),
       );
+      if (businessCore === 'retail') {
+        const base = await loadBusinessCoreBasePrice(supabase, businessCore);
+        if (base === null) throw new ValidationError('O preço do kit Loja ainda não está disponível. Entre em contato com a Dominex.');
+        modulePriceByCode.set(BASE_MODULE,base);
+      }
       extraUserPrice = modulePriceByCode.get(EXTRA_USER_MODULE) ?? Number.NaN;
       if (!Number.isFinite(extraUserPrice) || extraUserPrice <= 0) {
         throw new ValidationError("O preço do usuário adicional não está configurado corretamente. Tente novamente mais tarde.");
       }
 
       const basePrice = modulePriceByCode.get(BASE_MODULE) ?? Number.NaN;
-      const freeBaseModulesAreValid = FREE_BASE_MODULES.every(
+      const freeBaseModulesAreValid = requiredCustomModulesForCore(businessCore,normalizedCustomModules).filter(code=>code!==BASE_MODULE).every(
         (code) => modulePriceByCode.get(code) === 0,
       );
       if (!Number.isFinite(basePrice) || basePrice <= 0 || !freeBaseModulesAreValid) {
@@ -191,7 +214,8 @@ Deno.serve(async (req) => {
     if (!isCustom) {
       const { data: pr } = await supabase
         .from("subscription_plans")
-        .select("code, price, max_users, included_modules")
+        .select("code, price, max_users, included_modules, business_core")
+        .eq("business_core", businessCore)
         .eq("code", plan_code)
         .eq("is_active", true)
         .maybeSingle();
@@ -221,8 +245,8 @@ Deno.serve(async (req) => {
       // Personalizado: todos os recursos-base são inclusos/obrigatórios,
       // independentemente do payload. Filtra códigos válidos (presentes no catálogo
       // ativo) e ignora extra_user como módulo (é via contador).
-      const chosen = new Set<string>(BASE_INCLUDED_MODULES);
-      for (const code of custom_modules ?? []) {
+      const chosen = new Set<string>(requiredCustomModulesForCore(businessCore,normalizedCustomModules));
+      for (const code of normalizedCustomModules) {
         if (code === EXTRA_USER_MODULE) continue;
         if (modulePriceByCode.has(code)) chosen.add(code);
       }
@@ -320,6 +344,47 @@ Deno.serve(async (req) => {
     const currentEffectiveValue = hasActiveCustomPrice
       ? cp
       : Number(company.subscription_value) || 0;
+
+    // Primeira contratação da Loja: o teste não gera crédito de período pago.
+    // O mesmo cálculo de catálogo acima forma a cotação integral, sem liberar acesso.
+    const isInitialActivation = canInitializeRetailOffer(company);
+    if (businessCore === 'retail' && company.business_core_version === 2 && !isInitialActivation
+      && Number(company.ltv) === 0 && currentEffectiveValue > 0 && targetMonthlyValue < currentEffectiveValue) {
+      throw new ValidationError('Esta oferta comercial já possui um plano definido. Peça a revisão da contratação antes de reduzir o valor.');
+    }
+    if (businessCore === 'retail' && company.business_core_version === 2 && currentEffectiveValue <= 0 && !isInitialActivation) {
+      throw new ValidationError('As condições desta conta precisam ser revisadas antes da contratação. Fale com o suporte.');
+    }
+    if (isInitialActivation) {
+      const fullAmount = roundSubscriptionMoney(resolveChargeTerms('PIX', cycleForDb, targetMonthlyValue, 0).expectedAmount);
+      if (!(fullAmount > 0)) throw new ValidationError('Este plano ainda não tem preço disponível para contratação.');
+      if (body.confirm !== true) {
+        return new Response(JSON.stringify({ success: true, dry_run: true, change_kind: 'upgrade',
+          current_value: currentEffectiveValue, target_monthly_value: targetMonthlyValue, target_plan_code: plan_code,
+          target_billing_cycle: cycleForDb, target_max_users: targetMaxUsers, target_modules: targetModules,
+          amount_due: fullAmount, credit_amount: 0, remaining_ratio: 1,
+          message: 'Confira a contratação. O plano será liberado depois da confirmação do pagamento.',
+        }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      const { data: currentModules, error: currentModulesError } = await supabase.from('company_modules')
+        .select('module_code,quantity').eq('company_id', company_id);
+      if (currentModulesError || !Array.isArray(currentModules)) throw new ValidationError('Não foi possível conferir os módulos atuais. Atualize a página antes de contratar.');
+      const { data: request, error: requestError } = await supabase.rpc('prepare_initial_subscription_activation', {
+        p_company_id: company_id, p_requested_by: auth.userId,
+        p_expected_snapshot: initialOfferSnapshot(company, currentModules),
+        p_target: { plan_code, monthly_value: targetMonthlyValue, billing_cycle: cycleForDb,
+          modules: [...targetModules].sort(), max_users: targetMaxUsers, extra_users: targetExtraUsers,
+          nfse_tier: targetNfseTier, whatsapp_tier: targetWhatsappTier },
+      });
+      if (requestError || !request?.id) {
+        throw new ValidationError('Não foi possível confirmar a contratação. Atualize a página e confira se já existe um pagamento em andamento.');
+      }
+      return new Response(JSON.stringify({ success: true, change_kind: 'upgrade', requires_payment: true,
+        change_request_id: request.id, checkout_url: `/checkout?mode=upgrade&change=${request.id}`,
+        amount_due: Number(request.amount_due), credit_amount: 0, remaining_ratio: 1,
+        message: 'Contratação preparada. Confirme o pagamento para liberar o plano.',
+      }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
 
     const currentCycle: "monthly" | "yearly" = company.billing_cycle === "yearly"
       ? "yearly"

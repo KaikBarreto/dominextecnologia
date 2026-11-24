@@ -1,3 +1,4 @@
+import { safePdvCouponError } from '@/hooks/usePdvCoupons';
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { usePdvAuthorizedQueryScope } from './pdvReportCache';
@@ -31,6 +32,9 @@ export interface PdvPreorder {
   revision: number;
   subtotal: number | null;
   discount_amount: number;
+  coupon_id?: string | null;
+  coupon_discount_amount_v1?: number;
+  coupon_code_v1?: string | null;
   total: number | null;
   notes: string | null;
   created_by: string;
@@ -72,6 +76,8 @@ export interface PdvPreorderSaveHeader {
   operation_mode?: "direct" | "counter";
   notes?: string | null;
   discount_amount?: number;
+  coupon_id?: string | null;
+  coupon_discount_cents?: number;
 }
 
 export interface PdvPreorderSaveItem {
@@ -107,7 +113,7 @@ interface ValueInput {
   expectedRevision: number;
   header: Pick<
     PdvPreorderSaveHeader,
-    "customer_id" | "notes" | "discount_amount"
+    "customer_id" | "notes" | "discount_amount" | "coupon_id" | "coupon_discount_cents"
   >;
   items: Array<{
     id: string;
@@ -171,6 +177,7 @@ export function mapPdvPreorderError(error: unknown): PdvPreorderDomainError {
     details?: string;
   };
   const code = detailCode({ data: null, error: raw }.error);
+  if (code.startsWith('pdv_coupon_')) return new PdvPreorderDomainError(safePdvCouponError(raw).message, raw.code === '40001' ? 'conflict' : 'unknown', code);
 
   if (raw.code === "40001" || code === "pdv_preorder_revision_conflict") {
     return new PdvPreorderDomainError(
@@ -267,9 +274,12 @@ export function usePdvPreorder(preorderId: string | null) {
 
 export function fetchPdvPreorderDetail(
   preorderId: string,
+  signal?: AbortSignal,
 ): Promise<PdvPreorderDetail> {
-  return callRpc<PdvPreorderDetail>("pdv_get_preorder_v2", {
-    p_preorder_id: preorderId,
+  const request = pdvRpc("pdv_get_preorder_v2", { p_preorder_id: preorderId }) as Promise<RpcResult> & { abortSignal?: (signal: AbortSignal) => PromiseLike<RpcResult> };
+  return Promise.resolve(signal && request.abortSignal ? request.abortSignal(signal) : request).then(({ data, error }) => {
+    if (error) throw mapPdvPreorderError(error);
+    return data as PdvPreorderDetail;
   });
 }
 

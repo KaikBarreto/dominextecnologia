@@ -27,6 +27,23 @@ export interface PdvAppliedVoucher {
   expiresOn: string | null;
 }
 
+/** Array canônico; o campo antigo só é consultado quando o array não existe. */
+export function getAppliedVouchers(value: { appliedVoucher?: PdvAppliedVoucher | null; appliedVouchers?: PdvAppliedVoucher[] } | null | undefined): PdvAppliedVoucher[] {
+  return value?.appliedVouchers ?? (value?.appliedVoucher ? [value.appliedVoucher] : []);
+}
+
+export function clampAppliedVouchers(values: readonly PdvAppliedVoucher[], total: number): PdvAppliedVoucher[] {
+  let remaining = Math.max(0, Math.round(total * 100));
+  const seen = new Set<string>();
+  return values.flatMap(value => {
+    if (seen.has(value.voucherId)) return [];
+    seen.add(value.voucherId);
+    const cents = Math.min(remaining, Math.max(0, Math.round(value.amount * 100)), Math.max(0, Math.round(value.balance * 100)));
+    remaining -= cents;
+    return cents > 0 ? [{ ...value, amount: cents / 100 }] : [];
+  });
+}
+
 export interface PdvSaleDraft {
   id: string;
   sequence: number;
@@ -35,7 +52,9 @@ export interface PdvSaleDraft {
   notes: string;
   transactionDate: string;
   transactionDateTouched: boolean;
+  /** Compatibilidade de rascunhos antigos; novos fluxos usam appliedVouchers. */
   appliedVoucher: PdvAppliedVoucher | null;
+  appliedVouchers?: PdvAppliedVoucher[];
   attempt: PdvSaleAttempt | null;
   createdAt: string;
   updatedAt: string;
@@ -53,6 +72,7 @@ function cloneCart(cart: CartState): CartState {
   return {
     customerId: cart.customerId,
     discount: cart.discount,
+    ...(cart.coupon && typeof cart.coupon.id === 'string' && typeof cart.coupon.code === 'string' ? { coupon: { ...cart.coupon } } : {}),
     lines: cart.lines.map((line) => ({ ...line })),
   };
 }
@@ -101,7 +121,7 @@ export function hasPdvSaleDraftContent(draft: PdvSaleDraft): boolean {
     draft.cart.customerId != null ||
     draft.cart.discount > 0 ||
     draft.notes.trim().length > 0 ||
-    draft.appliedVoucher != null ||
+    getAppliedVouchers(draft).length > 0 ||
     draft.transactionDateTouched
   );
 }
@@ -112,6 +132,7 @@ export function setPdvSaleDraftCustomer(draft: PdvSaleDraft, customerId: string 
     ...draft,
     cart: { ...draft.cart, customerId },
     appliedVoucher: customerId === draft.cart.customerId ? draft.appliedVoucher : null,
+    ...(draft.appliedVouchers ? { appliedVouchers: customerId === draft.cart.customerId ? draft.appliedVouchers : [] } : {}),
     attempt: null,
   };
 }
@@ -235,6 +256,12 @@ function sanitizeDraft(value: unknown): PdvSaleDraft | null {
     transactionDate: draft.transactionDate,
     transactionDateTouched: draft.transactionDateTouched === true,
     appliedVoucher,
+    ...(Array.isArray(draft.appliedVouchers) ? {
+      appliedVouchers: clampAppliedVouchers(draft.appliedVouchers.filter((value): value is PdvAppliedVoucher => Boolean(value)
+        && typeof value.voucherId === 'string' && typeof value.code === 'string'
+        && typeof value.amount === 'number' && Number.isFinite(value.amount) && value.amount > 0
+        && typeof value.balance === 'number' && Number.isFinite(value.balance) && value.balance >= 0), Number.MAX_SAFE_INTEGER),
+    } : {}),
     attempt:
       draft.attempt &&
       typeof draft.attempt.signature === 'string' &&

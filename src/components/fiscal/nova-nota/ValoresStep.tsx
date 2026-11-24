@@ -64,6 +64,17 @@ export function ValoresStep({ valores, onChange, taxes, errors, isSimples = fals
   const [pisText, setPisText] = useState(() => (valores.valorPis ? toDisplayBR(valores.valorPis) : ''));
   const [cofinsText, setCofinsText] = useState(() => (valores.valorCofins ? toDisplayBR(valores.valorCofins) : ''));
   const [csllText, setCsllText] = useState(() => (valores.valorCsll ? toDisplayBR(valores.valorCsll) : ''));
+  const [inssText, setInssText] = useState(() => (valores.valorInss ? toDisplayBR(valores.valorInss) : ''));
+  const [irrfText, setIrrfText] = useState(() => (valores.valorIrrf ? toDisplayBR(valores.valorIrrf) : ''));
+  const [deducoesText, setDeducoesText] = useState(() =>
+    valores.deducoes ? toDisplayBR(valores.deducoes) : '',
+  );
+  const [descCondText, setDescCondText] = useState(() =>
+    valores.descontoCondicionado ? toDisplayBR(valores.descontoCondicionado) : '',
+  );
+  const [descIncondText, setDescIncondText] = useState(() =>
+    valores.descontoIncondicionado ? toDisplayBR(valores.descontoIncondicionado) : '',
+  );
   const [aliqText, setAliqText] = useState(() => (valores.aliquotaIssqn ? String(valores.aliquotaIssqn).replace('.', ',') : ''));
   const [percSnText, setPercSnText] = useState(() =>
     valores.percentualTribSn ? String(valores.percentualTribSn).replace('.', ',') : '',
@@ -87,7 +98,7 @@ export function ValoresStep({ valores, onChange, taxes, errors, isSimples = fals
   return (
     <div className="space-y-5">
       {/* Hero: Valor do serviço */}
-      <div className="rounded-xl border border-border bg-background p-4 space-y-2">
+      <div className="space-y-2">
         <Label htmlFor="nfse-valor" className="text-base font-semibold">
           {s.valores.valorServico.label}{' '}
           <span className="text-destructive">*</span>
@@ -112,6 +123,66 @@ export function ValoresStep({ valores, onChange, taxes, errors, isSimples = fals
         {!valores.valorServico && !valorError && (
           <p className="text-sm text-destructive">{s.valores.valorServico.required}</p>
         )}
+      </div>
+
+      <Separator />
+
+      <div className="space-y-3">
+        <Label className="text-base">{s.valores.ajustes.sectionTitle}</Label>
+        <p className="text-[11px] text-muted-foreground -mt-1">{s.valores.ajustes.hint}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="nfse-deducoes" className="text-xs text-muted-foreground">
+              {s.valores.ajustes.deducoes}
+            </Label>
+            <NumericInput
+              id="nfse-deducoes"
+              decimal
+              maxDecimals={2}
+              value={deducoesText}
+              onValueChange={(v) => {
+                setDeducoesText(v);
+                onChange({ deducoes: fromDisplayBR(v) });
+              }}
+              placeholder="0,00"
+              className="h-9"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="nfse-desc-cond" className="text-xs text-muted-foreground">
+              {s.valores.ajustes.descontoCondicionado}
+            </Label>
+            <NumericInput
+              id="nfse-desc-cond"
+              decimal
+              maxDecimals={2}
+              value={descCondText}
+              onValueChange={(v) => {
+                setDescCondText(v);
+                onChange({ descontoCondicionado: fromDisplayBR(v) });
+              }}
+              placeholder="0,00"
+              className="h-9"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="nfse-desc-incond" className="text-xs text-muted-foreground">
+              {s.valores.ajustes.descontoIncondicionado}
+            </Label>
+            <NumericInput
+              id="nfse-desc-incond"
+              decimal
+              maxDecimals={2}
+              value={descIncondText}
+              onValueChange={(v) => {
+                setDescIncondText(v);
+                onChange({ descontoIncondicionado: fromDisplayBR(v) });
+              }}
+              placeholder="0,00"
+              className="h-9"
+            />
+          </div>
+        </div>
       </div>
 
       <Separator />
@@ -170,13 +241,13 @@ export function ValoresStep({ valores, onChange, taxes, errors, isSimples = fals
 
       <Separator />
 
-      {/* Retenções federais (PIS/COFINS/CSLL — valores em R$) */}
+      {/* Retenções federais — valores absolutos em R$. */}
       <div className="space-y-3">
         <Label className="text-base">{s.valores.retencoes.sectionTitle}</Label>
         <p className="text-[11px] text-muted-foreground -mt-1">
           {s.valores.retencoes.hint}
         </p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           <div className="space-y-1.5">
             <Label htmlFor="nfse-pis" className="text-xs text-muted-foreground">
               {s.valores.retencoes.pis}
@@ -228,6 +299,40 @@ export function ValoresStep({ valores, onChange, taxes, errors, isSimples = fals
               className="h-9"
             />
           </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="nfse-inss" className="text-xs text-muted-foreground">
+              {s.valores.retencoes.inss}
+            </Label>
+            <NumericInput
+              id="nfse-inss"
+              decimal
+              maxDecimals={2}
+              value={inssText}
+              onValueChange={(v) => {
+                setInssText(v);
+                onChange({ valorInss: fromDisplayBR(v) });
+              }}
+              placeholder="0,00"
+              className="h-9"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="nfse-irrf" className="text-xs text-muted-foreground">
+              {s.valores.retencoes.irrf}
+            </Label>
+            <NumericInput
+              id="nfse-irrf"
+              decimal
+              maxDecimals={2}
+              value={irrfText}
+              onValueChange={(v) => {
+                setIrrfText(v);
+                onChange({ valorIrrf: fromDisplayBR(v) });
+              }}
+              placeholder="0,00"
+              className="h-9"
+            />
+          </div>
         </div>
       </div>
 
@@ -270,6 +375,13 @@ export function ValoresStep({ valores, onChange, taxes, errors, isSimples = fals
         </div>
         <div className="divide-y divide-border/60 text-sm">
           <PreviaLinha label={s.valores.previa.valorServico} value={valores.valorServico} currency={currency} locale={locale} />
+          {valores.deducoes > 0 && (
+            <PreviaLinha label={s.valores.previa.deducoes} value={valores.deducoes} currency={currency} locale={locale} />
+          )}
+          {valores.descontoIncondicionado > 0 && (
+            <PreviaLinha label={s.valores.previa.descontoIncondicionado} value={valores.descontoIncondicionado} currency={currency} locale={locale} />
+          )}
+          <PreviaLinha label={s.valores.previa.baseCalculo} value={taxes.baseCalculo} currency={currency} locale={locale} />
           <PreviaLinha
             label={s.valores.previa.iss.replace(
               '{tipo}',

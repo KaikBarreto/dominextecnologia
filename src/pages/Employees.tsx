@@ -29,6 +29,7 @@ import { ViewModeToggle } from '@/components/ui/ViewModeToggle';
 import { MobileListToolbar } from '@/components/mobile/MobileListToolbar';
 import { useViewMode } from '@/hooks/useViewMode';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { EmployeeFormDialog } from '@/components/employees/EmployeeFormDialog';
 import { EmployeeMovementModal } from '@/components/employees/EmployeeMovementModal';
 import { EmployeePaymentModal, PaymentPayload } from '@/components/employees/EmployeePaymentModal';
@@ -116,14 +117,26 @@ async function insertTransactionTolerant(payload: Record<string, any>) {
   return { error };
 }
 
-async function updateTransactionTolerant(id: string, payload: Record<string, any>) {
-  const { error } = await supabase.from('financial_transactions').update(payload as any).eq('id', id);
-  if (error && 'accrual_amount' in payload && isMissingAccrualColumn(error)) {
+// Quitar a folha é a ação principal: RLS barrando o update não dá erro, só
+// altera zero linhas. Zero linhas volta como erro (NoRowsAffectedError).
+async function updateTransactionTolerant(id: string, payload: Record<string, any>): Promise<{ error: unknown }> {
+  const counted = async (values: Record<string, any>) => {
+    const result = await supabase.from('financial_transactions').update(values as any, { count: 'exact' }).eq('id', id);
+    try {
+      assertRowsAffected(result, 'update', 'Não foi possível quitar a folha pendente: você não tem permissão para alterar este lançamento ou ele já não existe. Confira o Financeiro.');
+      return { error: null };
+    } catch (error) {
+      return { error };
+    }
+  };
+  const first = await counted(payload);
+  const firstError = first.error as { code?: string; message?: string } | null;
+  if (firstError && 'accrual_amount' in payload && isMissingAccrualColumn(firstError)) {
     console.warn('[folha] accrual_amount ausente no schema — quitando sem o valor de competência.');
     const { accrual_amount: _drop, ...rest } = payload;
-    return await supabase.from('financial_transactions').update(rest as any).eq('id', id);
+    return await counted(rest);
   }
-  return { error };
+  return first;
 }
 
 export default function Employees() {
@@ -196,7 +209,11 @@ export default function Employees() {
   const t = MESSAGES[locale].app.employees;
 
   const isMobile = useIsMobile();
-  const { employees, isLoading, isError, refetch, createEmployee, updateEmployee, archiveEmployee } = useEmployees();
+  // `canManageEmployees` = permissão de RH (mesma régua do banco). Sem ela a
+  // lista chega sem salário/CPF/PIX etc. (null) e a tela esconde tudo que
+  // depende deles: saldo, vale/bônus/falta, pagamento, extrato, criar, editar
+  // e arquivar.
+  const { employees, isLoading, isError, refetch, createEmployee, updateEmployee, archiveEmployee, canManage: canManageEmployees } = useEmployees();
   const { createAccess } = useEmployeeAccess();
   const activeEmployees = useMemo(
     () => employees.filter((employee) => employee.is_active !== false),
@@ -410,6 +427,9 @@ export default function Employees() {
     refetch: refetchAllMovements,
   } = useQuery({
     queryKey: ['all-employee-movements'],
+    // Saldo/vale/bônus só aparecem para RH; não há por que baixar os
+    // movimentos (que carregam salário em payment_details) para os demais.
+    enabled: canManageEmployees,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('employee_movements')
@@ -432,7 +452,7 @@ export default function Employees() {
     
     employees.forEach(e => {
       const empMovements = grouped.get(e.id) || [];
-      map.set(e.id, calculateEmployeeBalance(empMovements, e.salary));
+      map.set(e.id, calculateEmployeeBalance(empMovements, e.salary ?? 0));
     });
     return map;
   }, [employees, allMovements]);
@@ -758,7 +778,7 @@ export default function Employees() {
   const handlePayment = async (payload: PaymentPayload) => {
     if (!paymentEmployee) return;
     const emp = paymentEmployee; // capture reference to avoid stale closure
-    const sal = emp.salary;
+    const sal = emp.salary ?? 0;
     const subtotal = sal + activeBalance.totalBonus - activeBalance.totalFaltas;
     // `payload.amount` é o valor efetivamente pago (source of truth): no informal
     // == toPay de antes (subtotal - valeDiscount); no CLT == líquido do snapshot.
@@ -854,7 +874,7 @@ export default function Employees() {
               type: 'vale_residual',
               amount: remainingVales,
               balance_after: sal - remainingVales,
-              description: 'Vales não descontados no pagamento',
+              description: 'Vales/Adiantamentos não descontados no pagamento',
               created_by: user?.id,
             } as any);
             if (valeError) {
@@ -894,6 +914,7 @@ export default function Employees() {
             });
             if (payErr) {
               console.error('Erro ao quitar folha pendente:', payErr);
+              toast({ variant: 'destructive', title: t.toasts.errorPaymentFlow, description: getErrorMessage(payErr) });
             }
             queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
             queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
@@ -1044,9 +1065,11 @@ export default function Employees() {
               {activeTab === 'list' && (
                 <>
                   <ViewModeToggle value={viewMode} onChange={setViewMode} showLabels />
-                  <Button onClick={openNewEmployee} className="gap-1.5">
-                    <Plus className="h-4 w-4" /> {t.toolbar.newEmployee}
-                  </Button>
+                  {canManageEmployees && (
+                    <Button onClick={openNewEmployee} className="gap-1.5">
+                      <Plus className="h-4 w-4" /> {t.toolbar.newEmployee}
+                    </Button>
+                  )}
                 </>
               )}
             </div>
@@ -1062,21 +1085,21 @@ export default function Employees() {
                 items={isEmployeeListLoading || isEmployeeListError ? [] : activeEmployees
                   .filter((employee) => employee.employment_regime !== 'pj')
                   .map((employee) => {
-                    const balance = balanceMap.get(employee.id) || calculateEmployeeBalance([], employee.salary);
+                    const balance = balanceMap.get(employee.id) || calculateEmployeeBalance([], employee.salary ?? 0);
                     return {
                       id: employee.id,
                       title: employee.name,
                       subtitle: [employee.position, employee.phone].filter(Boolean).join(' · ') || undefined,
                       searchText: [employee.cpf, employee.email, employee.address, employee.matricula, employee.cbo].filter(Boolean).join(' '),
                       leading: <EmployeePhotoAvatar name={employee.name} src={employee.photo_url} className="h-10 w-10" />,
-                      trailing: (
+                      trailing: canManageEmployees ? (
                         <Badge
                           variant={balance.currentBalance >= 0 ? 'success' : 'destructive'}
                           className="px-1.5 py-0 text-[10px] tabular-nums"
                         >
                           {fmtCurrency(balance.currentBalance)}
                         </Badge>
-                      ),
+                      ) : undefined,
                     };
                   })}
                 listTitle={t.listDetail.listTitle}
@@ -1102,13 +1125,14 @@ export default function Employees() {
                 ) : selectedEmployee ? (
                   <EmployeeListDetail
                     employee={selectedEmployee}
-                    balance={balanceMap.get(selectedEmployee.id) || calculateEmployeeBalance([], selectedEmployee.salary)}
+                    balance={balanceMap.get(selectedEmployee.id) || calculateEmployeeBalance([], selectedEmployee.salary ?? 0)}
                     onEdit={() => { setEditingEmployee(selectedEmployee); setFormOpen(true); }}
                     onArchive={() => setEmployeeToArchive(selectedEmployee)}
                     onMovement={(type) => { setMovementType(type); setMovementEmployee(selectedEmployee); }}
                     onPayment={() => setPaymentEmployee(selectedEmployee)}
                     onExtract={() => setExtractEmployee(selectedEmployee)}
                     onCopyTimeclockLink={() => copyEmployeePontoLink(selectedEmployee)}
+                    canManage={canManageEmployees}
                   />
                 ) : activeEmployees.every((employee) => employee.employment_regime === 'pj') ? (
                   <EmptyState
@@ -1169,13 +1193,14 @@ export default function Employees() {
                       <EmployeeCard
                         key={employee.id}
                         employee={employee}
-                        balance={balanceMap.get(employee.id) || calculateEmployeeBalance([], employee.salary)}
+                        balance={balanceMap.get(employee.id) || calculateEmployeeBalance([], employee.salary ?? 0)}
                         onEdit={() => { setEditingEmployee(employee); setFormOpen(true); }}
                         onArchive={() => archiveEmployee.mutate(employee.id)}
                         onArchiveWithUser={employee.user_id ? () => handleArchiveWithUser(employee) : undefined}
                         onMovement={(type) => { setMovementType(type); setMovementEmployee(employee); }}
                         onPayment={() => setPaymentEmployee(employee)}
                         onExtract={() => setExtractEmployee(employee)}
+                        canManage={canManageEmployees}
                       />
                     ))}
                   </div>
@@ -1184,7 +1209,7 @@ export default function Employees() {
             ) : selectedEmployee ? (
               <EmployeeListDetail
                 employee={selectedEmployee}
-                balance={balanceMap.get(selectedEmployee.id) || calculateEmployeeBalance([], selectedEmployee.salary)}
+                balance={balanceMap.get(selectedEmployee.id) || calculateEmployeeBalance([], selectedEmployee.salary ?? 0)}
                 onBack={() => setSelectedEmployeeId(null)}
                 onEdit={() => { setEditingEmployee(selectedEmployee); setFormOpen(true); }}
                 onArchive={() => setEmployeeToArchive(selectedEmployee)}
@@ -1192,6 +1217,7 @@ export default function Employees() {
                 onPayment={() => setPaymentEmployee(selectedEmployee)}
                 onExtract={() => setExtractEmployee(selectedEmployee)}
                 onCopyTimeclockLink={() => copyEmployeePontoLink(selectedEmployee)}
+                canManage={canManageEmployees}
               />
             ) : (
               <>
@@ -1235,13 +1261,14 @@ export default function Employees() {
                         <EmployeeCard
                           key={employee.id}
                           employee={employee}
-                          balance={balanceMap.get(employee.id) || calculateEmployeeBalance([], employee.salary)}
+                          balance={balanceMap.get(employee.id) || calculateEmployeeBalance([], employee.salary ?? 0)}
                           onEdit={() => { setEditingEmployee(employee); setFormOpen(true); }}
                           onArchive={() => archiveEmployee.mutate(employee.id)}
                           onArchiveWithUser={employee.user_id ? () => handleArchiveWithUser(employee) : undefined}
                           onMovement={(type) => { setMovementType(type); setMovementEmployee(employee); }}
                           onPayment={() => setPaymentEmployee(employee)}
                           onExtract={() => setExtractEmployee(employee)}
+                          canManage={canManageEmployees}
                         />
                       ))}
                     </div>
@@ -1260,10 +1287,10 @@ export default function Employees() {
                   <>
                     <div className="overflow-hidden rounded-xl border bg-card">
                       {employeePagination.paginatedItems.map((emp) => {
-                    const balance = balanceMap.get(emp.id) || calculateEmployeeBalance([], emp.salary);
+                    const balance = balanceMap.get(emp.id) || calculateEmployeeBalance([], emp.salary ?? 0);
                     const balancePositive = balance.currentBalance >= 0;
 
-                    const itemActions: ItemAction[] = [
+                    const itemActions: ItemAction[] = !canManageEmployees ? [] : [
                       {
                         key: 'extract',
                         label: t.actions.view,
@@ -1311,7 +1338,7 @@ export default function Employees() {
                     ];
 
                     if (emp.ponto_enabled && emp.ponto_slug) {
-                      itemActions.splice(itemActions.length - 2, 0, {
+                      itemActions.splice(Math.max(itemActions.length - 2, 0), 0, {
                         key: 'ponto-link',
                         label: t.actions.timeclockLink,
                         icon: <Clock className="h-4 w-4" />,
@@ -1321,7 +1348,7 @@ export default function Employees() {
 
                     const subtitleParts = [
                       emp.position,
-                      fmtCurrency(emp.salary || 0),
+                      canManageEmployees && emp.salary != null ? fmtCurrency(emp.salary) : null,
                     ].filter(Boolean);
 
                     return (
@@ -1334,14 +1361,14 @@ export default function Employees() {
                         }
                         title={emp.name}
                         subtitle={subtitleParts.join(' • ')}
-                        trailing={
+                        trailing={canManageEmployees ? (
                           <Badge
                             variant={balancePositive ? 'success' : 'destructive'}
                             className="text-[10px] px-2 py-0.5 whitespace-nowrap"
                           >
                             {fmtCurrency(balance.currentBalance)}
                           </Badge>
-                        }
+                        ) : undefined}
                       />
                     );
                   })}
@@ -1402,9 +1429,11 @@ export default function Employees() {
                     <SelectItem value="oldest">{t.toolbar.sortOldest}</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button onClick={openNewEmployee} className="gap-1.5">
-                  <Plus className="h-4 w-4" /> {t.pjTab.toolbarNew}
-                </Button>
+                {canManageEmployees && (
+                  <Button onClick={openNewEmployee} className="gap-1.5">
+                    <Plus className="h-4 w-4" /> {t.pjTab.toolbarNew}
+                  </Button>
+                )}
               </div>
             )}
 
@@ -1422,17 +1451,20 @@ export default function Employees() {
               <div className="rounded-xl border bg-card overflow-hidden">
                 {filteredPj.map((emp) => {
                   const contract = activeContractsMap.get(emp.id);
-                  const itemActions: ItemAction[] = [
+                  const itemActions: ItemAction[] = !canManageEmployees ? [] : [
                     { key: 'extract', label: t.actions.view, icon: <FileText className="h-4 w-4" />, onClick: () => setExtractEmployee(emp) },
                     { key: 'payment', label: t.actions.payment, icon: <CreditCard className="h-4 w-4" />, onClick: () => setPaymentEmployee(emp) },
                     { key: 'edit', label: t.actions.edit, icon: <Pencil className="h-4 w-4" />, variant: 'edit' as const, onClick: () => { setEditingEmployee(emp); setFormOpen(true); } },
                     { key: 'archive', label: t.actions.delete, icon: <Archive className="h-4 w-4" />, variant: 'destructive' as const, onClick: () => setEmployeeToArchive(emp) },
                   ];
-                  const subtitleParts = [emp.pj_cnpj, contract ? `${fmtCurrency(contract.amount)} ${t.pjTab.billingSuffix[contract.billing_type]}` : t.pjTab.noContract].filter(Boolean);
+                  // Sem RH: nem CNPJ nem valor do contrato (remuneração do prestador).
+                  const subtitleParts = canManageEmployees
+                    ? [emp.pj_cnpj, contract ? `${fmtCurrency(contract.amount)} ${t.pjTab.billingSuffix[contract.billing_type]}` : t.pjTab.noContract].filter(Boolean)
+                    : [contract ? null : t.pjTab.noContract].filter(Boolean);
                   return (
                     <MobileListItem
                       key={emp.id}
-                      onClick={() => setExtractEmployee(emp)}
+                      onClick={canManageEmployees ? () => setExtractEmployee(emp) : undefined}
                       actions={itemActions}
                       leading={
                         <EmployeePhotoAvatar name={emp.name} src={emp.photo_url} className="h-10 w-10" />
@@ -1452,6 +1484,7 @@ export default function Employees() {
                 onArchive={(emp) => setEmployeeToArchive(emp)}
                 onPayment={(emp) => setPaymentEmployee(emp)}
                 onExtract={(emp) => setExtractEmployee(emp)}
+                canManage={canManageEmployees}
               />
             )}
           </div>
@@ -1479,7 +1512,7 @@ export default function Employees() {
       </SettingsSidebarLayout>
 
       {/* FAB mobile-only — só nas tabs de lista (Funcionários e PJ/MEI). Desktop usa botão inline na toolbar. */}
-      {isMobile && (activeTab === 'pj' || (activeTab === 'list' && !selectedEmployee)) && (
+      {isMobile && canManageEmployees && (activeTab === 'pj' || (activeTab === 'list' && !selectedEmployee)) && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
           label={activeTab === 'pj' ? t.pjTab.fabLabel : t.toolbar.fabLabel}
@@ -1489,7 +1522,9 @@ export default function Employees() {
 
       {/* Dialogs */}
       <EmployeeFormDialog
-        open={formOpen}
+        // Só RH abre o cadastro: sem os dados de RH carregados, salvar
+        // gravaria salário/CPF/PIX vazios por cima dos verdadeiros.
+        open={formOpen && canManageEmployees}
         onOpenChange={o => { setFormOpen(o); if (!o) { setEditingEmployee(null); setPendingCreatedEmployeeId(null); } }}
         employee={editingEmployee}
         onSubmit={handleCreateOrUpdate}
@@ -1501,7 +1536,7 @@ export default function Employees() {
         defaultRegime={activeTab === 'pj' ? 'pj' : undefined}
       />
 
-      {movementEmployee && (
+      {canManageEmployees && movementEmployee && (
         <EmployeeMovementModal
           open={!!movementEmployee}
           onOpenChange={o => { if (!o) setMovementEmployee(null); }}
@@ -1511,23 +1546,23 @@ export default function Employees() {
           onSubmit={handleMovement}
           isPending={addMovement.isPending || createVale.isPending}
           employeeId={movementEmployee.id}
-          salary={movementEmployee.salary}
+          salary={movementEmployee.salary ?? 0}
           cashBankAccounts={cashBankAccounts}
         />
       )}
 
-      {paymentEmployee && (
+      {canManageEmployees && paymentEmployee && (
         <EmployeePaymentModal
           key={paymentEmployee.id}
           open={!!paymentEmployee}
           onOpenChange={o => { if (!o) setPaymentEmployee(null); }}
           employeeName={paymentEmployee.name}
-          salary={paymentEmployee.salary}
+          salary={paymentEmployee.salary ?? 0}
           balance={activeBalance}
           employeeRegime={paymentEmployee.employment_regime}
-          dependentsCount={paymentEmployee.dependents_count}
-          vtEnabled={paymentEmployee.vt_enabled}
-          vtMonthlyValue={paymentEmployee.vt_monthly_value}
+          dependentsCount={paymentEmployee.dependents_count ?? 0}
+          vtEnabled={paymentEmployee.vt_enabled ?? false}
+          vtMonthlyValue={paymentEmployee.vt_monthly_value ?? 0}
           pjActiveContract={(() => {
             const c = activeContractsMap.get(paymentEmployee.id);
             return c ? { amount: c.amount, billing_type: c.billing_type } : null;
@@ -1537,15 +1572,15 @@ export default function Employees() {
         />
       )}
 
-      {extractEmployee && (
+      {canManageEmployees && extractEmployee && (
         <EmployeeExtract
           open={!!extractEmployee}
           onOpenChange={o => { if (!o) setExtractEmployee(null); }}
           employeeName={extractEmployee.name}
-          employeeSalary={extractEmployee.salary || 0}
+          employeeSalary={extractEmployee.salary ?? 0}
           movements={movements}
           balance={activeBalance}
-          onDeleteMovement={id => deleteMovement.mutate({ id, movements, salary: extractEmployee.salary || 0 })}
+          onDeleteMovement={id => deleteMovement.mutate({ id, movements, salary: extractEmployee.salary ?? 0 })}
         />
       )}
 

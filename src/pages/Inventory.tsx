@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { fuzzyIncludes, cn } from '@/lib/utils';
 import { useIsMobile, useMediaBreakpoint } from '@/hooks/use-mobile';
 import {
@@ -29,6 +28,7 @@ import {
   ClipboardList,
   BarChart3,
   ArrowLeft,
+  ArrowUpRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -55,7 +55,8 @@ import {
 import { useInventory, type InventoryItem } from '@/hooks/useInventory';
 import { useAccessibleInventoryIds } from '@/hooks/useAccessibleInventoryIds';
 import { StockConfiguratorDialog } from '@/components/inventory/StockConfiguratorDialog';
-import { useStocks } from '@/hooks/useStocks';
+import { useStocks, useStockManagement } from '@/hooks/useStocks';
+import { StockLocationsTab } from '@/components/inventory/StockLocationsTab';
 import { useMaterialGroups } from '@/hooks/useMaterialGroups';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -150,9 +151,17 @@ const ARCHIVE_UI = {
   fr: { archive: 'Archiver', restore: 'Restaurer', archived: 'Archivé', show: 'Afficher les archivés', title: 'Archiver le matériel', description: 'Archiver « {name} » ? Il quitte les opérations, mais sa fiche et son historique restent conservés.', cancel: 'Annuler', confirm: 'Archiver' },
 } as const;
 
-export default function Inventory() {
-  const { hasPermission, isAdminOrGestor } = useAuth();
-  const canManageInventory = isAdminOrGestor() || hasPermission('fn:manage_inventory');
+export interface InventoryProps { context?: 'general' | 'store' }
+
+export default function Inventory({ context = 'general' }: InventoryProps) {
+  const { scopeKey } = useStockManagement();
+  return <InventoryContent key={`${scopeKey}:${context}`} context={context} />;
+}
+
+function InventoryContent({ context }: { context: 'general' | 'store' }) {
+  const { ready, canManage, scopeKey } = useStockManagement();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const storeContext = context === 'store';
   const location = useLocation();
   const navigate = useNavigate();
   const inventoryNavigation = location.state as {
@@ -166,19 +175,32 @@ export default function Inventory() {
   const generalStockUi = GENERAL_STOCK_UI[locale];
   const archiveUi = ARCHIVE_UI[locale];
   const {
-    items,
-    stockLevels,
-    isLoading,
-    stats,
+    items: allItems,
+    stockLevels: allStockLevels,
+    stockLevelsLoaded,
+    stockLevelsError,
+    error: inventoryError,
+    isLoading: inventoryLoading,
     setArchived,
     removeFromStock,
-    stockLevelsLoaded,
     getQuantityForStock,
     getMinQuantityForStock,
     getPresenceForStock,
   } = useInventory();
-  const { accessibleIds, isLoading: isLoadingAccessible } = useAccessibleInventoryIds();
-  const { stocks, defaultStock } = useStocks();
+  const { accessibleIds, isLoading: isLoadingAccessible, error: accessibleError } = useAccessibleInventoryIds();
+  const { stocks: allStocks, isLoading: stocksLoading, error: stocksError } = useStocks();
+  const stocks = allStocks.filter(stock => !storeContext || stock.purpose === 'pdv');
+  const visibleStockIds = new Set(stocks.map(stock => stock.id));
+  const stockLevels = allStockLevels.filter(level => visibleStockIds.has(level.stock_id));
+  // Loja não herda o default permissivo de presença do catálogo operacional.
+  const storeItemIds = new Set(stockLevels.filter(level => level.is_present !== false).map(level => level.inventory_id));
+  const isLoading = !ready || inventoryLoading || stocksLoading || isLoadingAccessible || (!stockLevelsLoaded && !stockLevelsError);
+  const dataError = inventoryError || stocksError || accessibleError || stockLevelsError;
+  // A RPC operacional exclui arquivados. A consulta histórica só os revela
+  // quando há presença comprovada em um local autorizado neste contexto.
+  const canReadItem = (item: InventoryItem) => accessibleIds.has(item.id)
+    || (!!item.archived_at && stockLevels.some(level => level.inventory_id === item.id && level.is_present !== false));
+  const items = !isLoading && !dataError ? allItems.filter(item => canReadItem(item) && (!storeContext || storeItemIds.has(item.id))) : [];
   const { groups } = useMaterialGroups();
   const { settings: companySettings } = useCompanySettings();
   const { enabled: whiteLabelEnabled } = useWhiteLabel();
@@ -206,14 +228,23 @@ export default function Inventory() {
   /** Local pré-selecionado como origem quando a transferência vem de um atalho
    *  de presença bloqueada. null = comportamento padrão (usa activeStockId). */
   const [transferFromStockId, setTransferFromStockId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState(inventoryNavigation?.inventoryTab ?? 'estoque');
+  const allowedTabs = storeContext ? ['estoque', 'locais'] : ['estoque', 'locais', 'historico', 'compras', 'inventarios', 'posicao', 'relatorio'];
+  const requestedTab = searchParams.get('aba') ?? inventoryNavigation?.inventoryTab ?? 'estoque';
+  const activeTab = allowedTabs.includes(requestedTab) ? requestedTab : 'estoque';
+  const setActiveTab = (tab: string) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('aba', tab);
+    setSearchParams(next);
+  };
 
   // Atalhos vindos do Caixa são consumidos uma única vez. Limpar o state
   // evita reabrir a compra caso a pessoa troque de aba e volte para Compras.
   useEffect(() => {
     if (!inventoryNavigation?.inventoryTab && !inventoryNavigation?.openNewPurchase) return;
-    navigate(location.pathname, { replace: true, state: null });
-  }, [inventoryNavigation?.inventoryTab, inventoryNavigation?.openNewPurchase, location.pathname, navigate]);
+    const next = new URLSearchParams(location.search);
+    if (inventoryNavigation.inventoryTab) next.set('aba', inventoryNavigation.inventoryTab);
+    navigate(`${location.pathname}?${next.toString()}`, { replace: true, state: null });
+  }, [inventoryNavigation?.inventoryTab, inventoryNavigation?.openNewPurchase, location.pathname, location.search, navigate]);
 
   // Inline movement state
   const [inlineMovementOpen, setInlineMovementOpen] = useState(false);
@@ -223,34 +254,50 @@ export default function Inventory() {
   // A visão consolidada é o primeiro contexto da aba. Um local real só passa a
   // ser ativo depois de escolha explícita — evita movimentar o depósito padrão
   // enquanto a pessoa acredita estar agindo sobre o total geral.
-  const [activeStockId, setActiveStockId] = useState<string | null>(GENERAL_STOCK_VIEW);
-  const [stockDetailOpen, setStockDetailOpen] = useState(false);
+  const activeStockId = searchParams.get('local') ?? GENERAL_STOCK_VIEW;
+  const setActiveStockId = (stockId: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (stockId === GENERAL_STOCK_VIEW) next.delete('local');
+    else next.set('local', stockId);
+    setSearchParams(next);
+  };
+  const [stockDetailOpen, setStockDetailOpen] = useState(searchParams.has('local'));
 
   // Configurador de itens por local (engrenagem na pill)
   const [configuratorStockId, setConfiguratorStockId] = useState<string | null>(null);
   const [configuratorOpen, setConfiguratorOpen] = useState(false);
 
-  // Se o local ativo foi excluído, volta para a visão geral.
-  useEffect(() => {
-    if (
-      activeStockId
-      && activeStockId !== GENERAL_STOCK_VIEW
-      && stocks.length > 0
-      && !stocks.some((s) => s.id === activeStockId)
-    ) {
-      setActiveStockId(GENERAL_STOCK_VIEW);
-    }
-  }, [stocks, activeStockId]);
-
   const isGeneralStockView = activeStockId === GENERAL_STOCK_VIEW;
-  const resolvedStockId = isGeneralStockView
-    ? null
-    : activeStockId ?? defaultStock?.id ?? null;
+  const resolvedStockId = !isGeneralStockView && visibleStockIds.has(activeStockId) ? activeStockId : null;
+  const invalidStockContext = !isGeneralStockView && !resolvedStockId;
+  const canWrite = ready && canManage && !isLoading && !dataError && !invalidStockContext && stocks.length > 0;
+
+  const authorizedLocationsKey = stocks.map(stock => stock.id).join('|');
+
+  // Mudanças de local ou perda de acesso descartam diálogos do contexto anterior.
+  useEffect(() => {
+    setDialogOpen(false);
+    setEditingItem(null);
+    setInlineMovementOpen(false);
+    setInlineMovementItem(null);
+    setTransferOpen(false);
+    setTransferItem(null);
+    setArchiveDialogOpen(false);
+    setItemToArchive(null);
+    setConfiguratorOpen(false);
+    setConfiguratorStockId(null);
+    setSettingsOpen(false);
+    setNfeImportOpen(false);
+  }, [activeStockId, canManage, scopeKey, authorizedLocationsKey]);
 
   const getGeneralQuantity = (inventoryId: string) =>
     getGeneralStockQuantity(stockLevels, inventoryId);
   const getGeneralLowCount = (inventoryId: string) =>
     getGeneralLowStockLevelCount(stockLevels, inventoryId);
+
+  const getScopedPresence = (inventoryId: string, stockId: string) => storeContext
+    ? stockLevels.some(level => level.inventory_id === inventoryId && level.stock_id === stockId && level.is_present !== false)
+    : getPresenceForStock(inventoryId, stockId);
 
   // Quantidade do item no estoque selecionado
   const getItemQty = (item: InventoryItem): number =>
@@ -289,11 +336,11 @@ export default function Inventory() {
     const matchesPresence =
       !resolvedStockId || searchQuery
         ? true
-        : getPresenceForStock(item.id, resolvedStockId);
+        : getScopedPresence(item.id, resolvedStockId);
     // Filtro de acesso por local: enquanto carrega, não esconde nada (evita flash).
-    const matchesAccessible = Boolean(item.archived_at) || isLoadingAccessible || accessibleIds.has(item.id);
+    const matchesAccessible = canReadItem(item);
     const matchesArchived = showArchived ? true : !item.archived_at;
-    return matchesSearch && matchesCategory && matchesGroup && matchesLowStock && matchesPresence && matchesAccessible && matchesArchived;
+    return !invalidStockContext && matchesSearch && matchesCategory && matchesGroup && matchesLowStock && matchesPresence && matchesAccessible && matchesArchived;
   });
 
   // Enriquece cada item com effectiveQty (saldo do local ativo) para que a
@@ -323,14 +370,14 @@ export default function Inventory() {
 
   const handleEdit = (item: InventoryItem, e?: React.MouseEvent) => {
     e?.stopPropagation();
-    if (!canManageInventory) return;
+    if (!canWrite) return;
     setEditingItem(item);
     setDialogOpen(true);
   };
 
   const handleArchiveClick = (item: InventoryItem, e?: React.MouseEvent) => {
     e?.stopPropagation();
-    if (!canManageInventory) return;
+    if (!canWrite) return;
     if (item.archived_at) {
       setArchived.mutate({ id: item.id, archived: false });
       return;
@@ -342,7 +389,7 @@ export default function Inventory() {
   /** Abre o dialog de transferência a partir do menu de ações (origem = activeStockId normal). */
   const handleTransferClick = (item: InventoryItem, e?: React.MouseEvent) => {
     e?.stopPropagation();
-    if (!canManageInventory) return;
+    if (!canWrite) return;
     setTransferFromStockId(null);
     setTransferItem(item);
     setTransferOpen(true);
@@ -351,6 +398,7 @@ export default function Inventory() {
   /** Abre o dialog de transferência a partir de atalho de presença bloqueada,
    *  pré-selecionando fromStockId como origem. */
   const handleTransferFromBlockedStock = (item: InventoryItem, fromStockId: string) => {
+    if (!canWrite || !visibleStockIds.has(fromStockId)) return;
     setTransferFromStockId(fromStockId);
     setTransferItem(item);
     setTransferOpen(true);
@@ -358,18 +406,18 @@ export default function Inventory() {
 
   const handleInlineMovement = (item: InventoryItem, type: InlineMovementType, e?: React.MouseEvent) => {
     e?.stopPropagation();
-    if (!canManageInventory) return;
+    if (!canWrite) return;
     setInlineMovementItem(item);
     setInlineMovementType(type);
     setInlineMovementOpen(true);
   };
 
   const handleRemoveFromLocation = (item: InventoryItem) => {
-    if (canManageInventory && resolvedStockId) setLocalRemoval({ item, stockId: resolvedStockId });
+    if (canWrite && resolvedStockId) setLocalRemoval({ item, stockId: resolvedStockId });
   };
 
   const confirmLocalRemoval = async () => {
-    if (!localRemoval || !canManageInventory || !stockLevelsLoaded) return;
+    if (!localRemoval || !canWrite || !stockLevelsLoaded) return;
     try {
       await removeFromStock.mutateAsync({ inventoryId: localRemoval.item.id, stockId: localRemoval.stockId });
       setLocalRemoval(null);
@@ -380,7 +428,7 @@ export default function Inventory() {
   };
 
   const handleConfirmArchive = async () => {
-    if (itemToArchive) {
+    if (canWrite && itemToArchive) {
       await setArchived.mutateAsync({ id: itemToArchive.id, archived: true });
       setItemToArchive(null);
       setArchiveDialogOpen(false);
@@ -393,6 +441,7 @@ export default function Inventory() {
   };
 
   const openNewItem = () => {
+    if (!canWrite) return;
     if (isGeneralStockView) {
       requireSpecificStock();
       return;
@@ -402,6 +451,7 @@ export default function Inventory() {
   };
 
   const openConfigurator = (stockId: string) => {
+    if (!canWrite || !visibleStockIds.has(stockId)) return;
     setConfiguratorStockId(stockId);
     setConfiguratorOpen(true);
   };
@@ -506,13 +556,13 @@ export default function Inventory() {
   // `stockLevels`, já filtrado por RLS, nunca de `inventory.quantity`.
   const accessibleInventoryItems = items.filter((i) => {
     if (i.archived_at) return false;
-    const accessible = isLoadingAccessible ? true : accessibleIds.has(i.id);
+    const accessible = accessibleIds.has(i.id) && !invalidStockContext;
     return accessible;
   });
   const activeStockItems = accessibleInventoryItems.filter((i) => {
     return isGeneralStockView || !resolvedStockId
       ? true
-      : getPresenceForStock(i.id, resolvedStockId);
+      : getScopedPresence(i.id, resolvedStockId);
   });
   const activeStatTotalItems = activeStockItems.length;
   const activeStatTotalValue = activeStockItems.reduce((acc, i) => {
@@ -522,7 +572,7 @@ export default function Inventory() {
   const activeStatLowStock = activeStockItems.filter(isLowStockForActiveStock).length;
   const generalLowStockCount = accessibleInventoryItems.filter((item) => getGeneralLowCount(item.id) > 0).length;
   const stockNavigationItems = stocks.map((stock) => {
-    const stockItems = accessibleInventoryItems.filter((item) => getPresenceForStock(item.id, stock.id));
+    const stockItems = accessibleInventoryItems.filter((item) => getScopedPresence(item.id, stock.id));
     const lowStockCount = stockItems.filter((item) => {
       const minimum = getMinQuantityForStock(item.id, stock.id);
       return minimum !== null && getQuantityForStock(item.id, stock.id) < minimum;
@@ -673,21 +723,23 @@ export default function Inventory() {
   // Navegação principal horizontal em todas as larguras. No mobile usamos
   // rótulos curtos para preservar leitura sem comprimir as abas.
   const inventoryTabs = [
-    { value: 'estoque', label: t.tabs.current, icon: Boxes },
+    { value: 'estoque', label: storeContext ? 'Produtos' : t.tabs.current, icon: Boxes },
+    { value: 'locais', label: 'Locais', icon: Package },
     { value: 'historico', label: isMobile ? t.tabs.kardexShort : t.tabs.kardex, icon: History },
     { value: 'compras', label: isMobile ? t.tabs.purchasesShort : t.tabs.purchases, icon: ShoppingCart },
     { value: 'inventarios', label: t.tabs.inventories, icon: ClipboardList },
     { value: 'posicao', label: isMobile ? t.tabs.positionShort : t.tabs.position, icon: BarChart3 },
     { value: 'relatorio', label: t.tabs.report, icon: FileSpreadsheet },
-  ];
+  ].filter(tab => allowedTabs.includes(tab.value));
 
   // Subabas dos depósitos dentro da aba Estoque Atual — mobile renderiza pílulas
   // próprias com flex-wrap (ver bloco isMobile abaixo); desktop usa abas underline.
 
   // Botões Importar XML e Configurações — ficam no canto superior direito do header (sempre)
   const headerRightButtons = (
-    <div className="flex items-center gap-1.5 shrink-0">
-      <Button
+    <div className="flex flex-wrap items-center gap-1.5">
+      {storeContext && <TooltipProvider delayDuration={200}><Tooltip><TooltipTrigger asChild><Button variant="outline" className="h-9 w-9 shrink-0 sm:w-auto sm:px-3" aria-label="Abrir gestão completa" onClick={() => navigate('/estoque')}><ArrowUpRight className="h-4 w-4" aria-hidden="true" /><span className="hidden sm:inline">Abrir gestão completa</span></Button></TooltipTrigger><TooltipContent>Abrir gestão completa</TooltipContent></Tooltip></TooltipProvider>}
+      {!storeContext && canManage && <><Button
         variant="outline"
         className="h-9 w-9 lg:w-auto lg:px-3 shrink-0 rounded-xl gap-1.5"
         aria-label={t.ariaLabels.importXml}
@@ -704,7 +756,7 @@ export default function Inventory() {
       >
         <Settings className="h-4 w-4 shrink-0" />
         <span className="hidden lg:inline">{t.actions.settings}</span>
-      </Button>
+      </Button></>}
     </div>
   );
 
@@ -747,8 +799,8 @@ export default function Inventory() {
       )}
     >
       <MobilePageHeader
-        title={t.header.title}
-        subtitle={t.header.subtitle}
+        title={storeContext ? 'Estoque da loja' : t.header.title}
+        subtitle={storeContext ? 'Produtos e saldos da loja.' : t.header.subtitle}
         icon={Package}
         actions={headerRightButtons}
         compactOnMobile
@@ -773,7 +825,11 @@ export default function Inventory() {
       <div className="min-w-0">
 
         {/* ===================== ABA: ESTOQUE ATUAL ===================== */}
-        {activeTab === 'estoque' && (
+        {isLoading ? <div role="status" className="space-y-3"><p className="text-sm text-muted-foreground">Carregando estoque...</p><Skeleton className="h-32 w-full" /></div> : dataError ? <div role="alert" className="space-y-3"><p>Não foi possível confirmar os locais e saldos. Atualize a página e tente novamente.</p><Button variant="outline" onClick={() => { window.location.reload(); }}>Tentar novamente</Button></div> : invalidStockContext ? <EmptyState icon={<Package className="h-10 w-10" />} title="Local indisponível" description="Este local não pertence a este contexto ou seu acesso mudou. Selecione um local autorizado para continuar." /> : null}
+        {!isLoading && !dataError && invalidStockContext && <Button variant="outline" onClick={() => setActiveStockId(GENERAL_STOCK_VIEW)}>Ver locais disponíveis</Button>}
+        {!isLoading && !dataError && !invalidStockContext && activeTab === 'locais' && <StockLocationsTab stocks={stocks} context={context} pdvEnabled={pdvEnabled} canManage={canManage} selectedId={resolvedStockId} onSelect={setActiveStockId} onConfigure={openConfigurator} />}
+        {!isLoading && !dataError && !invalidStockContext && stocks.length === 0 && activeTab === 'estoque' && <div className="space-y-3"><EmptyState icon={<Package className="h-10 w-10" />} title={storeContext ? 'Nenhum local de loja disponível' : 'Nenhum local de estoque disponível'} description={canManage ? 'Crie um local para cadastrar produtos e organizar seus saldos.' : 'Peça ao administrador acesso a um local.'} />{canManage && <Button onClick={() => setActiveTab('locais')}>Gerenciar locais</Button>}</div>}
+        {!isLoading && !dataError && !invalidStockContext && stocks.length > 0 && activeTab === 'estoque' && (
           <div
             className={cn(
               'grid min-w-0 items-start gap-4',
@@ -790,7 +846,7 @@ export default function Inventory() {
                 selectedId={isGeneralStockView ? GENERAL_STOCK_VIEW : resolvedStockId ?? GENERAL_STOCK_VIEW}
                 labels={stockNavigatorLabels}
                 onSelect={selectStockContext}
-                onConfigure={openConfigurator}
+                onConfigure={canWrite ? openConfigurator : undefined}
                 className={cn(
                   isStockCompact && 'mx-auto w-full max-w-2xl',
                   !isStockCompact && 'sticky top-4',
@@ -874,7 +930,7 @@ export default function Inventory() {
                         const belowMin = isLowStockForActiveStock(item);
                         const itemGroup = groups.find((g) => g.id === item.group_id);
 
-                        const itemActions: ItemAction[] = !canManageInventory ? [] : item.archived_at ? [
+                        const itemActions: ItemAction[] = !canWrite ? [] : item.archived_at ? [
                           {
                             key: 'restore',
                             label: archiveUi.restore,
@@ -888,7 +944,7 @@ export default function Inventory() {
                             icon: <Eye className="h-4 w-4" />,
                             onClick: () => handleEdit(item),
                           },
-                          ...(canManageInventory
+                          ...(canWrite
                             ? [
                                 {
                                   key: 'edit',
@@ -911,7 +967,7 @@ export default function Inventory() {
                                 },
                               ]
                             : []),
-                          ...(canManageInventory && stocks.length > 1
+                          ...(canWrite && stocks.length > 1
                             ? [{
                                 key: 'transfer',
                                 label: t.rowActions.transfer,
@@ -951,7 +1007,7 @@ export default function Inventory() {
                         return (
                           <MobileListItem
                             key={item.id}
-                            onClick={item.archived_at || !canManageInventory ? undefined : () => handleEdit(item)}
+                            onClick={!canWrite || item.archived_at ? undefined : () => handleEdit(item)}
                             actions={itemActions}
                             leading={
                               <InventoryItemThumbnail
@@ -1030,15 +1086,15 @@ export default function Inventory() {
                         </FilterButton>
                       ) : undefined}
                     />
-                    <div className="ml-auto flex shrink-0 items-center gap-2">
+                    <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
                       {exportDropdown(true)}
-                      <Button
+                      {canWrite && <Button
                         className="h-10 gap-2 bg-primary px-3 text-primary-foreground hover:bg-primary/90"
                         onClick={openNewItem}
                       >
                         <Plus className="h-4 w-4" />
                         {t.actions.register}
-                      </Button>
+                      </Button>}
                     </div>
                   </div>
                 </CardHeader>
@@ -1143,15 +1199,15 @@ export default function Inventory() {
                                   </TableCell>
                                   <TableCell>
                                     <RowActionsMenu
-                                      actions={canManageInventory ? [
-                                        ...(!item.archived_at && canManageInventory
+                                      actions={!canWrite ? [] : [
+                                        ...(!item.archived_at && canWrite
                                           ? [
                                               { label: t.rowActions.edit, icon: Edit, variant: 'edit' as const, onClick: () => handleEdit(item) },
                                               { label: t.rowActions.registerEntrada, icon: TrendingUp, variant: 'default' as const, onClick: () => handleInlineMovement(item, 'entrada') },
                                               { label: t.rowActions.registerSaida, icon: TrendingDown, variant: 'default' as const, onClick: () => handleInlineMovement(item, 'saida') },
                                             ]
                                           : []),
-                                        ...(!item.archived_at && canManageInventory && stocks.length > 1
+                                        ...(!item.archived_at && canWrite && stocks.length > 1
                                           ? [{ label: t.rowActions.transfer, icon: ArrowRightLeft, variant: 'default' as const, onClick: () => handleTransferClick(item) }]
                                           : []),
                                         ...(!item.archived_at && resolvedStockId ? [{
@@ -1161,7 +1217,7 @@ export default function Inventory() {
                                         item.archived_at
                                           ? { label: archiveUi.restore, icon: ArchiveRestore, variant: 'default', onClick: () => handleArchiveClick(item) }
                                           : { label: archiveUi.archive, icon: Archive, variant: 'delete', onClick: () => handleArchiveClick(item) },
-                                      ] : []}
+                                      ]}
                                     />
                                   </TableCell>
                                 </TableRow>
@@ -1191,25 +1247,25 @@ export default function Inventory() {
         )}
 
         {/* ===================== ABA: HISTÓRICO (KARDEX) ===================== */}
-        {activeTab === 'historico' && <InventoryKardexTab />}
+        {!storeContext && !isLoading && !dataError && !invalidStockContext && activeTab === 'historico' && <InventoryKardexTab />}
 
         {/* ===================== ABA: COMPRAS DE MATERIAL ===================== */}
-        {activeTab === 'compras' && (
+        {!storeContext && !isLoading && !dataError && !invalidStockContext && activeTab === 'compras' && (
           <MaterialPurchasesTab openNewOnMount={inventoryNavigation?.openNewPurchase === true} />
         )}
 
         {/* ===================== ABA: INVENTÁRIOS ===================== */}
-        {activeTab === 'inventarios' && <InventoryCountsTab />}
+        {!storeContext && !isLoading && !dataError && !invalidStockContext && activeTab === 'inventarios' && <InventoryCountsTab />}
 
         {/* ===================== ABA: POSIÇÃO DE ESTOQUE ===================== */}
-        {activeTab === 'posicao' && <StockPositionTab />}
+        {!storeContext && !isLoading && !dataError && !invalidStockContext && activeTab === 'posicao' && <StockPositionTab />}
 
         {/* ===================== ABA: RELATÓRIOS (COMPRAS + CURVA ABC) ===================== */}
-        {activeTab === 'relatorio' && <InventoryReportsTab />}
+        {!storeContext && !isLoading && !dataError && !invalidStockContext && activeTab === 'relatorio' && <InventoryReportsTab />}
       </div>
 
       {/* FAB mobile-only (só na aba de estoque) */}
-      {isMobile && activeTab === 'estoque' && (stocks.length === 0 || stockDetailOpen) && (
+      {canWrite && isMobile && activeTab === 'estoque' && stockDetailOpen && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
           label={t.actions.fabLabel}
@@ -1219,7 +1275,7 @@ export default function Inventory() {
 
       {/* Form Dialog (criar/editar material) */}
       <InventoryFormDialog
-        open={dialogOpen}
+        open={dialogOpen && canWrite && !!resolvedStockId}
         onOpenChange={handleDialogClose}
         item={editingItem}
         activeStockId={resolvedStockId}
@@ -1228,7 +1284,7 @@ export default function Inventory() {
 
       {/* Dialog de transferência entre depósitos */}
       <StockTransferDialog
-        open={transferOpen}
+        open={transferOpen && canWrite && !!resolvedStockId}
         onOpenChange={(v) => {
           setTransferOpen(v);
           if (!v) { setTransferItem(null); setTransferFromStockId(null); }
@@ -1239,10 +1295,10 @@ export default function Inventory() {
       />
 
       {/* Dialog de configurações (grupos + depósitos) */}
-      <InventorySettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <InventorySettingsDialog open={settingsOpen && canManage} onOpenChange={setSettingsOpen} />
 
       {/* Importação via XML de NF-e */}
-      <NfeImportDialog open={nfeImportOpen} onOpenChange={setNfeImportOpen} />
+      <NfeImportDialog open={nfeImportOpen && canWrite} onOpenChange={setNfeImportOpen} />
 
       {/* Seleção de materiais p/ exportar */}
       <InventoryExportDialog
@@ -1261,7 +1317,7 @@ export default function Inventory() {
 
       {/* Movimentação inline (entrada/saída) */}
       <InlineMovementDialog
-        open={inlineMovementOpen}
+        open={inlineMovementOpen && canWrite && !!resolvedStockId}
         onOpenChange={(v) => {
           setInlineMovementOpen(v);
           if (!v) setInlineMovementItem(null);
@@ -1272,7 +1328,7 @@ export default function Inventory() {
       />
 
       {/* Configurador de itens por local (engrenagem na pill) */}
-      {configuratorOpen && configuratorStockId && stocks.find((s) => s.id === configuratorStockId) && (
+      {canWrite && configuratorOpen && configuratorStockId && stocks.find((s) => s.id === configuratorStockId) && (
         <StockConfiguratorDialog
           open={configuratorOpen}
           onOpenChange={(v) => {
@@ -1303,7 +1359,7 @@ export default function Inventory() {
       </AlertDialog>
 
       {/* Arquivamento preserva Kardex, compras, reservas e relatórios. */}
-      <AlertDialog open={archiveDialogOpen} onOpenChange={setArchiveDialogOpen}>
+      <AlertDialog open={archiveDialogOpen && canWrite} onOpenChange={setArchiveDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{archiveUi.title}</AlertDialogTitle>

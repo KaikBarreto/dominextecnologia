@@ -121,7 +121,7 @@ describe('assinatura da plataforma — respeita a marca própria em todos os mod
       };
       render(Component, props);
       const signature = container.querySelector('[data-proposal-platform-brand]');
-      expect(signature?.querySelector('a')?.href).toBe('https://dominex.app/');
+      expect(signature?.querySelector('a')?.href).toBe('https://www.dominex.app/');
       expect(signature?.querySelector('img')?.alt).toBe('Dominex');
       expect(container.textContent).toContain('Empresa de demonstração');
 

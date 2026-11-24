@@ -44,6 +44,28 @@ export interface PdvCashV2ReportEntry {
   paymentMethod: string | null;
 }
 
+export interface PdvCashV2SalesByMethod {
+  method: string;
+  count: number;
+  amount: number;
+}
+
+export interface PdvCashV2SaleRow {
+  number: number;
+  createdAt: string;
+  status: string;
+  total: number;
+  methods: string[];
+}
+
+/** Todas as vendas do caixa, de qualquer forma de pagamento (não só o que passa pela gaveta). */
+export interface PdvCashV2SessionSales {
+  count: number;
+  total: number;
+  byMethod: PdvCashV2SalesByMethod[];
+  orders: PdvCashV2SaleRow[];
+}
+
 export interface PdvCashV2SessionReport {
   sessionId: string;
   terminalName: string;
@@ -64,6 +86,7 @@ export interface PdvCashV2SessionReport {
   finalPosition: number;
   notes: string | null;
   entries: PdvCashV2ReportEntry[];
+  sales: PdvCashV2SessionSales;
 }
 
 export interface PdvCashReopenV2Result {
@@ -408,7 +431,7 @@ export function mapPdvCashV2Error(error: unknown): Error {
   const byCode: Record<string, string> = {
     PDV_AUTH_REQUIRED: 'Sua sessão expirou. Entre novamente para continuar.',
     PDV_SUBSCRIPTION_INACTIVE: 'A assinatura da empresa não permite operar o caixa agora.',
-    PDV_MODULE_INACTIVE: 'O módulo PDV e Loja não está ativo nesta empresa.',
+    PDV_MODULE_INACTIVE: 'O módulo PDV (Loja) não está ativo nesta empresa.',
     PDV_SCREEN_FORBIDDEN: 'Você não tem permissão para operar o caixa.',
     PDV_TREASURY_INITIALIZATION_FORBIDDEN: 'Você não tem permissão para registrar o saldo inicial do cofre.',
     PDV_TREASURY_ALREADY_INITIALIZED: 'O cofre já possui histórico. Confira o saldo no Financeiro antes de abrir.',
@@ -641,6 +664,48 @@ export function projectPdvCashReopenV2Result(payload: unknown): PdvCashReopenV2R
   };
 }
 
+function countStrict(value: unknown, field: string): number {
+  const parsed = numericStrict(value, field);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new Error(`O servidor retornou ${field} inválido no caixa.`);
+  }
+  return parsed;
+}
+
+export function projectPdvCashV2SessionSales(payload: unknown): PdvCashV2SessionSales {
+  const value = record(payload);
+  if (!Array.isArray(value.by_method) || !Array.isArray(value.orders)) {
+    throw new Error('O servidor retornou as vendas do relatório em formato inválido.');
+  }
+  const byMethod = value.by_method.map((raw): PdvCashV2SalesByMethod => {
+    const row = record(raw);
+    return {
+      method: textStrict(row.method, 'forma de pagamento das vendas'),
+      count: countStrict(row.count, 'quantidade de vendas por forma'),
+      amount: numericStrict(row.amount, 'valor de vendas por forma'),
+    };
+  });
+  const orders = value.orders.map((raw): PdvCashV2SaleRow => {
+    const row = record(raw);
+    if (!Array.isArray(row.methods)) {
+      throw new Error('O servidor retornou as formas de pagamento da venda em formato inválido.');
+    }
+    const number = countStrict(row.number, 'número da venda');
+    return {
+      number,
+      createdAt: dateStrict(row.created_at, 'data da venda'),
+      status: textStrict(row.status, 'situação da venda'),
+      total: numericStrict(row.total, 'valor da venda'),
+      methods: row.methods.map((method) => textStrict(method, 'forma de pagamento da venda')),
+    };
+  });
+  const count = countStrict(value.count, 'quantidade de vendas');
+  if (count !== orders.length) {
+    throw new Error('O servidor retornou a quantidade de vendas do caixa inconsistente.');
+  }
+  return { count, total: numericStrict(value.total, 'total de vendas'), byMethod, orders };
+}
+
 export function projectPdvCashV2SessionReport(payload: unknown): PdvCashV2SessionReport {
   const value = record(payload);
   if (!Array.isArray(value.entries)) {
@@ -665,6 +730,7 @@ export function projectPdvCashV2SessionReport(payload: unknown): PdvCashV2Sessio
     refunds: numericStrict(value.refunds, 'estornos do relatório'),
     finalPosition: numericStrict(value.final_position, 'posição final do relatório'),
     notes: value.notes === null ? null : textStrict(value.notes, 'observação do relatório'),
+    sales: projectPdvCashV2SessionSales(value.sales),
     entries: value.entries.map((raw): PdvCashV2ReportEntry => {
       const entry = record(raw);
       return {

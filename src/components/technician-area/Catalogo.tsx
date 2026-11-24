@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState, type ReactNode, type ComponentType } from 'react';
+import { HorizontalTabBar } from '@/components/ui/HorizontalTabBar';
+import { calcularEnergiaCatalogo } from '@/lib/energiaCatalogo';
+import { useEffect, useMemo, useRef, useState, type ReactNode, type ComponentType } from 'react';
 import {
   Routes,
   Route,
   Navigate,
   useNavigate,
   useParams,
-  useSearchParams,
 } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -18,7 +19,6 @@ import {
   ChevronDown,
   ChevronUp,
   PackageSearch,
-  Star,
   SlidersHorizontal,
   AirVent,
   Refrigerator,
@@ -35,7 +35,13 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CompressorGlyph, RemoteGlyph } from '@/components/icons/MenuIcons';
 import { Button } from '@/components/ui/button';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DataTablePagination } from '@/components/ui/DataTablePagination';
+import { catalogCodeMatches, organizeCatalog, withCatalogNavigation } from '@/lib/catalogOrganization';
+import { CatalogCategoryBrowser, CatalogFamilyBrowser } from './CatalogCategoryBrowser';
+import { catalogNavigationCopy } from './catalogNavigationCopy';
 import { Slider } from '@/components/ui/slider';
 import { cn, fuzzyIncludesAny } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -63,14 +69,20 @@ import { CompressorFicha } from './CompressorFicha';
 import { GasDetail } from './GasDetail';
 import { GasBadge } from './GasBadge';
 import { RemoteConfig } from './RemoteConfig';
+import { CatalogPhotoCaption, CatalogDocumentReference, CatalogImagePreview, CatalogModelIdentity, CatalogModelReference } from './CatalogAssetReference';
 import { CatalogImage } from './CatalogImage';
-import {
-  registrarModeloRecente,
-  isModeloFavorito,
-  toggleModeloFavorito,
-  useToolHistory,
-} from '@/lib/technicianAreaHistory';
-import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
+import { CatalogBrandLogo } from './CatalogBrandLogo';
+import { ManufacturerDocuments, ManufacturerManualLink } from './ManufacturerDocuments';
+import { EquipmentReferenceNotice } from './EquipmentReferenceNotice';
+import { getEquipmentCodeReference } from '@/data/equipmentErrorCodeReferences';
+import { CatalogActivityFeed } from './CatalogActivityFeed';
+import { CatalogFavoriteButton } from './CatalogFavoriteButton';
+import { catalogActivityCopy } from './catalogActivityCopy';
+import { prioritizeCatalogModels } from '@/lib/catalogDiscovery';
+import { useCatalogVisit } from '@/hooks/useCatalogVisit';
+import { useCatalogListState, useCatalogNavigation, useCatalogPagination, useCatalogScrollRestore, useCatalogSearchParams } from './CatalogNavigationContext';
+import { catalogSearchCopy } from './catalogSearchCopy';
+import { CatalogNavigationProvider } from './CatalogNavigationProvider';
 import {
   Carousel,
   CarouselContent,
@@ -292,9 +304,17 @@ function sanitizarNomeArquivo(nome: string): string {
  * Baixa o manual (PDF) salvando com nome legível em vez do UUID do storage.
  * Fallback para window.open se o fetch do blob falhar (ex: CORS).
  */
-async function baixarManual(url: string, nome: string) {
+async function baixarManual(url: string, nome: string, stream = false) {
+  // Originais grandes permanecem no fabricante: abrir diretamente evita baixar
+  // centenas de MB para um blob na memória do celular e não depende de CORS.
+  const storageOrigin = new URL(import.meta.env.VITE_SUPABASE_URL).origin;
+  if (stream || new URL(url, window.location.href).origin !== storageOrigin) {
+    window.open(url, '_blank', 'noopener,noreferrer');
+    return;
+  }
   try {
     const res = await fetch(url);
+    if (!res.ok) throw new Error('Documento indisponível');
     const blob = await res.blob();
     const u = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -305,7 +325,7 @@ async function baixarManual(url: string, nome: string) {
     document.body.removeChild(a);
     URL.revokeObjectURL(u);
   } catch {
-    window.open(url, '_blank');
+    window.open(url, '_blank', 'noopener,noreferrer');
   }
 }
 
@@ -358,29 +378,31 @@ function DomainSelector({
 }) {
   const domainOptions = getDomainOptions(t);
   return (
-    <div className="flex gap-1 border-b overflow-x-auto no-scrollbar">
-      {domainOptions.map((o) => {
-        const Icon = o.icon;
-        const ativo = o.value === value;
-        return (
-          <button
-            key={o.value}
-            type="button"
-            onClick={() => onChange(o.value)}
-            aria-pressed={ativo}
-            className={cn(
-              'flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap shrink-0',
-              ativo
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground',
-            )}
-          >
-            <Icon className="h-4 w-4 shrink-0" />
-            {o.label}
-          </button>
-        );
-      })}
-    </div>
+    <HorizontalTabBar asChild>
+      <div className="flex gap-1 border-b overflow-x-auto no-scrollbar">
+        {domainOptions.map((o) => {
+          const Icon = o.icon;
+          const ativo = o.value === value;
+          return (
+            <button
+              key={o.value}
+              type="button"
+              onClick={() => onChange(o.value)}
+              aria-pressed={ativo}
+              className={cn(
+                'flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap shrink-0',
+                ativo
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <Icon className="h-4 w-4 shrink-0" />
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+    </HorizontalTabBar>
   );
 }
 
@@ -450,6 +472,7 @@ function tabToDomain(tab: CatalogTab): EquipmentDomain {
 
 function CatalogoRouted() {
   return (
+    <CatalogNavigationProvider>
     <Routes>
       {/* /catalogo → subaba default. */}
       <Route index element={<Navigate to={DEFAULT_CATALOG_TAB} replace />} />
@@ -471,13 +494,16 @@ function CatalogoRouted() {
       {/* Qualquer rota desconhecida sob catalogo → subaba default. */}
       <Route path="*" element={<Navigate to={DEFAULT_CATALOG_TAB} replace />} />
     </Routes>
+    </CatalogNavigationProvider>
   );
 }
 
 /** Tela 0 — lista da subaba (marcas / controles / gases). */
 function CatalogTabScreen() {
+  const { open } = useCatalogNavigation();
   const { catalogTab } = useParams<{ catalogTab: string }>();
   const navigate = useNavigate();
+  const [catalogParams] = useCatalogSearchParams();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.technicianTools.catalog;
 
@@ -494,22 +520,22 @@ function CatalogTabScreen() {
       {tab === 'fluido_refrigerante' ? (
         <GasesList
           onSelectGas={(gas) =>
-            navigate(`gas/${encodeURIComponent(gas.code)}`)
+            open(`gas/${encodeURIComponent(gas.code)}`)
           }
           t={t}
         />
       ) : tab === 'controle_remoto' ? (
         // Controle remoto: lista global, sem etapa de marca → URL flat por slug do nome.
-        <RemotesList onSelectDetail={(model) => navigate(`modelo/${slugify(model.name)}`)} t={t} />
+        <RemotesList onSelectDetail={(model) => open(`modelo/${slugify(model.name)}`)} t={t} />
       ) : (
         <BrandsList
           domain={domain}
-          onSelectBrand={(brand) => navigate(`marca/${brandSlug(brand.name)}`)}
+          onSelectBrand={(brand) => open(`marca/${brandSlug(brand.name)}`)}
           // Modelo abre ninhado sob a marca DO PRÓPRIO modelo (todo modelo tem marca).
           // Veio da busca/grade da subaba → ?from=catalogo pra voltar pra cá.
-          onSelectModelDetail={(model) => navigate(modelPath(tab, model))}
+          onSelectModelDetail={(model) => open(withCatalogNavigation(modelPath(tab, model), catalogParams))}
           onSelectModelErrors={(model, initialCode) =>
-            navigate(modelPath(tab, model, { codigo: initialCode }))
+            open(withCatalogNavigation(modelPath(tab, model, { codigo: initialCode }), catalogParams))
           }
           t={t}
         />
@@ -526,8 +552,9 @@ function CatalogTabScreen() {
  * dessa marca é que alimenta a lista de modelos (mesma lógica de sempre).
  */
 function CatalogBrandScreen() {
+  const { open, back, replace } = useCatalogNavigation();
   const { catalogTab, brandSlug: slugParam } = useParams<{ catalogTab: string; brandSlug: string }>();
-  const navigate = useNavigate();
+  const [catalogParams] = useCatalogSearchParams();
   const catalogBase = useCatalogBase();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.technicianTools.catalog;
@@ -568,21 +595,22 @@ function CatalogBrandScreen() {
 
   return (
     <ModelosList
+      key={brand.id}
       brand={brand}
       domain={domain}
-      onBack={() => navigate(tabPath)}
+      onBack={() => back(tabPath)}
       // Trocar de marca no carrossel: replace pra não inflar o history. URL por slug.
       onSelectBrand={(b) =>
-        navigate(`${catalogBase}/${tab}/marca/${brandSlug(b.name)}`, { replace: true })
+        replace(`${catalogBase}/${tab}/marca/${brandSlug(b.name)}`)
       }
       onSelectDetail={(model) =>
         // Ninhado sob a marca atual (modelo da lista não traz brand hidratado → passamos
         // o nome da marca conhecida). from=marca pra voltar pra esta tela de marca.
-        navigate(
-          `${catalogBase}/${tab}/${modelPath(tab, model, {
+        open(
+          withCatalogNavigation(`${catalogBase}/${tab}/${modelPath(tab, model, {
             brandName: brand.name,
             from: 'marca',
-          })}`,
+          })}`, catalogParams),
         )
       }
       t={t}
@@ -625,13 +653,13 @@ function ModelDetailByDomain({
  * então anexamos a marca encontrada pros componentes de detalhe (header).
  */
 function CatalogModelScreen() {
+  const { back } = useCatalogNavigation();
   const { catalogTab, brandSlug: brandSlugParam, modelSlug } = useParams<{
     catalogTab: string;
     brandSlug: string;
     modelSlug: string;
   }>();
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
+  const [searchParams] = useCatalogSearchParams();
   const catalogBase = useCatalogBase();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.technicianTools.catalog;
@@ -671,15 +699,15 @@ function CatalogModelScreen() {
   }
 
   // Voltar: se veio de uma marca, volta pra ela; senão pra lista da subaba.
-  // Sem navigate(-1) pra não quebrar link direto/colado.
+  // Links colados têm fallback; origem capturada pelo app restaura o histórico.
   const fromMarca = searchParams.get('from') === 'marca';
   const brandPath = brand
     ? `${catalogBase}/${tab}/marca/${brandSlug(brand.name)}`
     : brandSlugParam
       ? `${catalogBase}/${tab}/marca/${encodeURIComponent(brandSlugParam)}`
       : tabPath;
-  const backTo = fromMarca ? brandPath : tabPath;
-  const onBack = () => navigate(backTo);
+  const backTo = withCatalogNavigation(fromMarca ? brandPath : tabPath, searchParams);
+  const onBack = () => back(backTo);
 
   if (loadingBrands || (brand && loadingModels)) return <LoadingBlock />;
   if (!model) {
@@ -705,8 +733,8 @@ function CatalogModelScreen() {
  * achamos por `slugify(nome)`. Voltar cai sempre na lista da subaba.
  */
 function CatalogRemoteModelScreen() {
+  const { back } = useCatalogNavigation();
   const { modelSlug } = useParams<{ modelSlug: string }>();
-  const navigate = useNavigate();
   const catalogBase = useCatalogBase();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.technicianTools.catalog;
@@ -730,13 +758,13 @@ function CatalogRemoteModelScreen() {
     );
   }
 
-  return <ModelDetailByDomain model={model} onBack={() => navigate(tabPath)} />;
+  return <ModelDetailByDomain model={model} onBack={() => back(tabPath)} />;
 }
 
 /** Tela 3 — detalhe de um fluido refrigerante (`/catalogo/fluido_refrigerante/gas/:gasCode`). */
 function CatalogGasScreen() {
+  const { back } = useCatalogNavigation();
   const { gasCode } = useParams<{ gasCode: string }>();
-  const navigate = useNavigate();
   const catalogBase = useCatalogBase();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.technicianTools.catalog;
@@ -759,7 +787,7 @@ function CatalogGasScreen() {
       />
     );
   }
-  return <GasDetail gas={gas} onBack={() => navigate(fluidoPath)} />;
+  return <GasDetail gas={gas} onBack={() => back(fluidoPath)} />;
 }
 
 /** Estado vazio amigável DENTRO das Ferramentas (não usa o NotFound global). */
@@ -829,6 +857,7 @@ function CatalogoEmbedded({ modeloInicialId }: { modeloInicialId?: string }) {
   if (view.kind === 'models') {
     return (
       <ModelosList
+        key={view.brand.id}
         brand={view.brand}
         domain={domain}
         onBack={() => setView({ kind: 'brands' })}
@@ -939,13 +968,14 @@ function BrandsList({
   t: TCatalog;
 }) {
   const { locale } = useAppLocaleContext();
+  const [catalogParams, setCatalogParams] = useCatalogSearchParams();
   const { data: brands = [], isLoading } = useEquipmentBrands(domain);
 
   // Ordenação compartilhada com o carrossel da tela de modelos (ordenarMarcas):
   // no domínio Compressores as marcas mais conhecidas vêm primeiro.
   const brandsOrdenadas = useMemo(() => ordenarMarcas(brands, domain), [brands, domain]);
 
-  const { data: allModels = [], isLoading: loadingModels } = useAllModelsWithBrand(domain);
+  const { data: allModels = [], isLoading: loadingModels, isError: modelsFailed } = useAllModelsWithBrand(domain);
   // Códigos de erro escopados ao domínio ativo (AC, linha branca…). Antes a busca
   // puxava o catálogo inteiro e o PostgREST truncava em ~1000 linhas, sumindo com
   // os códigos de linha branca; escopar por domínio resolve e espelha o AC.
@@ -961,26 +991,34 @@ function BrandsList({
   // (allErrorCodes é global) ao domínio selecionado.
   const domainModelIds = useMemo(() => new Set(allModels.map((m) => m.id)), [allModels]);
 
-  const [termoRaw, setTermoRaw] = useState('');
-  const [termo, setTermo] = useState('');
+  const [termoRaw, setTermoRaw] = useCatalogListState('search:raw', () => catalogParams.get('busca') ?? '');
+  const [termo, setTermo] = useCatalogListState('search:applied', () => (catalogParams.get('busca') ?? '').trim());
 
   // Debounce leve da busca.
   useEffect(() => {
-    const id = setTimeout(() => setTermo(termoRaw.trim()), 180);
+    const id = setTimeout(() => {
+      const value = termoRaw.trim();
+      setTermo(value);
+      if ((catalogParams.get('busca') ?? '') !== value) setCatalogParams(current => {
+        const next = new URLSearchParams(current);
+        if (value) next.set('busca', value); else next.delete('busca');
+        return next;
+      }, { replace: true });
+    }, 180);
     return () => clearTimeout(id);
-  }, [termoRaw]);
+  }, [termoRaw, catalogParams, setCatalogParams, setTermo]);
 
   // Filtros (só valem quando a busca está vazia — busca é universal).
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [selectedBtus, setSelectedBtus] = useState<string[]>([]);
-  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [selectedBtus, setSelectedBtus] = useCatalogListState<string[]>('filter:btu', []);
+  const [selectedTypes, setSelectedTypes] = useCatalogListState<string[]>('filter:type', []);
   // Filtro de gás refrigerante: só no domínio ar_condicionado.
-  const [selectedGases, setSelectedGases] = useState<string[]>([]);
+  const [selectedGases, setSelectedGases] = useCatalogListState<string[]>('filter:gas', []);
   const gasFilterEnabled = domain === 'ar_condicionado';
   // Trocar de domínio limpa a seleção de gás (filtro não existe fora do AC).
   useEffect(() => {
     if (!gasFilterEnabled) setSelectedGases([]);
-  }, [gasFilterEnabled]);
+  }, [gasFilterEnabled, setSelectedGases]);
 
   const searching = termo.length > 0;
 
@@ -1039,7 +1077,7 @@ function BrandsList({
   // Modelos que casam por nome do modelo, código do modelo OU nome da marca.
   const modelHits = useMemo(() => {
     if (!searching) return [];
-    return allModels.filter((m) => fuzzyIncludesAny([m.name, m.code, m.brand?.name], termo));
+    return allModels.filter((m) => catalogCodeMatches(m.code, termo) || fuzzyIncludesAny([m.name, m.code, m.brand?.name, m.catalog_reference?.line], termo));
   }, [allModels, termo, searching]);
 
   // Códigos de erro que casam por code/título/descrição, agrupados por `code`.
@@ -1092,6 +1130,7 @@ function BrandsList({
   }, [allErrorCodes, termo, searching, errorSearchEnabled, domainModelIds, domain]);
 
   const loadingSearch = loadingModels || (errorSearchEnabled && loadingCodes);
+  useCatalogScrollRestore(!isLoading && !loadingSearch);
   const nadaEncontrado =
     searching && !loadingSearch && modelHits.length === 0 && codeGroups.length === 0;
 
@@ -1099,7 +1138,7 @@ function BrandsList({
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold tracking-tight md:text-xl">{tituloCatalogo(domain, t)}</h2>
+          <h2 className="text-xl font-semibold tracking-tight md:text-2xl">{tituloCatalogo(domain, t)}</h2>
           <p className="text-sm text-muted-foreground md:text-base">
             {errorSearchEnabled
               ? t.subtitleWithErrors
@@ -1115,16 +1154,31 @@ function BrandsList({
 
       {/* Busca global do catálogo + botão de filtros */}
       <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1 min-w-0">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 lg:grid-cols-[240px_minmax(0,1fr)_auto]">
+          <div className="col-span-2 min-w-0 lg:col-span-1">
+            <SearchableSelect
+              options={brandsOrdenadas.map(brand => ({
+                value: brand.id,
+                label: brand.name,
+                keywords: brand.name.toLowerCase() === 'springer' ? ['Springer Midea'] : [],
+                icon: <CatalogBrandLogo decorative name={brand.name} src={brand.logo_url} className="h-12 w-24 rounded p-1" fallbackClassName="text-sm" />,
+              }))}
+              onValueChange={id => { const brand = brandsOrdenadas.find(item => item.id === id); if (brand) onSelectBrand(brand); }}
+              placeholder={catalogActivityCopy[locale].chooseBrand}
+              searchPlaceholder={catalogActivityCopy[locale].searchBrand}
+              emptyMessage={catalogActivityCopy[locale].noBrand}
+              disabled={isLoading || brandsOrdenadas.length === 0}
+              focusSearchOnOpen
+              className="h-14 w-full text-base"
+              triggerContent={<span className="flex min-w-0 items-center gap-2"><Boxes aria-hidden className="h-5 w-5 shrink-0" />{catalogActivityCopy[locale].chooseBrand}</span>}
+            />
+          </div>
+          <div className="relative min-w-0">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="text"
-              placeholder={
-                errorSearchEnabled
-                  ? t.searchPlaceholderWithErrors
-                  : t.searchPlaceholder
-              }
+              placeholder={errorSearchEnabled ? catalogSearchCopy[locale].errors : catalogSearchCopy[locale].model}
+              aria-label={errorSearchEnabled ? t.searchPlaceholderWithErrors : t.searchPlaceholder}
               value={termoRaw}
               onChange={(e) => setTermoRaw(e.target.value)}
               className="h-14 pl-10 text-lg"
@@ -1145,11 +1199,6 @@ function BrandsList({
             )}
           </Button>
         </div>
-        {!searching && !filtering && (
-          <p className="text-xs text-muted-foreground">
-            {t.searchHintBrowse}
-          </p>
-        )}
       </div>
 
       {/* Painel de filtros */}
@@ -1205,6 +1254,8 @@ function BrandsList({
         </div>
       </ResponsiveModal>
 
+      {!searching && !filtering && !loadingModels && !modelsFailed && <CatalogActivityFeed models={allModels} onOpen={onSelectModelDetail} />}
+
       {/* RESULTADOS DA BUSCA GLOBAL */}
       {searching ? (
         loadingSearch ? (
@@ -1219,33 +1270,14 @@ function BrandsList({
             {modelHits.length > 0 && (
               <section className="space-y-3">
                 <SectionHeader label={t.sectionCatalog} count={modelHits.length} />
-                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                  {modelHits.map((model) => (
-                    <ModelCard
-                      key={model.id}
-                      model={model}
-                      domain={domain}
-                      brandName={model.brand?.name ?? 'Marca'}
-                      hasErrorCodes={modelIdsWithCodes?.has(model.id) ?? false}
-                      onSelectDetail={() => onSelectModelDetail(model)}
-                      t={t}
-                    />
-                  ))}
-                </div>
+                <CatalogModelGrid contextKey={`search:${domain}:${termo}`} key={`search:${domain}:${termo}`} models={modelHits} domain={domain} modelIdsWithCodes={modelIdsWithCodes} onSelectDetail={onSelectModelDetail} t={t} />
               </section>
             )}
 
             {codeGroups.length > 0 && (
               <section className="space-y-3">
                 <SectionHeader label={t.sectionErrorCodes} count={codeGroups.length} />
-                {codeGroups.map((group) => (
-                  <ErrorCodeGroupCard
-                    key={group.code}
-                    group={group}
-                    onSelectMachine={(occ) => onSelectModelErrors(occ.model, group.code)}
-                    t={t}
-                  />
-                ))}
+                <ErrorCodeGroupResults key={`${domain}:${termo}`} groups={codeGroups} onSelectModelErrors={onSelectModelErrors} t={t} />
               </section>
             )}
           </div>
@@ -1262,19 +1294,7 @@ function BrandsList({
         ) : (
           <section className="space-y-3">
             <SectionHeader label={t.sectionCatalog} count={filteredModels.length} />
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-              {filteredModels.map((model) => (
-                <ModelCard
-                  key={model.id}
-                  model={model}
-                  domain={domain}
-                  brandName={model.brand?.name ?? 'Marca'}
-                  hasErrorCodes={modelIdsWithCodes?.has(model.id) ?? false}
-                  onSelectDetail={() => onSelectModelDetail(model)}
-                  t={t}
-                />
-              ))}
-            </div>
+            <CatalogModelGrid contextKey={`filters:${domain}:${selectedBtus}:${selectedTypes}:${selectedGases}`} key={`filters:${domain}:${selectedBtus}:${selectedTypes}:${selectedGases}`} models={filteredModels} domain={domain} modelIdsWithCodes={modelIdsWithCodes} onSelectDetail={onSelectModelDetail} t={t} />
           </section>
         )
       ) : /* BROWSE NORMAL — grid de marcas */ isLoading ? (
@@ -1285,6 +1305,8 @@ function BrandsList({
           message={t.emptyBrandsMessage}
         />
       ) : (
+        <section className="space-y-3" aria-label={catalogActivityCopy[locale].browseBrands}>
+        <h2 className="text-lg font-semibold md:text-xl">{catalogActivityCopy[locale].browseBrands}</h2>
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
           {brandsOrdenadas.map((brand) => (
             <button
@@ -1298,26 +1320,17 @@ function BrandsList({
                 'hover:border-primary/40 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
               )}
             >
-              {brand.logo_url ? (
-                <CatalogImage
-                  src={brand.logo_url}
-                  alt={brand.name}
-                  // Caixa de tamanho UNIFORME pra todas as logos da grade ficarem
-                  // visualmente parecidas (mesma altura/largura máxima), maiores que
-                  // antes. object-contain mantém a proporção sem distorcer.
-                  containerClassName="flex h-16 w-full items-center justify-center"
-                  className="max-h-14 max-w-[72%] object-contain"
-                />
-              ) : (
-                // Cor escura fixa (não text-foreground) pra ficar legível sobre o
-                // card branco também no dark mode.
-                <span className="text-3xl font-semibold leading-tight text-neutral-800">
-                  {brand.name}
-                </span>
-              )}
+              <CatalogBrandLogo
+                name={brand.name}
+                src={brand.logo_url}
+                className="h-16 w-full"
+                imageClassName="max-h-14 max-w-[80%]"
+                fallbackClassName="text-3xl"
+              />
             </button>
           ))}
         </div>
+        </section>
       )}
     </div>
   );
@@ -1330,7 +1343,7 @@ function SectionHeader({ label, count }: { label: string; count: number }) {
       <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
       </h3>
-      <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+      <span className="text-xs font-medium tabular-nums text-muted-foreground">
         {count}
       </span>
     </div>
@@ -1338,81 +1351,44 @@ function SectionHeader({ label, count }: { label: string; count: number }) {
 }
 
 /** Card de um código de erro agrupado, listando as máquinas onde ocorre. */
-function ErrorCodeGroupCard({
-  group,
-  onSelectMachine,
-  t,
-}: {
+function ErrorCodeGroupResults({ groups, onSelectModelErrors, t }: {
+  groups: GroupedErrorCode[];
+  onSelectModelErrors: (model: EquipmentModel, code: string) => void;
+  t: TCatalog;
+}) {
+  const pagination = useCatalogPagination(groups, `errors:${groups.map(group => group.code).join(',')}`);
+  const anchor = useRef<HTMLDivElement>(null);
+  const goToPage = (page: number) => { pagination.setPage(page); anchor.current?.scrollIntoView({ block: 'start' }); };
+  return <div ref={anchor} className="scroll-mt-20">
+    {pagination.paginatedItems.map(group => <ErrorCodeGroupCard key={group.code} group={group} onSelectMachine={occ => onSelectModelErrors(occ.model, group.code)} t={t} />)}
+    {pagination.totalPages > 1 && <div className="[&_button]:min-h-11"><DataTablePagination allowAll={false} page={pagination.page} totalPages={pagination.totalPages} totalItems={pagination.totalItems} from={pagination.from} to={pagination.to} pageSize={pagination.pageSize} onPageChange={goToPage} onPageSizeChange={size => { pagination.setPageSize(size); goToPage(1); }} /></div>}
+  </div>;
+}
+
+function ErrorCodeGroupCard({ group, onSelectMachine, t }: {
   group: GroupedErrorCode;
   onSelectMachine: (occ: CodeOccurrence) => void;
   t: TCatalog;
 }) {
-  const LIMIT = 6;
-  const [expanded, setExpanded] = useState(false);
-  const visiveis = expanded ? group.occurrences : group.occurrences.slice(0, LIMIT);
-  const restantes = group.occurrences.length - LIMIT;
-
-  return (
-    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-      <div className="flex items-center gap-2">
-        <span className="rounded-lg bg-primary px-2.5 py-1 text-sm font-bold uppercase tracking-wide text-primary-foreground">
-          {group.code}
-        </span>
-        {group.title && (
-          <span className="min-w-0 truncate text-sm font-semibold">{group.title}</span>
-        )}
-      </div>
-
-      <p className="mt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {group.occurrences.length === 1 ? t.machine : t.machines}
-      </p>
-      <div className="mt-1.5 flex flex-wrap gap-2">
-        {visiveis.map((occ) => (
-          <button
-            key={occ.errorCodeId}
-            type="button"
-            onClick={() => onSelectMachine(occ)}
-            className={cn(
-              'flex items-center gap-1 rounded-lg border border-border bg-muted/40 px-2.5 py-1.5 text-left text-xs font-medium transition-all',
-              'hover:border-primary/40 hover:bg-muted active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-            )}
-          >
-            <span className="text-muted-foreground">{occ.brandName}</span>
-            <span className="text-foreground">{occ.modelName}</span>
-            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          </button>
-        ))}
-
-        {restantes > 0 && !expanded && (
-          <button
-            type="button"
-            onClick={() => setExpanded(true)}
-            className={cn(
-              'flex items-center gap-1 rounded-lg border border-border bg-muted/40 px-2.5 py-1.5 text-left text-xs font-medium transition-all',
-              'hover:border-primary/40 hover:bg-muted active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-            )}
-          >
-            <span className="text-primary">{t.showMore.replace('{n}', String(restantes))}</span>
-            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-primary" />
-          </button>
-        )}
-
-        {restantes > 0 && expanded && (
-          <button
-            type="button"
-            onClick={() => setExpanded(false)}
-            className={cn(
-              'flex items-center gap-1 rounded-lg border border-border bg-muted/40 px-2.5 py-1.5 text-left text-xs font-medium transition-all',
-              'hover:border-primary/40 hover:bg-muted active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-            )}
-          >
-            <span className="text-primary">{t.showLess}</span>
-            <ChevronUp className="h-3.5 w-3.5 shrink-0 text-primary" />
-          </button>
-        )}
-      </div>
+  const { locale } = useAppLocaleContext();
+  const navigation = catalogNavigationCopy[locale];
+  const [expanded, setExpanded] = useCatalogListState(`error:${group.code}:expanded`, false);
+  const pagination = useCatalogPagination(group.occurrences, `error:${group.code}`);
+  const visible = expanded ? pagination.paginatedItems : group.occurrences.slice(0, 3);
+  return <section className="space-y-4 border-b border-border py-5" aria-label={`${t.sectionErrorCodes}: ${group.code}`}>
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <span className="font-mono text-2xl font-bold uppercase tracking-wide">{group.code}</span>
+      <span className="text-sm tabular-nums text-muted-foreground">{formatNumber(group.occurrences.length, locale)} {group.occurrences.length === 1 ? t.machine.toLowerCase() : t.machines.toLowerCase()}</span>
     </div>
-  );
+    <p className="text-sm leading-relaxed text-muted-foreground">{navigation.groupHelp}</p>
+    <div className="divide-y divide-border">
+      {visible.map(occ => <button key={occ.errorCodeId} type="button" onClick={() => onSelectMachine(occ)} className="group flex min-h-20 w-full items-center justify-between gap-4 py-3 text-left hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <span className="min-w-0"><span className="block text-xs font-medium text-muted-foreground">{occ.brandName}</span><span className="mt-1 block break-words text-base font-semibold">{occ.model.code || occ.modelName}</span><span className="mt-1 block break-words text-sm leading-relaxed text-muted-foreground">{occ.modelName}</span></span><ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
+      </button>)}
+    </div>
+    {group.occurrences.length > 3 && <Button variant="ghost" className="min-h-11" onClick={() => setExpanded(value => !value)}>{expanded ? navigation.lessEquipment : navigation.moreEquipment}{expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</Button>}
+    {expanded && group.occurrences.length > 10 && <div className="[&_button]:min-h-11"><DataTablePagination allowAll={false} page={pagination.page} totalPages={pagination.totalPages} totalItems={pagination.totalItems} from={pagination.from} to={pagination.to} pageSize={pagination.pageSize} onPageChange={pagination.setPage} onPageSizeChange={size => { pagination.setPageSize(size); pagination.setPage(1); }} /></div>}
+  </section>;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1435,6 +1411,9 @@ function ModelosList({
   t: TCatalog;
 }) {
   const { locale } = useAppLocaleContext();
+  const navigation = catalogNavigationCopy[locale];
+  const [catalogParams, setCatalogParams] = useCatalogSearchParams();
+  const navigationAnchor = useRef<HTMLDivElement>(null);
   const { data: models = [], isLoading } = useEquipmentModelsByBrand(brand.id, domain);
   const { data: brands = [] } = useEquipmentBrands(domain);
   // IDs com código de erro — usado só na linha branca pra esconder a ação
@@ -1480,23 +1459,31 @@ function ModelosList({
   }, [brand.id, api, brandIndex]);
 
   // Busca local (nome / código / BTU) com debounce leve.
-  const [termoRaw, setTermoRaw] = useState('');
-  const [termo, setTermo] = useState('');
+  const [termoRaw, setTermoRaw] = useCatalogListState('search:raw', () => catalogParams.get('busca') ?? '');
+  const [termo, setTermo] = useCatalogListState('search:applied', () => (catalogParams.get('busca') ?? '').trim());
   useEffect(() => {
-    const id = setTimeout(() => setTermo(termoRaw.trim()), 180);
+    const id = setTimeout(() => {
+      const value = termoRaw.trim();
+      setTermo(value);
+      if ((catalogParams.get('busca') ?? '') !== value) setCatalogParams(current => {
+        const next = new URLSearchParams(current);
+        if (value) next.set('busca', value); else next.delete('busca');
+        return next;
+      }, { replace: true });
+    }, 180);
     return () => clearTimeout(id);
-  }, [termoRaw]);
+  }, [termoRaw, catalogParams, setCatalogParams, setTermo]);
 
   // Filtros escopados aos modelos DESTA marca.
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [selectedBtus, setSelectedBtus] = useState<string[]>([]);
-  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [selectedBtus, setSelectedBtus] = useCatalogListState<string[]>('filter:btu', []);
+  const [selectedTypes, setSelectedTypes] = useCatalogListState<string[]>('filter:type', []);
   // Filtro de gás refrigerante: só no domínio ar_condicionado.
-  const [selectedGases, setSelectedGases] = useState<string[]>([]);
+  const [selectedGases, setSelectedGases] = useCatalogListState<string[]>('filter:gas', []);
   const gasFilterEnabled = domain === 'ar_condicionado';
   useEffect(() => {
     if (!gasFilterEnabled) setSelectedGases([]);
-  }, [gasFilterEnabled]);
+  }, [gasFilterEnabled, setSelectedGases]);
 
   // Opções de Potência derivadas dos modelos desta marca (BTU distintos, crescente).
   const btuOptions = useMemo(() => {
@@ -1536,10 +1523,31 @@ function ModelosList({
     setSelectedGases([]);
   };
 
-  // Lista final: busca + filtros (vazio = todos), ordenada por BTU crescente.
+  const sections = useMemo(() => organizeCatalog(models), [models]);
+  const categoryKey = catalogParams.get('categoria');
+  const familyKey = catalogParams.get('familia');
+  const needsNavigation = models.length > 20 || (sections.length > 1 && models.length > 12);
+  const currentSection = sections.find(section => section.key === categoryKey) ?? (!categoryKey && sections.length === 1 && needsNavigation ? sections[0] : undefined);
+  const currentFamily = currentSection?.families.find(family => family.key === familyKey);
+  const isSearching = termo.length > 0;
+  const overview = needsNavigation && !isSearching && activeFilterCount === 0 && !currentSection && categoryKey !== 'all';
+  const familyOverview = needsNavigation && !isSearching && activeFilterCount === 0 && !!currentSection && currentSection.families.length > 1 && familyKey !== 'all' && !currentFamily;
+  const scopedModels = !isSearching && currentSection ? currentFamily?.models ?? currentSection.models : models;
+  const familyTypes = currentFamily ? [...new Set(currentFamily.models.map(model => model.category?.name).filter((name): name is string => !!name))].sort((a, b) => a.localeCompare(b, locale)) : [];
+  const selectScope = (category?: string, family?: string) => {
+    const next = new URLSearchParams(catalogParams);
+    next.delete('categoria'); next.delete('familia'); next.delete('busca');
+    if (category) next.set('categoria', category);
+    if (family) next.set('familia', family);
+    setTermoRaw(''); setTermo(''); limparFiltros();
+    setCatalogParams(next, { replace: true });
+    requestAnimationFrame(() => navigationAnchor.current?.scrollIntoView({ block: 'start', behavior: 'auto' }));
+  };
+
+  // A busca atravessa categorias; a navegação delimita a lista sem esconder SKUs.
   const modelosVisiveis = useMemo(() => {
-    const filtrados = models.filter((m) => {
-      const buscaOk = fuzzyIncludesAny([m.name, m.code, extrairBtu(m.name)], termo);
+    const filtrados = scopedModels.filter((m) => {
+      const buscaOk = catalogCodeMatches(m.code, termo) || fuzzyIncludesAny([m.name, m.code, extrairBtu(m.name), m.catalog_reference?.line], termo);
       const btuOk =
         selectedBtus.length === 0 || selectedBtus.includes(String(btuNumero(m.name)));
       const tipoOk =
@@ -1548,14 +1556,15 @@ function ModelosList({
       return buscaOk && btuOk && tipoOk && gasOk;
     });
     return ordenarPorBtu(filtrados);
-  }, [models, termo, selectedBtus, selectedTypes, selectedGases, gasFilterEnabled]);
+  }, [scopedModels, termo, selectedBtus, selectedTypes, selectedGases, gasFilterEnabled]);
 
   const semResultado =
     !isLoading && models.length > 0 && modelosVisiveis.length === 0;
+  useCatalogScrollRestore(!isLoading);
 
   return (
     <div className="space-y-6 pb-8">
-      <Header icon={Boxes} title={tituloCatalogo(domain, t)} subtitle={brand.name} onBack={onBack} />
+      <Header icon={Boxes} title={tituloCatalogo(domain, t)} subtitle={`${brand.name} · ${formatNumber(models.length, locale)} ${t.items}`} onBack={onBack} />
 
       {/* Carrossel de marcas: a atual no centro, vizinhas espiando nas laterais.
           Deslizar/tocar numa marca troca a marca ativa (mostra os modelos dela). */}
@@ -1577,23 +1586,18 @@ function ModelosList({
                     className={cn(
                       // Card branco fixo nos 2 temas (proposital) pra logos coloridos
                       // não sumirem no dark mode.
-                      'flex h-28 w-full items-center justify-center rounded-2xl border border-border bg-white p-6 transition-all duration-200',
+                      'flex h-24 w-full items-center justify-center rounded-xl border border-border bg-white p-3 transition-all duration-200',
                       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                       ativo ? 'scale-100 opacity-100 shadow-sm' : 'scale-95 opacity-50',
                     )}
                   >
-                    {b.logo_url ? (
-                      <CatalogImage
-                        src={b.logo_url}
-                        alt={b.name}
-                        // Mesmo padrão uniforme da grade de marcas (BrandsList):
-                        // logos visualmente parecidas em tamanho, sem distorcer.
-                        containerClassName="flex h-16 w-full items-center justify-center"
-                        className="max-h-14 max-w-[72%] object-contain"
-                      />
-                    ) : (
-                      <span className="text-3xl font-semibold text-neutral-800">{b.name}</span>
-                    )}
+                    <CatalogBrandLogo
+                      name={b.name}
+                      src={b.logo_url}
+                      className="h-16 w-full"
+                      imageClassName="max-h-16 max-w-[80%]"
+                      fallbackClassName="text-3xl"
+                    />
                   </button>
                 </CarouselItem>
               );
@@ -1603,26 +1607,23 @@ function ModelosList({
               laterais; auto-desabilitam na primeira/última marca. */}
           <CarouselPrevious
             aria-label={t.brandPrevious}
-            className="left-1 h-9 w-9 border-border bg-background/80 backdrop-blur disabled:opacity-30"
+            className="left-1 h-11 w-11 border-border bg-background/80 backdrop-blur disabled:opacity-30"
           />
           <CarouselNext
             aria-label={t.brandNext}
-            className="right-1 h-9 w-9 border-border bg-background/80 backdrop-blur disabled:opacity-30"
+            className="right-1 h-11 w-11 border-border bg-background/80 backdrop-blur disabled:opacity-30"
           />
         </Carousel>
       ) : (
         /* Marca única: card estático (carrossel não faz sentido). */
         <div className="flex items-center justify-center rounded-2xl border border-border bg-white p-6">
-          {brand.logo_url ? (
-            <CatalogImage
-              src={brand.logo_url}
-              alt={brand.name}
-              containerClassName="flex h-16 w-full items-center justify-center"
-              className="max-h-14 max-w-[72%] object-contain"
-            />
-          ) : (
-            <span className="text-3xl font-semibold text-neutral-800">{brand.name}</span>
-          )}
+          <CatalogBrandLogo
+            name={brand.name}
+            src={brand.logo_url}
+            className="h-20 w-full"
+            imageClassName="max-h-16 max-w-[80%]"
+            fallbackClassName="text-3xl"
+          />
         </div>
       )}
 
@@ -1632,9 +1633,10 @@ function ModelosList({
           <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
           <Input
             type="text"
-            placeholder={t.searchModelPlaceholder}
+            placeholder={catalogSearchCopy[locale].model}
+            aria-label={t.searchModelPlaceholder}
             value={termoRaw}
-            onChange={(e) => setTermoRaw(e.target.value)}
+            onChange={(e) => { setTermoRaw(e.target.value); limparFiltros(); }}
             className="h-14 pl-10 text-lg"
           />
         </div>
@@ -1706,6 +1708,20 @@ function ModelosList({
         </div>
       </ResponsiveModal>
 
+      <div ref={navigationAnchor} className="space-y-5 scroll-mt-20" data-catalog-navigation>
+      {(currentSection || categoryKey === 'all' || isSearching) && <nav aria-label={navigation.browse} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+        <button type="button" className="min-h-11 font-medium underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => selectScope()}>{sections.length === 1 ? navigation.families : navigation.allCategories}</button>
+        {!isSearching && currentSection && <><ChevronRight className="h-4 w-4 text-muted-foreground" /><button type="button" onClick={() => selectScope(currentSection.key)} className="min-h-11 text-muted-foreground hover:text-foreground">{navigation.sections[currentSection.key]}</button></>}
+        {!isSearching && currentFamily && <><ChevronRight className="h-4 w-4 text-muted-foreground" /><span className="font-semibold">{currentFamily.name}</span></>}
+        {isSearching && <><ChevronRight className="h-4 w-4 text-muted-foreground" /><span className="text-muted-foreground">{navigation.searchResults}</span></>}
+      </nav>}
+      {!isSearching && currentFamily && currentFamily.models.length > 20 && familyTypes.length > 1 && <div className="grid max-w-sm gap-2">
+        <label htmlFor="catalog-family-type" className="text-sm font-semibold">{t.filterType}</label>
+        <Select value={selectedTypes.length === 0 ? 'all' : selectedTypes.length === 1 ? selectedTypes[0] : 'multiple'} onValueChange={value => setSelectedTypes(value === 'all' ? [] : [value])}>
+          <SelectTrigger id="catalog-family-type" className="h-12 text-base"><SelectValue /></SelectTrigger>
+          <SelectContent><SelectItem value="all">{t.filterAll}</SelectItem>{selectedTypes.length > 1 && <SelectItem value="multiple" disabled>{t.filterType} ({selectedTypes.length})</SelectItem>}{familyTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent>
+        </Select>
+      </div>}
       {isLoading ? (
         <LoadingBlock />
       ) : models.length === 0 ? (
@@ -1713,26 +1729,20 @@ function ModelosList({
           title={t.emptyModelsTitle}
           message={`Ainda não há modelos da ${brand.name} no catálogo.`}
         />
+      ) : overview ? (
+        <CatalogCategoryBrowser sections={sections} onSelect={key => selectScope(key)} onViewAll={() => selectScope('all')} />
+      ) : familyOverview && currentSection ? (
+        <CatalogFamilyBrowser section={currentSection} onSelect={key => selectScope(currentSection.key, key)} onViewAll={() => selectScope(currentSection.key, 'all')} />
       ) : semResultado ? (
         <EmptyState
           title={t.emptyEquipmentTitle}
           message={t.emptyEquipmentMessage}
         />
       ) : (
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-          {modelosVisiveis.map((model) => (
-            <ModelCard
-              key={model.id}
-              model={model}
-              domain={domain}
-              brandName={brand.name}
-              hasErrorCodes={modelIdsWithCodes?.has(model.id) ?? false}
-              onSelectDetail={() => onSelectDetail(model)}
-              t={t}
-            />
-          ))}
-        </div>
+        <CatalogModelGrid contextKey={`${brand.id}:${categoryKey}:${familyKey}:${termo}:${selectedBtus}:${selectedTypes}:${selectedGases}`} key={`${brand.id}:${categoryKey}:${familyKey}:${termo}:${selectedBtus}:${selectedTypes}:${selectedGases}`} models={modelosVisiveis} domain={domain} brandName={brand.name} modelIdsWithCodes={modelIdsWithCodes} onSelectDetail={onSelectDetail} t={t} />
       )}
+      </div>
+      <ManufacturerDocuments brandName={brand.name} />
     </div>
   );
 }
@@ -1783,14 +1793,15 @@ function RemotesList({
   onSelectDetail: (model: EquipmentModel) => void;
   t: TCatalog;
 }) {
-  const { data: models = [], isLoading } = useAllModelsWithBrand('controle_remoto');
+  const { locale } = useAppLocaleContext();
+  const { data: models = [], isLoading, isError: modelsFailed } = useAllModelsWithBrand('controle_remoto');
 
-  const [termoRaw, setTermoRaw] = useState('');
-  const [termo, setTermo] = useState('');
+  const [termoRaw, setTermoRaw] = useCatalogListState('search:raw', '');
+  const [termo, setTermo] = useCatalogListState('search:applied', '');
   useEffect(() => {
     const id = setTimeout(() => setTermo(termoRaw.trim()), 180);
     return () => clearTimeout(id);
-  }, [termoRaw]);
+  }, [termoRaw, setTermo]);
 
   // Filtra por nome do controle OU nome da marca; ordena por marca, depois nome.
   const visiveis = useMemo(() => {
@@ -1805,12 +1816,13 @@ function RemotesList({
   }, [models, termo]);
 
   const semResultado = !isLoading && models.length > 0 && visiveis.length === 0;
+  useCatalogScrollRestore(!isLoading);
 
   return (
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold tracking-tight md:text-xl">
+          <h2 className="text-xl font-semibold tracking-tight md:text-2xl">
             {tituloCatalogo('controle_remoto', t)}
           </h2>
           <p className="text-sm text-muted-foreground md:text-base">
@@ -1829,12 +1841,15 @@ function RemotesList({
         <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
         <Input
           type="text"
-          placeholder={t.remotesSearchPlaceholder}
+          placeholder={catalogSearchCopy[locale].remote}
+          aria-label={t.remotesSearchPlaceholder}
           value={termoRaw}
           onChange={(e) => setTermoRaw(e.target.value)}
           className="h-14 pl-10 text-lg"
         />
       </div>
+
+      {!termo && !isLoading && !modelsFailed && <CatalogActivityFeed models={models} onOpen={onSelectDetail} />}
 
       {isLoading ? (
         <LoadingBlock />
@@ -1899,14 +1914,14 @@ function RemoteCard({
           />
         </button>
       ) : (
-        <div className="flex h-44 w-full flex-col items-center justify-center gap-1 bg-white">
-          <PackageSearch className="h-12 w-12 text-neutral-300" />
-          <span className="text-xs text-neutral-400">{t.noPhoto}</span>
+        <div className="flex h-28 w-full flex-col items-center justify-center gap-1 bg-muted/40">
+          <PackageSearch className="h-9 w-9 text-muted-foreground/60" />
+          <span className="text-xs text-muted-foreground">{t.noPhoto}</span>
         </div>
       )}
 
       <div className="p-4">
-        <p className="text-center text-base font-semibold leading-snug text-foreground">
+        <p className="break-words text-center text-base font-semibold leading-snug text-foreground">
           {model.name}
         </p>
         {/* Badge de marca: fundo saturado + texto branco (pedido do CEO). */}
@@ -1931,9 +1946,8 @@ function RemoteCard({
       </div>
 
       {temFoto && (
-        <ImagePreviewModal
-          src={model.image_url!}
-          alt={model.name}
+        <CatalogImagePreview
+          model={model}
           open={viewerOpen}
           onClose={() => setViewerOpen(false)}
         />
@@ -1966,14 +1980,15 @@ function gasInflamavel(classeSeguranca: string | null | undefined): boolean {
  * Ordem por `sort` (já vem do hook).
  */
 function GasesList({ onSelectGas, t }: { onSelectGas: (gas: RefrigerantGas) => void; t: TCatalog }) {
+  const { locale } = useAppLocaleContext();
   const { data: gases = [], isLoading } = useRefrigerantGases();
 
-  const [termoRaw, setTermoRaw] = useState('');
-  const [termo, setTermo] = useState('');
+  const [termoRaw, setTermoRaw] = useCatalogListState('search:raw', '');
+  const [termo, setTermo] = useCatalogListState('search:applied', '');
   useEffect(() => {
     const id = setTimeout(() => setTermo(termoRaw.trim()), 180);
     return () => clearTimeout(id);
-  }, [termoRaw]);
+  }, [termoRaw, setTermo]);
 
   // Filtra por code OU name; mantém a ordem de `sort` que veio do hook.
   const visiveis = useMemo(() => {
@@ -1981,6 +1996,7 @@ function GasesList({ onSelectGas, t }: { onSelectGas: (gas: RefrigerantGas) => v
   }, [gases, termo]);
 
   const semResultado = !isLoading && gases.length > 0 && visiveis.length === 0;
+  useCatalogScrollRestore(!isLoading);
 
   // Separa em Puros × Misturas (blends): série 400/500 do código = blend.
   // Respeita a busca (opera sobre `visiveis`) e a ordem de `sort` do hook.
@@ -1998,7 +2014,7 @@ function GasesList({ onSelectGas, t }: { onSelectGas: (gas: RefrigerantGas) => v
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold tracking-tight md:text-xl">
+          <h2 className="text-xl font-semibold tracking-tight md:text-2xl">
             {tituloCatalogo('fluido_refrigerante', t)}
           </h2>
           <p className="text-sm text-muted-foreground md:text-base">
@@ -2017,7 +2033,8 @@ function GasesList({ onSelectGas, t }: { onSelectGas: (gas: RefrigerantGas) => v
         <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
         <Input
           type="text"
-          placeholder={t.fluidsSearchPlaceholder}
+          placeholder={catalogSearchCopy[locale].fluid}
+          aria-label={t.fluidsSearchPlaceholder}
           value={termoRaw}
           onChange={(e) => setTermoRaw(e.target.value)}
           className="h-14 pl-10 text-lg"
@@ -2237,9 +2254,9 @@ function lerEnergiaConfig(): EnergiaConfig {
     const tarifa = Number(parsed.tarifa);
     const horasDia = Number(parsed.horasDia);
     return {
-      tarifa: Number.isFinite(tarifa) && tarifa > 0 ? tarifa : ENERGIA_DEFAULTS.tarifa,
+      tarifa: Number.isFinite(tarifa) && tarifa >= 0 ? tarifa : ENERGIA_DEFAULTS.tarifa,
       horasDia:
-        Number.isFinite(horasDia) && horasDia > 0 && horasDia <= 24
+        Number.isFinite(horasDia) && horasDia >= 0 && horasDia <= 24
           ? horasDia
           : ENERGIA_DEFAULTS.horasDia,
     };
@@ -2296,17 +2313,9 @@ function kwh(v: number): string {
 /**
  * Bloco "Consumo de energia" do card de detalhe (só AC e linha branca).
  *
- * Hora e mês são SEMPRE coerentes entre si: mês = hora × horasDia × 30.
- *
- * - Com `consumo_kwh_mes` OFICIAL: ele é a verdade do mês. A hora vira o consumo
- *   MÉDIO por hora de uso → kWh/h = mês ÷ (horasDia × 30). Rótulo do mês sem
- *   "(estimado)" (é oficial), mas a nota de estimativa continua. Mexer nas horas
- *   muda a hora exibida (faz sentido: mesma energia mensal espalhada por mais/menos horas).
- * - Sem oficial, com `potencia_w`: kWh/h = W/1000 (potência nominal) e
- *   mês = hora × horasDia × 30 (estimado). Rótulo "(estimado · X h/dia)".
- * - Sem nenhum dado → "Consumo não informado". Nunca inventa número.
- *
- * gasto/h = kWh/h × tarifa; gasto/mês = kWh/mês × tarifa.
+ * A referência mensal cadastrada não informa as horas/ciclo de ensaio.
+ * Ela é apresentada sem convertê-la para consumo horário. A simulação
+ * ajustável usa apenas a potência elétrica nominal e fica separada da referência.
  */
 function ConsumoEnergia({ model }: { model: EquipmentModel }) {
   const { locale, currency } = useAppLocaleContext();
@@ -2318,52 +2327,28 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
   const [tarifaStr, setTarifaStr] = useState(() => String(cfg.tarifa).replace('.', ','));
   const [horasNum, setHorasNum] = useState<number>(() => cfg.horasDia);
 
-  // Defensivo: selects de busca por código não trazem as colunas → tratar como ausente.
-  const potencia = typeof model.potencia_w === 'number' ? model.potencia_w : null;
-  const oficialMes = typeof model.consumo_kwh_mes === 'number' ? model.consumo_kwh_mes : null;
-
-  const temDado = potencia != null || oficialMes != null;
-
-  // Geladeira/freezer rodam contínuo (24h/dia): o slider de horas não se aplica.
-  // Pra esses, o "por mês" é sempre o mês cheio a 24h e a hora é ancorada em 24h.
   const continuo = rodaContinuo(model);
-  const horasDiaUso = continuo ? 24 : cfg.horasDia;
-  const ancoraHoras = continuo ? 24 : ENERGIA_DEFAULTS.horasDia;
-
-  // Horas mensais de uso (base da relação hora ↔ mês). Sempre > 0 (config validada).
-  const horasMes = horasDiaUso * 30;
-
-  // Consumo por hora de OPERAÇÃO = base fixa do equipamento; o mês escala com as
-  // horas/dia (mês = hora × horasDiaUso × 30).
-  // - Contínuo (geladeira): horasDiaUso e ancoraHoras = 24 → mês = oficial (mês
-  //   cheio 24h), hora = oficial ÷ (24 × 30); o slider NÃO afeta.
-  // - AC/outros liga-desliga: ancorado em ENERGIA_DEFAULTS.horasDia (8h/dia);
-  //   por-hora = oficial ÷ (8 × 30). A 8h/dia o mês bate o oficial; a 12h, ×1,5; a 24h, ×3.
-  // - Sem oficial: por-hora = potência nominal (W/1000); inverter consome menos que isso.
-  let kwhHora: number | null = null;
-  if (oficialMes != null) {
-    kwhHora = oficialMes / (ancoraHoras * 30);
-  } else if (potencia != null) {
-    kwhHora = potencia / 1000;
-  }
-  const kwhMes = kwhHora != null ? kwhHora * horasMes : null;
-  const baseEhPotencia = oficialMes == null && kwhMes != null;
-
-  const gastoHora = kwhHora != null ? kwhHora * cfg.tarifa : null;
-  const gastoMes = kwhMes != null ? kwhMes * cfg.tarifa : null;
+  const { referenciaKwhMes, gastoReferenciaMes, estimativaNominal } = calcularEnergiaCatalogo({
+    potenciaW: model.potencia_w,
+    consumoKwhMes: model.consumo_kwh_mes,
+    tarifa: cfg.tarifa,
+    horasDia: cfg.horasDia,
+    continuo,
+  });
+  const temDado = referenciaKwhMes !== null || estimativaNominal !== null;
 
   function commitConfig() {
     const t = Number(tarifaStr.replace(',', '.'));
     const h = horasNum;
     setCfg({
-      tarifa: Number.isFinite(t) && t > 0 ? t : ENERGIA_DEFAULTS.tarifa,
+      tarifa: Number.isFinite(t) && t >= 0 ? t : ENERGIA_DEFAULTS.tarifa,
       horasDia: Number.isFinite(h) && h >= 0 && h <= 24 ? h : ENERGIA_DEFAULTS.horasDia,
     });
     setOpen(false);
   }
 
   return (
-    <div className="mt-3 rounded-xl border border-border bg-muted/40 p-3">
+    <div className="mt-4 border-l-2 border-primary pl-4">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
           <Zap className="h-4 w-4 text-amber-500" />
@@ -2381,7 +2366,7 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
           }}
         >
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs">
+            <Button variant="ghost" size="sm" className="min-h-11 gap-1 px-2 text-sm">
               <SlidersHorizontal className="h-3.5 w-3.5" />
               {t.adjust}
             </Button>
@@ -2399,7 +2384,7 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
                 placeholder="0,90"
               />
             </div>
-            <div className="space-y-2">
+            {estimativaNominal !== null && !continuo && <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <label className="text-xs text-muted-foreground">{t.usageHoursPerDay}</label>
                 <span className="text-sm font-semibold tabular-nums text-foreground">
@@ -2415,7 +2400,7 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
                 className="py-1.5"
                 aria-label={t.usageHoursPerDay}
               />
-            </div>
+            </div>}
             <Button size="sm" className="w-full" onClick={commitConfig}>
               {t.apply}
             </Button>
@@ -2426,40 +2411,39 @@ function ConsumoEnergia({ model }: { model: EquipmentModel }) {
       {!temDado ? (
         <p className="mt-2 text-xs text-muted-foreground">{t.noConsumptionData}</p>
       ) : (
-        <div className="mt-2 space-y-1.5 text-sm">
-          {kwhHora != null && (
-            <div className="flex items-start justify-between gap-3">
-              <span className="min-w-0 font-medium text-foreground">{t.perHour}</span>
-              <span className="shrink-0 whitespace-nowrap text-right font-medium text-foreground">
-                {kwh(kwhHora)}/h
-                {gastoHora != null && (
-                  <span className="ml-1 text-muted-foreground">· {money(gastoHora)}</span>
-                )}
+        <div className="mt-3 space-y-3 text-sm">
+          {referenciaKwhMes !== null && <div className="space-y-2">
+            <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+              <span className="font-medium text-foreground">{t.registeredMonthlyConsumption}</span>
+              <span className="font-semibold tabular-nums text-foreground">
+                {kwh(referenciaKwhMes)}
+                {gastoReferenciaMes !== null && <span className="ml-1 font-normal text-muted-foreground">· {money(gastoReferenciaMes)}</span>}
               </span>
             </div>
-          )}
-          {kwhMes != null && (
-            <div className="flex items-start justify-between gap-3">
-              <span className="min-w-0 font-medium text-foreground">
+            <p className="text-xs leading-relaxed text-muted-foreground">{t.registeredMonthlyNote}</p>
+          </div>}
+          {estimativaNominal !== null && <div className={cn('space-y-2', referenciaKwhMes !== null && 'border-t pt-3')}>
+            <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+              <span className="font-medium text-foreground">{t.perHour}</span>
+              <span className="font-semibold tabular-nums text-foreground">
+                {kwh(estimativaNominal.kwhHora)}
+                {estimativaNominal.gastoHora !== null && <span className="ml-1 font-normal text-muted-foreground">· {money(estimativaNominal.gastoHora)}</span>}
+              </span>
+            </div>
+            <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+              <span className="font-medium text-foreground">
                 {t.perMonth}
-                <span className="block text-[11px] font-normal leading-tight text-muted-foreground">
-                  {continuo
-                    ? t.continuousOp
-                    : `${t.estimatedOp} · ${String(cfg.horasDia).replace('.', ',')} ${t.hoursPerDay}`}
+                <span className="block text-xs font-normal leading-relaxed text-muted-foreground">
+                  {t.estimatedOp} · {String(estimativaNominal.horasDia).replace('.', ',')} {t.hoursPerDay}
                 </span>
               </span>
-              <span className="shrink-0 whitespace-nowrap text-right font-medium text-foreground">
-                {kwh(kwhMes)}
-                {gastoMes != null && (
-                  <span className="ml-1 text-muted-foreground">· {money(gastoMes)}</span>
-                )}
+              <span className="font-semibold tabular-nums text-foreground">
+                {kwh(estimativaNominal.kwhMes)}
+                {estimativaNominal.gastoMes !== null && <span className="ml-1 font-normal text-muted-foreground">· {money(estimativaNominal.gastoMes)}</span>}
               </span>
             </div>
-          )}
-          <p className="pt-0.5 text-[11px] leading-snug text-muted-foreground">
-            {t.energyEstimateNote}
-            {baseEhPotencia && t.energyPowerNote}
-          </p>
+            <p className="text-xs leading-relaxed text-muted-foreground">{t.energyPowerNote}</p>
+          </div>}
         </div>
       )}
     </div>
@@ -2483,6 +2467,65 @@ function detailAction(domain: EquipmentDomain, t: TCatalog): { label: string; ic
   }
 }
 
+function CatalogModelGrid({ models, domain, brandName, modelIdsWithCodes, onSelectDetail, t, contextKey }: {
+  contextKey: string;
+  models: EquipmentModel[];
+  domain: EquipmentDomain;
+  brandName?: string;
+  modelIdsWithCodes?: Set<string>;
+  onSelectDetail: (model: EquipmentModel) => void;
+  t: TCatalog;
+}) {
+  const { locale } = useAppLocaleContext();
+  const navigation = catalogNavigationCopy[locale];
+  const orderedModels = useMemo(() => prioritizeCatalogModels(models), [models]);
+  const pagination = useCatalogPagination(orderedModels, `grid:${contextKey}`);
+  const [selectedId, setSelectedId] = useCatalogListState<string | undefined>(`grid:${contextKey}:selected`, () => models.length === 1 ? models[0].id : undefined);
+  const selected = models.find(model => model.id === selectedId);
+  const container = useRef<HTMLDivElement>(null);
+  const preview = useRef<HTMLDivElement>(null);
+  const goToPage = (page: number) => {
+    pagination.setPage(page);
+    container.current?.scrollIntoView({ block: 'start', behavior: 'auto' });
+  };
+  const select = (model: EquipmentModel) => {
+    setSelectedId(model.id);
+    if (window.innerWidth < 1024) requestAnimationFrame(() => preview.current?.scrollIntoView({ block: 'start', behavior: 'auto' }));
+  };
+  return <div ref={container} className="grid min-w-0 gap-6 scroll-mt-20 lg:grid-cols-[minmax(280px,340px)_minmax(0,1fr)] lg:gap-8">
+    <section aria-label={navigation.models} className={cn('min-w-0', selected && 'hidden lg:block')}>
+      <div className="mb-3 flex items-center justify-between gap-3"><h3 className="text-base font-semibold">{navigation.models}</h3><span className="text-sm tabular-nums text-muted-foreground">{formatNumber(models.length, locale)}</span></div>
+      <div className="divide-y divide-border">
+        {pagination.paginatedItems.map(model => {
+          const active = selectedId === model.id;
+          const name = pickI18n(model.i18n, locale, 'name', model.name) ?? model.name;
+          const subtitle = model.code ? name.replace(model.code, '').replace(/^[ ·-]+|[ ·-]+$/g, '') : name;
+          return <button key={model.id} type="button" aria-pressed={active} onClick={() => select(model)} className={cn('flex min-h-20 w-full items-center gap-3 px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', active ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}>
+            {model.image_url && <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-white p-1"><CatalogImage src={model.image_url} alt={model.name} containerClassName="h-full w-full" className="h-full w-full object-contain" /></span>}
+            <span className="min-w-0 flex-1">
+              {!brandName && model.brand?.name && <span className={cn('mb-1 block text-xs font-medium', active ? 'text-primary-foreground/75' : 'text-muted-foreground')}>{model.brand.name}</span>}
+              <span className="block break-words text-sm font-semibold leading-relaxed md:text-base">{model.code || name}</span>
+              <span className={cn('mt-1 block break-words text-xs leading-relaxed', active ? 'text-primary-foreground/75' : 'text-muted-foreground')}>{subtitle}</span>
+            </span>
+            <ChevronRight className="h-4 w-4 shrink-0" />
+          </button>;
+        })}
+      </div>
+      {models.length > 10 && <div className="[&_button]:min-h-11 [&_[role=combobox]]:min-h-11">
+        <DataTablePagination compact allowAll={false} page={pagination.page} totalPages={pagination.totalPages} totalItems={pagination.totalItems} from={pagination.from} to={pagination.to} pageSize={pagination.pageSize} onPageChange={goToPage} onPageSizeChange={size => { pagination.setPageSize(size); pagination.setPage(1); }} />
+      </div>}
+    </section>
+    <div ref={preview} className={cn('min-w-0 scroll-mt-20', !selected && 'hidden lg:block')}>
+      {selected ? <div className="space-y-3 lg:sticky lg:top-4">
+        <Button variant="ghost" className="min-h-11 hover:bg-destructive hover:text-destructive-foreground lg:hidden" onClick={() => { setSelectedId(undefined); container.current?.scrollIntoView({ block: 'start' }); }}><ArrowLeft className="h-4 w-4" />{navigation.backToList}</Button>
+        <ModelCard model={selected} domain={domain} brandName={brandName ?? selected.brand?.name ?? ''} hasErrorCodes={modelIdsWithCodes?.has(selected.id) ?? false} onSelectDetail={() => onSelectDetail(selected)} t={t} />
+      </div> : <div className="flex min-h-80 flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+        <PackageSearch className="h-10 w-10 text-muted-foreground" /><h3 className="text-xl font-semibold">{navigation.chooseModel}</h3><p className="max-w-sm text-sm leading-relaxed text-muted-foreground">{navigation.chooseHelp}</p>
+      </div>}
+    </div>
+  </div>;
+}
+
 function ModelCard({
   model,
   domain,
@@ -2504,6 +2547,7 @@ function ModelCard({
   hasErrorCodes?: boolean;
   t: TCatalog;
 }) {
+  useCatalogVisit(model.id);
   const { locale } = useAppLocaleContext();
   // Localização via coluna i18n do banco: pt-br sempre usa o campo base.
   const localizedName = pickI18n(model.i18n, locale, 'name', model.name) ?? model.name;
@@ -2516,6 +2560,7 @@ function ModelCard({
   const subtitulo = brandName;
   const temManual = Boolean(model.manual_url);
   const temFoto = Boolean(model.image_url);
+  const mostraCodigoBadge = Boolean(model.code && !localizedName.toUpperCase().includes(model.code.toUpperCase()));
 
   // Quais badges/segundo botão o domínio mostra.
   // BTU: AC sempre; compressor só quando o nome traz BTU (herméticos não têm — sem
@@ -2525,7 +2570,7 @@ function ModelCard({
 
   // Consumo de energia só faz sentido pra aparelho ligado direto na tomada:
   // AC e linha branca. Compressor e controle remoto não mostram.
-  const mostraConsumo = domain === 'ar_condicionado' || domain === 'linha_branca';
+  const mostraConsumo = (domain === 'ar_condicionado' || domain === 'linha_branca') && (!model.catalog_reference || (model.catalog_reference.unit_kind === 'system' && Boolean(model.potencia_w || model.consumo_kwh_mes)));
 
   // AC e Linha Branca baixam manual; Compressor baixa "Datasheet" (mesma URL).
   const segundoBotao: 'manual' | 'datasheet' | null =
@@ -2548,24 +2593,6 @@ function ModelCard({
   const mostraGasBadge = Boolean(
     mostraGas && model.refrigerant && !model.refrigerant.includes(','),
   );
-
-  // Badge do TIPO de manual: só nos domínios que baixam "manual" (AC + linha
-  // branca), quando há manual e o tipo é conhecido. Datasheet (compressor) já
-  // se identifica no próprio botão. Cor por tipo sinaliza utilidade pro técnico:
-  // instalação/serviço (úteis) em destaque; usuário/guia esmaecidos.
-  const mostraManualBadge = Boolean(
-    segundoBotao === 'manual' && temManual && model.manual_type,
-  );
-  const manualBadgeClass =
-    {
-      instalacao: 'bg-sky-500 text-white',
-      servico: 'bg-amber-500 text-white',
-      usuario: 'bg-muted text-muted-foreground',
-      guia: 'bg-muted text-muted-foreground',
-    }[model.manual_type ?? ''] ?? 'bg-muted text-muted-foreground';
-
-  const temBadges =
-    (mostraBtu && btu) || categoria || mostraGasBadge || model.code || mostraManualBadge;
 
   return (
     <div
@@ -2595,71 +2622,30 @@ function ModelCard({
         </div>
       )}
 
-      {/* CORPO — identificação centralizada (tokens de tema) */}
+      <CatalogPhotoCaption model={model} />
+
+      {/* Identificação e favorito na mesma faixa; tokens acompanham o tema. */}
       <div className="p-4">
-        <p className="text-center text-base font-semibold leading-snug text-foreground">
-          {localizedName}
-        </p>
+        <div className="flex items-start gap-3">
+          <p className="min-w-0 flex-1 break-words text-base font-semibold leading-snug text-foreground">{localizedName}</p>
+          <CatalogFavoriteButton modelId={model.id} />
+        </div>
         {subtitulo && (
           <p className="mt-0.5 text-center text-sm text-muted-foreground">{subtitulo}</p>
         )}
-        {temBadges && (
-          <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
-            {mostraBtu && btu && (
-              <span className="rounded-md bg-sky-500 px-2 py-0.5 text-xs font-semibold text-white">
-                {btu}
-              </span>
-            )}
-            {categoria && (
-              <span className="rounded-md bg-violet-500 px-2 py-0.5 text-xs font-semibold text-white">
-                {categoria}
-              </span>
-            )}
-            {camaraFria && (
-              <span className="inline-flex items-center gap-1 rounded-md bg-cyan-600 px-2 py-0.5 text-xs font-semibold text-white">
-                <Snowflake className="h-3 w-3" />
-                {t.coldRoom}
-              </span>
-            )}
-            {/* Gás: só badge quando UM gás só. Compressores de câmara fria têm
-                lista de gases (vírgula) → badge poluiria o card; a lista completa
-                vira badges coloridos na ficha técnica. */}
-            {mostraGasBadge &&
-              model.refrigerant &&
-              (() => {
-                const cor = getRefrigerante(model.refrigerant)?.cor ?? '#6b7280';
-                return (
-                  <span className="inline-flex items-center gap-1">
-                    <span
-                      className="rounded-md px-2 py-0.5 text-xs font-semibold"
-                      style={{ backgroundColor: cor, color: idealForeground(cor) }}
-                    >
-                      {model.refrigerant}
-                    </span>
-                    <RefrigeranteInflamavel refrigId={model.refrigerant} />
-                  </span>
-                );
-              })()}
-            {model.code && (
-              <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                {t.code} {model.code}
-              </span>
-            )}
-            {mostraManualBadge && (
-              <span
-                className={cn(
-                  'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold',
-                  manualBadgeClass,
-                )}
-              >
-                <FileText className="h-3 w-3 shrink-0" />
-                {rotuloManual(model.manual_type, manualLabels)}
-              </span>
-            )}
-          </div>
-        )}
+        <CatalogModelIdentity reference={model.catalog_reference} />
+        <div className="mt-3 space-y-2 text-sm">
+          {(categoria || (mostraBtu && btu) || camaraFria) && <p className="text-center leading-relaxed text-muted-foreground">{[categoria, mostraBtu ? btu : null, camaraFria ? t.coldRoom : null].filter(Boolean).join(' · ')}</p>}
+          {mostraCodigoBadge && <p className="break-words text-center font-mono font-semibold">{model.code}</p>}
+          {mostraGasBadge && model.refrigerant && <div className="flex items-center justify-center gap-2">
+            <span className="text-muted-foreground">{t.filterRefrigerant}</span>
+            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: getRefrigerante(model.refrigerant)?.cor ?? '#6b7280' }} />{model.refrigerant}<RefrigeranteInflamavel refrigId={model.refrigerant} /></span>
+          </div>}
+        </div>
 
         {mostraConsumo && <ConsumoEnergia model={model} />}
+        <CatalogModelReference reference={model.catalog_reference} />
+        <CatalogDocumentReference model={model} />
 
         {/* Ações diretas — sem modal intermediário (tema normal: outline lê no dark).
             Controle remoto tem só 1 ação (largura cheia); os demais têm 2 botões
@@ -2671,13 +2657,13 @@ function ModelCard({
           )}
         >
           {codigosIndisponiveis ? (
-            <div className="flex h-9 items-center justify-center rounded-md bg-destructive px-3 text-center text-xs font-semibold text-white">
+            <div className="flex min-h-11 items-center justify-center rounded-md bg-muted px-3 text-center text-sm text-muted-foreground">
               {t.noErrorCodes}
             </div>
           ) : (
-            <Button variant="outline" size="sm" onClick={onSelectDetail} className="w-full">
+            <Button variant="outline" size="sm" onClick={onSelectDetail} className="h-auto min-h-11 w-full whitespace-normal text-center">
               <DetalheIcon className="h-4 w-4 shrink-0" />
-              <span className="truncate">{detalhe.label}</span>
+              <span>{detalhe.label}</span>
             </Button>
           )}
 
@@ -2690,17 +2676,23 @@ function ModelCard({
                   baixarManual(
                     model.manual_url!,
                     sanitizarNomeArquivo(`Manual ${model.name} - ${brandName}.pdf`),
+                    (model.catalog_reference?.document_bytes ?? 0) > 40 * 1024 * 1024,
                   )
                 }
-                className="w-full"
+                className="h-auto min-h-11 w-full whitespace-normal text-center"
               >
                 <Download className="h-4 w-4 shrink-0" />
-                <span className="truncate">{t.downloadManual}</span>
+                <span>{rotuloManual(model.manual_type, manualLabels)}</span>
               </Button>
             ) : (
-              <div className="flex h-9 items-center justify-center rounded-md bg-destructive px-3 text-center text-xs font-semibold text-white">
-                {t.noManual}
-              </div>
+              <ManufacturerManualLink
+                brandName={brandName}
+                fallback={
+                  <div className="flex min-h-11 items-center justify-center rounded-md bg-muted px-3 text-center text-sm text-muted-foreground">
+                    {t.noManual}
+                  </div>
+                }
+              />
             ))}
 
           {segundoBotao === 'datasheet' &&
@@ -2712,17 +2704,18 @@ function ModelCard({
                   baixarManual(
                     model.manual_url!,
                     sanitizarNomeArquivo(`Datasheet ${model.name} - ${brandName}.pdf`),
+                    (model.catalog_reference?.document_bytes ?? 0) > 40 * 1024 * 1024,
                   )
                 }
-                className="w-full"
+                className="h-auto min-h-11 w-full whitespace-normal text-center"
               >
                 <FileText className="h-4 w-4 shrink-0" />
-                <span className="truncate">
+                <span>
                   {model.manual_type ? rotuloManual(model.manual_type, manualLabels) : 'Datasheet'}
                 </span>
               </Button>
             ) : (
-              <div className="flex h-9 items-center justify-center rounded-md bg-destructive px-3 text-center text-xs font-semibold text-white">
+              <div className="flex min-h-11 items-center justify-center rounded-md bg-muted px-3 text-center text-sm text-muted-foreground">
                 {t.noDatasheet}
               </div>
             ))}
@@ -2730,9 +2723,8 @@ function ModelCard({
       </div>
 
       {temFoto && (
-        <ImagePreviewModal
-          src={model.image_url!}
-          alt={model.name}
+        <CatalogImagePreview
+          model={model}
           open={viewerOpen}
           onClose={() => setViewerOpen(false)}
         />
@@ -2822,26 +2814,10 @@ function CodigosErro({
   const brandName = model.brand?.name ?? '';
   const tituloTopo = brandName ? `${model.name} - ${brandName}` : model.name;
 
-  // Registra como recente ao abrir o modelo (uma vez por modelo).
-  useEffect(() => {
-    registrarModeloRecente({
-      modelId: model.id,
-      modelName: model.name,
-      brandName: brandName || 'Marca',
-    });
-  }, [model.id, model.name, brandName]);
-
-  // Estado de favorito (reativo ao toggle via useToolHistory).
-  useToolHistory();
-  const favorito = isModeloFavorito(model.id);
-  const onToggleFavorito = () =>
-    toggleModeloFavorito({
-      modelId: model.id,
-      modelName: model.name,
-      brandName: brandName || 'Marca',
-    });
+  useCatalogVisit(model.id);
 
   const filtrados = codes.filter((c) => fuzzyIncludesAny([c.code, c.title, c.description], filtro));
+  const reference = getEquipmentCodeReference(model);
 
   return (
     <div className="space-y-6 pb-8">
@@ -2850,29 +2826,14 @@ function CodigosErro({
         eyebrow={t.eyebrow}
         title={tituloTopo}
         onBack={onBack}
-        action={
-          <button
-            type="button"
-            aria-pressed={favorito}
-            aria-label={favorito ? t.removeFavorite : t.addFavorite}
-            onClick={onToggleFavorito}
-            className={cn(
-              'flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-all active:scale-95',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-              favorito
-                ? 'border-warning/40 bg-warning/10 text-warning'
-                : 'border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/40',
-            )}
-          >
-            <Star className={cn('h-5 w-5', favorito && 'fill-current')} />
-          </button>
-        }
+        action={<CatalogFavoriteButton modelId={model.id} />}
       />
 
       {/* Campo de busca estilo display */}
       <div className="space-y-2">
-        <p className="text-sm font-medium">{t.displayLabel}</p>
+        <label htmlFor="equipment-code-search" className="text-base font-medium">{t.displayLabel}</label>
         <Input
+          id="equipment-code-search"
           type="text"
           placeholder={t.displayPlaceholder}
           value={filtro}
@@ -2882,12 +2843,15 @@ function CodigosErro({
       </div>
 
       {/* Instruções */}
-      <div className="rounded-xl border border-border bg-muted/40 p-4">
-        <p className="text-sm font-semibold">{t.instructionsTitle}</p>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+      <div>
+        <p className="text-sm leading-relaxed text-muted-foreground">
           {t.instructionsText}
         </p>
       </div>
+
+      {reference && codes.some((code) => code.reference_id === reference.id) && (
+        <EquipmentReferenceNotice reference={reference} />
+      )}
 
       {/* Lista / resultado */}
       {isLoading ? (
@@ -2918,7 +2882,7 @@ function CodigosErro({
                 <span className="rounded-lg bg-primary px-2.5 py-1 text-sm font-bold uppercase tracking-wide text-primary-foreground">
                   {ec.code}
                 </span>
-                {ecTitle && <span className="min-w-0 truncate text-sm font-semibold">{ecTitle}</span>}
+                {ecTitle && <span className="min-w-0 break-words text-base font-semibold">{ecTitle}</span>}
               </div>
 
               {ecDescription && (
@@ -2936,7 +2900,7 @@ function CodigosErro({
               )}
 
               {ecSolution && (
-                <div className="mt-3 rounded-xl border border-border bg-muted/40 p-3">
+                <div className="mt-4 border-l-2 border-primary pl-4">
                   <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
                     <Wrench className="h-3.5 w-3.5" />
                     {t.solution}
@@ -2948,9 +2912,7 @@ function CodigosErro({
               {ecComponent && (
                 <div className="mt-3 flex items-center gap-1.5">
                   <span className="text-xs font-medium text-muted-foreground">{t.component}</span>
-                  <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-foreground">
-                    {ecComponent}
-                  </span>
+                  <span className="text-sm font-medium text-foreground">{ecComponent}</span>
                 </div>
               )}
             </div>
@@ -2989,12 +2951,14 @@ function Header({
   /** Ação opcional alinhada à direita (ex: favoritar). */
   action?: ReactNode;
 }) {
+  const { locale } = useAppLocaleContext();
   return (
     <div className={cn('flex gap-3', eyebrow ? 'items-start' : 'items-center')}>
       <Button
         variant="ghost"
         size="icon"
-        className={cn('shrink-0', backDesktopOnly && 'hidden lg:flex')}
+        className={cn('h-11 w-11 shrink-0 hover:bg-destructive hover:text-destructive-foreground', backDesktopOnly && 'hidden lg:flex')}
+        aria-label={MESSAGES[locale].app.os.technicianArea.btnBack}
         onClick={onBack}
       >
         <ArrowLeft className="h-5 w-5" />
@@ -3014,8 +2978,8 @@ function Header({
             </>
           ) : (
             <>
-              <h1 className="text-lg font-semibold tracking-tight truncate lg:text-2xl">{title}</h1>
-              {subtitle && <p className="truncate text-sm text-muted-foreground">{subtitle}</p>}
+              <h1 className="break-words text-xl font-semibold leading-snug tracking-tight lg:text-2xl">{title}</h1>
+              {subtitle && <p className="break-words text-sm text-muted-foreground">{subtitle}</p>}
             </>
           )}
         </div>

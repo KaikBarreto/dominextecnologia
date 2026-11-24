@@ -6,23 +6,11 @@ import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { usePdvCustomerCredit } from '@/hooks/usePdvSale';
 
 /**
- * Aviso de FIADO EM ABERTO dentro do diálogo de exclusão de cliente.
- *
- * POR QUE EXISTE: `customer_credit_ledger.customer_id` é ON DELETE CASCADE e o
- * saldo devedor NÃO é coluna de `customers` — é a soma do extrato. Então dá pra
- * excluir um cliente que deve R$ 800 na loja e a dívida sair de cena sem
- * ninguém ser avisado. O comportamento do banco está CERTO (eliminação LGPD
- * elimina mesmo, e o pedido sobrevive anonimizado por obrigação fiscal); o que
- * faltava era a tela DIZER o que está sendo abandonado.
- *
- * O que este componente NÃO faz, de propósito:
- *  - não bloqueia a exclusão (o direito do titular vence; isto é informação,
- *    não trava);
- *  - não aparece pra empresa sem o add-on `pdv` — nem o aviso, nem a consulta
- *    ao banco. Sem o módulo, o diálogo fica IDÊNTICO ao de antes do PDV.
- *
- * Reusa `usePdvCustomerCredit` (fonte única do saldo: soma do ledger) em vez de
- * repetir a regra do saldo num segundo lugar.
+ * Avisa sobre dívida em aberto antes da exclusão de um cliente com PDV.
+ * Usa o mesmo resumo canônico de dívida/limite da venda, sem baixar o extrato
+ * financeiro nem depender exclusivamente de lançamentos legados.
+ * Este componente informa; não altera as regras de exclusão ou os recebíveis.
+ * Sem o módulo, nenhum valor é consultado ou apresentado.
  */
 export interface CustomerDeleteDebtNoticeProps {
   /** Cliente que está no diálogo. `null` enquanto fechado = nenhuma consulta. */
@@ -42,7 +30,7 @@ export function CustomerDeleteDebtNotice({ customerId }: CustomerDeleteDebtNotic
 
   const debt = credit?.debt ?? 0;
   // Só avisa quando HÁ dívida. Saldo zero ou crédito a favor do cliente
-  // (amount negativo no ledger) não é aviso, é ruído.
+  // (dívida canônica negativa) não é aviso, é ruído.
   if (!(debt > 0)) return null;
 
   return (

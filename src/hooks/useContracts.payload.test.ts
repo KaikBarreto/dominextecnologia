@@ -1,5 +1,10 @@
-import { describe, it, expect } from 'vitest';
-import { buildVisitOrderPayload, buildRegenerationPayload, type BuiltVisit } from './useContracts';
+import { describe, it, expect, vi } from 'vitest';
+import {
+  buildVisitOrderPayload,
+  buildRegenerationPayload,
+  regenerateContractVisitsAtomic,
+  type BuiltVisit,
+} from './useContracts';
 
 const baseArgs = {
   companyId: 'co-1',
@@ -131,41 +136,60 @@ it('mantém uma referência contratual independente para cada visita gerada', ()
   ]);
 });
 
-import { vi } from 'vitest';
-import { regenerateViaRpcOrFallback } from './useContracts';
-
-it('usa a RPC quando ela tem sucesso e NÃO chama o fallback', async () => {
+it('usa a RPC transacional e envia override nulo na tentativa normal', async () => {
   const rpc = vi.fn().mockResolvedValue({ data: { created_count: 3, deleted_count: 2 }, error: null });
-  const fallback = vi.fn();
-  const res = await regenerateViaRpcOrFallback({
-    enabled: true,
+  const res = await regenerateContractVisitsAtomic({
     payload: { p_contract_id: 'ct-1', p_orders: [], p_delete_ids: [] },
-    rpc, fallback,
+    expectedOsCount: 3,
+    rpc,
   });
-  expect(rpc).toHaveBeenCalledWith('regenerate_contract_visits', { p_contract_id: 'ct-1', p_orders: [], p_delete_ids: [] });
-  expect(fallback).not.toHaveBeenCalled();
+  expect(rpc).toHaveBeenCalledWith('regenerate_contract_visits_with_override', {
+    p_contract_id: 'ct-1',
+    p_orders: [],
+    p_delete_ids: [],
+    p_override_justification: null,
+  });
   expect(res).toEqual({ createdCount: 3, deletedCount: 2 });
 });
 
-it('propaga o erro sem fallback quando a RPC transacional está habilitada', async () => {
-  const rpc = vi.fn().mockResolvedValue({ data: null, error: { message: 'boom' } });
-  const fallback = vi.fn().mockResolvedValue({ createdCount: 5, deletedCount: 1 });
-  await expect(regenerateViaRpcOrFallback({
-    enabled: true,
+it('envia a justificativa normalizada ao autorizar conflito', async () => {
+  const rpc = vi.fn().mockResolvedValue({ data: { created_count: 1, deleted_count: 0 }, error: null });
+  await regenerateContractVisitsAtomic({
     payload: { p_contract_id: 'ct-1', p_orders: [], p_delete_ids: [] },
-    rpc, fallback,
-  })).rejects.toEqual({ message: 'boom' });
-  expect(fallback).not.toHaveBeenCalled();
+    expectedOsCount: 1,
+    overrideReason: '  Atendimento urgente aprovado pelo gestor  ',
+    rpc,
+  });
+  expect(rpc).toHaveBeenCalledWith('regenerate_contract_visits_with_override', expect.objectContaining({
+    p_override_justification: 'Atendimento urgente aprovado pelo gestor',
+  }));
 });
 
-it('vai direto pro fallback quando a flag está desligada (nem chama a RPC)', async () => {
-  const rpc = vi.fn();
-  const fallback = vi.fn().mockResolvedValue({ createdCount: 4, deletedCount: 0 });
-  await regenerateViaRpcOrFallback({
-    enabled: false,
+it('propaga o erro da RPC sem executar persistência alternativa', async () => {
+  const rpc = vi.fn().mockResolvedValue({ data: null, error: { message: 'boom' } });
+  await expect(regenerateContractVisitsAtomic({
     payload: { p_contract_id: 'ct-1', p_orders: [], p_delete_ids: [] },
-    rpc, fallback,
-  });
+    expectedOsCount: 5,
+    rpc,
+  })).rejects.toEqual({ message: 'boom' });
+});
+
+it('rejeita sucesso com contagem diferente da prévia', async () => {
+  const rpc = vi.fn().mockResolvedValue({ data: { created_count: 23, deleted_count: 0 }, error: null });
+  await expect(regenerateContractVisitsAtomic({
+    payload: { p_contract_id: 'ct-1', p_orders: [], p_delete_ids: [] },
+    expectedOsCount: 25,
+    rpc,
+  })).rejects.toThrow('23 de 25');
+});
+
+it('valida o mínimo da justificativa antes de chamar o banco', async () => {
+  const rpc = vi.fn();
+  await expect(regenerateContractVisitsAtomic({
+    payload: { p_contract_id: 'ct-1', p_orders: [], p_delete_ids: [] },
+    expectedOsCount: 1,
+    overrideReason: 'curta',
+    rpc,
+  })).rejects.toThrow('pelo menos 10 caracteres');
   expect(rpc).not.toHaveBeenCalled();
-  expect(fallback).toHaveBeenCalledOnce();
 });

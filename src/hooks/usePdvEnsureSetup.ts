@@ -44,6 +44,9 @@ function projectSetup(value: unknown): PdvSetupResult {
 
 function safeSetupError(error: RpcError): Error {
   const detail = `${error?.details ?? ''}`.toLowerCase();
+  if (detail.includes('pdv_setup_user_inactive')) {
+    return new Error('Seu acesso está desativado. Peça ao administrador para conferir seu cadastro.');
+  }
   if (detail.includes('pdv_setup_auth_required')) {
     return new Error('Sua sessão expirou. Entre novamente para preparar o caixa.');
   }
@@ -54,7 +57,7 @@ function safeSetupError(error: RpcError): Error {
     return new Error('Cadastre um local de estoque para preparar o primeiro caixa.');
   }
   if (detail.includes('pdv_setup_module_denied')) {
-    return new Error('O módulo PDV não está disponível para esta empresa.');
+    return new Error('O módulo PDV (Loja) não está disponível para esta empresa.');
   }
   if (detail.includes('pdv_setup_subscription_denied') || detail.includes('pdv_setup_entitlement_denied')) {
     return new Error('A assinatura da empresa não permite preparar o PDV agora.');

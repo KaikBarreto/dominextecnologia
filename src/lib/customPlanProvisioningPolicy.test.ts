@@ -15,7 +15,8 @@ describe('provisionamento do plano personalizado', () => {
         expect(source).toContain(`'${code}'`);
       }
       expect(source.match(/REQUIRED_PERSONALIZED_MODULE_CODES[\s\S]{0,240}/)?.[0]).not.toContain("'cobrancas'");
-      expect(source).toContain('...REQUIRED_PERSONALIZED_MODULE_CODES');
+      expect(source).toContain('requiredCustomModulesForCore(businessCore,');
+      expect(source).toContain('customCommercialModulesForCore(businessCore,');
       expect(source).toContain(".from('subscription_modules')");
       expect(source).toContain(".eq('is_active', true)");
       expect(source).toContain('missingRequired');
@@ -29,7 +30,7 @@ describe('provisionamento do plano personalizado', () => {
     expect(source).toContain('const personalizadoSum = personalizadoModules.reduce');
     expect(source).toContain('const planPrice = isPersonalizado ? personalizadoSum : planDefaults.price');
     expect(source).toContain('Catálogo incompleto para plano personalizado');
-    expect(source).toContain("if (module.code === 'basic') return price <= 0");
+    expect(source).toContain("if (module.code === 'basic') return businessCore==='retail' && !isSale && !isLocked ? price<0 : price<=0;");
     expect(source).toContain('FREE_BASE_MODULE_CODES.some((code) => code === module.code)');
     expect(source).toContain('if (module.code === EXTRA_USER_MODULE_CODE) return price <= 0');
     expect(source).toContain('personalizedUsers - CUSTOM_PLAN_INCLUDED_USERS');
@@ -50,7 +51,7 @@ describe('provisionamento do plano personalizado', () => {
     const source = edgeSource('create-company');
 
     expect(source).toContain('const moduleCodesToValidate = isPersonalizado');
-    expect(source).toContain('? [...new Set([...REQUIRED_PERSONALIZED_MODULE_CODES, ...requestedModuleCodes])]');
+    expect(source).toContain('? customCommercialModulesForCore(businessCore,requestedModuleCodes)');
     expect(source).toContain(': requestedModuleCodes');
   });
 

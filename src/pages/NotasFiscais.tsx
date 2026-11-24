@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -8,9 +8,10 @@ import {
   Settings,
   Shield,
   Loader2,
-  FileBarChart,
   Inbox,
   RefreshCw,
+  ReceiptText,
+  Boxes,
 } from 'lucide-react';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { FABButton } from '@/components/mobile/FABButton';
@@ -44,8 +45,12 @@ import { NfseStatsCards, type NfseStats } from '@/components/fiscal/NfseStatsCar
 import { nfseRowToEmission, type NfseListRow } from '@/components/fiscal/nfseRow';
 import { NfseListTab } from '@/components/fiscal/NfseListTab';
 import { NotasRecebidasTab } from '@/components/fiscal/inboundNotes/NotasRecebidasTab';
-import { GoodsFiscalTab } from '@/components/fiscal/goods/GoodsFiscalTab';
 import { AutoEmissoesTab } from '@/components/fiscal/AutoEmissoesTab';
+import { GoodsFiscalTab } from '@/components/fiscal/goods/GoodsFiscalTab';
+import { FiscalInventoryWorkspace } from '@/components/fiscal/inventory/FiscalInventoryWorkspace';
+import { resolveAppSlug } from '@/lib/i18n/appRouteSlugs';
+
+type FiscalTab = 'visao-geral' | 'nfe' | 'nfce' | 'nfse' | 'estoque-fiscal' | 'recebidas' | 'automaticas';
 
 /** Quantas notas o atalho "Últimas emissões" mostra. */
 const RECENT_LIMIT = 5;
@@ -65,11 +70,13 @@ function toIsoDate(d: Date | undefined): string | null {
 export default function NotasFiscais() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  const location = useLocation();
   const { hasScreenAccess } = useAuth();
   const { hasModule, isLoading: modulesLoading } = useCompanyModules();
   const { companyId } = useUserCompany();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.nfse;
+  const fiscalRoute = resolveAppSlug(location.pathname, locale);
   const { emissions, isLoading, refetch: refetchEmissions } = useNfse();
   const { settings, readyToEmit, isLoading: settingsLoading } = useFiscalSettings();
 
@@ -84,13 +91,22 @@ export default function NotasFiscais() {
     settings.pode_emitir || !!settings.certificado_ref || emissions.length > 0;
 
   const [searchParams, setSearchParams] = useSearchParams();
-  // Abre na listagem (a informação que o usuário busca primeiro); "Relatório
-  // fiscal" (ex-"Visão Geral") é a 2ª aba.
-  const [tab, setTab] = useState<'visao-geral' | 'nfse' | 'recebidas' | 'automaticas' | 'nfe' | 'nfce'>('nfse');
+  const routeDefaultTab: FiscalTab = fiscalRoute === 'fiscalNfce'
+    ? 'nfce'
+    : fiscalRoute === 'fiscalNfse'
+      ? 'nfse'
+      : fiscalRoute === 'fiscalInventory'
+        ? 'estoque-fiscal'
+        : 'nfe';
+  const [tab, setTab] = useState<FiscalTab>(routeDefaultTab);
   const [novaOpen, setNovaOpen] = useState(false);
   const [selected, setSelected] = useState<NfseEmission | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailAction, setDetailAction] = useState<NfseDetailAction | null>(null);
+
+  useEffect(() => {
+    setTab(routeDefaultTab);
+  }, [routeDefaultTab]);
 
   // ── Período (header) ───────────────────────────────────────────────────────
   // Abre em "Todos os tempos": quem tem poucas notas no mês não pode achar que
@@ -257,17 +273,25 @@ export default function NotasFiscais() {
     </Button>
   );
 
-  // Sub-navegação com rótulos traduzidos. A listagem ("Notas Fiscais") vem
-  // primeiro — é o que o usuário busca ao entrar na tela; "Relatório fiscal"
-  // (ex-"Visão Geral") é o resumo, depois.
-  const navTabs: SettingsTab[] = [
-    { value: 'nfe', label: 'NF-e', icon: FileText },
-    { value: 'nfce', label: 'NFC-e', icon: FileText },
-    { value: 'nfse', label: t.tabs.list, icon: FileText },
-    { value: 'visao-geral', label: t.tabs.overview, icon: FileBarChart },
-    { value: 'automaticas', label: t.tabs.automatic, icon: RefreshCw },
-    { value: 'recebidas', label: t.tabs.received, icon: Inbox },
-  ];
+  const navTabs: SettingsTab[] = fiscalRoute === 'fiscalNfe'
+    ? [
+        { value: 'nfe', label: 'Emissão de NF-e', icon: FileText },
+        { value: 'recebidas', label: t.tabs.received, icon: Inbox },
+      ]
+    : fiscalRoute === 'fiscalNfse'
+      ? [
+          { value: 'nfse', label: t.tabs.list, icon: FileText },
+          { value: 'automaticas', label: t.tabs.automatic, icon: RefreshCw },
+        ]
+      : [];
+
+  const pageMeta = fiscalRoute === 'fiscalNfce'
+    ? { title: 'NFC-e', subtitle: 'Emissão modelo 65 integrada às vendas do PDV.', icon: ReceiptText }
+    : fiscalRoute === 'fiscalNfse'
+      ? { title: 'NFS-e e Serviços', subtitle: 'Emissões de serviço manuais e automáticas.', icon: FileText }
+      : fiscalRoute === 'fiscalInventory'
+        ? { title: 'Relatório/Estoque Fiscal', subtitle: 'Posição, movimentações e conciliação do estoque fiscal.', icon: Boxes }
+          : { title: 'NF-e', subtitle: 'Emissão modelo 55 e documentos recebidos.', icon: FileText };
 
   // Estado vazio guiado: config incompleta → manda configurar; config OK sem
   // notas → manda emitir. Vale pras duas abas enquanto ainda sem notas emitidas.
@@ -297,12 +321,38 @@ export default function NotasFiscais() {
   // Se configurado, mostramos sempre as abas (a listagem tem seu próprio estado vazio).
   const showGuidedEmpty = !anyLoading && !hasFiscalActivity;
 
+  const fiscalContent = tab === 'nfe' ? (
+    <GoodsFiscalTab model={55} />
+  ) : tab === 'nfce' ? (
+    <GoodsFiscalTab model={65} />
+  ) : tab === 'estoque-fiscal' ? (
+    <FiscalInventoryWorkspace />
+  ) : tab === 'recebidas' ? (
+    <NotasRecebidasTab />
+  ) : tab === 'automaticas' ? (
+    <AutoEmissoesTab />
+  ) : showGuidedEmpty ? (
+    renderGuidedEmpty()
+  ) : tab === 'visao-geral' ? (
+    <NfseVisaoGeral
+      rows={recentRows}
+      loading={recentLoading}
+      onOpenDetail={openDetailFromRow}
+    />
+  ) : (
+    <NfseListTab
+      canEmit={fiscalConfigured}
+      dateStart={dateStart}
+      dateEnd={dateEnd}
+    />
+  );
+
   return (
     <div className={cn('space-y-6', isMobile && 'pb-24 space-y-4')}>
       <MobilePageHeader
-        title={t.page.title}
-        subtitle={t.page.subtitle}
-        icon={FileText}
+        title={pageMeta.title}
+        subtitle={pageMeta.subtitle}
+        icon={pageMeta.icon}
         actions={
           <>
             {/* No mobile o seletor de período desce pra linha do medidor: com
@@ -310,13 +360,13 @@ export default function NotasFiscais() {
                 buraco antes do conteúdo. */}
             {!isMobile && periodFilter}
             {configButton}
-            {!isMobile && novaNotaButton}
+            {!isMobile && tab === 'nfse' && novaNotaButton}
           </>
         }
       />
 
       {/* Medidor de consumo mensal de NFS-e (+ período, no mobile) */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className={cn('flex flex-wrap items-center gap-2', tab !== 'nfse' && tab !== 'visao-geral' && 'hidden')}>
         <NfseQuotaBadge companyId={companyId} />
         {isMobile && periodFilter}
       </div>
@@ -335,55 +385,23 @@ export default function NotasFiscais() {
             <NfseStatsCards stats={stats} loading={isLoading} />
           )}
 
-          {/* A sub-nav aparece SEMPRE, inclusive sem configuração fiscal.
-              Antes o estado guiado substituía a tela inteira e "Notas
-              recebidas" ficava INALCANÇÁVEL — provado no navegador em
-              24/09/2026. Receber nota destinada não depende de a empresa
-              conseguir EMITIR: quem compra material recebe NF-e do fornecedor
-              mesmo que nunca emita NFS-e por aqui. O gate real é o certificado
-              A1, e quem explica isso é a própria aba (ela tem os avisos em
-              cascata: sem certificado → sem opt-in → lista). */}
-          <SettingsSidebarLayout
-            variant="underline"
-            tabs={navTabs}
-            activeTab={tab}
-            onTabChange={(v) => setTab(v as 'visao-geral' | 'nfse' | 'recebidas' | 'automaticas' | 'nfe' | 'nfce')}
-          >
-            {tab === 'nfe' || tab === 'nfce' ? (<GoodsFiscalTab model={tab === 'nfce' ? 65 : 55} />) : tab === 'recebidas' ? (
-              /* ---- Notas recebidas: NF-e/NFS-e emitidas contra o CNPJ do cliente ---- */
-              <NotasRecebidasTab />
-            ) : tab === 'automaticas' ? (
-              /* ---- Emissões automáticas: fila `nfse_auto_jobs` por contrato.
-                  Igual a "recebidas", fica FORA do estado guiado: a automação
-                  é config do CONTRATO (aba Financeiro), não depende de a
-                  empresa já ter concluído o onboarding de emissão manual. */
-              <AutoEmissoesTab />
-            ) : showGuidedEmpty ? (
-              /* Sem config de emissão: guia só as abas de EMISSÃO. */
-              renderGuidedEmpty()
-            ) : tab === 'visao-geral' ? (
-              /* ---- Visão Geral: atalho das últimas emissões ---- */
-              <NfseVisaoGeral
-                rows={recentRows}
-                loading={recentLoading}
-                onOpenDetail={openDetailFromRow}
-              />
-            ) : (
-              /* ---- NFS-e: listagem paginada com ações por linha ---- */
-              <NfseListTab
-                canEmit={fiscalConfigured}
-                dateStart={dateStart}
-                dateEnd={dateEnd}
-              />
-            )}
-          </SettingsSidebarLayout>
+          {navTabs.length > 0 ? (
+            <SettingsSidebarLayout
+              variant="underline"
+              tabs={navTabs}
+              activeTab={tab}
+              onTabChange={(v) => setTab(v as FiscalTab)}
+            >
+              {fiscalContent}
+            </SettingsSidebarLayout>
+          ) : fiscalContent}
         </>
       )}
 
       {/* Ação principal da tela: emitir. No mobile fica flutuando (FAB) pra
           continuar ao alcance mesmo com a lista rolada; no desktop já existe o
           botão inline no header (novaNotaButton), então não duplicamos aqui. */}
-      {isMobile && (
+      {isMobile && tab === 'nfse' && (
         <FABButton
           icon={<Plus className="h-5 w-5" />}
           label={t.actions.newNote}

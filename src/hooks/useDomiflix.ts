@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { assertRowsAffected } from "@/lib/supabaseMutation";
 import { toast } from "sonner";
 import { slugify } from "@/lib/slugify";
 import { domiflixToast } from "@/lib/domiflixToast";
@@ -681,11 +682,13 @@ export function useUpdateTitle() {
       id,
       ...data
     }: Partial<DomiflixTitle> & { id: string }) => {
-      const { error } = await supabase
-        .from("domiflix_titles" as any)
-        .update(data)
-        .eq("id", id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from("domiflix_titles" as any)
+          .update(data, { count: "exact" })
+          .eq("id", id),
+        "update",
+      );
       return id;
     },
     onSuccess: () => {
@@ -703,11 +706,13 @@ export function useDeleteTitle() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from("domiflix_titles" as any)
-        .delete()
-        .eq("id", id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from("domiflix_titles" as any)
+          .delete({ count: "exact" })
+          .eq("id", id),
+        "delete",
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["domiflix-titles"] });
@@ -756,11 +761,13 @@ export function useUpdateSeason() {
       title_id,
       ...data
     }: Partial<DomiflixSeason> & { id: string; title_id: string }) => {
-      const { error } = await supabase
-        .from("domiflix_seasons" as any)
-        .update(data)
-        .eq("id", id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from("domiflix_seasons" as any)
+          .update(data, { count: "exact" })
+          .eq("id", id),
+        "update",
+      );
       return { title_id };
     },
     onSuccess: (result) => {
@@ -776,11 +783,13 @@ export function useDeleteSeason() {
 
   return useMutation({
     mutationFn: async ({ id, title_id }: { id: string; title_id: string }) => {
-      const { error } = await supabase
-        .from("domiflix_seasons" as any)
-        .delete()
-        .eq("id", id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from("domiflix_seasons" as any)
+          .delete({ count: "exact" })
+          .eq("id", id),
+        "delete",
+      );
       return { title_id };
     },
     onSuccess: (result) => {
@@ -833,11 +842,13 @@ export function useUpdateEpisode() {
       title_id,
       ...data
     }: Partial<DomiflixEpisode> & { id: string; title_id: string }) => {
-      const { error } = await supabase
-        .from("domiflix_episodes" as any)
-        .update(data)
-        .eq("id", id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from("domiflix_episodes" as any)
+          .update(data, { count: "exact" })
+          .eq("id", id),
+        "update",
+      );
       return { title_id };
     },
     onSuccess: (result) => {
@@ -853,11 +864,13 @@ export function useDeleteEpisode() {
 
   return useMutation({
     mutationFn: async ({ id, title_id }: { id: string; title_id: string }) => {
-      const { error } = await supabase
-        .from("domiflix_episodes" as any)
-        .delete()
-        .eq("id", id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from("domiflix_episodes" as any)
+          .delete({ count: "exact" })
+          .eq("id", id),
+        "delete",
+      );
       return { title_id };
     },
     onSuccess: (result) => {

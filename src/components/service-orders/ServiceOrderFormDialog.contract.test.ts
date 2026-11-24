@@ -29,14 +29,17 @@ describe('ServiceOrderFormDialog — contrato do wizard', () => {
     expect(source).toContain('if (isLastStep) form.handleSubmit(handleEditSubmit)()');
   });
 
-  it('organiza o fluxo em quatro etapas com orçamento no atendimento e escopo na revisão', () => {
-    expect(source).toContain("{ key: 'client' as const, label: t.stepClient }");
-    expect(source).not.toContain("{ key: 'budget' as const, label: t.stepBudget }");
+  it('separa orçamento opcional do atendimento e mantém o escopo na revisão', () => {
+    expect(source).toContain("{ key: 'client' as const, label: 'Atendimento' }");
+    expect(source).toContain("{ key: 'budget' as const, label: 'Orçamento (opcional)' }");
+    expect(source).toContain('onChange={(ids) => handleServiceTypesChange(ids, false)}');
+    expect(source).toContain('Orçar serviços selecionados');
+    expect(source).toContain('Continuar sem orçamento');
+    expect(source.match(/currentStepKey === 'budget'/g)?.length).toBeGreaterThanOrEqual(2);
     expect(source).toContain("{ key: 'equipment' as const, label: t.stepEquipment }");
     expect(source).toContain("{ key: 'details' as const, label: t.stepDetails }");
     expect(source.match(/currentStepKey === 'client'/g)).toHaveLength(3);
-    // Criação e edição exibem a precificação tanto na etapa de atendimento
-    // quanto na revisão final, sem criar uma etapa isolada só para orçamento.
+    // A precificação fica na etapa opcional e na revisão, fora do atendimento.
     expect(source.match(/<ServiceOrderBudgetSection/g)).toHaveLength(4);
     expect(source.match(/<div className="border-t pt-5">\{scopeSummary\}<\/div>/g)).toHaveLength(2);
   });
@@ -90,11 +93,13 @@ describe('ServiceOrderFormDialog — contrato do wizard', () => {
   });
 
   it('usa modal estável, rodapé externo e resumo responsivo', () => {
-    expect(source).toContain('sm:h-[88vh] sm:max-h-[88vh] sm:w-[96vw] sm:max-w-[1180px]');
-    expect(source.match(/drawerClassName="h-\[90dvh\]"/g)).toHaveLength(2);
+    expect(source.match(/<FullscreenWizard\s/g)).toHaveLength(2);
+    expect(source).toContain('<FullscreenWizardAction');
+    expect(source).toContain('floatingNotice={draft.showResumePrompt');
+    expect(source).not.toContain('<DraftResumeDialog');
     expect(source).toContain('footer={editFooter}');
     expect(source).toContain('footer={createFooter}');
-    expect(source).toContain('xl:grid-cols-[minmax(0,1fr)_288px]');
+    expect(source).toContain('xl:grid-cols-[minmax(0,1fr)_320px]');
     expect(source.match(/showDesktopSummary && \(/g)).toHaveLength(2);
     expect(source).toContain("const showDesktopSummary = currentStepKey !== 'review'");
     expect(source).toContain('sticky top-0 z-20');

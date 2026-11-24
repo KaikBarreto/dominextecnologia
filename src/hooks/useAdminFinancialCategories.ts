@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 export interface AdminFinancialCategory {
   id: string;
@@ -12,6 +13,8 @@ export interface AdminFinancialCategory {
   is_system: boolean;
   is_active: boolean;
   sort_order: number;
+  dre_bucket?: string | null;
+  affects_result?: boolean | null;
 }
 
 export function useAdminFinancialCategories() {
@@ -35,8 +38,10 @@ export function useSaveAdminFinancialCategory() {
     mutationFn: async (payload: Partial<AdminFinancialCategory> & { id?: string }) => {
       const { id, ...rest } = payload;
       if (id) {
-        const { error } = await supabase.from('admin_financial_categories' as any).update(rest).eq('id', id);
-        if (error) throw error;
+        assertRowsAffected(
+          await supabase.from('admin_financial_categories' as any).update(rest, { count: 'exact' }).eq('id', id),
+          'update',
+        );
       } else {
         const { error } = await supabase.from('admin_financial_categories' as any).insert(rest as any);
         if (error) throw error;
@@ -51,8 +56,10 @@ export function useDeleteAdminFinancialCategory() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('admin_financial_categories' as any).delete().eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('admin_financial_categories' as any).delete({ count: 'exact' }).eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-financial-categories'] }); toast.success('Categoria removida'); },
     onError: (e: any) => toast.error(e?.message || 'Erro ao remover'),

@@ -1,5 +1,5 @@
 -- Preferências por etapa, sem alterar pedidos, snapshots ou fatos financeiros.
-BEGIN;
+
 SET LOCAL lock_timeout='10s';
 SET LOCAL statement_timeout='120s';
 
@@ -119,4 +119,4 @@ GRANT EXECUTE ON FUNCTION public.pdv_get_receipt_settings_v3() TO authenticated,
 GRANT EXECUTE ON FUNCTION public.pdv_save_receipt_settings_v3(text,boolean,integer,jsonb) TO authenticated,service_role;
 GRANT EXECUTE ON FUNCTION public.pdv_save_receipt_settings_v2(text,boolean,integer) TO authenticated,service_role;
 COMMENT ON COLUMN public.pdv_receipt_settings.stages IS 'Políticas independentes de abertura, formato e vias para orçamento, pedido e retirada. NULL preserva o comportamento legado.';
-COMMIT;
+;

@@ -1,14 +1,23 @@
-import { buildWhatsAppUrl } from "@/lib/whatsapp";
+import { buildWhatsAppUrl, resolveCompanyOriginKey } from "@/lib/whatsapp";
 import { useLocale } from "@/lib/i18n";
+import { trackWhatsAppLead } from '@/lib/gtag';
 import { COMPANY_WHATSAPP_NUMBER } from "@/components/landing/whatsappNumbers";
 import { WhatsAppIcon } from '@/components/icons/WhatsAppIcon';
+import { useLocation } from 'react-router-dom';
 
 export default function WhatsAppFloatingButton() {
   const { locale, messages } = useLocale();
+  const { pathname } = useLocation();
   const copy = messages.pageChrome.whatsappFloat;
 
   // URL montada no clique para incluir a página e a UTM atuais na mensagem.
   const handleClick = () => {
+    trackWhatsAppLead({
+      pagePath: pathname,
+      locale,
+      placement: 'floating_button',
+      acquisitionChannel: resolveCompanyOriginKey() ?? 'direct',
+    });
     const url = buildWhatsAppUrl(COMPANY_WHATSAPP_NUMBER, undefined, locale);
     window.open(url, "_blank", "noopener,noreferrer");
   };

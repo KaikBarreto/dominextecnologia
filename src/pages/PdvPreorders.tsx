@@ -1,5 +1,5 @@
 import '@/components/pdv/PdvWorkspace.css';
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -27,6 +27,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useLocaleFormatters } from "@/lib/format/hooks";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { usePdvPreorderCatalog } from "@/hooks/usePdvPreorderCatalog";
 import {
   usePdvPreorder,
@@ -38,11 +39,12 @@ import {
 import {
   PdvPreorderDetail,
   type PdvPreorderCatalogItem,
+  type PdvPreorderEditorSnapshot,
+  projectPdvPreorderEditorSnapshot,
 } from "@/components/pdv/preorders/PdvPreorderDetail";
 import { PdvPreorderStatusBadge } from "@/components/pdv/preorders/PdvPreorderStatusBadge";
 import { usePdvStageReceiptAuto } from "@/hooks/usePdvStageReceiptAuto";
-import { usePdvReceiptCompany } from "@/hooks/usePdvReceiptCompany";
-import { PdvPreorderReceiptButton, openPdvPreorderReceipt } from "@/components/pdv/preorders/PdvPreorderReceiptButton";
+import { PdvPreorderReceiptButton, usePdvPreorderReceiptOpener } from "@/components/pdv/preorders/PdvPreorderReceiptButton";
 import { preorderWorkspaceAction } from "@/components/pdv/preorders/preorderWorkspaceAction";
 import { pdvFlowCardDestination } from "@/components/pdv/flow/pdvFlowNavigation";
 import { PdvWorkspaceViewToggle } from "@/components/pdv/flow/PdvWorkspaceViewToggle";
@@ -68,6 +70,12 @@ import { cn } from "@/lib/utils";
 import { FilterButton } from "@/components/ui/FilterButton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+import { usePdvPreorderTabs } from "@/hooks/usePdvPreorderTabs";
+import { usePdvAuthorizedQueryScope } from "@/hooks/pdvReportCache";
+import { PdvOrderSwitcher } from "@/components/pdv/PdvOrderSwitcher";
+import { NoticeBanner } from "@/components/ui/NoticeBanner";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+
 type QueueFilter = "all" | PdvPreorderStatus;
 
 const FILTERS: Array<{ value: QueueFilter; label: string }> = [
@@ -88,11 +96,12 @@ const newestFirst: ListDetailSortOption = {
 export default function PdvPreorders() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const requestedPreorderId = searchParams.get("orcamento");
+  const requestedWorkspaceTabId = searchParams.get("atendimento");
   const { toast } = useToast();
   const autoReceipt = usePdvStageReceiptAuto();
-  const receiptCompany = usePdvReceiptCompany();
+  const receiptOpener = usePdvPreorderReceiptOpener();
   const { dateTime, money } = useLocaleFormatters();
   const {
     user,
@@ -119,6 +128,27 @@ export default function PdvPreorders() {
     hasPdvOrdersScreen: hasScreenAccess("screen:pdv_orders"),
   });
 
+  const authorizedScope = usePdvAuthorizedQueryScope();
+  const explicitCashContext = searchParams.get("caixa") ?? searchParams.get("cash_session_id");
+  const tabsOwner = useMemo(() => authorizedScope.ready && profile?.company_id && user?.id
+    ? { companyId: profile.company_id, userId: user.id, cashSessionId: explicitCashContext }
+    : null, [authorizedScope.ready, profile?.company_id, user?.id, explicitCashContext]);
+  const tabs = usePdvPreorderTabs<PdvPreorderEditorSnapshot>(tabsOwner, canUsePreorderWorkspace);
+  const operationScopeSignature = JSON.stringify([authorizedScope.key, authorizedScope.ready, tabs.storageKey]);
+  const operationScope = useRef({ signature: operationScopeSignature });
+  if (operationScope.current.signature !== operationScopeSignature) operationScope.current = { signature: operationScopeSignature };
+  const operationToken = operationScope.current;
+  const isCurrentOperation = () => authorizedScope.ready && operationScope.current === operationToken;
+
+  const [pendingCloseTabId, setPendingCloseTabId] = useState<string | null>(null);
+  const closeTabConfirmRef = useRef<HTMLButtonElement>(null);
+  const previousTabScope = useRef(tabs.storageKey);
+  useEffect(() => {
+    if (previousTabScope.current === tabs.storageKey) return;
+    previousTabScope.current = tabs.storageKey;
+    setSelectedId(null); setDraftId(null); setEditingDetail(false); setSelectedFlowOrderId(null); setPendingCloseTabId(null);
+  }, [tabs.storageKey]);
+
   const queue = usePdvPreorderQueue(
     filter === "all" ? null : filter,
     canUsePreorderWorkspace,
@@ -131,6 +161,7 @@ export default function PdvPreorders() {
   const flowOrder = usePdvSalesFlowOrder(selectedFlowOrderId);
   const actions = usePdvPreorderActions();
   const catalog = usePdvPreorderCatalog(canUsePreorderWorkspace);
+  const companySettings = useCompanySettings();
   const customers = useMemo(
     () => catalog.data?.customers ?? [],
     [catalog.data?.customers],
@@ -260,9 +291,18 @@ export default function PdvPreorders() {
     [customerName, inventory, money, queue.data],
   );
 
-  const activeDetail = detail.data ?? null;
-  const activeRevision = activeDetail?.preorder.revision ?? 0;
-  const activeId = activeDetail?.preorder.id ?? draftId;
+  const activeDetail = detail.data?.preorder.id === selectedId ? detail.data : null;
+  const activeTab = editingDetail ? tabs.active : null;
+  const editorSnapshot = projectPdvPreorderEditorSnapshot(activeTab?.editorState);
+  const activeRevision = editorSnapshot?.dirty
+    ? editorSnapshot.sourceRevision ?? activeTab?.revision ?? activeDetail?.preorder.revision ?? 0
+    : Math.max(activeDetail?.preorder.revision ?? 0, activeTab?.revision ?? 0, editorSnapshot?.sourceRevision ?? 0);
+  const configuredStockId = companySettings.settings?.company_id === profile?.company_id ? companySettings.settings?.pdv_default_stock_id ?? null : null;
+  const preferredStockId = companySettings.isLoading || companySettings.isError || (companySettings.settings && companySettings.settings.company_id !== profile?.company_id) ? null
+    : configuredStockId ? stocks.some(stock => stock.id === configuredStockId) ? configuredStockId : null
+    : stocks.length === 1 ? stocks[0].id : null;
+  const waitingForInitialStock = Boolean(draftId && !editorSnapshot && companySettings.isLoading);
+  const activeId = activeTab?.preorderId ?? activeDetail?.preorder.id ?? activeTab?.draftId ?? draftId;
   const workspaceOpen = Boolean(draftId || editingDetail || selectedFlowOrderId);
   const flowCards = flow.data ?? [];
   const fulfillmentMode =
@@ -273,14 +313,53 @@ export default function PdvPreorders() {
     return `${prefix}-${crypto.randomUUID()}`;
   }
 
+  function setWorkspaceAddress(id: string | null) {
+    const params = new URLSearchParams(searchParams);
+    if (id) { params.set('atendimento', id); params.delete('orcamento'); }
+    else params.delete('atendimento');
+    setSearchParams(params, { replace: true });
+  }
+
+  function selectWorkspaceTab(id: string) {
+    const tab = tabs.tabs.find(item => item.id === id);
+    if (!tab) return;
+    tabs.select(id); setWorkspaceAddress(id); setEditingDetail(true); setSelectedFlowOrderId(null);
+    setSelectedId(tab.preorderId); setDraftId(tab.preorderId ? null : tab.draftId);
+  }
+
   function startNew() {
-    setEditingDetail(true);
-    setSelectedId(null);
-    setSelectedFlowOrderId(null);
-    setDraftId(crypto.randomUUID());
+    const tab = tabs.create();
+    if (!tab) return;
+    setWorkspaceAddress(tab.id); setEditingDetail(true); setSelectedId(null); setSelectedFlowOrderId(null); setDraftId(tab.draftId);
+  }
+
+  function openEditor(id: string) {
+    const existing = tabs.tabs.find(tab => tab.preorderId === id && !tab.recovered);
+    if (existing) { selectWorkspaceTab(existing.id); return; }
+    const row = queue.data?.find(item => item.id === id);
+    const document = activeDetail?.preorder.id === id ? activeDetail.preorder : row;
+    const tab = tabs.create({ preorderId: id, draftId: id, revision: document?.revision ?? null,
+      number: document?.number ?? null, customerId: document?.customer_id ?? null, total: document?.total ?? 0, hasContent: true });
+    if (!tab) return;
+    setWorkspaceAddress(tab.id); setEditingDetail(true); setSelectedFlowOrderId(null); setSelectedId(id); setDraftId(null);
+  }
+
+  function closeWorkspaceTab(id: string) {
+    const index = tabs.tabs.findIndex(tab => tab.id === id);
+    const remaining = tabs.tabs.filter(tab => tab.id !== id);
+    const next = remaining[Math.min(index, remaining.length - 1)];
+    tabs.close(id);
+    if (tabs.activeId !== id) return;
+    if (next) selectWorkspaceTab(next.id); else closeDetail();
+  }
+
+  function requestCloseWorkspaceTab() {
+    if (!activeTab) { closeDetail(); return; }
+    if (activeTab.hasContent) setPendingCloseTabId(activeTab.id); else closeWorkspaceTab(activeTab.id);
   }
 
   function closeDetail() {
+    if (requestedWorkspaceTabId) setWorkspaceAddress(null);
     setEditingDetail(false);
     setSelectedId(null);
     setSelectedFlowOrderId(null);
@@ -323,10 +402,51 @@ export default function PdvPreorders() {
     }
   }
 
+  const resumedWorkspace = useRef<string | null>(null);
+  useEffect(() => {
+    if (!requestedWorkspaceTabId) { resumedWorkspace.current = null; return; }
+    if (!tabs.ready || !tabs.storageKey) return;
+    const identity = `${tabs.storageKey}:${requestedWorkspaceTabId}`;
+    if (resumedWorkspace.current === identity) return;
+    resumedWorkspace.current = identity;
+    const tab = tabs.tabs.find(item => item.id === requestedWorkspaceTabId);
+    if (!tab) {
+      const params = new URLSearchParams(searchParams); params.delete('atendimento'); setSearchParams(params, { replace: true });
+      return;
+    }
+    tabs.select(tab.id); setEditingDetail(true); setSelectedFlowOrderId(null);
+    setSelectedId(tab.preorderId); setDraftId(tab.preorderId ? null : tab.draftId);
+  }, [requestedWorkspaceTabId, searchParams, setSearchParams, tabs]);
+
   const content = (
     <PdvPreorderDetail
+      key={activeTab?.id ?? selectedId ?? draftId ?? 'preorder-empty'}
       detail={activeDetail}
+      editorSnapshot={editorSnapshot}
+      onEditorSnapshotChange={(snapshot, summary) => {
+        if (!activeTab) return;
+        tabs.update(activeTab.id, { editorState: snapshot, customerId: snapshot.customerId === 'none' ? null : snapshot.customerId,
+          total: summary?.total ?? activeTab.total, hasContent: Boolean(snapshot.lines.length || snapshot.customerId !== 'none' || snapshot.notes.trim() || snapshot.coupon),
+          ...(!snapshot.dirty && snapshot.sourceRevision != null ? { revision: snapshot.sourceRevision } : {}) });
+      }}
+      workspaceHeader={<PdvOrderSwitcher
+        header orders={tabs.tabs.map(tab => ({ id: tab.id, code: tab.number != null ? `#${tab.number}` : 'Novo',
+          customer: customerName.get(tab.customerId ?? '') ?? '', total: tab.total,
+          itemCount: projectPdvPreorderEditorSnapshot(tab.editorState)?.lines.length ?? 0, hasContent: tab.hasContent, editing: tab.recovered }))}
+        activeId={tabs.activeId ?? ''} formatCurrency={money} operationLabel="Orçamento"
+        texts={{ number: 'Orçamento', value: 'Valor', customer: 'Cliente', newOrder: 'Novo orçamento', unnamedCustomer: 'Sem cliente',
+          editBadge: 'Versão recuperada', deleteLabel: 'Fechar atendimento', deleteTitle: 'Fechar este orçamento?',
+          deleteDescription: 'As alterações ainda não salvas desta aba serão descartadas. O orçamento já salvo continua na lista.', keepOrder: 'Continuar atendimento', confirmDelete: 'Fechar atendimento' }}
+        onSelect={selectWorkspaceTab} onCreate={startNew} onDelete={closeWorkspaceTab} onReorder={tabs.reorder}
+        orderPreferenceKey={tabs.storageKey ? `${tabs.storageKey}:order` : undefined}
+        disabled={actions.save.isPending || actions.value.isPending || actions.assignTerminal.isPending || actions.forward.isPending || actions.convert.isPending || actions.cancel.isPending}
+      />}
+      onCloseOrder={requestCloseWorkspaceTab}
+      modePreferenceKey={user?.id && profile?.company_id
+        ? `pdv:value-adjustment-mode:${profile.company_id}:${user.id}`
+        : undefined}
       draftId={draftId ?? undefined}
+      preferredStockId={preferredStockId}
       inventory={inventory}
       customers={customers}
       stocks={stocks.map((stock) => ({ id: stock.id, name: stock.name }))}
@@ -335,9 +455,6 @@ export default function PdvPreorders() {
       }))}
       canValue={canValue}
       canConvert={canConvert}
-      modePreferenceKey={user?.id && profile?.company_id
-        ? `pdv:value-adjustment-mode:${profile.company_id}:${user.id}`
-        : undefined}
       canCancel={Boolean(
         isAdminOrGestor() ||
         (activeDetail &&
@@ -347,6 +464,7 @@ export default function PdvPreorders() {
       onBack={closeDetail}
       onReload={() => void reloadDetail()}
       onSave={async ({ header, items }) => {
+        if (!isCurrentOperation()) return;
         if (!activeId) throw new Error("Orçamento do balcão não selecionado.");
         const saved = await actions.save.mutateAsync({
           preorderId: activeId,
@@ -355,6 +473,7 @@ export default function PdvPreorders() {
           items,
           requestId: requestId("save-preorder"),
         });
+        if (!isCurrentOperation()) return;
         const result = header.target_terminal_id
           ? await actions.assignTerminal.mutateAsync({
               preorderId: saved.preorder_id,
@@ -363,15 +482,17 @@ export default function PdvPreorders() {
               requestId: requestId("route-preorder"),
             })
           : saved;
-        if (draftId) {
-          setDraftId(null);
-          setSelectedId(result.preorder_id);
-        }
+        if (!isCurrentOperation()) return;
+        if (activeTab) tabs.update(activeTab.id, { preorderId: result.preorder_id, revision: result.revision ?? saved.revision ?? activeRevision,
+          number: result.number ?? saved.number ?? activeTab.number,
+          ...(editorSnapshot ? { editorState: { ...editorSnapshot, dirty: false, sourceRevision: result.revision ?? saved.revision ?? activeRevision } } : {}) });
+        if (draftId) { setDraftId(null); setSelectedId(result.preorder_id); }
         toast({ title: "Orçamento do balcão salvo na conta" });
         await flow.refetch();
         return result;
       }}
       onValue={async ({ header, items }) => {
+        if (!isCurrentOperation()) return;
         if (!activeId) throw new Error("Orçamento do balcão não selecionado.");
         const result = await actions.value.mutateAsync({
           preorderId: activeId,
@@ -380,45 +501,57 @@ export default function PdvPreorders() {
           items,
           requestId: requestId("value-preorder"),
         });
+        if (!isCurrentOperation()) return;
+        if (activeTab) tabs.update(activeTab.id, { revision: result.revision ?? activeRevision, number: result.number ?? activeTab.number,
+          ...(editorSnapshot ? { editorState: { ...editorSnapshot, dirty: false, sourceRevision: result.revision ?? activeRevision } } : {}) });
         toast({ title: "Valorização salva na conta" });
         await flow.refetch();
         return result;
       }}
       onForward={async () => {
+        if (!isCurrentOperation()) return;
         if (!activeId) throw new Error("Orçamento do balcão não selecionado.");
-        const receiptAttempt = autoReceipt.prepare('budget');
+        const receiptAttempt = receiptOpener.guardAttempt(autoReceipt.prepare('budget'));
         try {
         const result = await actions.forward.mutateAsync({
           preorderId: activeId,
           expectedRevision: activeRevision,
           requestId: requestId("forward-preorder"),
         });
-        void receiptAttempt.commit(`budget:${activeId}:${result.revision ?? activeRevision}`, (format, options) => openPdvPreorderReceipt(activeId, { ...options, format, company: receiptCompany, inventory, customerName: detail.data?.preorder.customer_id ? customerName.get(detail.data.preorder.customer_id) : null }), detail.data?.preorder.status === "encaminhado" || ("idempotent" in result && result.idempotent === true));
+        if (!isCurrentOperation() || !receiptOpener.isCurrent()) { receiptAttempt.cancel(); return result; }
+        if (activeTab) tabs.update(activeTab.id, { revision: result.revision ?? activeRevision,
+          ...(editorSnapshot ? { editorState: { ...editorSnapshot, dirty: false, sourceRevision: result.revision ?? activeRevision } } : {}) });
+        void receiptAttempt.commit(`budget:${activeId}:${result.revision ?? activeRevision}`, (format, options) => receiptOpener.open(activeId, { ...options, format, inventory, customerName: detail.data?.preorder.customer_id ? customerName.get(detail.data.preorder.customer_id) : null }), detail.data?.preorder.status === "encaminhado" || ("idempotent" in result && result.idempotent === true));
         toast({ title: "Orçamento enviado ao caixa", description: canCreate ? "Você já pode começar o próximo atendimento." : "Acompanhe o atendimento na lista." });
         await flow.refetch();
+        if (!isCurrentOperation()) return result;
         if (canCreate) startNew(); else closeDetail();
         return result;
-        } catch (error) { receiptAttempt.cancel(); throw error; }
+        } catch (error) { receiptAttempt.cancel(); if (receiptOpener.isCurrent()) throw error; return; }
       }}
       onCancel={async () => {
+        if (!isCurrentOperation()) return;
         if (!activeId) throw new Error("Orçamento do balcão não selecionado.");
         const result = await actions.cancel.mutateAsync({
           preorderId: activeId,
           expectedRevision: activeRevision,
           requestId: requestId("cancel-preorder"),
         });
+        if (!isCurrentOperation()) return;
         toast({ title: "Orçamento do balcão cancelado" });
         await flow.refetch();
         closeDetail();
         return result;
       }}
       onConvert={async () => {
+        if (!isCurrentOperation()) return;
         if (!activeId) throw new Error("Orçamento do balcão não selecionado.");
         const result = await actions.convert.mutateAsync({
           preorderId: activeId,
           expectedRevision: activeRevision,
           requestId: requestId("convert-preorder"),
         });
+        if (!isCurrentOperation()) return;
         toast({
           title: result.already_converted
             ? "Pedido já estava criado"
@@ -428,6 +561,7 @@ export default function PdvPreorders() {
             : undefined,
         });
         await flow.refetch();
+        if (!isCurrentOperation()) return result;
         if (result.order_id) navigate(hasScreenAccess('screen:pdv') ? `/pdv?fila=1&pedido=${encodeURIComponent(result.order_id)}` : `/pdv/pedidos?pedido=${encodeURIComponent(result.order_id)}`);
         return result;
       }}
@@ -484,7 +618,7 @@ export default function PdvPreorders() {
 
 
       {workspaceOpen ? (
-        selectedFlowOrderId ? (
+        !tabs.ready || catalog.isLoading || waitingForInitialStock ? <PdvPageSkeleton variant="sale" label="Carregando atendimento" /> : catalog.isError ? <EmptyState icon={<RefreshCw className="h-12 w-12 text-destructive" />} title="Não foi possível conferir o catálogo deste atendimento" description="Atualize os dados para continuar. As abas permanecem guardadas." action={{label:'Atualizar',onClick:()=>void catalog.refetch()}} /> : selectedFlowOrderId ? (
           completedOrderContent
         ) : selectedId && detail.isLoading ? (
           <PdvPageSkeleton variant="sale" label="Carregando orçamento" />
@@ -562,7 +696,7 @@ export default function PdvPreorders() {
             setSelectedId(id);
           }}
         >
-          {selectedId ? detail.isLoading ? <PdvPageSkeleton variant="detail" label="Carregando detalhes do orçamento" /> : detail.isError || !activeDetail ? <div className="space-y-3">{isMobile && <Button type="button" variant="cancel-ghost" onClick={closeDetail}><ArrowLeft className="h-4 w-4" />Voltar à lista</Button>}<EmptyState icon={<RefreshCw className="h-12 w-12 text-destructive" />} title="Não foi possível abrir o orçamento" description="Atualize a lista e tente novamente." action={{ label: 'Atualizar', onClick: () => void reloadDetail() }} /></div> : <PdvPreorderOverview detail={activeDetail} customerName={customerName.get(activeDetail.preorder.customer_id ?? '') ?? 'Sem cliente'} stockName={stocks.find(stock => stock.id === activeDetail.preorder.stock_id)?.name ?? 'Estoque não escolhido'} inventory={inventory} money={money} dateTime={dateTime} onBack={isMobile ? closeDetail : undefined} onEdit={() => setEditingDetail(true)} workspaceAction={preorderWorkspaceAction(activeDetail.preorder.status, canValue, canConvert)} /> : <EmptyState
+          {selectedId ? detail.isLoading ? <PdvPageSkeleton variant="detail" label="Carregando detalhes do orçamento" /> : detail.isError || !activeDetail ? <div className="space-y-3">{isMobile && <Button type="button" variant="cancel-ghost" onClick={closeDetail}><ArrowLeft className="h-4 w-4" />Voltar à lista</Button>}<EmptyState icon={<RefreshCw className="h-12 w-12 text-destructive" />} title="Não foi possível abrir o orçamento" description="Atualize a lista e tente novamente." action={{ label: 'Atualizar', onClick: () => void reloadDetail() }} /></div> : <PdvPreorderOverview detail={activeDetail} customerName={customerName.get(activeDetail.preorder.customer_id ?? '') ?? 'Sem cliente'} stockName={stocks.find(stock => stock.id === activeDetail.preorder.stock_id)?.name ?? 'Estoque não escolhido'} inventory={inventory} money={money} dateTime={dateTime} onBack={isMobile ? closeDetail : undefined} onEdit={() => openEditor(activeDetail.preorder.id)} workspaceAction={preorderWorkspaceAction(activeDetail.preorder.status, canValue, canConvert)} /> : <EmptyState
             icon={
               <ClipboardCheck className="h-12 w-12 text-muted-foreground" />
             }
@@ -571,6 +705,15 @@ export default function PdvPreorders() {
           />}
         </ListDetailLayout>
       )}
+
+      {workspaceOpen && tabs.error && <NoticeBanner variant="warning">{tabs.error}</NoticeBanner>}
+      <AlertDialog open={pendingCloseTabId !== null} onOpenChange={open => { if (!open) setPendingCloseTabId(null); }}>
+        <AlertDialogContent onOpenAutoFocus={event => { event.preventDefault(); closeTabConfirmRef.current?.focus(); }}>
+          <AlertDialogHeader><AlertDialogTitle>Fechar este orçamento?</AlertDialogTitle><AlertDialogDescription>As alterações ainda não salvas desta aba serão descartadas. O orçamento já salvo continua na lista.</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogFooter><AlertDialogCancel>Continuar atendimento</AlertDialogCancel><AlertDialogAction ref={closeTabConfirmRef} onClick={() => { if (pendingCloseTabId) closeWorkspaceTab(pendingCloseTabId); setPendingCloseTabId(null); }}>Fechar atendimento</AlertDialogAction></AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <p className="sr-only" role="status">{workspaceOpen ? tabs.error ? 'Backup local indisponível' : 'Abas deste atendimento guardadas neste dispositivo. Orçamentos salvos são confirmados na conta pelo servidor.' : ''}</p>
 
       <p className="sr-only">
         Última atualização da fila:{" "}

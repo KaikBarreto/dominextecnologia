@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { getCurrentUserCompanyId } from '@/hooks/useUserCompany';
 
 /**
@@ -151,11 +152,13 @@ export function useResponsibleTechnicians(options: UseResponsibleTechniciansOpti
    */
   const deactivateTechnician = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('responsible_technicians')
-        .update({ is_active: false } as any)
-        .eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('responsible_technicians')
+          .update({ is_active: false } as any, { count: 'exact' })
+          .eq('id', id),
+        'update',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['responsible-technicians'] });
@@ -175,11 +178,13 @@ export function useResponsibleTechnicians(options: UseResponsibleTechniciansOpti
    */
   const reactivateTechnician = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('responsible_technicians')
-        .update({ is_active: true } as any)
-        .eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('responsible_technicians')
+          .update({ is_active: true } as any, { count: 'exact' })
+          .eq('id', id),
+        'update',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['responsible-technicians'] });

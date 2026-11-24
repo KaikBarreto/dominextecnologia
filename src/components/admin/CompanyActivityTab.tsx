@@ -29,6 +29,7 @@ import {
   HoverCardTrigger,
 } from '@/components/ui/hover-card';
 import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAvatar';
+import { adminKpiClass } from '@/components/admin/adminKpiStyles';
 
 interface Props {
   companyId: string;
@@ -322,29 +323,29 @@ export function CompanyActivityTab({ companyId }: Props) {
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
+        <Card className={adminKpiClass('blue')}>
           <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Total de eventos</p>
+            <p className="text-sm text-white/75">Total de eventos</p>
             <p className="text-2xl font-bold">{totalEvents}</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className={adminKpiClass('emerald')}>
           <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Dias ativos</p>
+            <p className="text-sm text-white/75">Dias ativos</p>
             <p className="text-2xl font-bold">
               {activeDays} / {periodDays}
             </p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className={adminKpiClass('violet')}>
           <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Taxa de engajamento</p>
+            <p className="text-sm text-white/75">Taxa de engajamento</p>
             <p className="text-2xl font-bold">{engagementRate}%</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className={adminKpiClass('amber')}>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+            <CardTitle className="text-sm font-medium text-white/75 flex items-center gap-2">
               <Award className="h-4 w-4" />
               Pontuação
             </CardTitle>
@@ -352,16 +353,16 @@ export function CompanyActivityTab({ companyId }: Props) {
           <CardContent>
             <div className="flex items-baseline justify-between mb-2">
               <div className="flex items-baseline gap-1">
-                <span className={`text-3xl font-bold ${scoreCategory.text}`}>
+                <span className="text-3xl font-bold">
                   {activityScore}
                 </span>
-                <span className="text-sm text-muted-foreground">/ 100</span>
+                <span className="text-sm text-white/75">/ 100</span>
               </div>
               <Badge className={scoreCategory.badge}>
                 {scoreCategory.label}
               </Badge>
             </div>
-            <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+            <div className="h-2 w-full bg-white/25 rounded-full overflow-hidden">
               <div
                 className={`h-full ${scoreCategory.bg} transition-all`}
                 style={{ width: `${activityScore}%` }}

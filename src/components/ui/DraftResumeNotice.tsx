@@ -2,19 +2,22 @@ import { FileText, RotateCcw } from 'lucide-react';
 import { FullscreenWizardAction, FullscreenWizardNotice } from '@/components/ui/FullscreenWizard';
 
 /** Recuperação não bloqueante para fluxos fullscreen; os demais usam DraftResumeDialog. */
-export function DraftResumeNotice({ onResume, onDiscard, expiresAt, persistence, hasConflict }: {
+export function DraftResumeNotice({ onResume, onDiscard, expiresAt, persistence, hasConflict, contextChanged }: {
   onResume: () => void;
   onDiscard: () => void;
   expiresAt?: number | null;
   persistence?: 'account' | 'local';
   hasConflict?: boolean;
+  contextChanged?: boolean;
 }) {
   const expires = expiresAt && Number.isFinite(expiresAt)
     ? new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit' }).format(expiresAt)
     : null;
   return <FullscreenWizardNotice
-    title={hasConflict ? 'Rascunho alterado em outro dispositivo' : 'Rascunho encontrado'}
-    description={hasConflict
+    title={contextChanged ? 'Rascunho de outro contexto' : hasConflict ? 'Rascunho alterado em outro dispositivo' : 'Rascunho encontrado'}
+    description={contextChanged
+      ? 'Retomar aproveita o preenchimento, mas associa o novo orçamento à oportunidade aberta agora. Começar do zero descarta esse preenchimento.'
+      : hasConflict
       ? 'A versão da conta mudou. Retomar abre essa versão; começar do zero substitui o rascunho da conta.'
       : persistence === 'account'
       ? `Este rascunho é seu e pode ser retomado em outro dispositivo.${expires ? ` Disponível até ${expires}; cada edição renova o prazo de 30 dias.` : ''}`

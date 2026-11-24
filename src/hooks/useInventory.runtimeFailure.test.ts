@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderHook } from '@testing-library/react';
 
 const mocks = vi.hoisted(() => ({
   toast: vi.fn(),
@@ -8,33 +7,26 @@ const mocks = vi.hoisted(() => ({
   rpc: vi.fn(),
 }));
 
-vi.mock('@/hooks/use-toast', () => ({
-  useToast: () => ({ toast: mocks.toast }),
+vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: mocks.toast }) }));
+vi.mock('@/hooks/useStocks', () => ({
+  useStockManagement: () => ({ scope: [], ready: false, companyId: null }),
 }));
-
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: { from: mocks.from, rpc: mocks.rpc },
 }));
-
 vi.mock('@tanstack/react-query', () => ({
   useQueryClient: () => ({ invalidateQueries: mocks.invalidateQueries }),
   useQuery: () => ({ data: [], isLoading: false, isSuccess: true, error: null }),
-  useMutation: (options: unknown) => ({
-    __options: options,
-    isPending: false,
-    mutateAsync: vi.fn(),
-  }),
+  useMutation: (options: unknown) => ({ __options: options, isPending: false, mutateAsync: vi.fn() }),
 }));
 
 import { useInventory } from './useInventory';
 
-type MutationOptions = {
-  onError: (error: unknown) => Promise<void> | void;
-};
+type MutationOptions = { onError: (error: unknown) => Promise<void> | void };
 
-function updateMutationOptions(): MutationOptions {
-  const { result } = renderHook(() => useInventory());
-  return (result.current.updateItem as unknown as { __options: MutationOptions }).__options;
+function useUpdateMutationOptions(): MutationOptions {
+  const inventory = useInventory();
+  return (inventory.updateItem as unknown as { __options: MutationOptions }).__options;
 }
 
 describe('useInventory — falha ambígua ao atualizar material', () => {
@@ -45,7 +37,7 @@ describe('useInventory — falha ambígua ao atualizar material', () => {
 
   it('reconcilia apenas leituras e não repete update nem movimento no erro reset', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const options = updateMutationOptions();
+    const options = useUpdateMutationOptions();
 
     await options.onError(new TypeError("Cannot read properties of undefined (reading 'reset')"));
 
@@ -64,9 +56,8 @@ describe('useInventory — falha ambígua ao atualizar material', () => {
     consoleError.mockRestore();
   });
 
-  it('mantém o erro conhecido do Supabase no fluxo normal, sem reconciliação extra', async () => {
-    const options = updateMutationOptions();
-
+  it('mantém erro conhecido do Supabase no fluxo normal, sem reconciliação extra', async () => {
+    const options = useUpdateMutationOptions();
     await options.onError({ code: '23505', message: 'duplicate key value' });
 
     expect(mocks.invalidateQueries).not.toHaveBeenCalled();

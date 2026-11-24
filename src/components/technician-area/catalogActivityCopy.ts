@@ -1,0 +1,38 @@
+export const catalogActivityCopy = {
+  'pt-br': {
+    everyday: 'Para o dia a dia', everydayHelp: 'Modelos residenciais e comerciais simples primeiro.', recentShort: 'Recentes', recent: 'Vistos recentemente', favorites: 'Favoritos', all: 'Ver todos', less: 'Ver menos',
+    empty: 'Abra um equipamento ou toque na estrela para criar seus atalhos.',
+    noRecent: 'Os equipamentos que você abrir aparecerão aqui.', noFavorites: 'Toque na estrela de um equipamento para encontrá-lo aqui.',
+    local: 'Recentes ficam neste navegador.',
+    favoritesLoading: 'Carregando favoritos da conta…', favoritesSaving: 'Sincronizando favoritos…', favoritesSynced: 'Favoritos salvos na sua conta.', favoritesConnected: 'Conta conectada.', favoritesOffline: 'Sem conexão. A sincronização será retomada ao reconectar.', favoritesConflict: 'Os favoritos mudaram em outro aparelho. Confira a lista atualizada.', favoritesLocal: 'Favoritos disponíveis neste navegador.',
+    favoritesError: 'Não foi possível sincronizar os favoritos.', favoritesBackup: 'Alterações guardadas neste navegador.', favoritesMemory: 'Alterações pendentes nesta sessão. Sincronize antes de sair.', retry: 'Tentar novamente', importLocal: 'Levar favoritos à conta', importLocalHelp: 'Há favoritos deste navegador que ainda não estão na sua conta.',
+    chooseBrand: 'Escolher marca', searchBrand: 'Buscar marca...', noBrand: 'Nenhuma marca encontrada.', browseBrands: 'Explorar por marca', add: 'Adicionar aos favoritos', remove: 'Remover dos favoritos', open: 'Abrir equipamento', unavailable: 'Selecione uma empresa para salvar favoritos',
+  },
+  en: {
+    everyday: 'Everyday equipment', everydayHelp: 'Simple residential and commercial models first.', recentShort: 'Recent', recent: 'Recently viewed', favorites: 'Favorites', all: 'View all', less: 'Show less',
+    empty: 'Open equipment or tap its star to create shortcuts.',
+    noRecent: 'Equipment you open will appear here.', noFavorites: 'Tap the star on equipment to find it here.',
+    local: 'Recent items stay in this browser.',
+    favoritesLoading: 'Loading account favorites…', favoritesSaving: 'Syncing favorites…', favoritesSynced: 'Favorites saved to your account.', favoritesConnected: 'Account connected.', favoritesOffline: 'Offline. Sync will resume when you reconnect.', favoritesConflict: 'Favorites changed on another device. Check the updated list.', favoritesLocal: 'Favorites available in this browser.',
+    favoritesError: 'Unable to sync favorites.', favoritesBackup: 'Changes kept in this browser.', favoritesMemory: 'Changes pending in this session. Sync before leaving.', retry: 'Try again', importLocal: 'Bring favorites to account', importLocalHelp: 'Some favorites in this browser are not in your account yet.',
+    chooseBrand: 'Choose a brand', searchBrand: 'Search brands...', noBrand: 'No brands found.', browseBrands: 'Browse by brand', add: 'Add to favorites', remove: 'Remove from favorites', open: 'Open equipment', unavailable: 'Select a company to save favorites',
+  },
+  es: {
+    everyday: 'Para el día a día', everydayHelp: 'Primero los modelos residenciales y comerciales sencillos.', recentShort: 'Recientes', recent: 'Vistos recientemente', favorites: 'Favoritos', all: 'Ver todos', less: 'Ver menos',
+    empty: 'Abre un equipo o toca su estrella para crear accesos.',
+    noRecent: 'Los equipos que abras aparecerán aquí.', noFavorites: 'Toca la estrella de un equipo para encontrarlo aquí.',
+    local: 'Los recientes quedan en este navegador.',
+    favoritesLoading: 'Cargando favoritos de la cuenta…', favoritesSaving: 'Sincronizando favoritos…', favoritesSynced: 'Favoritos guardados en tu cuenta.', favoritesConnected: 'Cuenta conectada.', favoritesOffline: 'Sin conexión. La sincronización continuará al reconectarte.', favoritesConflict: 'Los favoritos cambiaron en otro dispositivo. Revisa la lista actualizada.', favoritesLocal: 'Favoritos disponibles en este navegador.',
+    favoritesError: 'No se pudieron sincronizar los favoritos.', favoritesBackup: 'Cambios guardados en este navegador.', favoritesMemory: 'Cambios pendientes en esta sesión. Sincroniza antes de salir.', retry: 'Intentar de nuevo', importLocal: 'Llevar favoritos a la cuenta', importLocalHelp: 'Hay favoritos de este navegador que aún no están en tu cuenta.',
+    chooseBrand: 'Elegir marca', searchBrand: 'Buscar marca...', noBrand: 'No se encontraron marcas.', browseBrands: 'Explorar por marca', add: 'Añadir a favoritos', remove: 'Quitar de favoritos', open: 'Abrir equipo', unavailable: 'Selecciona una empresa para guardar favoritos',
+  },
+  fr: {
+    everyday: 'Pour le quotidien', everydayHelp: 'Les modèles résidentiels et commerciaux simples en premier.', recentShort: 'Récents', recent: 'Consultés récemment', favorites: 'Favoris', all: 'Tout voir', less: 'Voir moins',
+    empty: 'Ouvrez un équipement ou touchez son étoile pour créer des raccourcis.',
+    noRecent: 'Les équipements consultés apparaîtront ici.', noFavorites: 'Touchez l’étoile d’un équipement pour le retrouver ici.',
+    local: 'Les éléments récents restent dans ce navigateur.',
+    favoritesLoading: 'Chargement des favoris du compte…', favoritesSaving: 'Synchronisation des favoris…', favoritesSynced: 'Favoris enregistrés dans votre compte.', favoritesConnected: 'Compte connecté.', favoritesOffline: 'Hors connexion. La synchronisation reprendra à la reconnexion.', favoritesConflict: 'Les favoris ont changé sur un autre appareil. Vérifiez la liste actualisée.', favoritesLocal: 'Favoris disponibles dans ce navigateur.',
+    favoritesError: 'Impossible de synchroniser les favoris.', favoritesBackup: 'Modifications conservées dans ce navigateur.', favoritesMemory: 'Modifications en attente dans cette session. Synchronisez avant de quitter.', retry: 'Réessayer', importLocal: 'Ajouter les favoris au compte', importLocalHelp: 'Certains favoris de ce navigateur ne sont pas encore dans votre compte.',
+    chooseBrand: 'Choisir une marque', searchBrand: 'Rechercher une marque...', noBrand: 'Aucune marque trouvée.', browseBrands: 'Parcourir par marque', add: 'Ajouter aux favoris', remove: 'Retirer des favoris', open: 'Ouvrir l’équipement', unavailable: 'Sélectionnez une entreprise pour enregistrer les favoris',
+  },
+};

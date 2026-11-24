@@ -14,7 +14,7 @@ import { companyHasSegment, normalizeCompanySegments } from "@/utils/companySegm
 import { ModuleGateModal, MODULE_INFO } from "@/components/ModuleGateModal";
 import { trackUsage } from "@/lib/trackUsage";
 import { podeAcessarDomiflixAdmin } from "@/lib/adminDomiflixAccess";
-import { getErrorMessage } from "@/utils/errorMessages";
+import { getSanitizedErrorDiagnostic } from "@/utils/errorMessages";
 import {
   autoHealStaleBundleIfNeeded,
   clearCachesAndReload,
@@ -39,7 +39,10 @@ class ErrorBoundary extends React.Component<
     return { hasError: true, error };
   }
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    console.error("ErrorBoundary caught:", error, info);
+    console.error("ErrorBoundary caught:", {
+      ...getSanitizedErrorDiagnostic(error),
+      componentStack: info.componentStack?.split("\n").slice(0, 8).join("\n"),
+    });
     // Erro de BUNDLE VELHO após deploy (ex: React.lazy lendo `.default` de
     // undefined → "Cannot read properties of undefined (reading 'default')").
     // Esse throw sobe pro render e escapa da rede de chunk-fetch. Se for esse
@@ -55,13 +58,18 @@ class ErrorBoundary extends React.Component<
       return (
         <div className="flex min-h-screen items-center justify-center bg-background p-6">
           <div className="text-center max-w-md space-y-4">
-            <h1 className="text-2xl font-bold">Algo deu errado</h1>
-            <p className="text-muted-foreground text-sm">{getErrorMessage(this.state.error)}</p>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
+              Vamos retomar daqui
+            </p>
+            <h1 className="text-2xl font-bold">O aplicativo só precisa ser atualizado</h1>
+            <p className="text-muted-foreground text-sm">
+              Seus dados continuam protegidos. Atualize para continuar de onde parou.
+            </p>
             <button
               onClick={() => { void clearCachesAndReload(); }}
               className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm"
             >
-              Recarregar página
+              Atualizar e continuar
             </button>
           </div>
         </div>
@@ -168,6 +176,7 @@ const PdvDispatch = React.lazy(() => import("./pages/PdvDispatch"));
 const PdvCashHistory = React.lazy(() => import("./pages/PdvCashHistory"));
 const PdvReports = React.lazy(() => import("./pages/PdvReports"));
 const PdvSettings = React.lazy(() => import("./pages/PdvSettings"));
+const PdvCoupons = React.lazy(() => import("./pages/PdvCoupons"));
 // Laboratório visual isolado do PDV. A rota só existe no dev server e o
 // conteúdo usa fixtures locais: não consulta dados reais nem passa pelos gates.
 const PdvUiReview = import.meta.env.DEV
@@ -238,7 +247,6 @@ const AdminBlogEditor = React.lazy(() => import("./pages/admin/AdminBlogEditor")
 const AdminFinancial = React.lazy(() => import("./pages/admin/AdminFinancial"));
 const AdminCRM = React.lazy(() => import("./pages/admin/AdminCRM"));
 const AdminSettings = React.lazy(() => import("./pages/admin/AdminSettings"));
-const AdminSalespeople = React.lazy(() => import("./pages/admin/AdminSalespeople"));
 const AdminSalespersonDetail = React.lazy(() => import("./pages/admin/AdminSalespersonDetail"));
 const AdminAffiliates = React.lazy(() => import("./pages/admin/AdminAffiliates"));
 const AdminAffiliateDetail = React.lazy(() => import("./pages/admin/AdminAffiliateDetail"));
@@ -272,7 +280,7 @@ const LoadingSpinner = () => <PageLoading />;
 // Determine the default authenticated route based on permissions
 function useDefaultRoute() {
   const { hasScreenAccess, isAdminUser, hasAdminScreenAccess, roles, linkedAffiliateId } = useAuth();
-  const { hasScreen } = useCompanyModules();
+  const { hasScreen, businessCore } = useCompanyModules();
 
   // Afiliado externo: roteado ANTES de qualquer checagem de tenant (espelha o
   // `landingRoute.ts` do EcoSistema). Ele não é admin, não tem company_id e
@@ -310,6 +318,7 @@ function useDefaultRoute() {
   // lista por ser o destino histórico do técnico, mas é só uma preferência de
   // ordem; se ela estiver negada, cai pra próxima tela permitida.
   const appCandidates: Array<[string, string]> = [
+    ...(businessCore==='retail' ? [['screen:pdv','/pdv'],['screen:pdv_orders','/pdv/pedidos']] as Array<[string,string]> : []),
     ['screen:schedule', '/agenda'],
     ['screen:service_orders', '/ordens-servico'],
     ['screen:customers', '/clientes'],
@@ -899,6 +908,8 @@ const AppRoutes = () => (
       {localizedAppRoutes('pdvDispatch', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv_dispatch"><PdvDispatchModeRoute><PdvDispatch /></PdvDispatchModeRoute></PermissionRoute></ModuleRoute>)}
       {localizedAppRoutes('pdvCashHistory', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv_cash_history"><PdvCashHistory /></PermissionRoute></ModuleRoute>)}
       {localizedAppRoutes('pdvReports', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv_reports"><PdvReports /></PermissionRoute></ModuleRoute>)}
+      {localizedAppRoutes('pdvCoupons', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv_settings"><PdvCoupons /></PermissionRoute></ModuleRoute>)}
+      {localizedAppRoutes('pdvStock', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:inventory"><Inventory context="store" /></PermissionRoute></ModuleRoute>)}
       {localizedAppRoutes('pdvSettings', <ModuleRoute moduleKey="pdv"><PermissionRoute screenKey="screen:pdv_settings"><PdvSettings /></PermissionRoute></ModuleRoute>)}
       {/* "Financeiro" é um grupo de telas orientadas por tarefa; cada rota tem
           no máximo uma alternância local entre conteúdos irmãos. */}
@@ -917,9 +928,19 @@ const AppRoutes = () => (
       <Route path="/financeiro/categorias" element={<Navigate to="/financeiro/configuracoes-financeiras?tab=categorias" replace />} />
       <Route path="/financeiro/configuracoes" element={<Navigate to="/financeiro/configuracoes-financeiras" replace />} />
       <Route path="/financeiro/centro-de-custo" element={<Navigate to="/financeiro/configuracoes-financeiras?tab=centro-de-custo" replace />} />
-      {/* Notas Fiscais (NFS-e) — gateada pelo módulo pago `nfe`. */}
+      {/* Fiscal: áreas próprias, gateadas pelo mesmo módulo e permissão. */}
+      {localizedTemplatesFor('fiscalNotes').map((tpl) => (
+        <Route key={`fiscal-redirect:${tpl}`} path={tpl} element={<Navigate to="/notas-fiscais/nfe" replace />} />
+      ))}
+      {localizedAppRoutes('fiscalNfe', <PermissionRoute screenKey="screen:fiscal_notes"><ModuleRoute moduleKey="nfe"><NotasFiscais /></ModuleRoute></PermissionRoute>)}
+      {localizedAppRoutes('fiscalNfce', <PermissionRoute screenKey="screen:fiscal_notes"><ModuleRoute moduleKey="nfe"><NotasFiscais /></ModuleRoute></PermissionRoute>)}
+      {localizedAppRoutes('fiscalNfse', <PermissionRoute screenKey="screen:fiscal_notes"><ModuleRoute moduleKey="nfe"><NotasFiscais /></ModuleRoute></PermissionRoute>)}
+      {localizedAppRoutes('fiscalInventory', <PermissionRoute screenKey="screen:fiscal_notes"><ModuleRoute moduleKey="nfe"><NotasFiscais /></ModuleRoute></PermissionRoute>)}
+      {localizedTemplatesFor('fiscalReports').map((tpl) => (
+        <Route key={`fiscal-reports-redirect:${tpl}`} path={tpl} element={<Navigate to="/notas-fiscais/estoque-fiscal" replace />} />
+      ))}
+      {localizedAppRoutes('fiscalScenarios', <PermissionRoute screenKey="screen:fiscal_notes"><ModuleRoute moduleKey="nfe"><FiscalSettings /></ModuleRoute></PermissionRoute>)}
       {localizedAppRoutes('fiscalSettings', <PermissionRoute screenKey="screen:fiscal_notes"><ModuleRoute moduleKey="nfe"><FiscalSettings /></ModuleRoute></PermissionRoute>)}
-      {localizedAppRoutes('fiscalNotes', <PermissionRoute screenKey="screen:fiscal_notes"><ModuleRoute moduleKey="nfe"><NotasFiscais /></ModuleRoute></PermissionRoute>)}
       {localizedAppRoutes('pmoc', <PMOC />)}
       {localizedAppRoutes('contracts', <PermissionRoute screenKey="screen:contracts"><ModuleRoute moduleKey="contracts"><Contracts /></ModuleRoute></PermissionRoute>)}
       {localizedAppRoutes('contractDetail', <PermissionRoute screenKey="screen:contracts"><ModuleRoute moduleKey="contracts"><ContractDetail /></ModuleRoute></PermissionRoute>)}
@@ -928,7 +949,11 @@ const AppRoutes = () => (
       {/* Rota antiga: redireciona direto pra aba RT da nova tela (mantém bookmarks/links). */}
       <Route path="/responsaveis-tecnicos" element={<Navigate to="/configuracoes-contrato?tab=rt" replace />} />
       <Route path="/usuarios" element={<Navigate to="/configuracoes?tab=usuarios" replace />} />
-      {localizedAppRoutes('settings', <SettingsDomiLinkRoute><PermissionRoute screenKey="screen:settings"><Settings /></PermissionRoute></SettingsDomiLinkRoute>)}
+      {/* Preferências pessoais de notificações vivem em Configurações, mas não
+          podem exigir acesso administrativo à tela inteira. O próprio Settings
+          mostra somente a aba pessoal quando `screen:settings` não foi liberada;
+          regras da empresa seguem gate visual + RLS por `fn:manage_settings`. */}
+      {localizedAppRoutes('settings', <SettingsDomiLinkRoute><Settings /></SettingsDomiLinkRoute>)}
       {localizedAppRoutes('profile', <Profile />)}
       <Route path="/equipes" element={<Navigate to="/funcionarios" replace />} />
       {localizedAppRoutes('employees', <PermissionRoute screenKey="screen:employees"><ModuleRoute moduleKey="rh"><Employees /></ModuleRoute></PermissionRoute>)}
@@ -964,7 +989,7 @@ const AppRoutes = () => (
       <Route path="/admin/health-score" element={<AdminScreenRoute screenKey="admin_health_score"><AdminHealthScore /></AdminScreenRoute>} />
       <Route path="/admin/financeiro" element={<AdminScreenRoute screenKey="admin_financeiro"><AdminFinancial /></AdminScreenRoute>} />
       <Route path="/admin/crm" element={<AdminScreenRoute screenKey="admin_crm"><AdminCRM /></AdminScreenRoute>} />
-      <Route path="/admin/vendedores" element={<AdminScreenRoute screenKey="admin_vendedores"><AdminSalespeople /></AdminScreenRoute>} />
+      <Route path="/admin/vendedores" element={<AdminScreenRoute screenKey="admin_vendedores"><AdminSalespersonDetail /></AdminScreenRoute>} />
       <Route path="/admin/vendedores/:id" element={<AdminScreenRoute screenKey="admin_vendedores"><AdminSalespersonDetail /></AdminScreenRoute>} />
       {/* Programa de Afiliados. Única tela do painel que também abre pra um
           usuário NÃO-admin: o afiliado vinculado (ver AdminScreenRoute). */}

@@ -8,6 +8,8 @@ import {
   isInternalRuntimeError,
   isResetRuntimeError,
 } from '@/utils/errorMessages';
+import { useStockManagement } from '@/hooks/useStocks';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 export type InventoryItem = Tables<'inventory'>;
 export type InventoryItemInsert = TablesInsert<'inventory'>;
@@ -62,30 +64,35 @@ export async function invalidateInventoryCatalogCaches(
 }
 
 /**
- * Depois de uma falha ambigua, consulta novamente somente as fontes de leitura.
- * Nao repete update nem RPC de movimento: o servidor pode ja ter confirmado
- * uma das etapas e um retry cego duplicaria o Kardex.
+ * Depois de uma falha ambígua, consulta novamente somente as fontes de leitura.
+ * Não repete update nem RPC de movimento: uma etapa pode já ter sido gravada e
+ * uma nova tentativa automática duplicaria o Kardex.
  */
 export async function reconcileInventoryReads(
   queryClient: Pick<ReturnType<typeof useQueryClient>, 'invalidateQueries'>,
 ): Promise<void> {
   await Promise.allSettled(
-    INVENTORY_READ_QUERY_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey: [...queryKey] })),
+    INVENTORY_READ_QUERY_KEYS.map((queryKey) =>
+      queryClient.invalidateQueries({ queryKey: [...queryKey] }),
+    ),
   );
 }
 
 export function useInventory() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { scope, ready, companyId } = useStockManagement();
 
-  const { data: items = [], isLoading, error } = useQuery({
-    queryKey: ['inventory'],
+  const { data: inventoryData = [], isLoading, error } = useQuery({
+    queryKey: ['inventory', ...scope],
+    enabled: ready,
     queryFn: async () => {
       const result: InventoryItem[] = [];
       for (let offset = 0; ; offset += INVENTORY_PAGE_SIZE) {
         const { data, error } = await supabase
           .from('inventory')
           .select('*')
+          .eq('company_id', companyId!)
           // Materiais alocados a clientes têm catálogo e saldo próprios. Eles só
           // aparecem na ficha/OS daquele cliente, nunca no estoque da prestadora.
           .is('customer_id', null)
@@ -99,6 +106,7 @@ export function useInventory() {
       }
     },
   });
+  const items = ready ? inventoryData : [];
 
   // Saldos por estoque — fonte de verdade do novo modelo multi-depósito.
   // Consultado separado pra não poluir a query principal e ser invalidado
@@ -110,14 +118,16 @@ export function useInventory() {
   // de presença (InventoryFormDialog, StockConfiguratorDialog) usam esse sinal
   // pra nunca hidratar um checkbox em cima do default permissivo de
   // `getPresenceForStock` antes dos levels reais chegarem.
-  const { data: stockLevels = [], isSuccess: stockLevelsLoaded } = useQuery({
-    queryKey: ['inventory-stock-levels'],
+  const { data: levelData = [], isSuccess: levelsLoaded, error: stockLevelsError } = useQuery({
+    queryKey: ['inventory-stock-levels', ...scope],
+    enabled: ready,
     queryFn: async () => {
       const result: InventoryStockLevel[] = [];
       for (let offset = 0; ; offset += INVENTORY_PAGE_SIZE) {
         const { data, error } = await supabase
           .from('inventory_stock_levels')
           .select('*')
+          .eq('company_id', companyId!)
           .order('id')
           .range(offset, offset + INVENTORY_PAGE_SIZE - 1);
         if (error) throw error;
@@ -127,6 +137,8 @@ export function useInventory() {
       }
     },
   });
+  const stockLevels = ready ? levelData : [];
+  const stockLevelsLoaded = ready && levelsLoaded;
 
   /**
    * Retorna a quantidade de um material em um estoque específico.
@@ -206,6 +218,7 @@ export function useInventory() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory-stock-levels'] });
+      queryClient.invalidateQueries({ queryKey: ['accessible-inventory-ids'] });
     },
     onError: (error) => {
       toast({ title: 'Erro ao atualizar mínimo', description: getErrorMessage(error), variant: 'destructive' });
@@ -285,6 +298,7 @@ export function useInventory() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory-stock-levels'] });
+      queryClient.invalidateQueries({ queryKey: ['accessible-inventory-ids'] });
     },
     // Não mostra toast aqui — a UI deve tratar presence_has_balance especificamente
     onError: (error: Error) => {
@@ -377,11 +391,13 @@ export function useInventory() {
 
       // 1) Campos não-quantidade vão no update direto (se houver algum).
       if (Object.keys(nonQuantity).length > 0) {
-        const { error } = await supabase
-          .from('inventory')
-          .update(nonQuantity)
-          .eq('id', id);
-        if (error) throw error;
+        assertRowsAffected(
+          await supabase
+            .from('inventory')
+            .update(nonQuantity, { count: 'exact' })
+            .eq('id', id),
+          'update',
+        );
       }
 
       // 2) Se a quantidade mudou, registra um movimento de ajuste (delta
@@ -411,8 +427,6 @@ export function useInventory() {
     onError: async (error) => {
       const failureKind = classifyInventoryUpdateFailure(error);
       if (failureKind !== 'supabase') {
-        // Registra apenas campos controlados: nunca serializa response, payload
-        // do material, credenciais ou o objeto de erro inteiro.
         console.error('[Estoque] Falha de runtime ao atualizar material', {
           kind: failureKind,
           diagnostic: getSanitizedErrorDiagnostic(error),
@@ -489,6 +503,7 @@ export function useInventory() {
     items,
     stockLevels,
     stockLevelsLoaded,
+    stockLevelsError,
     isLoading,
     error,
     createItem,

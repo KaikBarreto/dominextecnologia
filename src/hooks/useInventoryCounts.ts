@@ -6,6 +6,7 @@ import type { Tables, Database } from '@/integrations/supabase/types';
 import { getCurrentUserCompanyId } from '@/hooks/useUserCompany';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 export type InventoryCount = Tables<'inventory_counts'>;
 export type InventoryCountItem = Tables<'inventory_count_items'>;
@@ -182,11 +183,14 @@ export function useInventoryCounts() {
       itemId: string;
       countedQty: number | null;
     }) => {
-      const { error } = await supabase
-        .from('inventory_count_items')
-        .update({ counted_qty: countedQty })
-        .eq('id', itemId);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('inventory_count_items')
+          .update({ counted_qty: countedQty }, { count: 'exact' })
+          .eq('id', itemId),
+        'update',
+        'Não foi possível salvar a contagem: você não tem permissão para esta ação ou o item já não existe. Atualize a tela e tente de novo.',
+      );
     },
     onError: (err) => {
       toast({
@@ -240,15 +244,18 @@ export function useInventoryCounts() {
   const cancelCount = useMutation({
     mutationFn: async (countId: string) => {
       const companyId = await getCurrentUserCompanyId();
-      const { error } = await supabase
-        .from('inventory_counts')
-        .update({ status: 'cancelado' })
-        .eq('id', countId)
-        // Nunca cancela inventário já finalizado (evita reverter ajustes confirmados)
-        .eq('status', 'aberto')
-        // Guard client redundante ao RLS — padrão do projeto
-        .eq('company_id', companyId);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('inventory_counts')
+          .update({ status: 'cancelado' }, { count: 'exact' })
+          .eq('id', countId)
+          // Nunca cancela inventário já finalizado (evita reverter ajustes confirmados)
+          .eq('status', 'aberto')
+          // Guard client redundante ao RLS — padrão do projeto
+          .eq('company_id', companyId),
+        'update',
+        'Não foi possível cancelar o inventário: você não tem permissão ou ele já foi finalizado ou cancelado. Atualize a tela e confira.',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory-counts'] });

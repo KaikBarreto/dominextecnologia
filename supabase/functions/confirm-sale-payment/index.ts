@@ -36,6 +36,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCors } from "../_shared/cors.ts";
 import { asaas, AsaasApiError } from "../_shared/asaas-client.ts";
 import { applyWrite, tryWrite, WriteWarnings } from "../_shared/db-write.ts";
+import { syncCompanySubscriptionPrice } from "../_shared/company-subscription-price-sync.ts";
 import {
   renewalExpirationAnchor,
   resolveEffectiveBillingCycle,
@@ -457,6 +458,38 @@ Deno.serve(async (req) => {
           },
         },
       );
+    }
+
+    // O polling pode vencer a corrida contra o webhook. Consome pelo mesmo
+    // payment_key idempotente e sincroniza a próxima cobrança; se o trigger do
+    // histórico já consumiu, a RPC devolve consumed=0 e nada é duplicado.
+    const { error: promotionConsumptionError } = await supabase.rpc(
+      "consume_company_subscription_promotions",
+      { p_company_id: company_id, p_payment_key: `asaas:${payment_id}` },
+    );
+    if (promotionConsumptionError) {
+      warnings.add("condição promocional: não foi possível avançar o ciclo confirmado.");
+    } else {
+      const { data: pendingPromotionSync, error: pendingPromotionSyncError } = await supabase
+        .from("company_subscription_price_sync")
+        .select("status")
+        .eq("company_id", company_id)
+        .in("status", ["pending", "failed"])
+        .maybeSingle();
+      if (pendingPromotionSyncError) {
+        warnings.add("mensalidade promocional: não foi possível conferir a sincronização.");
+      }
+      if (pendingPromotionSync) {
+      try {
+        const promotionSync = await syncCompanySubscriptionPrice(supabase, company_id, true);
+        if (!promotionSync.ok) {
+          warnings.add(promotionSync.warning || "mensalidade promocional: sincronização pendente.");
+        }
+      } catch (promotionSyncError) {
+        console.error(`[confirm-sale] promoção sem sync (${company_id}):`, promotionSyncError);
+        warnings.add("mensalidade promocional: sincronização pendente.");
+      }
+      }
     }
 
     // ===== 9) admin_financial_transactions (receita) =====

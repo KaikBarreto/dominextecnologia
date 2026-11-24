@@ -23,6 +23,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
+import { adminKpiClass, type AdminKpiTone } from "@/components/admin/adminKpiStyles";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -409,34 +410,29 @@ function PeakCard({
   label,
   value,
   when,
-  solid,
+  tone,
 }: {
   icon: typeof Cpu;
   label: string;
   value: string;
   when: string;
-  solid: string;
+  tone: AdminKpiTone;
 }) {
   return (
-    <Card className="border shadow-none bg-card overflow-hidden">
+    <Card className={adminKpiClass(tone, "shadow-none overflow-hidden")}>
       <CardContent className="p-4 space-y-2">
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <span
-            className={cn(
-              "flex h-7 w-7 items-center justify-center rounded-full text-white shrink-0",
-              solid,
-            )}
-          >
+        <div className="flex items-center gap-2 text-white/80">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-black/20 text-white shrink-0">
             <Icon className="h-4 w-4" />
           </span>
           <span className="text-xs font-medium uppercase tracking-wide truncate">
             {label}
           </span>
         </div>
-        <div className="text-2xl font-bold tabular-nums text-foreground">
+        <div className="text-2xl font-bold tabular-nums">
           {value}
         </div>
-        <p className="text-xs text-muted-foreground">{when}</p>
+        <p className="text-xs text-white/75">{when}</p>
       </CardContent>
     </Card>
   );
@@ -586,14 +582,14 @@ export default function AdminMonitoramentoHistory() {
                   label="CPU máxima"
                   value={fmtPct(peaks.peak_cpu_pct?.value)}
                   when={fmtFull(peaks.peak_cpu_pct?.captured_at)}
-                  solid="bg-rose-500"
+                  tone="rose"
                 />
                 <PeakCard
                   icon={MemoryStick}
                   label="RAM máxima"
                   value={fmtPct(peaks.peak_mem_pct?.value)}
                   when={fmtFull(peaks.peak_mem_pct?.captured_at)}
-                  solid="bg-violet-500"
+                  tone="violet"
                 />
                 <PeakCard
                   icon={Plug}
@@ -604,14 +600,14 @@ export default function AdminMonitoramentoHistory() {
                       : "—"
                   }
                   when={fmtFull(peaks.peak_conn_used?.captured_at)}
-                  solid="bg-blue-500"
+                  tone="blue"
                 />
                 <PeakCard
                   icon={Timer}
                   label="Queries lentas máx"
                   value={fmtInt(peaks.peak_slow_queries?.value)}
                   when={fmtFull(peaks.peak_slow_queries?.captured_at)}
-                  solid="bg-amber-500"
+                  tone="amber"
                 />
               </div>
             </div>

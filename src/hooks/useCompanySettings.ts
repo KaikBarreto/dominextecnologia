@@ -7,6 +7,7 @@ import type { LocaleCode } from '@/lib/i18n/locales';
 import { PDV_RECEIPT_COMPANY_QUERY_ROOT } from '@/lib/pdv/receipt/cacheKeys';
 
 export interface CompanySettings {
+  pdv_default_stock_id?: string | null;
   id: string;
   company_id?: string | null;
   /** Modo operacional do PDV; ausente/desconhecido falha fechado nos menus avançados. */
@@ -87,6 +88,10 @@ export interface CompanySettings {
   // aparelho, por isso mora aqui e não em localStorage. Default false no
   // banco. Ver Settings.tsx (aba Usabilidade → Ordens de Serviço).
   os_stock_consumption_enabled?: boolean;
+  // Politica de agenda da empresa. Quando ligada, qualquer usuario que ja
+  // possa criar/editar a OS pode confirmar uma sobreposicao com justificativa
+  // auditada. A API Publica continua sem override. Default false no banco.
+  allow_schedule_conflicts?: boolean;
   // Receita ao finalizar a OS: ao concluir uma Ordem de Serviço, o sistema
   // pergunta se houve receita e já abre o lançamento vinculado àquela OS.
   // Também é decisão de tenant (não preferência de aparelho). A pergunta só
@@ -95,13 +100,13 @@ export interface CompanySettings {
   // (aba Usabilidade → card "Orçamento, OS e financeiro").
   os_finish_revenue_prompt_enabled?: boolean;
   // Aprovação de orçamento → financeiro. `quote_approval_revenue_mode` só
-  // escolhe a opção PRE-MARCADA no modal interno ('recebido' = entra paga,
-  // comportamento antigo; 'a_receber' = entra pendente, com vencimento) — o
-  // operador troca em 1 clique. `quote_public_approval_creates_receivable`
+  // escolhe a opção PRE-MARCADA no modal interno ('apenas_aprovar' = não cria
+  // financeiro; 'recebido' = entra paga; 'a_receber' = entra pendente) — o
+  // operador pode trocar por orçamento. `quote_public_approval_creates_receivable`
   // liga a geração automática do a receber quando quem aprova é o CLIENTE
   // FINAL pelo link público da proposta; default false preserva o
   // comportamento de hoje (aprovar pelo link só muda o status).
-  quote_approval_revenue_mode?: 'recebido' | 'a_receber' | null;
+  quote_approval_revenue_mode?: 'apenas_aprovar' | 'recebido' | 'a_receber' | null;
   quote_public_approval_creates_receivable?: boolean | null;
   created_at: string;
   updated_at: string;

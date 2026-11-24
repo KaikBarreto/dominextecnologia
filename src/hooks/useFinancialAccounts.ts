@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
 import { useBankPermissions } from '@/hooks/useBankPermissions';
 import { usePdvAuthorizedQueryScope } from '@/hooks/pdvReportCache';
@@ -224,11 +225,14 @@ export function useFinancialAccounts() {
   const deleteAccount = useMutation({
     mutationFn: async (id: string) => {
       if (!canManageBankAccounts) throw new Error('Sem permissão para gerenciar contas bancárias.');
-      const { error } = await supabase
-        .from('financial_accounts')
-        .delete()
-        .eq('id', id);
-      if (error) throw error;
+      // RLS barrando o delete não dá erro, só apaga zero linhas: conferir.
+      assertRowsAffected(
+        await supabase
+          .from('financial_accounts')
+          .delete({ count: 'exact' })
+          .eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => { invalidateAll(); toast({ title: 'Conta excluída!' }); },
     onError: (e: Error) => { toast({ variant: 'destructive', title: 'Erro ao excluir conta', description: getErrorMessage(e) }); },

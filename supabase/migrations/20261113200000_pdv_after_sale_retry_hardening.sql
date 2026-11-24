@@ -3,8 +3,6 @@
 -- originais permanecem intactas, mas ficam internas atrás de wrappers que
 -- devolvem primeiro o resultado já concluído para a mesma chave e payload.
 
-BEGIN;
-
 ALTER FUNCTION public.pdv_request_return_refund_v2(uuid,uuid,numeric,text,uuid,uuid,text)
   RENAME TO pdv_request_return_refund_v2_before_retry_fix;
 ALTER FUNCTION public.pdv_reverse_return_refund_v2(uuid,text,text)
@@ -146,5 +144,4 @@ GRANT EXECUTE ON FUNCTION
   public.pdv_reverse_return_refund_v2(uuid,text,text),
   public.pdv_reverse_return_voucher_v2(uuid,text,text)
   TO authenticated,service_role;
-
-COMMIT;
+;

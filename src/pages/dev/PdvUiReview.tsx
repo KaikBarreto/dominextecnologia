@@ -85,7 +85,9 @@ import {
   incrementLineQuantity,
   removeItem,
   setCartCustomer,
+  setCartFinalAmount,
   setDiscount,
+  setLineFinalAmount,
   setLineDiscount as setCartLineDiscount,
   setLineQuantity,
   type CartState,
@@ -668,6 +670,10 @@ function usePreviewCart() {
       setCart((current) => setLineQuantity(current, id, quantity)),
     setCartLineDiscount: (id: string, amount: number) =>
       setCart((current) => setCartLineDiscount(current, id, amount)),
+    setLineFinalAmount: (id: string, amount: number, mode: 'price' | 'discount') =>
+      setCart((current) => setLineFinalAmount(current, id, amount, mode)),
+    setCartFinalAmount: (amount: number, mode: 'price' | 'discount') =>
+      setCart((current) => setCartFinalAmount(current, amount, mode)),
     remove: (id: string) => {
       setCart((current) => removeItem(current, id));
       setLineDiscounts((current) => {
@@ -898,8 +904,8 @@ function CurrentSale() {
     currencyFractionDigits: 2,
     onSetDiscountAmount: cartState.setDiscountAmount,
     onSetLineDiscount: cartState.setCartLineDiscount,
-    onSetLineFinalAmount: () => undefined,
-    onSetCartFinalAmount: () => undefined,
+    onSetLineFinalAmount: cartState.setLineFinalAmount,
+    onSetCartFinalAmount: cartState.setCartFinalAmount,
     onCustomerChange: cartState.setCustomer,
     onRequestPayment: () => undefined,
     cashClosed: false,

@@ -98,8 +98,8 @@ export const customers = {
       phone: 'Telefone',
       celular: 'Celular',
       whatsappOptInTitle: 'Receber mensagens pelo WhatsApp',
-      whatsappOptInDescription: 'Permite avisos de ordens de serviço, cobranças e vencimentos. Pedidos de cancelamento do cliente sempre prevalecem.',
-      whatsappOptInPhoneHint: 'Informe um celular válido para liberar esta opção.',
+      whatsappOptInDescription: 'Ativa as mensagens automáticas deste cliente. Os destinatários de OS e financeiro são escolhidos na ficha do cliente.',
+      whatsappOptInPhoneHint: 'Os destinatários podem ser configurados na ficha do cliente.',
       email: 'Email',
       emailPlaceholder: 'email@exemplo.com',
       birthDate: 'Data de Nascimento',
@@ -226,7 +226,7 @@ export const customers = {
       openWaze: 'Abrir no Waze',
 
       // Aba Geral — seção Responsável no Local
-      sectionContacts: 'Responsável no Local (falar com)',
+      sectionContacts: 'Contatos e destinatários',
       addContact: 'Adicionar',
       editContact: 'Editar contato',
       deleteContact: 'Excluir contato',
@@ -379,6 +379,8 @@ export const customers = {
       save: 'Salvar',
       add: 'Adicionar',
       cancel: 'Cancelar',
+      saveProblemTitle: 'Seus dados continuam aqui',
+      saveProblemDescription: 'Não foi possível salvar agora. Confira sua conexão e tente novamente.',
     },
 
     // ── Portal do Cliente (CustomerPortal.tsx) ──
@@ -438,7 +440,8 @@ export const customers = {
       ticketEquipmentPlaceholder: 'Selecione...',
       ticketSubmit: 'Enviar Chamado',
       ticketDescMinLength: 'Descreva o problema com pelo menos 10 caracteres.',
-      ticketSuccess: 'Chamado aberto com sucesso!',
+      ticketSuccess: 'Solicitação enviada para análise',
+      ticketSuccessDescription: 'Protocolo #{protocol}. A empresa responsável analisará o chamado antes de criar e agendar uma ordem de serviço.',
       ticketErrorTitle: 'Erro ao abrir chamado',
       ticketErrorUnavailable: 'Este portal não está aceitando chamados agora. Fale com a empresa responsável pela manutenção.',
       // Status de OS
@@ -872,8 +875,8 @@ export const customers = {
       phone: 'Landline',
       celular: 'Mobile',
       whatsappOptInTitle: 'Receive WhatsApp messages',
-      whatsappOptInDescription: 'Allows work order, charge and due-date notifications. Customer opt-out requests always take precedence.',
-      whatsappOptInPhoneHint: 'Enter a valid mobile number to enable this option.',
+      whatsappOptInDescription: 'Enables automatic messages for this customer. Work order and financial recipients are chosen in the customer record.',
+      whatsappOptInPhoneHint: 'Recipients can be configured in the customer record.',
       email: 'Email',
       emailPlaceholder: 'email@example.com',
       birthDate: 'Date of Birth',
@@ -991,7 +994,7 @@ export const customers = {
       openGoogleMaps: 'Open in Google Maps',
       openWaze: 'Open in Waze',
 
-      sectionContacts: 'On-site Contact (speak with)',
+      sectionContacts: 'Contacts and recipients',
       addContact: 'Add',
       editContact: 'Edit contact',
       deleteContact: 'Delete contact',
@@ -1129,6 +1132,8 @@ export const customers = {
       save: 'Save',
       add: 'Add',
       cancel: 'Cancel',
+      saveProblemTitle: 'Your details are still here',
+      saveProblemDescription: 'We could not save right now. Check your connection and try again.',
     },
 
     portal: {
@@ -1177,6 +1182,7 @@ export const customers = {
       ticketSubmit: 'Submit Ticket',
       ticketDescMinLength: 'Please describe the issue with at least 10 characters.',
       ticketSuccess: 'Ticket opened successfully!',
+      ticketSuccessDescription: 'Protocol #{protocol}. The responsible company will review the request before creating and scheduling a work order.',
       ticketErrorTitle: 'Error opening ticket',
       ticketErrorUnavailable: 'This portal is not accepting tickets right now. Please contact the company in charge of maintenance.',
       statusPendente: 'Pending',
@@ -1603,8 +1609,8 @@ export const customers = {
       phone: 'Teléfono fijo',
       celular: 'Celular',
       whatsappOptInTitle: 'Recibir mensajes por WhatsApp',
-      whatsappOptInDescription: 'Permite avisos de órdenes de trabajo, cobros y vencimientos. Las solicitudes de baja del cliente siempre prevalecen.',
-      whatsappOptInPhoneHint: 'Informa un celular válido para habilitar esta opción.',
+      whatsappOptInDescription: 'Activa los mensajes automáticos de este cliente. Los destinatarios de órdenes y financiero se eligen en su ficha.',
+      whatsappOptInPhoneHint: 'Los destinatarios se pueden configurar en la ficha del cliente.',
       email: 'Correo',
       emailPlaceholder: 'correo@ejemplo.com',
       birthDate: 'Fecha de Nacimiento',
@@ -1722,7 +1728,7 @@ export const customers = {
       openGoogleMaps: 'Abrir en Google Maps',
       openWaze: 'Abrir en Waze',
 
-      sectionContacts: 'Responsable en el Local (hablar con)',
+      sectionContacts: 'Contactos y destinatarios',
       addContact: 'Agregar',
       editContact: 'Editar contacto',
       deleteContact: 'Eliminar contacto',
@@ -1860,6 +1866,8 @@ export const customers = {
       save: 'Guardar',
       add: 'Agregar',
       cancel: 'Cancelar',
+      saveProblemTitle: 'Tus datos siguen aquí',
+      saveProblemDescription: 'No fue posible guardar ahora. Comprueba tu conexión e inténtalo de nuevo.',
     },
 
     portal: {
@@ -1908,6 +1916,7 @@ export const customers = {
       ticketSubmit: 'Enviar Solicitud',
       ticketDescMinLength: 'Describe el problema con al menos 10 caracteres.',
       ticketSuccess: '¡Solicitud abierta con éxito!',
+      ticketSuccessDescription: 'Protocolo #{protocol}. La empresa responsable analizará la solicitud antes de crear y programar una orden de trabajo.',
       ticketErrorTitle: 'Error al abrir solicitud',
       ticketErrorUnavailable: 'Este portal no está aceptando solicitudes ahora. Comuníquese con la empresa responsable del mantenimiento.',
       statusPendente: 'Pendiente',
@@ -2334,8 +2343,8 @@ export const customers = {
       phone: 'Téléphone fixe',
       celular: 'Portable',
       whatsappOptInTitle: 'Recevoir des messages WhatsApp',
-      whatsappOptInDescription: 'Autorise les notifications de bons de travail, de factures et d’échéances. Les demandes de désinscription du client sont toujours prioritaires.',
-      whatsappOptInPhoneHint: 'Saisissez un numéro de portable valide pour activer cette option.',
+      whatsappOptInDescription: 'Active les messages automatiques de ce client. Les destinataires des interventions et du financier sont choisis dans sa fiche.',
+      whatsappOptInPhoneHint: 'Les destinataires peuvent être configurés dans la fiche client.',
       email: 'E-mail',
       emailPlaceholder: 'email@exemple.com',
       birthDate: 'Date de Naissance',
@@ -2453,7 +2462,7 @@ export const customers = {
       openGoogleMaps: 'Ouvrir dans Google Maps',
       openWaze: 'Ouvrir dans Waze',
 
-      sectionContacts: 'Responsable sur Place (à contacter)',
+      sectionContacts: 'Contacts et destinataires',
       addContact: 'Ajouter',
       editContact: 'Modifier le contact',
       deleteContact: 'Supprimer le contact',
@@ -2591,6 +2600,8 @@ export const customers = {
       save: 'Enregistrer',
       add: 'Ajouter',
       cancel: 'Annuler',
+      saveProblemTitle: 'Vos données sont toujours là',
+      saveProblemDescription: 'Impossible d’enregistrer maintenant. Vérifiez votre connexion et réessayez.',
     },
 
     portal: {
@@ -2639,6 +2650,7 @@ export const customers = {
       ticketSubmit: 'Envoyer le Ticket',
       ticketDescMinLength: 'Décrivez le problème avec au moins 10 caractères.',
       ticketSuccess: 'Ticket ouvert avec succès !',
+      ticketSuccessDescription: 'Protocole n° {protocol}. L’entreprise responsable analysera la demande avant de créer et planifier un bon de travail.',
       ticketErrorTitle: 'Erreur lors de l\'ouverture du ticket',
       ticketErrorUnavailable: 'Ce portail n\'accepte pas de tickets pour le moment. Contactez la société responsable de la maintenance.',
       statusPendente: 'En attente',

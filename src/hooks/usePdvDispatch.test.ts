@@ -12,9 +12,11 @@ describe('W3 expedição sem dados financeiros', () => {
   });
 
   it('preserva o snapshot imutável da retirada sem valores', () => {
-    const receipt = projectPdvDeliveryReceipt({ kind: 'withdrawal_non_fiscal', delivery_id: 'd1', withdrawn_at: '2026-11-07T10:00:00Z', order: { id: 'o1', number: 9, status: 'retirada_parcial' }, items: [{ description: 'Argamassa', unit: 'sc', quantity: 2, remaining_quantity: 4, amount: 160 }], notice: 'Comprovante não fiscal.' });
+    const receipt = projectPdvDeliveryReceipt({ operator_name: 'Operadora da retirada', operator_email: 'não-exportar@example.com', kind: 'withdrawal_non_fiscal', delivery_id: 'd1', withdrawn_at: '2026-11-07T10:00:00Z', order: { id: 'o1', number: 9, status: 'retirada_parcial' }, items: [{ description: 'Argamassa', unit: 'sc', quantity: 2, remaining_quantity: 4, amount: 160 }], notice: 'Comprovante não fiscal.' });
     expect(receipt.items[0]).toEqual({ description: 'Argamassa', unit: 'sc', quantity: 2, remainingQuantity: 4 });
     expect(receipt.items[0]).not.toHaveProperty('amount');
+    expect(receipt.operatorName).toBe('Operadora da retirada');
+    expect(receipt).not.toHaveProperty('operator_email');
   });
 
   it('mantém a chave no retry e cria outra quando a retirada parcial muda', () => {

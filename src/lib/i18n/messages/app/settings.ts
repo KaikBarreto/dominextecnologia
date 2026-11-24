@@ -33,6 +33,7 @@ export const settings = {
         atalhos: 'Atalhos',
         aparencia: 'Aparência',
         integracoes: 'Integrações',
+        notificacoes: 'Notificações',
       },
     },
 
@@ -257,6 +258,10 @@ export const settings = {
             title: 'Exibir Feriados',
             description: 'Mostrar feriados nacionais e municipais na agenda',
           },
+          allowScheduleConflicts: {
+            title: 'Permitir agendamentos conflitantes',
+            description: 'Permite autorizar sobreposições de horário com alerta e justificativa auditada. Vale para toda a empresa.',
+          },
         },
       },
 
@@ -266,8 +271,10 @@ export const settings = {
         cardDescription: 'O que vira lançamento no financeiro automaticamente, ao aprovar um orçamento ou ao finalizar uma Ordem de Serviço',
         modeTitle: 'Ao aprovar um orçamento',
         modeDescription: 'Define o que já vem marcado no modal de aprovação. Dá pra trocar em cada orçamento.',
+        modeOnlyApprove: 'Apenas aprovar',
         modeReceived: 'Já recebi',
         modeReceivable: 'Vou receber depois',
+        modeOnlyApproveHint: 'Muda o status para aprovado sem criar lançamento financeiro. A receita pode ser lançada ao finalizar a OS.',
         modeReceivedHint: 'Lança como receita recebida e entra no saldo da conta na hora.',
         modeReceivableHint: 'Gera conta a receber pendente. O saldo só muda quando você der a baixa.',
         publicApprovalTitle: 'Aprovação pelo link da proposta já gera conta a receber',
@@ -502,6 +509,8 @@ export const settings = {
           origin: 'Origem',
           birth_date: 'Data de Nascimento',
           notes: 'Observações',
+          whatsapp_service_order: 'Recebe WhatsApp de OS',
+          whatsapp_billing: 'Recebe WhatsApp financeiro',
           created_at: 'Cadastrado em',
         },
         customerContacts: {
@@ -511,6 +520,8 @@ export const settings = {
           phone: 'Telefone',
           email: 'Email',
           notes: 'Observações',
+          whatsapp_service_order: 'Recebe WhatsApp de OS',
+          whatsapp_billing: 'Recebe WhatsApp financeiro',
           created_at: 'Criado em',
         },
         equipment: {
@@ -957,7 +968,7 @@ export const settings = {
           },
         },
         pdv: {
-          label: 'PDV e Loja',
+          label: 'PDV (Loja)',
           delete_pdv: {
             title: 'Vendas, caixa e fiado',
             description: 'Remove as vendas do PDV, o histórico de caixa (abertura, fechamento, sangria e suprimento), os terminais cadastrados e o fiado dos clientes. A numeração dos cupons volta a começar do 1.',
@@ -978,7 +989,7 @@ export const settings = {
         stock: 'Estoque de Materiais',
         materials: 'Cadastro de Materiais',
         customers: 'Clientes',
-        pdv: 'PDV, Caixa e Fiado',
+        pdv: 'PDV (Loja), Caixa e Fiado',
       },
     },
 
@@ -1474,6 +1485,7 @@ export const settings = {
     integrations: {
       subTabs: {
         whatsapp: 'WhatsApp',
+        email: 'E-mail',
         asaas: 'Cobranças (Asaas)',
         configuracao: 'Configurações',
         simulador: 'Simulador',
@@ -1803,6 +1815,7 @@ export const settings = {
         atalhos: 'Shortcuts',
         aparencia: 'Appearance',
         integracoes: 'Integrations',
+        notificacoes: 'Notifications',
       },
     },
 
@@ -2018,6 +2031,10 @@ export const settings = {
             title: 'Show Holidays',
             description: 'Display national and local holidays on the schedule',
           },
+          allowScheduleConflicts: {
+            title: 'Allow conflicting appointments',
+            description: 'Allows time overlaps to be authorized with a warning and an audited justification. Applies company-wide.',
+          },
         },
       },
 
@@ -2026,8 +2043,10 @@ export const settings = {
         cardDescription: 'What automatically becomes a finance entry when a quote is approved or a work order is completed',
         modeTitle: 'When approving a quote',
         modeDescription: 'Sets what comes pre-selected in the approval modal. You can change it per quote.',
+        modeOnlyApprove: 'Approve only',
         modeReceived: 'Already received',
         modeReceivable: 'Will receive later',
+        modeOnlyApproveHint: 'Marks the quote as approved without a finance entry. Revenue can be posted when the work order is completed.',
         modeReceivedHint: 'Posts as received revenue and goes into the account balance right away.',
         modeReceivableHint: 'Creates a pending receivable. The balance only changes when you settle it.',
         publicApprovalTitle: 'Approval via proposal link already creates a receivable',
@@ -2252,6 +2271,8 @@ export const settings = {
           origin: 'Source',
           birth_date: 'Birth Date',
           notes: 'Notes',
+          whatsapp_service_order: 'Receives work order WhatsApp',
+          whatsapp_billing: 'Receives financial WhatsApp',
           created_at: 'Created at',
         },
         customerContacts: {
@@ -2261,6 +2282,8 @@ export const settings = {
           phone: 'Phone',
           email: 'Email',
           notes: 'Notes',
+          whatsapp_service_order: 'Receives work order WhatsApp',
+          whatsapp_billing: 'Receives financial WhatsApp',
           created_at: 'Created at',
         },
         equipment: {
@@ -3172,6 +3195,7 @@ export const settings = {
     integrations: {
       subTabs: {
         whatsapp: 'WhatsApp',
+        email: 'Email',
         asaas: 'Charges (Asaas)',
         configuracao: 'Settings',
         simulador: 'Simulator',
@@ -3500,6 +3524,7 @@ export const settings = {
         atalhos: 'Atajos',
         aparencia: 'Apariencia',
         integracoes: 'Integraciones',
+        notificacoes: 'Notificaciones',
       },
     },
 
@@ -3715,6 +3740,10 @@ export const settings = {
             title: 'Mostrar festivos',
             description: 'Mostrar festivos nacionales y locales en la agenda',
           },
+          allowScheduleConflicts: {
+            title: 'Permitir citas conflictivas',
+            description: 'Permite autorizar solapamientos de horario con una alerta y una justificación auditada. Se aplica a toda la empresa.',
+          },
         },
       },
 
@@ -3723,8 +3752,10 @@ export const settings = {
         cardDescription: 'Qué se convierte automáticamente en un registro financiero al aprobar un presupuesto o al finalizar una orden de servicio',
         modeTitle: 'Al aprobar un presupuesto',
         modeDescription: 'Define lo que viene preseleccionado en el modal de aprobación. Se puede cambiar en cada presupuesto.',
+        modeOnlyApprove: 'Solo aprobar',
         modeReceived: 'Ya lo recibí',
         modeReceivable: 'Lo recibiré después',
+        modeOnlyApproveHint: 'Cambia el estado a aprobado sin crear un registro financiero. El ingreso puede registrarse al finalizar la orden de servicio.',
         modeReceivedHint: 'Se registra como ingreso recibido y entra en el saldo de la cuenta de inmediato.',
         modeReceivableHint: 'Genera una cuenta por cobrar pendiente. El saldo solo cambia cuando la das de baja.',
         publicApprovalTitle: 'La aprobación por el enlace de la propuesta ya genera cuenta por cobrar',
@@ -3949,6 +3980,8 @@ export const settings = {
           origin: 'Origen',
           birth_date: 'Fecha de Nacimiento',
           notes: 'Notas',
+          whatsapp_service_order: 'Recibe WhatsApp de órdenes',
+          whatsapp_billing: 'Recibe WhatsApp financiero',
           created_at: 'Creado el',
         },
         customerContacts: {
@@ -3958,6 +3991,8 @@ export const settings = {
           phone: 'Teléfono',
           email: 'Email',
           notes: 'Notas',
+          whatsapp_service_order: 'Recibe WhatsApp de órdenes',
+          whatsapp_billing: 'Recibe WhatsApp financiero',
           created_at: 'Creado el',
         },
         equipment: {
@@ -4869,6 +4904,7 @@ export const settings = {
     integrations: {
       subTabs: {
         whatsapp: 'WhatsApp',
+        email: 'Correo electrónico',
         asaas: 'Cobros (Asaas)',
         configuracao: 'Configuración',
         simulador: 'Simulador',
@@ -5197,6 +5233,7 @@ export const settings = {
         atalhos: 'Raccourcis',
         aparencia: 'Apparence',
         integracoes: 'Intégrations',
+        notificacoes: 'Notifications',
       },
     },
 
@@ -5412,6 +5449,10 @@ export const settings = {
             title: 'Afficher les jours fériés',
             description: 'Afficher les jours fériés nationaux et locaux dans l’agenda',
           },
+          allowScheduleConflicts: {
+            title: 'Autoriser les rendez-vous en conflit',
+            description: "Permet d'autoriser les chevauchements avec un avertissement et une justification auditée. S'applique à toute l'entreprise.",
+          },
         },
       },
 
@@ -5420,8 +5461,10 @@ export const settings = {
         cardDescription: `Ce qui devient automatiquement une écriture financière lorsqu'un devis est approuvé ou qu'un ordre de service est clôturé`,
         modeTitle: `À l'approbation d'un devis`,
         modeDescription: `Définit ce qui est présélectionné dans la fenêtre d'approbation. Modifiable sur chaque devis.`,
+        modeOnlyApprove: 'Approuver uniquement',
         modeReceived: 'Déjà encaissé',
         modeReceivable: 'À encaisser plus tard',
+        modeOnlyApproveHint: `Passe le devis à l'état approuvé sans créer d'écriture financière. La recette peut être saisie à la clôture de l'ordre de service.`,
         modeReceivedHint: 'Enregistré comme recette encaissée et ajouté tout de suite au solde du compte.',
         modeReceivableHint: `Crée une créance en attente. Le solde ne change qu'au moment du lettrage.`,
         publicApprovalTitle: `L'approbation via le lien de la proposition crée déjà une créance`,
@@ -5646,6 +5689,8 @@ export const settings = {
           origin: 'Origine',
           birth_date: 'Date de Naissance',
           notes: 'Notes',
+          whatsapp_service_order: 'Reçoit les WhatsApp d’intervention',
+          whatsapp_billing: 'Reçoit les WhatsApp financiers',
           created_at: 'Créé le',
         },
         customerContacts: {
@@ -5655,6 +5700,8 @@ export const settings = {
           phone: 'Téléphone',
           email: 'E-mail',
           notes: 'Notes',
+          whatsapp_service_order: 'Reçoit les WhatsApp d’intervention',
+          whatsapp_billing: 'Reçoit les WhatsApp financiers',
           created_at: 'Créé le',
         },
         equipment: {
@@ -6566,6 +6613,7 @@ export const settings = {
     integrations: {
       subTabs: {
         whatsapp: 'WhatsApp',
+        email: 'E-mail',
         asaas: 'Encaissements (Asaas)',
         configuracao: 'Paramètres',
         simulador: 'Simulateur',

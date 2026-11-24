@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 // ── Modelo do grafo (React Flow) gravado em org_charts.data ────────────────────
 // Guardamos só o essencial: id, tipo, posição e o `data` do nó (sem campos
@@ -137,8 +138,11 @@ export function useOrgCharts() {
 
   const renameChart = useMutation({
     mutationFn: async ({ id, name }: { id: string; name: string }) => {
-      const { error } = await supabase.from('org_charts').update({ name } as any).eq('id', id);
-      if (error) throw error;
+      // RLS barrando não dá erro, só altera zero linhas: conferir.
+      assertRowsAffected(
+        await supabase.from('org_charts').update({ name } as any, { count: 'exact' }).eq('id', id),
+        'update',
+      );
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['org-charts'] }),
     onError: (e: Error) =>
@@ -147,8 +151,11 @@ export function useOrgCharts() {
 
   const deleteChart = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('org_charts').delete().eq('id', id);
-      if (error) throw error;
+      // RLS barrando não dá erro, só apaga zero linhas: conferir.
+      assertRowsAffected(
+        await supabase.from('org_charts').delete({ count: 'exact' }).eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['org-charts'] }),
     onError: (e: Error) =>
@@ -158,11 +165,15 @@ export function useOrgCharts() {
   // Auto-save do grafo. Retorna a promise pra quem quiser encadear (selo de status).
   const saveGraph = useMutation({
     mutationFn: async ({ id, graph }: { id: string; graph: OrgChartGraph }) => {
-      const { error } = await supabase
-        .from('org_charts')
-        .update({ data: graph as any } as any)
-        .eq('id', id);
-      if (error) throw error;
+      // Conferir: sem isso o selo mostraria "salvo" com o update barrado pela
+      // RLS (zero linhas, sem erro).
+      assertRowsAffected(
+        await supabase
+          .from('org_charts')
+          .update({ data: graph as any } as any, { count: 'exact' })
+          .eq('id', id),
+        'update',
+      );
     },
     // Otimista: atualiza o cache local sem refetch (evita "piscar" o canvas).
     onSuccess: (_res, { id, graph }) => {

@@ -31,9 +31,1396 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
-    version: '1.41.0',
+    version: '1.41.58',
+    date: '24 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cadastro e saldo separados por local',
+        category: 'correcao',
+        description: 'Editar o nome ou o preço de um produto não altera mais sua quantidade. O saldo exibido acompanha o local selecionado, as movimentações na visão geral pedem um local e é possível remover um produto sem saldo de apenas um local, preservando os demais.',
+      },
+      {
+        title: 'Primeira abertura de caixa mais clara',
+        category: 'melhoria',
+        description: 'No primeiro uso, quem tem permissão pode informar o dinheiro físico já existente na empresa e separar o troco da gaveta na mesma abertura. O restante fica disponível no cofre, sem contar o saldo inicial como venda.',
+      },
+      {
+        title: 'Tutorial do módulo na hora certa',
+        category: 'melhoria',
+        description: 'Quando há uma aula publicada, a tela do módulo oferece um atalho para aprender a usá-lo. Depois da ativação confirmada, você também pode abrir diretamente a próxima aula sem perder seu progresso.',
+      },
+    ],
+  },
+  {
+    version: '1.41.57',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Visitas do contrato salvas por completo',
+        category: 'correcao',
+        description: 'A criação e a atualização de contratos agora confirmam todas as visitas previstas de uma só vez. Se alguma visita não puder ser salva, nenhuma parte do lote é mantida, evitando diferenças entre a prévia e a agenda e preservando as datas do cronograma.',
+      },
+    ],
+  },
+  {
+    version: '1.41.56',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Finalidade correta na NF-e',
+        category: 'correcao',
+        description: 'Ao emitir para um cliente sem inscrição estadual, o sistema agora identifica automaticamente a operação como consumidor final. Para clientes com inscrição estadual, você escolhe entre uso próprio e revenda ou industrialização antes da emissão.',
+      },
+      {
+        title: 'Correção segura de notas rejeitadas',
+        category: 'seguranca',
+        description: 'Uma NF-e ou NFC-e rejeitada permanece preservada no histórico. A ação Corrigir e reemitir abre uma nova emissão com nova numeração, sem alterar nem reutilizar o documento rejeitado.',
+      },
+    ],
+  },
+  {
+    version: '1.41.55',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Downloads do PMOC restaurados',
+        category: 'correcao',
+        description: 'Os documentos do dossiê e as versões anteriores do PMOC voltaram a ficar disponíveis para baixar e imprimir com segurança.',
+      },
+      {
+        title: 'Endereço completo reconhecido',
+        category: 'correcao',
+        description: 'O dossiê agora identifica corretamente o endereço completo quando ele já está preenchido no cadastro do cliente.',
+      },
+    ],
+  },
+  {
+    version: '1.41.54',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Agendamentos conflitantes configuráveis',
+        category: 'recurso',
+        description: 'Em Configurações > Usabilidade > Agenda, a empresa agora pode permitir atendimentos no mesmo horário. Quando a opção está desligada, os conflitos continuam bloqueados normalmente.',
+      },
+      {
+        title: 'Confirmação com justificativa',
+        category: 'seguranca',
+        description: 'Quando a opção está ligada, o sistema avisa sobre a sobreposição e exige uma justificativa antes de confirmar, mantendo a decisão registrada para consulta.',
+      },
+    ],
+  },
+  {
+    version: '1.41.53',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Acompanhamento de e-mail e WhatsApp',
+        category: 'recurso',
+        description: 'O administrador master ganhou uma área de Comunicações em Estatísticas para acompanhar envios, falhas, filas, empresas e a situação das conexões de WhatsApp em um único lugar.',
+      },
+      {
+        title: 'Limites de e-mail visíveis',
+        category: 'melhoria',
+        description: 'O painel também mostra o consumo diário e mensal da conta de e-mail, o ritmo máximo de envio e a franquia usada por empresa, facilitando a identificação de limites antes que afetem os clientes.',
+      },
+    ],
+  },
+  {
+    version: '1.41.52',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Vídeos carregam somente quando necessário',
+        category: 'melhoria',
+        description: 'O Domiflix agora prepara o vídeo sem baixar o conteúdo inteiro antes da reprodução. As miniaturas da linha do tempo também são carregadas somente durante a interação, reduzindo consumo de dados e acessos desnecessários.',
+      },
+      {
+        title: 'Novos arquivos aproveitam melhor o cache',
+        category: 'melhoria',
+        description: 'Novas imagens, documentos e mídias do catálogo passam a aproveitar cache prolongado quando possuem endereço versionado, deixando acessos repetidos mais leves sem prender versões antigas dos arquivos.',
+      },
+    ],
+  },
+  {
+    version: '1.41.51',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Destinatários de cobrança por cliente',
+        category: 'recurso',
+        description: 'Na ficha do cliente, agora você pode ativar ou desativar os avisos por e-mail, escolher o e-mail principal ou contatos adicionais e definir quais eventos cada endereço recebe.',
+      },
+      {
+        title: 'Configuração simples e segura',
+        category: 'seguranca',
+        description: 'Clientes sem personalização continuam recebendo no e-mail principal. Alterações no canal, nos eventos ou nos destinatários também interrompem mensagens que ainda estavam aguardando envio.',
+      },
+    ],
+  },
+  {
+    version: '1.41.50',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Indisponibilidade comunicada com clareza',
+        category: 'correcao',
+        description: 'Quando o servidor não responder, a entrada e a validação de acesso agora informam claramente o que aconteceu, preservam a segurança dos dados e oferecem uma nova tentativa sem expor detalhes técnicos.',
+      },
+      {
+        title: 'Entrada organizada no celular',
+        category: 'melhoria',
+        description: 'Os controles de idioma e tema ganharam um espaço próprio no topo da tela de entrada e não ficam mais sobre a marca em telas menores.',
+      },
+    ],
+  },
+  {
+    version: '1.41.49',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cadastro de contato não fica mais preso',
+        category: 'correcao',
+        description: 'Se a conexão demorar ao adicionar, editar ou excluir um contato, o sistema devolve o controle rapidamente. No cadastro, os campos continuam preenchidos para você tentar novamente sem perder o que digitou e sem criar contatos duplicados.',
+      },
+    ],
+  },
+  {
+    version: '1.41.48',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Avisos de cobrança por e-mail',
+        category: 'recurso',
+        description: 'Em Integrações > E-mail, empresas com o módulo Cobranças podem ativar avisos para cobrança criada, próxima do vencimento, vencida, paga ou estornada. Os envios começam apenas nos próximos eventos e somente para clientes com e-mail válido cadastrado.',
+      },
+      {
+        title: 'Modelos e conteúdo personalizados',
+        category: 'recurso',
+        description: 'Você pode escolher entre modelos claros e escuros, editar o assunto e os textos de cada aviso e usar a identidade da empresa. Os e-mails mostram as formas de pagamento disponíveis, com acesso ao checkout Dominex, boleto e Pix.',
+      },
+      {
+        title: 'Canais respeitam os módulos contratados',
+        category: 'seguranca',
+        description: 'E-mail e WhatsApp agora validam separadamente o canal e o módulo que origina cada evento. Assim, automações de cobrança só funcionam quando o módulo Cobranças está ativo, inclusive no momento do envio.',
+      },
+    ],
+  },
+  {
+    version: '1.41.47',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Entrada recupera a conexão sem ficar travada',
+        category: 'correcao',
+        description: 'Quando a conexão demora ou passa por uma oscilação, a entrada deixa de ficar presa indefinidamente e oferece uma tentativa segura para continuar. A sessão local também é liberada mesmo quando o serviço de saída está temporariamente indisponível.',
+      },
+      {
+        title: 'Atualização completa pelo rodapé',
+        category: 'melhoria',
+        description: 'O botão ao lado da versão, tanto na tela de entrada quanto dentro do sistema, agora atualiza o aplicativo, o cache e a versão instalada. Se a conexão ainda estiver oscilando, a tela atual é preservada e o botão fica disponível para tentar novamente.',
+      },
+      {
+        title: 'Mensagens de recuperação mais tranquilas',
+        category: 'melhoria',
+        description: 'Falhas temporárias de conexão agora preservam o contexto da tela e mostram orientações claras para retomar o trabalho, sem exibir detalhes técnicos ou sugerir uma pendência de assinatura que não existe.',
+      },
+    ],
+  },
+  {
+    version: '1.41.46',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Todas as contas aparecem ao navegar pelo calendário',
+        category: 'correcao',
+        description: 'No Contas a Pagar e Receber, o calendário agora mostra as contas com vencimento no mês aberto, mesmo quando a lista está filtrada por outro período. Os filtros de status, categoria, centro de custo e tipo de conta continuam funcionando normalmente.',
+      },
+    ],
+  },
+  {
+    version: '1.41.45',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Filtros persistentes na Agenda',
+        category: 'recurso',
+        description: 'Agora você pode escolher se quer ver tudo, somente ordens de serviço ou somente tarefas na Agenda. A escolha fica salva no seu usuário e acompanha você quando acessar em outro aparelho.',
+      },
+      {
+        title: 'Agenda mais limpa em dias cheios',
+        category: 'melhoria',
+        description: 'Os compromissos ocupam menos espaço quando há muitos itens no mesmo período. As tarefas também ganharam um visual neutro em cinza, adaptado ao tema claro ou escuro, para destacar melhor as ordens de serviço.',
+      },
+    ],
+  },
+  {
+    version: '1.41.44',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Visão gerencial dos resultados da Loja',
+        category: 'recurso',
+        description: 'Os relatórios da Loja ganharam uma Visão geral com receita, vendas, ticket médio, margem, custos, devoluções e evolução diária. Os indicadores também comparam o período escolhido com o período anterior para facilitar a leitura do desempenho.',
+      },
+      {
+        title: 'Produtos, pagamentos e caixas em análises próprias',
+        category: 'recurso',
+        description: 'Agora há áreas separadas para analisar produtos e margem, formas de pagamento e conferência dos caixas. Os rankings destacam concentração de receita e eficiência comercial, enquanto a conferência mostra valores esperados, contados, faltas e sobras.',
+      },
+      {
+        title: 'Relatórios organizados e exportação em PDF ou Excel',
+        category: 'melhoria',
+        description: 'O período ficou no topo da tela e as ações passaram a acompanhar as abas do relatório. O botão Exportar permite escolher PDF ou Excel, e a navegação foi ajustada para ocupar melhor o espaço no computador e no celular.',
+      },
+    ],
+  },
+  {
+    version: '1.41.43',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Agenda mais estável com muitos agendamentos',
+        category: 'correcao',
+        description: 'Corrigimos as falhas que podiam interromper o carregamento da Agenda em empresas com muitos registros. Agora todos os agendamentos do período são carregados em etapas, incluindo atendimentos de vários dias e retomadas, sem limitar a quantidade exibida.',
+      },
+      {
+        title: 'Carregamento mais leve da Agenda',
+        category: 'melhoria',
+        description: 'A Agenda passou a buscar somente as informações necessárias em cada etapa. Isso reduz o esforço para abrir e navegar pelo calendário, mantendo os dados e as permissões da empresa protegidos.',
+      },
+    ],
+  },
+  {
+    version: '1.41.42',
+    date: '23 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Entrada mais rápida no sistema',
+        category: 'melhoria',
+        description: 'Reduzimos o tempo de espera após informar a senha ou entrar com o Google. As informações necessárias para abrir a conta agora são carregadas juntas e, se algum serviço demorar além do esperado, o acesso não fica preso indefinidamente.',
+      },
+      {
+        title: 'Lembrar-me mantém a sessão corretamente',
+        category: 'correcao',
+        description: 'Ao marcar Lembrar-me, o acesso continua salvo depois de fechar e abrir o navegador, inclusive quando a entrada é feita pelo Google. Sem essa opção, a sessão permanece apenas enquanto o navegador estiver aberto.',
+      },
+      {
+        title: 'Aplicativo instalado mais leve para abrir e atualizar',
+        category: 'melhoria',
+        description: 'O aplicativo instalado no celular ou computador deixou de baixar antecipadamente telas e recursos que ainda não foram usados. Eles passam a ser carregados conforme a navegação, reduzindo o download inicial e acelerando as atualizações.',
+      },
+    ],
+  },
+  {
+    version: '1.41.41',
+    date: '22 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ranking de vendas da Loja',
+        category: 'recurso',
+        description: 'Os relatórios da Loja ganharam a aba Vendas. Você pode analisar o período por produto, cliente, vendedor ou horário e acompanhar quantidade, faturamento, custo e margem. Quem tem acesso restrito a um estoque vê somente as vendas desse estoque.',
+      },
+      {
+        title: 'Resumo da Loja respeita o estoque permitido',
+        category: 'correcao',
+        description: 'Os totais e as linhas do Resumo agora usam o mesmo acesso por estoque. Também corrigimos a diferença de caixa: falta continua como saída e sobra não é mais contada como receita de venda.',
+      },
+      {
+        title: 'Dados de RH protegidos nas telas e exportações',
+        category: 'seguranca',
+        description: 'Salário, CPF, PIX, endereço e outros dados pessoais dos funcionários só aparecem nas telas e na exportação para quem tem permissão de RH. Quem prepara orçamento continua vendo apenas o custo por hora necessário para calcular a mão de obra.',
+      },
+    ],
+  },
+  {
+    version: '1.41.40',
+    date: '21 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Aviso claro quando falta permissão',
+        category: 'correcao',
+        description: 'Quando você tenta excluir ou alterar algo sem ter permissão, ou quando o registro já não existe, o sistema agora mostra um aviso explicando. Antes, em alguns casos, aparecia a mensagem de sucesso sem que nada tivesse mudado. Vale para todo o sistema: financeiro, RH, loja, CRM, orçamentos, contratos, ordens de serviço, estoque, clientes, PMOC e usuários.',
+      },
+      {
+        title: 'Excluir contrato, OS ou equipe é tudo ou nada',
+        category: 'melhoria',
+        description: 'Ao excluir um contrato, uma ordem de serviço ou uma equipe, ou o sistema apaga tudo o que faz parte dela, ou não apaga nada e explica o motivo. Assim nada fica pela metade. As OS passadas e os recebimentos já realizados continuam preservados como antes.',
+      },
+      {
+        title: 'Mais proteção para os dados da sua empresa',
+        category: 'seguranca',
+        description: 'Reforçamos as regras de acesso. Os cargos de permissão agora são só da sua empresa, a edição de funcionários e salários fica com quem tem permissão de RH, e ninguém consegue trocar a empresa de um usuário. Também protegemos os dados de treinamento da Domiflix de cada empresa.',
+      },
+    ],
+  },
+  {
+    version: '1.41.39',
+    date: '21 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Fechamento de caixa mostra todas as vendas',
+        category: 'melhoria',
+        description: 'O relatório de fechamento de caixa ganhou o quadro Vendas deste caixa, com todas as vendas feitas nele, seja em dinheiro, Pix, cartão, fiado ou vale. Você vê quanto entrou em cada forma de pagamento e a lista das vendas com número, horário e valor. A conta da gaveta continua a mesma, porque só o dinheiro entra nela.',
+      },
+    ],
+  },
+  {
+    version: '1.41.38',
+    date: '21 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Relatório da Loja com uma linha por venda',
+        category: 'melhoria',
+        description: 'No Resumo dos relatórios da Loja, cada venda agora aparece numa linha só, com o número da venda e o total, em ordem. Antes, uma venda com vários produtos aparecia repetida, uma vez por produto. Clique na venda para ver os produtos, a quantidade e o valor de cada um. A contagem das páginas passou a contar vendas, e as devoluções ganharam nome próprio. A planilha exportada continua detalhada por produto, agora com o número da venda numa coluna. No Histórico, abrir uma venda leva direto ao pedido dela. Nenhum valor mudou.',
+      },
+    ],
+  },
+  {
+    version: '1.41.37',
+    date: '20 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'O sistema registra quem deu baixa em cada conta',
+        category: 'melhoria',
+        description: 'Ao marcar uma conta como paga ou recebida, o sistema passa a guardar quem fez a baixa e quando. No Contas a Pagar e a Receber, o selo Pago mostra essa informação. Vale para as baixas feitas a partir de agora, as anteriores não tinham esse registro.',
+      },
+    ],
+  },
+  {
+    version: '1.41.36',
+    date: '20 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Numeração de OS e de orçamento em sequência, por empresa',
+        category: 'melhoria',
+        description: 'As ordens de serviço e os orçamentos agora seguem uma numeração própria da sua empresa, em sequência, a partir do 1. As OS e os orçamentos que já existiam foram reorganizados nessa ordem. Quem tem um documento ou uma mensagem com o número anterior continua encontrando pela busca, e o detalhe da OS mostra o número anterior ao lado do novo.',
+      },
+      {
+        title: 'Resumo do caixa da loja depois de uma venda cancelada',
+        category: 'correcao',
+        description: 'No resumo do caixa, o valor de uma venda em dinheiro cancelada deixa de aparecer em recebimentos em dinheiro. A posição da gaveta e os caixas já fechados não mudam.',
+      },
+    ],
+  },
+  {
+    version: '1.41.35',
+    date: '20 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Resposta de checklist repetida no relatório da OS',
+        category: 'correcao',
+        description: 'Em alguns casos, quando a internet oscilava durante o preenchimento, a mesma pergunta do checklist ficava gravada mais de uma vez e aparecia repetida no relatório da OS, como se fossem itens a mais. Agora cada pergunta tem uma única resposta, e as OS que já tinham respostas repetidas foram corrigidas, mantendo o texto e as fotos.',
+      },
+      {
+        title: 'Liquidação de cartão em venda da loja já entregue',
+        category: 'correcao',
+        description: 'A liquidação do cartão de uma venda da loja que já tinha sido entregue era recusada. Agora ela é registrada normalmente, com o valor e a taxa.',
+      },
+      {
+        title: 'Cancelamento de venda identificado na exportação do caixa',
+        category: 'melhoria',
+        description: 'Na exportação do caixa em PDF e Excel, a devolução do dinheiro de uma venda cancelada agora aparece com a descrição e a forma de pagamento, como já aparecia na tela.',
+      },
+    ],
+  },
+  {
+    version: '1.41.34',
+    date: '20 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Código do equipamento volta a ficar disponível ao excluir',
+        category: 'melhoria',
+        description: 'Ao excluir os últimos equipamentos cadastrados, os códigos deles voltam a ficar disponíveis para os próximos. Quem cadastrou equipamentos de teste e excluiu tudo recomeça a numeração do 0001. Um código abaixo de um equipamento que ainda existe continua sem ser reaproveitado, para não misturar equipamentos diferentes.',
+      },
+    ],
+  },
+  {
+    version: '1.41.33',
+    date: '20 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cancelar uma venda da loja desfaz tudo',
+        category: 'correcao',
+        description: 'Ao cancelar uma venda da loja, o dinheiro também sai: o recebimento deixa de contar no financeiro, o valor em dinheiro sai da gaveta do caixa aberto e o pagamento no cartão é desfeito junto com a taxa. Antes, o produto voltava para o estoque, mas o valor da venda continuava contando como recebido.',
+      },
+      {
+        title: 'Excluir pelo Financeiro um lançamento que veio da loja',
+        category: 'melhoria',
+        description: 'Quem tem acesso a todos os caixas pode excluir pelo Financeiro um lançamento de venda da loja. A exclusão cancela a venda inteira e mostra antes o que vai acontecer: o produto volta para o estoque, o dinheiro sai da gaveta e, se o caixa daquele dia já foi fechado, o fechamento continua como foi.',
+      },
+      {
+        title: 'Excluir um lançamento manual com o caixa da loja aberto',
+        category: 'correcao',
+        description: 'Uma entrada lançada à mão na conta do caixa agora pode ser excluída mesmo com o caixa da loja aberto. Antes, o sistema recusava a exclusão com uma mensagem que pedia para escolher outra conta.',
+      },
+      {
+        title: 'Avisos mais claros no caixa e nas vendas da loja',
+        category: 'melhoria',
+        description: 'Quando o sistema não deixa usar o dinheiro reservado para o caixa aberto, ou não deixa cancelar uma venda, o aviso agora explica o motivo e o que fazer. As vendas da loja também deixaram de mostrar um texto técnico nas observações do lançamento.',
+      },
+    ],
+  },
+  {
+    version: '1.41.32',
+    date: '19 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Exportação do caixa da loja em PDF e Excel',
+        category: 'recurso',
+        description: 'No Histórico de Caixa, cada caixa fechado ganhou a ação Exportar, e o topo da tela ganhou um botão para exportar de uma vez os caixas de um período. O arquivo traz todas as vendas e movimentações, em qualquer forma de pagamento, com cliente, vendedor, quem lançou e os itens de cada venda. Dá para filtrar por tipo de movimentação e por forma de pagamento, incluir as vendas canceladas e escolher entre PDF e Excel.',
+      },
+      {
+        title: 'Administrador enxerga os caixas de todos os operadores',
+        category: 'correcao',
+        description: 'Quem é administrador da empresa agora vê e confere o caixa aberto por qualquer operador da loja, e também a conferência entre o Financeiro e a loja, sem precisar marcar permissões uma a uma. Antes, em alguns cadastros, o administrador só via os próprios caixas.',
+      },
+    ],
+  },
+  {
+    version: '1.41.31',
+    date: '19 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Aviso de WhatsApp ao abrir uma OS',
+        category: 'recurso',
+        description: 'Novo aviso opcional: quando uma OS é criada, o cliente recebe uma mensagem dizendo que o atendimento já está sendo cuidado, com a data prevista e o lembrete de que ela pode mudar. Vem desligado, e você liga em Configurações, Integrações, WhatsApp, Automações. OS geradas por contrato, por recorrência ou por importação não disparam o aviso, para evitar envio em massa.',
+      },
+      {
+        title: 'Mensagens de WhatsApp editáveis',
+        category: 'recurso',
+        description: 'Agora dá para escrever o texto de cada aviso, de OS e de cobrança, com negrito, itálico, riscado e lista, e inserir etiquetas que viram os dados reais na hora do envio, como nome do cliente, data e horário da visita, tipo de serviço, equipamentos, link e os dados da sua empresa. Clicando em uma etiqueta você troca por outra ou remove. Os modelos prontos continuam disponíveis, já aparecem com as etiquetas e servem de ponto de partida.',
+      },
+    ],
+  },
+  {
+    version: '1.41.30',
+    date: '19 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Lembretes automáticos de WhatsApp voltaram a ser enviados',
+        category: 'correcao',
+        description: 'Os lembretes de cobrança antes do vencimento, no dia e após o vencimento, e o lembrete de visita agendada voltaram a sair. Desde 15 de novembro eles não estavam sendo enviados, mesmo ligados nas configurações. Os lembretes que deixaram de sair nesse período não são reenviados.',
+      },
+      {
+        title: 'Aviso de nova cobrança só perto do vencimento',
+        category: 'melhoria',
+        description: 'Cobranças com vencimento a mais de 10 dias, como as mensalidades de assinatura geradas com antecedência, não disparam mais o aviso de nova cobrança no WhatsApp. O cliente é avisado pelo lembrete antes do vencimento, o que evita pagar a próxima mensalidade no lugar da atual.',
+      },
+    ],
+  },
+  {
+    version: '1.41.29',
+    date: '19 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cadastro de serviços e de tipos de tarefa voltou a salvar',
+        category: 'correcao',
+        description: 'Criar um serviço novo, pelo orçamento ou pelo catálogo, e criar um tipo de tarefa voltaram a funcionar. Desde 17 de novembro o sistema recusava esses cadastros com aviso de falta de permissão, mesmo para administradores. O que foi tentado nesse período não ficou salvo e precisa ser cadastrado de novo.',
+      },
+    ],
+  },
+  {
+    version: '1.41.28',
+    date: '19 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Orçamento criado de dentro da oportunidade',
+        category: 'recurso',
+        description: 'O cartão da oportunidade no CRM ganhou o botão Criar orçamento. O orçamento abre em tela cheia já ligado à oportunidade, você volta para o cartão ao terminar e ele fica listado na área Orçamentos do próprio cartão.',
+      },
+      {
+        title: 'Automação ao criar um orçamento',
+        category: 'recurso',
+        description: 'As automações das etapas do funil agora podem começar quando um orçamento é criado no cartão. Dá para gerar a tarefa de follow-up, aplicar checklist, definir responsável, prazo e etiqueta sem trabalho manual, e já existe um modelo pronto de follow-up para começar.',
+      },
+      {
+        title: 'Configurações do CRM em lista e detalhes',
+        category: 'melhoria',
+        description: 'Funis, modelos de checklist e automações passam a mostrar a lista de um lado e o item escolhido do outro, sem abrir e fechar blocos. Cada etapa mostra quantas regras e automações possui, com o acesso sempre à vista.',
+      },
+      {
+        title: 'Edição mais segura de regras e modelos',
+        category: 'melhoria',
+        description: 'O sistema pede confirmação antes de excluir uma automação ou um modelo de checklist e avisa quando existe alteração ainda não salva. Nos modelos, agora dá para corrigir o texto de um item e mudar a ordem sem refazer a lista.',
+      },
+    ],
+  },
+  {
+    version: '1.41.27',
+    date: '18 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Atualização do sistema sem tela de erro',
+        category: 'correcao',
+        description: 'O aplicativo agora troca de versão usando uma página direta, recupera automaticamente instalações antigas e mantém a tela atual quando a internet ainda não estiver pronta para recarregar.',
+      },
+      {
+        title: 'Agenda protegida contra carregamento infinito',
+        category: 'correcao',
+        description: 'As consultas da Agenda agora possuem tempo máximo de resposta e usam uma alternativa segura quando a consulta principal não conclui.',
+      },
+    ],
+  },
+  {
+    version: '1.41.26',
+    date: '18 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Agenda continua disponível durante falhas de consulta',
+        category: 'correcao',
+        description: 'Se a consulta principal ficar indisponível, a Agenda usa uma leitura alternativa segura e limitada ao período visível para manter as ordens de serviço acessíveis.',
+      },
+      {
+        title: 'Atualização de materiais mais segura',
+        category: 'correcao',
+        description: 'Uma falha temporária ao salvar deixa de exibir mensagens técnicas e passa a recarregar material, saldo e movimentações sem repetir automaticamente ajustes de estoque.',
+      },
+      {
+        title: 'Cancelamento do PDV sincronizado',
+        category: 'correcao',
+        description: 'Ao cancelar um pedido, as telas de pedidos, caixa, estoque, financeiro, expedição e relatórios passam a refletir o cancelamento juntas, preservando o histórico para conferência.',
+      },
+    ],
+  },
+  {
+    version: '1.41.25',
+    date: '18 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Assinatura completa nos checklists da OS',
+        category: 'correcao',
+        description: 'Ao colher uma assinatura pelo celular, todos os traços agora permanecem visíveis e são salvos na ordem correta, mesmo quando a conexão demora um pouco.',
+      },
+    ],
+  },
+  {
+    version: '1.41.24',
+    date: '18 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Agenda recuperada após atualizar ou retomar o sistema',
+        category: 'correcao',
+        description: 'A Agenda agora aguarda a sessão segura ficar pronta antes de buscar os compromissos, evitando avisos de conexão ao atualizar a versão ou voltar ao aplicativo.',
+      },
+      {
+        title: 'Avisos mais fáceis de ler',
+        category: 'melhoria',
+        description: 'Os avisos do Dominex e do EcoSistema passam a mostrar o título acima da explicação, usando toda a largura disponível. A ação aparece abaixo sem espremer o texto.',
+      },
+    ],
+  },
+  {
+    version: '1.41.23',
+    date: '18 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Agenda mais resistente a oscilações',
+        category: 'correcao',
+        description: 'Se houver uma falha temporária de conexão, a Agenda tenta carregar novamente sem fazer os compromissos parecerem ausentes. O aviso também oferece uma ação direta para tentar de novo.',
+      },
+      {
+        title: 'Visualização da Agenda permanece salva',
+        category: 'correcao',
+        description: 'A escolha entre Calendário e Lista passa a ser mantida corretamente no celular e no computador depois de atualizar ou reabrir o sistema.',
+      },
+    ],
+  },
+  {
+    version: '1.41.22',
+    date: '18 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Agenda e painel carregam mais rápido',
+        category: 'melhoria',
+        description: 'A Agenda busca primeiro somente o período que está na tela, enquanto histórico e filtros adicionais são carregados quando necessários. O painel inicial também consulta apenas os dados do período escolhido, reduzindo o volume da primeira abertura.',
+      },
+      {
+        title: 'Sugestões de acesso para qualquer segmento',
+        category: 'melhoria',
+        description: 'Os atalhos de permissões agora usam nomes neutros e fáceis de entender, sem depender do segmento de refrigeração.',
+      },
+    ],
+  },
+  {
+    version: '1.41.21',
+    date: '18 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cancelamento correto na tela de Pedidos',
+        category: 'correcao',
+        description: 'Pedidos finalizados agora têm uma ação própria de cancelamento, com confirmação clara e atualização do estoque, dos valores relacionados e das telas da loja. O pedido permanece identificado como cancelado para manter o histórico.',
+      },
+      {
+        title: 'Relatório de serviço mais claro',
+        category: 'melhoria',
+        description: 'O cabeçalho do relatório agora identifica o nome do serviço de forma explícita. Respostas que combinam texto, fotos e vídeo passam a aparecer corretamente conforme o conteúdo enviado.',
+      },
+    ],
+  },
+  {
+    version: '1.41.20',
+    date: '18 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Compensação de devoluções corrigida',
+        category: 'correcao',
+        description: 'Ao desfazer uma devolução, a recomposição do estoque e do crédito do cliente volta a ser concluída com segurança e permanece registrada no histórico.',
+      },
+    ],
+  },
+  {
+    version: '1.41.19',
+    date: '18 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Busca completa em estoques grandes',
+        category: 'correcao',
+        description: 'A busca do estoque volta a encontrar todos os produtos, mesmo quando a empresa possui mais de mil itens cadastrados.',
+      },
+      {
+        title: 'Correção segura de vendas pelo caixa',
+        category: 'correcao',
+        description: 'No histórico do caixa, a venda pode ser aberta diretamente no fluxo correto de devolução e pós-venda. A confirmação só aparece depois que a operação é realmente concluída e as informações relacionadas são atualizadas.',
+      },
+    ],
+  },
+  {
+    version: '1.41.18',
+    date: '17 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Aprove o orçamento sem antecipar o faturamento',
+        category: 'correcao',
+        description: 'Na aprovação interna, escolha entre apenas aprovar, gerar uma conta a receber ou registrar o valor como recebido. Quando o faturamento fica para o fim do serviço, a ordem de serviço evita sugerir uma cobrança duplicada.',
+      },
+    ],
+  },
+  {
+    version: '1.41.16',
+    date: '17 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Histórico dos equipamentos corrigido',
+        category: 'correcao',
+        description: 'O Portal do Cliente volta a mostrar em cada equipamento todas as ordens de serviço vinculadas, inclusive quando o atendimento inclui vários equipamentos.',
+      },
+    ],
+  },
+  {
+    version: '1.41.15',
+    date: '17 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Planejamento de visitas de contrato corrigido',
+        category: 'correcao',
+        description: 'Visitas geradas por contratos agora mantêm corretamente os serviços vinculados aos equipamentos. Ao ajustar uma ocorrência, o salvamento deixa de ser bloqueado por uma inconsistência criada na geração da OS.',
+      },
+    ],
+  },
+  {
+    version: '1.41.14',
+    date: '17 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ajuste o valor direto no item ou no pedido',
+        category: 'recurso',
+        description: 'Na venda e no orçamento, clique no valor para informar o preço final. Em cada item, escolha entre usar um preço apenas naquele pedido ou mostrar a diferença como desconto ao cliente. No total do pedido, toda redução é registrada como desconto.',
+      },
+      {
+        title: 'Compras com custo final editável',
+        category: 'melhoria',
+        description: 'Na compra, altere diretamente o valor de um material ou o total da operação. O sistema recalcula os custos daquele atendimento antes da confirmação.',
+      },
+      {
+        title: 'PDV agora aparece como PDV (Loja)',
+        category: 'melhoria',
+        description: 'Menus, contratação, proposta e áreas administrativas usam o nome PDV (Loja), deixando mais claro onde ficam as vendas e a operação de balcão.',
+      },
+    ],
+  },
+  {
+    version: '1.41.13',
+    date: '17 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Baixa de contas recorrentes pelo valor real',
+        category: 'recurso',
+        description: 'Ao pagar ou receber uma conta recorrente, informe o valor daquele mês. Por padrão, as próximas mantêm o valor previsto; se quiser, atualize somente as próximas contas ainda abertas.',
+      },
+      {
+        title: 'Contas e lançamentos preenchidos com menos digitação',
+        category: 'melhoria',
+        description: 'Comece pela descrição e use uma sugestão baseada no histórico da sua empresa para preencher categoria, cliente ou fornecedor e centro de custo. Depois, continue direto pela data e pelo valor, inclusive usando o teclado.',
+      },
+    ],
+  },
+  {
+    version: '1.41.12',
+    date: '17 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cobranças parceladas direto no Asaas',
+        category: 'recurso',
+        description: 'Informe o valor total e gere de 2 a 12 cobranças mensais por Pix, boleto ou escolha do cliente. Confira o valor e os vencimentos antes de gerar, e tente novamente somente as parcelas pendentes quando houver uma falha.',
+      },
+      {
+        title: 'Cobranças e assinaturas mais claras',
+        category: 'melhoria',
+        description: 'Busca, filtros e estados sem resultado agora orientam melhor o próximo passo. O cadastro de assinaturas também diferencia carregamento, falha de conexão e ausência de clientes.',
+      },
+    ],
+  },
+  {
+    version: '1.41.11',
+    date: '16 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Escolha entre Kit Loja e Kit Serviços',
+        category: 'recurso',
+        description: 'Comece com o kit adequado à sua operação: Loja para vendas no balcão e controle de caixa, ou Serviços para ordens de serviço e agenda. A contratação permite acrescentar o outro kit conforme a necessidade, preservando os valores dos contratos já existentes.',
+      },
+      {
+        title: 'Cadastro e contratação com o kit certo',
+        category: 'melhoria',
+        description: 'Links de contratação e teste podem trazer o kit escolhido ou permitir a escolha no cadastro. Confira os recursos e os valores antes de continuar, com acompanhamento da confirmação do pagamento para liberar o acesso.',
+      },
+      {
+        title: 'Sua contratação continua disponível para consulta',
+        category: 'correcao',
+        description: 'O plano atual permanece visível na assinatura mesmo quando deixa de ser oferecido para novas contratações, facilitando conferir o que sua empresa já contratou.',
+      },
+      {
+        title: 'Equipamentos conectados ao atendimento do PDV',
+        category: 'recurso',
+        description: 'Com o DomiLink configurado no computador, envie comprovantes para a fila de impressão, leia códigos para preencher a busca e use o peso da balança na quantidade de itens compatíveis. As ações são escolhidas pelo operador, e cada equipamento ainda precisa de validação física de compatibilidade.',
+      },
+      {
+        title: 'Conexão local com preferências de cada operador',
+        category: 'melhoria',
+        description: 'Configure e confira a conexão dos equipamentos pelo PDV ou pelas configurações, com preferências separadas por operador e empresa neste computador.',
+      },
+      {
+        title: 'Preparação fiscal com pendências e retomada mais claras',
+        category: 'melhoria',
+        description: 'Confira o que falta na configuração antes de iniciar a NFC-e e acompanhe a situação da mesma nota ao retomar uma tentativa. A emissão real depende da configuração do emitente e da homologação fiscal, e a venda permanece concluída quando há uma pendência fiscal.',
+      },
+      {
+        title: 'Curva ABC e compras com consultas completas',
+        category: 'correcao',
+        description: 'A curva ABC considera todos os itens do período, e a consulta de compras carrega os registros em páginas para evitar resultados incompletos em volumes maiores.',
+      },
+      {
+        title: 'Saídas de dinheiro sem duplicar o crédito do fornecedor',
+        category: 'correcao',
+        description: 'Os gráficos de caixa consideram o pagamento efetivo e sua data, sem contar novamente como saída de dinheiro a parte quitada com crédito do fornecedor.',
+      },
+      {
+        title: 'Limites do resultado financeiro identificados',
+        category: 'melhoria',
+        description: 'O financeiro e os demonstrativos avisam quando os dados do PDV exigem conferência complementar. A conciliação completa do resultado da empresa continua pendente e deve ser considerada antes de fechar o período.',
+      },
+    ],
+  },
+  {
+    version: '1.41.10',
+    date: '16 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Baixas e relatórios financeiros mais confiáveis',
+        category: 'correcao',
+        description: 'A baixa usa a conta vinculada ao lançamento quando ela estiver disponível e pede uma escolha quando não houver conta válida. Relatórios aguardam a atualização dos dados, e contas recorrentes são criadas com mais rapidez sem perder a relação entre vencimentos e cobranças.',
+      },
+      {
+        title: 'Acesso recuperado em conexões lentas',
+        category: 'correcao',
+        description: 'A validação da assinatura tolera melhor redes móveis lentas e a ação de tentar novamente recarrega os dados de acesso antes de consultar a assinatura, mantendo a proteção quando o estado ainda não puder ser confirmado.',
+      },
+      {
+        title: 'Assinatura e vídeo mais seguros na Área do Técnico',
+        category: 'correcao',
+        description: 'A assinatura passa a ser salva ao terminar cada traço, e a OS aguarda gravações pendentes antes de finalizar. No iPhone e no iPad, a câmera nativa evita vídeos com imagem congelada e áudio em reprodução.',
+      },
+      {
+        title: 'Ações mobile corrigidas na agenda e nos formulários',
+        category: 'correcao',
+        description: 'A ação Reabrir OS volta a funcionar na agenda mobile, e botões de saída em telas cheias permanecem abaixo da barra de status do iPhone.',
+      },
+    ],
+  },
+  {
+    version: '1.41.9',
+    date: '16 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Vouchers somados em uma linha no comprovante',
+        category: 'correcao',
+        description: 'A prévia e o PDF dos comprovantes mostram o total dos vouchers em uma única linha Vouchers. Os demais meios de pagamento e os vencimentos do fiado continuam separados, sem alterar os pagamentos ou o histórico da venda.',
+      },
+    ],
+  },
+  {
+    version: '1.41.8',
+    date: '16 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Estoque da loja integrado ao PDV',
+        category: 'recurso',
+        description: 'Configure o estoque padrão da loja e escolha quais terminais devem herdar essa configuração. Os atendimentos usam o contexto da loja, preservando as escolhas específicas já existentes.',
+      },
+      {
+        title: 'Gestão de locais no estoque da loja',
+        category: 'melhoria',
+        description: 'Gerencie os locais de estoque pelo contexto da loja, com acesso conforme as permissões do usuário e proteção dos cadastros e materiais já existentes.',
+      },
+      {
+        title: 'Orçamentos em abas e edição consistente',
+        category: 'melhoria',
+        description: 'Alterne entre orçamentos em abas e use o mesmo editor dos atendimentos do PDV, com apresentação consistente dos itens, do resumo e dos cupons.',
+      },
+      {
+        title: 'Cadastro de materiais de clientes corrigido',
+        category: 'correcao',
+        description: 'A criação de materiais no estoque de clientes volta a funcionar, mantendo as validações de acesso e de vínculo do cadastro.',
+      },
+      {
+        title: 'Cupons promocionais com regras de uso',
+        category: 'recurso',
+        description: 'Gerencie cupons com desconto em valor ou percentual, vigência e limites de utilização. Defina clientes e produtos participantes e confira o desconto no atendimento, incluindo pedidos ainda pendentes.',
+      },
+      {
+        title: 'Vários vouchers na mesma compra',
+        category: 'melhoria',
+        description: 'Aproveite os créditos de mais de um voucher no recebimento, conferindo o saldo e o valor usado em cada um. Vouchers continuam separados dos cupons promocionais.',
+      },
+      {
+        title: 'Fiado com vencimento opcional',
+        category: 'melhoria',
+        description: 'Escolha uma data de vencimento ou registre explicitamente a venda sem vencimento, conforme a negociação com o cliente.',
+      },
+      {
+        title: 'Crédito parcial do fornecedor na compra',
+        category: 'melhoria',
+        description: 'Use parte do crédito disponível na compra e confira os valores pagos e em aberto. O resumo financeiro e os demonstrativos acompanham esses cenários com maior precisão.',
+      },
+      {
+        title: 'Trocas com atendimento e estoque coordenados',
+        category: 'melhoria',
+        description: 'Confira os produtos da troca e o caixa que atenderá o novo pedido, com acompanhamento dos valores envolvidos e das permissões de cada operador.',
+      },
+      {
+        title: 'Novo destino para o saldo liberado',
+        category: 'melhoria',
+        description: 'O saldo disponível de um cancelamento pode receber um novo destino, com conferência dos pagamentos de origem e das permissões para crédito do cliente, voucher ou devolução do dinheiro.',
+      },
+      {
+        title: 'Devolução e retirada mais confiáveis',
+        category: 'correcao',
+        description: 'A confirmação da devolução permanece ao alternar o tamanho da tela, e repetir uma solicitação já concluída conserva a mesma operação. Comprovantes identificam o operador da retirada e respeitam o contexto do caixa.',
+      },
+      {
+        title: 'Receber abre o atendimento correto',
+        category: 'correcao',
+        description: 'A ação Receber leva ao atendimento selecionado e conserva o contexto do caixa, com conferência das permissões antes de continuar.',
+      },
+      {
+        title: 'Recursos disponíveis conforme o acesso ao módulo',
+        category: 'melhoria',
+        description: 'Empresas com o PDV contratado e ativo acessam os recursos incluídos conforme a assinatura e as permissões do usuário, sem depender de liberações individuais.',
+      },
+    ],
+  },
+  {
+    version: '1.41.7',
+    date: '16 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Renovações por Pix Automático mais confiáveis',
+        category: 'correcao',
+        description: 'O acesso agora é renovado somente depois da confirmação do pagamento. O fluxo também evita autorizações repetidas e consegue conciliar com segurança pagamentos que cheguem sem a referência habitual.',
+      },
+    ],
+  },
+  {
+    version: '1.41.6',
+    date: '15 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      { title: 'Catálogo técnico ampliado e organizado', category: 'melhoria', description: 'Mais referências Daikin, Midea, Springer, Carrier, LG, Samsung e Gree, com imagens identificadas, documentos e códigos conforme as fontes disponíveis. Categorias, famílias, busca e paginação facilitam encontrar o equipamento e consultar seus detalhes.' },
+      { title: 'Gases e cálculos com referências documentadas', category: 'melhoria', description: 'As tabelas de gases e as orientações de superaquecimento e sub-resfriamento respeitam os modelos, as condições e os limites publicados. As fontes ficam disponíveis para consulta, e equipamentos com carga por peso recebem a orientação correspondente.' },
+      { title: 'Abas mais fáceis de navegar', category: 'melhoria', description: 'As abas horizontais mostram setas clicáveis quando há mais opções fora da área visível, no computador e no celular. Na Área do Técnico, a aba ativa usa a cor da ferramenta no texto, no ícone e no sublinhado.' },
+    ],
+  },
+  {
+    version: '1.41.5',
+    date: '15 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Título e número em destaque nos comprovantes',
+        category: 'melhoria',
+        description: 'O título e o número do documento aparecem em uma faixa preta com texto branco, tanto na prévia quanto nos comprovantes térmicos e A4. Os dados do atendimento continuam legíveis logo abaixo.',
+      },
+    ],
+  },
+  {
+    version: '1.41.4',
+    date: '15 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Comprovantes de retirada mais objetivos',
+        category: 'melhoria',
+        description: 'Os comprovantes de retirada deixam de exibir o campo de assinatura e o espaço reservado para ele, tanto na prévia quanto nos formatos térmicos e A4.',
+      },
+    ],
+  },
+  {
+    version: '1.41.3',
+    date: '15 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Devoluções com destino do saldo mais claro',
+        category: 'melhoria',
+        description: 'Ao devolver ou cancelar itens de uma venda já paga, o operador confere o destino do saldo e acompanha o histórico da operação, conforme suas permissões.',
+      },
+      {
+        title: 'Voucher durante o recebimento',
+        category: 'melhoria',
+        description: 'O voucher é um crédito que o cliente pode aproveitar em outra compra. Durante o recebimento, é possível conferir o saldo disponível e escolher o valor a usar.',
+      },
+      {
+        title: 'Consulta de fiado mais confiável',
+        category: 'correcao',
+        description: 'Se não for possível consultar os valores do cliente, o sistema avisa e permite tentar novamente, evitando confundir uma falha de consulta com saldo zerado.',
+      },
+      {
+        title: 'Comprovantes mais organizados',
+        category: 'melhoria',
+        description: 'Pedidos, orçamentos e retiradas têm identificação mais clara nos comprovantes térmicos e A4, com espaço para assinatura e acesso respeitando as permissões do operador.',
+      },
+      {
+        title: 'Configuração manual do DomiLink',
+        category: 'melhoria',
+        description: 'A configuração oferece o pacote do DomiLink e orientações para conexão local dos equipamentos. A compatibilidade de cada equipamento ainda exige validação física.',
+      },
+      {
+        title: 'Preparação da NFC-e após a venda',
+        category: 'melhoria',
+        description: 'A venda concluída pode iniciar o preenchimento da NFC-e com os dados do atendimento. A emissão depende da configuração fiscal e da homologação do emitente.',
+      },
+    ],
+  },
+  {
+    version: '1.41.2',
+    date: '15 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      { title: 'Área do Técnico mais fácil de usar', category: 'melhoria', description: 'As ferramentas ganharam busca, navegação mais simples, textos maiores e campos mais claros no computador e no celular. As cores continuam ajudando a identificar cada ferramenta e tipo de conversão.' },
+      { title: 'Conversões e cálculos revisados', category: 'correcao', description: 'Capacidade de refrigeração e potência mecânica ficam separadas. Foram corrigidas trocas de unidade, valores fora das tabelas, pequenas doses e estimativas que poderiam indicar uma opção insuficiente. A consulta de capacitor passa a orientar pela especificação do modelo, sem recomendar uma peça apenas por BTU ou corrente de partida.' },
+      { title: 'Mais referências Samsung e Daikin no catálogo', category: 'melhoria', description: 'Foram acrescentados 28 códigos Daikin e 10 Samsung para as famílias confirmadas nos manuais, com documento de referência no detalhe e acesso pela busca. O catálogo também facilita encontrar os manuais oficiais Daikin e distingue o consumo mensal cadastrado da simulação pela potência elétrica.' },
+      { title: 'Orçamento manual mais direto', category: 'melhoria', description: 'Os serviços ficam recolhidos no modo manual e abrem uma edição compacta de quantidade, preço e descrição. O cálculo com BDI mantém a composição completa, e a escolha entre usar os custos só neste orçamento ou atualizar o cadastro ficou mais clara.' },
+      { title: 'Checklists personalizados aparecem corretamente no PMOC', category: 'correcao', description: 'O resumo mostra os checklists personalizados aplicados ao equipamento ou ao ambiente. Ao reabrir uma seleção somente de personalizados, o sistema preserva essa escolha sem incluir atividades da norma que não foram selecionadas.' },
+    ],
+  },
+  {
+    version: '1.41.1',
+    date: '15 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Venda, compra e orçamento com o mesmo jeito de usar',
+        category: 'melhoria',
+        description: 'As telas do PDV ganharam uma apresentação mais consistente, com seleção de cliente ou fornecedor, código do material separado do nome, fotos e resumo do atendimento. A busca e os atalhos ajudam a incluir vários itens em sequência, e as abas facilitam alternar entre atendimentos.',
+      },
+      {
+        title: 'Recebimento mais claro, inclusive com várias formas',
+        category: 'melhoria',
+        description: 'A finalização organiza o valor e a conta de destino junto de cada forma de pagamento. O resumo e os descontos ficam mais fáceis de conferir, com opção de ampliar a tela e manter essa preferência para o próximo atendimento.',
+      },
+      {
+        title: 'Caixas, pedidos e retirada mais fáceis de acompanhar',
+        category: 'melhoria',
+        description: 'O caixa do usuário recebe prioridade ao entrar, e pedidos, orçamentos e retirada compartilham uma visão mais consistente do fluxo do balcão. Menus de ações, filtros e telas de carregamento seguem o padrão do sistema.',
+      },
+      {
+        title: 'Comprovante certo para cada etapa',
+        category: 'melhoria',
+        description: 'Orçamento, pedido e retirada têm identificação própria nos comprovantes térmicos e A4. O layout destaca os materiais, os totais e as formas de pagamento, com textos mais legíveis e configuração de impressão por etapa.',
+      },
+      {
+        title: 'Mais proteção para cada caixa e atendimento',
+        category: 'seguranca',
+        description: 'A separação das movimentações entre caixas foi reforçada. A recuperação de rascunhos preserva versões diferentes, e uma tentativa de venda interrompida passa a conservar sua identificação para evitar a repetição da mesma venda.',
+      },
+    ],
+  },
+  {
+    version: '1.39.44',
+    date: '15 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Arraste para escolher horas e minutos',
+        category: 'melhoria',
+        description: 'Nos seletores de horário, agora é possível segurar e arrastar os números para cima ou para baixo usando mouse ou toque. Clique, roda do mouse e teclado continuam funcionando normalmente.',
+      },
+    ],
+  },
+  {
+    version: '1.39.43',
+    date: '15 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Logo white-label mais legível nos menus',
+        category: 'correcao',
+        description: 'A área inteira do logo agora escolhe automaticamente fundo claro ou escuro para manter o contraste, sem moldura ao redor da imagem. O comportamento é o mesmo no computador, no menu recolhido e no celular.',
+      },
+      {
+        title: 'Acesso ao Dominex normalizado no celular',
+        category: 'correcao',
+        description: 'Links de acompanhamento, propostas, cobranças e documentos passam a usar o endereço oficial com www. Instalações antigas do aplicativo também conseguem limpar a configuração anterior e continuar na mesma tela, evitando a página de erro do navegador.',
+      },
+    ],
+  },
+  {
+    version: '1.39.42',
+    date: '15 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Destinatários certos para cada mensagem no WhatsApp',
+        category: 'recurso',
+        description: 'Cada cliente pode ter contatos diferentes para ordens de serviço e assuntos financeiros. É possível escolher um ou mais destinatários em cada categoria, mantendo o contato principal quando nenhuma preferência for configurada.',
+      },
+      {
+        title: 'Preferência de mensagens respeitada por telefone',
+        category: 'melhoria',
+        description: 'O comando de saída bloqueia somente o número que pediu para parar. Pedidos como “cancelar visita” ou “cancelar cobrança” não são confundidos com o bloqueio das mensagens.',
+      },
+    ],
+  },
+  {
+    version: '1.39.41',
+    date: '14 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      { title: 'Orçamentos, contratos e OS em tela cheia', category: 'melhoria', description: 'Criar e editar ficou mais legível no computador e no celular, com campos maiores, seletores consistentes e ações fixas. A escolha entre preço manual e BDI aparece antes dos serviços e é lembrada para os próximos orçamentos neste navegador.' },
+      { title: 'Orçamento rápido dentro da OS', category: 'melhoria', description: 'Uma etapa opcional permite adicionar serviços e materiais, ajustar os valores, usar BDI e conferir o total. O atendimento inicial fica mais simples para quem não precisa orçar.' },
+      { title: 'Veja o número da OS antes de salvar', category: 'melhoria', description: 'O número definitivo aparece no cabeçalho desde a criação e é preservado ao salvar ou retomar o rascunho. Em recorrências, identifica a primeira OS. Números de preenchimentos abandonados podem deixar saltos na sequência.' },
+      { title: 'Kanban de OS mais claro', category: 'melhoria', description: 'Os cabeçalhos usam a cor do status, com texto e ícones brancos. Ao pesquisar, aparecem apenas as colunas que contêm resultados; ao limpar a busca, o quadro completo retorna.' },
+    ],
+  },
+  {
+    version: '1.39.40',
+    date: '13 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Relatório de contas a pagar mostra somente despesas',
+        category: 'correcao',
+        description: 'A área de contas passa a abrir em A Pagar e o PDF respeita essa escolha, evitando que vendas e outras receitas apareçam junto das despesas. A visualização combinada continua disponível pela opção Todas.',
+      },
+      {
+        title: 'Categorias mais claras nos relatórios financeiros',
+        category: 'melhoria',
+        description: 'As categorias passam a aparecer em etiquetas com sua própria cor e texto branco. Registros antigos também voltam a mostrar o nome correto da categoria, sem códigos técnicos no relatório.',
+      },
+    ],
+  },
+  {
+    version: '1.39.39',
+    date: '13 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Chamados passam por análise antes de virar OS',
+        category: 'melhoria',
+        description: 'Solicitações enviadas pelos portais agora recebem um protocolo e aguardam análise. A equipe pode criar uma ordem de serviço quando necessário ou encerrar o chamado sem gerar OS, evitando ordens abertas automaticamente e mantendo o vínculo para acompanhamento.',
+      },
+    ],
+  },
+  {
+    version: '1.39.38',
+    date: '13 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Parcelas financeiras salvam normalmente',
+        category: 'correcao',
+        description: 'Administradores e gestores voltaram a salvar despesas e receitas parceladas ou recorrentes sem uma recusa indevida ao concluir o lançamento.',
+      },
+    ],
+  },
+  {
+    version: '1.39.37',
+    date: '13 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Lançamentos financeiros liberados novamente',
+        category: 'correcao',
+        description: 'Administradores e pessoas autorizadas voltaram a criar e editar despesas, receitas, contas a pagar e contas a receber normalmente, sem receber uma recusa de permissão indevida ao salvar.',
+      },
+    ],
+  },
+  {
+    version: '1.39.36',
+    date: '13 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Aprovação de orçamento pode ser revertida',
+        category: 'recurso',
+        description: 'Um orçamento aprovado por engano pode voltar para Enviado pelo menu de ações, mantendo o mesmo link para uma nova resposta do cliente. Para proteger o histórico, a reversão só fica disponível antes de gerar uma ordem de serviço, um lançamento financeiro ou uma cobrança.',
+      },
+    ],
+  },
+  {
+    version: '1.39.35',
+    date: '12 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Avisos aparecem na ordem certa',
+        category: 'correcao',
+        description: 'Tutoriais, pesquisas, tarefas do dia, novidades e o convite para ativar notificações agora aguardam sua vez. Isso evita telas sobrepostas e impede que um aviso seja marcado como visto antes de realmente aparecer.',
+      },
+    ],
+  },
+  {
+    version: '1.39.34',
+    date: '12 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Ativação de notificações mais fácil',
+        category: 'melhoria',
+        description: 'O Dominex passa a convidar cada pessoa a ativar os avisos no próprio aparelho. A permissão só é solicitada depois do toque e, no iPhone fora do aplicativo instalado, a tela orienta como adicionar o Dominex à Tela de Início.',
+      },
+      {
+        title: 'Lembretes automáticos da conta',
+        category: 'recurso',
+        description: 'Administradores e gestores passam a receber avisos sobre o fim do período de teste, o vencimento da assinatura e pagamentos pendentes. Esses avisos já vêm ligados por padrão, podem ser ajustados em Configurações e seguem o idioma de cada pessoa.',
+      },
+    ],
+  },
+  {
+    version: '1.39.33',
     date: '11 de novembro de 2026',
-    type: 'minor',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Push com alerta sonoro no aparelho',
+        category: 'melhoria',
+        description: 'As notificações passam a solicitar o som padrão do celular em sistemas compatíveis. O aparelho ainda respeita o modo silencioso, o Foco e as preferências de notificação escolhidas pela pessoa.',
+      },
+    ],
+  },
+  {
+    version: '1.39.32',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Permissões financeiras mais claras e completas',
+        category: 'correcao',
+        description: 'A permissão para criar e editar lançamentos agora libera automaticamente o uso das contas e caixas necessários para concluir a operação. Usuários somente leitura deixam de ver ações que seriam recusadas ao salvar, evitando formulários preenchidos em vão e combinações confusas de acesso.',
+      },
+    ],
+  },
+  {
+    version: '1.39.31',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Notificações no idioma de cada pessoa',
+        category: 'melhoria',
+        description: 'Avisos de agenda, pagamentos, chamados e formulários agora seguem o idioma escolhido pelo destinatário, incluindo valores e textos da mensagem. O envio para o aparelho também foi corrigido para não depender da abertura prévia do sino.',
+      },
+    ],
+  },
+  {
+    version: '1.39.30',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'iPhone identificado corretamente no push',
+        category: 'correcao',
+        description: 'A lista de aparelhos deixa de mostrar alguns iPhones e iPads como Mac. Quando o Dominex estiver instalado, o dispositivo passa a aparecer com seu tipo correto e a indicação PWA.',
+      },
+    ],
+  },
+  {
+    version: '1.39.29',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Abas mais fáceis de arrastar no celular',
+        category: 'melhoria',
+        description: 'As barras de abas horizontais não se movimentam mais para cima e para baixo. Setas discretas nas laterais mostram quando existem mais opções fora da tela, sem atrapalhar a rolagem normal da página.',
+      },
+      {
+        title: 'Ativação do push mais confiável no PWA',
+        category: 'correcao',
+        description: 'A ativação das notificações aproveita imediatamente o serviço já iniciado pelo aplicativo e não mostra falha apenas porque a lista de aparelhos demorou para atualizar. Se algo realmente impedir a ativação, a mensagem agora orienta o que fazer.',
+      },
+    ],
+  },
+  {
+    version: '1.39.28',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Nova tentativa de NFS-e registrada corretamente',
+        category: 'correcao',
+        description: 'Depois de corrigir uma nota rejeitada, a nova emissão passa a usar os dados revisados e deixa de reapresentar a tentativa anterior. Quando o resultado oficial ainda estiver incerto, o sistema bloqueia um novo envio até confirmar o status e evita duplicidade fiscal.',
+      },
+    ],
+  },
+  {
+    version: '1.39.27',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Boas-vindas destravadas no PWA',
+        category: 'correcao',
+        description: 'A tela inicial com o vídeo volta a aceitar toques e rolagem normalmente no celular. O vídeo permanece dentro do seu quadro, permitindo assistir, confirmar ou pular durante o teste sem ficar preso na tela.',
+      },
+    ],
+  },
+  {
+    version: '1.39.26',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Contas financeiras prontas desde o cadastro',
+        category: 'correcao',
+        description: 'Toda empresa passa a receber automaticamente um caixa e uma conta principal. Empresas que ficaram sem nenhuma conta também são corrigidas, permitindo registrar vendas, contas a pagar, contas a receber e outras movimentações sem configuração manual prévia.',
+      },
+      {
+        title: 'Contas visíveis para a equipe autorizada',
+        category: 'correcao',
+        description: 'Quem possui acesso operacional ao Financeiro ou ao PDV volta a encontrar as contas e caixas da empresa ao registrar uma venda, uma conta a pagar ou outra movimentação. Os saldos e a edição das contas continuam restritos às permissões de gestão.',
+      },
+    ],
+  },
+  {
+    version: '1.39.25',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Notificações importantes no sistema e no aparelho',
+        category: 'recurso',
+        description: 'A equipe passa a receber avisos dos compromissos do dia, pagamentos confirmados, novos chamados e formulários respondidos. As mensagens mostram informações úteis, como valor, cliente e número do chamado, e podem aparecer no sino ou como notificação no aparelho com o PWA instalado.',
+      },
+      {
+        title: 'Cada empresa escolhe quem recebe cada aviso',
+        category: 'recurso',
+        description: 'A nova área Notificações, dentro de Configurações, permite definir os canais e destinatários de cada tipo de aviso. Cada pessoa também pode escolher o que deseja receber, administrar seus aparelhos e configurar um horário silencioso para o push.',
+      },
+    ],
+  },
+  {
+    version: '1.39.24',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'NFS-e emitida com a data fiscal correta',
+        category: 'correcao',
+        description: 'A data de competência agora acompanha o mesmo dia usado pela emissão fiscal. Isso evita que uma nota seja recusada como futura durante a virada do dia, inclusive quando o sistema é acessado de outro fuso horário.',
+      },
+    ],
+  },
+  {
+    version: '1.39.23',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Promoções temporárias por módulo e usuários',
+        category: 'recurso',
+        description: 'No painel de empresas, a equipe pode definir um valor promocional, inclusive gratuito, para cada módulo ou pacote de usuários adicionais e escolher por quantas mensalidades ele vale. A ficha mostra o valor durante a condição, quantas cobranças restam e o valor integral que será aplicado automaticamente depois.',
+      },
+    ],
+  },
+  {
+    version: '1.39.22',
+    date: '11 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Logo da empresa legível em qualquer tema',
+        category: 'correcao',
+        description: 'Marcas com texto claro, símbolo escuro, formato redondo ou cores misturadas agora recebem o fundo de apoio adequado somente quando precisam. O resultado acompanha o tema claro ou escuro no menu, na barra superior, nas Configurações e nas imagens de compartilhamento.',
+      },
+    ],
+  },
+  {
+    version: '1.39.21',
+    date: '11 de novembro de 2026',
+    type: 'patch',
     changes: [
       {
         title: 'Loja de balcão, do orçamento à retirada',

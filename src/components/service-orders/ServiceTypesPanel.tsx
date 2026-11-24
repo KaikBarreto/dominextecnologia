@@ -1,3 +1,4 @@
+import { HorizontalTabBar } from '@/components/ui/HorizontalTabBar';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Plus, Trash2, Wrench, Tags, SlidersHorizontal } from 'lucide-react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -286,29 +287,31 @@ export function ServiceTypesPanel({
 
   const inlineEditor = (
     <Tabs value={activeFormTab} onValueChange={(value) => setFormTab(value as ServiceTypeFormTab)} className="space-y-5">
-      <div className="flex gap-1 overflow-x-auto border-b no-scrollbar" role="tablist" aria-label="Seções do tipo de serviço">
-        {[
-          { value: 'dados', label: t.tabDados },
-          ...(showFiscal ? [{ value: 'fiscal', label: t.tabFiscal }] : []),
-          { value: 'custos', label: t.tabCostsPricing },
-        ].map((tab) => (
-          <button
-            key={tab.value}
-            type="button"
-            role="tab"
-            aria-selected={activeFormTab === tab.value}
-            onClick={() => setFormTab(tab.value as ServiceTypeFormTab)}
-            className={cn(
-              '-mb-px shrink-0 whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors',
-              activeFormTab === tab.value
-                ? 'border-primary text-foreground'
-                : 'border-transparent text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <HorizontalTabBar asChild>
+        <div className="flex gap-1 overflow-x-auto border-b no-scrollbar" role="tablist" aria-label="Seções do tipo de serviço">
+          {[
+            { value: 'dados', label: t.tabDados },
+            ...(showFiscal ? [{ value: 'fiscal', label: t.tabFiscal }] : []),
+            { value: 'custos', label: t.tabCostsPricing },
+          ].map((tab) => (
+            <button
+              key={tab.value}
+              type="button"
+              role="tab"
+              aria-selected={activeFormTab === tab.value}
+              onClick={() => setFormTab(tab.value as ServiceTypeFormTab)}
+              className={cn(
+                '-mb-px shrink-0 whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors',
+                activeFormTab === tab.value
+                  ? 'border-primary text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </HorizontalTabBar>
       <TabsContent value="dados" className="mt-0 space-y-5">
         <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_10rem]">
           <div className="space-y-2">

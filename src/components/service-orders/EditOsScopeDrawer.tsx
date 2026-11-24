@@ -84,7 +84,7 @@ interface EditOsScopeDrawerProps {
   answeredKeys: AnsweredKey[];
   schedule?: EditOsScheduleSeed;
   canEditSchedule?: boolean;
-  canOverrideScheduleConflict?: boolean;
+  allowScheduleConflicts?: boolean;
   onSaved: () => void | Promise<void>;
 }
 
@@ -97,7 +97,7 @@ const EMPTY_SCOPE: EditOsScopeState = { equipmentGroups: [], standaloneChecklist
 
 export function EditOsScopeDrawer({
   open, onOpenChange, serviceOrderId, customerId, customer, seedItems, answeredKeys,
-  schedule, canEditSchedule = false, canOverrideScheduleConflict = false, onSaved,
+  schedule, canEditSchedule = false, allowScheduleConflicts = false, onSaved,
 }: EditOsScopeDrawerProps) {
   const { locale: appLocale } = useAppLocaleContext();
   const isCompact = useIsCompact();
@@ -751,7 +751,7 @@ export function EditOsScopeDrawer({
       <ScheduleConflictDialog
         open={!!scheduleConflict}
         conflicts={scheduleConflict?.conflicts ?? []}
-        canOverride={canOverrideScheduleConflict}
+        canOverride={allowScheduleConflicts}
         isLoading={reschedule.isPending}
         onCancel={() => setScheduleConflict(null)}
         onOverride={(reason) => { if (scheduleConflict) void runScheduleSave(scheduleConflict.requestId, reason); }}

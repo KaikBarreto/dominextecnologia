@@ -1,22 +1,26 @@
+vi.mock('@/hooks/pdvReportCache', () => ({ usePdvAuthorizedQueryScope: () => ({key:[state.fiscalScope],ready:true}) }));
+vi.mock('@/components/fiscal/goods/PdvNfceSaleAction', () => ({ PdvNfceSaleAction: (props:Record<string,unknown>) => { state.fiscalController(props);return <div data-testid="fiscal-controller"/>; } }));
+vi.mock('@/hooks/useGoodsFiscalAccess',()=>({useGoodsFiscalAccess:()=>({allowed:state.fiscalAllowed,scopeId:state.fiscalScope})}));
+import { useState } from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PdvOrderWorkspaceDetail } from '@/hooks/usePdvOrdersList';
-const state = vi.hoisted(() => ({ receipt: vi.fn(), flow: vi.fn(), listLoading: false, detailLoading: false, counterEnabled: false, mode: 'dispatch' as 'dispatch' | 'cashier', screens: ['screen:pdv_orders', 'screen:pdv', 'screen:pdv_dispatch'], order: { id:'order-1',number:11,customerName:'Loja Frio',createdAt:'2026-11-01T12:00:00Z',commercialStatus:'pago',paymentStatus:'pago',pickupStatus:'aguardando_liberacao',canGenerateReceipt:true,total:80,notes:null } as PdvOrderWorkspaceDetail['order'] }));
+const state = vi.hoisted(() => ({ mobile:false, returnsEnabled:false, fiscalScope:'scope-a',fiscalAllowed:false,fiscalController:vi.fn(),menu:vi.fn(),receipt: vi.fn(), flow: vi.fn(), listLoading: false, detailLoading: false, counterEnabled: false, mode: 'dispatch' as 'dispatch' | 'cashier', screens: ['screen:pdv_orders', 'screen:pdv', 'screen:pdv_dispatch'], order: { id:'order-1',number:11,customerName:'Loja Frio',createdAt:'2026-11-01T12:00:00Z',commercialStatus:'pago',paymentStatus:'pago',pickupStatus:'aguardando_liberacao',canGenerateReceipt:true,total:80,notes:null } as PdvOrderWorkspaceDetail['order'] }));
 vi.mock('@/contexts/AuthContext',()=>({useAuth:()=>({roles:[],permissions:[],hasPermissionRecord:true,profile:{company_id:'company-1'},hasScreenAccess:(key:string)=>state.screens.includes(key),isAdminOrGestor:()=>false})}));
 vi.mock('@/contexts/AppLocaleContext',()=>({useAppLocaleContext:()=>({locale:'pt-br'})}));
 vi.mock('@/hooks/usePdvCounterFlow',()=>({usePdvCounterCapability:()=>({data:{counterEnabled:state.counterEnabled,fulfillmentMode:state.mode}})}));
 vi.mock('@/hooks/usePdvSalesFlow',()=>({usePdvSalesFlow:()=>{state.flow();return {data:[],isLoading:false,isError:false};}}));
-vi.mock('@/hooks/use-mobile',()=>({useIsMobile:()=>false,useIsCompact:()=>false}));
+vi.mock('@/hooks/use-mobile',()=>({useIsMobile:()=>state.mobile,useIsCompact:()=>state.mobile}));
 vi.mock('@/hooks/use-toast',()=>({useToast:()=>({toast:vi.fn()})}));
 vi.mock('@/lib/format/hooks',()=>({useLocaleFormatters:()=>({money:(v:number)=>`R$ ${v.toFixed(2)}`,dateTime:(v:string)=>v})}));
-vi.mock('@/hooks/usePdvReturns',()=>({usePdvReturnsFeature:()=>({data:false}),derivePdvReturnsAccess:()=>({enabled:false})}));
+vi.mock('@/hooks/usePdvReturns',()=>({usePdvReturnsFeature:()=>({data:state.returnsEnabled}),derivePdvReturnsAccess:()=>({enabled:state.returnsEnabled,canReturn:state.returnsEnabled,canCancelResidual:state.returnsEnabled})}));
 vi.mock('@/hooks/usePdvAfterSale',()=>({usePdvAfterSaleFeature:()=>({data:false}),derivePdvAfterSaleAccess:()=>({enabled:false})}));
 vi.mock('@/hooks/usePdvReceiptSettings',()=>({usePdvReceiptSettings:()=>({data:{defaultFormat:'80mm'}})}));
 vi.mock('@/hooks/usePdvOrderReceiptSnapshot',()=>({usePdvOrderReceiptSnapshot:(id:string,enabled:boolean)=>{state.receipt(id,enabled);return {isFetching:false,data:enabled?{payments:[{method:'pix',amount:80,dueDate:null}]}:null};}}));
-vi.mock('@/components/pdv/receipt/PdvOrderReceiptButton',()=>({openPdvOrderReceipt:vi.fn()}));
-vi.mock('@/components/pdv/PdvOrderActionsMenu',()=>({PdvOrderActionsMenu:()=>null}));
-vi.mock('@/components/pdv/returns/PdvReturnsPanel',()=>({PdvReturnsPanel:()=>null}));
+vi.mock('@/components/pdv/receipt/PdvOrderReceiptButton',()=>({usePdvOrderReceiptOpener:()=>({open:vi.fn(),isCurrent:()=>true})}));
+vi.mock('@/components/pdv/PdvOrderActionsMenu',()=>({PdvOrderActionsMenu:(props:Record<string,unknown>)=>{state.menu(props);return null;}}));
+vi.mock('@/components/pdv/returns/PdvReturnsPanel',()=>({PdvReturnsPanel:function ReturnConfirmationProbe(){const[done,setDone]=useState(false);return done?<p>Devolução confirmada no atendimento</p>:<button onClick={()=>setDone(true)}>Confirmar devolução de teste</button>}}));
 vi.mock('@/components/pdv/after-sale/PdvAfterSalePanel',()=>({PdvAfterSalePanel:()=>null}));
 vi.mock('@/hooks/usePdvOrdersList',()=>({
  pdvOrderStatusLabel:(_kind:string,value:string)=>value==='pago'?'Pagamento concluído':value,
@@ -27,7 +31,7 @@ vi.mock('@/hooks/usePdvOrdersList',()=>({
 import PdvOrders from './PdvOrders';
 function LocationProbe(){const location=useLocation();return <output data-testid="location">{location.pathname+location.search}</output>}
 function open() {return render(<MemoryRouter initialEntries={['/pdv/pedidos?pedido=order-1']}><PdvOrders /><LocationProbe /></MemoryRouter>)}
-beforeEach(()=>{state.listLoading=false;state.detailLoading=false;state.flow.mockReset();state.counterEnabled=false;state.mode='dispatch';state.screens=['screen:pdv_orders','screen:pdv','screen:pdv_dispatch'];state.receipt.mockReset();state.order.pickupStatus='aguardando_liberacao';});
+beforeEach(()=>{state.mobile=false;state.returnsEnabled=false;state.fiscalScope='scope-a';state.fiscalAllowed=false;state.menu.mockClear();state.fiscalController.mockClear();state.listLoading=false;state.detailLoading=false;state.flow.mockReset();state.counterEnabled=false;state.mode='dispatch';state.screens=['screen:pdv_orders','screen:pdv','screen:pdv_dispatch'];state.receipt.mockReset();state.order.pickupStatus='aguardando_liberacao';});
 describe('pedido com estado único e abas úteis',()=>{
  it('mostra somente o estado atual em cada contexto e esconde recursos bloqueados',()=>{
   const {container}=open();
@@ -54,6 +58,22 @@ describe('pedido com estado único e abas úteis',()=>{
  });
 });
 
+
+describe('continuidade do atendimento ao mudar a largura',()=>{
+ it('preserva a confirmação de devolução ao alternar computador e celular',()=>{
+  state.returnsEnabled=true;
+  const view=open();
+  fireEvent.mouseDown(screen.getByRole('tab',{name:'Devoluções'}),{button:0,ctrlKey:false});
+  fireEvent.click(screen.getByRole('button',{name:'Confirmar devolução de teste'}));
+  expect(screen.getByText('Devolução confirmada no atendimento')).toBeInTheDocument();
+  for(const mobile of [true,false,true]){
+   state.mobile=mobile;
+   view.rerender(<MemoryRouter initialEntries={['/pdv/pedidos?pedido=order-1']}><PdvOrders/><LocationProbe/></MemoryRouter>);
+   expect(screen.getByText('Devolução confirmada no atendimento')).toBeInTheDocument();
+   expect(screen.queryByRole('button',{name:'Confirmar devolução de teste'})).not.toBeInTheDocument();
+  }
+ });
+});
 
 describe('navegação e busca de Pedidos',()=>{
  it.each(['cashier','dispatch'] as const)('carrega o fluxo somente quando escolhido no modo %s',mode=>{
@@ -101,5 +121,15 @@ describe('carregamento dos pedidos',()=>{
   expect(screen.getByRole('status',{name:'Carregando detalhes do pedido'})).toHaveAttribute('aria-busy','true');
   expect(screen.getByRole('searchbox',{name:'Buscar pedidos'})).toBeVisible();
   expect(screen.queryByText('Tubo de cobre')).not.toBeInTheDocument();
+ });
+});
+
+describe('acesso fiscal no menu de pedidos',()=>{
+ it('sem módulo/permissão não fornece callback nem monta controller',()=>{open();for(const [props] of state.menu.mock.calls)expect(props.onFiscal).toBeUndefined();expect(state.fiscalController).not.toHaveBeenCalled();});
+ it('controller permanece montado ao fechar painel para abrir wizard e limpa ao voltar ao escopo anterior',()=>{
+  state.fiscalAllowed=true;const view=open();const menu=state.menu.mock.calls.at(-1)![0];act(()=>menu.onFiscal());expect(screen.getByTestId('fiscal-controller')).toBeInTheDocument();
+  const controller=state.fiscalController.mock.calls.at(-1)![0];act(()=>controller.onDetailsOpenChange(false));expect(screen.getByTestId('fiscal-controller')).toBeInTheDocument();expect(state.fiscalController).toHaveBeenLastCalledWith(expect.objectContaining({detailsOpen:false}));
+  state.fiscalScope='scope-b';view.rerender(<MemoryRouter initialEntries={['/pdv/pedidos?pedido=order-1']}><PdvOrders/></MemoryRouter>);expect(screen.queryByTestId('fiscal-controller')).not.toBeInTheDocument();
+  state.fiscalScope='scope-a';view.rerender(<MemoryRouter initialEntries={['/pdv/pedidos?pedido=order-1']}><PdvOrders/></MemoryRouter>);expect(screen.queryByTestId('fiscal-controller')).not.toBeInTheDocument();
  });
 });

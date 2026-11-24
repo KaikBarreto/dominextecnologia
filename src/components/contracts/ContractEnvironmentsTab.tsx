@@ -66,6 +66,7 @@ import {
   START_VISIT_OPTIONS,
   startVisitLabel,
   firstVisitContents,
+  machineChecklistSummary,
   catalogToPlanRow,
   machineCatalogActivities,
   essentialMachineActivities,
@@ -1910,9 +1911,9 @@ export function ContractEnvironmentsTab({ contract }: ContractEnvironmentsTabPro
                       </div>
 
                       {/* Resumo dos checklists da máquina */}
-                      <span className="block text-[11px] text-muted-foreground">
-                        {cfg ? `${cfg.activities.length} ${tForm.items.machineChecklistsCount}` : '—'}
-                        {cfg?.customized && <span className="ml-1 text-info">{tForm.items.machineCustomized}</span>}
+                      <span className="block text-sm font-medium leading-relaxed text-foreground">
+                        {machineChecklistSummary(cfg, tForm.items)}
+                        {cfg?.customized && cfg.customTemplateIds.length === 0 && <span className="ml-1 text-info">{tForm.items.machineCustomized}</span>}
                       </span>
 
                       {/* Preview: em que visita começa e o que inclui (só ciclo mensal) */}

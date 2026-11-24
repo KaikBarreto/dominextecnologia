@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
+import { writeFormResponse } from '@/hooks/formResponseWrite';
 import type { FormQuestion } from '@/types/database';
 
 /**
@@ -230,11 +232,45 @@ export function useOsActivityChecklist(serviceOrderId: string | undefined) {
   // vez do título genérico, tanto no preenchimento quanto no relatório.
   const [formTemplateNames, setFormTemplateNames] = useState<Record<string, string>>({});
   const [formResponses, setFormResponses] = useState<Record<string, ChecklistFormResponse>>({});
+  // Assinaturas geram um snapshot por traço. Mantemos estado otimista fresco e
+  // serializamos a persistência por pergunta para que uma resposta antiga nunca
+  // sobrescreva a mais nova quando a rede responde fora de ordem.
+  const formResponsesRef = useRef<Record<string, ChecklistFormResponse>>({});
+  const persistedFormResponsesRef = useRef<Record<string, ChecklistFormResponse>>({});
+  const formResponseSaveQueuesRef = useRef<Map<string, Promise<void>>>(new Map());
+  const formResponseSaveVersionsRef = useRef<Map<string, number>>(new Map());
+  const formResponseScopeRef = useRef({ serviceOrderId, epoch: 0 });
+
+  // O hook pode permanecer montado enquanto a rota troca de OS. Um epoch separa
+  // até o caso A → B → A: retornos atrasados da primeira visita a A não podem
+  // alterar refs/UI da segunda. O layout effect troca o escopo antes dos effects
+  // de busca e antes de a nova tela ser pintada.
+  useLayoutEffect(() => {
+    if (formResponseScopeRef.current.serviceOrderId === serviceOrderId) return;
+    formResponseScopeRef.current = {
+      serviceOrderId,
+      epoch: formResponseScopeRef.current.epoch + 1,
+    };
+    formResponsesRef.current = {};
+    persistedFormResponsesRef.current = {};
+    formResponseSaveQueuesRef.current = new Map();
+    formResponseSaveVersionsRef.current = new Map();
+    setFormResponses({});
+  }, [serviceOrderId]);
 
   const fetchActivities = useCallback(async () => {
+    const scopeEpoch = formResponseScopeRef.current.epoch;
+    const isActiveScope = () =>
+      formResponseScopeRef.current.epoch === scopeEpoch
+      && formResponseScopeRef.current.serviceOrderId === serviceOrderId;
     if (!serviceOrderId) {
-      setActivities([]);
-      setLoading(false);
+      if (isActiveScope()) {
+        setActivities([]);
+        setEquipmentInfo({});
+        setFormQuestionsByTemplate({});
+        setFormTemplateNames({});
+        setLoading(false);
+      }
       return;
     }
     setLoading(true);
@@ -258,6 +294,7 @@ export function useOsActivityChecklist(serviceOrderId: string | undefined) {
         rows.push(...page);
         if (page.length < PAGE) break;
       }
+      if (!isActiveScope()) return;
       setActivities(rows);
 
       // Resolve nome dos equipamentos referenciados (null = atividade de local).
@@ -282,6 +319,7 @@ export function useOsActivityChecklist(serviceOrderId: string | undefined) {
               : null,
           };
         }
+        if (!isActiveScope()) return;
         setEquipmentInfo(map);
       } else {
         setEquipmentInfo({});
@@ -305,6 +343,7 @@ export function useOsActivityChecklist(serviceOrderId: string | undefined) {
         for (const t of (tplData ?? []) as { id: string; name: string }[]) {
           tplNames[t.id] = t.name;
         }
+        if (!isActiveScope()) return;
         setFormTemplateNames(tplNames);
 
         // Perguntas dos templates (ordenadas por position).
@@ -350,17 +389,22 @@ export function useOsActivityChecklist(serviceOrderId: string | undefined) {
             if (rPage.length < PAGE) break;
           }
         }
+        if (!isActiveScope()) return;
+        formResponsesRef.current = respMap;
+        persistedFormResponsesRef.current = respMap;
         setFormResponses(respMap);
       } else {
         setFormQuestionsByTemplate({});
         setFormTemplateNames({});
+        formResponsesRef.current = {};
+        persistedFormResponsesRef.current = {};
         setFormResponses({});
       }
     } catch {
       // Falha de leitura não trava a tela; o painel simplesmente não aparece.
-      setActivities([]);
+      if (isActiveScope()) setActivities([]);
     } finally {
-      setLoading(false);
+      if (isActiveScope()) setLoading(false);
     }
   }, [serviceOrderId]);
 
@@ -396,18 +440,20 @@ export function useOsActivityChecklist(serviceOrderId: string | undefined) {
       setActivities((curr) =>
         curr.map((a) => (a.id === activityId ? { ...a, ...stampedPatch } : a))
       );
-      const { error } = await supabase
+      const result = await supabase
         .from('service_order_activities')
-        .update(stampedPatch as any)
+        .update(stampedPatch as any, { count: 'exact' })
         .eq('id', activityId);
-      if (error) {
-        // Reverte a linha pro estado anterior.
+      try {
+        assertRowsAffected(result, 'update');
+      } catch (err) {
+        // Reverte a linha pro estado anterior (erro do banco ou RLS que barrou sem erro).
         if (prev) {
           setActivities((curr) =>
             curr.map((a) => (a.id === activityId ? prev : a))
           );
         }
-        throw error;
+        throw err;
       }
     },
     [activities]
@@ -430,9 +476,17 @@ export function useOsActivityChecklist(serviceOrderId: string | undefined) {
         response_video_url?: string | null;
       }
     ) => {
-      if (!serviceOrderId) return;
+      const scopeEpoch = formResponseScopeRef.current.epoch;
+      if (
+        !serviceOrderId
+        || formResponseScopeRef.current.serviceOrderId !== serviceOrderId
+      ) return;
       const key = formResponseKey(equipmentId, questionId);
-      const prev = formResponses[key];
+      const queueKey = `${scopeEpoch}::${serviceOrderId}::${key}`;
+      const isActiveScope = () =>
+        formResponseScopeRef.current.epoch === scopeEpoch
+        && formResponseScopeRef.current.serviceOrderId === serviceOrderId;
+      const prev = formResponsesRef.current[key];
       const next: ChecklistFormResponse = {
         question_id: questionId,
         response_value:
@@ -446,58 +500,68 @@ export function useOsActivityChecklist(serviceOrderId: string | undefined) {
             ? patch.response_video_url
             : prev?.response_video_url ?? null,
       };
-      setFormResponses((curr) => ({ ...curr, [key]: next }));
-      try {
-        // Procura a linha existente pra essa tripla (equipment_id pode ser null).
-        let q = supabase
-          .from('form_responses')
-          .select('id')
-          .eq('service_order_id', serviceOrderId)
-          .eq('question_id', questionId);
-        q = equipmentId ? q.eq('equipment_id', equipmentId) : q.is('equipment_id', null);
-        const { data: existing } = await q.maybeSingle();
+      const optimistic = { ...formResponsesRef.current, [key]: next };
+      formResponsesRef.current = optimistic;
+      setFormResponses(optimistic);
 
+      const version = (formResponseSaveVersionsRef.current.get(queueKey) ?? 0) + 1;
+      formResponseSaveVersionsRef.current.set(queueKey, version);
+
+      const persist = async () => {
         const respondedAt = new Date().toISOString();
         const { data: userData } = await supabase.auth.getUser();
         const respondedBy = userData?.user?.id ?? null;
 
-        if (existing) {
-          const { error } = await supabase
-            .from('form_responses')
-            .update({
-              response_value: next.response_value,
-              response_photo_url: next.response_photo_url,
-              response_video_url: next.response_video_url,
-              responded_at: respondedAt,
-              responded_by: respondedBy,
-            } as any)
-            .eq('id', (existing as any).id);
-          if (error) throw error;
-        } else {
-          const { error } = await supabase.from('form_responses').insert({
-            service_order_id: serviceOrderId,
-            equipment_id: equipmentId,
-            question_id: questionId,
+        // Uma linha por (OS, pergunta, equipamento). `writeFormResponse` nunca
+        // insere quando a busca falha, que era o que duplicava a resposta.
+        await writeFormResponse(
+          { serviceOrderId, questionId, equipmentId },
+          {
             response_value: next.response_value,
             response_photo_url: next.response_photo_url,
             response_video_url: next.response_video_url,
             responded_at: respondedAt,
             responded_by: respondedBy,
-          } as any);
-          if (error) throw error;
+          },
+        );
+
+        if (isActiveScope()) {
+          persistedFormResponsesRef.current = {
+            ...persistedFormResponsesRef.current,
+            [key]: next,
+          };
         }
+      };
+
+      const previousSave = formResponseSaveQueuesRef.current.get(queueKey) ?? Promise.resolve();
+      const queuedSave = previousSave.catch(() => undefined).then(persist);
+      formResponseSaveQueuesRef.current.set(queueKey, queuedSave);
+
+      try {
+        await queuedSave;
       } catch (error) {
-        // Reverte pro estado anterior (remove a chave se não existia antes).
-        setFormResponses((curr) => {
-          const copy = { ...curr };
-          if (prev) copy[key] = prev;
-          else delete copy[key];
-          return copy;
-        });
+        // Apenas o snapshot mais novo pode alterar a UI. Se ele falhou, volta ao
+        // último valor comprovadamente persistido; um save antigo nunca desfaz
+        // os traços mais recentes que ainda estão na fila.
+        if (
+          isActiveScope()
+          && formResponseSaveVersionsRef.current.get(queueKey) === version
+        ) {
+          const persisted = persistedFormResponsesRef.current[key];
+          const rolledBack = { ...formResponsesRef.current };
+          if (persisted) rolledBack[key] = persisted;
+          else delete rolledBack[key];
+          formResponsesRef.current = rolledBack;
+          setFormResponses(rolledBack);
+        }
         throw error;
+      } finally {
+        if (formResponseSaveQueuesRef.current.get(queueKey) === queuedSave) {
+          formResponseSaveQueuesRef.current.delete(queueKey);
+        }
       }
     },
-    [serviceOrderId, formResponses]
+    [serviceOrderId]
   );
 
   // Agrupa por equipment_id preservando a ordem de sort_order.

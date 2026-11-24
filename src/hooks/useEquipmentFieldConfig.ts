@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 export interface EquipmentFieldConfig {
   id: string;
@@ -72,8 +73,7 @@ export function useEquipmentFieldConfig() {
 
   const deleteField = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('equipment_field_config').delete().eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(await supabase.from('equipment_field_config').delete({ count: 'exact' }).eq('id', id), 'delete');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['equipment-field-config'] });
@@ -87,11 +87,12 @@ export function useEquipmentFieldConfig() {
   // Persiste a nova ordem (coluna position) — espelha useReorderSections do Domiflix.
   const reorderFields = useMutation({
     mutationFn: async (orderedIds: string[]) => {
-      await Promise.all(
+      const results = await Promise.all(
         orderedIds.map((id, index) =>
-          supabase.from('equipment_field_config').update({ position: index }).eq('id', id)
+          supabase.from('equipment_field_config').update({ position: index }, { count: 'exact' }).eq('id', id)
         )
       );
+      results.forEach((result) => assertRowsAffected(result, 'update'));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['equipment-field-config'] });

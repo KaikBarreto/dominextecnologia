@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
-import { Plus, Trash2, Wrench, Package } from 'lucide-react';
+import { Plus, Trash2, Wrench, Package, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CurrencyField } from '@/components/ui/CurrencyField';
@@ -17,6 +17,16 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { getCurrencySymbol } from '@/lib/format';
 import type { ServiceType } from '@/hooks/useServiceTypes';
 import type { ServiceOrderBudgetItem, ServiceOrderBudgetPricingMode } from '@/lib/serviceOrderBudget';
+import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { QuoteServicePickerField } from './QuoteServicePickerField';
+import { MaterialBatchPicker } from '@/components/inventory/MaterialBatchPicker';
+import { QuickServiceTypeDialog } from '@/components/service-orders/QuickServiceTypeDialog';
+import { EmptyState } from '@/components/mobile/EmptyState';
+import { Label } from '@/components/ui/label';
+import { useAuth } from '@/contexts/AuthContext';
+import { useQueryClient } from '@tanstack/react-query';
+import { fetchServiceCostBreakdown } from '@/hooks/useServiceCostBreakdown';
+import { useToast } from '@/hooks/use-toast';
 
 // Colar valor pronto (ex. "4.550" de uma planilha) num `<input type="number">`
 // é lido pelo navegador como decimal internacional e vira 4,55 — 1000x menor
@@ -35,6 +45,7 @@ interface QuoteItemsTableProps {
   showServicePicker?: boolean;
   pricingEnabled?: boolean;
   bdiFactor?: number;
+  variant?: 'table' | 'wizard';
 }
 
 function EditableDecimalValue({
@@ -83,10 +94,10 @@ function EditableDecimalValue({
         }
       }}
       aria-label={ariaLabel}
-      className="h-8 w-full min-w-[72px] bg-background text-xs tabular-nums md:w-20"
+      className={`h-8 w-full min-w-0 bg-background text-xs tabular-nums ${currencySymbol ? '' : 'md:w-20'}`}
     />
   );
-  return currencySymbol ? <CurrencyField symbol={currencySymbol} className="w-full md:w-24">{field}</CurrencyField> : field;
+  return currencySymbol ? <CurrencyField symbol={currencySymbol} className="w-full md:w-36 md:min-w-[9rem]">{field}</CurrencyField> : field;
 }
 
 /* ─── Input row: Serviços / Mão de Obra ─── */
@@ -169,7 +180,7 @@ function ServiceInputRow({
       </TableCell>
       <TableCell className="p-0 md:table-cell md:p-4">
         <span className="mb-1 block text-[11px] font-medium text-muted-foreground md:hidden">Valor unitário</span>
-        <CurrencyField symbol={currencySymbol} className="w-full md:w-24">
+        <CurrencyField symbol={currencySymbol} className="w-full md:w-36 md:min-w-[9rem]">
           <Input type="number" placeholder="0,00" value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} onPaste={(e) => handleUnitPricePaste(e, setUnitPrice)} className="h-9 w-full bg-background text-right text-xs md:h-8" min={0} step="0.01" />
         </CurrencyField>
       </TableCell>
@@ -282,7 +293,7 @@ function MaterialInputRow({
       </TableCell>
       <TableCell className="p-0 md:table-cell md:p-4">
         <span className="mb-1 block text-[11px] font-medium text-muted-foreground md:hidden">Valor unitário</span>
-        <CurrencyField symbol={currencySymbol} className="w-full md:w-24">
+        <CurrencyField symbol={currencySymbol} className="w-full md:w-36 md:min-w-[9rem]">
           <Input type="number" placeholder="0,00" value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} onPaste={(e) => handleUnitPricePaste(e, setUnitPrice)} className="h-9 w-full bg-background text-right text-xs md:h-8" min={0} step="0.01" />
         </CurrencyField>
       </TableCell>
@@ -323,6 +334,7 @@ export function QuoteItemsTable({
   showServicePicker = true,
   pricingEnabled = false,
   bdiFactor = 0.68,
+  variant = 'table',
 }: QuoteItemsTableProps) {
   const { money } = useLocaleFormatters();
   const { currency, locale } = useAppLocaleContext();
@@ -438,6 +450,15 @@ export function QuoteItemsTable({
 
   const getGlobalIndex = (item: ServiceOrderBudgetItem) => items.indexOf(item);
 
+  if (variant === 'wizard') return (
+    <WizardBudgetItems
+      items={items} onChange={onChange} readOnly={readOnly} showServicePicker={showServicePicker}
+      pricingEnabled={pricingEnabled} bdiFactor={bdiFactor} serviceTypes={serviceTypes ?? []}
+      inventoryItems={inventoryItems ?? []} currencySymbol={currencySymbol} money={money}
+      updateItem={updateItem} removeItem={removeItem} changePricingMode={changePricingMode}
+    />
+  );
+
   return (
     <div className="space-y-6">
       {/* ═══ SERVIÇOS E MÃO DE OBRA ═══ */}
@@ -455,7 +476,7 @@ export function QuoteItemsTable({
               <TableRow>
                 <TableHead className="text-xs">Serviço</TableHead>
                 <TableHead className="w-[80px] text-xs">Qtd</TableHead>
-                <TableHead className="w-[110px] text-xs">{pricingEnabled ? 'Cliente paga / un.' : 'Valor Unit.'}</TableHead>
+                <TableHead className="w-[176px] text-xs">{pricingEnabled ? 'Cliente paga / un.' : 'Valor Unit.'}</TableHead>
                 <TableHead className="w-[110px] text-xs">Total</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
@@ -568,7 +589,7 @@ export function QuoteItemsTable({
               <TableRow>
                 <TableHead className="text-xs">Material</TableHead>
                 <TableHead className="w-[80px] text-xs">Qtd</TableHead>
-                <TableHead className="w-[110px] text-xs">{pricingEnabled ? 'Cliente paga / un.' : 'Valor Unit.'}</TableHead>
+                <TableHead className="w-[176px] text-xs">{pricingEnabled ? 'Cliente paga / un.' : 'Valor Unit.'}</TableHead>
                 <TableHead className="w-[110px] text-xs">Total</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
@@ -682,4 +703,106 @@ export function QuoteItemsTable({
       )}
     </div>
   );
+}
+
+
+/** Mesmos pickers do orçamento completo, com edição direta para orçar durante a OS. */
+function WizardBudgetItems({
+  items, onChange, readOnly, showServicePicker, pricingEnabled, bdiFactor,
+  serviceTypes, inventoryItems, currencySymbol, money, updateItem, removeItem, changePricingMode,
+}: Required<Pick<QuoteItemsTableProps, 'items' | 'onChange' | 'showServicePicker' | 'pricingEnabled' | 'bdiFactor'>> & {
+  readOnly?: boolean;
+  serviceTypes: ServiceType[];
+  inventoryItems: ReturnType<typeof useInventory>['items'];
+  currencySymbol: string;
+  money: (value: number) => string;
+  updateItem: (index: number, patch: Partial<ServiceOrderBudgetItem>) => void;
+  removeItem: (index: number) => void;
+  changePricingMode: (index: number, mode: ServiceOrderBudgetPricingMode) => void;
+}) {
+  const { profile } = useAuth();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [serviceOpen, setServiceOpen] = useState(false);
+  const [materialOpen, setMaterialOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [serviceId, setServiceId] = useState('');
+  const [serviceSearch, setServiceSearch] = useState('');
+  const [adding, setAdding] = useState(false);
+  const activeRequest = useRef(0);
+  const latestBudget = useRef({ items, onChange, pricingEnabled, bdiFactor, companyId: profile?.company_id });
+  latestBudget.current = { items, onChange, pricingEnabled, bdiFactor, companyId: profile?.company_id };
+  useEffect(() => () => { activeRequest.current += 1; }, []);
+  const closeServicePicker = () => { activeRequest.current += 1; setAdding(false); setServiceOpen(false); };
+  const groups = [{ options: serviceTypes.filter(s => s.is_active).map(s => ({
+    value: s.id, label: s.name,
+    icon: <span className="flex h-9 w-9 items-center justify-center rounded-lg text-white" style={{ backgroundColor: s.color || '#18181b' }}><Wrench className="h-4 w-4" /></span>,
+  })) }];
+  const addService = async (service: Pick<ServiceType, 'id' | 'name' | 'default_price'>) => {
+    setAdding(true);
+    const requestId = ++activeRequest.current;
+    const companyId = profile?.company_id;
+    try {
+      const breakdown = profile?.company_id
+        ? await fetchServiceCostBreakdown(queryClient, profile.company_id, service.id)
+        : null;
+      if (requestId !== activeRequest.current || companyId !== latestBudget.current.companyId) return;
+      const latest = latestBudget.current;
+      const cost = Number(breakdown?.totalCost || 0);
+      const automatic = latest.pricingEnabled && cost > 0;
+      const price = automatic ? Math.round(cost / Math.max(.01, latest.bdiFactor) * 100) / 100 : Number(service.default_price || 0);
+      latest.onChange([...latest.items, {
+        item_type: 'servico', description: service.name, service_type_id: service.id,
+        inventory_id: null, position: latest.items.length, quantity: 1, unit_price: price, total_price: price,
+        unit_total_cost: cost, unit_labor_cost: breakdown?.laborCost || 0,
+        unit_materials_cost: breakdown?.materialsCost || 0, unit_extras_cost: breakdown?.quoteExtrasCost || 0,
+        unit_hourly_rate: breakdown?.hourlyRate || 0, unit_hours: breakdown?.hours || 0,
+        bdi: latest.bdiFactor, pricing_mode: automatic ? 'cost_bdi' : service.default_price == null ? 'manual' : 'registered',
+        price_override: automatic ? null : price,
+      }]);
+      setServiceOpen(false); setServiceId('');
+    } catch {
+      if (requestId !== activeRequest.current) return;
+      toast({ title: 'Não foi possível carregar os custos do serviço.', description: 'Tente adicionar novamente.', variant: 'destructive' });
+    } finally { if (requestId === activeRequest.current) setAdding(false); }
+  };
+  return <div className="space-y-9">
+    {(['servico', 'material'] as const).map(type => {
+      const rows = items.filter(item => type === 'material' ? item.item_type === 'material' : item.item_type !== 'material');
+      const Icon = type === 'material' ? Package : Wrench;
+      const label = type === 'material' ? 'Materiais' : 'Serviços e mão de obra';
+      const canAdd = !readOnly && (type === 'material' || showServicePicker);
+      const action = <Button type="button" className="h-12 gap-2 px-5 text-base font-semibold" onClick={() => type === 'material' ? setMaterialOpen(true) : setServiceOpen(true)}><Plus className="h-5 w-5" />{type === 'material' ? 'Adicionar material' : 'Adicionar serviço'}</Button>;
+      return <section key={type} aria-label={label} className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3"><h3 className="flex items-center gap-3 text-2xl font-semibold"><span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground"><Icon className="h-5 w-5" /></span>{label}</h3>{rows.length > 0 && canAdd && action}</div>
+        {rows.length === 0 ? <EmptyState size="compact" icon={<Icon className="h-9 w-9" />} className="[&_button]:h-12 [&_button]:px-5 [&_button]:text-base [&_button]:font-semibold" title={type === 'material' ? 'Nenhum material adicionado' : 'Adicione o primeiro serviço'} description={type === 'material' ? 'Inclua apenas materiais cobrados à parte.' : 'Escolha do catálogo ou crie um serviço para este atendimento.'} action={canAdd ? { label: type === 'material' ? 'Adicionar material' : 'Adicionar serviço', onClick: () => type === 'material' ? setMaterialOpen(true) : setServiceOpen(true) } : undefined} /> : <div className="space-y-5">{rows.map(item => {
+          const index = items.indexOf(item);
+          const service = serviceTypes.find(s => s.id === item.service_type_id);
+          return <article key={item.id || index} className="space-y-4">
+            <div className="flex items-center gap-2"><div className="flex min-w-0 flex-1 flex-wrap items-center gap-3 rounded-2xl bg-primary p-4 text-primary-foreground"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white" style={{ backgroundColor: service?.color || '#00a878' }}><Icon className="h-5 w-5" /></span><h4 className="min-w-0 flex-1 break-words text-lg font-semibold">{item.description}</h4><p className="shrink-0 text-xl font-semibold tabular-nums">{money(item.total_price || 0)}</p></div>{!readOnly && <Button type="button" variant="destructive-ghost" size="icon" aria-label={`Remover ${item.description}`} onClick={() => removeItem(index)}><Trash2 className="h-4 w-4" /></Button>}</div>
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] gap-4 sm:grid-cols-[7rem_10rem_minmax(0,1fr)]">
+              <div className="space-y-2"><Label>Quantidade</Label>{readOnly ? <p className="text-base">{item.quantity}</p> : <EditableDecimalValue value={Number(item.quantity || 0)} onCommit={quantity => updateItem(index, { quantity })} ariaLabel={`Quantidade de ${item.description}`} maxDecimals={3} />}</div>
+              <div className="space-y-2"><Label>Preço unitário</Label>{readOnly ? <p className="text-base tabular-nums">{money(item.unit_price || 0)}</p> : <EditableDecimalValue value={Number(item.unit_price || 0)} onCommit={unit_price => updateItem(index, { unit_price, pricing_mode: 'manual', price_override: unit_price })} ariaLabel={`Valor unitário de ${item.description}`} maxDecimals={2} allowZero currencySymbol={currencySymbol} />}</div>
+              <div className="col-span-2 space-y-2 sm:col-span-1"><Label>Forma de precificação</Label>{readOnly ? <p>{item.pricing_mode === 'cost_bdi' ? 'Custo + BDI' : 'Preço cadastrado ou manual'}</p> : <Select value={item.pricing_mode || 'manual'} onValueChange={mode => changePricingMode(index, mode as ServiceOrderBudgetPricingMode)}><SelectTrigger className="h-12 text-base" aria-label={`Modo de preço de ${item.description}`}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="registered">Preço cadastrado</SelectItem><SelectItem value="manual">Valor manual</SelectItem><SelectItem value="cost_bdi" disabled={!pricingEnabled || Number(item.unit_total_cost || 0) <= 0}>Custo + BDI</SelectItem></SelectContent></Select>}</div>
+            </div>
+            {Number(item.unit_total_cost || 0) > 0 && <p className="text-sm text-muted-foreground">Custo unitário: {money(item.unit_total_cost || 0)}{item.pricing_mode !== 'cost_bdi' && ' · BDI não aplicado a este item.'}</p>}
+          </article>;
+        })}</div>}
+      </section>;
+    })}
+    <ResponsiveModal open={serviceOpen} onOpenChange={next => { if (next) setServiceOpen(true); else closeServicePicker(); }} title="Adicionar serviço" description="Selecione um serviço. O preço poderá ser ajustado na OS." className="space-y-5" footer={<div className="flex justify-end gap-2"><Button type="button" variant="cancel-ghost" onClick={closeServicePicker}>Cancelar</Button><Button type="button" disabled={!serviceId || adding} onClick={() => { const service = serviceTypes.find(s => s.id === serviceId); if (service) void addService(service); }}>{adding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}Adicionar</Button></div>}>
+      <QuoteServicePickerField groups={groups} value={serviceId} onValueChange={setServiceId} onSearchChange={setServiceSearch} placeholder="Selecionar serviço..." searchPlaceholder="Buscar serviço..." />
+      <Button type="button" variant="outline" className="h-12 w-full" onClick={() => { setServiceOpen(false); setCreateOpen(true); }}><Plus className="mr-2 h-4 w-4" />Criar serviço na hora</Button>
+    </ResponsiveModal>
+    {createOpen && <QuickServiceTypeDialog open={createOpen} onOpenChange={setCreateOpen} initialName={serviceSearch} allowQuoteOnly onCreated={service => { setCreateOpen(false); void addService(service); }} onCreatedLocal={service => { setCreateOpen(false); onChange([...items, { item_type: 'servico', description: service.name, service_type_id: null, inventory_id: null, quantity: 1, unit_price: 0, total_price: 0, pricing_mode: 'manual', price_override: 0, position: items.length }]); }} />}
+    <MaterialBatchPicker open={materialOpen} onOpenChange={setMaterialOpen} items={inventoryItems} onConfirm={selections => {
+      onChange([...items, ...selections.map((selected, offset) => {
+        const material = inventoryItems.find(m => m.id === selected.inventoryId);
+        const unitCost = Number(material?.cost_price ?? selected.unitCost ?? 0);
+        const automatic = pricingEnabled && unitCost > 0;
+        const unitPrice = automatic ? Math.round(unitCost / Math.max(.01, bdiFactor) * 100) / 100 : Number(material?.sale_price ?? selected.unitPrice ?? 0);
+        return { item_type: 'material' as const, description: material?.name || selected.manualName || 'Material', inventory_id: selected.inventoryId, service_type_id: null, quantity: selected.quantity, unit_price: unitPrice, total_price: Math.round(selected.quantity * Math.round(unitPrice * 100)) / 100, unit_total_cost: unitCost, pricing_mode: automatic ? 'cost_bdi' as const : 'registered' as const, price_override: automatic ? null : unitPrice, bdi: bdiFactor, position: items.length + offset };
+      })]);
+    }} />
+  </div>;
 }

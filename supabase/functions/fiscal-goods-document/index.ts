@@ -1,4 +1,9 @@
+import { goodsReadinessIssues } from '../_shared/fiscal-goods-readiness.ts';
 import { goodsOutcome, sourceFinancialsMatch } from "../_shared/fiscal-goods-policy.ts";
+import {
+  isGoodsFinalConsumerCompatible,
+  resolveGoodsFinalConsumer,
+} from "../_shared/fiscal-goods-final-consumer.ts";
 import {
   authorizeFiscalGoodsIssuer,
   corsHeaders,
@@ -35,6 +40,19 @@ const number = (value: unknown) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 const money = (value: number) => Math.round(value * 100) / 100;
+const SAFE_FISCAL_MESSAGE_CODES = new Set([
+  "dados_invalidos",
+  "certificado_invalido",
+  "documento_rejeitado",
+]);
+function safeFiscalMessage(error: NfeMotorError | NfceMotorError): string | null {
+  const message = text(error.message, 1500);
+  if (!SAFE_FISCAL_MESSAGE_CODES.has(error.code) || !message) return null;
+  if (/SQLSTATE|constraint|public\.|rpc|supabase|token|certificate_ref|235\d\d|42\w{3}/i.test(message)) {
+    return null;
+  }
+  return message;
+}
 const uuid = (value: unknown) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     text(value),
@@ -66,16 +84,29 @@ async function sha256(value: unknown): Promise<string> {
 }
 
 class GoodsDocumentError extends Error {
-  constructor(public code: string, message: string, public status = 422) { super(message); }
+  constructor(
+    public code: string,
+    message: string,
+    public status = 422,
+    public diagnostic: JsonObject = {},
+  ) {
+    super(message);
+    this.name = "GoodsDocumentError";
+  }
 }
 
 interface NormalizedDraft {
   id: string | null;
   model: 55 | 65;
   direction: "entrada" | "saida";
+  stockId: string | null;
+  seriesId: string | null;
+  carrierId: string | null;
+  environment: "homologacao" | "producao" | null;
   sourceType: "manual" | "pdv_sale" | "pdv_purchase" | "inventory_purchase";
   sourceId: string | null;
   nature: string;
+  finalConsumer: boolean;
   party: JsonObject | null;
   items: JsonObject[];
   payments: JsonObject[];
@@ -125,6 +156,12 @@ export function normalizeDraft(raw: unknown): NormalizedDraft {
         municipalityCode: digits(partySource.municipalityCode),
       }
     : null;
+  const finalConsumer = resolveGoodsFinalConsumer({
+    model,
+    direction,
+    stateRegistration: party?.stateRegistration,
+    requested: draft.finalConsumer,
+  });
   if (asRows(draft.items).length > 990 || asRows(draft.payments).length > 100)
     throw new GoodsDocumentError('invalid_draft', 'Revise a quantidade de itens e formas de pagamento da nota.');
   const items = asRows(draft.items)
@@ -168,14 +205,25 @@ export function normalizeDraft(raw: unknown): NormalizedDraft {
       method: digits(entry.method).slice(0, 2),
       amount: money(number(entry.amount)),
       change: money(number(entry.change)),
+      deferred: entry.deferred === true,
     }));
   return {
     id: uuid(draft.id),
     model,
     direction,
+    stockId: uuid(draft.stockId),
+    seriesId: model === 55 ? uuid(draft.seriesId) : null,
+    carrierId: model === 55 ? uuid(draft.carrierId) : null,
+    environment:
+      draft.environment === "producao"
+        ? "producao"
+        : draft.environment === "homologacao"
+          ? "homologacao"
+          : null,
     sourceType,
     sourceId: sourceType === "manual" ? null : uuid(draft.sourceId),
     nature: text(draft.nature, 60),
+    finalConsumer,
     party,
     items,
     payments,
@@ -192,7 +240,14 @@ function validation(
   taxRegime: string,
 ): string[] {
   const errors: string[] = [];
+  if (!draft.stockId) errors.push("Selecione o local de estoque da operação.");
   if (!draft.nature) errors.push("Informe a natureza da operação.");
+  if (!isGoodsFinalConsumerCompatible({
+    model: draft.model,
+    direction: draft.direction,
+    stateRegistration: draft.party?.stateRegistration,
+    requested: draft.finalConsumer,
+  })) errors.push("Destinatário sem inscrição estadual precisa ser consumidor final.");
   if (!draft.items.length) errors.push("Adicione ao menos um item.");
   if (
     draft.model === 55 &&
@@ -465,7 +520,7 @@ export function buildMotorDocument(
       numero: numberValue,
       serie: series,
       presencial: draft.model === 65 ? 1 : 0,
-      consumidorFinal: draft.model === 65,
+      consumidorFinal: draft.finalConsumer,
       natureza: draft.nature,
       saida: draft.direction === "saida",
       finalidade: 1,
@@ -487,7 +542,7 @@ export function buildMotorDocument(
         valorAproximadoTributos: 0,
       },
       pagamentos: draft.payments.map((entry) => ({
-        aVista: true,
+        aVista: entry.deferred !== true,
         meio: text(entry.method),
         valor: number(entry.amount),
         ...(text(entry.method) === '99' ? { descricaoMeio: 'Outros' } : {}),
@@ -521,18 +576,41 @@ async function loadGoodsIssuer(auth: Awaited<ReturnType<typeof authorizeFiscalGo
   return issuer;
 }
 
+interface GoodsDocumentFence { operationId:string; status:string; updatedAt:string }
+interface ActiveGoodsDocument { id:string; table:'nfe_documents'|'nfce_documents'; events:'nfe_events'|'nfce_events'; fence:GoodsDocumentFence }
+function goodsDocumentFence(row:JsonObject):GoodsDocumentFence {
+  const operationId=text(row.operation_id);const status=text(row.status);const updatedAt=text(row.updated_at);
+  if(!operationId || !status || !updatedAt)throw new GoodsDocumentError('document_changed','A situação fiscal mudou. Consulte esta mesma nota para atualizar os dados antes de continuar.',409);
+  return {operationId,status,updatedAt};
+}
+async function storeGoodsDocument(auth: Awaited<ReturnType<typeof authorizeFiscalGoodsIssuer>> & { ok: true }, table: string, id: string, patch: JsonObject, fence:GoodsDocumentFence):Promise<GoodsDocumentFence> {
+  const stored = await auth.supabase.from(table).update(patch).eq('id',id).eq('company_id',auth.companyId)
+    .eq('operation_id',fence.operationId).eq('status',fence.status).eq('updated_at',fence.updatedAt)
+    .select('id,operation_id,status,updated_at').maybeSingle();
+  if(stored.error)throw new GoodsDocumentError('persistence_failed','Não foi possível registrar a operação fiscal com segurança. Consulte esta mesma nota antes de tentar novamente.',503);
+  if(!stored.data)throw new GoodsDocumentError('document_changed','A situação fiscal mudou. Consulte esta mesma nota para atualizar os dados antes de continuar.',409);
+  return goodsDocumentFence(object(stored.data));
+}
+async function storeGoodsEvent(auth: Awaited<ReturnType<typeof authorizeFiscalGoodsIssuer>> & { ok: true }, table: string, event: JsonObject) {
+  const stored = await auth.supabase.from(table).insert(event);
+  if (stored.error) throw new GoodsDocumentError('persistence_failed','Não foi possível registrar toda a evidência fiscal. Consulte esta mesma nota para atualizar os dados.',503);
+}
+
 async function officialArtifacts(auth: Awaited<ReturnType<typeof authorizeFiscalGoodsIssuer>> & { ok: true }, model: 55 | 65, documentId: string, official: JsonObject) {
   const patch: JsonObject = {};
   const xml = typeof official.xmlProcessado === 'string' ? official.xmlProcessado : '';
   const pdf = official[model === 65 ? 'danfceBase64' : 'danfeBase64'];
+  // Conteúdo endereçado por hash: resposta antiga não substitui arquivo já vinculado por outra revisão.
+  const artifactVersion=await sha256({xml,pdf:typeof pdf==='string'?pdf:''});
+  const artifactBase=`${auth.companyId}/${model}/${documentId}/artifacts/${artifactVersion}`;
   if (xml) {
-    const path = `${auth.companyId}/${model}/${documentId}/processado.xml`;
+    const path = `${artifactBase}/processado.xml`;
     const saved = await auth.supabase.storage.from('fiscal-artifacts').upload(path, new Blob([xml], {type:'application/xml'}), {upsert:true,contentType:'application/xml'});
     if (saved.error) throw new Error('Não foi possível guardar o XML fiscal confirmado. Consulte esta nota novamente.');
     patch.processed_xml_path = path;
   }
   if (typeof pdf === 'string' && pdf) {
-    const path = `${auth.companyId}/${model}/${documentId}/${model === 65 ? 'danfce' : 'danfe'}.pdf`;
+    const path = `${artifactBase}/${model === 65 ? 'danfce' : 'danfe'}.pdf`;
     const saved = await auth.supabase.storage.from('fiscal-artifacts').upload(path, Uint8Array.from(atob(pdf), c => c.charCodeAt(0)), {upsert:true,contentType:'application/pdf'});
     if (saved.error) throw new Error('Não foi possível guardar o documento auxiliar. Consulte esta nota novamente.');
     patch[model === 65 ? 'danfce_pdf_path' : 'danfe_pdf_path'] = path;
@@ -549,6 +627,7 @@ async function saveDraft(
   const table = draft.model === 55 ? "nfe_documents" : "nfce_documents";
   const common: JsonObject = {
     company_id: auth.companyId,
+    stock_id: draft.stockId,
     source_type: draft.sourceType,
     source_id: draft.sourceId,
     draft_payload: draft,
@@ -556,6 +635,9 @@ async function saveDraft(
     status: "draft",
     customer_id: draft.direction === "saida" ? uuid(draft.party?.id) : null,
   };
+  if (draft.environment) {
+    common.environment = draft.environment === "producao" ? 1 : 2;
+  }
   if (draft.model === 55) {
     common.direction = draft.direction;
     common.supplier_id =
@@ -570,7 +652,8 @@ async function saveDraft(
   }
   if (!draft.id && draft.sourceId) {
     const existing = await auth.supabase.from(table).select('*')
-      .eq('company_id', auth.companyId).eq('source_type', draft.sourceType).eq('source_id', draft.sourceId).maybeSingle();
+      .eq('company_id', auth.companyId).eq('source_type', draft.sourceType).eq('source_id', draft.sourceId)
+      .not('status', 'in', '(cancelled,rejected)').maybeSingle();
     if (existing.error) throw new Error('Não foi possível consultar a nota vinculada à venda.');
     if (existing.data) draft.id = text(existing.data.id);
   }
@@ -597,7 +680,8 @@ async function saveDraft(
     .select("*")
     .single();
   if (error?.code === '23505' && draft.sourceId) {
-    const existing = await auth.supabase.from(table).select('*').eq('company_id', auth.companyId).eq('source_type', draft.sourceType).eq('source_id', draft.sourceId).maybeSingle();
+    const existing = await auth.supabase.from(table).select('*').eq('company_id', auth.companyId).eq('source_type', draft.sourceType).eq('source_id', draft.sourceId)
+      .not('status', 'in', '(cancelled,rejected)').maybeSingle();
     if (!existing.error && existing.data) return object(existing.data);
   }
   if (error || !data)
@@ -607,6 +691,51 @@ async function saveDraft(
         : "Não foi possível salvar o rascunho.",
     );
   return data as JsonObject;
+}
+
+async function assertFiscalStock(
+  auth: Awaited<ReturnType<typeof authorizeFiscalGoodsIssuer>> & { ok: true },
+  draft: NormalizedDraft,
+) {
+  if (!draft.stockId) {
+    throw new GoodsDocumentError('stock_required', 'Selecione o local de estoque da operação.');
+  }
+  const [stock, access] = await Promise.all([
+    auth.supabase.from('stocks').select('id').eq('id', draft.stockId)
+      .eq('company_id', auth.companyId).is('customer_id', null).maybeSingle(),
+    auth.supabase.rpc('can_access_stock', {
+      _user_id: auth.userId,
+      _stock_id: draft.stockId,
+    }),
+  ]);
+  if (stock.error || !stock.data || access.error || access.data !== true) {
+    throw new GoodsDocumentError('stock_forbidden', 'O local de estoque não está disponível para seu acesso.', 403);
+  }
+  if (draft.sourceType === 'manual') return;
+  if (!draft.sourceId) {
+    throw new GoodsDocumentError('source_invalid', 'Selecione uma venda ou compra válida para importar.');
+  }
+
+  let inheritedStockId: string | null = null;
+  if (draft.sourceType === 'pdv_sale') {
+    const source = await auth.supabase.from('pdv_orders').select('stock_id')
+      .eq('id', draft.sourceId).eq('company_id', auth.companyId).maybeSingle();
+    if (source.error) throw new Error('Não foi possível validar o local da venda importada.');
+    inheritedStockId = uuid(source.data?.stock_id);
+  } else {
+    const source = await auth.supabase.from('compra_ordens')
+      .select('compras!inner(stock_id)').eq('id', draft.sourceId)
+      .eq('company_id', auth.companyId).maybeSingle();
+    if (source.error) throw new Error('Não foi possível validar o local da compra importada.');
+    inheritedStockId = uuid(object(source.data?.compras).stock_id);
+  }
+  if (!inheritedStockId || inheritedStockId !== draft.stockId) {
+    throw new GoodsDocumentError(
+      'stock_source_mismatch',
+      'O local de estoque da nota precisa ser o mesmo da venda ou compra importada.',
+      409,
+    );
+  }
 }
 
 async function assertSourceBelongsToCompany(
@@ -645,7 +774,7 @@ async function assertSourceBelongsToCompany(
         "A venda importada não foi encontrada nesta empresa ou foi cancelada.",
       );
     const [items, payments] = await Promise.all([
-      auth.supabase.from('pdv_order_items').select('id,inventory_id,quantity,unit_price,total,discount_amount').eq('company_id', auth.companyId).eq('order_id', draft.sourceId),
+      auth.supabase.from('pdv_order_items').select('id,inventory_id,quantity,unit_price,total,discount_amount').eq('company_id', auth.companyId).eq('order_id', draft.sourceId).order('sort_order',{ascending:true}).order('id',{ascending:true}),
       auth.supabase.from('pdv_order_payments').select('method,amount,change_amount,contract_version,coverage_status').eq('company_id', auth.companyId).eq('order_id', draft.sourceId),
     ]);
     const covered = asRows(payments.data).filter(p => p.contract_version !== 2 || p.coverage_status === 'authorized');
@@ -668,6 +797,28 @@ async function assertSourceBelongsToCompany(
     throw new Error(
       "A compra importada não foi encontrada na origem escolhida para esta empresa.",
     );
+  }
+}
+
+async function assertFiscalCatalogsBelongToCompany(
+  auth: Awaited<ReturnType<typeof authorizeFiscalGoodsIssuer>> & { ok: true },
+  draft: NormalizedDraft,
+) {
+  if (draft.model !== 55) return;
+  if (draft.seriesId) {
+    const series = await auth.supabase.from('nfe_series').select('id,direction,active')
+      .eq('id', draft.seriesId).eq('company_id', auth.companyId).maybeSingle();
+    const allowedDirections = draft.direction === 'entrada' ? ['entrada', 'ambos'] : ['saida', 'ambos'];
+    if (series.error || !series.data || series.data.active !== true || !allowedDirections.includes(text(series.data.direction))) {
+      throw new GoodsDocumentError('series_forbidden', 'A série escolhida não está ativa para esta operação ou não pertence à empresa.', 403);
+    }
+  }
+  if (draft.carrierId) {
+    const carrier = await auth.supabase.from('fiscal_goods_carriers').select('id,active')
+      .eq('id', draft.carrierId).eq('company_id', auth.companyId).maybeSingle();
+    if (carrier.error || !carrier.data || carrier.data.active !== true) {
+      throw new GoodsDocumentError('carrier_forbidden', 'A transportadora escolhida não está ativa ou não pertence à empresa.', 403);
+    }
   }
 }
 
@@ -708,7 +859,7 @@ async function storedSignedXml(
   path: unknown,
 ) {
   const normalizedPath = text(path, 1000);
-  if (!normalizedPath) return null;
+  if (!normalizedPath || !normalizedPath.startsWith(`${auth.companyId}/`) || normalizedPath.split('/').includes('..')) return null;
   const { data, error } = await auth.supabase.storage
     .from("fiscal-artifacts")
     .download(normalizedPath);
@@ -716,15 +867,48 @@ async function storedSignedXml(
   return await data.text();
 }
 
+async function transmitSavedGoods(
+  auth: Awaited<ReturnType<typeof authorizeFiscalGoodsIssuer>> & {ok:true}, model:55|65,
+  row:JsonObject, ctx:NfseProviderCtx, signedXml:string,
+  setActive:(document:ActiveGoodsDocument|null,started?:boolean)=>void,
+) {
+  const table=documentTable(model);const events=eventTable(model);const id=text(row.id);const operationId=text(row.operation_id);
+  const claim=await auth.supabase.from(table).update({status:'transmitting'}).eq('id',id).eq('company_id',auth.companyId).eq('operation_id',operationId).eq('status','signed').eq('updated_at',text(row.updated_at)).select('id,operation_id,status,updated_at').maybeSingle();
+  if(claim.error)throw new GoodsDocumentError('persistence_failed','Não foi possível iniciar a emissão com segurança. Consulte esta mesma nota.',503);
+  if(!claim.data)throw new GoodsDocumentError('document_changed','A situação fiscal mudou. Consulte esta mesma nota para atualizar os dados antes de continuar.',409);
+  const transmissionFence=goodsDocumentFence(object(claim.data));
+  setActive({id,table,events,fence:transmissionFence},true);
+  const input={operationId,snapshotHash:text(row.snapshot_hash),uf:text(row.uf).toUpperCase(),key:digits(row.access_key),batchId:String(row.number).slice(-15),signedXml};
+  const official=model===55?await authorizeNfe(ctx,input):await authorizeNfce(ctx,input);
+  const normalized=outcomeStatus(official as JsonObject);
+  const artifacts=await officialArtifacts(auth,model,id,official as JsonObject);
+  await storeGoodsDocument(auth,table,id,{
+    status:normalized.status,official_status:normalized.official,...artifacts,
+    official_checked_at:new Date().toISOString(),authorized_at:normalized.status==='authorized'?new Date().toISOString():null,
+    last_error_code:normalized.status==='rejected'?`sefaz_${text(object(official.resposta).cstat)}`:null,
+    last_error_message:normalized.status==='rejected'?'Documento rejeitado pela SEFAZ. Revise o cadastro fiscal.':null,
+    next_action:normalized.status==='uncertain'?'consultar_sefaz':null,
+  },transmissionFence);
+  setActive(null);
+  await storeGoodsEvent(auth,events,{company_id:auth.companyId,document_id:id,event_type:'authorization_result',status:normalized.status,official_status:normalized.official,cstat:text(object(official.resposta).cstat)||null,message:normalized.status==='authorized'?'Documento autorizado pela SEFAZ.':'Resultado fiscal registrado.',payload:{outcome:official.outcome,recovered:official.recovered,orientacao:official.orientacao}});
+  const rejectionCode = normalized.status === 'rejected'
+    ? `sefaz_${text(object(official.resposta).cstat)}`
+    : null;
+  return jsonResponse({
+    ok:true,
+    id,
+    status:normalized.status,
+    officialStatus:normalized.official,
+    accessKey:input.key,
+    ...(rejectionCode ? { rejectionCode } : {}),
+  },normalized.status==='authorized'?201:202);
+}
+
 async function handleDocumentAction(
   auth: Awaited<ReturnType<typeof authorizeFiscalGoodsIssuer>> & { ok: true },
   body: JsonObject,
   setActive: (
-    document: {
-      id: string;
-      table: "nfe_documents" | "nfce_documents";
-      events: "nfe_events" | "nfce_events";
-    },
+    document: ActiveGoodsDocument | null,
     started?: boolean,
   ) => void,
 ) {
@@ -760,6 +944,7 @@ async function handleDocumentAction(
 
   if (action === "artifact") {
     const kind = text(body.kind);
+    if (!['xml','pdf'].includes(kind)) return jsonResponse({error:'invalid_action',message:'Escolha XML ou PDF para abrir o arquivo fiscal.'},400);
     const field =
       kind === "xml"
         ? "processed_xml_path"
@@ -767,7 +952,7 @@ async function handleDocumentAction(
           ? "danfe_pdf_path"
           : "danfce_pdf_path";
     const path = text(row[field], 1000);
-    if (!path)
+    if (!path || !path.startsWith(`${auth.companyId}/${model}/${documentId}/`) || path.split('/').includes('..'))
       return jsonResponse(
         {
           error: "artifact_not_found",
@@ -786,6 +971,48 @@ async function handleDocumentAction(
     );
   }
 
+  if (action === 'revise') {
+    const age=Date.now()-new Date(text(row.updated_at)).getTime();
+    const eligible=!row.access_key && (row.status==='rejected' || (row.status==='preparing' && Number.isFinite(age) && age>=300_000));
+    if(!eligible)return jsonResponse({error:'revision_blocked',message:'Esta nota ainda exige consulta ou está em processamento. Aguarde antes de revisar.'},409);
+    await storeGoodsEvent(auth,events,{company_id:auth.companyId,document_id:documentId,event_type:'draft_revision_requested',status:text(row.status),message:'Revisão solicitada antes de qualquer transmissão.',payload:{operationId:row.operation_id,snapshotHash:row.snapshot_hash}});
+    let update=auth.supabase.from(table).update({status:'draft',operation_id:crypto.randomUUID(),snapshot:null,snapshot_hash:null,signed_xml_path:null,last_error_code:null,last_error_message:null,next_action:null})
+      .eq('id',documentId).eq('company_id',auth.companyId).eq('status',text(row.status)).eq('operation_id',text(row.operation_id)).is('access_key',null);
+    if(row.updated_at)update=update.eq('updated_at',text(row.updated_at));
+    const revised=await update.select('id').maybeSingle();
+    if(revised.error)throw new GoodsDocumentError('persistence_failed','Não foi possível reabrir este rascunho com segurança. Consulte a nota.',503);
+    if(!revised.data)throw new GoodsDocumentError('draft_changed','A nota mudou em outro atendimento. Consulte a situação atual antes de continuar.',409);
+    return jsonResponse({ok:true,id:documentId,status:'draft'},200);
+  }
+  if (action === 'resume') {
+    if(row.status!=='signed')return jsonResponse({error:'resume_blocked',message:'Consulte a situação desta nota antes de continuar. Nenhum novo envio foi iniciado.'},409);
+    const {fiscal}=await fiscalContext(auth,`retomar_${model}:${documentId}`);
+    const [company,configResult]=await Promise.all([loadGoodsIssuer(auth),auth.supabase.from(model===55?'company_nfe_settings':'company_nfce_settings').select('*').eq('company_id',auth.companyId).maybeSingle()]);
+    if(configResult.error)throw new GoodsDocumentError('readiness_unavailable','Não foi possível conferir a configuração fiscal. Tente novamente.',503);
+    const storedDraft = normalizeDraft(row.draft_payload);
+    const resumedEnvironment = storedDraft.environment ?? (Number(row.environment) === 1 ? 'producao' : 'homologacao');
+    const effectiveFiscal: JsonObject = {
+      ...fiscal,
+      fiscal_ambiente: resumedEnvironment,
+    };
+    const issues=goodsReadinessIssues(model,company,effectiveFiscal,object(configResult.data),Deno.env.get('FISCAL_NFCE_PRODUCAO_HABILITADA')==='1');
+    if(issues.length)return jsonResponse({error:issues[0].code,message:issues[0].message},422);
+    if(Number(row.environment)!==(resumedEnvironment==='producao'?1:2) || text(row.uf).toUpperCase()!==text(company.state).toUpperCase())throw new GoodsDocumentError('fiscal_context_changed','O ambiente ou a UF mudou desde a preparação. Consulte o suporte antes de continuar.',409);
+    if(!/^[0-9a-f]{64}$/.test(text(row.snapshot_hash)) || await sha256(row.snapshot)!==row.snapshot_hash || digits(row.access_key).length!==44)throw new GoodsDocumentError('snapshot_unavailable','Não foi possível recuperar os dados fiscais preparados. Nenhum novo envio foi iniciado.',409);
+    await assertSourceBelongsToCompany(auth, storedDraft);
+    await assertFiscalCatalogsBelongToCompany(auth, storedDraft);
+    const xml=await storedSignedXml(auth,row.signed_xml_path);
+    if(!xml)throw new GoodsDocumentError('snapshot_unavailable','O XML assinado ainda não está disponível. Nenhum novo envio foi iniciado.',409);
+    const ctx:NfseProviderCtx={supabase:auth.supabase,companyId:auth.companyId,fiscal:effectiveFiscal,contextoAuditoria:`retomar_${model}:${documentId}`};
+    return await transmitSavedGoods(auth,model,row,ctx,xml,setActive);
+  }
+
+  if(action==='cancel' && row.status==='cancelled')return jsonResponse({ok:true,status:'cancelled',existing:true},200);
+  if(action==='cancel' && row.status==='cancellation_pending')return jsonResponse({ok:true,status:'cancellation_pending',existing:true,refreshRequired:true},202);
+  if(action==='cancel' && row.status!=='authorized')throw new GoodsDocumentError('not_authorized','Consulte a situação desta mesma nota antes de solicitar cancelamento.',409);
+  if(action==='consult' && row.status==='cancelled')return jsonResponse({ok:true,status:'cancelled',existing:true},200);
+  // Assinada ainda não foi transmitida; uma consulta prematura não pode convertê-la em incerta.
+  if(action==='consult' && row.status==='signed')return jsonResponse({ok:true,id:documentId,status:'signed',notTransmitted:true},200);
   const key = digits(row.access_key);
   const uf = text(row.uf, 2).toUpperCase();
   if (key.length !== 44 || !/^[A-Z]{2}$/.test(uf))
@@ -808,11 +1035,13 @@ async function handleDocumentAction(
         ? await consultNfe(ctx, { uf, key, signedXml })
         : await consultNfce(ctx, { uf, key, signedXml });
     const normalized = outcomeStatus(official as JsonObject);
+    // Consulta inconclusiva não desfaz estados fiscais já conclusivos nem libera cancelamento em andamento.
+    if(row.status==='cancellation_pending' && normalized.status!=='cancelled')return jsonResponse({ok:true,status:'cancellation_pending',existing:true,refreshRequired:true,checkInconclusive:true},202);
+    if(row.status==='authorized' && !['authorized','cancelled'].includes(normalized.status))return jsonResponse({ok:true,status:'authorized',existing:true,refreshRequired:true,checkInconclusive:true},202);
+    if(row.status==='rejected' && normalized.status==='uncertain')return jsonResponse({ok:true,status:'rejected',existing:true,refreshRequired:true,checkInconclusive:true},202);
     const recoveredArtifacts = await officialArtifacts(auth, model, documentId, official as JsonObject);
     const now = new Date().toISOString();
-    await auth.supabase
-      .from(table)
-      .update({
+    await storeGoodsDocument(auth, table, documentId, {
         ...recoveredArtifacts,
         status: normalized.status,
         official_status: normalized.official,
@@ -829,12 +1058,8 @@ async function handleDocumentAction(
         last_error_message: normalized.status === 'rejected' ? 'Documento rejeitado pela SEFAZ. Revise o cadastro fiscal.' : null,
         next_action:
           normalized.status === "uncertain" ? "consultar_sefaz" : null,
-      })
-      .eq("id", documentId)
-      .eq("company_id", auth.companyId);
-    await auth.supabase
-      .from(events)
-      .insert({
+      },goodsDocumentFence(row));
+    await storeGoodsEvent(auth, events, {
         company_id: auth.companyId,
         document_id: documentId,
         event_type: "official_consultation",
@@ -870,16 +1095,12 @@ async function handleDocumentAction(
       : await consultNfce(ctx, { uf, key, signedXml });
   const beforeStatus = outcomeStatus(before as JsonObject);
   if (beforeStatus.status === "cancelled") {
-    await auth.supabase
-      .from(table)
-      .update({
+    await storeGoodsDocument(auth, table, documentId, {
         status: "cancelled",
         official_status: "cancelada",
         cancelled_at: new Date().toISOString(),
         official_checked_at: new Date().toISOString(),
-      })
-      .eq("id", documentId)
-      .eq("company_id", auth.companyId);
+      },goodsDocumentFence(row));
     return jsonResponse(
       {
         ok: true,
@@ -904,10 +1125,11 @@ async function handleDocumentAction(
     );
   }
   const cancellationClaim = await auth.supabase.from(table).update({status:'cancellation_pending',next_action:'consultar_sefaz'})
-    .eq('id',documentId).eq('company_id',auth.companyId).eq('status','authorized').select('id').maybeSingle();
+    .eq('id',documentId).eq('company_id',auth.companyId).eq('operation_id',text(row.operation_id)).eq('status','authorized').eq('updated_at',text(row.updated_at)).select('id,operation_id,status,updated_at').maybeSingle();
   if (cancellationClaim.error) throw new Error('Não foi possível iniciar o cancelamento.');
-  if (!cancellationClaim.data) return jsonResponse({ok:true,status:row.status,existing:true},202);
-  setActive({ id: documentId, table, events }, true);
+  if (!cancellationClaim.data) throw new GoodsDocumentError('document_changed','A situação fiscal mudou. Consulte esta mesma nota antes de solicitar cancelamento novamente.',409);
+  let cancellationFence=goodsDocumentFence(object(cancellationClaim.data));
+  setActive({ id: documentId, table, events, fence:cancellationFence }, true);
   const operationId = crypto.randomUUID();
   const snapshotHash = await sha256({
     action: "cancel",
@@ -939,23 +1161,20 @@ async function handleDocumentAction(
     model === 55
       ? await prepareNfeCancellation(ctx, input)
       : await prepareNfceCancellation(ctx, input);
-  const eventPath = `${auth.companyId}/${model}/${documentId}/cancelamento-assinado.xml`;
-  await auth.supabase.storage
+  const eventPath = `${auth.companyId}/${model}/${documentId}/events/${operationId}/cancelamento-assinado.xml`;
+  const signedCancellation = await auth.supabase.storage
     .from("fiscal-artifacts")
     .upload(
       eventPath,
       new Blob([prepared.xmlAssinado], { type: "application/xml" }),
       { upsert: true, contentType: "application/xml" },
     );
-  await auth.supabase
-    .from(table)
-    .update({
+  if (signedCancellation.error) throw new GoodsDocumentError('persistence_failed','Não foi possível guardar o cancelamento assinado. Consulte esta mesma nota.',503);
+  cancellationFence=await storeGoodsDocument(auth, table, documentId, {
       status: "cancellation_pending",
       next_action: "aguardar_cancelamento",
-    })
-    .eq("id", documentId)
-    .eq("company_id", auth.companyId);
-  setActive({ id: documentId, table, events }, true);
+    },cancellationFence);
+  setActive({ id: documentId, table, events, fence:cancellationFence }, true);
   const batchId = String(row.number || 1).slice(-15);
   const result =
     model === 55
@@ -973,33 +1192,31 @@ async function handleDocumentAction(
           batchId,
           signedXml: prepared.xmlAssinado,
         });
-  const normalized = outcomeStatus(result as JsonObject);
+  const cancellationOutcome = outcomeStatus(result as JsonObject);
+  const normalized=cancellationOutcome.status==='cancelled'?cancellationOutcome:{status:'cancellation_pending',official:'aguardando_confirmacao'};
   const now = new Date().toISOString();
   const processedPath = (typeof result.xmlProcessado === "string" ? result.xmlProcessado : "")
-    ? `${auth.companyId}/${model}/${documentId}/cancelamento-processado.xml`
+    ? `${auth.companyId}/${model}/${documentId}/events/${operationId}/${await sha256(result.xmlProcessado)}/cancelamento-processado.xml`
     : null;
-  if (processedPath)
-    await auth.supabase.storage
+  if (processedPath) {
+    const cancellationResult = await auth.supabase.storage
       .from("fiscal-artifacts")
       .upload(
         processedPath,
         new Blob([(typeof result.xmlProcessado === "string" ? result.xmlProcessado : "")], { type: "application/xml" }),
         { upsert: true, contentType: "application/xml" },
       );
-  await auth.supabase
-    .from(table)
-    .update({
+    if (cancellationResult.error) throw new GoodsDocumentError('persistence_failed','Não foi possível guardar a confirmação do cancelamento. Consulte esta mesma nota.',503);
+  }
+  await storeGoodsDocument(auth, table, documentId, {
       status: normalized.status,
       official_status: normalized.official,
       cancelled_at: normalized.status === "cancelled" ? now : null,
       official_checked_at: now,
-      next_action: normalized.status === "uncertain" ? "consultar_sefaz" : null,
-    })
-    .eq("id", documentId)
-    .eq("company_id", auth.companyId);
-  await auth.supabase
-    .from(events)
-    .insert({
+      next_action: normalized.status === "cancellation_pending" ? "consultar_sefaz" : null,
+    },cancellationFence);
+  setActive(null);
+  await storeGoodsEvent(auth, events, {
       company_id: auth.companyId,
       document_id: documentId,
       event_type: "cancellation_result",
@@ -1010,7 +1227,7 @@ async function handleDocumentAction(
         normalized.status === "cancelled"
           ? "Cancelamento confirmado pela SEFAZ."
           : "Cancelamento enviado; situação registrada.",
-      payload: { outcome: result.outcome, processedPath },
+      payload: { outcome: result.outcome, processedPath, signedPath:eventPath, operationId },
     });
   return jsonResponse(
     {
@@ -1032,16 +1249,12 @@ Deno.serve(async (req) => {
     );
   const auth = await authorizeFiscalGoodsIssuer(req);
   if (!auth.ok) return auth.response;
-  let activeDocument: {
-    id: string;
-    table: "nfe_documents" | "nfce_documents";
-    events: "nfe_events" | "nfce_events";
-  } | null = null;
+  let activeDocument: ActiveGoodsDocument | null = null;
   let transmissionStarted = false;
   try {
     const body = object(await req.json());
     const action = text(body.action);
-    if (["consult", "artifact", "cancel"].includes(action)) {
+    if (["consult", "artifact", "cancel", "revise", "resume"].includes(action)) {
       return await handleDocumentAction(
         auth,
         body,
@@ -1050,6 +1263,19 @@ Deno.serve(async (req) => {
           if (started) transmissionStarted = true;
         },
       );
+    }
+    if (action === 'readiness') {
+      const model = Number(body.model);
+      if (model !== 55 && model !== 65) throw new GoodsDocumentError('invalid_draft','Escolha NF-e ou NFC-e para conferir a configuração.',400);
+      const [fiscalResult, company, configResult] = await Promise.all([
+        auth.supabase.from('company_fiscal_settings').select('*').eq('company_id',auth.companyId).maybeSingle(),
+        loadGoodsIssuer(auth),
+        auth.supabase.from(model === 55 ? 'company_nfe_settings' : 'company_nfce_settings').select('*').eq('company_id',auth.companyId).maybeSingle(),
+      ]);
+      if (fiscalResult.error || configResult.error) throw new GoodsDocumentError('readiness_unavailable','Não foi possível conferir a configuração fiscal. Tente novamente.',503);
+      const fiscal = object(fiscalResult.data);
+      const issues = goodsReadinessIssues(model,company,fiscal,object(configResult.data),Deno.env.get('FISCAL_NFCE_PRODUCAO_HABILITADA') === '1');
+      return jsonResponse({ok:true,model,ready:issues.length === 0,environment:fiscal.fiscal_ambiente === 'producao' ? 'producao' : 'homologacao',issues},200);
     }
     let draft: NormalizedDraft;
     try { draft = normalizeDraft(body.draft); }
@@ -1060,7 +1286,9 @@ Deno.serve(async (req) => {
         400,
       );
     await assertSourceBelongsToCompany(auth, draft);
-    let row = await saveDraft(auth, draft);
+    await assertFiscalStock(auth, draft);
+    await assertFiscalCatalogsBelongToCompany(auth, draft);
+    const row = await saveDraft(auth, draft);
     if (action === "save_draft" || row.status !== 'draft')
       return jsonResponse({ ok: true, id: row.id, status: row.status, existing: row.status !== 'draft' }, 200);
 
@@ -1083,113 +1311,71 @@ Deno.serve(async (req) => {
     const fiscal = object(fiscalResult.data);
     const company = object(companyResult);
     const config = object(configResult.data);
-    if (
-      !fiscal.certificado_ref ||
-      !fiscal.certificate_expires_at ||
-      !Number.isFinite(new Date(text(fiscal.certificate_expires_at)).getTime()) ||
-      new Date(text(fiscal.certificate_expires_at)).getTime() <= Date.now()
-    )
-      return jsonResponse(
-        {
-          error: "certificate_required",
-          message:
-            "Envie um certificado A1 válido nas Configurações Fiscais antes de emitir.",
-        },
-        422,
-      );
-    if (config.enabled !== true)
-      return jsonResponse(
-        {
-          error: "document_disabled",
-          message: `Ative a ${draft.model === 55 ? "NF-e" : "NFC-e"} nas Configurações Fiscais.`,
-        },
-        422,
-      );
-    const environment = text(fiscal.fiscal_ambiente) === "producao" ? 1 : 2;
-    if (draft.model === 65 && environment === 1 && Deno.env.get('FISCAL_NFCE_PRODUCAO_HABILITADA') !== '1')
-      return jsonResponse({ error: 'production_blocked', message: 'A emissão de NFC-e em produção está bloqueada.' }, 422);
-    if (environment === 1 && config.production_approved !== true)
-      return jsonResponse(
-        {
-          error: "production_not_approved",
-          message:
-            "A emissão em produção ainda não foi liberada para esta empresa. Conclua a homologação primeiro.",
-        },
-        422,
-      );
-    if (environment === 2 && config.homologation_approved !== true)
-      return jsonResponse(
-        {
-          error: "homologation_not_approved",
-          message:
-            "A homologação deste documento ainda não foi aprovada para esta empresa.",
-        },
-        422,
-      );
-    if (digits(company.document).length !== 14 || !text(company.name) || !text(company.address) || !text(company.neighborhood) || !text(company.city) || !/^[A-Z]{2}$/.test(text(company.state)) || digits(company.zip_code).length !== 8 || digits(fiscal.municipio_ibge).length !== 7 || !digits(fiscal.inscricao_estadual))
-      return jsonResponse({error:'issuer_incomplete', message:'Complete CNPJ, endereço, inscrição estadual e município IBGE nas Configurações Fiscais.'},422);
+    if (fiscalResult.error || configResult.error) throw new GoodsDocumentError('readiness_unavailable','Não foi possível conferir a configuração fiscal. Tente novamente.',503);
+    const selectedEnvironment = draft.environment ?? (fiscal.fiscal_ambiente === 'producao' ? 'producao' : 'homologacao');
+    const effectiveDraft:NormalizedDraft={...draft,environment:selectedEnvironment};
+    const effectiveFiscal: JsonObject = {
+      ...fiscal,
+      fiscal_ambiente: selectedEnvironment,
+    };
+    const readiness = goodsReadinessIssues(draft.model, company, effectiveFiscal, config, Deno.env.get('FISCAL_NFCE_PRODUCAO_HABILITADA') === '1');
+    if (readiness.length) return jsonResponse({error:readiness[0].code,message:readiness[0].message},422);
+    const environment = selectedEnvironment === 'producao' ? 1 : 2;
     const errors = validation(
-      draft,
+      effectiveDraft,
       text(company.state).toUpperCase(),
-      text(fiscal.regime_tributario),
+      text(effectiveFiscal.regime_tributario),
     );
     if (errors.length)
       return jsonResponse(
         { error: "validation_failed", message: errors.slice(0, 6).join(" ") },
         422,
       );
-    if (draft.model === 65) {
-      if (text(config.uf).toUpperCase() !== text(company.state).toUpperCase()) return jsonResponse({error:'issuer_incomplete',message:'A UF do credenciamento NFC-e deve corresponder à UF do emitente.'},422);
-      const suffix = environment === 1 ? "production" : "homologation";
-      if (
-        !text(config[`qr_base_url_${suffix}`]) ||
-        !text(config[`access_url_${suffix}`])
-      ) {
-        return jsonResponse(
-          {
-            error: "nfce_urls_required",
-            message:
-              "A NFC-e ainda não tem as URLs oficiais da SEFAZ configuradas para esta UF e ambiente.",
-          },
-          422,
-        );
-      }
-    }
-
     const table = draft.model === 55 ? 'nfe_documents' : 'nfce_documents';
     const claim = await auth.supabase.from(table).update({ status: 'preparing' })
-      .eq('id', row.id).eq('company_id', auth.companyId).eq('status', 'draft').select('id').maybeSingle();
+      .eq('id', row.id).eq('company_id', auth.companyId).eq('status', 'draft')
+      .eq('draft_payload', JSON.stringify(row.draft_payload ?? draft)).eq('operation_id',text(row.operation_id)).eq('updated_at',text(row.updated_at)).select('id,operation_id,status,updated_at').maybeSingle();
     if (claim.error) throw new Error('Não foi possível iniciar a preparação da nota.');
-    if (!claim.data) return jsonResponse({ ok: true, id: row.id, status: 'preparing', existing: true }, 202);
-    activeDocument = { id: text(row.id), table, events: draft.model === 55 ? 'nfe_events' : 'nfce_events' };
+    if (!claim.data) throw new GoodsDocumentError('draft_changed','A nota foi alterada em outro atendimento. Abra o rascunho novamente antes de emitir.',409);
+    let preparationFence=goodsDocumentFence(object(claim.data));
+    activeDocument = { id: text(row.id), table, events: draft.model === 55 ? 'nfe_events' : 'nfce_events', fence:preparationFence };
     let series = number(row.series);
     let documentNumber = number(row.number);
     if (!documentNumber) {
       const reserved = await auth.supabase.rpc("reserve_goods_fiscal_number", {
         p_company_id: auth.companyId,
         p_model: draft.model,
+        p_series_id: draft.seriesId,
+        p_direction: draft.direction,
       });
       const reservation = Array.isArray(reserved.data)
         ? object(reserved.data[0])
         : object(reserved.data);
       if (reserved.error || !reservation.number)
-        throw new Error("Não foi possível reservar a numeração fiscal.");
+        throw new GoodsDocumentError(
+          "number_reservation_failed",
+          "Não foi possível reservar a numeração fiscal. Nenhum número foi consumido.",
+          503,
+          {
+            stage: "reserve_number",
+            databaseCode: text(reserved.error?.code, 32) || null,
+          },
+        );
       series = number(reservation.series);
       documentNumber = number(reservation.number);
     }
     const document = buildMotorDocument(
-      draft,
+      effectiveDraft,
       company,
-      fiscal,
+      effectiveFiscal,
       series,
       documentNumber,
     );
     const snapshotHash = await sha256(document);
     const operationId = text(row.operation_id);
-    await auth.supabase
-      .from(table)
-      .update({
+    preparationFence=await storeGoodsDocument(auth, table, text(row.id), {
         status: "preparing",
+        draft_payload: effectiveDraft,
         environment,
         uf: text(company.state).toUpperCase(),
         series,
@@ -1198,13 +1384,12 @@ Deno.serve(async (req) => {
         snapshot: document,
         last_error_code: null,
         last_error_message: null,
-      })
-      .eq("id", row.id)
-      .eq("company_id", auth.companyId);
+      },preparationFence);
+    activeDocument.fence=preparationFence;
     const ctx: NfseProviderCtx = {
       supabase: auth.supabase,
       companyId: auth.companyId,
-      fiscal,
+      fiscal: effectiveFiscal,
       contextoAuditoria: `emitir_${draft.model === 55 ? "nfe" : "nfce"}:${row.id}`,
     };
     const prepared =
@@ -1229,7 +1414,9 @@ Deno.serve(async (req) => {
               ],
             ),
           });
-    const signedXmlPath = `${auth.companyId}/${draft.model}/${row.id}/assinado.xml`;
+    if (prepared.tenantId !== auth.companyId || prepared.operationId !== operationId || prepared.snapshotHash !== snapshotHash || prepared.status !== 'preparada' || !/^\d{44}$/.test(prepared.chave) || prepared.chave.slice(20,22) !== String(draft.model) || prepared.chave.slice(6,20) !== digits(company.document) || !text(prepared.xmlAssinado,2_000_000))
+      throw new GoodsDocumentError('motor_response_mismatch','Não foi possível confirmar a preparação fiscal desta empresa. Nenhuma transmissão foi iniciada.',502);
+    const signedXmlPath = `${auth.companyId}/${draft.model}/${row.id}/${operationId}/assinado.xml`;
     const signedUpload = await auth.supabase.storage
       .from("fiscal-artifacts")
       .upload(
@@ -1241,97 +1428,29 @@ Deno.serve(async (req) => {
       throw new Error(
         "Não foi possível guardar o XML assinado antes do envio. Nenhuma transmissão foi iniciada.",
       );
-    await auth.supabase
-      .from(table)
-      .update({
+    preparationFence=await storeGoodsDocument(auth, table, text(row.id), {
         status: "signed",
         access_key: prepared.chave,
         signed_xml_path: signedXmlPath,
-      })
-      .eq("id", row.id)
-      .eq("company_id", auth.companyId);
-    const batchId = String(documentNumber).slice(-15);
-    const transmitting = await auth.supabase.from(table).update({ status: 'transmitting' }).eq('id',row.id).eq('company_id',auth.companyId);
-    if (transmitting.error) throw new Error('Não foi possível registrar o envio fiscal com segurança.');
-    transmissionStarted = true;
-    const official =
-      draft.model === 55
-        ? await authorizeNfe(ctx, {
-            operationId,
-            snapshotHash,
-            uf: text(company.state).toUpperCase(),
-            key: prepared.chave,
-            batchId,
-            signedXml: prepared.xmlAssinado,
-          })
-        : await authorizeNfce(ctx, {
-            operationId,
-            snapshotHash,
-            uf: text(company.state).toUpperCase(),
-            key: prepared.chave,
-            batchId,
-            signedXml: prepared.xmlAssinado,
-          });
-    const normalized = outcomeStatus(official as JsonObject);
-    const artifacts = await officialArtifacts(auth, draft.model, text(row.id), official as JsonObject);
-    await auth.supabase
-      .from(table)
-      .update({
-        status: normalized.status,
-        official_status: normalized.official,
-        ...artifacts,
-        official_checked_at: new Date().toISOString(),
-        authorized_at:
-          normalized.status === "authorized" ? new Date().toISOString() : null,
-        last_error_code: normalized.status === 'rejected' ? `sefaz_${text(object(official.resposta).cstat)}` : null,
-        last_error_message: normalized.status === 'rejected' ? 'Documento rejeitado pela SEFAZ. Revise o cadastro fiscal.' : null,
-      })
-      .eq("id", row.id)
-      .eq("company_id", auth.companyId);
-    await auth.supabase
-      .from(draft.model === 55 ? "nfe_events" : "nfce_events")
-      .insert({
-        company_id: auth.companyId,
-        document_id: row.id,
-        event_type: "authorization_result",
-        status: normalized.status,
-        official_status: normalized.official,
-        cstat: text(object(official.resposta).cstat) || null,
-        message:
-          normalized.status === "authorized"
-            ? "Documento autorizado pela SEFAZ."
-            : "Resultado fiscal registrado.",
-        payload: {
-          outcome: official.outcome,
-          recovered: official.recovered,
-          orientacao: official.orientacao,
-        },
-      });
-    return jsonResponse(
-      {
-        ok: true,
-        id: row.id,
-        status: normalized.status,
-        officialStatus: normalized.official,
-        accessKey: prepared.chave,
-      },
-      normalized.status === "authorized" ? 201 : 202,
-    );
+      },preparationFence);
+    activeDocument.fence=preparationFence;
+    activeDocument = null;
+    return await transmitSavedGoods(auth,draft.model,{...row,operation_id:preparationFence.operationId,status:preparationFence.status,updated_at:preparationFence.updatedAt,number:documentNumber,uf:text(company.state).toUpperCase(),snapshot_hash:snapshotHash,access_key:prepared.chave},ctx,prepared.xmlAssinado,(document,started=false)=>{activeDocument=document;if(started)transmissionStarted=true;});
   } catch (error) {
     const fiscal =
       error instanceof NfeMotorError || error instanceof NfceMotorError;
     const code = fiscal ? (error as NfeMotorError).code : error instanceof GoodsDocumentError ? error.code : 'internal_error';
     const message = transmissionStarted || code === 'resultado_incerto'
       ? 'A confirmação não voltou. Consulte esta mesma nota antes de tentar novamente.'
+      : fiscal && safeFiscalMessage(error as NfeMotorError)
+      ? safeFiscalMessage(error as NfeMotorError)!
       : 'Não foi possível concluir a operação fiscal. Confira o cadastro fiscal e tente novamente.';
     if (activeDocument) {
-      const status =
-        transmissionStarted || code === "resultado_incerto"
-          ? "uncertain"
-          : "rejected";
+      const status = activeDocument.fence.status==='cancellation_pending' ? 'cancellation_pending' :
+        transmissionStarted || code === "resultado_incerto" ? "uncertain" : "rejected";
       const officialStatus =
-        status === "uncertain" ? "aguardando_confirmacao" : null;
-      await auth.supabase
+        ['uncertain','cancellation_pending'].includes(status) ? "aguardando_confirmacao" : null;
+      let recovery = auth.supabase
         .from(activeDocument.table)
         .update({
           status,
@@ -1339,26 +1458,31 @@ Deno.serve(async (req) => {
           last_error_code: code,
           last_error_message: message,
           next_action:
-            status === "uncertain" ? "consultar_sefaz" : "corrigir_e_reemitir",
+            ['uncertain','cancellation_pending'].includes(status) ? "consultar_sefaz" : "corrigir_e_reemitir",
           official_checked_at:
-            status === "uncertain" ? new Date().toISOString() : null,
+            ['uncertain','cancellation_pending'].includes(status) ? new Date().toISOString() : null,
         })
         .eq("id", activeDocument.id)
         .eq("company_id", auth.companyId);
+      recovery = recovery.eq('operation_id',activeDocument.fence.operationId).eq('status',activeDocument.fence.status).eq('updated_at',activeDocument.fence.updatedAt);
+      const recoveryResult=await recovery.select('id').maybeSingle();
       await auth.supabase.from(activeDocument.events).insert({
         company_id: auth.companyId,
         document_id: activeDocument.id,
-        event_type:
-          status === "uncertain"
-            ? "authorization_uncertain"
-            : "authorization_failed",
-        status,
+        event_type: !recoveryResult.data ? 'stale_operation_response' : status==='cancellation_pending' ? 'cancellation_uncertain' : status==='uncertain' ? 'authorization_uncertain' : 'authorization_failed',
+        status:recoveryResult.data?status:null,
         official_status: officialStatus,
         message,
-        payload: { code, transmissionStarted },
+        payload: { code, transmissionStarted, operationId: activeDocument.fence.operationId, stateApplied:!!recoveryResult.data },
       });
     }
-    console.error('[fiscal-goods-document]', { code, transmissionStarted });
+    console.error('[fiscal-goods-document]', {
+      code,
+      transmissionStarted,
+      ...(error instanceof GoodsDocumentError ? error.diagnostic : {
+        errorType: error instanceof Error ? error.name : typeof error,
+      }),
+    });
     return jsonResponse(
       { error: code, message: error instanceof GoodsDocumentError ? error.message : message },
       error instanceof GoodsDocumentError ? error.status : fiscal ? (error as NfeMotorError).status : 500,

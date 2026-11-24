@@ -1,5 +1,4 @@
 -- Identidade operacional dos documentos, independente da marca do painel admin.
-BEGIN;
 
 CREATE OR REPLACE FUNCTION public.pdv_get_receipt_company_v3()
 RETURNS jsonb
@@ -46,4 +45,4 @@ REVOKE ALL ON FUNCTION public.pdv_get_receipt_company_v3() FROM PUBLIC,anon,auth
 GRANT EXECUTE ON FUNCTION public.pdv_get_receipt_company_v3() TO authenticated,service_role;
 COMMENT ON FUNCTION public.pdv_get_receipt_company_v3() IS
   'Identidade mínima da empresa autenticada para orçamento/retirada, com flags de privacidade e white-label. Não depende do cache de aparência do painel admin nem aceita empresa informada pelo cliente.';
-COMMIT;
+;

@@ -15,13 +15,19 @@ interface DREData {
   opexLines: DRELine[];
   ebitda: number;
   margin: number;
+  estornos?: number;
+  estornoLines?: DRELine[];
+  nonOperating?: number;
+  nonOperatingLines?: DRELine[];
+  resultadoFinal?: number;
 }
 
 const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 export function generateAdminDreHtml(dre: DREData, periodLabel: string): string {
   const lucroBrutoBg = dre.grossProfit > 0 ? '#16a34a' : dre.grossProfit < 0 ? '#dc2626' : '#374151';
-  const resultBg = dre.ebitda > 0 ? '#16a34a' : dre.ebitda < 0 ? '#dc2626' : '#1f2937';
+  const resultadoFinal = dre.resultadoFinal ?? dre.ebitda;
+  const resultBg = resultadoFinal > 0 ? '#16a34a' : resultadoFinal < 0 ? '#dc2626' : '#1f2937';
   const margemBruta = dre.margemBruta ?? (dre.netRevenue > 0 ? (dre.grossProfit / dre.netRevenue) * 100 : 0);
 
   const renderRows = (items: DRELine[], colorClass: 'positive' | 'negative') =>
@@ -71,6 +77,8 @@ export function generateAdminDreHtml(dre: DREData, periodLabel: string): string 
     ${renderRows(dre.revenueLines, 'positive')}
     <div class="row subtotal"><span>Total Receita Bruta</span><span class="positive">${fmt(dre.grossRevenue)}</span></div>
 
+    ${(dre.estornos || 0) !== 0 ? `<div class="section-header">(-) Estornos e devoluções</div>${renderRows(dre.estornoLines ?? [], 'negative')}<div class="row subtotal"><span>Total estornos</span><span class="negative">-${fmt(dre.estornos ?? 0)}</span></div>` : ''}
+
     ${dre.taxLines.length ? `
       <div class="section-header">(-) Impostos e Deduções</div>
       ${renderRows(dre.taxLines, 'negative')}
@@ -92,9 +100,12 @@ export function generateAdminDreHtml(dre: DREData, periodLabel: string): string 
     ${renderRows(dre.opexLines, 'negative')}
     <div class="row subtotal"><span>Total OPEX</span><span class="negative">-${fmt(dre.opex)}</span></div>
 
+    <div class="row highlight gray"><span>(=) RESULTADO OPERACIONAL (EBITDA)</span><span>${fmt(dre.ebitda)}</span></div>
+    ${(dre.nonOperating || 0) !== 0 ? `<div class="section-header">(-) Itens não operacionais</div>${renderRows(dre.nonOperatingLines ?? [], 'negative')}<div class="row subtotal"><span>Total itens não operacionais</span><span class="negative">-${fmt(dre.nonOperating ?? 0)}</span></div>` : ''}
+
     <div class="row result" style="background:${resultBg}">
-      <div class="result-label"><span>(=) RESULTADO LÍQUIDO</span><span style="font-size:11px;font-weight:400;opacity:.85">${dre.ebitda >= 0 ? 'Lucro' : 'Prejuízo'} do Período · Margem: ${dre.margin.toFixed(1)}%</span></div>
-      <span>${fmt(dre.ebitda)}</span>
+      <div class="result-label"><span>(=) RESULTADO FINAL</span><span style="font-size:11px;font-weight:400;opacity:.85">${resultadoFinal >= 0 ? 'Lucro' : 'Prejuízo'} do período · EBITDA: ${fmt(dre.ebitda)}</span></div>
+      <span>${fmt(resultadoFinal)}</span>
     </div>
   </div>
 </div>

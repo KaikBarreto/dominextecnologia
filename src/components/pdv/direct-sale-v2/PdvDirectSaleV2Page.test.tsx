@@ -1,3 +1,4 @@
+vi.mock('@/hooks/usePdvDomiLinkWorkspace', () => ({ usePdvDomiLinkWorkspace: () => ({ scannerControl: null, weighControl: undefined, capture: () => () => true }) }));
 import type { ReactNode } from 'react';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -63,27 +64,27 @@ vi.mock('@/components/pdv/PdvCartPanel', () => ({
 vi.mock('@/components/pdv/PdvCartItemsTable', () => ({ PdvCartItemsTable: () => null }));
 vi.mock('@/components/pdv/PdvCartSummary', () => ({ PdvCartSummary: () => null }));
 vi.mock('@/components/pdv/PdvAppliedVoucherControl', () => ({
-  PdvAppliedVoucherControl: ({ customerId, onChange }: {
+  PdvAppliedVouchersControl: ({ customerId, onChange }: {
     customerId: string | null;
-    onChange: (value: { voucherId: string; code: string; amount: number; balance: number; expiresOn: null }) => void;
+    onChange: (value: Array<{ voucherId: string; code: string; amount: number; balance: number; expiresOn: null }>) => void;
   }) => customerId ? (
-    <button type="button" onClick={() => onChange({ voucherId: 'voucher-1', code: 'DEV-1042', amount: 40, balance: 80, expiresOn: null })}>
+    <button type="button" onClick={() => onChange([{ voucherId: 'voucher-1', code: 'DEV-1042', amount: 40, balance: 80, expiresOn: null }])}>
       aplicar-voucher-teste
     </button>
   ) : null,
 }));
 vi.mock('@/components/pdv/PdvPaymentDialog', () => ({
-  PdvPaymentDialog: ({ open, total, appliedVoucher, onConfirm }: {
+  PdvPaymentDialog: ({ open, total, appliedVouchers = [], onConfirm }: {
     open: boolean;
     total: number;
-    appliedVoucher?: { voucherId: string; amount: number } | null;
+    appliedVouchers?: Array<{ voucherId: string; amount: number }>;
     onConfirm: (payments: unknown[]) => Promise<void>;
   }) => open ? (
     <div>
-      <span>voucher-status:{appliedVoucher?.voucherId ?? 'sem'}</span>
+      <span>voucher-status:{appliedVouchers[0]?.voucherId ?? 'sem'}</span>
       <button type="button" onClick={() => void onConfirm([
-        ...(appliedVoucher ? [{ method: 'voucher', amount: appliedVoucher.amount, reference_id: appliedVoucher.voucherId }] : []),
-        { method: 'pix', amount: total - (appliedVoucher?.amount ?? 0), account_id: 'bank-1' },
+        ...appliedVouchers.map(value => ({ method: 'voucher', amount: value.amount, reference_id: value.voucherId })),
+        { method: 'pix', amount: total - appliedVouchers.reduce((sum, value) => sum + value.amount, 0), account_id: 'bank-1' },
       ])}>
         confirmar-venda
       </button>
@@ -92,7 +93,7 @@ vi.mock('@/components/pdv/PdvPaymentDialog', () => ({
 }));
 vi.mock('@/components/pdv/receipt/PdvOrderReceiptButton', () => ({
   PdvOrderReceiptButton: ({ orderId }: { orderId: string }) => <button type="button">comprovante:{orderId}</button>,
-  openPdvOrderReceipt: openReceipt,
+  usePdvOrderReceiptOpener: () => ({ open: openReceipt, isCurrent: () => true, guardAttempt: (attempt: unknown) => attempt }),
 }));
 
 import { PdvDirectSaleV2Page } from '@/components/pdv/direct-sale-v2/PdvDirectSaleV2Page';

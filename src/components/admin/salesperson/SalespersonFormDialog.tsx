@@ -9,8 +9,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { SalespersonAvatar } from '@/components/admin/salesperson/SalespersonAvatar';
-import { useSaveSalesperson, type Salesperson } from '@/hooks/useSalespersonData';
+import { useSaveSalesperson, type Salesperson, type SalespersonPersonType } from '@/hooks/useSalespersonData';
 import { supabase } from '@/integrations/supabase/client';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { processImageFile } from '@/utils/imageConvert';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessages';
@@ -31,6 +32,15 @@ interface Props {
 const AVATAR_BUCKET = 'salesperson-avatars';
 const MAX_BYTES = 2 * 1024 * 1024; // 2 MB (limite do bucket no Storage)
 const ACCEPTED_TYPES = 'image/jpeg,image/png,image/webp,image/gif';
+const PERSON_TYPE_LABELS: Record<SalespersonPersonType, string> = {
+  sales: 'Comercial',
+  customer_success: 'Sucesso do Cliente',
+  support: 'Suporte',
+  financial: 'Financeiro',
+  admin: 'Administrativo',
+  partner: 'Sócio / Pró-labore',
+  other: 'Outro',
+};
 
 /** Extrai o path interno do bucket a partir da publicUrl (pra remover arquivo antigo). */
 function extractStoragePath(publicUrl: string | null | undefined): string | null {
@@ -65,17 +75,26 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
     notes: '',
     user_id: 'none' as string,
     role: 'closer' as 'sdr' | 'closer',
+    person_type: 'sales' as SalespersonPersonType,
+    can_receive_sales: true,
   });
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const rotationEligible = Boolean(
+    formData.is_active && formData.can_receive_sales && formData.in_rotation && formData.phone.trim(),
+  );
+  const lastLeadAssignedLabel = editingSalesperson?.last_lead_assigned_at
+    ? new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+      .format(new Date(editingSalesperson.last_lead_assigned_at))
+    : 'Ainda não recebeu lead pelo rodízio';
   /** Arquivo pendente em modo criação — só sobe depois que o vendedor tem id. */
   const pendingFileRef = useRef<File | null>(null);
 
   // Buscar usuários admin disponíveis (super_admin ou com admin_permissions) que não estão vinculados a outro vendedor
   const { data: availableUsers = [] } = useQuery({
     queryKey: ['admin-users-for-link', editingSalesperson?.id],
-    enabled: open,
+    enabled: open && hasMasterAccess,
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('manage-admin-users', { body: { action: 'list' } });
       if (error) return [];
@@ -104,6 +123,8 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
         notes: editingSalesperson.notes || '',
         user_id: (editingSalesperson as any).user_id || 'none',
         role: ((editingSalesperson as any).role as 'sdr' | 'closer') || 'closer',
+        person_type: editingSalesperson.person_type || 'sales',
+        can_receive_sales: editingSalesperson.can_receive_sales ?? true,
       });
       setPhotoUrl(editingSalesperson.photo_url || null);
     } else {
@@ -111,7 +132,7 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
         name: '', email: '', phone: '', salary: '', monthly_goal: '30',
         daily_goal_contacts: String(DEFAULT_DAILY_GOAL_CONTACTS),
         daily_goal_meetings_scheduled: String(DEFAULT_DAILY_GOAL_MEETINGS_SCHEDULED),
-        is_active: true, no_commission: false, in_rotation: true, notes: '', user_id: 'none', role: 'closer',
+        is_active: true, no_commission: false, in_rotation: true, notes: '', user_id: 'none', role: 'closer', person_type: 'sales', can_receive_sales: true,
       });
       setPhotoUrl(null);
     }
@@ -147,11 +168,15 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
 
     const { data: { publicUrl } } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path);
 
-    const { error: updateError } = await supabase
-      .from('salespeople')
-      .update({ photo_url: publicUrl })
-      .eq('id', salespersonId);
-    if (updateError) {
+    try {
+      assertRowsAffected(
+        await supabase
+          .from('salespeople')
+          .update({ photo_url: publicUrl }, { count: 'exact' })
+          .eq('id', salespersonId),
+        'update',
+      );
+    } catch (updateError) {
       // Rollback do storage pra não deixar arquivo órfão
       await supabase.storage.from(AVATAR_BUCKET).remove([path]).catch(() => {});
       throw updateError;
@@ -208,11 +233,13 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
     setUploading(true);
     try {
       const oldPath = extractStoragePath(photoUrl);
-      const { error } = await supabase
-        .from('salespeople')
-        .update({ photo_url: null })
-        .eq('id', editingSalesperson.id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('salespeople')
+          .update({ photo_url: null }, { count: 'exact' })
+          .eq('id', editingSalesperson.id),
+        'update',
+      );
       if (oldPath) {
         await supabase.storage.from(AVATAR_BUCKET).remove([oldPath]).catch(() => {});
       }
@@ -268,8 +295,12 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
         no_commission: formData.no_commission,
         in_rotation: formData.in_rotation,
         notes: formData.notes.trim() || null,
-        user_id: formData.user_id === 'none' ? null : formData.user_id,
+        // Só o master pode vincular uma pessoa a uma conta admin. O banco
+        // também protege este campo para impedir contorno pela API.
+        ...(hasMasterAccess ? { user_id: formData.user_id === 'none' ? null : formData.user_id } : {}),
         role: formData.role,
+        person_type: formData.person_type,
+        can_receive_sales: formData.can_receive_sales,
       } as any);
 
       // Modo criação com foto pendente: sobe a foto agora que temos o id.
@@ -278,7 +309,7 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
           await uploadAndSavePhoto(pendingFileRef.current, (saved as any).id, null);
         } catch (uploadErr) {
           // Vendedor já foi criado — avisa do erro de foto sem reverter o registro.
-          toast.error(getErrorMessage(uploadErr, 'Vendedor criado, mas houve erro ao enviar a foto'));
+          toast.error(getErrorMessage(uploadErr, 'Pessoa cadastrada, mas houve erro ao enviar a foto'));
         }
         pendingFileRef.current = null;
       }
@@ -289,7 +320,7 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
       // 23505 tem mensagem específica de UX (email duplicado) — preserva.
       // Demais erros caem no helper PT-BR.
       if (err?.code === '23505') {
-        toast.error('Já existe um vendedor com este email ou usuário vinculado');
+        toast.error('Já existe uma pessoa com este email ou usuário vinculado');
       } else {
         toast.error(getErrorMessage(err));
       }
@@ -303,7 +334,7 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
   const footer = (
     <div className="flex gap-2">
       <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">Cancelar</Button>
-      <Button type="submit" form="salesperson-form" disabled={isPending} className="flex-1">
+      <Button type="submit" form="salesperson-form" disabled={isPending} className="flex-1 bg-black text-white hover:bg-zinc-800">
         {isPending ? 'Salvando...' : 'Salvar'}
       </Button>
     </div>
@@ -313,15 +344,15 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
-      title={editingSalesperson ? 'Editar Vendedor' : 'Novo Vendedor'}
-      description="Preencha as informações do vendedor"
+      title={editingSalesperson ? 'Editar pessoa' : 'Adicionar pessoa'}
+      description="Cadastre a pessoa, sua área e, quando aplicável, sua atuação comercial"
       footer={footer}
     >
       <form id="salesperson-form" onSubmit={handleSubmit} className="space-y-4">
         {/* Foto do vendedor */}
         <div className="flex flex-col items-center gap-2">
           <label className="relative cursor-pointer group">
-            <SalespersonAvatar name={formData.name || 'Novo Vendedor'} photoUrl={photoUrl} size="xl" />
+            <SalespersonAvatar name={formData.name || 'Nova pessoa'} photoUrl={photoUrl} size="xl" />
             <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
               {uploading ? (
                 <Loader2 className="h-5 w-5 text-white animate-spin" />
@@ -376,9 +407,51 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
               onPaste={handleSalaryPaste}
             />
           </div>
+          {formData.can_receive_sales && (
           <div className="space-y-2">
             <Label htmlFor="sp-goal">Meta Mensal (vendas)</Label>
             <NumericInput id="sp-goal" value={formData.monthly_goal} onValueChange={(v) => setFormData({ ...formData, monthly_goal: v })} />
+          </div>
+          )}
+
+          <div className="sm:col-span-2 space-y-2">
+            <Label>Área da equipe</Label>
+            <Select
+              value={formData.person_type}
+              onValueChange={(value: SalespersonPersonType) => {
+                const isCommercial = value === 'sales';
+                setFormData({
+                  ...formData,
+                  person_type: value,
+                  can_receive_sales: isCommercial ? formData.can_receive_sales : false,
+                  in_rotation: isCommercial ? formData.in_rotation : false,
+                });
+              }}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(PERSON_TYPE_LABELS).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[11px] text-muted-foreground">A área organiza a equipe; ela não concede permissões do admin.</p>
+          </div>
+          <div className="sm:col-span-2 flex items-center justify-between rounded-lg border p-3">
+            <div className="space-y-0.5">
+              <Label htmlFor="sp-receive-sales" className="cursor-pointer">Pode receber vendas</Label>
+              <p className="text-xs text-muted-foreground">Aparece nos seletores comerciais e pode participar do rodízio quando estiver elegível.</p>
+            </div>
+            <Switch
+              id="sp-receive-sales"
+              checked={formData.can_receive_sales}
+              disabled={formData.person_type !== 'sales'}
+              onCheckedChange={(can_receive_sales) => setFormData({
+                ...formData,
+                can_receive_sales,
+                in_rotation: can_receive_sales ? formData.in_rotation : false,
+              })}
+            />
           </div>
 
           {/* Metas diárias do diário comercial — só pro master: UPDATE em
@@ -413,6 +486,7 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
             </div>
           )}
 
+          {formData.can_receive_sales && (
           <div className="sm:col-span-2 space-y-2">
             <Label>Tipo</Label>
             <Select value={formData.role} onValueChange={(v) => setFormData({ ...formData, role: v as 'sdr' | 'closer' })}>
@@ -424,27 +498,32 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
             </Select>
             <p className="text-[11px] text-muted-foreground">Define o papel do vendedor no funil. Comissões dividem entre SDR e Closer quando ambos atuam na venda.</p>
           </div>
-          <div className="sm:col-span-2 space-y-2">
-            <Label>Vincular a usuário admin (opcional)</Label>
-            <Select value={formData.user_id} onValueChange={(v) => setFormData({ ...formData, user_id: v })}>
-              <SelectTrigger><SelectValue placeholder="— Nenhum —" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">— Nenhum —</SelectItem>
-                {availableUsers.map((u) => (
-                  <SelectItem key={u.id} value={u.id}>{u.full_name || u.email}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-[11px] text-muted-foreground">Vendedor vinculado vê apenas os próprios dados (a menos que tenha "ver todos os vendedores").</p>
-          </div>
+          )}
+          {hasMasterAccess && (
+            <div className="sm:col-span-2 space-y-2">
+              <Label>Vincular a usuário admin (opcional)</Label>
+              <Select value={formData.user_id} onValueChange={(v) => setFormData({ ...formData, user_id: v })}>
+                <SelectTrigger><SelectValue placeholder="— Nenhum —" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">— Nenhum —</SelectItem>
+                  {availableUsers.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>{u.full_name || u.email}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">Vendedor vinculado vê apenas os próprios dados (a menos que tenha "ver todos os vendedores").</p>
+            </div>
+          )}
           <div className="sm:col-span-2 space-y-2">
             <Label htmlFor="sp-notes">Observações</Label>
             <Textarea id="sp-notes" rows={3} value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} />
           </div>
           <div className="sm:col-span-2 flex items-center justify-between rounded-lg border p-3">
-            <Label htmlFor="sp-active" className="cursor-pointer">Vendedor Ativo</Label>
+            <Label htmlFor="sp-active" className="cursor-pointer">Pessoa ativa</Label>
             <Switch id="sp-active" checked={formData.is_active} onCheckedChange={(c) => setFormData({ ...formData, is_active: c })} />
           </div>
+          {formData.can_receive_sales && (
+          <>
           <div className="sm:col-span-2 flex items-center justify-between rounded-lg border p-3">
             <div className="space-y-0.5">
               <Label htmlFor="sp-noc" className="cursor-pointer">Sem Comissão</Label>
@@ -456,9 +535,17 @@ export function SalespersonFormDialog({ open, onOpenChange, editingSalesperson }
             <div className="space-y-0.5">
               <Label htmlFor="sp-rotation" className="cursor-pointer">Participa do rodízio de leads</Label>
               <p className="text-xs text-muted-foreground">Distribui leads automaticamente e entra nos números do site. Precisa ter telefone cadastrado para aparecer no rodízio.</p>
+              <p className={rotationEligible ? 'text-xs font-medium text-emerald-700' : 'text-xs text-muted-foreground'}>
+                {rotationEligible ? 'Elegível para a próxima distribuição' : 'Não elegível: ative a pessoa, habilite vendas e rodízio e informe telefone.'}
+              </p>
+              {editingSalesperson && (
+                <p className="text-xs text-muted-foreground">Última distribuição: {lastLeadAssignedLabel}</p>
+              )}
             </div>
             <Switch id="sp-rotation" checked={formData.in_rotation} onCheckedChange={(c) => setFormData({ ...formData, in_rotation: c })} />
           </div>
+          </>
+          )}
         </div>
       </form>
     </ResponsiveModal>

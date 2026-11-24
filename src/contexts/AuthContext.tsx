@@ -52,6 +52,8 @@ interface AuthContextType {
   affiliateLoading: boolean;
   loading: boolean;
   profileLoading: boolean;
+  /** Refaz perfil, papéis e permissões da sessão atual sem liberar gates no intervalo. */
+  refreshUserData: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signInWithGoogle: () => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
@@ -133,8 +135,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const userId = session.user.id;
           if (userChanged) {
             setProfileLoading(true);
-            // Vínculo de afiliado é por usuário: zera e volta pro estado
-            // "não resolvido" antes de qualquer gate decidir algo.
+            // Todo estado abaixo é escopado por usuário. Limpar antes da nova
+            // hidratação impede que uma troca rápida de conta reutilize por um
+            // frame roles/permissões/tenant da conta anterior.
+            setProfile(null);
+            setRoles([]);
+            setPermissions([]);
+            setHasPermissionRecord(false);
+            setAdminPermissions([]);
             setLinkedAffiliateId(null);
             setAffiliateResolved(false);
           }
@@ -184,61 +192,78 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Helper: descarta resultado se o usuário trocou enquanto a query estava em vôo.
     const isStillCurrent = () => currentUserIdRef.current === userId;
 
-    // Timeout de 5s envolvendo as 4 queries. Se estourar, segue com o que
-    // conseguiu carregar — estado parcial é melhor que skeleton travado.
-    const TIMEOUT_MS = 5000;
+    // Uma rede móvel lenta pode passar de 5s sem que perfil/tenant estejam
+    // inválidos. Mantemos o gate em `checking` por uma janela maior; ao fim
+    // dela ele continua falhando fechado e oferece uma nova tentativa real.
+    const TIMEOUT_MS = 15000;
     const timeoutPromise = new Promise<'timeout'>((resolve) =>
       setTimeout(() => resolve('timeout'), TIMEOUT_MS)
     );
 
     const fetchAll = async () => {
-      // Fetch profile
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
+      // Perfil, papéis e permissões são independentes. Carregar em paralelo
+      // reduz quatro viagens de rede no caminho crítico para uma só.
+      const [profileResult, rolesResult, permissionsResult, adminPermissionsResult] =
+        await Promise.all([
+          supabase.from('profiles').select('*').eq('user_id', userId).single(),
+          supabase.from('user_roles').select('role').eq('user_id', userId),
+          supabase
+            .from('user_permissions')
+            .select('permissions, is_active')
+            .eq('user_id', userId)
+            .maybeSingle(),
+          supabase.from('admin_permissions').select('permission').eq('user_id', userId),
+        ]);
 
-      if (profileData && isStillCurrent()) {
-        clearDomiLinkOutsideScope(profileData.company_id ? { userId, companyId: profileData.company_id } : null);
-        setProfile(profileData as Profile);
+      const baseErrors = [
+        profileResult.error,
+        rolesResult.error,
+        permissionsResult.error,
+        adminPermissionsResult.error,
+      ].filter(Boolean);
+      if (baseErrors.length > 0) {
+        console.error('[Auth] user data hydration returned errors:', baseErrors);
       }
 
-      // Fetch roles
-      const { data: rolesData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId);
+      const profileData = profileResult.error ? null : profileResult.data;
+      const rolesData = rolesResult.error ? [] : (rolesResult.data ?? []);
+      const permData = permissionsResult.error ? null : permissionsResult.data;
+      const adminPermData = adminPermissionsResult.error
+        ? []
+        : (adminPermissionsResult.data ?? []);
 
-      if (rolesData && isStillCurrent()) {
+      if (isStillCurrent()) {
+        clearDomiLinkOutsideScope(profileData?.company_id ? { userId, companyId: profileData.company_id } : null);
+        setProfile(profileData ? (profileData as Profile) : null);
+        // Reconcilia silenciosamente uma assinatura já autorizada. Nunca abre
+        // prompt no boot: a permissão só é pedida pelo botão em Configurações.
+        // O dynamic import evita acoplar Push API ao caminho crítico do auth.
+        if ((profileData as Profile | null)?.company_id) {
+          import('@/lib/pushNotifications')
+            .then((module) => module.reconcilePushSubscription((profileData as Profile).company_id!))
+            .catch((error) => console.warn('[Auth] push reconciliation failed:', error));
+        }
+      }
+
+      if (isStillCurrent()) {
         setRoles(rolesData.map(r => r.role as AppRole));
       }
-
-      // Fetch permissions
-      const { data: permData } = await supabase
-        .from('user_permissions')
-        .select('permissions, is_active')
-        .eq('user_id', userId)
-        .maybeSingle();
 
       if (isStillCurrent()) {
         // Existência da linha define o modo (estrito vs legado), independente de
         // estar ativa. Registro inativo é "sem acesso" intencional, não legado.
         setHasPermissionRecord(!!permData);
         if (permData && permData.is_active) {
-          setPermissions((permData.permissions as any) || []);
+          const nextPermissions = Array.isArray(permData.permissions)
+            ? permData.permissions.filter((permission): permission is string => typeof permission === 'string')
+            : [];
+          setPermissions(nextPermissions);
         } else {
           setPermissions([]);
         }
       }
 
-      // Fetch admin panel permissions (vendedores / admin users)
-      const { data: adminPermData } = await supabase
-        .from('admin_permissions')
-        .select('permission')
-        .eq('user_id', userId);
-
-      const adminPerms = (adminPermData ?? []).map((r: any) => r.permission as string);
+      const adminPerms = adminPermData.map((row) => row.permission);
       if (isStillCurrent()) {
         setAdminPermissions(adminPerms);
       }
@@ -252,14 +277,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       //
       // Usamos as variáveis LOCAIS (profileData/rolesData/adminPerms), não o
       // state: o state é assíncrono e ainda não refletiu estas queries.
-      const isMasterNow = (rolesData ?? []).some((r: any) => r.role === 'super_admin');
-      const couldBeAffiliate =
-        !isMasterNow && adminPerms.length === 0 && !(profileData as any)?.company_id;
+      const isMasterNow = rolesData.some((row) => row.role === 'super_admin');
+      const baseQueriesOk = baseErrors.length === 0;
+      const couldBeAffiliate = baseQueriesOk &&
+        !isMasterNow && adminPerms.length === 0 && !profileData?.company_id;
 
       if (couldBeAffiliate) {
-        // `affiliates` ainda não está em `types.ts` (regeneração em outra
-        // tarefa) — o cast cai quando os tipos chegarem.
-        const { data: affiliateData } = await (supabase as any)
+        const { data: affiliateData } = await supabase
           .from('affiliates')
           .select('id')
           .eq('user_id', userId)
@@ -278,7 +302,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const result = await Promise.race([fetchAll(), timeoutPromise]);
       if (result === 'timeout') {
-        console.warn('[Auth] fetchUserData timed out after 5s — proceeding with partial state');
+        console.warn('[Auth] fetchUserData timed out after 15s — proceeding with partial state');
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
@@ -292,6 +316,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setAffiliateResolved(true);
       }
     }
+  };
+
+  const refreshUserData = async () => {
+    const userId = currentUserIdRef.current;
+    if (!userId) return;
+    setProfileLoading(true);
+    setAffiliateResolved(false);
+    await fetchUserData(userId);
   };
 
   const signIn = async (email: string, password: string) => {
@@ -329,6 +361,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    // Desvincula este endpoint antes de encerrar o JWT. Se a chamada ao backend
+    // falhar, o helper ainda executa unsubscribe local e o provedor passa a
+    // rejeitar o endpoint antigo, evitando push da conta anterior neste aparelho.
+    if (user && profile?.company_id) {
+      try {
+        const pushCleanup = import('@/lib/pushNotifications')
+          .then(({ detachPushForLogout }) => detachPushForLogout(profile.company_id!));
+        // O teto engloba até o carregamento do chunk lazy: a landing não paga
+        // o custo de push e uma rede ruim nunca prende o botão Sair.
+        await Promise.race([
+          pushCleanup,
+          new Promise<void>((resolve) => window.setTimeout(resolve, 2_000)),
+        ]);
+      } catch (error) {
+        console.warn('[Auth] push cleanup failed:', error);
+      }
+    }
+
     clearDomiLinkOutsideScope(null);
     // Clean up active session
     const sessionToken = localStorage.getItem('session_token');
@@ -435,6 +485,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         affiliateLoading,
         loading,
         profileLoading,
+        refreshUserData,
         signIn,
         signInWithGoogle,
         signUp,

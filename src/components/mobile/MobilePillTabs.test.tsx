@@ -30,6 +30,7 @@ describe('MobilePillTabs underline', () => {
     const fornecedores = screen.getByRole('tab', { name: 'Fornecedores' });
 
     expect(tablist).toHaveClass('border-b', 'border-border');
+    expect(tablist).toHaveClass('overflow-y-hidden', 'overscroll-x-contain', 'touch-manipulation');
     expect(tablist).not.toHaveClass('bg-muted');
     expect(clientes).toHaveAttribute('aria-selected', 'true');
     expect(clientes).toHaveClass('border-primary', 'bg-transparent', 'rounded-none');
@@ -37,6 +38,32 @@ describe('MobilePillTabs underline', () => {
 
     fireEvent.click(fornecedores);
     expect(onTabChange).toHaveBeenCalledWith('fornecedores');
+  });
+
+  it('indica quando existem mais abas fora da área visível', () => {
+    render(
+      <MobilePillTabs
+        variant="underline"
+        tabs={[
+          { value: 'geral', label: 'Geral' },
+          { value: 'notificacoes', label: 'Notificações' },
+          { value: 'integracoes', label: 'Integrações' },
+        ]}
+        activeTab="geral"
+        onTabChange={() => undefined}
+      />,
+    );
+
+    const tablist = screen.getByRole('tablist');
+    Object.defineProperties(tablist, {
+      clientWidth: { configurable: true, value: 220 },
+      scrollWidth: { configurable: true, value: 520 },
+      scrollLeft: { configurable: true, value: 0 },
+    });
+    fireEvent.scroll(tablist);
+
+    expect(tablist).toHaveAttribute('aria-label', 'Abas. Deslize ou use as setas para ver mais opções.');
+    expect(screen.getByRole('button', { name: 'Ver próximas abas' })).toBeInTheDocument();
   });
 
   it('destaca em negrito a aba ativa de nível de tela', () => {
@@ -55,6 +82,28 @@ describe('MobilePillTabs underline', () => {
 
     expect(screen.getByRole('tab', { name: 'Orçamentos' })).toHaveClass('font-bold');
     expect(screen.getByRole('tab', { name: 'Custos dos Serviços' })).not.toHaveClass('font-bold');
+  });
+
+  it('empilha ações no mobile e mantém a mesma faixa no desktop', () => {
+    render(
+      <MobilePillTabs
+        variant="underline"
+        tabs={[
+          { value: 'movimentos', label: 'Movimentações' },
+          { value: 'historico', label: 'Histórico' },
+        ]}
+        activeTab="movimentos"
+        onTabChange={() => undefined}
+        actions={<button type="button">Exportar</button>}
+      />,
+    );
+
+    const exportar = screen.getByRole('button', { name: 'Exportar' });
+    const actions = exportar.parentElement;
+    const wrapper = actions?.parentElement;
+
+    expect(actions).toHaveClass('justify-end');
+    expect(wrapper).toHaveClass('flex-col', 'sm:flex-row', 'sm:items-end');
   });
 
   it('mantém texto branco na categoria saturada quando solicitado', () => {

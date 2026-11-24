@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { useToast } from '@/hooks/use-toast';
+import { getCurrentUserCompanyId } from '@/hooks/useUserCompany';
 import { getErrorMessage } from '@/utils/errorMessages';
 
 export interface ServiceType {
@@ -68,9 +70,13 @@ export function useServiceTypes() {
 
   const createServiceType = useMutation({
     mutationFn: async (input: ServiceTypeInput) => {
+      // A empresa vai explícita no cadastro. Quando ela ficava por conta do
+      // banco, a trava de módulos conferia o registro antes do preenchimento
+      // e recusava o serviço novo como "sem permissão" para todo mundo.
+      const company_id = await getCurrentUserCompanyId();
       const { data, error } = await supabase
         .from('service_types')
-        .insert(input as any)
+        .insert({ ...input, company_id } as any)
         .select()
         .single();
       if (error) throw error;
@@ -166,11 +172,13 @@ export function useServiceTypes() {
 
   const deleteServiceType = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('service_types')
-        .delete()
-        .eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('service_types')
+          .delete({ count: 'exact' })
+          .eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-types'] });

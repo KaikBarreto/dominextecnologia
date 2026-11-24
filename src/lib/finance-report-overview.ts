@@ -10,11 +10,12 @@ import {
   isInDreRange,
   isPartialReceiptChild,
   isPayrollAdvance,
+  isPdvRoleExcludedFromDre,
   type DreRegime,
 } from '@/lib/dre-regime';
 import { buildCostCenterBreakdown } from '@/lib/cost-center-breakdown';
 
-type ReportTransaction = FinancialTransaction & { customer?: unknown };
+type ReportTransaction = FinancialTransaction & { customer?: unknown; pdv_financial_role?: string | null };
 
 export interface FinanceReportCategoryRow {
   name: string;
@@ -111,6 +112,7 @@ export function buildFinanceReportOverview({
 
   const visible: ReportTransaction[] = [];
   for (const transaction of transactions) {
+    if (isPdvRoleExcludedFromDre(transaction.pdv_financial_role, regime)) continue;
     if ((transaction as ReportTransaction & { cancelled_at?: string | null }).cancelled_at) continue;
     if (transaction.transfer_pair_id) continue;
     if (isDreExcludedGroup(categoryDreGroups.get(transaction.category ?? ''))) continue;

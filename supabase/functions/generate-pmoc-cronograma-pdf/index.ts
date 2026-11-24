@@ -1,3 +1,4 @@
+import { hasServiceDocumentLicense } from '../_shared/service-document-license.ts';
 // =============================================================================
 // generate-pmoc-cronograma-pdf — PDF anual (12 páginas, 1 mês/página).
 // =============================================================================
@@ -196,7 +197,7 @@ Deno.serve(async (req) => {
     // can_manage_contracts é a fonte única da verdade da régua de acesso
     // (super_admin/admin/gestor OU acesso total OU permissão de contratos).
     const [{ data: profileRow }, { data: rolesRows }, { data: canManage }] = await Promise.all([
-      supabase.from("profiles").select("company_id").eq("user_id", userId).maybeSingle(),
+      supabase.from("profiles").select("company_id,is_active").eq("user_id", userId).maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", userId),
       supabase.rpc("can_manage_contracts", { _user_id: userId }),
     ]);
@@ -241,6 +242,11 @@ Deno.serve(async (req) => {
         404,
       );
     }
+    const documentCompanyId=String((contract as unknown as {company_id:string}).company_id);
+    if (profileRow?.is_active !== true || !await hasServiceDocumentLicense(supabase,documentCompanyId,'contract_document',isSuperAdmin)) {
+      return jsonResponse(errorBody('module_unavailable','Sua empresa não tem acesso a este documento. Confira os módulos contratados e a validade da assinatura.'),403);
+    }
+
     if (canManage !== true) {
       return jsonResponse(
         errorBody(
@@ -269,6 +275,7 @@ Deno.serve(async (req) => {
         .from("customers")
         .select("name, address, city, state")
         .eq("id", contract.customer_id)
+        .eq("company_id", documentCompanyId)
         .maybeSingle(),
       supabase
         .from("company_settings")
@@ -284,6 +291,7 @@ Deno.serve(async (req) => {
             .from("responsible_technicians")
             .select("full_name, cft_crea, modality, signature_image_url, stamp_image_url")
             .eq("id", contract.responsible_technician_id)
+            .eq("company_id", documentCompanyId)
             .maybeSingle()
         : Promise.resolve({ data: null } as { data: null }),
     ]);

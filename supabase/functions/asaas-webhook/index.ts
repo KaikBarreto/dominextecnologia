@@ -1,3 +1,6 @@
+import { recordFirstSaleAttribution } from '../_shared/subscription-first-sale-attribution.ts';
+import { parseSubscriptionGatewayPaidAt } from '../_shared/subscription-payment-date.ts';
+import { recordWebhookLedger } from "../_shared/admin-webhook-ledger.ts";
 // asaas-webhook
 // -------------
 // Endpoint PÚBLICO chamado pela Asaas (produção) a cada evento de cobrança/recorrência.
@@ -82,6 +85,11 @@ import {
   webhookResponseFor,
 } from "../_shared/asaas-webhook-renewal.ts";
 import { resolveNfseRepricedRenewalAmount } from "../_shared/nfse-base-reprice.ts";
+import { syncCompanySubscriptionPrice } from "../_shared/company-subscription-price-sync.ts";
+import {
+  paymentPixCorrelationCandidates,
+  pixAutomaticCheckoutStatus,
+} from "../_shared/asaas-pix-automatic.ts";
 import {
   invoiceStatusFromEvent,
   safeInvoiceErrorMessage,
@@ -283,9 +291,15 @@ async function activatePlanModules(
   try {
     const { data: plan } = await supabase
       .from("subscription_plans")
-      .select("included_modules")
+      .select("included_modules, business_core")
       .eq("code", planCode)
       .maybeSingle();
+    const {data: company, error: companyError} = await supabase.from('companies')
+      .select('business_core').eq('id',companyId).maybeSingle();
+    if (companyError || !company || !plan || (planCode !== 'personalizado' && plan.business_core !== company.business_core)) {
+      console.error('[modules] plano incompatível com o kit da empresa; ativação não executada');
+      return;
+    }
 
     const included: unknown = plan?.included_modules;
     const moduleCodes: string[] = Array.isArray(included)
@@ -510,7 +524,7 @@ function upgradeRequestIdFromExternalReference(externalReference: unknown): stri
   return match?.[1] ?? null;
 }
 
-type SupabaseClientInstance = ReturnType<typeof createClient>;
+type SupabaseClientInstance = ReturnType<typeof createClient<any>>;
 
 interface UpgradeWebhookPayment {
   id: string;
@@ -518,6 +532,9 @@ interface UpgradeWebhookPayment {
   billingType?: string | null;
   externalReference?: string | null;
   netValue?: number | string | null;
+  paymentDate?: string | null;
+  confirmedDate?: string | null;
+  subscription?: string | null;
 }
 
 async function resolveUpgradeRequestId(
@@ -525,7 +542,23 @@ async function resolveUpgradeRequestId(
   payment: UpgradeWebhookPayment,
 ): Promise<string | null> {
   const fromReference = upgradeRequestIdFromExternalReference(payment?.externalReference);
-  if (fromReference) return fromReference;
+  if (fromReference) {
+    const { data: referenced, error } = await supabase.from('subscription_change_requests')
+      .select('initial_activation,status,asaas_payment_id,company_id').eq('id', fromReference).maybeSingle();
+    if (error || !referenced) throw new RetryableWebhookError('Não foi possível conferir a contratação do pagamento.', error);
+    // A referência da assinatura acompanha todas as faturas. Só a primeira
+    // fatura aplica a oferta; as seguintes entram no processador de renovação.
+    if (referenced.initial_activation && ['applied', 'reversed'].includes(referenced.status)
+      && referenced.asaas_payment_id !== payment.id && payment.subscription) {
+      const { data: recurrenceCompany, error: recurrenceError } = await supabase.from('companies')
+        .select('asaas_subscription_id').eq('id', referenced.company_id).maybeSingle();
+      if (recurrenceError || recurrenceCompany?.asaas_subscription_id !== payment.subscription) {
+        throw new RetryableWebhookError('Não foi possível conferir o vínculo da renovação com a assinatura.', recurrenceError);
+      }
+      return null;
+    }
+    return fromReference;
+  }
   if (!payment?.id) return null;
   const { data, error } = await supabase
     .from("subscription_payments")
@@ -554,11 +587,21 @@ async function processConfirmedUpgradePayment(
   const amount = Number(payment.value || 0);
   if (!(amount > 0)) return { processed: false, type: "upgrade", reason: "valor inválido" };
 
-  const { data: result, error } = await supabase.rpc("apply_subscription_upgrade_payment", {
+  const { data: quote, error: quoteError } = await supabase.from('subscription_change_requests')
+    .select('initial_activation,status,asaas_payment_id').eq('id', requestId).maybeSingle();
+  if (quoteError || !quote) throw new RetryableWebhookError('Não foi possível identificar a contratação confirmada.', quoteError);
+  const initialActivation = quote.initial_activation === true;
+  if (initialActivation && quote.status === 'reversed' && quote.asaas_payment_id === payment.id) {
+    return { processed: false, type: 'primeira_venda', reason: 'pagamento já revertido' };
+  }
+  const paidAt = parseSubscriptionGatewayPaidAt(payment.paymentDate) ?? parseSubscriptionGatewayPaidAt(payment.confirmedDate);
+  const { data: result, error } = await supabase.rpc(initialActivation
+    ? "apply_initial_subscription_activation_payment" : "apply_subscription_upgrade_payment", {
     p_request_id: requestId,
     p_asaas_payment_id: payment.id,
     p_paid_amount: amount,
     p_billing_type: payment.billingType || "PIX",
+    ...(initialActivation ? { p_paid_at: paidAt } : {}),
   });
   if (error) {
     throw new RetryableWebhookError(
@@ -577,6 +620,11 @@ async function processConfirmedUpgradePayment(
       { company_id: result.company_id, payment_id: payment.id, change_request_id: requestId, amount },
     );
     return { processed: false, type: "upgrade", reason: "assinatura de origem mudou" };
+  }
+
+  if (initialActivation) {
+    try { await recordFirstSaleAttribution(supabase, String(result.company_id), payment.id); }
+    catch (error) { throw new RetryableWebhookError('Atribuição da contratação confirmada ainda está pendente.', error); }
   }
 
   const { data: company, error: companyError } = await supabase
@@ -665,7 +713,7 @@ async function processConfirmedUpgradePayment(
     `[upgrade] ${result.already_applied ? "já aplicado" : "aplicado"} ` +
       `company=${company.id} request=${requestId} payment=${payment.id}`,
   );
-  return { processed: !result.already_applied, type: "upgrade" };
+  return { processed: !result.already_applied, type: initialActivation ? "primeira_venda" : "upgrade" };
 }
 
 /**
@@ -1037,6 +1085,53 @@ async function processConfirmedPayment(
     );
   }
 
+  // Promoções itemizadas: o payment_key torna o consumo idempotente entre
+  // webhook, confirm-sale-payment e o trigger de company_payments. Fazemos aqui
+  // antes do histórico porque a inserção desse histórico é não-fatal; o cliente
+  // não pode ganhar um ciclo promocional extra só porque a trilha falhou.
+  const { data: promotionConsumption, error: promotionConsumptionError } = await supabase.rpc(
+    "consume_company_subscription_promotions",
+    { p_company_id: companyId, p_payment_key: `asaas:${opts.asaasPaymentId}` },
+  );
+  if (promotionConsumptionError) {
+    warnings.add("condição promocional: não foi possível avançar o ciclo confirmado.");
+    await alertAdmin(
+      supabase,
+      "subscription_promotion_consumption_failed",
+      "Promoção não avançou após pagamento",
+      `O pagamento ${opts.asaasPaymentId} de ${company.name} foi confirmado, mas a condição promocional não avançou.`,
+      { company_id: companyId, payment_id: opts.asaasPaymentId },
+    );
+  } else if (Number(promotionConsumption?.consumed || 0) > 0) {
+    try {
+      const promotionSync = await syncCompanySubscriptionPrice(supabase, companyId, true);
+      if (!promotionSync.ok) {
+        warnings.add(promotionSync.warning || "mensalidade promocional: sincronização pendente.");
+        await alertAdmin(
+          supabase,
+          "subscription_promotion_gateway_sync_failed",
+          "Virada da promoção não sincronizada",
+          `A condição promocional de ${company.name} avançou, mas a próxima cobrança automática ainda não recebeu o valor correto.`,
+          {
+            company_id: companyId,
+            payment_id: opts.asaasPaymentId,
+            target_monthly_value: promotionSync.targetMonthlyValue,
+          },
+        );
+      }
+    } catch (promotionSyncError) {
+      console.error(`[promotion-sync] falha para ${companyId}:`, promotionSyncError);
+      warnings.add("mensalidade promocional: sincronização pendente.");
+      await alertAdmin(
+        supabase,
+        "subscription_promotion_gateway_sync_failed",
+        "Virada da promoção não sincronizada",
+        `A condição promocional de ${company.name} avançou, mas não foi possível preparar a próxima cobrança.`,
+        { company_id: companyId, payment_id: opts.asaasPaymentId },
+      );
+    }
+  }
+
   if (hasPendingDowngrade && extrasOk) {
     // Sincroniza company_modules EXATAMENTE pro conjunto-alvo do downgrade:
     // remove os que não fazem mais parte e insere os que faltam. Reduz acesso
@@ -1228,153 +1323,14 @@ async function processConfirmedPayment(
     );
   }
 
-  // salesperson_sales — SÓ na primeira venda e SÓ se houver vendedor.
-  // FONTE DA VERDADE DA COMISSÃO (FURO 2): a comissão é criada EXCLUSIVAMENTE aqui no
-  // webhook (gatilho confiável de pagamento). O confirm-sale-payment NÃO cria comissão
-  // — assim não há duplicação. Este bloco já está GATED pelo mutex: processConfirmedPayment
-  // retorna cedo (linha do `if (!ltvClaimed) return`) quando o pagamento já foi processado,
-  // então a comissão também roda no máximo 1x por pagamento.
-  // [AFILIADO ZERA VENDEDOR] Se a empresa veio por um afiliado, a venda é dele e
-  // NÃO gera comissão de vendedor. Mesma guarda server-side da RPC
-  // public.register_manual_company_payment (seção 7), pelo mesmo motivo: sem ela
-  // a mesma venda sai do caixa duas vezes (afiliado + closer/SDR).
-  if (isFirstSale && company.salesperson_id && company.affiliate_id) {
-    console.log(
-      `[afiliado zera vendedor] company ${companyId} tem affiliate_id=${company.affiliate_id}, ` +
-        `sem comissão de vendedor (a venda é remunerada pelo programa de afiliados).`,
-    );
-  }
-
-  if (isFirstSale && company.salesperson_id && !company.affiliate_id) {
-    // Esta leitura é a ÚNICA trava contra comissão em dobro. Com o `error`
-    // descartado, um SELECT recusado devolvia `undefined` — indistinguível de
-    // "não existe" — e o INSERT rodava por cima de uma comissão já paga. Na
-    // dúvida, NÃO paga: o admin é avisado e lança à mão (o inverso, pagar duas
-    // vezes, é dinheiro que sai e não volta).
-    const { data: existingSale, error: existingSaleErr } = await supabase
-      .from("salesperson_sales")
-      .select("id")
-      .eq("company_id", companyId)
-      .limit(1)
-      .maybeSingle();
-
-    if (existingSaleErr) {
-      console.error(
-        `[salesperson] leitura de comissão existente falhou (${companyId}):`,
-        existingSaleErr.message,
-      );
-      warnings.add("comissão do vendedor: não foi possível conferir se já existia — não lançada.");
-      await alertAdmin(
-        supabase,
-        "salesperson_commission_not_recorded",
-        "Comissão não lançada por segurança",
-        `A primeira venda de ${company.name} (${opts.asaasPaymentId}) foi confirmada, mas não deu pra conferir ` +
-          `se a comissão já existia. Nada foi lançado pra não pagar em dobro; confira e lance à mão.`,
-        { company_id: companyId, payment_id: opts.asaasPaymentId, salesperson_id: company.salesperson_id },
-      );
-    } else if (!existingSale) {
-      // REGRA DE COMISSÃO SDR/CLOSER — régua NOVA (CEO 2026-07-16), espelha
-      // calculateCommission de src/hooks/useSalespersonData.ts (fonte da verdade
-      // no painel master) e a RPC register_manual_company_payment.
-      //   - mensal: total = base * 1.00 (100% do que o cliente pagou; ANTES 0.5)
-      //   - anual:  total = base * 0.20 (inalterado)
-      //   - COM SDR → closer 80% / sdr 20% (ANTES 50/50)
-      //   - SEM SDR → 100% closer
-      // Base de comissão = subscription_value mensal (mesmo "valor da venda" que o
-      // closer informa no diálogo Registrar Venda). NÃO multiplicamos por 12 no anual
-      // — o diálogo usa o valor informado direto, então mantemos paridade.
-      //
-      // SDR: companies.sdr_id é capturado na ORIGEM (link de teste/venda ou form do
-      // painel master). Se a empresa tem sdr_id → comissão dividida 80/20; senão,
-      // 100% closer. O closer é SEMPRE company.salesperson_id.
-      const isYearly = company.billing_cycle === "yearly";
-      const totalRate = isYearly ? 0.20 : 1.00;
-      const commissionBase = Number(company.subscription_value || paymentAmount);
-      const total = Math.round(commissionBase * totalRate * 100) / 100;
-
-      const sdrId: string | null = company.sdr_id ?? null;
-      let closerCommission: number;
-      let sdrCommission: number;
-      if (sdrId) {
-        // 80/20 centavo-safe: closer leva 80% arredondado, SDR leva o resto
-        // (total - closer) pra não perder/ganhar 1 centavo no arredondamento.
-        closerCommission = Math.round((total * 0.8) * 100) / 100;
-        sdrCommission = Math.round((total - closerCommission) * 100) / 100;
-      } else {
-        closerCommission = total;
-        sdrCommission = 0;
-      }
-
-      // NÃO-fatal e SEM re-entrega (pós-mutex) — mas com ALERTA obrigatório.
-      // Este webhook é a fonte da verdade EXCLUSIVA da comissão: o
-      // confirm-sale-payment não cria comissão de propósito (pra não duplicar).
-      // Se esta linha não entrar, NÃO existe segundo caminho que a recupere; o
-      // vendedor simplesmente não recebe e ninguém descobre. Por isso o alerta
-      // carrega os valores já calculados, prontos pra lançar à mão.
-      const comissaoOk = await tryWrite(
-        "comissão do vendedor (salesperson_sales)",
-        supabase.from("salesperson_sales").insert({
-          salesperson_id: company.salesperson_id, // closer
-          sdr_id: sdrId,
-          company_id: companyId,
-          customer_name: company.name,
-          customer_origin: company.origin,
-          amount: commissionBase,
-          paid_amount: company.subscription_value ?? paymentAmount,
-          commission_amount: total,
-          closer_commission: closerCommission,
-          sdr_commission: sdrCommission,
-          billing_cycle: isYearly ? "annual" : "monthly",
-          // [LEAD SELF-SERVICE] segura a comissão só quando é lead self-service
-          // ainda não trabalhado (espelha a RPC register_manual_company_payment).
-          status: (!company.is_self_service || company.lead_worked_at)
-            ? "confirmed"
-            : "pending_work",
-        }),
-        {
-          recovery: {
-            company_id: companyId,
-            empresa: company.name,
-            closer_id: company.salesperson_id,
-            sdr_id: sdrId,
-            base: commissionBase,
-            comissao_total: total,
-            closer: closerCommission,
-            sdr: sdrCommission,
-            ciclo: isYearly ? "annual" : "monthly",
-            asaas_payment_id: opts.asaasPaymentId,
-          },
-          warnings,
-        },
-      );
-      if (comissaoOk) {
-        console.log(
-          `[salesperson] venda registrada p/ ${company.name}: comissão total R$ ${total} ` +
-            (sdrId
-              ? `(80/20 → closer R$ ${closerCommission} / sdr R$ ${sdrCommission})`
-              : `(100% closer R$ ${closerCommission})`),
-        );
-      } else {
-        await alertAdmin(
-          supabase,
-          "salesperson_commission_not_recorded",
-          "Comissão de venda não registrada",
-          `A primeira venda de ${company.name} (${opts.asaasPaymentId}) foi confirmada, mas a comissão não ` +
-            `foi gravada. Lance manualmente: total R$ ${total.toFixed(2)}` +
-            (sdrId
-              ? ` (closer R$ ${closerCommission.toFixed(2)} / SDR R$ ${sdrCommission.toFixed(2)}).`
-              : ` (100% do closer).`),
-          {
-            company_id: companyId,
-            payment_id: opts.asaasPaymentId,
-            salesperson_id: company.salesperson_id,
-            sdr_id: sdrId,
-            commission_amount: total,
-            closer_commission: closerCommission,
-            sdr_commission: sdrCommission,
-          },
-        );
-      }
+  if (isFirstSale) {
+    try { await recordFirstSaleAttribution(supabase, companyId, opts.asaasPaymentId); }
+    catch (error) {
+      warnings.add('comissão do vendedor: registro pendente de conciliação.');
+      await alertAdmin(supabase, 'salesperson_commission_not_recorded', 'Comissão de venda não registrada',
+        `A primeira venda de ${company.name} foi confirmada, mas a atribuição precisa de conciliação.`,
+        { company_id: companyId, payment_id: opts.asaasPaymentId });
+      console.error('[first-sale-attribution]', error);
     }
   }
 
@@ -1418,9 +1374,110 @@ function digitsOnly(v: unknown): string {
 async function resolveCompany(
   supabase: any,
   payment: any,
-): Promise<{ company: any; matchedBy: string } | null> {
+): Promise<{ company: any; matchedBy: string; checkoutAttemptId?: string } | null> {
+  const companyById = async (companyId: string, matchedBy: string, checkoutAttemptId?: string) => {
+    const { data, error } = await supabase
+      .from("companies")
+      .select(COMPANY_COLS)
+      .eq("id", companyId)
+      .maybeSingle();
+    if (error) {
+      throw new RetryableWebhookError(
+        `resolveCompany por ${matchedBy} falhou: ${error.message}`,
+        error,
+      );
+    }
+    return data ? { company: data, matchedBy, checkoutAttemptId } : null;
+  };
+
+  // 0) O pay_* ja pode ter sido correlacionado/materializado localmente.
+  if (payment.id) {
+    const { data: localPayment, error: localPaymentError } = await supabase
+      .from("subscription_payments")
+      .select("company_id")
+      .eq("asaas_payment_id", payment.id)
+      .maybeSingle();
+    if (localPaymentError) {
+      throw new RetryableWebhookError(
+        `resolveCompany por asaas_payment_id falhou: ${localPaymentError.message}`,
+        localPaymentError,
+      );
+    }
+    if (localPayment?.company_id) {
+      const resolved = await companyById(localPayment.company_id, "asaas_payment_id");
+      if (resolved) return resolved;
+    }
+
+    const { data: attemptByPayment, error: attemptByPaymentError } = await supabase
+      .from("subscription_checkout_attempts")
+      .select("id, company_id")
+      .eq("asaas_payment_id", payment.id)
+      .maybeSingle();
+    if (attemptByPaymentError) {
+      throw new RetryableWebhookError(
+        `resolveCompany por checkout payment falhou: ${attemptByPaymentError.message}`,
+        attemptByPaymentError,
+      );
+    }
+    if (attemptByPayment?.company_id) {
+      const resolved = await companyById(
+        attemptByPayment.company_id,
+        "checkout_asaas_payment_id",
+        attemptByPayment.id,
+      );
+      if (resolved) return resolved;
+    }
+  }
+
+  // 0b) O primeiro Pix do consentimento pode vir sem subscription/externalReference
+  // e com um customer pagador temporario. A chave exata do QR e a ponte segura.
+  for (const correlation of paymentPixCorrelationCandidates(payment)) {
+    for (const column of [
+      "pix_conciliation_identifier",
+      "pix_qr_code_id",
+      "pix_end_to_end_identifier",
+    ]) {
+      const { data: attempt, error } = await supabase
+        .from("subscription_checkout_attempts")
+        .select("id, company_id")
+        .eq(column, correlation)
+        .maybeSingle();
+      if (error) {
+        throw new RetryableWebhookError(
+          `resolveCompany por ${column} falhou: ${error.message}`,
+          error,
+        );
+      }
+      if (attempt?.company_id) {
+        const resolved = await companyById(attempt.company_id, column, attempt.id);
+        if (resolved) return resolved;
+      }
+    }
+  }
+
   // 1) por subscription/authorization id
   if (payment.subscription) {
+    const { data: attempt, error: attemptError } = await supabase
+      .from("subscription_checkout_attempts")
+      .select("id, company_id")
+      .or(
+        `asaas_subscription_id.eq.${payment.subscription},asaas_authorization_id.eq.${payment.subscription}`,
+      )
+      .maybeSingle();
+    if (attemptError) {
+      throw new RetryableWebhookError(
+        `resolveCompany por checkout subscription falhou: ${attemptError.message}`,
+        attemptError,
+      );
+    }
+    if (attempt?.company_id) {
+      const resolved = await companyById(
+        attempt.company_id,
+        "checkout_subscription",
+        attempt.id,
+      );
+      if (resolved) return resolved;
+    }
     const { data, error } = await supabase
       .from("companies")
       .select(COMPANY_COLS)
@@ -1516,6 +1573,57 @@ async function resolveCompany(
   return null;
 }
 
+async function linkCheckoutAttemptPayment(
+  supabase: any,
+  attemptId: string | undefined,
+  payment: any,
+): Promise<boolean> {
+  if (!attemptId || typeof payment?.id !== "string" || !payment.id.startsWith("pay_")) {
+    return true;
+  }
+  const { data: attempt, error } = await supabase
+    .from("subscription_checkout_attempts")
+    .select("id, amount, asaas_payment_id")
+    .eq("id", attemptId)
+    .maybeSingle();
+  if (error) {
+    throw new RetryableWebhookError(
+      `leitura da tentativa de checkout falhou (${attemptId}): ${error.message}`,
+      error,
+    );
+  }
+  if (!attempt) return false;
+  if (attempt.asaas_payment_id && attempt.asaas_payment_id !== payment.id) {
+    console.error("[pix-auto] tentativa ja vinculada a outro pay_*", {
+      attempt_id: attemptId,
+      incoming_payment_id: payment.id,
+    });
+    return false;
+  }
+  if (Math.abs(Number(attempt.amount) - Number(payment.value || 0)) > 0.02) {
+    console.error("[pix-auto] valor do pagamento diverge da tentativa", {
+      attempt_id: attemptId,
+      payment_id: payment.id,
+    });
+    return false;
+  }
+
+  await applyWrite(
+    "vinculo do pay_* a tentativa Pix Automatico",
+    supabase
+      .from("subscription_checkout_attempts")
+      .update({
+        asaas_payment_id: payment.id,
+        ...(typeof payment.pixQrCodeId === "string"
+          ? { pix_qr_code_id: payment.pixQrCodeId }
+          : {}),
+      })
+      .eq("id", attemptId),
+    { rethrow: retryableRethrow("vinculo do pay_* a tentativa Pix Automatico") },
+  );
+  return true;
+}
+
 /**
  * Registra um pagamento ÓRFÃO (sem company resolvida) pra categorização manual.
  * Proíbe órfão silencioso (FM1): grava no ledger_asaas + alerta o admin. Idempotente:
@@ -1532,32 +1640,7 @@ async function recordUnmatchedPayment(supabase: any, payment: any): Promise<void
   const occurredAt =
     payment.confirmedDate || payment.paymentDate || payment.dateCreated || new Date().toISOString();
 
-  // 1) Ledger pendente de categorização (company_id NULL). ON CONFLICT DO NOTHING via upsert.
-  //
-  // FATAL (pede re-entrega). Esta linha é o ÚNICO lugar onde o dinheiro de um
-  // pagamento sem empresa fica registrado — perdê-la é perder a pista de uma
-  // entrada real de caixa. É idempotente (`ignoreDuplicates` no
-  // asaas_transaction_id UNIQUE) e roda ANTES de qualquer mutex, então a
-  // re-entrega conserta de graça. O `try/catch` que engolia isso foi removido.
-  await applyWrite(
-    "registro do pagamento órfão (ledger_asaas)",
-    supabase.from("ledger_asaas").upsert(
-      {
-        asaas_transaction_id: paymentId,
-        asaas_payment_id: paymentId,
-        direction: "credit",
-        amount: amount >= 0 ? amount : 0,
-        occurred_at: occurredAt,
-        status: "pending_categorization",
-        source: "webhook",
-        company_id: null,
-        description: `Pagamento Asaas não vinculado a empresa (${paymentId})`,
-        raw_payload: payment,
-      },
-      { onConflict: "asaas_transaction_id", ignoreDuplicates: true },
-    ),
-    { rethrow: retryableRethrow("registro do pagamento órfão (ledger_asaas)") },
-  );
+  // O registro financeiro já foi persistido por recordWebhookLedger antes da resolução comercial.
 
   // 2) Alerta ao admin — idempotente: só insere se não existe notificação pro mesmo payment.id.
   //
@@ -1785,6 +1868,8 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const event: string = body?.event ?? "";
     const payment = body?.payment ?? null;
+    const commercialPayment = event === "PAYMENT_RECEIVED" || event === "PAYMENT_CONFIRMED";
+    if (!event.startsWith("RECEIVABLE_ANTICIPATION_")) await recordWebhookLedger(supabase, body, commercialPayment);
     console.log(`[webhook] evento ${event} recebido`);
 
     // ==========================================================
@@ -1863,54 +1948,83 @@ Deno.serve(async (req) => {
     // nada de crédito de LTV. Só confirmamos o recebimento (200) pra não ficar
     // silenciosamente ignorado — paridade com o EcoSistema.
     // ==========================================================
-    if (event === "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_CREATED") {
+    if (event.startsWith("PIX_AUTOMATIC_RECURRING_AUTHORIZATION_")) {
       const authorization = body.pixAutomatic || body.authorization || body;
       const authId: string | undefined =
         authorization?.id || authorization?.authorizationId;
-      console.log(
-        `[pix-auto] autorização CRIADA (informativo) authId=${authId ?? "n/d"} — sem processamento financeiro`,
-      );
-      return json({ received: true, informational: true });
-    }
-
-    // ==========================================================
-    // PIX AUTOMÁTICO — autorização ATIVADA (apenas confirma a recorrência)
-    // ----------------------------------------------------------
-    // FM2-b (idempotência): este evento NÃO move dinheiro. Ele só sinaliza que
-    // o cliente autorizou o débito automático Pix. O dinheiro/renovação SEMPRE
-    // chega depois via PAYMENT_RECEIVED/PAYMENT_CONFIRMED com o pay_* REAL — a
-    // empresa tem asaas_subscription_id=aut_* (e asaas_customer_id), então esses
-    // eventos resolvem a company pela cascata (subscription → customer).
-    //
-    // Por que NÃO processamos aqui: o handler antigo usava o authId (aut_*) como
-    // fallback de asaas_payment_id e chamava processConfirmedPayment. Isso CEGAVA
-    // o mutex credit_ltv_once_for_payment (que casa por asaas_payment_id): o aut_*
-    // creditava LTV/estendia vencimento, e quando o pay_* real chegava ele creditava
-    // DE NOVO (chave diferente) → renovação dupla. Agora: log + 200, ZERO efeito
-    // financeiro, e NUNCA gravamos aut_* em subscription_payments.asaas_payment_id.
-    // A 1ª ativação da assinatura acontece no 1º PAYMENT_RECEIVED desse aut_*.
-    // ==========================================================
-    if (event === "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_ACTIVATED") {
-      const authorization = body.pixAutomatic || body.authorization || body;
-      const authId: string | undefined =
-        authorization?.id || authorization?.authorizationId;
-
       if (!authId) {
         return json({ received: true, ignored: "sem authorizationId" });
       }
 
-      const { data: companyByAuth } = await supabase
-        .from("companies")
-        .select("id, name")
-        .eq("asaas_subscription_id", authId)
+      const contractId = typeof authorization?.contractId === "string"
+        ? authorization.contractId
+        : null;
+      let { data: attempt, error: attemptError } = await supabase
+        .from("subscription_checkout_attempts")
+        .select("id, company_id")
+        .eq("asaas_authorization_id", authId)
         .maybeSingle();
+      if (!attempt?.id && !attemptError && contractId) {
+        const byContract = await supabase
+          .from("subscription_checkout_attempts")
+          .select("id, company_id")
+          .eq("gateway_correlation_ref", contractId)
+          .maybeSingle();
+        attempt = byContract.data;
+        attemptError = byContract.error;
+      }
+      if (attemptError) {
+        throw new RetryableWebhookError(
+          `correlacao da autorizacao Pix falhou: ${attemptError.message}`,
+          attemptError,
+        );
+      }
+
+      const eventStatus = event.replace("PIX_AUTOMATIC_RECURRING_AUTHORIZATION_", "");
+      const checkoutStatus = pixAutomaticCheckoutStatus(eventStatus);
+      if (attempt?.id) {
+        await applyWrite(
+          "atualizacao da autorizacao Pix Automatico",
+          supabase
+            .from("subscription_checkout_attempts")
+            .update({
+              checkout_status: checkoutStatus,
+              authorization_status: authorization?.status || eventStatus,
+              asaas_authorization_id: authId,
+              asaas_subscription_id: authorization?.subscriptionId || null,
+              pix_end_to_end_identifier: authorization?.endToEndIdentifier || null,
+              pix_conciliation_identifier:
+                authorization?.immediateQrCode?.conciliationIdentifier || null,
+            })
+            .eq("id", attempt.id),
+          { rethrow: retryableRethrow("atualizacao da autorizacao Pix Automatico") },
+        );
+
+        if (checkoutStatus === "ACTIVE") {
+          await applyWrite(
+            "vinculo da recorrencia Pix Automatico ativa",
+            supabase
+              .from("companies")
+              .update({
+                asaas_subscription_id: authorization?.subscriptionId || authId,
+                payment_method: "pix",
+              })
+              .eq("id", attempt.company_id),
+            { rethrow: retryableRethrow("vinculo da recorrencia Pix Automatico ativa") },
+          );
+        }
+      }
 
       console.log(
-        `[pix-auto] autorização ATIVADA (confirmação de recorrência) authId=${authId} ` +
-          `company=${companyByAuth?.name ?? "n/d"} — SEM processamento financeiro ` +
-          `(dinheiro vem nos PAYMENT_RECEIVED/CONFIRMED com pay_* real)`,
+        `[pix-auto] autorização ${checkoutStatus} authId=${authId} ` +
+          `attempt=${attempt?.id ?? "n/d"} — SEM processamento financeiro`,
       );
-      return json({ received: true, authorization_confirmed: true, matched: !!companyByAuth });
+      return json({
+        received: true,
+        authorization_status: checkoutStatus,
+        matched: !!attempt?.id,
+        informational: true,
+      });
     }
 
     // ==========================================================
@@ -1934,10 +2048,12 @@ Deno.serve(async (req) => {
 
       if (!antPaymentId) {
         console.log(`[anticipation] ${event} sem pay_* (provável antecipação de parcelamento) — ack sem lançamento.`);
+        await recordWebhookLedger(supabase, body);
         return json({ received: true, anticipation: true, skipped: "sem payment" });
       }
 
       const result = await recordAnticipationFee(supabase, antPaymentId, antStatus);
+      await recordWebhookLedger(supabase, body);
       return json({ received: true, anticipation: true, ...result });
     }
 
@@ -1952,12 +2068,66 @@ Deno.serve(async (req) => {
     const status = String(payment.status || "").toUpperCase();
     const isBeingPaid = status === "RECEIVED" || status === "CONFIRMED";
 
+    // A Asaas envia PAYMENT_DELETED com `payment.status=PENDING` e
+    // `deleted=true`. Espelhar o status cru ressuscita localmente a cobrança
+    // que acabamos de substituir. Exclusão no provedor é CANCELLED no histórico.
+    if (event === "PAYMENT_DELETED" || payment.deleted === true) {
+      await applyWrite(
+        "cancelamento da cobrança excluída (subscription_payments)",
+        supabase
+          .from("subscription_payments")
+          .update({ status: "CANCELLED", updated_at: new Date().toISOString() })
+          .eq("asaas_payment_id", payment.id),
+        { rethrow: retryableRethrow("cancelamento da cobrança excluída") },
+      );
+      await recordWebhookLedger(supabase, body);
+      return json({ received: true, cancelled: true });
+    }
+
     // ---------- PAYMENT_CREATED: linka pay_* à subscription_payments ----------
     if (event === "PAYMENT_CREATED") {
       const resolved = await resolveCompany(supabase, payment);
+      if (resolved?.checkoutAttemptId) {
+        const linked = await linkCheckoutAttemptPayment(
+          supabase,
+          resolved.checkoutAttemptId,
+          payment,
+        );
+        if (!linked) {
+          await recordUnmatchedPayment(supabase, payment);
+          await recordWebhookLedger(supabase, body);
+          return json({ received: true, matched: false, quarantined: true });
+        }
+      }
       const repricedAmount = resolved?.company
         ? await syncNfseBaseRepriceRenewal(supabase, resolved.company, payment)
         : null;
+
+      // Uma condição promocional pode ter sido salva/encerrada depois que a
+      // operadora materializou esta cobrança. O outbox limita a reconciliação
+      // às empresas realmente pendentes e evita sobrescrever outros preços.
+      if (resolved?.company) {
+        const { data: pendingPromotionSync, error: pendingPromotionSyncError } = await supabase
+          .from("company_subscription_price_sync")
+          .select("status")
+          .eq("company_id", resolved.company.id)
+          .in("status", ["pending", "failed"])
+          .maybeSingle();
+        if (pendingPromotionSyncError) {
+          throw new RetryableWebhookError(
+            `leitura do sync promocional falhou (${resolved.company.id})`,
+            pendingPromotionSyncError,
+          );
+        }
+        if (pendingPromotionSync) {
+          const promotionSync = await syncCompanySubscriptionPrice(supabase, resolved.company.id, true);
+          if (!promotionSync.ok) {
+            throw new RetryableWebhookError(
+              `sincronização promocional pendente (${resolved.company.id})`,
+            );
+          }
+        }
+      }
 
       // Cartão recorrente grava subscription_payments com asaas_payment_id NULL; quando
       // o pay_* nasce, vinculamos pelo subscription para o webhook de pagamento achar depois.
@@ -2024,6 +2194,31 @@ Deno.serve(async (req) => {
       const companyName = resolved?.company?.id === reversalCompanyId
         ? resolved.company.name
         : "empresa vinculada ao pagamento";
+      if (reversalCompanyId) {
+        const { count: promotionalConsumptions, error: promotionalConsumptionsError } = await supabase
+          .from("company_subscription_promotion_consumptions")
+          .select("id", { count: "exact", head: true })
+          .eq("company_id", reversalCompanyId)
+          .eq("payment_key", `asaas:${payment.id}`);
+        if (promotionalConsumptionsError) {
+          throw new RetryableWebhookError(
+            `leitura do consumo promocional no estorno falhou (${payment.id})`,
+            promotionalConsumptionsError,
+          );
+        }
+        if ((promotionalConsumptions || 0) > 0) {
+          // Política deliberada: estorno não devolve ciclo automaticamente. A
+          // negociação comercial pode ter concedido acesso durante o período;
+          // restauração automática permitiria ciclos grátis repetidos.
+          await alertAdmin(
+            supabase,
+            "subscription_promotion_reversal_review",
+            "Estorno com promoção exige revisão",
+            `O pagamento ${payment.id} de ${companyName} consumiu uma condição promocional e foi estornado. O ciclo não foi devolvido automaticamente.`,
+            { company_id: reversalCompanyId, payment_id: payment.id, reversal_kind: kind },
+          );
+        }
+      }
       let otherPayments: ReversalPaymentSnapshot[] = [];
       if (reversedPayment?.company_id && reversedPayment.ltv_credited_at) {
         const { data, error } = await supabase
@@ -2042,8 +2237,18 @@ Deno.serve(async (req) => {
 
       // Estorno de upgrade nao derruba a assinatura inteira: o entitlement
       // precisa de reversao assistida para nao remover dados/modulos em uso.
-      const isUpgradeReversal = reversedPayment?.type === "upgrade" ||
-        !!reversedPayment?.subscription_change_request_id;
+      let reversedInitialActivation = false;
+      if (reversedPayment?.subscription_change_request_id) {
+        const { data: reversedQuote, error: reversedQuoteError } = await supabase.from('subscription_change_requests')
+          .select('initial_activation,company_id,asaas_payment_id').eq('id', reversedPayment.subscription_change_request_id).maybeSingle();
+        if (reversedQuoteError || !reversedQuote || reversedQuote.company_id !== reversedPayment.company_id
+          || reversedQuote.asaas_payment_id !== payment.id) {
+          throw new RetryableWebhookError('Não foi possível conferir a contratação do pagamento revertido.', reversedQuoteError);
+        }
+        reversedInitialActivation = reversedQuote.initial_activation === true;
+      }
+      const isUpgradeReversal = !reversedInitialActivation && (reversedPayment?.type === "upgrade" ||
+        !!reversedPayment?.subscription_change_request_id);
       const shouldDeactivate = isUpgradeReversal
         ? false
         : shouldDeactivateAfterReversal(reversedPayment, otherPayments);
@@ -2056,7 +2261,7 @@ Deno.serve(async (req) => {
         kind,
       );
 
-      if (isUpgradeReversal && reversedPayment?.subscription_change_request_id) {
+      if ((isUpgradeReversal || reversedInitialActivation) && reversedPayment?.subscription_change_request_id) {
         await applyWrite(
           "marcação do upgrade revertido (subscription_change_requests)",
           supabase
@@ -2160,6 +2365,7 @@ Deno.serve(async (req) => {
       const upgradeRequestId = await resolveUpgradeRequestId(supabase, payment);
       if (upgradeRequestId) {
         const result = await processConfirmedUpgradePayment(supabase, payment, upgradeRequestId);
+        await recordWebhookLedger(supabase, body);
         return json({ received: true, ...result });
       }
 
@@ -2168,7 +2374,21 @@ Deno.serve(async (req) => {
         // PROIBIDO órfão silencioso (FM1): registra no ledger + alerta admin (idempotente).
         console.log(`[payment] sem company para ${payment.id} (cascata falhou). Registrando como órfão.`);
         await recordUnmatchedPayment(supabase, payment);
+        await recordWebhookLedger(supabase, body);
         return json({ received: true, matched: false, unmatched_recorded: true });
+      }
+
+      if (resolved.checkoutAttemptId) {
+        const linked = await linkCheckoutAttemptPayment(
+          supabase,
+          resolved.checkoutAttemptId,
+          payment,
+        );
+        if (!linked) {
+          await recordUnmatchedPayment(supabase, payment);
+          await recordWebhookLedger(supabase, body);
+          return json({ received: true, matched: false, quarantined: true });
+        }
       }
 
       const result = await processConfirmedPayment(supabase, resolved.company, {
@@ -2180,6 +2400,25 @@ Deno.serve(async (req) => {
         dueDate: payment.dueDate ?? null,
         matchedBy: resolved.matchedBy,
       });
+      if (resolved.checkoutAttemptId) {
+        await tryWrite(
+          "conclusao da tentativa Pix Automatico",
+          supabase
+            .from("subscription_checkout_attempts")
+            .update({
+              checkout_status: "COMPLETED",
+              completed_at: new Date().toISOString(),
+            })
+            .eq("id", resolved.checkoutAttemptId),
+          {
+            recovery: {
+              checkout_attempt_id: resolved.checkoutAttemptId,
+              asaas_payment_id: payment.id,
+            },
+          },
+        );
+      }
+      await recordWebhookLedger(supabase, body);
       return json({ received: true, ...result });
     }
 

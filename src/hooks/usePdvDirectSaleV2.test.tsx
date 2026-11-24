@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { rpc, authScope } = vi.hoisted(() => ({ rpc: vi.fn(), authScope: { companyId: 'company-a', permissions: ['screen:pdv'] as string[] } }));
-vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'operator-1' }, profile: { company_id: authScope.companyId }, permissions: authScope.permissions, roles: ['comercial'], hasPermissionRecord: true, loading: false, profileLoading: false }) }));
+vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'operator-1' }, profile: { company_id: authScope.companyId, user_id: 'operator-1', is_active: true }, permissions: authScope.permissions, roles: ['comercial'], hasPermissionRecord: true, loading: false, profileLoading: false }) }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc } }));
 
 import {
@@ -27,6 +27,16 @@ const sale: PdvCompleteDirectSaleV2Input = {
 
 describe('usePdvDirectSaleV2', () => {
   beforeEach(() => { vi.clearAllMocks(); authScope.companyId = 'company-a'; authScope.permissions = ['screen:pdv']; });
+
+  it('preserva payload histórico sem cupom e separa desconto promocional de pagamentos', () => {
+    const original = buildPdvDirectSaleV2RpcPayload(sale, 'legacy-key');
+    expect(buildPdvDirectSaleV2RpcPayload({ ...sale, couponId: null, couponDiscountCents: 0 }, 'legacy-key')).toEqual(original);
+    expect(original.p_cart).not.toHaveProperty('coupon_id');
+    expect(original.p_cart).not.toHaveProperty('coupon_discount_cents');
+    const promotional = buildPdvDirectSaleV2RpcPayload({ ...sale, couponId: 'coupon-id', couponDiscountCents: 2000 }, 'coupon-key');
+    expect(promotional.p_cart).toMatchObject({ coupon_id: 'coupon-id', coupon_discount_cents: 2000, order_discount_amount: 0 });
+    expect(promotional.p_payments).toEqual(original.p_payments);
+  });
 
   it('falha fechado enquanto capability está indefinida ou em erro', () => {
     expect(selectPdvSaleContract({ loading: true, error: null })).toBe('blocked');

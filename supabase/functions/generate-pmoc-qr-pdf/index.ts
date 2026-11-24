@@ -1,3 +1,4 @@
+import { hasServiceDocumentLicense } from '../_shared/service-document-license.ts';
 // =============================================================================
 // generate-pmoc-qr-pdf — Gera PDF A4 imprimível com QR Code do Portal PMOC.
 // =============================================================================
@@ -26,7 +27,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
-const APP_DOMAIN = "https://dominex.app";
+const APP_DOMAIN = "https://www.dominex.app";
 const PORTAL_PATH = "/contrato/unidade"; // /contrato/unidade/<token>
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -94,7 +95,7 @@ Deno.serve(async (req) => {
     // Tenant do user.
     const { data: profileRow } = await supabase
       .from("profiles")
-      .select("company_id")
+      .select("company_id,is_active")
       .eq("user_id", userId)
       .maybeSingle();
     const userCompany = profileRow?.company_id ?? null;
@@ -130,6 +131,10 @@ Deno.serve(async (req) => {
     if (!isSuperAdmin && contract.company_id !== userCompany) {
       return jsonResponse({ error: "not_found" }, 404);
     }
+    const documentCompanyId=String((contract as unknown as {company_id:string}).company_id);
+    if (profileRow?.is_active !== true || !await hasServiceDocumentLicense(supabase,documentCompanyId,'contract_document',isSuperAdmin)) {
+      return jsonResponse({error:'module_unavailable',message:'Sua empresa não tem acesso a este documento. Confira os módulos contratados e a validade da assinatura.'},403);
+    }
     if (contract.is_pmoc !== true) {
       return jsonResponse({ error: "not_a_pmoc_contract" }, 400);
     }
@@ -143,6 +148,7 @@ Deno.serve(async (req) => {
         .from("customers")
         .select("name, address, city, state")
         .eq("id", contract.customer_id)
+        .eq("company_id", documentCompanyId)
         .maybeSingle(),
       supabase
         .from("company_settings")
@@ -154,6 +160,7 @@ Deno.serve(async (req) => {
             .from("responsible_technicians")
             .select("full_name, cft_crea, modality")
             .eq("id", contract.responsible_technician_id)
+            .eq("company_id", documentCompanyId)
             .maybeSingle()
         : Promise.resolve({ data: null } as { data: null }),
     ]);
@@ -167,6 +174,8 @@ Deno.serve(async (req) => {
         .maybeSingle();
       tenantName = (companyRow?.name ?? "").trim() || "Empresa";
     }
+
+    if (!customer) return jsonResponse({error:'not_found'},404);
 
     const useWhiteLabel = companySettings?.white_label_enabled === true;
     const logoUrl = useWhiteLabel

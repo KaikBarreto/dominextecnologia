@@ -513,7 +513,7 @@ export const inventory = {
     stockConfigurator: {
       buttonLabel: 'Configurar itens deste local',
       gearIconLabel: 'Configurar itens deste local',
-      dialogTitle: 'Configurar {stock}',
+      dialogTitle: 'Configurar local',
       searchPlaceholder: 'Buscar material...',
       markAll: 'Marcar todos',
       unmarkAll: 'Desmarcar todos',
@@ -969,7 +969,7 @@ export const inventory = {
       periods: { last30: 'Últimos 30 dias', last90: 'Últimos 90 dias', year: 'Este ano', all: 'Todo o histórico', custom: 'Personalizado' },
       filters: { materials: 'Materiais', allMaterials: 'Todos os materiais', suppliers: 'Fornecedores', allSuppliers: 'Todos os fornecedores', stocks: 'Locais', allStocks: 'Todos os locais', groups: 'Grupos', allGroups: 'Todos os grupos', users: 'Responsáveis pela O.C.', allUsers: 'Todos os responsáveis', customers: 'Clientes', customersPdv: 'Disponível quando o PDV estiver ativo.', hideZero: 'Ocultar materiais sem movimento no período' },
       view: { label: 'Visualização', material: 'Por material', group: 'Por grupo' },
-      kpis: { purchased: 'Total comprado', purchaseCount: '{count} compras no período', sold: 'Total vendido', grossProfit: 'Lucro bruto', projection: 'Projeção de lucro', pdvDescription: 'Será calculado a partir das vendas do PDV.', pdv: 'PDV', projectionDescription: 'Com base no preço de venda cadastrado.' },
+      kpis: { purchased: 'Total comprado', purchaseCount: '{count} compras no período', sold: 'Total vendido', grossProfit: 'Lucro bruto', projection: 'Projeção de lucro', pdvDescription: 'Será calculado a partir das vendas do PDV (Loja).', pdv: 'PDV (Loja)', projectionDescription: 'Com base no preço de venda cadastrado.' },
       details: { averageTicket: 'Ticket médio por compra', materials: 'Materiais comprados', topMaterial: 'Maior quantidade comprada', priceCoverage: 'Cobertura de preço', quantityByUnit: 'Quantidade por unidade', payments: 'Distribuição de pagamentos', noPayments: 'Nenhum pagamento vinculado no período.', projectionTitle: 'Projeção, não lucro realizado', projectionExplanation: 'Venda projetada de {value} e margem estimada de {margin}, usando os preços de venda cadastrados. Materiais sem preço de venda projetam margem zero.' },
       payments: { pending: 'Em aberto', notLinked: 'Não vinculado', methods: { dinheiro: 'Dinheiro', pix: 'Pix', cartao_debito: 'Cartão de débito', cartao_credito: 'Cartão de crédito', transferencia: 'Transferência', boleto: 'Boleto', cheque: 'Cheque' } },
       history: { title: 'Histórico de compras', empty: 'Nenhuma compra no período.' },
@@ -1549,7 +1549,7 @@ export const inventory = {
     stockConfigurator: {
       buttonLabel: 'Configure items at this location',
       gearIconLabel: 'Configure items at this location',
-      dialogTitle: 'Configure {stock}',
+      dialogTitle: 'Configure location',
       searchPlaceholder: 'Search material...',
       markAll: 'Select all',
       unmarkAll: 'Deselect all',
@@ -2583,7 +2583,7 @@ export const inventory = {
     stockConfigurator: {
       buttonLabel: 'Configurar ítems de esta ubicación',
       gearIconLabel: 'Configurar ítems de esta ubicación',
-      dialogTitle: 'Configurar {stock}',
+      dialogTitle: 'Configurar local',
       searchPlaceholder: 'Buscar material...',
       markAll: 'Seleccionar todos',
       unmarkAll: 'Deseleccionar todos',
@@ -3617,7 +3617,7 @@ export const inventory = {
     stockConfigurator: {
       buttonLabel: `Configurer les articles de cet emplacement`,
       gearIconLabel: `Configurer les articles de cet emplacement`,
-      dialogTitle: `Configurer {stock}`,
+      dialogTitle: `Configurer l’emplacement`,
       searchPlaceholder: `Rechercher un matériau...`,
       markAll: `Tout sélectionner`,
       unmarkAll: `Tout désélectionner`,

@@ -1,4 +1,5 @@
 import { Node, mergeAttributes } from '@tiptap/core'
+import { sanitizeBlogHtml } from '@/lib/blogContent'
 
 export const InfographicNode = Node.create({
   name: 'infographic',
@@ -21,7 +22,7 @@ export const InfographicNode = Node.create({
     Object.entries(mergeAttributes(HTMLAttributes, { 'data-infographic': '' })).forEach(([k, v]) => {
       if (v !== undefined && v !== null) dom.setAttribute(k, String(v))
     })
-    dom.innerHTML = node.attrs.html || ''
+    dom.innerHTML = sanitizeBlogHtml(node.attrs.html || '')
     return { dom }
   },
 
@@ -30,7 +31,7 @@ export const InfographicNode = Node.create({
       const wrapper = document.createElement('div')
       wrapper.className = 'infographic-block'
       wrapper.setAttribute('data-infographic', '')
-      wrapper.innerHTML = node.attrs.html
+      wrapper.innerHTML = sanitizeBlogHtml(node.attrs.html || '')
 
       if (node.attrs.caption) {
         const cap = document.createElement('p')

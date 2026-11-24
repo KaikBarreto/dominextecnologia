@@ -114,7 +114,7 @@ export function QuotePricingSummary({
         )}
       </div>
 
-      <div className="mt-4 space-y-2 border-y py-3 text-sm">
+      <div className="mt-4 space-y-2 border-t pt-3 text-sm">
         {rows.map(([label, value]) => (
           <div key={label} className="flex items-center justify-between gap-3">
             <span className={labelClassName}>{label}</span>

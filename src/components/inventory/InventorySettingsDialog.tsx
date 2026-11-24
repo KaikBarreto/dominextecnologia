@@ -6,9 +6,6 @@ import {
   Trash2,
   Check,
   X,
-  Star,
-  Settings,
-  Warehouse,
 } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
@@ -27,12 +24,9 @@ import {
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 import { useMaterialGroups, type MaterialGroup } from '@/hooks/useMaterialGroups';
-import { useStocks, type Stock } from '@/hooks/useStocks';
 import { cn } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
-
-type SettingsTab = 'grupos' | 'depositos';
 
 interface InventorySettingsDialogProps {
   open: boolean;
@@ -42,7 +36,6 @@ interface InventorySettingsDialogProps {
 export function InventorySettingsDialog({ open, onOpenChange }: InventorySettingsDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory.settingsDialog;
-  const [activeTab, setActiveTab] = useState<SettingsTab>('grupos');
 
   return (
     <ResponsiveModal
@@ -51,38 +44,7 @@ export function InventorySettingsDialog({ open, onOpenChange }: InventorySetting
       title={t.title}
       className="sm:max-w-[560px]"
     >
-      {/* Abas internas: Grupos de Material | Depósitos */}
-      <div className="flex gap-1 border-b mb-4">
-        <button
-          type="button"
-          onClick={() => setActiveTab('grupos')}
-          className={cn(
-            'flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
-            activeTab === 'grupos'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground',
-          )}
-        >
-          <Settings className="h-4 w-4" />
-          {t.tabGroups}
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('depositos')}
-          className={cn(
-            'flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
-            activeTab === 'depositos'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground',
-          )}
-        >
-          <Warehouse className="h-4 w-4" />
-          {t.tabStocks}
-        </button>
-      </div>
-
-      {activeTab === 'grupos' && <MaterialGroupsPanel />}
-      {activeTab === 'depositos' && <StocksPanel />}
+      <MaterialGroupsPanel />
     </ResponsiveModal>
   );
 }
@@ -308,166 +270,6 @@ function GroupRow({
         actions={[
           { label: editLabel, icon: Pencil, variant: 'edit', onClick: onEdit },
           { label: deleteLabel, icon: Trash2, variant: 'delete', onClick: onDelete },
-        ]}
-      />
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Painel de Depósitos
-// ---------------------------------------------------------------------------
-function StocksPanel() {
-  const { locale } = useAppLocaleContext();
-  const t = MESSAGES[locale].app.inventory.settingsDialog.stocks;
-  const { stocks, createStock, renameStock, deleteStock, setDefaultStock } = useStocks();
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [newName, setNewName] = useState('');
-
-  const handleCreate = () => {
-    if (!newName.trim()) return;
-    createStock.mutate(newName.trim(), { onSuccess: () => setNewName('') });
-  };
-
-  const handleDelete = () => {
-    if (deleteId) {
-      deleteStock.mutate(deleteId, { onSuccess: () => setDeleteId(null) });
-    }
-  };
-
-  const stockToDelete = stocks.find((s) => s.id === deleteId);
-
-  return (
-    <div className="space-y-4">
-      {stocks.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-4 text-center">{t.empty}</p>
-      ) : (
-        <div className="rounded-xl border divide-y overflow-hidden">
-          {stocks.map((stock) => (
-            <StockRow
-              key={stock.id}
-              stock={stock}
-              isEditing={editingId === stock.id}
-              onEdit={() => setEditingId(stock.id)}
-              onCancelEdit={() => setEditingId(null)}
-              onSaveEdit={(name) => {
-                renameStock.mutate({ id: stock.id, name }, { onSuccess: () => setEditingId(null) });
-              }}
-              onDelete={() => setDeleteId(stock.id)}
-              onSetDefault={() => setDefaultStock.mutate(stock.id)}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Criar novo depósito */}
-      <div className="border-t pt-4 space-y-2">
-        <Label>{t.newStock}</Label>
-        <div className="flex gap-2">
-          <Input
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            placeholder={t.namePlaceholder}
-            className="flex-1"
-            onKeyDown={(e) => { if (e.key === 'Enter') handleCreate(); }}
-          />
-          <Button
-            type="button"
-            size="icon"
-            onClick={handleCreate}
-            disabled={!newName.trim() || createStock.isPending}
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Confirm delete */}
-      <AlertDialog open={!!deleteId} onOpenChange={(v) => { if (!v) setDeleteId(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t.deleteTitle}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t.deleteDescription.replace('{name}', stockToDelete?.name ?? '')}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t.deleteCancel}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {t.deleteConfirm}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  );
-}
-
-interface StockRowProps {
-  stock: Stock;
-  isEditing: boolean;
-  onEdit: () => void;
-  onCancelEdit: () => void;
-  onSaveEdit: (name: string) => void;
-  onDelete: () => void;
-  onSetDefault: () => void;
-}
-
-function StockRow({ stock, isEditing, onEdit, onCancelEdit, onSaveEdit, onDelete, onSetDefault }: StockRowProps) {
-  const { locale } = useAppLocaleContext();
-  const t = MESSAGES[locale].app.inventory.settingsDialog.stocks;
-  const [name, setName] = useState(stock.name);
-
-  if (isEditing) {
-    return (
-      <div className="flex items-center gap-2 p-2 rounded-lg border bg-muted/30">
-        <Input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="flex-1 h-8"
-          autoFocus
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') onSaveEdit(name.trim());
-            if (e.key === 'Escape') onCancelEdit();
-          }}
-        />
-        <Button
-          size="icon"
-          variant="ghost"
-          className="h-8 w-8 text-success hover:text-success"
-          onClick={() => onSaveEdit(name.trim())}
-        >
-          <Check className="h-4 w-4" />
-        </Button>
-        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={onCancelEdit}>
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-center gap-2 px-2 py-1.5">
-      <Warehouse className="h-4 w-4 text-muted-foreground shrink-0" />
-      <span className="flex-1 text-sm truncate">{stock.name}</span>
-      {stock.is_default && (
-        <span className="text-xs font-semibold bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
-          {t.defaultBadge}
-        </span>
-      )}
-      <RowActionsMenu
-        actions={[
-          ...(!stock.is_default
-            ? [{ label: t.setDefault, icon: Star, variant: 'default' as const, onClick: onSetDefault }]
-            : []),
-          { label: t.rename, icon: Pencil, variant: 'edit' as const, onClick: onEdit },
-          ...(!stock.is_default
-            ? [{ label: t.delete, icon: Trash2, variant: 'delete' as const, onClick: onDelete }]
-            : []),
         ]}
       />
     </div>

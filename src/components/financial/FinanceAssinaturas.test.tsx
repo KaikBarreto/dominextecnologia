@@ -123,6 +123,13 @@ const click = (el: Element | null | undefined) => {
     el!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
   });
 };
+function setInputValue(input: HTMLInputElement, value: string) {
+  act(() => {
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!;
+    setter.call(input, value);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+}
 function buttonByText(label: string) {
   return Array.from(document.querySelectorAll('button')).find((b) => b.textContent?.trim() === label);
 }
@@ -216,6 +223,7 @@ describe('FinanceAssinaturas — canceladas ficam ocultas por padrão (raiz do b
     // Vazio específico de "tudo cancelado", não o genérico de conta nova.
     expect(text()).toContain('Nenhuma assinatura ativa');
     expect(text()).not.toContain('Crie a primeira assinatura recorrente');
+    expect(buttonContaining('Mostrar cancelada')).toBeTruthy();
 
     // Zero elementos interativos de gestão na tela (o que o CEO via).
     expect(qa('[role="checkbox"]').length).toBe(0);
@@ -297,6 +305,33 @@ describe('FinanceAssinaturas — canceladas ficam ocultas por padrão (raiz do b
     expect(text()).toContain('Crie a primeira assinatura recorrente');
     openFilters();
     expect(qa('[role="menuitemcheckbox"]').some((element) => element.textContent?.includes('Mostrar cancelada'))).toBe(false);
+  });
+
+  it('filtro de arquivadas vazio usa o estado específico e permite voltar à lista principal', () => {
+    subsState.list = [];
+    mount();
+
+    openFilters();
+    const archived = qa('[role="menuitemcheckbox"]').find((element) => element.textContent?.includes('Ver arquivadas'));
+    expect(archived).toBeTruthy();
+    click(archived);
+
+    expect(text()).toContain('Nenhuma assinatura arquivada');
+    expect(buttonByText('Voltar para a lista')).toBeTruthy();
+  });
+
+  it('busca sem resultado mostra estado contextual e permite limpar a busca', () => {
+    subsState.list = [activeSub('live')];
+    mount();
+
+    const search = document.querySelector('input[aria-label="Buscar assinaturas por cliente ou descrição"]') as HTMLInputElement;
+    expect(search).toBeTruthy();
+    setInputValue(search, 'cliente inexistente');
+
+    expect(text()).toContain('Nenhuma assinatura encontrada');
+    expect(text()).not.toContain('Crie a primeira assinatura recorrente');
+    click(buttonByText('Limpar busca e filtros'));
+    expect(text()).toContain('Cliente live');
   });
 
   it('mix de ativa + cancelada: só a ativa aparece e tem ações por padrão', () => {

@@ -19,8 +19,9 @@ class ResizeObserverStub {
 }
 (globalThis as any).ResizeObserver = (globalThis as any).ResizeObserver || ResizeObserverStub;
 
-const { updateLeadNotesMutate } = vi.hoisted(() => ({
+const { updateLeadNotesMutate, quoteState } = vi.hoisted(() => ({
   updateLeadNotesMutate: vi.fn(),
+  quoteState: { enabled: false, quotes: [] as any[], isLoading: false, error: null as Error | null, refetch: vi.fn() },
 }));
 
 vi.mock('@/hooks/useLeads', async (importOriginal) => {
@@ -57,8 +58,20 @@ vi.mock('@/hooks/useProjectPipelines', () => ({
   useProjectPipelines: () => ({ pipelines: [] }),
 }));
 vi.mock('@/contexts/AuthContext', () => ({
-  useAuth: () => ({ user: { id: 'user-1' }, isAdminOrGestor: () => true, hasPermission: () => true }),
+  useAuth: () => ({ user: { id: 'user-1' }, isAdminOrGestor: () => true, hasPermission: () => true, hasScreenAccess: () => quoteState.enabled }),
 }));
+vi.mock('@/hooks/useCompanyModules', () => ({ useCompanyModules: () => ({ hasScreen: () => quoteState.enabled, isLoading: false }) }));
+vi.mock('@/hooks/useQuotes', () => ({
+  useQuotes: () => ({ quotes: quoteState.quotes, isLoading: quoteState.isLoading, error: quoteState.error, refetch: quoteState.refetch }),
+  getQuoteStatusLabels: () => ({ rascunho: 'Rascunho' }),
+  STATUS_COLORS: { rascunho: 'bg-muted text-muted-foreground' },
+}));
+vi.mock('@/components/quotes/QuoteFormDialog', () => ({
+  QuoteFormDialog: ({ open, sourceLeadId }: { open: boolean; sourceLeadId?: string }) => open
+    ? <div data-testid="quote-form">{sourceLeadId}</div>
+    : <div data-testid="quote-form-mounted" hidden />,
+}));
+vi.mock('@/components/quotes/QuoteViewDialog', () => ({ QuoteViewDialog: () => null }));
 // ACL por funil (D3): o modal passou a ler `crm_pipeline_access` pra montar o
 // select de "mover de funil". Sem QueryClient no teste, o hook real derruba a
 // montagem — e o caso sob teste é o autosave/histórico, não a ACL.
@@ -146,6 +159,11 @@ beforeEach(() => {
   document.body.appendChild(container);
   root = createRoot(container);
   updateLeadNotesMutate.mockClear();
+  quoteState.enabled = false;
+  quoteState.quotes = [];
+  quoteState.isLoading = false;
+  quoteState.error = null;
+  quoteState.refetch.mockClear();
   vi.useFakeTimers();
 });
 
@@ -211,6 +229,49 @@ describe('LeadDetailModal — Observações edita direto, com autosave (prova re
     });
     // Sem nova digitação, não deve re-disparar.
     expect(updateLeadNotesMutate).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('LeadDetailModal — orçamentos da oportunidade', () => {
+  it('não monta o wizard nem consulta sua árvore quando o módulo está bloqueado', () => {
+    mount(BASE_LEAD);
+
+    expect(q('[data-testid="quote-form-mounted"]')).toBeNull();
+    expect(document.body.textContent).not.toContain('Orçamentos');
+  });
+
+  it('diferencia carregamento, erro recuperável e lista vazia', () => {
+    quoteState.enabled = true;
+    quoteState.isLoading = true;
+    mount(BASE_LEAD);
+    expect(document.body.textContent).toContain('Carregando orçamentos');
+    expect(document.body.textContent).not.toContain('Nenhum orçamento vinculado');
+
+    quoteState.isLoading = false;
+    quoteState.error = new Error('offline');
+    mount(BASE_LEAD);
+    expect(document.body.textContent).toContain('Não foi possível carregar os orçamentos');
+    const retry = qAll('button').find((button) => /tentar novamente/i.test(button.textContent || ''));
+    expect(retry).toBeTruthy();
+    act(() => retry!.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(quoteState.refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('lista os vinculados e abre o wizard fullscreen com o contexto do card', () => {
+    quoteState.enabled = true;
+    quoteState.quotes = [{
+      id: 'quote-1', lead_id: 'lead-1', quote_number: 73, status: 'rascunho',
+      created_at: '2026-11-18T10:00:00.000Z', total_value: 1500,
+    }];
+    mount(BASE_LEAD);
+
+    expect(document.body.textContent).toContain('Orçamentos');
+    expect(document.body.textContent).toContain('#73');
+    const createQuote = qAll('button').find((button) => /criar orçamento/i.test(button.textContent || ''));
+    expect(createQuote).toBeTruthy();
+    act(() => createQuote!.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(q('[data-testid="quote-form"]')?.textContent).toBe('lead-1');
+    expect(q('[role="dialog"]')).toBeNull();
   });
 });
 

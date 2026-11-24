@@ -11,6 +11,7 @@ import { buildOsMediaPath, removeOsMedia, uploadOsMedia } from '@/utils/osUpload
 import { useToast } from '@/hooks/use-toast';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { shouldUseNativeVideoCapture } from '@/components/technician/videoCaptureSupport';
 
 /** Duração máxima do clipe (segundos). */
 const MAX_SECONDS = 30;
@@ -110,6 +111,7 @@ export function OsVideoField({
   const streamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const captureFailedRef = useRef(false);
   const livePreviewRef = useRef<HTMLVideoElement | null>(null);
   const autoStopRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -175,6 +177,12 @@ export function OsVideoField({
 
   const startRecording = async () => {
     if (disabled) return;
+    // iOS/iPadOS: evita o MediaRecorder do WebKit, que pode manter o áudio e
+    // congelar os quadros. O input abaixo já usa capture="environment".
+    if (shouldUseNativeVideoCapture()) {
+      fileInputRef.current?.click();
+      return;
+    }
     const picked = pickRecordingMime();
     if (!picked || !navigator.mediaDevices?.getUserMedia) {
       // Sem suporte a gravação — cai pro input file (câmera).
@@ -187,6 +195,7 @@ export function OsVideoField({
         audio: true,
       });
       streamRef.current = stream;
+      captureFailedRef.current = false;
       // O stream será atribuído ao <video> do overlay pelo useEffect acima,
       // quando recording virar true e o elemento já estiver no DOM.
 
@@ -200,12 +209,29 @@ export function OsVideoField({
       recorder.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
       };
+      const invalidateCapture = () => {
+        captureFailedRef.current = true;
+        if (recorder.state !== 'inactive') recorder.stop();
+      };
+      const videoTrack = stream.getVideoTracks()[0];
+      videoTrack?.addEventListener('ended', invalidateCapture, { once: true });
+      videoTrack?.addEventListener('mute', invalidateCapture, { once: true });
+      recorder.onerror = invalidateCapture;
       recorder.onstop = async () => {
         const blob = new Blob(chunksRef.current, { type: picked.mime });
+        const captureFailed = captureFailedRef.current;
         cleanupCapture();
         setRecording(false);
         setRemaining(MAX_SECONDS);
-        if (blob.size > 0) await uploadClip(blob, picked.ext);
+        if (captureFailed || blob.size === 0) {
+          toast({
+            variant: 'destructive',
+            title: t.toastCameraError,
+            description: t.toastCameraErrorDesc,
+          });
+          return;
+        }
+        await uploadClip(blob, picked.ext);
       };
 
       recorder.start();

@@ -1,8 +1,8 @@
 /**
  * Tipos compartilhados do stepper de Nova Nota.
- * Espelha o conjunto de campos que a emissão aceita — NÃO inclui
- * INSS, IRRF, deduções da base, desconto condicionado nem desconto
- * incondicionado (não suportados).
+ * Espelha o contrato canônico da emissão compartilhada entre Dominex e
+ * EcoSistema. Valores tributários são sempre absolutos em R$, salvo campos
+ * explicitamente nomeados como alíquota/percentual.
  */
 
 import type { Customer } from '@/types/database';
@@ -28,9 +28,8 @@ export type NfsePartyEntryMode = 'cadastro' | 'manual';
  * avulso é TUDO OU NADA (validado no client em `NovaNotaModal.pessoasErrors`
  * — `enderecoAvulsoIncompleto` — espelhando `common.ts` da edge).
  *
- * ⚠️ Intermediário (`'cadastro'` OU `'manual'`) é aceito no RASCUNHO mas
- * SEMPRE bloqueado na EMISSÃO (o microserviço fiscal ainda não monta o grupo
- * `interm` da DPS) — não é limitação deste tipo, é regra de negócio atual.
+ * Intermediário (`'cadastro'` OU `'manual'`) usa o mesmo bloco de pessoa do
+ * tomador e é enviado ao motor fiscal quando informado.
  */
 export type NfseCustomer = Pick<
   Customer,
@@ -98,9 +97,12 @@ export interface NfseServicoState {
   tribIssqn: TribIssqn;
   /** Discriminação do serviço (aparece na nota — obrigatória). */
   discriminacao: string;
+  documentoResponsabilidadeTecnica: string;
+  documentoReferencia: string;
+  pedidoB2b: string;
 }
 
-/** Estado da etapa Valores (apenas campos suportados pela emissão). */
+/** Estado da etapa Valores. Valores monetários são absolutos em R$. */
 export interface NfseValoresState {
   /** Valor bruto do serviço (> 0 pra emitir). */
   valorServico: number;
@@ -114,6 +116,11 @@ export interface NfseValoresState {
   valorCofins: number;
   /** CSLL retido em R$ (valor absoluto, não %). */
   valorCsll: number;
+  valorInss: number;
+  valorIrrf: number;
+  deducoes: number;
+  descontoCondicionado: number;
+  descontoIncondicionado: number;
   /**
    * Percentual total de tributos do Simples Nacional (%).
    * Opcional — só informado quando a empresa está no Simples.
@@ -121,16 +128,16 @@ export interface NfseValoresState {
   percentualTribSn: number;
 }
 
-/** Resultado do cálculo de impostos da nota (sem deduções — não suportadas). */
+/** Resultado do cálculo de impostos da nota. */
 export interface NfseTaxResult {
-  /** valorServico (sem deduções — não suportadas). */
+  /** valorServico − deduções − desconto incondicionado. */
   baseCalculo: number;
   /** baseCalculo × aliquotaIssqn/100 (2 casas). */
   issValor: number;
-  /** PIS + COFINS + CSLL (R$). */
+  /** PIS + COFINS + CSLL + INSS + IRRF (R$). */
   totalRetencoesFederais: number;
   /**
-   * valorServico − (valorPis + valorCofins + valorCsll) − (ISS se retido no tipo '1').
+   * valorServico − desconto incondicionado − retenções − ISS quando retido.
    */
   valorLiquido: number;
 }

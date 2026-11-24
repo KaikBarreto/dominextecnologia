@@ -12,6 +12,8 @@ DECLARE
   session1 uuid := 'f6020000-0000-4000-8000-000000000041'; session2 uuid := 'f6020000-0000-4000-8000-000000000042';
   sale1 uuid := 'f6020000-0000-4000-8000-000000000051'; sale2 uuid := 'f6020000-0000-4000-8000-000000000052';
   doc1 uuid := 'f6020000-0000-4000-8000-000000000061'; doc2 uuid := 'f6020000-0000-4000-8000-000000000062';
+  sale3 uuid := 'f6020000-0000-4000-8000-000000000053';
+  material_a uuid := 'f6020000-0000-4000-8000-000000000071'; material_b uuid := 'f6020000-0000-4000-8000-000000000072';
   actor record; actual integer; snapshot jsonb; duplicate_blocked boolean := false;
 BEGIN
   PERFORM set_config('request.jwt.claims','{"role":"service_role"}',true);
@@ -36,6 +38,17 @@ BEGIN
     VALUES(c1,true,true,'SP',1);
   INSERT INTO public.pdv_orders(id,company_id,number,status,stock_id,terminal_id,cash_session_id,subtotal,total)
   VALUES(sale1,c1,900001,'pago',stock,terminal1,session1,10,10),(sale2,c1,900002,'entregue',stock,terminal2,session2,10,10);
+  -- Fonte positiva fictícia: desconto global, recebimento em dinheiro com troco e fiado.
+  INSERT INTO public.inventory(id,company_id,name,unit,cost_price,sale_price)
+    VALUES(material_a,c1,'Material fiscal fictício A','UN',0,25),(material_b,c1,'Material fiscal fictício B','UN',0,40);
+  INSERT INTO public.pdv_orders(id,company_id,number,status,stock_id,terminal_id,cash_session_id,subtotal,discount_amount,total)
+    VALUES(sale3,c1,900003,'rascunho',stock,terminal1,session1,65,5,60);
+  INSERT INTO public.pdv_order_items(id,company_id,order_id,inventory_id,description,quantity,unit_price,unit_cost,discount_amount,total,sort_order,unit)
+    VALUES('f6020000-0000-4000-8000-000000000081',c1,sale3,material_a,'Material fictício A',1,25,0,0,25,0,'UN'),
+          ('f6020000-0000-4000-8000-000000000082',c1,sale3,material_b,'Material fictício B',1,40,0,0,40,1,'UN');
+  INSERT INTO public.pdv_order_payments(company_id,order_id,method,amount,change_amount)
+    VALUES(c1,sale3,'dinheiro',30,5),(c1,sale3,'fiado',30,0);
+  UPDATE public.pdv_orders SET status='pago' WHERE id=sale3;
   INSERT INTO public.nfce_documents(id,company_id,order_id,source_type,source_id,uf,series,status)
   VALUES(doc1,c1,sale1,'pdv_sale',sale1,'SP',1,'draft'),(doc2,c1,sale2,'pdv_sale',sale2,'SP',1,'draft');
   BEGIN
@@ -57,6 +70,18 @@ BEGIN
   FOR actor IN SELECT * FROM (VALUES(u1,1),(u2,1),(ufiscal,2),(uother,0)) a(id,expected) LOOP
     PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',actor.id,'role','authenticated')::text,true);
     EXECUTE 'SET LOCAL ROLE authenticated';
+    IF actor.id=u1 THEN
+      snapshot:=public.fiscal_get_goods_source_snapshot('pdv_sale',sale3);
+      IF (snapshot#>>'{items,0,total}')::numeric<>23.08 OR (snapshot#>>'{items,1,total}')::numeric<>36.92
+        OR (snapshot#>>'{items,0,discount}')::numeric<>1.92 OR (snapshot#>>'{items,1,discount}')::numeric<>3.08 THEN
+        RAISE EXCEPTION 'Rateio por item divergiu da fonte canônica';
+      END IF;
+      IF jsonb_array_length(snapshot->'payments')<>2 OR NOT EXISTS(SELECT 1 FROM jsonb_array_elements(snapshot->'payments') payment
+        WHERE payment->>'method'='01' AND (payment->>'amount')::numeric=35 AND (payment->>'change')::numeric=5)
+        OR NOT EXISTS(SELECT 1 FROM jsonb_array_elements(snapshot->'payments') payment WHERE payment->>'method'='05' AND (payment->>'deferred')::boolean) THEN
+        RAISE EXCEPTION 'Importação fiscal perdeu pagamento misto, troco ou fiado';
+      END IF;
+    END IF;
     SELECT count(*) INTO actual FROM public.nfce_documents WHERE id IN(doc1,doc2);
     IF actual <> actor.expected THEN RAISE EXCEPTION 'Leitura fiscal fora da custódia: %/%',actual,actor.expected; END IF;
     BEGIN

@@ -44,6 +44,9 @@ import {
   isRequiredCustomModule,
   resolveExtraUserPrice,
 } from '@/lib/subscriptionCatalog';
+import { coreIncludesModule, SERVICE_DEPENDENT_MODULE_CODES } from '@/lib/businessCore';
+import { BUSINESS_CORE_BUNDLES, planBelongsToCore } from '@/lib/businessCoreCatalog';
+import { requiredCustomModulesForCore } from '@/lib/businessCorePricing';
 
 const BASE_USERS = CUSTOM_PLAN_INCLUDED_USERS;
 const BASE_MODULE = BASE_SUBSCRIPTION_MODULE_CODE;
@@ -86,16 +89,19 @@ export function ModulesManagementCard({
   onAutoOpenConsumed,
 }: ModulesManagementCardProps = {}) {
   const navigate = useNavigate();
-  const { profile, isAdminOrGestor, hasRole } = useAuth();
+  const { user, profile, isAdminOrGestor, hasRole } = useAuth();
   const companyId = profile?.company_id ?? null;
   const { locale } = useAppLocaleContext();
   const tBilling = MESSAGES[locale].app.settings.billing;
-  const canManageSubscription = isAdminOrGestor() || hasRole('super_admin');
+  const currentProfile = !!user && profile?.user_id === user.id && profile?.is_active === true;
+  const canManageSubscription = currentProfile && (isAdminOrGestor() || hasRole('super_admin'));
 
   const {
     moduleCodes,
+    businessCore,
     plan,
     allPlans,
+    currentPlan,
     effectiveValue,
     pendingValue,
     extraUsers,
@@ -119,7 +125,7 @@ export function ModulesManagementCard({
     data: subscriptionCatalog,
     isLoading: isCatalogLoading,
     isError: isCatalogError,
-  } = usePublicSubscriptionCatalog();
+  } = usePublicSubscriptionCatalog(businessCore);
   const catalogModules = useMemo<CatalogModule[]>(
     () => (subscriptionCatalog?.allModules ?? []).map((module) => ({
       code: module.code,
@@ -133,9 +139,9 @@ export function ModulesManagementCard({
 
   // Ciclo de cobrança atual da empresa.
   const { data: company } = useQuery({
-    queryKey: ['my-company'],
+    queryKey: ['my-company', user?.id, companyId],
     queryFn: async () => {
-      if (!companyId) return null;
+      if (!currentProfile || !companyId) return null;
       const { data } = await supabase
         .from('companies')
         .select('id, billing_cycle, subscription_expires_at')
@@ -143,7 +149,7 @@ export function ModulesManagementCard({
         .single();
       return data;
     },
-    enabled: !!companyId,
+    enabled: currentProfile && !!companyId,
   });
 
   const [open, setOpen] = useState(false);
@@ -160,6 +166,11 @@ export function ModulesManagementCard({
   const usersSectionRef = useRef<HTMLDivElement | null>(null);
   const autoOpenConsumed = useRef(false);
 
+  const requiredModules = requiredCustomModulesForCore(businessCore, customModules);
+  const isIncludedModule = (code: string) => requiredModules.includes(code) || coreIncludesModule(businessCore, code);
+  const bundle = BUSINESS_CORE_BUNDLES[businessCore];
+  const servicesAvailable = businessCore === 'services' || customModules.includes('service_operations');
+
   const currentBillingCycle = (company?.billing_cycle as 'monthly' | 'yearly') || 'monthly';
 
   // Planos prontos (sem o personalizado), ordenados por preço.
@@ -169,25 +180,23 @@ export function ModulesManagementCard({
   // pelo painel master; o nome do plano atual segue vindo de `allPlans`.
   const presetPlans = useMemo(
     () => allPlans
-      .filter((p) => p.code !== 'personalizado' && p.code !== EXCEPTION_PLAN_CODE)
+      .filter((p) => planBelongsToCore(p,businessCore) && p.code !== 'personalizado' && p.code !== EXCEPTION_PLAN_CODE && p.code !== 'retail_excecao')
       .sort((a, b) => a.price - b.price),
-    [allPlans],
+    [allPlans, businessCore],
   );
 
   // Módulos selecionáveis no personalizado. Os recursos da base são
   // obrigatórios; extra_user é preço do contador, não um módulo marcável.
-  const selectableModules = useMemo(
-    () => catalogModules.filter(
-      (module) => !isRequiredCustomModule(module.code) && module.code !== EXTRA_USER_MODULE_CODE,
-    ),
-    [catalogModules],
+  const selectableModules = catalogModules.filter(
+    module => !isIncludedModule(module.code) && module.code !== EXTRA_USER_MODULE_CODE
+      && (servicesAvailable || !SERVICE_DEPENDENT_MODULE_CODES.some(code=>code===module.code)),
   );
 
   const baseModule = catalogModules.find((m) => m.code === BASE_MODULE);
   const freeBaseModules = catalogModules.filter((module) =>
-    FREE_BASE_MODULE_CODES.some((code) => code === module.code),
+    requiredModules.some((code) => code !== BASE_MODULE && code === module.code),
   );
-  const freeBaseModulesAreValid = FREE_BASE_MODULE_CODES.every(
+  const freeBaseModulesAreValid = requiredModules.filter(code => code !== BASE_MODULE).every(
     (code) => catalogModules.find((module) => module.code === code)?.price === 0,
   );
   const extraUserPrice = useMemo(() => resolveExtraUserPrice(catalogModules), [catalogModules]);
@@ -209,12 +218,12 @@ export function ModulesManagementCard({
   ) => {
     if (next) {
       const optionalModules = moduleCodes.filter(
-        (code) => !isRequiredCustomModule(code) && code !== EXTRA_USER_MODULE_CODE,
+        (code) => !isIncludedModule(code) && code !== EXTRA_USER_MODULE_CODE,
       );
       // Pré-marca o módulo do deep-link (sem duplicar e ignorando os obrigatórios/extra_user).
       const withPreselect =
         opts?.preselectModule &&
-        !isRequiredCustomModule(opts.preselectModule) &&
+        !isIncludedModule(opts.preselectModule) &&
         opts.preselectModule !== EXTRA_USER_MODULE_CODE &&
         !optionalModules.includes(opts.preselectModule)
           ? [...optionalModules, opts.preselectModule]
@@ -266,16 +275,16 @@ export function ModulesManagementCard({
   // Preço mensal do personalizado: módulos obrigatórios + escolhidos + extras,
   // todos com preço vindo do mesmo catálogo usado pelo servidor.
   const customMonthly = useMemo(() => {
-    const chosen = new Set<string>([...REQUIRED_CUSTOM_MODULE_CODES, ...customModules]);
+    const chosen = new Set<string>([...requiredCustomModulesForCore(businessCore,customModules), ...customModules]);
     const modulesPrice = catalogModules
       .filter((m) => chosen.has(m.code))
       .reduce((sum, m) => sum + m.price, 0);
     return modulesPrice + customExtraUsers * (extraUserPrice ?? 0);
-  }, [customModules, customExtraUsers, catalogModules, extraUserPrice]);
+  }, [customModules, customExtraUsers, catalogModules, extraUserPrice, businessCore]);
 
   const toggleModule = (code: string) => {
     setCustomModules((prev) =>
-      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code],
+      prev.includes(code) ? prev.filter((c) => c !== code && !(code === 'service_operations' && SERVICE_DEPENDENT_MODULE_CODES.some(code=>code===c))) : [...prev, code],
     );
   };
 
@@ -425,10 +434,10 @@ export function ModulesManagementCard({
 
     // Módulos a exibir no painel (exclui o módulo básico, que é sempre incluso)
     const summaryModuleCodes = isCustomTab
-      ? [...FREE_BASE_MODULE_CODES, ...customModules]
+      ? [...requiredModules.filter(code=>code!==BASE_MODULE), ...customModules]
       : (presetPlans.find((p) => p.code === selectedPlan)?.included_modules ?? []);
     const summaryModules = catalogModules.filter(
-      (m) => summaryModuleCodes.includes(m.code) && !isRequiredCustomModule(m.code),
+      (m) => summaryModuleCodes.includes(m.code) && !isIncludedModule(m.code),
     );
 
     // Usuários
@@ -479,7 +488,7 @@ export function ModulesManagementCard({
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
                 <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
-                <span className="text-sm font-medium truncate">{BASIC_BUNDLE_LABEL}</span>
+                <span className="text-sm font-medium truncate">{bundle.label}</span>
               </div>
               <span className="text-xs text-muted-foreground shrink-0">{tBilling.planSummaryIncluded}</span>
             </div>
@@ -499,7 +508,7 @@ export function ModulesManagementCard({
                   <span className="text-sm font-medium truncate">{m.name}</span>
                 </div>
                 <span className="text-sm font-semibold text-foreground shrink-0">
-                  {isCustomTab && isRequiredCustomModule(m.code)
+                  {isCustomTab && isIncludedModule(m.code)
                     ? tBilling.planSummaryIncluded
                     : `+R$ ${formatBRL(m.price)}`}
                 </span>
@@ -626,7 +635,7 @@ export function ModulesManagementCard({
     );
   }
 
-  const currentPlanData = allPlans.find((p) => p.code === plan);
+  const currentPlanData = currentPlan ?? allPlans.find((p) => p.code === plan);
   const planDisplayName = currentPlanData?.name || (plan === 'personalizado' ? 'Personalizado' : plan);
 
   return (
@@ -725,7 +734,7 @@ export function ModulesManagementCard({
                     const isSelected = selectedPlan === p.code;
                     const planModules = catalogModules.filter(
                       (module) => p.included_modules.some((code) => code === module.code)
-                        && !isRequiredCustomModule(module.code),
+                        && !isIncludedModule(module.code),
                     );
                     const yearly = calculateYearlyPrice(p.price);
                     return (
@@ -766,7 +775,7 @@ export function ModulesManagementCard({
                                 {p.max_users} usuários
                               </span>
                               <span>
-                                {BASIC_BUNDLE_LABEL}
+                                {bundle.label}
                               </span>
                               {planModules.map((m) => (
                                 <span key={m.code} className="before:content-['·'] before:mr-3 before:text-border">
@@ -811,8 +820,8 @@ export function ModulesManagementCard({
                   <div className="flex items-center gap-2.5 p-2.5 rounded-lg border border-border/70 bg-muted/30">
                     <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">{BASIC_BUNDLE_LABEL}</p>
-                      <p className="text-[11px] text-muted-foreground line-clamp-2">{BASIC_BUNDLE_DESCRIPTION}</p>
+                      <p className="text-sm font-medium">{bundle.label}</p>
+                      <p className="text-[11px] text-muted-foreground line-clamp-2">{bundle.description}</p>
                     </div>
                     <div className="text-right shrink-0">
                       <span className="block text-sm font-semibold">R$ {formatBRL(baseModule.price)}</span>

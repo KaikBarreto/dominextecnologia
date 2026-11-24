@@ -4,6 +4,21 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
 type ScheduleDevice = 'mobile' | 'desktop';
+export type ScheduleEntryType = 'os' | 'tarefa';
+
+const SCHEDULE_ENTRY_TYPES: ScheduleEntryType[] = ['os', 'tarefa'];
+
+/**
+ * Normaliza a preferência da Agenda para o contrato de três estados da UI:
+ * vazio = Tudo; um valor = somente OS ou somente Tarefas. Os dois valores
+ * também significam Tudo, evitando um filtro visualmente ativo sem efeito.
+ */
+export function normalizeScheduleEntryTypeFilter(
+  values: readonly string[] | null | undefined,
+): ScheduleEntryType[] {
+  const normalized = SCHEDULE_ENTRY_TYPES.filter((value) => values?.includes(value));
+  return normalized.length === SCHEDULE_ENTRY_TYPES.length ? [] : normalized;
+}
 
 // Valor cru persistido por slot (mobile/desktop). Historicamente era só o
 // período ('day' | 'week' | 'month'). A visão de lista (E4) reusa a MESMA
@@ -18,6 +33,7 @@ interface ScheduleViewModePref {
 interface UserPreferencesData {
   schedule_view_mode_mobile: string | null;
   schedule_view_mode_desktop: string | null;
+  schedule_entry_type_filter: string[] | null;
   finance_movements_include_card_purchases: boolean | null;
 }
 
@@ -44,7 +60,7 @@ export function useUserPreferences() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('user_preferences')
-        .select('schedule_view_mode_mobile, schedule_view_mode_desktop, finance_movements_include_card_purchases')
+        .select('schedule_view_mode_mobile, schedule_view_mode_desktop, schedule_entry_type_filter, finance_movements_include_card_purchases')
         .eq('user_id', user!.id)
         .maybeSingle();
 
@@ -96,6 +112,7 @@ export function useUserPreferences() {
       queryClient.setQueryData<UserPreferencesData | null>(queryKey, (old) => ({
         schedule_view_mode_mobile: old?.schedule_view_mode_mobile ?? null,
         schedule_view_mode_desktop: old?.schedule_view_mode_desktop ?? null,
+        schedule_entry_type_filter: old?.schedule_entry_type_filter ?? null,
         finance_movements_include_card_purchases:
           old?.finance_movements_include_card_purchases ?? null,
         [column]: mode,
@@ -115,6 +132,55 @@ export function useUserPreferences() {
 
   const setScheduleViewMode = (device: ScheduleDevice, mode: string) => {
     scheduleViewModeMutation.mutate({ device, mode });
+  };
+
+  // Preferência pessoal e compartilhada entre aparelhos. A Agenda oferece
+  // Tudo / Ordens de serviço / Tarefas; array vazio representa Tudo.
+  const scheduleEntryTypeFilter = normalizeScheduleEntryTypeFilter(
+    prefsQuery.data?.schedule_entry_type_filter,
+  );
+
+  const scheduleEntryTypeFilterMutation = useMutation({
+    mutationFn: async (values: readonly string[]) => {
+      if (!user?.id) throw new Error('Usuário não autenticado.');
+      const normalized = normalizeScheduleEntryTypeFilter(values);
+      const { error } = await supabase.from('user_preferences').upsert(
+        {
+          user_id: user.id,
+          schedule_entry_type_filter: normalized,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id' },
+      );
+
+      if (error) throw error;
+    },
+    onMutate: async (values) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<UserPreferencesData | null>(queryKey);
+
+      queryClient.setQueryData<UserPreferencesData | null>(queryKey, (old) => ({
+        schedule_view_mode_mobile: old?.schedule_view_mode_mobile ?? null,
+        schedule_view_mode_desktop: old?.schedule_view_mode_desktop ?? null,
+        schedule_entry_type_filter: normalizeScheduleEntryTypeFilter(values),
+        finance_movements_include_card_purchases:
+          old?.finance_movements_include_card_purchases ?? null,
+      }));
+
+      return { previous };
+    },
+    onError: (_err, _values, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(queryKey, context.previous);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
+
+  const setScheduleEntryTypeFilter = (values: readonly string[]) => {
+    scheduleEntryTypeFilterMutation.mutate(values);
   };
 
   // Preferência PESSOAL (não por aparelho, ver comentário do topo). `null` no
@@ -144,6 +210,7 @@ export function useUserPreferences() {
       queryClient.setQueryData<UserPreferencesData | null>(queryKey, (old) => ({
         schedule_view_mode_mobile: old?.schedule_view_mode_mobile ?? null,
         schedule_view_mode_desktop: old?.schedule_view_mode_desktop ?? null,
+        schedule_entry_type_filter: old?.schedule_entry_type_filter ?? null,
         finance_movements_include_card_purchases: value,
       }));
 
@@ -165,8 +232,10 @@ export function useUserPreferences() {
 
   return {
     scheduleViewMode,
+    scheduleEntryTypeFilter,
     isLoading: prefsQuery.isLoading,
     setScheduleViewMode,
+    setScheduleEntryTypeFilter,
     includeCardPurchasesInMovements,
     setIncludeCardPurchasesInMovements,
   };

@@ -14,7 +14,7 @@ set
 <p>Se você prefere uma explicação rápida em vídeo antes de mergulhar no guia, assista a este resumo do que é o PMOC:</p>
 
 <figure>
-  <iframe src="https://www.youtube.com/embed/zL9gzpfX6_8" title="O que é PMOC? WebTV CREA-RJ" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+  <iframe src="https://www.youtube-nocookie.com/embed/zL9gzpfX6_8" title="O que é PMOC? WebTV CREA-RJ" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
   <figcaption>Vídeo: "O que é PMOC?", WebTV CREA-RJ (YouTube).</figcaption>
 </figure>
 
@@ -57,16 +57,18 @@ set
 <p>É a norma mais importante e a que dá o nome popular ao tema. A <strong>Lei Federal nº 13.589, de 4 de janeiro de 2018</strong>, tornou obrigatória a manutenção de instalações e equipamentos de sistemas de climatização em edificações de uso público e coletivo.</p>
 
 <blockquote>
-<p>A Lei nº 13.589/2018 determina, em síntese, que todos os edifícios de uso público e coletivo que possuam ambientes de ar interior climatizado artificialmente devem dispor de um Plano de Manutenção, Operação e Controle (PMOC) dos respectivos sistemas, executado por responsável técnico habilitado. (Paráfrase do texto legal; consulte a íntegra publicada no Diário Oficial da União.) <a href="http://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/L13589.htm" target="_blank" rel="noopener" style="font-size:.8rem;color:#00C597;text-decoration:none;white-space:nowrap">Ver fonte ↗</a></p>
+<p>A Lei nº 13.589/2018 determina, em síntese, que edifícios de uso público e coletivo com ambientes climatizados artificialmente devem manter um PMOC dos respectivos sistemas. A habilitação profissional e a responsabilidade técnica devem observar a Portaria GM/MS nº 3.523/1998, as regras dos conselhos profissionais e as exigências locais aplicáveis. (Paráfrase; consulte a íntegra publicada no Diário Oficial da União.) <a href="https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13589.htm" target="_blank" rel="noopener" style="font-size:.8rem;color:#00C597;text-decoration:none;white-space:nowrap">Ver fonte ↗</a></p>
 </blockquote>
 
 <h3>Portaria GM/MS nº 3.523/1998</h3>
 
-<p>Anterior à lei, a <strong>Portaria do Ministério da Saúde nº 3.523/1998</strong> foi a primeira norma a exigir o PMOC para sistemas de climatização com capacidade acima de determinado porte, estabelecendo medidas básicas de limpeza, manutenção e controle da qualidade do ar para prevenir riscos à saúde dos ocupantes. <a href="https://bvsms.saude.gov.br/bvs/saudelegis/gm/1998/prt3523_28_08_1998.html" target="_blank" rel="noopener" style="font-size:.8rem;color:#00C597;text-decoration:none;white-space:nowrap">Ver fonte ↗</a></p>
+<p>Anterior à lei, a <strong>Portaria do Ministério da Saúde nº 3.523/1998</strong> estabeleceu medidas básicas de limpeza, manutenção e controle da qualidade do ar para prevenir riscos à saúde dos ocupantes. Para sistemas acima de 5 TR (15.000 kcal/h ou 60.000 BTU/h), o art. 6º exige responsável técnico habilitado, PMOC disponível no imóvel e registro contínuo da execução. <a href="https://bvsms.saude.gov.br/bvs/saudelegis/gm/1998/prt3523_28_08_1998.html" target="_blank" rel="noopener" style="font-size:.8rem;color:#00C597;text-decoration:none;white-space:nowrap">Ver fonte ↗</a></p>
 
-<h3>Resolução ANVISA RE nº 9/2003</h3>
+<p><strong>Atenção à diferença:</strong> 60.000 BTU/h é o marco expresso pela Portaria para a exigência de responsável técnico habilitado. Não deve ser usado como uma dispensa geral do PMOC, porque a Lei nº 13.589/2018 alcança os edifícios de uso público e coletivo com ambientes climatizados artificialmente. Regras profissionais, sanitárias e locais também precisam ser verificadas no caso concreto.</p>
 
-<p>A <strong>Resolução RE nº 9, de 16 de janeiro de 2003, da ANVISA</strong>, complementa o arcabouço definindo <strong>padrões referenciais de qualidade do ar interior</strong> em ambientes climatizados artificialmente de uso público e coletivo, como limites para contaminação microbiológica e recomendações de renovação de ar. É a referência técnica para os parâmetros que o PMOC deve monitorar. <a href="https://bvsms.saude.gov.br/bvs/saudelegis/anvisa/2003/res0009_16_01_2003.html" target="_blank" rel="noopener" style="font-size:.8rem;color:#00C597;text-decoration:none;white-space:nowrap">Ver fonte ↗</a></p>
+<h3>RDC ANVISA nº 886/2024 e ABNT NBR 17037:2023</h3>
+
+<p>A <strong>Resolução RE nº 9/2003 foi revogada pela RDC ANVISA nº 886/2024</strong>. Para a avaliação da qualidade do ar interior em ambientes não residenciais climatizados artificialmente, a orientação atual da Anvisa aponta a <strong>ABNT NBR 17037:2023</strong> como referência técnica, sem afastar regulamentos específicos aplicáveis a ambientes como serviços de saúde e processos produtivos. Consulte a norma vigente e a vigilância sanitária local antes de fixar parâmetros ou frequências. <a href="https://bibliotecadigital.anvisa.gov.br/jspui/bitstream/anvisa/17752/1/Guia%20n%C2%BA%2073%2C%20de%2003%20de%20abril%20de%202025%20-%20vers%C3%A3o%202.pdf" target="_blank" rel="noopener" style="font-size:.8rem;color:#00C597;text-decoration:none;white-space:nowrap">Ver orientação atual da Anvisa ↗</a></p>
 
 <p>Vale lembrar que, além dessas normas federais, podem existir <strong>regulamentações estaduais e municipais</strong> e exigências específicas da vigilância sanitária local. Sempre verifique as regras da sua região.</p>
 
@@ -162,7 +164,7 @@ set
     <tr><td>Verificação de ruídos, vibração e fixação</td><td>Trimestral</td><td>Identificar desgastes mecânicos</td></tr>
     <tr><td>Medição de parâmetros elétricos e de pressão</td><td>Semestral</td><td>Detectar sobrecarga e vazamento de gás</td></tr>
     <tr><td>Limpeza de dutos e tomadas de ar externo</td><td>Anual</td><td>Renovação de ar e controle de contaminantes</td></tr>
-    <tr><td>Análise da qualidade do ar interior (QAI)</td><td>Semestral / Anual</td><td>Verificar conformidade com a RE nº 9/2003</td></tr>
+    <tr><td>Avaliação da qualidade do ar interior (QAI)</td><td>Conforme plano, risco e norma aplicável</td><td>Avaliar a QAI segundo a ABNT NBR 17037:2023 e regras específicas do ambiente</td></tr>
   </tbody>
 </table>
 
@@ -187,7 +189,7 @@ set
 
 <h3>Rotina semestral: medições e parâmetros</h3>
 
-<p>De seis em seis meses o foco passa para os <strong>parâmetros mensuráveis</strong>: medições elétricas (tensão, corrente, consumo), verificação de pressões e carga de gás (indício precoce de vazamento), avaliação do desempenho térmico e, conforme o plano definido pelo RT, a <strong>análise da qualidade do ar interior (QAI)</strong> em referência à RE nº 9/2003. É a visita que detecta problemas antes que virem parada de equipamento.</p>
+<p>De seis em seis meses o foco passa para os <strong>parâmetros mensuráveis</strong>: medições elétricas (tensão, corrente, consumo), verificação de pressões e carga de gás (indício precoce de vazamento), avaliação do desempenho térmico e, quando prevista pelo plano, a <strong>avaliação da qualidade do ar interior (QAI)</strong> segundo a ABNT NBR 17037:2023 e as regras específicas aplicáveis. É a visita que detecta problemas antes que virem parada de equipamento.</p>
 
 <h3>Rotina anual: revisão geral e limpeza de dutos</h3>
 
@@ -367,7 +369,7 @@ set
 
 <ul>
   <li><strong>Vigilância sanitária municipal e/ou estadual:</strong> é o órgão típico para a fiscalização da qualidade do ar interior e da existência e cumprimento do PMOC, com base nas normas de saúde aplicáveis.</li>
-  <li><strong>ANVISA:</strong> atua como referência normativa nacional (é dela a RE nº 9/2003, que define os padrões de qualidade do ar interior). A fiscalização de campo em estabelecimentos costuma ser executada pelas vigilâncias locais, dentro da estrutura do sistema de vigilância sanitária.</li>
+  <li><strong>ANVISA:</strong> coordena a referência sanitária nacional e orienta a aplicação da RDC nº 886/2024 e das normas técnicas vigentes sobre qualidade do ar interior. A fiscalização de campo em estabelecimentos costuma ser executada pelas vigilâncias locais, dentro da estrutura do sistema de vigilância sanitária.</li>
   <li><strong>Corpo de Bombeiros:</strong> em determinados contextos e legislações estaduais, aspectos de instalações prediais podem ser objeto de verificação, sempre conforme as exigências locais.</li>
   <li><strong>Fiscalização do trabalho / saúde ocupacional:</strong> quando há trabalhadores expostos, a qualidade do ambiente de trabalho pode ser observada sob a ótica de saúde e segurança ocupacional, em paralelo à questão sanitária.</li>
 </ul>
@@ -442,7 +444,10 @@ set
 <h2>Perguntas frequentes (FAQ)</h2>
 
 <h3>O PMOC é realmente obrigatório?</h3>
-<p>Sim. Para edifícios de uso público e coletivo com ambientes climatizados artificialmente, o PMOC é obrigatório por força da Lei nº 13.589/2018 e das normas complementares do Ministério da Saúde e da ANVISA.</p>
+<p>Sim. A Lei nº 13.589/2018 alcança edifícios de uso público e coletivo com ambientes climatizados artificialmente. Ambientes de uso restrito, como processos produtivos, laboratoriais e hospitalares, também devem observar seus regulamentos específicos.</p>
+
+<h3>Abaixo de 60.000 BTU/h não precisa de PMOC?</h3>
+<p>Não use esse limite como dispensa geral. A Lei nº 13.589/2018 trata da existência do PMOC em edifícios de uso público e coletivo climatizados. O marco acima de 5 TR (60.000 BTU/h) aparece no art. 6º da Portaria GM/MS nº 3.523/1998 para exigir responsável técnico habilitado. Verifique também as regras do conselho profissional, da vigilância sanitária e da localidade.</p>
 
 <h3>Quem pode assinar um PMOC?</h3>
 <p>Somente um Responsável Técnico habilitado, com registro no conselho de classe correspondente à sua formação (engenheiro, técnico ou tecnólogo da área), emitindo a respectiva anotação de responsabilidade técnica (ART, RRT ou TRT).</p>
@@ -460,7 +465,7 @@ set
 <p>O documento PMOC disponível no local, a identificação do Responsável Técnico e, principalmente, os <strong>registros que comprovem a execução</strong> das manutenções previstas. Ter o plano sem comprovar que ele foi cumprido não basta.</p>
 
 <h3>Quem fiscaliza o PMOC?</h3>
-<p>Em geral, a vigilância sanitária, que atua em nível municipal e/ou estadual conforme a localidade, com a ANVISA como referência normativa nacional (RE nº 9/2003). Dependendo da legislação local, outros órgãos podem observar aspectos relacionados (como saúde ocupacional, quando há trabalhadores expostos). As competências exatas variam por município e estado, então sempre vale confirmar as regras da sua região.</p>
+<p>Em geral, a vigilância sanitária, que atua em nível municipal e/ou estadual conforme a localidade, com a ANVISA como referência sanitária nacional e a ABNT NBR 17037:2023 como referência técnica atual para QAI. Dependendo da legislação local, outros órgãos podem observar aspectos relacionados, como saúde ocupacional quando há trabalhadores expostos. As competências exatas variam por município e estado, então sempre vale confirmar as regras da sua região.</p>
 
 <h3>Qual o valor da multa por não ter PMOC?</h3>
 <p>Não existe um valor único e nacional fixado em lei federal. As penalidades (que vão de advertência a multa e interdição) e seus valores são definidos pela legislação sanitária aplicável (estadual ou municipal) e variam conforme a gravidade, o porte do estabelecimento e a reincidência. Desconfie de fontes que cravam um número "válido em todo o Brasil".</p>
@@ -495,19 +500,22 @@ set
 <ol>
   <li><strong>Lei nº 13.589, de 4 de janeiro de 2018</strong>, dispõe sobre a manutenção de instalações e equipamentos de sistemas de climatização de ambientes. <a href="http://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/L13589.htm" target="_blank" rel="noopener">planalto.gov.br ↗</a></li>
   <li><strong>Portaria GM/MS nº 3.523, de 28 de agosto de 1998</strong> (Ministério da Saúde), medidas de controle da qualidade do ar em ambientes climatizados. <a href="https://bvsms.saude.gov.br/bvs/saudelegis/gm/1998/prt3523_28_08_1998.html" target="_blank" rel="noopener">bvsms.saude.gov.br ↗</a></li>
-  <li><strong>Resolução RE nº 9, de 16 de janeiro de 2003</strong> (ANVISA), padrões referenciais de qualidade do ar interior em ambientes climatizados artificialmente de uso público e coletivo. <a href="https://bvsms.saude.gov.br/bvs/saudelegis/anvisa/2003/res0009_16_01_2003.html" target="_blank" rel="noopener">bvsms.saude.gov.br ↗</a></li>
-  <li><strong>ANVISA</strong>, Agência Nacional de Vigilância Sanitária (referência normativa nacional sobre qualidade do ar interior). <a href="https://www.gov.br/anvisa/pt-br" target="_blank" rel="noopener">gov.br/anvisa ↗</a></li>
+  <li><strong>RDC ANVISA nº 886, de 10 de julho de 2024</strong>, revoga a RE nº 9/2003 no processo de revisão e consolidação de atos normativos da Agência.</li>
+  <li><strong>Guia Anvisa nº 73/2025, versão 2</strong>, orienta sobre o controle da qualidade do ar em ambientes climatizados e registra a ABNT NBR 17037:2023 como referência técnica atual. <a href="https://bibliotecadigital.anvisa.gov.br/jspui/bitstream/anvisa/17752/1/Guia%20n%C2%BA%2073%2C%20de%2003%20de%20abril%20de%202025%20-%20vers%C3%A3o%202.pdf" target="_blank" rel="noopener">bibliotecadigital.anvisa.gov.br ↗</a></li>
 </ol>
 
 <p style="color:#9ca3af;font-size:.85rem">As periodicidades de manutenção citadas são referências usuais de mercado; o cronograma definitivo deve ser definido pelo Responsável Técnico conforme o porte e a criticidade da instalação e as recomendações dos fabricantes.</p>
 
-<p style="color:#9ca3af;font-size:.85rem">Conteúdo produzido pela equipe Dominex. O software Dominex é desenvolvido pela Auctus Tecnologia.</p>
+<p style="color:#9ca3af;font-size:.85rem">Conteúdo produzido pela equipe Dominex. Revisado em 12 de novembro de 2026 com base nas fontes oficiais citadas; requisitos profissionais e locais devem ser confirmados no caso concreto.</p>
 
 <h2>Conclusão</h2>
 
 <p>O PMOC é, ao mesmo tempo, uma obrigação legal, uma ferramenta de saúde pública e uma boa prática de engenharia. Entender como ele funciona, do inventário à comprovação, é o que separa uma empresa de refrigeração que entrega valor de uma que só "vende manutenção".</p>
 
-<p>Se a sua empresa quer profissionalizar a entrega de PMOC, ganhar escala e nunca mais perder uma comprovação numa fiscalização, conheça o <a href="/sistema-pmoc">sistema de PMOC da Dominex</a> e o nosso <a href="/sistema-para-refrigeracao">sistema completo para empresas de refrigeração</a>. Comece o teste grátis de 14 dias, sem cartão, e veja como transformar a obrigação do PMOC em diferencial competitivo.</p>
+<p>Se a sua empresa quer profissionalizar a entrega de PMOC, ganhar escala e nunca mais perder uma comprovação numa fiscalização, conheça o <a href="/sistema-pmoc">sistema de PMOC da Dominex</a> e o nosso <a href="/sistema-para-refrigeracao">sistema completo para empresas de refrigeração</a>. Comece o teste grátis de 7 dias, sem cartão, e veja como transformar a obrigação do PMOC em diferencial competitivo.</p>
 $html$,
+    excerpt = 'Entenda como funciona o PMOC, quem é obrigado, o que muda acima de 60.000 BTU/h, a base legal vigente, responsabilidades e como organizar a execução.',
+    meta_description = 'Entenda como funciona o PMOC, quem é obrigado, o que muda acima de 60.000 BTU/h, a base legal vigente, responsabilidades e como organizar a execução.',
     updated_at = now()
-where slug = 'como-funciona-o-pmoc';
+where locale = 'pt-br'
+  and slug = 'como-funciona-o-pmoc';

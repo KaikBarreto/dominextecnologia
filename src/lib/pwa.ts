@@ -51,7 +51,10 @@ function hasOpenModal(): boolean {
 type FetchLike = (
   input: RequestInfo | URL,
   init?: RequestInit,
-) => Promise<Pick<Response, "ok" | "headers">>;
+) => Promise<
+  Pick<Response, "ok" | "headers"> &
+  Partial<Pick<Response, "redirected" | "url">>
+>;
 
 /**
  * Confirma que o host consegue entregar HTML novo antes de abandonar a sessão
@@ -79,7 +82,18 @@ export async function canReachAppShell(
       signal: controller.signal,
     });
     const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
-    return response.ok && contentType.includes("text/html");
+    const responseChangedOrigin = response.url
+      ? new URL(response.url).origin !== probeUrl.origin
+      : false;
+
+    // Um 301 para outra origem pode terminar em HTML 200 e parecer saudável
+    // para fetch(). No Safari, porém, reutilizar essa resposta numa navegação
+    // controlada pelo SW gera "Response served by service worker has
+    // redirections". Só recarrega com HTML direto da MESMA origem.
+    return response.ok
+      && !response.redirected
+      && !responseChangedOrigin
+      && contentType.includes("text/html");
   } catch {
     return false;
   } finally {
@@ -159,6 +173,9 @@ export async function registerServiceWorker() {
   try {
     const registration = await navigator.serviceWorker.register("/sw.js", {
       scope: "/",
+      // push-sw.js entra por importScripts; bypass do HTTP cache garante que a
+      // checagem de release compare também a versão mais recente desse script.
+      updateViaCache: "none",
     });
 
     // Best-effort: a cada hora, peça ao browser pra checar se há SW novo.
@@ -334,8 +351,8 @@ export function setupChunkErrorRecovery() {
 //
 // Aqui adicionamos um classificador (isStaleBundleError) que cobre o
 // CHUNK_ERROR_RE existente MAIS essas assinaturas de render, e um auto-heal
-// que dispara clearCachesAndReload() (limpeza FORTE: SW + CacheStorage + HTTP
-// cache do HTML). Como a limpeza é pesada e desregistra o SW, o teto é de 1
+// que dispara clearCachesAndReload() (limpeza FORTE do CacheStorage + nova
+// verificação do SW). Como a limpeza é pesada, o teto é de 1
 // tentativa automática por sessão: se o deploy estiver GENUINAMENTE quebrado
 // (não é cliente velho), um segundo auto-heal só viraria loop de limpar+
 // recarregar pra TODO usuário. Após o teto, deixamos a tela de erro aparecer
@@ -358,7 +375,7 @@ export function isStaleBundleError(message: string): boolean {
 
 // Trava anti-loop dedicada ao auto-heal (chaves próprias, separadas do
 // chunk-reload de fetch). Máximo 1 tentativa automática por sessão porque o
-// auto-heal é PESADO (clearCachesAndReload desregistra o SW): num deploy
+// auto-heal é PESADO (clearCachesAndReload limpa todo o CacheStorage): num deploy
 // genuinamente quebrado, um segundo auto-heal viraria loop infinito de
 // limpar+recarregar. Reusa o mesmo intervalo mínimo do chunk-reload pra não
 // disparar dois em cima.
@@ -419,7 +436,7 @@ export function autoHealStaleBundleIfNeeded(errorMessage: string): boolean {
 }
 
 export async function clearCachesAndReload() {
-  // Não apaga a proteção offline nem desregistra o SW antes de saber que o host
+  // Não apaga a proteção offline antes de saber que o host
   // está disponível. Era possível transformar uma oscilação transitória da CDN
   // em ERR_FAILED justamente ao tentar recuperar um bundle antigo.
   if (!(await canReachAppShell())) {
@@ -437,14 +454,17 @@ export async function clearCachesAndReload() {
       await Promise.all(keys.map((key) => caches.delete(key)));
     }
 
-    // Unregister service workers
+    // Preserva o registro do SW: a PushSubscription pertence a ele. Um
+    // unregister silenciosamente interromperia push até o próximo boot e ainda
+    // deixaria um endpoint órfão no servidor. update() busca o SW atual sem
+    // sacrificar a assinatura; skipWaiting/clientsClaim cuidam da ativação.
     if ("serviceWorker" in navigator) {
       const registrations = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(registrations.map((r) => r.unregister()));
+      await Promise.all(registrations.map((registration) => registration.update().catch(() => undefined)));
     }
 
     // Confirma de novo após a limpeza: a rede pode cair entre a sondagem inicial
-    // e o unregister. Mesmo sem caches, manter o JS atual em memória é melhor do
+    // e o update. Mesmo sem caches, manter o JS atual em memória é melhor do
     // que navegar deliberadamente para ERR_FAILED.
     if (!(await canReachAppShell())) {
       reloadingForUpdate = false;
@@ -454,7 +474,7 @@ export async function clearCachesAndReload() {
       return;
     }
 
-    // Reload limpo: sem SW/CacheStorage e com o HTML confirmado pela rede.
+    // Reload limpo: sem CacheStorage antigo, com SW preservado e HTML confirmado.
     window.location.reload();
   } catch (error) {
     reloadingForUpdate = false;

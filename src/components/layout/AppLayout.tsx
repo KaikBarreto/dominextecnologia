@@ -16,6 +16,7 @@ import { localizeAppPath, resolveAppSlug } from '@/lib/i18n/appRouteSlugs';
 import { useNavigationPreference } from '@/hooks/useNavigationPreference';
 import { useNavThemePreference } from '@/hooks/useNavThemePreference';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
+import { useLogoInk } from '@/hooks/useLogoInk';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AppViewport } from './AppViewport';
@@ -29,6 +30,7 @@ import { MobileBottomNav } from './MobileBottomNav';
 import { SystemFooter } from './SystemFooter';
 import { VersionUpdateNotification } from '@/components/pwa/VersionUpdateNotification';
 import { NotificationsBell } from '@/components/notifications/NotificationsBell';
+import { PushActivationInvite } from '@/components/notifications/PushActivationInvite';
 import { AdminNotificationBell } from '@/components/admin/AdminNotificationBell';
 import { AppLanguageSwitcher } from '@/components/i18n/AppLanguageSwitcher';
 import { HeaderClock } from '@/components/layout/HeaderClock';
@@ -38,6 +40,7 @@ import { SubscriptionRenewalBanner } from '@/components/billing/SubscriptionRene
 import { TasksDrawer } from '@/components/tasks/TasksDrawer';
 import { DailyTasksPopup } from '@/components/tasks/DailyTasksPopup';
 import { DomiflixLearningReminder } from '@/components/domiflix/DomiflixLearningReminder';
+import { OVERLAY_PRIORITY, useOverlaySlot } from '@/contexts/OverlayCoordinatorContext';
 import {
   Tooltip,
   TooltipContent,
@@ -46,10 +49,23 @@ import {
 } from '@/components/ui/tooltip';
 import logoDark from '@/assets/logo-dark.png';
 import logoGreen from '@/assets/logo-horizontal-verde.png';
+import { getContrastingLogoSurfaceTone } from '@/utils/logoInk';
+import { PageRecoveryBoundary } from '@/components/errors/PageRecoveryBoundary';
 
 const DomiflixIntroGate = lazy(() => import('@/components/domiflix/DomiflixIntroGate').then((module) => ({ default: module.DomiflixIntroGate })));
 
 const TABLET_MAX_WIDTH = 1280; // tablet vai até 1279px; ≥1280 é desktop.
+
+function DomiflixIntroGateFallback() {
+  const isActiveOverlay = useOverlaySlot(true, {
+    id: 'domiflix-intro-loading',
+    priority: OVERLAY_PRIORITY.critical,
+  });
+
+  return isActiveOverlay
+    ? <div className="fixed inset-0 z-[10000] bg-[#111]" aria-label="Carregando tutorial inicial" />
+    : null;
+}
 
 /**
  * `AppLayout` — shell de navegação principal do Dominex.
@@ -125,9 +141,10 @@ export function AppLayout() {
 
   return (
     <>
-      {!isAdminUser && user && <Suspense fallback={<div className="fixed inset-0 z-[10000] bg-[#111]" />}><DomiflixIntroGate /></Suspense>}
+      {!isAdminUser && user && <Suspense fallback={<DomiflixIntroGateFallback />}><DomiflixIntroGate /></Suspense>}
       {!isAdminUser && user && <PlatformNpsSurvey />}
       <VersionUpdateNotification />
+      {!isAdminUser && user && <PushActivationInvite />}
       {/* Popup diário de tarefas (1x/dia, BRT). Só para usuários não-admin. */}
       {!isAdminUser && user && (
         <DailyTasksPopup
@@ -231,6 +248,7 @@ function ResponsiveAppShell({ isCompactViewport, useTopbar, isAdminUser, ownerKe
   isCompactViewport: boolean; useTopbar: boolean; isAdminUser: boolean; ownerKey: string;
 }) {
   const location = useLocation();
+  const { locale } = useAppLocaleContext();
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => { setScrolled(false); }, [location.pathname, isCompactViewport]);
 
@@ -241,6 +259,9 @@ function ResponsiveAppShell({ isCompactViewport, useTopbar, isAdminUser, ownerKe
     window.location.reload();
   };
   const mode = isCompactViewport ? 'compact' : useTopbar ? 'topbar' : 'sidebar';
+  const homePath = isAdminUser
+    ? '/admin/empresas'
+    : localizeAppPath('/dashboard', locale);
   return <AppViewport
     mode={mode}
     sidebar={<Sidebar />}
@@ -254,7 +275,14 @@ function ResponsiveAppShell({ isCompactViewport, useTopbar, isAdminUser, ownerKe
     onScroll={event => setScrolled(event.currentTarget.scrollTop > 48)}
     scrollResetKey={`${ownerKey}:${location.pathname}`}
   >
-    <AppRouteTransition ownerKey={ownerKey}><Outlet /></AppRouteTransition>
+    <AppRouteTransition ownerKey={ownerKey}>
+      <PageRecoveryBoundary
+        homePath={homePath}
+        resetKey={`${ownerKey}:${location.pathname}`}
+      >
+        <Outlet />
+      </PageRecoveryBoundary>
+    </AppRouteTransition>
   </AppViewport>;
 }
 
@@ -262,7 +290,11 @@ function MobileTabletHeader({ isAdminUser, scrolled }: { isAdminUser: boolean; s
   const navigate = useNavigate();
   const location = useLocation();
   const { user, signOut } = useAuth();
-  const { logoUrl, isLoading: logoLoading } = useWhiteLabel();
+  const { logoUrl, enabled: whiteLabelEnabled, isLoading: logoLoading } = useWhiteLabel();
+  const logoInk = useLogoInk(!isAdminUser && whiteLabelEnabled ? logoUrl : null);
+  const logoSurfaceTone = !isAdminUser && whiteLabelEnabled && logoUrl
+    ? getContrastingLogoSurfaceTone(logoInk) ?? undefined
+    : undefined;
   const { locale } = useAppLocaleContext();
   const accountT = MESSAGES[locale].app.shell.account;
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -289,7 +321,8 @@ function MobileTabletHeader({ isAdminUser, scrolled }: { isAdminUser: boolean; s
   // (lg breakpoint do tailwind = 1024px, mesmo do MOBILE_BREAKPOINT.)
   return (
     <header
-      className="sticky top-0 z-10 flex items-center justify-between border-b bg-background px-4 py-3"
+      data-tenant-logo-surface={logoSurfaceTone}
+      className="tenant-logo-surface sticky top-0 z-10 flex items-center justify-between border-b bg-background px-4 py-3 transition-colors duration-300"
       style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
     >
       {/* Lado esquerdo: back arrow no mobile, Menu hamburger no tablet+ */}

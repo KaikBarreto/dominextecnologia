@@ -5,7 +5,8 @@
 // token DAQUELE tenant lido do Vault (§9.2/9.3). Fail-closed: token ausente/errado → 401.
 //
 // Resolução multi-tenant (§9.3): a company é identificada por
-//   payment.externalReference (= company_id, gravado no create-charge)  → O(1)
+//   payment.externalReference (= company_id nas cobranças históricas; =
+//   tenant_charges.id nas parcelas avulsas idempotentes)                 → O(1)
 // com fallback por tenant_charges.asaas_payment_id (UNIQUE) e, pra parcela 2+ de
 // venda parcelada, por tenant_charges.asaas_installment_id. O token VALIDA (prova
 // que o POST veio mesmo da conta daquele tenant), não roteia.
@@ -85,7 +86,12 @@ function serviceClient() {
   );
 }
 
-/** Resolve a company (§9.3): externalReference → fallback tenant_charges.asaas_payment_id. */
+/**
+ * Resolve a company (§9.3): externalReference → fallback por ids do gateway.
+ * Cobrança unitária histórica usa company_id como externalReference; parcela
+ * avulsa em lote usa tenant_charges.id, pois essa referência determinística é
+ * o que permite recuperar um POST sem resposta sem emitir em duplicidade.
+ */
 async function resolveCompanyId(
   supabase: any,
   payment: any,
@@ -106,6 +112,12 @@ async function resolveCompanyId(
       .eq("id", ext)
       .maybeSingle();
     if (correlated?.company_id) return correlated.company_id;
+    const { data: reservedCharge } = await supabase
+      .from("tenant_charges")
+      .select("company_id")
+      .eq("id", ext)
+      .maybeSingle();
+    if (reservedCharge?.company_id) return reservedCharge.company_id;
   }
   if (payment?.id) {
     const { data } = await supabase
@@ -1082,6 +1094,80 @@ function warnOnUnsettledCharge(
 }
 
 /**
+ * Fecha a janela entre o POST /payments do lote e o UPDATE da reserva local.
+ *
+ * O webhook pode chegar antes da resposta HTTP do próprio POST. Nesse caso a
+ * company já é resolvida por externalReference=tenant_charges.id, mas as RPCs
+ * de baixa procuram asaas_payment_id. Vinculamos o id do gateway à reserva
+ * ANTES de processar qualquer PAYMENT_*; assim o evento nunca vira "processed"
+ * sem achar a cobrança que o originou.
+ *
+ * Compare-and-set: só preenche uma reserva ainda sem id. Se outro processo já
+ * vinculou o mesmo payment, é no-op; id divergente é fatal e pede reentrega em
+ * vez de mover dinheiro para a cobrança errada.
+ */
+async function ensureBatchChargeGatewayLink(
+  supabase: any,
+  payment: any,
+  companyId: string,
+): Promise<void> {
+  const externalReference = typeof payment?.externalReference === "string"
+    ? payment.externalReference
+    : null;
+  const paymentId = typeof payment?.id === "string" ? payment.id : null;
+  if (!externalReference || !paymentId) return;
+
+  const { data: reserved, error: readError } = await supabase
+    .from("tenant_charges")
+    .select("id, asaas_payment_id")
+    .eq("id", externalReference)
+    .eq("company_id", companyId)
+    .not("batch_id", "is", null)
+    .maybeSingle();
+  if (readError) throw new Error(readError.message);
+  if (!reserved) return;
+  if (reserved.asaas_payment_id === paymentId) return;
+  if (reserved.asaas_payment_id) {
+    throw new Error(
+      "A reserva da parcela já está vinculada a outra cobrança na Asaas.",
+    );
+  }
+
+  const { data: linked, error: linkError } = await supabase
+    .from("tenant_charges")
+    .update({
+      asaas_payment_id: paymentId,
+      net_value: payment?.netValue ?? null,
+      status: payment?.status ?? "PENDING",
+      invoice_url: payment?.invoiceUrl ?? null,
+      boleto_url: payment?.bankSlipUrl ?? null,
+      gateway_creation_claim_token: null,
+      gateway_creation_claimed_at: null,
+    })
+    .eq("id", reserved.id)
+    .eq("company_id", companyId)
+    .is("asaas_payment_id", null)
+    .select("asaas_payment_id")
+    .maybeSingle();
+  if (linkError) throw new Error(linkError.message);
+  if (linked?.asaas_payment_id === paymentId) return;
+
+  // Outro processo pode ter vencido o compare-and-set entre o SELECT e UPDATE.
+  const { data: concurrent, error: concurrentError } = await supabase
+    .from("tenant_charges")
+    .select("asaas_payment_id")
+    .eq("id", reserved.id)
+    .eq("company_id", companyId)
+    .maybeSingle();
+  if (concurrentError) throw new Error(concurrentError.message);
+  if (concurrent?.asaas_payment_id !== paymentId) {
+    throw new Error(
+      "Não foi possível vincular a cobrança da Asaas à reserva da parcela.",
+    );
+  }
+}
+
+/**
  * Processa o evento. Retorna true se concluiu (marcou 'processed'), false se falhou
  * (marcou 'error'). O caller usa o boolean pra decidir ACK 200 vs 500 (re-entrega).
  */
@@ -1094,6 +1180,10 @@ async function processEvent(
 ): Promise<boolean> {
   try {
     const status = String(payment?.status || "").toUpperCase();
+
+    // Precisa vir antes de qualquer RPC/update por payment.id. Um PAYMENT_*
+    // pode chegar durante o POST da edge de criação, antes de hydrateCharge.
+    await ensureBatchChargeGatewayLink(supabase, payment, companyId);
 
     // Cobrança GERADA por assinatura (payment.subscription presente) que ainda não
     // existe em tenant_charges: materializa a linha + recebível ANTES da baixa, pra

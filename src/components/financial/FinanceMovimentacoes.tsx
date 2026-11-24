@@ -9,6 +9,7 @@ import { ImportSpreadsheetDialog } from './ImportSpreadsheetDialog';
 import { BankLogo } from './BankInstitutionCombobox';
 import { ReconciliationTab } from '@/components/reconciliation/ReconciliationTab';
 import { useFinancialAccounts, type FinancialAccount } from '@/hooks/useFinancialAccounts';
+import { useCanManageFinanceTransactions } from '@/hooks/useCanManageFinanceTransactions';
 import type { ReconciliationTabState } from '@/lib/reconciliation/types';
 import { useRecalculateBills } from '@/hooks/useRecalculateBills';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
@@ -151,6 +152,7 @@ export function FinanceMovimentacoes({
   transactions, allTransactions, isLoading, onNew, onEdit, onDelete,
   initialAccountId, onConsumeInitialAccount, highlightTransactionId,
 }: FinanceMovimentacoesProps) {
+  const canManageFinanceTransactions = useCanManageFinanceTransactions();
   const isMobile = useIsMobile();
   const { locale, currency } = useAppLocaleContext();
   const fin = MESSAGES[locale].app.finance;
@@ -303,6 +305,7 @@ export function FinanceMovimentacoes({
   };
 
   const openReconciliation = () => {
+    if (!canManageFinanceTransactions) return;
     if (activeTab !== RECONCILE_TAB) setReconciliationReturnTab(activeTab);
     setActiveTab(RECONCILE_TAB);
     if (isMobile) setMobileDetailOpen(true);
@@ -326,7 +329,7 @@ export function FinanceMovimentacoes({
   // pela diferença até o saldo desejado. Só faz sentido pra conta/caixa
   // (cartão não tem saldo de conta) — o UI já condiciona a exibição do item.
   const handleAdjustBalance = (a: FinancialAccount) => {
-    if (!canManageBankAccounts || a.type === 'cartao') return;
+    if (!canManageBankAccounts || !canManageFinanceTransactions || a.type === 'cartao') return;
     setAdjustingAccount(a);
   };
 
@@ -365,7 +368,7 @@ export function FinanceMovimentacoes({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" side="bottom" sideOffset={4} onClick={(e) => e.stopPropagation()}>
-          {!isCard && (
+          {!isCard && canManageFinanceTransactions && (
             <DropdownMenuItem
               className="gap-2 cursor-pointer"
               disabled={cashBankAccounts.length < 2}
@@ -382,7 +385,7 @@ export function FinanceMovimentacoes({
             <Pencil className="h-4 w-4" />
             {fin.movements.accountMenu.edit}
           </DropdownMenuItem>
-          {!isCard && (
+          {!isCard && canManageFinanceTransactions && (
             <DropdownMenuItem
               className="gap-2 cursor-pointer focus:bg-success focus:text-white hover:bg-success hover:text-white data-[highlighted]:bg-success data-[highlighted]:text-white"
               onClick={() => handleAdjustBalance(a)}
@@ -579,7 +582,7 @@ export function FinanceMovimentacoes({
   // A importação pertence ao mesmo grupo operacional de Exportar e Nova
   // movimentação. O painel recebe este botão como ação contextual; assim ele
   // não fica órfão no cabeçalho geral da página.
-  const importSpreadsheetButton = (
+  const importSpreadsheetButton = canManageFinanceTransactions ? (
     <Button
       variant="outline"
       size="sm"
@@ -590,7 +593,7 @@ export function FinanceMovimentacoes({
       <Upload className="h-4 w-4" />
       {!isMobile && fin.spreadsheetImport.headerButton}
     </Button>
-  );
+  ) : undefined;
 
   const selectNavigatorItem = (value: string) => {
     setActiveTab(value);
@@ -815,7 +818,7 @@ export function FinanceMovimentacoes({
         <h2 className={cn('font-bold', isMobile ? 'text-base' : 'text-lg')}>
           {isMobile ? fin.movements.header.titleMobile : fin.movements.header.titleDesktop}
         </h2>
-        {activeTab !== RECONCILE_TAB && (
+        {canManageFinanceTransactions && activeTab !== RECONCILE_TAB && (
           <Button type="button" size="sm" className="gap-2" onClick={openReconciliation}>
             <Scale className="h-4 w-4" />
             {fin.reconciliation.entryAction}
@@ -836,7 +839,7 @@ export function FinanceMovimentacoes({
                 <ChevronLeft className="h-4 w-4" /> Contas e cartões
               </Button>
             )}
-        {activeTab === RECONCILE_TAB ? (
+        {canManageFinanceTransactions && activeTab === RECONCILE_TAB ? (
           <ReconciliationTab
             state={reconciliationState}
             onStateChange={setReconciliationState}
@@ -997,7 +1000,7 @@ export function FinanceMovimentacoes({
               type="all"
               transactions={transactions}
               isLoading={isLoading}
-              onNew={onNew}
+              onNew={canManageFinanceTransactions ? onNew : undefined}
               headerAction={importSpreadsheetButton}
               onEdit={onEdit}
               onDelete={onDelete}
@@ -1035,7 +1038,7 @@ export function FinanceMovimentacoes({
                 type="all"
                 transactions={transactions}
                 isLoading={isLoading}
-                onNew={onNew}
+                onNew={canManageFinanceTransactions ? onNew : undefined}
                 headerAction={importSpreadsheetButton}
                 onEdit={onEdit}
                 onDelete={onDelete}
@@ -1086,7 +1089,10 @@ export function FinanceMovimentacoes({
       />
 
       {/* Importação financeira por planilha (.xlsx) */}
-      <ImportSpreadsheetDialog open={importSpreadsheetOpen} onOpenChange={setImportSpreadsheetOpen} />
+      <ImportSpreadsheetDialog
+        open={canManageFinanceTransactions && importSpreadsheetOpen}
+        onOpenChange={setImportSpreadsheetOpen}
+      />
 
       {/* Drawer de ações da conta (mobile) */}
       <ResponsiveModal
@@ -1097,7 +1103,7 @@ export function FinanceMovimentacoes({
       >
         {mobileActionsAccount && (
           <div className="space-y-2">
-            {mobileActionsAccount.type !== 'cartao' && (
+            {mobileActionsAccount.type !== 'cartao' && canManageFinanceTransactions && (
               <Button
                 variant="outline"
                 className="w-full justify-start gap-2"
@@ -1116,7 +1122,7 @@ export function FinanceMovimentacoes({
               <Pencil className="h-4 w-4" />
               {fin.movements.accountMenu.edit}
             </Button>
-            {mobileActionsAccount.type !== 'cartao' && (
+            {mobileActionsAccount.type !== 'cartao' && canManageFinanceTransactions && (
               <Button
                 variant="outline"
                 className="w-full justify-start gap-2 hover:bg-success hover:text-white hover:border-success"

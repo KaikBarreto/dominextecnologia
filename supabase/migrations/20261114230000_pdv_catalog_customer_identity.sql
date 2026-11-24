@@ -1,5 +1,4 @@
 -- Identificação comercial do cliente no seletor PDV, preservando o catálogo seguro existente.
-BEGIN;
 
 CREATE OR REPLACE FUNCTION public.pdv_get_direct_sale_catalog_v3()
 RETURNS jsonb
@@ -82,5 +81,4 @@ REVOKE ALL ON FUNCTION public.pdv_get_preorder_catalog_v3() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.pdv_get_preorder_catalog_v3() TO authenticated, service_role;
 COMMENT ON FUNCTION public.pdv_get_preorder_catalog_v3() IS
   'Catálogo PDV v3: enriquece somente clientes já autorizados na v2 com identificação e contato necessários ao seletor; nunca saldo, crédito, notas ou cadastro completo.';
-
-COMMIT;
+;

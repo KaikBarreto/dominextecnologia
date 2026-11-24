@@ -1,8 +1,10 @@
 {
   "name": "Dominex",
   "short_name": "Dominex",
+  "id": "https://www.dominex.app/",
   "description": "Gestão de equipes de campo e ordens de serviço",
-  "start_url": "/dashboard",
+  "start_url": "https://www.dominex.app/dashboard",
+  "scope": "https://www.dominex.app/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#0D0D0D",

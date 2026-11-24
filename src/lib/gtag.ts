@@ -55,6 +55,25 @@ export const CONVERSION_CURRENCY = 'BRL';
  */
 export const SIGNUP_CONVERSION_VALUE = 1;
 
+export type WhatsAppAcquisitionChannel =
+  | 'direct'
+  | 'paid'
+  | 'search'
+  | 'ai'
+  | 'social'
+  | 'video'
+  | 'messaging'
+  | 'other';
+
+export type WhatsAppCtaPlacement = 'inline_cta' | 'floating_button';
+
+interface WhatsAppLeadEvent {
+  pagePath: string;
+  locale: string;
+  placement: WhatsAppCtaPlacement;
+  acquisitionChannel: WhatsAppAcquisitionChannel;
+}
+
 declare global {
   interface Window {
     dataLayer?: unknown[];
@@ -115,5 +134,40 @@ export function trackSignupConversion(): void {
     });
   } catch {
     // ignora: medição de anúncio nunca atrapalha o fluxo do usuário
+  }
+}
+
+/**
+ * Registra a intenção de lead ao abrir o WhatsApp no site público.
+ *
+ * Usa o evento recomendado `generate_lead` do GA4, mas não depende de um
+ * rótulo de conversão do Google Ads. Os parâmetros são deliberadamente
+ * limitados a dimensões públicas e categóricas: nunca enviamos telefone,
+ * mensagem, UTM bruta, campanha, termo ou conteúdo digitado pelo visitante.
+ *
+ * Se um destino GA4/GTM ainda não estiver conectado à Google tag, o clique
+ * continua funcionando normalmente e a medição passa a ser coletada assim
+ * que esse destino for configurado.
+ */
+export function trackWhatsAppLead({
+  pagePath,
+  locale,
+  placement,
+  acquisitionChannel,
+}: WhatsAppLeadEvent): void {
+  if (typeof window === 'undefined') return;
+  if (typeof window.gtag !== 'function') return;
+
+  try {
+    window.gtag('event', 'generate_lead', {
+      method: 'whatsapp',
+      lead_source: 'public_site',
+      page_path: pagePath.slice(0, 300),
+      page_locale: locale,
+      cta_placement: placement,
+      acquisition_channel: acquisitionChannel,
+    });
+  } catch {
+    // medição nunca pode impedir a abertura do canal comercial
   }
 }

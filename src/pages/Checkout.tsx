@@ -31,11 +31,14 @@ import { useWhiteLabel } from "@/hooks/useWhiteLabel";
 import { PriceAmount } from "@/components/ui/PriceAmount";
 import { hasSubscriptionActivationAdvanced } from "@/lib/subscriptionActivation";
 import { useSubscriptionUpgradeCheckout } from "@/hooks/useSubscriptionUpgradeCheckout";
+import { usePlanChange } from '@/hooks/usePlanChange';
 import {
   BASIC_BUNDLE_FEATURES,
   EXCEPTION_PLAN_CODE,
   buildCommercialModuleFeatures,
 } from '@/lib/subscriptionCatalog';
+import { resolveBusinessCore } from '@/lib/businessCore';
+import { buildCoreCommercialFeatures, corePlanFeatures, planBelongsToCore } from '@/lib/businessCoreCatalog';
 import { parseTutorialModules } from '@/lib/domiflixModuleTutorial';
 
 type PaymentMethod = "pix" | "boleto" | "card" | null;
@@ -87,12 +90,14 @@ interface SubscriptionPlan {
   price: number;
   max_users: number;
   is_active: boolean;
+  business_core?: string;
 }
 
 export default function Checkout() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
+  const initialPlanChange = usePlanChange();
   const isRenewal = searchParams.get("mode") === "renewal";
   const isUpgrade = searchParams.get("mode") === "upgrade";
   const changeRequestId = isUpgrade ? searchParams.get("change") : null;
@@ -108,7 +113,8 @@ export default function Checkout() {
   // já gravou na empresa. Fecha a brecha de pagar o preço de um plano mais barato.
   const isPlanLockedFromLink = searchParams.get("bloqueado") === "1";
   const isDark = useIsDark();
-  const { profile } = useAuth();
+  const { profile, user: authenticatedUser, isAdminOrGestor, hasRole } = useAuth();
+  const canConfigureSubscription = profile?.is_active === true && (isAdminOrGestor() || hasRole('super_admin'));
   // Mesma regra do painel de pagamento: white-label da empresa do checkout
   // (resolvido pelo company_id do usuário logado, nunca global). Ativo =
   // esconde a marca Dominex; isLoading mantém o default Dominex.
@@ -138,33 +144,38 @@ export default function Checkout() {
   const [savedCardErrorMessage, setSavedCardErrorMessage] = useState<string | null>(null);
   const activatedRef = useRef(false);
 
-  const { data: companyData, isLoading: companyLoading } = useQuery({
-    queryKey: ["checkout-company", profile?.company_id],
+  const { data: companyData, isLoading: companyLoading, isError: companyReadError, refetch: reloadCompany } = useQuery({
+    queryKey: ["checkout-company", authenticatedUser?.id, profile?.company_id],
+    enabled: !!authenticatedUser?.id && !!profile?.company_id,
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-      const { data: prof } = await supabase
+      if (!user || user.id !== authenticatedUser?.id) throw new Error("A conta mudou. Atualize a página para continuar.");
+      const { data: prof, error: profileError } = await supabase
         .from("profiles")
         .select("company_id")
         .eq("user_id", user.id)
         .single();
-      if (!prof?.company_id) throw new Error("No company");
-      const { data: company } = await supabase
+      if (profileError || !prof?.company_id || prof.company_id !== profile?.company_id) throw new Error("Não foi possível consultar sua empresa.");
+      const { data: company, error: companyError } = await supabase
         .from("companies")
         .select("*")
         .eq("id", prof.company_id)
         .single();
+      if (companyError || !company) throw new Error("Não foi possível consultar sua empresa.");
       return { ...company, _userEmail: user.email };
     },
   });
 
-  const { data: plans = [], isLoading: plansLoading } = useQuery({
-    queryKey: ["subscription-plans", "checkout"],
+  const businessCore = resolveBusinessCore(companyData?.business_core);
+  const { data: plans = [], isLoading: plansLoading, isError: plansReadError, refetch: reloadPlans } = useQuery({
+    queryKey: ["subscription-plans", "checkout", businessCore],
+    enabled: !!companyData,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("subscription_plans")
-        .select("id, code, name, description, price, max_users, is_active")
+        .select("id, code, name, description, price, max_users, is_active, business_core")
         .eq("is_active", true)
+        .or(`business_core.eq.${businessCore},code.eq.personalizado`)
         .order("price");
       if (error) throw error;
       return (data || []).map((p) => ({ ...p, price: Number(p.price) })) as SubscriptionPlan[];
@@ -186,6 +197,10 @@ export default function Checkout() {
   // o teste vence ou quando o cliente volta ao checkout sem o parâmetro do link.
   const neverPurchased = (Number(companyData?.ltv) || 0) <= 0;
   const isPlanLocked = companyData?.plan_locked === true || isPlanLockedFromLink;
+  const needsInitialActivationQuote = businessCore === 'retail' && companyData?.business_core_version === 2
+    && neverPurchased && !isPlanLocked && companyData?.custom_price == null
+    && companyData?.custom_price_permanent !== true && !companyData?.pricing_adjustment_source
+    && ['testing', 'Testando', 'trial'].includes(companyData?.subscription_status ?? '') && Number(companyData?.trial_days) > 0;
   const hasCommerciallyDefinedPlan =
     !!companyData?.subscription_plan &&
     effectiveCompanyValue > 0 &&
@@ -198,12 +213,12 @@ export default function Checkout() {
   const shouldSkipPlanSelection =
     !isRenewal &&
     !isUpgrade &&
-    (isCustomPlanCompany || isPlanLocked || isActivationWithDefinedPlan);
+    !needsInitialActivationQuote && ((isCustomPlanCompany && effectiveCompanyValue > 0) || isPlanLocked || isActivationWithDefinedPlan);
 
   // Nomes dos módulos contratados (só pra empresa personalizado — alimenta a
   // lista de recursos do resumo de pagamento).
   const { data: customModuleNames = [] } = useQuery({
-    queryKey: ["checkout-custom-modules", companyData?.id],
+    queryKey: ["checkout-custom-modules", companyData?.id, businessCore],
     enabled: !!companyData?.id && (
       isCustomPlanCompany ||
       upgradeQuote?.target_plan_code === "personalizado" ||
@@ -226,7 +241,9 @@ export default function Checkout() {
         .select("code, name")
         .in("code", codes);
       if (modsError) throw modsError;
-      return buildCommercialModuleFeatures(codes, mods ?? []);
+      return businessCore === 'services'
+        ? buildCommercialModuleFeatures(codes, mods ?? [])
+        : buildCoreCommercialFeatures(businessCore, codes, mods ?? []);
     },
   });
 
@@ -292,6 +309,42 @@ export default function Checkout() {
   const waitsForAutomaticCheckout = isRenewal ||
     (isUpgrade && !upgradeQuoteError && !!upgradeQuote) ||
     shouldSkipPlanSelection;
+  const purchasablePresetPlans = plans.filter(plan => plan.code !== 'personalizado'
+    && planBelongsToCore(plan, businessCore) && Number.isFinite(plan.price) && plan.price > 0
+    && plan.code !== 'retail_excecao' && (plan.code !== EXCEPTION_PLAN_CODE || isExceptionPlanCompany));
+  const automaticPlanCode = isUpgrade ? upgradeQuote?.target_plan_code
+    : isRenewal ? companyData?.pending_plan_code || companyData?.subscription_plan : companyData?.subscription_plan;
+  const automaticPlanUnavailable = waitsForAutomaticCheckout && !plans.some(plan => plan.code === automaticPlanCode);
+  const needsInitialCustomQuote = !isUpgrade && isCustomPlanCompany && (effectiveCompanyValue <= 0 || needsInitialActivationQuote);
+  const initialRetailPricingUnavailable = !isUpgrade && businessCore === 'retail'
+    && (effectiveCompanyValue <= 0 || needsInitialActivationQuote) && purchasablePresetPlans.length === 0;
+  if (companyReadError || plansReadError) {
+    return <div className="flex min-h-screen items-center justify-center bg-background p-6"><div className="max-w-md space-y-4" role="alert">
+      <h1 className="text-xl font-bold">Não foi possível abrir a contratação</h1>
+      <p>Atualize os dados para conferir o kit, o plano e o valor da sua empresa.</p>
+      <Button onClick={()=>{void reloadCompany();void reloadPlans();}}>Tentar novamente</Button>
+    </div></div>;
+  }
+  if (!companyLoading && !plansLoading && !upgradeQuoteLoading && companyData
+    && (needsInitialCustomQuote || initialRetailPricingUnavailable || automaticPlanUnavailable)) {
+    return <div className="flex min-h-screen items-center justify-center bg-background p-6">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>{needsInitialCustomQuote ? 'Monte seu plano para continuar' : 'Contratação indisponível por enquanto'}</CardTitle>
+          <CardDescription>{needsInitialCustomQuote
+            ? 'Escolha os módulos e confirme a cotação da sua empresa antes de seguir para o pagamento.'
+            : initialRetailPricingUnavailable
+            ? 'Os preços da Loja ainda estão sendo configurados. A contratação será liberada quando houver uma oferta com preço definido. O período de teste continua seguindo a validade da sua conta.'
+            : 'Não foi possível encontrar uma oferta disponível para seu plano. Confira sua assinatura antes de pagar.'}</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          {canConfigureSubscription && <Button onClick={() => navigate('/assinatura?configurar=1')}>Montar meu plano</Button>}
+          {!canConfigureSubscription && <p className="text-sm text-muted-foreground">Peça a um administrador da empresa para revisar a contratação.</p>}
+          <Button variant="outline" onClick={() => navigate('/dashboard')}>Voltar ao início</Button>
+        </CardContent>
+      </Card>
+    </div>;
+  }
   if (companyLoading || plansLoading || upgradeQuoteLoading || (waitsForAutomaticCheckout && (!showCheckout || !selectedPlan))) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
@@ -384,7 +437,7 @@ export default function Checkout() {
     : isCustomPlanCompany;
   const planFeatures = targetIsCustom
     ? customModuleNames
-    : (currentPlan ? (PLAN_FEATURES[currentPlan.code] ?? []) : []);
+    : (currentPlan ? (businessCore === 'services' ? (PLAN_FEATURES[currentPlan.code] ?? []) : corePlanFeatures(businessCore,currentPlan.code)) : []);
   const maxUsers = isUpgrade && upgradeQuote
     ? upgradeQuote.target_max_users
     : isRenewal && Number(companyData?.pending_max_users) > 0
@@ -670,13 +723,13 @@ export default function Checkout() {
         transition={{ duration: 0.4, ease: "easeOut" }}
       >
         <CheckoutLayout
-          checkoutMode={isUpgrade ? "upgrade" : isRenewal ? "renewal" : "sale"}
-          planName={isUpgrade
+          checkoutMode={isUpgrade && upgradeQuote?.initial_activation ? 'activation' : isUpgrade ? "upgrade" : isRenewal ? "renewal" : "sale"}
+          planName={isUpgrade && upgradeQuote?.initial_activation ? currentPlan.name : isUpgrade
             ? (upgradeQuote?.target_label || `Upgrade para ${currentPlan.name}`)
             : isRenewal
             ? `${currentPlanDisplayName} (Renovação)`
             : currentPlanDisplayName!}
-          planPrice={basePrice}
+          planPrice={upgradeQuote?.initial_activation ? upgradeQuote.target_monthly_value : basePrice}
           finalPrice={finalPrice}
           billingCycle={billingCycle}
           features={planFeatures}
@@ -698,7 +751,8 @@ export default function Checkout() {
           pixRecurring={isUpgrade ? false : pixRecurring}
           onPixRecurringChange={isUpgrade ? undefined : handlePixRecurringChange}
           allowCardInstallments={false}
-          allowCardPayment={!isUpgrade || !upgradeQuote?.resets_billing_anchor}
+          allowCardPayment={!isUpgrade || !upgradeQuote?.resets_billing_anchor
+            || (upgradeQuote?.initial_activation === true && upgradeQuote.target_billing_cycle === 'monthly')}
           cardErrorMessage={cardErrorMessage}
           cardErrorSection={cardErrorSection}
           savedCardLast4={savedCardAvailable ? companyData?.subscription_card_last4 : null}
@@ -802,16 +856,14 @@ export default function Checkout() {
                 de afiliado ou do painel admin. O EXCEÇÃO é concessão do time e
                 nunca é oferecido a quem está escolhendo plano. Os dois seguem no
                 array completo, então a renovação continua achando pelo plans.find. */}
-            {plans
-              .filter((p) => p.code !== 'personalizado')
-              .filter((p) => p.code !== EXCEPTION_PLAN_CODE || isExceptionPlanCompany)
+            {purchasablePresetPlans
               .map((plan, index, visiblePlans) => {
               const isSelected = selectedPlan === plan.code;
               const yp = calculateYearlyPrice(plan.price);
               const me = calculateMonthlyEquivalent(yp);
               const isPopular = visiblePlans.length >= 3 ? index === Math.floor(visiblePlans.length / 2) : index === visiblePlans.length - 1;
               const displayPrice = billingCycle === "monthly" ? plan.price : me;
-              const features = PLAN_FEATURES[plan.code] ?? [];
+              const features = businessCore === 'services' ? (PLAN_FEATURES[plan.code] ?? []) : corePlanFeatures(businessCore,plan.code);
 
               return (
                 <motion.div
@@ -911,8 +963,17 @@ export default function Checkout() {
         >
           <Button
             size="lg"
-            disabled={!selectedPlan}
-            onClick={() => setShowCheckout(true)}
+            disabled={!selectedPlan || initialPlanChange.isPending || (needsInitialActivationQuote && !canConfigureSubscription)}
+            onClick={async () => {
+              if (!needsInitialActivationQuote) { setShowCheckout(true); return; }
+              if (!companyData?.id || !selectedPlan) return;
+              try {
+                const quote = await initialPlanChange.mutateAsync({ companyId: companyData.id,
+                  planCode: selectedPlan, billingCycle, confirm: true });
+                if (!quote.requires_payment || !quote.checkout_url) throw new Error('Não foi possível preparar a contratação. Atualize a página.');
+                navigate(quote.checkout_url);
+              } catch (error) { toast.error(error instanceof Error ? error.message : 'Não foi possível preparar a contratação.'); }
+            }}
             className="gap-2 px-8 transition-all duration-300"
           >
             {selectedPlan && currentPlan ? (
@@ -927,6 +988,12 @@ export default function Checkout() {
               </>
             )}
           </Button>
+          {needsInitialActivationQuote && !canConfigureSubscription && (
+            <p className="text-sm text-muted-foreground">Peça a um administrador ativo da empresa para confirmar a contratação.</p>
+          )}
+          {canConfigureSubscription && !isPlanLocked && (effectiveCompanyValue <= 0 || needsInitialActivationQuote) && (
+            <Button variant="outline" onClick={() => navigate('/assinatura?configurar=1')}>Montar meu plano personalizado</Button>
+          )}
           <Button
             variant="ghost"
             onClick={() => navigate("/dashboard")}

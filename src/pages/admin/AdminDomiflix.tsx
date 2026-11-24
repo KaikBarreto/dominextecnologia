@@ -1,3 +1,4 @@
+import { DateField } from "@/components/ui/date-field";
 import { useState, useCallback, useEffect } from "react";
 import domiflixLogoDark from "@/assets/domiflix-logo-horizontal-preto.png";
 import domiflixLogoLight from "@/assets/domiflix-logo-horizontal-branco.png";
@@ -63,6 +64,7 @@ import {
   DomiflixEpisode,
 } from "@/hooks/useDomiflix";
 import { supabase } from "@/integrations/supabase/client";
+import { assertRowsAffected } from "@/lib/supabaseMutation";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -195,6 +197,16 @@ interface TitleFormData {
   module_code: string;
   required_screen_keys: string[];
   is_active: boolean;
+}
+
+/**
+ * Confere a reordenação em lote: a permissão pode barrar o UPDATE sem erro
+ * (0 linhas). Cada id precisa ter sido gravado; senão lança NoRowsAffectedError.
+ */
+function assertReorderSaved(results: Array<{ error: unknown; count: number | null }>) {
+  const failed = results.find((result) => result.error);
+  const count = results.reduce((total, result) => total + (result.count ?? 0), 0);
+  assertRowsAffected({ error: failed?.error ?? null, count }, "update", undefined, results.length);
 }
 
 const EMPTY_TITLE_FORM: TitleFormData = {
@@ -760,11 +772,10 @@ function EpisodeFormDialog({
 
           <div className="col-span-2 space-y-1.5">
             <Label htmlFor="domiflix-recorded-at">Data de Gravação</Label>
-            <Input
+            <DateField
               id="domiflix-recorded-at"
-              type="date"
               value={form.recorded_at}
-              onChange={(e) => setForm({ ...form, recorded_at: e.target.value })}
+              onChange={(e) => setForm({ ...form, recorded_at: e })}
             />
           </div>
 
@@ -1145,9 +1156,15 @@ function TitleDetail({
 
       const reordered = arrayMove(items, oldIndex, newIndex);
       const promises = reordered.map((s, i) =>
-        supabase.from("domiflix_seasons" as any).update({ order_index: i } as any).eq("id", s.id)
+        supabase.from("domiflix_seasons" as any).update({ order_index: i } as any, { count: "exact" }).eq("id", s.id)
       );
-      await Promise.all(promises);
+      try {
+        assertReorderSaved(await Promise.all(promises));
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Não foi possível salvar a ordem");
+        queryClient.invalidateQueries({ queryKey: ["domiflix-title", titleId] });
+        return;
+      }
       toast.success("Ordem das temporadas atualizada");
       queryClient.invalidateQueries({ queryKey: ["domiflix-title", titleId] });
     },
@@ -1165,9 +1182,15 @@ function TitleDetail({
 
       const reordered = arrayMove(episodes, oldIndex, newIndex);
       const promises = reordered.map((ep, i) =>
-        supabase.from("domiflix_episodes" as any).update({ order_index: i } as any).eq("id", ep.id)
+        supabase.from("domiflix_episodes" as any).update({ order_index: i } as any, { count: "exact" }).eq("id", ep.id)
       );
-      await Promise.all(promises);
+      try {
+        assertReorderSaved(await Promise.all(promises));
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Não foi possível salvar a ordem");
+        queryClient.invalidateQueries({ queryKey: ["domiflix-title", titleId] });
+        return;
+      }
       toast.success("Ordem dos episódios atualizada");
       queryClient.invalidateQueries({ queryKey: ["domiflix-title", titleId] });
     },
@@ -1444,10 +1467,16 @@ export default function AdminDomiflix() {
       const promises = reordered.map((t, i) =>
         supabase
           .from("domiflix_titles" as any)
-          .update({ order_index: i } as any)
+          .update({ order_index: i } as any, { count: "exact" })
           .eq("id", t.id)
       );
-      await Promise.all(promises);
+      try {
+        assertReorderSaved(await Promise.all(promises));
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Não foi possível salvar a ordem");
+        queryClient.invalidateQueries({ queryKey: ["domiflix-titles"] });
+        return;
+      }
       toast.success("Ordem atualizada");
       queryClient.invalidateQueries({ queryKey: ["domiflix-titles"] });
     },
@@ -1485,7 +1514,7 @@ export default function AdminDomiflix() {
       </div>
 
       <Tabs defaultValue="series">
-        <div className="mb-6 overflow-x-auto"><TabsList variant="underline" className="w-max min-w-full justify-start">
+        <div className="mb-6 min-w-0"><TabsList variant="underline" className="w-full justify-start">
           <TabsTrigger value="series" className="gap-2">
             <Tv className="w-4 h-4" />
             Módulos ({seriesTitles.length})

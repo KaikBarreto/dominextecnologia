@@ -8,7 +8,7 @@ import {
   Package,
   DollarSign,
   FileText,
-  Receipt,
+  TicketPercent,
   FileBarChart,
   CalendarClock,
   History as HistoryIcon,
@@ -70,6 +70,7 @@ import { SystemFooter } from '@/components/layout/SystemFooter';
 import { getCompanyWhatsAppNumber } from '@/components/landing/whatsappNumbers';
 import { podeAcessarDomiflixAdmin } from '@/lib/adminDomiflixAccess';
 import { cn } from '@/lib/utils';
+import { fiscalNavigationItem } from '@/config/fiscalNavigation';
 
 interface MenuItem {
   title: string;
@@ -117,7 +118,7 @@ const tenantMenuItems: MenuItem[] = [
   // modo balcão — ver comentário no sidebar.
   // "Caixa" (/pdv) é o PAINEL; a venda (/pdv/venda) é sub-tela sem item de menu.
   {
-    title: 'PDV',
+    title: 'PDV (Loja)',
     icon: Store,
     moduleKey: 'pdv',
     children: [
@@ -125,9 +126,11 @@ const tenantMenuItems: MenuItem[] = [
       { title: 'Orçamentos', icon: ClipboardList, path: '/pdv/pre-pedidos', screenKeys: ['screen:pdv', 'screen:pdv_orders'], moduleKey: 'pdv', requiresPdvCounter: true },
       { title: 'Pedidos', icon: ListOrdered, path: '/pdv/pedidos', screenKey: 'screen:pdv_orders', moduleKey: 'pdv' },
       { title: 'Expedição', icon: PackageCheck, path: '/pdv/expedicao', screenKey: 'screen:pdv_dispatch', moduleKey: 'pdv', requiresPdvCounter: true },
+      { title: 'Estoque da loja', icon: Package, path: '/pdv/estoque', screenKey: 'screen:inventory', moduleKey: 'pdv' },
       { title: 'Histórico de Caixa', icon: HistoryIcon, path: '/pdv/caixas', screenKey: 'screen:pdv_cash_history', moduleKey: 'pdv' },
       { title: 'Relatórios da Loja', icon: BarChart3, path: '/pdv/relatorios', screenKey: 'screen:pdv_reports', moduleKey: 'pdv' },
-      { title: 'Configurações do PDV', icon: SettingsIcon, path: '/pdv/configuracoes', screenKey: 'screen:pdv_settings', moduleKey: 'pdv' },
+      { title: 'Cupons promocionais', icon: TicketPercent, path: '/pdv/cupons', screenKey: 'screen:pdv_settings', moduleKey: 'pdv' },
+      { title: 'Configurações do PDV (Loja)', icon: SettingsIcon, path: '/pdv/configuracoes', screenKey: 'screen:pdv_settings', moduleKey: 'pdv' },
     ],
   },
   // Os dois são quadros Kanban e andam juntos (um projeto AGRUPA funis), mas
@@ -154,7 +157,7 @@ const tenantMenuItems: MenuItem[] = [
       { title: 'Relatórios', icon: BarChart3, path: '/financeiro/relatorios', screenKey: 'screen:finance' },
     ],
   },
-  { title: 'Notas Fiscais', icon: Receipt, path: '/notas-fiscais', screenKey: 'screen:fiscal_notes', moduleKey: 'nfe' },
+  fiscalNavigationItem,
   // Configurações intencionalmente fora da lista — já existe botão dedicado
   // no footer do drawer (mesmo destino), evitando duplicidade visual.
 ];
@@ -163,7 +166,7 @@ const adminMenuItems: (MenuItem & { masterOnly?: boolean })[] = [
   { title: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard', screenKey: 'admin_dashboard' },
   { title: 'CRM/Tarefas', icon: Target, path: '/admin/crm', screenKey: 'admin_crm' },
   { title: 'Empresas', icon: Building2, path: '/admin/empresas', screenKey: 'admin_empresas' },
-  { title: 'Vendedores', icon: Briefcase, path: '/admin/vendedores', screenKey: 'admin_vendedores' },
+  { title: 'Equipe', icon: Briefcase, path: '/admin/vendedores', screenKey: 'admin_vendedores' },
   { title: 'Afiliados', icon: Handshake, path: '/admin/afiliados', screenKey: 'admin_afiliados' },
   { title: 'Financeiro', icon: DollarSign, path: '/admin/financeiro', screenKey: 'admin_financeiro' },
   // ⚠️ ESTE ARRAY TEM QUE ESPELHAR `adminMenuItems` de `SidebarMenuContent.tsx`.

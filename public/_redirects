@@ -13,20 +13,15 @@
 # DECISÃO: o roteamento de /blog/:slug e /:lang/blog/:slug NÃO usa mais rewrite com
 # query string (parte NÃO confiável do _redirects do Cloudflare). Em vez disso, as
 # rotas dinâmicas das Functions extraem slug/locale de context.params. Aqui ficam
-# só regras SEM query string (apex→www e SPA fallback) — todas
-# confiáveis no Pages.
+# só o fallback interno da SPA. A normalização apex→www vive numa Single
+# Redirect de zona porque Pages não suporta redirect condicional por hostname.
 # Regras são avaliadas de cima pra baixo; a 1ª que casa vence.
 
-# 1) Apex → www (301). Espelha o redirect do vercel.json (host dominex.app).
-#    :splat preserva o path; query string do request é preservada pelo Pages em
-#    redirects 30x (comportamento padrão/confiável pra 301).
-https://dominex.app/*   https://www.dominex.app/:splat   301!
-
-# 2) Sitemap dinâmico do blog é servido diretamente pela Pages Function
+# 1) Sitemap dinâmico do blog é servido diretamente pela Pages Function
 #    functions/blog-sitemap.xml.js. Reescrever para outra Function aqui faria o
 #    caminho cair no fallback da SPA em produção.
 
-# 3) SPA fallback — TODO o resto vira index.html (a SPA roteia no cliente).
+# 2) SPA fallback — TODO o resto vira index.html (a SPA roteia no cliente).
 #    Fica por último de propósito: assets, Functions e as regras acima têm
 #    precedência; só chega aqui o que não casou em nada.
 /*                      /index.html                      200

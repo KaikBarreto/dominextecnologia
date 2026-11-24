@@ -14,7 +14,28 @@ import * as React from 'react';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
-vi.mock('@/hooks/useEmployees', () => ({ useEmployees: () => ({ employees: [] }) }));
+let mockedEmployees: any[] = [];
+vi.mock('@/hooks/useEmployees', () => ({ useEmployees: () => ({ employees: mockedEmployees }) }));
+// Custo-hora vem da RPC get_employee_hourly_costs (qualquer membro). A função
+// pura de conversão é a real.
+let mockedHourlyCosts = new Map<string, number>();
+vi.mock('@/hooks/useEmployeeHourlyCosts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/hooks/useEmployeeHourlyCosts')>();
+  return { ...actual, useEmployeeHourlyCosts: () => ({ hourlyCosts: mockedHourlyCosts, isLoading: false }) };
+});
+let mockedCanManageEmployees = false;
+vi.mock('@/hooks/useCanManageEmployees', () => ({ useCanManageEmployees: () => mockedCanManageEmployees }));
+const updateSpy = vi.fn();
+vi.mock('@/integrations/supabase/client', () => ({
+  supabase: {
+    from: () => ({
+      update: (payload: unknown) => {
+        updateSpy(payload);
+        return { eq: () => Promise.resolve({ error: null }) };
+      },
+    }),
+  },
+}));
 let mockedCompanyMonthlyHours = 176;
 vi.mock('@/hooks/useEmployeeWorkHours', () => ({ useEmployeeWorkHours: () => ({ monthlyHours: mockedCompanyMonthlyHours }) }));
 // Sub-modal não é o alvo deste teste (tem sua própria prova em
@@ -60,6 +81,10 @@ function typeInto(input: HTMLInputElement, value: string) {
 
 beforeEach(() => {
   mockedCompanyMonthlyHours = 176;
+  mockedEmployees = [];
+  mockedHourlyCosts = new Map();
+  mockedCanManageEmployees = false;
+  updateSpy.mockClear();
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
@@ -123,5 +148,93 @@ describe('LaborCalculatorModal — jornada mensal configurada', () => {
     renderModal(true);
     const reopenedInput = document.querySelector('input[inputmode="numeric"]') as HTMLInputElement;
     expect(reopenedInput.value).toBe('220');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Custo-hora do cadastro (fase B da leitura de RH): a calculadora não lê mais
+// salário/custo mensal do funcionário. Prova de que o resultado numérico é o
+// MESMO da conta antiga (custo mensal ÷ horas mensais informadas), inclusive
+// com horas mensais alteradas à mão.
+// ─────────────────────────────────────────────────────────────────────────────
+import { formatMoney } from '@/lib/format';
+
+function selectEmployee(name: string) {
+  const toggle = Array.from(document.querySelectorAll('button')).find((b) => b.querySelector('svg.lucide-chevrons-up-down'));
+  expect(toggle).toBeTruthy();
+  act(() => { toggle!.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+  const option = Array.from(document.querySelectorAll('[cmdk-item]')).find((el) => el.textContent?.includes(name)) as HTMLElement | undefined;
+  expect(option).toBeTruthy();
+  act(() => { option!.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+}
+
+function applyButtonText() {
+  return Array.from(document.querySelectorAll('button')).map((b) => b.textContent ?? '').find((t) => t.includes('/h') || t.includes('R$')) ?? '';
+}
+
+const brl = (v: number) => formatMoney(v, 'BRL', 'pt-br');
+
+// jsdom não tem ResizeObserver nem scrollIntoView, que o cmdk (lista do combobox) usa.
+(globalThis as any).ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} };
+(Element.prototype as any).scrollIntoView ??= function scrollIntoView() {};
+
+/** Conta ANTIGA: custo mensal do cadastro ÷ horas mensais informadas. */
+const oldRate = (monthlyCost: number, informedHours: number) => monthlyCost / informedHours;
+
+describe('LaborCalculatorModal — custo-hora do cadastro, sem ler salário', () => {
+  const ANA = {
+    id: 'e1', name: 'Ana Souza', position: 'Técnica', is_active: true,
+    // Não-RH recebe estes campos em null: a calculadora não pode depender deles.
+    salary: null, monthly_cost: null, monthly_cost_breakdown: null,
+  };
+
+  it('mesma taxa do cálculo antigo com as horas da empresa (176h)', () => {
+    mockedEmployees = [ANA];
+    mockedHourlyCosts = new Map([['e1', 4550 / 176]]); // o que a RPC devolve
+    mount();
+    selectEmployee('Ana Souza');
+
+    const monthlyCost = moneyInputs().find((i) => i.getAttribute('aria-label') === 'Custo mensal')!;
+    expect(monthlyCost.value).toBe('4550');
+    expect(applyButtonText()).toContain(brl(oldRate(4550, 176)));
+  });
+
+  it('respeita as horas mensais trocadas à mão (taxa = custo-hora × horas da empresa ÷ horas informadas)', () => {
+    mockedCompanyMonthlyHours = 220;
+    mockedEmployees = [ANA];
+    mockedHourlyCosts = new Map([['e1', 4550 / 220]]); // banco usa a jornada da empresa (220h)
+    mount();
+    // Jornada da empresa resolvida no campo.
+    const monthlyHoursInput = document.querySelector('input[inputmode="numeric"]') as HTMLInputElement;
+    expect(monthlyHoursInput.value).toBe('220');
+    selectEmployee('Ana Souza');
+    typeInto(monthlyHoursInput, '200');
+
+    expect(monthlyHoursInput.value).toBe('200');
+    // Antiga: 4550 / 200 = 22,75 por hora.
+    expect(applyButtonText()).toContain(brl(oldRate(4550, 200)));
+    expect(brl(oldRate(4550, 200))).toBe(brl(22.75));
+  });
+
+  it('a lista mostra o custo-hora, nunca o custo mensal', () => {
+    mockedEmployees = [ANA];
+    mockedHourlyCosts = new Map([['e1', 4550 / 176]]);
+    mount();
+    const toggle = Array.from(document.querySelectorAll('button')).find((b) => b.querySelector('svg.lucide-chevrons-up-down'))!;
+    act(() => { toggle.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+    const option = Array.from(document.querySelectorAll('[cmdk-item]')).find((el) => el.textContent?.includes('Ana Souza'))!;
+    expect(option.textContent).toContain(`${brl(4550 / 176)}/h`);
+    expect(option.textContent).not.toContain(brl(4550));
+  });
+
+  it('digitar o custo mensal substitui o do cadastro', () => {
+    mockedEmployees = [ANA];
+    mockedHourlyCosts = new Map([['e1', 4550 / 176]]);
+    mount();
+    selectEmployee('Ana Souza');
+    const monthlyCost = moneyInputs().find((i) => i.getAttribute('aria-label') === 'Custo mensal')!;
+    typeInto(monthlyCost, '3520');
+    expect(monthlyCost.value).toBe('3520');
+    expect(applyButtonText()).toContain(brl(oldRate(3520, 176)));
   });
 });

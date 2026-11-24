@@ -15,6 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { processImageFile } from '@/utils/imageConvert';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -54,11 +55,13 @@ export default function Profile() {
     if (!profile) return;
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ full_name: fullName, phone: phone || null })
-        .eq('id', profile.id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('profiles')
+          .update({ full_name: fullName, phone: phone || null }, { count: 'exact' })
+          .eq('id', profile.id),
+        'update',
+      );
       toast({ title: t.toastProfileUpdated });
       queryClient.invalidateQueries({ queryKey: ['profile'] });
     } catch (err: any) {
@@ -78,11 +81,13 @@ export default function Profile() {
       const { error: uploadError } = await supabase.storage.from('customer-photos').upload(filePath, file, await tenantFileOptions());
       if (uploadError) throw uploadError;
       const { data: { publicUrl } } = supabase.storage.from('customer-photos').getPublicUrl(filePath);
-      const { error } = await supabase
-        .from('profiles')
-        .update({ avatar_url: publicUrl })
-        .eq('id', profile.id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('profiles')
+          .update({ avatar_url: publicUrl }, { count: 'exact' })
+          .eq('id', profile.id),
+        'update',
+      );
       toast({ title: t.toastPhotoUpdated });
       queryClient.invalidateQueries({ queryKey: ['profile'] });
     } catch (err: any) {

@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSubscriptionBlock } from "@/hooks/useSubscriptionBlock";
 import { Navigate, useLocation } from "react-router-dom";
-import { AlertTriangle, Loader2, LogOut, RefreshCw } from "lucide-react";
+import { Loader2, LogOut, RefreshCw, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageLoading } from "@/components/ui/page-loading";
 import { DarkVeilPage } from "@/components/ui/DarkVeilPage";
@@ -36,7 +36,7 @@ export function SubscriptionUnavailableScreen({
       await retry();
     } catch {
       setActionError(
-        "A validação continua indisponível. Aguarde um instante e tente novamente.",
+        "A nova tentativa não foi concluída. Aguarde alguns instantes e tente novamente.",
       );
     } finally {
       setPendingAction(null);
@@ -57,24 +57,24 @@ export function SubscriptionUnavailableScreen({
 
   return (
     <DarkVeilPage accentColor={accentColor} contentClassName="max-w-4xl">
-      <section role="alert" aria-labelledby="subscription-unavailable-title">
-        <div className="mx-auto mb-7 flex h-12 w-12 items-center justify-center rounded-full border border-amber-300/30 bg-amber-400/10 text-amber-300 shadow-[0_0_40px_rgba(251,191,36,0.12)] sm:mb-9 sm:h-14 sm:w-14">
-          <AlertTriangle className="h-6 w-6 sm:h-7 sm:w-7" aria-hidden="true" />
+      <section role="status" aria-live="polite" aria-labelledby="subscription-unavailable-title">
+        <div className="mx-auto mb-7 flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white shadow-[0_0_40px_rgba(0,197,151,0.16)] sm:mb-9 sm:h-14 sm:w-14">
+          <WifiOff className="h-6 w-6 sm:h-7 sm:w-7" aria-hidden="true" />
         </div>
 
         <p className="mb-3 text-xs font-bold uppercase tracking-[0.24em] text-white/55 sm:text-sm">
-          Acesso pausado por segurança
+          Serviço temporariamente indisponível
         </p>
         <h1
           id="subscription-unavailable-title"
           className="mx-auto max-w-4xl text-balance text-4xl font-black leading-[0.98] tracking-[-0.045em] text-white sm:text-6xl lg:text-7xl"
           style={{ fontFamily: "'Lufga', sans-serif", fontWeight: 900 }}
         >
-          Não foi possível validar sua assinatura
+          Não foi possível conectar ao servidor
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-pretty text-base leading-relaxed text-white/65 sm:mt-7 sm:text-lg">
-          Não conseguimos confirmar o acesso desta empresa agora. Seus dados
-          continuam protegidos; tente novamente ou encerre a sessão.
+          O serviço está indisponível agora. Tente novamente em instantes.
+          Seus dados permanecem protegidos.
         </p>
 
         <div className="mx-auto mt-9 flex max-w-xl flex-col gap-3 sm:mt-10 sm:flex-row sm:justify-center">
@@ -96,7 +96,7 @@ export function SubscriptionUnavailableScreen({
             ) : (
               <RefreshCw aria-hidden="true" />
             )}
-            Tentar novamente
+            Tentar agora
           </Button>
           <Button
             size="lg"
@@ -119,15 +119,70 @@ export function SubscriptionUnavailableScreen({
             {pendingAction === "sign-out" ? "Saindo…" : "Sair"}
           </Button>
         </div>
-        <p
-          className="mt-4 min-h-5 text-sm text-amber-200"
-          role="status"
-          aria-live="polite"
-        >
+        <p className="mt-4 min-h-5 text-sm text-white/70">
           {actionError}
         </p>
       </section>
     </DarkVeilPage>
+  );
+}
+
+function SubscriptionReconnectingOverlay({
+  retry,
+  accentColor,
+}: Pick<SubscriptionUnavailableScreenProps, "retry" | "accentColor">) {
+  const [isRetrying, setIsRetrying] = useState(false);
+  const accentForeground = idealForeground(accentColor);
+
+  const handleRetry = async () => {
+    setIsRetrying(true);
+    try {
+      await retry();
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[10000] flex items-center justify-center bg-background/75 p-5 backdrop-blur-sm"
+      role="status"
+      aria-live="polite"
+      aria-labelledby="subscription-reconnecting-title"
+    >
+      <div className="w-full max-w-md rounded-2xl border border-border/70 bg-background p-6 text-center shadow-2xl sm:p-8">
+        <div
+          className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-full"
+          style={{ backgroundColor: `${accentColor}1f`, color: accentColor }}
+        >
+          <Loader2 className="h-6 w-6 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+        </div>
+        <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
+          Conexão interrompida
+        </p>
+        <h2 id="subscription-reconnecting-title" className="text-2xl font-bold tracking-tight text-foreground">
+          Não foi possível validar o acesso agora
+        </h2>
+        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+          O servidor está temporariamente indisponível. Aguarde alguns
+          instantes ou tente novamente.
+        </p>
+        <Button
+          className="mt-6 min-h-11 w-full border-0 font-bold hover:brightness-110"
+          style={{ backgroundColor: accentColor, color: accentForeground }}
+          onClick={() => void handleRetry()}
+          disabled={isRetrying}
+          aria-busy={isRetrying}
+        >
+          {isRetrying ? (
+            <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
+          ) : (
+            <RefreshCw aria-hidden="true" />
+          )}
+          {isRetrying ? "Reconectando…" : "Tentar agora"}
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -144,6 +199,53 @@ function SubscriptionUnavailableGateScreen({
       signOut={signOut}
       accentColor={accentColor}
     />
+  );
+}
+
+function SubscriptionReconnectingGateOverlay({
+  retry,
+}: Pick<SubscriptionUnavailableScreenProps, "retry">) {
+  const { enabled: whiteLabelEnabled, primaryColor } = useWhiteLabel();
+  const accentColor =
+    whiteLabelEnabled && primaryColor ? primaryColor : DOMINEX_ACCENT;
+
+  return (
+    <SubscriptionReconnectingOverlay
+      retry={retry}
+      accentColor={accentColor}
+    />
+  );
+}
+
+function InertSubscriptionContent({
+  children,
+  inert,
+}: {
+  children: React.ReactNode;
+  inert: boolean;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    if (inert) {
+      container.setAttribute("inert", "");
+    } else {
+      container.removeAttribute("inert");
+    }
+    return () => container.removeAttribute("inert");
+  }, [inert]);
+
+  return (
+    <div
+      ref={containerRef}
+      data-subscription-inert
+      aria-hidden={inert ? "true" : undefined}
+      className={inert ? "pointer-events-none select-none" : undefined}
+    >
+      {children}
+    </div>
   );
 }
 
@@ -185,6 +287,18 @@ export function SubscriptionGate({ children }: { children: React.ReactNode }) {
   if (status === "unavailable") {
     return (
       <SubscriptionUnavailableGateScreen retry={retry} signOut={signOut} />
+    );
+  }
+
+  if (status === "reconnecting" || status === "allowed") {
+    const reconnecting = status === "reconnecting";
+    return (
+      <div className="relative min-h-screen">
+        <InertSubscriptionContent inert={reconnecting}>
+          {children}
+        </InertSubscriptionContent>
+        {reconnecting && <SubscriptionReconnectingGateOverlay retry={retry} />}
+      </div>
     );
   }
 

@@ -17,10 +17,12 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 import { useCanManageFinanceSettings } from '@/hooks/useCanManageFinanceSettings';
+import { useCanManageFinanceTransactions } from '@/hooks/useCanManageFinanceTransactions';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { selectFinancialOverviewSources, summarizeFinancialTransactions } from '@/lib/financial-summary';
 import { resolveAppSlug, localizeAppPath } from '@/lib/i18n/appRouteSlugs';
 
 // "Financeiro" é um grupo orientado por tarefa. Configurações financeiras não
@@ -106,6 +108,7 @@ export default function Finance() {
   const { preset, range, setPreset, setRange } = useDateRangeFilter('this_month');
   const { hasModule } = useCompanyModules();
   const canManageFinanceSettings = useCanManageFinanceSettings();
+  const canManageFinanceTransactions = useCanManageFinanceTransactions();
 
   // O Financeiro (Contas, DRE e DFC) é base. Cobranças e Assinaturas recorrentes
   // continuam atrás do add-on `cobrancas`; o Exceção é barrado pela PermissionRoute.
@@ -131,6 +134,7 @@ export default function Finance() {
   const {
     accounts,
     transfer,
+    canManageBankAccounts,
     isError: isAccountsError,
     isErrorBalances,
     refetch: refetchAccounts,
@@ -195,8 +199,8 @@ export default function Finance() {
   // Resumo: despesas de cartão entram no mês da fatura; demais itens pagos
   // usam transaction_date e não pagos usam due_date.
   const summaryTransactions = useMemo(
-    () => transactions.filter((t) => isTransactionInDateRange(t, range, 'caixa-misto')),
-    [transactions, range]
+    () => selectFinancialOverviewSources(transactionsWithChildren).filter((t) => isTransactionInDateRange(t, range, 'caixa-misto')),
+    [transactionsWithChildren, range]
   );
 
   // Contas a Pagar/Receber: vencimento individual da parcela, exceto cartões
@@ -207,30 +211,9 @@ export default function Finance() {
   );
 
   const summary = useMemo(() => {
-    const s = { totalEntradas: 0, totalSaidas: 0, saldo: 0, aPagar: 0, aReceber: 0 };
-    summaryTransactions.forEach((t) => {
-      // Movimento interno (transferência entre contas e pagamento de fatura de
-      // cartão) fica fora do resumo: é balanço, não resultado. O par de
-      // lançamentos compartilha `transfer_pair_id` — sem esse corte, transferir
-      // R$ 10.000 de um banco pro outro apareceria como R$ 10.000 de entrada.
-      // Critério estrutural (mesmo do DRE), nunca por nome de categoria.
-      if (t.transfer_pair_id) return;
-      if (t.transaction_type === 'entrada') {
-        if (t.is_paid) {
-          s.totalEntradas += Number(t.amount);
-        } else {
-          s.aReceber += Number(t.amount);
-        }
-      } else {
-        if (t.is_paid) {
-          s.totalSaidas += Number(t.amount);
-        } else {
-          s.aPagar += Number(t.amount);
-        }
-      }
-    });
-    s.saldo = s.totalEntradas - s.totalSaidas;
-    return s;
+    return summarizeFinancialTransactions(summaryTransactions.map(transaction => ({
+      ...transaction, transfer_pair_id: transaction.transfer_pair_id ?? null,
+    })));
   }, [summaryTransactions]);
 
   // Atalhos da Visão Geral (cards "A Pagar"/"A Receber"/contas) → telas próprias.
@@ -256,19 +239,21 @@ export default function Finance() {
     deleteTransaction,
   });
 
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = async (data: Parameters<typeof submitTransaction>[0]) => {
     const result = await submitTransaction(data, editingTransaction);
     setEditingTransaction(null);
     return result;
   };
 
   const handleEdit = (t: FinancialTransaction) => {
+    if (!canManageFinanceTransactions) return;
     setEditingTransaction(t);
     setDefaultType(t.transaction_type);
     setFormOpen(true);
   };
 
   const handleNew = (type: TransactionType) => {
+    if (!canManageFinanceTransactions) return;
     setEditingTransaction(null);
     setDefaultType(type);
     setFormOpen(true);
@@ -276,6 +261,7 @@ export default function Finance() {
 
   const handleMovementKind = (kind: 'entrada' | 'saida' | 'transferencia') => {
     if (kind === 'transferencia') {
+      if (!canManageBankAccounts || !canManageFinanceTransactions) return;
       setTransferOpen(true);
       return;
     }
@@ -284,7 +270,7 @@ export default function Finance() {
 
   // Só Movimentações mantém FAB. Em Contas, "Nova Conta" faz parte da toolbar
   // responsiva e não precisa reservar um vazio extra no fim da página.
-  const screenHasFab = screen === 'movimentacoes';
+  const screenHasFab = screen === 'movimentacoes' && canManageFinanceTransactions;
 
   // Subtítulo do header por tela (cada tela é própria agora).
   const screenSubtitle =
@@ -422,7 +408,7 @@ export default function Finance() {
       </div>
 
       <TransactionFormDialog
-        open={formOpen}
+        open={canManageFinanceTransactions && formOpen}
         onOpenChange={setFormOpen}
         transaction={editingTransaction}
         onSubmit={handleSubmit}
@@ -431,14 +417,14 @@ export default function Finance() {
       />
 
       <NewMovementDialog
-        open={movementPickerOpen}
+        open={canManageFinanceTransactions && movementPickerOpen}
         onOpenChange={setMovementPickerOpen}
         onSelect={handleMovementKind}
         transferDisabled={transferableAccounts.length < 2}
       />
 
       <TransferFormDialog
-        open={transferOpen}
+        open={canManageBankAccounts && canManageFinanceTransactions && transferOpen}
         onOpenChange={setTransferOpen}
         accounts={transferableAccounts}
         onSubmit={async (data) => { await transfer.mutateAsync(data); }}

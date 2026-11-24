@@ -16,7 +16,8 @@ Erros usam `application/problem+json`:
 
 - `400`/`422`: corrija; não repita automaticamente.
 - `401`: interrompa e corrija/rotacione a credencial.
-- `403`: verifique escopo, allowlist e assinatura.
+- `403`: verifique escopo, allowlist, assinatura e núcleo contratado.
+- `403 module_not_contracted`: tipos de serviço, recursos, disponibilidade e OS exigem o núcleo Serviços. Interrompa o fluxo e revise a contratação; repetir ou trocar a chave não concede o núcleo.
 - `404`: trate como não encontrado sem inferir tenant.
 - `409 schedule_conflict`: consulte disponibilidade novamente.
 - `409 idempotency_conflict`: incidente de implementação; não gere outra chave para mascarar.

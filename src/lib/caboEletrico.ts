@@ -1,6 +1,6 @@
 /**
- * Dimensionamento de cabo elétrico + disjuntor para ar-condicionado,
- * baseado na NBR 5410.
+ * Estimativa simplificada de cabo elétrico + disjuntor para ar-condicionado.
+ * As hipóteses fixas não substituem projeto nem corrente real da placa.
  *
  * 100% client-side / offline — apenas aritmética. Nenhum acesso a rede/banco.
  *
@@ -18,7 +18,7 @@
 
 /** Tensões disponíveis. `rotulo` é o que aparece na UI; `valor` é o numérico real. */
 export const TENSOES_CABO = [
-  { value: '127', rotulo: '110v', valor: 127 },
+  { value: '127', rotulo: '127V', valor: 127 },
   { value: '220', rotulo: '220v', valor: 220 },
 ] as const;
 
@@ -104,8 +104,8 @@ export interface ResultadoCaboEletrico {
    */
   foraDeAlcance: boolean;
   /**
-   * true quando o BTU informado caiu FORA da faixa tabelada e a corrente
-   * nominal foi estimada por extrapolação (clamp no ponto mais próximo).
+   * A corrente nominal vem de uma tabela típica por capacidade, e não da
+   * placa do modelo. Todo resultado deste estimador tem corrente estimada.
    */
   correnteEstimada: boolean;
   /**
@@ -121,7 +121,7 @@ export interface ResultadoCaboEletrico {
  *
  * - BTU exato na tabela → valor direto.
  * - BTU entre dois pontos → interpolação linear entre os vizinhos.
- * - BTU fora da faixa → clamp no ponto extremo mais próximo (flag estimada).
+ * - BTU fora da faixa → sem estimativa: não extrapola corrente de outro aparelho.
  *
  * Retorna `{ corrente, estimada }` ou null se a tabela não existir / estiver vazia.
  */
@@ -129,6 +129,7 @@ export function correnteNominalInterpolada(
   btu: number,
   tensao: TensaoCaboValue,
 ): { corrente: number; estimada: boolean } | null {
+  if (!Number.isFinite(btu) || btu <= 0) return null;
   const tabela = CABO.CORRENTE_NOMINAL[tensao];
   if (!tabela) return null;
 
@@ -143,9 +144,9 @@ export function correnteNominalInterpolada(
   const min = pontos[0];
   const max = pontos[pontos.length - 1];
 
-  // Fora da faixa: clamp no extremo mais próximo.
-  if (btu <= min) return { corrente: tabela[min], estimada: true };
-  if (btu >= max) return { corrente: tabela[max], estimada: true };
+  // Não usa corrente limitada ao extremo para uma capacidade maior: isso
+  // subdimensionava cabo/disjuntor. Os pontos exatos já foram tratados acima.
+  if (btu < min || btu > max) return null;
 
   // Dentro da faixa: interpola entre os dois vizinhos.
   let inferior = min;
@@ -189,8 +190,8 @@ export function calcularCaboEletrico(
   distanciaM: number,
 ): ResultadoCaboEletrico | null {
   const t = tensao as TensaoCaboValue;
-  if (!btu || btu <= 0) return null;
-  if (!distanciaM || distanciaM <= 0) return null;
+  if (!Number.isFinite(btu) || btu <= 0) return null;
+  if (!Number.isFinite(distanciaM) || distanciaM <= 0) return null;
 
   const nominal = correnteNominalInterpolada(btu, t);
   if (!nominal || nominal.corrente <= 0) return null;
@@ -218,8 +219,9 @@ export function calcularCaboEletrico(
     }
   }
 
-  const quedaPct =
-    Math.round(quedaPercentual(secaoMM2, distanciaM, correnteProjeto, vNumerico) * 10) / 10;
+  const quedaExata = quedaPercentual(secaoMM2, distanciaM, correnteProjeto, vNumerico);
+  if (!Number.isFinite(quedaExata)) return null;
+  const quedaPct = Number(quedaExata.toFixed(1));
 
   // Disjuntor: menor ≥ corrente de projeto E ≤ ampacidade da seção (protege o cabo).
   const ampacidadeSecao = CABO.AMPACIDADE[secaoMM2];
@@ -242,7 +244,7 @@ export function calcularCaboEletrico(
     correnteProjeto: Math.round(correnteProjeto * 100) / 100,
     quedaPct,
     foraDeAlcance,
-    correnteEstimada: nominal.estimada,
+    correnteEstimada: true,
     alerta127Alto,
   };
 }

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { assertRowsAffected } from "@/lib/supabaseMutation";
 import type {
   DreCustomCategoryAssignment,
   DreCustomCalculationSource,
@@ -193,16 +194,18 @@ export function useDreLayoutProfiles(companyId?: string, enabled = true) {
       affectsResult: boolean;
       showWhenZero: boolean;
     }) => {
-      const { error } = await (supabase as any)
-        .from("dre_layout_nodes")
-        .update({
-          label: label.trim(),
-          entry_kind: entryKind,
-          affects_result: affectsResult,
-          show_when_zero: showWhenZero,
-        })
-        .eq("id", nodeId);
-      if (error) throw error;
+      assertRowsAffected(
+        await (supabase as any)
+          .from("dre_layout_nodes")
+          .update({
+            label: label.trim(),
+            entry_kind: entryKind,
+            affects_result: affectsResult,
+            show_when_zero: showWhenZero,
+          }, { count: "exact" })
+          .eq("id", nodeId),
+        "update",
+      );
     },
     onSuccess: invalidate,
   });
@@ -266,8 +269,10 @@ export function useDreLayoutProfiles(companyId?: string, enabled = true) {
   });
   const deleteDraftNode = useMutation({
     mutationFn: async (nodeId: string) => {
-      const { error } = await (supabase as any).from("dre_layout_nodes").delete().eq("id", nodeId);
-      if (error) throw error;
+      assertRowsAffected(
+        await (supabase as any).from("dre_layout_nodes").delete({ count: "exact" }).eq("id", nodeId),
+        "delete",
+      );
     },
     onSuccess: invalidate,
   });
@@ -292,16 +297,20 @@ export function useDreLayoutProfiles(companyId?: string, enabled = true) {
   });
   const updateDraftGroup = useMutation({
     mutationFn: async ({ groupId, name }: { groupId: string; name: string }) => {
-      const { error } = await (supabase as any).from("dre_layout_groups")
-        .update({ name: name.trim() }).eq("id", groupId);
-      if (error) throw error;
+      assertRowsAffected(
+        await (supabase as any).from("dre_layout_groups")
+          .update({ name: name.trim() }, { count: "exact" }).eq("id", groupId),
+        "update",
+      );
     },
     onSuccess: invalidate,
   });
   const deleteDraftGroup = useMutation({
     mutationFn: async (groupId: string) => {
-      const { error } = await (supabase as any).from("dre_layout_groups").delete().eq("id", groupId);
-      if (error) throw error;
+      assertRowsAffected(
+        await (supabase as any).from("dre_layout_groups").delete({ count: "exact" }).eq("id", groupId),
+        "delete",
+      );
     },
     onSuccess: invalidate,
   });
@@ -311,10 +320,12 @@ export function useDreLayoutProfiles(companyId?: string, enabled = true) {
       classification: "group" | "outside_dre" | "unclassified";
       groupId?: string | null;
     }) => {
-      const { error } = await (supabase as any).from("dre_layout_category_assignments")
-        .update({ classification, group_id: classification === "group" ? groupId : null })
-        .eq("id", assignmentId);
-      if (error) throw error;
+      assertRowsAffected(
+        await (supabase as any).from("dre_layout_category_assignments")
+          .update({ classification, group_id: classification === "group" ? groupId : null }, { count: "exact" })
+          .eq("id", assignmentId),
+        "update",
+      );
     },
     onSuccess: invalidate,
   });
@@ -324,10 +335,12 @@ export function useDreLayoutProfiles(companyId?: string, enabled = true) {
       classification: "group" | "outside_dre" | "unclassified";
       groupId?: string | null;
     }) => {
-      const { error } = await (supabase as any).from("dre_layout_source_assignments")
-        .update({ classification, group_id: classification === "group" ? groupId : null })
-        .eq("id", assignmentId);
-      if (error) throw error;
+      assertRowsAffected(
+        await (supabase as any).from("dre_layout_source_assignments")
+          .update({ classification, group_id: classification === "group" ? groupId : null }, { count: "exact" })
+          .eq("id", assignmentId),
+        "update",
+      );
     },
     onSuccess: invalidate,
   });

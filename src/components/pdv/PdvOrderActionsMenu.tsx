@@ -1,4 +1,4 @@
-import { Banknote, Eye, PackageCheck, Printer, RotateCcw, Trash2, UserRound, WalletCards } from 'lucide-react';
+import { Banknote, Eye, PackageCheck, Printer, ReceiptText, RotateCcw, Trash2, UserRound, WalletCards } from 'lucide-react';
 import { RowActionsMenu } from '@/components/ui/RowActionsMenu';
 
 /** Menus de pedidos compartilham destinos reais; quem chama aplica as permissões. */
@@ -13,6 +13,7 @@ export interface PdvOrderActionsMenuProps {
   onReturns?: () => void;
   onValues?: () => void;
   onCustomer?: () => void;
+  onFiscal?: () => void;
   onCancel?: () => void;
   triggerClassName?: string;
   onOpenChange?: (open: boolean) => void;
@@ -28,6 +29,7 @@ export function PdvOrderActionsMenu(props: PdvOrderActionsMenuProps) {
       { label: 'Ver pedido e histórico', icon: Eye, onClick: props.onView },
       { label: 'Receber no caixa', icon: Banknote, onClick: () => props.onReceive?.(), hidden: !props.onReceive },
       { label: 'Conferir retirada', icon: PackageCheck, onClick: () => props.onPickup?.(), hidden: !props.onPickup },
+      { label: 'NFC-e desta venda', icon: ReceiptText, onClick: () => props.onFiscal?.(), hidden: !props.onFiscal },
       { label: 'Gerar comprovante', icon: Printer, onClick: props.onReceipt, hidden: !props.canGenerateReceipt },
       { label: 'Devoluções e itens não retirados', icon: RotateCcw, onClick: () => props.onReturns?.(), hidden: !props.onReturns },
       { label: 'Trocas, créditos e reembolsos', icon: WalletCards, onClick: () => props.onValues?.(), hidden: !props.onValues },

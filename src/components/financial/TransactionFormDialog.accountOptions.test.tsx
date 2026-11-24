@@ -633,6 +633,28 @@ describe('TransactionFormDialog — vencimento da conta futura do CRM', () => {
 });
 
 describe('TransactionFormDialog — cobranças das parcelas', () => {
+  it('permite digitar mais de 12 parcelas e limita a quantidade a 60', () => {
+    mount('saida', false, async () => {}, undefined, {
+      transaction_type: 'saida',
+      description: 'Seguro anual',
+      amount: 1200,
+      transaction_date: todayInTz('America/Sao_Paulo'),
+      is_paid: false,
+      payment_method: 'boleto',
+      installment_count: 1,
+      account_id: 'acc-banco',
+    });
+
+    const input = document.querySelector('#transaction-installment-count') as HTMLInputElement | null;
+    expect(input).toBeTruthy();
+
+    setInputValue(input!, '17');
+    expect(input!.value).toBe('17');
+
+    setInputValue(input!, '99');
+    expect(input!.value).toBe('60');
+  });
+
   it('cria uma cobrança vinculada para cada conta a receber salva', async () => {
     canManagePayments = true;
     hasChargeModule = true;

@@ -108,7 +108,8 @@ BEGIN
     (u,'["screen:pdv","screen:pdv_orders","screen:pdv_dispatch","screen:pdv_settings","fn:manage_pdv_settings","fn:value_pdv_preorder","fn:convert_pdv_preorder","fn:cover_pdv_order","fn:deliver_pdv_order","fn:use_bank_accounts","fn:approve_pdv_credit"]',true),
     (u_denied,'["screen:pdv"]',true),
     (u_stock_denied,'["screen:pdv","screen:pdv_orders","screen:pdv_dispatch","fn:cover_pdv_order","fn:deliver_pdv_order"]',true);
-  INSERT INTO public.company_modules(company_id,module_code) VALUES(c,'pdv');
+  -- O outro tenant também é uma loja válida; o teste negativo é de tenant, não de ausência do módulo.
+  INSERT INTO public.company_modules(company_id,module_code) VALUES(c,'pdv'),(c_other,'pdv');
   INSERT INTO public.financial_accounts(id,company_id,name,type,initial_balance,is_active)
   VALUES(cash_account,c,'Cofre Balcão','caixa',1000,true),
         (bank_account,c,'Banco Balcão','banco',500,true);
@@ -532,6 +533,13 @@ BEGIN
   EXCEPTION WHEN check_violation OR insufficient_privilege THEN blocked:=true; END;
   IF NOT blocked THEN RAISE EXCEPTION 'pedido de outro tenant foi aceito'; END IF;
 
+  -- A revisão do cupom não pode substituir o bloqueio de autorização.
+  blocked:=false;
+  BEGIN PERFORM public.pdv_cover_existing_order_coupon_v1(other_order,terminal_id,session_id,cash_account,
+    '[]'::jsonb,'counter-coupon-cross-tenant-0001',-1);
+  EXCEPTION WHEN insufficient_privilege THEN blocked:=true; END;
+  IF NOT blocked THEN RAISE EXCEPTION 'revisão do cupom foi exposta antes de validar empresa/caixa'; END IF;
+
   PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',u_denied,'role','authenticated')::text,true);
   blocked:=false;
   BEGIN PERFORM public.pdv_list_dispatch_queue_v2();
@@ -551,6 +559,15 @@ BEGIN
   PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',u,'role','authenticated')::text,true);
   IF (public.pdv_get_delivery_receipt_snapshot_v2(delivery_one)->>'notice') NOT LIKE 'Comprovante não fiscal%' THEN
     RAISE EXCEPTION 'comprovante da retirada perdeu aviso não fiscal';
+  END IF;
+  -- O comprovante identifica quem registrou a entrega e preserva o nome
+  -- capturado mesmo após alteração cadastral; não usa o usuário da reimpressão.
+  IF public.pdv_get_delivery_receipt_snapshot_v2(delivery_one)->>'operator_name' IS DISTINCT FROM 'Caixa Balcão' THEN
+    RAISE EXCEPTION 'comprovante não identificou o operador da retirada';
+  END IF;
+  UPDATE public.profiles SET full_name='Nome atualizado depois da retirada' WHERE user_id=u;
+  IF public.pdv_get_delivery_receipt_snapshot_v2(delivery_one)->>'operator_name' IS DISTINCT FROM 'Caixa Balcão' THEN
+    RAISE EXCEPTION 'reimpressão alterou o nome histórico do operador';
   END IF;
   blocked:=false;
   BEGIN UPDATE public.pdv_delivery_receipt_snapshots SET snapshot='{}' WHERE delivery_id=delivery_one;

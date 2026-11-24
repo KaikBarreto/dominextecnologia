@@ -1,179 +1,23 @@
-import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Wallet, TrendingUp, TrendingDown, History, LayoutDashboard, BarChart3, FileText, Settings2, Plus, Scale } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { format } from 'date-fns';
-import { AdminFinancialMovementModal } from '@/components/admin/AdminFinancialMovementModal';
-import { SettingsSidebarLayout, type SettingsTab } from '@/components/SettingsSidebarLayout';
-import { DateRangeFilter, useDateRangeFilter } from '@/components/ui/DateRangeFilter';
-import { FinancialSummaryCards } from '@/components/admin/financial/FinancialSummaryCards';
-import { FinancialCharts } from '@/components/admin/financial/FinancialCharts';
-import { FinancialMovementSection } from '@/components/admin/financial/FinancialMovementSection';
-import { FinancialDRESection } from '@/components/admin/financial/FinancialDRESection';
-import { FinancialSettingsSection } from '@/components/admin/financial/FinancialSettingsSection';
-import { FinancialTransactionList } from '@/components/admin/financial/FinancialTransactionList';
-import { ReconciliationSection } from '@/components/admin/financial/ReconciliationSection';
-import { useAdminFinancialCategories } from '@/hooks/useAdminFinancialCategories';
-import { useAdminPermissions } from '@/hooks/useAdminPermissions';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
-import { FABButton } from '@/components/mobile/FABButton';
-import { cn } from '@/lib/utils';
-
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { AdminFinancialWorkspace } from "@/components/admin/AdminFinancialWorkspace";
 export default function AdminFinancial() {
-  const { hasFunctionAccess } = useAdminPermissions();
-  const canSeeTotals = hasFunctionAccess('admin_financeiro_totais');
-  const isMobile = useIsMobile();
-
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalDefaultType, setModalDefaultType] = useState<'income' | 'expense'>('income');
-  const [activeSection, setActiveSection] = useState('overview');
-
-  const { preset, range, setPreset, setRange, filterByDate } = useDateRangeFilter('this_month');
-
-  const tabs: SettingsTab[] = [
-    ...(canSeeTotals ? [{ value: 'overview', label: 'Visão Geral', icon: LayoutDashboard, group: 'Análise' }] : []),
-    { value: 'income', label: 'Receitas', icon: TrendingUp, group: 'Movimentações' },
-    { value: 'expenses', label: 'Despesas', icon: TrendingDown, group: 'Movimentações' },
-    { value: 'history', label: 'Histórico', icon: History, group: 'Movimentações' },
-    ...(canSeeTotals ? [
-      { value: 'charts', label: 'Gráficos', icon: BarChart3, group: 'Análise' },
-      { value: 'dre', label: 'Resultado (DRE)', icon: FileText, group: 'Análise' },
-      { value: 'reconciliation', label: 'Conciliação', icon: Scale, group: 'Análise' },
-    ] : []),
-    { value: 'settings', label: 'Configurações', icon: Settings2, group: 'Sistema' },
-  ];
-
-  const { data: allTransactions = [] } = useQuery({
-    queryKey: ['admin-financial-transactions-all'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('admin_financial_transactions')
-        .select('*')
-        .order('transaction_date', { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  const { data: categories = [] } = useAdminFinancialCategories();
-
-  const transactions = useMemo(() => filterByDate(allTransactions as any[], 'transaction_date'), [allTransactions, filterByDate]);
-
-  const income = transactions.filter((t: any) => t.type === 'income').reduce((s: number, t: any) => s + Number(t.amount), 0);
-  const expenses = transactions.filter((t: any) => t.type === 'expense').reduce((s: number, t: any) => s + Number(t.amount), 0);
-
-  const periodLabel = useMemo(() => {
-    if (!range.from && !range.to) return 'Todos os tempos';
-    const f = range.from ? format(range.from, 'dd/MM/yyyy') : '...';
-    const t = range.to ? format(range.to, 'dd/MM/yyyy') : '...';
-    return `${f} → ${t}`;
-  }, [range]);
-
-  const openModal = (type: 'income' | 'expense') => { setModalDefaultType(type); setIsModalOpen(true); };
-
-  // FAB só aparece em abas que fazem sentido criar lançamento.
-  const showFab = isMobile && ['income', 'expenses', 'history', 'overview'].includes(activeSection);
-  const fabType: 'income' | 'expense' = activeSection === 'expenses' ? 'expense' : 'income';
-  const fabLabel = fabType === 'income' ? 'Receita' : 'Despesa';
-
-  const renderContent = () => {
-    switch (activeSection) {
-      case 'overview':
-        return (
-          <div className="space-y-4 lg:space-y-6">
-            <FinancialSummaryCards
-              income={income} expenses={expenses} transactionsCount={transactions.length}
-              onOpenIncome={() => setActiveSection('income')}
-              onOpenExpense={() => setActiveSection('expenses')}
-              onCreateIncome={() => openModal('income')}
-              onCreateExpense={() => openModal('expense')}
-            />
-            <FinancialCharts transactions={transactions} categories={categories} />
-            <Card className="border-0 shadow-lg">
-              <CardHeader className="border-b bg-muted/30 py-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base font-semibold flex items-center gap-2">
-                    <History className="h-4 w-4 text-muted-foreground" />Últimas Movimentações
-                  </CardTitle>
-                  <Button variant="ghost" size="sm" onClick={() => setActiveSection('history')} className="text-primary text-xs">Ver todas</Button>
-                </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                <FinancialTransactionList transactions={transactions.slice(0, 10)} categories={categories} variant="mixed" />
-              </CardContent>
-            </Card>
-          </div>
-        );
-      case 'income':
-        return <FinancialMovementSection transactions={transactions} categories={categories} type="income" onCreate={() => openModal('income')} />;
-      case 'expenses':
-        return <FinancialMovementSection transactions={transactions} categories={categories} type="expense" onCreate={() => openModal('expense')} />;
-      case 'history':
-        return (
-          <Card className="border-0 shadow-lg">
-            <CardHeader className="border-b bg-muted/30 py-3">
-              <CardTitle className="text-base font-semibold">Histórico</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <FinancialTransactionList transactions={transactions} categories={categories} variant="mixed" />
-            </CardContent>
-          </Card>
-        );
-      case 'charts':
-        return <FinancialCharts transactions={transactions} categories={categories} />;
-      case 'dre':
-        return <FinancialDRESection transactions={transactions} categories={categories} periodLabel={periodLabel} />;
-      case 'reconciliation':
-        return <ReconciliationSection />;
-      case 'settings':
-        return <FinancialSettingsSection />;
-      default: return null;
-    }
-  };
-
+  const { hasFunctionAccess, isLoading } = useAdminPermissions();
+  if (isLoading) {
+    return (
+      <p role="status" className="p-6">Verificando acesso ao financeiro…</p>
+    );
+  }
+  if (!hasFunctionAccess("admin_financeiro_totais")) {
+    return (
+      <p role="alert" className="p-6">
+        Seu perfil não permite consultar o financeiro. Solicite acesso à tela e
+        aos totais.
+      </p>
+    );
+  }
   return (
-    <div className={cn('container mx-auto px-3 sm:px-4 lg:px-6 py-4 lg:py-6 space-y-4 lg:space-y-6', isMobile && 'pb-24')}>
-      {/* Mobile: MobilePageHeader compacto. Desktop: bloco original com filtro de data ao lado. */}
-      {isMobile ? (
-        <>
-          <MobilePageHeader title="Financeiro" subtitle="Controle financeiro do SaaS" icon={Wallet} />
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <DateRangeFilter value={range} preset={preset} onPresetChange={setPreset} onRangeChange={setRange} />
-          </div>
-        </>
-      ) : (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1 min-w-0">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-primary/10"><Wallet className="h-5 w-5 text-primary" /></div>
-              <div>
-                <h1 className="text-xl lg:text-2xl font-bold">Financeiro</h1>
-                <p className="text-xs sm:text-sm text-muted-foreground">Controle financeiro do SaaS</p>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <DateRangeFilter value={range} preset={preset} onPresetChange={setPreset} onRangeChange={setRange} />
-          </div>
-        </div>
-      )}
-
-      <SettingsSidebarLayout tabs={tabs} activeTab={activeSection} onTabChange={setActiveSection}>
-        {renderContent()}
-      </SettingsSidebarLayout>
-
-      {showFab && (
-        <FABButton
-          icon={<Plus className="h-5 w-5" />}
-          label={fabLabel}
-          onClick={() => openModal(fabType)}
-        />
-      )}
-
-      <AdminFinancialMovementModal open={isModalOpen} onOpenChange={setIsModalOpen} defaultType={modalDefaultType} />
-    </div>
+    <AdminFinancialWorkspace
+      canManage={hasFunctionAccess("admin_financeiro_lancamentos")}
+    />
   );
 }

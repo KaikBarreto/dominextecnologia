@@ -1,3 +1,6 @@
+import { sanitizeAcquisitionAttribution } from '../_shared/acquisition-attribution.ts';
+import { resolveBusinessCore, corePlanCode, coreCommercialModules, applyRegistrationCoreOffer } from '../_shared/business-core.ts';
+import { loadBusinessCoreBasePrice, requiredCustomModulesForCore, customCommercialModulesForCore } from '../_shared/business-core-pricing.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 import { getCorsHeaders, handleCors } from '../_shared/cors.ts';
 import { provisionAsaasCustomer } from '../_shared/asaas-customer.ts';
@@ -5,6 +8,7 @@ import { isValidBrazilianPhone } from '../_shared/phone-validation.ts';
 import { canonicalizeCompanyOrigin } from '../_shared/company-origin.ts';
 import { resolveAffiliateId, resolveAffiliateOriginName } from '../_shared/affiliate-resolver.ts';
 import { resolveFirstPaidWhatsappTier } from '../_shared/whatsapp-pricing.ts';
+import { ensureDefaultFinancialAccounts } from '../_shared/default-financial-accounts.ts';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const trim = (v: unknown, max = 255) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
@@ -19,38 +23,6 @@ const isValidInternationalPhone = (phone: string): boolean => {
   if (!/^\+?\d+$/.test(sanitized)) return false;
   const digits = sanitized.replace(/\D/g, '');
   return digits.length >= 7 && digits.length <= 15;
-};
-
-const sanitizeAcquisitionTouch = (value: unknown): Record<string, string> | null => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  const raw = value as Record<string, unknown>;
-  const source = trim(raw.source, 200).replace(/[\r\n\t]+/g, ' ');
-  const medium = trim(raw.medium, 100).replace(/[\r\n\t]+/g, ' ');
-  if (!source || !medium) return null;
-  const out: Record<string, string> = { source, medium };
-  const limits: Record<string, number> = {
-    campaign: 200,
-    term: 200,
-    content: 200,
-    referrer_host: 200,
-    page_path: 500,
-    locale: 10,
-    captured_at: 40,
-  };
-  for (const [key, max] of Object.entries(limits)) {
-    const sanitized = trim(raw[key], max).replace(/[\r\n\t]+/g, ' ');
-    if (sanitized) out[key] = sanitized;
-  }
-  return out;
-};
-
-const sanitizeAcquisitionAttribution = (value: unknown): Record<string, unknown> | null => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  const raw = value as Record<string, unknown>;
-  const firstTouch = sanitizeAcquisitionTouch(raw.first_touch);
-  const lastTouch = sanitizeAcquisitionTouch(raw.last_touch);
-  if (!firstTouch || !lastTouch) return null;
-  return { first_touch: firstTouch, last_touch: lastTouch };
 };
 
 const readClientIp = (req: Request): string | null => {
@@ -302,6 +274,30 @@ Deno.serve(async (req) => {
       });
     }
 
+    const offerToken = typeof raw.registration_offer_token === 'string' ? raw.registration_offer_token.trim() : '';
+    if (raw.registration_offer_token != null && !offerToken) {
+      return new Response(JSON.stringify({error:'Este link não está mais disponível. Peça um novo link.'}),{status:400,headers:{...corsHeaders,'Content-Type':'application/json'}});
+    }
+    if (offerToken) {
+      if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(offerToken)) {
+        return new Response(JSON.stringify({error:'Este link não está mais disponível. Peça um novo link.'}),{status:400,headers:{...corsHeaders,'Content-Type':'application/json'}});
+      }
+      const {data:offer,error:offerError}=await supabaseAdmin.rpc('get_public_registration_core_offer_v1',{p_token:offerToken});
+      if(offerError) return new Response(JSON.stringify({error:'Não foi possível conferir o link. Tente novamente.'}),{status:503,headers:{...corsHeaders,'Content-Type':'application/json'}});
+      if(!offer) return new Response(JSON.stringify({error:'Este link não está mais disponível. Peça um novo link.'}),{status:400,headers:{...corsHeaders,'Content-Type':'application/json'}});
+      raw=applyRegistrationCoreOffer(raw,offer);
+    } else {
+      // Compatibilidade de plano/origem do link antigo; preço promocional e
+      // prazo de teste exigem condições persistidas, nunca query manipulável.
+      raw={...raw,locked_price:null,promo_months:null,trial_days:null};
+    }
+    let businessCore;
+    try { businessCore=resolveBusinessCore(raw.business_core); }
+    catch { return new Response(JSON.stringify({error:'Escolha Loja ou Serviços para continuar.'}),{status:400,headers:{...corsHeaders,'Content-Type':'application/json'}}); }
+    if(businessCore==='retail' && raw.link_type==='venda' && !offerToken) {
+      return new Response(JSON.stringify({error:'Peça um novo link de contratação da Loja.'}),{status:400,headers:{...corsHeaders,'Content-Type':'application/json'}});
+    }
+
     // Locale do body (fonte de verdade a partir daqui); default pt-br garante
     // backward-compat com o frontend antigo que não manda `locale`.
     const locale = resolveLocale(raw.locale);
@@ -368,16 +364,16 @@ Deno.serve(async (req) => {
 
     // Affiliate/sales link params
     const linkType = trim(raw.link_type, 20); // 'teste' | 'venda'
-    const lockedPlanRaw = trim(raw.locked_plan, 30).toLowerCase();
+    const lockedPlanRaw = trim(raw.locked_plan, 30).toLowerCase().replace(/^retail_/, '');
     const isPersonalizado = lockedPlanRaw === 'personalizado';
     const lockedPlan = isPersonalizado
       ? 'personalizado'
       : (lockedPlanRaw && PLAN_DEFAULTS[lockedPlanRaw] ? lockedPlanRaw : null);
     const isLocked = !!raw.is_locked;
     // Plano personalizado: módulos à la carte + máx. usuários vindos do link
-    const requestedModules: string[] = Array.isArray(raw.modules)
+    const requestedModules: string[] = coreCommercialModules(businessCore, Array.isArray(raw.modules)
       ? raw.modules.filter((m: unknown) => typeof m === 'string').map((m: string) => m.trim().slice(0, 50)).filter(Boolean)
-      : [];
+      : []);
     const maxUsersOverride = typeof raw.max_users === 'number' && raw.max_users > 0 && raw.max_users <= 999
       ? Math.floor(raw.max_users)
       : null;
@@ -469,22 +465,24 @@ Deno.serve(async (req) => {
     }
 
     // Resolve plan/price/status from link params
-    const planCode = lockedPlan || 'start';
+    const planCode = corePlanCode(businessCore, lockedPlan || 'start');
 
     const isSale = linkType === 'venda';
 
     // Specs do plano (price/max_users/name): fonte da verdade é subscription_plans.
     // PLAN_DEFAULTS hardcoded só entra se a query ao catálogo falhar/retornar vazio.
     // planFromCatalog=true quando o preço veio de fato do catálogo (não do fallback).
-    let planDefaults = PLAN_DEFAULTS[planCode] || PLAN_DEFAULTS.start;
+    let planDefaults = PLAN_DEFAULTS[lockedPlan || 'start'] || PLAN_DEFAULTS.start;
+    if(businessCore==='retail') planDefaults={...planDefaults,price:0};
     let planFromCatalog = false;
     if (!isPersonalizado) {
       try {
         const canonicalCode = PLAN_CODE_ALIASES[planCode] || planCode;
         const { data: planRow, error: planRowError } = await supabaseAdmin
           .from('subscription_plans')
-          .select('price, max_users, name')
+          .select('price, max_users, name, business_core')
           .eq('code', canonicalCode)
+          .eq('business_core', businessCore)
           .eq('is_active', true)
           .maybeSingle();
         if (planRowError) {
@@ -510,6 +508,9 @@ Deno.serve(async (req) => {
     // possivelmente defasado (isso subcobrava). Rejeitamos e pedimos retry — melhor
     // falhar o cadastro do que criar uma assinatura com valor errado. Teste (trial)
     // e personalizado não entram aqui (não há cobrança/valor de catálogo em jogo).
+    if(businessCore==='retail' && !isPersonalizado && (isSale||isLocked) && !planFromCatalog) {
+      return new Response(JSON.stringify({error:'O plano da Loja ainda não está disponível para contratação. Peça ajuda à equipe comercial.'}),{status:409,headers:{...corsHeaders,'Content-Type':'application/json'}});
+    }
     const lockedPriceEarly = typeof raw.locked_price === 'number' && raw.locked_price > 0 ? raw.locked_price : null;
     if (isSale && !isPersonalizado && !planFromCatalog && lockedPriceEarly === null) {
       console.error(`[self-register] VENDA sem preço confiável (catálogo indisponível, sem lockedPrice) p/ plano '${planCode}'. Rejeitando (fail-closed).`);
@@ -528,10 +529,8 @@ Deno.serve(async (req) => {
     let personalizadoExtraUserPrice = 0;
     let personalizadoWhatsappTier = 1;
     if (isPersonalizado) {
-      const requested = Array.from(new Set([
-        ...REQUIRED_PERSONALIZED_MODULE_CODES,
-        ...requestedModules.filter((code) => code !== EXTRA_USER_MODULE_CODE),
-      ]));
+      const requiredCoreModules=requiredCustomModulesForCore(businessCore,requestedModules);
+      const requested=customCommercialModulesForCore(businessCore,requestedModules);
       const { data: catalog, error: catalogError } = await supabaseAdmin
         .from('subscription_modules')
         .select('code, price')
@@ -547,6 +546,11 @@ Deno.serve(async (req) => {
       }
 
       let activeCatalog = catalog || [];
+      if(businessCore==='retail') {
+        const base=await loadBusinessCoreBasePrice(supabaseAdmin,businessCore);
+        if(base===null && (isSale||isLocked)) return new Response(JSON.stringify({error:'O preço da Loja ainda não foi configurado. Peça ajuda à equipe comercial.'}),{status:409,headers:{...corsHeaders,'Content-Type':'application/json'}});
+        activeCatalog=activeCatalog.map(module=>module.code==='basic'?{...module,price:base??0}:module);
+      }
       if (requested.includes('whatsapp')) {
         try {
           const whatsappOffer = await resolveFirstPaidWhatsappTier(supabaseAdmin);
@@ -565,7 +569,7 @@ Deno.serve(async (req) => {
       }
       personalizadoModules = activeCatalog.filter((module) => module.code !== EXTRA_USER_MODULE_CODE);
       const catalogCodes = new Set(personalizadoModules.map((module) => module.code));
-      const missingRequired = REQUIRED_PERSONALIZED_MODULE_CODES.filter((code) => !catalogCodes.has(code));
+      const missingRequired = requiredCoreModules.filter((code) => !catalogCodes.has(code));
       if (missingRequired.length > 0) {
         console.error(
           `[self-register] Catálogo incompleto para plano personalizado: ${missingRequired.join(', ')}. Rejeitando cadastro${isSale ? ' de venda' : ''} (fail-closed).`,
@@ -580,7 +584,7 @@ Deno.serve(async (req) => {
         if (module.price === null) return true;
         const price = Number(module.price);
         if (!Number.isFinite(price) || price < 0) return true;
-        if (module.code === 'basic') return price <= 0;
+        if (module.code === 'basic') return businessCore==='retail' && !isSale && !isLocked ? price<0 : price<=0;
         if (FREE_BASE_MODULE_CODES.some((code) => code === module.code)) return price !== 0;
         if (module.code === EXTRA_USER_MODULE_CODE) return price <= 0;
         return false;
@@ -636,6 +640,7 @@ Deno.serve(async (req) => {
         .select('id, name')
         .eq('referral_code', referralCode)
         .eq('is_active', true)
+        .eq('can_receive_sales', true)
         .maybeSingle();
       if (sp?.id) {
         salespersonId = sp.id;
@@ -647,7 +652,7 @@ Deno.serve(async (req) => {
     // Quando o cadastro chega SEM vendedor no link (nenhum closer resolvido via
     // referral_code), o lead é "self-service": marcamos a company com is_self_service
     // e distribuímos o closer pelo rodízio round-robin justo (RPC SECURITY DEFINER
-    // assign_next_lead_salesperson, que só considera vendedores ativos, in_rotation e
+    // assign_next_lead_salesperson, que só considera pessoas ativas, comerciais, em rodízio e
     // com telefone, e carimba last_lead_assigned_at). Se o link JÁ trouxe vendedor,
     // NÃO mexemos: is_self_service fica false e usa-se o vendedor do link.
     //
@@ -728,6 +733,7 @@ Deno.serve(async (req) => {
       .from('companies')
       .insert({
         name: company_name,
+        business_core: businessCore,
         cnpj: company_cnpj || null,
         email: company_email,
         phone: company_phone || null,
@@ -753,7 +759,7 @@ Deno.serve(async (req) => {
         // false quando o link trouxe vendedor (comportamento anterior preservado).
         is_self_service: isSelfService,
         custom_price: lockedPrice && lockedPrice !== planPrice ? lockedPrice : null,
-        custom_price_permanent: lockedPrice ? !promoMonths : true,
+        custom_price_permanent: lockedPrice && lockedPrice !== planPrice ? !promoMonths : false,
         custom_price_months: promoMonths || null,
         whatsapp_tier: personalizadoWhatsappTier,
         notes: promoNote,
@@ -1028,13 +1034,12 @@ Deno.serve(async (req) => {
         { onConflict: 'company_id,name', ignoreDuplicates: true },
       );
 
-    // Seed default financial accounts
-    await supabaseAdmin
-      .from('financial_accounts')
-      .insert([
-        { company_id: company.id, name: 'Caixa', type: 'caixa', color: '#10b981', icon: 'Wallet', initial_balance: 0, sort_order: 0 },
-        { company_id: company.id, name: 'Conta Principal', type: 'banco', color: '#3b82f6', icon: 'Landmark', initial_balance: 0, sort_order: 1 },
-      ]);
+    // Fallback idempotente. A garantia canônica é o trigger em companies;
+    // este passo mantém o deploy seguro se a Edge chegar antes da migration.
+    const { error: accountsError } = await ensureDefaultFinancialAccounts(supabaseAdmin, company.id);
+    if (accountsError) {
+      console.error('[self-register] Falha ao garantir contas financeiras iniciais:', accountsError.message);
+    }
 
     // Seed catálogo de serviço default (tipos de serviço, status de OS, tipos de tarefa).
     // NÃO-FATAL: se falhar, a empresa já foi criada — apenas registra o erro e segue.

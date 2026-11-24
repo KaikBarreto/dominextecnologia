@@ -154,7 +154,7 @@ const GROUPS: ReadonlyArray<GroupConfig> = [
   // opcao de apagar algo que ela nao tem. Ver `visibleGroups` abaixo.
   {
     id: 'pdv',
-    label: 'PDV e Loja',
+    label: 'PDV (Loja)',
     items: [
       {
         key: 'delete_pdv',
@@ -205,7 +205,7 @@ const STEP_LABEL: Record<string, string> = {
   stock: 'Estoque de Materiais',
   materials: 'Cadastro de Materiais',
   customers: 'Clientes',
-  pdv: 'PDV, Caixa e Fiado',
+  pdv: 'PDV (Loja), Caixa e Fiado',
 };
 
 // ===== Sub-componente de grupo =====

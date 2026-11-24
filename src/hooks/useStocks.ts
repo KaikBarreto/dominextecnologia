@@ -1,8 +1,56 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { useAuth } from '@/contexts/AuthContext';
+
+export function invalidateStockDependents(queryClient: QueryClient) {
+  const roots: readonly (readonly string[])[] = [
+    ['stocks'], ['inventory'], ['inventory-stock-levels'], ['accessible-inventory-ids'],
+    ['stock-position'], ['inventory-movements'], ['low-stock'], ['inventory-counts'],
+    ['pdv-terminal-settings-v2'], ['pdv-cash-sessions-v2', 'terminals'],
+    ['pdv-direct-sale-v2'], ['pdv-preorders'], ['pdv-counter'], ['pdv-terminals'],
+  ];
+  for (const queryKey of roots) void queryClient.invalidateQueries({ queryKey });
+}
+
+/** Identidade do cache e permissão explícita: o fallback legado de hasPermission
+ * não é suficiente para autorizar escrita de estoque. */
+export function useStockManagement() {
+  const { user, profile, roles, permissions, loading, profileLoading } = useAuth();
+  const companyId = profile?.company_id ?? null;
+  const ready = !loading && !profileLoading && !!user?.id && !!companyId;
+  const manager = roles.some(role => ['admin', 'gestor', 'super_admin'].includes(role));
+  const acl = [...roles, ...permissions].sort().join('|');
+  return {
+    companyId,
+    userId: user?.id,
+    scope: [companyId, user?.id, acl],
+    scopeKey: `${companyId ?? ''}:${user?.id ?? ''}:${acl}`,
+    ready,
+    canManage: ready && (manager || permissions.includes('*') || permissions.includes('fn:manage_inventory')),
+    canManageAccess: ready && manager,
+  };
+}
+
+export function getStockManagementError(error: unknown): string {
+  const raw = error as { message?: string; details?: string };
+  const message = `${raw?.message ?? ''} ${raw?.details ?? ''}`;
+  if (/stock.*(acl_empty|access.*empty)|restricted.*empty/i.test(message)) return 'Selecione pelo menos uma pessoa para restringir o acesso.';
+  if (/stock_name_invalid/.test(message)) return 'Informe um nome de 2 a 80 caracteres para o local.';
+  if (/stock_(management|access)_denied/.test(message)) return 'Você não tem permissão para alterar este local.';
+  if (/stock_access_user_invalid/.test(message)) return 'Uma das pessoas selecionadas não está ativa nesta empresa. Atualize a lista e tente novamente.';
+  if (/stock_pdv_module_required/.test(message)) return 'O módulo PDV (Loja) precisa estar ativo para criar ou alterar um local de loja.';
+  if (/stock_scope_immutable/.test(message)) return 'O local deve permanecer vinculado à empresa e ao cliente de origem.';
+  if (/stock.*(in_use|has_balance|referenced|protected)|saldo|vinculad|principal|último/i.test(message)) {
+    return 'Este local possui saldo, histórico, vínculos ou uma configuração principal. Transfira o saldo e revise os vínculos antes de excluir; o histórico deve ser preservado.';
+  }
+
+  // Tokens internos de domínio não devem aparecer na interface.
+  if (/stock_[a-z_]+/.test(message)) return 'Não foi possível alterar este local. Verifique sua permissão e os vínculos do estoque.';
+  return getErrorMessage(error);
+}
 
 export type Stock = Tables<'stocks'>;
 export type StockInsert = TablesInsert<'stocks'>;
@@ -19,9 +67,11 @@ export function filterStocksForCustomer(stocks: Stock[], customerId?: string | n
 export function useStocks(customerId?: string | null) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { scope, companyId, ready, canManage } = useStockManagement();
 
-  const { data: stocks = [], isLoading } = useQuery({
-    queryKey: ['stocks', customerId ?? 'general'],
+  const { data = [], isLoading, error, refetch } = useQuery({
+    queryKey: ['stocks', ...scope, customerId ?? 'general'],
+    enabled: ready,
     queryFn: async () => {
       // Sem customerId, a fronteira padrão devolve somente os estoques gerais e
       // preserva os consumidores atuais. Na OS, inclui gerais + o estoque do
@@ -29,6 +79,7 @@ export function useStocks(customerId?: string | null) {
       let query = supabase
         .from('stocks')
         .select('*')
+        .eq('company_id', companyId!)
         .order('sort_order')
         .order('name');
 
@@ -41,6 +92,11 @@ export function useStocks(customerId?: string | null) {
       return filterStocksForCustomer((data ?? []) as unknown as Stock[], customerId);
     },
   });
+  const stocks = ready ? data : [];
+  const assertManage = () => {
+    if (!canManage) throw new Error('Você não tem permissão para gerenciar o estoque.');
+  };
+  const invalidateStocks = () => invalidateStockDependents(queryClient);
 
   const defaultStock = stocks.find((s) => s.is_default) ?? stocks[0] ?? null;
   const customerStock = customerId
@@ -48,58 +104,63 @@ export function useStocks(customerId?: string | null) {
     : null;
 
   const createStock = useMutation({
-    mutationFn: async (name: string) => {
+    mutationFn: async (input: string | { name: string; purpose: 'operacional' | 'pdv' }) => {
+      assertManage();
+      const name = (typeof input === 'string' ? input : input.name).trim();
+      if (name.length < 2 || name.length > 80) throw new Error('Informe um nome de 2 a 80 caracteres para o local.');
+      const purpose = typeof input === 'string' ? 'operacional' : input.purpose;
       const maxOrder = stocks.reduce((m, s) => Math.max(m, s.sort_order), 0);
       // company_id must be passed explicitly — NOT NULL without default, no trigger.
       const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
       const companyId = await getCurrentUserCompanyId();
-      // Primeiro local da empresa vira principal automaticamente para que a tela
-      // de estoque tenha sempre um "local ativo" resolvido ao criar materiais.
-      const isFirstStock = stocks.length === 0;
+      // O servidor decide o primeiro principal com a empresa inteira. A lista
+      // visível pode estar reduzida por ACL e não prova que seja o primeiro.
       const { data, error } = await supabase
         .from('stocks')
-        .insert({ name, sort_order: maxOrder + 1, company_id: companyId, is_default: isFirstStock } as StockInsert)
+        .insert({ name, purpose, sort_order: maxOrder + 1, company_id: companyId } as StockInsert)
         .select()
         .single();
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['stocks'] });
+      invalidateStocks();
       toast({ title: 'Depósito criado com sucesso!' });
     },
     onError: (err) => {
-      toast({ variant: 'destructive', title: 'Erro ao criar depósito', description: getErrorMessage(err) });
+      toast({ variant: 'destructive', title: 'Erro ao criar local', description: getStockManagementError(err) });
     },
   });
 
   const renameStock = useMutation({
     mutationFn: async ({ id, name }: { id: string; name: string }) => {
-      const { error } = await supabase.from('stocks').update({ name } as StockUpdate).eq('id', id);
+      assertManage();
+      if (name.trim().length < 2 || name.trim().length > 80) throw new Error('Informe um nome de 2 a 80 caracteres para o local.');
+      const { error } = await supabase.from('stocks').update({ name: name.trim() } as StockUpdate).eq('id', id).eq('company_id', companyId!).select('id').single();
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['stocks'] });
+      invalidateStocks();
       toast({ title: 'Depósito renomeado!' });
     },
     onError: (err) => {
-      toast({ variant: 'destructive', title: 'Erro ao renomear depósito', description: getErrorMessage(err) });
+      toast({ variant: 'destructive', title: 'Erro ao renomear local', description: getStockManagementError(err) });
     },
   });
 
   const deleteStock = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('stocks').delete().eq('id', id);
+      assertManage();
+      const { error } = await supabase.from('stocks').delete().eq('id', id).eq('company_id', companyId!).select('id').single();
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['stocks'] });
-      queryClient.invalidateQueries({ queryKey: ['inventory-stock-levels'] });
+      invalidateStocks();
       toast({ title: 'Depósito excluído!' });
     },
     onError: (err) => {
       // Mensagem amigável para erro do trigger (depósito padrão ou com saldo)
-      const msg = getErrorMessage(err);
+      const msg = getStockManagementError(err);
       toast({
         variant: 'destructive',
         title: 'Não foi possível excluir',
@@ -118,29 +179,31 @@ export function useStocks(customerId?: string | null) {
    */
   const updateStockPurpose = useMutation({
     mutationFn: async ({ id, purpose }: { id: string; purpose: 'operacional' | 'pdv' }) => {
-      const { error } = await supabase.from('stocks').update({ purpose } as StockUpdate).eq('id', id);
+      assertManage();
+      const { error } = await supabase.from('stocks').update({ purpose } as StockUpdate).eq('id', id).eq('company_id', companyId!).select('id').single();
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['stocks'] });
+      invalidateStocks();
       toast({ title: 'Tipo do local atualizado!' });
     },
     onError: (err) => {
-      toast({ variant: 'destructive', title: 'Erro ao atualizar o tipo do local', description: getErrorMessage(err) });
+      toast({ variant: 'destructive', title: 'Erro ao atualizar o tipo do local', description: getStockManagementError(err) });
     },
   });
 
   const setDefaultStock = useMutation({
     mutationFn: async (stockId: string) => {
+      assertManage();
       const { error } = await supabase.rpc('set_default_stock', { p_stock_id: stockId });
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['stocks'] });
+      invalidateStocks();
       toast({ title: 'Depósito principal atualizado!' });
     },
     onError: (err) => {
-      toast({ variant: 'destructive', title: 'Erro ao definir depósito principal', description: getErrorMessage(err) });
+      toast({ variant: 'destructive', title: 'Erro ao definir depósito principal', description: getStockManagementError(err) });
     },
   });
 
@@ -153,6 +216,7 @@ export function useStocks(customerId?: string | null) {
       notes?: string;
       clientRequestId?: string;
     }) => {
+      assertManage();
       const { data, error } = await supabase.rpc('transfer_stock_between', {
         p_inventory_id: params.inventoryId,
         p_from_stock: params.fromStockId,
@@ -186,7 +250,9 @@ export function useStocks(customerId?: string | null) {
     stocks,
     defaultStock,
     customerStock,
-    isLoading,
+    isLoading: !ready || isLoading,
+    error,
+    refetch,
     createStock,
     renameStock,
     deleteStock,

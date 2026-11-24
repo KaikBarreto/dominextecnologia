@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import ipaddress
+import math
+import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Mapping, Optional
+from urllib.parse import urlsplit
 
 if sys.version_info >= (3, 11):  # pragma: no cover - ambiente atual usa 3.9
     import tomllib
@@ -46,6 +49,8 @@ class Settings:
 
 
 def _bounded_int(value: Any, name: str, minimum: int, maximum: int) -> int:
+    if isinstance(value, bool) or isinstance(value, float):
+        raise ConfigError(f"{name} deve ser inteiro")
     try:
         parsed = int(value)
     except (TypeError, ValueError) as exc:
@@ -58,21 +63,70 @@ def _bounded_int(value: Any, name: str, minimum: int, maximum: int) -> int:
 def _validate_origin(origin: Any) -> str:
     if not isinstance(origin, str) or not origin:
         raise ConfigError("allowed_origins aceita somente origens explícitas")
-    if origin == "*" or "/" in origin.split("://", 1)[-1]:
-        raise ConfigError("origem curinga ou com caminho não é permitida")
-    if not origin.startswith(("http://", "https://")):
-        raise ConfigError("origem deve começar com http:// ou https://")
+    try:
+        parsed = urlsplit(origin)
+        valid = (
+            parsed.scheme in {"http", "https"}
+            and parsed.hostname
+            and parsed.username is None
+            and parsed.password is None
+            and parsed.path in {"", "/"}
+            and not parsed.query
+            and not parsed.fragment
+            and "*" not in origin
+            and not any(character.isspace() for character in origin)
+        )
+        _ = parsed.port  # Valida porta/faixa e IPv6 antes de iniciar o serviço.
+    except ValueError as exc:
+        raise ConfigError(
+            "Configure a origem exata do aplicativo, sem caminho ou credenciais"
+        ) from exc
+    if not valid:
+        raise ConfigError("Configure a origem exata do aplicativo, sem caminho ou credenciais")
     return origin.rstrip("/")
 
 
 def _parse_device(raw: Mapping[str, Any]) -> DeviceConfig:
+    if not isinstance(raw, Mapping):
+        raise ConfigError("cada dispositivo deve ser uma seção [[devices]]")
     required = ("id", "kind", "adapter", "label")
     if any(not isinstance(raw.get(key), str) or not raw[key] for key in required):
         raise ConfigError("cada dispositivo exige id, kind, adapter e label")
     kind = str(raw["kind"])
+    if not re.fullmatch(r"[A-Za-z0-9_.-]{1,64}", str(raw["id"])):
+        raise ConfigError("id do dispositivo deve usar até 64 letras, números, ponto ou hífen")
     if kind not in {"printer", "scale", "barcode"}:
         raise ConfigError(f"tipo de dispositivo desconhecido: {kind}")
     options = {key: value for key, value in raw.items() if key not in required}
+    adapter = str(raw["adapter"])
+    if adapter in {"serial-scale", "serial-barcode", "escpos-serial"}:
+        _bounded_int(options.get("baudrate", 9600), "baudrate", 50, 4_000_000)
+        if not isinstance(options.get("port"), str) or not str(options["port"]).strip():
+            raise ConfigError("Escolha a porta serial local do dispositivo")
+    if adapter in {"serial-scale", "serial-barcode"}:
+        _bounded_int(options.get("bytesize", 8), "bytesize", 5, 8)
+        if options.get("parity", "N") not in {"N", "E", "O", "M", "S"}:
+            raise ConfigError("parity deve ser N, E, O, M ou S")
+        if options.get("stopbits", 1) not in {1, 1.5, 2}:
+            raise ConfigError("stopbits deve ser 1, 1.5 ou 2")
+    if adapter == "escpos-network":
+        if not isinstance(options.get("host"), str) or not re.fullmatch(
+            r"[A-Za-z0-9_.:\[\]-]+", str(options["host"])
+        ):
+            raise ConfigError("Informe somente o endereço da impressora, sem URL ou credenciais")
+        _bounded_int(options.get("port", 9100), "port da impressora", 1, 65535)
+    for name in ("weight_kg", "paper_width_mm", "timeout"):
+        if name not in options:
+            continue
+        value = options[name]
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not math.isfinite(value)
+        ):
+            raise ConfigError(f"{name} deve ser um número finito")
+        if name != "weight_kg" and value <= 0:
+            raise ConfigError(f"{name} deve ser maior que zero")
     return DeviceConfig(
         id=str(raw["id"]),
         kind=kind,
@@ -85,8 +139,11 @@ def _parse_device(raw: Mapping[str, Any]) -> DeviceConfig:
 def load_settings(path: Optional[Path] = None) -> Settings:
     data: Dict[str, Any] = {}
     if path is not None:
-        with path.open("rb") as handle:
-            data = tomllib.load(handle)
+        try:
+            with path.open("rb") as handle:
+                data = tomllib.load(handle)
+        except ValueError as exc:
+            raise ConfigError("Arquivo TOML inválido; confira as seções e os valores") from exc
     server = data.get("server", {})
     if not isinstance(server, Mapping):
         raise ConfigError("[server] inválido")

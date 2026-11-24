@@ -40,8 +40,8 @@ export default function AdminNotices() {
       </div>
 
       <Tabs value={tab} onValueChange={(value) => setSearchParams({ aba: value }, { replace: true })}>
-        <div className="-mx-3 overflow-x-auto px-3 sm:mx-0 sm:px-0">
-          <TabsList variant="underline" className="w-max">
+        <div className="-mx-3 min-w-0 px-3 sm:mx-0 sm:px-0">
+          <TabsList variant="underline" className="w-full">
             <TabsTrigger variant="underline" level="screen" value="avisos" className="gap-1.5"><Megaphone className="h-4 w-4" /> Avisos</TabsTrigger>
             <TabsTrigger variant="underline" level="screen" value="nps" className="gap-1.5"><ClipboardList className="h-4 w-4" /> Pesquisas (NPS)</TabsTrigger>
           </TabsList>

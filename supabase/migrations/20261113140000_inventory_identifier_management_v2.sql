@@ -1,7 +1,6 @@
 -- Liga os identificadores canônicos ao cadastro e expõe uma projeção segura
 -- para a tela de materiais. Mantém a tabela fechada por RLS: a UI continua
 -- acessando somente RPCs com tenant, assinatura e permissões validados.
-BEGIN;
 
 CREATE OR REPLACE FUNCTION public.inventory_list_identifiers_v2(p_inventory_id uuid)
 RETURNS jsonb
@@ -346,5 +345,4 @@ GRANT EXECUTE ON FUNCTION public.inventory_generate_internal_identifier_v2(uuid)
   TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.inventory_save_identifier_v2(uuid, uuid, text, text, text, numeric, boolean, boolean)
   TO authenticated, service_role;
-
-COMMIT;
+;

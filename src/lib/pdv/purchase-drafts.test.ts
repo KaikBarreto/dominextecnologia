@@ -108,3 +108,21 @@ describe('rascunhos simultâneos da compra PDV', () => {
   });
 
 });
+
+it('recupera a intenção do saldo parcial sem reinterpretar a chave da compra antiga', () => {
+  const workspace = createPdvPurchaseWorkspace(defaults); const draft = workspace.drafts[0];
+  draft.supplierCreditAmount = 40;
+  const restored = parsePdvPurchaseWorkspace(JSON.stringify(workspace), defaults).drafts[0];
+  expect(restored.supplierCreditAmount).toBe(40); expect(restored.clientRequestId).toBe(draft.clientRequestId);
+  delete draft.supplierCreditAmount;
+  expect(parsePdvPurchaseWorkspace(JSON.stringify(workspace), defaults).drafts[0].supplierCreditAmount).toBeUndefined();
+});
+
+it('arredonda somente a soma das linhas fracionadas como o writer SQL canônico', () => {
+  const draft = createPdvPurchaseWorkspace(defaults).drafts[0];
+  draft.items = [
+    { id: 'one', inventoryId: 'one', quantityText: '3.333', unitPriceText: '1' },
+    { id: 'two', inventoryId: 'two', quantityText: '3.333', unitPriceText: '1' },
+  ];
+  expect(pdvPurchaseDraftTotal(draft)).toBe(6.67);
+});

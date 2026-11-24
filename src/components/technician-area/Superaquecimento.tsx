@@ -1,9 +1,10 @@
-import { useMemo } from 'react';
+import { HorizontalTabBar } from '@/components/ui/HorizontalTabBar';
+import { useId, useMemo } from 'react';
 import { Info, RefreshCcw } from 'lucide-react';
 import { usePersistedState } from '@/hooks/usePersistedState';
 import { Input } from '@/components/ui/input';
-import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Select,
   SelectContent,
@@ -16,7 +17,10 @@ import {
 import { LabeledSwitch } from '@/components/ui/labeled-switch';
 import { RefrigeranteOption } from '@/components/technician-area/RefrigeranteOption';
 import { cn } from '@/lib/utils';
+import { converter, lerValorConversao } from '@/lib/conversoes';
 import { ToolDisclaimer } from './ToolDisclaimer';
+import { SaturationTableReference } from './SaturationTableReference';
+import { DocumentedProfileNotice } from './DocumentedProfileNotice';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import {
@@ -46,7 +50,7 @@ import {
 /** Converte string crua de input numérico em number, com default seguro. */
 function num(str: string, def = NaN): number {
   if (str.trim() === '') return def;
-  const parsed = Number(str.replace(',', '.'));
+  const parsed = lerValorConversao(str);
   return Number.isFinite(parsed) ? parsed : def;
 }
 
@@ -104,6 +108,8 @@ interface CardCalculoProps {
   descricao: string;
   labelPressao: string;
   labelTemp: string;
+  ajudaPressao: string;
+  ajudaTemp: string;
   unidade: UnidadePressao;
   pressao: string;
   setPressao: (v: string) => void;
@@ -116,6 +122,7 @@ interface CardCalculoProps {
    */
   classificacaoSelo: ClassificacaoFaixa | null;
   faixaTexto: string;
+  faixaGenerica?: boolean;
   /** true se a pressão foi digitada mas caiu fora da faixa da tabela. */
   foraDaFaixa: boolean;
   /** Texto do valor digitado (pra mostrar no aviso). */
@@ -133,6 +140,8 @@ function CardCalculo({
   descricao,
   labelPressao,
   labelTemp,
+  ajudaPressao,
+  ajudaTemp,
   unidade,
   pressao,
   setPressao,
@@ -141,6 +150,7 @@ function CardCalculo({
   resultado,
   classificacaoSelo,
   faixaTexto,
+  faixaGenerica,
   foraDaFaixa,
   pressaoBruta,
   sugestao,
@@ -149,6 +159,19 @@ function CardCalculo({
 }: CardCalculoProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.technicianTools.superheat;
+  const id = useId();
+  const ajuda = (label: string, texto: string) => (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button type="button" aria-label={`${t.measurementHelp}: ${label}`} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <Info className="h-4 w-4" aria-hidden />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="max-w-[calc(100vw-2rem)] text-sm leading-relaxed">
+        <p className="mb-2 font-semibold">{label}</p><p>{texto}</p>
+      </PopoverContent>
+    </Popover>
+  );
   return (
     <div className="rounded-lg border border-border bg-card p-4 space-y-4">
       <div>
@@ -158,20 +181,27 @@ function CardCalculo({
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="space-y-1.5">
-          <Label className="text-base text-muted-foreground md:text-lg">
-            {labelPressao} ({unidade})
-          </Label>
-          <NumericInput
-            decimal
+          <div className="flex min-h-10 items-center justify-between gap-2">
+            <Label htmlFor={`${id}-pressao`} className="text-base font-medium md:text-lg">{labelPressao} ({unidade})</Label>
+            {ajuda(labelPressao, ajudaPressao)}
+          </div>
+          <Input
+            id={`${id}-pressao`}
+            type="text"
+            inputMode="decimal"
             placeholder={unidade === 'bar' ? 'Ex: 8,3' : 'Ex: 120'}
             value={pressao}
-            onValueChange={setPressao}
+            onChange={event => setPressao(event.target.value)}
             className="h-14 text-lg"
           />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-base text-muted-foreground md:text-lg">{labelTemp} (°C)</Label>
+          <div className="flex min-h-10 items-center justify-between gap-2">
+            <Label htmlFor={`${id}-temp`} className="text-base font-medium md:text-lg">{labelTemp} (°C)</Label>
+            {ajuda(labelTemp, ajudaTemp)}
+          </div>
           <Input
+            id={`${id}-temp`}
             type="text"
             inputMode="decimal"
             placeholder="Ex: 12"
@@ -184,23 +214,23 @@ function CardCalculo({
 
       {/* Resultado ao vivo */}
       <div className="rounded-lg border border-border bg-background p-4 text-center">
-        {resultado.delta !== null && classificacaoSelo ? (
+        {resultado.delta !== null ? (
           <>
             <p className="text-5xl font-bold leading-none text-primary sm:text-6xl">
               {formatarTemp(resultado.delta)}
               <span className="ml-1.5 text-2xl font-semibold sm:text-3xl">°C</span>
             </p>
-            <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+            {classificacaoSelo && <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
               <span
                 className={cn(
                   'rounded-full px-3 py-1 text-sm font-semibold',
                   corSelo(classificacaoSelo),
                 )}
               >
-                {rotuloFaixa(classificacaoSelo, t)}
+                {faixaGenerica && classificacaoSelo === 'ideal' ? t.genericRange : rotuloFaixa(classificacaoSelo, t)}
               </span>
               <span className="text-xs text-muted-foreground">{faixaTexto}</span>
-            </div>
+            </div>}
             {resultado.tempSat !== null && (
               <p className="mt-2 text-xs text-muted-foreground">
                 {t.saturationTemp} {formatarTemp(resultado.tempSat)} °C
@@ -313,10 +343,11 @@ interface SelecoesCompartilhadasProps {
 }
 
 /** Modelos sem grupo (aparecem no topo do select, sem cabeçalho). */
-const MODELOS_SEM_GRUPO = MODELOS_SUPERAQUECIMENTO.filter((m) => !m.grupo);
+const MODELOS_COM_FONTE = MODELOS_SUPERAQUECIMENTO.filter((m) => m.fonteUrl);
+const MODELOS_SEM_GRUPO = MODELOS_SUPERAQUECIMENTO.filter((m) => !m.grupo && (m.fonteUrl || m.id === MODELO_PADRAO_ID));
 
 /** Modelos agrupados por seção, preservando a ordem de inserção do array. */
-const MODELOS_POR_GRUPO = MODELOS_SUPERAQUECIMENTO.reduce(
+const MODELOS_POR_GRUPO = MODELOS_COM_FONTE.reduce(
   (acc, m) => {
     if (!m.grupo) return acc;
     (acc[m.grupo] ??= []).push(m);
@@ -339,22 +370,23 @@ function SelecoesCompartilhadas({
 }: SelecoesCompartilhadasProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.technicianTools.superheat;
+  const fieldId = useId();
   // Fluidos agrupados nas seções da UI (Atuais / Legado / Blends), igual à Régua.
   const secoes = useMemo(() => agruparRefrigerantesEmSecoes(), []);
 
   return (
     <div className="rounded-lg border border-border bg-card p-4 space-y-4">
-      <div className="space-y-1.5">
-        <Label className="text-base text-muted-foreground md:text-lg">{t.modelManufacturer}</Label>
+      {MODELOS_COM_FONTE.length > 0 && <div className="space-y-1.5">
+        <Label htmlFor={`${fieldId}-model`} className="text-base font-medium text-foreground md:text-lg">{t.modelManufacturer}</Label>
         <Select
-          value={modeloId}
+          value={MODELOS_COM_FONTE.some(m => m.id === modeloId) ? modeloId : MODELO_PADRAO_ID}
           onValueChange={(v) => {
             setModeloId(v);
             const rp = getModeloSuperaquecimento(v)?.refrigPadrao;
             if (rp) setRefrigId(rp);
           }}
         >
-          <SelectTrigger className="h-14 text-lg md:h-14 md:text-lg">
+          <SelectTrigger id={`${fieldId}-model`} className="min-h-14 h-auto text-base [&>span]:line-clamp-none [&>span]:whitespace-normal [&>span]:text-left">
             <SelectValue placeholder={t.modelPlaceholder} />
           </SelectTrigger>
           <SelectContent>
@@ -378,13 +410,13 @@ function SelecoesCompartilhadas({
         <p className="pt-1 text-xs text-muted-foreground">
           {t.modelNote}
         </p>
-      </div>
+      </div>}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="space-y-1.5">
-          <Label className="text-base text-muted-foreground md:text-lg">{t.refrigerant}</Label>
+          <Label htmlFor={`${fieldId}-refrigerant`} className="text-base font-medium text-foreground md:text-lg">{t.refrigerant}</Label>
           <Select value={refrigId} onValueChange={setRefrigId}>
-            <SelectTrigger className="h-14 text-lg md:h-14 md:text-lg">
+            <SelectTrigger id={`${fieldId}-refrigerant`} className="h-14 text-lg md:h-14 md:text-lg">
               <SelectValue placeholder={t.refrigerantPlaceholder} />
             </SelectTrigger>
             <SelectContent>
@@ -406,7 +438,7 @@ function SelecoesCompartilhadas({
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-base text-muted-foreground md:text-lg">{t.pressureUnit}</Label>
+          <Label className="text-base font-medium text-foreground md:text-lg">{t.pressureUnit}</Label>
           <div className="flex h-14 items-center">
             <LabeledSwitch
               value={unidade}
@@ -468,6 +500,20 @@ export function Superaquecimento({ onIrParaCiclo }: SuperaquecimentoProps) {
   const [pAlta, setPAlta] = usePersistedState('tt:state:superaquecimento:pAlta', '');
   const [tLiquido, setTLiquido] = usePersistedState('tt:state:superaquecimento:tLiquido', '');
 
+  // Trocar a unidade não altera a medição. A sugestão de corrigir uma unidade
+  // digitada errada continua usando setUnidade diretamente e mantém o número.
+  const trocarUnidadeMedicao = (nova: UnidadePressao) => {
+    if (nova === unidade) return;
+    const converterEntrada = (valor: string) => {
+      const entrada = num(valor);
+      if (!Number.isFinite(entrada)) return valor;
+      return String(Number(converter('pressao', unidade, nova, entrada).toPrecision(12))).replace('.', ',');
+    };
+    setPBaixa(converterEntrada(pBaixa));
+    setPAlta(converterEntrada(pAlta));
+    setUnidade(nova);
+  };
+
   const refrig = getRefrigerante(refrigId);
 
   const resultadoSH = useMemo(
@@ -482,15 +528,18 @@ export function Superaquecimento({ onIrParaCiclo }: SuperaquecimentoProps) {
 
   // Modelo escolhido (compartilhado entre as subabas SH e SC).
   const modelo = getModeloSuperaquecimento(modeloId) ?? getModeloSuperaquecimento(MODELO_PADRAO_ID)!;
+  const modeloCompativel = !modelo.refrigPadrao || modelo.refrigPadrao === refrigId;
+  const permiteComparacao = modeloCompativel && (!modelo.metodoCarga || modelo.metodoCarga === 'sh-sc');
+  const faixaManualLabel = { 'pt-br': 'Faixa do manual', en: 'Manual range', es: 'Rango del manual', fr: 'Plage du manuel' }[locale];
 
   // Faixa-alvo efetiva por cálculo: alvo do modelo OU genérico da física.
   // O delta vem da física; aqui só reclassificamos contra a faixa do modelo.
   const alvoSH = useMemo(
-    () => resolverAlvo(modelo.alvoSH, FAIXA_SH, resultadoSH.delta),
+    () => resolverAlvo(modelo.confianca === 'generico' ? null : modelo.alvoSH, FAIXA_SH, resultadoSH.delta),
     [modelo, resultadoSH.delta],
   );
   const alvoSC = useMemo(
-    () => resolverAlvo(modelo.alvoSC, FAIXA_SC, resultadoSC.delta),
+    () => resolverAlvo(modelo.confianca === 'generico' ? null : modelo.alvoSC, FAIXA_SC, resultadoSC.delta),
     [modelo, resultadoSC.delta],
   );
 
@@ -515,7 +564,7 @@ export function Superaquecimento({ onIrParaCiclo }: SuperaquecimentoProps) {
   return (
     <div className="space-y-4 pb-4">
       <div>
-        <h2 className="text-base font-semibold tracking-tight md:text-xl">
+        <h2 className="text-2xl font-bold tracking-tight md:text-3xl">
           {t.title}
         </h2>
         <p className="text-sm text-muted-foreground md:text-base">
@@ -536,32 +585,37 @@ export function Superaquecimento({ onIrParaCiclo }: SuperaquecimentoProps) {
       )}
 
       {/* Subnavegação underline — rolável horizontalmente no mobile */}
-      <div className="flex gap-1 border-b overflow-x-auto no-scrollbar">
-        {SUBABAS.map((aba) => (
-          <button
-            key={aba.key}
-            onClick={() => setSubAba(aba.key)}
-            className={cn(
-              'px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap shrink-0',
-              subAba === aba.key
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {aba.label}
-          </button>
-        ))}
-      </div>
+      <HorizontalTabBar asChild>
+        <div className="flex gap-1 border-b overflow-x-auto no-scrollbar">
+          {SUBABAS.map((aba) => (
+            <button
+              key={aba.key}
+              aria-current={subAba === aba.key ? 'page' : undefined}
+              onClick={() => setSubAba(aba.key)}
+              className={cn(
+                'px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap shrink-0',
+                subAba === aba.key
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {aba.label}
+            </button>
+          ))}
+        </div>
+      </HorizontalTabBar>
 
       {/* Seleções compartilhadas — agora dentro do conteúdo, válidas em toda subaba */}
       <SelecoesCompartilhadas
         refrigId={refrigId}
         setRefrigId={setRefrigId}
         unidade={unidade}
-        setUnidade={setUnidade}
+        setUnidade={trocarUnidadeMedicao}
         modeloId={modeloId}
         setModeloId={setModeloId}
       />
+
+      <DocumentedProfileNotice model={modelo} refrigerantMatches={modeloCompativel} />
 
       {/* Superaquecimento */}
       {subAba === 'sh' && (
@@ -570,20 +624,23 @@ export function Superaquecimento({ onIrParaCiclo }: SuperaquecimentoProps) {
           descricao={t.shSubtitle}
           labelPressao={t.shPressureLabel}
           labelTemp={t.shTempLabel}
+          ajudaPressao={t.shPressureHelp}
+          ajudaTemp={t.shTempHelp}
           unidade={unidade}
           pressao={pBaixa}
           setPressao={setPBaixa}
           temp={tSuccao}
           setTemp={setTSuccao}
           resultado={resultadoSH}
-          classificacaoSelo={alvoSH.classificacao}
-          faixaTexto={`ideal ${formatarTemp(alvoSH.faixa.min)}–${formatarTemp(alvoSH.faixa.max)} °C`}
+          classificacaoSelo={permiteComparacao && (!modelo.fonteUrl || modelo.alvoSH) ? alvoSH.classificacao : null}
+          faixaTexto={`${alvoSH.generico ? t.genericRangeLabel : faixaManualLabel} ${formatarTemp(alvoSH.faixa.min)}–${formatarTemp(alvoSH.faixa.max)} °C`}
+          faixaGenerica={alvoSH.generico}
           foraDaFaixa={shForaFaixa}
           pressaoBruta={pBaixa}
           sugestao={sugestaoSH}
           onTrocarUnidade={setUnidade}
           notaModelo={
-            <NotaModelo
+            !modelo.fonteUrl && <NotaModelo
               nota={modelo.nota}
               confianca={modelo.confianca}
               alvoGenerico={alvoSH.generico}
@@ -599,20 +656,23 @@ export function Superaquecimento({ onIrParaCiclo }: SuperaquecimentoProps) {
           descricao={t.scSubtitle}
           labelPressao={t.scPressureLabel}
           labelTemp={t.scTempLabel}
+          ajudaPressao={t.scPressureHelp}
+          ajudaTemp={t.scTempHelp}
           unidade={unidade}
           pressao={pAlta}
           setPressao={setPAlta}
           temp={tLiquido}
           setTemp={setTLiquido}
           resultado={resultadoSC}
-          classificacaoSelo={alvoSC.classificacao}
-          faixaTexto={`ideal ${formatarTemp(alvoSC.faixa.min)}–${formatarTemp(alvoSC.faixa.max)} °C`}
+          classificacaoSelo={permiteComparacao && (!modelo.fonteUrl || modelo.alvoSC) ? alvoSC.classificacao : null}
+          faixaTexto={`${alvoSC.generico ? t.genericRangeLabel : faixaManualLabel} ${formatarTemp(alvoSC.faixa.min)}–${formatarTemp(alvoSC.faixa.max)} °C`}
+          faixaGenerica={alvoSC.generico}
           foraDaFaixa={scForaFaixa}
           pressaoBruta={pAlta}
           sugestao={sugestaoSC}
           onTrocarUnidade={setUnidade}
           notaModelo={
-            <NotaModelo
+            !modelo.fonteUrl && <NotaModelo
               nota={modelo.nota}
               confianca={modelo.confianca}
               alvoGenerico={alvoSC.generico}
@@ -621,6 +681,7 @@ export function Superaquecimento({ onIrParaCiclo }: SuperaquecimentoProps) {
         />
       )}
 
+      <SaturationTableReference refrigerantId={refrigId} />
       <ToolDisclaimer texto={t.disclaimer} />
     </div>
   );

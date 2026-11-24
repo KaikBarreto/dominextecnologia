@@ -22,6 +22,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
+import { getErrorMessage } from '@/utils/errorMessages';
 
 interface Props {
   open: boolean;
@@ -45,12 +47,14 @@ function useOsConfig() {
 
   const updateConfig = useMutation({
     mutationFn: async (input: { number_prefix?: string; number_format?: string }) => {
-      const { error } = await supabase.from('os_config').update(input).eq('id', configQuery.data!.id);
-      if (error) throw error;
+      assertRowsAffected(await supabase.from('os_config').update(input, { count: 'exact' }).eq('id', configQuery.data!.id), 'update');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['os_config'] });
       toast({ title: MESSAGES[locale].app.os.statusManager.toastConfigSaved });
+    },
+    onError: (error: unknown) => {
+      toast({ variant: 'destructive', title: 'Não foi possível concluir', description: getErrorMessage(error) });
     },
   });
 
@@ -85,12 +89,14 @@ function useOsSla() {
 
   const deleteSla = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('os_sla_config').delete().eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(await supabase.from('os_sla_config').delete({ count: 'exact' }).eq('id', id), 'delete');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['os_sla_config'] });
       toast({ title: MESSAGES[locale].app.os.statusManager.toastSlaRemoved });
+    },
+    onError: (error: unknown) => {
+      toast({ variant: 'destructive', title: 'Não foi possível concluir', description: getErrorMessage(error) });
     },
   });
 
@@ -125,11 +131,13 @@ function useOsRequiredFields() {
 
   const removeField = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('os_required_fields').delete().eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(await supabase.from('os_required_fields').delete({ count: 'exact' }).eq('id', id), 'delete');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['os_required_fields'] });
+    },
+    onError: (error: unknown) => {
+      toast({ variant: 'destructive', title: 'Não foi possível concluir', description: getErrorMessage(error) });
     },
   });
 

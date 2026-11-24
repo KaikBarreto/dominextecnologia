@@ -1,3 +1,4 @@
+import { adminKpiClass } from "@/components/admin/adminKpiStyles";
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -21,17 +22,17 @@ export function FinancialSummaryCards({ income, expenses, transactionsCount, onO
   const net = income - expenses;
   const { data: asaasBalance, isLoading: balanceLoading, isError: balanceError, isFetching: balanceFetching, refetch: refetchBalance } = useAsaasBalance();
   return (
-    <Card className="overflow-hidden border-0 shadow-lg bg-gradient-to-br from-card to-muted/20">
+    <Card className="overflow-hidden border bg-white shadow-sm">
       <CardContent className="p-6 md:p-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-6 border-b border-border/50">
-          <div className="relative text-center space-y-1 p-4 rounded-xl bg-muted/40 border border-border/50">
+          <div className={adminKpiClass("blue", "relative text-center space-y-1 p-4 rounded-xl")}>
             <button
               type="button"
               onClick={() => refetchBalance()}
               disabled={balanceFetching}
               aria-label="Atualizar saldo"
               title="Atualizar saldo"
-              className="absolute top-2 right-2 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+              className="absolute top-2 right-2 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white transition-colors disabled:opacity-50"
             >
               <RefreshCw className={cn('h-4 w-4', balanceFetching && 'animate-spin')} />
             </button>
@@ -47,20 +48,20 @@ export function FinancialSummaryCards({ income, expenses, transactionsCount, onO
               <p className={cn('text-2xl md:text-3xl font-bold tracking-tight', (asaasBalance ?? 0) >= 0 ? 'text-foreground' : 'text-destructive')}>{fmt(asaasBalance ?? 0)}</p>
             )}
           </div>
-          <div className="text-center space-y-1 p-4 rounded-xl bg-muted/40 border border-border/50">
+          <div className={adminKpiClass("violet", "text-center space-y-1 p-4 rounded-xl")}>
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Transações</span>
             <p className="text-2xl md:text-3xl font-bold tracking-tight">{transactionsCount}</p>
           </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-6">
           <div className="space-y-2">
-            <button type="button" onClick={onOpenIncome} className="w-full flex flex-col sm:flex-row items-center gap-3 p-4 rounded-xl bg-muted/40 border border-border/50 hover:bg-muted transition-all cursor-pointer group">
-              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-emerald-500 ring-4 ring-emerald-600/30 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <button type="button" onClick={onOpenIncome} className="w-full flex flex-col sm:flex-row items-center gap-3 p-4 rounded-xl bg-emerald-600 text-white transition-all cursor-pointer group hover:bg-emerald-700">
+              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-white/20 flex items-center justify-center group-hover:scale-110 transition-transform">
                 <TrendingUp className="h-6 w-6 text-white" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">Receitas</p>
-                <p className="text-lg md:text-xl font-bold text-emerald-600 dark:text-emerald-400">{fmt(income)}</p>
+                <p className="text-xs font-medium text-white/75 uppercase tracking-wide">Receitas</p>
+                <p className="text-lg md:text-xl font-bold text-white">{fmt(income)}</p>
               </div>
             </button>
             <Button size="sm" className="w-full gap-2 bg-emerald-500 hover:bg-emerald-600 text-white" onClick={onCreateIncome}>
@@ -68,13 +69,13 @@ export function FinancialSummaryCards({ income, expenses, transactionsCount, onO
             </Button>
           </div>
           <div className="space-y-2">
-            <button type="button" onClick={onOpenExpense} className="w-full flex flex-col sm:flex-row items-center gap-3 p-4 rounded-xl bg-muted/40 border border-border/50 hover:bg-muted transition-all cursor-pointer group">
-              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-500 ring-4 ring-red-600/30 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <button type="button" onClick={onOpenExpense} className="w-full flex flex-col sm:flex-row items-center gap-3 p-4 rounded-xl bg-red-600 text-white transition-all cursor-pointer group hover:bg-red-700">
+              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-white/20 flex items-center justify-center group-hover:scale-110 transition-transform">
                 <TrendingDown className="h-6 w-6 text-white" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-medium text-red-600 dark:text-red-400 uppercase tracking-wide">Despesas</p>
-                <p className="text-lg md:text-xl font-bold text-red-600 dark:text-red-400">{fmt(expenses)}</p>
+                <p className="text-xs font-medium text-white/75 uppercase tracking-wide">Despesas</p>
+                <p className="text-lg md:text-xl font-bold text-white">{fmt(expenses)}</p>
               </div>
             </button>
             <Button size="sm" className="w-full gap-2 bg-red-500 hover:bg-red-600 text-white" onClick={onCreateExpense}>
@@ -82,10 +83,10 @@ export function FinancialSummaryCards({ income, expenses, transactionsCount, onO
             </Button>
           </div>
         </div>
-        <div className="mt-4 p-4 rounded-xl bg-muted/50 border border-border/50">
+        <div className={cn('mt-4 p-4 rounded-xl text-white', net >= 0 ? 'bg-emerald-600' : 'bg-red-600')}>
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-muted-foreground">Resultado do período</span>
-            <span className={cn('text-lg font-bold', net >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400')}>
+            <span className="text-sm font-medium text-white/75">Resultado do período</span>
+            <span className="text-lg font-bold text-white">
               {net >= 0 ? '+' : ''}{fmt(net)}
             </span>
           </div>

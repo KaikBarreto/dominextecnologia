@@ -1,3 +1,4 @@
+import { HorizontalTabBar } from '@/components/ui/HorizontalTabBar';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -15,14 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from '@/components/ui/drawer';
+import { FullscreenWizard, FullscreenWizardAction } from '@/components/ui/FullscreenWizard';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
@@ -35,6 +29,7 @@ import { useUserCompany } from '@/hooks/useUserCompany';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
+import { nfseFiscalToday } from '@/lib/fiscal/nfseDates';
 import { invokeNfse, nfseOrientationDescription } from '@/utils/nfseEdge';
 import { calculateNfseTaxes } from '@/utils/nfseTaxes';
 import { NfseQuotaBlockModal, type NfseQuotaBlockInfo } from '@/components/fiscal/NfseQuotaBlockModal';
@@ -55,18 +50,15 @@ import type {
  * Espelha o padrão visual do EcoSistema (abas sublinhadas, barra de resumo
  * fixa, footer com Voltar/Cancelar/Salvar rascunho/Avançar-Emitir).
  *
- * Campos suportados: valorServico, aliquotaIssqn, tribIssqn, tpRetIssqn,
- * valorPis, valorCofins, valorCsll, percentualTribSn.
- * Campos OMITIDOS (não suportados): INSS, IRRF, deduções, descontos.
+ * Contrato canônico: ISS, PIS, COFINS, CSLL, INSS, IRRF, descontos,
+ * intermediário e referências técnicas/contratuais.
  *
  * Tomador/intermediário: `customerId` (cadastrado) OU `tomadorAvulso`/
  * `intermediarioAvulso` (digitado na hora, nunca os dois — migration
  * 20260906210000). Endereço do avulso é tudo-ou-nada: incompleto vira 422
  * `invalid_tomador` na emissão (validado no client em `pessoasErrors` antes
- * de deixar emitir). Intermediário é aceito no RASCUNHO mas SEMPRE bloqueado
- * na EMISSÃO (422 `intermediario_nao_suportado`) — o microserviço fiscal
- * ainda não monta o grupo `interm` da DPS. Não é um "ainda não implementei
- * a UI"; é limitação de backend deliberada até essa onda ser feita.
+ * de deixar emitir). Intermediário segue as mesmas regras de cadastro avulso
+ * e isolamento por tenant do tomador.
  *
  * Edges usadas:
  *  - nfse-save-draft (rascunho — upsert por id)
@@ -80,7 +72,8 @@ const PESSOAS_EMIT_ERROR_CODES = new Set([
   'tomador_ambiguo',
   'missing_customer',
   'invalid_tomador',
-  'intermediario_nao_suportado',
+  'intermediary_not_found',
+  'invalid_intermediary',
 ]);
 
 const STEPS: { key: StepKey }[] = [
@@ -89,8 +82,6 @@ const STEPS: { key: StepKey }[] = [
   { key: 'valores' },
   { key: 'emitir' },
 ];
-
-const todayISO = () => new Date().toISOString().slice(0, 10);
 
 const emptyServico = (): NfseServicoState => ({
   serviceTypeId: '',
@@ -101,6 +92,9 @@ const emptyServico = (): NfseServicoState => ({
   municipioIncidenciaNome: '',
   tribIssqn: '1',
   discriminacao: '',
+  documentoResponsabilidadeTecnica: '',
+  documentoReferencia: '',
+  pedidoB2b: '',
 });
 
 const emptyValores = (): NfseValoresState => ({
@@ -112,6 +106,11 @@ const emptyValores = (): NfseValoresState => ({
   valorPis: 0,
   valorCofins: 0,
   valorCsll: 0,
+  valorInss: 0,
+  valorIrrf: 0,
+  deducoes: 0,
+  descontoCondicionado: 0,
+  descontoIncondicionado: 0,
   percentualTribSn: 0,
 });
 
@@ -214,7 +213,7 @@ export function NovaNotaModal({
   const [draftId, setDraftId] = useState<string | null>(null);
 
   // ---- Estado do formulário ----
-  const [dataCompetencia, setDataCompetencia] = useState(todayISO());
+  const [dataCompetencia, setDataCompetencia] = useState(() => nfseFiscalToday());
   const [regimeApuracao, setRegimeApuracao] = useState('competencia');
   const [tomador, setTomador] = useState<NfseCustomer | null>(null);
   const [intermediario, setIntermediario] = useState<NfseCustomer | null>(null);
@@ -320,6 +319,10 @@ export function NovaNotaModal({
         valorPis: valores.valorPis,
         valorCofins: valores.valorCofins,
         valorCsll: valores.valorCsll,
+        valorInss: valores.valorInss,
+        valorIrrf: valores.valorIrrf,
+        deducoes: valores.deducoes,
+        descontoIncondicionado: valores.descontoIncondicionado,
       }),
     [valores],
   );
@@ -328,7 +331,7 @@ export function NovaNotaModal({
   const pessoasErrors = useMemo(() => {
     const e: string[] = [];
     if (!dataCompetencia) e.push(s.pessoas.competencia.required);
-    else if (dataCompetencia > todayISO()) e.push(s.pessoas.competencia.futureError);
+    else if (dataCompetencia > nfseFiscalToday()) e.push(s.pessoas.competencia.futureError);
     if (!tomador) e.push(s.pessoas.tomador.required);
 
     const tomadorManual = tomador?.partyEntryMode === 'manual';
@@ -352,13 +355,24 @@ export function NovaNotaModal({
       e.push(s.pessoas.tomador.missingDoc);
     }
 
-    // Intermediário: aceito no rascunho, SEMPRE bloqueado na emissão (backend
-    // 2026-09-06 — o microserviço fiscal ainda não monta o grupo `interm` da
-    // DPS). Não é validação de campo: é a própria presença do intermediário
-    // que impede emitir, então avisa aqui em vez de deixar o usuário só
-    // descobrir no clique de Emitir.
-    if (intermediario) {
-      e.push(s.pessoas.intermediario.naoSuportadoEmissao);
+    if (intermediario?.partyEntryMode === 'manual') {
+      if (!intermediario.name?.trim()) {
+        e.push(s.pessoas.intermediario.manualNameRequired);
+      }
+      if (!intermediario.document?.trim()) {
+        e.push(s.pessoas.intermediario.manualDocRequired);
+      }
+      const faltandoEndereco = enderecoAvulsoIncompleto(intermediario);
+      if (faltandoEndereco) {
+        e.push(
+          s.pessoas.manual.enderecoIncompletoIntermediario.replace(
+            '{campos}',
+            faltandoEndereco.join(', '),
+          ),
+        );
+      }
+    } else if (intermediario && !intermediario.document?.trim()) {
+      e.push(s.pessoas.intermediario.missingDoc);
     }
 
     return e;
@@ -483,7 +497,7 @@ export function NovaNotaModal({
   // ---- Reset ----
   const resetForm = useCallback(() => {
     setActiveStep('pessoas');
-    setDataCompetencia(todayISO());
+    setDataCompetencia(nfseFiscalToday());
     setRegimeApuracao('competencia');
     setTomador(null);
     setIntermediario(null);
@@ -538,6 +552,9 @@ export function NovaNotaModal({
       codigoNbs: servico.codigoNbs || undefined,
       municipioIncidenciaIbge: servico.municipioIncidenciaIbge || undefined,
       descricao: servico.discriminacao || undefined,
+      documentoResponsabilidadeTecnica: servico.documentoResponsabilidadeTecnica || undefined,
+      documentoReferencia: servico.documentoReferencia || undefined,
+      pedidoB2b: servico.pedidoB2b || undefined,
     },
     valores: {
       valorServico: valores.valorServico || undefined,
@@ -547,6 +564,11 @@ export function NovaNotaModal({
       valorPis: valores.valorPis || undefined,
       valorCofins: valores.valorCofins || undefined,
       valorCsll: valores.valorCsll || undefined,
+      valorInss: valores.valorInss || undefined,
+      valorIrrf: valores.valorIrrf || undefined,
+      deducoes: valores.deducoes || undefined,
+      descontoCondicionado: valores.descontoCondicionado || undefined,
+      descontoIncondicionado: valores.descontoIncondicionado || undefined,
       percentualTribSn: valores.percentualTribSn || undefined,
     },
   }), [draftId, tomador, intermediario, dataCompetencia, isSimples, regimeApuracao, servico, valores]);
@@ -577,7 +599,10 @@ export function NovaNotaModal({
   /**
    * Emite a nota:
    * - Se há draftId: salva o estado atual (upsert) e depois emite por emissionId.
-   * - Caso contrário: emite direto com o body completo.
+   * - Caso contrário: emite direto com o body completo, sem criar um rascunho
+   *   intermediário. Além de evitar lixo na lista, isso permite que uma nova
+   *   tentativa substitua com segurança uma rejeição anterior com a mesma
+   *   chave determinística.
    */
   const handleEmit = async () => {
     if (submittingRef.current) return;
@@ -590,12 +615,18 @@ export function NovaNotaModal({
     try {
       let emissionIdToUse = draftId;
 
-      // Salva/atualiza o rascunho primeiro (persistência do estado atual).
-      const saveRes = await invokeNfse<{ emission?: { id: string } }>(
-        'nfse-save-draft',
-        buildDraftBody(),
-      );
-      if (saveRes.ok && saveRes.data?.emission?.id) {
+      // Rascunho explícito é atualizado antes da emissão. Nota NOVA segue com
+      // o body completo abaixo: criar um rascunho aqui fazia a retentativa
+      // colidir com a chave da rejeição anterior depois de já falar com o Fisco.
+      if (emissionIdToUse) {
+        const saveRes = await invokeNfse<{ emission?: { id: string } }>(
+          'nfse-save-draft',
+          buildDraftBody(),
+        );
+        if (!saveRes.ok || !saveRes.data?.emission?.id) {
+          toast.error(saveRes.message ?? s.toasts.draftError);
+          return;
+        }
         emissionIdToUse = saveRes.data.emission.id;
         setDraftId(emissionIdToUse);
       }
@@ -607,6 +638,11 @@ export function NovaNotaModal({
             ...(tomador?.partyEntryMode === 'manual'
               ? { tomadorAvulso: buildPessoaAvulsoPayload(tomador) }
               : { customerId: tomador!.id }),
+            ...(intermediario
+              ? intermediario.partyEntryMode === 'manual'
+                ? { intermediarioAvulso: buildPessoaAvulsoPayload(intermediario) }
+                : { intermediarioCustomerId: intermediario.id }
+              : {}),
             dataCompetencia: dataCompetencia || undefined,
             servico: {
               descricao: servico.discriminacao,
@@ -616,6 +652,9 @@ export function NovaNotaModal({
                 : {}),
               ...(servico.codigoNbs ? { codigoNbs: servico.codigoNbs } : {}),
               ...(servico.municipioIncidenciaIbge ? { municipioIncidenciaIbge: servico.municipioIncidenciaIbge } : {}),
+              ...(servico.documentoResponsabilidadeTecnica ? { documentoResponsabilidadeTecnica: servico.documentoResponsabilidadeTecnica } : {}),
+              ...(servico.documentoReferencia ? { documentoReferencia: servico.documentoReferencia } : {}),
+              ...(servico.pedidoB2b ? { pedidoB2b: servico.pedidoB2b } : {}),
             },
             // Nomes CANÔNICOS esperados pela emissão: `aliquotaIss` e
             // `percentualTotalTributosSimplesNacional`. Mandar outro nome fazia
@@ -628,6 +667,11 @@ export function NovaNotaModal({
               ...(valores.valorPis ? { valorPis: valores.valorPis } : {}),
               ...(valores.valorCofins ? { valorCofins: valores.valorCofins } : {}),
               ...(valores.valorCsll ? { valorCsll: valores.valorCsll } : {}),
+              ...(valores.valorInss ? { valorInss: valores.valorInss } : {}),
+              ...(valores.valorIrrf ? { valorIrrf: valores.valorIrrf } : {}),
+              ...(valores.deducoes ? { deducoes: valores.deducoes } : {}),
+              ...(valores.descontoCondicionado ? { descontoCondicionado: valores.descontoCondicionado } : {}),
+              ...(valores.descontoIncondicionado ? { descontoIncondicionado: valores.descontoIncondicionado } : {}),
               ...(valores.percentualTribSn
                 ? { percentualTotalTributosSimplesNacional: valores.percentualTribSn }
                 : {}),
@@ -687,8 +731,8 @@ export function NovaNotaModal({
 
   // ---- Barra de resumo ----
   const summaryBar = (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/30 px-4 py-2.5">
-      <div className="flex items-center gap-4 min-w-0">
+    <div className="flex flex-col gap-3 rounded-xl border bg-background px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex w-full min-w-0 items-center gap-4 sm:w-auto">
         <div className="min-w-0">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             {s.summary.total}
@@ -731,7 +775,7 @@ export function NovaNotaModal({
           </Tooltip>
         </TooltipProvider>
       ) : (
-        <Badge className="gap-1.5 whitespace-nowrap shrink-0 bg-emerald-600 text-white border-0 py-1.5 px-3">
+        <Badge className="w-fit gap-1.5 whitespace-nowrap shrink-0 bg-emerald-600 text-white border-0 py-1.5 px-3">
           <CircleCheck className="h-3.5 w-3.5" />
           {s.summary.pronta}
         </Badge>
@@ -741,30 +785,42 @@ export function NovaNotaModal({
 
   // ---- Abas do stepper ----
   const stepTabs = (
-    <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide border-b border-border">
-      {STEPS.map((step) => (
-        <button
-          key={step.key}
-          type="button"
-          onClick={() => setActiveStep(step.key)}
-          className={`flex items-center whitespace-nowrap px-4 py-3 text-sm border-b-[3px] transition-colors -mb-[1px] ${
-            activeStep === step.key
-              ? 'border-primary text-primary font-bold'
-              : 'border-transparent text-muted-foreground font-semibold hover:text-foreground hover:border-muted-foreground/30'
-          }`}
-        >
-          {(s.tabs as Record<string, string>)[step.key]}
-          {renderStepIndicator(step.key)}
-        </button>
-      ))}
-    </div>
+    <HorizontalTabBar asChild>
+      <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide border-b border-border">
+        {STEPS.map((step) => (
+          <button
+            key={step.key}
+            aria-current={activeStep === step.key ? 'page' : undefined}
+            type="button"
+            onClick={() => setActiveStep(step.key)}
+            className={`flex items-center whitespace-nowrap px-4 py-3 text-sm border-b-[3px] transition-colors -mb-[1px] ${
+              activeStep === step.key
+                ? 'border-primary text-primary font-bold'
+                : 'border-transparent text-muted-foreground font-semibold hover:text-foreground hover:border-muted-foreground/30'
+            }`}
+          >
+            {(s.tabs as Record<string, string>)[step.key]}
+            {renderStepIndicator(step.key)}
+          </button>
+        ))}
+      </div>
+    </HorizontalTabBar>
   );
 
   // ---- Conteúdo das etapas ----
   const stepContent = (
-    <div className="space-y-4">
+    <div className="mx-auto w-full max-w-7xl space-y-6 py-5 sm:py-8">
       {summaryBar}
       {stepTabs}
+
+      <header className="pt-2">
+        <p className="text-sm font-semibold uppercase tracking-wide text-primary">
+          Etapa {currentIdx + 1} de {STEPS.length}
+        </p>
+        <h2 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
+          {(s.tabs as Record<string, string>)[activeStep]}
+        </h2>
+      </header>
 
       {activeStep === 'pessoas' && (
         <PessoasStep
@@ -840,7 +896,7 @@ export function NovaNotaModal({
       {/* Esquerda: Voltar (esconde na 1ª etapa) */}
       <div className={isMobile ? 'order-2' : ''}>
         {!isFirstStep && (
-          <Button
+          <FullscreenWizardAction
             variant="outline"
             onClick={goPrev}
             disabled={loading}
@@ -848,21 +904,21 @@ export function NovaNotaModal({
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             {s.footer.voltar}
-          </Button>
+          </FullscreenWizardAction>
         )}
       </div>
 
       {/* Direita: Cancelar · Salvar Rascunho · Avançar/Emitir */}
       <div className={`flex gap-2 ${isMobile ? 'flex-col order-1' : 'items-center'}`}>
-        <Button
+        <FullscreenWizardAction
           variant="ghost"
           onClick={handleClose}
           disabled={loading}
           className={`${isMobile ? 'w-full' : ''} text-destructive hover:bg-red-600 hover:text-white`}
         >
           {s.footer.cancelar}
-        </Button>
-        <Button
+        </FullscreenWizardAction>
+        <FullscreenWizardAction
           variant="outline"
           onClick={handleSaveDraft}
           disabled={loading}
@@ -872,29 +928,29 @@ export function NovaNotaModal({
         >
           <Save className="h-4 w-4 mr-2" />
           {s.footer.salvarRascunho}
-        </Button>
+        </FullscreenWizardAction>
         {!isLastStep ? (
-          <Button
+          <FullscreenWizardAction
             onClick={goNext}
             disabled={loading}
             className={isMobile ? 'w-full' : ''}
           >
             {s.footer.avancar}
             <ArrowRight className="h-4 w-4 ml-2" />
-          </Button>
+          </FullscreenWizardAction>
         ) : (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className={isMobile ? 'w-full' : ''}>
-                  <Button
+                  <FullscreenWizardAction
                     onClick={handleEmit}
                     disabled={loading || !canEmit}
                     className={isMobile ? 'w-full' : ''}
                   >
                     <Send className="h-4 w-4 mr-2" />
                     {s.footer.emitir}
-                  </Button>
+                  </FullscreenWizardAction>
                 </span>
               </TooltipTrigger>
               {!canEmit && (
@@ -911,61 +967,24 @@ export function NovaNotaModal({
 
   return (
     <>
-      {/* Modal principal — Dialog (desktop) / Drawer (mobile) */}
-      {isMobile ? (
-        <Drawer
-          open={open}
-          onOpenChange={(isOpen) => {
-            if (!isOpen) handleClose();
-          }}
-          handleOnly
-        >
-          <DrawerContent
-            className="max-h-[95vh] flex flex-col"
-            onPointerDownOutside={(e) => e.preventDefault()}
-            onInteractOutside={(e) => e.preventDefault()}
-          >
-            <DrawerHeader className="border-b pb-3 flex-shrink-0">
-              <DrawerTitle className="flex items-center gap-2">
-                <Receipt className="h-5 w-5" />
-                {s.title}
-              </DrawerTitle>
-            </DrawerHeader>
-            <div className="flex-1 overflow-y-auto px-4 py-4 overscroll-contain">
-              {stepContent}
-            </div>
-            <DrawerFooter className="border-t pt-4 flex-shrink-0 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
-              {footerContent}
-            </DrawerFooter>
-          </DrawerContent>
-        </Drawer>
-      ) : (
-        <Dialog
-          open={open}
-          onOpenChange={(isOpen) => {
-            if (!isOpen) handleClose();
-          }}
-        >
-          <DialogContent
-            className="max-w-4xl w-[95vw] h-[92dvh] max-h-[92dvh] flex flex-col min-h-0 overflow-hidden p-0"
-            onPointerDownOutside={(e) => e.preventDefault()}
-            onInteractOutside={(e) => e.preventDefault()}
-          >
-            <DialogHeader className="shrink-0 px-6 pt-6 pb-4 border-b">
-              <DialogTitle className="flex items-center gap-2">
-                <Receipt className="h-5 w-5" />
-                {s.title}
-              </DialogTitle>
-            </DialogHeader>
-            <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
-              {stepContent}
-            </div>
-            <DialogFooter className="gap-2 shrink-0 px-6 py-4 border-t">
-              {footerContent}
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
+      <FullscreenWizard
+        open={open}
+        onOpenChange={(isOpen) => { if (!isOpen) handleClose(); }}
+        title={s.title}
+        description="Nota Fiscal de Serviço eletrônica pelo motor fiscal próprio"
+        exitLabel="Sair"
+        footer={footerContent}
+        headerActions={
+          <div className="flex items-center gap-2">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+              <Receipt className="h-5 w-5" />
+            </span>
+            <Badge variant="outline">{settings.fiscal_ambiente === 'producao' ? 'Produção' : 'Homologação'}</Badge>
+          </div>
+        }
+      >
+        {stepContent}
+      </FullscreenWizard>
 
       {/* Confirmação de cancelamento com dados não salvos */}
       <ResponsiveModal

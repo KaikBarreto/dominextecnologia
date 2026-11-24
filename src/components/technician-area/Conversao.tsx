@@ -1,602 +1,182 @@
-import { useEffect, useRef, useState } from 'react';
-import { Gauge, Thermometer, Zap, Ruler, ArrowLeftRight, AlertTriangle, Star } from 'lucide-react';
+import { HorizontalTabBar } from '@/components/ui/HorizontalTabBar';
+import { useEffect, useId, useRef, useState } from 'react';
+import { Gauge, Thermometer, Zap, Ruler, ArrowLeftRight, Info, Star } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import {
-  CONVERSAO_CATEGORIAS,
-  converter,
-  formatarResultado,
-  type ConversaoCategoria,
-  type ConversaoCategoriaNumerica,
-} from '@/lib/conversoes';
+import { CONVERSAO_CATEGORIAS, converter, formatarResultado, lerValorConversao, type ConversaoCategoria } from '@/lib/conversoes';
 import { ToolDisclaimer } from './ToolDisclaimer';
-import {
-  registrarConversaoRecente,
-  toggleConversaoFavorita,
-  useToolHistory,
-} from '@/lib/technicianAreaHistory';
+import { registrarConversaoRecente, toggleConversaoFavorita, useToolHistory } from '@/lib/technicianAreaHistory';
 import { usePersistedState } from '@/hooks/usePersistedState';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 
 type TConversion = (typeof MESSAGES)['pt-br']['app']['technicianTools']['conversion'];
-
-/** Par inicial de deep-link vindo de Recentes/Favoritos do Início. */
-export interface ConversaoInicial {
-  categoria: ConversaoCategoria;
-  de: string;
-  para: string;
-}
-
-/** Atalhos de conversões comuns (chips no topo). */
-interface AtalhoConversao {
-  label: string;
-  categoria: ConversaoCategoria;
-  de: string;
-  para: string;
-}
-
-const ATALHOS_RAPIDOS: AtalhoConversao[] = [
-  { label: '°C → °F', categoria: 'temperatura', de: 'C', para: 'F' },
-  { label: 'bar → psi', categoria: 'pressao', de: 'bar', para: 'psi' },
-  { label: 'HP → BTU/h', categoria: 'potencia', de: 'HP', para: 'BTU/h' },
-  { label: 'mm → pol', categoria: 'comprimento', de: 'mm', para: 'pol' },
-];
-
-/** Converte string crua de input numérico em number, com default seguro. */
-function num(str: string, def = 0): number {
-  const parsed = Number(str.replace(',', '.'));
-  return Number.isFinite(parsed) ? parsed : def;
-}
-
-/** Fator de refrigeração: 1 HP de compressor/ar-condicionado ≈ 9.000 BTU/h. */
-const BTU_POR_HP_REFRIGERACAO = 9000;
-
+export interface ConversaoInicial { categoria: ConversaoCategoria; de: string; para: string }
 type ModoPotencia = 'energia' | 'refrigeracao';
-
-const CATEGORIA_ICONES: Record<ConversaoCategoria, LucideIcon> = {
-  pressao: Gauge,
-  temperatura: Thermometer,
-  potencia: Zap,
-  comprimento: Ruler,
+const ICONES: Record<ConversaoCategoria, LucideIcon> = { pressao: Gauge, temperatura: Thermometer, potencia: Zap, comprimento: Ruler };
+const CORES_CATEGORIA: Record<ConversaoCategoria, string> = {
+  pressao: 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400',
+  temperatura: 'border-red-600 text-red-600 dark:border-red-400 dark:text-red-400',
+  potencia: 'border-amber-700 text-amber-700 dark:border-amber-400 dark:text-amber-400',
+  comprimento: 'border-green-700 text-green-700 dark:border-green-400 dark:text-green-400',
 };
-
-/** Cor de destaque por categoria (decorativa via style, à la Início). */
-const CATEGORIA_ACCENT: Record<ConversaoCategoria, string> = {
-  pressao: 'hsl(217 91% 60%)', // azul
-  temperatura: 'hsl(0 84% 60%)', // vermelho
-  potencia: 'hsl(38 92% 50%)', // âmbar
-  comprimento: 'hsl(142 71% 45%)', // verde
-};
-
-/** Rótulo da categoria pro usuário. */
-const CATEGORIA_LABEL: Record<ConversaoCategoria, string> = {
-  pressao: CONVERSAO_CATEGORIAS.pressao.label,
-  temperatura: CONVERSAO_CATEGORIAS.temperatura.label,
-  potencia: CONVERSAO_CATEGORIAS.potencia.label,
-  comprimento: CONVERSAO_CATEGORIAS.comprimento.label,
-};
-
-const ORDEM: ConversaoCategoria[] = [
-  'pressao',
-  'temperatura',
-  'potencia',
-  'comprimento',
-];
+const ORDEM: ConversaoCategoria[] = ['pressao', 'temperatura', 'potencia', 'comprimento'];
 
 export function Conversao({ inicial }: { inicial?: ConversaoInicial }) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.technicianTools.conversion;
-
-  // Rótulo traduzido por categoria (sobrescreve CATEGORIA_LABEL do módulo).
-  const categoriaLabel: Record<ConversaoCategoria, string> = {
-    pressao: t.categories.pressure,
-    temperatura: t.categories.temperature,
-    potencia: t.categories.power,
-    comprimento: t.categories.length,
-  };
-
-  // Categoria persiste na sessão (sobrevive à troca de aba). Deep-link tem
-  // prioridade: quando vem com `inicial`, aplicamos a categoria dele na 1ª
-  // montagem por cima do que estava salvo.
-  const [categoria, setCategoria] = usePersistedState<ConversaoCategoria>(
-    'tt:state:conversao:categoria',
-    inicial?.categoria ?? 'pressao',
-  );
-  const aplicouDeepLink = useRef(false);
+  const id = useId();
+  const [categoria, setCategoria] = usePersistedState<ConversaoCategoria>('tt:state:conversao:categoria', inicial?.categoria ?? 'pressao');
+  const [parInicial, setParInicial] = useState(inicial);
+  const [navegacao, setNavegacao] = useState(0);
+  const inicialCategoria = inicial?.categoria;
+  const inicialDe = inicial?.de;
+  const inicialPara = inicial?.para;
   useEffect(() => {
-    if (inicial && !aplicouDeepLink.current) {
-      aplicouDeepLink.current = true;
-      setCategoria(inicial.categoria);
+    if (inicialCategoria && inicialDe && inicialPara) {
+      setCategoria(inicialCategoria);
+      setParInicial({ categoria: inicialCategoria, de: inicialDe, para: inicialPara });
+      setNavegacao(n => n + 1);
     }
-  }, [inicial, setCategoria]);
-
-  // Par inicial pra view (deep-link OU atalho rápido). Trocar a categoria pelos
-  // cards limpa o par forçado e deixa a view usar seus defaults.
-  const [parInicial, setParInicial] = useState<ConversaoInicial | undefined>(inicial);
-
-  const escolherCategoria = (cat: ConversaoCategoria) => {
-    setParInicial(undefined);
-    setCategoria(cat);
-  };
-
-  const aplicarAtalho = (a: AtalhoConversao) => {
-    setParInicial({ categoria: a.categoria, de: a.de, para: a.para });
-    setCategoria(a.categoria);
-  };
-
-  // Chave da view: remonta ao trocar categoria OU par forçado, pra reinicializar.
-  const viewKey = parInicial
-    ? `${categoria}:${parInicial.de}:${parInicial.para}`
-    : categoria;
-
+  }, [inicialCategoria, inicialDe, inicialPara, setCategoria]);
+  const labels = { pressao: t.categories.pressure, temperatura: t.categories.temperature, potencia: t.categories.power, comprimento: t.categories.length };
+  const atalhos = [
+    { label: '°C → °F', categoria: 'temperatura', de: 'C', para: 'F' },
+    { label: 'bar → psi', categoria: 'pressao', de: 'bar', para: 'psi' },
+    { label: `${t.commercialHp} → BTU/h`, categoria: 'potencia', de: 'HP_ref', para: 'BTU/h' },
+    { label: 'mm → pol', categoria: 'comprimento', de: 'mm', para: 'pol' },
+  ] satisfies (ConversaoInicial & { label: string })[];
+  const abrirPar = (par: ConversaoInicial) => { setParInicial(par); setCategoria(par.categoria); setNavegacao(n => n + 1); };
   return (
-    <div className="space-y-4 pb-4">
+    <div className="space-y-4 pb-4 sm:space-y-6">
       <div>
-        <h2 className="text-base font-semibold tracking-tight md:text-xl">{t.title}</h2>
-        <p className="text-sm text-muted-foreground md:text-base">{t.subtitle}</p>
+        <h2 className="text-2xl font-bold tracking-tight md:text-3xl">{t.title}</h2>
+        <p className="mt-1 text-base text-muted-foreground">{t.subtitle}</p>
       </div>
-
-      {/* Navegação de categoria — linha inferior, sem pills preenchidas. */}
-      <div className="flex gap-1 overflow-x-auto border-b border-border no-scrollbar" role="tablist">
-        {ORDEM.map((cat) => {
-          const Icon = CATEGORIA_ICONES[cat];
-          const isActive = categoria === cat;
-          return (
-            <button
-              key={cat}
-              type="button"
-              onClick={() => escolherCategoria(cat)}
-              role="tab"
-              aria-selected={isActive}
-              aria-pressed={isActive}
-              aria-current={isActive ? 'true' : undefined}
-              style={isActive ? { borderColor: CATEGORIA_ACCENT[cat], color: CATEGORIA_ACCENT[cat] } : undefined}
-              className={cn(
-                'inline-flex shrink-0 items-center gap-1.5 -mb-px border-b-2 bg-transparent px-3 py-2 text-sm font-medium transition-colors active:scale-[0.97]',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                isActive
-                  ? 'font-semibold'
-                  : 'border-transparent text-muted-foreground hover:text-foreground',
-              )}
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              <span className="leading-none">{categoriaLabel[cat]}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      <ConversaoCategoriaView
-        key={viewKey}
-        categoria={categoria}
-        inicial={parInicial}
-        atalhos={ATALHOS_RAPIDOS}
-        onAtalho={aplicarAtalho}
-        t={t}
-      />
-    </div>
-  );
-}
-
-function ConversaoCategoriaView({
-  categoria,
-  inicial,
-  atalhos,
-  onAtalho,
-  t,
-}: {
-  categoria: ConversaoCategoria;
-  inicial?: ConversaoInicial;
-  atalhos: AtalhoConversao[];
-  onAtalho: (a: AtalhoConversao) => void;
-  t: TConversion;
-}) {
-  return (
-    <ConversaoNumericaView
-      categoria={categoria}
-      inicial={inicial}
-      atalhos={atalhos}
-      onAtalho={onAtalho}
-      t={t}
-    />
-  );
-}
-
-function ConversaoNumericaView({
-  categoria,
-  inicial,
-  atalhos,
-  onAtalho,
-  t,
-}: {
-  categoria: ConversaoCategoriaNumerica;
-  inicial?: ConversaoInicial;
-  atalhos: AtalhoConversao[];
-  onAtalho: (a: AtalhoConversao) => void;
-  t: TConversion;
-}) {
-  const { unidades } = CONVERSAO_CATEGORIAS[categoria];
-
-  // Só usa o par inicial se for da mesma categoria e as unidades existirem.
-  const usarInicial =
-    inicial &&
-    inicial.categoria === categoria &&
-    unidades.some((u) => u.code === inicial.de) &&
-    unidades.some((u) => u.code === inicial.para);
-
-  // Estado persistido por CATEGORIA (chave namespaceada) pra sobreviver à troca
-  // de aba sem misturar valores entre categorias. Em deep-link válido
-  // (`usarInicial`), o par vindo de fora vence o que estava salvo.
-  const [de, setDe] = usePersistedState(
-    `tt:state:conversao:${categoria}:de`,
-    usarInicial ? (inicial as ConversaoInicial).de : unidades[0].code,
-  );
-  const [para, setPara] = usePersistedState(
-    `tt:state:conversao:${categoria}:para`,
-    usarInicial ? (inicial as ConversaoInicial).para : (unidades[1]?.code ?? unidades[0].code),
-  );
-  // Valor cru digitado pelo usuário (string) e qual lado é a fonte da verdade.
-  // Default "1" pra já mostrar a conversão calculada ao entrar na categoria.
-  const [valor, setValor] = usePersistedState(`tt:state:conversao:${categoria}:valor`, '1');
-  const [lastEdited, setLastEdited] = useState<'left' | 'right'>('left');
-  // Modo de cálculo do par HP ↔ BTU/h (só relevante na categoria Potência).
-  const [modo, setModo] = usePersistedState<ModoPotencia>(
-    `tt:state:conversao:${categoria}:modo`,
-    'refrigeracao',
-  );
-
-  // Deep-link válido tem prioridade sobre o par salvo: aplica de/para uma vez.
-  const aplicouInicial = useRef(false);
-  useEffect(() => {
-    if (usarInicial && !aplicouInicial.current) {
-      aplicouInicial.current = true;
-      setDe((inicial as ConversaoInicial).de);
-      setPara((inicial as ConversaoInicial).para);
-    }
-  }, [usarInicial, inicial, setDe, setPara]);
-
-  // Lados de origem/destino dependem de quem foi editado por último.
-  const origemCode = lastEdited === 'left' ? de : para;
-  const destinoCode = lastEdited === 'left' ? para : de;
-
-  // O par HP ↔ BTU/h na categoria Potência (qualquer direção).
-  const isParHpBtu =
-    categoria === 'potencia' &&
-    ((de === 'HP' && para === 'BTU/h') || (de === 'BTU/h' && para === 'HP'));
-
-  // Troca de unidade reseta o modo pro default ('refrigeracao').
-  const trocarDe = (code: string) => {
-    setDe(code);
-    setModo('refrigeracao');
-  };
-  const trocarPara = (code: string) => {
-    setPara(code);
-    setModo('refrigeracao');
-  };
-
-  // Calcula o derivado: no modo refrigeração (par HP/BTU/h) usa fator 9.000;
-  // caso contrário, conversão padrão via converter().
-  const calcularDerivado = (entrada: number): number => {
-    if (isParHpBtu && modo === 'refrigeracao') {
-      if (origemCode === 'HP') return entrada * BTU_POR_HP_REFRIGERACAO; // HP → BTU/h
-      return entrada / BTU_POR_HP_REFRIGERACAO; // BTU/h → HP
-    }
-    return converter(categoria, origemCode, destinoCode, entrada);
-  };
-
-  // Valor derivado (o campo que NÃO está sendo editado) — calculado no render.
-  const derivado =
-    valor.trim() === '' ? '' : formatarResultado(calcularDerivado(num(valor)));
-
-  // Cada campo mostra: o valor cru se for a origem, senão o derivado formatado.
-  const valorEsquerdo = lastEdited === 'left' ? valor : derivado;
-  const valorDireito = lastEdited === 'right' ? valor : derivado;
-
-  const handleSwap = () => {
-    // Inverte unidades; mantém o que está visível à esquerda como nova origem.
-    setValor(valorEsquerdo);
-    setLastEdited('left');
-    setDe(para);
-    setPara(de);
-  };
-
-  // Aviso informativo: par HP ↔ BTU/h na categoria Potência (qualquer direção).
-  const mostrarAvisoHpBtu = isParHpBtu;
-
-  // ── Recentes/Favoritos ──
-  const { favoritosConversao } = useToolHistory();
-  // O par "lógico" da conversão segue o lado que o usuário está editando.
-  const isFavorito =
-    origemCode !== destinoCode &&
-    favoritosConversao.some(
-      (c) => c.categoria === categoria && c.de === origemCode && c.para === destinoCode,
-    );
-
-  // Registra o par recente quando há valor digitado e par válido (debounce leve
-  // pra não gravar a cada tecla; re-grava só quando o par muda).
-  useEffect(() => {
-    if (valor.trim() === '' || origemCode === destinoCode) return;
-    const id = setTimeout(() => {
-      registrarConversaoRecente({ categoria, de: origemCode, para: destinoCode });
-    }, 600);
-    return () => clearTimeout(id);
-    // Intencional: só re-agenda ao mudar o par ou se passa a ter valor.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categoria, origemCode, destinoCode, valor.trim() === '']);
-
-  return (
-    <div className="space-y-3">
-    {isParHpBtu && (
-      <div className="rounded-lg border border-border bg-card p-3">
-        <p className="mb-2 text-xs font-medium text-muted-foreground">{t.calcModeLabel}</p>
-        <div className="grid grid-cols-2 gap-2">
-          {([
-            { key: 'refrigeracao', label: t.calcModeRefrigeration, fator: '1 HP = 9.000 BTU/h', accent: 'hsl(217 91% 60%)' },
-            { key: 'energia', label: t.calcModeEnergy, fator: '1 HP = 2.544 BTU/h', accent: 'hsl(25 95% 53%)' },
-          ] as const).map((opt) => {
-            const isActive = modo === opt.key;
-            return (
-              <button
-                key={opt.key}
-                type="button"
-                onClick={() => setModo(opt.key)}
-                aria-pressed={isActive}
-                style={isActive ? { backgroundColor: opt.accent } : undefined}
-                className={cn(
-                  'flex flex-col items-center justify-center gap-0.5 rounded-lg border px-2 py-2.5 text-center transition-colors',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                  isActive
-                    ? 'border-transparent text-white'
-                    : 'border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground',
-                )}
-              >
-                <span className="text-sm font-semibold leading-tight">{opt.label}</span>
-                <span className="text-[11px] leading-tight opacity-80">{opt.fator}</span>
-              </button>
-            );
+      <HorizontalTabBar asChild>
+        <div className="flex gap-1 overflow-x-auto border-b no-scrollbar" role="tablist" aria-label={t.title}>
+          {ORDEM.map(cat => {
+            const Icon = ICONES[cat];
+            return <button key={cat} id={`${id}-${cat}`} aria-controls={`${id}-panel`} type="button" role="tab" aria-selected={categoria === cat}
+              onClick={() => { setParInicial(undefined); setCategoria(cat); }}
+              className={cn('inline-flex min-h-12 shrink-0 items-center gap-2 border-b-2 px-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-base', categoria === cat ? CORES_CATEGORIA[cat] : 'border-transparent text-muted-foreground hover:text-foreground')}>
+              <Icon className="h-4 w-4" aria-hidden />{labels[cat]}
+            </button>;
           })}
         </div>
+      </HorizontalTabBar>
+      <div id={`${id}-panel`} role="tabpanel" aria-labelledby={`${id}-${categoria}`}>
+        <ConversaoNumerica key={`${categoria}:${parInicial?.de ?? ''}:${parInicial?.para ?? ''}:${navegacao}`} categoria={categoria} inicial={parInicial} t={t} atalhos={atalhos} onAtalho={abrirPar} />
       </div>
-    )}
-    <div className="relative rounded-lg border border-border bg-card p-4 pt-9">
-      {/* Favoritar o par atual — canto superior direito do card */}
-      {origemCode !== destinoCode && (
-        <button
-          type="button"
-          aria-pressed={isFavorito}
-          aria-label={isFavorito ? t.favoriteRemove : t.favoriteAdd}
-          onClick={() => toggleConversaoFavorita({ categoria, de: origemCode, para: destinoCode })}
-          className={cn(
-            'absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full transition-all active:scale-[0.92]',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-            isFavorito
-              ? 'text-warning hover:bg-warning/10'
-              : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-          )}
-        >
-          <Star className={cn('h-5 w-5 shrink-0', isFavorito && 'fill-current')} />
-        </button>
-      )}
-      {/* ===== Layout MOBILE (3 linhas: labels / selects+⇄ / valores+"=") ===== */}
-      <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2 lg:hidden">
-        {/* Linha 1: labels */}
-        <Label className="text-base text-muted-foreground text-center">{t.from}</Label>
-        <span aria-hidden className="w-12" />
-        <Label className="text-base text-muted-foreground text-center">{t.to}</Label>
-
-        {/* Linha 2: selects + botão de troca no meio */}
-        <Select value={de} onValueChange={trocarDe}>
-          <SelectTrigger className="h-14 text-lg [&>span]:flex-1 [&>span]:text-center">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {unidades.map((u) => (
-              <SelectItem key={u.code} value={u.code}>
-                {u.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <button
-          type="button"
-          onClick={handleSwap}
-          aria-label={t.swapUnits}
-          className={cn(
-            'flex h-14 w-12 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground transition-colors',
-            'hover:border-primary/40 hover:text-primary',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-          )}
-        >
-          <ArrowLeftRight className="h-5 w-5" />
-        </button>
-
-        <Select value={para} onValueChange={trocarPara}>
-          <SelectTrigger className="h-14 text-lg [&>span]:flex-1 [&>span]:text-center">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {unidades.map((u) => (
-              <SelectItem key={u.code} value={u.code}>
-                {u.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* Linha 3: inputs de valor + "=" no meio */}
-        <Input
-          type="text"
-          inputMode="decimal"
-          placeholder="0"
-          value={valorEsquerdo}
-          onChange={(e) => {
-            setValor(e.target.value);
-            setLastEdited('left');
-          }}
-          className="h-14 text-lg text-center"
-        />
-        <span aria-hidden className="flex h-14 w-12 items-center justify-center text-3xl font-semibold text-primary">
-          =
-        </span>
-        <Input
-          type="text"
-          inputMode="decimal"
-          placeholder="0"
-          value={valorDireito}
-          onChange={(e) => {
-            setValor(e.target.value);
-            setLastEdited('right');
-          }}
-          className="h-14 text-lg text-center"
-        />
-      </div>
-
-      {/* ===== Layout DESKTOP (3 linhas: labels / selects+⇄ / valores+"=") ===== */}
-      <div className="hidden grid-cols-[1fr_auto_1fr] items-end gap-3 lg:grid">
-        {/* Linha 1: labels */}
-        <Label className="text-lg text-muted-foreground">{t.from}</Label>
-        <span aria-hidden className="w-16" />
-        <Label className="text-lg text-muted-foreground">{t.to}</Label>
-
-        {/* Linha 2: selects + botão de troca no meio */}
-        <Select value={de} onValueChange={trocarDe}>
-          <SelectTrigger className="h-14 text-lg [&>span]:flex-1 [&>span]:text-left">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {unidades.map((u) => (
-              <SelectItem key={u.code} value={u.code}>
-                {u.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <button
-          type="button"
-          onClick={handleSwap}
-          aria-label={t.swapUnits}
-          className={cn(
-            'flex h-14 w-16 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground transition-colors',
-            'hover:border-primary/40 hover:text-primary',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-          )}
-        >
-          <ArrowLeftRight className="h-6 w-6" />
-        </button>
-
-        <Select value={para} onValueChange={trocarPara}>
-          <SelectTrigger className="h-14 text-lg [&>span]:flex-1 [&>span]:text-left">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {unidades.map((u) => (
-              <SelectItem key={u.code} value={u.code}>
-                {u.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* Linha 3: inputs de valor + "=" no meio */}
-        <Input
-          type="text"
-          inputMode="decimal"
-          placeholder="0"
-          value={valorEsquerdo}
-          onChange={(e) => {
-            setValor(e.target.value);
-            setLastEdited('left');
-          }}
-          className="h-20 text-3xl text-left"
-        />
-        <span aria-hidden className="flex h-20 w-16 items-center justify-center text-4xl font-semibold text-primary">
-          =
-        </span>
-        <Input
-          type="text"
-          inputMode="decimal"
-          placeholder="0"
-          value={valorDireito}
-          onChange={(e) => {
-            setValor(e.target.value);
-            setLastEdited('right');
-          }}
-          className="h-20 text-3xl text-left"
-        />
-      </div>
-
-      {/* Mais usadas — atalhos globais (cross-categoria) no rodapé do card */}
-      <div className="mt-4 border-t border-border pt-3">
-        <p className="mb-2 text-[11px] font-medium text-muted-foreground">{t.mostUsed}</p>
-        <div className="flex flex-wrap gap-2">
-          {atalhos.map((a) => (
-            <button
-              key={a.label}
-              type="button"
-              onClick={() => onAtalho(a)}
-              className={cn(
-                'rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all',
-                'hover:border-primary/40 hover:text-foreground active:scale-[0.97]',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-              )}
-            >
-              {a.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Favoritas — conversões marcadas com estrela, globais (cross-categoria) */}
-      {favoritosConversao.length > 0 && (
-        <div className="mt-4 border-t border-border pt-3">
-          <p className="mb-2 text-[11px] font-medium text-muted-foreground">{t.favorites}</p>
-          <div className="flex flex-wrap gap-2">
-            {favoritosConversao.map((fav) => {
-              const label = `${fav.de} → ${fav.para}`;
-              return (
-                <button
-                  key={`${fav.categoria}-${fav.de}-${fav.para}`}
-                  type="button"
-                  onClick={() =>
-                    onAtalho({ label, categoria: fav.categoria, de: fav.de, para: fav.para })
-                  }
-                  className={cn(
-                    'rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all',
-                    'hover:border-primary/40 hover:text-foreground active:scale-[0.97]',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                  )}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-
-      {mostrarAvisoHpBtu && (
-        <NoticeBanner variant="neutral" icon={AlertTriangle}>
-          {t.hpBtuNote
-            .replace('{energy}', t.calcModeEnergy)
-            .replace('{refrigeration}', t.calcModeRefrigeration)}
-        </NoticeBanner>
-      )}
-
-      <ToolDisclaimer />
     </div>
   );
+}
+
+function ConversaoNumerica({ categoria, inicial, t, atalhos, onAtalho }: {
+  categoria: ConversaoCategoria; inicial?: ConversaoInicial; t: TConversion;
+  atalhos: (ConversaoInicial & { label: string })[]; onAtalho: (par: ConversaoInicial) => void;
+}) {
+  const id = useId();
+  const catalogo = CONVERSAO_CATEGORIAS[categoria].unidades;
+  const inicialValido = inicial?.categoria === categoria && catalogo.some(u => u.code === inicial.de) && catalogo.some(u => u.code === inicial.para);
+  const inicialModo = inicialValido && (['HP_ref', 'TR'].includes(inicial.de) || ['HP_ref', 'TR'].includes(inicial.para)) ? 'refrigeracao' : inicialValido && (['HP', 'cv'].includes(inicial.de) || ['HP', 'cv'].includes(inicial.para)) ? 'energia' : undefined;
+  const [modoSalvo, setModo] = usePersistedState<ModoPotencia>(`tt:state:conversao:${categoria}:modo`, inicialModo ?? 'refrigeracao');
+  const modo = modoSalvo === 'energia' ? 'energia' : 'refrigeracao';
+  const [deSalvo, setDe] = usePersistedState(`tt:state:conversao:${categoria}:de`, inicialValido ? inicial.de : categoria === 'potencia' ? 'HP_ref' : catalogo[0].code);
+  const [paraSalvo, setPara] = usePersistedState(`tt:state:conversao:${categoria}:para`, inicialValido ? inicial.para : categoria === 'potencia' ? 'BTU/h' : catalogo[1].code);
+  const [valor, setValor] = usePersistedState(`tt:state:conversao:${categoria}:valor`, '1');
+  const [ladoEditado, setLadoEditado] = useState<'left' | 'right'>('left');
+  // HP comercial é uma unidade explícita. Nunca aplicar o fator de 9.000 ao HP mecânico.
+  const unidades = catalogo.filter(u => categoria !== 'potencia' || (modo === 'refrigeracao' ? !['HP', 'cv'].includes(u.code) : !['HP_ref', 'TR'].includes(u.code)));
+  const normalizar = (code: string, fallback: string) => {
+    if (categoria === 'potencia' && modo === 'refrigeracao' && code === 'HP') return 'HP_ref'; // sessões anteriores
+    if (categoria === 'potencia' && modo === 'energia' && code === 'HP_ref') return 'HP';
+    return unidades.some(u => u.code === code) ? code : fallback;
+  };
+  const de = normalizar(deSalvo, unidades[0].code);
+  const para = normalizar(paraSalvo, unidades[1].code);
+  const aplicouInicial = useRef(false);
+  useEffect(() => {
+    if (inicialValido && !aplicouInicial.current) {
+      aplicouInicial.current = true;
+      setDe(inicial.de); setPara(inicial.para);
+      if (inicialModo) setModo(inicialModo);
+    }
+  }, [inicial, inicialValido, inicialModo, setDe, setPara, setModo]);
+  const origem = ladoEditado === 'left' ? de : para;
+  const destino = ladoEditado === 'left' ? para : de;
+  const entrada = lerValorConversao(valor);
+  const calculado = converter(categoria, origem, destino, entrada);
+  const invalido = valor.trim() !== '' && !Number.isFinite(calculado);
+  const derivado = valor.trim() === '' ? '' : formatarResultado(calculado);
+  const esquerdo = ladoEditado === 'left' ? valor : derivado;
+  const direito = ladoEditado === 'right' ? valor : derivado;
+  const comercial = categoria === 'potencia' && (de === 'HP_ref' || para === 'HP_ref');
+  const rotulo = (code: string) => code === 'HP_ref' ? t.commercialHp : code === 'HP' ? t.mechanicalHp : code === 'kW' && categoria === 'potencia' && modo === 'refrigeracao' ? t.thermalKw : catalogo.find(u => u.code === code)?.label ?? code;
+  const { favoritosConversao } = useToolHistory();
+  const favorito = favoritosConversao.some(c => c.categoria === categoria && c.de === origem && c.para === destino);
+  useEffect(() => {
+    if (!Number.isFinite(entrada) || origem === destino) return;
+    const timer = setTimeout(() => registrarConversaoRecente({ categoria, de: origem, para: destino }), 600);
+    return () => clearTimeout(timer);
+  }, [categoria, origem, destino, entrada]);
+  const inverter = () => {
+    // Nunca reinterpreta um resultado PT-BR (ex. 9.000) como 9 ao inverter.
+    const novaEntrada = ladoEditado === 'left' ? calculado : entrada;
+    setValor(Number.isFinite(novaEntrada) ? String(Number(novaEntrada.toPrecision(12))).replace('.', ',') : '');
+    setLadoEditado('left'); setDe(para); setPara(de);
+  };
+  const mudarModo = (novo: ModoPotencia) => {
+    setModo(novo); setDe(novo === 'refrigeracao' ? 'HP_ref' : 'HP'); setPara(novo === 'refrigeracao' ? 'BTU/h' : 'kW');
+    setValor('1'); setLadoEditado('left');
+  };
+  const trocarUnidade = (lado: 'left' | 'right', code: string) => {
+    // Ao trocar unidade, o valor de entrada permanece na origem que o usuário editou.
+    if (lado === 'left') setDe(code); else setPara(code);
+  };
+  return <div className="space-y-4 sm:space-y-6">
+    {categoria !== 'potencia' && <p className="text-sm leading-relaxed text-muted-foreground">{categoria === 'pressao' ? t.pressureHint : categoria === 'temperatura' ? t.temperatureHint : t.lengthHint}</p>}
+    {categoria === 'potencia' && <section aria-label={t.calcModeLabel} className="space-y-3">
+      <h3 className="text-base font-semibold">{t.calcModeLabel}</h3>
+      <div className="grid grid-cols-2 gap-2">
+        {([{ key: 'refrigeracao', label: t.calcModeRefrigeration, hint: t.refrigerationHint }, { key: 'energia', label: t.calcModeEnergy, hint: t.mechanicalHint }] as const).map(opt => <button key={opt.key} type="button" onClick={() => mudarModo(opt.key)} aria-pressed={modo === opt.key}
+          className={cn('rounded-xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-4', modo === opt.key ? opt.key === 'refrigeracao' ? 'border-blue-600 bg-blue-600 text-white' : 'border-orange-700 bg-orange-700 text-white' : 'border-border hover:bg-muted/50')}>
+          <span className="block text-sm font-bold sm:text-base">{opt.label}</span><span className="mt-1 hidden text-sm leading-relaxed sm:block">{opt.hint}</span>
+        </button>)}
+      </div>
+      <p className="text-sm leading-relaxed text-muted-foreground sm:hidden">{modo === 'refrigeracao' ? t.refrigerationHint : t.mechanicalHint}</p>
+    </section>}
+    <section className="relative space-y-5 rounded-xl border bg-card p-4 sm:p-6" aria-label={t.title}>
+      <div className="flex min-h-10 items-center justify-between gap-3">
+        <p className="text-sm font-semibold text-muted-foreground">{comercial ? t.approximateResult : t.resultLabel}</p>
+        {origem !== destino && <button type="button" aria-pressed={favorito} aria-label={favorito ? t.favoriteRemove : t.favoriteAdd} onClick={() => toggleConversaoFavorita({ categoria, de: origem, para: destino })}
+          className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-lg hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', favorito ? 'text-amber-500' : 'text-muted-foreground')}><Star className={cn('h-5 w-5', favorito && 'fill-current')} /></button>}
+      </div>
+      <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-[minmax(0,1fr)_48px_minmax(0,1fr)] sm:items-center">
+        {(['left', 'right'] as const).map((lado, idx) => <div key={lado} className={cn('min-w-0 space-y-3', idx === 1 && 'sm:col-start-3 sm:row-start-1')}>
+          <div className="space-y-2">
+            <Label htmlFor={`${id}-${lado}-unit`} className="text-base font-semibold">{idx === 0 ? t.from : t.to}</Label>
+            <Select value={idx === 0 ? de : para} onValueChange={v => trocarUnidade(lado, v)}><SelectTrigger id={`${id}-${lado}-unit`} className="h-14 text-sm [&>span]:min-w-0 [&>span]:line-clamp-none [&>span]:whitespace-normal [&>span]:text-left [&>span]:leading-tight sm:h-12 sm:text-base"><SelectValue /></SelectTrigger>
+              <SelectContent>{unidades.map(u => <SelectItem key={u.code} value={u.code}>{rotulo(u.code)}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <Input id={`${id}-${lado}-value`} aria-label={`${idx === 0 ? t.from : t.to}: ${rotulo(idx === 0 ? de : para)}`} type="text" inputMode="decimal" placeholder="0" value={idx === 0 ? esquerdo : direito} aria-invalid={invalido && ladoEditado === lado} aria-describedby={invalido ? `${id}-error` : undefined}
+            onChange={e => { setValor(e.target.value); setLadoEditado(lado); }} className="h-16 min-w-0 text-2xl font-semibold tabular-nums md:h-20 md:text-3xl" />
+        </div>)}
+        <button type="button" onClick={inverter} aria-label={t.swapUnits} className="col-span-2 row-start-2 mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-muted hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:col-span-1 sm:col-start-2 sm:row-start-1">
+          <ArrowLeftRight className="h-5 w-5 rotate-90 sm:rotate-0" />
+        </button>
+      </div>
+      {invalido && <p id={`${id}-error`} role="alert" className="text-sm font-medium text-destructive">{categoria === 'temperatura' && Number.isFinite(entrada) ? t.invalidTemperature : t.invalidValue}</p>}
+      {categoria === 'potencia' && (comercial || modo === 'energia') && <p className="flex items-start gap-2 text-sm leading-relaxed text-muted-foreground"><Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /><span>{comercial ? t.commercialNote : t.mechanicalNote}</span></p>}
+    </section>
+    <div className="space-y-3">
+      <p className="text-sm font-semibold">{t.mostUsed}</p><div className="flex flex-wrap gap-2">{atalhos.map(a => <button key={a.label} type="button" onClick={() => onAtalho(a)} className="min-h-11 rounded-lg border px-3 text-sm font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{a.label}</button>)}</div>
+    </div>
+    {favoritosConversao.length > 0 && <div className="space-y-3"><p className="text-sm font-semibold">{t.favorites}</p><div className="flex flex-wrap gap-2">{favoritosConversao.map(f => <button key={`${f.categoria}-${f.de}-${f.para}`} type="button" onClick={() => onAtalho(f)} className="min-h-11 rounded-lg border px-3 text-sm font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{rotulo(f.de)} → {rotulo(f.para)}</button>)}</div></div>}
+    <ToolDisclaimer />
+  </div>;
 }

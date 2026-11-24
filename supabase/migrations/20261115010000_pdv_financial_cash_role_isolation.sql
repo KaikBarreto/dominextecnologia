@@ -2,7 +2,7 @@
 -- Fonte: definicoes publicadas v3/v4, capturadas antes da alteracao.
 -- V4 usa campos da linha para INSERT RETURNING: essa otimizacao permanece.
 -- Compras usam o vinculo estrutural OC/compra, sem backfill nem reclassificacao.
-BEGIN;
+
 SET LOCAL lock_timeout='5s';
 SET LOCAL statement_timeout='120s';
 
@@ -308,4 +308,4 @@ BEGIN
   END LOOP;
 END
 $apply$;
-COMMIT;
+;

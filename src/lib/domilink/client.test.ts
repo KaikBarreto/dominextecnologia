@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   buildDomiLinkTestPdfBase64,
   detectDomiLink,
@@ -21,6 +21,82 @@ const thermalPrinter: DomiLinkDevice = { id: 'thermal-1', kind: 'printer', label
 describe('cliente DomiLink', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+  });
+  afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
+
+  const deniedCopy = 'Seu navegador bloqueou a conexão com o DomiLink. Nas configurações deste site, permita o acesso à rede local e tente novamente.';
+  const offlineCopy = 'Não foi possível conectar ao DomiLink. Confira se o DomiLink está aberto e se o navegador permite acesso local.';
+
+  it('orienta a permissão explicitamente negada sem repetir a requisição', async () => {
+    const query = vi.fn().mockResolvedValue({ state: 'denied' });
+    vi.stubGlobal('navigator', { permissions: { query } });
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'));
+    await expect(detectDomiLink()).rejects.toMatchObject({ code: 'local_access_denied', message: deniedCopy });
+    expect(query).toHaveBeenCalledWith({ name: 'loopback-network' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('reconhece o nome antigo só quando a permissão de loopback é desconhecida', async () => {
+    const query = vi.fn().mockRejectedValueOnce(new TypeError('Unsupported permission')).mockResolvedValue({ state: 'denied' });
+    vi.stubGlobal('navigator', { permissions: { query } });
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'));
+    await expect(pairDomiLink('123456')).rejects.toMatchObject({ code: 'local_access_denied', message: deniedCopy });
+    expect(query.mock.calls).toEqual([[{ name: 'loopback-network' }], [{ name: 'local-network-access' }]]);
+  });
+
+  it.each(['granted', 'prompt'])('não atribui falha de rede a bloqueio quando loopback está %s', async (state) => {
+    const query = vi.fn().mockResolvedValue({ state });
+    vi.stubGlobal('navigator', { permissions: { query } });
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('ERR_CONNECTION_REFUSED'));
+    await expect(pairDomiLink('123456')).rejects.toMatchObject({ code: 'offline', message: offlineCopy });
+    expect(query).toHaveBeenCalledTimes(1);
+  });
+
+  it('preserva diagnóstico genérico e retry quando o navegador não reconhece as permissões', async () => {
+    const query = vi.fn().mockRejectedValue(new TypeError('Unsupported permission'));
+    vi.stubGlobal('navigator', { permissions: { query } });
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'));
+    await expect(detectDomiLink()).rejects.toMatchObject({ code: 'offline', message: offlineCopy });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('funciona sem Permissions API e não expõe a mensagem técnica original', async () => {
+    vi.stubGlobal('navigator', {});
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('CORS transport internal details'));
+    await expect(pairDomiLink('123456')).rejects.toMatchObject({ code: 'offline', message: offlineCopy });
+  });
+
+  it('não classifica aborto como permissão negada', async () => {
+    const query = vi.fn().mockResolvedValue({ state: 'denied' });
+    vi.stubGlobal('navigator', { permissions: { query } });
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new DOMException('Aborted', 'AbortError'));
+    await expect(pairDomiLink('123456')).rejects.toMatchObject({ code: 'offline', message: offlineCopy });
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it('mantém o timeout e não troca uma requisição abortada por permissão negada', async () => {
+    vi.useFakeTimers();
+    const query = vi.fn().mockResolvedValue({ state: 'denied' });
+    vi.stubGlobal('navigator', { permissions: { query } });
+    let observedSignal: AbortSignal | null = null;
+    vi.spyOn(globalThis, 'fetch').mockImplementation((_input, init) => new Promise((_resolve, reject) => {
+      observedSignal = init?.signal ?? null;
+      observedSignal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+    }));
+    const result = expect(pairDomiLink('123456')).rejects.toMatchObject({ code: 'offline', message: offlineCopy });
+    await vi.advanceTimersByTimeAsync(5_000);
+    await result;
+    expect(observedSignal?.aborted).toBe(true);
+    expect(query).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('não troca erro HTTP pelo diagnóstico de permissão', async () => {
+    const query = vi.fn().mockResolvedValue({ state: 'denied' });
+    vi.stubGlobal('navigator', { permissions: { query } });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ error: { code: 'session_expired' } }, 401));
+    await expect(pairDomiLink('123456')).rejects.toMatchObject({ code: 'session_expired', status: 401 });
+    expect(query).not.toHaveBeenCalled();
   });
 
   it('detecta somente o endpoint loopback fixo e não envia credenciais do navegador', async () => {

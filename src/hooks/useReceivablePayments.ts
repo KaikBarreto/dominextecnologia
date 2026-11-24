@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
 
@@ -55,17 +56,35 @@ export function useReceivablePayments(parentId: string | null | undefined) {
    */
   const reverseMutation = useMutation({
     mutationFn: async (paymentId: string) => {
-      // Filhas vinculadas (tarifa de máquina aplicada nesse recebimento) caem primeiro.
-      await supabase
+      // Filhas vinculadas (tarifa de máquina aplicada nesse recebimento). Os ids
+      // são lidos ANTES porque a FK parent_transaction_id é ON DELETE SET NULL:
+      // depois de apagar o recebimento elas perderiam o vínculo.
+      const { data: children, error: childrenError } = await supabase
         .from('financial_transactions')
-        .delete()
+        .select('id')
         .eq('parent_transaction_id', paymentId);
+      if (childrenError) throw childrenError;
 
-      const { error } = await supabase
-        .from('financial_transactions')
-        .delete()
-        .eq('id', paymentId);
-      if (error) throw error;
+      // Escrita principal primeiro, conferida: se a permissão barrar (0 linhas),
+      // nada mais é mexido e a tela mostra erro em vez de "estornado".
+      assertRowsAffected(
+        await supabase
+          .from('financial_transactions')
+          .delete({ count: 'exact' })
+          .eq('id', paymentId),
+        'delete',
+        'Não foi possível estornar: você não tem permissão para esta ação ou o recebimento já não existe. Atualize a tela e tente de novo.',
+      );
+
+      const childIds = (children ?? []).map((child) => child.id);
+      if (childIds.length > 0) {
+        const { error: childDeleteError } = await supabase
+          .from('financial_transactions')
+          .delete()
+          .in('id', childIds);
+        // Best-effort, como antes: o estorno principal já aconteceu.
+        if (childDeleteError) console.warn('[receivable-payments] tarifa vinculada não removida:', childDeleteError);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['receivable-payments', parentId] });

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
 import {
@@ -43,7 +44,7 @@ export const SCREEN_CATEGORIES: Record<string, { label: string; icon: LucideIcon
   // Mapa e Área do Técnico no editor de permissões. A ordem do editor é a ordem
   // deste objeto (CATEGORY_ORDER = Object.keys), então PDV fica entre Operacional
   // e Financeiro, espelhando a posição do grupo no menu.
-  pdv: { label: 'PDV e Loja', icon: Store },
+  pdv: { label: 'PDV (Loja)', icon: Store },
   financeiro: { label: 'Financeiro', icon: DollarSign },
   administracao: { label: 'Administração', icon: Settings },
 };
@@ -74,13 +75,13 @@ export const SCREEN_PERMISSIONS = [
   // Esta ÚNICA permissão libera o painel do caixa E a tela de venda (o carrinho),
   // que é sub-tela dele. É de propósito: quem opera o caixa vende. A descrição diz
   // os dois pra ninguém marcar achando que liberou só a conferência do dinheiro.
-  { key: 'screen:pdv', label: 'Caixa e Venda (PDV)', description: 'Painel do caixa: abre e fecha o caixa, controla o dinheiro da gaveta e o cofre e lança entradas e saídas. Libera também a tela de venda, onde monta o carrinho e recebe o pagamento.', icon: ShoppingCart, group: 'PDV e Loja', category: 'pdv' },
+  { key: 'screen:pdv', label: 'Caixa e Venda — PDV (Loja)', description: 'Painel do caixa: abre e fecha o caixa, controla o dinheiro da gaveta e o cofre e lança entradas e saídas. Libera também a tela de venda, onde monta o carrinho e recebe o pagamento.', icon: ShoppingCart, group: 'PDV (Loja)', category: 'pdv' },
   // Pedidos e Expedição só existem no modo balcão (pré-venda).
-  { key: 'screen:pdv_orders', label: 'Pedidos do Balcão (PDV)', description: 'Tela do vendedor que monta o pedido sem receber o dinheiro. Disponível quando a empresa usar o PDV no modo balcão.', icon: ClipboardList, group: 'PDV e Loja', category: 'pdv' },
-  { key: 'screen:pdv_dispatch', label: 'Expedição (PDV)', description: 'Fila de pedidos com pagamento ou fiado aprovado para retirar parcial ou totalmente. Disponível no modo balcão.', icon: PackageCheck, group: 'PDV e Loja', category: 'pdv' },
-  { key: 'screen:pdv_cash_history', label: 'Histórico de Caixa (PDV)', description: 'Aberturas e fechamentos de caixa, sangrias, suprimentos e a conferência do dinheiro contado.', icon: History, group: 'PDV e Loja', category: 'pdv' },
-  { key: 'screen:pdv_reports', label: 'Relatórios da Loja (PDV)', description: 'Vendas, lucro e desempenho do balcão, com o custo de cada item vendido.', icon: BarChart3, group: 'PDV e Loja', category: 'pdv' },
-  { key: 'screen:pdv_settings', label: 'Configurações do PDV', description: 'Caixas da loja, conta do cofre, etiquetas e modo de operação do balcão.', icon: Settings, group: 'PDV e Loja', category: 'pdv' },
+  { key: 'screen:pdv_orders', label: 'Pedidos do Balcão — PDV (Loja)', description: 'Tela do vendedor que monta o pedido sem receber o dinheiro. Disponível quando a empresa usar o PDV no modo balcão.', icon: ClipboardList, group: 'PDV (Loja)', category: 'pdv' },
+  { key: 'screen:pdv_dispatch', label: 'Expedição — PDV (Loja)', description: 'Fila de pedidos com pagamento ou fiado aprovado para retirar parcial ou totalmente. Disponível no modo balcão.', icon: PackageCheck, group: 'PDV (Loja)', category: 'pdv' },
+  { key: 'screen:pdv_cash_history', label: 'Histórico de Caixa — PDV (Loja)', description: 'Aberturas e fechamentos de caixa, sangrias, suprimentos e a conferência do dinheiro contado.', icon: History, group: 'PDV (Loja)', category: 'pdv' },
+  { key: 'screen:pdv_reports', label: 'Relatórios — PDV (Loja)', description: 'Vendas, lucro e desempenho do balcão, com o custo de cada item vendido.', icon: BarChart3, group: 'PDV (Loja)', category: 'pdv' },
+  { key: 'screen:pdv_settings', label: 'Configurações do PDV (Loja)', description: 'Caixas da loja, conta do cofre, etiquetas e modo de operação do balcão.', icon: Settings, group: 'PDV (Loja)', category: 'pdv' },
   { key: 'screen:finance', label: 'Financeiro', description: 'Visão geral, movimentações e contas a pagar e receber.', icon: DollarSign, group: 'Financeiro', category: 'financeiro' },
   { key: 'screen:fiscal_notes', label: 'Notas Fiscais', description: 'Emissão e consulta de notas fiscais de serviço (também exige o módulo contratado).', icon: Receipt, group: 'Financeiro', category: 'financeiro' },
   { key: 'screen:employees', label: 'Funcionários', description: 'Cadastro de funcionários, folha de pagamento e controle de ponto.', icon: Briefcase, group: 'Administração', category: 'administracao' },
@@ -118,7 +119,7 @@ export const FUNCTION_PERMISSIONS = [
   { key: 'fn:reverse_pdv_after_sale', label: 'Estornar voucher', description: 'Cancelar um voucher ainda não utilizado e devolver o valor à devolução.', group: 'PDV e Loja', category: 'pdv', relatedScreen: 'screen:pdv_dispatch' },
   { key: 'fn:cover_pdv_exchange', label: 'Valorizar troca', description: 'Usar voucher, saldo do cliente e pagamento da diferença em um novo pedido.', group: 'PDV e Loja', category: 'pdv', relatedScreen: 'screen:pdv_dispatch' },
   { key: 'fn:approve_pdv_credit', label: 'Aprovar diferença no fiado', description: 'Liberar a diferença de uma troca como fiado dentro do limite disponível.', group: 'PDV e Loja', category: 'pdv', relatedScreen: 'screen:pdv_dispatch' },
-  { key: 'fn:manage_pdv_settings', label: 'Alterar Configurações do PDV', description: 'Alterar modo de operação e preferências do PDV da empresa.', group: 'PDV e Loja', category: 'pdv', relatedScreen: 'screen:pdv_settings' },
+  { key: 'fn:manage_pdv_settings', label: 'Alterar Configurações do PDV (Loja)', description: 'Alterar modo de operação e preferências do PDV (Loja) da empresa.', group: 'PDV (Loja)', category: 'pdv', relatedScreen: 'screen:pdv_settings' },
   { key: 'fn:manage_party_credit', label: 'Gerenciar crédito de clientes e fornecedores', description: 'Registrar, aplicar e estornar créditos e adiantamentos nas fichas.', group: 'PDV e Loja', category: 'pdv', relatedScreen: 'screen:customers' },
   { key: 'fn:view_party_credit_limit', label: 'Ver limite de fiado', description: 'Visualizar o limite de fiado e quanto ainda está disponível para o cliente.', group: 'PDV e Loja', category: 'pdv', relatedScreen: 'screen:customers' },
   { key: 'fn:receive_pdv_receivable', label: 'Receber contas no fiado', description: 'Registrar baixa parcial ou total do fiado na conta correta e, em dinheiro, no caixa aberto.', group: 'PDV e Loja', category: 'pdv', relatedScreen: 'screen:customers' },
@@ -133,10 +134,10 @@ export const FUNCTION_PERMISSIONS = [
   { key: 'fn:delete_customer', label: 'Excluir Cliente', description: 'Excluir clientes do sistema', group: 'Comercial', category: 'comercial', relatedScreen: 'screen:customers' },
   { key: 'fn:manage_equipment', label: 'Gerenciar Equipamentos', description: 'Criar, editar e excluir equipamentos', group: 'Serviços', category: 'servicos', relatedScreen: 'screen:equipment' },
   { key: 'fn:manage_inventory', label: 'Gerenciar Estoque', description: 'Gerenciar materiais e movimentações de estoque', group: 'Operacional', category: 'operacional', relatedScreen: 'screen:inventory' },
-  { key: 'fn:manage_finance', label: 'Gerenciar Financeiro', description: 'Criar e editar transações financeiras', group: 'Financeiro', category: 'financeiro', relatedScreen: 'screen:finance' },
+  { key: 'fn:manage_finance', label: 'Criar e editar lançamentos financeiros', description: 'Registrar e alterar vendas, despesas, contas a pagar, contas a receber e movimentações.', group: 'Financeiro', category: 'financeiro', relatedScreen: 'screen:finance' },
   { key: 'fn:delete_finance', label: 'Excluir Lançamento Financeiro', description: 'Excluir transações financeiras (contas a pagar, contas a receber e movimentações)', group: 'Financeiro', category: 'financeiro', relatedScreen: 'screen:finance' },
   { key: 'fn:view_finance_totals', label: 'Ver Totais Financeiros', description: 'Visualizar saldos, totais e projeções', group: 'Financeiro', category: 'financeiro', relatedScreen: 'screen:finance' },
-  { key: 'fn:use_bank_accounts', label: 'Usar Contas Bancárias', description: 'Selecionar contas em pagamentos e recebimentos, sem visualizar saldos bancários', group: 'Financeiro', category: 'financeiro', relatedScreen: 'screen:finance' },
+  { key: 'fn:use_bank_accounts', label: 'Usar contas e caixas', description: 'Selecionar contas em pagamentos e recebimentos, sem visualizar saldos. É incluída automaticamente ao liberar lançamentos ou a gestão das contas.', group: 'Financeiro', category: 'financeiro', relatedScreen: 'screen:finance' },
   { key: 'fn:manage_bank_accounts', label: 'Gerenciar Contas Bancárias', description: 'Visualizar saldos e cadastrar, editar, ajustar ou excluir contas bancárias', group: 'Financeiro', category: 'financeiro', relatedScreen: 'screen:finance' },
   // Mora na tela de OS (`relatedScreen`) porque é lá que a ação acontece — o fechamento
   // da OS —, mas é do grupo Financeiro porque o que ela libera é lançar dinheiro.
@@ -145,7 +146,6 @@ export const FUNCTION_PERMISSIONS = [
   { key: 'fn:manage_users', label: 'Gerenciar Usuários', description: 'Criar, editar e gerenciar usuários do sistema', group: 'Administração', category: 'administracao', relatedScreen: 'screen:users' },
   { key: 'fn:manage_settings', label: 'Gerenciar Configurações', description: 'Alterar configurações do sistema', group: 'Administração', category: 'administracao', relatedScreen: 'screen:settings' },
   { key: 'fn:manage_api_keys', label: 'Gerenciar Chaves da API', description: 'Criar, rotacionar e revogar credenciais da API Pública', group: 'Administração', category: 'administracao', relatedScreen: 'screen:settings' },
-  { key: 'fn:override_schedule_conflict', label: 'Sobrescrever Conflito de Agenda', description: 'Autorizar sobreposição de horário com justificativa auditada', group: 'Serviços', category: 'servicos', relatedScreen: 'screen:schedule' },
   { key: 'fn:export_company_data', label: 'Exportar Dados da Empresa', description: 'Baixar em planilha todos os dados da empresa, incluindo financeiro e salários dos funcionários', group: 'Administração', category: 'administracao', relatedScreen: 'screen:settings' },
   { key: 'fn:manage_crm', label: 'Gerenciar CRM', description: 'Gerenciar leads e pipeline comercial', group: 'Comercial', category: 'comercial', relatedScreen: 'screen:crm' },
   { key: 'fn:manage_contracts', label: 'Gerenciar Contratos', description: 'Gerenciar contratos recorrentes e manutenções', group: 'Serviços', category: 'servicos', relatedScreen: 'screen:contracts' },
@@ -206,6 +206,38 @@ export function getAllPermissionKeys(): string[] {
   return ALL_PERMISSIONS.map(p => p.key);
 }
 
+const PERMISSION_DEPENDENCIES: Readonly<Record<string, readonly string[]>> = {
+  'fn:manage_finance': ['fn:use_bank_accounts'],
+  'fn:manage_bank_accounts': ['fn:use_bank_accounts'],
+};
+
+/**
+ * Fecha combinações impossíveis no permissionamento.
+ *
+ * Criar um lançamento ou administrar uma conta exige poder selecioná-la. A
+ * dependência fica centralizada aqui para editor, cargos e gravação direta
+ * enviarem sempre o mesmo conjunto. O curinga já cobre permissões presentes e
+ * futuras, portanto permanece compacto como `['*']`.
+ */
+export function normalizePermissionDependencies(permissions: readonly string[]): string[] {
+  if (permissions.includes('*')) return ['*'];
+
+  const normalized = new Set(permissions);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const [permission, dependencies] of Object.entries(PERMISSION_DEPENDENCIES)) {
+      if (!normalized.has(permission)) continue;
+      for (const dependency of dependencies) {
+        if (normalized.has(dependency)) continue;
+        normalized.add(dependency);
+        changed = true;
+      }
+    }
+  }
+  return [...normalized];
+}
+
 export interface PermissionPreset {
   id: string;
   name: string;
@@ -239,9 +271,9 @@ export function usePermissionPresets() {
       if (error) throw error;
       return (data || []).map(p => ({
         ...p,
-        permissions: Array.isArray(p.permissions)
+        permissions: normalizePermissionDependencies(Array.isArray(p.permissions)
           ? p.permissions.filter((permission): permission is string => typeof permission === 'string')
-          : [],
+          : []),
       })) as PermissionPreset[];
     },
   });
@@ -250,7 +282,11 @@ export function usePermissionPresets() {
     mutationFn: async (preset: { name: string; description?: string; permissions: string[] }) => {
       const { error } = await supabase
         .from('permission_presets')
-        .insert({ name: preset.name, description: preset.description || null, permissions: preset.permissions });
+        .insert({
+          name: preset.name,
+          description: preset.description || null,
+          permissions: normalizePermissionDependencies(preset.permissions),
+        });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -262,11 +298,16 @@ export function usePermissionPresets() {
 
   const updatePreset = useMutation({
     mutationFn: async ({ id, ...updates }: { id: string; name?: string; description?: string; permissions?: string[] }) => {
-      const { error } = await supabase
-        .from('permission_presets')
-        .update(updates)
-        .eq('id', id);
-      if (error) throw error;
+      const normalizedUpdates = updates.permissions
+        ? { ...updates, permissions: normalizePermissionDependencies(updates.permissions) }
+        : updates;
+      assertRowsAffected(
+        await supabase
+          .from('permission_presets')
+          .update(normalizedUpdates, { count: 'exact' })
+          .eq('id', id),
+        'update',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['permission-presets'] });
@@ -277,8 +318,10 @@ export function usePermissionPresets() {
 
   const deletePreset = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('permission_presets').delete().eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('permission_presets').delete({ count: 'exact' }).eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['permission-presets'] });
@@ -303,9 +346,9 @@ export function useUserPermissions() {
       if (error) throw error;
       return (data || []).map(p => ({
         ...p,
-        permissions: Array.isArray(p.permissions)
+        permissions: normalizePermissionDependencies(Array.isArray(p.permissions)
           ? p.permissions.filter((permission): permission is string => typeof permission === 'string')
-          : [],
+          : []),
       })) as UserPermission[];
     },
   });
@@ -321,7 +364,7 @@ export function useUserPermissions() {
         .from('user_permissions')
         .upsert({
           user_id,
-          permissions,
+          permissions: normalizePermissionDependencies(permissions),
           preset_id: preset_id || null,
           is_active: is_active ?? true,
         }, { onConflict: 'user_id' });
@@ -337,11 +380,13 @@ export function useUserPermissions() {
 
   const toggleActive = useMutation({
     mutationFn: async ({ user_id, is_active }: { user_id: string; is_active: boolean }) => {
-      const { error } = await supabase
-        .from('user_permissions')
-        .update({ is_active })
-        .eq('user_id', user_id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('user_permissions')
+          .update({ is_active }, { count: 'exact' })
+          .eq('user_id', user_id),
+        'update',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-permissions'] });

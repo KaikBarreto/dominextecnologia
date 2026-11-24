@@ -28,13 +28,19 @@ import { usePartyLabels } from '@/hooks/usePartyLabels';
 import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
 import { useTeams } from '@/hooks/useTeams';
 import { useAuth } from '@/contexts/AuthContext';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
+import { getErrorMessage } from '@/utils/errorMessages';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { canSeeAllTasks, isMyTask } from '@/lib/taskVisibility';
-import { useUserPreferences } from '@/hooks/useUserPreferences';
+import {
+  normalizeScheduleEntryTypeFilter,
+  useUserPreferences,
+} from '@/hooks/useUserPreferences';
 import { useTouchDragDrop } from '@/hooks/useTouchDragDrop';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { ServiceOrderFormDialog } from '@/components/service-orders/ServiceOrderFormDialog';
 import { Button } from '@/components/ui/button';
+import { ToastAction } from '@/components/ui/toast';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { cn } from '@/lib/utils';
 import type { ServiceOrder, ServiceOrderScheduleSlot } from '@/types/database';
@@ -110,11 +116,9 @@ export default function Schedule() {
   const canCreateOS = isAdminOrGestor() || hasPermission('fn:create_os');
   const canEditOS = isAdminOrGestor() || hasPermission('fn:edit_os');
   const canDeleteOS = isAdminOrGestor() || hasPermission('fn:delete_os');
-  // Override de conflito é deliberadamente estrito: o fallback legado de
-  // `hasPermission` por role não vale para uma autorização auditável.
-  const canOverrideScheduleConflict = hasPermissionRecord && (
-    permissions.includes('*') || permissions.includes('fn:override_schedule_conflict')
-  );
+  // Politica da empresa, não permissão individual. O servidor repete a mesma
+  // decisão e ainda exige a permissão normal de criar/editar a OS.
+  const allowScheduleConflicts = companySettings?.allow_schedule_conflicts === true;
   // Aviso financeiro na agenda apaga LANÇAMENTO (financial_transactions), não OS
   // — logo, `fn:delete_finance`, não `fn:delete_os`.
   // Espelha `public.can_delete_finance` (RLS de DELETE em financial_transactions):
@@ -130,8 +134,10 @@ export default function Schedule() {
   // 1º acesso (sem preferência): celular abre em "Dia", computador em "Mês".
   const {
     scheduleViewMode,
+    scheduleEntryTypeFilter,
     isLoading: isPrefsLoading,
     setScheduleViewMode,
+    setScheduleEntryTypeFilter,
   } = useUserPreferences();
   const scheduleDevice: 'mobile' | 'desktop' = isMobile ? 'mobile' : 'desktop';
 
@@ -171,6 +177,7 @@ export default function Schedule() {
     serviceOrders,
     isLoading,
     error: scheduleError,
+    refetch: refetchSchedule,
   } = useScheduleOrders(scheduleWindow, { enabled: !isPrefsLoading });
   const {
     serviceOrders: searchServiceOrders,
@@ -244,8 +251,13 @@ export default function Schedule() {
       variant: 'destructive',
       title: t.loadError.title,
       description: t.loadError.description,
+      action: (
+        <ToastAction altText={t.loadError.retry} onClick={() => void refetchSchedule()}>
+          {t.loadError.retry}
+        </ToastAction>
+      ),
     });
-  }, [scheduleError, t.loadError.description, t.loadError.title, toast]);
+  }, [refetchSchedule, scheduleError, t.loadError.description, t.loadError.retry, t.loadError.title, toast]);
 
   // Filters — multi-select (vazio = todos)
   const [technicianFilter, setTechnicianFilter] = useState<string[]>([]);
@@ -253,6 +265,26 @@ export default function Schedule() {
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   // Tarefa x OS (E5) — valores 'os' | 'tarefa', vazio = todos
   const [entryTypeFilter, setEntryTypeFilter] = useState<string[]>([]);
+  const entryTypeFilterHydratedFor = useRef<string | null>(null);
+
+  // O filtro segue a pessoa (não o aparelho) e só é hidratado uma vez por
+  // sessão de usuário. Refetches da preferência não podem desfazer um clique
+  // local enquanto a gravação está em trânsito.
+  useEffect(() => {
+    if (isPrefsLoading || !user?.id) return;
+    if (entryTypeFilterHydratedFor.current === user.id) return;
+    entryTypeFilterHydratedFor.current = user.id;
+    setEntryTypeFilter(scheduleEntryTypeFilter);
+  }, [isPrefsLoading, scheduleEntryTypeFilter, user?.id]);
+
+  const handleEntryTypeFilterChange = useCallback(
+    (values: string[]) => {
+      const normalized = normalizeScheduleEntryTypeFilter(values);
+      setEntryTypeFilter(normalized);
+      setScheduleEntryTypeFilter(normalized);
+    },
+    [setScheduleEntryTypeFilter],
+  );
 
   // Get team IDs the current user belongs to
   const myTeamIds = useMemo(() => {
@@ -518,7 +550,13 @@ export default function Schedule() {
     if ((summaryOrder as any)?._isFinancialEvent) {
       const realId = (summaryOrder as any)?._realFinancialId;
       if (realId) {
-        supabase.from('financial_transactions').delete().eq('id', realId).then(() => {
+        supabase.from('financial_transactions').delete({ count: 'exact' }).eq('id', realId).then((result) => {
+          try {
+            assertRowsAffected(result, 'delete');
+          } catch (err) {
+            toast({ variant: 'destructive', title: 'Erro ao excluir transação financeira', description: getErrorMessage(err) });
+            return;
+          }
           queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
           toast({ title: 'Transação financeira excluída' });
         });
@@ -535,7 +573,7 @@ export default function Schedule() {
     const contractId = order._contractId;
     const installmentGroupId = order._installmentGroupId;
     
-    let query = supabase.from('financial_transactions').delete();
+    let query = supabase.from('financial_transactions').delete({ count: 'exact' });
     if (installmentGroupId) {
       query = query.eq('installment_group_id', installmentGroupId);
     } else if (contractId) {
@@ -546,7 +584,12 @@ export default function Schedule() {
       if (realId) query = query.eq('id', realId);
     }
     
-    await query;
+    try {
+      assertRowsAffected(await query, 'delete');
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Erro ao excluir transações financeiras', description: getErrorMessage(err) });
+      return;
+    }
     queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
     toast({ title: 'Transações financeiras excluídas' });
     setSummaryOrder(null);
@@ -744,7 +787,10 @@ export default function Schedule() {
         schedule_request_id: requestId,
       });
     } catch (error) {
-      if (isScheduleConflictError(error)) {
+      // Na criação, o próprio wizard mantém os dados preenchidos e apresenta a
+      // confirmação de conflito. A Agenda só assume o conflito de uma edição,
+      // evitando dois overlays concorrentes para a mesma tentativa.
+      if (isScheduleConflictError(error) && selectedOrder) {
         setPendingScheduleConflict({
           kind: 'reschedule',
           serviceOrderId: orderId,
@@ -804,7 +850,7 @@ export default function Schedule() {
 
   const handleScheduleConflictOverride = async (reason: string) => {
     const pending = pendingScheduleConflict;
-    if (!pending || !canOverrideScheduleConflict) return;
+    if (!pending || !allowScheduleConflicts) return;
 
     if (pending.kind === 'reschedule') {
       await rescheduleServiceOrder.mutateAsync({
@@ -840,6 +886,22 @@ export default function Schedule() {
     setPendingScheduleConflict(null);
   };
 
+  // O diálogo de reabertura/reset é compartilhado pelos layouts mobile e
+  // desktop. Mantê-lo em um único fragmento evita que uma nova ramificação da
+  // agenda deixe de montar o overlay enquanto o estado `resetOrder` está ativo.
+  const resetServiceOrderDialog = (
+    <ResetServiceOrderDialog
+      open={!!resetOrder}
+      onOpenChange={(open) => {
+        if (!open && !resetServiceOrder.isPending) setResetOrder(null);
+      }}
+      orderNumber={resetOrder?.order_number}
+      status={resetOrder?.status}
+      isPending={resetServiceOrder.isPending}
+      onConfirm={handleResetConfirm}
+    />
+  );
+
   // Anti-flicker: segura a tela no skeleton enquanto a preferência de view do
   // aparelho atual ainda não carregou — evita renderizar a view errada e "saltar".
   if (isLoading || isPrefsLoading) {
@@ -867,7 +929,7 @@ export default function Schedule() {
       setTechnicianFilter([]);
       setCustomerFilter([]);
       setStatusFilter([]);
-      setEntryTypeFilter([]);
+      handleEntryTypeFilterChange([]);
     };
 
     // Header actions: [Lupa → expande busca inline] + [PausadasOS]
@@ -1015,7 +1077,7 @@ export default function Schedule() {
                   { value: 'tarefa', label: t.entryTypeSelector.taskTitle },
                 ]}
                 selected={entryTypeFilter}
-                onChange={setEntryTypeFilter}
+                onChange={handleEntryTypeFilterChange}
               />
             </div>
           </FilterSheet>
@@ -1200,6 +1262,7 @@ export default function Schedule() {
         {/* "Houve alguma receita nesta OS?" — sobe depois de a OS ser gravada
             como concluída. Renderizado nos DOIS layouts (mobile e desktop). */}
         <OsFinishRevenueDialog {...revenueDialogProps} />
+        {resetServiceOrderDialog}
       </div>
     );
   }
@@ -1236,7 +1299,7 @@ export default function Schedule() {
         statusFilter={statusFilter}
         onStatusFilterChange={setStatusFilter}
         entryTypeFilter={entryTypeFilter}
-        onEntryTypeFilterChange={setEntryTypeFilter}
+        onEntryTypeFilterChange={handleEntryTypeFilterChange}
         filtersEnabled={filterOptionsEnabled}
         onFiltersOpenChange={(open) => {
           if (open) setFilterOptionsEnabled(true);
@@ -1358,7 +1421,7 @@ export default function Schedule() {
       <ScheduleConflictDialog
         open={!!pendingScheduleConflict}
         conflicts={pendingScheduleConflict?.conflicts ?? []}
-        canOverride={canOverrideScheduleConflict}
+        canOverride={allowScheduleConflicts}
         isLoading={createServiceOrder.isPending || updateServiceOrder.isPending || rescheduleServiceOrder.isPending}
         onCancel={() => setPendingScheduleConflict(null)}
         onOverride={(reason) => {
@@ -1369,16 +1432,7 @@ export default function Schedule() {
       />
       {/* "Houve alguma receita nesta OS?" — ver comentário no layout mobile. */}
       <OsFinishRevenueDialog {...revenueDialogProps} />
-      <ResetServiceOrderDialog
-        open={!!resetOrder}
-        onOpenChange={(open) => {
-          if (!open && !resetServiceOrder.isPending) setResetOrder(null);
-        }}
-        orderNumber={resetOrder?.order_number}
-        status={resetOrder?.status}
-        isPending={resetServiceOrder.isPending}
-        onConfirm={handleResetConfirm}
-      />
+      {resetServiceOrderDialog}
     </div>
   );
 }

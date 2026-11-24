@@ -1,14 +1,17 @@
-import { useMemo } from 'react';
+import { assertRowsAffected, NoRowsAffectedError } from '@/lib/supabaseMutation';
+import { useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 import type { FinancialTransaction, TransactionType } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePdvAuthorizedQueryScope } from '@/hooks/pdvReportCache';
 import { normalizeOptionalForeignKeys } from '@/utils/foreignKeys';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { getRpcErrorMessage } from '@/hooks/useCreditCardBills';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
+import { summarizeFinancialTransactions, type FinancialSummaryTransaction } from '@/lib/financial-summary';
 import { buildInstallmentPlan } from '@/lib/finance-installments';
 import { todayInTz } from '@/lib/timezone';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -44,6 +47,8 @@ export type TransactionWithRelations = FinancialTransaction & {
   account: any;
   employee: any;
   creator: TransactionCreator | null;
+  /** Quem marcou como pago/recebido. `null` em baixa antiga ou feita pelo sistema. */
+  settledBy: TransactionCreator | null;
 };
 
 export interface TransactionInput {
@@ -64,6 +69,10 @@ export interface TransactionInput {
   payment_method?: string;
   receipt_url?: string;
   installment_count?: number;
+  installment_group_id?: string;
+  recurrence_base_amount?: number;
+  installment_number?: number;
+  installment_total?: number;
   account_id?: string | null;
   /**
    * Centro de custo (obra/projeto/setor). SEMPRE opcional. Em parcelamento,
@@ -84,6 +93,8 @@ export interface TransactionInput {
    */
   installmentPlan?: Array<{ date: string; amount: number }>;
 }
+
+export type FinancialSeriesScope = 'single' | 'future' | 'all_pending';
 
 /**
  * Monta as linhas de um PARCELAMENTO. Puro de propósito (sem Supabase, sem
@@ -303,45 +314,60 @@ interface UseFinancialOptions {
 export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
   const { toast } = useToast();
   const { user } = useAuth();
+  const scope = usePdvAuthorizedQueryScope();
+  const readIdentity = JSON.stringify([scope.key, loadData]);
+  const currentRead = useRef(readIdentity);
+  currentRead.current = readIdentity;
+  const canRead = loadData && scope.ready;
   const queryClient = useQueryClient();
   // Fuso DA EMPRESA (company_settings.timezone). É ele que define o "hoje" das
   // datas financeiras, nunca o fuso do aparelho nem Brasília chumbado.
   const { timezone } = useAppLocaleContext();
 
   const invalidateAll = () => {
-    queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
-    queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
-    queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
-    queryClient.invalidateQueries({ queryKey: ['contract-transactions'] });
-    queryClient.invalidateQueries({ queryKey: ['nfse-auto-readiness'] });
-    queryClient.invalidateQueries({ queryKey: ['account-balances'] });
+    // A listagem é a fonte canônica dos relatórios. Devolvemos a Promise dela
+    // para que `mutateAsync` só conclua depois do refetch ativo; assim o modal
+    // não fecha liberando uma exportação com o snapshot anterior à baixa.
+    const transactionsRefetch = queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
+    void queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
+    void queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+    void queryClient.invalidateQueries({ queryKey: ['contract-transactions'] });
+    void queryClient.invalidateQueries({ queryKey: ['nfse-auto-readiness'] });
+    void queryClient.invalidateQueries({ queryKey: ['account-balances'] });
     // Uma transação vinculada a OS muda os selos da lista/quadro/agenda e o
     // estado do diálogo de faturamento. Invalidamos por prefixo porque edição,
     // exclusão e operações em lote podem afetar tanto o vínculo antigo quanto
     // o novo, e reconstruir esses Maps otimisticamente seria incompleto.
-    queryClient.invalidateQueries({ queryKey: [OS_REVENUE_SUMMARY_KEY] });
-    queryClient.invalidateQueries({ queryKey: [OS_BILLING_STATE_KEY] });
-    queryClient.invalidateQueries({ queryKey: [OS_BILLING_FLAGS_KEY] });
+    void queryClient.invalidateQueries({ queryKey: [OS_REVENUE_SUMMARY_KEY] });
+    void queryClient.invalidateQueries({ queryKey: [OS_BILLING_STATE_KEY] });
+    void queryClient.invalidateQueries({ queryKey: [OS_BILLING_FLAGS_KEY] });
     // O Caixa inclui lançamentos financeiros avulsos no turno e o saldo do
     // cofre. Qualquer mutation financeira precisa deixá-los stale também — ao
     // voltar de outra tela, o operador não pode ver o fechamento antigo.
-    queryClient.invalidateQueries({ queryKey: ['pdv-cash-session-detail'] });
-    queryClient.invalidateQueries({ queryKey: ['pdv-cofre-balance'] });
+    void queryClient.invalidateQueries({ queryKey: ['pdv-cash-session-detail'] });
+    void queryClient.invalidateQueries({ queryKey: ['pdv-cofre-balance'] });
+    return transactionsRefetch;
   };
 
   const transactionsQuery = useQuery({
-    queryKey: ['financial-transactions'],
-    enabled: loadData,
-    queryFn: async () => {
+    queryKey: ['financial-transactions', ...scope.key, loadData],
+    enabled: canRead,
+    queryFn: async ({ signal }) => {
+      if (!canRead) throw new Error('Aguarde a confirmação do acesso ao financeiro.');
       const data = await fetchAllPaginated<FinancialTransaction & { customer: any; supplier: any; account: any; employee: any }>(
         () => supabase
           .from('financial_transactions')
+          // 🚨 O embed de `employees` só pode pedir colunas não sensíveis
+          // (ver EMPLOYEE_PUBLIC_COLUMNS em useEmployees). Uma coluna de RH
+          // aqui (ex.: salary) derruba a LISTA INTEIRA do financeiro para todo
+          // mundo depois da migration 20261122090000. O salário da folha vem
+          // de useEmployeeHrDetails, só para RH.
           .select(`
             *,
             customer:customers(id, name, document),
             supplier:suppliers(id, name, cpf_cnpj),
             account:financial_accounts(id, name, type, color),
-            employee:employees(id, name, salary, photo_url)
+            employee:employees(id, name, photo_url)
           `)
           // 🚨 NÃO volte a filtrar `parent_transaction_id` AQUI.
           // A query traz TUDO (mães e filhas). Esconder a filha é regra de
@@ -354,13 +380,16 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
           .order('transaction_date', { ascending: false })
       );
 
+      if (signal.aborted || currentRead.current !== readIdentity) throw new Error('Consulta encerrada.');
+
       // O FK de created_by aponta pra auth.users, então não dá pra embutir
       // profiles no .select() do PostgREST. Resolvemos o criador em lote:
       // uma query em profiles por user_id (regra-lei: join de perfil é user_id).
       const creatorIds = [
         ...new Set(
           (data || [])
-            .map((t) => t.created_by)
+            // Inclui quem deu baixa: mesma consulta em lote, sem ida extra ao banco.
+            .flatMap((t) => [t.created_by, (t as { paid_marked_by?: string | null }).paid_marked_by])
             .filter((v): v is string => !!v),
         ),
       ];
@@ -380,58 +409,33 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
         });
       }
 
+      if (signal.aborted || currentRead.current !== readIdentity) throw new Error('Consulta encerrada.');
+
       return (data || []).map((t) => ({
         ...t,
         creator: t.created_by ? creatorsMap.get(t.created_by) ?? null : null,
+        settledBy: (t as { paid_marked_by?: string | null }).paid_marked_by
+          ? creatorsMap.get((t as { paid_marked_by?: string | null }).paid_marked_by as string) ?? null
+          : null,
       })) as TransactionWithRelations[];
     },
   });
 
   const summaryQuery = useQuery({
-    queryKey: ['financial-summary'],
-    enabled: loadData,
-    queryFn: async () => {
-      const data = await fetchAllPaginated<{ transaction_type: string; amount: number; is_paid: boolean; transfer_pair_id: string | null }>(
+    queryKey: ['financial-summary', ...scope.key, loadData],
+    enabled: canRead,
+    queryFn: async ({ signal }) => {
+      if (!canRead) throw new Error('Aguarde a confirmação do acesso ao financeiro.');
+      const data = await fetchAllPaginated<FinancialSummaryTransaction>(
         () => supabase
           .from('financial_transactions')
           // `transfer_pair_id` é obrigatório no select: sem ele o filtro de
           // movimento interno abaixo vira no-op silencioso.
-          .select('transaction_type, amount, is_paid, transfer_pair_id')
+          .select('transaction_type, amount, is_paid, transfer_pair_id, pdv_financial_role, amount_received')
       );
+      if (signal.aborted || currentRead.current !== readIdentity) throw new Error('Consulta encerrada.');
       
-      const summary = {
-        totalEntradas: 0,
-        totalSaidas: 0,
-        saldo: 0,
-        aPagar: 0,
-        aReceber: 0,
-      };
-
-      data?.forEach((t) => {
-        // Movimento interno (transferência entre contas e pagamento de fatura de
-        // cartão) não é receita nem despesa: é balanço, não resultado. As duas
-        // pernas do par carregam o mesmo `transfer_pair_id`; somá-las inflaria
-        // Entradas e Saídas com dinheiro que só trocou de bolso. Mesmo critério
-        // ESTRUTURAL usado no DRE — nunca por nome de categoria (texto livre).
-        if (t.transfer_pair_id) return;
-        if (t.transaction_type === 'entrada') {
-          if (t.is_paid) {
-            summary.totalEntradas += Number(t.amount);
-          } else {
-            summary.aReceber += Number(t.amount);
-          }
-        } else {
-          if (t.is_paid) {
-            summary.totalSaidas += Number(t.amount);
-          } else {
-            summary.aPagar += Number(t.amount);
-          }
-        }
-      });
-
-      summary.saldo = summary.totalEntradas - summary.totalSaidas;
-      
-      return summary;
+      return summarizeFinancialTransactions(data ?? []);
     },
   });
 
@@ -556,8 +560,8 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
 
       return { ids: [data.id], primary: data as FinancialTransaction };
     },
-    onSuccess: () => {
-      invalidateAll();
+    onSuccess: async () => {
+      await invalidateAll();
       queryClient.invalidateQueries({ queryKey: ['credit-card-bills'] });
       toast({ title: 'Transação criada com sucesso!' });
     },
@@ -589,9 +593,12 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
       const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
       const company_id = await getCurrentUserCompanyId();
 
+      // IDs definidos no cliente preservam a correspondência posicional entre
+      // ocorrência e lançamento. Isso é essencial quando o chamador cria uma
+      // cobrança por vencimento; a ordem de um `RETURNING` SQL não é contrato.
       const payload = rows.map((row) =>
         normalizeOptionalForeignKeys(
-          { ...row, created_by: user?.id, company_id } as any,
+          { ...row, id: crypto.randomUUID(), created_by: user?.id, company_id } as any,
           ['customer_id', 'supplier_id', 'service_order_id', 'contract_id', 'account_id', 'cost_center_id']
         )
       );
@@ -601,10 +608,13 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
         .insert(payload as any)
         .select('id');
       if (error) throw error;
-      return ((data ?? []) as Array<{ id: string }>).map((r) => r.id);
+      if ((data ?? []).length !== payload.length) {
+        throw new Error('Não foi possível confirmar todos os lançamentos recorrentes. Atualize a lista e tente novamente.');
+      }
+      return payload.map((row) => row.id as string);
     },
-    onSuccess: () => {
-      invalidateAll();
+    onSuccess: async () => {
+      await invalidateAll();
     },
   });
 
@@ -636,16 +646,23 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
       const { getCurrentUserCompanyId } = await import('@/hooks/useUserCompany');
       const company_id = await getCurrentUserCompanyId();
 
-      const { error } = await supabase
-        .from('financial_transactions')
-        .update(patch as any)
-        .eq('company_id', company_id)
-        .in('id', ids);
-      if (error) throw error;
-      return ids.length;
+      // RLS barrando (sem permissão, lançamento do PDV) não dá erro, só altera
+      // menos linhas: conferir contra o tamanho da seleção.
+      return assertRowsAffected(
+        await supabase
+          .from('financial_transactions')
+          .update(patch as any, { count: 'exact' })
+          .eq('company_id', company_id)
+          .in('id', ids),
+        'update',
+        undefined,
+        new Set(ids).size,
+      );
     },
-    onSuccess: () => {
-      invalidateAll();
+    // onSettled: num lote parcialmente barrado, parte mudou; a lista precisa
+    // refletir isso mesmo com o erro.
+    onSettled: async () => {
+      await invalidateAll();
     },
   });
 
@@ -700,32 +717,65 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
         if (revertErr) throw revertErr;
       }
 
-      const remaining = ids.filter((id) => !billPaymentIds.includes(id));
+      const remaining = [...new Set(ids.filter((id) => !billPaymentIds.includes(id)))];
       if (remaining.length === 0) return ids.length;
 
-      // 2. Filhas primeiro (senão sobram órfãs apontando pra mãe inexistente).
-      const { error: childErr } = await supabase
+      // 2. Filhas (recebimento parcial, tarifa): a FK é ON DELETE SET NULL,
+      //    então elas não caem sozinhas. Guardamos id e mãe ANTES, porque
+      //    depois do delete o vínculo vira NULL e não dá mais para achá-las.
+      const { data: childRows, error: childFetchErr } = await supabase
         .from('financial_transactions')
-        .delete()
+        .select('id, parent_transaction_id')
         .in('parent_transaction_id', remaining);
-      if (childErr) throw childErr;
+      if (childFetchErr) throw childFetchErr;
+      const children = (childRows ?? []) as Array<{ id: string; parent_transaction_id: string | null }>;
 
-      // 3. Orçamento vinculado volta a 'enviado'.
-      await supabase
-        .from('quotes')
-        .update({ financial_transaction_id: null, financial_generated_at: null, status: 'enviado' } as any)
-        .in('financial_transaction_id', remaining);
-
-      const { error } = await supabase
+      // 3. As mães primeiro, conferindo. RLS (sem permissão, lançamento do PDV)
+      //    não dá erro, só apaga menos linhas. O orçamento vinculado é destravado
+      //    pelo gatilho reset_quote_financial_link_on_transaction_delete no
+      //    próprio delete, só para as linhas que de fato saíram.
+      const { error, count } = await supabase
         .from('financial_transactions')
-        .delete()
+        .delete({ count: 'exact' })
         .in('id', remaining);
       if (error) throw error;
+      const deletedCount = typeof count === 'number' ? count : 0;
+
+      // Lote parcial: descobrir quais mães continuam lá, para só apagar as
+      // filhas das que saíram (as filhas da sobrevivente ficam com ela).
+      let survivors = new Set<string>();
+      if (deletedCount < remaining.length) {
+        if (deletedCount > 0) {
+          const { data: left, error: leftErr } = await supabase
+            .from('financial_transactions')
+            .select('id')
+            .in('id', remaining);
+          if (leftErr) throw leftErr;
+          survivors = new Set(((left ?? []) as Array<{ id: string }>).map((row) => row.id));
+        } else {
+          survivors = new Set(remaining);
+        }
+      }
+
+      const orphanIds = children
+        .filter((child) => child.parent_transaction_id && !survivors.has(child.parent_transaction_id))
+        .map((child) => child.id);
+      if (orphanIds.length > 0) {
+        const { error: childErr } = await supabase
+          .from('financial_transactions')
+          .delete()
+          .in('id', orphanIds);
+        if (childErr) throw childErr;
+      }
+
+      assertRowsAffected({ error: null, count }, 'delete', undefined, remaining.length);
 
       return ids.length;
     },
-    onSuccess: () => {
-      invalidateAll();
+    // onSettled: num lote parcialmente barrado, parte saiu (e os estornos de
+    // fatura já rodaram); a lista precisa refletir isso mesmo com o erro.
+    onSettled: async () => {
+      await invalidateAll();
       queryClient.invalidateQueries({ queryKey: ['credit-card-bills'] });
     },
   });
@@ -761,12 +811,48 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
 
       return data;
     },
-    onSuccess: () => {
-      invalidateAll();
+    onSuccess: async () => {
+      await invalidateAll();
       toast({ title: 'Transação atualizada com sucesso!' });
     },
     onError: (error: Error) => {
       toast({ variant: 'destructive', title: 'Erro ao atualizar transação', description: getErrorMessage(error) });
+    },
+  });
+
+  const updateInstallmentGroup = useMutation({
+    mutationFn: async ({ id, scope, values }: { id: string; scope: FinancialSeriesScope; values: TransactionInput }) => {
+      const { data, error } = await (supabase as any).rpc('update_financial_installment_group', {
+        p_id: id,
+        p_scope: scope,
+        p_values: values,
+      });
+      if (error) throw error;
+      return data as { updated: number; group_id: string };
+    },
+    onSuccess: async () => {
+      await invalidateAll();
+      toast({ title: 'Parcelas atualizadas com sucesso!' });
+    },
+    onError: (error: Error) => {
+      toast({ variant: 'destructive', title: 'Erro ao atualizar parcelas', description: getRpcErrorMessage(error) });
+    },
+  });
+
+  const deleteInstallmentGroup = useMutation({
+    mutationFn: async ({ id, scope }: { id: string; scope: FinancialSeriesScope }) => {
+      const { data, error } = await (supabase as any).rpc('delete_financial_installment_group', {
+        p_id: id,
+        p_scope: scope,
+      });
+      if (error) throw error;
+      return data as { deleted: number; skipped: number; group_id: string };
+    },
+    onSuccess: async () => {
+      await invalidateAll();
+    },
+    onError: (error: Error) => {
+      toast({ variant: 'destructive', title: 'Erro ao excluir parcelas', description: getRpcErrorMessage(error) });
     },
   });
 
@@ -803,8 +889,12 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
       // o único jeito de estornar. É frágil de propósito (adivinha a fatura por
       // período quando não acha por payment_transaction_id); pode sumir quando
       // o backfill estiver confirmado em todos os tenants.
+      //
+      // Ordem importa: só LEMOS a fatura aqui. O ajuste roda depois que o
+      // lançamento foi de fato apagado, senão um delete barrado pela permissão
+      // deixaria a fatura alterada com o pagamento ainda lá.
+      let billAdjustment: { id: string; amountPaid: number; clearPaymentLink: boolean } | null = null;
       if (txn?.category === 'Pagamento de Fatura' && txn.account_id) {
-        // Find bill that references this payment transaction
         const { data: bill } = await supabase
           .from('credit_card_bills')
           .select('id, amount_paid, status, payment_transaction_id')
@@ -812,58 +902,73 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
           .maybeSingle();
 
         if (bill) {
-          const newAmountPaid = Math.max(0, Number(bill.amount_paid ?? 0) - Number(txn.amount));
-          await supabase
-            .from('credit_card_bills')
-            .update({
-              status: newAmountPaid > 0 ? 'partial' : 'open',
-              amount_paid: newAmountPaid,
-              payment_transaction_id: null,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', bill.id);
-        } else {
+          billAdjustment = {
+            id: bill.id,
+            amountPaid: Math.max(0, Number(bill.amount_paid ?? 0) - Number(txn.amount)),
+            clearPaymentLink: true,
+          };
+        } else if (txn.credit_card_bill_date) {
           // Payment may be partial — find bill by account + period and reduce amount_paid
-          if (txn.credit_card_bill_date) {
-            const { data: billByPeriod } = await supabase
-              .from('credit_card_bills')
-              .select('id, amount_paid')
-              .eq('account_id', txn.account_id)
-              .not('status', 'eq', 'open')
-              .order('reference_month', { ascending: false })
-              .limit(1)
-              .maybeSingle();
-
-            if (billByPeriod) {
-              const newAmountPaid = Math.max(0, Number(billByPeriod.amount_paid ?? 0) - Number(txn.amount));
-              await supabase
-                .from('credit_card_bills')
-                .update({
-                  status: newAmountPaid > 0 ? 'partial' : 'open',
-                  amount_paid: newAmountPaid,
-                  updated_at: new Date().toISOString(),
-                })
-                .eq('id', billByPeriod.id);
-            }
+          const { data: billByPeriod } = await supabase
+            .from('credit_card_bills')
+            .select('id, amount_paid')
+            .eq('account_id', txn.account_id)
+            .not('status', 'eq', 'open')
+            .order('reference_month', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (billByPeriod) {
+            billAdjustment = {
+              id: billByPeriod.id,
+              amountPaid: Math.max(0, Number(billByPeriod.amount_paid ?? 0) - Number(txn.amount)),
+              clearPaymentLink: false,
+            };
           }
         }
       }
 
-      // Cascade delete children + clear quote link if root
-      await supabase.from('financial_transactions').delete().eq('parent_transaction_id', id);
-      await supabase
-        .from('quotes')
-        .update({ financial_transaction_id: null, financial_generated_at: null, status: 'enviado' } as any)
-        .eq('financial_transaction_id', id);
-      const { error } = await supabase
+      // Filhas (recebimentos parciais, tarifas): a FK é ON DELETE SET NULL, então
+      // elas não caem sozinhas. Guardamos os ids antes, porque depois do delete
+      // da mãe o vínculo vira NULL e não dá mais para achá-las.
+      const { data: children } = await supabase
         .from('financial_transactions')
-        .delete()
-        .eq('id', id);
+        .select('id')
+        .eq('parent_transaction_id', id);
 
-      if (error) throw error;
+      // A mãe primeiro, conferindo: RLS sem permissão (ou lançamento do PDV, que
+      // a política não deixa apagar por aqui) não dá erro, só apaga zero linhas.
+      // Se nada saiu, paramos antes de mexer em filhas e fatura.
+      // O vínculo com orçamento é desfeito pelo gatilho
+      // reset_quote_financial_link_on_transaction_delete no próprio delete.
+      assertRowsAffected(
+        await supabase
+          .from('financial_transactions')
+          .delete({ count: 'exact' })
+          .eq('id', id),
+        'delete',
+      );
+
+      const childIds = (children ?? []).map((child) => child.id);
+      if (childIds.length > 0) {
+        const { error: childError } = await supabase.from('financial_transactions').delete().in('id', childIds);
+        if (childError) throw childError;
+      }
+
+      if (billAdjustment) {
+        const { error: billError } = await supabase
+          .from('credit_card_bills')
+          .update({
+            status: billAdjustment.amountPaid > 0 ? 'partial' : 'open',
+            amount_paid: billAdjustment.amountPaid,
+            ...(billAdjustment.clearPaymentLink ? { payment_transaction_id: null } : {}),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', billAdjustment.id);
+        if (billError) throw billError;
+      }
     },
-    onSuccess: () => {
-      invalidateAll();
+    onSuccess: async () => {
+      await invalidateAll();
       queryClient.invalidateQueries({ queryKey: ['credit-card-bills'] });
       toast({ title: 'Transação excluída com sucesso!' });
     },
@@ -888,6 +993,9 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
     amountReceived?: number;
     /** Novo vencimento do saldo restante (YYYY-MM-DD). Só usado em recebimento parcial. */
     newDueDate?: string;
+    occurrenceAmount?: number;
+    expectedOccurrenceAmount?: number;
+    updateFutureOccurrences?: boolean;
   }
 
   const markAsPaid = useMutation({
@@ -900,6 +1008,32 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
       // baixa às 23h15 do dia 30 tem que gravar dia 30, não 31 (que é o dia que
       // já virou em São Paulo).
       const paidDate = cfg.paid_date || todayInTz(timezone);
+
+      if (cfg.occurrenceAmount !== undefined) {
+        if (cfg.amountReceived !== undefined) {
+          throw new Error('O ajuste de valor e o recebimento parcial devem ser confirmados separadamente.');
+        }
+        const { data: current, error: currentError } = await supabase
+          .from('financial_transactions').select('amount, company_id').eq('id', cfg.id).single();
+        if (currentError) throw currentError;
+        const feeCategory = cfg.fee_amount > 0
+          ? await resolveSystemCategoryNameFresh(queryClient, current.company_id, 'receipt_fee')
+          : undefined;
+        const { data, error } = await (supabase as any).rpc('settle_financial_occurrence', {
+          p_id: cfg.id,
+          p_expected_amount: cfg.expectedOccurrenceAmount ?? current.amount,
+          p_occurrence_amount: cfg.occurrenceAmount,
+          p_account_id: cfg.account_id,
+          p_payment_method: cfg.payment_method || undefined,
+          p_paid_date: paidDate,
+          p_update_future: cfg.updateFutureOccurrences ?? false,
+          p_fee_amount: cfg.fee_amount ?? 0,
+          p_fee_category: feeCategory,
+          p_notes: cfg.notes,
+        });
+        if (error) throw error;
+        return data;
+      }
 
       // Buscar a mãe pra calcular se é parcial e usar dados (company_id, due_date, customer_id, amount).
       const { data: parent, error: parentErr } = await supabase
@@ -939,14 +1073,9 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
           .single();
         if (childErr) throw childErr;
 
-        // 2) Atualiza apenas o due_date da mãe (trigger no banco cuida do amount_received e do is_paid).
-        if (cfg.newDueDate) {
-          const { error: dueErr } = await supabase
-            .from('financial_transactions')
-            .update({ due_date: cfg.newDueDate } as any)
-            .eq('id', cfg.id);
-          if (dueErr) throw dueErr;
-        }
+        // 2) O novo vencimento da mãe vai no FIM (depois da tarifa), conferido:
+        //    a RLS pode barrar o update sem erro, e o recebimento e a tarifa
+        //    não podem ficar pela metade por causa disso.
 
         // A "row de retorno" pra encadear a tarifa de máquina é a filha (vincula tarifa ao recebimento).
         dataRow = child;
@@ -991,14 +1120,37 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
         if (feeErr) throw feeErr;
       }
 
+      // Recebimento parcial com novo vencimento: só o due_date da mãe (o gatilho
+      // no banco cuida do amount_received e do is_paid).
+      if (isPartial && cfg.newDueDate) {
+        assertRowsAffected(
+          await supabase
+            .from('financial_transactions')
+            .update({ due_date: cfg.newDueDate } as any, { count: 'exact' })
+            .eq('id', cfg.id),
+          'update',
+          'O recebimento parcial foi registrado, mas o novo vencimento não foi salvo: você não tem permissão para alterar esta conta. Atualize a tela e confira.',
+        );
+      }
+
       return dataRow;
     },
-    onSuccess: () => {
-      invalidateAll();
+    onSuccess: async () => {
+      await invalidateAll();
       toast({ title: 'Recebimento confirmado!' });
     },
-    onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro ao atualizar transação', description: getErrorMessage(error) });
+    onError: (error: Error, params: string | MarkAsPaidParams) => {
+      // Vencimento barrado depois do recebimento parcial gravado: a lista
+      // precisa mostrar o recebimento mesmo com o aviso de erro.
+      if (error instanceof NoRowsAffectedError) void invalidateAll();
+      let description = getErrorMessage(error);
+      if (typeof params !== 'string' && params.occurrenceAmount !== undefined) {
+        const message = getRpcErrorMessage(error);
+        description = /\b[a-z0-9]+_[a-z0-9_]+\b/i.test(message)
+          ? 'Não foi possível ajustar esta conta. Confira os vínculos e tente novamente.'
+          : message;
+      }
+      toast({ variant: 'destructive', title: 'Erro ao atualizar transação', description });
     },
   });
 
@@ -1074,8 +1226,8 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
       if (!row) throw new Error('A quitação em lote não retornou resultado. Tente de novo.');
       return row;
     },
-    onSuccess: () => {
-      invalidateAll();
+    onSuccess: async () => {
+      await invalidateAll();
     },
     onError: (error: Error) => {
       // A RPC devolve a mensagem pronta pro toast (PT-BR). `getRpcErrorMessage`
@@ -1104,8 +1256,8 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
       if (!row) throw new Error('Não foi possível desfazer o lote. Tente de novo.');
       return row;
     },
-    onSuccess: () => {
-      invalidateAll();
+    onSuccess: async () => {
+      await invalidateAll();
     },
     onError: (error: Error) => {
       toast({
@@ -1120,7 +1272,7 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
   // recebimento parcial, CMV legado). É o conjunto que o DRE precisa pra fechar
   // o resultado — a tarifa da maquininha é despesa de verdade e não existe em
   // nenhuma outra linha.
-  const transactionsWithChildren = transactionsQuery.data ?? EMPTY_TRANSACTIONS;
+  const transactionsWithChildren = canRead ? transactionsQuery.data ?? EMPTY_TRANSACTIONS : EMPTY_TRANSACTIONS;
 
   // Padrão das LISTAGENS: só as raízes. A filha aparece dentro do detalhe da
   // mãe (diálogo de transações relacionadas), nunca como linha solta. Este é o
@@ -1141,17 +1293,19 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
      * evento de caixa da mãe, que segue no banco com o valor cheio.
      */
     transactionsWithChildren,
-    summary: summaryQuery.data ?? { totalEntradas: 0, totalSaidas: 0, saldo: 0, aPagar: 0, aReceber: 0 },
-    isLoading: loadData && (transactionsQuery.isLoading || summaryQuery.isLoading),
-    error: transactionsQuery.error || summaryQuery.error,
-    refetch: () => Promise.all([transactionsQuery.refetch(), summaryQuery.refetch()]),
+    summary: canRead && summaryQuery.data ? summaryQuery.data : { totalEntradas: 0, totalSaidas: 0, saldo: 0, aPagar: 0, aReceber: 0 },
+    isLoading: loadData && (!scope.ready || transactionsQuery.isLoading || summaryQuery.isLoading),
+    error: canRead ? transactionsQuery.error || summaryQuery.error : null,
+    refetch: () => canRead ? Promise.all([transactionsQuery.refetch(), summaryQuery.refetch()]) : Promise.resolve([]),
     createTransaction,
     /** Série de REPETIÇÃO (N lançamentos do mesmo valor) num insert só. */
     createTransactionsBatch,
     updateTransaction,
+    updateInstallmentGroup,
     /** Edição em massa (valor / conta / categoria) dos ids selecionados. */
     updateTransactionsBatch,
     deleteTransaction,
+    deleteInstallmentGroup,
     /** Exclusão em massa dos ids selecionados, com as cascatas do delete individual. */
     deleteTransactionsBatch,
     markAsPaid,

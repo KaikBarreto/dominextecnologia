@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import {
   planCategoryRename,
   resolveSystemCategoryName,
@@ -157,16 +158,24 @@ export function useFinancialCategories() {
 
   const reorderCategories = useMutation({
     mutationFn: async (updates: { id: string; sort_order: number }[]) => {
+      // Cada linha conferida: RLS barrando não dá erro, só altera zero linhas.
       for (const u of updates) {
-        const { error } = await supabase
-          .from('financial_categories')
-          .update({ sort_order: u.sort_order } as any)
-          .eq('id', u.id);
-        if (error) throw error;
+        assertRowsAffected(
+          await supabase
+            .from('financial_categories')
+            .update({ sort_order: u.sort_order } as any, { count: 'exact' })
+            .eq('id', u.id),
+          'update',
+          'Não foi possível salvar a nova ordem: você não tem permissão para esta ação ou alguma categoria já não existe. Atualize a tela e tente de novo.',
+        );
       }
     },
-    onSuccess: () => {
+    // onSettled: se parou no meio, a lista volta a mostrar a ordem real.
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['financial-categories'] });
+    },
+    onError: (error: Error) => {
+      toast({ variant: 'destructive', title: 'Erro ao reordenar categorias', description: getErrorMessage(error) });
     },
   });
 
@@ -244,8 +253,11 @@ export function useFinancialCategories() {
       // O trigger `trg_reclassify_deleted_financial_subcategory` garante no
       // banco que, ao apagar uma filha, lançamentos e defaults automáticos
       // sobem para a categoria principal no mesmo statement.
-      const { error } = await supabase.from('financial_categories').delete().eq('id', id);
-      if (error) throw error;
+      // RLS barrando o delete não dá erro, só apaga zero linhas: conferir.
+      assertRowsAffected(
+        await supabase.from('financial_categories').delete({ count: 'exact' }).eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['financial-categories'] });

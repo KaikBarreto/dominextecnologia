@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useStockManagement } from '@/hooks/useStocks';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
 
 export async function fetchAccessibleInventoryIds(): Promise<string[]> {
@@ -21,8 +22,10 @@ export async function fetchAccessibleInventoryIds(): Promise<string[]> {
  * Nunca chame supabase.from() direto no componente — este hook é a fronteira.
  */
 export function useAccessibleInventoryIds() {
-  const { data: rawIds = [], isLoading } = useQuery({
-    queryKey: ['accessible-inventory-ids'],
+  const { scope, ready } = useStockManagement();
+  const { data: rawIds = [], isLoading, error } = useQuery({
+    queryKey: ['accessible-inventory-ids', ...scope],
+    enabled: ready,
     queryFn: fetchAccessibleInventoryIds,
     staleTime: 30_000,
   });
@@ -31,7 +34,7 @@ export function useAccessibleInventoryIds() {
    * Set de IDs acessíveis — memoizado para não criar uma instância nova a cada render,
    * evitando re-renders desnecessários nos consumidores que fazem `.has()`.
    */
-  const accessibleIds = useMemo(() => new Set<string>(rawIds), [rawIds]);
+  const accessibleIds = useMemo(() => new Set<string>(ready ? rawIds : []), [rawIds, ready]);
 
-  return { accessibleIds, isLoading };
+  return { accessibleIds, isLoading, error };
 }

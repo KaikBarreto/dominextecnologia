@@ -10,6 +10,7 @@ import { NumericInput } from '@/components/ui/numeric-input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
+import { writeFormResponse } from '@/hooks/formResponseWrite';
 import { OsPhotoField } from '@/components/technician/OsPhotoField';
 import { OsVideoField } from '@/components/technician/OsVideoField';
 import { useToast } from '@/hooks/use-toast';
@@ -101,6 +102,8 @@ interface DynamicFormQuestionsProps {
   templateId: string;
   equipmentId?: string;
   onValidationChange?: (result: FormValidationResult) => void;
+  /** Informa ao fluxo da OS que ainda há respostas em gravação. */
+  onSavingChange?: (saving: boolean) => void;
   /**
    * Bloqueia o preenchimento (OS pausada). Mantém a leitura das respostas já
    * dadas, mas desabilita toggles, inputs, uploads e edição. Liberar = retomar a OS.
@@ -127,14 +130,23 @@ interface DynamicFormQuestionsProps {
   plainQuestionSurface?: boolean;
 }
 
-export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, onValidationChange, readOnly = false, visibility, registerAutoFill, plainQuestionSurface = false }: DynamicFormQuestionsProps) {
+export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, onValidationChange, onSavingChange, readOnly = false, visibility, registerAutoFill, plainQuestionSurface = false }: DynamicFormQuestionsProps) {
   const { toast } = useToast();
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.os.dynamicForm;
   const [questions, setQuestions] = useState<FormQuestion[]>([]);
   const [responses, setResponses] = useState<Record<string, FormResponse>>({});
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState<string | null>(null);
+  const [savingQuestions, setSavingQuestions] = useState<Set<string>>(() => new Set());
+  const responsesRef = useRef<Record<string, FormResponse>>({});
+  const persistedResponsesRef = useRef<Record<string, FormResponse>>({});
+  const saveQueuesRef = useRef<Map<string, Promise<void>>>(new Map());
+  const saveVersionsRef = useRef<Map<string, number>>(new Map());
+  const pendingSaveCountsRef = useRef<Map<string, number>>(new Map());
+  const totalPendingSavesRef = useRef(0);
+  // Campos de texto atualizam `responses` durante a digitação; espelha sempre o
+  // render mais recente para o save disparado no blur usar esse valor.
+  responsesRef.current = responses;
   const [editingQuestion, setEditingQuestion] = useState<string | null>(null);
   // Pergunta que está sendo preenchida AGORA pela primeira vez (campo focado e
   // ainda sem resposta quando o técnico tocou nele). Ver `openFieldEdit`.
@@ -178,6 +190,15 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
   useEffect(() => {
     onValidationChangeRef.current = onValidationChange;
   });
+
+  const onSavingChangeRef = useRef(onSavingChange);
+  useEffect(() => {
+    onSavingChangeRef.current = onSavingChange;
+  });
+
+  useEffect(() => () => {
+    if (totalPendingSavesRef.current > 0) onSavingChangeRef.current?.(false);
+  }, []);
 
   // Última validação emitida, pra não notificar o pai com resultado idêntico
   // (corta re-renders desnecessários e qualquer eco de loop).
@@ -334,7 +355,12 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
         .eq('template_id', templateId);
       
       const questionIds = (templateQuestions || []).map(q => q.id);
-      if (questionIds.length === 0) { setResponses({}); return; }
+      if (questionIds.length === 0) {
+        responsesRef.current = {};
+        persistedResponsesRef.current = {};
+        setResponses({});
+        return;
+      }
 
       let query = supabase
         .from('form_responses')
@@ -360,20 +386,44 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
           response_video_url: r.response_video_url ?? null,
         };
       });
+      responsesRef.current = responsesMap;
+      persistedResponsesRef.current = responsesMap;
       setResponses(responsesMap);
     } catch (error: unknown) {
       console.error('Error fetching responses:', error);
     }
   };
 
-  const saveResponse = async (
+  const saveResponse = (
     questionId: string,
     value: string | null,
     photoUrl?: string | null,
     videoUrl?: string | null,
   ) => {
-    setSaving(questionId);
-    try {
+    const previousResponse = responsesRef.current[questionId];
+    const nextResponse: FormResponse = {
+      question_id: questionId,
+      response_value: value,
+      response_photo_url: photoUrl !== undefined ? photoUrl : previousResponse?.response_photo_url || null,
+      response_video_url: videoUrl !== undefined ? videoUrl : previousResponse?.response_video_url || null,
+    };
+
+    // Estado otimista: a validação reconhece a assinatura assim que o traço
+    // fecha. A fila abaixo mantém a ordem dos snapshots no banco.
+    responsesRef.current = { ...responsesRef.current, [questionId]: nextResponse };
+    setResponses(responsesRef.current);
+
+    const version = (saveVersionsRef.current.get(questionId) ?? 0) + 1;
+    saveVersionsRef.current.set(questionId, version);
+    const questionPending = (pendingSaveCountsRef.current.get(questionId) ?? 0) + 1;
+    pendingSaveCountsRef.current.set(questionId, questionPending);
+    totalPendingSavesRef.current += 1;
+    if (questionPending === 1) {
+      setSavingQuestions((current) => new Set(current).add(questionId));
+    }
+    if (totalPendingSavesRef.current === 1) onSavingChangeRef.current?.(true);
+
+    const persist = async () => {
       // Carimbo de auditoria (item 8): toda escrita do técnico grava QUANDO e
       // QUEM respondeu, alinhado com o PMOC (useOsActivityChecklist). Vale no
       // INSERT e no UPDATE. Falha ao obter usuário (link público anônimo) → null.
@@ -381,67 +431,65 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
       const { data: userData } = await supabase.auth.getUser();
       const respondedBy = userData?.user?.id ?? null;
 
-      // Build query to find existing response scoped to this equipment
-      let existingQuery = supabase
-        .from('form_responses')
-        .select('id')
-        .eq('service_order_id', serviceOrderId)
-        .eq('question_id', questionId);
-      
-      if (equipmentId) {
-        existingQuery = existingQuery.eq('equipment_id', equipmentId);
-      } else {
-        existingQuery = existingQuery.is('equipment_id', null);
-      }
-
-      const { data: existing } = await existingQuery.single();
-
-      if (existing) {
-        const { error } = await supabase
-          .from('form_responses')
-          .update({
-            response_value: value,
-            response_photo_url: photoUrl !== undefined ? photoUrl : responses[questionId]?.response_photo_url,
-            response_video_url: videoUrl !== undefined ? videoUrl : responses[questionId]?.response_video_url,
-            responded_at: respondedAt,
-            responded_by: respondedBy,
-          })
-          .eq('id', existing.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('form_responses')
-          .insert({
-            service_order_id: serviceOrderId,
-            question_id: questionId,
-            response_value: value,
-            response_photo_url: photoUrl || null,
-            response_video_url: videoUrl || null,
-            equipment_id: equipmentId || null,
-            responded_at: respondedAt,
-            responded_by: respondedBy,
-          });
-        if (error) throw error;
-      }
-
-      setResponses((prev) => ({
-        ...prev,
-        [questionId]: {
-          question_id: questionId,
+      // Uma linha por (OS, pergunta, equipamento). A regra de procurar, atualizar
+      // ou inserir mora em `writeFormResponse`, que nunca insere quando a busca
+      // falha (era isso que duplicava a resposta).
+      await writeFormResponse(
+        { serviceOrderId, questionId, equipmentId: equipmentId || null },
+        {
           response_value: value,
-          response_photo_url: photoUrl !== undefined ? photoUrl : prev[questionId]?.response_photo_url || null,
-          response_video_url: videoUrl !== undefined ? videoUrl : prev[questionId]?.response_video_url || null,
+          response_photo_url: nextResponse.response_photo_url,
+          response_video_url: nextResponse.response_video_url,
+          responded_at: respondedAt,
+          responded_by: respondedBy,
         },
-      }));
-    } catch (error: unknown) {
-      toast({
-        variant: 'destructive',
-        title: t.toastSaveError,
-        description: getErrorMessage(error),
+      );
+      persistedResponsesRef.current = {
+        ...persistedResponsesRef.current,
+        [questionId]: nextResponse,
+      };
+    };
+
+    const previousSave = saveQueuesRef.current.get(questionId) ?? Promise.resolve();
+    const queuedSave = previousSave.catch(() => undefined).then(persist);
+    saveQueuesRef.current.set(questionId, queuedSave);
+
+    return queuedSave
+      .catch((error: unknown) => {
+        // Só o snapshot mais novo pode alterar a UI. Se ele falhou, volta para o
+        // último valor comprovadamente persistido e mantém a pergunta pendente.
+        if (saveVersionsRef.current.get(questionId) === version) {
+          const persisted = persistedResponsesRef.current[questionId];
+          const nextMap = { ...responsesRef.current };
+          if (persisted) nextMap[questionId] = persisted;
+          else delete nextMap[questionId];
+          responsesRef.current = nextMap;
+          setResponses(nextMap);
+        }
+        toast({
+          variant: 'destructive',
+          title: t.toastSaveError,
+          description: getErrorMessage(error),
+        });
+      })
+      .finally(() => {
+        const remaining = Math.max(0, (pendingSaveCountsRef.current.get(questionId) ?? 1) - 1);
+        if (remaining === 0) {
+          pendingSaveCountsRef.current.delete(questionId);
+          setSavingQuestions((current) => {
+            const next = new Set(current);
+            next.delete(questionId);
+            return next;
+          });
+        } else {
+          pendingSaveCountsRef.current.set(questionId, remaining);
+        }
+        totalPendingSavesRef.current = Math.max(0, totalPendingSavesRef.current - 1);
+        if (totalPendingSavesRef.current === 0) onSavingChangeRef.current?.(false);
+        if (saveQueuesRef.current.get(questionId) === queuedSave) {
+          saveQueuesRef.current.delete(questionId);
+        }
       });
-    } finally {
-      setSaving(null);
-    }
   };
 
   // ── Campo focado = campo em edição ────────────────────────────────────────
@@ -530,7 +578,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
     const response = responses[question.id];
     const value = response?.response_value || '';
     // OS pausada (readOnly) desabilita tudo junto com o estado de salvando.
-    const isSaving = saving === question.id || readOnly;
+    const isSaving = savingQuestions.has(question.id) || readOnly;
 
     switch (type) {
       case 'boolean':
@@ -846,7 +894,7 @@ export function DynamicFormQuestions({ serviceOrderId, templateId, equipmentId, 
                 value={value || null}
                 onChange={(dataUrl) => saveResponse(question.id, dataUrl)}
                 label={question.description || undefined}
-                disabled={isSaving}
+                disabled={readOnly}
               />
             </div>
           </div>

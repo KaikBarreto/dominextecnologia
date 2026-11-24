@@ -1,3 +1,4 @@
+import { hasServiceDocumentLicense } from '../_shared/service-document-license.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 import {
@@ -132,6 +133,7 @@ Deno.serve(async (req) => {
     const errors: Array<{ contract_id: string; error: string }> = []
 
     for (const contract of contracts) {
+      if (!await hasServiceDocumentLicense(supabase,contract.company_id,'contract_document')) continue;
       const scheduledDate = contract.next_pmoc_generation_date!
       const items = (contract.contract_items || []) as Array<any>
 

@@ -29,8 +29,8 @@ export function ProposalPlatformFooter({
       }}
     >
       <a
-        href="https://dominex.app"
-        data-pdf-link="https://dominex.app"
+        href="https://www.dominex.app"
+        data-pdf-link="https://www.dominex.app"
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Dominex — dominex.app"

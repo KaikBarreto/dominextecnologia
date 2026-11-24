@@ -26,6 +26,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { DomiLinkDeviceShortcut } from '@/components/settings/domilink/DomiLinkDeviceShortcut';
 import { PdvWorkflowIllustration } from '@/components/pdv/settings/PdvWorkflowIllustration';
+import { PdvStoreStockSettings } from '@/components/pdv/settings/PdvStoreStockSettings';
 import { PdvTerminalSettings } from '@/components/pdv/settings/PdvTerminalSettings';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import '@/components/pdv/pdv-preview-sale.css';
@@ -108,7 +109,7 @@ export default function PdvSettings() {
 
   return (
     <div className={cn('pdv-workspace pdv-preview-page space-y-6', isMobile && 'pb-24 space-y-4')} data-pdv-ui data-testid="pdv-settings-workspace">
-      <PageHeader title="Configurações do PDV" subtitle="Escolha como sua loja trabalha." icon={Settings} actions={canManageWorkflow ? (tab === 'receipts' ? <Button onClick={() => void saveReceipt()} disabled={settings.save.isPending || settings.isLoading || settings.isError}><Save className="h-4 w-4" />{settings.save.isPending ? 'Salvando...' : 'Salvar comprovante'}</Button> : undefined) : undefined} />
+      <PageHeader title="Configurações do PDV (Loja)" subtitle="Escolha como sua loja trabalha." icon={Settings} actions={canManageWorkflow ? (tab === 'receipts' ? <Button onClick={() => void saveReceipt()} disabled={settings.save.isPending || settings.isLoading || settings.isError}><Save className="h-4 w-4" />{settings.save.isPending ? 'Salvando...' : 'Salvar comprovante'}</Button> : undefined) : undefined} />
       <MobilePillTabs variant="underline" level="screen" activeTab={tab} onTabChange={setTab} tabs={[{ value: 'operation', label: 'Operação' }, { value: 'cash', label: 'Caixas e dinheiro' }, { value: 'receipts', label: 'Comprovantes' }, { value: 'devices', label: 'Equipamentos' }]} />
       {settings.isError && <NoticeBanner variant="warning" onClick={() => void settings.refetch()} action="Tentar novamente">Não foi possível carregar a configuração da empresa. Salvar ficará bloqueado até recarregar.</NoticeBanner>}
       {workflow.isError && <NoticeBanner variant="warning" onClick={() => void workflow.refetch()} action="Tentar novamente">Não foi possível carregar o modo de operação. Salvar ficará bloqueado até recarregar.</NoticeBanner>}
@@ -123,6 +124,7 @@ export default function PdvSettings() {
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3"><p className="text-xs text-muted-foreground">{canManageWorkflow ? 'A mudança vale para todos os caixas.' : 'Seu perfil pode consultar, mas não alterar o fluxo.'}</p><Button type="button" variant="outline" onClick={() => void saveWorkflow()} disabled={!canManageWorkflow || workflow.save.isPending || workflow.isError}>{workflow.save.isPending ? 'Salvando...' : 'Salvar fluxo'}</Button></div>
           </div>
 
+          <PdvStoreStockSettings canManage={canManageWorkflow} />
 </section>}
         {tab === 'cash' && <section className="max-w-5xl space-y-7 rounded-lg border border-border bg-card p-5 sm:p-7" aria-label="Caixas e dinheiro"><PdvCashAccountSettings canManage={canManageWorkflow} /><PdvTerminalSettings canManage={canManageWorkflow} /></section>}
         {tab === 'receipts' && <div className="grid items-start gap-7 xl:grid-cols-[minmax(0,1fr)_minmax(300px,440px)]">

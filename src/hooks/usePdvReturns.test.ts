@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc: vi.fn(), from: vi.fn() } }));
 import {
   buildPdvReturnRpcArgs,
   calculatePdvReturnTotal,
@@ -50,7 +51,8 @@ describe('W5 devoluções comerciais', () => {
   });
 
   it('fecha feature e permissões por padrão, inclusive backdate', () => {
-    expect(isPdvReturnsFeatureEnabled({ enabled: false, company_allowlist: ['company-1'] }, 'company-1')).toBe(true);
+    expect(isPdvReturnsFeatureEnabled({ enabled: false, company_allowlist: ['company-1'] }, 'company-1')).toBe(false);
+    expect(isPdvReturnsFeatureEnabled({ company_id: 'company-1', module_available: true, returns: true }, 'company-1')).toBe(true);
     expect(isPdvReturnsFeatureEnabled({ enabled: false, company_allowlist: [] }, 'company-1')).toBe(false);
     expect(derivePdvReturnsAccess({ featureEnabled: false, privileged: true, hasPermissionRecord: true, permissions: ['*'] })).toEqual({ enabled: false, canReturn: false, canReverse: false, canCancelResidual: false, canBackdate: false });
     expect(derivePdvReturnsAccess({ featureEnabled: true, privileged: false, hasPermissionRecord: true, permissions: ['fn:return_pdv_order'] })).toEqual({ enabled: true, canReturn: true, canReverse: false, canCancelResidual: false, canBackdate: false });

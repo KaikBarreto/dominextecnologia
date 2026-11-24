@@ -48,6 +48,7 @@ describe('SEO do render dinâmico do blog', () => {
     expect(html).toContain('https://www.dominex.app/images/blog/covers/field-service-guide.jpg');
     expect(html).toContain('"@type":"BreadcrumbList"');
     expect(html).toContain('"@type":"BlogPosting"');
+    expect(html).toContain('"@id":"https://www.dominex.app/en/blog/field-service-guide#article"');
     expect(html).toContain('"@type":"Organization","@id":"https://www.dominex.app/#organization"');
     expect(html).toContain('https://www.dominex.app/images/dominex-author-avatar.jpg');
     expect(html).not.toContain('"@type":"SoftwareApplication"');

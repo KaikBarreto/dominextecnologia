@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { MoreHorizontal, Pencil, Plus, Power, RefreshCw, Store } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronDown, MoreHorizontal, Pencil, Plus, Power, RefreshCw, Store } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,8 +8,10 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useToast } from '@/hooks/use-toast';
-import { usePdvTerminalSettings, type PdvTerminalSetting } from '@/hooks/usePdvTerminalSettings';
+import { usePdvTerminalSettings, type PdvTerminalSetting, type PdvStockBindingMode, type PdvStoreStockSetting, type PdvTerminalStockOption } from '@/hooks/usePdvTerminalSettings';
 
 interface Props {
   canManage: boolean;
@@ -19,6 +21,7 @@ interface FormState {
   id: string | null;
   name: string;
   stockId: string;
+  stockBindingMode: PdvStockBindingMode;
   isActive: boolean;
   sortOrder: number;
 }
@@ -27,13 +30,19 @@ const EMPTY_FORM: FormState = {
   id: null,
   name: 'Caixa 01',
   stockId: '',
+  stockBindingMode: 'store_default',
   isActive: true,
   sortOrder: 0,
 };
 
 export function PdvTerminalSettings({ canManage }: Props) {
-  const { toast } = useToast();
   const settings = usePdvTerminalSettings();
+  return <PdvTerminalSettingsContent key={settings.scopeKey ?? 'pending'} settings={settings} canManage={canManage && settings.storeStock?.canManage === true} />;
+}
+function PdvTerminalSettingsContent({settings,canManage}:{settings:ReturnType<typeof usePdvTerminalSettings>;canManage:boolean}) {
+  const { toast } = useToast();
+  const alive=useRef(true);
+  useEffect(()=>{alive.current=true;return ()=>{alive.current=false;};},[]);
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const stockNames = useMemo(
@@ -41,19 +50,14 @@ export function PdvTerminalSettings({ canManage }: Props) {
     [settings.stocks],
   );
 
-  useEffect(() => {
-    if (!formOpen || form.stockId || settings.stocks.length === 0) return;
-    const preferred = settings.stocks.find((stock) => stock.isDefault) ?? settings.stocks[0];
-    setForm((current) => ({ ...current, stockId: preferred.id }));
-  }, [form.stockId, formOpen, settings.stocks]);
 
   function openCreate() {
     const nextNumber = settings.terminals.length + 1;
-    const preferred = settings.stocks.find((stock) => stock.isDefault) ?? settings.stocks[0] ?? null;
+    const preferredId = settings.storeStock?.stockId ?? '';
     setForm({
       ...EMPTY_FORM,
       name: `Caixa ${String(nextNumber).padStart(2, '0')}`,
-      stockId: preferred?.id ?? '',
+      stockId: preferredId,
       sortOrder: nextNumber,
     });
     setFormOpen(true);
@@ -64,6 +68,7 @@ export function PdvTerminalSettings({ canManage }: Props) {
       id: terminal.id,
       name: terminal.name,
       stockId: terminal.stockId,
+      stockBindingMode: terminal.stockBindingMode,
       isActive: terminal.isActive,
       sortOrder: terminal.sortOrder,
     });
@@ -72,12 +77,14 @@ export function PdvTerminalSettings({ canManage }: Props) {
 
   async function saveForm() {
     const name = form.name.trim();
-    if (name.length < 2 || !form.stockId) return;
+    if (!canManage || name.length < 2 || !form.stockId || settings.isError) return;
     try {
       await settings.save.mutateAsync({ ...form, name });
+      if (!alive.current) return;
       toast({ title: form.id ? 'Caixa atualizado' : 'Caixa pronto para abrir' });
       setFormOpen(false);
     } catch (error) {
+      if (!alive.current) return;
       toast({
         title: 'Não foi possível salvar o caixa',
         description: error instanceof Error ? error.message : 'Tente novamente.',
@@ -87,16 +94,20 @@ export function PdvTerminalSettings({ canManage }: Props) {
   }
 
   async function toggleTerminal(terminal: PdvTerminalSetting) {
+    if (!canManage || settings.isError) return;
     try {
       await settings.save.mutateAsync({
         id: terminal.id,
         name: terminal.name,
         stockId: terminal.stockId,
+        stockBindingMode: terminal.stockBindingMode,
         isActive: !terminal.isActive,
         sortOrder: terminal.sortOrder,
       });
+      if (!alive.current) return;
       toast({ title: terminal.isActive ? 'Caixa desativado' : 'Caixa reativado' });
     } catch (error) {
+      if (!alive.current) return;
       toast({
         title: 'Não foi possível alterar o caixa',
         description: error instanceof Error ? error.message : 'Tente novamente.',
@@ -112,10 +123,10 @@ export function PdvTerminalSettings({ canManage }: Props) {
           <div className="rounded-lg bg-primary p-2 text-primary-foreground"><Store className="h-5 w-5" /></div>
           <div>
             <h2 id="pdv-cash-registers-title" className="text-lg font-semibold">Caixas da loja</h2>
-            <p className="text-sm text-muted-foreground">Cada caixa usa um local de estoque e pode ter seu próprio operador.</p>
+            <p className="text-sm text-muted-foreground">Cada caixa usa um local de estoque e pode ter seu próprio operador. Novos caixas usam o estoque da loja.</p>
           </div>
         </div>
-        {canManage ? <Button type="button" onClick={openCreate} disabled={settings.isLoading || settings.isError || settings.stocks.length === 0}><Plus className="h-4 w-4" /> Novo caixa</Button> : null}
+        {canManage ? <Button type="button" onClick={openCreate} disabled={settings.isLoading || settings.isError || settings.save.isPending || settings.stocks.length === 0}><Plus className="h-4 w-4" /> Novo caixa</Button> : null}
       </div>
 
       {settings.isLoading ? <div className="space-y-2"><Skeleton className="h-16" /><Skeleton className="h-16" /></div> : null}
@@ -138,7 +149,7 @@ export function PdvTerminalSettings({ canManage }: Props) {
           <Store className="mx-auto h-10 w-10 text-muted-foreground" />
           <p className="mt-3 font-semibold">Nenhum caixa cadastrado</p>
           <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">Crie o primeiro caixa para liberar a abertura no PDV.</p>
-          {canManage && settings.stocks.length > 0 ? <Button type="button" className="mt-4" onClick={openCreate}><Plus className="h-4 w-4" /> Cadastrar primeiro caixa</Button> : null}
+          {canManage && settings.stocks.length > 0 ? <Button type="button" className="mt-4" disabled={settings.save.isPending} onClick={openCreate}><Plus className="h-4 w-4" /> Cadastrar primeiro caixa</Button> : null}
         </div>
       ) : null}
 
@@ -151,11 +162,11 @@ export function PdvTerminalSettings({ canManage }: Props) {
                   <p className="font-semibold">{terminal.name}</p>
                   <span className={terminal.isActive ? 'rounded-md bg-emerald-600 px-2 py-0.5 text-[10px] font-bold uppercase text-white' : 'rounded-md bg-zinc-600 px-2 py-0.5 text-[10px] font-bold uppercase text-white'}>{terminal.isActive ? 'Ativo' : 'Desativado'}</span>
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">Estoque: {stockNames[terminal.stockId] ?? 'Local não disponível'}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{terminal.stockBindingMode === 'store_default' ? 'Estoque da loja:' : 'Estoque:'} {stockNames[terminal.stockId] ?? 'Local não disponível'}{terminal.stockBindingMode === 'specific' && <span> · específico deste caixa</span>}</p>
               </div>
               {canManage ? (
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" aria-label={`Ações do ${terminal.name}`}><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                  <DropdownMenuTrigger asChild><Button type="button" variant="ghost" size="icon" disabled={settings.save.isPending} aria-label={`Ações do ${terminal.name}`}><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Ações</DropdownMenuLabel>
                     <DropdownMenuItem onSelect={() => openEdit(terminal)}><Pencil className="mr-2 h-4 w-4" /> Editar</DropdownMenuItem>
@@ -172,16 +183,29 @@ export function PdvTerminalSettings({ canManage }: Props) {
 
       <ResponsiveModal
         open={formOpen}
-        onOpenChange={setFormOpen}
+        onOpenChange={open => { if (!settings.save.isPending) setFormOpen(open); }}
         title={form.id ? 'Editar caixa' : 'Cadastrar caixa'}
-        description="Escolha o nome mostrado aos operadores e o estoque usado nas vendas."
-        footer={<div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => setFormOpen(false)}>Cancelar</Button><Button type="button" onClick={() => void saveForm()} disabled={settings.save.isPending || form.name.trim().length < 2 || !form.stockId}>{settings.save.isPending ? 'Salvando...' : 'Salvar caixa'}</Button></div>}
+        description="Escolha o nome mostrado aos operadores. O estoque da loja já vem selecionado."
+        footer={<div className="flex justify-end gap-2"><Button type="button" variant="cancel-ghost" disabled={settings.save.isPending} onClick={() => setFormOpen(false)}>Cancelar</Button><Button type="button" onClick={() => void saveForm()} disabled={!canManage || settings.isError || settings.save.isPending || form.name.trim().length < 2 || !form.stockId}>{settings.save.isPending ? 'Salvando...' : 'Salvar caixa'}</Button></div>}
       >
         <div className="space-y-5 py-2">
-          <div className="space-y-2"><Label htmlFor="pdv-terminal-name">Nome do caixa</Label><Input id="pdv-terminal-name" value={form.name} maxLength={80} autoComplete="off" onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} placeholder="Ex.: Caixa 01" /></div>
-          <div className="space-y-2"><Label htmlFor="pdv-terminal-stock">Local de estoque</Label><Select value={form.stockId} onValueChange={(stockId) => setForm((current) => ({ ...current, stockId }))}><SelectTrigger id="pdv-terminal-stock"><SelectValue placeholder="Escolha o estoque" /></SelectTrigger><SelectContent>{settings.stocks.map((stock) => <SelectItem key={stock.id} value={stock.id}>{stock.name}{stock.isDefault ? ' · principal' : ''}</SelectItem>)}</SelectContent></Select><p className="text-xs text-muted-foreground">Esse local continuará aparecendo normalmente na tela de estoque.</p></div>
+          <div className="space-y-2"><Label htmlFor="pdv-terminal-name">Nome do caixa</Label><Input id="pdv-terminal-name" autoFocus disabled={settings.save.isPending} value={form.name} maxLength={80} autoComplete="off" onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} placeholder="Ex.: Caixa 01" /></div>
+          {settings.storeStock && <PdvTerminalStockFields stocks={settings.stocks} storeStock={settings.storeStock} stockId={form.stockId} bindingMode={form.stockBindingMode} disabled={settings.save.isPending} onChange={(stockId,stockBindingMode)=>setForm(current=>({...current,stockId,stockBindingMode}))}/>}
+
         </div>
       </ResponsiveModal>
     </section>
   );
+}
+
+/** O mesmo vínculo simples é usado no cadastro e na primeira abertura. */
+export function PdvTerminalStockFields({stocks,storeStock,stockId,bindingMode,onChange,disabled=false}:{stocks:PdvTerminalStockOption[];storeStock:PdvStoreStockSetting;stockId:string;bindingMode:PdvStockBindingMode;onChange:(stockId:string,mode:PdvStockBindingMode)=>void;disabled?:boolean}) {
+  const [advanced,setAdvanced]=useState(bindingMode==='specific'||storeStock.defaultUnavailable===true);
+  const name=stocks.find(stock=>stock.id===storeStock.stockId)?.name??storeStock.stocks.find(stock=>stock.id===storeStock.stockId)?.name;
+  return <div className="space-y-3">
+    <div><p className="text-sm font-medium">Estoque da loja</p><p className="mt-1 text-sm">{storeStock.defaultUnavailable?'Indisponível para seu perfil':name??'Ainda não definido na aba Operação'}</p></div>
+    <Collapsible open={advanced} onOpenChange={setAdvanced}><CollapsibleTrigger className="flex w-full items-center justify-between gap-3 border-t pt-3 text-left text-sm font-medium"><span>Opções de estoque deste caixa</span><ChevronDown className="h-4 w-4"/></CollapsibleTrigger><CollapsibleContent className="space-y-3 pt-3"><div className="flex items-start gap-2"><Checkbox id="pdv-terminal-own-stock" checked={bindingMode==='specific'} disabled={disabled} onCheckedChange={checked=>{if(!checked&&(!storeStock.stockId||storeStock.defaultUnavailable))return;onChange(checked?stockId:storeStock.stockId??'',checked?'specific':'store_default');}}/><Label htmlFor="pdv-terminal-own-stock" className="leading-5">Usar outro estoque neste caixa</Label></div>{bindingMode==='specific'&&<div className="space-y-2"><Label htmlFor="pdv-terminal-stock">Local de estoque</Label><Select value={stockId} disabled={disabled} onValueChange={id=>onChange(id,'specific')}><SelectTrigger id="pdv-terminal-stock"><SelectValue placeholder="Escolha o estoque"/></SelectTrigger><SelectContent>{stocks.map(stock=><SelectItem key={stock.id} value={stock.id}>{stock.name}</SelectItem>)}</SelectContent></Select><p className="text-xs text-muted-foreground">Este caixa mantém seu próprio local quando o estoque da loja mudar.</p></div>}</CollapsibleContent></Collapsible>
+    {storeStock.defaultUnavailable&&<p className="text-sm text-muted-foreground">O estoque padrão da loja não está disponível para seu perfil. Use um local autorizado nas opções do caixa.</p>}
+    {bindingMode==='store_default'&&!storeStock.stockId&&!storeStock.defaultUnavailable&&<NoticeBanner variant="warning">Escolha o estoque da loja na aba Operação ou defina outro estoque para este caixa.</NoticeBanner>}
+  </div>;
 }

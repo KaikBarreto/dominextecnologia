@@ -1,0 +1,2096 @@
+{
+  "reviewed_at": "2026-11-15",
+  "references": [
+    {
+      "id": "springer-midea-airvolution-inverter",
+      "scope": "Springer · Springer Midea AirVolution Inverter — Manual do usuário e instalação · 16 modelo(s) documentado(s)",
+      "document": "Springer Midea AirVolution Inverter — Manual do usuário e instalação",
+      "url": "https://www.midea.com/content/dam/midea-aem/br/climatizacao/hiwall/ar-condicionado-springer-midea-airvolution-inverter-idrs/Manual%20de%20usu%C3%A1rio%20(3).pdf",
+      "page": 59,
+      "pdfPage": 59,
+      "reviewedAt": "2026-11-15",
+      "codes": [
+        {
+          "code": "E0",
+          "title": "Erro do processador (EEPROM) da unidade interna",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "E1",
+          "title": "Falha de comunicação entre unidades interna e externa",
+          "component": "Comunicação"
+        },
+        {
+          "code": "E2",
+          "title": "Erro de sinal de tensão",
+          "component": "Alimentação"
+        },
+        {
+          "code": "E3",
+          "title": "Ventilador do evaporador fora de controle",
+          "component": "Ventilador interno"
+        },
+        {
+          "code": "E4",
+          "title": "Sensor de temperatura ambiente T1 aberto ou em curto",
+          "component": "Sensor T1"
+        },
+        {
+          "code": "E5",
+          "title": "Sensor de temperatura da serpentina do evaporador T2 aberto ou em curto",
+          "component": "Sensor T2"
+        },
+        {
+          "code": "EC",
+          "title": "Detecção de perda de refrigerante",
+          "component": "Circuito frigorígeno"
+        },
+        {
+          "code": "E7",
+          "title": "Falha de comunicação entre display e placa principal",
+          "component": "Comunicação interna"
+        },
+        {
+          "code": "F2",
+          "title": "Sensor da serpentina do condensador T3 aberto ou em curto",
+          "component": "Sensor T3"
+        },
+        {
+          "code": "F5",
+          "title": "Ventilador do condensador fora de controle",
+          "component": "Ventilador externo"
+        },
+        {
+          "code": "p6",
+          "title": "Proteção contra alta pressão",
+          "component": "Pressão"
+        }
+      ],
+      "pdfSha256": "fef38579f87707f6fe7dcf88ac99e8876e1a309f058ed6908eb5bb90c615e4ec",
+      "context": "operation",
+      "conditions": "Aplicável somente aos modelos completos das tabelas pp.60–63 do mesmo manual. O fabricante orienta contato com assistência para determinar a origem; códigos não constituem diagnóstico definitivo.",
+      "coveredModels": [
+        {
+          "brand": "Springer",
+          "code": "42AFVCH09S5"
+        },
+        {
+          "brand": "Springer",
+          "code": "38TVCC09S5"
+        },
+        {
+          "brand": "Springer",
+          "code": "42AFVQH09S5"
+        },
+        {
+          "brand": "Springer",
+          "code": "38TVQC09S5"
+        },
+        {
+          "brand": "Springer",
+          "code": "42AFVCH12S5"
+        },
+        {
+          "brand": "Springer",
+          "code": "38TVCC12S5"
+        },
+        {
+          "brand": "Springer",
+          "code": "42AFVQH12S5"
+        },
+        {
+          "brand": "Springer",
+          "code": "38TVQC12S5"
+        },
+        {
+          "brand": "Springer",
+          "code": "42AFVCH18S5"
+        },
+        {
+          "brand": "Springer",
+          "code": "38TVCC18S5"
+        },
+        {
+          "brand": "Springer",
+          "code": "42AFVQH18S5"
+        },
+        {
+          "brand": "Springer",
+          "code": "38TVQC18S5"
+        },
+        {
+          "brand": "Springer",
+          "code": "42AFVCH22S5"
+        },
+        {
+          "brand": "Springer",
+          "code": "38TVCC22S5"
+        },
+        {
+          "brand": "Springer",
+          "code": "42AFVQH22S5"
+        },
+        {
+          "brand": "Springer",
+          "code": "38TVQC22S5"
+        }
+      ],
+      "sourceReferenceIds": [
+        "springer-midea-airvolution-inverter"
+      ],
+      "evidencePdfPages": [
+        59
+      ]
+    },
+    {
+      "id": "midea-xtreme-save-r32",
+      "scope": "Midea · Xtreme Save Connect R32 — Manual do usuário e instalação · 16 modelo(s) documentado(s)",
+      "document": "Xtreme Save Connect R32 — Manual do usuário e instalação",
+      "url": "https://www.midea.com/content/dam/midea-aem/br/climatizacao/hiwall/xtreme-white-novo/Manual%20de%20usu%C3%A1rio_Xtreme%20Save%20Connect.pdf",
+      "page": 63,
+      "pdfPage": 63,
+      "reviewedAt": "2026-11-15",
+      "codes": [
+        {
+          "code": "EH 00",
+          "title": "Erro do processador (EEPROM) da unidade interna",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "EH 0A",
+          "title": "Erro do processador (EEPROM) da unidade interna",
+          "component": "Unidade interna"
+        },
+        {
+          "code": "EL 01",
+          "title": "Falha de comunicação entre unidades interna e externa",
+          "component": "Comunicação"
+        },
+        {
+          "code": "EH 02",
+          "title": "Erro de sinal de tensão",
+          "component": "Alimentação"
+        },
+        {
+          "code": "EH 03",
+          "title": "Ventilador do evaporador fora de controle",
+          "component": "Ventilador interno"
+        },
+        {
+          "code": "Ec 51",
+          "title": "Erro do processador (EEPROM) da unidade externa",
+          "component": "Unidade externa"
+        },
+        {
+          "code": "Ec 52",
+          "title": "Sensor de temperatura da serpentina do condensador T3 aberto ou em curto",
+          "component": "Sensor T3"
+        },
+        {
+          "code": "Ec 53",
+          "title": "Sensor de temperatura externa T4 aberto ou em curto",
+          "component": "Sensor T4"
+        },
+        {
+          "code": "Ec 54",
+          "title": "Sensor da descarga do compressor TP aberto ou em curto",
+          "component": "Sensor TP"
+        },
+        {
+          "code": "EH 60",
+          "title": "Sensor de temperatura ambiente T1 aberto ou em curto",
+          "component": "Sensor T1"
+        },
+        {
+          "code": "EH 61",
+          "title": "Sensor da serpentina do evaporador T2 aberto ou em curto",
+          "component": "Sensor T2"
+        },
+        {
+          "code": "Ec 07",
+          "title": "Ventilador do condensador fora de controle",
+          "component": "Ventilador externo"
+        },
+        {
+          "code": "EH 0b",
+          "title": "Falha de comunicação entre display e placa da unidade interna",
+          "component": "Comunicação interna"
+        },
+        {
+          "code": "EL 0c",
+          "title": "Detecção de perda de refrigerante",
+          "component": "Circuito frigorígeno"
+        },
+        {
+          "code": "pc 00",
+          "title": "Proteção contra alta corrente no módulo Inverter IGBT ou IPM",
+          "component": "Inverter"
+        },
+        {
+          "code": "pc 01",
+          "title": "Proteção contra alta ou baixa tensão",
+          "component": "Alimentação"
+        },
+        {
+          "code": "pc 02",
+          "title": "Proteção contra alta temperatura do compressor/IPM ou alta pressão",
+          "component": "Proteção do sistema"
+        },
+        {
+          "code": "pc 03",
+          "title": "Proteção contra baixa pressão",
+          "component": "Pressão"
+        },
+        {
+          "code": "pc 04",
+          "title": "Erro na placa Inverter do compressor",
+          "component": "Inverter"
+        },
+        {
+          "code": "pc 08",
+          "title": "Proteção contra sobrecorrente",
+          "component": "Alimentação"
+        },
+        {
+          "code": "pc 40",
+          "title": "Erro de comunicação entre as placas das unidades externa e interna",
+          "component": "Comunicação"
+        }
+      ],
+      "pdfSha256": "54b73c6673c242307b6946e4acf5d7139fdbadbabdb060cb5dcbfa6a211bfd79",
+      "context": "operation",
+      "conditions": "Tabela exclusiva da revisão R32 coberta pelas tabelas pp.64–67. Preservada a grafia/capitalização publicada dos códigos; consultar assistência conforme manual.",
+      "coveredModels": [
+        {
+          "brand": "Midea",
+          "code": "42AGVCI09M5"
+        },
+        {
+          "brand": "Midea",
+          "code": "38AGVCI09M5"
+        },
+        {
+          "brand": "Midea",
+          "code": "42AGVQI09M5"
+        },
+        {
+          "brand": "Midea",
+          "code": "38AGVQI09M5"
+        },
+        {
+          "brand": "Midea",
+          "code": "42AGVCI12M5"
+        },
+        {
+          "brand": "Midea",
+          "code": "38AGVCI12M5"
+        },
+        {
+          "brand": "Midea",
+          "code": "42AGVQI12M5"
+        },
+        {
+          "brand": "Midea",
+          "code": "38AGVQI12M5"
+        },
+        {
+          "brand": "Midea",
+          "code": "42AGVCI18M5"
+        },
+        {
+          "brand": "Midea",
+          "code": "38AGVCI18M5"
+        },
+        {
+          "brand": "Midea",
+          "code": "42AGVQI18M5"
+        },
+        {
+          "brand": "Midea",
+          "code": "38AGVQI18M5"
+        },
+        {
+          "brand": "Midea",
+          "code": "42AGVCI24M5"
+        },
+        {
+          "brand": "Midea",
+          "code": "38AGVCI24M5"
+        },
+        {
+          "brand": "Midea",
+          "code": "42AGVQI24M5"
+        },
+        {
+          "brand": "Midea",
+          "code": "38AGVQI24M5"
+        }
+      ],
+      "sourceReferenceIds": [
+        "midea-xtreme-save-r32"
+      ],
+      "evidencePdfPages": [
+        63
+      ]
+    },
+    {
+      "id": "springer-duo-eletronico-legado-qca-frio",
+      "scope": "Springer · Springer DUO — Manual de Serviço (legado) · 1 modelo(s) documentado(s)",
+      "document": "Springer DUO — Manual de Serviço (legado)",
+      "url": "https://poloar.vteximg.com.br/arquivos/manual%20instalacao%20DUO.pdf?v=635991788786230000",
+      "page": 21,
+      "pdfPage": 21,
+      "reviewedAt": "2026-11-15",
+      "codes": [
+        {
+          "code": "A2",
+          "title": "Proteção contra congelamento",
+          "component": "Evaporador"
+        },
+        {
+          "code": "A3",
+          "title": "Proteção contra falhas no compressor",
+          "component": "Compressor"
+        },
+        {
+          "code": "E1",
+          "title": "Falha do sensor de temperatura ambiente",
+          "component": "Sensor ambiente"
+        },
+        {
+          "code": "E2",
+          "title": "Falha do sensor de serpentina",
+          "component": "Sensor serpentina"
+        },
+        {
+          "code": "E3",
+          "title": "Falha na refrigeração",
+          "component": "Sistema"
+        },
+        {
+          "code": "E5",
+          "title": "Aviso de manutenção: limpeza do filtro após 250 horas",
+          "component": "Filtro"
+        }
+      ],
+      "pdfSha256": "5225667e155318978e676493fb8ed730297012ff970f8a66cdee2b414e3e238a",
+      "context": "operation",
+      "conditions": "Somente versões eletrônicas RBB; A1 e E4 relacionados a aquecimento aplicam-se à versão QQA quente/frio. E5 é aviso de manutenção, não avaria do compressor. Nesta referência QCA foram excluídos A1 e E4, exclusivos de aquecimento.",
+      "coveredModels": [
+        {
+          "brand": "Springer",
+          "code": "QCA 075 RBB"
+        }
+      ],
+      "sourceReferenceIds": [
+        "springer-duo-eletronico-legado"
+      ],
+      "evidencePdfPages": [
+        21
+      ]
+    },
+    {
+      "id": "springer-duo-eletronico-legado-qqa-quente-frio",
+      "scope": "Springer · Springer DUO — Manual de Serviço (legado) · 1 modelo(s) documentado(s)",
+      "document": "Springer DUO — Manual de Serviço (legado)",
+      "url": "https://poloar.vteximg.com.br/arquivos/manual%20instalacao%20DUO.pdf?v=635991788786230000",
+      "page": 21,
+      "pdfPage": 21,
+      "reviewedAt": "2026-11-15",
+      "codes": [
+        {
+          "code": "A1",
+          "title": "Proteção do modo degelo",
+          "component": "Degelo"
+        },
+        {
+          "code": "A2",
+          "title": "Proteção contra congelamento",
+          "component": "Evaporador"
+        },
+        {
+          "code": "A3",
+          "title": "Proteção contra falhas no compressor",
+          "component": "Compressor"
+        },
+        {
+          "code": "E1",
+          "title": "Falha do sensor de temperatura ambiente",
+          "component": "Sensor ambiente"
+        },
+        {
+          "code": "E2",
+          "title": "Falha do sensor de serpentina",
+          "component": "Sensor serpentina"
+        },
+        {
+          "code": "E3",
+          "title": "Falha na refrigeração",
+          "component": "Sistema"
+        },
+        {
+          "code": "E4",
+          "title": "Falha no aquecimento",
+          "component": "Sistema"
+        },
+        {
+          "code": "E5",
+          "title": "Aviso de manutenção: limpeza do filtro após 250 horas",
+          "component": "Filtro"
+        }
+      ],
+      "pdfSha256": "5225667e155318978e676493fb8ed730297012ff970f8a66cdee2b414e3e238a",
+      "context": "operation",
+      "conditions": "Somente versões eletrônicas RBB; A1 e E4 relacionados a aquecimento aplicam-se à versão QQA quente/frio. E5 é aviso de manutenção, não avaria do compressor.",
+      "coveredModels": [
+        {
+          "brand": "Springer",
+          "code": "QQA 075 RBB"
+        }
+      ],
+      "sourceReferenceIds": [
+        "springer-duo-eletronico-legado"
+      ],
+      "evidencePdfPages": [
+        21
+      ]
+    },
+    {
+      "id": "lg-multi-v5-lte5-sensores-operacao",
+      "scope": "LG · LG Multi V5 Trouble Shooting Guide Book · 47 modelo(s) documentado(s)",
+      "document": "LG Multi V5 Trouble Shooting Guide Book",
+      "url": "https://www.lg.com/content/dam/channelbtb/lgcom/br/business/download/airsolution/Multi%20V%205%20Trouble%20Shooting%20Guide_20240208_214108274_.pdf",
+      "page": "102–103",
+      "pdfPage": 52,
+      "reviewedAt": "2026-11-15",
+      "codes": [
+        {
+          "code": "CH01",
+          "title": "Falha no sensor de temperatura do ar da unidade interna",
+          "component": "Sensor de temperatura do ar",
+          "solution": "Verificar a conexão do sensor à placa e medir sua resistência conforme a tabela do guia. O fluxo orienta revisar o sensor e a placa conforme o resultado."
+        },
+        {
+          "code": "CH02",
+          "title": "Falha no sensor de temperatura da tubulação de gás",
+          "component": "Sensor da tubulação de gás",
+          "solution": "Verificar a conexão do sensor e sua resistência conforme a tabela do fabricante."
+        },
+        {
+          "code": "CH06",
+          "title": "Falha no sensor de temperatura da tubulação de líquido",
+          "component": "Sensor da tubulação de líquido",
+          "solution": "Verificar a conexão do sensor e sua resistência conforme a tabela do fabricante."
+        }
+      ],
+      "pdfSha256": "8803358b34b459134c90ac45f426e4fa64e6d792306199c27357557318094963",
+      "context": "operation",
+      "conditions": "Cobertura limitada aos identificadores LTE5 listados literalmente na página PDF 11 do guia. CH é o prefixo exibido no controle remoto conforme página PDF 50; os números 01/02/06 constam da tabela PDF 52. Não aplicar a PROII BLS5/LLS5, MultiV S, Multi Inverter ou residencial sem documentação específica.",
+      "coveredModels": [
+        {
+          "brand": "LG",
+          "code": "ARUN100LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN120LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN140LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN160LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN180LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN200LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN220LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN221LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN240LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN241LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN260LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN261LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN280LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN300LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN320LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN340LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN360LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN380LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN400LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN420LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN440LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN460LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN480LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN500LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN520LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN540LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN560LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN580LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN600LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN620LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN640LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN660LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN680LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN700LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN720LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN740LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN760LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN780LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN800LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN820LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN840LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN860LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN880LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN900LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN920LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN940LTE5"
+        },
+        {
+          "brand": "LG",
+          "code": "ARUN960LTE5"
+        }
+      ],
+      "sourceReferenceIds": [
+        "lg-multi-v5-lte5-sensores-operacao"
+      ],
+      "evidencePdfPages": [
+        11,
+        50,
+        52
+      ]
+    },
+    {
+      "id": "gree-manual-03-operacao-p43",
+      "scope": "Gree · Gree · Manual G-Top Auto Inverter · 26 modelo(s) documentado(s)",
+      "document": "Gree · Manual G-Top Auto Inverter",
+      "url": "https://gree.com.br/wp-content/uploads/2025/02/Manual-G-TOP-AUTO-INVERTER_R32_REV00-full.pdf",
+      "page": 43,
+      "pdfPage": 43,
+      "reviewedAt": "2026-11-15",
+      "codes": [
+        {
+          "code": "F0",
+          "title": "Proteção por possível vazamento de refrigerante",
+          "component": "Circuito frigorífico"
+        },
+        {
+          "code": "F1",
+          "title": "Proteção do sensor de temperatura interno",
+          "component": "Sensor interno"
+        },
+        {
+          "code": "F2",
+          "title": "Proteção do sensor de imersão interno",
+          "component": "Sensor do evaporador"
+        },
+        {
+          "code": "F3",
+          "title": "Falha do sensor de temperatura ambiente externo",
+          "component": "Sensor externo"
+        },
+        {
+          "code": "F4",
+          "title": "Falha do sensor de imersão externo",
+          "component": "Sensor do condensador"
+        },
+        {
+          "code": "F5",
+          "title": "Falha do sensor de temperatura de descarga externo",
+          "component": "Sensor de descarga"
+        },
+        {
+          "code": "F6",
+          "title": "Frequência limitada por sobrecarga",
+          "component": "Controle de capacidade"
+        },
+        {
+          "code": "F8",
+          "title": "Frequência reduzida por sobrecorrente",
+          "component": "Controle de capacidade"
+        },
+        {
+          "code": "F9",
+          "title": "Frequência reduzida por alta temperatura de descarga",
+          "component": "Controle de capacidade"
+        },
+        {
+          "code": "FH",
+          "title": "Frequência limitada pela proteção contra congelamento",
+          "component": "Controle de capacidade"
+        },
+        {
+          "code": "JF",
+          "title": "Falha da placa de detecção Wi-Fi",
+          "component": "Comunicação Wi-Fi"
+        },
+        {
+          "code": "H3",
+          "title": "Proteção por sobrecarga do compressor",
+          "component": "Compressor"
+        },
+        {
+          "code": "H5",
+          "title": "Proteção IPM",
+          "component": "Módulo de potência"
+        }
+      ],
+      "pdfSha256": "511a496d149cf627c86fc09003c513cd1a1089904aba85533640cf6d313f0ae5",
+      "context": "operation",
+      "conditions": "Somente modelos e componentes indicados neste manual; descrições resumidas da tabela de diagnóstico. Não estender a toda a marca. A tabela não substitui medição/diagnóstico profissional.",
+      "coveredModels": [
+        {
+          "brand": "Gree",
+          "code": "GWC09ATA-D6DNA1A"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWH09ATA-D6DNA1A"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWC12ATC-D6DNA1A"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWH12ATC-D6DNA1A"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWC18ATD-D6DNA1A"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWH18ATD-D6DNA1A"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWC30ATEXF-S6DNA1A"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWC24ATE-D6DNA1A"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWH24ATE-D6DNA1A"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWH09ATA-D6DNA1A/I"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWC12ATC-D6DNA1A/I"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWH12ATC-D6DNA1A/I"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWH18ATD-D6DNA1A/I"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWH24ATE-D6DNA1A/I"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWC30ATEXF-S6DNA1A/I"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWH30ATEXF-S6DNA1A"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWC09ATA-D6DNA1A/O"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWH09ATA-D6DNA1A/O"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWC18ATD-D6DNA1A/O"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWH18ATD-D6DNA1A/O"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWC12ATC-D6DNA1A/O"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWH12ATC-D6DNA1A/O"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWC24ATE-D6DNA1D/O"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWH24ATE-D6DNA1A/O"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWC30ATEXF-S6DNA1A/O"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWH30ATEXF-S6DNA1A/O"
+        }
+      ],
+      "sourceReferenceIds": [
+        "gree-manual-03-operacao-p43"
+      ],
+      "evidencePdfPages": [
+        43
+      ]
+    },
+    {
+      "id": "gree-manual-07-operacao-p43",
+      "scope": "Gree · Gree · Manual G-Diamond Auto Inverter · 22 modelo(s) documentado(s)",
+      "document": "Gree · Manual G-Diamond Auto Inverter",
+      "url": "https://gree.com.br/wp-content/uploads/2025/02/Manual-G-DIAMOND-AUTO-INVERTER-Full.pdf",
+      "page": 43,
+      "pdfPage": 43,
+      "reviewedAt": "2026-11-15",
+      "codes": [
+        {
+          "code": "F0",
+          "title": "Proteção por possível vazamento de refrigerante",
+          "component": "Circuito frigorífico"
+        },
+        {
+          "code": "F1",
+          "title": "Proteção do sensor de temperatura interno",
+          "component": "Sensor interno"
+        },
+        {
+          "code": "F2",
+          "title": "Proteção do sensor de imersão interno",
+          "component": "Sensor do evaporador"
+        },
+        {
+          "code": "F3",
+          "title": "Falha do sensor de temperatura ambiente externo",
+          "component": "Sensor externo"
+        },
+        {
+          "code": "F4",
+          "title": "Falha do sensor de imersão externo",
+          "component": "Sensor do condensador"
+        },
+        {
+          "code": "F5",
+          "title": "Falha do sensor de temperatura de descarga externo",
+          "component": "Sensor de descarga"
+        },
+        {
+          "code": "F6",
+          "title": "Frequência limitada por sobrecarga",
+          "component": "Controle de capacidade"
+        },
+        {
+          "code": "F8",
+          "title": "Frequência reduzida por sobrecorrente",
+          "component": "Controle de capacidade"
+        },
+        {
+          "code": "F9",
+          "title": "Frequência reduzida por alta temperatura de descarga",
+          "component": "Controle de capacidade"
+        },
+        {
+          "code": "FH",
+          "title": "Frequência limitada pela proteção contra congelamento",
+          "component": "Controle de capacidade"
+        },
+        {
+          "code": "JF",
+          "title": "Falha da placa de detecção Wi-Fi",
+          "component": "Comunicação Wi-Fi"
+        },
+        {
+          "code": "H3",
+          "title": "Proteção por sobrecarga do compressor",
+          "component": "Compressor"
+        },
+        {
+          "code": "H5",
+          "title": "Proteção IPM",
+          "component": "Módulo de potência"
+        }
+      ],
+      "pdfSha256": "85333cab5196397b8b55b0930284e967a9f07bc1f0a1f8c00aedc034a49626f1",
+      "context": "operation",
+      "conditions": "Somente modelos e componentes indicados neste manual; descrições resumidas da tabela de diagnóstico. Não estender a toda a marca. A tabela não substitui medição/diagnóstico profissional.",
+      "coveredModels": [
+        {
+          "brand": "Gree",
+          "code": "GWC09ACA-D6DNA1A"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWC12ACC-D6DNA1A"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWC18ACD-D6DNA1C"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWC24ACE-D6DNA1B"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWH09ACA-D6DNA1A"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWH12ACC-D6DNA1A"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWH18ACD-D6DNA1C"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWH24ACE-D6DNA1B"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWC09ACA-D6DNA1A/I"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWH09ACA-D6DNA1A/I"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWC12ACC-D6DNA1A/I"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWH12ACC-D6DNA1A/I"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWH18ACD-D6DNA1C/I"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWH24ACE-D6DNA1B/I"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWC09ACA-D6DNA1A/O"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWH09ACA-D6DNA1A/O"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWC12ACC-D6DNA1A/O"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWH12ACC-D6DNA1A/O"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWC18ACD-D6DNA1C/O"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWH18ACD-D6DNA1C/O"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWC24ATE-D6DNA1AD/O"
+        },
+        {
+          "brand": "Gree",
+          "code": "GWH24ATE-D6DNA1AD/O"
+        }
+      ],
+      "sourceReferenceIds": [
+        "gree-manual-07-operacao-p43"
+      ],
+      "evidencePdfPages": [
+        43
+      ]
+    },
+    {
+      "id": "gree-manual-22-operacao-p50-p51",
+      "scope": "Gree · Gree · Manual G-Max Multi Split Rev.003 · 6 modelo(s) documentado(s)",
+      "document": "Gree · Manual G-Max Multi Split Rev.003",
+      "url": "https://gree.com.br/wp-content/uploads/2025/12/Manual-G-Max_FULL-Rev.003_compressed.pdf",
+      "page": "50 / 51",
+      "pdfPage": 50,
+      "reviewedAt": "2026-11-15",
+      "codes": [
+        {
+          "code": "U8",
+          "title": "Falha do circuito de detecção de cruzamento por zero",
+          "component": "Controle elétrico"
+        },
+        {
+          "code": "C5",
+          "title": "Falha da tampa do jumper",
+          "component": "Configuração da placa"
+        },
+        {
+          "code": "H6",
+          "title": "Falha do motor do ventilador interno",
+          "component": "Ventilador interno"
+        },
+        {
+          "code": "F1",
+          "title": "Falha do sensor de temperatura ambiente interno",
+          "component": "Sensor interno"
+        },
+        {
+          "code": "F2",
+          "title": "Falha do sensor de temperatura do evaporador",
+          "component": "Sensor do evaporador"
+        },
+        {
+          "code": "b5",
+          "title": "Falha do sensor da válvula de líquido",
+          "component": "Sensor da válvula de líquido"
+        },
+        {
+          "code": "b7",
+          "title": "Falha do sensor da válvula de gás",
+          "component": "Sensor da válvula de gás"
+        },
+        {
+          "code": "P7",
+          "title": "Falha do sensor de temperatura do módulo",
+          "component": "Sensor do módulo"
+        },
+        {
+          "code": "F3",
+          "title": "Falha do sensor de temperatura ambiente externo",
+          "component": "Sensor externo"
+        },
+        {
+          "code": "F4",
+          "title": "Falha do sensor de temperatura do condensador",
+          "component": "Sensor do condensador"
+        },
+        {
+          "code": "F5",
+          "title": "Falha do sensor de temperatura do compressor",
+          "component": "Sensor do compressor"
+        },
+        {
+          "code": "E6",
+          "title": "Falha de comunicação entre as unidades",
+          "component": "Comunicação"
+        },
+        {
+          "code": "HE",
+          "title": "Proteção contra desmagnetização do compressor",
+          "component": "Compressor"
+        },
+        {
+          "code": "U3",
+          "title": "Falha por queda de tensão no barramento CC",
+          "component": "Barramento CC"
+        },
+        {
+          "code": "P8",
+          "title": "Proteção por alta temperatura do módulo",
+          "component": "Módulo de potência"
+        },
+        {
+          "code": "U1",
+          "title": "Falha de detecção da corrente de fase do compressor",
+          "component": "Compressor"
+        },
+        {
+          "code": "PU",
+          "title": "Falha de carregamento do capacitor",
+          "component": "Capacitor"
+        },
+        {
+          "code": "E1",
+          "title": "Proteção de alta pressão do sistema",
+          "component": "Circuito frigorífico"
+        },
+        {
+          "code": "E3",
+          "title": "Proteção de baixa pressão do sistema (reservado)",
+          "component": "Circuito frigorífico"
+        },
+        {
+          "code": "H3",
+          "title": "Proteção contra sobrecarga do compressor",
+          "component": "Compressor"
+        },
+        {
+          "code": "LP",
+          "title": "Unidades interna e externa incompatíveis",
+          "component": "Compatibilidade"
+        },
+        {
+          "code": "dn",
+          "title": "Ligação de comunicação incorreta ou falha da válvula de expansão",
+          "component": "Comunicação / válvula de expansão"
+        },
+        {
+          "code": "EE",
+          "title": "Falha do chip de memória",
+          "component": "Memória"
+        },
+        {
+          "code": "U5",
+          "title": "Falha de detecção da corrente do conjunto",
+          "component": "Controle elétrico"
+        },
+        {
+          "code": "L3",
+          "title": "Proteção do ventilador externo 1",
+          "component": "Ventilador externo"
+        },
+        {
+          "code": "dd",
+          "title": "Estado de operação: verificação de ligação de comunicação ou válvula de expansão",
+          "component": "Comunicação / válvula de expansão"
+        },
+        {
+          "code": "E7",
+          "title": "Conflito entre os modos de refrigeração e aquecimento",
+          "component": "Modo de operação"
+        },
+        {
+          "code": "Fo",
+          "title": "Estado de operação: reciclagem de refrigerante",
+          "component": "Estado de operação"
+        },
+        {
+          "code": "AL",
+          "title": "Estado de operação: X-Fan",
+          "component": "Estado de operação"
+        },
+        {
+          "code": "H1",
+          "title": "Estado de operação: degelo ou retorno de óleo no aquecimento",
+          "component": "Estado de operação"
+        },
+        {
+          "code": "Lc",
+          "title": "Falha na partida do compressor",
+          "component": "Compressor"
+        },
+        {
+          "code": "E4",
+          "title": "Proteção por alta temperatura de descarga do compressor",
+          "component": "Compressor"
+        },
+        {
+          "code": "E8",
+          "title": "Proteção de sobrecarga",
+          "component": "Sistema"
+        },
+        {
+          "code": "E5",
+          "title": "Proteção de sobrecorrente do conjunto",
+          "component": "Controle elétrico"
+        },
+        {
+          "code": "P5",
+          "title": "Proteção de corrente de fase do compressor",
+          "component": "Compressor"
+        },
+        {
+          "code": "H7",
+          "title": "Dessincronização do compressor",
+          "component": "Compressor"
+        },
+        {
+          "code": "Ld",
+          "title": "Proteção por falta ou inversão de fase do compressor",
+          "component": "Compressor"
+        },
+        {
+          "code": "H5",
+          "title": "Proteção IPM",
+          "component": "Módulo de potência"
+        },
+        {
+          "code": "PL",
+          "title": "Proteção de baixa tensão do barramento CC",
+          "component": "Barramento CC"
+        },
+        {
+          "code": "PH",
+          "title": "Proteção de alta tensão do barramento CC",
+          "component": "Barramento CC"
+        },
+        {
+          "code": "HC",
+          "title": "Proteção PFC",
+          "component": "Correção do fator de potência"
+        },
+        {
+          "code": "U7",
+          "title": "Anormalidade na válvula de quatro vias",
+          "component": "Válvula de quatro vias"
+        }
+      ],
+      "pdfSha256": "102ae79c7fb71733c907e02f735564438ce5bd8b75b4797793e9863897c03490",
+      "context": "operation",
+      "conditions": "Apenas condensadoras G-Max listadas na capa do manual; não estender a split residencial, GMV ou toda a Gree. H1/AL/Fo/dd são estados operacionais e não confirmação de defeito. F0 omitido porque o manual traz ressalva de não disponibilidade para externa residencial.",
+      "coveredModels": [
+        {
+          "brand": "Gree",
+          "code": "2GWHD(18)ND6BO"
+        },
+        {
+          "brand": "Gree",
+          "code": "3GWHD(24)ND6BO"
+        },
+        {
+          "brand": "Gree",
+          "code": "3GWHD(30)ND6BO"
+        },
+        {
+          "brand": "Gree",
+          "code": "4GWHD(36)ND6BO"
+        },
+        {
+          "brand": "Gree",
+          "code": "5GWHD(42)ND6BO"
+        },
+        {
+          "brand": "Gree",
+          "code": "5GWHD(48)ND6BO"
+        }
+      ],
+      "sourceReferenceIds": [
+        "gree-manual-22-operacao-p50",
+        "gree-manual-22-operacao-p51"
+      ],
+      "evidencePdfPages": [
+        50,
+        51
+      ],
+      "pdfPages": [
+        50,
+        51
+      ]
+    },
+    {
+      "id": "samsung-dvm-s2-2026-comissionamento-p74-p75",
+      "scope": "Samsung · Samsung · DVM S2 · Manual de instalação DB68-12343A-02 · 2026 · 184 modelo(s) documentado(s)",
+      "document": "Samsung · DVM S2 · Manual de instalação DB68-12343A-02 · 2026",
+      "url": "https://org.downloadcenter.samsung.com/downloadfile/ContentsFile.aspx?CDSite=UNI_BR&OriginYN=N&ModelType=N&ModelName=AM080AXVANH%2FEA&CttFileID=11280234&CDCttType=UM&VPath=UM%2F202602%2F20260205170221386%2FDB68-12343A-02_IM_DVM_S2_Outdoor_EA_PT_26.01.12.pdf",
+      "page": "74 / 75",
+      "pdfPage": 74,
+      "reviewedAt": "2026-11-15",
+      "codes": [
+        {
+          "code": "E503",
+          "title": "Verificação de válvula de serviço e ciclo durante a operação de teste",
+          "component": "Comissionamento"
+        },
+        {
+          "code": "E505",
+          "title": "Verificação dos sensores de pressão durante a operação de teste",
+          "component": "Comissionamento"
+        },
+        {
+          "code": "E506",
+          "title": "Verificação dos sensores de pressão durante a operação de teste",
+          "component": "Comissionamento"
+        }
+      ],
+      "pdfSha256": "85080114890642d9b1eb9c7d17632a72018bfcc8e8a450dd12626b69cd9696f0",
+      "context": "commissioning",
+      "conditions": "Exclusivo ao procedimento de inspeção e operação de teste do DVM S2 deste manual; não é tabela de falhas de operação geral. A leitura fora do intervalo garantido de temperatura ou antes da equalização da pressão pode indicar erro mesmo com equipamento normal.",
+      "coveredModels": [
+        {
+          "brand": "Samsung",
+          "code": "AM080AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM100AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM120AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM140AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM160AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM180AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM200AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM220AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM240AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM260AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM280AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM300AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM320AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM340AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM360AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM380AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM400AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM420AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM440AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM460AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM480AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM500AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM520AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM540AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM560AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM580AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM600AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM620AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM640AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM660AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM680AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM700AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM720AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM740AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM760AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM780AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM800AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM820AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM840AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM860AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM880AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM900AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM920AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM940AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM960AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM980AXVANH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM080AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM100AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM120AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM140AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM160AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM180AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM200AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM220AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM240AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM260AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM280AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM300AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM320AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM340AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM360AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM380AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM400AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM420AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM440AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM460AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM480AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM500AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM520AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM540AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM560AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM580AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM600AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM620AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM640AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM660AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM680AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM700AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM720AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM740AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM760AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM780AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM800AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM820AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM840AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM860AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM880AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM900AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM920AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM940AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM960AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM980AXVANC/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM080AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM100AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM120AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM140AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM160AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM180AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM200AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM220AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM240AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM260AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM280AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM300AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM320AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM340AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM360AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM380AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM400AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM420AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM440AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM460AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM480AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM500AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM520AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM540AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM560AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM580AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM600AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM620AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM640AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM660AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM680AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM700AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM720AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM740AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM760AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM780AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM800AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM820AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM840AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM860AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM880AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM900AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM920AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM940AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM960AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM980AXVGNH/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM080AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM100AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM120AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM140AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM160AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM180AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM200AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM220AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM240AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM260AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM280AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM300AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM320AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM340AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM360AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM380AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM400AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM420AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM440AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM460AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM480AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM500AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM520AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM540AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM560AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM580AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM600AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM620AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM640AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM660AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM680AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM700AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM720AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM740AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM760AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM780AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM800AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM820AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM840AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM860AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM880AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM900AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM920AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM940AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM960AXVANR/EA"
+        },
+        {
+          "brand": "Samsung",
+          "code": "AM980AXVANR/EA"
+        }
+      ],
+      "sourceReferenceIds": [
+        "samsung-dvm-s2-2026-comissionamento-p74",
+        "samsung-dvm-s2-2026-comissionamento-p75"
+      ],
+      "evidencePdfPages": [
+        74,
+        75
+      ],
+      "pdfPages": [
+        74,
+        75
+      ]
+    }
+  ]
+}

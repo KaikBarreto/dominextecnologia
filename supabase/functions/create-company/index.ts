@@ -1,8 +1,11 @@
+import { resolveBusinessCore, corePlanCode, coreCommercialModules } from '../_shared/business-core.ts'
+import { loadBusinessCoreBasePrice, requiredCustomModulesForCore, customCommercialModulesForCore } from '../_shared/business-core-pricing.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { provisionAsaasCustomer } from '../_shared/asaas-customer.ts'
 import { isValidBrazilianPhone } from '../_shared/phone-validation.ts'
 import { canonicalizeCompanyOrigin } from '../_shared/company-origin.ts'
 import { resolveFirstPaidWhatsappTier } from '../_shared/whatsapp-pricing.ts'
+import { ensureDefaultFinancialAccounts } from '../_shared/default-financial-accounts.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -144,7 +147,7 @@ Deno.serve(async (req) => {
       }),
       supabaseAdmin.rpc('has_admin_permission', {
         _user_id: caller.id,
-        _permission: 'admin_empresas',
+        _permission: 'admin_empresas_criar',
       }),
     ])
     if (superAdminResult.error || companyPermissionResult.error) {
@@ -159,6 +162,10 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json()
+    let businessCore
+    try { businessCore = resolveBusinessCore(body.business_core) }
+    catch { return json({error:'Escolha Loja ou Serviços para continuar.'},400) }
+    body.subscription_plan=corePlanCode(businessCore,body.subscription_plan || 'start')
     const {
       company_name,
       company_cnpj,
@@ -225,7 +232,7 @@ Deno.serve(async (req) => {
     if (typeof idempotency_key === 'string') {
       const { data: existingCreation, error: existingCreationError } = await supabaseAdmin
         .from('companies')
-        .select('id, creation_requested_by, creation_completed_at')
+        .select('id, creation_requested_by, creation_completed_at, business_core')
         .eq('creation_idempotency_key', creationIdempotencyKey)
         .maybeSingle()
 
@@ -234,6 +241,7 @@ Deno.serve(async (req) => {
         return json({ error: 'Não foi possível validar esta tentativa de criação. Tente novamente.' }, 503)
       }
       if (existingCreation) {
+        if(existingCreation.business_core!==businessCore) return json({error:'Esta tentativa já foi usada para outro perfil. Reabra o cadastro.'},409)
         if (existingCreation.creation_requested_by !== caller.id) {
           return json({ error: 'Esta tentativa de criação não é válida para o usuário atual.' }, 409)
         }
@@ -258,18 +266,23 @@ Deno.serve(async (req) => {
     // Basic, Portal do Cliente, Precificação Avançada e Perguntas em Vídeo,
     // mesmo quando o painel ou um payload antigo omite.
     // Planos prontos preservam o comportamento anterior e não recebem extras.
+    const isPureTrial = (subscription_status || 'testing') === 'testing'
+      && plan_locked !== true
+      && !(Number(custom_price) > 0)
+      && !(Number(subscription_value) > 0)
     const isPersonalizado = typeof subscription_plan === 'string'
       && subscription_plan.trim().toLowerCase() === 'personalizado'
-    const requestedModuleCodes = Array.isArray(modules)
+    const requestedModuleCodes = coreCommercialModules(businessCore, Array.isArray(modules)
       ? [...new Set(
         modules
           .filter((module: unknown): module is string => typeof module === 'string')
           .map((module: string) => module.trim().slice(0, 50))
           .filter(Boolean),
       )]
-      : []
+      : [])
+    const requiredCoreModules=requiredCustomModulesForCore(businessCore,requestedModuleCodes)
     const moduleCodesToValidate = isPersonalizado
-      ? [...new Set([...REQUIRED_PERSONALIZED_MODULE_CODES, ...requestedModuleCodes])]
+      ? customCommercialModulesForCore(businessCore,requestedModuleCodes)
       : requestedModuleCodes
     let validModuleCodes: string[] = []
     let resolvedWhatsappTier = 1
@@ -293,6 +306,11 @@ Deno.serve(async (req) => {
         }
       } else {
         moduleCatalog = (catalog || []) as Array<{ code: string; price: number | null }>
+        if (businessCore === 'retail') {
+          const base=await loadBusinessCoreBasePrice(supabaseAdmin,businessCore)
+          if(base===null && !isPureTrial) return json({error:'Configure o preço da Loja antes de contratar.'},409)
+          moduleCatalog=moduleCatalog.map(module=>module.code==='basic'?{...module,price:base??0}:module)
+        }
         validModuleCodes = moduleCatalog
           .filter((item) => item.code !== EXTRA_USER_MODULE_CODE)
           .map((item) => item.code)
@@ -300,7 +318,7 @@ Deno.serve(async (req) => {
 
       if (isPersonalizado) {
         const validCodes = new Set(validModuleCodes)
-        const missingRequired = REQUIRED_PERSONALIZED_MODULE_CODES.filter((code) => !validCodes.has(code))
+        const missingRequired = requiredCoreModules.filter((code) => !validCodes.has(code))
         if (missingRequired.length > 0) {
           console.error(`[create-company] Catálogo incompleto para plano personalizado: ${missingRequired.join(', ')}`)
           return new Response(JSON.stringify({ error: 'Os módulos obrigatórios do plano personalizado não estão disponíveis.' }), {
@@ -368,18 +386,18 @@ Deno.serve(async (req) => {
     } else {
       const { data: planRow, error: planError } = await supabaseAdmin
         .from('subscription_plans')
-        .select('price, max_users')
+        .select('price, max_users, business_core, is_active')
         .eq('code', subscription_plan || 'start')
-        .eq('is_active', true)
+        .eq('business_core', businessCore)
         .maybeSingle()
-      if (planError || !planRow || !(Number(planRow.price) > 0)) {
+      if (planError || !planRow || ((!planRow.is_active || !(Number(planRow.price) > 0)) && !(businessCore==='retail' && isPureTrial))) {
         return new Response(JSON.stringify({ error: 'O plano selecionado não está disponível no catálogo.' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
       }
-      catalogSubscriptionValue = Number(planRow.price)
-      catalogMaxUsers = Number(planRow.max_users) || CUSTOM_PLAN_INCLUDED_USERS
+      catalogSubscriptionValue = Number(planRow?.price) || 0
+      catalogMaxUsers = Number(planRow?.max_users) || CUSTOM_PLAN_INCLUDED_USERS
     }
 
     // Observação automática de valor personalizado: o frontend manda a nota
@@ -449,14 +467,12 @@ Deno.serve(async (req) => {
     // 1. Create the company. A chave unica e a barreira definitiva quando
     // duas chamadas usam administradores diferentes ou o retry chega depois
     // da criacao do usuario, mas antes da resposta HTTP anterior.
-    const isPureTrial = (subscription_status || 'testing') === 'testing'
-      && plan_locked !== true
-      && !(Number(custom_price) > 0)
-      && !(Number(subscription_value) > 0)
+
     const { data: company, error: companyError } = await supabaseAdmin
       .from('companies')
       .insert({
         name: company_name,
+        business_core: businessCore,
         cnpj: company_cnpj || null,
         email: company_email || admin_email,
         phone: company_phone || null,
@@ -476,7 +492,7 @@ Deno.serve(async (req) => {
         segments: normalizedSegments,
         segment: normalizedSegments[0] || null,
         custom_price: custom_price ?? null,
-        custom_price_permanent: custom_price_permanent ?? true,
+        custom_price_permanent: Number(custom_price)>0 ? (custom_price_permanent ?? true) : false,
         custom_price_months: custom_price_months ?? null,
         nfse_tier: nfse_tier ?? 1,
         whatsapp_tier: resolvedWhatsappTier,
@@ -495,9 +511,10 @@ Deno.serve(async (req) => {
       if (companyError.code === '23505' && creationIdempotencyKey) {
         const { data: existing } = await supabaseAdmin
           .from('companies')
-          .select('id, creation_completed_at, creation_requested_by')
+          .select('id, creation_completed_at, creation_requested_by, business_core')
           .eq('creation_idempotency_key', creationIdempotencyKey)
           .maybeSingle()
+        if(existing && existing.business_core!==businessCore) return json({error:'Esta tentativa já foi usada para outro perfil. Reabra o cadastro.'},409)
         if (existing?.creation_requested_by === caller.id && existing.creation_completed_at) {
           return json({ success: true, company_id: existing.id, idempotent: true })
         }
@@ -643,13 +660,9 @@ Deno.serve(async (req) => {
       )
     if (categoriesError) throw new Error('Não foi possível configurar as categorias financeiras iniciais.')
 
-    // 8. Seed default financial accounts
-    const { error: accountsError } = await supabaseAdmin
-      .from('financial_accounts')
-      .insert([
-        { company_id: company.id, name: 'Caixa', type: 'caixa', color: '#10b981', icon: 'Wallet', initial_balance: 0, sort_order: 0 },
-        { company_id: company.id, name: 'Conta Principal', type: 'banco', color: '#3b82f6', icon: 'Landmark', initial_balance: 0, sort_order: 1 },
-      ])
+    // 8. Fallback idempotente. A garantia canônica é o trigger em companies;
+    // este passo mantém o deploy seguro se a Edge chegar antes da migration.
+    const { error: accountsError } = await ensureDefaultFinancialAccounts(supabaseAdmin, company.id)
     if (accountsError) throw new Error('Não foi possível configurar as contas financeiras iniciais.')
 
     // 9. Seed catálogo de serviço default (tipos de serviço, status de OS, tipos de tarefa).

@@ -4,17 +4,27 @@ import {
   ArrowRight,
   BarChart3,
   ChevronDown,
+  FileDown,
+  FileSpreadsheet,
   FileText,
   History,
   Loader2,
-  Printer,
   RefreshCw,
+  ShoppingBag,
+  PackageSearch,
+  Settings2,
   WalletCards,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { RowActionsMenu } from "@/components/ui/RowActionsMenu";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   DateRangeFilter,
   useDateRangeFilter,
@@ -45,6 +55,7 @@ import { useAppLocaleContext } from "@/contexts/AppLocaleContext";
 import {
   usePdvDocumentIndex,
   usePdvGlobalHistory,
+  usePdvManagementReport,
   usePdvPartialProjection,
   usePdvProjectionExport,
   usePdvHistoryExport,
@@ -54,10 +65,15 @@ import {
   type PdvProjectionKind,
 } from "@/hooks/usePdvReportsV2";
 import { usePdvWorkflowSettings } from "@/hooks/usePdvCounterFlow";
-import { PdvCardSettlementsPanel } from "@/components/pdv/reports/PdvCardSettlementsPanel";
+import { PdvSalesPanel } from "@/components/pdv/reports/PdvSalesPanel";
+import { PdvOverviewPanel } from "@/components/pdv/reports/PdvOverviewPanel";
+import { PdvPaymentsCashPanel } from "@/components/pdv/reports/PdvPaymentsCashPanel";
 import { csvCell as safeCsvTextCell } from "@/utils/movimentacoesCsvGenerator";
+import { paymentMethodLabel } from "@/lib/pdv/reportInsights";
 
-type ReportTab = "summary" | "history" | "documents" | "cards";
+type ReportTab = "overview" | "sales" | "products" | "payments" | "operational";
+type OperationalView = "movements" | "history" | "documents";
+type ReportsDateFilter = ReturnType<typeof useDateRangeFilter>;
 const PAGE_SIZE = 25;
 
 const EVENT_TONES: Record<PdvHistoryEventType, string> = {
@@ -89,6 +105,18 @@ function downloadCsv(name: string, rows: Array<Array<string | number | null>>) {
   anchor.download = name;
   anchor.click();
   URL.revokeObjectURL(url);
+}
+
+async function downloadExcel(
+  name: string,
+  sheetName: string,
+  rows: Array<Array<string | number | null>>,
+) {
+  const XLSX = await import("xlsx");
+  const worksheet = XLSX.utils.aoa_to_sheet(rows);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, sheetName.slice(0, 31));
+  XLSX.writeFile(workbook, name.endsWith(".xlsx") ? name : `${name}.xlsx`);
 }
 
 function entryLabel(entry: PdvProjectionEntry, pdvMode: string | undefined): string {
@@ -146,9 +174,10 @@ function Pagination({
   );
 }
 
-export function PdvReportsWorkspace() {
+export function PdvReportsWorkspace({ dateFilter: providedDateFilter }: { dateFilter?: ReportsDateFilter } = {}) {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  const [salesRefreshKey, setSalesRefreshKey] = useState(0);
   const { timezone } = useAppLocaleContext();
   const { money, date } = useLocaleFormatters();
   const workflow = usePdvWorkflowSettings();
@@ -160,13 +189,17 @@ export function PdvReportsWorkspace() {
     if (next.has(id)) next.delete(id); else next.add(id);
     return next;
   });
-  const [tab, setTab] = useState<ReportTab>("summary");
+  const [tab, setTab] = useState<ReportTab>("overview");
+  const [operationalView, setOperationalView] = useState<OperationalView>('movements');
   const [projection, setProjection] =
     useState<PdvProjectionKind>("dre_competence");
   const [projectionOffset, setProjectionOffset] = useState(0);
   const [historyOffset, setHistoryOffset] = useState(0);
   const [documentOffset, setDocumentOffset] = useState(0);
-  const dateFilter = useDateRangeFilter("last30");
+  const localDateFilter = useDateRangeFilter("last30");
+  const dateFilter = providedDateFilter ?? localDateFilter;
+  const [excelRequest, setExcelRequest] = useState<{ key: number; tab: "sales" | "products" | null }>({ key: 0, tab: null });
+  const [excelError, setExcelError] = useState<string | null>(null);
   const today = todayInTz(timezone);
   const from = dateFilter.range.from
     ? format(dateFilter.range.from, "yyyy-MM-dd")
@@ -181,21 +214,26 @@ export function PdvReportsWorkspace() {
     to,
     limit: PAGE_SIZE,
     offset: projectionOffset,
-    enabled: tab === "summary",
+    enabled: tab === "operational" && operationalView === 'movements',
+  });
+  const managementReport = usePdvManagementReport({
+    from,
+    to,
+    enabled: tab === "overview" || tab === "payments",
   });
   const historyReport = usePdvGlobalHistory({
     from,
     to,
     limit: PAGE_SIZE,
     offset: historyOffset,
-    enabled: tab === "history",
+    enabled: tab === "operational" && operationalView === 'history',
   });
-  const projectionExport = usePdvProjectionExport({ projection, from, to, enabled: tab === 'summary' });
-  const historyExport = usePdvHistoryExport({ from, to, enabled: tab === 'history' });
+  const projectionExport = usePdvProjectionExport({ projection, from, to, enabled: tab === 'operational' && operationalView === 'movements' });
+  const historyExport = usePdvHistoryExport({ from, to, enabled: tab === 'operational' && operationalView === 'history' });
   const documentsReport = usePdvDocumentIndex({
     limit: PAGE_SIZE,
     offset: documentOffset,
-    enabled: tab === "documents",
+    enabled: tab === "operational" && operationalView === 'documents',
   });
 
   useEffect(() => {
@@ -207,45 +245,196 @@ export function PdvReportsWorkspace() {
 
   const tabs = [
     {
-      value: "summary",
-      label: "Resumo",
+      value: "overview",
+      label: "Visão geral",
       icon: <BarChart3 className="h-4 w-4" />,
     },
     {
-      value: "history",
-      label: "Histórico",
-      icon: <History className="h-4 w-4" />,
+      value: "sales",
+      label: "Vendas",
+      icon: <ShoppingBag className="h-4 w-4" />,
     },
     {
-      value: "documents",
-      label: "Comprovantes",
-      icon: <FileText className="h-4 w-4" />,
+      value: "products",
+      label: "Produtos e margem",
+      icon: <PackageSearch className="h-4 w-4" />,
     },
     {
-      value: "cards",
-      label: "Cartões",
+      value: "payments",
+      label: "Pagamentos e caixas",
       icon: <WalletCards className="h-4 w-4" />,
+    },
+    {
+      value: "operational",
+      label: "Operacional",
+      icon: <Settings2 className="h-4 w-4" />,
     },
   ];
 
-  const loading = tab === "cards" ? false :
-    tab === "summary"
-      ? projectionReport.isLoading
-      : tab === "history"
-        ? historyReport.isLoading
-        : documentsReport.isLoading;
-  const error = tab === "cards" ? null :
-    tab === "summary"
-      ? projectionReport.error
-      : tab === "history"
-        ? historyReport.error
-        : documentsReport.error;
+  const loading = tab !== 'operational' ? false
+    : operationalView === 'movements' ? projectionReport.isLoading
+      : operationalView === 'history' ? historyReport.isLoading : documentsReport.isLoading;
+  const error = tab !== 'operational' ? null
+    : operationalView === 'movements' ? projectionReport.error
+      : operationalView === 'history' ? historyReport.error : documentsReport.error;
   const refetch =
-    tab === "summary"
+    tab === "sales" || tab === 'products' || tab === 'overview' || tab === 'payments'
+      ? () => setSalesRefreshKey((value) => value + 1)
+      : operationalView === 'movements'
       ? projectionReport.refetch
-      : tab === "history"
+      : operationalView === 'history'
         ? historyReport.refetch
         : documentsReport.refetch;
+
+  const saveExcel = (
+    name: string,
+    sheetName: string,
+    rows: Array<Array<string | number | null>>,
+  ) => {
+    setExcelError(null);
+    void downloadExcel(name, sheetName, rows).catch(() => {
+      setExcelError("Não foi possível gerar o arquivo Excel. Tente novamente.");
+    });
+  };
+
+  const handleExportExcel = () => {
+    setExcelError(null);
+    if (tab === "sales" || tab === "products") {
+      setExcelRequest((current) => ({ key: current.key + 1, tab }));
+      return;
+    }
+    if (tab === "overview" && managementReport.data) {
+      const report = managementReport.data;
+      saveExcel(`visao-geral-pdv-${from}-${to}`, "Visão geral", [
+        ["Indicador", "Período atual", "Período anterior"],
+        ["Vendas", report.current.ordersCount, report.previous.ordersCount],
+        ["Itens líquidos", report.current.quantity, report.previous.quantity],
+        ["Receita", report.current.revenue, report.previous.revenue],
+        ["Custo dos materiais", report.current.cmv, report.previous.cmv],
+        ["Margem", report.current.margin, report.previous.margin],
+        ["Margem percentual", report.current.marginRate, report.previous.marginRate],
+        ["Ticket médio", report.current.averageTicket, report.previous.averageTicket],
+        ["Devoluções", report.current.returnsCount, report.previous.returnsCount],
+        ["Impacto das devoluções", report.current.returnsImpact, report.previous.returnsImpact],
+        [],
+        ["Data", "Vendas", "Receita", "Custo dos materiais", "Margem"],
+        ...report.daily.map((day) => [day.date, day.ordersCount, day.revenue, day.cmv, day.margin]),
+      ]);
+      return;
+    }
+    if (tab === "payments" && managementReport.data) {
+      const report = managementReport.data;
+      saveExcel(`pagamentos-caixas-pdv-${from}-${to}`, "Pagamentos e caixas", [
+        ["Forma de pagamento", "Pedidos", "Valor", "Participação"],
+        ...report.payments.map((payment) => [
+          paymentMethodLabel(payment.method),
+          payment.ordersCount,
+          payment.amount,
+          payment.share,
+        ]),
+        [],
+        ["Fechamento dos caixas", "Valor"],
+        ["Caixas fechados", report.cash.closedSessions],
+        ["Valor esperado", report.cash.expected],
+        ["Valor contado", report.cash.counted],
+        ["Diferença líquida", report.cash.difference],
+        ["Faltas", report.cash.shortage],
+        ["Sobras", report.cash.surplus],
+      ]);
+      return;
+    }
+    if (operationalView === "movements") {
+      void projectionExport.exportEntries((entries) => {
+        saveExcel(`movimentacoes-pdv-${from}-${to}`, "Movimentações", [
+          ["Data", "Origem", "Venda", "Item", "Quantidade", "Receita", "Custo dos materiais", "Despesa", "Fluxo"],
+          ...entries.flatMap((entry) => {
+            const origin = entryLabel(entry, pdvMode);
+            if (entry.details.length === 0) {
+              return [[entry.eventDate, origin, entry.orderNumber, null, null, entry.revenue, entry.cmv, entry.expense, entry.cashFlow]];
+            }
+            return entry.details.map((detail, index) => [
+              entry.eventDate,
+              origin,
+              entry.orderNumber,
+              detail.description,
+              detail.quantity,
+              detail.revenue,
+              detail.cmv,
+              index === 0 ? entry.expense : null,
+              index === 0 ? entry.cashFlow : null,
+            ]);
+          }),
+        ]);
+      });
+      return;
+    }
+    if (operationalView === "history") {
+      void historyExport.exportEntries((entries) => {
+        saveExcel(`historico-pdv-${from}-${to}`, "Histórico", [
+          ["Data", "Tipo", "Caixa", "Descrição", "Direção", "Valor"],
+          ...entries.map((entry) => [
+            entry.eventDate,
+            EVENT_LABELS[entry.eventType],
+            entry.cashSessionLabel,
+            entry.label,
+            entry.direction === "entrada" ? "Entrada" : entry.direction === "saida" ? "Saída" : "",
+            entry.amount,
+          ]),
+        ]);
+      });
+      return;
+    }
+    if (documentsReport.data) {
+      saveExcel("comprovantes-pdv", "Comprovantes", [
+        ["Tipo", "Data de geração", "Pedido", "Retirada"],
+        ...documentsReport.data.documents.map((document) => [
+          document.documentType === "delivery_receipt" ? "Comprovante de retirada" : "Comprovante do pedido",
+          document.createdAt,
+          document.orderId,
+          document.deliveryId,
+        ]),
+      ]);
+    }
+  };
+
+  const excelUnavailable =
+    (tab === "overview" || tab === "payments") && !managementReport.data
+      ? true
+      : tab === "operational" && operationalView === "movements"
+        ? projectionExport.isPending || !projectionExport.ready
+        : tab === "operational" && operationalView === "history"
+          ? historyExport.isPending || !historyExport.ready
+          : tab === "operational" && operationalView === "documents"
+            ? !documentsReport.data
+            : false;
+
+  const reportActions = (
+    <div className="flex flex-wrap items-center justify-end gap-2 print:hidden">
+      <Button variant="outline" size="sm" onClick={() => void refetch()}>
+        <RefreshCw className="mr-2 h-4 w-4" />
+        Atualizar
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="sm">
+            <FileDown className="mr-2 h-4 w-4" />
+            Exportar
+            <ChevronDown className="ml-2 h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onSelect={() => window.print()}>
+            <FileText className="mr-2 h-4 w-4" />
+            PDF
+          </DropdownMenuItem>
+          <DropdownMenuItem disabled={excelUnavailable} onSelect={handleExportExcel}>
+            <FileSpreadsheet className="mr-2 h-4 w-4" />
+            Excel
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
 
   return (
     <div className="space-y-4">
@@ -257,32 +446,37 @@ export function PdvReportsWorkspace() {
         onTabChange={(value) => setTab(value as ReportTab)}
       />
 
-      <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-        {tab === "documents" ? (
-          <p className="text-sm text-muted-foreground">
-            Índice completo de comprovantes gerados
-          </p>
-        ) : tab === "cards" ? (
-          <p className="text-sm text-muted-foreground">Vendas no cartão aguardando confirmação no banco</p>
-        ) : (
-          <DateRangeFilter
-            value={dateFilter.range}
-            preset={dateFilter.preset}
-            onPresetChange={dateFilter.setPreset}
-            onRangeChange={dateFilter.setRange}
-          />
-        )}
-        {tab !== "cards" && <div className="flex flex-wrap gap-2 print:hidden">
-          <Button variant="outline" size="sm" onClick={() => void refetch()}>
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Atualizar
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => window.print()}>
-            <Printer className="mr-2 h-4 w-4" />
-            Imprimir / PDF
-          </Button>
-        </div>}
-      </div>
+      {!providedDateFilter && (
+        <DateRangeFilter
+          value={dateFilter.range}
+          preset={dateFilter.preset}
+          onPresetChange={dateFilter.setPreset}
+          onRangeChange={dateFilter.setRange}
+        />
+      )}
+
+      {tab === 'operational' ? (
+        <MobilePillTabs
+          variant="underline"
+          level="section"
+          tabs={[
+            { value: 'movements', label: 'Movimentações', icon: <BarChart3 className="h-4 w-4" /> },
+            { value: 'history', label: 'Histórico', icon: <History className="h-4 w-4" /> },
+            { value: 'documents', label: 'Comprovantes', icon: <FileText className="h-4 w-4" /> },
+          ]}
+          activeTab={operationalView}
+          onTabChange={(value) => setOperationalView(value as OperationalView)}
+          actions={reportActions}
+        />
+      ) : (
+        <div className="flex justify-end">{reportActions}</div>
+      )}
+
+      {excelError && (
+        <p role="alert" className="text-sm text-destructive print:hidden">
+          {excelError}
+        </p>
+      )}
 
       {error && (
         <NoticeBanner
@@ -294,10 +488,14 @@ export function PdvReportsWorkspace() {
         </NoticeBanner>
       )}
       {loading && (
-        <PdvPageSkeleton variant={tab === 'summary' ? 'reports' : 'table'} label="Carregando relatório do PDV" />
+        <PdvPageSkeleton variant={operationalView === 'movements' ? 'reports' : 'table'} label="Carregando relatório do PDV" />
       )}
 
-      {!loading && !error && tab === "summary" && projectionReport.data && (
+      {tab === 'overview' && <PdvOverviewPanel from={from} to={to} refreshKey={salesRefreshKey} />}
+      {tab === 'payments' && <PdvPaymentsCashPanel from={from} to={to} refreshKey={salesRefreshKey} />}
+      {tab === 'products' && <PdvSalesPanel from={from} to={to} refreshKey={salesRefreshKey} excelRequestKey={excelRequest.tab === 'products' ? excelRequest.key : 0} onDownloadExcel={downloadExcel} onExcelError={setExcelError} dimensions={['product']} initialDimension="product" description="Identifique concentração de receita, giro e margem para ajustar compras, preço e mix de produtos." onDownloadCsv={downloadCsv} />}
+
+      {!loading && !error && tab === "operational" && operationalView === 'movements' && projectionReport.data && (
         <section className="space-y-4">
           <p className="text-sm text-muted-foreground">Vendas e movimentações do PDV neste período. Consulte o DRE e o DFC completos no Financeiro.</p>
           <div className="flex max-w-sm">
@@ -358,6 +556,7 @@ export function PdvReportsWorkspace() {
                 downloadCsv(`recorte-pdv-${from}-${to}.csv`, [
                   ["Data", "Origem", "Venda", "Item", "Quantidade", "Receita", "Custo dos materiais", "Despesa", "Fluxo"],
                   // Planilha detalhada: uma linha por produto, com o número da venda para reagrupar.
+                  // Despesa e Fluxo do grupo saem só na primeira linha, senão a soma duplica.
                   ...entries.flatMap((entry) => {
                     const origin = entryLabel(entry, pdvMode);
                     if (entry.details.length === 0) {
@@ -401,7 +600,7 @@ export function PdvReportsWorkspace() {
                       )}
                       <div className="grid grid-cols-2 gap-2 text-left text-xs">
                         <span>Receita <b className="block">{money(entry.revenue)}</b></span>
-                        <span>CMV <b className="block">{entry.cmv == null ? "Indisponível" : money(entry.cmv)}</b></span>
+                        <span>Custo dos materiais <b className="block">{entry.cmv == null ? "Indisponível" : money(entry.cmv)}</b></span>
                       </div>
                     </div>
                     {canExpand && <ChevronDown aria-hidden="true" className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />}
@@ -514,13 +713,14 @@ export function PdvReportsWorkspace() {
         </section>
       )}
 
-      {tab === "cards" && <PdvCardSettlementsPanel />}
+      {tab === "sales" && <PdvSalesPanel from={from} to={to} refreshKey={salesRefreshKey} excelRequestKey={excelRequest.tab === 'sales' ? excelRequest.key : 0} onDownloadExcel={downloadExcel} onExcelError={setExcelError} dimensions={['customer', 'salesperson', 'hour']} initialDimension="customer" description="Compare clientes, vendedores e horários para encontrar concentração de receita e oportunidades comerciais." onDownloadCsv={downloadCsv} />}
 
-      {!loading && !error && tab === "history" && historyReport.data && (
+      {!loading && !error && tab === "operational" && operationalView === 'history' && historyReport.data && (
         <section className="space-y-3">
-          <p className="text-xs text-muted-foreground">
-            Movimentações do período, identificadas por caixa e tipo.
-          </p>
+          <div>
+            <h3 className="text-sm font-semibold">Pista de auditoria</h3>
+            <p className="text-xs text-muted-foreground">Rastreie movimentações por data, caixa e tipo; abra a origem quando precisar investigar.</p>
+          </div>
           {historyExport.error && <p role="alert" className="text-sm text-destructive print:hidden">{historyExport.error}</p>}
           <div className="flex justify-end print:hidden">
             <Button
@@ -607,9 +807,12 @@ export function PdvReportsWorkspace() {
         </section>
       )}
 
-      {!loading && !error && tab === "documents" && documentsReport.data && (
+      {!loading && !error && tab === "operational" && operationalView === 'documents' && documentsReport.data && (
         <section className="space-y-3">
-          <p className="text-sm text-muted-foreground">Abra o pedido ou a retirada para consultar o comprovante.</p>
+          <div>
+            <h3 className="text-sm font-semibold">Documentos operacionais</h3>
+            <p className="text-xs text-muted-foreground">Abra o pedido ou a retirada para consultar e conferir o comprovante.</p>
+          </div>
           {documentsReport.data.documents.length === 0 ? (
             <EmptyState
               size="compact"

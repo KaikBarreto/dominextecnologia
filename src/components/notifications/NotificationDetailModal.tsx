@@ -7,6 +7,7 @@ import type { UserNotification } from '@/hooks/useUserNotifications';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
 import { getDateFnsLocale } from '@/lib/format';
+import { isSafeNotificationActionUrl } from '@/lib/notificationAction';
 import { getNotificationIcon } from './NotificationItem';
 
 interface NotificationDetailModalProps {
@@ -45,7 +46,7 @@ export function NotificationDetailModal({
   if (!notification) return null;
   const Icon = getNotificationIcon(notification.icon);
   const isTermsUpdate = notification.type === 'terms_updated';
-  const hasAction = !!notification.action_url;
+  const hasAction = isSafeNotificationActionUrl(notification.action_url);
   const isError = notification.icon === 'alert-circle';
 
   // Termos atualizados: dispara o gatilho global e fecha o detalhe.
@@ -56,17 +57,27 @@ export function NotificationDetailModal({
 
   const footer = (
     <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
-      <Button variant="outline" onClick={() => onOpenChange(false)}>
+      <Button
+        variant="outline"
+        onClick={() => onOpenChange(false)}
+        className="focus-visible:ring-foreground"
+      >
         {tPrimitives.modalClose}
       </Button>
       {isTermsUpdate ? (
-        <Button onClick={handleOpenTerms} className="gap-2">
+        <Button
+          onClick={handleOpenTerms}
+          className="gap-2 bg-foreground text-background hover:bg-foreground/90 focus-visible:ring-foreground"
+        >
           <FileText className="h-4 w-4" />
           {tPrimitives.modalReadTerms}
         </Button>
       ) : (
         hasAction && (
-          <Button onClick={() => onActionClick(notification)} className="gap-2">
+          <Button
+            onClick={() => onActionClick(notification)}
+            className="gap-2 bg-foreground text-background hover:bg-foreground/90 focus-visible:ring-foreground"
+          >
             <ExternalLink className="h-4 w-4" />
             {tPrimitives.modalOpen}
           </Button>
@@ -82,7 +93,7 @@ export function NotificationDetailModal({
           <div
             className={cn(
               'shrink-0 h-12 w-12 rounded-full flex items-center justify-center',
-              isError ? 'bg-destructive text-destructive-foreground' : 'bg-primary text-primary-foreground',
+              isError ? 'bg-destructive text-destructive-foreground' : 'bg-foreground text-background',
             )}
           >
             <Icon className="h-6 w-6" />

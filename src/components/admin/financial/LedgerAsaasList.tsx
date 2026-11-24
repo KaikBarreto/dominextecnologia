@@ -14,6 +14,7 @@ import { ReconciliationStatusBadge } from './ReconciliationStatusBadge';
 const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 interface Props {
+  canManage?: boolean;
   items: LedgerAsaasItem[];
   categories: AdminFinancialCategory[];
   /** Abre o modal de categorização pra um item "a categorizar". */
@@ -26,7 +27,7 @@ interface Props {
  * Crédito = entrada (verde), débito = saída (vermelho). Cada linha mostra o
  * badge de status; itens "A categorizar" ganham ação pra classificar.
  */
-export function LedgerAsaasList({ items, categories, onCategorize }: Props) {
+export function LedgerAsaasList({ items, categories, onCategorize, canManage = false }: Props) {
   const isMobile = useIsMobile();
 
   const labelFor = (name: string | null) =>
@@ -39,8 +40,8 @@ export function LedgerAsaasList({ items, categories, onCategorize }: Props) {
       <EmptyState
         size="compact"
         icon={<DollarSign className="h-10 w-10" />}
-        title="Nenhum movimento ainda"
-        description="Sincronize com o Asaas para trazer o extrato."
+        title="Nenhum movimento encontrado"
+        description="Confira os filtros ou sincronize o extrato do Asaas."
       />
     );
   }
@@ -51,7 +52,7 @@ export function LedgerAsaasList({ items, categories, onCategorize }: Props) {
         {items.map((it) => {
           const isIncome = it.direction === 'credit';
           const accentColor = isIncome ? '#10b981' : '#ef4444';
-          const pending = it.status === 'pending_categorization';
+          const pending = canManage && !/ANTICIPATION_(GROSS_CREDIT|DEBIT)|OPENING_BALANCE|RECONCILIATION_ADJUSTMENT/.test(it.asaas_event_type || '');
           const catLabel = labelFor(it.category);
           return (
             <MobileListItem
@@ -114,7 +115,7 @@ export function LedgerAsaasList({ items, categories, onCategorize }: Props) {
         <TableBody>
           {items.map((it) => {
             const isIncome = it.direction === 'credit';
-            const pending = it.status === 'pending_categorization';
+            const pending = canManage && !/ANTICIPATION_(GROSS_CREDIT|DEBIT)|OPENING_BALANCE|RECONCILIATION_ADJUSTMENT/.test(it.asaas_event_type || '');
             const catLabel = labelFor(it.category);
             return (
               <TableRow key={it.id}>
@@ -153,7 +154,7 @@ export function LedgerAsaasList({ items, categories, onCategorize }: Props) {
                   {pending && (
                     <Button variant="outline" size="sm" className="gap-1.5" onClick={() => onCategorize(it)}>
                       <Tag className="h-3.5 w-3.5" />
-                      Categorizar
+                      Conciliar
                     </Button>
                   )}
                 </TableCell>

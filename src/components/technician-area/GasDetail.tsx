@@ -138,7 +138,7 @@ export function GasDetail({ gas, onBack }: { gas: RefrigerantGas; onBack: () => 
     <div className="space-y-6 pb-8">
       {/* Header com voltar */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" className="shrink-0" onClick={onBack}>
+        <Button variant="ghost" size="icon" aria-label={MESSAGES[locale].app.os.technicianArea.btnBack} title={MESSAGES[locale].app.os.technicianArea.btnBack} className="h-11 w-11 shrink-0 hover:bg-red-600 hover:text-white" onClick={onBack}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex min-w-0 flex-1 items-center gap-2">

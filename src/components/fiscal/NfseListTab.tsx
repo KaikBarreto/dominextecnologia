@@ -265,6 +265,10 @@ export function NfseListTab({ canEmit, dateStart, dateEnd }: NfseListTabProps) {
         // Serviço trabalha só com o código IBGE e o resumo cai nele.
         tribIssqn: toTribIssqn(draftEmission.trib_issqn),
         discriminacao: draftEmission.descricao_servico ?? '',
+        documentoResponsabilidadeTecnica:
+          draftEmission.documento_responsabilidade_tecnica ?? '',
+        documentoReferencia: draftEmission.documento_referencia ?? '',
+        pedidoB2b: (draftEmission.informacoes_complementares ?? '').replace(/^Pedido:\s*/i, ''),
       },
       valores: {
         valorServico: draftEmission.valor_servico ?? 0,
@@ -273,6 +277,11 @@ export function NfseListTab({ canEmit, dateStart, dateEnd }: NfseListTabProps) {
         valorPis: draftEmission.valor_pis ?? 0,
         valorCofins: draftEmission.valor_cofins ?? 0,
         valorCsll: draftEmission.valor_csll ?? 0,
+        valorInss: draftEmission.valor_inss ?? 0,
+        valorIrrf: draftEmission.valor_irrf ?? 0,
+        deducoes: draftEmission.deducoes ?? 0,
+        descontoCondicionado: draftEmission.desconto_condicionado ?? 0,
+        descontoIncondicionado: draftEmission.desconto_incondicionado ?? 0,
         percentualTribSn: draftEmission.percentual_trib_sn ?? 0,
       },
     };

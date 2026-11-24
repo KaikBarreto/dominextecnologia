@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createDefaultCrmAction, splitRequirementNames, validateCrmAutomationRule } from './crmAutomation';
+import { countCrmStageRequirements, createDefaultCrmAction, splitRequirementNames, validateCrmAutomationRule } from './crmAutomation';
 import type { CrmAutomationActionType, CrmAutomationRuleInput, CrmAutomationTriggerType } from '@/types/crmAutomation';
 
 const rule = (): CrmAutomationRuleInput => ({
@@ -15,6 +15,19 @@ describe('crmAutomation', () => {
   it.each<CrmAutomationTriggerType>(['stage_enter', 'all_completed'])('aceita %s sem filtro nominal', (trigger) => {
     const input = rule(); input.trigger_type = trigger;
     expect(validateCrmAutomationRule(input)).toEqual([]);
+  });
+  it('exige um evento de negócio conhecido no gatilho agnóstico', () => {
+    const input = rule(); input.trigger_type = 'business_event';
+    expect(validateCrmAutomationRule(input)).toContain('Informe qual evento dispara a automação.');
+    input.trigger_config = { event: 'quote.created' };
+    expect(validateCrmAutomationRule(input)).toEqual([]);
+  });
+  it('cria identidade estável por ação', () => {
+    const first = createDefaultCrmAction('create_task');
+    const second = createDefaultCrmAction('create_task');
+    expect(first.id).toBeTruthy();
+    expect(second.id).toBeTruthy();
+    expect(first.id).not.toBe(second.id);
   });
   it.each([['task_completed', 'taskName'], ['checklist_completed', 'name']] as const)('exige filtro no gatilho %s', (trigger, key) => {
     const input = rule(); input.trigger_type = trigger;
@@ -32,5 +45,17 @@ describe('crmAutomation', () => {
   });
   it('normaliza nomes separados por linha ou vírgula', () => {
     expect(splitRequirementNames('Proposta\nContrato, Proposta')).toEqual(['Proposta', 'Contrato']);
+  });
+
+  it('conta as exigências de saída ligadas na etapa', () => {
+    expect(countCrmStageRequirements(null)).toBe(0);
+    expect(countCrmStageRequirements({})).toBe(0);
+    expect(countCrmStageRequirements({ tasks: true, customer: false, dueDate: true })).toBe(2);
+    expect(countCrmStageRequirements({
+      assignee: true,
+      taskNames: ['Enviar proposta', 'Ligar'],
+      checklistNames: ['Documentos'],
+      fieldRules: [{ key: 'site', operator: 'url' }],
+    })).toBe(5);
   });
 });

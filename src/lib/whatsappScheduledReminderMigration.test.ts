@@ -10,6 +10,10 @@ const worker = readFileSync(
   resolve(process.cwd(), 'supabase/functions/whatsapp-send-worker/index.ts'),
   'utf8',
 );
+const routingMigration = readFileSync(
+  resolve(process.cwd(), 'supabase/migrations/20261115120000_customer_whatsapp_recipient_routing.sql'),
+  'utf8',
+);
 
 describe('lembrete de OS agendada por WhatsApp', () => {
   it('aceita o evento na fila e o classifica na janela restrita', () => {
@@ -51,7 +55,7 @@ describe('lembrete de OS agendada por WhatsApp', () => {
     const validationPosition = worker.indexOf('whatsapp_validate_scheduled_os_reminder');
     const markReadPosition = worker.indexOf('markConversationRead(supabase, job', validationPosition);
     const presencePosition = worker.indexOf('sendPresence(connection.instance_name, phone, "available")', validationPosition);
-    const dispatchPosition = worker.indexOf('beginScheduledReminderDispatch(supabase, job, phone)', presencePosition);
+    const dispatchPosition = worker.indexOf('beginSendJobDispatch(supabase, job, phone)', presencePosition);
     const sendPosition = worker.indexOf('const sent = await sendText', dispatchPosition);
 
     expect(validationPosition).toBeGreaterThan(-1);
@@ -67,11 +71,13 @@ describe('lembrete de OS agendada por WhatsApp', () => {
   it('nao reenvia orfao apos iniciar o provedor e finaliza o sucesso atomicamente', () => {
     expect(migration).toContain('dispatch_started_at timestamptz');
     expect(migration).toContain('whatsapp_begin_scheduled_os_dispatch');
+    expect(routingMigration).toContain('whatsapp_begin_send_job_dispatch');
     expect(migration).toMatch(/SET dispatch_started_at = now\(\),[\s\S]{0,80}locked_at = now\(\)/);
     expect(migration).toMatch(/status = 'failed'[\s\S]{0,250}last_error_code = 'delivery_unknown'/);
     expect(migration).toContain('whatsapp_finalize_scheduled_os_reminder');
+    expect(routingMigration).toContain('whatsapp_finalize_send_job');
     expect(migration).toMatch(/INSERT INTO public\.whatsapp_events[\s\S]*UPDATE public\.whatsapp_connections/);
-    expect(worker).toContain('whatsapp_finalize_scheduled_os_reminder');
+    expect(worker).toContain('whatsapp_finalize_send_job');
   });
 
   it('mantem a normalizacao SQL alinhada ao pais e aos limites E.164', () => {

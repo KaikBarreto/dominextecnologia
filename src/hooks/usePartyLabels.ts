@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { fetchAllPaginated } from '@/utils/supabasePagination';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 export type PartyLabelScope = 'party' | 'equipment' | 'all';
 export type PartyLabelEntity = 'customer' | 'supplier' | 'equipment';
@@ -113,8 +114,10 @@ export function usePartyLabels(
   const deleteLabel = useMutation({
     mutationFn: async (id: string) => {
       if (!companyId) throw new Error('Usuário sem empresa associada.');
-      const { error } = await supabase.from('party_labels').delete().eq('id', id).eq('company_id', companyId);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('party_labels').delete({ count: 'exact' }).eq('id', id).eq('company_id', companyId),
+        'delete',
+      );
     },
     onSuccess: () => { invalidate(); toast({ title: 'Etiqueta removida!' }); },
     onError: (error) => toast({ variant: 'destructive', title: 'Erro ao remover etiqueta', description: getErrorMessage(error) }),

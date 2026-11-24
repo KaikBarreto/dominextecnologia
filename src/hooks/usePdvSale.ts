@@ -30,7 +30,8 @@
 
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { invalidatePdvReportCaches } from '@/hooks/pdvReportCache';
+import { useRef } from 'react';
+import { usePdvAuthorizedQueryScope, invalidatePdvReportCaches } from '@/hooks/pdvReportCache';
 import { sanitizeStorageFileName } from '@/utils/storagePath';
 import { currentCompanyId, tenantFileOptions } from '@/utils/tenantStorage';
 import type { SettlePaymentPayload } from '@/lib/pdv/payment';
@@ -119,6 +120,8 @@ export async function invalidatePdvSaleCaches(queryClient: QueryClient) {
     queryClient.invalidateQueries({ queryKey: ['pdv-cofre-balance'] }),
     queryClient.invalidateQueries({ queryKey: ['pdv-cash-session-detail'] }),
     queryClient.invalidateQueries({ queryKey: ['pdv-customer-credit'] }),
+    queryClient.invalidateQueries({ queryKey: ['pdv-customer-payment-options'] }),
+    queryClient.invalidateQueries({ queryKey: ['party-account-v2'] }),
     invalidatePdvReportCaches(queryClient),
   ]);
 }
@@ -358,9 +361,9 @@ export function useUploadPdvOrderAttachment() {
 }
 
 export interface PdvCustomerCredit {
-  /** `customers.credit_limit`. `null` = sem limite definido (a RPC avisa). */
+  /** Limite cadastrado. A conclusão sempre revalida no servidor. */
   creditLimit: number | null;
-  /** Saldo devedor = SOMA do `customer_credit_ledger`, nunca coluna em customers. */
+  /** Dívida assinada do extrato canônico v2, a mesma usada pelo limite no servidor. */
   debt: number;
 }
 
@@ -371,33 +374,45 @@ export interface PdvCustomerCredit {
  * A RPC valida de novo no servidor e é ela quem decide — isto aqui é só pra o
  * operador não descobrir o bloqueio na frente do cliente.
  */
-export function usePdvCustomerCredit(customerId: string | null) {
+export function pdvCustomerCreditErrorMessage(error: unknown): string {
+  const details = error && typeof error === 'object' && 'details' in error && typeof error.details === 'string' ? error.details.toLowerCase() : '';
+  if (details.includes('auth_required')) return 'Sua sessão expirou. Entre novamente para consultar o cliente.';
+  if (details.includes('user_inactive') || details.includes('profile_inactive')) return 'Seu acesso está desativado. Peça ao responsável para conferir seu cadastro.';
+  if (details.includes('customer_not_found')) return 'Este cliente não está disponível neste atendimento. Selecione o cliente novamente.';
+  if (details.includes('subscription_denied') || details.includes('entitlement_denied')) return 'O acesso ao PDV está indisponível. Peça ao responsável para conferir a assinatura.';
+  if (details.includes('forbidden') || details.includes('screen_denied') || details.includes('module_denied') || details.includes('company_required')) return 'Seu perfil não permite consultar o crédito neste atendimento. Peça ao responsável para conferir seu acesso.';
+  return 'Não foi possível conferir a dívida e o limite deste cliente. Tente novamente.';
+}
+
+export function usePdvCustomerCredit(customerId: string | null, enabled = true) {
+  const scope = usePdvAuthorizedQueryScope();
+  const signature = JSON.stringify([...scope.key, customerId]);
+  const current = useRef(signature);
+  current.current = signature;
   const query = useQuery({
-    queryKey: ['pdv-customer-credit', customerId],
-    enabled: !!customerId,
-    queryFn: async (): Promise<PdvCustomerCredit> => {
-      const [customerRes, ledgerRes] = await Promise.all([
-        supabase.from('customers').select('credit_limit').eq('id', customerId).maybeSingle(),
-        supabase.from('customer_credit_ledger').select('amount').eq('customer_id', customerId),
-      ]);
-      if (customerRes.error) throw customerRes.error;
-      if (ledgerRes.error) throw ledgerRes.error;
-
-      const limitRaw = (customerRes.data as { credit_limit: number | null } | null)?.credit_limit;
-      const debt = ((ledgerRes.data ?? []) as Array<{ amount: number }>).reduce(
-        (sum, row) => sum + (Number(row.amount) || 0),
-        0,
-      );
-
-      return {
-        creditLimit: limitRaw == null ? null : Number(limitRaw),
-        debt: Math.round(debt * 100) / 100,
-      };
+    queryKey: ['pdv-customer-credit', ...scope.key, customerId],
+    enabled: enabled && scope.ready && Boolean(customerId),
+    queryFn: async ({ signal }): Promise<PdvCustomerCredit> => {
+      if (!enabled || !scope.ready || !customerId) throw new Error('Selecione um cliente para consultar o crédito.');
+      const { data, error } = await supabase.rpc('pdv_get_customer_credit_summary_v3', { p_customer_id: customerId }).single();
+      if (signal.aborted || current.current !== signature) throw new Error('O atendimento mudou. Consulte o cliente novamente.');
+      if (error) throw new Error(pdvCustomerCreditErrorMessage(error));
+      const row = data && typeof data === 'object' && !Array.isArray(data) ? data as Record<string, unknown> : null;
+      if (!row || typeof row.debt !== 'number' || !Number.isFinite(row.debt)
+        || (row.credit_limit !== null && (typeof row.credit_limit !== 'number' || !Number.isFinite(row.credit_limit)))) {
+        throw new Error('Não foi possível conferir a dívida e o limite deste cliente. Tente novamente.');
+      }
+      return { creditLimit: row.credit_limit as number | null, debt: row.debt };
     },
+    retry: false,
+    staleTime: 15_000,
+    gcTime: 0,
   });
-
   return {
-    credit: query.data ?? null,
-    isLoading: !!customerId && query.isLoading,
+    credit: enabled && scope.ready && customerId && !query.isError && !query.isFetching ? query.data ?? null : null,
+    isLoading: enabled && Boolean(customerId) && (!scope.ready || query.isPending || query.isFetching),
+    isError: enabled && Boolean(customerId) && scope.ready && query.isError,
+    errorMessage: enabled && scope.ready && query.isError ? query.error.message : null,
+    refetch: query.refetch,
   };
 }

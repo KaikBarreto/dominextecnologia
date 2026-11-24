@@ -1,12 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { ModuleCode } from '@/hooks/useCompanyModules';
+import { coreIncludesModule, type BusinessCore } from '@/lib/businessCore';
+import { loadBusinessCoreBasePrice } from '../../supabase/functions/_shared/business-core-pricing';
 import {
   BASE_SUBSCRIPTION_MODULE_CODE,
   FREE_BASE_MODULE_CODES,
   WHATSAPP_MODULE_CODE,
   resolveExtraUserPrice,
   resolveProposalWhatsappPrice,
+  subscriptionModuleDisplayName,
 } from '@/lib/subscriptionCatalog';
 
 export interface PublicSubscriptionPlan {
@@ -17,6 +20,7 @@ export interface PublicSubscriptionPlan {
   price: number;
   maxUsers: number;
   includedModules: ModuleCode[];
+  businessCore?: BusinessCore;
 }
 
 export interface PublicSubscriptionModule {
@@ -30,6 +34,7 @@ export interface PublicSubscriptionModule {
 }
 
 export interface PublicSubscriptionCatalog {
+  businessCore?: BusinessCore;
   plans: PublicSubscriptionPlan[];
   modules: PublicSubscriptionModule[];
   allModules: PublicSubscriptionModule[];
@@ -37,15 +42,16 @@ export interface PublicSubscriptionCatalog {
   whatsappPaidTier: number;
 }
 
-export function usePublicSubscriptionCatalog() {
+export function usePublicSubscriptionCatalog(businessCore: BusinessCore = 'services') {
   return useQuery({
-    queryKey: ['public-subscription-catalog'],
+    queryKey: ['public-subscription-catalog', businessCore],
     queryFn: async () => {
-      const [plansResult, modulesResult, whatsappTiersResult] = await Promise.all([
+      const [plansResult, modulesResult, whatsappTiersResult, retailBasePrice] = await Promise.all([
         supabase
           .from('subscription_plans')
           .select('id, code, name, description, price, max_users, included_modules')
           .eq('is_active', true)
+          .eq('business_core', businessCore)
           .gt('price', 0)
           .order('price'),
         supabase
@@ -58,6 +64,7 @@ export function usePublicSubscriptionCatalog() {
           .select('tier, price')
           .gt('price', 0)
           .order('tier'),
+        businessCore === 'retail' ? loadBusinessCoreBasePrice(supabase, businessCore) : Promise.resolve(null),
       ]);
 
       if (plansResult.error) throw plansResult.error;
@@ -71,6 +78,7 @@ export function usePublicSubscriptionCatalog() {
         description: plan.description ?? null,
         price: Math.max(0, Number(plan.price) || 0),
         maxUsers: Math.max(0, Number(plan.max_users) || 0),
+        businessCore,
         includedModules: Array.isArray(plan.included_modules)
           ? (plan.included_modules as unknown[]).filter(
               (module): module is ModuleCode => typeof module === 'string',
@@ -78,14 +86,18 @@ export function usePublicSubscriptionCatalog() {
           : [],
       })) as PublicSubscriptionPlan[];
       const proposalWhatsappTier = resolveProposalWhatsappPrice(whatsappTiersResult.data ?? []);
-      const allModules = (modulesResult.data ?? []).map((module) => {
+      const allModules = (modulesResult.data ?? [])
+        .filter(module => module.code === BASE_SUBSCRIPTION_MODULE_CODE || !coreIncludesModule(businessCore, module.code))
+        .map((module) => {
         const catalogPrice = module.price === null ? Number.NaN : Number(module.price);
         return {
           id: module.id,
           code: module.code,
-          name: module.name,
+          name: subscriptionModuleDisplayName(module.code, module.name),
           description: module.description ?? null,
-          price: module.code === WHATSAPP_MODULE_CODE
+          price: module.code === BASE_SUBSCRIPTION_MODULE_CODE && businessCore === 'retail'
+            ? (retailBasePrice ?? Number.NaN)
+            : module.code === WHATSAPP_MODULE_CODE
             ? (proposalWhatsappTier?.price ?? Number.NaN)
             : catalogPrice,
           type: module.type ?? 'module',
@@ -115,6 +127,7 @@ export function usePublicSubscriptionCatalog() {
       }
 
       return {
+        businessCore,
         plans,
         modules: allModules.filter((module) => module.code !== 'extra_user'),
         allModules,

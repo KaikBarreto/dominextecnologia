@@ -1,8 +1,9 @@
 // =============================================================================
 // _shared/providers/sefin.ts — motor fiscal PRÓPRIO (Sefin Nacional).
 // =============================================================================
-// Adaptador HTTP para o microserviço `dominex-fiscal` (services/dominex-fiscal),
-// que roda na VPS. A Edge Function não faz mTLS — e o padrão nacional autentica
+// Adaptador HTTP para a API compartilhada `motor-fiscal`
+// (github.com/KaikBarreto/motor-fiscal), que roda na VPS. A Edge Function não faz
+// mTLS — e o padrão nacional autentica
 // EXCLUSIVAMENTE por mTLS com o certificado A1 do próprio cliente. Daí o salto.
 //
 // ┌───────────────────────────────────────────────────────────────────────────┐
@@ -397,7 +398,7 @@ export const nfseEngine: NfseEngine = {
     ctx: NfseProviderCtx,
     input: NfseEmitirInput,
   ): Promise<NfseResultado> {
-    const { dps, tomador, servico, valores } = input;
+    const { dps, tomador, intermediario, servico, valores } = input;
     // Fallback no rótulo histórico: só a emissão automática manda contexto
     // próprio (`emitir_nfse_auto:<job_id>`), pro rastro de decifra do
     // certificado dizer QUAL job usou a chave privada de QUAL CNPJ.
@@ -425,6 +426,24 @@ export const nfseEngine: NfseEngine = {
     }
     if (valores.valorCsll !== undefined) {
       valoresPayload.valorCsll = valores.valorCsll;
+    }
+    if (valores.valorInss !== undefined) {
+      valoresPayload.valorInss = valores.valorInss;
+    }
+    if (valores.valorIrrf !== undefined) {
+      valoresPayload.valorIrrf = valores.valorIrrf;
+    }
+    if (valores.deducoes !== undefined) {
+      valoresPayload.deducoes = valores.deducoes;
+    }
+    if (valores.deducoes !== undefined) {
+      valoresPayload.deducoes = valores.deducoes;
+    }
+    if (valores.descontoCondicionado !== undefined) {
+      valoresPayload.descontoCondicionado = valores.descontoCondicionado;
+    }
+    if (valores.descontoIncondicionado !== undefined) {
+      valoresPayload.descontoIncondicionado = valores.descontoIncondicionado;
     }
     if (valores.percentualTotalTributosSimplesNacional !== undefined) {
       valoresPayload.percentualTotalTributosSimplesNacional =
@@ -466,6 +485,24 @@ export const nfseEngine: NfseEngine = {
           }
           : undefined,
       },
+      intermediario: intermediario
+        ? {
+          tipoInscricao: intermediario.tipoInscricao,
+          inscricaoFederal: intermediario.inscricaoFederal,
+          razaoSocial: intermediario.razaoSocial,
+          email: clean(intermediario.email) || undefined,
+          endereco: intermediario.endereco
+            ? {
+              municipioIbge: clean(intermediario.endereco.municipioIbge) || undefined,
+              cep: digits(intermediario.endereco.cep) || undefined,
+              logradouro: clean(intermediario.endereco.logradouro) || undefined,
+              numero: clean(intermediario.endereco.numero) || undefined,
+              complemento: clean(intermediario.endereco.complemento) || undefined,
+              bairro: clean(intermediario.endereco.bairro) || undefined,
+            }
+            : undefined,
+        }
+        : undefined,
       servico: {
         codigoServico: servico.codigoServico,
         codigoNbs: servico.codigoNbs,
@@ -476,6 +513,10 @@ export const nfseEngine: NfseEngine = {
           /^\d{3}$/.test(clean(servico.codigoTributacaoMunicipal))
             ? clean(servico.codigoTributacaoMunicipal)
             : undefined,
+        documentoResponsabilidadeTecnica:
+          clean(servico.documentoResponsabilidadeTecnica) || undefined,
+        documentoReferencia: clean(servico.documentoReferencia) || undefined,
+        informacoesComplementares: clean(servico.informacoesComplementares) || undefined,
       },
       valores: valoresPayload,
     });

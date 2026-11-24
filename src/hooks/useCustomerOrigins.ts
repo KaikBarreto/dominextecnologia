@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 export interface CustomerOrigin {
   id: string;
@@ -110,11 +111,13 @@ export function useCustomerOrigins() {
 
   const updateOrigin = useMutation({
     mutationFn: async ({ id, ...input }: { id: string; name?: string; icon?: string; color?: string; is_active?: boolean }) => {
-      const { error } = await supabase
-        .from('customer_origins' as any)
-        .update(input)
-        .eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('customer_origins' as any)
+          .update(input, { count: 'exact' })
+          .eq('id', id),
+        'update',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customer-origins'] });
@@ -125,11 +128,13 @@ export function useCustomerOrigins() {
 
   const deleteOrigin = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('customer_origins' as any)
-        .delete()
-        .eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase
+          .from('customer_origins' as any)
+          .delete({ count: 'exact' })
+          .eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customer-origins'] });

@@ -1,6 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import {
@@ -40,7 +38,7 @@ export function CategorizeLedgerModal({ item, open, onOpenChange }: Props) {
 
   // Só categorias compatíveis com o sentido do movimento.
   const options = useMemo(
-    () => categories.filter((c) => c.type === (isIncome ? 'income' : 'expense')),
+    () => categories.filter((c) => c.type === (isIncome ? 'income' : 'expense') && !['sale','first_sale','renewal','upgrade'].includes(c.name)),
     [categories, isIncome],
   );
 
@@ -67,24 +65,24 @@ export function CategorizeLedgerModal({ item, open, onOpenChange }: Props) {
     <ResponsiveModal
       open={open}
       onOpenChange={onOpenChange}
-      title="Categorizar movimento"
+      title={isIncome ? "Revisar recebimento" : "Classificar despesa"}
       footer={
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={categorize.isPending}>
             Cancelar
           </Button>
-          <Button onClick={handleConfirm} disabled={!selected || categorize.isPending}>
-            {categorize.isPending ? 'Salvando...' : 'Confirmar'}
+          <Button className="bg-black text-white hover:bg-zinc-800" onClick={handleConfirm} disabled={!selected || categorize.isPending}>
+            {categorize.isPending ? 'Salvando...' : 'Salvar classificação'}
           </Button>
         </div>
       }
     >
       <div className="space-y-4">
         {/* Resumo do movimento */}
-        <div className="rounded-xl border bg-muted/30 p-3 space-y-2">
+        <div className="space-y-2 border-b pb-4">
           <div className="flex items-center justify-between gap-3">
             <span className="text-xs text-muted-foreground">
-              {format(new Date(item.occurred_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+              {new Intl.DateTimeFormat("pt-BR", {timeZone:"America/Sao_Paulo",dateStyle:"short",timeStyle:"short"}).format(new Date(item.occurred_at))}
             </span>
             <span
               className={cn(
@@ -101,21 +99,22 @@ export function CategorizeLedgerModal({ item, open, onOpenChange }: Props) {
             className={cn(
               'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium',
               isIncome
-                ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
-                : 'bg-red-500/15 text-red-700 dark:text-red-400',
+                ? 'bg-emerald-600 text-white'
+                : 'bg-red-600 text-white',
             )}
           >
             {isIncome ? 'Entrada' : 'Saída'}
           </span>
         </div>
 
+        {isIncome && <p className="text-sm text-muted-foreground">Vendas e renovações devem ser registradas na empresa, para identificar o cliente e evitar duplicações.</p>}
         {/* Seleção de categoria */}
         <div className="space-y-2">
-          <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <label htmlFor="review-category" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Categoria ({isIncome ? 'receita' : 'despesa'})
           </label>
           <Select value={selected} onValueChange={setSelected}>
-            <SelectTrigger>
+            <SelectTrigger id="review-category">
               <SelectValue placeholder="Escolha uma categoria" />
             </SelectTrigger>
             <SelectContent>

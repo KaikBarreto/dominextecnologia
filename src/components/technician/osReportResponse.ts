@@ -20,9 +20,8 @@ const normalizeValue = (value: string | null | undefined): string | null => {
 };
 
 /**
- * O relatório precisa olhar para o conteúdo efetivamente salvo, não apenas para
- * o `question_type` legado. Perguntas compostas podem receber texto, fotos e
- * vídeo ao mesmo tempo, independentemente do tipo-base da pergunta.
+ * Perguntas compostas podem receber texto, fotos e vídeo ao mesmo tempo. O
+ * relatório deve olhar para o conteúdo salvo, não só para o tipo-base legado.
  */
 export function getReportResponseContent(
   response: ReportResponseContentInput,

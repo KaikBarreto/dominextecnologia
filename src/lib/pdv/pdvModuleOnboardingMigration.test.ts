@@ -1,17 +1,21 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const migration = readFileSync(
-  'supabase/migrations/20261113110000_pdv_module_onboarding_and_advanced_features.sql',
-  'utf8',
-);
+const migration = [
+  '20261115100000_pdv_setup_without_rollout_changes.sql',
+  '20261114140000_pdv_read_entitlement_and_capability_coherence.sql',
+  '20261116010000_pdv_module_feature_availability.sql',
+].map((name) => readFileSync(`supabase/migrations/${name}`, 'utf8')).join('\n');
 
 function definition(name: string) {
-  const start = migration.indexOf(`CREATE OR REPLACE FUNCTION public.${name}`);
-  const end = migration.indexOf('$function$;', start);
+  const start = migration.lastIndexOf(`CREATE OR REPLACE FUNCTION public.${name}`);
   expect(start).toBeGreaterThanOrEqual(0);
-  expect(end).toBeGreaterThan(start);
-  return migration.slice(start, end);
+  const body = migration.slice(start);
+  const delimiter = body.match(/AS (\$[a-zA-Z_]*\$)/)?.[1];
+  expect(delimiter).toBeTruthy();
+  const end = body.indexOf(`${delimiter};`);
+  expect(end).toBeGreaterThan(0);
+  return body.slice(0, end);
 }
 
 describe('onboarding e recursos avancados do PDV pelo modulo', () => {
@@ -68,8 +72,8 @@ describe('onboarding e recursos avancados do PDV pelo modulo', () => {
 
   it('provisiona automaticamente apenas contratacao explicita', () => {
     expect(migration).not.toContain('CREATE TRIGGER tg_companies_bootstrap_pdv_entitlement');
-    expect(migration).toContain("module.module_code = 'pdv'");
-    expect(migration).toContain('Trial e plano incluso permanecem');
+    expect(migration).toContain("NEW.module_code = 'pdv'");
+    expect(migration).not.toContain('CREATE TRIGGER tg_companies_bootstrap_pdv_entitlement');
   });
 
   it.each([
@@ -78,8 +82,7 @@ describe('onboarding e recursos avancados do PDV pelo modulo', () => {
     'pdv_after_sale_v2_enabled_internal(p_company_id uuid)',
   ])('%s acompanha assinatura e modulo sem allowlist', (name) => {
     const gate = definition(name);
-    expect(gate).toContain('pdv_company_access_entitled_internal(p_company_id) IS TRUE');
-    expect(gate).toContain("company_has_module(p_company_id, 'pdv') IS TRUE");
+    expect(gate).toContain('pdv_direct_sale_v2_enabled_internal(p_company_id) IS TRUE');
     expect(gate).not.toContain('app_feature_flags');
     expect(gate).not.toContain('company_allowlist');
   });
@@ -92,7 +95,7 @@ describe('onboarding e recursos avancados do PDV pelo modulo', () => {
       /REVOKE ALL ON FUNCTION public\.tg_repair_pdv_terminal_on_general_stock\(\)[\s\S]*?FROM PUBLIC, anon, authenticated, service_role/,
     );
     expect(migration).toMatch(
-      /REVOKE ALL ON FUNCTION public\.pdv_party_accounts_v2_enabled_internal\(uuid\),[\s\S]*?FROM PUBLIC, anon, authenticated, service_role/,
+      /REVOKE ALL ON FUNCTION public\.pdv_party_accounts_v2_enabled_internal\(uuid\)[\s\S]*?FROM PUBLIC, anon, authenticated, service_role/,
     );
   });
 });

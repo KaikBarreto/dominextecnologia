@@ -336,15 +336,16 @@ Design Premium com Verde da Marca #00C597
   }
 
   /* ─── Área do LOGO no sidebar escuro ──────────────────────────────────────
-     A área do logo (`.nav-logo-area`, topo da sidebar) tem `bg-white` fixo no
-     markup (Tailwind), que só cede pro `dark:bg-sidebar` no tema `.dark` do
-     sistema. Quando a NAV é forçada escura via `data-nav-theme="dark"` mas o
-     sistema está claro, ela ficava um bloco BRANCO. Aqui igualamos o fundo ao
-     escuro da sidebar e trocamos a variante do logo:
+     Sem marca white-label, a área do logo (`.nav-logo-area`) acompanha o tom
+     efetivo da sidebar. Quando a NAV é forçada escura via
+     `data-nav-theme="dark"` mas o sistema está claro, igualamos o fundo ao
+     escuro da sidebar e trocamos a variante do logo Dominex:
        - `.nav-logo-light` = logo de texto ESCURO (pra fundo claro) → esconde.
        - `.nav-logo-dark`  = logo de texto CLARO/verde (pra fundo escuro) → mostra.
-     No tema `.dark` o Tailwind (`dark:hidden`/`hidden dark:block`) já resolve. */
-  :root[data-nav-theme="dark"]:not(.dark) .nav-logo-area {
+     No white-label, `data-tenant-logo-surface` faz a faixa INTEIRA assumir
+     branco ou preto conforme a tinta detectada, sem uma placa ao redor da
+     imagem. As regras ficam depois do override da nav para terem precedência. */
+  :root[data-nav-theme="dark"]:not(.dark) .nav-logo-area:not([data-tenant-logo-surface]) {
     background-color: hsl(0 0% 8%) !important;
   }
   :root[data-nav-theme="dark"]:not(.dark) .nav-logo-area .nav-logo-light {
@@ -352,6 +353,34 @@ Design Premium com Verde da Marca #00C597
   }
   :root[data-nav-theme="dark"]:not(.dark) .nav-logo-area .nav-logo-dark {
     display: block !important;
+  }
+  /* Superfície integral de contraste usada pelos três shells do app:
+     sidebar desktop/drawer tablet, topbar desktop e header mobile/tablet. */
+  .tenant-logo-surface[data-tenant-logo-surface="light"] {
+    --background: 0 0% 100% !important;
+    --foreground: 0 0% 8% !important;
+    --muted: 0 0% 94% !important;
+    --muted-foreground: 0 0% 38% !important;
+    --accent: 0 0% 92% !important;
+    --accent-foreground: 0 0% 8% !important;
+    --secondary: 0 0% 92% !important;
+    --secondary-foreground: 0 0% 8% !important;
+    --border: 0 0% 86% !important;
+    background-color: hsl(var(--background)) !important;
+    color: hsl(var(--foreground));
+  }
+  .tenant-logo-surface[data-tenant-logo-surface="dark"] {
+    --background: 0 0% 4% !important;
+    --foreground: 0 0% 95% !important;
+    --muted: 0 0% 15% !important;
+    --muted-foreground: 0 0% 68% !important;
+    --accent: 0 0% 16% !important;
+    --accent-foreground: 0 0% 95% !important;
+    --secondary: 0 0% 16% !important;
+    --secondary-foreground: 0 0% 95% !important;
+    --border: 0 0% 18% !important;
+    background-color: hsl(var(--background)) !important;
+    color: hsl(var(--foreground));
   }
 }
 
@@ -663,6 +692,18 @@ Design Premium com Verde da Marca #00C597
 html {
   overflow: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+/* Navegações underline no mobile são trilhos horizontais, nunca uma segunda
+   área de rolagem vertical. `touch-action: manipulation` mantém o swipe lateral
+   e deixa o gesto vertical seguir para a página quando começa sobre as abas. */
+@media screen and (max-width: 767px) {
+  [role="tablist"].overflow-x-auto,
+  .overflow-x-auto.border-b {
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    touch-action: manipulation;
+  }
 }
 
 /* Dark mode: NÃO inverter o ícone nativo do date/time picker. `color-scheme:

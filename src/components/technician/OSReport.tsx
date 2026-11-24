@@ -944,9 +944,6 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                 )}
               </>
             )}
-            {/* Vídeo é uma mídia independente do tipo-base. Em perguntas
-                compostas (ex.: foto + texto + vídeo), usar `question_type`
-                fazia o vídeo salvo desaparecer da tela e do PDF. */}
             {hasVideo && (
               generating ? (
                 <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">

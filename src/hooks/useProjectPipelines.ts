@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
 import type { CrmPipeline } from '@/hooks/useCrmPipelines';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 /** Referência estável pro estado vazio (mesmo cuidado de NO_PIPELINES em
  *  useCrmPipelines.ts). */
@@ -176,8 +177,10 @@ export function useProjectPipelines(projectId: string | null | undefined) {
    */
   const deleteProjectPipeline = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('crm_pipelines').delete().eq('id', id);
-      if (error) throw error;
+      assertRowsAffected(
+        await supabase.from('crm_pipelines').delete({ count: 'exact' }).eq('id', id),
+        'delete',
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['crm_pipelines'] });

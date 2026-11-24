@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { getRpcErrorMessage } from '@/hooks/useCreditCardBills';
 import { recalculateBalances, type EmployeeMovement } from '@/utils/employeeCalculations';
 
@@ -81,7 +82,7 @@ export function useEmployeeMovements(employeeId?: string) {
       qc.invalidateQueries({ queryKey: ['financial-summary'] });
       qc.invalidateQueries({ queryKey: ['dashboard-stats'] });
       qc.invalidateQueries({ queryKey: ['account-balances'] });
-      toast({ title: 'Vale registrado!' });
+      toast({ title: 'Vale/Adiantamento registrado!' });
     },
     onError: (e: Error) => toast({
       variant: 'destructive',
@@ -117,9 +118,12 @@ export function useEmployeeMovements(employeeId?: string) {
       const movementsToRecalc = movements.filter((m) => m.id !== id);
       const recalculated = recalculateBalances(movementsToRecalc, salary);
 
-      // 2. Deleta o movimento.
-      const { error } = await supabase.from('employee_movements').delete().eq('id', id);
-      if (error) throw error;
+      // 2. Deleta o movimento, conferindo: RLS barrando não dá erro, só apaga
+      //    zero linhas, e aí não há saldo para recalcular.
+      assertRowsAffected(
+        await supabase.from('employee_movements').delete({ count: 'exact' }).eq('id', id),
+        'delete',
+      );
 
       // 3. Persiste os balance_after atualizados (UPDATE 1×1).
       for (const mov of recalculated) {

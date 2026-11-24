@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { FinancialSmartDescription } from '@/components/financial/FinancialSmartDescription';
+import { useState, useEffect, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -39,6 +40,7 @@ const formatAmountForInput = (v: number) =>
 export function AdminFinancialMovementModal({ open, onOpenChange, defaultType = 'income', transaction }: AdminFinancialMovementModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const requestId = useRef(crypto.randomUUID());
   const updateMutation = useUpdateAdminFinancialTransaction();
   const { data: allCategories = [] } = useAdminFinancialCategories();
   const isEditing = Boolean(transaction);
@@ -51,6 +53,7 @@ export function AdminFinancialMovementModal({ open, onOpenChange, defaultType = 
 
   useEffect(() => {
     if (!open) return;
+    requestId.current = crypto.randomUUID();
     if (transaction) {
       setType(transaction.type);
       setCategory(transaction.category);
@@ -67,7 +70,7 @@ export function AdminFinancialMovementModal({ open, onOpenChange, defaultType = 
     setShowErrors(false);
   }, [open, defaultType, transaction]);
 
-  const typeCategories = allCategories.filter((c) => c.type === type);
+  const typeCategories = allCategories.filter((c) => c.type === type && (isEditing || !["sale", "first_sale", "renewal", "upgrade"].includes(c.name)));
   const categories = typeCategories.map((c) => ({ value: c.name, label: c.label, color: c.color, icon: c.icon as string | null }));
 
   // Em edição, a categoria do lançamento pode estar desativada (is_active=false)
@@ -94,8 +97,11 @@ export function AdminFinancialMovementModal({ open, onOpenChange, defaultType = 
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      const { error } = await supabase.from('admin_financial_transactions').insert({ type, category, amount: parsedAmount, description: description || null, transaction_date: brtTransactionTimestamp(date), created_by: user?.id });
+      const { error } = await supabase.rpc('admin_create_financial_movement', {
+        p_request_id: requestId.current, p_type: type, p_category: category,
+        p_amount: parsedAmount, p_description: description || null,
+        p_date: brtTransactionTimestamp(date), p_awaiting_asaas: false,
+      });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -152,6 +158,41 @@ export function AdminFinancialMovementModal({ open, onOpenChange, defaultType = 
           </div>
         </div>
 
+
+        <div className="space-y-2">
+          <Label>Descrição</Label>
+          <FinancialSmartDescription id="smart-admin-modal-description" value={description} onChange={setDescription} multiline placeholder="Descrição"
+            enabled={open && !isEditing} disabled={isPending} scope="admin" context="movement" direction={type==='income'?'entrada':'saida'}
+            values={{category}} onPatch={patch=>{if('category' in patch)setCategory(patch.category||'');}} onApplied={()=>document.getElementById('smart-admin-modal-date')?.focus()} />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Data</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button id="smart-admin-modal-date" variant="outline" className={cn('w-full justify-start text-left font-normal', !date && 'text-muted-foreground')}>
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {date ? format(date, 'dd/MM/yyyy', { locale: ptBR }) : 'Selecione'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} initialFocus locale={ptBR} />
+            </PopoverContent>
+          </Popover>
+        </div>        <div className="space-y-2">
+          <Label>Valor (R$)</Label>
+          <Input
+            placeholder="0,00"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            inputMode="decimal"
+            className={cn('text-lg font-medium', showErrors && amountInvalid && 'border-destructive focus-visible:ring-destructive')}
+          />
+          {showErrors && amountInvalid && (
+            <p className="text-xs text-destructive">Informe um valor maior que zero</p>
+          )}
+        </div>
+
         <div className="space-y-2">
           <Label>Categoria</Label>
           <Select value={category} onValueChange={setCategory}>
@@ -189,39 +230,7 @@ export function AdminFinancialMovementModal({ open, onOpenChange, defaultType = 
           )}
         </div>
 
-        <div className="space-y-2">
-          <Label>Valor (R$)</Label>
-          <Input
-            placeholder="0,00"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            inputMode="decimal"
-            className={cn('text-lg font-medium', showErrors && amountInvalid && 'border-destructive focus-visible:ring-destructive')}
-          />
-          {showErrors && amountInvalid && (
-            <p className="text-xs text-destructive">Informe um valor maior que zero</p>
-          )}
-        </div>
 
-        <div className="space-y-2">
-          <Label>Descrição</Label>
-          <Textarea placeholder="Descrição" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
-        </div>
-
-        <div className="space-y-2">
-          <Label>Data</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className={cn('w-full justify-start text-left font-normal', !date && 'text-muted-foreground')}>
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {date ? format(date, 'dd/MM/yyyy', { locale: ptBR }) : 'Selecione'}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} initialFocus locale={ptBR} />
-            </PopoverContent>
-          </Popover>
-        </div>
       </form>
     </ResponsiveModal>
   );

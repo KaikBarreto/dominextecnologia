@@ -739,6 +739,12 @@ export interface NetflixPlayerProps {
   subtitles?: DomiflixSubtitle[];
   locked?: boolean;
   orientation?: "landscape" | "portrait";
+  /**
+   * Mantém o player fisicamente contido quando ele aparece dentro de uma tela
+   * rolável (ex.: boas-vindas). No iOS/PWA, a camada nativa do <video> pode
+   * capturar gestos fora do quadro se o player conservar recursos de fullscreen.
+   */
+  contained?: boolean;
 }
 
 type SubtitleSize = "small" | "medium" | "large";
@@ -954,6 +960,7 @@ export function NetflixPlayer({
   subtitles = [],
   locked = false,
   orientation = "landscape",
+  contained = false,
 }: NetflixPlayerProps) {
   const isMobile = useIsMobile();
   const ytContainerRef = useRef<HTMLDivElement>(null);
@@ -1208,6 +1215,7 @@ export function NetflixPlayer({
   );
 
   const toggleFullscreen = useCallback(async () => {
+    if (contained) return;
     const el = playerContainerRef.current as (HTMLDivElement & {
       webkitRequestFullscreen?: () => Promise<void> | void;
     }) | null;
@@ -1232,7 +1240,7 @@ export function NetflixPlayer({
     } catch {
       // Alguns navegadores não oferecem fullscreen; o player continua inline.
     }
-  }, [orientation]);
+  }, [contained, orientation]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -1260,8 +1268,10 @@ export function NetflixPlayer({
           toggleMute();
           break;
         case "f":
-          e.preventDefault();
-          toggleFullscreen();
+          if (!contained) {
+            e.preventDefault();
+            toggleFullscreen();
+          }
           break;
         case "Escape":
           if (document.fullscreenElement) document.exitFullscreen();
@@ -1271,7 +1281,7 @@ export function NetflixPlayer({
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [togglePlay, skip, toggleMute, toggleFullscreen, locked]);
+  }, [togglePlay, skip, toggleMute, toggleFullscreen, locked, contained]);
 
   // ── Create YouTube player ──
   useEffect(() => {
@@ -1505,27 +1515,36 @@ export function NetflixPlayer({
     : isStorage
       ? supabase.storage.from("domiflix-videos").getPublicUrl(videoId).data.publicUrl
       : "";
+  const previewActive = isHtml5Video && hoverPct !== null;
 
   useEffect(() => {
-    if (!isHtml5Video) return;
+    setPreviewReady(false);
+    if (!previewActive) return;
     const pv = previewVideoRef.current;
     if (!pv) return;
     const onMeta = () => setPreviewReady(true);
+    if (pv.readyState >= HTMLMediaElement.HAVE_METADATA) {
+      setPreviewReady(true);
+      return;
+    }
     pv.addEventListener("loadedmetadata", onMeta);
     return () => pv.removeEventListener("loadedmetadata", onMeta);
-  }, [isHtml5Video]);
+  }, [html5StreamUrl, previewActive]);
 
   // Debounced preview seek + canvas draw
   useEffect(() => {
-    if (!isHtml5Video || hoverPct === null || !previewReady) return;
+    if (!previewActive || hoverPct === null || !previewReady) return;
     if (previewSeekTimer.current) cancelAnimationFrame(previewSeekTimer.current);
+    let previewVideo: HTMLVideoElement | null = null;
+    let drawOnSeeked: (() => void) | null = null;
     previewSeekTimer.current = requestAnimationFrame(() => {
       const pv = previewVideoRef.current;
       const canvas = previewCanvasRef.current;
       if (!pv || !canvas || !pv.duration) return;
+      previewVideo = pv;
       const t = Math.max(0, Math.min(pv.duration - 0.1, hoverPct * pv.duration));
       pv.currentTime = t;
-      const drawOnSeeked = () => {
+      drawOnSeeked = () => {
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
         try {
@@ -1537,7 +1556,16 @@ export function NetflixPlayer({
       };
       pv.addEventListener("seeked", drawOnSeeked);
     });
-  }, [hoverPct, isHtml5Video, previewReady]);
+    return () => {
+      if (previewSeekTimer.current) {
+        cancelAnimationFrame(previewSeekTimer.current);
+        previewSeekTimer.current = null;
+      }
+      if (previewVideo && drawOnSeeked) {
+        previewVideo.removeEventListener("seeked", drawOnSeeked);
+      }
+    };
+  }, [hoverPct, previewActive, previewReady]);
 
   const playbackProgress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
@@ -1552,13 +1580,18 @@ export function NetflixPlayer({
       // O container pai (`domiflix-player-root`) já é flex/center com fundo preto.
       className={cn(
         "relative bg-black select-none overflow-hidden",
+        contained && "isolate touch-pan-y",
         isFullscreen
           ? "h-screen w-screen max-h-none max-w-none aspect-auto"
           : orientation === "portrait"
             ? "aspect-[9/16] h-[min(78dvh,900px)] w-auto max-h-full max-w-full"
             : "aspect-video h-full w-full max-h-[56.25vw] max-w-[177.78vh]",
       )}
-      style={{ cursor: showHud ? "default" : "none" }}
+      style={{
+        cursor: showHud ? "default" : "none",
+        contain: contained ? "layout paint" : undefined,
+      }}
+      data-contained-player={contained ? "true" : undefined}
       onMouseMove={resetHideTimer}
       onTouchStart={() => {
         // Em mobile NÃO chamamos resetHideTimer no touchstart — deixamos o
@@ -1654,10 +1687,9 @@ export function NetflixPlayer({
 
       {/* ── Drive HTML5 video ──
           Notes for fast streaming:
-          - `preload="auto"` tells the browser to start fetching bytes
-            immediately (the `usercontent.google.com` host honours HTTP
-            Range requests, so the video can begin playing before the
-            full file is downloaded).
+          - `preload="metadata"` carrega apenas o necessário para preparar o
+            player. Os bytes do conteúdo começam a ser buscados ao reproduzir,
+            evitando egress de uma aula que o usuário ainda não iniciou.
           - We do NOT set `crossOrigin` on the main element: that would
             force a CORS preflight on every range request and slow the
             initial buffering. The hidden preview <video> below keeps
@@ -1669,22 +1701,28 @@ export function NetflixPlayer({
             src={html5StreamUrl}
             // object-contain (não cover): mantém aspect ratio real do vídeo
             // sem cropar — letterbox/pillarbox dentro do container 16:9.
-            className="absolute inset-0 w-full h-full object-contain"
+            className={cn(
+              "absolute inset-0 h-full w-full object-contain",
+              contained && "pointer-events-none",
+            )}
             playsInline
-            preload="auto"
+            disablePictureInPicture={contained}
+            preload="metadata"
           />
           {/* Hidden preview video for frame thumbnails.
               `preload="metadata"` avoids downloading the full file in
               parallel with the main player — bytes are only fetched
               on-demand when the user hovers the progress bar. */}
-          <video
-            ref={previewVideoRef}
-            src={html5StreamUrl}
-            className="hidden"
-            preload="metadata"
-            muted
-            crossOrigin="anonymous"
-          />
+          {previewActive && (
+            <video
+              ref={previewVideoRef}
+              src={html5StreamUrl}
+              className="hidden"
+              preload="metadata"
+              muted
+              crossOrigin="anonymous"
+            />
+          )}
         </>
       )}
 
@@ -2196,7 +2234,7 @@ export function NetflixPlayer({
                 )}
               </div>
 
-            <button
+            {!contained && <button
               onClick={toggleFullscreen}
               className="order-4 rounded-sm p-1 text-white transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white motion-reduce:transform-none motion-reduce:transition-none"
               aria-label={isFullscreen ? "Sair da tela cheia" : "Abrir em tela cheia"}
@@ -2206,7 +2244,7 @@ export function NetflixPlayer({
               ) : (
                 <FullscreenIcon className="w-7 h-7 md:w-8 md:h-8" />
               )}
-            </button>
+            </button>}
           </div>
         </div>
 

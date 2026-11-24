@@ -3,7 +3,7 @@
 // =============================================================================
 // Compartilhado pelo botão do cliente (`dfe-sync`) e pela rotina automática
 // (`dfe-sync-cron`). Handler único de propósito: as três obrigações anti-656 da
-// §10.3 do RUNBOOK do `dominex-fiscal` NÃO podem existir em duas versões — se a
+// seção de DF-e do RUNBOOK do `motor-fiscal` NÃO podem existir em duas versões — se a
 // versão do cron estiver certa e a do botão errada, um clique custa uma hora de
 // nota do cliente.
 //

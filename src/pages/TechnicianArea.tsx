@@ -8,7 +8,7 @@ import {
   useLocation,
   Navigate,
 } from 'react-router-dom';
-import { Home, Lock, ChevronLeft } from 'lucide-react';
+import { Home, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AreaTecnicoIcon } from '@/components/icons/MenuIcons';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
@@ -145,6 +145,7 @@ function useSegmentNav(selectedSegment: string | null) {
           // Resolve label via toolsRegistry i18n; fallback para o config (pt-br)
           label: (tToolsRegistry as Record<string, { label: string } | undefined>)[t.id]?.label ?? t.label,
           icon: t.icon,
+          accentColor: t.accent,
           locked: false,
         })),
       ];
@@ -161,7 +162,7 @@ interface ShellProps {
   effectiveSegment: string | null;
   isOwnSegment: boolean;
   isLocked: boolean;
-  navItems: { value: string; label: string; icon: React.ComponentType<{ className?: string }>; locked: boolean }[];
+  navItems: { value: string; label: string; icon: React.ComponentType<{ className?: string }>; accentColor?: string; locked: boolean }[];
   activeTab: string;
   /** Largura total (Início / Catálogo) vs. coluna estreita centralizada. */
   isFullWidthTool: boolean;
@@ -202,21 +203,42 @@ function ToolsShell({
     getSegment(effectiveSegment)?.color ??
     getSegment(companySegment)?.color ??
     '#00C597';
+  const showHeaderBack = showBack && isOwnSegment && !isLocked;
+  const compactMobileHeader = activeTab !== 'inicio';
 
   // Miolo do cabeçalho — reutilizado tanto no modo veil quanto no modo padrão.
   // `withVeil` alterna as cores de texto para branco forçado (legibilidade sobre fundo escuro colorido).
   const headerInner = (withVeil: boolean) => (
-    <div className="flex flex-col items-start gap-2">
-      <div className="flex items-center gap-2">
+    <div className={cn('flex min-w-0 gap-2', compactMobileHeader ? 'flex-row items-center sm:flex-col sm:items-start' : 'flex-col items-start')}>
+      <div className="flex w-full min-w-0 flex-1 items-center gap-2 sm:gap-3">
+        {showHeaderBack && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onBack}
+            aria-label={tArea.btnBack}
+            title={tArea.btnBack}
+            className={cn(
+              'h-11 w-11 shrink-0 gap-1 p-0 hover:bg-red-600 hover:text-white sm:w-auto sm:px-3',
+              withVeil ? 'bg-white/10 text-white' : 'text-muted-foreground',
+            )}
+          >
+            <ChevronLeft className="h-4 w-4" />
+            <span className="hidden sm:inline">{tArea.btnBack}</span>
+          </Button>
+        )}
         <AreaTecnicoIcon
           className={cn(
             'h-6 w-6 shrink-0 lg:h-7 lg:w-7',
+            (showHeaderBack || compactMobileHeader) && 'hidden sm:block',
             withVeil ? 'text-white/90' : 'text-foreground/70',
           )}
         />
         <h1
           className={cn(
-            'text-lg font-semibold tracking-tight lg:text-2xl',
+            'min-w-0 font-bold tracking-tight sm:text-2xl lg:text-3xl',
+            compactMobileHeader ? 'text-base' : 'text-xl',
             withVeil && 'text-white',
           )}
         >
@@ -228,16 +250,16 @@ function ToolsShell({
           selected={effectiveSegment ?? ''}
           companySegments={companySegments}
           onSelect={onSelectSegment}
+          compactOnMobile={compactMobileHeader}
         />
       )}
     </div>
   );
 
   return (
-    <div className="space-y-6 lg:space-y-6">
-      {/* Header — hub raiz das Ferramentas. Título em cima, seletor de nicho
-          EMBAIXO (empilhado) em todas as larguras — mobile e desktop (régua
-          CEO: no desktop o select fica abaixo do título, não ao lado). */}
+    <div className={cn(compactMobileHeader ? 'space-y-3 sm:space-y-6' : 'space-y-6')}>
+      {/* No celular, ferramenta aberta reúne título e segmento na mesma faixa.
+          No desktop e no início, o segmento continua abaixo do título. */}
       {showSegmentVeil ? (
         /* Faixa full-bleed com DarkVeil na cor do segmento. As margens negativas
            compensam o padding lateral do container pai (p-5 / sm:p-6) e o
@@ -268,9 +290,9 @@ function ToolsShell({
         headerInner(false)
       )}
 
-      {/* Pills (mobile). */}
+      {/* A mesma navegação horizontal em todas as larguras evita uma segunda sidebar. */}
       {(isLocked || (isOwnSegment && activeTab !== 'inicio')) && (
-        <div className="lg:hidden">
+        <div>
           <MobilePillTabs
             variant="underline"
             level="screen"
@@ -278,6 +300,7 @@ function ToolsShell({
               value: t.value,
               label: t.label,
               icon: <t.icon className="h-4 w-4" />,
+              accentColor: t.accentColor,
             }))}
             activeTab={activeTab}
             onTabChange={(v) => onSwitchTab(v)}
@@ -286,59 +309,17 @@ function ToolsShell({
       )}
 
       {(isOwnSegment || isLocked) && (
-        <div className="lg:flex lg:gap-6">
-          {/* Sidebar (desktop) */}
-          <nav className="hidden lg:flex lg:w-56 lg:shrink-0 lg:flex-col lg:gap-1">
-            {navItems.map((t) => {
-              const isActive = activeTab === t.value;
-              return (
-                <button
-                  key={t.value}
-                  type="button"
-                  onClick={() => onSwitchTab(t.value)}
-                  className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                    isActive
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                  )}
-                >
-                  <t.icon className="h-5 w-5 shrink-0" />
-                  <span className="min-w-0 flex-1 break-words text-left leading-tight">{t.label}</span>
-                  {t.locked && <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
-                </button>
-              );
-            })}
-          </nav>
-
+        <div>
           {/* Conteúdo */}
           <div
             className={cn(
               'min-w-0 flex-1',
-              !isLocked && !isFullWidthTool && 'mx-auto w-full max-w-4xl',
+              !isLocked && !isFullWidthTool && 'mx-auto w-full max-w-5xl',
             )}
           >
             {isLocked ? (
               <SegmentLockedScreen segment={effectiveSegment!} />
-            ) : (
-              <>
-                {showBack && (
-                  <div className="mb-3">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={onBack}
-                      className="-ml-2 h-9 gap-1 px-2 text-muted-foreground hover:text-foreground"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      {tArea.btnBack}
-                    </Button>
-                  </div>
-                )}
-                {content}
-              </>
-            )}
+            ) : content}
           </div>
         </div>
       )}

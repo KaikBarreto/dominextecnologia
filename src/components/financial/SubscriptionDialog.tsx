@@ -50,6 +50,7 @@ import {
 import { computeSubscriptionTotals } from '@/lib/subscriptionSummary';
 import { MAX_REPETITION_COUNT } from '@/lib/finance-installments';
 import { readPastedCents } from '@/lib/money-paste-mask';
+import { todayInTz } from '@/lib/timezone';
 
 interface SubscriptionDialogProps {
   open: boolean;
@@ -65,24 +66,48 @@ interface SubscriptionDialogProps {
   source?: { type: 'avulso' | 'contract' | 'quote'; id: string };
 }
 
-/** Data de hoje em ISO (yyyy-mm-dd), no fuso local. Evita bug de UTC/BRT. */
-function todayISO(): string {
-  const d = new Date();
-  const off = d.getTimezoneOffset() * 60000;
-  return new Date(d.getTime() - off).toISOString().slice(0, 10);
-}
+const CUSTOMER_STATE_COPY = {
+  'pt-br': {
+    loading: 'Carregando clientes…',
+    errorTitle: 'Não foi possível carregar os clientes',
+    errorDescription: 'Confira sua conexão e tente novamente. Os dados preenchidos serão mantidos.',
+    retry: 'Tentar novamente',
+    retrying: 'Tentando novamente…',
+  },
+  en: {
+    loading: 'Loading customers…',
+    errorTitle: 'Could not load customers',
+    errorDescription: 'Check your connection and try again. Your entered data will be kept.',
+    retry: 'Try again',
+    retrying: 'Trying again…',
+  },
+  es: {
+    loading: 'Cargando clientes…',
+    errorTitle: 'No se pudieron cargar los clientes',
+    errorDescription: 'Comprueba tu conexión e inténtalo de nuevo. Los datos ingresados se conservarán.',
+    retry: 'Intentar de nuevo',
+    retrying: 'Intentando de nuevo…',
+  },
+  fr: {
+    loading: 'Chargement des clients…',
+    errorTitle: 'Impossible de charger les clients',
+    errorDescription: 'Vérifiez votre connexion et réessayez. Les données saisies seront conservées.',
+    retry: 'Réessayer',
+    retrying: 'Nouvelle tentative…',
+  },
+} as const;
 
 /**
  * Quantos dias faltam de hoje até `iso` (yyyy-mm-dd). Comparação dia-a-dia em
  * UTC a partir dos componentes da data local, nunca vira o dia por fuso.
  * Usado só pelo resumo (prazo de crédito da 1ª cobrança).
  */
-function daysFromToday(iso: string): number {
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso ?? '');
-  if (!m) return 0;
-  const target = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  const now = new Date();
-  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+function daysFromToday(iso: string, todayIso: string): number {
+  const targetMatch = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso ?? '');
+  const todayMatch = /^(\d{4})-(\d{2})-(\d{2})/.exec(todayIso ?? '');
+  if (!targetMatch || !todayMatch) return 0;
+  const target = Date.UTC(Number(targetMatch[1]), Number(targetMatch[2]) - 1, Number(targetMatch[3]));
+  const today = Date.UTC(Number(todayMatch[1]), Number(todayMatch[2]) - 1, Number(todayMatch[3]));
   return Math.max(0, Math.round((target - today) / 86400000));
 }
 
@@ -111,7 +136,7 @@ export function SubscriptionDialog({
   presetDescription,
   source,
 }: SubscriptionDialogProps) {
-  const { locale } = useAppLocaleContext();
+  const { locale, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.charges.subscriptions;
   // O resumo do recebimento reusa a copy da cobrança avulsa (taxa da Asaas,
   // "você recebe", "quanto o cliente paga"): é a MESMA conta, com as mesmas
@@ -120,7 +145,12 @@ export function SubscriptionDialog({
   const tCobrar = MESSAGES[locale].app.charges.cobrar;
   const fin = MESSAGES[locale].app.finance;
 
-  const { customers } = useCustomers();
+  const {
+    customers,
+    isLoading: customersLoading,
+    isError: customersError,
+    refetch: refetchCustomers,
+  } = useCustomers();
   const { createSubscription, authorizePixAuto } = useTenantSubscriptions();
   const paymentAccount = useTenantPaymentAccount();
   const { activeCostCenters } = useCostCenters();
@@ -146,7 +176,9 @@ export function SubscriptionDialog({
   const [amount, setAmount] = useState(0);
   const [cycle, setCycle] = useState<SubscriptionCycle>(presetCycle ?? 'MONTHLY');
   const [billingType, setBillingType] = useState<SubscriptionBillingType>('UNDEFINED');
-  const [firstDueDate, setFirstDueDate] = useState(todayISO());
+  const today = useMemo(() => todayInTz(timezone), [timezone]);
+  const [firstDueDate, setFirstDueDate] = useState(today);
+  const [retryingCustomers, setRetryingCustomers] = useState(false);
   const [description, setDescription] = useState(presetDescription ?? '');
   // Categoria do recebível recorrente no Financeiro. Vazia = usa o default da conta.
   const [category, setCategory] = useState('');
@@ -252,7 +284,7 @@ export function SubscriptionDialog({
     setAmount(0);
     setCycle(presetCycle ?? 'MONTHLY');
     setBillingType(billingOptions[0]?.value ?? 'UNDEFINED');
-    setFirstDueDate(todayISO());
+    setFirstDueDate(today);
     setDescription(presetDescription ?? '');
     setCategory('');
     setCostCenterId(null);
@@ -273,6 +305,15 @@ export function SubscriptionDialog({
   const handleClose = (next: boolean) => {
     if (!next) resetForm();
     onOpenChange(next);
+  };
+
+  const handleRetryCustomers = async () => {
+    setRetryingCustomers(true);
+    try {
+      await refetchCustomers();
+    } finally {
+      setRetryingCustomers(false);
+    }
   };
 
   // Máscara de dinheiro centavos (igual ChargeDialog — não usar NumericInput)
@@ -451,7 +492,7 @@ export function SubscriptionDialog({
   // — nenhuma conta de dinheiro nasce dentro deste componente. A diferença da
   // assinatura é que TODO número aqui é de UMA cobrança: o que multiplica pelo
   // número de ciclos (quando a assinatura tem fim) é o `subscriptionSummary`.
-  const dueDays = useMemo(() => daysFromToday(firstDueDate), [firstDueDate]);
+  const dueDays = useMemo(() => daysFromToday(firstDueDate, today), [firstDueDate, today]);
 
   const simulatorMethod: SimulatorMethod | null = isPixAuto
     // Pix Automático é debitado por Pix: a taxa que a Asaas cobra é a do Pix.
@@ -585,7 +626,7 @@ export function SubscriptionDialog({
   // Pix Automático e de "método não habilitado" as ações já vêm embutidas no
   // conteúdo. O resumo fica aqui, sempre visível, porque é a informação que
   // decide o "criar ou não" e ninguém deveria precisar rolar pra achá-la.
-  const showForm = customers.length > 0 && !methodNotEnabled && !checkoutResult;
+  const showForm = !customersLoading && !customersError && customers.length > 0 && !methodNotEnabled && !checkoutResult;
   const footer = showForm ? (
     <div className="space-y-2">
       {amount > 0 && (
@@ -780,7 +821,30 @@ export function SubscriptionDialog({
       footer={footer}
     >
       <div className="space-y-4 pb-1">
-        {customers.length === 0 ? (
+        {customersLoading ? (
+          <div className="flex min-h-40 flex-col items-center justify-center gap-3 py-8" role="status" aria-live="polite">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">{CUSTOMER_STATE_COPY[locale].loading}</p>
+          </div>
+        ) : customersError ? (
+          <div className="rounded-xl border border-border bg-card p-5 text-center">
+            <AlertTriangle className="mx-auto h-8 w-8 text-destructive" aria-hidden="true" />
+            <h3 className="mt-3 text-sm font-semibold text-foreground">{CUSTOMER_STATE_COPY[locale].errorTitle}</h3>
+            <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+              {CUSTOMER_STATE_COPY[locale].errorDescription}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-4"
+              disabled={retryingCustomers}
+              onClick={() => void handleRetryCustomers()}
+            >
+              {retryingCustomers && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {retryingCustomers ? CUSTOMER_STATE_COPY[locale].retrying : CUSTOMER_STATE_COPY[locale].retry}
+            </Button>
+          </div>
+        ) : customers.length === 0 ? (
           <div className="py-2">
             <EmptyState
               icon={<Users className="h-full w-full" />}
@@ -1029,7 +1093,7 @@ export function SubscriptionDialog({
                     id="sub-due"
                     value={firstDueDate}
                     onValueChange={setFirstDueDate}
-                    min={todayISO()}
+                    min={today}
                     placeholder="dd/mm/aaaa"
                   />
                 </div>

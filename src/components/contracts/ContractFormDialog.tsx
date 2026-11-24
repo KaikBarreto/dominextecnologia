@@ -14,10 +14,23 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { FormWizardStepper } from '@/components/ui/FormWizardStepper';
 import { WizardMobileSummary, WizardReviewChecklist } from '@/components/ui/WizardReviewChecklist';
 import { AssigneeMultiSelect } from '@/components/schedule/AssigneeMultiSelect';
-import { useContracts, useContractPlanActivities, generateOccurrences, getFrequencyLabel, type PlanActivityInput, type FreqCode, activityPeriodMonths, generateGroupedVisits, isMonthlyCadence, REGENERABLE_OS_STATUSES } from '@/hooks/useContracts';
+import {
+  useContracts,
+  useContractPlanActivities,
+  generateOccurrences,
+  getFrequencyLabel,
+  type PlanActivityInput,
+  type FreqCode,
+  activityPeriodMonths,
+  generateGroupedVisits,
+  isMonthlyCadence,
+  REGENERABLE_OS_STATUSES,
+  ContractVisitScheduleConflictError,
+  type ContractVisitGenerationAttempt,
+} from '@/hooks/useContracts';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { StepTransition } from '@/components/ui/step-transition';
-import { DraftResumeDialog } from '@/components/ui/DraftResumeDialog';
+import { FullscreenWizard, FullscreenWizardAction, FullscreenWizardNotice } from '@/components/ui/FullscreenWizard';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { useCustomers, CustomerInput } from '@/hooks/useCustomers';
 import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
@@ -43,6 +56,7 @@ import {
   START_VISIT_OPTIONS,
   startVisitLabel,
   firstVisitContents,
+  machineChecklistSummary,
   machineCatalogActivities,
   essentialMachineActivities,
   catalogToPlanRow,
@@ -114,6 +128,7 @@ import { readPastedCents } from '@/lib/money-paste-mask';
 import { todayInTz } from '@/lib/timezone';
 import { formatMoney } from '@/lib/format';
 import { useToast } from '@/hooks/use-toast';
+import { ScheduleConflictDialog } from '@/components/schedule/ScheduleConflictDialog';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { format } from 'date-fns';
@@ -238,7 +253,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   const t = MESSAGES[locale].app.contracts.contractForm;
   const tPortal = MESSAGES[locale].app.pmoc.contractDetail.overview;
 
-  const { createContract, updateContract, createContractInstallments } = useContracts();
+  const { createContract, generateContractVisits, updateContract, createContractInstallments } = useContracts();
   // Plano de serviços já persistido (só carrega em edição). Hook é a fronteira
   // do Supabase — o componente nunca lê contract_plan_activities direto.
   const { data: existingPlan } = useContractPlanActivities(editContract?.id);
@@ -297,6 +312,10 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // declarado mais abaixo; STEPS é derivado num useMemo após isPmoc existir.)
   const [submitting, setSubmitting] = useState(false);
   const [showQuickCustomer, setShowQuickCustomer] = useState(false);
+  const [pendingVisitGeneration, setPendingVisitGeneration] =
+    useState<ContractVisitGenerationAttempt | null>(null);
+  const [showScheduleConflict, setShowScheduleConflict] = useState(false);
+  const [submittingConflictOverride, setSubmittingConflictOverride] = useState(false);
 
   // Step 1
   const [name, setName] = useState('');
@@ -763,8 +782,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   };
 
   // Rascunho (só em CRIAÇÃO). Persiste TODO o estado de preenchimento das etapas
-  // em sessionStorage e, ao reabrir com rascunho salvo, oferece o DraftResumeDialog.
-  // Espelha o padrão do QuoteFormDialog (useFormDraft + DraftResumeDialog). Agora
+  // em sessionStorage e oferece recuperação flutuante ao reabrir. Agora
   // o rascunho cobre também a Unidade & RT, os Ambientes (com equipamentos), os
   // itens do contrato comum e a config POR MÁQUINA (Fase 3 — escopo/começa-na-
   // visita/checklists), pra não perder o trabalho ao fechar/recarregar o modal.
@@ -2345,7 +2363,119 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
     }
   };
 
+  const finishCreatedContract = async (result: {
+    id: string;
+    generatedOsCount: number;
+    expectedOsCount: number;
+  }) => {
+    const { id: newContractId, generatedOsCount, expectedOsCount } = result;
+
+    if (isActive && generatedOsCount !== expectedOsCount) {
+      throw new Error('Não foi possível confirmar todas as visitas do contrato. Nenhuma alteração parcial foi mantida.');
+    }
+
+    // Auto-gera a V1 dos documentos PMOC (TRT, Certificado, Cronograma,
+    // Dossiê) em segundo plano. SÓ pra contratos PMOC — contrato comum não
+    // tem documentos e a chamada nem dispara. Best-effort: não bloqueia o
+    // navigate nem trava a UI; erros individuais são ignorados (o gestor
+    // gera manual depois se faltar CNPJ/RT).
+    if (isPmoc) {
+      void autoGeneratePmocDocsV1(newContractId);
+      toast({
+        title: t.toasts.pmocDocsGenerating,
+        description: t.toasts.pmocDocsDesc,
+      });
+    }
+
+    // Só há sucesso quando o lote inteiro foi confirmado. O fluxo atômico não
+    // aceita mais contratos ativos com menos OSs do que a prévia informou.
+    toast({
+      title: isActive
+        ? `✅ ${isPmoc ? t.toasts.contractPmocCreatedWithOs : t.toasts.contractCreatedWithOs} ${generatedOsCount} ${t.toasts.contractOssGenerated}`
+        : `✅ ${isPmoc ? t.toasts.contractPmocCreatedSuccess : t.toasts.contractCreatedSuccess}`,
+    });
+
+    // ── Etapa Financeiro: lança as parcelas DEPOIS do contrato existir ──
+    // NÃO-FATAL: o contrato e suas OSs já estão confirmados. Uma falha aqui
+    // recebe aviso próprio e pode ser corrigida depois pela aba Financeiro.
+    if (finWillGenerate) {
+      try {
+        const plan = finPlan;
+        const desc = finEffectiveDescription;
+        await createContractInstallments.mutateAsync({
+          contractId: newContractId,
+          customerId,
+          accountId: finAccountId || null,
+          category: finCategory || null,
+          costCenterId: finCostCenterId,
+          paymentMethod: finPaymentMethod || null,
+          notes: `Vinculado ao contrato: ${name.trim()}`,
+          rows: plan.map((row) => ({
+            description: contractInstallmentDescription({
+              base: desc,
+              date: row.date,
+              number: row.number,
+              total: plan.length,
+              continuous: finIsContinuous,
+            }),
+            amount: row.amount,
+            date: row.date,
+          })),
+        });
+        toast({
+          title: plan.length > 1
+            ? t.toasts.financeCreated.replace('{n}', String(plan.length))
+            : t.toasts.financeCreatedSingle,
+        });
+      } catch (finErr: unknown) {
+        toast({
+          variant: 'destructive',
+          title: t.toasts.financeFailed,
+          description: `${t.toasts.financeFailedDesc} ${getErrorMessage(finErr)}`,
+        });
+      }
+    }
+
+    draft.clearDraft();
+    setPendingVisitGeneration(null);
+    setShowScheduleConflict(false);
+    onOpenChange(false);
+    if (onCreated) onCreated(newContractId);
+  };
+
+  const handleScheduleConflictOverride = async (reason: string) => {
+    if (!pendingVisitGeneration) return;
+
+    setSubmittingConflictOverride(true);
+    try {
+      const generation = await generateContractVisits.mutateAsync({
+        ...pendingVisitGeneration,
+        overrideReason: reason,
+      });
+      await finishCreatedContract({
+        id: pendingVisitGeneration.contractId,
+        generatedOsCount: generation.createdCount,
+        expectedOsCount: pendingVisitGeneration.expectedOsCount,
+      });
+    } catch (err: unknown) {
+      toast({
+        variant: 'destructive',
+        title: t.toasts.error,
+        description: getErrorMessage(err),
+      });
+    } finally {
+      setSubmittingConflictOverride(false);
+    }
+  };
+
   const handleSubmit = async () => {
+    // O contrato já existe e só falta autorizar o lote conflitante. Repetir o
+    // submit reabre a mesma tentativa; nunca cria um segundo contrato.
+    if (pendingVisitGeneration) {
+      setShowScheduleConflict(true);
+      return;
+    }
+
     // Defesa em profundidade: nunca salvar sem responsável pela execução.
     if (!hasExecutor) {
       toast({
@@ -2527,94 +2657,18 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           plan_activities: planActivitiesPayload,
         });
 
-        const generatedOsCount = (result as any)?.generatedOsCount ?? 0;
-        const expectedOsCount = (result as any)?.expectedOsCount ?? visitCount;
-        const newContractId = (result as any)?.id as string | undefined;
-
-        // Auto-gera a V1 dos documentos PMOC (TRT, Certificado, Cronograma,
-        // Dossiê) em segundo plano. SÓ pra contratos PMOC — contrato comum não
-        // tem documentos e a chamada nem dispara. Best-effort: não bloqueia o
-        // navigate nem trava a UI; erros individuais são ignorados (o gestor
-        // gera manual depois se faltar CNPJ/RT).
-        if (isPmoc && newContractId) {
-          void autoGeneratePmocDocsV1(newContractId);
-          toast({
-            title: t.toasts.pmocDocsGenerating,
-            description: t.toasts.pmocDocsDesc,
-          });
-        }
-
-        // PMOC e contrato comum agora seguem o mesmo fluxo: geração imediata
-        // das N OSs no momento da criação. Toast unificado.
-        toast({
-          title: isActive
-            ? generatedOsCount === expectedOsCount
-              ? `✅ ${isPmoc ? t.toasts.contractPmocCreatedWithOs : t.toasts.contractCreatedWithOs} ${generatedOsCount} ${t.toasts.contractOssGenerated}`
-              : `⚠️ ${isPmoc ? t.toasts.contractPmocCreatedWithOs : t.toasts.contractCreatedWithOs} ${generatedOsCount} ${t.toasts.contractPartialOs} ${expectedOsCount} ${t.toasts.contractOssGenerated}`
-            : `✅ ${isPmoc ? t.toasts.contractPmocCreatedSuccess : t.toasts.contractCreatedSuccess}`,
+        await finishCreatedContract({
+          id: result.id,
+          generatedOsCount: result.generatedOsCount,
+          expectedOsCount: result.expectedOsCount,
         });
-        // ── Etapa Financeiro: lança as parcelas DEPOIS do contrato existir ──
-        // NÃO duplica receita: estas linhas SÃO o "a receber" do contrato, as
-        // mesmas que a aba Financeiro lista. Nenhuma outra peça cria recebível
-        // de contrato na criação, então não há segunda fonte pra somar.
-        //
-        // REPETIÇÃO, não parcelamento: 12x R$ 450 são 12 lançamentos de R$ 450
-        // (R$ 5.400), nunca R$ 450 fatiados em 12 — regra da 1.24.18, quem
-        // parcela é o cliente. O passo de mês vem do motor com clamp de fim de
-        // mês (31/01 → 28/02, nunca 03/03).
-        //
-        // NÃO-FATAL, com try/catch PRÓPRIO: o contrato já está criado e as OSs
-        // já foram geradas: um erro aqui não pode cair no catch de fora (que
-        // mostraria "erro ao criar contrato" pra um contrato que existe). O
-        // usuário é avisado com toast próprio e lança pela aba Financeiro.
-        if (finWillGenerate && newContractId) {
-          try {
-            const plan = finPlan;
-            const desc = finEffectiveDescription;
-            await createContractInstallments.mutateAsync({
-              contractId: newContractId,
-              customerId,
-              accountId: finAccountId || null,
-              category: finCategory || null,
-              costCenterId: finCostCenterId,
-              paymentMethod: finPaymentMethod || null,
-              notes: `Vinculado ao contrato: ${name.trim()}`,
-              // Com cobrança contínua NÃO escrevemos "(n/total)": numerar
-              // sobre um total desconhecido é mentira, e o cron que continua a
-              // série também não saberia numerar. Fonte única do formato em
-              // @/lib/contract-billing (o mesmo que o Postgres escreve).
-              rows: plan.map((row) => ({
-                description: contractInstallmentDescription({
-                  base: desc,
-                  date: row.date,
-                  number: row.number,
-                  total: plan.length,
-                  continuous: finIsContinuous,
-                }),
-                amount: row.amount,
-                date: row.date,
-              })),
-            });
-            toast({
-              title: plan.length > 1
-                ? t.toasts.financeCreated.replace('{n}', String(plan.length))
-                : t.toasts.financeCreatedSingle,
-            });
-          } catch (finErr: unknown) {
-            toast({
-              variant: 'destructive',
-              title: t.toasts.financeFailed,
-              description: `${t.toasts.financeFailedDesc} ${getErrorMessage(finErr)}`,
-            });
-          }
-        }
-
-        // Criou com sucesso → descarta o rascunho persistido.
-        draft.clearDraft();
-        onOpenChange(false);
-        if (onCreated && result) onCreated((result as any).id);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      if (err instanceof ContractVisitScheduleConflictError) {
+        setPendingVisitGeneration(err.attempt);
+        setShowScheduleConflict(true);
+        return;
+      }
       toast({ variant: 'destructive', title: t.toasts.error, description: getErrorMessage(err) });
     } finally {
       setSubmitting(false);
@@ -2937,29 +2991,32 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // Conteúdo do wizard (stepper + etapas). Renderizado dentro do ResponsiveModal,
   // cujo footer recebe a navegação Voltar/Próximo/Criar separadamente.
   const wizardContent = (
-    <div className="flex min-w-0 flex-col">
+    <div className="mx-auto flex w-full max-w-[1600px] min-w-0 flex-col pb-6 pt-5 sm:pt-7" onChangeCapture={() => {
+      if (!isEditing && draft.showResumePrompt) draft.startNewDraft(buildDraftSnapshot());
+    }}>
         <FormWizardStepper
           steps={STEPS}
           currentIndex={step}
           maxReachedIndex={visibleMaxStepIndex}
           onStepChange={goToStep}
           ariaLabel="Etapas do contrato"
-          className="border-b pb-3"
+          tone="contrast"
+          className="pb-5 sm:pb-7"
         />
 
         {/* Content — animação direcional de troca de etapa (slide + fade).
             O scroll fica no container do ResponsiveModal; o StepTransition não
             força overflow/height. */}
-        <div className="mt-4 grid flex-1 gap-6 xl:grid-cols-[minmax(0,1fr)_248px] xl:gap-0 xl:divide-x">
-          <main ref={stepContentRef} className="min-w-0 xl:pr-6">
-            <header className="mb-4">
+        <div className="mt-3 grid flex-1 gap-8 xl:grid-cols-[minmax(0,1fr)_300px] xl:gap-10">
+          <main ref={stepContentRef} className="min-w-0">
+            <header className="mb-7 sm:mb-9">
               <p className="hidden text-[11px] font-semibold uppercase tracking-wide text-muted-foreground lg:block">
                 Etapa {step + 1} de {STEPS.length}
               </p>
-              <h3 className="mt-1 text-lg font-semibold leading-tight text-foreground">
+              <h3 className="mt-1 text-2xl font-semibold leading-tight tracking-tight text-foreground sm:text-3xl lg:text-4xl">
                 {currentStepCopy.title}
               </h3>
-              <p className="mt-1 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+              <p className="mt-3 max-w-3xl text-base leading-relaxed text-muted-foreground">
                 {currentStepCopy.description}
               </p>
             </header>
@@ -2970,29 +3027,36 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           >
           {/* STEP: Informações */}
           {currentStepKey === 'info' && (
-            <div className="space-y-4">
-              <div className="space-y-2" data-contract-validation="name">
-                <Label>{t.info.nameLabel}</Label>
-                <Input value={name} onChange={e => setName(e.target.value)} placeholder={t.info.namePlaceholder} />
-                <p className="text-xs text-muted-foreground">{t.info.nameHint}</p>
-              </div>
+            <div className="space-y-7">
               <div className="space-y-2" data-contract-validation="customer">
                 <Label>{t.info.customerLabel}</Label>
                 <CustomerSelectField
+                  variant="large"
                   customers={customers}
                   value={customerId}
-                  onValueChange={v => { setCustomerId(v); if (!isEditing) { setLooseItems([]); setEnvironments([]); setSelectedEnvKey(null); } }}
+                  onValueChange={v => {
+                    if (!isEditing && draft.showResumePrompt) draft.startNewDraft({ ...buildDraftSnapshot(), customerId: v });
+                    setCustomerId(v);
+                    if (!isEditing) { setLooseItems([]); setEnvironments([]); setSelectedEnvKey(null); }
+                  }}
                   placeholder={t.info.customerPlaceholder}
                   searchPlaceholder={t.info.customerSearchPlaceholder}
                   onCreateFull={() => setShowQuickCustomer(true)}
                 />
               </div>
+              <div className="space-y-2" data-contract-validation="name">
+                <Label>{t.info.nameLabel}</Label>
+                <Input value={name} onChange={e => setName(e.target.value)} placeholder={t.info.namePlaceholder} />
+                <p className="text-xs text-muted-foreground">{t.info.nameHint}</p>
+              </div>
 
               {/* PMOC é exclusivo de refrigeração. Unidade e RT aparecem logo
                   após a escolha da modalidade porque completam os dados-base do
                   contrato, sem criar uma etapa opcional isolada. */}
-              {canUsePmoc && pmocToggleSection}
-              {isPmoc && pmocUnitSection}
+              <div className="space-y-6">
+                {canUsePmoc && pmocToggleSection}
+                {isPmoc && pmocUnitSection}
+              </div>
             </div>
           )}
 
@@ -3709,9 +3773,9 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                                     </Button>
                                   </div>
 
-                                  <span className="block text-[11px] text-muted-foreground">
-                                    {cfg ? `${cfg.activities.length} ${t.items.machineChecklistsCount}` : '—'}
-                                    {cfg?.customized && <span className="ml-1 text-info">{t.items.machineCustomized}</span>}
+                                  <span className="block text-sm font-medium leading-relaxed text-foreground">
+                                    {machineChecklistSummary(cfg, t.items)}
+                                    {cfg?.customized && cfg.customTemplateIds.length === 0 && <span className="ml-1 text-info">{t.items.machineCustomized}</span>}
                                   </span>
 
                                   {cfg && !pmocCustomCadence && (
@@ -4566,8 +4630,8 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                                 • <strong className="text-foreground">{it.item_name}</strong>
                                 {` — ${cfg.scope === 'full' ? t.review.machineScopeAll : t.review.machineScopeAcOnly}`}
                                 {`, ${t.review.machineStartsAt} ${startVisitLabel(cfg.startVisit).toLowerCase()}`}
-                                {`, ${cfg.activities.length} ${t.items.machineChecklistsCount}`}
-                                {cfg.customized ? ` (${t.items.machineCustomized.replace('· ', '')})` : ''}.
+                                {`, ${machineChecklistSummary(cfg, t.items)}`}
+                                {cfg.customized && cfg.customTemplateIds.length === 0 ? ` (${t.items.machineCustomized.replace('· ', '')})` : ''}.
                               </span>
                             );
                           })}
@@ -4783,7 +4847,7 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
                           <div className="min-w-0">
                             <p className="font-medium truncate">{it.item_name}</p>
                             <p className="text-muted-foreground">
-                              {cfg.scope === 'full' ? t.review.normAll : t.review.normAcOnly} · {cfg.activities.length} {t.items.machineChecklistsCount}
+                              {cfg.scope === 'full' ? t.review.normAll : t.review.normAcOnly} · {machineChecklistSummary(cfg, t.items)}
                             </p>
                           </div>
                           <div className="text-right shrink-0">
@@ -4831,30 +4895,30 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
           )}
           </StepTransition>
           </main>
-          <aside className="hidden xl:block xl:pl-6" aria-label="Resumo do contrato">
-            <div className="sticky top-0 space-y-4 rounded-xl border bg-muted/10 p-4">
+          <aside className="hidden xl:block xl:border-l xl:pl-8" aria-label="Resumo do contrato">
+            <div className="sticky top-5 space-y-6">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <p className="text-lg font-semibold tracking-tight text-foreground">
                   Resumo do contrato
                 </p>
-                <p className="mt-1 break-words text-sm font-semibold">
+                <p className="mt-2 break-words text-xl font-semibold tracking-tight">
                   {name.trim() || 'Contrato sem nome'}
                 </p>
-                <p className="mt-0.5 break-words text-xs text-muted-foreground">
+                <p className="mt-2 break-words text-sm leading-relaxed text-muted-foreground">
                   {customers.find((customer) => customer.id === customerId)?.name || 'Cliente não selecionado'}
                 </p>
               </div>
-              <div className="grid grid-cols-2 divide-x rounded-lg bg-muted/50 px-1 py-3">
+              <div className="grid grid-cols-2 gap-4 py-2">
                 <div className="px-2.5">
                   <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Equipamentos</p>
-                  <p className="mt-1 text-lg font-semibold">{effectiveItems.length}</p>
+                  <p className="mt-1 text-3xl font-semibold tabular-nums">{effectiveItems.length}</p>
                 </div>
                 <div className="px-2.5">
                   <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Visitas</p>
-                  <p className="mt-1 text-lg font-semibold">{visitCount}</p>
+                  <p className="mt-1 text-3xl font-semibold tabular-nums">{visitCount}</p>
                 </div>
               </div>
-              <dl className="space-y-2 text-xs">
+              <dl className="space-y-4 text-sm">
                 <div className="flex items-start justify-between gap-3">
                   <dt className="text-muted-foreground">Modalidade</dt>
                   <dd className="text-right font-medium">{isPmoc ? 'PMOC' : 'Contrato comum'}</dd>
@@ -4910,12 +4974,12 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
   // Navegação do wizard — vai pro footer do ResponsiveModal (fixo abaixo do
   // conteúdo rolável, no desktop e no mobile).
   const wizardFooter = (
-    <div className="flex flex-col gap-2">
+    <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-3">
       <WizardMobileSummary
         title="Resumo do contrato"
         summary={`${effectiveItems.length} equipamento(s) · ${visitCount} visita(s)`}
       >
-        <div className="space-y-3 text-xs">
+        <div className="space-y-3 text-sm">
           <div>
             <p className="font-semibold text-foreground">{name.trim() || 'Contrato sem nome'}</p>
             <p className="mt-0.5 text-muted-foreground">{clientName === '-' ? 'Cliente não selecionado' : clientName}</p>
@@ -4930,24 +4994,24 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       {navigationMessage && !canNext() && (
         <p className="text-right text-xs text-destructive" role="alert">{navigationMessage}</p>
       )}
-      <div className="flex flex-row justify-between gap-2">
-        <Button variant="outline" onClick={() => step === 0 ? handleUserClose() : setStep(step - 1)} disabled={submitting}>
-          {step === 0 ? t.nav.cancel : <><ChevronLeft className="h-4 w-4 mr-1" /> {t.nav.back}</>}
-        </Button>
+      <div className="grid grid-cols-2 gap-3 sm:flex sm:justify-end">
+        <FullscreenWizardAction variant="cancel" onClick={() => step === 0 ? handleUserClose() : setStep(step - 1)} disabled={submitting}>
+          {step === 0 ? t.nav.cancel : <><ChevronLeft className="h-5 w-5 mr-1" /> {t.nav.back}</>}
+        </FullscreenWizardAction>
         {step < STEPS.length - 1 ? (
-          <Button
+          <FullscreenWizardAction
             onClick={advanceContractWithValidation}
             aria-disabled={!canNext()}
             className="aria-disabled:opacity-50"
           >
-            {t.nav.next} <ChevronRight className="h-4 w-4 ml-1" />
-          </Button>
+            {t.nav.next} <ChevronRight className="h-5 w-5 ml-1" />
+          </FullscreenWizardAction>
         ) : (
-          <Button onClick={handleSubmit} disabled={submitting || !canNext()} className="bg-primary text-primary-foreground hover:bg-primary/90">
+          <FullscreenWizardAction onClick={handleSubmit} disabled={submitting || !canNext()} className="min-w-0 whitespace-normal sm:min-w-52">
             {submitting ? (
               <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {t.nav.saving}</>
             ) : isEditing ? t.nav.saveChanges : `${t.nav.createContract} (${visitCount} ${t.nav.oss})`}
-          </Button>
+          </FullscreenWizardAction>
         )}
       </div>
     </div>
@@ -4955,36 +5019,30 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
 
   return (
     <>
-    {/* Container do wizard: modal central no desktop, drawer de baixo no mobile.
-        `handleModalOpenChange` intercepta o FECHAR por interação (X, arrastar o
-        drawer, Escape) pra flushar o rascunho antes do conteúdo desmontar. */}
-    <ResponsiveModal
+    {/* A saída preserva o flush do rascunho existente. Avisos de recuperação
+        usam o slot flutuante sem disputar foco com o formulário. */}
+    <FullscreenWizard
       open={open}
       onOpenChange={handleModalOpenChange}
-      title={isEditing ? t.modalTitleEdit : t.modalTitleNew}
-      description="Configure por etapas e revise antes de salvar."
-      density="compact"
-      className="sm:h-[90vh] sm:max-h-[90vh] sm:w-[96vw] sm:max-w-[1240px]"
-      drawerClassName="h-[90dvh]"
+      title={locale === 'pt-br' ? (isEditing ? 'Editar contrato' : 'Criar contrato') : (isEditing ? t.modalTitleEdit : t.modalTitleNew)}
+      description="Defina o cliente, organize o escopo e a agenda e revise antes de salvar."
       footer={wizardFooter}
-      lockBackdrop
+      floatingNotice={!isEditing && draft.showResumePrompt ? (
+        <FullscreenWizardNotice
+          title="Rascunho encontrado"
+          description="Retome o preenchimento deste contrato ou comece do zero. O rascunho está salvo neste dispositivo."
+          actions={<>
+            <FullscreenWizardAction variant="cancel" className="px-3 text-sm" onClick={() => draft.discardDraft()}>Começar do zero</FullscreenWizardAction>
+            <FullscreenWizardAction className="px-3 text-sm" onClick={() => {
+              if (draft.draftData) applyContractDraft(draft.draftData);
+              draft.acceptDraft();
+            }}>Retomar</FullscreenWizardAction>
+          </>}
+        />
+      ) : null}
     >
       {wizardContent}
-    </ResponsiveModal>
-
-    {/* Rascunho (só criação): oferece retomar o preenchimento interrompido. */}
-    {!isEditing && (
-      <DraftResumeDialog
-        open={draft.showResumePrompt}
-        onResume={() => {
-          if (draft.draftData) applyContractDraft(draft.draftData);
-          draft.acceptDraft();
-        }}
-        onDiscard={() => {
-          draft.discardDraft();
-        }}
-      />
-    )}
+    </FullscreenWizard>
 
     <CustomerFormDialog
       open={showQuickCustomer}
@@ -5273,6 +5331,15 @@ export function ContractFormDialog({ open, onOpenChange, onCreated, editContract
       src={previewPhoto?.src ?? ''}
       alt={previewPhoto?.alt}
       onClose={() => setPreviewPhoto(null)}
+    />
+
+    <ScheduleConflictDialog
+      open={showScheduleConflict}
+      conflicts={[]}
+      canOverride={companySettings?.allow_schedule_conflicts === true}
+      isLoading={submittingConflictOverride}
+      onCancel={() => setShowScheduleConflict(false)}
+      onOverride={handleScheduleConflictOverride}
     />
 
     {/* Confirmação antes de recalcular as visitas futuras (edição de cronograma).

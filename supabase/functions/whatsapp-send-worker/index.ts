@@ -11,6 +11,14 @@ import {
   setInstanceWebhook,
   typingDelayMs,
 } from "../_shared/evolution-client.ts";
+import {
+  formatWhatsappEquipmentNames,
+  listWhatsappTemplateTokens,
+  renderWhatsappTemplate,
+  resolveWhatsappCompanyValues,
+  resolveWhatsappTemplate,
+  sanitizeWhatsappTextValue,
+} from "../_shared/whatsapp-message-templates.ts";
 
 const WARMUP_DAILY_CAP = [20, 30, 40, 60, 80, 100, 120, 150, 180, 220, 260, 300, 350, 400];
 const MAX_PER_HOUR = 60;
@@ -31,12 +39,27 @@ type Job = {
   source_type: "service_order" | "tenant_charge";
   source_id: string;
   attempts: number;
+  recipient_kind?: "customer_primary" | "customer_contact" | null;
+  customer_contact_id?: string | null;
+  recipient_route_id?: string | null;
 };
 
 type SettingsData = { automation_preferences: unknown };
-type RegionalSettingsData = { country_code: string; timezone: string | null };
+type RegionalSettingsData = {
+  country_code: string;
+  timezone: string | null;
+  document?: string | null;
+  phone?: string | null;
+};
 type CustomerData = { name: string };
-type CompanyData = { name: string };
+type CustomerContactData = {
+  id: string;
+  customer_id: string;
+  name: string;
+  phone: string | null;
+};
+type CompanyData = { name: string; cnpj?: string | null; phone?: string | null };
+type CompanyValues = ReturnType<typeof resolveWhatsappCompanyValues>;
 type WebhookConnection = {
   id: string;
   company_id: string;
@@ -182,14 +205,6 @@ function dateBr(value: string | null): string {
   return year && month && day ? `${day}/${month}/${year}` : value;
 }
 
-function whatsappPlainText(value: string | null | undefined, fallback: string): string {
-  const sanitized = (value ?? "")
-    .replace(/[\r\n*_~`]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  return sanitized || fallback;
-}
-
 function pref<T>(record: unknown, path: string[], fallback: T): T {
   let value: unknown = record;
   for (const key of path) {
@@ -206,18 +221,276 @@ function pickStyle(value: unknown): "objective" | "cordial" | "detailed" {
   return styles[Math.floor(Math.random() * styles.length)];
 }
 
+type RecipientRouteValidation = "valid" | "inactive" | "error";
+type FinalDispatchValidation =
+  | { status: "valid" }
+  | { status: "skip"; code: string; message: string }
+  | { status: "defer"; code: string; message: string };
+
+function recipientKind(job: Job): "customer_primary" | "customer_contact" {
+  return job.recipient_kind === "customer_contact" ? "customer_contact" : "customer_primary";
+}
+
+function recipientCategory(eventKey: string): "service_order" | "billing" | null {
+  if (eventKey.startsWith("os.")) return "service_order";
+  if (eventKey.startsWith("billing.")) return "billing";
+  return null;
+}
+
+/**
+ * Revalida a selecao atual do destinatario. O worker usa service_role, entao
+ * os filtros de company/customer/contact sao uma barreira obrigatoria, nao
+ * apenas uma otimizacao de consulta.
+ */
+async function validateRecipientRoute(
+  supabase: SupabaseClient,
+  job: Job,
+): Promise<RecipientRouteValidation> {
+  const category = recipientCategory(job.event_key);
+  if (!category || !job.customer_id) return "inactive";
+
+  const { data: route, error: routeError } = await supabase
+    .from("customer_whatsapp_routes")
+    .select("id, enabled")
+    .eq("company_id", job.company_id)
+    .eq("customer_id", job.customer_id)
+    .eq("category", category)
+    .maybeSingle();
+  if (routeError) return "error";
+
+  // Compatibilidade: sem configuracao explicita, apenas o telefone principal
+  // segue autorizado. Contato adicional nunca ganha fallback implicito.
+  if (!route) return recipientKind(job) === "customer_primary" ? "valid" : "inactive";
+  if (route.enabled !== true) return "inactive";
+
+  let assignment = supabase
+    .from("customer_whatsapp_route_recipients")
+    .select("id")
+    .eq("route_id", route.id)
+    .eq("recipient_kind", recipientKind(job));
+  assignment = recipientKind(job) === "customer_primary"
+    ? assignment.is("customer_contact_id", null)
+    : assignment.eq("customer_contact_id", job.customer_contact_id ?? "");
+  const { data, error } = await assignment.maybeSingle();
+  if (error) return "error";
+  return data ? "valid" : "inactive";
+}
+
+/**
+ * Rele as fontes mutáveis depois da cadência humana e imediatamente antes do
+ * marco durável de despacho. Um snapshot obtido no início do job não autoriza
+ * enviar para telefone antigo, assinatura bloqueada, cliente removido ou
+ * cobrança já paga.
+ */
+async function validateFinalDispatchState(
+  supabase: SupabaseClient,
+  job: Job,
+  phone: string,
+  countryCode: string,
+): Promise<FinalDispatchValidation> {
+  const contactQuery = recipientKind(job) === "customer_contact" && job.customer_contact_id && job.customer_id
+    ? supabase.from("customer_contacts")
+      .select("id, customer_id, phone")
+      .eq("id", job.customer_contact_id)
+      .eq("customer_id", job.customer_id)
+      .maybeSingle()
+    : Promise.resolve({ data: null, error: null });
+  const sourceQuery = job.source_type === "tenant_charge"
+    ? supabase.from("tenant_charges")
+      .select("id, customer_id, status")
+      .eq("id", job.source_id)
+      .eq("company_id", job.company_id)
+      .maybeSingle()
+    : supabase.from("service_orders")
+      .select("id, customer_id, status")
+      .eq("id", job.source_id)
+      .eq("company_id", job.company_id)
+      .maybeSingle();
+
+  const [entitlement, moduleResult, customerResult, contactResult, settingsResult, connectionResult, sourceResult] =
+    await Promise.all([
+      supabase.rpc("tenant_subscription_allows_access", { _company_id: job.company_id }),
+      supabase.rpc("company_has_module", { p_company_id: job.company_id, p_module_code: "whatsapp" }),
+      job.customer_id
+        ? supabase.from("customers")
+          .select("id, company_id, phone, celular, whatsapp_notifications_enabled, is_deleted")
+          .eq("id", job.customer_id)
+          .eq("company_id", job.company_id)
+          .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+      contactQuery,
+      supabase.from("company_whatsapp_settings")
+        .select("enabled, active_connection_id")
+        .eq("company_id", job.company_id)
+        .maybeSingle(),
+      supabase.from("whatsapp_connections")
+        .select("id, status")
+        .eq("id", job.connection_id)
+        .eq("company_id", job.company_id)
+        .maybeSingle(),
+      sourceQuery,
+    ]);
+
+  const readError = [
+    entitlement.error,
+    moduleResult.error,
+    customerResult.error,
+    contactResult.error,
+    settingsResult.error,
+    connectionResult.error,
+    sourceResult.error,
+  ].find(Boolean);
+  if (readError) {
+    console.error("[whatsapp-send-worker] final dispatch query failed", {
+      job_id: job.id,
+      message: readError.message,
+    });
+    return {
+      status: "defer",
+      code: "final_validation_unavailable",
+      message: "Não foi possível confirmar novamente os dados do envio.",
+    };
+  }
+
+  if (entitlement.data !== true) {
+    return { status: "skip", code: "subscription_inactive", message: "A assinatura da empresa não permite este envio." };
+  }
+  if (moduleResult.data !== true) {
+    return { status: "skip", code: "module_inactive", message: "Módulo de WhatsApp inativo." };
+  }
+  if (!settingsResult.data?.enabled || settingsResult.data.active_connection_id !== job.connection_id) {
+    return { status: "skip", code: "automation_changed", message: "A automação ou a conexão ativa mudou antes do envio." };
+  }
+  if (!connectionResult.data || connectionResult.data.status !== "connected") {
+    return { status: "defer", code: "connection_unavailable", message: "A conexão ficou indisponível antes do envio." };
+  }
+
+  const currentCustomer = customerResult.data;
+  if (!currentCustomer || currentCustomer.is_deleted === true) {
+    return { status: "skip", code: "customer_unavailable", message: "O cliente vinculado ao envio não está mais disponível." };
+  }
+  if (currentCustomer.whatsapp_notifications_enabled !== true) {
+    return { status: "skip", code: "customer_opt_out", message: "O cliente não autorizou mensagens pelo WhatsApp." };
+  }
+
+  const currentContact = contactResult.data;
+  if (recipientKind(job) === "customer_contact" && !currentContact) {
+    return { status: "skip", code: "recipient_unavailable", message: "O contato destinatário não está mais disponível." };
+  }
+  const currentRawPhone = recipientKind(job) === "customer_contact"
+    ? currentContact?.phone
+    : currentCustomer.celular?.trim() || currentCustomer.phone;
+  const currentPhone = normalizePhone(currentRawPhone, countryCode);
+  if (!currentPhone) {
+    return { status: "skip", code: "invalid_phone", message: "Destinatário sem WhatsApp válido cadastrado." };
+  }
+  if (currentPhone !== phone) {
+    return { status: "skip", code: "recipient_phone_changed", message: "O telefone do destinatário mudou antes do envio." };
+  }
+
+  const routeValidation = await validateRecipientRoute(supabase, job);
+  if (routeValidation === "error") {
+    return { status: "defer", code: "recipient_route_unavailable", message: "Não foi possível confirmar novamente o destinatário configurado." };
+  }
+  if (routeValidation !== "valid") {
+    return { status: "skip", code: "recipient_route_changed", message: "O destinatário não está mais configurado para esta mensagem." };
+  }
+
+  const { data: optedOut, error: optedOutError } = await supabase
+    .from("whatsapp_opt_outs")
+    .select("phone")
+    .eq("company_id", job.company_id)
+    .eq("phone", currentPhone)
+    .maybeSingle();
+  if (optedOutError) {
+    return { status: "defer", code: "opt_out_check_unavailable", message: "Não foi possível confirmar novamente a autorização do destinatário." };
+  }
+  if (optedOut) {
+    return { status: "skip", code: "customer_opt_out", message: "O destinatário pediu para parar os envios." };
+  }
+
+  const source = sourceResult.data;
+  if (!source || source.customer_id !== job.customer_id) {
+    return { status: "skip", code: "source_unavailable", message: "A origem da mensagem não está mais disponível para este cliente." };
+  }
+  if (job.source_type === "tenant_charge" && !["PENDING", "OVERDUE"].includes(String(source.status))) {
+    return { status: "skip", code: "source_obsolete", message: "A cobrança já não está pendente." };
+  }
+  if (job.event_key === "os.criada") {
+    // O aviso de abertura só faz sentido enquanto a OS ainda está por
+    // acontecer. Se já foi cancelada, ou o técnico já saiu/atendeu, os outros
+    // avisos contam a história e este chegaria atrasado.
+    if (!["agendada", "pendente"].includes(String(source.status))) {
+      return { status: "skip", code: "source_obsolete", message: "A ordem de serviço mudou de situação antes do aviso de abertura." };
+    }
+  } else if (job.source_type === "service_order" && job.event_key !== "os.scheduled_reminder") {
+    const expectedStatus: Record<string, string> = {
+      "os.a_caminho": "a_caminho",
+      "os.em_andamento": "em_andamento",
+      "os.concluida": "concluida",
+    };
+    const expected = expectedStatus[job.event_key];
+    if (!expected || String(source.status) !== expected) {
+      return { status: "skip", code: "source_obsolete", message: "O estado da ordem de serviço mudou antes do envio." };
+    }
+  }
+
+  return { status: "valid" };
+}
+
+/** Evita uma segunda copia quando dois cadastros resolvem para o mesmo numero. */
+async function alreadySentToPhoneForSource(
+  supabase: SupabaseClient,
+  job: Job,
+  phone: string,
+): Promise<boolean> {
+  const { data: relatedJobs, error: jobsError } = await supabase
+    .from("whatsapp_send_jobs")
+    .select("id")
+    .eq("company_id", job.company_id)
+    .eq("event_key", job.event_key)
+    .eq("source_type", job.source_type)
+    .eq("source_id", job.source_id)
+    .neq("id", job.id)
+    .in("status", ["sent", "delivered", "read"]);
+  if (jobsError) throw jobsError;
+  const jobIds = (relatedJobs ?? []).map((item) => item.id);
+  if (!jobIds.length) return false;
+
+  const { data: duplicate, error: eventError } = await supabase
+    .from("whatsapp_events")
+    .select("id")
+    .eq("company_id", job.company_id)
+    .eq("phone", phone)
+    .in("job_id", jobIds)
+    .in("status", ["enviado", "entregue", "lido"])
+    .limit(1)
+    .maybeSingle();
+  if (eventError) throw eventError;
+  return Boolean(duplicate);
+}
+
 async function recordEvent(
   supabase: SupabaseClient,
   job: Job,
   values: Record<string, unknown>,
 ) {
+  const recipientValues = {
+    recipient_kind: recipientKind(job),
+    customer_contact_id: job.customer_contact_id ?? null,
+    recipient_route_id: job.recipient_route_id ?? null,
+  };
   const { data: existing } = await supabase
     .from("whatsapp_events")
     .select("id")
+    .eq("company_id", job.company_id)
     .eq("job_id", job.id)
     .maybeSingle();
   if (existing) {
-    await supabase.from("whatsapp_events").update(values).eq("id", existing.id);
+    await supabase.from("whatsapp_events")
+      .update({ ...recipientValues, ...values })
+      .eq("id", existing.id)
+      .eq("company_id", job.company_id);
     return;
   }
   await supabase.from("whatsapp_events").insert({
@@ -227,6 +500,7 @@ async function recordEvent(
     provider: job.provider,
     trigger: job.event_key,
     os_id: job.source_type === "service_order" ? job.source_id : null,
+    ...recipientValues,
     ...values,
   });
 }
@@ -564,70 +838,108 @@ async function goodbyePresence(instanceName: string, phone: string): Promise<voi
   }
 }
 
-async function buildOsMessage(supabase: SupabaseClient, job: Job, settings: SettingsData, customer: CustomerData) {
+async function loadOsEquipmentNames(
+  supabase: SupabaseClient,
+  job: Job,
+  legacyEquipmentId: string | null,
+): Promise<string> {
+  const { data: links, error: linksError } = await supabase
+    .from("service_order_equipment")
+    .select("equipment_id, equipment_position")
+    .eq("service_order_id", job.source_id)
+    .order("equipment_position", { ascending: true });
+  if (linksError) throw new Error(`Não foi possível consultar os equipamentos da OS: ${linksError.message}`);
+
+  const ids: string[] = [];
+  for (const link of links ?? []) {
+    if (link.equipment_id && !ids.includes(link.equipment_id)) ids.push(link.equipment_id);
+  }
+  if (legacyEquipmentId && !ids.includes(legacyEquipmentId)) ids.push(legacyEquipmentId);
+  if (ids.length === 0) return "";
+
+  const { data: equipments, error: equipmentError } = await supabase
+    .from("equipment")
+    .select("id, name")
+    .eq("company_id", job.company_id)
+    .in("id", ids);
+  if (equipmentError) throw new Error(`Não foi possível consultar os equipamentos da OS: ${equipmentError.message}`);
+
+  const nameById = new Map((equipments ?? []).map((row) => [row.id as string, String(row.name ?? "")]));
+  return formatWhatsappEquipmentNames(ids.map((id) => nameById.get(id) ?? ""));
+}
+
+// Os TEXTOS dos avisos vivem em `_shared/whatsapp-message-templates.ts`, o mesmo
+// arquivo que a tela usa na prévia e no editor. Aqui só se buscam os dados da OS
+// ou da cobrança e se entregam os valores das variáveis.
+async function buildOsMessage(
+  supabase: SupabaseClient,
+  job: Job,
+  settings: SettingsData,
+  customer: CustomerData,
+  companyValues: CompanyValues,
+  recipientName: string,
+) {
   const { data: os, error: osError } = await supabase
     .from("service_orders")
-    .select("id, company_id, order_number, public_short_code, technician_id, service_type_id, scheduled_date, scheduled_time, schedule_plan")
+    .select("id, company_id, order_number, public_short_code, technician_id, service_type_id, equipment_id, scheduled_date, scheduled_time, schedule_plan")
     .eq("id", job.source_id)
     .eq("company_id", job.company_id)
     .maybeSingle();
   if (osError) throw new Error(`Não foi possível consultar a OS: ${osError.message}`);
   if (!os) return null;
 
-  const [technicianResult, serviceResult] = await Promise.all([
-    os.technician_id
+  const key = job.event_key.split(".")[1] ?? "";
+  const template = resolveWhatsappTemplate({
+    domain: "os",
+    event: key,
+    choice: pref(settings.automation_preferences, ["os", "events", key, "template"], "automatic"),
+    customText: pref<unknown>(settings.automation_preferences, ["os", "events", key, "customText"], null),
+    automaticStyle: pickStyle("automatic"),
+    options: { includeOsLink: pref(settings.automation_preferences, ["os", "includeLink"], true) },
+  });
+  if (!template) return null;
+
+  // Só consulta o que o texto realmente usa.
+  const tokens = listWhatsappTemplateTokens(template);
+  const [technicianResult, serviceResult, equipmentNames] = await Promise.all([
+    tokens.includes("os.tecnico") && os.technician_id
       ? supabase.from("profiles").select("full_name").eq("user_id", os.technician_id).eq("company_id", job.company_id).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
-    os.service_type_id
+    tokens.includes("os.servico") && os.service_type_id
       ? supabase.from("service_types").select("name").eq("id", os.service_type_id).eq("company_id", job.company_id).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
+    tokens.includes("os.equipamentos")
+      ? loadOsEquipmentNames(supabase, job, os.equipment_id ?? null)
+      : Promise.resolve(""),
   ]);
   const auxiliaryError = technicianResult.error || serviceResult.error;
   if (auxiliaryError) {
     throw new Error(`Não foi possível consultar os detalhes da OS: ${auxiliaryError.message}`);
   }
-  const key = job.event_key.split(".")[1] as "scheduled_reminder" | "a_caminho" | "em_andamento" | "concluida";
-  const style = pickStyle(pref(settings.automation_preferences, ["os", "events", key, "template"], "automatic"));
-  const technician = technicianResult.data?.full_name ?? "nosso técnico";
-  const service = serviceResult.data?.name ?? "seu atendimento";
-  const order = os.order_number ? `#${os.order_number}` : "";
+
   const firstJourney = Array.isArray(os.schedule_plan) && os.schedule_plan.length > 0
     ? os.schedule_plan[0] as Record<string, unknown>
     : null;
   const scheduledDate = typeof firstJourney?.date === "string" ? firstJourney.date : os.scheduled_date;
   const scheduledTime = typeof firstJourney?.time === "string" ? firstJourney.time : os.scheduled_time;
-  const reminderDate = dateBr(scheduledDate);
-  const reminderTime = scheduledTime ? String(scheduledTime).slice(0, 5) : "horário não informado";
-  const actions = {
-    scheduled_reminder: {
-      objective: `Lembrete: sua visita da OS ${order} está agendada para ${reminderDate}, às ${reminderTime}.`,
-      cordial: `Passando para lembrar que sua visita da OS ${order} está agendada para ${reminderDate}, às ${reminderTime}.`,
-      detailed: `Sua visita para ${service}, referente à OS ${order}, está agendada para ${reminderDate}, às ${reminderTime}.`,
-    },
-    a_caminho: {
-      objective: `O técnico ${technician} está a caminho para atender a OS ${order}.`,
-      cordial: `Boas notícias: o técnico ${technician} já está a caminho para atender você na OS ${order}.`,
-      detailed: `O técnico ${technician} iniciou o deslocamento para o serviço de ${service}, referente à OS ${order}.`,
-    },
-    em_andamento: {
-      objective: `O atendimento da OS ${order} foi iniciado.`,
-      cordial: `Seu atendimento começou. O técnico ${technician} já está realizando o serviço da OS ${order}.`,
-      detailed: `O técnico ${technician} iniciou o serviço de ${service}, referente à OS ${order}.`,
-    },
-    concluida: {
-      objective: `A OS ${order} foi concluída.`,
-      cordial: "Seu atendimento foi concluído com sucesso. Agradecemos pela confiança na nossa equipe!",
-      detailed: `O serviço de ${service}, referente à OS ${order}, foi concluído pelo técnico ${technician}.`,
-    },
-  }[key];
-  if (!actions) return null;
+  const visitDate = scheduledDate ? dateBr(scheduledDate) : null;
+  const visitTime = scheduledTime ? String(scheduledTime).slice(0, 5) : null;
+  const segment = os.public_short_code || os.id;
 
-  const lines = [`Olá, ${customer.name}!`, "", actions[style]];
-  if (pref(settings.automation_preferences, ["os", "includeLink"], true)) {
-    const segment = os.public_short_code || os.id;
-    lines.push("", `*Acompanhe a OS:* https://dominex.app/os-tecnico/${segment}?modo=cliente`);
-  }
-  return lines.join("\n");
+  return renderWhatsappTemplate(template, {
+    "destinatario.nome": sanitizeWhatsappTextValue(recipientName) || customer.name,
+    "cliente.nome": customer.name,
+    ...companyValues,
+    "aviso.cliente": recipientKind(job) === "customer_contact" ? customer.name || "cliente" : null,
+    "os.numero": os.order_number ? `#${os.order_number}` : null,
+    "os.agendamento": visitDate ? (visitTime ? `${visitDate}, às ${visitTime}` : visitDate) : null,
+    "os.data": visitDate,
+    "os.horario": visitTime,
+    "os.servico": serviceResult.data?.name ?? null,
+    "os.tecnico": technicianResult.data?.full_name ?? null,
+    "os.equipamentos": equipmentNames,
+    "os.link": `https://www.dominex.app/os-tecnico/${segment}?modo=cliente`,
+  });
 }
 
 async function buildBillingMessage(
@@ -635,7 +947,8 @@ async function buildBillingMessage(
   job: Job,
   settings: SettingsData,
   customer: CustomerData,
-  company: CompanyData,
+  companyValues: CompanyValues,
+  recipientName: string,
 ) {
   const { data: charge, error: chargeError } = await supabase
     .from("tenant_charges")
@@ -646,53 +959,33 @@ async function buildBillingMessage(
   if (chargeError) throw new Error(`Não foi possível consultar a cobrança: ${chargeError.message}`);
   if (!charge || !["PENDING", "OVERDUE"].includes(charge.status)) return null;
 
-  const key = job.event_key.split(".")[1] as "created" | "before_due" | "due_today" | "after_due";
-  const style = pickStyle(pref(settings.automation_preferences, ["billing", "events", key, "template"], "automatic"));
-  const before = pref(settings.automation_preferences, ["billing", "daysBeforeDue"], 3);
-  const after = pref(settings.automation_preferences, ["billing", "daysAfterDue"], 2);
-  const companyName = `*${whatsappPlainText(company.name, "Sua empresa")}*`;
-  const openings = {
-    created: {
-      objective: `Você recebeu uma nova cobrança da ${companyName}.`,
-      cordial: `Passando para avisar que você recebeu uma nova cobrança da ${companyName}.`,
-      detailed: `Uma nova cobrança da ${companyName} foi gerada para você.`,
+  const key = job.event_key.split(".")[1] ?? "";
+  const template = resolveWhatsappTemplate({
+    domain: "billing",
+    event: key,
+    choice: pref(settings.automation_preferences, ["billing", "events", key, "template"], "automatic"),
+    customText: pref<unknown>(settings.automation_preferences, ["billing", "events", key, "customText"], null),
+    automaticStyle: pickStyle("automatic"),
+    options: {
+      includeAmount: pref(settings.automation_preferences, ["billing", "includeAmount"], true),
+      includePaymentLink: pref(settings.automation_preferences, ["billing", "includePaymentLink"], true),
     },
-    before_due: {
-      objective: `Uma cobrança da ${companyName} vence em ${before} dias.`,
-      cordial: `A ${companyName} lembra que sua cobrança vence em ${before} dias.`,
-      detailed: `Você possui uma cobrança da ${companyName} com vencimento em ${before} dias.`,
-    },
-    due_today: {
-      objective: `Uma cobrança da ${companyName} vence hoje.`,
-      cordial: `A ${companyName} lembra que sua cobrança vence hoje.`,
-      detailed: `Você possui uma cobrança da ${companyName} com vencimento hoje.`,
-    },
-    after_due: {
-      objective: `Uma cobrança da ${companyName} venceu há ${after} dias.`,
-      cordial: `A ${companyName} lembra que sua cobrança venceu há ${after} dias.`,
-      detailed: `Você possui uma cobrança da ${companyName} vencida há ${after} dias.`,
-    },
-  }[key];
-  if (!openings) return null;
+  });
+  if (!template) return null;
 
-  const details = [
-    pref(settings.automation_preferences, ["billing", "includeAmount"], true) ? `*Valor:* ${money(charge.value)}` : null,
-    `*Vencimento:* ${dateBr(charge.due_date)}`,
-    pref(settings.automation_preferences, ["billing", "includePaymentLink"], true) && charge.public_short_code
-      ? `*Pagar agora:* https://dominex.app/pagar/${charge.public_short_code}`
+  return renderWhatsappTemplate(template, {
+    "destinatario.nome": sanitizeWhatsappTextValue(recipientName) || customer.name,
+    "cliente.nome": customer.name,
+    ...companyValues,
+    "aviso.cliente": recipientKind(job) === "customer_contact" ? customer.name || "cliente" : null,
+    "cobranca.valor": money(charge.value),
+    "cobranca.vencimento": charge.due_date ? dateBr(charge.due_date) : null,
+    "cobranca.link": charge.public_short_code
+      ? `https://www.dominex.app/pagar/${charge.public_short_code}`
       : null,
-  ].filter(Boolean);
-  return [
-    `Olá, ${customer.name}!`,
-    "",
-    openings[style],
-    "",
-    ...details,
-    "",
-    "Se você já realizou o pagamento, desconsidere esta mensagem.",
-    "",
-    "Em caso de dúvida, fale com a nossa equipe por aqui.",
-  ].join("\n");
+    "cobranca.dias_antes": pref(settings.automation_preferences, ["billing", "daysBeforeDue"], 3),
+    "cobranca.dias_depois": pref(settings.automation_preferences, ["billing", "daysAfterDue"], 2),
+  });
 }
 
 async function validateScheduledReminderBeforeSend(
@@ -726,15 +1019,13 @@ async function validateScheduledReminderBeforeSend(
   return true;
 }
 
-async function beginScheduledReminderDispatch(
+async function beginSendJobDispatch(
   supabase: SupabaseClient,
   job: Job,
   phone: string,
 ): Promise<boolean> {
-  if (job.event_key !== "os.scheduled_reminder") return true;
-
   const { data: result, error } = await supabase.rpc(
-    "whatsapp_begin_scheduled_os_dispatch",
+    "whatsapp_begin_send_job_dispatch",
     { p_job_id: job.id, p_company_id: job.company_id, p_phone: phone },
   );
   if (error) {
@@ -748,29 +1039,67 @@ async function beginScheduledReminderDispatch(
   }
   if (result === "ready") return true;
 
+  // `job_unavailable` tambem cobre marker ja persistido por outra execucao.
+  // Nessa situacao nao podemos converter `processing` em `skipped`: o provedor
+  // pode estar sendo chamado agora, ou a resposta do primeiro begin pode ter
+  // se perdido. Preservar job+marker deixa a recuperacao classificar o envio
+  // como delivery_unknown sem risco de duplicar ou apagar a ambiguidade.
+  if (result === "job_unavailable" || typeof result !== "string") {
+    console.warn("[whatsapp-send-worker] dispatch already unavailable", {
+      job_id: job.id,
+      result: result ?? null,
+    });
+    return false;
+  }
+
+  const scheduled = job.event_key === "os.scheduled_reminder";
   const reason = result === "appointment_passed"
     ? "O horário agendado da visita já passou."
-    : "O agendamento ou a configuração do lembrete mudou antes do envio.";
-  await skipJob(supabase, job, `scheduled_reminder_${result ?? "obsolete"}`, reason, phone);
+    : scheduled
+    ? "O agendamento ou a configuração do lembrete mudou antes do envio."
+    : "O job deixou de estar disponível antes do envio.";
+  await skipJob(
+    supabase,
+    job,
+    scheduled ? `scheduled_reminder_${result ?? "obsolete"}` : `dispatch_${result ?? "obsolete"}`,
+    reason,
+    phone,
+  );
   return false;
 }
 
 async function processJob(supabase: SupabaseClient, job: Job) {
-  const [connectionResult, settingsResult, customerResult, companyResult, moduleResult, regionalSettingsResult] = await Promise.all([
+  const [
+    connectionResult,
+    settingsResult,
+    customerResult,
+    contactResult,
+    companyResult,
+    moduleResult,
+    regionalSettingsResult,
+  ] = await Promise.all([
     supabase.from("whatsapp_connections").select("*").eq("id", job.connection_id).eq("company_id", job.company_id).maybeSingle(),
     supabase.from("company_whatsapp_settings").select("*").eq("company_id", job.company_id).maybeSingle(),
     job.customer_id
-      ? supabase.from("customers").select("id, company_id, name, phone, celular, whatsapp_notifications_enabled, whatsapp_opt_out_at").eq("id", job.customer_id).eq("company_id", job.company_id).maybeSingle()
+      ? supabase.from("customers").select("id, company_id, name, phone, celular, whatsapp_notifications_enabled, is_deleted").eq("id", job.customer_id).eq("company_id", job.company_id).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
-    supabase.from("companies").select("name").eq("id", job.company_id).maybeSingle(),
+    recipientKind(job) === "customer_contact" && job.customer_contact_id && job.customer_id
+      ? supabase.from("customer_contacts")
+        .select("id, customer_id, name, phone")
+        .eq("id", job.customer_contact_id)
+        .eq("customer_id", job.customer_id)
+        .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    supabase.from("companies").select("name, cnpj, phone").eq("id", job.company_id).maybeSingle(),
     supabase.rpc("company_has_module", { p_company_id: job.company_id, p_module_code: "whatsapp" }),
-    supabase.from("company_settings").select("country_code, timezone").eq("company_id", job.company_id).maybeSingle(),
+    supabase.from("company_settings").select("country_code, timezone, document, phone").eq("company_id", job.company_id).maybeSingle(),
   ]);
 
   const initialReadError = [
     connectionResult.error,
     settingsResult.error,
     customerResult.error,
+    contactResult.error,
     companyResult.error,
     moduleResult.error,
     regionalSettingsResult.error,
@@ -792,6 +1121,7 @@ async function processJob(supabase: SupabaseClient, job: Job) {
   const connection = connectionResult.data;
   const settings = settingsResult.data;
   const customer = customerResult.data;
+  const contact = contactResult.data as CustomerContactData | null;
   const company = companyResult.data;
   const regionalSettings = regionalSettingsResult.data as RegionalSettingsData | null;
 
@@ -848,11 +1178,28 @@ async function processJob(supabase: SupabaseClient, job: Job) {
       );
     }
   }
-  if (!customer) {
+  if (!customer || customer.is_deleted === true) {
     return skipJob(supabase, job, "customer_unavailable", "O cliente vinculado ao envio não foi encontrado.");
   }
-  if (!customer.whatsapp_notifications_enabled || customer.whatsapp_opt_out_at) {
+  if (!customer.whatsapp_notifications_enabled) {
     return skipJob(supabase, job, "customer_opt_out", "O cliente não autorizou mensagens pelo WhatsApp.");
+  }
+  if (recipientKind(job) === "customer_contact" && !contact) {
+    return skipJob(supabase, job, "recipient_unavailable", "O contato destinatário não está mais disponível.");
+  }
+
+  const routeValidation = await validateRecipientRoute(supabase, job);
+  if (routeValidation === "error") {
+    return deferJob(
+      supabase,
+      job,
+      "recipient_route_unavailable",
+      "Não foi possível confirmar o destinatário configurado.",
+      new Date(Date.now() + 300 * 1000),
+    );
+  }
+  if (routeValidation !== "valid") {
+    return skipJob(supabase, job, "recipient_route_changed", "O destinatário não está mais configurado para esta mensagem.");
   }
   if (!regionalSettings?.country_code) {
     return deferJob(
@@ -872,8 +1219,14 @@ async function processJob(supabase: SupabaseClient, job: Job) {
       new Date(Date.now() + 3600 * 1000),
     );
   }
-  const phone = normalizePhone(customer.celular?.trim() || customer.phone, regionalSettings.country_code);
-  if (!phone) return skipJob(supabase, job, "invalid_phone", "Cliente sem WhatsApp válido cadastrado.");
+  const rawPhone = recipientKind(job) === "customer_contact"
+    ? contact?.phone
+    : customer.celular?.trim() || customer.phone;
+  const recipientName = recipientKind(job) === "customer_contact"
+    ? contact?.name ?? customer.name
+    : customer.name;
+  const phone = normalizePhone(rawPhone, regionalSettings.country_code);
+  if (!phone) return skipJob(supabase, job, "invalid_phone", "Destinatário sem WhatsApp válido cadastrado.");
 
   const { data: optedOut, error: optedOutError } = await supabase
     .from("whatsapp_opt_outs").select("phone").eq("company_id", job.company_id).eq("phone", phone).maybeSingle();
@@ -886,7 +1239,31 @@ async function processJob(supabase: SupabaseClient, job: Job) {
       new Date(Date.now() + 300 * 1000),
     );
   }
-  if (optedOut) return skipJob(supabase, job, "customer_opt_out", "O cliente pediu para parar os envios.", phone);
+  if (optedOut) return skipJob(supabase, job, "customer_opt_out", "O destinatário pediu para parar os envios.", phone);
+
+  try {
+    if (await alreadySentToPhoneForSource(supabase, job, phone)) {
+      return skipJob(
+        supabase,
+        job,
+        "duplicate_recipient",
+        "Este número já recebeu esta mensagem.",
+        phone,
+      );
+    }
+  } catch (error) {
+    console.error("[whatsapp-send-worker] duplicate recipient query failed", {
+      job_id: job.id,
+      message: error instanceof Error ? error.message : String(error),
+    });
+    return deferJob(
+      supabase,
+      job,
+      "duplicate_check_unavailable",
+      "Não foi possível confirmar se este destinatário já recebeu a mensagem.",
+      new Date(Date.now() + 300 * 1000),
+    );
+  }
 
   const { data: canSend, error: quotaError } = await supabase.rpc("whatsapp_can_send", { p_company_id: job.company_id });
   if (quotaError) {
@@ -985,7 +1362,7 @@ async function processJob(supabase: SupabaseClient, job: Job) {
           supabase,
           job,
           "billing_recipient_limit",
-          "Já foi enviada uma cobrança a este cliente nas últimas 24 horas.",
+          "Já foi enviada uma cobrança a este destinatário nas últimas 24 horas.",
           await volumeDeferAt(supabase, job, delaySeconds),
         );
       }
@@ -1018,10 +1395,17 @@ async function processJob(supabase: SupabaseClient, job: Job) {
     }
   }
 
+  const companyValues = resolveWhatsappCompanyValues({
+    name: company?.name,
+    cnpj: (company as CompanyData | null)?.cnpj,
+    phone: (company as CompanyData | null)?.phone,
+    settingsDocument: regionalSettings?.document,
+    settingsPhone: regionalSettings?.phone,
+  });
   let text: string | null;
   try {
     if (job.source_type === "service_order") {
-      text = await buildOsMessage(supabase, job, settings, customer);
+      text = await buildOsMessage(supabase, job, settings, customer, companyValues, recipientName);
     } else {
       // O nome identifica o remetente antes do link de pagamento. Sem ele, não
       // enviamos uma cobrança genérica que possa parecer fraude ao cliente.
@@ -1034,7 +1418,7 @@ async function processJob(supabase: SupabaseClient, job: Job) {
           new Date(Date.now() + 300 * 1000),
         );
       }
-      text = await buildBillingMessage(supabase, job, settings, customer, company);
+      text = await buildBillingMessage(supabase, job, settings, customer, companyValues, recipientName);
     }
   } catch (error) {
     console.error("[whatsapp-send-worker] source query failed", {
@@ -1080,11 +1464,10 @@ async function processJob(supabase: SupabaseClient, job: Job) {
       ? undefined
       : typingDelayMs(text);
 
-    // O lembrete agendado precisa validar o snapshot DEPOIS da espera humana.
-    // Portanto, nele a digitacao e simulada localmente e o provedor recebe o
-    // envio sem `delay`; nos eventos transacionais antigos o delay server-side
-    // permanece inalterado.
-    if (job.event_key === "os.scheduled_reminder" && delayMs !== undefined) {
+    // A digitacao e simulada localmente em todos os eventos. Assim a barreira
+    // final roda DEPOIS da espera humana, e o provedor nunca recebe um delay
+    // durante o qual telefone, opt-out, assinatura ou origem poderiam mudar.
+    if (delayMs !== undefined) {
       try {
         await sendPresence(connection.instance_name, phone, "composing");
       } catch {
@@ -1098,10 +1481,40 @@ async function processJob(supabase: SupabaseClient, job: Job) {
       }
     }
 
-    // Segunda barreira depois dos efeitos humanos e imediatamente antes da
-    // chamada que pode enviar. Fecha a janela de corrida aberta por marcar
-    // leitura/presenca enquanto o agendamento ainda podia mudar.
-    if (!(await beginScheduledReminderDispatch(supabase, job, phone))) {
+    // Ultima barreira antes do provedor: rele todas as fontes mutaveis, nao so
+    // rota/opt-out. A autorizacao obtida no inicio do job pode ter expirado.
+    const finalValidation = await validateFinalDispatchState(
+      supabase,
+      job,
+      phone,
+      regionalSettings.country_code,
+    );
+    if (finalValidation.status === "defer") {
+      await deferJob(
+        supabase,
+        job,
+        finalValidation.code,
+        finalValidation.message,
+        new Date(Date.now() + 300 * 1000),
+      );
+      await goodbyePresence(connection.instance_name, phone);
+      return;
+    }
+    if (finalValidation.status === "skip") {
+      await skipJob(
+        supabase,
+        job,
+        finalValidation.code,
+        finalValidation.message,
+        phone,
+      );
+      await goodbyePresence(connection.instance_name, phone);
+      return;
+    }
+
+    // O marco duravel vale para TODO evento. Depois dele, crash/timeout nunca
+    // transforma entrega ambigua em retry automatico.
+    if (!(await beginSendJobDispatch(supabase, job, phone))) {
       await goodbyePresence(connection.instance_name, phone);
       return;
     }
@@ -1111,47 +1524,32 @@ async function processJob(supabase: SupabaseClient, job: Job) {
       connection.instance_name,
       phone,
       text,
-      job.event_key === "os.scheduled_reminder" ? undefined : { delayMs },
     );
     const sentAt = new Date().toISOString();
     // Cadência humana (log-normal + pausa longa ocasional + curva horária) em
     // vez de intervalo uniforme, que é assinatura estatística de máquina.
     const gapSeconds = humanGapSeconds(companyHour(regionalSettings.timezone));
     const nextSendAt = new Date(Date.now() + gapSeconds * 1000).toISOString();
-    if (job.event_key === "os.scheduled_reminder") {
-      const { data: finalized, error: finalizeError } = await supabase.rpc(
-        "whatsapp_finalize_scheduled_os_reminder",
-        {
-          p_job_id: job.id,
-          p_company_id: job.company_id,
-          p_phone: phone,
-          p_provider_message_id: sent.id,
-          p_sent_at: sentAt,
-          p_next_send_at: nextSendAt,
-        },
-      );
-      if (finalizeError || finalized !== true) {
-        // O provedor ja aceitou. Manter processing+marker impede duplicidade;
-        // a recuperacao classifica delivery_unknown se o commit nao ocorreu.
-        console.error("[whatsapp-send-worker] scheduled reminder finalization unavailable", {
-          job_id: job.id,
-          message: finalizeError?.message ?? "finalization_rejected",
-        });
-        await goodbyePresence(connection.instance_name, phone);
-        return;
-      }
-    } else {
-      await recordEvent(supabase, job, {
-        phone, status: "enviado", error: null, sent_at: sentAt, provider_message_id: sent.id,
+    const { data: finalized, error: finalizeError } = await supabase.rpc(
+      "whatsapp_finalize_send_job",
+      {
+        p_job_id: job.id,
+        p_company_id: job.company_id,
+        p_phone: phone,
+        p_provider_message_id: sent.id,
+        p_sent_at: sentAt,
+        p_next_send_at: nextSendAt,
+      },
+    );
+    if (finalizeError || finalized !== true) {
+      // O provedor ja aceitou. Manter processing+marker impede duplicidade;
+      // a recuperacao classifica delivery_unknown se o commit nao ocorreu.
+      console.error("[whatsapp-send-worker] send finalization unavailable", {
+        job_id: job.id,
+        message: finalizeError?.message ?? "finalization_rejected",
       });
-      await supabase.from("whatsapp_send_jobs").update({
-        status: "sent", locked_at: null, sent_at: sentAt, provider_message_id: sent.id,
-        last_error: null, last_error_code: null,
-      }).eq("id", job.id).eq("company_id", job.company_id);
-      await supabase.from("whatsapp_connections").update({
-        next_send_at: nextSendAt,
-        consecutive_failures: 0, last_error: null, last_seen_at: sentAt,
-      }).eq("id", job.connection_id).eq("company_id", job.company_id);
+      await goodbyePresence(connection.instance_name, phone);
+      return;
     }
     // Só AGORA, com job=sent, evento=enviado e a conexão já reagendada: nenhum
     // timeout da presença final pode fazer um envio bem-sucedido parecer falha.

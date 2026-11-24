@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { getErrorMessage } from '@/utils/errorMessages';
+import { assertRowsAffected } from '@/lib/supabaseMutation';
 import type { Database, Json, Tables } from '@/integrations/supabase/types';
 import { MATERIAL_PURCHASE_REPORT_QUERY_KEY } from '@/hooks/useMaterialPurchaseReport';
 
@@ -356,8 +357,11 @@ export function useCompraOrdens(compraId: string | null): UseCompraOrdensResult 
   // envio; o client só manda o status.
   const setOrdemStatus = useMutation<void, Error, { ordemId: string; status: CompraOrdemStatus }>({
     mutationFn: async ({ ordemId, status }) => {
-      const { error } = await supabase.from('compra_ordens').update({ status }).eq('id', ordemId);
-      if (error) throw error;
+      // RLS barrando não dá erro, só altera zero linhas: conferir.
+      assertRowsAffected(
+        await supabase.from('compra_ordens').update({ status }, { count: 'exact' }).eq('id', ordemId),
+        'update',
+      );
     },
     onSuccess: (_data, { status }) => {
       invalidateOrdens();
@@ -425,8 +429,11 @@ export function useCompraOrdens(compraId: string | null): UseCompraOrdensResult 
   // ---- Excluir O.C. (CASCADE remove os itens) ----
   const deleteOrdem = useMutation<void, Error, string>({
     mutationFn: async (ordemId: string) => {
-      const { error } = await supabase.from('compra_ordens').delete().eq('id', ordemId);
-      if (error) throw error;
+      // RLS barrando não dá erro, só apaga zero linhas: conferir.
+      assertRowsAffected(
+        await supabase.from('compra_ordens').delete({ count: 'exact' }).eq('id', ordemId),
+        'delete',
+      );
     },
     onSuccess: () => {
       invalidateOrdens();

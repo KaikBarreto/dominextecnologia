@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { getReportResponseContent } from './osReportResponse';
 
 describe('getReportResponseContent', () => {
-  it('preserva foto e vídeo em uma pergunta composta com tipo-base diferente', () => {
+  it('preserva foto e vídeo em uma pergunta composta', () => {
     expect(getReportResponseContent({
       response_value: null,
       response_photo_url: ' https://cdn.test/foto-1.jpg,https://cdn.test/foto-2.jpg ',

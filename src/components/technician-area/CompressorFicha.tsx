@@ -1,3 +1,5 @@
+import { CatalogFavoriteButton } from './CatalogFavoriteButton';
+import { useCatalogVisit } from '@/hooks/useCatalogVisit';
 import { useMemo, useState } from 'react';
 import { ArrowLeft, Cpu, Download, Flame, Loader2, PackageSearch } from 'lucide-react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -9,7 +11,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
+import { CatalogPhotoCaption, CatalogDocumentReference, CatalogImagePreview } from './CatalogAssetReference';
 import { CatalogImage } from './CatalogImage';
 import { getRefrigerante } from '@/lib/refrigerantes';
 import { idealForeground } from '@/lib/colorContrast';
@@ -119,6 +121,7 @@ export function CompressorFicha({
   model: EquipmentModel;
   onBack: () => void;
 }) {
+  useCatalogVisit(model.id);
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.technicianTools.compressorSheet;
   const manualLabels = MESSAGES[locale].app.technicianTools.catalog.manualTypes as ManualTypeLabels;
@@ -188,6 +191,7 @@ export function CompressorFicha({
   return (
     <div className="space-y-6 pb-8">
       <Header
+        modelId={model.id}
         icon={Cpu}
         eyebrow={t.eyebrow}
         title={tituloTopo}
@@ -215,6 +219,9 @@ export function CompressorFicha({
           <span className="text-xs text-neutral-400">{t.noPhoto}</span>
         </div>
       )}
+
+      <CatalogPhotoCaption model={model} />
+      <CatalogDocumentReference model={model} />
 
       {/* Ficha */}
       {isLoading ? (
@@ -307,9 +314,8 @@ export function CompressorFicha({
       )}
 
       {temFoto && (
-        <ImagePreviewModal
-          src={model.image_url!}
-          alt={model.name}
+        <CatalogImagePreview
+          model={model}
           open={viewerOpen}
           onClose={() => setViewerOpen(false)}
         />
@@ -327,16 +333,20 @@ function Header({
   title,
   eyebrow,
   onBack,
+  modelId,
 }: {
   icon: typeof Cpu;
   title: string;
   /** Rótulo pequeno acima do título (ex: "Ficha Técnica"). */
   eyebrow?: string;
   onBack: () => void;
+  modelId: string;
 }) {
+  const { locale } = useAppLocaleContext();
+  const backLabel = MESSAGES[locale].app.os.technicianArea.btnBack;
   return (
     <div className="flex items-start gap-3">
-      <Button variant="ghost" size="icon" className="shrink-0" onClick={onBack}>
+      <Button variant="ghost" size="icon" aria-label={backLabel} title={backLabel} className="h-11 w-11 shrink-0 hover:bg-red-600 hover:text-white" onClick={onBack}>
         <ArrowLeft className="h-5 w-5" />
       </Button>
       <div className="flex min-w-0 flex-1 items-start gap-2">
@@ -353,6 +363,7 @@ function Header({
           </h1>
         </div>
       </div>
+      <CatalogFavoriteButton modelId={modelId} />
     </div>
   );
 }

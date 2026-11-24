@@ -12,16 +12,27 @@ describe('useContracts — guardas das visitas personalizadas', () => {
   });
 
   it('limpa metadados contratuais ao preservar uma OS passada como avulsa', () => {
-    expect(source).toContain('contract_id: null,\n        contract_reference_date: null,\n        contract_visit_customized_at: null');
+    // A exclusão de contrato virou tudo-ou-nada no banco (delete_contract_cascade):
+    // a regra de desvincular a OS passada mora na migration.
+    const rpc = readFileSync('supabase/migrations/20261121150000_delete_cascade_rpcs_transacionais.sql', 'utf8');
+    expect(rpc).toMatch(/contract_reference_date = NULL,\s+contract_visit_customized_at = NULL/);
+    expect(source).toContain("supabase.rpc('delete_contract_cascade', { p_contract_id: id, p_today: todayStr })");
   });
 
-  it('não cai no fluxo não atômico quando a RPC transacional está habilitada', () => {
+  it('usa somente a RPC transacional para persistir visitas contratuais', () => {
     const orchestration = source.slice(
-      source.indexOf('export async function regenerateViaRpcOrFallback'),
+      source.indexOf('export async function regenerateContractVisitsAtomic'),
       source.indexOf('async function deleteRegenerableOrders'),
     );
-    expect(orchestration).toContain('if (!a.enabled) return a.fallback()');
-    expect(orchestration).not.toContain('catch');
-    expect(orchestration).not.toContain('return a.fallback();\n  } catch');
+    expect(orchestration).toContain("a.rpc('regenerate_contract_visits_with_override'");
+    expect(orchestration).toContain('assertAllVisitsPersisted(createdCount, a.expectedOsCount)');
+    expect(orchestration).not.toContain('fallback');
+  });
+
+  it('não usa flag de rollout nem chama o regenerador legado nos fluxos do contrato', () => {
+    const hook = source.slice(source.indexOf('export function useContracts()'));
+    expect(hook).not.toContain('useFeatureFlag');
+    expect(hook).not.toContain('isFlagEnabledFor');
+    expect(hook).not.toContain('regenerateFutureVisits({');
   });
 });

@@ -97,6 +97,47 @@ export interface CreatedCharge {
   financeWarning: string | null;
 }
 
+/** Payload idempotente da criação de cobranças mensais em lote. */
+export interface CreateInstallmentBatchInput {
+  client_request_id: string;
+  customer_id: string;
+  /** Valor TOTAL a ser rateado pelo servidor, nunca o valor de cada parcela. */
+  total_value: number;
+  installment_count: number;
+  first_due_date: string;
+  billing_type: Exclude<TenantChargeBillingType, 'CREDIT_CARD'>;
+  description?: string;
+  fine_percent?: number;
+  fine_value?: number;
+  fine_type?: 'PERCENTAGE' | 'FIXED';
+  interest_percent?: number;
+  discount_percent?: number;
+  discount_days?: number;
+  category?: string;
+  cost_center_id?: string | null;
+  post_to_finance?: boolean;
+}
+
+export type InstallmentBatchItemStatus = 'created' | 'existing' | 'failed';
+
+export interface InstallmentBatchItem {
+  number: number;
+  status: InstallmentBatchItemStatus;
+  charge: CreatedCharge | null;
+  error: string | null;
+}
+
+export interface CreateInstallmentBatchResult {
+  ok: boolean;
+  batch_id: string;
+  total: number;
+  created: number;
+  existing: number;
+  failed: number;
+  completed: boolean;
+  installments: InstallmentBatchItem[];
+}
+
 /**
  * Resultado NORMALIZADO da mutation de criar cobrança.
  *
@@ -213,6 +254,65 @@ function createChargeError(body: Record<string, unknown> | null, fallback: strin
   });
 }
 
+/** Normaliza a resposta processada da edge, inclusive o sucesso parcial. */
+export function parseInstallmentBatchResponse(data: unknown): CreateInstallmentBatchResult {
+  const responseBody = data as Record<string, unknown> | null;
+  if (!responseBody || responseBody.ok !== true) {
+    throw createChargeError(responseBody, 'Não foi possível gerar as parcelas.');
+  }
+
+  const rawInstallments = Array.isArray(responseBody.installments)
+    ? responseBody.installments
+    : [];
+  const installments: InstallmentBatchItem[] = rawInstallments.map((raw, index) => {
+    const row = raw && typeof raw === 'object' ? raw as Record<string, unknown> : {};
+    const rawStatus = row.status;
+    const status: InstallmentBatchItemStatus =
+      rawStatus === 'created' || rawStatus === 'existing' || rawStatus === 'failed'
+        ? rawStatus
+        : 'failed';
+    const rawCharge = row.charge && typeof row.charge === 'object'
+      ? row.charge as Record<string, unknown>
+      : null;
+    const charge: CreatedCharge | null = rawCharge
+      ? {
+          id: typeof rawCharge.id === 'string' ? rawCharge.id : '',
+          public_short_code: typeof rawCharge.public_short_code === 'string' ? rawCharge.public_short_code : '',
+          checkout_url: typeof rawCharge.checkout_url === 'string' ? rawCharge.checkout_url : '',
+          invoice_url: typeof rawCharge.invoice_url === 'string' ? rawCharge.invoice_url : null,
+          pix_copy_paste: typeof rawCharge.pix_copy_paste === 'string' ? rawCharge.pix_copy_paste : null,
+          boleto_url: typeof rawCharge.boleto_url === 'string' ? rawCharge.boleto_url : null,
+          value: Number(rawCharge.value ?? 0),
+          due_date: typeof rawCharge.due_date === 'string' ? rawCharge.due_date : null,
+          status: typeof rawCharge.status === 'string' ? rawCharge.status : '',
+          financeWarning:
+            typeof rawCharge.financeWarning === 'string'
+              ? rawCharge.financeWarning
+              : typeof rawCharge.finance_warning === 'string'
+                ? rawCharge.finance_warning
+                : null,
+        }
+      : null;
+    return {
+      number: Number.isFinite(Number(row.number)) ? Number(row.number) : index + 1,
+      status,
+      charge,
+      error: typeof row.error === 'string' && row.error.trim() ? row.error : null,
+    };
+  });
+
+  return {
+    ok: true,
+    batch_id: typeof responseBody.batch_id === 'string' ? responseBody.batch_id : '',
+    total: Number(responseBody.total ?? installments.length),
+    created: Number(responseBody.created ?? installments.filter((item) => item.status === 'created').length),
+    existing: Number(responseBody.existing ?? installments.filter((item) => item.status === 'existing').length),
+    failed: Number(responseBody.failed ?? installments.filter((item) => item.status === 'failed').length),
+    completed: responseBody.completed === true,
+    installments,
+  };
+}
+
 async function extractEdgeError(error: unknown, data: unknown, fallback: string): Promise<string> {
   if (data && typeof data === 'object' && 'error' in data && (data as { error?: string }).error) {
     return (data as { error: string }).error;
@@ -292,7 +392,7 @@ export interface DeleteChargeResult {
 
 /** Monta a URL pública amigável do checkout a partir do short_code. */
 export function buildCheckoutUrl(shortCode: string): string {
-  return `https://dominex.app/pagar/${shortCode}`;
+  return `https://www.dominex.app/pagar/${shortCode}`;
 }
 
 export interface UseTenantChargesOptions {
@@ -548,6 +648,32 @@ export function useTenantCharges(options?: UseTenantChargesOptions) {
     },
   });
 
+  const createInstallmentBatch = useMutation({
+    mutationFn: async (input: CreateInstallmentBatchInput): Promise<CreateInstallmentBatchResult> => {
+      // O payload inteiro precisa permanecer idêntico no retry. A edge usa
+      // client_request_id + hash para devolver as parcelas existentes e criar
+      // somente as que falharam, sem duplicar cobranças no Asaas.
+      const { data, error } = await supabase.functions.invoke('tenant-asaas-create-installment-batch', {
+        body: input,
+      });
+      if (error) {
+        throw new CreateChargeApiError(
+          await extractEdgeError(error, data, 'Não foi possível gerar as parcelas.'),
+          'unknown',
+        );
+      }
+
+      return parseInstallmentBatchResponse(data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: listKey });
+      queryClient.invalidateQueries({ queryKey: ['tenant-charges', companyId] });
+      queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+    },
+  });
+
   return {
     charges: list.data ?? [],
     isLoading: list.isLoading,
@@ -557,6 +683,7 @@ export function useTenantCharges(options?: UseTenantChargesOptions) {
     refetch: list.refetch,
     companyId,
     create,
+    createInstallmentBatch,
     refund,
     update,
     remove,

@@ -88,14 +88,21 @@ BEGIN
   );
   IF COALESCE((v_result->>'ok')::boolean, false) IS NOT TRUE
      OR NOT EXISTS (
+       SELECT 1 FROM public.portal_calls pc
+        WHERE pc.id = (v_result->>'portal_call_id')::uuid
+          AND pc.contract_id = v_contract_id
+          AND pc.customer_id = v_customer_a
+          AND pc.company_id = v_company_id
+          AND pc.status = 'aguardando_analise'
+          AND pc.service_order_id IS NULL
+     )
+     OR EXISTS (
        SELECT 1 FROM public.service_orders so
-        WHERE so.id = (v_result->>'service_order_id')::uuid
-          AND so.contract_id = v_contract_id
-          AND so.customer_id = v_customer_a
-          AND so.company_id = v_company_id
+        WHERE so.contract_id = v_contract_id
+          AND so.description = 'Chamado válido pelo portal do contrato'
      )
   THEN
-    RAISE EXCEPTION 'RPC do portal do contrato nao preservou abertura segura de chamado: %', v_result;
+    RAISE EXCEPTION 'RPC do portal do contrato nao preservou chamado separado de OS: %', v_result;
   END IF;
 
   INSERT INTO public.equipment (company_id, customer_id, name, custom_fields)

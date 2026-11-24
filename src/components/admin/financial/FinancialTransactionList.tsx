@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { MobileListItem, type ItemAction } from '@/components/mobile/MobileListItem';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { RowActionsMenu, type RowAction } from '@/components/ui/RowActionsMenu';
@@ -21,6 +20,7 @@ import {
   type AdminFinancialTransaction,
 } from '@/hooks/useAdminFinancialTransactions';
 import { AdminCategoryPill } from './AdminCategoryPill';
+import { FinancialTypeBadge, financialAmountClass } from '@/components/admin/FinancialRecordBadges';
 
 interface Props {
   transactions: any[];
@@ -78,7 +78,7 @@ export function FinancialTransactionList({ transactions, categories, variant = '
             <AlertDialogAction
               onClick={confirmDelete}
               disabled={deleteMutation.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-red-600 text-white hover:bg-white"
             >
               {deleteMutation.isPending ? 'Excluindo...' : 'Excluir'}
             </AlertDialogAction>
@@ -131,10 +131,7 @@ export function FinancialTransactionList({ transactions, categories, variant = '
                 }
                 trailing={
                   <span
-                    className={cn(
-                      'text-sm font-semibold whitespace-nowrap',
-                      isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400',
-                    )}
+                    className={cn('text-sm whitespace-nowrap', financialAmountClass(t.type))}
                   >
                     {isIncome ? '+' : '-'}{fmt(Number(t.amount))}
                   </span>
@@ -176,16 +173,14 @@ export function FinancialTransactionList({ transactions, categories, variant = '
                   <TableCell className="text-sm">{format(new Date(t.transaction_date), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
                   {variant === 'mixed' && (
                     <TableCell>
-                      <Badge className={t.type === 'income' ? 'bg-emerald-500 text-white hover:bg-emerald-600' : 'bg-red-500 text-white hover:bg-red-600'}>
-                        {t.type === 'income' ? 'Receita' : 'Despesa'}
-                      </Badge>
+                      <FinancialTypeBadge type={t.type} />
                     </TableCell>
                   )}
                   <TableCell>
                     <AdminCategoryPill name={t.category} categories={categories} />
                   </TableCell>
                   <TableCell className="text-sm max-w-[300px] truncate">{t.description || '-'}</TableCell>
-                  <TableCell className={cn('text-right font-medium', t.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400')}>
+                  <TableCell className={cn('text-right', financialAmountClass(t.type))}>
                     {t.type === 'income' ? '+' : '-'}{fmt(Number(t.amount))}
                   </TableCell>
                   <TableCell className="text-right">
