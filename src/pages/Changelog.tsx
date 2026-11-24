@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.59',
+    date: '24 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Acesso normal para usuários internos',
+        category: 'correcao',
+        description: 'Usuários internos com perfil e permissões ativas agora conseguem entrar normalmente, mesmo quando não possuem um papel administrativo. Contas inativas ou sem vínculo válido continuam protegidas.',
+      },
+      {
+        title: 'Recuperação mais clara em falhas inesperadas',
+        category: 'melhoria',
+        description: 'Quando uma tela não puder ser aberta, o sistema informa claramente que algo deu errado e oferece uma atualização completa do aplicativo para tentar novamente.',
+      },
+    ],
+  },
+  {
     version: '1.41.58',
     date: '24 de novembro de 2026',
     type: 'patch',

@@ -4,7 +4,7 @@
 // retorno do OAuth (Google) em `AuthCallback.tsx`. Mantém UMA fonte da verdade
 // para:
 //   - registrar a sessão em `active_sessions` (single-session enforcement);
-//   - decidir se a conta tem acesso ao sistema (super_admin OU ≥1 user_role);
+//   - decidir se a conta tem acesso ao sistema (papel OU permissões explícitas);
 //   - resolver o destino pós-login (admin / checkout / agenda / dashboard).
 //
 // IMPORTANTE: estes helpers NÃO emitem toast nem navegam — só calculam/efetuam
@@ -115,25 +115,71 @@ export async function registerSession(userId: string): Promise<string | null> {
   return sessionToken;
 }
 
+type LoginAccessSnapshot = {
+  roles: string[];
+  companyId: string | null;
+  profileIsActive: boolean;
+  hasActivePermissionRecord: boolean;
+};
+
+async function loadLoginAccessSnapshot(userId: string): Promise<LoginAccessSnapshot> {
+  const [rolesResult, profileResult, permissionsResult] = await Promise.all([
+    withPostLoginTimeout(
+      supabase.from("user_roles").select("role").eq("user_id", userId),
+      "load-login-roles",
+    ),
+    withPostLoginTimeout(
+      supabase
+        .from("profiles")
+        .select("company_id, is_active")
+        .eq("user_id", userId)
+        .maybeSingle(),
+      "load-login-profile",
+    ),
+    withPostLoginTimeout(
+      supabase
+        .from("user_permissions")
+        .select("is_active")
+        .eq("user_id", userId)
+        .maybeSingle(),
+      "load-login-permissions",
+    ),
+  ]);
+
+  if (rolesResult.error) throw rolesResult.error;
+  if (profileResult.error) throw profileResult.error;
+  if (permissionsResult.error) throw permissionsResult.error;
+
+  return {
+    roles: (rolesResult.data ?? []).map((row) => row.role),
+    companyId: profileResult.data?.company_id ?? null,
+    profileIsActive: profileResult.data?.is_active === true,
+    hasActivePermissionRecord: permissionsResult.data?.is_active === true,
+  };
+}
+
+function snapshotHasSystemAccess(snapshot: LoginAccessSnapshot): boolean {
+  if (snapshot.roles.includes("super_admin")) return true;
+
+  // Todo acesso de tenant exige vínculo ativo com uma empresa. Um usuário
+  // interno pode não ter papel global: nesse modelo, a linha ativa em
+  // user_permissions é a fonte canônica e sua lista define as telas liberadas.
+  if (!snapshot.profileIsActive || !snapshot.companyId) return false;
+
+  return snapshot.roles.length > 0 || snapshot.hasActivePermissionRecord;
+}
+
 /**
- * Define se a conta TEM acesso ao Dominex. Espelha o guard do app (incidente
- * Glacial): acesso real = super_admin OU possui ≥1 linha em `user_roles`.
+ * Define se a conta TEM acesso ao Dominex. Usuários internos podem ser
+ * provisionados somente com permissões explícitas, sem papel global. Contas
+ * desconhecidas, perfis inativos e estados incompletos continuam negados.
  *
  * Usado pelo retorno do OAuth para barrar contas Google desconhecidas (sem
- * vínculo de empresa/role) — sem auto-cadastro. Defensivo: em erro de query,
- * retorna false (nega o acesso) pra não liberar conta sem vínculo confirmado.
+ * auto-cadastro). Defensivo: em erro de query, retorna false.
  */
 export async function hasSystemAccess(userId: string): Promise<boolean> {
   try {
-    const { data, error } = await withPostLoginTimeout(
-      supabase.from("user_roles").select("role").eq("user_id", userId),
-      "check-system-access",
-    );
-    if (error) {
-      console.warn("[postLogin] hasSystemAccess query failed:", error.message);
-      return false;
-    }
-    return (data ?? []).length > 0;
+    return snapshotHasSystemAccess(await loadLoginAccessSnapshot(userId));
   } catch (e) {
     console.warn("[postLogin] hasSystemAccess threw:", e);
     return false;
@@ -149,41 +195,24 @@ export async function hasSystemAccess(userId: string): Promise<boolean> {
  *   - demais → /dashboard
  */
 export async function resolvePostLoginRedirect(userId: string): Promise<string> {
-  const [rolesResult, profileResult] = await Promise.all([
-    withPostLoginTimeout(
-      supabase.from("user_roles").select("role").eq("user_id", userId),
-      "load-login-roles",
-    ),
-    withPostLoginTimeout(
-      supabase.from("profiles").select("company_id").eq("user_id", userId).maybeSingle(),
-      "load-login-profile",
-    ),
-  ]);
+  const access = await loadLoginAccessSnapshot(userId);
+  const userRoles = access.roles;
 
-  if (rolesResult.error) throw rolesResult.error;
-  if (profileResult.error) throw profileResult.error;
-
-  const rolesData = rolesResult.data;
-  const userRoles = (rolesData ?? []).map((row) => row.role);
-
-  // O app e as policies consideram acesso real somente com papel explícito.
-  // Em estado desconhecido ou sem vínculo, nunca cair no dashboard por padrão.
-  if (userRoles.length === 0) {
-    throw new Error("Authenticated user has no system role");
+  // Estado desconhecido ou sem vínculo nunca cai no dashboard por padrão.
+  if (!snapshotHasSystemAccess(access)) {
+    throw new Error("Authenticated user has no active system access");
   }
 
   if (userRoles.includes("super_admin")) {
     return "/admin/empresas";
   }
 
-  const profileData = profileResult.data;
-
-  if (profileData?.company_id) {
+  if (access.companyId) {
     const { data: companyData, error: companyError } = await withPostLoginTimeout(
       supabase
         .from("companies")
         .select("subscription_status, payment_lock_bypass")
-        .eq("id", profileData.company_id)
+        .eq("id", access.companyId)
         .maybeSingle(),
       "load-login-company",
     );
