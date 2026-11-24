@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.62',
+    date: '24 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Mais espaço para vender no notebook',
+        category: 'melhoria',
+        description: 'A tela de venda aproveita melhor a altura disponível e reduz espaços entre as informações em telas baixas. Assim, mais produtos e itens do pedido ficam à vista, mantendo os valores legíveis e o botão de receber acessível.',
+      },
+    ],
+  },
+  {
     version: '1.41.61',
     date: '24 de novembro de 2026',
     type: 'patch',

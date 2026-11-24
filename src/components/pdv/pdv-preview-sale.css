@@ -140,6 +140,30 @@
   background: hsl(var(--card));
 }
 
+/* Mais área de trabalho no notebook, mantendo fontes, valores e CTA legíveis. */
+@media (min-width: 801px) and (max-height: 800px) {
+  .pdv-preview-sale .catalog { padding: 16px 20px; }
+  .pdv-preview-sale .cataloghead { margin-bottom: 12px; }
+  .pdv-preview-sale .cataloghead small { display: none; }
+  .pdv-preview-sale .catalogswitch { margin-bottom: 12px; }
+  .pdv-preview-sale .catalogswitch button { padding-block: 6px 8px; }
+  .pdv-preview-sale .quickcaption { margin: 12px 0 8px; }
+  .pdv-preview-sale .catalogfoot { margin-top: 10px; }
+  .pdv-preview-sale [data-testid="pdv-cart-workspace"] > .carthead { padding: 12px 16px; }
+  .pdv-preview-sale [data-testid="pdv-cart-workspace"] .clientrow { margin-top: 8px; }
+  .pdv-preview-sale [data-testid="pdv-cart-workspace"] > .cartlistcaption { padding-top: 4px; }
+  .pdv-preview-sale [data-testid="pdv-cart-workspace"] .cartitem { padding-block: 12px; }
+  .pdv-preview-sale [data-testid="pdv-cart-workspace"] > .cartsummary { padding: 10px 16px; }
+  .pdv-preview-sale [data-testid="pdv-cart-workspace"] .sumline { margin-block: 4px; }
+  .pdv-preview-sale [data-testid="pdv-cart-workspace"] .benefitbtn { padding-block: 8px; }
+  .pdv-preview-sale [data-testid="pdv-cart-workspace"] .total { margin-top: 8px; }
+  .pdv-preview-sale [data-testid="pdv-cart-workspace"] > .cartsummary > .total { bottom: -10px; padding-top: 6px; }
+  .pdv-preview-sale [data-testid="pdv-cart-workspace"] > .cartfooter { gap: 4px; padding: 8px 16px 12px; }
+  .pdv-preview-sale [data-testid="pdv-cart-workspace"] > .cartfooter > .btn.ghost { min-height: 36px; padding-block: 6px; }
+  .pdv-preview-sale[data-testid="pdv-sale-workspace"] .pdv-order-switcher { height: 48px; }
+  .pdv-preview-sale[data-testid="pdv-sale-workspace"] .pdv-order-tab { padding-block: 5px; }
+}
+
 /* Em janelas muito baixas, as ações dividem uma faixa para sobrar área
    rolável para os valores. Nenhuma ação depende da dica de atalho. */
 @media (min-width: 801px) and (max-height: 500px) {

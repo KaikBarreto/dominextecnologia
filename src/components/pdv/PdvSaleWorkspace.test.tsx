@@ -37,19 +37,19 @@ beforeEach(() => {
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe('altura disponível para receber a venda', () => {
-  it('mantém o carrinho limitado quando restam menos de 400 px no notebook', () => {
+  it('limita o carrinho à área útil sem reservar um rodapé ausente', () => {
     render(<PdvSaleWorkspace {...props()} />);
-    expect(screen.getByTestId('sale-viewport')).toHaveStyle({ height: '364px' });
+    expect(screen.getByTestId('sale-viewport')).toHaveStyle({ height: '416px' });
   });
 
   it('recalcula ao reduzir a janela e ao mudar a altura do cabeçalho', () => {
     vi.stubGlobal('innerHeight', 900);
     render(<PdvSaleWorkspace {...props()} />);
-    expect(screen.getByTestId('sale-viewport')).toHaveStyle({ height: '664px' });
+    expect(screen.getByTestId('sale-viewport')).toHaveStyle({ height: '716px' });
     vi.stubGlobal('innerHeight', 600);
     vi.mocked(HTMLElement.prototype.getBoundingClientRect).mockReturnValue({ top: 220 } as DOMRect);
     fireEvent(window, new Event('resize'));
-    expect(screen.getByTestId('sale-viewport')).toHaveStyle({ height: '304px' });
+    expect(screen.getByTestId('sale-viewport')).toHaveStyle({ height: '356px' });
   });
 
   it('usa a área visível reduzida pelo teclado ou zoom do navegador', () => {
@@ -57,6 +57,22 @@ describe('altura disponível para receber a venda', () => {
     Object.assign(viewport, { height: 540 });
     vi.stubGlobal('visualViewport', viewport);
     render(<PdvSaleWorkspace {...props()} />);
-    expect(screen.getByTestId('sale-viewport')).toHaveStyle({ height: '304px' });
+    expect(screen.getByTestId('sale-viewport')).toHaveStyle({ height: '356px' });
+  });
+
+  it('respeita o limite do shell quando há um rodapé abaixo da área rolável', () => {
+    vi.mocked(HTMLElement.prototype.getBoundingClientRect).mockImplementation(function () {
+      return (this.tagName === 'MAIN' ? { bottom: 548 } : { top: 160 }) as DOMRect;
+    });
+    render(<main style={{ overflowY: 'auto' }}><PdvSaleWorkspace {...props()} /></main>);
+    expect(screen.getByTestId('sale-viewport')).toHaveStyle({ height: '364px' });
+  });
+
+  it('preserva a reserva real da navegação inferior no tablet', () => {
+    vi.mocked(HTMLElement.prototype.getBoundingClientRect).mockImplementation(function () {
+      return (this.tagName === 'MAIN' ? { bottom: 600 } : { top: 160 }) as DOMRect;
+    });
+    render(<main style={{ overflowY: 'auto', scrollPaddingBottom: '104px' }}><PdvSaleWorkspace {...props()} /></main>);
+    expect(screen.getByTestId('sale-viewport')).toHaveStyle({ height: '312px' });
   });
 });

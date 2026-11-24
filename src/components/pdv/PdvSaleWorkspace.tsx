@@ -29,8 +29,23 @@ export function PdvSaleWorkspace({ catalog, cart, mobile, drawerOpen, onDrawerOp
     if (mobile) { setHeight(null); return; }
     const row = catalog.rowRef.current;
     if (!row) return;
+    const findScrollContainer = () => {
+      for (let parent = row.parentElement; parent; parent = parent.parentElement) {
+        if (['auto', 'scroll'].includes(window.getComputedStyle(parent).overflowY)) return parent;
+      }
+      return null;
+    };
     const measure = () => {
-      const available = Math.floor((window.visualViewport?.height ?? window.innerHeight) - row.getBoundingClientRect().top - 52 - 24);
+      const viewport = window.visualViewport;
+      let bottom = viewport ? viewport.height + (viewport.offsetTop ?? 0) : window.innerHeight;
+      const scrollContainer = findScrollContainer();
+      if (scrollContainer) {
+        // O shell já desconta seu rodapé quando ele existe. No tablet, a
+        // reserva da navegação inferior vem do scroll-padding do próprio shell.
+        const bottomInset = parseFloat(window.getComputedStyle(scrollContainer).scrollPaddingBottom) || 0;
+        bottom = Math.min(bottom, scrollContainer.getBoundingClientRect().bottom - bottomInset);
+      }
+      const available = Math.floor(bottom - row.getBoundingClientRect().top - 24);
       // Telas baixas também precisam limitar o carrinho: voltar à altura
       // natural empurra o recebimento para fora da área visível.
       setHeight(available > 0 ? available : null);
@@ -39,6 +54,8 @@ export function PdvSaleWorkspace({ catalog, cart, mobile, drawerOpen, onDrawerOp
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
     observer?.observe(row);
     if (row.parentElement) observer?.observe(row.parentElement);
+    const scrollContainer = findScrollContainer();
+    if (scrollContainer) observer?.observe(scrollContainer);
     window.addEventListener('resize', measure);
     window.visualViewport?.addEventListener('resize', measure);
     return () => { observer?.disconnect(); window.removeEventListener('resize', measure); window.visualViewport?.removeEventListener('resize', measure); };
