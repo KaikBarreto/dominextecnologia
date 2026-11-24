@@ -88,6 +88,7 @@ interface PdvCartSummaryProps {
   /** O carrinho completo pode posicionar o mesmo seletor acima dos materiais. */
   hideCustomerSelector?: boolean;
   layout?: 'stacked' | 'workspace';
+  compactSummary?: boolean;
   appliedCreditAmount?: number;
   onSaveQuote?: () => void;
 }
@@ -144,6 +145,7 @@ export function PdvCartSummary({
   couponContent,
   hideCustomerSelector = false,
   layout = 'stacked',
+  compactSummary = false,
   appliedCreditAmount = 0,
   onSaveQuote,
 }: PdvCartSummaryProps) {
@@ -158,7 +160,7 @@ export function PdvCartSummary({
   const reduceMotion = useReducedMotion();
 
   if (layout === 'workspace') return <>
-    <PdvCartWorkspaceTotals className={className} subtotalLabel={texts.subtotal} subtotal={formatCurrency(subtotal)} totalLabel={texts.total} total={<PdvInlineValueEditor label={texts.total} value={total} baseAmount={totalAdjustmentBase} adjustmentPolicy="discount" formatCurrency={formatCurrency} disabled={readOnly || cart.lines.length === 0} onApply={onSetCartFinalAmount} className="font-bold" />} amountLabel={texts.amountDue ?? 'Restante a receber'} amount={formatCurrency(Math.max(0, total - appliedCreditAmount))}
+    <PdvCartWorkspaceTotals compact={compactSummary} className={className} subtotalLabel={texts.subtotal} subtotal={formatCurrency(subtotal)} totalLabel={texts.total} total={<PdvInlineValueEditor label={texts.total} value={total} baseAmount={totalAdjustmentBase} adjustmentPolicy="discount" formatCurrency={formatCurrency} disabled={readOnly || cart.lines.length === 0} onApply={onSetCartFinalAmount} className="font-bold" />}
       beforeTotal={<>
       {itemDiscounts > 0 && <div className="sumline"><span>{texts.itemDiscounts}</span><strong>− {formatCurrency(itemDiscounts)}</strong></div>}
       {readOnly ? <div className="sumline"><span>Descontos</span><strong>{formatCurrency(cart.discount)}</strong></div> : <PdvInlineDiscountEditor presentation="preview" variant="order" label="Descontos" baseAmount={Math.max(0, subtotal - itemDiscounts)} discountAmount={cart.discount} formatCurrency={formatCurrency} currencySymbol={currencySymbol} locale={locale} currencyFractionDigits={currencyFractionDigits} texts={texts.discountEditor} onApply={onSetDiscountAmount} />}
@@ -172,7 +174,7 @@ export function PdvCartSummary({
       </>}
       </>}
     />
-    <PdvCartWorkspaceFooter>
+    <PdvCartWorkspaceFooter compact={compactSummary} amountLabel={texts.amountDue ?? 'Restante a receber'} amount={formatCurrency(Math.max(0, total - appliedCreditAmount))}>
       {showFinalizeAction && <button type="button" className="btn primary" disabled={!canPay || (readOnly && canFinalizeOverride !== true)} onClick={onRequestPayment}>{finalizeIcon ?? <ArrowRight />}{hideFinalizeShortcut ? (texts.finalizeLabel || texts.paymentLabel) : 'Receber agora'}</button>}
       {onSaveQuote && <button type="button" className="btn ghost" disabled={!cart.lines.length || readOnly} onClick={onSaveQuote}>Salvar orçamento</button>}
       {showAdvancedOptions && <button type="button" className="btn ghost" disabled={readOnly && !allowReadOnlyAdvancedOptions} onClick={onOpenAdvancedOptions}><SlidersHorizontal />{advancedOptionsSummary || texts.advancedOptionsTrigger}</button>}

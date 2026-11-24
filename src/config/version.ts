@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.62";
+export const APP_VERSION = "1.41.63";
 
 export const VERSION_NOTES =
-  "A tela de venda aproveita melhor a altura do notebook, com mais espaço para produtos e itens do pedido e acesso ao recebimento.";
+  "O PDV adapta o catálogo ao espaço disponível e mantém o valor a receber junto do botão, com detalhes recolhíveis em telas menores.";

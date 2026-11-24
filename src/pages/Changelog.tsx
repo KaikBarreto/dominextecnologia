@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.63',
+    date: '24 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'PDV adaptado ao espaço da tela',
+        category: 'melhoria',
+        description: 'O catálogo ajusta as colunas ao espaço disponível, inclusive com o menu aberto. Em telas menores, os detalhes de valores, descontos e créditos podem ser abertos quando necessário, deixando mais espaço para os materiais e mantendo o valor a receber junto do botão.',
+      },
+    ],
+  },
+  {
     version: '1.41.62',
     date: '24 de novembro de 2026',
     type: 'patch',

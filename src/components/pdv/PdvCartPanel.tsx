@@ -84,6 +84,7 @@ interface PdvCartPanelProps {
   couponContent?: ReactNode;
   /** Cliente acima dos materiais e lista flexível para o posto de venda. */
   layout?: 'stacked' | 'workspace';
+  compactSummary?: boolean;
   onCloseOrder?: () => void;
   hasOrderContent?: boolean;
   appliedCreditAmount?: number;
@@ -131,6 +132,7 @@ export function PdvCartPanel({
   appliedCreditContent,
   couponContent,
   layout = 'stacked',
+  compactSummary = false,
   onCloseOrder,
   hasOrderContent,
   appliedCreditAmount,
@@ -360,6 +362,7 @@ export function PdvCartPanel({
         couponContent={couponContent}
         hideCustomerSelector={layout === 'workspace'}
         layout={layout}
+        compactSummary={compactSummary}
         appliedCreditAmount={appliedCreditAmount}
         onSaveQuote={onSaveQuote}
         className={cn('min-h-0 overflow-y-auto bg-background', layout === 'workspace' ? 'shrink-0' : 'flex-1 border-t border-border')}

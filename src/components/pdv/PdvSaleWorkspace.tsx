@@ -24,9 +24,8 @@ export function PdvSaleWorkspace({ catalog, cart, mobile, drawerOpen, onDrawerOp
   });
   const scanner = hardware.scannerControl;
   const enhancedCart = { ...cart, weighControl: hardware.weighControl };
-  const [height, setHeight] = useState<number | null>(null);
+  const [{ height, compactSummary }, setLayout] = useState({ height: null as number | null, compactSummary: false });
   useLayoutEffect(() => {
-    if (mobile) { setHeight(null); return; }
     const row = catalog.rowRef.current;
     if (!row) return;
     const findScrollContainer = () => {
@@ -38,6 +37,11 @@ export function PdvSaleWorkspace({ catalog, cart, mobile, drawerOpen, onDrawerOp
     const measure = () => {
       const viewport = window.visualViewport;
       let bottom = viewport ? viewport.height + (viewport.offsetTop ?? 0) : window.innerHeight;
+      if (mobile) {
+        const compactSummary = (viewport?.height ?? window.innerHeight) * 0.85 < 640;
+        setLayout(current => current.height === null && current.compactSummary === compactSummary ? current : { height: null, compactSummary });
+        return;
+      }
       const scrollContainer = findScrollContainer();
       if (scrollContainer) {
         // O shell já desconta seu rodapé quando ele existe. No tablet, a
@@ -48,7 +52,9 @@ export function PdvSaleWorkspace({ catalog, cart, mobile, drawerOpen, onDrawerOp
       const available = Math.floor(bottom - row.getBoundingClientRect().top - 24);
       // Telas baixas também precisam limitar o carrinho: voltar à altura
       // natural empurra o recebimento para fora da área visível.
-      setHeight(available > 0 ? available : null);
+      const height = available > 0 ? available : null;
+      const compactSummary = available > 0 && available < 640;
+      setLayout(current => current.height === height && current.compactSummary === compactSummary ? current : { height, compactSummary });
     };
     measure();
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
@@ -62,13 +68,13 @@ export function PdvSaleWorkspace({ catalog, cart, mobile, drawerOpen, onDrawerOp
   }, [mobile, catalog.rowRef]);
   return <>
     {header}
-    <PdvSalePreviewView {...catalog} camera={<>{catalog.camera}{scanner}</>} style={catalog.style ?? (height != null ? { height } : undefined)} cart={!mobile ? <PdvCartPanel {...enhancedCart} /> : null} />
+    <PdvSalePreviewView {...catalog} camera={<>{catalog.camera}{scanner}</>} style={catalog.style ?? (height != null ? { height } : undefined)} cart={!mobile ? <PdvCartPanel {...enhancedCart} compactSummary={compactSummary} /> : null} />
     {mobile && <>
       {createPortal(<button type="button" onClick={() => onDrawerOpenChange(true)} className="fixed inset-x-0 z-40 flex items-center justify-between gap-3 rounded-t-xl border-t border-border bg-primary px-4 py-3 text-primary-foreground shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background" style={{ bottom: 'calc(104px + env(safe-area-inset-bottom))' }}>
         <span className="flex items-center gap-2 text-sm font-semibold"><ShoppingCart className="h-4 w-4" /><span key={itemCount} className="animate-in zoom-in-90 duration-200">{itemCountLabel}</span></span>
         <span key={formattedTotal} className="animate-in zoom-in-90 duration-200 text-lg font-extrabold tabular-nums">{formattedTotal}</span>
       </button>, document.body)}
-      <Drawer open={drawerOpen} onOpenChange={onDrawerOpenChange}><DrawerContent className="pdv-preview-sale flex max-h-[85dvh] flex-col"><DrawerHeader className="sr-only"><DrawerTitle>{drawerTitle}</DrawerTitle><DrawerDescription>Confira os materiais, o cliente e o total para concluir o atendimento.</DrawerDescription></DrawerHeader><PdvCartPanel {...enhancedCart} className="flex-1 overflow-hidden" /></DrawerContent></Drawer>
+      <Drawer open={drawerOpen} onOpenChange={onDrawerOpenChange}><DrawerContent className="pdv-preview-sale flex max-h-[85dvh] flex-col"><DrawerHeader className="sr-only"><DrawerTitle>{drawerTitle}</DrawerTitle><DrawerDescription>Confira os materiais, o cliente e o total para concluir o atendimento.</DrawerDescription></DrawerHeader><PdvCartPanel {...enhancedCart} compactSummary={compactSummary} className="flex-1 overflow-hidden" /></DrawerContent></Drawer>
     </>}
   </>;
 }

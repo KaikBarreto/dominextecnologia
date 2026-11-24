@@ -1,4 +1,4 @@
-import { createRef, type ComponentProps, type CSSProperties, type RefObject } from 'react';
+import { createRef, type ComponentProps, type CSSProperties, type ReactNode, type RefObject } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PdvSaleWorkspace } from './PdvSaleWorkspace';
@@ -6,10 +6,10 @@ import { PdvSaleWorkspace } from './PdvSaleWorkspace';
 vi.mock('@/hooks/usePdvDomiLinkWorkspace', () => ({
   usePdvDomiLinkWorkspace: () => ({ scannerControl: null, weighControl: undefined }),
 }));
-vi.mock('./PdvCartPanel', () => ({ PdvCartPanel: () => <div>Pedido atual</div> }));
+vi.mock('./PdvCartPanel', () => ({ PdvCartPanel: ({ compactSummary }: { compactSummary: boolean }) => <div data-testid="cart-summary" data-compact={compactSummary}>Pedido atual</div> }));
 vi.mock('./PdvSalePreviewView', () => ({
-  PdvSalePreviewView: ({ rowRef, style }: { rowRef: RefObject<HTMLDivElement>; style?: CSSProperties }) => (
-    <div ref={rowRef} style={style} data-testid="sale-viewport" />
+  PdvSalePreviewView: ({ rowRef, style, cart }: { rowRef: RefObject<HTMLDivElement>; style?: CSSProperties; cart: ReactNode }) => (
+    <div ref={rowRef} style={style} data-testid="sale-viewport">{cart}</div>
   ),
 }));
 
@@ -74,5 +74,15 @@ describe('altura disponível para receber a venda', () => {
     });
     render(<main style={{ overflowY: 'auto', scrollPaddingBottom: '104px' }}><PdvSaleWorkspace {...props()} /></main>);
     expect(screen.getByTestId('sale-viewport')).toHaveStyle({ height: '312px' });
+  });
+
+  it('recolhe detalhes pela altura útil mesmo quando a janela é alta', () => {
+    vi.stubGlobal('innerHeight', 900);
+    vi.mocked(HTMLElement.prototype.getBoundingClientRect).mockReturnValue({ top: 380 } as DOMRect);
+    render(<PdvSaleWorkspace {...props()} />);
+    expect(screen.getByTestId('cart-summary')).toHaveAttribute('data-compact', 'true');
+    vi.mocked(HTMLElement.prototype.getBoundingClientRect).mockReturnValue({ top: 160 } as DOMRect);
+    fireEvent(window, new Event('resize'));
+    expect(screen.getByTestId('cart-summary')).toHaveAttribute('data-compact', 'false');
   });
 });
