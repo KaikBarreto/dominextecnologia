@@ -100,6 +100,7 @@ import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { assertRowsAffected } from '@/lib/supabaseMutation';
 import { cn } from '@/lib/utils';
+import { selectActiveFormValidations } from '@/lib/activeFormValidations';
 import { SpeedDialFAB, type SpeedDialAction } from '@/components/mobile/SpeedDialFAB';
 import { OsEquipmentSidebar, OsActionFooter, type OsSidebarItem, type OsSidebarStatus } from '@/components/technician/OsDesktopShell';
 import { SystemFooter } from '@/components/layout/SystemFooter';
@@ -604,8 +605,6 @@ function TechnicianOSInner() {
       return { ...current, [itemKey]: true };
     });
   }, []);
-  const hasPendingFormSaves = Object.values(formSavingState).some(Boolean);
-
   // Registro das funções de auto-preenchimento POR checklist (itemKey → fn). Cada
   // DynamicFormQuestions se registra ao montar e se remove ao desmontar. O atalho
   // "marcar restantes como Conforme e finalizar" (item 7) dispara todas. Ref (não
@@ -616,17 +615,6 @@ function TechnicianOSInner() {
     else formAutoFillRegistry.current.delete(itemKey);
   }, []);
 
-  const allFormsValid = Object.values(formValidations).every(v => v.isValid);
-  const allMissingQuestions = Object.values(formValidations).flatMap(v => v.missingQuestions);
-  // Total de pendências obrigatórias auto-preenchíveis (conformidade/boolean) em
-  // TODOS os checklists comuns — base do atalho de finalização do item 7.
-  const formAutoFillableCount = Object.values(formValidations).reduce((sum, v) => sum + (v.autoFillableCount ?? 0), 0);
-  // Há pendência obrigatória que NÃO é auto-preenchível (texto/número/seleção)?
-  // Se sim, o atalho não resolve tudo sozinho → não oferecemos a auto-marcação.
-  const formHasNonAutoFillableMissing = Object.values(formValidations).some(
-    (v) => v.missingQuestions.length > v.autoFillableCount,
-  );
-  
   const [techSignature, setTechSignature] = useState<string | null>(null);
   const [clientSignature, setClientSignature] = useState<string | null>(null);
   // Carimbo legal: momento (ISO) em que cada assinatura foi capturada. Set ao
@@ -2498,6 +2486,41 @@ function TechnicianOSInner() {
     });
     return groups;
   }, [equipmentItems]);
+
+  // O mapa de validações é acumulativo porque checklists montam/desmontam com os
+  // carregamentos da OS. Só as chaves da composição ATUAL podem bloquear a
+  // finalização; uma chave standalone antiga (o índice muda em reordenações),
+  // por exemplo, não pode continuar acusando "Assinatura" depois que o card
+  // visível já está concluído.
+  const activeFormValidationKeys = new Set<string>();
+  if (checkInTime) {
+    equipmentChecklistGroups.forEach((group) => {
+      group.checklists.forEach(({ itemKey }) => activeFormValidationKeys.add(itemKey));
+    });
+    if (activeFormValidationKeys.size === 0 && serviceOrder?.form_template_id) {
+      activeFormValidationKeys.add('legacy');
+    }
+  }
+  const activeFormValidations = selectActiveFormValidations(
+    formValidations,
+    activeFormValidationKeys,
+  );
+  const hasPendingFormSaves = Array.from(activeFormValidationKeys)
+    .some((key) => formSavingState[key] === true);
+  const allFormsValid = activeFormValidations.every((validation) => validation.isValid);
+  const allMissingQuestions = activeFormValidations
+    .flatMap((validation) => validation.missingQuestions);
+  // Total de pendências obrigatórias auto-preenchíveis (conformidade/boolean) em
+  // TODOS os checklists ativos — base do atalho de finalização do item 7.
+  const formAutoFillableCount = activeFormValidations.reduce(
+    (sum, validation) => sum + (validation.autoFillableCount ?? 0),
+    0,
+  );
+  // Há pendência obrigatória que NÃO é auto-preenchível (texto/número/seleção)?
+  // Se sim, o atalho não resolve tudo sozinho → não oferecemos a auto-marcação.
+  const formHasNonAutoFillableMissing = activeFormValidations.some(
+    (validation) => validation.missingQuestions.length > validation.autoFillableCount,
+  );
 
   // Strings da VISTA PÚBLICA no locale da empresa que gerou o link.
   // Função pura (não hook): lê MESSAGES com o locale capturado do payload.

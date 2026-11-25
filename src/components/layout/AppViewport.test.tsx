@@ -139,6 +139,19 @@ describe('AppViewport — conteúdo estável na mudança de apresentação', () 
     expect(main.parentElement?.style.transform).toBe('translateY(0px)');
   });
 
+  it('reserva espaço físico para a navegação inferior dentro do conteúdo rolável', () => {
+    state.compact = true;
+    const { container } = render(<Tree mode="compact" />);
+    const main = screen.getByRole('main');
+    const contentWrapper = main.parentElement!;
+    const scroller = container.querySelector<HTMLDivElement>('[data-scroll-container]')!;
+
+    expect(scroller).toHaveClass('overflow-y-auto');
+    expect(scroller).toHaveClass('scroll-pb-[calc(8rem+env(safe-area-inset-bottom))]');
+    expect(contentWrapper).toHaveClass('pb-[calc(8rem+env(safe-area-inset-bottom))]');
+    expect(main).not.toHaveClass('pb-[calc(8rem+env(safe-area-inset-bottom))]');
+  });
+
   it('transfere a rolagem entre os containers sem perder a posição', () => {
     const { container, rerender } = render(<Tree mode="sidebar" />);
     const main = screen.getByRole('main');

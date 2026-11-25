@@ -60,11 +60,12 @@ export function AppViewport({ mode, sidebar, header, subscriptionNotice, notices
             onScroll?.(event);
           }}
           className={compact ? 'min-h-0 flex-1 overflow-x-hidden min-w-0 max-w-full bg-background scroll-pb-[calc(8rem+env(safe-area-inset-bottom))]' : 'contents'}
+          contentClassName={compact ? 'pb-[calc(8rem+env(safe-area-inset-bottom))]' : undefined}
         >
           <main ref={mainRef} onScroll={(event) => {
             if (!compact) scrollPosition.current = event.currentTarget.scrollTop;
           }} className={cn('app-ui-main min-w-0 max-w-full', compact
-            ? 'pb-[calc(8rem+env(safe-area-inset-bottom))] bg-background'
+            ? 'bg-background'
             : 'min-h-0 flex-1 overflow-y-auto overflow-x-hidden')}>
             {children}
             {compact ? mobileFooter : null}

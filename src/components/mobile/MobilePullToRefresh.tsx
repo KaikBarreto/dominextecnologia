@@ -12,6 +12,8 @@ interface MobilePullToRefreshProps {
   /** Se desabilitado, comporta como passthrough (útil pra desktop). */
   disabled?: boolean;
   className?: string;
+  /** Classes do wrapper físico do conteúdo (participa do scrollHeight). */
+  contentClassName?: string;
   /** Callback de scroll do container — usado pelo header para o cross-fade logo ↔ título. */
   onScroll?: (e: React.UIEvent<HTMLDivElement>) => void;
   scrollContainerRef?: MutableRefObject<HTMLDivElement | null>;
@@ -33,6 +35,7 @@ export function MobilePullToRefresh({
   maxPull = 100,
   disabled = false,
   className,
+  contentClassName,
   onScroll,
   scrollContainerRef,
 }: MobilePullToRefreshProps) {
@@ -159,7 +162,7 @@ export function MobilePullToRefresh({
 
       {/* Conteúdo — translada pra baixo conforme o pull */}
       <div
-        className={disabled ? 'contents' : undefined}
+        className={cn(disabled ? 'contents' : undefined, contentClassName)}
         style={{
           transform: disabled ? undefined : `translateY(${showFullSpinner ? 56 : pullDistance}px)`,
           transition: disabled ? undefined : isPullingRef.current ? 'none' : 'transform 200ms ease-out',

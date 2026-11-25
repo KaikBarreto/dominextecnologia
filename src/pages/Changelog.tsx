@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.75',
+    date: '25 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Finalização da ordem de serviço corrigida',
+        category: 'correcao',
+        description: 'A ordem de serviço agora reconhece corretamente os campos obrigatórios preenchidos, incluindo a assinatura do técnico, permitindo concluir o atendimento sem bloqueios indevidos.',
+      },
+      {
+        title: 'Dashboard completo no celular',
+        category: 'correcao',
+        description: 'O final do dashboard agora pode ser visualizado normalmente acima do menu inferior, sem ficar cortado.',
+      },
+    ],
+  },
+  {
     version: '1.41.74',
     date: '25 de novembro de 2026',
     type: 'patch',

@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.74";
+export const APP_VERSION = "1.41.75";
 
 export const VERSION_NOTES =
-  "Finalização do PDV recupera a sincronização inicial e orienta conflitos de atendimento sem atribuí-los à conexão.";
+  "A ordem de serviço reconhece corretamente os campos obrigatórios preenchidos, e o dashboard passa a exibir todo o conteúdo no celular.";
