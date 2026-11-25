@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.80',
+    date: '25 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Logomarca da empresa no DANFE',
+        category: 'correcao',
+        description: 'O DANFE da NF-e agora sai com a logomarca cadastrada nas configurações da empresa. Para atualizar o PDF de uma nota já autorizada, use "Consultar SEFAZ" na própria nota.',
+      },
+      {
+        title: 'DANFE com títulos em destaque',
+        category: 'melhoria',
+        description: 'Os títulos das seções do DANFE passam a aparecer em faixa escura com texto branco, o que facilita a leitura do documento impresso.',
+      },
+    ],
+  },
+  {
     version: '1.41.79',
     date: '25 de novembro de 2026',
     type: 'patch',

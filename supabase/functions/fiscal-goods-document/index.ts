@@ -576,6 +576,34 @@ async function loadGoodsIssuer(auth: Awaited<ReturnType<typeof authorizeFiscalGo
   return issuer;
 }
 
+const ISSUER_LOGO_MAX_BYTES = 512_000;
+/**
+ * Logomarca do emitente para o DANFE, em base64. Lê só o arquivo da própria empresa
+ * no bucket público de logos (nunca busca URL arbitrária) e só aceita PNG ou JPEG
+ * dentro do limite do motor. Qualquer falha vira "sem logo": o DANFE não depende dela.
+ */
+async function issuerLogoBase64(auth: Awaited<ReturnType<typeof authorizeFiscalGoodsIssuer>> & { ok: true }): Promise<string | null> {
+  try {
+    const settings = await auth.supabase.from('company_settings').select('logo_url').eq('company_id', auth.companyId).maybeSingle();
+    const url = text(object(settings.data).logo_url, 1000);
+    const prefix = `${(Deno.env.get('SUPABASE_URL') ?? '').replace(/\/$/, '')}/storage/v1/object/public/company-logos/`;
+    if (settings.error || !url.startsWith(prefix)) return null;
+    const path = decodeURIComponent(url.slice(prefix.length).split(/[?#]/)[0]);
+    if (!path || path.split('/').includes('..')) return null;
+    const file = await auth.supabase.storage.from('company-logos').download(path);
+    if (file.error || !file.data || file.data.size > ISSUER_LOGO_MAX_BYTES) return null;
+    const bytes = new Uint8Array(await file.data.arrayBuffer());
+    const png = bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
+    const jpeg = bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+    if (!png && !jpeg) return null;
+    let binary = '';
+    for (let offset = 0; offset < bytes.length; offset += 0x8000) binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+    return btoa(binary);
+  } catch {
+    return null;
+  }
+}
+
 interface GoodsDocumentFence { operationId:string; status:string; updatedAt:string }
 interface ActiveGoodsDocument { id:string; table:'nfe_documents'|'nfce_documents'; events:'nfe_events'|'nfce_events'; fence:GoodsDocumentFence }
 function goodsDocumentFence(row:JsonObject):GoodsDocumentFence {
@@ -879,14 +907,15 @@ async function transmitSavedGoods(
   const transmissionFence=goodsDocumentFence(object(claim.data));
   setActive({id,table,events,fence:transmissionFence},true);
   const input={operationId,snapshotHash:text(row.snapshot_hash),uf:text(row.uf).toUpperCase(),key:digits(row.access_key),batchId:String(row.number).slice(-15),signedXml};
-  const official=model===55?await authorizeNfe(ctx,input):await authorizeNfce(ctx,input);
+  const logoBase64=model===55?await issuerLogoBase64(auth):null;
+  const official=model===55?await authorizeNfe(ctx,{...input,logoBase64}):await authorizeNfce(ctx,input);
   let normalized:{status:string;official:string|null}=outcomeStatus(official as JsonObject);
   const officialCstat=text(object(official.resposta).cstat);
   if(normalized.status==='uncertain' && officialCstat==='539'){
     // O número já pertence a outra nota. Confirma que ESTA chave não existe antes de
     // concluir a rejeição; se a consulta falhar, a nota segue incerta e será reconsultada.
     const lookup={uf:input.uf,key:input.key,signedXml};
-    const check=await (model===55?consultNfe(ctx,lookup):consultNfce(ctx,lookup)).catch(()=>null);
+    const check=await (model===55?consultNfe(ctx,{...lookup,logoBase64}):consultNfce(ctx,lookup)).catch(()=>null);
     if(check && goodsNumberCollision(officialCstat,outcomeStatus(check as JsonObject).official))normalized={status:'rejected',official:null};
   }
   const artifacts=await officialArtifacts(auth,model,id,official as JsonObject);
@@ -1040,7 +1069,7 @@ async function handleDocumentAction(
   if (action === "consult") {
     const official =
       model === 55
-        ? await consultNfe(ctx, { uf, key, signedXml })
+        ? await consultNfe(ctx, { uf, key, signedXml, logoBase64: await issuerLogoBase64(auth) })
         : await consultNfce(ctx, { uf, key, signedXml });
     let normalized: { status: string; official: string | null } = outcomeStatus(official as JsonObject);
     let consultedCstat = text(object(official.resposta).cstat);

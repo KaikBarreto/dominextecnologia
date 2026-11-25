@@ -324,6 +324,27 @@ Deno.test('chave não localizada sem recusa por numeração continua incerta',as
  try{const response=await handler(request({model:65,documentId:doc,action:'consult'}));assertEquals(response.status,200);assertEquals((await response.json()).status,'uncertain');assertEquals(storedStatus,'uncertain');assert(!patches.some(p=>p.status==='rejected'));}finally{globalThis.fetch=originalFetch;}
 });
 
+// Logomarca do emitente no DANFE: só o arquivo da própria empresa no bucket de logos, PNG ou JPEG.
+function logoFetch(logoUrl:string,bytes:Uint8Array){const baseFetch=globalThis.fetch;globalThis.fetch=(async(input,init)=>{const url=routeUrl(input);
+ if(url.pathname.endsWith('/company_settings')&&url.searchParams.get('select')==='logo_url')return json({logo_url:logoUrl});
+ if(url.pathname.startsWith('/storage/v1/object/company-logos/'))return new Response(bytes,{status:200,headers:{'content-type':'image/png'}});
+ return baseFetch(input,init);})as typeof fetch;}
+const pngBytes=new Uint8Array([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a,1,2,3,4]);
+const ownLogo='https://backend.example.invalid/storage/v1/object/public/company-logos/logo_1.png';
+Deno.test('consulta de NF-e envia a logomarca da empresa ao motor para o DANFE',async()=>{
+ await setupSigned();storedStatus='authorized';logoFetch(ownLogo,pngBytes);
+ try{const response=await handler(request({model:55,documentId:doc,action:'consult'}));assertEquals(response.status,200);const sent=motorBodies.at(-1)!;assertEquals(sent.logoBase64,btoa(String.fromCharCode(...pngBytes)));}finally{globalThis.fetch=originalFetch;}
+});
+Deno.test('logomarca fora do bucket da plataforma ou em formato não aceito não é enviada',async()=>{
+ for(const [logoUrl,bytes] of [['https://attacker.example.invalid/storage/v1/object/public/company-logos/logo_1.png',pngBytes],[ownLogo,new TextEncoder().encode('<svg onload="x"/>')],['',pngBytes]] as [string,Uint8Array][]){
+  await setupSigned();storedStatus='authorized';logoFetch(logoUrl,bytes);
+  try{const response=await handler(request({model:55,documentId:doc,action:'consult'}));assertEquals(response.status,200);assert(!('logoBase64' in motorBodies.at(-1)!));}finally{globalThis.fetch=originalFetch;}}
+});
+Deno.test('NFC-e não envia logomarca',async()=>{
+ await setupSigned();storedStatus='authorized';logoFetch(ownLogo,pngBytes);
+ try{const response=await handler(request({model:65,documentId:doc,action:'consult'}));assertEquals(response.status,200);assert(!('logoBase64' in motorBodies.at(-1)!));}finally{globalThis.fetch=originalFetch;}
+});
+
 // Envio que nunca chegou à SEFAZ: a nota volta a "assinada" e o MESMO XML pode ser retransmitido.
 Deno.test('nota que a SEFAZ não recebeu volta a assinada, sem transmitir nada na consulta',async()=>{
  await setupSigned();storedStatus='uncertain';collisionFetch(keyNotFound,null,new Date(Date.now()-10*60_000).toISOString());

@@ -137,6 +137,8 @@ export async function authorizeNfe(
     key: string;
     batchId: string;
     signedXml: string;
+    /** Logomarca do emitente para o DANFE (PNG/JPEG em base64). Opcional. */
+    logoBase64?: string | null;
   },
 ): Promise<NfeOfficialResult> {
   return await callMotor("/v1/nfe/autorizar", {
@@ -145,11 +147,12 @@ export async function authorizeNfe(
     chave: operation.key,
     idLote: operation.batchId,
     xmlAssinado: operation.signedXml,
+    ...(operation.logoBase64 ? { logoBase64: operation.logoBase64 } : {}),
   });
 }
 export async function consultNfe(
   ctx: NfseProviderCtx,
-  input: { uf: string; key: string; signedXml?: string | null },
+  input: { uf: string; key: string; signedXml?: string | null; logoBase64?: string | null },
 ): Promise<NfeOfficialResult> {
   return await callMotor("/v1/nfe/consultar", {
     ...(await corpoBase(
@@ -160,6 +163,7 @@ export async function consultNfe(
     uf: input.uf,
     chave: input.key,
     xmlAssinado: input.signedXml ?? null,
+    ...(input.logoBase64 ? { logoBase64: input.logoBase64 } : {}),
   });
 }
 
