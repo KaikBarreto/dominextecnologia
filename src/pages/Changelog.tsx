@@ -31,6 +31,28 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.81',
+    date: '25 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Notas e documentos reunidos na ficha do cliente',
+        category: 'recurso',
+        description: 'A aba Documentos da ficha do cliente passa a mostrar sozinha as notas emitidas para ele (NF-e, NFC-e e NFS-e), os anexos e documentos dos contratos e atalhos para orçamentos, ordens de serviço e contratos, com busca, filtro e menu de ações em cada linha.',
+      },
+      {
+        title: 'Notas de produto no portal do cliente',
+        category: 'recurso',
+        description: 'As NF-e e NFC-e autorizadas aparecem no portal do cliente junto das notas de serviço, com PDF e XML para baixar, busca e filtro por tipo. Elas seguem a mesma liberação da seção de notas fiscais do portal.',
+      },
+      {
+        title: 'Notas fiscais na ficha do fornecedor',
+        category: 'recurso',
+        description: 'A ficha do fornecedor ganhou uma seção com as notas de entrada emitidas para ele e as notas recebidas dele.',
+      },
+    ],
+  },
+  {
     version: '1.41.80',
     date: '25 de novembro de 2026',
     type: 'patch',

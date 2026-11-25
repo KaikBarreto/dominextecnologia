@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.80";
+export const APP_VERSION = "1.41.81";
 
 export const VERSION_NOTES =
-  "O DANFE da NF-e agora sai com a logomarca da empresa e com os títulos das seções em destaque.";
+  "A ficha do cliente agora reúne sozinha as notas e os documentos dele, e o portal do cliente passa a mostrar também as notas de produto.";

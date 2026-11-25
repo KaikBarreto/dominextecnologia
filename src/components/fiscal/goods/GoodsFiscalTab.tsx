@@ -682,7 +682,7 @@ function GoodsFiscalTabContext({ model }: { model: GoodsModel }) {
               <div key={row.id}>
                 <div className="flex items-center gap-3 px-4 py-3.5" onClick={() => toggleExpand(row.id)}>
                   <div className="h-11 w-11 rounded-full bg-primary flex items-center justify-center shrink-0">
-                    <Icon className="h-5 w-5 text-white" />
+                    <Icon className="h-5 w-5 text-primary-foreground" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm truncate leading-tight">{row.partyName || partyFallback}</p>
@@ -706,7 +706,7 @@ function GoodsFiscalTabContext({ model }: { model: GoodsModel }) {
                     </div>
                   </div>
                   <div className="flex items-center gap-0.5 shrink-0">
-                    <p className="font-bold text-sm whitespace-nowrap text-primary">{fmtMoney(row.total)}</p>
+                    <p className="font-bold text-sm whitespace-nowrap">{fmtMoney(row.total)}</p>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild onClick={(event) => event.stopPropagation()}>
                         <Button
