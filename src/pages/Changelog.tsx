@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.73',
+    date: '25 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Novas vendas somente pela versão atual do PDV',
+        category: 'seguranca',
+        description: 'Uma nova venda só pode começar com a versão atual confirmada. O caminho antigo de criação foi desativado para evitar pedidos incompletos em caso de interrupção, preservando o histórico e as operações dos pedidos já existentes.',
+      },
+    ],
+  },
+  {
     version: '1.41.72',
     date: '25 de novembro de 2026',
     type: 'patch',

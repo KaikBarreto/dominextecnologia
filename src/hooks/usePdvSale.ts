@@ -1,32 +1,12 @@
 import { invalidatePdvCatalogCaches, invalidatePdvOrderProjections } from '@/hooks/pdvOperationalCache';
 /**
- * Fronteira Supabase da VENDA do PDV. Componente nunca chama
- * `supabase.from(...)` direto — é lei da casa.
+ * Operações históricas do PDV: liquidação de pedido existente, substituição
+ * atômica e anexos. Novas vendas pertencem a usePdvDirectSaleV2 e são criadas
+ * com itens, pagamento e estoque em uma única transação idempotente.
  *
- * A venda são DOIS passos, e isso é de propósito:
- *
- *   1) `createOrder` insere `pdv_orders` + `pdv_order_items` (o carrinho vira
- *      pedido `aguardando_pagamento`).
- *   2) `settleOrder` chama `pdv_settle_order`, que numa transação só recalcula
- *      o total pelos itens GRAVADOS, valida as formas de pagamento, cria os
- *      `financial_transactions` (`origin='pdv'`), grava `pdv_order_payments`,
- *      marca o pedido como pago e (modo simples) baixa o estoque pelo Kardex.
- *
- * POR QUE SEPARADO: se o pagamento falhar (conta errada, fiado acima do
- * limite, caixa fechado), o pedido JÁ EXISTE e o retry reaproveita o mesmo
- * `order_id` + o mesmo `client_request_id`. Juntar os dois passos faria cada
- * tentativa criar um pedido novo e queimar um número de pedido por erro de
- * digitação.
- *
- * IDEMPOTÊNCIA: `p_client_request_id` é gerado NO CLIENTE, uma vez por
- * TENTATIVA DE VENDA, e reaproveitado em todo retry. Gerar chave nova no retry
- * anula a proteção. Chamar duas vezes com a mesma chave devolve o mesmo resumo
- * com `idempotente: true`, sem duplicar lançamento nem baixar estoque de novo.
- *
- * `number` e `company_id` de `pdv_orders` vêm de TRIGGER no banco
- * (`tg_set_pdv_order_number`, `set_company_id_on_insert`), então são OMITIDOS
- * do payload com cast — mesmo padrão de `projects.code` em
- * `src/hooks/useProjects.ts`.
+ * O criador antigo permanece como barreira explícita para chamadas antigas:
+ * nunca grava um cabeçalho separado dos itens. Leitura e operações históricas
+ * continuam disponíveis sem converter nem regravar o histórico financeiro.
  */
 
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
@@ -139,82 +119,10 @@ export function usePdvSale() {
    */
   const invalidateAfterSale = () => invalidatePdvSaleCaches(queryClient);
 
+  /** @deprecated Novas vendas devem usar usePdvDirectSaleV2.complete. */
   const createOrder = useMutation({
-    mutationFn: async (input: PdvCreateOrderInput): Promise<string> => {
-      if (!input.items.length) {
-        throw new Error('Adicione pelo menos um produto antes de finalizar.');
-      }
-
-      const { data: order, error: orderError } = await supabase
-        .from('pdv_orders')
-        .insert({
-          customer_id: input.customerId,
-          terminal_id: input.terminalId,
-          stock_id: input.stockId,
-          cash_session_id: input.cashSessionId,
-          status: 'aguardando_pagamento',
-          discount_amount: Math.max(0, input.discountAmount || 0),
-          notes: input.notes?.trim() || null,
-          replaces_order_id: input.replacesOrderId ?? null,
-          // `number` e `company_id` são preenchidos por trigger. Omitir da
-          // tipagem com cast é o padrão já usado em `projects.code`.
-        } as never)
-        .select('id')
-        .single();
-      if (orderError) throw orderError;
-
-      const orderId = (order as { id: string }).id;
-
-      const rows = input.items.map((item, index) => ({
-        order_id: orderId,
-        inventory_id: item.inventoryId,
-        description: item.description,
-        quantity: item.quantity,
-        unit: item.unit.trim() || 'un',
-        unit_price: item.unitPrice,
-        unit_cost: item.unitCost,
-        // Snapshot do desconto da linha. O total é líquido e recalculado de
-        // novo pelo servidor na substituição atômica.
-        discount_amount: Math.max(0, item.discountAmount || 0),
-        total: Math.max(
-          0,
-          Math.round((item.quantity * item.unitPrice - Math.max(0, item.discountAmount || 0)) * 100) / 100,
-        ),
-        sort_order: index,
-      }));
-
-      const { error: itemsError } = await supabase.from('pdv_order_items').insert(rows as never);
-      if (itemsError) throw itemsError;
-
-      // Fotos são evidência do pedido e devem acompanhar a edição. Reutilizar
-      // o mesmo objeto privado evita upload duplicado; cada pedido mantém sua
-      // própria linha de metadados e a venda original segue auditável.
-      if (input.replacesOrderId) {
-        const { data: sourceAttachments, error: sourceAttachmentsError } = await supabase
-          .from('pdv_order_attachments')
-          .select('storage_path, file_name, mime_type, size_bytes')
-          .eq('order_id', input.replacesOrderId);
-        if (sourceAttachmentsError) throw sourceAttachmentsError;
-
-        if (sourceAttachments?.length) {
-          const attachmentRows = sourceAttachments.map((attachment) => ({
-            order_id: orderId,
-            storage_path: attachment.storage_path,
-            file_name: attachment.file_name,
-            mime_type: attachment.mime_type,
-            size_bytes: attachment.size_bytes,
-          }));
-          const { error: copyAttachmentsError } = await supabase
-            .from('pdv_order_attachments')
-            .upsert(attachmentRows as never, {
-              onConflict: 'order_id,storage_path',
-              ignoreDuplicates: true,
-            });
-          if (copyAttachmentsError) throw copyAttachmentsError;
-        }
-      }
-
-      return orderId;
+    mutationFn: async (_input: PdvCreateOrderInput): Promise<string> => {
+      throw new Error('Atualize a página e use a venda atual do PDV. Nenhum pedido foi criado.');
     },
   });
 

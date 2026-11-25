@@ -37,10 +37,16 @@ describe('PdvSaleContractGate', () => {
     expect(screen.queryByText('editor-legado')).not.toBeInTheDocument();
   });
 
-  it('mantém o PDV legado somente quando a capability retorna false explícito', () => {
+  it('bloqueia novas vendas quando a capability não confirma v2, sem voltar ao writer antigo', () => {
     render(<PdvSaleContractGate directSale={directSale('legacy')} legacy={<div>caminho-v1</div>} />);
-    expect(screen.getByText('caminho-v1')).toBeInTheDocument();
+    expect(screen.getByTestId('pdv-direct-sale-gate-blocked')).toBeInTheDocument();
+    expect(screen.queryByText('caminho-v1')).not.toBeInTheDocument();
     expect(screen.queryByText('caminho-v2')).not.toBeInTheDocument();
+  });
+
+  it('preserva a edição histórica explicitamente autorizada no contrato antigo', () => {
+    render(<PdvSaleContractGate directSale={directSale('legacy')} legacy={<div>editor-historico</div>} editRoute />);
+    expect(screen.getByText('editor-historico')).toBeInTheDocument();
   });
 
   it('preserva o mesmo workspace visual quando a capability retorna true', () => {

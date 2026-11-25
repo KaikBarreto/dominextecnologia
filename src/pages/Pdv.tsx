@@ -211,15 +211,9 @@ function extractMultiplierPrefix(raw: string): { multiplier: number; term: strin
 }
 
 /**
- * Assinatura do carrinho. Serve pra saber se o pedido já criado numa tentativa
- * anterior AINDA corresponde ao que está na tela: se o operador mudou item,
- * quantidade, preço, desconto, cliente, local, caixa, a OBSERVAÇÃO do pedido
- * ou a DATA retroativa, a tentativa antiga morre e a próxima finalização cria
- * pedido novo com chave de idempotência nova. Sem isso, um pedido de
- * `aguardando_pagamento` velho seria finalizado com os itens (ou a
- * observação/data) de antes da correção — `createOrder` só roda uma vez por
- * tentativa, então notas/data digitadas DEPOIS da criação do pedido mas ANTES
- * do retry seriam silenciosamente ignoradas sem isto.
+ * Assinatura do conteúdo comercial, incluindo observação e data. A tentativa
+ * persistida v2 precisa corresponder ao conteúdo enviado; após resultado
+ * incerto, alterações exigem conferir o pedido antes de permitir outro envio.
  */
 function cartSignature(
   cart: CartState,
@@ -307,18 +301,11 @@ export function adaptPdvDirectSaleV2Result(
 }
 
 /**
- * VENDA de balcão (sub-tela do módulo PDV e Loja) — Onda 1, modo simples.
- *
- * Monta o carrinho (motor puro em `src/lib/pdv/cart.ts`) e FECHA A VENDA de
- * verdade: o carrinho vira `pdv_orders` + `pdv_order_items` e a finalização é
- * a RPC `pdv_settle_order`, que numa transação só cria os lançamentos
- * financeiros (`origin='pdv'`), grava as formas de pagamento, marca o pedido
- * como pago e baixa o estoque pelo Kardex.
- *
- * IDEMPOTÊNCIA: a chave (`client_request_id`) nasce UMA VEZ por tentativa de
- * venda (ver `attemptRef`) e é reaproveitada em todo retry, junto com o
- * `order_id` já criado. Gerar chave nova no retry anularia a proteção e o
- * duplo clique viraria venda dobrada.
+ * Workspace da venda do PDV. Novas vendas usam o contrato v2: pedido, itens,
+ * pagamentos e estoque são confirmados em uma única transação do servidor.
+ * A tentativa e a chave idempotente são persistidas antes do envio e mantidas
+ * para conferência/retry em caso de resposta incerta.
+ * Operações históricas continuam separadas da criação de novas vendas.
  */
 export default function Pdv() {
   const location = useLocation();
@@ -367,10 +354,9 @@ export function PdvSaleContractGate({
     );
   }
 
-  // A capability continua sendo confirmada antes de liberar qualquer writer,
-  // mas não troca a interface aprovada do PDV. A evolução do contrato deve ser
-  // conectada por adaptadores dentro deste mesmo workspace visual.
-  if (directSale.contract === 'v2' || directSale.contract === 'legacy') return <>{legacy}</>;
+  // Novas vendas exigem v2 confirmado. O mesmo workspace visual é preservado,
+  // mas uma capability negativa nunca volta ao criador antigo em etapas.
+  if (directSale.contract === 'v2') return <>{legacy}</>;
 
   return (
     <div className="space-y-4" data-testid="pdv-direct-sale-gate-blocked">
