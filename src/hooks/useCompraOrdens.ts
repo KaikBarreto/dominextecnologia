@@ -37,7 +37,8 @@ interface InventoryReceiptRpcResult {
   error: Error | null;
 }
 
-const inventoryReceiptRpc = supabase.rpc as unknown as (
+// O método do SDK depende de this.rest também quando recebe um cast local.
+const inventoryReceiptRpc = supabase.rpc.bind(supabase) as unknown as (
   fn: string,
   args: Record<string, unknown>,
 ) => PromiseLike<InventoryReceiptRpcResult>;

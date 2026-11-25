@@ -12,12 +12,16 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: mocks.useAuth }));
-vi.mock('@/integrations/supabase/client', () => ({
-  supabase: {
-    auth: { getSession: mocks.getSession, refreshSession: mocks.refreshSession },
-    rpc: mocks.rpc,
-  },
-}));
+vi.mock('@/integrations/supabase/client', async () => {
+  const { SupabaseClient } = await import('@supabase/supabase-js');
+  return {
+    supabase: {
+      auth: { getSession: mocks.getSession, refreshSession: mocks.refreshSession },
+      rpc: SupabaseClient.prototype.rpc,
+      rest: { rpc: (name: string, args: Record<string, unknown>) => mocks.rpc(name, args) },
+    },
+  };
+});
 
 import { shouldRetryScheduleRead, useScheduleOrders } from './useScheduleOrders';
 

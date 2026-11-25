@@ -32,9 +32,9 @@ interface InventorySecurityRpcResult {
   error: Error | null;
 }
 
-// As RPCs chegam por migration nesta entrega. O cast local evita editar o
-// arquivo de tipos gerados enquanto outras ondas também acrescentam schema.
-const inventorySecurityRpc = supabase.rpc as unknown as (
+// Cast local para RPCs ainda ausentes dos tipos gerados. Preserva o receiver:
+// SupabaseClient.rpc usa this.rest e não pode ser chamado como método solto.
+const inventorySecurityRpc = supabase.rpc.bind(supabase) as unknown as (
   fn: string,
   args: Record<string, unknown>,
 ) => PromiseLike<InventorySecurityRpcResult>;

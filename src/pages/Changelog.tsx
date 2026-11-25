@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.71',
+    date: '25 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Salvamento e movimentação de materiais corrigidos',
+        category: 'correcao',
+        description: 'Corrigida uma falha que podia impedir o cadastro com saldo inicial, o ajuste de quantidade, as entradas e saídas, o arquivamento e a remoção de materiais de um local.',
+      },
+      {
+        title: 'Recebimento de compras e consulta da agenda corrigidos',
+        category: 'correcao',
+        description: 'O recebimento de compras volta a enviar a entrada de materiais para o estoque. A agenda também volta a usar sua consulta principal, mantendo a consulta alternativa quando necessária.',
+      },
+    ],
+  },
+  {
     version: '1.41.70',
     date: '25 de novembro de 2026',
     type: 'patch',

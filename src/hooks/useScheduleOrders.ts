@@ -303,7 +303,8 @@ export async function fetchScheduleOrders(
   await ensureScheduleSession(expectedUserId);
   throwIfScheduleAborted(requestSignal);
 
-  const rpc = supabase.rpc as unknown as (
+  // Preserva o cliente do SDK; sem bind, a leitura cai no fallback por TypeError.
+  const rpc = supabase.rpc.bind(supabase) as unknown as (
     name: string,
     args: {
       p_start_date: string;
