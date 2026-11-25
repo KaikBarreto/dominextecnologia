@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.68";
+export const APP_VERSION = "1.41.69";
 
 export const VERSION_NOTES =
-  "Atualização entre telas do PDV após compras, recebimentos, entregas e devoluções, com nova consulta ao retornar aos relatórios.";
+  "Formulários organizados em uma aba própria de Clientes e Fornecedores, com gestão e respostas reunidas no mesmo lugar.";

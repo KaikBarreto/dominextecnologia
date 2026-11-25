@@ -1576,6 +1576,7 @@ function CustomerPortalContent({
           forms={portalForms}
           lang={locale}
           t={t}
+          neutralAccent={!(whiteLabelEnabled && companySettings?.white_label_primary_color)}
         />
       )}
 

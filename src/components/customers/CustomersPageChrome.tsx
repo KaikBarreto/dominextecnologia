@@ -10,9 +10,8 @@ import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { MobilePillTabs } from '@/components/mobile/MobilePillTabs';
 import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
 import { CustomerSettingsDialog } from '@/components/customers/CustomerSettingsDialog';
-import { LeadCaptureManagerDialog } from '@/components/customers/LeadCaptureManagerDialog';
 
-export type CustomersMainTab = 'clientes' | 'fornecedores';
+export type CustomersMainTab = 'clientes' | 'fornecedores' | 'formularios';
 
 interface CustomersPageChromeProps {
   activeTab: CustomersMainTab;
@@ -21,13 +20,13 @@ interface CustomersPageChromeProps {
 
 /**
  * Cabeçalho da tela Clientes e Fornecedores: título, abas e as ações da tela
- * (Configurar origens, Formulários de captação, Novo Cliente).
+ * (Configurações e Novo Cliente).
  *
  * Existe como componente próprio porque a FICHA de um cliente é outra rota
  * (`/clientes/:id`) e também precisa mostrar esse cabeçalho — sem ele, abrir um
  * cadastro fazia o botão "Novo Cliente" e as abas sumirem da tela. Os diálogos
- * de criar cliente, origens e formulários moram aqui pra as duas rotas os
- * ganharem de graça.
+ * de criar cliente e configurações moram aqui pra as duas rotas os ganharem de
+ * graça.
  */
 export function CustomersPageChrome({ activeTab, onTabChange }: CustomersPageChromeProps) {
   const isMobile = useIsMobile();
@@ -41,29 +40,14 @@ export function CustomersPageChrome({ activeTab, onTabChange }: CustomersPageChr
 
   const [novoOpen, setNovoOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [leadFormsOpen, setLeadFormsOpen] = useState(false);
   const notificationParams = new URLSearchParams(
     typeof window === 'undefined' ? '' : window.location.search,
   );
   const shouldOpenLeadForms = notificationParams.get('leadForms') === '1';
-  const requestedFormId = notificationParams.get('form');
-  const requestedSubmissionId = notificationParams.get('submission');
 
   useEffect(() => {
-    if (activeTab === 'clientes' && shouldOpenLeadForms) {
-      setLeadFormsOpen(true);
-    }
-  }, [activeTab, shouldOpenLeadForms]);
-
-  const handleLeadFormsOpenChange = (open: boolean) => {
-    setLeadFormsOpen(open);
-    if (open || typeof window === 'undefined') return;
-    const nextUrl = new URL(window.location.href);
-    nextUrl.searchParams.delete('leadForms');
-    nextUrl.searchParams.delete('form');
-    nextUrl.searchParams.delete('submission');
-    window.history.replaceState(window.history.state, '', `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
-  };
+    if (shouldOpenLeadForms) onTabChange('formularios');
+  }, [onTabChange, shouldOpenLeadForms]);
 
   // No celular as ações da tela vivem na toolbar/FAB da própria lista, não aqui.
   const showActions = !isMobile;
@@ -79,14 +63,12 @@ export function CustomersPageChrome({ activeTab, onTabChange }: CustomersPageChr
             <>
               {/* No computador os botões levam rótulo: ícone sozinho vira
                   adivinhação. */}
-              <Button variant="outline" onClick={() => setSettingsOpen(true)} title="Configurações">
-                <Settings2 className="mr-2 h-4 w-4" />
-                Configurações
-              </Button>
-              {activeTab === 'clientes' && <Button variant="outline" onClick={() => setLeadFormsOpen(true)} title={t.leadFormsFull}>
-                <ClipboardList className="mr-2 h-4 w-4" />
-                {t.leadFormsFull}
-              </Button>}
+              {activeTab !== 'formularios' && (
+                <Button variant="outline" onClick={() => setSettingsOpen(true)} title="Configurações">
+                  <Settings2 className="mr-2 h-4 w-4" />
+                  Configurações
+                </Button>
+              )}
               {activeTab === 'clientes' && canCreateCustomer && (
                 <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setNovoOpen(true)}>
                   <Plus className="mr-2 h-4 w-4" />
@@ -105,6 +87,7 @@ export function CustomersPageChrome({ activeTab, onTabChange }: CustomersPageChr
         tabs={[
           { value: 'clientes', label: t.tabLabel, icon: <Users className="h-4 w-4 shrink-0" /> },
           { value: 'fornecedores', label: tSuppliers.tabLabel, icon: <Truck className="h-4 w-4 shrink-0" /> },
+          { value: 'formularios', label: t.leadForms, icon: <ClipboardList className="h-4 w-4 shrink-0" /> },
         ]}
         activeTab={activeTab}
         onTabChange={(value) => onTabChange(value as CustomersMainTab)}
@@ -120,13 +103,6 @@ export function CustomersPageChrome({ activeTab, onTabChange }: CustomersPageChr
       />
 
       <CustomerSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
-
-      <LeadCaptureManagerDialog
-        open={leadFormsOpen}
-        onOpenChange={handleLeadFormsOpenChange}
-        initialFormId={requestedFormId}
-        initialSubmissionId={requestedSubmissionId}
-      />
     </>
   );
 }

@@ -295,6 +295,22 @@ Design Premium com Verde da Marca #00C597
     /* --radius herda de [data-app] acima (0.375rem) */
   }
 
+  /* Formulários públicos e a seção de formulários do Portal seguem a mesma
+     régua neutra do app por padrão. O escopo é aplicado só quando a empresa
+     NÃO definiu uma cor white-label, então uma identidade personalizada
+     continua prevalecendo. Verde permanece reservado a sucesso/semântica. */
+  [data-form-accent] {
+    --primary: 0 0% 10%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 0 0% 10%;
+  }
+
+  .dark [data-form-accent] {
+    --primary: 0 0% 88%;
+    --primary-foreground: 0 0% 8%;
+    --ring: 0 0% 70%;
+  }
+
   /* O PDV herda os tokens do app: primária neutra por padrão e identidade
      configurada no white-label, inclusive contraste e foco. */
 

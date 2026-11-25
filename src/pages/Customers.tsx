@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { fuzzyIncludesAny, cn } from '@/lib/utils';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Users, Plus, Pencil, Trash2, Phone, Mail, MapPin, Settings2, Eye, ClipboardList, Handshake, Truck, Wrench, Store, Check } from 'lucide-react';
+import { Users, Plus, Pencil, Trash2, Phone, Mail, MapPin, Settings2, Eye, Handshake, Truck, Wrench, Store, Check } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
@@ -42,7 +42,7 @@ import { CustomersPageChrome, type CustomersMainTab } from '@/components/custome
 import { CustomerDetailContent } from '@/pages/CustomerDetail';
 import { isUuid, extractShortCode } from '@/utils/prettyLinks';
 import { CustomerSettingsDialog } from '@/components/customers/CustomerSettingsDialog';
-import { LeadCaptureManagerDialog } from '@/components/customers/LeadCaptureManagerDialog';
+import { CustomerFormsTab } from '@/components/customers/CustomerFormsTab';
 import { ListDetailLayout } from '@/components/ui/ListDetailLayout';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { FilterButton } from '@/components/ui/FilterButton';
@@ -253,7 +253,6 @@ export default function Customers() {
   // Só o celular usa estes: no desktop as ações (e os diálogos) vivem no
   // CustomersPageChrome, que aparece também na ficha do cliente.
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [leadFormsOpen, setLeadFormsOpen] = useState(false);
   const tSuppliers = MESSAGES[locale].app.customers.suppliers;
   const tCommon = MESSAGES[locale].app.common;
 
@@ -393,6 +392,8 @@ export default function Customers() {
 
       {mainTab === 'fornecedores' ? (
         <SuppliersTab />
+      ) : mainTab === 'formularios' ? (
+        <CustomerFormsTab />
       ) : (
       <>
       {isMobile ? (
@@ -416,18 +417,6 @@ export default function Customers() {
           >
             <Settings2 className="h-4 w-4" />
             <span className="hidden min-[340px]:inline">Configurações</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setLeadFormsOpen(true)}
-            className="h-10 shrink-0 gap-2 px-3"
-            title={t.leadForms}
-            aria-label={t.leadForms}
-          >
-            <ClipboardList className="h-4 w-4" />
-            {/* Rótulo mais longo dos dois: some antes, pra linha nunca estourar em tela estreita. */}
-            <span className="hidden min-[375px]:inline">{t.leadForms}</span>
           </Button>
         </MobileListToolbar>
       ) : null}
@@ -914,10 +903,7 @@ export default function Customers() {
       />
 
       {isMobile && (
-        <>
-          <CustomerSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
-          <LeadCaptureManagerDialog open={leadFormsOpen} onOpenChange={setLeadFormsOpen} />
-        </>
+        <CustomerSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
       )}
 
       <ImagePreviewModal

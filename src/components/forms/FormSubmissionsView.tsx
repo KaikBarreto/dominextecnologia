@@ -150,6 +150,46 @@ function SubmissionCard({
   );
 }
 
+/** Detalhe de uma única resposta, usado pelo feed geral. */
+export function FormSubmissionDetailView({
+  form,
+  submission,
+}: {
+  form: Pick<LeadCaptureForm, 'id' | 'title'>;
+  submission: PublicFormSubmission;
+}) {
+  const t = useMessages();
+  const { questions, isLoading, isError, refetch } = usePublicFormQuestions(form.id);
+  const [image, setImage] = useState<{ url: string; alt: string } | null>(null);
+
+  if (isLoading) return <Skeleton className="h-64 w-full rounded-xl" />;
+  if (isError) {
+    return (
+      <div className="space-y-3 py-6 text-center">
+        <p className="text-sm text-muted-foreground">{t.subLoadError}</p>
+        <Button type="button" variant="outline" size="sm" onClick={() => refetch()}>
+          {t.retry}
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <SubmissionCard
+        submission={submission}
+        questions={questions}
+        t={t}
+        onOpenImage={(url, alt) => setImage({ url, alt })}
+        highlighted={false}
+      />
+      {image && (
+        <ImagePreviewModal src={image.url} alt={image.alt} open onClose={() => setImage(null)} />
+      )}
+    </>
+  );
+}
+
 /**
  * Respostas de um formulário, pergunta a pergunta (rótulo da pergunta, nunca o
  * id). Só leitura. Foto e assinatura abrem no viewer dedicado.

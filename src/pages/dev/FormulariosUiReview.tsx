@@ -20,6 +20,8 @@ import { PublicFormQuestionField } from '@/components/forms/PublicFormQuestionFi
 import { PublicFormQuestionsEditor } from '@/components/forms/PublicFormQuestionsEditor';
 import { PortalFormsSection } from '@/components/portal/PortalFormsSection';
 import { LeadCaptureFormDialog } from '@/components/customers/LeadCaptureFormDialog';
+import { CustomerFormsTab } from '@/components/customers/CustomerFormsTab';
+import { CustomersPageChrome } from '@/components/customers/CustomersPageChrome';
 import type { PublicFormQuestionDraft } from '@/hooks/usePublicFormQuestions';
 import type { PublicFormAnswers, PublicFormQuestion } from '@/lib/publicFormQuestions';
 import type { CustomerPortalForm } from '@/utils/customerPortalApi';
@@ -88,11 +90,11 @@ const PORTAL_TEXTS = {
 
 // ── Tela ─────────────────────────────────────────────────────────────────────
 
-type Surface = 'builder' | 'editor' | 'publica' | 'portal';
+type Surface = 'clientes' | 'gestao' | 'builder' | 'editor' | 'publica' | 'portal';
 
 function surfaceFromUrl(): Surface {
   const raw = new URLSearchParams(window.location.search).get('s');
-  return raw === 'editor' || raw === 'publica' || raw === 'portal' ? raw : 'builder';
+  return raw === 'clientes' || raw === 'gestao' || raw === 'editor' || raw === 'publica' || raw === 'portal' ? raw : 'builder';
 }
 
 export default function FormulariosUiReview() {
@@ -103,14 +105,11 @@ export default function FormulariosUiReview() {
   const [drafts, setDrafts] = useState<PublicFormQuestionDraft[]>(DEMO_DRAFTS);
   const [builderOpen, setBuilderOpen] = useState(() => surfaceFromUrl() === 'builder');
 
-  // O acento preto do app logado vem do token `--primary` redefinido em
-  // `[data-app]` (ligado pelo AppLayout). Esta tela roda FORA do shell, então
-  // sem isso tudo sairia com o verde da marca, que é o sabor da landing, e o
-  // review mentiria sobre a cor dos botões. Ver src/index.css, bloco [data-app].
-  // Só a ÁREA LOGADA recebe o atributo. A página pública e o Portal do Cliente
-  // rodam mesmo sem ele, com o verde da marca: ligar `data-app` nelas deixaria o
-  // print bonito e mentiroso.
-  const isAppSurface = surface === 'builder' || surface === 'editor';
+  // O app logado recebe `data-app` pelo AppLayout. A revisão roda fora dele,
+  // então liga o mesmo token nas superfícies internas e o escopo específico de
+  // formulários nas superfícies públicas, sem fingir que o portal é área logada.
+  const isAppSurface = surface === 'clientes' || surface === 'gestao' || surface === 'builder' || surface === 'editor';
+  const isCustomersScreen = surface === 'clientes';
   useEffect(() => {
     if (!isAppSurface) return;
     const root = document.documentElement;
@@ -120,32 +119,49 @@ export default function FormulariosUiReview() {
   }, [isAppSurface]);
 
   return (
-    <div className="min-h-screen bg-background p-4 sm:p-8">
-      <div className="mx-auto w-full max-w-3xl space-y-6">
-        <header>
-          <h1 className="text-2xl font-semibold">Formulários personalizados, review de UI</h1>
-          <p className="text-sm text-muted-foreground">
-            Componentes reais com dados de brinquedo. Não toca no banco.
-          </p>
-        </header>
+    <div
+      data-form-accent={isAppSurface ? undefined : ''}
+      className="min-h-screen bg-background p-4 sm:p-8"
+    >
+      <div className={`mx-auto w-full space-y-6 ${isCustomersScreen ? 'max-w-7xl' : 'max-w-3xl'}`}>
+        {!isCustomersScreen && (
+          <>
+            <header>
+              <h1 className="text-2xl font-semibold">Formulários personalizados, review de UI</h1>
+              <p className="text-sm text-muted-foreground">
+                Componentes reais com dados de brinquedo. Não toca no banco.
+              </p>
+            </header>
 
-        <MobilePillTabs
-          variant="underline"
-          level="screen"
-          tabs={[
-            { value: 'builder', label: 'Construtor', icon: <LayoutTemplate className="h-4 w-4 shrink-0" /> },
-            { value: 'editor', label: 'Editor de perguntas', icon: <ClipboardList className="h-4 w-4 shrink-0" /> },
-            { value: 'publica', label: 'Link público', icon: <Smartphone className="h-4 w-4 shrink-0" /> },
-            { value: 'portal', label: 'Portal do cliente', icon: <UserRound className="h-4 w-4 shrink-0" /> },
-          ]}
-          activeTab={surface}
-          onTabChange={(value) => {
-            setSurface(value as Surface);
-            const url = new URL(window.location.href);
-            url.searchParams.set('s', value);
-            window.history.replaceState(null, '', url);
-          }}
-        />
+            <MobilePillTabs
+              variant="underline"
+              level="screen"
+              tabs={[
+                { value: 'gestao', label: 'Gestão', icon: <ClipboardList className="h-4 w-4 shrink-0" /> },
+                { value: 'builder', label: 'Construtor', icon: <LayoutTemplate className="h-4 w-4 shrink-0" /> },
+                { value: 'editor', label: 'Editor de perguntas', icon: <ClipboardList className="h-4 w-4 shrink-0" /> },
+                { value: 'publica', label: 'Link público', icon: <Smartphone className="h-4 w-4 shrink-0" /> },
+                { value: 'portal', label: 'Portal do cliente', icon: <UserRound className="h-4 w-4 shrink-0" /> },
+              ]}
+              activeTab={surface}
+              onTabChange={(value) => {
+                setSurface(value as Surface);
+                const url = new URL(window.location.href);
+                url.searchParams.set('s', value);
+                window.history.replaceState(null, '', url);
+              }}
+            />
+          </>
+        )}
+
+        {surface === 'clientes' && (
+          <>
+            <CustomersPageChrome activeTab="formularios" onTabChange={() => undefined} />
+            <CustomerFormsTab />
+          </>
+        )}
+
+        {surface === 'gestao' && <CustomerFormsTab />}
 
         {surface === 'builder' && (
           <div className="space-y-3">
@@ -208,6 +224,7 @@ export default function FormulariosUiReview() {
                 forms={DEMO_PORTAL_FORMS}
                 lang="pt-br"
                 t={PORTAL_TEXTS}
+                neutralAccent
               />
             </CardContent>
           </Card>

@@ -31,6 +31,8 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   initialFormId?: string | null;
   initialSubmissionId?: string | null;
+  /** Renderiza a gestão dentro da aba da página, sem abrir outro modal. */
+  embedded?: boolean;
 }
 
 function isExpired(form: LeadCaptureForm): boolean {
@@ -42,6 +44,7 @@ export function LeadCaptureManagerDialog({
   onOpenChange,
   initialFormId = null,
   initialSubmissionId = null,
+  embedded = false,
 }: Props) {
   const { toast } = useToast();
   const { locale } = useAppLocaleContext();
@@ -89,125 +92,142 @@ export function LeadCaptureManagerDialog({
     return <Badge className="border-transparent bg-emerald-600 text-white hover:bg-emerald-600">{t.statusActive}</Badge>;
   };
 
+  const openNewForm = () => {
+    setEditing(null);
+    setFormOpen(true);
+  };
+
+  const managerContent = isLoading ? (
+    <div className="space-y-2">
+      {[...Array(3)].map((_, i) => (
+        <Skeleton key={i} className="h-16 w-full rounded-lg" />
+      ))}
+    </div>
+  ) : forms.length === 0 ? (
+    <EmptyState
+      size="compact"
+      icon={<ClipboardList className="h-8 w-8" />}
+      title={t.emptyTitle}
+      description={t.emptyDesc}
+    />
+  ) : (
+    <div className="rounded-xl border bg-card">
+      {forms.map((form, idx) => {
+        const questionCount = questionCounts[form.id] ?? 0;
+        return (
+          <div
+            key={form.id}
+            className={`flex items-center gap-3 px-3 py-3 ${idx > 0 ? 'border-t' : ''}`}
+          >
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <p className="min-w-0 truncate text-sm font-medium">{form.title}</p>
+                {statusBadge(form)}
+                {form.purpose === 'generic' ? (
+                  <Badge variant="info" className="gap-1">
+                    <ClipboardList className="h-3 w-3" />
+                    {t.purposeGenericTitle}
+                  </Badge>
+                ) : (
+                  <Badge variant="default" className="gap-1">
+                    <UserPlus className="h-3 w-3" />
+                    {t.purposeLeadTitle}
+                  </Badge>
+                )}
+                {form.show_in_customer_portal && (
+                  <Badge className="border-transparent bg-violet-600 text-white hover:bg-violet-600">{t.badgePortal}</Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {fillMessage(form.submission_count === 1 ? t.sentOne : t.sentMany, { n: form.submission_count })}
+                {' · '}
+                {fillMessage(questionCount === 1 ? t.questionsOne : t.questionsMany, { n: questionCount })}
+              </p>
+            </div>
+            <Switch
+              checked={form.is_active && !isExpired(form)}
+              disabled={isExpired(form) || toggleActive.isPending}
+              onCheckedChange={(v) => toggleActive.mutate({ id: form.id, is_active: v })}
+              aria-label={t.activateAria}
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              title={t.actionCopyLink}
+              aria-label={t.actionCopyLink}
+              onClick={() => copyLink(form)}
+            >
+              <Link2 className="h-4 w-4" />
+            </Button>
+            <RowActionsMenu
+              triggerClassName="h-8 w-8"
+              actions={[
+                {
+                  label: t.actionAnswers,
+                  icon: MessageSquareText,
+                  onClick: () => setAnswersFor(form),
+                },
+                {
+                  label: t.actionEdit,
+                  icon: Pencil,
+                  variant: 'edit',
+                  onClick: () => {
+                    setEditing(form);
+                    setFormOpen(true);
+                  },
+                },
+                {
+                  label: t.actionDuplicate,
+                  icon: Copy,
+                  onClick: () => setToDuplicate(form),
+                },
+                {
+                  label: t.actionDelete,
+                  icon: Trash2,
+                  variant: 'delete',
+                  onClick: () => setToDelete(form),
+                },
+              ]}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+
   return (
     <>
-      <ResponsiveModal
-        open={open}
-        onOpenChange={onOpenChange}
-        title={t.managerTitle}
-        description={t.managerDesc}
-        footer={
+      {embedded ? (
+        <section className="space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="max-w-2xl text-sm text-muted-foreground">{t.managerDesc}</p>
+            <Button className="shrink-0 gap-2" onClick={openNewForm}>
+              <Plus className="h-4 w-4" />
+              {t.newForm}
+            </Button>
+          </div>
+          {managerContent}
+        </section>
+      ) : (
+        <ResponsiveModal
+          open={open}
+          onOpenChange={onOpenChange}
+          title={t.managerTitle}
+          description={t.managerDesc}
+          footer={
           <Button
             className="w-full gap-2"
-            onClick={() => {
-              setEditing(null);
-              setFormOpen(true);
-            }}
+            onClick={openNewForm}
           >
             <Plus className="h-4 w-4" />
             {t.newForm}
           </Button>
-        }
-      >
-        {isLoading ? (
-          <div className="space-y-2">
-            {[...Array(3)].map((_, i) => (
-              <Skeleton key={i} className="h-16 w-full rounded-lg" />
-            ))}
-          </div>
-        ) : forms.length === 0 ? (
-          <EmptyState
-            size="compact"
-            icon={<ClipboardList className="h-8 w-8" />}
-            title={t.emptyTitle}
-            description={t.emptyDesc}
-          />
-        ) : (
-          <div className="rounded-xl border bg-card">
-            {forms.map((form, idx) => {
-              const questionCount = questionCounts[form.id] ?? 0;
-              return (
-                <div
-                  key={form.id}
-                  className={`flex items-center gap-3 px-3 py-3 ${idx > 0 ? 'border-t' : ''}`}
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <p className="min-w-0 truncate text-sm font-medium">{form.title}</p>
-                      {statusBadge(form)}
-                      {form.purpose === 'generic' ? (
-                        <Badge variant="info" className="gap-1">
-                          <ClipboardList className="h-3 w-3" />
-                          {t.purposeGenericTitle}
-                        </Badge>
-                      ) : (
-                        <Badge variant="default" className="gap-1">
-                          <UserPlus className="h-3 w-3" />
-                          {t.purposeLeadTitle}
-                        </Badge>
-                      )}
-                      {form.show_in_customer_portal && (
-                        <Badge className="border-transparent bg-violet-600 text-white hover:bg-violet-600">{t.badgePortal}</Badge>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {fillMessage(form.submission_count === 1 ? t.sentOne : t.sentMany, { n: form.submission_count })}
-                      {' · '}
-                      {fillMessage(questionCount === 1 ? t.questionsOne : t.questionsMany, { n: questionCount })}
-                    </p>
-                  </div>
-                  <Switch
-                    checked={form.is_active && !isExpired(form)}
-                    disabled={isExpired(form) || toggleActive.isPending}
-                    onCheckedChange={(v) => toggleActive.mutate({ id: form.id, is_active: v })}
-                    aria-label={t.activateAria}
-                  />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    title={t.actionCopyLink}
-                    aria-label={t.actionCopyLink}
-                    onClick={() => copyLink(form)}
-                  >
-                    <Link2 className="h-4 w-4" />
-                  </Button>
-                  <RowActionsMenu
-                    triggerClassName="h-8 w-8"
-                    actions={[
-                      {
-                        label: t.actionAnswers,
-                        icon: MessageSquareText,
-                        onClick: () => setAnswersFor(form),
-                      },
-                      {
-                        label: t.actionEdit,
-                        icon: Pencil,
-                        variant: 'edit',
-                        onClick: () => {
-                          setEditing(form);
-                          setFormOpen(true);
-                        },
-                      },
-                      {
-                        label: t.actionDuplicate,
-                        icon: Copy,
-                        onClick: () => setToDuplicate(form),
-                      },
-                      {
-                        label: t.actionDelete,
-                        icon: Trash2,
-                        variant: 'delete',
-                        onClick: () => setToDelete(form),
-                      },
-                    ]}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </ResponsiveModal>
+          }
+        >
+          {managerContent}
+        </ResponsiveModal>
+      )}
 
       <LeadCaptureFormDialog
         open={formOpen}

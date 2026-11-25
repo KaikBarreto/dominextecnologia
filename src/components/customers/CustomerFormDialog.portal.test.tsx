@@ -16,7 +16,6 @@ vi.stubGlobal('ResizeObserver', ResizeObserverMock);
 const saveSettings = vi.fn();
 const toast = vi.fn();
 const createCustomer = vi.fn();
-const { leadCaptureManagerProps } = vi.hoisted(() => ({ leadCaptureManagerProps: vi.fn() }));
 let loadedSettings: CustomerPortalSettings | null = null;
 
 const DEFAULT_SETTINGS: CustomerPortalSettings = {
@@ -100,13 +99,6 @@ vi.mock('@/hooks/usePartyFieldConfig', () => ({
   usePartyFieldConfig: () => ({ fields: [] }),
   missingRequiredPartyFields: () => [],
 }));
-vi.mock('@/components/customers/LeadCaptureManagerDialog', () => ({
-  LeadCaptureManagerDialog: (props: unknown) => {
-    leadCaptureManagerProps(props);
-    return null;
-  },
-}));
-
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast }) }));
 vi.mock('@/hooks/useFormDraft', () => ({
   useFormDraft: () => ({
@@ -160,7 +152,6 @@ describe('CustomerFormDialog — integração do Portal', () => {
     saveSettings.mockReset();
     toast.mockReset();
     createCustomer.mockReset();
-    leadCaptureManagerProps.mockReset();
     window.history.replaceState({}, '', '/clientes');
   });
 
@@ -189,13 +180,20 @@ describe('CustomerFormDialog — integração do Portal', () => {
       '/clientes?leadForms=1&form=form-notificado&submission=resposta-notificada',
     );
 
-    render(<CustomersPageChrome activeTab="clientes" onTabChange={vi.fn()} />);
+    const onTabChange = vi.fn();
+    render(<CustomersPageChrome activeTab="clientes" onTabChange={onTabChange} />);
 
-    await waitFor(() => expect(leadCaptureManagerProps).toHaveBeenLastCalledWith(expect.objectContaining({
-      open: true,
-      initialFormId: 'form-notificado',
-      initialSubmissionId: 'resposta-notificada',
-    })));
+    await waitFor(() => expect(onTabChange).toHaveBeenCalledWith('formularios'));
+  });
+
+  it('oferece Formulários como aba principal em vez de ação no cabeçalho', () => {
+    const onTabChange = vi.fn();
+    render(<CustomersPageChrome activeTab="clientes" onTabChange={onTabChange} />);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Formulários' }));
+
+    expect(onTabChange).toHaveBeenCalledWith('formularios');
+    expect(screen.queryByRole('button', { name: 'Formulários de captação' })).not.toBeInTheDocument();
   });
 
   it('não duplica o cliente quando salvar o portal falha e o usuário tenta novamente', async () => {

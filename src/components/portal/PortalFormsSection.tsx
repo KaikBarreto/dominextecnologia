@@ -35,6 +35,8 @@ interface PortalFormsSectionProps {
   forms: CustomerPortalForm[];
   lang: string;
   t: PortalFormsTexts;
+  /** Usa o acento preto/branco padrão; white-label pode manter a cor própria. */
+  neutralAccent?: boolean;
 }
 
 /**
@@ -46,7 +48,7 @@ interface PortalFormsSectionProps {
  * O erro nunca chega ao cliente final como texto do banco: traduz pelo `code`
  * (42501 indisponível, 22023 rate-limit ou resposta inválida).
  */
-export function PortalFormsSection({ token, sessionToken, forms, lang, t }: PortalFormsSectionProps) {
+export function PortalFormsSection({ token, sessionToken, forms, lang, t, neutralAccent = false }: PortalFormsSectionProps) {
   const { toast } = useToast();
   const [openFormId, setOpenFormId] = useState<string | null>(null);
   const [answers, setAnswers] = useState<PublicFormAnswers>({});
@@ -128,7 +130,7 @@ export function PortalFormsSection({ token, sessionToken, forms, lang, t }: Port
   // ── Sucesso ──
   if (done) {
     return (
-      <Card>
+      <Card data-form-accent={neutralAccent ? '' : undefined}>
         <CardContent className="flex flex-col items-center gap-3 px-4 py-10 text-center">
           <CheckCircle2 className="h-14 w-14 text-emerald-600" />
           <h2 className="text-lg font-semibold">{t.formsSuccessTitle}</h2>
@@ -144,7 +146,7 @@ export function PortalFormsSection({ token, sessionToken, forms, lang, t }: Port
   // ── Formulário aberto ──
   if (openForm) {
     return (
-      <Card>
+      <Card data-form-accent={neutralAccent ? '' : undefined}>
         <CardContent className="space-y-4 p-4 sm:p-5">
           <button
             type="button"
@@ -205,7 +207,7 @@ export function PortalFormsSection({ token, sessionToken, forms, lang, t }: Port
 
   // ── Lista ──
   return (
-    <div className="space-y-3">
+    <div data-form-accent={neutralAccent ? '' : undefined} className="space-y-3">
       <p className="text-sm text-muted-foreground">{t.formsIntro}</p>
       {forms.map((form) => (
         <button

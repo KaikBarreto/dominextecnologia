@@ -328,6 +328,11 @@ export default function PublicLeadCapture() {
 
   const form = result?.form ?? null;
   const cs = result?.company_settings ?? null;
+  const hasWhiteLabelAccent = !!(
+    cs?.white_label_enabled
+    && cs.white_label_primary_color
+    && hexToHsl(cs.white_label_primary_color)
+  );
   const config = form?.field_config ?? {};
   const isGeneric = form?.purpose === 'generic';
   const questions = useMemo(() => parsePublicFormQuestions(form?.questions), [form?.questions]);
@@ -577,7 +582,10 @@ export default function PublicLeadCapture() {
   const brandLogo = (cs?.white_label_enabled && cs?.white_label_logo_url) || cs?.logo_url || null;
 
   return (
-    <div className="min-h-screen bg-muted/30 px-4 py-6 sm:py-10">
+    <div
+      data-form-accent={hasWhiteLabelAccent ? undefined : ''}
+      className="min-h-screen bg-muted/30 px-4 py-6 sm:py-10"
+    >
       <div className="mx-auto w-full max-w-lg">
         <div className="rounded-2xl border bg-card p-5 shadow-sm sm:p-7">
           <div className="mb-5 flex flex-col items-center text-center">

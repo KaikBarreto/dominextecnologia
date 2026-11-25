@@ -31,6 +31,28 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.69',
+    date: '25 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Formulários reunidos em um só lugar',
+        category: 'recurso',
+        description: 'Clientes e Fornecedores agora possui uma aba Formulários com as áreas Gerenciar e Respostas. É possível criar formulários para cadastro, pesquisa, checklist ou outras coletas, sem limitar o uso à captação de clientes.',
+      },
+      {
+        title: 'Respostas centralizadas e fáceis de consultar',
+        category: 'recurso',
+        description: 'As respostas recebidas aparecem em um feed geral, com filtro por formulário, origem, cliente e data. Cada item pode ser aberto para conferir todas as respostas, inclusive a partir de uma notificação.',
+      },
+      {
+        title: 'Visual consistente nos formulários',
+        category: 'melhoria',
+        description: 'Formulários públicos e do Portal do Cliente usam o padrão preto e branco do sistema quando a empresa não possui uma cor personalizada de marca.',
+      },
+    ],
+  },
+  {
     version: '1.41.68',
     date: '24 de novembro de 2026',
     type: 'patch',
