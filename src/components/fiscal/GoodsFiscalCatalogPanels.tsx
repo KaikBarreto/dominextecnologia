@@ -28,7 +28,7 @@ import { isValidDocument } from '@/lib/documentValidation';
 
 export type GoodsCatalogTab = 'series' | 'scenarios' | 'carriers';
 
-type NfeSeriesForm = Partial<NfeSeries> & { lastNumberUsed?: number };
+type NfeSeriesForm = Partial<NfeSeries> & { lastNumberUsed?: number; advanceLastNumberUsed?: number };
 
 const emptySeries = (): NfeSeriesForm => ({ label: '', series: 1, lastNumberUsed: 0, direction: 'saida', active: true });
 const emptyScenario = (): Partial<GoodsFiscalScenario> => ({
@@ -55,6 +55,11 @@ export function GoodsFiscalCatalogPanels({ tab }: { tab: GoodsCatalogTab }) {
     }
     if (!series.id && (!Number.isInteger(Number(series.lastNumberUsed)) || Number(series.lastNumberUsed) < 0 || Number(series.lastNumberUsed) > 999_999_998)) {
       toast.error('Informe a última numeração utilizada entre 0 e 999.999.998.'); return;
+    }
+    if (series.id && series.advanceLastNumberUsed != null) {
+      const advanceTo = Number(series.advanceLastNumberUsed);
+      if (!Number.isInteger(advanceTo) || advanceTo > 999_999_998) { toast.error('Informe a última numeração utilizada entre 0 e 999.999.998.'); return; }
+      if (advanceTo + 1 < Number(series.nextNumber)) { toast.error(`A numeração só pode avançar. A próxima nota desta série já é a nº ${series.nextNumber}.`); return; }
     }
     try { await catalogs.upsertSeries(series); setSeries(emptySeries()); toast.success('Série salva.'); }
     catch (error) { toast.error((error as Error).message); }
@@ -86,7 +91,7 @@ export function GoodsFiscalCatalogPanels({ tab }: { tab: GoodsCatalogTab }) {
 
   return <>
     {tab === 'series' && <div className="grid gap-6 xl:grid-cols-[minmax(20rem,0.8fr)_minmax(0,1.2fr)]">
-      <CatalogForm title={series.id ? 'Editar série' : 'Nova série'} description="A numeração é reservada no servidor. Uma série já utilizada não pode ser renumerada ou excluída.">
+      <CatalogForm title={series.id ? 'Editar série' : 'Nova série'} description="A numeração é reservada no servidor e só avança. Uma série já utilizada não pode trocar de número nem ser excluída.">
         <Field label="Nome"><Input value={series.label ?? ''} onChange={(event) => setSeries((current) => ({ ...current, label: event.target.value }))} placeholder="Ex.: NF-e saída principal" /></Field>
         <div className="grid grid-cols-2 gap-3"><Field label="Número"><Input inputMode="numeric" disabled={!!series.id} value={series.series ?? 1} onChange={(event) => setSeries((current) => ({ ...current, series: Number(event.target.value) }))} /></Field><Field label="Direção"><Select value={series.direction ?? 'saida'} onValueChange={(direction: NfeSeries['direction']) => setSeries((current) => ({ ...current, direction }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="saida">Saída</SelectItem><SelectItem value="entrada">Entrada</SelectItem><SelectItem value="ambos">Entrada e saída</SelectItem></SelectContent></Select></Field></div>
         {!series.id ? <Field label="Último número utilizado">
@@ -101,10 +106,19 @@ export function GoodsFiscalCatalogPanels({ tab }: { tab: GoodsCatalogTab }) {
           <p id="series-last-number-help" className="text-sm text-muted-foreground">
             Use 0 se esta série nunca emitiu NF-e. A próxima emissão será a nº <strong className="text-foreground">{Number.isInteger(Number(series.lastNumberUsed)) && Number(series.lastNumberUsed) >= 0 ? Number(series.lastNumberUsed) + 1 : '—'}</strong>.
           </p>
-        </Field> : <div className="rounded-xl border bg-muted/40 p-3">
-          <p className="text-sm font-semibold">Próximo número reservado</p>
-          <p className="mt-1 text-sm text-muted-foreground">A próxima emissão desta série será a nº <strong className="text-foreground">{series.nextNumber}</strong>. O contador não pode ser reduzido.</p>
-        </div>}
+        </Field> : <Field label="Último número utilizado">
+          <Input
+            inputMode="numeric"
+            min={Number(series.nextNumber) - 1}
+            max={999_999_998}
+            value={series.advanceLastNumberUsed ?? Number(series.nextNumber) - 1}
+            onChange={(event) => setSeries((current) => ({ ...current, advanceLastNumberUsed: Number(event.target.value) }))}
+            aria-describedby="series-advance-number-help"
+          />
+          <p id="series-advance-number-help" className="text-sm text-muted-foreground">
+            A próxima emissão desta série será a nº <strong className="text-foreground">{Number.isInteger(Number(series.advanceLastNumberUsed ?? Number(series.nextNumber) - 1)) ? Number(series.advanceLastNumberUsed ?? Number(series.nextNumber) - 1) + 1 : '—'}</strong>. Se a empresa já emitiu notas desta série em outro sistema, informe o último número usado lá. A numeração só avança, nunca volta.
+          </p>
+        </Field>}
         <ActiveField active={series.active !== false} onChange={(active) => setSeries((current) => ({ ...current, active }))} />
         <FormActions editing={!!series.id} busy={catalogs.isMutating} onCancel={() => setSeries(emptySeries())} onSave={saveSeries} />
       </CatalogForm>

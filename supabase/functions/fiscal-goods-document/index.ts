@@ -1,5 +1,5 @@
 import { goodsReadinessIssues } from '../_shared/fiscal-goods-readiness.ts';
-import { goodsOutcome, sourceFinancialsMatch } from "../_shared/fiscal-goods-policy.ts";
+import { goodsNumberCollision, goodsOutcome, goodsRejectionMessage, sourceFinancialsMatch } from "../_shared/fiscal-goods-policy.ts";
 import {
   isGoodsFinalConsumerCompatible,
   resolveGoodsFinalConsumer,
@@ -880,13 +880,21 @@ async function transmitSavedGoods(
   setActive({id,table,events,fence:transmissionFence},true);
   const input={operationId,snapshotHash:text(row.snapshot_hash),uf:text(row.uf).toUpperCase(),key:digits(row.access_key),batchId:String(row.number).slice(-15),signedXml};
   const official=model===55?await authorizeNfe(ctx,input):await authorizeNfce(ctx,input);
-  const normalized=outcomeStatus(official as JsonObject);
+  let normalized:{status:string;official:string|null}=outcomeStatus(official as JsonObject);
+  const officialCstat=text(object(official.resposta).cstat);
+  if(normalized.status==='uncertain' && officialCstat==='539'){
+    // O número já pertence a outra nota. Confirma que ESTA chave não existe antes de
+    // concluir a rejeição; se a consulta falhar, a nota segue incerta e será reconsultada.
+    const lookup={uf:input.uf,key:input.key,signedXml};
+    const check=await (model===55?consultNfe(ctx,lookup):consultNfce(ctx,lookup)).catch(()=>null);
+    if(check && goodsNumberCollision(officialCstat,outcomeStatus(check as JsonObject).official))normalized={status:'rejected',official:null};
+  }
   const artifacts=await officialArtifacts(auth,model,id,official as JsonObject);
   await storeGoodsDocument(auth,table,id,{
     status:normalized.status,official_status:normalized.official,...artifacts,
     official_checked_at:new Date().toISOString(),authorized_at:normalized.status==='authorized'?new Date().toISOString():null,
-    last_error_code:normalized.status==='rejected'?`sefaz_${text(object(official.resposta).cstat)}`:null,
-    last_error_message:normalized.status==='rejected'?'Documento rejeitado pela SEFAZ. Revise o cadastro fiscal.':null,
+    last_error_code:normalized.status==='rejected'?`sefaz_${officialCstat}`:null,
+    last_error_message:normalized.status==='rejected'?goodsRejectionMessage(officialCstat):null,
     next_action:normalized.status==='uncertain'?'consultar_sefaz':null,
   },transmissionFence);
   setActive(null);
@@ -1034,7 +1042,20 @@ async function handleDocumentAction(
       model === 55
         ? await consultNfe(ctx, { uf, key, signedXml })
         : await consultNfce(ctx, { uf, key, signedXml });
-    const normalized = outcomeStatus(official as JsonObject);
+    let normalized: { status: string; official: string | null } = outcomeStatus(official as JsonObject);
+    let consultedCstat = text(object(official.resposta).cstat);
+    if (row.status === 'uncertain' && normalized.status === 'uncertain' && normalized.official === 'nao_localizada') {
+      // A SEFAZ não conhece esta chave. Se o envio dela foi recusado por número já
+      // usado (539), não há o que aguardar: a nota foi rejeitada.
+      const prior = await auth.supabase.from(events).select('cstat')
+        .eq('document_id', documentId).eq('company_id', auth.companyId).eq('event_type', 'authorization_result')
+        .order('created_at', { ascending: false }).limit(1).maybeSingle();
+      const priorCstat = prior.error ? '' : text(object(prior.data).cstat);
+      if (goodsNumberCollision(priorCstat, normalized.official)) {
+        normalized = { status: 'rejected', official: null };
+        consultedCstat = priorCstat;
+      }
+    }
     // Consulta inconclusiva não desfaz estados fiscais já conclusivos nem libera cancelamento em andamento.
     if(row.status==='cancellation_pending' && normalized.status!=='cancelled')return jsonResponse({ok:true,status:'cancellation_pending',existing:true,refreshRequired:true,checkInconclusive:true},202);
     if(row.status==='authorized' && !['authorized','cancelled'].includes(normalized.status))return jsonResponse({ok:true,status:'authorized',existing:true,refreshRequired:true,checkInconclusive:true},202);
@@ -1054,8 +1075,8 @@ async function handleDocumentAction(
           normalized.status === "cancelled"
             ? text(row.cancelled_at) || now
             : row.cancelled_at,
-        last_error_code: normalized.status === 'rejected' ? `sefaz_${text(object(official.resposta).cstat)}` : null,
-        last_error_message: normalized.status === 'rejected' ? 'Documento rejeitado pela SEFAZ. Revise o cadastro fiscal.' : null,
+        last_error_code: normalized.status === 'rejected' ? `sefaz_${consultedCstat}` : null,
+        last_error_message: normalized.status === 'rejected' ? goodsRejectionMessage(consultedCstat) : null,
         next_action:
           normalized.status === "uncertain" ? "consultar_sefaz" : null,
       },goodsDocumentFence(row));

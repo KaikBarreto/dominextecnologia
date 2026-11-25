@@ -300,6 +300,30 @@ Deno.test('consulta inconclusiva não rebaixa rejeição já persistida',async()
  try{const response=await handler(request({model:65,documentId:doc,action:'consult'}));assertEquals(response.status,202);assertEquals((await response.json()).status,'rejected');assertEquals(storedStatus,'rejected');assertEquals(patches.length,0);}finally{globalThis.fetch=originalFetch;}
 });
 
+// Número já usado em outro emissor (cStat 539): rejeição definitiva, nunca "consultando" eterno.
+function collisionFetch(consult:unknown,priorCstat:string|null){const baseFetch=globalThis.fetch;globalThis.fetch=(async(input,init)=>{const url=routeUrl(input);
+ if(url.hostname==='engine.example.invalid'&&url.pathname.endsWith('/autorizar')){paths.push(`MOTOR:${url.pathname}`);return json({outcome:'uncertain',recovered:false,resposta:{cstat:'539'}});}
+ if(url.hostname==='engine.example.invalid'&&url.pathname.endsWith('/consultar')){paths.push(`MOTOR:${url.pathname}`);return consult===null?new Response('{}',{status:503}):json(consult);}
+ if(url.pathname.endsWith('_events')&&(init?.method??'GET')==='GET')return json(priorCstat?{cstat:priorCstat}:null);
+ return baseFetch(input,init);})as typeof fetch;}
+const keyNotFound={situacaoOficial:'nao_localizada',resposta:{cstat:'217'}};
+Deno.test('número já usado em outra nota (539) vira rejeição definitiva quando a chave não existe na SEFAZ',async()=>{
+ await setupSigned();collisionFetch(keyNotFound,null);
+ try{const response=await handler(request({model:65,documentId:doc,action:'resume'}));assertEquals(response.status,202);const result=await response.json();assertEquals(result.status,'rejected');assertEquals(result.rejectionCode,'sefaz_539');assertEquals(storedStatus,'rejected');assert(patches.some(p=>p.status==='rejected'&&p.last_error_code==='sefaz_539'&&p.next_action===null));assert(paths.includes('MOTOR:/v1/nfce/consultar'));}finally{globalThis.fetch=originalFetch;}
+});
+Deno.test('539 sem confirmação da consulta mantém a nota incerta, sem concluir rejeição',async()=>{
+ for(const consult of [null,{outcome:'uncertain',situacaoOficial:'aguardando_confirmacao'}]){await setupSigned();collisionFetch(consult,null);
+  try{const response=await handler(request({model:65,documentId:doc,action:'resume'}));assertEquals(response.status,202);assertEquals((await response.json()).status,'uncertain');assertEquals(storedStatus,'uncertain');assert(!patches.some(p=>p.status==='rejected'));}finally{globalThis.fetch=originalFetch;}}
+});
+Deno.test('consulta conclui a rejeição da nota incerta cujo envio foi recusado por número já usado',async()=>{
+ await setupSigned();storedStatus='uncertain';collisionFetch(keyNotFound,'539');
+ try{const response=await handler(request({model:65,documentId:doc,action:'consult'}));assertEquals(response.status,200);assertEquals((await response.json()).status,'rejected');assertEquals(storedStatus,'rejected');assert(patches.some(p=>p.last_error_code==='sefaz_539'&&typeof p.last_error_message==='string'&&p.last_error_message.includes('número')));}finally{globalThis.fetch=originalFetch;}
+});
+Deno.test('chave não localizada sem recusa por numeração continua incerta',async()=>{
+ await setupSigned();storedStatus='uncertain';collisionFetch(keyNotFound,null);
+ try{const response=await handler(request({model:65,documentId:doc,action:'consult'}));assertEquals(response.status,200);assertEquals((await response.json()).status,'uncertain');assertEquals(storedStatus,'uncertain');assert(!patches.some(p=>p.status==='rejected'));}finally{globalThis.fetch=originalFetch;}
+});
+
 Deno.test('consulta com status igual também exige a revisão updated_at capturada',async()=>{
  await setupSigned();storedStatus='authorized';const baseFetch=globalThis.fetch;const started=gate(),release=gate();let calls=0,slow:Promise<Response>|undefined;
  globalThis.fetch=(async(input,init)=>{const url=routeUrl(input);if(url.hostname==='engine.example.invalid'&&url.pathname.endsWith('/consultar')&&++calls===1){started.resolve();await release.promise;return json(authorizedResult);}return baseFetch(input,init);})as typeof fetch;

@@ -31,6 +31,28 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.78',
+    date: '25 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Nota recusada por número já utilizado',
+        category: 'correcao',
+        description: 'Quando a SEFAZ recusa uma NF-e ou NFC-e porque o número já foi usado em outra nota da empresa, ela agora aparece como rejeitada, com o motivo explicado e o caminho para corrigir. Antes, a nota ficava aguardando uma confirmação que nunca chegava.',
+      },
+      {
+        title: 'Numeração de série pode ser avançada',
+        category: 'melhoria',
+        description: 'Quem já emitia notas em outro sistema pode informar o último número utilizado ao editar uma série, para continuar a sequência de onde parou. A numeração só avança, nunca volta.',
+      },
+      {
+        title: 'Tela de NF-e e NFC-e reorganizada',
+        category: 'melhoria',
+        description: 'A lista de notas de produto ganhou busca, filtros por situação e tipo, ordenação, detalhes ao clicar na nota e um menu de ações para consultar, baixar o DANFE e o XML ou cancelar. No celular, as notas aparecem em cartões.',
+      },
+    ],
+  },
+  {
     version: '1.41.77',
     date: '25 de novembro de 2026',
     type: 'patch',
