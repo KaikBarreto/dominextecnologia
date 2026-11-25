@@ -14,7 +14,13 @@ interface PageRecoveryBoundaryProps {
 interface PageRecoveryBoundaryState {
   error: Error | null;
   resetKey: string;
+  automaticRetries: number;
 }
+
+// Backoff curto o bastante para não segurar um erro real por muito tempo, mas
+// amplo o bastante para cobrir contexto/cache/chunk que termina de estabilizar
+// depois da navegação. O fallback só aparece após as três falhas consecutivas.
+const AUTOMATIC_RETRY_DELAYS_MS = [300, 900, 1_800] as const;
 
 class PageRecoveryBoundaryCore extends React.Component<
   PageRecoveryBoundaryProps & { onGoHome: () => void },
@@ -23,7 +29,10 @@ class PageRecoveryBoundaryCore extends React.Component<
   state: PageRecoveryBoundaryState = {
     error: null,
     resetKey: this.props.resetKey,
+    automaticRetries: 0,
   };
+
+  private retryTimer: ReturnType<typeof setTimeout> | null = null;
 
   static getDerivedStateFromError(error: Error): Partial<PageRecoveryBoundaryState> {
     return { error };
@@ -34,7 +43,7 @@ class PageRecoveryBoundaryCore extends React.Component<
     state: PageRecoveryBoundaryState,
   ): Partial<PageRecoveryBoundaryState> | null {
     if (props.resetKey === state.resetKey) return null;
-    return { error: null, resetKey: props.resetKey };
+    return { error: null, resetKey: props.resetKey, automaticRetries: 0 };
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
@@ -43,6 +52,31 @@ class PageRecoveryBoundaryCore extends React.Component<
       componentStack: info.componentStack?.split("\n").slice(0, 8).join("\n"),
     });
     void autoHealStaleBundleIfNeeded(error.message);
+
+    // Um erro de render pode acontecer durante a troca de rota enquanto
+    // contexto, cache ou um chunk ainda está se estabilizando. A primeira
+    // falha ganha tentativas automáticas progressivas; só exibimos o aviso
+    // quando a mesma tela continua falhando após todo o backoff. O limite evita
+    // mascarar erro persistente e impede loop de renderização.
+    if (this.state.automaticRetries < AUTOMATIC_RETRY_DELAYS_MS.length) {
+      if (this.retryTimer) clearTimeout(this.retryTimer);
+      const failedResetKey = this.props.resetKey;
+      const retryDelay = AUTOMATIC_RETRY_DELAYS_MS[this.state.automaticRetries];
+      this.retryTimer = setTimeout(() => {
+        this.retryTimer = null;
+        this.setState((state) => {
+          if (state.resetKey !== failedResetKey) return null;
+          return {
+            error: null,
+            automaticRetries: state.automaticRetries + 1,
+          };
+        });
+      }, retryDelay);
+    }
+  }
+
+  componentWillUnmount() {
+    if (this.retryTimer) clearTimeout(this.retryTimer);
   }
 
   private retry = () => {
@@ -51,6 +85,19 @@ class PageRecoveryBoundaryCore extends React.Component<
 
   render() {
     if (!this.state.error) return this.props.children;
+
+    if (this.state.automaticRetries < AUTOMATIC_RETRY_DELAYS_MS.length) {
+      return (
+        <div
+          className="flex min-h-[60dvh] flex-col items-center justify-center gap-3"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="loader" aria-hidden="true" />
+          <p className="text-sm text-muted-foreground">Recuperando esta tela…</p>
+        </div>
+      );
+    }
 
     return (
       <section

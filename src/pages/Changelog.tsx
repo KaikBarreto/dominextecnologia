@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.77',
+    date: '25 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Recuperação de telas sem avisos prematuros',
+        category: 'correcao',
+        description: 'Falhas transitórias durante a abertura de uma tela agora são recuperadas automaticamente. O aviso para tentar novamente só aparece quando a falha realmente persiste.',
+      },
+    ],
+  },
+  {
     version: '1.41.76',
     date: '25 de novembro de 2026',
     type: 'patch',
