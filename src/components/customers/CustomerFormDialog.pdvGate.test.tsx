@@ -11,16 +11,26 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as React from 'react';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+import type { Customer } from '@/types/database';
 
 class ResizeObserverStub {
   observe() {}
   unobserve() {}
   disconnect() {}
 }
-(globalThis as any).ResizeObserver = (globalThis as any).ResizeObserver || ResizeObserverStub;
-(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+globalThis.ResizeObserver = globalThis.ResizeObserver
+  || ResizeObserverStub as unknown as typeof ResizeObserver;
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const state = vi.hoisted(() => ({ hasPdv: false }));
+const invokeCepLookup = vi.hoisted(() => vi.fn());
+
+vi.mock('@/integrations/supabase/client', () => ({
+  supabase: {
+    functions: { invoke: invokeCepLookup },
+    storage: { from: vi.fn() },
+  },
+}));
 
 vi.mock('@/contexts/AppLocaleContext', () => ({
   useAppLocaleContext: () => ({
@@ -61,6 +71,10 @@ vi.mock('@/hooks/usePartyLabels', () => ({
 vi.mock('@/hooks/usePartyFieldConfig', () => ({
   usePartyFieldConfig: () => ({ fields: [] }),
   missingRequiredPartyFields: () => [],
+}));
+vi.mock('@/utils/geolocation', () => ({
+  buildCustomerAddress: () => '',
+  geocodeAddress: vi.fn().mockResolvedValue(null),
 }));
 
 // Stand-ins leves — nada aqui importa pro teste do "Atende como".
@@ -107,6 +121,7 @@ function typeInto(input: HTMLInputElement, value: string) {
 
 beforeEach(() => {
   state.hasPdv = false;
+  invokeCepLookup.mockReset();
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
@@ -146,6 +161,38 @@ describe('CustomerFormDialog — "Atende como" (Serviço/Loja, módulo PDV)', ()
     const payload = onSubmit.mock.calls[0][0] as Record<string, unknown>;
     expect(Object.prototype.hasOwnProperty.call(payload, 'is_service_customer')).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(payload, 'is_store_customer')).toBe(false);
+  });
+
+  it('preenche o código IBGE ao salvar um cliente legado com CEP válido', async () => {
+    invokeCepLookup.mockResolvedValue({
+      data: { cidade: 'Anápolis', estado: 'GO', ibge: '5201108' },
+      error: null,
+    });
+    const onSubmit = vi.fn(async (_data?: unknown) => ({ id: 'customer-legacy' }));
+    const customer = {
+      id: 'customer-legacy',
+      name: 'Cliente legado',
+      customer_type: 'pj',
+      zip_code: '75095435',
+      city: 'Anápolis',
+      state: 'GO',
+      ibge_municipality_code: null,
+    } as Customer;
+    mount({ customer, onSubmit });
+
+    submitForm();
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(invokeCepLookup).toHaveBeenCalledWith('cep-lookup', {
+      body: { cep: '75095435' },
+    });
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
+      ibge_municipality_code: '5201108',
+    }));
   });
 
   it('com o módulo PDV, os dois checkboxes aparecem e o default é Serviço (defaultCustomerKind="servico")', () => {

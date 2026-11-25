@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.75";
+export const APP_VERSION = "1.41.76";
 
 export const VERSION_NOTES =
-  "A ordem de serviço reconhece corretamente os campos obrigatórios preenchidos, e o dashboard passa a exibir todo o conteúdo no celular.";
+  "O cadastro de clientes completa o município fiscal pelo CEP e evita bloqueios na emissão de notas por código IBGE ausente.";

@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.76',
+    date: '25 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Município fiscal preenchido automaticamente',
+        category: 'correcao',
+        description: 'Ao salvar um cliente com CEP válido, o sistema completa o código do município necessário para a emissão de notas. Se o CEP não corresponder à cidade ou ao estado informado, o cadastro orienta a correção antes de salvar.',
+      },
+    ],
+  },
+  {
     version: '1.41.75',
     date: '25 de novembro de 2026',
     type: 'patch',

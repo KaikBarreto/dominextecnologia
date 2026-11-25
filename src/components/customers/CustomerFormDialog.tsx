@@ -47,6 +47,7 @@ import { usePartyLabels } from '@/hooks/usePartyLabels';
 import { missingRequiredPartyFields, usePartyFieldConfig } from '@/hooks/usePartyFieldConfig';
 import { PartyFieldsForm } from '@/components/customers/PartyFieldsForm';
 import { PartyLabelMultiSelect } from '@/components/customers/PartyLabelMultiSelect';
+import { resolveCustomerMunicipalityCode } from '@/utils/customerMunicipalityCode';
 
 
 const customerSchema = z.object({
@@ -322,6 +323,33 @@ export function CustomerFormDialog({
         }
       }
 
+      const ibgeMunicipalityCode = await resolveCustomerMunicipalityCode({
+        zipCode: data.zip_code,
+        city: data.city,
+        state: data.state,
+        municipalityCode: data.ibge_municipality_code,
+      }, async (cep) => {
+        const { data: cepData, error } = await supabase.functions.invoke('cep-lookup', {
+          body: { cep },
+        });
+        if (error) throw error;
+        return cepData;
+      }).catch((error) => {
+        setActiveTab('fiscal');
+        throw error;
+      });
+
+      const dataWithMunicipalityCode: CustomerFormData = {
+        ...data,
+        ibge_municipality_code: ibgeMunicipalityCode,
+      };
+      // Mantém o código resolvido no formulário caso uma etapa posterior
+      // (ex.: configuração do portal) falhe e o usuário precise tentar salvar
+      // novamente, sem repetir uma consulta externa desnecessária.
+      if (data.ibge_municipality_code !== ibgeMunicipalityCode) {
+        form.setValue('ibge_municipality_code', ibgeMunicipalityCode);
+      }
+
       let targetCustomerId = persistedCustomerId;
       if (!targetCustomerId) {
         let photo_url: string | undefined;
@@ -334,10 +362,10 @@ export function CustomerFormDialog({
         let coords = pickedCoords;
         if (!coords) {
           const addressStr = buildCustomerAddress({
-            address: data.address,
-            city: data.city,
-            state: data.state,
-            zip_code: data.zip_code,
+            address: dataWithMunicipalityCode.address,
+            city: dataWithMunicipalityCode.city,
+            state: dataWithMunicipalityCode.state,
+            zip_code: dataWithMunicipalityCode.zip_code,
           });
           if (addressStr) {
             coords = await geocodeAddress(addressStr); // retorna null em falha/timeout
@@ -345,15 +373,15 @@ export function CustomerFormDialog({
         }
 
         const cleanedData = {
-          ...data,
+          ...dataWithMunicipalityCode,
           label_id: selectedLabelIds[0] ?? null,
           custom_fields: customFieldValues,
           // Este é o gate geral do cliente. O destinatário pode ser um contato
           // adicional configurado na ficha, mesmo sem celular principal.
-          whatsapp_notifications_enabled: data.whatsapp_notifications_enabled,
-          birth_date: data.birth_date || undefined,
+          whatsapp_notifications_enabled: dataWithMunicipalityCode.whatsapp_notifications_enabled,
+          birth_date: dataWithMunicipalityCode.birth_date || undefined,
           // Espelha o número do endereço na coluna fiscal usada pela emissão de NFS-e.
-          street_number: data.address_number || undefined,
+          street_number: dataWithMunicipalityCode.address_number || undefined,
           ...(coords ? { latitude: coords.lat, longitude: coords.lng } : {}),
           ...(photo_url ? { photo_url } : {}),
         };
@@ -863,7 +891,14 @@ export function CustomerFormDialog({
                     <FormControl>
                       <CepLookup
                         value={field.value || ''}
-                        onChange={field.onChange}
+                        onChange={(value) => {
+                          const previousCep = (field.value || '').replace(/\D/g, '');
+                          const nextCep = value.replace(/\D/g, '');
+                          field.onChange(value);
+                          if (previousCep !== nextCep) {
+                            form.setValue('ibge_municipality_code', '');
+                          }
+                        }}
                         onAddressFound={(addr) => {
                           if (addr.logradouro) form.setValue('address', addr.logradouro);
                           if (addr.bairro) form.setValue('neighborhood', addr.bairro);
@@ -901,6 +936,7 @@ export function CustomerFormDialog({
                           if (addr.cep) {
                             const c = addr.cep.replace(/\D/g, '');
                             form.setValue('zip_code', c.length > 5 ? `${c.slice(0,5)}-${c.slice(5)}` : c);
+                            form.setValue('ibge_municipality_code', '');
                           }
                         }}
                         placeholder={t.streetPlaceholder}
