@@ -14,8 +14,8 @@ import { NoticeBanner } from '@/components/ui/NoticeBanner';
 interface ContactFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  contact?: { id: string; name: string; phone: string | null; email: string | null; position: string | null } | null;
-  onSubmit: (data: { id: string; name: string; phone?: string; email?: string; position?: string }) => Promise<void>;
+  contact?: { id: string; name: string; phone: string | null; email: string | null; position: string | null; birth_date?: string | null } | null;
+  onSubmit: (data: { id: string; name: string; phone?: string; email?: string; position?: string; birth_date?: string | null }) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -48,6 +48,7 @@ function ContactFormContent({ contact, onSubmit, onCancel, isLoading }: {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [position, setPosition] = useState('');
+  const [birthDate, setBirthDate] = useState('');
   const [submitFailed, setSubmitFailed] = useState(false);
   const [contactId] = useState(() => contact?.id ?? createContactId());
 
@@ -57,11 +58,13 @@ function ContactFormContent({ contact, onSubmit, onCancel, isLoading }: {
       setPhone(contact.phone ? phoneMask(contact.phone) : '');
       setEmail(contact.email || '');
       setPosition(contact.position || '');
+      setBirthDate(contact.birth_date || '');
     } else {
       setName('');
       setPhone('');
       setEmail('');
       setPosition('');
+      setBirthDate('');
     }
     setSubmitFailed(false);
   }, [contact]);
@@ -77,6 +80,7 @@ function ContactFormContent({ contact, onSubmit, onCancel, isLoading }: {
         phone: phone.trim() || undefined,
         email: email.trim() || undefined,
         position: position.trim() || undefined,
+        birth_date: birthDate || (contact ? null : undefined),
       });
     } catch {
       setSubmitFailed(true);
@@ -96,6 +100,10 @@ function ContactFormContent({ contact, onSubmit, onCancel, isLoading }: {
       <div className="space-y-2">
         <Label htmlFor="contact-phone">{tc.fieldPhone}</Label>
         <Input id="contact-phone" value={phone} onChange={e => setPhone(phoneMask(e.target.value))} placeholder={tc.phonePlaceholder} disabled={isLoading} />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="contact-birth-date">{tc.fieldBirthDate}</Label>
+        <Input id="contact-birth-date" type="date" value={birthDate} onChange={e => setBirthDate(e.target.value)} disabled={isLoading} />
       </div>
       <div className="space-y-2">
         <Label htmlFor="contact-email">{tc.fieldEmail}</Label>
@@ -123,7 +131,7 @@ export function ContactFormDialog({ open, onOpenChange, contact, onSubmit, isLoa
   const tc = MESSAGES[locale].app.customers.contact;
   const title = contact ? tc.titleEdit : tc.titleNew;
 
-  const handleSubmit = async (data: { id: string; name: string; phone?: string; email?: string; position?: string }) => {
+  const handleSubmit = async (data: { id: string; name: string; phone?: string; email?: string; position?: string; birth_date?: string | null }) => {
     await onSubmit(data);
     onOpenChange(false);
   };
@@ -131,7 +139,7 @@ export function ContactFormDialog({ open, onOpenChange, contact, onSubmit, isLoa
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent>
+        <DrawerContent className="[--primary:0_0%_10%] [--primary-foreground:0_0%_100%] [--ring:0_0%_10%] dark:[--primary:0_0%_88%] dark:[--primary-foreground:0_0%_8%] dark:[--ring:0_0%_70%]">
           <DrawerHeader className="text-left"><DrawerTitle>{title}</DrawerTitle></DrawerHeader>
           <div className="px-4 pb-4">
             <ContactFormContent contact={contact} onSubmit={handleSubmit} onCancel={() => onOpenChange(false)} isLoading={isLoading} />
@@ -143,7 +151,7 @@ export function ContactFormDialog({ open, onOpenChange, contact, onSubmit, isLoa
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md [--primary:0_0%_10%] [--primary-foreground:0_0%_100%] [--ring:0_0%_10%] dark:[--primary:0_0%_88%] dark:[--primary-foreground:0_0%_8%] dark:[--ring:0_0%_70%]">
         <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
         <ContactFormContent contact={contact} onSubmit={handleSubmit} onCancel={() => onOpenChange(false)} isLoading={isLoading} />
       </DialogContent>

@@ -102,6 +102,35 @@ describe('seguranca do worker de WhatsApp', () => {
     expect(worker).toContain('"os.a_caminho": "a_caminho"');
   });
 
+  it('trata aniversário sem rota e valida opt-in, data e fuso antes do webhook', () => {
+    const processStart = worker.indexOf('async function processJob');
+    const birthdayOptIn = worker.indexOf('if (job.source_type === "birthday" && pref<boolean>(', processStart);
+    const birthdayDate = worker.indexOf('birthdayMatchesLocalDay(birthDate, regionalSettings.timezone)', processStart);
+    const webhookSetup = worker.indexOf(
+      'if (connection.webhook_config_version !== EVOLUTION_WEBHOOK_CONFIG_VERSION)',
+      processStart,
+    );
+    const routeGuard = worker.indexOf('if (job.source_type !== "birthday")', processStart);
+
+    expect(worker).toContain('source_type: "service_order" | "tenant_charge" | "birthday"');
+    expect(birthdayOptIn).toBeGreaterThan(processStart);
+    expect(birthdayDate).toBeGreaterThan(birthdayOptIn);
+    expect(webhookSetup).toBeGreaterThan(birthdayDate);
+    expect(routeGuard).toBeGreaterThan(webhookSetup);
+  });
+
+  it('rele o fuso e a data de aniversario na revalidacao final', () => {
+    const finalValidationStart = worker.indexOf('async function validateFinalDispatchState');
+    const finalValidationEnd = worker.indexOf('async function skipJob', finalValidationStart);
+    const finalValidation = worker.slice(finalValidationStart, finalValidationEnd);
+
+    expect(finalValidation).toContain('.from("company_settings")');
+    expect(finalValidation).toContain('.select("timezone")');
+    expect(finalValidation).toContain('.select("id, customer_id, phone, birth_date")');
+    expect(finalValidation).toContain('birthdayMatchesLocalDay(birthDate, timezone)');
+    expect(finalValidation).toContain('birthday_automation_disabled');
+  });
+
   it('preserva opt-out em falha transitoria e aceita E.164 curto', () => {
     expect(webhook).toContain('digits.length < 8 || digits.length > 15');
     expect(webhook).toContain('instance_resolution_unavailable');

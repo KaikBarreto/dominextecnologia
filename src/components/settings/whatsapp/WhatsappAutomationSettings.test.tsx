@@ -189,6 +189,85 @@ describe('WhatsappAutomationSettings', () => {
     expect(domains).toContain('Cobranças');
   });
 
+  it('mostra aniversário desligado, explica o opt-in e altera somente essa regra', () => {
+    const onPreferencesChange = vi.fn();
+    renderSettings({ onPreferencesChange });
+
+    const birthdayTab = Array.from(container.querySelectorAll('[role="radio"]'))
+      .find((element) => element.textContent?.includes('Aniversários'));
+    expect(birthdayTab).toBeTruthy();
+    act(() => birthdayTab?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+
+    expect(container.textContent).toContain(
+      'Esta automação nasce desligada e só envia depois que você ativá-la.',
+    );
+    expect(container.textContent).toContain(
+      'No aniversário do cliente ou de um contato cadastrado',
+    );
+
+    const birthdaySwitch = container.querySelector(
+      '[aria-label="Enviar esta mensagem: Mensagem de aniversário"]',
+    );
+    expect(birthdaySwitch?.getAttribute('data-state')).toBe('unchecked');
+    act(() => birthdaySwitch?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+
+    expect(onPreferencesChange).toHaveBeenCalledOnce();
+    const updated = onPreferencesChange.mock.calls[0][0] as WhatsappAutomationPreferences;
+    expect(updated.birthday.events.greeting.enabled).toBe(true);
+    expect(updated.os).toEqual(DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES.os);
+    expect(updated.billing).toEqual(DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES.billing);
+  });
+
+  it('explica a limitação da Meta Cloud e bloqueia uma nova ativação de aniversário', () => {
+    const onPreferencesChange = vi.fn();
+    renderSettings({ activeProvider: 'meta_cloud', onPreferencesChange });
+
+    const birthdayTab = Array.from(container.querySelectorAll('[role="radio"]'))
+      .find((element) => element.textContent?.includes('Aniversários'));
+    act(() => birthdayTab?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+
+    expect(container.textContent).toContain('Disponível somente na conexão por QR Code');
+    expect(container.textContent).toContain('A API Oficial da Meta exige um modelo previamente aprovado');
+
+    const birthdaySwitch = container.querySelector(
+      '[aria-label="Enviar esta mensagem: Mensagem de aniversário"]',
+    );
+    expect(birthdaySwitch).toHaveProperty('disabled', true);
+    act(() => birthdaySwitch?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(onPreferencesChange).not.toHaveBeenCalled();
+  });
+
+  it('permite desligar uma regra de aniversário antiga ao usar Meta Cloud', () => {
+    const onPreferencesChange = vi.fn();
+    const preferences: WhatsappAutomationPreferences = {
+      ...DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES,
+      birthday: {
+        events: {
+          greeting: {
+            ...DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES.birthday.events.greeting,
+            enabled: true,
+          },
+        },
+      },
+    };
+    renderSettings({ activeProvider: 'meta_cloud', preferences, onPreferencesChange });
+
+    const birthdayTab = Array.from(container.querySelectorAll('[role="radio"]'))
+      .find((element) => element.textContent?.includes('Aniversários'));
+    act(() => birthdayTab?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    const birthdaySwitch = container.querySelector(
+      '[aria-label="Enviar esta mensagem: Mensagem de aniversário"]',
+    );
+
+    expect(birthdaySwitch).toHaveProperty('disabled', false);
+    act(() => birthdaySwitch?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    expect(onPreferencesChange).toHaveBeenCalledWith(expect.objectContaining({
+      birthday: expect.objectContaining({
+        events: expect.objectContaining({ greeting: expect.objectContaining({ enabled: false }) }),
+      }),
+    }));
+  });
+
   it('mostra estado vazio quando nenhum domínio de automação está contratado', () => {
     renderSettings({ availableDomains: [] });
 

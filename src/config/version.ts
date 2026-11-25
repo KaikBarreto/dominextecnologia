@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.69";
+export const APP_VERSION = "1.41.70";
 
 export const VERSION_NOTES =
-  "Formulários organizados em uma aba própria de Clientes e Fornecedores, com gestão e respostas reunidas no mesmo lugar.";
+  "Mensagens de aniversário personalizadas no WhatsApp, com data de nascimento para clientes e contatos e ativação opcional.";

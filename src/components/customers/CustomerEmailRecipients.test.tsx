@@ -13,8 +13,8 @@ vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const contacts = [
-  { id: 'financeiro', customer_id: 'customer-1', name: 'Financeiro', phone: null, email: 'financeiro@cliente.com.br', position: 'Contas a pagar', notes: null, created_at: '', updated_at: '' },
-  { id: 'invalido', customer_id: 'customer-1', name: 'Sem e-mail', phone: null, email: null, position: null, notes: null, created_at: '', updated_at: '' },
+  { id: 'financeiro', customer_id: 'customer-1', name: 'Financeiro', phone: null, email: 'financeiro@cliente.com.br', position: 'Contas a pagar', birth_date: null, notes: null, created_at: '', updated_at: '' },
+  { id: 'invalido', customer_id: 'customer-1', name: 'Sem e-mail', phone: null, email: null, position: null, birth_date: null, notes: null, created_at: '', updated_at: '' },
 ];
 
 function explicitRoute(): CustomerEmailRoute {

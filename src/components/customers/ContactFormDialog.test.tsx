@@ -12,6 +12,61 @@ vi.mock('@/contexts/AppLocaleContext', () => ({
 }));
 
 describe('ContactFormDialog', () => {
+  it('envia a data de nascimento ao criar um contato', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <ContactFormDialog
+        open
+        onOpenChange={() => {}}
+        onSubmit={onSubmit}
+        isLoading={false}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText('Nome *'), { target: { value: 'Ana Souza' } });
+    fireEvent.change(screen.getByLabelText('Data de nascimento'), {
+      target: { value: '1992-08-17' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+    expect(onSubmit.mock.calls[0][0]).toEqual(expect.objectContaining({
+      name: 'Ana Souza',
+      birth_date: '1992-08-17',
+    }));
+  });
+
+  it('envia null ao remover a data de nascimento de um contato existente', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <ContactFormDialog
+        open
+        onOpenChange={() => {}}
+        contact={{
+          id: '4de8334b-6cc2-42ab-82d8-a0e8ef72e311',
+          name: 'Ana Souza',
+          phone: null,
+          email: null,
+          position: null,
+          birth_date: '1992-08-17',
+        }}
+        onSubmit={onSubmit}
+        isLoading={false}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText('Data de nascimento'), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+    expect(onSubmit.mock.calls[0][0]).toEqual(expect.objectContaining({
+      id: '4de8334b-6cc2-42ab-82d8-a0e8ef72e311',
+      birth_date: null,
+    }));
+  });
+
   it('mantém o preenchimento e reaproveita o identificador quando a gravação falha', async () => {
     const onOpenChange = vi.fn();
     const onSubmit = vi.fn()

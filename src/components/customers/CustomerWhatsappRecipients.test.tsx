@@ -12,8 +12,8 @@ vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const contacts = [
-  { id: 'portaria', customer_id: 'customer-1', name: 'Portaria', phone: '(21) 98888-0001', email: null, position: 'Porteiro', notes: null, created_at: '', updated_at: '' },
-  { id: 'sem-fone', customer_id: 'customer-1', name: 'Sem telefone', phone: null, email: null, position: null, notes: null, created_at: '', updated_at: '' },
+  { id: 'portaria', customer_id: 'customer-1', name: 'Portaria', phone: '(21) 98888-0001', email: null, position: 'Porteiro', birth_date: null, notes: null, created_at: '', updated_at: '' },
+  { id: 'sem-fone', customer_id: 'customer-1', name: 'Sem telefone', phone: null, email: null, position: null, birth_date: null, notes: null, created_at: '', updated_at: '' },
 ];
 
 function disabledRoute(category: 'service_order' | 'billing'): CustomerWhatsappRoute {

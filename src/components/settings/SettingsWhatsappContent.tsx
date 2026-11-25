@@ -249,8 +249,12 @@ function WhatsappContent() {
   const availableAutomationDomains = [
     ...(hasModule('service_operations') ? ['os' as const] : []),
     ...(hasModule('cobrancas') ? ['billing' as const] : []),
+    ...(moduleActive ? ['birthday' as const] : []),
   ];
   const readOnly = !moduleActive || !canManage;
+  const activeConnection = whatsappConnections.connections.find(
+    (connection) => connection.id === settings?.active_connection_id,
+  );
   const isConnected = whatsappConnections.connections.some(
     (connection) => connection.id === settings?.active_connection_id
       && connection.status === 'connected'
@@ -347,6 +351,7 @@ function WhatsappContent() {
             isSaving={update.isPending}
             isDirty={isDirty}
             readOnly={readOnly}
+            activeProvider={activeConnection?.provider ?? null}
             companyValues={companyIdentity}
             onEnabledChange={setEnabled}
             onPreferencesChange={setPreferences}

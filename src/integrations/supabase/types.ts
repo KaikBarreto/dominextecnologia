@@ -4203,6 +4203,7 @@ export type Database = {
       }
       customer_contacts: {
         Row: {
+          birth_date: string | null
           created_at: string
           customer_id: string
           email: string | null
@@ -4214,6 +4215,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          birth_date?: string | null
           created_at?: string
           customer_id: string
           email?: string | null
@@ -4225,6 +4227,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          birth_date?: string | null
           created_at?: string
           customer_id?: string
           email?: string | null

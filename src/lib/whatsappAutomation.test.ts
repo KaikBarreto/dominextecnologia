@@ -151,7 +151,45 @@ describe('whatsappAutomation', () => {
   });
 
   it('mantém sete fluxos ativos porque o lembrete de visita nasce desligado', () => {
+    expect(DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES.birthday.events.greeting.enabled).toBe(false);
     expect(countEnabledWhatsappAutomations(DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES)).toBe(7);
+  });
+
+  it('mantém aniversário desligado quando a preferência antiga não tem enabled', () => {
+    const normalized = normalizeWhatsappAutomationPreferences({
+      birthday: {
+        events: {
+          greeting: {
+            template: 'custom',
+            customText: '  Parabéns, {{destinatario.nome}}!  ',
+          },
+        },
+      },
+    });
+
+    expect(normalized.birthday.events.greeting).toEqual({
+      enabled: false,
+      template: 'custom',
+      customText: 'Parabéns, {{destinatario.nome}}!',
+    });
+  });
+
+  it('monta a prévia de aniversário e aceita texto personalizado', () => {
+    const preferences = normalizeWhatsappAutomationPreferences({
+      birthday: {
+        events: {
+          greeting: {
+            enabled: true,
+            template: 'custom',
+            customText: 'Feliz aniversário, {{destinatario.nome}}! Abraços da {{empresa.nome}}.',
+          },
+        },
+      },
+    });
+
+    expect(buildWhatsappMessagePreview({ domain: 'birthday', key: 'greeting' }, preferences)).toBe(
+      'Feliz aniversário, Mariana! Abraços da Clima Forte Serviços.',
+    );
   });
 
   it('preserva o momento válido do lembrete e descarta valores desconhecidos', () => {

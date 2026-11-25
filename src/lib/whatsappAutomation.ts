@@ -24,6 +24,7 @@ export type WhatsappOsEventKey =
   | 'em_andamento'
   | 'concluida';
 export type WhatsappBillingEventKey = 'created' | 'before_due' | 'due_today' | 'after_due';
+export type WhatsappBirthdayEventKey = 'greeting';
 export type WhatsappOsReminderTiming = 'day_before' | 'same_day';
 
 export interface WhatsappAutomationRule {
@@ -113,11 +114,15 @@ export interface WhatsappAutomationPreferences {
     daysBeforeDue: number;
     daysAfterDue: number;
   };
+  birthday: {
+    events: Record<WhatsappBirthdayEventKey, WhatsappAutomationRule>;
+  };
 }
 
 export type WhatsappAutomationEvent =
   | { domain: 'os'; key: WhatsappOsEventKey }
-  | { domain: 'billing'; key: WhatsappBillingEventKey };
+  | { domain: 'billing'; key: WhatsappBillingEventKey }
+  | { domain: 'birthday'; key: WhatsappBirthdayEventKey };
 
 export const DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES: WhatsappAutomationPreferences = {
   version: 1,
@@ -153,6 +158,12 @@ export const DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES: WhatsappAutomationPreferen
     },
     daysBeforeDue: 3,
     daysAfterDue: 2,
+  },
+  birthday: {
+    events: {
+      // Opt-in explícito: nenhuma empresa passa a enviar aniversários ao atualizar.
+      greeting: { enabled: false, template: 'cordial' },
+    },
   },
 };
 
@@ -297,6 +308,8 @@ export function normalizeWhatsappAutomationPreferences(
   const osEvents = isRecord(os.events) ? os.events : {};
   const billing = isRecord(input.billing) ? input.billing : {};
   const billingEvents = isRecord(billing.events) ? billing.events : {};
+  const birthday = isRecord(input.birthday) ? input.birthday : {};
+  const birthdayEvents = isRecord(birthday.events) ? birthday.events : {};
   const defaults = DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES;
 
   return {
@@ -347,6 +360,11 @@ export function normalizeWhatsappAutomationPreferences(
       daysBeforeDue: readOffset(billing.daysBeforeDue, defaults.billing.daysBeforeDue),
       daysAfterDue: readOffset(billing.daysAfterDue, defaults.billing.daysAfterDue),
     },
+    birthday: {
+      events: {
+        greeting: normalizeRule(birthdayEvents.greeting, defaults.birthday.events.greeting),
+      },
+    },
   };
 }
 
@@ -356,6 +374,7 @@ export function countEnabledWhatsappAutomations(
   return [
     ...Object.values(preferences.os.events),
     ...Object.values(preferences.billing.events),
+    ...Object.values(preferences.birthday.events),
   ].filter((rule) => rule.enabled).length;
 }
 
@@ -436,7 +455,9 @@ export function resolveWhatsappEventTemplate(
 ): string {
   const rule = event.domain === 'os'
     ? preferences.os.events[event.key]
-    : preferences.billing.events[event.key];
+    : event.domain === 'billing'
+      ? preferences.billing.events[event.key]
+      : preferences.birthday.events[event.key];
   const effectiveChoice = choice ?? rule.template;
   const template = resolveWhatsappTemplate({
     domain: event.domain,

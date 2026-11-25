@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Banknote,
+  Cake,
   CalendarClock,
   CheckCircle2,
   ChevronRight,
@@ -37,14 +38,16 @@ import {
   type WhatsappAutomationEvent,
   type WhatsappAutomationPreferences,
   type WhatsappBillingEventKey,
+  type WhatsappBirthdayEventKey,
   type WhatsappOsEventKey,
   type WhatsappOsReminderTiming,
   type WhatsappTemplateStyle,
 } from '@/lib/whatsappAutomation';
 import { parseWhatsappLine, validateWhatsappCustomText } from '@/lib/whatsappTemplateEditor';
 import { WhatsappMessageEditor } from './WhatsappMessageEditor';
+import type { WhatsappProvider } from '@/hooks/useWhatsappConnections';
 
-type Domain = 'os' | 'billing';
+type Domain = 'os' | 'billing' | 'birthday';
 
 interface WhatsappAutomationSettingsProps {
   locale: LocaleCode;
@@ -54,6 +57,7 @@ interface WhatsappAutomationSettingsProps {
   isSaving: boolean;
   isDirty: boolean;
   readOnly?: boolean;
+  activeProvider?: WhatsappProvider | null;
   /** Nome, CNPJ e telefone reais da empresa (variáveis fixas). */
   companyValues?: Partial<Record<string, string>>;
   onEnabledChange: (enabled: boolean) => void;
@@ -74,6 +78,10 @@ const COPY = {
     flowsEnabled: 'fluxos ativos',
     os: 'Ordens de serviço',
     billing: 'Cobranças',
+    birthday: 'Aniversários',
+    birthdayOptIn: 'Esta automação nasce desligada e só envia depois que você ativá-la.',
+    birthdayProviderUnavailableTitle: 'Disponível somente na conexão por QR Code',
+    birthdayProviderUnavailable: 'A API Oficial da Meta exige um modelo previamente aprovado. Por enquanto, conecte o WhatsApp por QR Code para ativar mensagens de aniversário.',
     chooseEvent: 'Escolha quando enviar',
     chooseEventHint: 'Toque em um evento da lista para editar a mensagem dele aqui embaixo.',
     editingBadge: 'Editando',
@@ -125,13 +133,14 @@ const COPY = {
       before_due: ['Antes do vencimento', 'Lembrete antecipado configurável'],
       due_today: ['No vencimento', 'No dia em que a cobrança vence'],
       after_due: ['Após o vencimento', 'Somente se a cobrança continuar pendente'],
+      greeting: ['Mensagem de aniversário', 'No aniversário do cliente ou de um contato cadastrado'],
     },
   },
   en: {
     title: 'Message automation', description: 'Choose which notifications are sent and how each message is built.',
     masterLabel: 'Enable automations', masterHint: 'Messages will only start after a provider is connected.',
     save: 'Save settings', saving: 'Saving…', saved: 'Settings saved', pending: 'Unsaved changes', flowsEnabled: 'active flows',
-    os: 'Work orders', billing: 'Charges', chooseEvent: 'Choose when to send', chooseEventHint: 'Tap an event in the list to edit its message below.', editingBadge: 'Editing',
+    os: 'Work orders', billing: 'Charges', birthday: 'Birthdays', birthdayOptIn: 'This automation starts off and only sends after you enable it.', birthdayProviderUnavailableTitle: 'Available only with the QR Code connection', birthdayProviderUnavailable: 'The official Meta API requires a pre-approved template. For now, connect WhatsApp by QR Code to enable birthday messages.', chooseEvent: 'Choose when to send', chooseEventHint: 'Tap an event in the list to edit its message below.', editingBadge: 'Editing',
     eventEnabled: 'Send this message', template: 'Message template', templateHint: 'Pick a ready-made template or write your own. The text appears right below.',
     templates: { automatic: 'Automatic rotation · recommended', objective: 'Objective', cordial: 'Friendly', detailed: 'Detailed', custom: 'Custom' },
     messageText: 'Message text', messageTextHint: 'The colored tags are replaced with real data when the message is sent.',
@@ -154,13 +163,14 @@ const COPY = {
       scheduled_reminder: ['Scheduled visit reminder', 'Before the scheduled visit date'],
       a_caminho: ['Technician on the way', 'When the technician starts travelling'], em_andamento: ['Service started', 'When the service begins'], concluida: ['Work order completed', 'When the work order is completed'],
       created: ['Charge created', 'Manual or created by a subscription'], before_due: ['Before due date', 'Configurable early reminder'], due_today: ['On due date', 'On the day the charge is due'], after_due: ['After due date', 'Only while the charge remains pending'],
+      greeting: ['Birthday message', 'On the birthday of a customer or registered contact'],
     },
   },
   es: {
     title: 'Automatización de mensajes', description: 'Define qué avisos se envían y cómo se compone cada mensaje.',
     masterLabel: 'Activar automatizaciones', masterHint: 'Los envíos solo comenzarán cuando se conecte un proveedor.',
     save: 'Guardar configuración', saving: 'Guardando…', saved: 'Configuración guardada', pending: 'Cambios sin guardar', flowsEnabled: 'flujos activos',
-    os: 'Órdenes de trabajo', billing: 'Cobros', chooseEvent: 'Elige cuándo enviar', chooseEventHint: 'Toca un evento de la lista para editar su mensaje aquí abajo.', editingBadge: 'Editando',
+    os: 'Órdenes de trabajo', billing: 'Cobros', birthday: 'Cumpleaños', birthdayOptIn: 'Esta automatización comienza desactivada y solo envía después de activarla.', birthdayProviderUnavailableTitle: 'Disponible solo con la conexión por código QR', birthdayProviderUnavailable: 'La API oficial de Meta exige una plantilla aprobada previamente. Por ahora, conecta WhatsApp por código QR para activar los mensajes de cumpleaños.', chooseEvent: 'Elige cuándo enviar', chooseEventHint: 'Toca un evento de la lista para editar su mensaje aquí abajo.', editingBadge: 'Editando',
     eventEnabled: 'Enviar este mensaje', template: 'Modelo del mensaje', templateHint: 'Elija un modelo listo o escriba el suyo. El texto aparece justo abajo.',
     templates: { automatic: 'Rotación automática · recomendada', objective: 'Objetiva', cordial: 'Cordial', detailed: 'Detallada', custom: 'Personalizada' },
     messageText: 'Texto del mensaje', messageTextHint: 'Las etiquetas de color se reemplazan por los datos reales al enviar.',
@@ -183,13 +193,14 @@ const COPY = {
       scheduled_reminder: ['Recordatorio de visita programada', 'Antes de la fecha programada para la visita'],
       a_caminho: ['Técnico en camino', 'Cuando el técnico inicia el desplazamiento'], em_andamento: ['Servicio iniciado', 'Cuando comienza la atención'], concluida: ['Orden finalizada', 'Cuando se completa la orden de trabajo'],
       created: ['Cobro generado', 'Manual o creado por una suscripción'], before_due: ['Antes del vencimiento', 'Recordatorio anticipado configurable'], due_today: ['En el vencimiento', 'El día del vencimiento'], after_due: ['Después del vencimiento', 'Solo si el cobro sigue pendiente'],
+      greeting: ['Mensaje de cumpleaños', 'En el cumpleaños del cliente o de un contacto registrado'],
     },
   },
   fr: {
     title: 'Automatisation des messages', description: 'Définissez les notifications envoyées et le contenu de chaque message.',
     masterLabel: 'Activer les automatisations', masterHint: 'Les envois ne commenceront qu’après la connexion d’un fournisseur.',
     save: 'Enregistrer', saving: 'Enregistrement…', saved: 'Paramètres enregistrés', pending: 'Modifications non enregistrées', flowsEnabled: 'flux actifs',
-    os: 'Bons de travail', billing: 'Factures', chooseEvent: 'Choisir quand envoyer', chooseEventHint: 'Touchez un événement de la liste pour modifier son message ci-dessous.',
+    os: 'Bons de travail', billing: 'Factures', birthday: 'Anniversaires', birthdayOptIn: 'Cette automatisation est désactivée par défaut et envoie seulement après activation.', birthdayProviderUnavailableTitle: 'Disponible uniquement avec la connexion par code QR', birthdayProviderUnavailable: 'L’API officielle de Meta exige un modèle approuvé au préalable. Pour l’instant, connectez WhatsApp par code QR pour activer les messages d’anniversaire.', chooseEvent: 'Choisir quand envoyer', chooseEventHint: 'Touchez un événement de la liste pour modifier son message ci-dessous.',
     editingBadge: 'Modification',
     eventEnabled: 'Envoyer ce message', template: 'Modèle du message', templateHint: 'Choisissez un modèle prêt ou rédigez le vôtre. Le texte apparaît juste en dessous.',
     templates: { automatic: 'Rotation automatique · recommandée', objective: 'Direct', cordial: 'Cordial', detailed: 'Détaillé', custom: 'Personnalisé' },
@@ -213,18 +224,20 @@ const COPY = {
       scheduled_reminder: ['Rappel de visite planifiée', 'Avant la date prévue de la visite'],
       a_caminho: ['Technicien en route', 'Quand le technicien commence le trajet'], em_andamento: ['Intervention commencée', 'Quand le service commence'], concluida: ['Bon terminé', 'Quand le bon de travail est finalisé'],
       created: ['Facture créée', 'Manuelle ou créée par un abonnement'], before_due: ['Avant l’échéance', 'Rappel anticipé configurable'], due_today: ['À l’échéance', 'Le jour où la facture arrive à échéance'], after_due: ['Après l’échéance', 'Uniquement si la facture reste impayée'],
+      greeting: ['Message d’anniversaire', 'Le jour de l’anniversaire du client ou d’un contact enregistré'],
     },
   },
 } as const;
 
 const OS_EVENTS: WhatsappOsEventKey[] = ['criada', 'scheduled_reminder', 'a_caminho', 'em_andamento', 'concluida'];
 const BILLING_EVENTS: WhatsappBillingEventKey[] = ['created', 'before_due', 'due_today', 'after_due'];
-const ALL_DOMAINS: Domain[] = ['os', 'billing'];
+const BIRTHDAY_EVENTS: WhatsappBirthdayEventKey[] = ['greeting'];
+const ALL_DOMAINS: Domain[] = ['os', 'billing', 'birthday'];
 
 function defaultEventForDomain(domain: Domain): WhatsappAutomationEvent {
-  return domain === 'os'
-    ? { domain: 'os', key: 'a_caminho' }
-    : { domain: 'billing', key: 'created' };
+  if (domain === 'os') return { domain: 'os', key: 'a_caminho' };
+  if (domain === 'billing') return { domain: 'billing', key: 'created' };
+  return { domain: 'birthday', key: 'greeting' };
 }
 
 function eventId(event: WhatsappAutomationEvent): string {
@@ -239,6 +252,7 @@ export function WhatsappAutomationSettings({
   isSaving,
   isDirty,
   readOnly = false,
+  activeProvider = 'evolution_qr',
   companyValues,
   onEnabledChange,
   onPreferencesChange,
@@ -261,19 +275,30 @@ export function WhatsappAutomationSettings({
   const events = useMemo<WhatsappAutomationEvent[]>(
     () => domain === 'os'
       ? OS_EVENTS.map((key) => ({ domain: 'os' as const, key }))
-      : BILLING_EVENTS.map((key) => ({ domain: 'billing' as const, key })),
+      : domain === 'billing'
+        ? BILLING_EVENTS.map((key) => ({ domain: 'billing' as const, key }))
+        : BIRTHDAY_EVENTS.map((key) => ({ domain: 'birthday' as const, key })),
     [domain],
   );
 
   const selectedRule = selected.domain === 'os'
     ? preferences.os.events[selected.key]
-    : preferences.billing.events[selected.key];
+    : selected.domain === 'billing'
+      ? preferences.billing.events[selected.key]
+      : preferences.birthday.events[selected.key];
   const preview = buildWhatsappMessagePreview(selected, preferences, undefined, companyValues);
   const enabledCount = normalizedDomains.reduce((count, currentDomain) => {
-    const rules = currentDomain === 'os' ? preferences.os.events : preferences.billing.events;
+    const rules = currentDomain === 'os'
+      ? preferences.os.events
+      : currentDomain === 'billing'
+        ? preferences.billing.events
+        : preferences.birthday.events;
     return count + Object.values(rules).filter((rule) => rule.enabled).length;
   }, 0);
   const controlsLocked = readOnly || isSaving;
+  const birthdayProviderSupported = activeProvider === 'evolution_qr';
+  const birthdayActivationLocked = (ruleEnabled: boolean) =>
+    !birthdayProviderSupported && !ruleEnabled;
 
   // O editor sempre mostra o texto que vale para o aviso: o do próprio cliente
   // (mesmo que ainda inválido, para não apagar o que ele digita) ou o modelo pronto.
@@ -289,12 +314,15 @@ export function WhatsappAutomationSettings({
     ...(normalizedDomains.includes('billing')
       ? BILLING_EVENTS.map((key) => ({ domain: 'billing' as const, rule: preferences.billing.events[key] }))
       : []),
+    ...(normalizedDomains.includes('birthday')
+      ? BIRTHDAY_EVENTS.map((key) => ({ domain: 'birthday' as const, rule: preferences.birthday.events[key] }))
+      : []),
   ].some(({ domain: ruleDomain, rule }) => rule.template === 'custom'
     && !validateWhatsappCustomText(rule.customText ?? '', ruleDomain).valid);
 
   if (normalizedDomains.length === 0) {
     return (
-      <Card>
+      <Card className="[--primary:0_0%_10%] [--primary-foreground:0_0%_100%] [--ring:0_0%_10%] dark:[--primary:0_0%_88%] dark:[--primary-foreground:0_0%_8%] dark:[--ring:0_0%_70%]">
         <CardHeader className="gap-4 border-b bg-muted/20 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
             <CardTitle className="flex items-center gap-2 text-base">
@@ -330,6 +358,19 @@ export function WhatsappAutomationSettings({
           events: {
             ...preferences.os.events,
             [selected.key]: rewrite(preferences.os.events[selected.key]),
+          },
+        },
+      });
+      return;
+    }
+    if (selected.domain === 'birthday') {
+      onPreferencesChange({
+        ...preferences,
+        birthday: {
+          ...preferences.birthday,
+          events: {
+            ...preferences.birthday.events,
+            [selected.key]: rewrite(preferences.birthday.events[selected.key]),
           },
         },
       });
@@ -372,7 +413,9 @@ export function WhatsappAutomationSettings({
   const restoreDefaultTemplate = () => {
     const defaults = selected.domain === 'os'
       ? DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES.os.events[selected.key]
-      : DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES.billing.events[selected.key];
+      : selected.domain === 'billing'
+        ? DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES.billing.events[selected.key]
+        : DEFAULT_WHATSAPP_AUTOMATION_PREFERENCES.birthday.events[selected.key];
     rewriteSelectedRule((rule) => {
       const { customText: _discarded, ...rest } = rule;
       return { ...rest, template: defaults.template };
@@ -387,7 +430,7 @@ export function WhatsappAutomationSettings({
   });
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden [--primary:0_0%_10%] [--primary-foreground:0_0%_100%] [--ring:0_0%_10%] dark:[--primary:0_0%_88%] dark:[--primary-foreground:0_0%_8%] dark:[--ring:0_0%_70%]">
       <CardHeader className="gap-4 border-b bg-muted/20 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -425,7 +468,7 @@ export function WhatsappAutomationSettings({
               size="sm"
               onClick={onSave}
               disabled={readOnly || isSaving || !isDirty || hasInvalidCustomText}
-              className="w-full text-white sm:w-auto"
+              className="w-full sm:w-auto"
             >
               {isSaving ? <Clock3 className="mr-2 h-4 w-4 animate-pulse" /> : <Save className="mr-2 h-4 w-4" />}
               {isSaving ? copy.saving : copy.save}
@@ -440,11 +483,13 @@ export function WhatsappAutomationSettings({
             <SegmentedControl
               value={domain}
               onValueChange={chooseDomain}
-              className="[&_[role=radio][aria-checked=true]]:text-white"
+              className="[&_[role=radio][aria-checked=true]]:text-primary-foreground"
               aria-label={copy.chooseEvent}
               options={normalizedDomains.map((currentDomain) => currentDomain === 'os'
                 ? { value: 'os', label: copy.os, icon: <Wrench className="h-4 w-4" /> }
-                : { value: 'billing', label: copy.billing, icon: <ReceiptText className="h-4 w-4" /> })}
+                : currentDomain === 'billing'
+                  ? { value: 'billing', label: copy.billing, icon: <ReceiptText className="h-4 w-4" /> }
+                  : { value: 'birthday', label: copy.birthday, icon: <Cake className="h-4 w-4" /> })}
             />
           </div>
         )}
@@ -460,7 +505,9 @@ export function WhatsappAutomationSettings({
               {events.map((event, index) => {
                 const rule = event.domain === 'os'
                   ? preferences.os.events[event.key]
-                  : preferences.billing.events[event.key];
+                  : event.domain === 'billing'
+                    ? preferences.billing.events[event.key]
+                    : preferences.birthday.events[event.key];
                 const [title, description] = copy.events[event.key];
                 const active = eventId(event) === eventId(selected);
                 return (
@@ -490,7 +537,9 @@ export function WhatsappAutomationSettings({
                       )}>
                         {event.domain === 'os' && event.key === 'criada'
                           ? <FilePlus2 className="h-4 w-4" />
-                          : event.domain === 'os' && event.key !== 'scheduled_reminder'
+                          : event.domain === 'birthday'
+                            ? <Cake className="h-4 w-4" />
+                            : event.domain === 'os' && event.key !== 'scheduled_reminder'
                             ? <Wrench className="h-4 w-4" />
                             : <CalendarClock className="h-4 w-4" />}
                       </span>
@@ -520,7 +569,7 @@ export function WhatsappAutomationSettings({
                                 },
                               },
                             });
-                          } else {
+                          } else if (event.domain === 'billing') {
                             onPreferencesChange({
                               ...preferences,
                               billing: {
@@ -531,9 +580,20 @@ export function WhatsappAutomationSettings({
                                 },
                               },
                             });
+                          } else {
+                            onPreferencesChange({
+                              ...preferences,
+                              birthday: {
+                                ...preferences.birthday,
+                                events: {
+                                  ...preferences.birthday.events,
+                                  [event.key]: { ...rule, enabled: checked },
+                                },
+                              },
+                            });
                           }
                         }}
-                        disabled={readOnly || isSaving}
+                        disabled={controlsLocked || (event.domain === 'birthday' && birthdayActivationLocked(rule.enabled))}
                         aria-label={`${copy.eventEnabled}: ${title}`}
                       />
                     </div>
@@ -543,16 +603,26 @@ export function WhatsappAutomationSettings({
             </div>
 
             <div className="mt-5 space-y-5">
+              {selected.domain === 'birthday' && (
+                <NoticeBanner
+                  variant={birthdayProviderSupported ? 'neutral' : 'warning'}
+                  icon={birthdayProviderSupported ? Cake : Lock}
+                  title={birthdayProviderSupported ? copy.birthday : copy.birthdayProviderUnavailableTitle}
+                >
+                  {birthdayProviderSupported ? copy.birthdayOptIn : copy.birthdayProviderUnavailable}
+                </NoticeBanner>
+              )}
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <Label htmlFor="whatsapp-selected-event">{copy.eventEnabled}</Label>
                   <p className="text-xs text-muted-foreground">{copy.events[selected.key][0]}</p>
                 </div>
                 <Switch
+                  key={`${selected.domain}-${selected.key}-${selectedRule.enabled ? 'enabled' : 'disabled'}`}
                   id="whatsapp-selected-event"
                   checked={selectedRule.enabled}
                   onCheckedChange={(checked) => updateSelectedRule({ enabled: checked })}
-                  disabled={readOnly || isSaving}
+                  disabled={controlsLocked || (selected.domain === 'birthday' && birthdayActivationLocked(selectedRule.enabled))}
                 />
               </div>
 
@@ -657,7 +727,7 @@ export function WhatsappAutomationSettings({
                     />
                   )}
                 </>
-              ) : (
+              ) : selected.domain === 'billing' ? (
                 <>
                   {selected.key === 'created' && (
                     <p className="text-xs text-muted-foreground">{copy.createdHint}</p>
@@ -703,7 +773,7 @@ export function WhatsappAutomationSettings({
                     )}
                   </div>
                 </>
-              )}
+              ) : null}
 
               <div className="flex items-start gap-2 rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
                 <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
@@ -721,7 +791,7 @@ export function WhatsappAutomationSettings({
                   <p className="text-xs text-muted-foreground">{copy.messageLanguageHint}</p>
                 </div>
                 {selectedRule.enabled ? (
-                  <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">
+                  <Badge className="bg-primary text-primary-foreground hover:bg-primary">
                     <CheckCircle2 className="mr-1 h-3 w-3" /> {copy.active}
                   </Badge>
                 ) : (

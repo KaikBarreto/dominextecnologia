@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.70',
+    date: '25 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Mensagem de aniversário pelo WhatsApp',
+        category: 'recurso',
+        description: 'Cadastre a data de nascimento de clientes e contatos, personalize a mensagem e ative o envio automático no dia do aniversário pela conexão via QR Code.',
+      },
+      {
+        title: 'Ativação opcional e segura',
+        category: 'melhoria',
+        description: 'A nova automação começa desligada para todas as empresas. Nenhuma mensagem de aniversário é enviada até que a função seja ativada nas configurações do WhatsApp.',
+      },
+    ],
+  },
+  {
     version: '1.41.69',
     date: '25 de novembro de 2026',
     type: 'patch',

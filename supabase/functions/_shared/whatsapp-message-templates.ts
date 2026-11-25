@@ -12,7 +12,7 @@
 //
 // Módulo puro: sem import, sem Deno, sem DOM. Precisa rodar nos dois ambientes.
 
-export type WhatsappMessageDomain = "os" | "billing";
+export type WhatsappMessageDomain = "os" | "billing" | "birthday";
 
 export type WhatsappOsTemplateEvent =
   | "criada"
@@ -26,6 +26,8 @@ export type WhatsappBillingTemplateEvent =
   | "before_due"
   | "due_today"
   | "after_due";
+
+export type WhatsappBirthdayTemplateEvent = "greeting";
 
 export type WhatsappPresetStyle = "objective" | "cordial" | "detailed";
 
@@ -393,6 +395,14 @@ const BILLING_PRESET_OPENINGS: Record<
   },
 };
 
+const BIRTHDAY_PRESET_MESSAGES: Record<WhatsappPresetStyle, string> = {
+  objective: "A *{{empresa.nome}}* deseja a você um feliz aniversário!",
+  cordial:
+    "Hoje é um dia especial! A equipe da *{{empresa.nome}}* deseja a você um feliz aniversário, com muita saúde e realizações.",
+  detailed:
+    "Neste dia especial, toda a equipe da *{{empresa.nome}}* deseja a você um feliz aniversário, com saúde, felicidade e muitas conquistas. Obrigado por fazer parte da nossa história!",
+};
+
 export interface WhatsappPresetOptions {
   /** Avisos de OS: inclui a linha "Acompanhe a OS". */
   includeOsLink?: boolean;
@@ -422,6 +432,11 @@ export function buildWhatsappPresetTemplate(
     const blocks = [GREETING, OS_CONTACT_NOTICE, action];
     if (options.includeOsLink !== false) blocks.push("*Acompanhe a OS:* {{os.link}}");
     return blocks.join("\n\n");
+  }
+
+  if (domain === "birthday") {
+    if (event !== "greeting") return null;
+    return [GREETING, BIRTHDAY_PRESET_MESSAGES[style]].join("\n\n");
   }
 
   const opening = BILLING_PRESET_OPENINGS[event as WhatsappBillingTemplateEvent]?.[style];

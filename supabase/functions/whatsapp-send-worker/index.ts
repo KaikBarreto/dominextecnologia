@@ -36,7 +36,7 @@ type Job = {
   provider: "evolution_qr" | "meta_cloud";
   customer_id: string | null;
   event_key: string;
-  source_type: "service_order" | "tenant_charge";
+  source_type: "service_order" | "tenant_charge" | "birthday";
   source_id: string;
   attempts: number;
   recipient_kind?: "customer_primary" | "customer_contact" | null;
@@ -51,12 +51,13 @@ type RegionalSettingsData = {
   document?: string | null;
   phone?: string | null;
 };
-type CustomerData = { name: string };
+type CustomerData = { name: string; birth_date?: string | null };
 type CustomerContactData = {
   id: string;
   customer_id: string;
   name: string;
   phone: string | null;
+  birth_date: string | null;
 };
 type CompanyData = { name: string; cnpj?: string | null; phone?: string | null };
 type CompanyValues = ReturnType<typeof resolveWhatsappCompanyValues>;
@@ -205,6 +206,33 @@ function dateBr(value: string | null): string {
   return year && month && day ? `${day}/${month}/${year}` : value;
 }
 
+function birthdayMatchesLocalDay(birthDate: string | null | undefined, timezone: string | null): boolean {
+  const match = birthDate?.match(/^\d{4}-(\d{2})-(\d{2})$/);
+  if (!match || !timezone) return false;
+  try {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone,
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(new Date());
+    const month = parts.find((part) => part.type === "month")?.value;
+    const day = parts.find((part) => part.type === "day")?.value;
+    return month === match[1] && day === match[2];
+  } catch {
+    return false;
+  }
+}
+
+function isValidTimezone(timezone: string | null | undefined): timezone is string {
+  if (!timezone?.trim()) return false;
+  try {
+    new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(new Date());
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function pref<T>(record: unknown, path: string[], fallback: T): T {
   let value: unknown = record;
   for (const key of path) {
@@ -290,12 +318,14 @@ async function validateFinalDispatchState(
 ): Promise<FinalDispatchValidation> {
   const contactQuery = recipientKind(job) === "customer_contact" && job.customer_contact_id && job.customer_id
     ? supabase.from("customer_contacts")
-      .select("id, customer_id, phone")
+      .select("id, customer_id, phone, birth_date")
       .eq("id", job.customer_contact_id)
       .eq("customer_id", job.customer_id)
       .maybeSingle()
     : Promise.resolve({ data: null, error: null });
-  const sourceQuery = job.source_type === "tenant_charge"
+  const sourceQuery = job.source_type === "birthday"
+    ? Promise.resolve({ data: null, error: null })
+    : job.source_type === "tenant_charge"
     ? supabase.from("tenant_charges")
       .select("id, customer_id, status")
       .eq("id", job.source_id)
@@ -307,20 +337,29 @@ async function validateFinalDispatchState(
       .eq("company_id", job.company_id)
       .maybeSingle();
 
-  const [entitlement, moduleResult, customerResult, contactResult, settingsResult, connectionResult, sourceResult] =
+  const [
+    entitlement,
+    moduleResult,
+    customerResult,
+    contactResult,
+    settingsResult,
+    connectionResult,
+    sourceResult,
+    regionalSettingsResult,
+  ] =
     await Promise.all([
       supabase.rpc("tenant_subscription_allows_access", { _company_id: job.company_id }),
       supabase.rpc("company_has_module", { p_company_id: job.company_id, p_module_code: "whatsapp" }),
       job.customer_id
         ? supabase.from("customers")
-          .select("id, company_id, phone, celular, whatsapp_notifications_enabled, is_deleted")
+          .select("id, company_id, phone, celular, birth_date, whatsapp_notifications_enabled, is_deleted")
           .eq("id", job.customer_id)
           .eq("company_id", job.company_id)
           .maybeSingle()
         : Promise.resolve({ data: null, error: null }),
       contactQuery,
       supabase.from("company_whatsapp_settings")
-        .select("enabled, active_connection_id")
+        .select("enabled, active_connection_id, automation_preferences")
         .eq("company_id", job.company_id)
         .maybeSingle(),
       supabase.from("whatsapp_connections")
@@ -329,6 +368,10 @@ async function validateFinalDispatchState(
         .eq("company_id", job.company_id)
         .maybeSingle(),
       sourceQuery,
+      supabase.from("company_settings")
+        .select("timezone")
+        .eq("company_id", job.company_id)
+        .maybeSingle(),
     ]);
 
   const readError = [
@@ -339,6 +382,7 @@ async function validateFinalDispatchState(
     settingsResult.error,
     connectionResult.error,
     sourceResult.error,
+    regionalSettingsResult.error,
   ].find(Boolean);
   if (readError) {
     console.error("[whatsapp-send-worker] final dispatch query failed", {
@@ -360,6 +404,13 @@ async function validateFinalDispatchState(
   }
   if (!settingsResult.data?.enabled || settingsResult.data.active_connection_id !== job.connection_id) {
     return { status: "skip", code: "automation_changed", message: "A automação ou a conexão ativa mudou antes do envio." };
+  }
+  if (job.source_type === "birthday" && pref<boolean>(
+    settingsResult.data?.automation_preferences,
+    ["birthday", "events", "greeting", "enabled"],
+    false,
+  ) !== true) {
+    return { status: "skip", code: "birthday_automation_disabled", message: "A mensagem de aniversário não está mais ativa." };
   }
   if (!connectionResult.data || connectionResult.data.status !== "connected") {
     return { status: "defer", code: "connection_unavailable", message: "A conexão ficou indisponível antes do envio." };
@@ -388,12 +439,14 @@ async function validateFinalDispatchState(
     return { status: "skip", code: "recipient_phone_changed", message: "O telefone do destinatário mudou antes do envio." };
   }
 
-  const routeValidation = await validateRecipientRoute(supabase, job);
-  if (routeValidation === "error") {
-    return { status: "defer", code: "recipient_route_unavailable", message: "Não foi possível confirmar novamente o destinatário configurado." };
-  }
-  if (routeValidation !== "valid") {
-    return { status: "skip", code: "recipient_route_changed", message: "O destinatário não está mais configurado para esta mensagem." };
+  if (job.source_type !== "birthday") {
+    const routeValidation = await validateRecipientRoute(supabase, job);
+    if (routeValidation === "error") {
+      return { status: "defer", code: "recipient_route_unavailable", message: "Não foi possível confirmar novamente o destinatário configurado." };
+    }
+    if (routeValidation !== "valid") {
+      return { status: "skip", code: "recipient_route_changed", message: "O destinatário não está mais configurado para esta mensagem." };
+    }
   }
 
   const { data: optedOut, error: optedOutError } = await supabase
@@ -407,6 +460,20 @@ async function validateFinalDispatchState(
   }
   if (optedOut) {
     return { status: "skip", code: "customer_opt_out", message: "O destinatário pediu para parar os envios." };
+  }
+
+  if (job.source_type === "birthday") {
+    const timezone = regionalSettingsResult.data?.timezone;
+    if (!isValidTimezone(timezone)) {
+      return { status: "defer", code: "timezone_unavailable", message: "Não foi possível confirmar o fuso horário da empresa." };
+    }
+    const birthDate = recipientKind(job) === "customer_contact"
+      ? currentContact?.birth_date
+      : currentCustomer.birth_date;
+    if (!birthdayMatchesLocalDay(birthDate, timezone)) {
+      return { status: "skip", code: "birthday_date_changed", message: "A data de aniversário não corresponde mais ao dia local da empresa." };
+    }
+    return { status: "valid" };
   }
 
   const source = sourceResult.data;
@@ -988,6 +1055,29 @@ async function buildBillingMessage(
   });
 }
 
+function buildBirthdayMessage(
+  job: Job,
+  settings: SettingsData,
+  customer: CustomerData,
+  companyValues: CompanyValues,
+  recipientName: string,
+): string | null {
+  const template = resolveWhatsappTemplate({
+    domain: "birthday",
+    event: "greeting",
+    choice: pref(settings.automation_preferences, ["birthday", "events", "greeting", "template"], "cordial"),
+    customText: pref<unknown>(settings.automation_preferences, ["birthday", "events", "greeting", "customText"], null),
+    automaticStyle: pickStyle("automatic"),
+  });
+  if (!template) return null;
+  return renderWhatsappTemplate(template, {
+    "destinatario.nome": sanitizeWhatsappTextValue(recipientName) || customer.name,
+    "cliente.nome": customer.name,
+    ...companyValues,
+    "aviso.cliente": recipientKind(job) === "customer_contact" ? customer.name || "cliente" : null,
+  });
+}
+
 async function validateScheduledReminderBeforeSend(
   supabase: SupabaseClient,
   job: Job,
@@ -1081,11 +1171,11 @@ async function processJob(supabase: SupabaseClient, job: Job) {
     supabase.from("whatsapp_connections").select("*").eq("id", job.connection_id).eq("company_id", job.company_id).maybeSingle(),
     supabase.from("company_whatsapp_settings").select("*").eq("company_id", job.company_id).maybeSingle(),
     job.customer_id
-      ? supabase.from("customers").select("id, company_id, name, phone, celular, whatsapp_notifications_enabled, is_deleted").eq("id", job.customer_id).eq("company_id", job.company_id).maybeSingle()
+      ? supabase.from("customers").select("id, company_id, name, phone, celular, birth_date, whatsapp_notifications_enabled, is_deleted").eq("id", job.customer_id).eq("company_id", job.company_id).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
     recipientKind(job) === "customer_contact" && job.customer_contact_id && job.customer_id
       ? supabase.from("customer_contacts")
-        .select("id, customer_id, name, phone")
+        .select("id, customer_id, name, phone, birth_date")
         .eq("id", job.customer_contact_id)
         .eq("customer_id", job.customer_id)
         .maybeSingle()
@@ -1134,6 +1224,44 @@ async function processJob(supabase: SupabaseClient, job: Job) {
       new Date(Date.now() + 300 * 1000),
     );
   }
+  if (job.source_type === "birthday" && pref<boolean>(
+    settings.automation_preferences,
+    ["birthday", "events", "greeting", "enabled"],
+    false,
+  ) !== true) {
+    return skipJob(supabase, job, "birthday_automation_disabled", "A mensagem de aniversário não está ativa.");
+  }
+  if (!customer || customer.is_deleted === true) {
+    return skipJob(supabase, job, "customer_unavailable", "O cliente vinculado ao envio não foi encontrado.");
+  }
+  if (!customer.whatsapp_notifications_enabled) {
+    return skipJob(supabase, job, "customer_opt_out", "O cliente não autorizou mensagens pelo WhatsApp.");
+  }
+  if (recipientKind(job) === "customer_contact" && !contact) {
+    return skipJob(supabase, job, "recipient_unavailable", "O contato destinatário não está mais disponível.");
+  }
+  if (job.source_type === "birthday") {
+    if (!isValidTimezone(regionalSettings?.timezone)) {
+      return deferJob(
+        supabase,
+        job,
+        "timezone_unavailable",
+        "Não foi possível confirmar o fuso horário da empresa.",
+        new Date(Date.now() + 3600 * 1000),
+      );
+    }
+    const birthDate = recipientKind(job) === "customer_contact"
+      ? contact?.birth_date
+      : customer.birth_date;
+    if (!birthdayMatchesLocalDay(birthDate, regionalSettings.timezone)) {
+      return skipJob(
+        supabase,
+        job,
+        "birthday_date_changed",
+        "A data de aniversário não corresponde ao dia local da empresa.",
+      );
+    }
+  }
   if (!connection || connection.status !== "connected") {
     return deferJob(
       supabase, job, "connection_unavailable", "A conexão está indisponível.",
@@ -1178,28 +1306,20 @@ async function processJob(supabase: SupabaseClient, job: Job) {
       );
     }
   }
-  if (!customer || customer.is_deleted === true) {
-    return skipJob(supabase, job, "customer_unavailable", "O cliente vinculado ao envio não foi encontrado.");
-  }
-  if (!customer.whatsapp_notifications_enabled) {
-    return skipJob(supabase, job, "customer_opt_out", "O cliente não autorizou mensagens pelo WhatsApp.");
-  }
-  if (recipientKind(job) === "customer_contact" && !contact) {
-    return skipJob(supabase, job, "recipient_unavailable", "O contato destinatário não está mais disponível.");
-  }
-
-  const routeValidation = await validateRecipientRoute(supabase, job);
-  if (routeValidation === "error") {
-    return deferJob(
-      supabase,
-      job,
-      "recipient_route_unavailable",
-      "Não foi possível confirmar o destinatário configurado.",
-      new Date(Date.now() + 300 * 1000),
-    );
-  }
-  if (routeValidation !== "valid") {
-    return skipJob(supabase, job, "recipient_route_changed", "O destinatário não está mais configurado para esta mensagem.");
+  if (job.source_type !== "birthday") {
+    const routeValidation = await validateRecipientRoute(supabase, job);
+    if (routeValidation === "error") {
+      return deferJob(
+        supabase,
+        job,
+        "recipient_route_unavailable",
+        "Não foi possível confirmar o destinatário configurado.",
+        new Date(Date.now() + 300 * 1000),
+      );
+    }
+    if (routeValidation !== "valid") {
+      return skipJob(supabase, job, "recipient_route_changed", "O destinatário não está mais configurado para esta mensagem.");
+    }
   }
   if (!regionalSettings?.country_code) {
     return deferJob(
@@ -1406,7 +1526,7 @@ async function processJob(supabase: SupabaseClient, job: Job) {
   try {
     if (job.source_type === "service_order") {
       text = await buildOsMessage(supabase, job, settings, customer, companyValues, recipientName);
-    } else {
+    } else if (job.source_type === "tenant_charge") {
       // O nome identifica o remetente antes do link de pagamento. Sem ele, não
       // enviamos uma cobrança genérica que possa parecer fraude ao cliente.
       if (!company?.name?.trim()) {
@@ -1419,6 +1539,8 @@ async function processJob(supabase: SupabaseClient, job: Job) {
         );
       }
       text = await buildBillingMessage(supabase, job, settings, customer, companyValues, recipientName);
+    } else {
+      text = buildBirthdayMessage(job, settings, customer, companyValues, recipientName);
     }
   } catch (error) {
     console.error("[whatsapp-send-worker] source query failed", {

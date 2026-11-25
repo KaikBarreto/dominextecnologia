@@ -413,7 +413,6 @@ export function CustomerFormDialog({
         type="submit"
         form="customer-form"
         disabled={isLoading || uploadingPhoto || portal.isSaving || portalUnavailable || labelsLoading}
-        className="text-white"
       >
         {(isLoading || uploadingPhoto || portal.isSaving) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         {customer ? t.save : t.create}
@@ -422,7 +421,14 @@ export function CustomerFormDialog({
   );
 
   return (
-    <ResponsiveModal open={open} onOpenChange={onOpenChange} title={customer ? t.titleEdit : t.titleNew} footer={footer} className="sm:max-w-3xl">
+    <ResponsiveModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title={customer ? t.titleEdit : t.titleNew}
+      footer={footer}
+      className="sm:max-w-3xl [--primary:0_0%_10%] [--primary-foreground:0_0%_100%] [--ring:0_0%_10%] dark:[--primary:0_0%_88%] dark:[--primary-foreground:0_0%_8%] dark:[--ring:0_0%_70%]"
+      bodyClassName="outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0"
+    >
       <DraftResumeDialog
         open={draft.showResumePrompt}
         onResume={() => {
@@ -454,7 +460,7 @@ export function CustomerFormDialog({
             </TabsList>
 
             {/* ===== Aba Contato — dados do dia a dia ===== */}
-            <TabsContent value="contato" className="mt-4">
+            <TabsContent value="contato" className="mt-4 focus-visible:ring-0 focus-visible:ring-offset-0">
               <div className="grid gap-4 sm:grid-cols-2">
                 {/* Photo upload — coluna centralizada, círculo grande acima do botão */}
                 <div className="sm:col-span-2 flex flex-col items-center gap-3">
@@ -597,7 +603,7 @@ export function CustomerFormDialog({
                     <FormItem className="sm:col-span-2 rounded-lg border bg-muted/20 px-4 py-3">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex min-w-0 gap-3">
-                          <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#25D366]/15 text-[#128C7E]">
+                          <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
                             <WhatsAppIcon className="h-4 w-4" />
                           </span>
                           <div className="min-w-0">
@@ -683,7 +689,7 @@ export function CustomerFormDialog({
             </TabsContent>
 
             {/* ===== Aba Fiscal — dados do tomador para NFS-e ===== */}
-            <TabsContent value="fiscal" className="mt-4">
+            <TabsContent value="fiscal" className="mt-4 focus-visible:ring-0 focus-visible:ring-offset-0">
               <p className="text-xs text-muted-foreground mb-4">
                 {t.fiscalHint}
               </p>
@@ -945,7 +951,7 @@ export function CustomerFormDialog({
               </div>
             </TabsContent>
 
-            <TabsContent value="portal" className="mt-4">
+            <TabsContent value="portal" className="mt-4 focus-visible:ring-0 focus-visible:ring-offset-0">
               <CustomerPortalSettingsTab
                 settings={portalSettings}
                 onSettingsChange={setPortalSettings}

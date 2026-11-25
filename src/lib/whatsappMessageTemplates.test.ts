@@ -139,7 +139,7 @@ describe('modelos prontos reproduzem exatamente os textos que já eram enviados'
   });
 
   it('existe modelo para todo aviso nos três estilos', () => {
-    const events: Array<['os' | 'billing', string]> = [
+    const events: Array<['os' | 'billing' | 'birthday', string]> = [
       ['os', 'criada'],
       ['os', 'scheduled_reminder'],
       ['os', 'a_caminho'],
@@ -149,6 +149,7 @@ describe('modelos prontos reproduzem exatamente os textos que já eram enviados'
       ['billing', 'before_due'],
       ['billing', 'due_today'],
       ['billing', 'after_due'],
+      ['birthday', 'greeting'],
     ];
     for (const [domain, event] of events) {
       for (const style of ['objective', 'cordial', 'detailed'] as const) {
@@ -268,18 +269,41 @@ describe('escolha do texto', () => {
       }),
     ).toBe(buildWhatsappPresetTemplate('billing', 'due_today', 'objective'));
   });
+
+  it('aniversário personalizado usa somente os dados comuns disponíveis', () => {
+    const template = resolveWhatsappTemplate({
+      domain: 'birthday',
+      event: 'greeting',
+      choice: 'custom',
+      customText: 'Parabéns, {{destinatario.nome}}! A {{empresa.nome}} celebra com você.',
+    });
+
+    expect(renderWhatsappTemplate(template!, {
+      'destinatario.nome': 'Paulo',
+      'empresa.nome': 'Dominex Climatização',
+    })).toBe('Parabéns, Paulo! A Dominex Climatização celebra com você.');
+  });
 });
 
 describe('catálogo de variáveis', () => {
   it('separa o que vale para OS e para cobrança', () => {
     const os = whatsappVariablesForDomain('os').map((meta) => meta.key);
     const billing = whatsappVariablesForDomain('billing').map((meta) => meta.key);
+    const birthday = whatsappVariablesForDomain('birthday').map((meta) => meta.key);
     expect(os).toContain('os.equipamentos');
     expect(os).not.toContain('cobranca.valor');
     expect(billing).toContain('cobranca.link');
     expect(billing).not.toContain('os.numero');
     expect(os).toContain('cliente.nome');
     expect(billing).toContain('cliente.nome');
+    expect(birthday).toEqual([
+      'destinatario.nome',
+      'cliente.nome',
+      'empresa.nome',
+      'empresa.cnpj',
+      'empresa.telefone',
+      'aviso.cliente',
+    ]);
   });
 
   it('toda chave segue o formato que o editor e o enviador reconhecem', () => {
