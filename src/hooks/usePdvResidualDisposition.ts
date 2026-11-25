@@ -108,12 +108,14 @@ export function usePdvResidualDisposition(orderId: string, open: boolean) {
           return !expected || cents(expected.amount) !== cents(r.amount) || r.kind === 'customer_credit' && !r.credit_entry_id || r.kind === 'voucher' && !r.voucher_id
             || r.kind === 'refund' && (!r.refund_id || !['pending', 'settled'].includes(String(r.status))); })) throw invalid();
       } catch { throw new PdvResidualFault('A confirmação precisa ser conferida antes de alterar os destinos.', 'unknown'); }
-      intent.state = 'completed'; await invalidate(); assertCurrent();
+      // O servidor já confirmou os destinos. Atualizar relatórios em segundo
+      // plano não pode atrasar nem converter essa confirmação em falha financeira.
+      intent.state = 'completed'; void invalidate().catch(() => undefined); assertCurrent();
       return { orderId, cancellationId: intent.cancellationId, pendingRefund: resources.some(raw => { const r = record(raw); return r.kind === 'refund' && r.status === 'pending'; }) };
     } catch (error) {
       const mapped = mapPdvResidualDispositionError(error);
       if (intent.state !== 'completed') intent.state = ['unknown', 'pending', 'context'].includes(mapped.kind) ? 'unknown' : 'failed';
-      if (intent.state === 'unknown') await invalidate(); throw mapped;
+      if (intent.state === 'unknown') void invalidate().catch(() => undefined); throw mapped;
     }
   } });
   function submit(reason: string, rows: PdvResidualDestination[]) {

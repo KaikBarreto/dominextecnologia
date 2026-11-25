@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.72',
+    date: '25 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Conferência financeira do PDV corrigida',
+        category: 'correcao',
+        description: 'Corrigida uma falha que impedia carregar os movimentos e seus detalhes ou exportar a conferência financeira do PDV. As verificações de acesso e período continuam sendo aplicadas.',
+      },
+      {
+        title: 'Confirmação do pós-venda sem espera por relatórios',
+        category: 'correcao',
+        description: 'Ao destinar um valor liberado para saldo, voucher ou reembolso, a confirmação já recebida deixa de aguardar os relatórios. Uma falha ao atualizar as leituras também deixa de apresentar a operação salva como incerta.',
+      },
+    ],
+  },
+  {
     version: '1.41.71',
     date: '25 de novembro de 2026',
     type: 'patch',

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { QueryClient, QueryClientProvider, keepPreviousData } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, QueryObserver, keepPreviousData } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   auth: { user: { id: 'u1' }, profile: { user_id: 'u1', company_id: 'c1', is_active: true }, permissions: ['fn:view_pdv_after_sale', 'fn:manage_party_credit'], roles: ['comercial'], hasPermissionRecord: true, loading: false, profileLoading: false },
@@ -28,6 +28,35 @@ beforeEach(() => {
 async function ready() { const ctx = context(); const view = renderHook(() => usePdvResidualDisposition('o1', true), { wrapper: ctx.wrapper }); await waitFor(() => expect(view.result.current.query.data?.freeCents).toBe(1500)); return { ...view, ...ctx }; }
 
 describe('redistribuição de valor liberado', () => {
+  it('confirma o destino salvo sem aguardar um relatório lento em segundo plano', async () => {
+    const view = await ready();
+    const pending = deferred<unknown>();
+    const queryKey = ['pdv', 'reports-v2', 'slow-report'];
+    view.client.setQueryData(queryKey, { total: 0 });
+    const observer = new QueryObserver(view.client, { queryKey, queryFn: () => pending.promise, staleTime: Infinity });
+    const unsubscribe = observer.subscribe(() => undefined);
+    let confirmed: unknown;
+    let sending!: Promise<unknown>;
+    act(() => { sending = view.result.current.submit('Destino confirmado', destinations()).then(value => { confirmed = value; }); });
+    try {
+      await waitFor(() => expect(confirmed).toMatchObject({ orderId: 'o1', cancellationId: 'cancel1' }));
+      expect(mocks.write).toHaveBeenCalledOnce();
+      expect(view.client.getQueryState(queryKey)?.fetchStatus).toBe('fetching');
+    } finally {
+      await act(async () => { pending.resolve({ total: 15 }); await sending; });
+      unsubscribe(); view.unmount(); view.client.clear();
+    }
+  });
+  it('uma falha de atualização das leituras não transforma o destino salvo em operação incerta', async () => {
+    const view = await ready();
+    vi.spyOn(view.client, 'invalidateQueries').mockRejectedValue(new Error('Falha ao atualizar as leituras'));
+    await act(async () => {
+      await expect(view.result.current.submit('Destino confirmado', destinations()))
+        .resolves.toMatchObject({ orderId: 'o1', cancellationId: 'cancel1' });
+    });
+    expect(mocks.write).toHaveBeenCalledOnce();
+    expect(view.result.current.uncertain).toBe(false);
+  });
   it('preserva orçamento e saldo por pagamento; rejeita contrato sem centavos ou capacidades', () => {
     const p = projectPdvResidualDispositionPlan(payload(), 'o1'); expect(p.payments.map(p => p.availableCents)).toEqual([1000, 500]);
     for (const broken of [{ ...payload(), free_amount: 16 }, { ...payload(), free_amount: '15.001' }, { ...payload(), order_id: 'other' }, { ...payload(), capabilities: { customer_credit: 'yes' } }, { ...payload(), payments: [...payload().payments, payload().payments[0]] }]) expect(() => projectPdvResidualDispositionPlan(broken, 'o1')).toThrow();

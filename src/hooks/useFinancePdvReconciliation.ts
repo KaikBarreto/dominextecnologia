@@ -8,12 +8,18 @@ import {hasPdvExplicitPermission} from '@/components/pdv/caixa-v2/pdvCashAccess'
 import {FINANCE_PDV_RECONCILIATION_ROOT,loadFinancePdvExport,parseFinancePdvEntry,parseFinancePdvReconciliation,type FinancePdvProjection} from '@/lib/financePdvReconciliation';
 export {FINANCE_PDV_RECONCILIATION_ROOT} from '@/lib/financePdvReconciliation';
 type RpcResult = {data:unknown;error:{code?:string}|null};
-const rpc = supabase.rpc.bind(supabase) as unknown as (name:string,args:Record<string,unknown>)=>Promise<RpcResult>;
+const rpc = supabase.rpc.bind(supabase) as unknown as (name:string,args:Record<string,unknown>)=>PromiseLike<RpcResult>;
 export function financePdvReadError(error: {code?:string}|null) {
   if (error?.code === '42501') return new Error('Seu perfil não permite consultar esta conferência.');
   if (error?.code === '22023') return new Error('Revise o período da conferência.');
   if (error?.code === 'P0002') return new Error('Este movimento não está disponível neste período.');
   return new Error('Não foi possível carregar a conferência. Tente novamente.');
+}
+async function readFinancePdv(name:string,args:Record<string,unknown>):Promise<RpcResult> {
+  // O SDK retorna um builder thenable, sem catch/finally. Await assimila esse
+  // contrato e mantém falhas de transporte na mesma tradução segura da leitura.
+  try { return await rpc(name,args); }
+  catch { throw financePdvReadError(null); }
 }
 export function useFinancePdvReconciliationAccess() {
   const auth = useAuth(), modules = useCompanyModules(), scope = usePdvAuthorizedQueryScope();
@@ -32,7 +38,7 @@ export function useFinancePdvReconciliation(input:{from:string;to:string;project
   const query = useQuery({queryKey:[...FINANCE_PDV_RECONCILIATION_ROOT,access.scopeKey,input.from,input.to,input.projection,input.offset ?? 0],enabled:access.allowed && input.enabled,
     queryFn:async ({signal}) => {
       const captured=identity;
-      const response=await rpc('finance_get_pdv_reconciliation_v3',{p_projection:input.projection,p_from:input.from,p_to:input.to,p_limit:50,p_offset:input.offset ?? 0}).catch(()=>{throw financePdvReadError(null);});
+      const response=await readFinancePdv('finance_get_pdv_reconciliation_v3',{p_projection:input.projection,p_from:input.from,p_to:input.to,p_limit:50,p_offset:input.offset ?? 0});
       if(signal.aborted || !mounted.current || current.current!==captured) throw new Error('Consulta encerrada.');
       if(response.error) throw financePdvReadError(response.error);
       const data=parseFinancePdvReconciliation(response.data);
@@ -43,7 +49,7 @@ export function useFinancePdvReconciliation(input:{from:string;to:string;project
     if(!access.allowed || !input.enabled) throw new Error('Seu perfil não permite exportar esta conferência.');
     const captured=identity;
     return loadFinancePdvExport(async offset=>{
-      const response=await rpc('finance_get_pdv_reconciliation_v3',{p_projection:input.projection,p_from:input.from,p_to:input.to,p_limit:200,p_offset:offset}).catch(()=>{throw financePdvReadError(null);});
+      const response=await readFinancePdv('finance_get_pdv_reconciliation_v3',{p_projection:input.projection,p_from:input.from,p_to:input.to,p_limit:200,p_offset:offset});
       if(response.error) throw financePdvReadError(response.error);
       const page=parseFinancePdvReconciliation(response.data);
       if(page.projection!==input.projection || page.from!==input.from || page.to!==input.to || page.offset!==offset) throw new Error('A conferência mudou. Inicie a exportação novamente.');
@@ -61,7 +67,7 @@ export function useFinancePdvReconciliationEntry(input:{eventKey:string|null;fro
   const query=useQuery({queryKey:[...FINANCE_PDV_RECONCILIATION_ROOT,'entry',access.scopeKey,input],enabled:access.allowed && !!input.eventKey,
     queryFn:async ({signal})=>{
       const captured=identity;
-      const response=await rpc('finance_get_pdv_reconciliation_entry_v3',{p_event_key:input.eventKey,p_projection:input.projection,p_from:input.from,p_to:input.to}).catch(()=>{throw financePdvReadError(null);});
+      const response=await readFinancePdv('finance_get_pdv_reconciliation_entry_v3',{p_event_key:input.eventKey,p_projection:input.projection,p_from:input.from,p_to:input.to});
       if(signal.aborted || !mounted.current || captured!==current.current) throw new Error('Consulta encerrada.');
       if(response.error) throw financePdvReadError(response.error);
       const data=parseFinancePdvEntry(response.data);
