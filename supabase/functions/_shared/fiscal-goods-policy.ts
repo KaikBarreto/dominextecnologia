@@ -22,6 +22,18 @@ export function goodsOutcome(result: Record<string, unknown>) {
 export function goodsNumberCollision(transmissionCstat: unknown, consultedOfficial: unknown): boolean {
   return String(transmissionCstat ?? '') === '539' && String(consultedOfficial ?? '') === 'nao_localizada';
 }
+/** Carência antes de tratar "chave não localizada" como "o envio nunca chegou à SEFAZ". */
+export const GOODS_RESEND_GRACE_MS = 120_000;
+/**
+ * A SEFAZ respondeu que não conhece a chave. Logo depois de um envio isso ainda
+ * pode ser só atraso; passada a carência, o envio não chegou e o MESMO XML assinado
+ * pode ser retransmitido (mesma chave e mesmo número, então não há como duplicar:
+ * se a primeira tentativa tiver chegado, a SEFAZ devolve a nota já autorizada).
+ */
+export function goodsTransmissionNeverArrived(lastAttemptAt: unknown, now: number): boolean {
+  const attemptedAt = new Date(String(lastAttemptAt ?? '')).getTime();
+  return Number.isFinite(attemptedAt) && now - attemptedAt >= GOODS_RESEND_GRACE_MS;
+}
 export function goodsRejectionMessage(cstat: unknown): string {
   return String(cstat ?? '') === '539'
     ? 'A SEFAZ recusou a nota porque este número já foi usado em outra nota da empresa. Ajuste a numeração da série e emita novamente.'

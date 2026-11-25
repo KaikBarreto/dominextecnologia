@@ -301,10 +301,10 @@ Deno.test('consulta inconclusiva não rebaixa rejeição já persistida',async()
 });
 
 // Número já usado em outro emissor (cStat 539): rejeição definitiva, nunca "consultando" eterno.
-function collisionFetch(consult:unknown,priorCstat:string|null){const baseFetch=globalThis.fetch;globalThis.fetch=(async(input,init)=>{const url=routeUrl(input);
+function collisionFetch(consult:unknown,priorCstat:string|null,attemptedAt:string|null=null){const baseFetch=globalThis.fetch;globalThis.fetch=(async(input,init)=>{const url=routeUrl(input);
  if(url.hostname==='engine.example.invalid'&&url.pathname.endsWith('/autorizar')){paths.push(`MOTOR:${url.pathname}`);return json({outcome:'uncertain',recovered:false,resposta:{cstat:'539'}});}
  if(url.hostname==='engine.example.invalid'&&url.pathname.endsWith('/consultar')){paths.push(`MOTOR:${url.pathname}`);return consult===null?new Response('{}',{status:503}):json(consult);}
- if(url.pathname.endsWith('_events')&&(init?.method??'GET')==='GET')return json(priorCstat?{cstat:priorCstat}:null);
+ if(url.pathname.endsWith('_events')&&(init?.method??'GET')==='GET')return json(priorCstat||attemptedAt?{cstat:priorCstat,created_at:attemptedAt??new Date().toISOString()}:null);
  return baseFetch(input,init);})as typeof fetch;}
 const keyNotFound={situacaoOficial:'nao_localizada',resposta:{cstat:'217'}};
 Deno.test('número já usado em outra nota (539) vira rejeição definitiva quando a chave não existe na SEFAZ',async()=>{
@@ -322,6 +322,22 @@ Deno.test('consulta conclui a rejeição da nota incerta cujo envio foi recusado
 Deno.test('chave não localizada sem recusa por numeração continua incerta',async()=>{
  await setupSigned();storedStatus='uncertain';collisionFetch(keyNotFound,null);
  try{const response=await handler(request({model:65,documentId:doc,action:'consult'}));assertEquals(response.status,200);assertEquals((await response.json()).status,'uncertain');assertEquals(storedStatus,'uncertain');assert(!patches.some(p=>p.status==='rejected'));}finally{globalThis.fetch=originalFetch;}
+});
+
+// Envio que nunca chegou à SEFAZ: a nota volta a "assinada" e o MESMO XML pode ser retransmitido.
+Deno.test('nota que a SEFAZ não recebeu volta a assinada, sem transmitir nada na consulta',async()=>{
+ await setupSigned();storedStatus='uncertain';collisionFetch(keyNotFound,null,new Date(Date.now()-10*60_000).toISOString());
+ try{const response=await handler(request({model:65,documentId:doc,action:'consult'}));assertEquals(response.status,200);const result=await response.json();assertEquals(result.status,'signed');assertEquals(result.notTransmitted,true);assertEquals(storedStatus,'signed');assert(patches.some(p=>p.status==='signed'&&p.official_status==='nao_localizada'));assert(!paths.includes('MOTOR:/v1/nfce/autorizar'));assert(!paths.some(p=>p.includes('reserve_goods_fiscal_number')));}finally{globalThis.fetch=originalFetch;}
+});
+Deno.test('envio recente ainda não localizado continua incerto durante a carência',async()=>{
+ await setupSigned();storedStatus='uncertain';collisionFetch(keyNotFound,null,new Date(Date.now()-20_000).toISOString());
+ try{const response=await handler(request({model:65,documentId:doc,action:'consult'}));assertEquals(response.status,200);assertEquals((await response.json()).status,'uncertain');assertEquals(storedStatus,'uncertain');assert(!patches.some(p=>p.status==='signed'));}finally{globalThis.fetch=originalFetch;}
+});
+Deno.test('depois de voltar a assinada, a retomada reenvia o mesmo documento sem novo número',async()=>{
+ await setupSigned();storedStatus='uncertain';const base=globalThis.fetch;collisionFetch(keyNotFound,null,new Date(Date.now()-10*60_000).toISOString());
+ try{assertEquals((await (await handler(request({model:65,documentId:doc,action:'consult'}))).json()).status,'signed');
+  globalThis.fetch=base;paths.length=0;
+  const response=await handler(request({model:65,documentId:doc,action:'resume'}));assertEquals(response.status,201);assertEquals((await response.json()).status,'authorized');assert(paths.includes('MOTOR:/v1/nfce/autorizar'));assert(!paths.includes('MOTOR:/v1/nfce/preparar'));assert(!paths.some(p=>p.includes('reserve_goods_fiscal_number')));}finally{globalThis.fetch=originalFetch;}
 });
 
 Deno.test('consulta com status igual também exige a revisão updated_at capturada',async()=>{

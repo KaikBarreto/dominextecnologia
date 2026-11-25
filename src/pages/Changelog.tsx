@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.79',
+    date: '25 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Reenvio de nota que não chegou à SEFAZ',
+        category: 'correcao',
+        description: 'Quando a SEFAZ confirma que não recebeu uma NF-e ou NFC-e, a nota passa a aparecer como "Envio pendente" e pode ser reenviada com o mesmo número, em vez de ficar aguardando indefinidamente.',
+      },
+    ],
+  },
+  {
     version: '1.41.78',
     date: '25 de novembro de 2026',
     type: 'patch',

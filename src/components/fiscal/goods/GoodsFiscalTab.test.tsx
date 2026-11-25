@@ -55,6 +55,15 @@ describe('lista fiscal e continuidade do trabalho',()=>{
   expect(screen.getByRole('button',{name:'Consultar SEFAZ'})).toBeInTheDocument();
   expect(screen.queryByRole('button',{name:'Baixar DANFE'})).not.toBeInTheDocument();
  });
+ it('nota que a SEFAZ não recebeu oferece reenviar o mesmo documento, sem consulta nova',async()=>{
+  state.documents=[{id:'document-a',status:'signed',official_status:'nao_localizada',number:12,series:1,access_key:'5'.repeat(44),draft_payload:draft,created_at:'2026-01-01'}];state.invoke.mockResolvedValue({status:'authorized'});render(<GoodsFiscalTab model={55}/>);
+  expect(within(screen.getByRole('table')).getByText('Envio pendente')).toBeInTheDocument();
+  expect(screen.queryByRole('button',{name:'Consultar SEFAZ'})).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'Ver detalhes'}));
+  expect(screen.getByText(/SEFAZ confirmou que não recebeu esta nota/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'Continuar emissão'}));
+  await waitFor(()=>expect(state.invoke).toHaveBeenCalledWith({model:55,documentId:'document-a',action:'resume'}));
+ });
  it('busca e filtro de situação reduzem a lista e oferecem limpar quando nada bate',()=>{
   state.documents=[{id:'document-a',status:'authorized',number:10,draft_payload:{...draft,party:{name:'Refrigeração Polar',document:'11222333000181'}},created_at:'2026-01-01'},{id:'document-b',status:'draft',draft_payload:{...draft,party:{name:'Mercado Central',document:'52998224725'}},created_at:'2026-01-02'}];render(<GoodsFiscalTab model={55}/>);
   expect(screen.getByText('Refrigeração Polar')).toBeInTheDocument();expect(screen.getByText('Mercado Central')).toBeInTheDocument();

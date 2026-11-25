@@ -1,5 +1,5 @@
 import { goodsReadinessIssues } from '../_shared/fiscal-goods-readiness.ts';
-import { goodsNumberCollision, goodsOutcome, goodsRejectionMessage, sourceFinancialsMatch } from "../_shared/fiscal-goods-policy.ts";
+import { goodsNumberCollision, goodsOutcome, goodsRejectionMessage, goodsTransmissionNeverArrived, sourceFinancialsMatch } from "../_shared/fiscal-goods-policy.ts";
 import {
   isGoodsFinalConsumerCompatible,
   resolveGoodsFinalConsumer,
@@ -1045,15 +1045,30 @@ async function handleDocumentAction(
     let normalized: { status: string; official: string | null } = outcomeStatus(official as JsonObject);
     let consultedCstat = text(object(official.resposta).cstat);
     if (row.status === 'uncertain' && normalized.status === 'uncertain' && normalized.official === 'nao_localizada') {
-      // A SEFAZ não conhece esta chave. Se o envio dela foi recusado por número já
-      // usado (539), não há o que aguardar: a nota foi rejeitada.
-      const prior = await auth.supabase.from(events).select('cstat')
-        .eq('document_id', documentId).eq('company_id', auth.companyId).eq('event_type', 'authorization_result')
+      // A SEFAZ não conhece esta chave. O último envio registrado decide o desfecho.
+      const prior = await auth.supabase.from(events).select('cstat,created_at')
+        .eq('document_id', documentId).eq('company_id', auth.companyId).in('event_type', ['authorization_result', 'authorization_uncertain'])
         .order('created_at', { ascending: false }).limit(1).maybeSingle();
-      const priorCstat = prior.error ? '' : text(object(prior.data).cstat);
+      const lastAttempt = prior.error ? {} : object(prior.data);
+      const priorCstat = text(lastAttempt.cstat);
       if (goodsNumberCollision(priorCstat, normalized.official)) {
+        // Recusado por número já usado (539): não há o que aguardar, a nota foi rejeitada.
         normalized = { status: 'rejected', official: null };
         consultedCstat = priorCstat;
+      } else if (signedXml && goodsTransmissionNeverArrived(lastAttempt.created_at, Date.now())) {
+        // O envio não chegou. A nota volta a "assinada" para que o MESMO XML possa ser
+        // retransmitido pela retomada; nenhum número novo é reservado e nada é reenviado aqui.
+        await storeGoodsDocument(auth, table, documentId, {
+          status: 'signed', official_status: 'nao_localizada', official_checked_at: new Date().toISOString(),
+          last_error_code: null, last_error_message: null, next_action: 'retomar_emissao',
+        }, goodsDocumentFence(row));
+        await storeGoodsEvent(auth, events, {
+          company_id: auth.companyId, document_id: documentId, event_type: 'transmission_not_received',
+          status: 'signed', official_status: 'nao_localizada', cstat: consultedCstat || null,
+          message: 'A SEFAZ não recebeu esta nota. O mesmo documento pode ser reenviado.',
+          payload: { lastAttemptAt: lastAttempt.created_at },
+        });
+        return jsonResponse({ ok: true, id: documentId, status: 'signed', notTransmitted: true, resendAvailable: true }, 200);
       }
     }
     // Consulta inconclusiva não desfaz estados fiscais já conclusivos nem libera cancelamento em andamento.

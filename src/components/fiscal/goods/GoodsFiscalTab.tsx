@@ -100,6 +100,8 @@ interface GoodsRow {
   raw: Record<string, unknown>;
   payload: Record<string, unknown>;
   status: string;
+  /** Última resposta oficial da SEFAZ sobre a chave desta nota. */
+  officialStatus: string;
   number: number | null;
   series: number | null;
   homologation: boolean;
@@ -133,6 +135,7 @@ function toGoodsRow(document: Record<string, unknown>, model: GoodsModel): Goods
     raw: document,
     payload,
     status: String(document.status ?? 'draft'),
+    officialStatus: asText(document.official_status),
     number: document.number ? Number(document.number) : null,
     series: document.series != null && document.number ? Number(document.series) : null,
     homologation: Number(document.environment) === 2,
@@ -157,7 +160,11 @@ function goodsRowHint(row: GoodsRow): string | null {
   if (row.status === 'uncertain') {
     return 'A SEFAZ ainda não confirmou esta nota. O sistema consulta sozinho e atualiza a situação; nenhum novo envio é feito enquanto isso.';
   }
-  if (row.status === 'signed') return 'A nota foi preparada, mas ainda não foi enviada. Use "Continuar emissão".';
+  if (row.status === 'signed') {
+    return row.officialStatus === 'nao_localizada'
+      ? 'A SEFAZ confirmou que não recebeu esta nota. Use "Continuar emissão" para enviar o mesmo documento de novo; nenhum número novo é usado.'
+      : 'A nota foi preparada, mas ainda não foi enviada. Use "Continuar emissão".';
+  }
   return null;
 }
 
@@ -274,7 +281,8 @@ function GoodsFiscalTabContext({ model }: { model: GoodsModel }) {
           expiresAt: Date.now() + Math.min(300, Number(result.expiresIn) || 300) * 1000,
         });
         if (!showGoodsArtifact(pending, url)) toast.message('O navegador não abriu a nova aba. Use o link acima da lista.');
-      } else if (result.status === 'rejected') toast.error('A SEFAZ não autorizou esta nota. Veja o motivo no detalhe.');
+      } else if (result.notTransmitted) toast.message('A SEFAZ não recebeu esta nota. Use "Continuar emissão" para enviar de novo.');
+      else if (result.status === 'rejected') toast.error('A SEFAZ não autorizou esta nota. Veja o motivo no detalhe.');
       else if (result.status === 'authorized') toast.success(`${label} autorizada pela SEFAZ.`);
       else toast.message('Situação fiscal consultada.');
     } catch (error) {
