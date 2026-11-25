@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.73";
+export const APP_VERSION = "1.41.74";
 
 export const VERSION_NOTES =
-  "Novas vendas do PDV protegidas contra retorno ao fluxo antigo de criação, preservando os pedidos históricos.";
+  "Finalização do PDV recupera a sincronização inicial e orienta conflitos de atendimento sem atribuí-los à conexão.";

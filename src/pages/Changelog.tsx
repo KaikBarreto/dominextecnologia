@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.74',
+    date: '25 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Recuperação da sincronização ao finalizar a venda',
+        category: 'correcao',
+        description: 'Se a sincronização inicial do atendimento falhar, finalizar a venda tenta recuperá-la e aguarda a confirmação antes de enviar. Versões diferentes do atendimento e mudanças de caixa passam a exibir orientações específicas.',
+      },
+    ],
+  },
+  {
     version: '1.41.73',
     date: '25 de novembro de 2026',
     type: 'patch',

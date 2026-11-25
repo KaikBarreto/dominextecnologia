@@ -87,6 +87,13 @@ function isServerDraftRow(value: unknown): value is PdvServerDraftRow {
 }
 
 interface ConfirmedDraftBase { revision: number; serialized: string }
+interface DraftHydration {
+  key: string;
+  generation: number;
+  ready: boolean;
+  start: () => Promise<boolean>;
+  finish: (ready: boolean) => void;
+}
 
 function existingOrderId(value: unknown): string | null {
   if (!value || typeof value !== 'object' || !('attempt' in value)) return null;
@@ -155,6 +162,9 @@ export function usePdvServerDraftSync<
   const [resolvingDraftId, setResolvingDraftId] = useState<string | null>(null);
   const [lastResolution, setLastResolution] = useState<PdvDraftResolutionMetadata | null>(null);
   const [syncAttempt, setSyncAttempt] = useState(0);
+  const hydrationRef = useRef<DraftHydration | null>(null);
+  const initialDraftsRef = useRef<Map<string, string> | null>(null);
+  const [hydrationCompletion, setHydrationCompletion] = useState<{ hydration: DraftHydration; ready: boolean } | null>(null);
   const [, refreshConflicts] = useState(0);
 
   const persistBases = useCallback((key: string) => {
@@ -210,6 +220,7 @@ export function usePdvServerDraftSync<
     revisionsRef.current.clear();
     serverPayloadRef.current.clear();
     if (!sameScope) {
+      initialDraftsRef.current = null;
       basesRef.current.clear();
       conflictsRef.current.clear();
       blockedRef.current.clear();
@@ -227,6 +238,10 @@ export function usePdvServerDraftSync<
 
     let cancelled = false;
     const requestKey = storageKey;
+    // O placeholder sem cache só pode ceder enquanto continuar intocado
+    // desde a primeira leitura, inclusive quando essa leitura for repetida.
+    initialDraftsRef.current ??= new Map(workspaceRef.current.drafts.map(draft => [draft.id, JSON.stringify(draft)]));
+    const initialDrafts = initialDraftsRef.current;
     try {
       const bases: unknown = JSON.parse(window.localStorage.getItem(`${requestKey}:server-bases`) ?? '[]');
       if (Array.isArray(bases)) for (const entry of bases) {
@@ -261,8 +276,8 @@ export function usePdvServerDraftSync<
       // A intenção em memória continua válida mesmo sem acesso ao storage.
     }
 
-    async function hydrateFromServer() {
-      if (!stockId) return;
+    async function hydrateFromServer(): Promise<boolean> {
+      if (!stockId) return false;
       // A restauração não pode apagar atendimento digitado enquanto a rede responde.
       // Comparamos o conteúdo enviado à leitura, sem depender do relógio do dispositivo.
       const requestDrafts = new Map(workspaceRef.current.drafts.map(draft => [draft.id, JSON.stringify(draft)]));
@@ -273,11 +288,11 @@ export function usePdvServerDraftSync<
         p_stock_id: stockId,
         p_include_deleted: false,
       });
-      if (cancelled || generationRef.current !== generation || currentStorageKeyRef.current !== requestKey) return;
+      if (cancelled || generationRef.current !== generation || currentStorageKeyRef.current !== requestKey) return false;
       if (error) {
         setSyncIssue('unavailable');
         // Sem leitura/base não há autorização para inferir saves ou exclusões.
-        return;
+        return false;
       }
 
       const rows = (data ?? []).filter(isServerDraftRow);
@@ -324,7 +339,7 @@ export function usePdvServerDraftSync<
           const editedDuringRequest = requestDrafts.get(draft.id) !== serialized;
           // O placeholder inicial sem cache cede ao servidor; conteúdo que o
           // operador editou/criou durante a consulta precisa continuar no balcão.
-          if (visibleRows.length > 0 && !localCacheFound && !editedDuringRequest) continue;
+          if (visibleRows.length > 0 && !localCacheFound && initialDrafts.get(draft.id) === serialized) continue;
           const remote = merged.get(draft.id);
           const base = basesRef.current.get(draft.id);
           if (remote && serialized !== JSON.stringify(remote)) {
@@ -363,13 +378,50 @@ export function usePdvServerDraftSync<
         };
       });
       setServerReadyKey(requestKey);
+      return true;
     }
 
-    void hydrateFromServer();
+    let pending: Promise<boolean> | null = null;
+    let resolvePending: ((ready: boolean) => void) | null = null;
+    const hydration: DraftHydration = {
+      key: requestKey, generation, ready: false,
+      start: () => {
+        if (cancelled) return Promise.resolve(false);
+        if (hydration.ready) return Promise.resolve(true);
+        if (pending) return pending;
+        const promise = new Promise<boolean>(resolve => { resolvePending = resolve; });
+        pending = promise;
+        void hydrateFromServer().catch(() => {
+          if (!cancelled) setSyncIssue('unavailable');
+          return false;
+        }).then(ready => {
+          if (!cancelled) setHydrationCompletion({ hydration, ready });
+        });
+        return promise;
+      },
+      finish: ready => {
+        hydration.ready = ready;
+        const resolve = resolvePending;
+        pending = null; resolvePending = null;
+        resolve?.(ready);
+      },
+    };
+    hydrationRef.current = hydration;
+    void hydration.start();
     return () => {
       cancelled = true;
+      hydration.finish(false);
+      if (hydrationRef.current === hydration) hydrationRef.current = null;
     };
   }, [cashSessionId, draftType, hydratedStorageKey, localCacheFound, parseWorkspace, persistBases, persistTombstones, preserveConflict, setWorkspace, stockId, storageKey, syncAttempt, terminalId]);
+
+  // Só libera a barreira depois do render que aplicou a reconciliação. Assim
+  // uma resposta de leitura não autoriza salvar sobre um conflito ainda na fila.
+  useEffect(() => {
+    if (!hydrationCompletion) return;
+    const { hydration, ready } = hydrationCompletion;
+    if (hydrationRef.current === hydration) hydration.finish(ready);
+  }, [hydrationCompletion]);
 
   // Eventos entre abas não são uma confirmação de servidor. Preservam versões
   // divergentes e não substituem conteúdo local que ainda pode estar pendente.
@@ -446,20 +498,30 @@ export function usePdvServerDraftSync<
     return 'saved';
   }, [cashSessionId, draftType, persistBases, preserveConflict, stockId, terminalId]);
 
-  const saveDraftNow = useCallback((draft: TDraft): Promise<PdvDraftPersistResult> => {
-    if (!storageKey || currentStorageKeyRef.current !== storageKey || serverReadyKey !== storageKey
-      || hydratedStorageKey !== storageKey) return Promise.resolve('scope_changed');
+  const saveDraftNow = useCallback(async (draft: TDraft): Promise<PdvDraftPersistResult> => {
+    if (!storageKey || currentStorageKeyRef.current !== storageKey
+      || hydratedStorageKey !== storageKey) return 'scope_changed';
     const requestKey = storageKey;
     const generation = generationRef.current;
-    if (!workspaceRef.current.drafts.some(item => item.id === draft.id)) return Promise.resolve('not_found');
+    if (!workspaceRef.current.drafts.some(item => item.id === draft.id)) return 'not_found';
     // O chamador já instalou o mesmo snapshot no estado/local. Impede que um
     // autosave antigo, já enfileirado, sobrescreva a identidade financeira.
     workspaceRef.current = { ...workspaceRef.current,
       drafts: workspaceRef.current.drafts.map(item => item.id === draft.id ? draft : item) };
+    const hydration = hydrationRef.current;
+    if (!hydration || hydration.key !== requestKey || hydration.generation !== generation) return 'scope_changed';
+    if (!hydration.ready) {
+      // Uma falha na primeira leitura não pode bloquear a finalização para
+      // sempre. Reaproveita a leitura em voo ou tenta recuperá-la uma vez,
+      // conservando a tentativa financeira instalada pelo chamador.
+      const ready = await hydration.start();
+      if (currentStorageKeyRef.current !== requestKey || generationRef.current !== generation) return 'scope_changed';
+      if (!ready) return 'unavailable';
+    }
     const job = queueRef.current.then(() => saveDraftSnapshot(draft, requestKey, generation));
     queueRef.current = job.then(() => undefined, () => undefined);
     return job.catch(() => 'unavailable');
-  }, [hydratedStorageKey, saveDraftSnapshot, serverReadyKey, storageKey]);
+  }, [hydratedStorageKey, saveDraftSnapshot, storageKey]);
 
   useEffect(() => {
     if (!storageKey || serverReadyKey !== storageKey || hydratedStorageKey !== storageKey) return;

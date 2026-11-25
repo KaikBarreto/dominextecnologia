@@ -26,9 +26,21 @@ describe('fronteira de recuperação da venda usada em Pdv.tsx', () => {
     expect(result.attempt.confirmedSale).toEqual(confirmedSale);
   });
 
-  it.each(['conflict', 'unavailable', 'scope_changed'] as const)('não envia a venda quando a persistência anterior retorna %s', async (server) => {
+  it.each(['conflict', 'unavailable', 'scope_changed', 'not_found'] as const)('não envia a venda quando a persistência anterior retorna %s', async (server) => {
     const complete = vi.fn();
     await expect(completeDurablePdvDirectSale({ attempt: null, signature: 'intent', persist: async () => ({ server, localSaved: true }), complete, onConfirmed: vi.fn() })).rejects.toThrow('A venda não foi enviada');
+    expect(complete).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['conflict', 'revise as versões'],
+    ['scope_changed', 'contexto do caixa mudou'],
+    ['not_found', 'não está mais disponível'],
+    ['unavailable', 'Mantenha esta aba aberta'],
+  ] as const)('orienta a recuperação específica para %s sem atribuir o erro à conexão', async (server, guidance) => {
+    const complete = vi.fn();
+    await expect(completeDurablePdvDirectSale({ attempt: null, signature: 'intent',
+      persist: async () => ({ server, localSaved: true }), complete, onConfirmed: vi.fn() })).rejects.toThrow(guidance);
     expect(complete).not.toHaveBeenCalled();
   });
 

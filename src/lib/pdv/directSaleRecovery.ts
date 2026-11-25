@@ -2,7 +2,7 @@ import type { PdvSaleAttempt } from './sale-drafts';
 import type { PdvDraftPersistResult } from '@/hooks/usePdvServerDraftSync';
 
 export const PDV_DIRECT_SALE_REVIEW_MESSAGE = 'A última tentativa precisa ser conferida em Pedidos antes de reenviar. O conteúdo deste atendimento foi preservado.';
-export const PDV_DIRECT_SALE_PERSIST_MESSAGE = 'Não foi possível confirmar o salvamento da tentativa na conta. A venda não foi enviada. Verifique a conexão e tente novamente.';
+export const PDV_DIRECT_SALE_PERSIST_MESSAGE = 'Não foi possível confirmar o salvamento da tentativa na conta. A venda não foi enviada. Mantenha esta aba aberta e tente novamente.';
 export const PDV_DIRECT_SALE_SCOPE_MESSAGE = 'O contexto do caixa mudou. A venda não foi enviada. Volte ao atendimento correto antes de continuar.';
 
 export function pdvDirectSaleIdempotencyKey(attemptId: string): string {
@@ -38,6 +38,9 @@ export async function completeDurablePdvDirectSale({ attempt: previous, signatur
     if (!isScopeCurrent()) throw new Error(PDV_DIRECT_SALE_SCOPE_MESSAGE);
     const saved = await persist(attempt);
     if (!isScopeCurrent()) throw new Error(PDV_DIRECT_SALE_SCOPE_MESSAGE);
+    if (saved.server === 'scope_changed') throw new Error(PDV_DIRECT_SALE_SCOPE_MESSAGE);
+    if (saved.server === 'conflict') throw new Error('Há versões diferentes deste atendimento. A venda não foi enviada. Volte ao atendimento e revise as versões antes de finalizar.');
+    if (saved.server === 'not_found') throw new Error('Este atendimento não está mais disponível para finalizar. A venda não foi enviada. Volte aos atendimentos para conferir.');
     if (saved.server !== 'saved') throw new Error(PDV_DIRECT_SALE_PERSIST_MESSAGE);
   }
   const sale = attempt.confirmedSale ?? await complete(attempt);
