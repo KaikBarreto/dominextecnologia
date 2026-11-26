@@ -54,6 +54,21 @@ describe('TabsList com barra horizontal', () => {
     expect(list).toHaveClass('inline-flex', 'bg-muted', 'rounded-md', 'w-full');
   });
 
+  it('não desenha uma caixa de foco ao redor do conteúdo da aba', () => {
+    render(
+      <Tabs defaultValue="geral">
+        <TabsList>
+          <TabsTrigger value="geral">Geral</TabsTrigger>
+        </TabsList>
+        <TabsContent value="geral">Conteúdo</TabsContent>
+      </Tabs>,
+    );
+
+    const panel = screen.getByRole('tabpanel');
+    expect(panel).toHaveClass('outline-none');
+    expect(panel.className).not.toContain('focus-visible:ring');
+  });
+
   it('aplica posicionamento ao conjunto da barra mantendo estilos da lista', () => {
     render(
       <Tabs defaultValue="geral">

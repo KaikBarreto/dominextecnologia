@@ -31,6 +31,28 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.89',
+    date: '26 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Conheça as áreas do WhatsApp antes de conectar',
+        category: 'melhoria',
+        description: 'A aba Conexão agora aparece primeiro, seguida de Automações, Atendimento, Modelos, Campanhas e Histórico. Você pode navegar por todas elas antes de conectar o número; enquanto estiver desconectado, a tela avisa que configurações, salvamentos e envios continuam desativados.',
+      },
+      {
+        title: 'Logo da Dominex nas prévias de e-mail',
+        category: 'correcao',
+        description: 'As prévias ampliadas dos modelos de e-mail voltam a mostrar o logo oficial da Dominex no rodapé, com contraste correto sobre o fundo escuro.',
+      },
+      {
+        title: 'Janelas de edição sem contorno indevido',
+        category: 'correcao',
+        description: 'Ao abrir uma aba dentro de uma janela de edição, o conteúdo não recebe mais uma borda preta ao redor de toda a área. O destaque de foco continua nos controles de navegação e nos campos.',
+      },
+    ],
+  },
+  {
     version: '1.41.88',
     date: '26 de novembro de 2026',
     type: 'patch',

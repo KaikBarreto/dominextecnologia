@@ -71,6 +71,7 @@ describe("CustomerBillingEmailTemplateGallery", () => {
     expect(document.body.querySelector(".lucide-credit-card")).not.toBeNull();
     expect(document.body.querySelector(".lucide-receipt-text")).not.toBeNull();
     expect(document.body.querySelector(".lucide-copy")).not.toBeNull();
+    expect(document.body.querySelector('img[alt="Dominex"]')).not.toBeNull();
   });
 
   it("desabilita a escolha quando a configuração não pode ser alterada", () => {
