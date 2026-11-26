@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.85";
+export const APP_VERSION = "1.41.86";
 
 export const VERSION_NOTES =
-  "No PDV, uma venda recusada pelo sistema, por exemplo por limite de fiado, pode ser corrigida e finalizada no mesmo atendimento, sem ficar presa pedindo conferência em Pedidos.";
+  "Nos links públicos da sua empresa, a aba do navegador passa a mostrar o tipo do link e o nome da empresa, sem citar a plataforma.";

@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.86',
+    date: '26 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Nome da sua empresa na aba do navegador',
+        category: 'correcao',
+        description: 'Nos links públicos da sua empresa, como cobrança, orçamento, portal do cliente, contrato, formulário de cadastro, ponto e ordem de serviço, o título da aba do navegador passa a mostrar o tipo do link e o nome da empresa. Antes, depois que a página carregava, o título voltava a citar a plataforma.',
+      },
+    ],
+  },
+  {
     version: '1.41.85',
     date: '26 de novembro de 2026',
     type: 'patch',

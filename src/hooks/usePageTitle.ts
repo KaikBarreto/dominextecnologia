@@ -78,6 +78,43 @@ export const useResolvedRouteTitle = (): string => {
   return title ?? "";
 };
 
+/**
+ * Links públicos de uma empresa (cobrança, portal, orçamento, ponto...). Quem
+ * abre é o cliente final ou o funcionário do tenant, então a aba do navegador
+ * não pode terminar em " | Dominex" (White Label). Mesmos rótulos do head
+ * social montado no servidor (functions/_lib/public-link-render.js).
+ */
+const TENANT_PUBLIC_ROUTES: Array<[prefix: string, label: string]> = [
+  ["/pagar/", "Pagamento"],
+  ["/assinar/", "Assinatura"],
+  ["/orcamento/", "Orçamento"],
+  ["/proposta/", "Proposta"],
+  ["/portal/", "Portal do Cliente"],
+  ["/contrato/unidade/", "Contrato"],
+  ["/pmoc/unidade/", "Contrato"],
+  ["/c/", "Validação de certificado"],
+  ["/cadastro/", "Cadastro"],
+  ["/ponto/", "Ponto eletrônico"],
+  ["/ativar-ponto/", "Cadastro facial"],
+  ["/cadastro-facial/", "Cadastro facial"],
+  ["/avaliacao/", "Perfil comportamental"],
+  ["/os-tecnico/", "Ordem de Serviço"],
+];
+
+/**
+ * Título da aba para um link público do tenant, ou null quando a rota não é
+ * um link público. O servidor já entrega "<Tipo> · <Empresa>" no HTML: esse
+ * título é mantido. Sem ele (navegação interna, ambiente local, falha do
+ * servidor) fica só o tipo, nunca a marca da plataforma.
+ */
+export function resolveTenantPublicTitle(pathname: string, currentTitle: string): string | null {
+  const match = TENANT_PUBLIC_ROUTES.find(([prefix]) => pathname.startsWith(prefix));
+  if (!match) return null;
+  const current = currentTitle.trim();
+  const serverProvided = current.includes(" · ") && !/dominex/i.test(current);
+  return serverProvided ? current : match[1];
+}
+
 export const usePageTitle = () => {
   const title = useResolvedRouteTitle();
   const { pathname } = useLocation();
@@ -85,6 +122,11 @@ export const usePageTitle = () => {
   useEffect(() => {
     // A documentação pública gerencia títulos específicos por artigo.
     if (pathname === "/docs" || pathname.startsWith("/docs/")) return;
+    const tenantPublicTitle = resolveTenantPublicTitle(pathname, document.title);
+    if (tenantPublicTitle !== null) {
+      document.title = tenantPublicTitle;
+      return;
+    }
     document.title = title ? title + SUFFIX : DEFAULT_TITLE;
   }, [pathname, title]);
 };

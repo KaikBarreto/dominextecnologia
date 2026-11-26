@@ -1589,10 +1589,21 @@ async function processEvent(
         if (typeof payment?.status === "string" && payment.status) {
           patch.status = payment.status;
         }
-        if (payment?.value != null && Number.isFinite(Number(payment.value))) {
+        // Venda PARCELADA no cartão: este payment é só a 1ª parcela (a única
+        // cujo id fica em tenant_charges). O value/netValue dele são de UMA
+        // parcela, e a cobrança guarda o total da venda — copiar aqui trocaria
+        // R$ 597,00 por R$ 59,70. Em venda parcelada o valor só muda pela
+        // troca atômica (replace_tenant_charge_gateway_payment).
+        const isInstallmentParcel = isInstallmentPaymentEvent(payment);
+        if (
+          !isInstallmentParcel &&
+          payment?.value != null && Number.isFinite(Number(payment.value))
+        ) {
           patch.value = Number(payment.value);
         }
-        if (payment?.netValue != null) patch.net_value = payment.netValue;
+        if (!isInstallmentParcel && payment?.netValue != null) {
+          patch.net_value = payment.netValue;
+        }
         if (typeof payment?.dueDate === "string" && payment.dueDate) {
           patch.due_date = payment.dueDate;
         }
