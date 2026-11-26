@@ -10,6 +10,9 @@ const RELATION = new RegExp(
 );
 
 export const SENSITIVE_TABLES = new Set([
+  'os_commercial_requests',
+  'quote_financial_requests',
+  'os_charge_reservations',
   'profiles',
   'user_roles',
   'user_permissions',

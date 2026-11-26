@@ -1,9 +1,10 @@
+import type { PortalPayment } from '@/hooks/usePortalPaymentReceipts';
 /**
  * PortalChargesSection — seção de cobranças compartilhada entre o Portal do
  * Cliente (CustomerPortal) e o Portal do Contrato (PmocPublicPortal).
  *
  * Regras de UI:
- *  - CARD de estado = BRANCO (bg-card/border-border), nunca tingido.
+ *  - Lançamentos em linhas com separadores, sem cards.
  *  - BADGE de status = preenchido/saturado + texto branco. Nunca outline.
  *  - Botão "Pagar" só aparece quando: classify != 'paid' E tem public_short_code.
  *  - Empty state: componente EmptyState com ícone discreto.
@@ -11,8 +12,7 @@
  *    componente; o fallback é feito pelo deepMerge do sistema i18n).
  */
 
-import { CreditCard, Calendar } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { CreditCard, Calendar, FileDown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -46,6 +46,9 @@ export interface PortalChargesSectionMessages {
 }
 
 interface Props {
+  receiptPayments?: PortalPayment[];
+  downloadingReceipt?: string | null;
+  onReceipt?: (payment: PortalPayment) => void;
   charges: PortalChargeItem[];
   /**
    * Strings i18n já resolvidas para o locale ativo.
@@ -66,14 +69,14 @@ const BADGE_CLASS = {
   pending:  'bg-warning text-white border-transparent',
   overdue:  'bg-destructive text-white border-transparent',
   refunded: 'bg-muted-foreground text-white border-transparent',
-  other:    'bg-muted text-muted-foreground border-transparent',
+  other:    'bg-slate-600 text-white border-transparent',
 } as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Componente
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function PortalChargesSection({ charges, t, locale = 'pt-br', currency = 'BRL', timezone = 'America/Sao_Paulo' }: Props) {
+export function PortalChargesSection({ charges, t, locale = 'pt-br', currency = 'BRL', timezone = 'America/Sao_Paulo', receiptPayments, downloadingReceipt, onReceipt }: Props) {
   // Fallback pt-br embutido pra não quebrar se `t` não vier (nunca deve acontecer
   // em produção — o pai sempre passa as strings do MESSAGES resolvido).
   const msg: PortalChargesSectionMessages = t ?? {
@@ -110,11 +113,13 @@ export function PortalChargesSection({ charges, t, locale = 'pt-br', currency = 
   return (
     <div className="space-y-3">
       {charges.map((charge, i) => {
-        const classification = classifyTenantChargeStatus(charge.status ?? '');
+        const confirmedPayment = charge.public_short_code ? receiptPayments?.find(p => p.kind === 'charge' && p.public_short_code === charge.public_short_code) : null;
+        const classification = confirmedPayment ? 'paid' : classifyTenantChargeStatus(charge.status ?? '');
         const badgeClass = BADGE_CLASS[classification];
         const label = statusLabel(classification);
         const isPaid = classification === 'paid';
-        const canPay = !isPaid && !!charge.public_short_code;
+        const payment = isPaid ? confirmedPayment : null;
+        const canPay = (classification === 'pending' || classification === 'overdue') && !!charge.public_short_code;
         const payHref = `/pagar/${charge.public_short_code}`;
         const formattedValue = charge.value != null
           ? formatMoney(charge.value, currency, locale as any)
@@ -124,8 +129,7 @@ export function PortalChargesSection({ charges, t, locale = 'pt-br', currency = 
           : null;
 
         return (
-          <Card key={i} className="bg-card border-border shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-            <CardContent className="p-4">
+          <div key={charge.public_short_code ?? i} className="border-b border-border py-4">
               {/* Linha superior: valor + badge de status */}
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 {formattedValue != null && (
@@ -153,6 +157,7 @@ export function PortalChargesSection({ charges, t, locale = 'pt-br', currency = 
                 </p>
               )}
 
+              {payment && onReceipt && <div className="mt-3 border-t pt-3"><Button variant="outline" size="sm" className="gap-2" disabled={!!downloadingReceipt} onClick={() => onReceipt(payment)}><FileDown className="h-4 w-4" />Gerar recibo</Button></div>}
               {/* CTA Pagar (só quando não pago e tem código) */}
               {canPay && (
                 <div className="mt-3 pt-3 border-t border-border">
@@ -164,8 +169,7 @@ export function PortalChargesSection({ charges, t, locale = 'pt-br', currency = 
                   </a>
                 </div>
               )}
-            </CardContent>
-          </Card>
+          </div>
         );
       })}
     </div>

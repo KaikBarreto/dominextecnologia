@@ -25,3 +25,9 @@ export function buildEquipmentServiceDistribution(
       service_type_ids: Array.from(services).sort(),
     }));
 }
+
+/** Execução escolhida explicitamente, independente dos itens comerciais. */
+export interface QuoteExecutionAssignment {
+  equipment_id: string;
+  form_template_ids: string[];
+}

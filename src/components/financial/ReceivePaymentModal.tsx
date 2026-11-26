@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useId } from 'react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,8 +13,8 @@ import { AccountFormDialog } from './AccountFormDialog';
 import { useFinancialAccounts } from '@/hooks/useFinancialAccounts';
 import { useCanManageFinanceSettings } from '@/hooks/useCanManageFinanceSettings';
 import { Wallet, Landmark, CreditCard, Plus } from 'lucide-react';
-import { Card } from '@/components/ui/card';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
+import { parseReceiptAmount } from '@/lib/receiptAmount';
 import { cn } from '@/lib/utils';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
@@ -54,6 +54,8 @@ interface ReceivePaymentModalProps {
   amountReceived?: number;
   /** Habilita o fluxo de recebimento parcial. Default false (mantém comportamento atual). */
   allowPartial?: boolean;
+  /** A OS pode receber parte de uma parcela do orçamento sem criar outra dívida. */
+  allowPartialInstallments?: boolean;
   allowOccurrenceAdjustment?: boolean;
   hasRecurringSeries?: boolean;
   /** Total de parcelas da transação. Se > 1, o campo "Valor recebido" fica desabilitado (regra: parcelado não usa parcial). */
@@ -77,6 +79,7 @@ interface ReceivePaymentModalProps {
   defaultMethod?: string;
   onConfirm: (result: ReceivePaymentResult) => Promise<void> | void;
   isSubmitting?: boolean;
+  errorMessage?: string;
 }
 
 // Payment methods are now built from locale keys inside the component.
@@ -98,13 +101,6 @@ function addDaysISO(dateStr: string | undefined, days: number, timeZone: string 
   return `${base.getFullYear()}-${mm}-${dd}`;
 }
 
-function parseDecimal(v: string): number {
-  if (!v) return 0;
-  // aceita "1.234,56" ou "1234.56" — remove pontos de milhar, troca vírgula por ponto
-  const normalized = v.replace(/\./g, '').replace(',', '.');
-  const n = Number(normalized);
-  return Number.isFinite(n) ? n : 0;
-}
 
 function getAccIcon(type: string) {
   if (type === 'caixa') return Wallet;
@@ -116,19 +112,21 @@ export function ReceivePaymentModal({
   open, onOpenChange, amount,
   amountReceived = 0,
   allowPartial = false,
+  allowPartialInstallments = false,
   allowOccurrenceAdjustment = false,
   hasRecurringSeries = false,
   installmentTotal = 1,
   currentDueDate,
   liveCharge,
   title,
-  description, defaultMethod = 'pix', onConfirm, isSubmitting,
+  description, defaultMethod = 'pix', onConfirm, isSubmitting, errorMessage,
 }: ReceivePaymentModalProps) {
   // `timezone`: fuso da empresa. `paid_date` define o MÊS da movimentação no
   // regime de Caixa, então o "hoje" tem que ser o da empresa.
   const { locale, currency, timezone } = useAppLocaleContext();
   const fmt = (value: number) => formatMoney(value, currency, locale);
   const t = MESSAGES[locale].app.finance.receivePayment;
+  const amountInputId = useId();
   const occurrenceCopy = MESSAGES[locale].app.finance.occurrenceAmount;
   const [occurrenceAmount, setOccurrenceAmount] = useState(amount.toFixed(2));
   const [updateFuture, setUpdateFuture] = useState(false);
@@ -153,7 +151,7 @@ export function ReceivePaymentModal({
   // Logo do banco + cor da conta: régua única de `accountSelectOptions`. O
   // operador reconhece a conta pela marca, não lendo o nome.
   const accountOptions = useMemo(
-    () => buildAccountOptions(activeAccounts as any, { includeCard: true }),
+    () => buildAccountOptions(activeAccounts, { includeCard: true }),
     [activeAccounts]
   );
 
@@ -178,7 +176,7 @@ export function ReceivePaymentModal({
 
   // Saldo que falta receber (total - já recebido).
   const restante = useMemo(() => Math.max(0, Number((actualAmount - amountReceived).toFixed(2))), [actualAmount, amountReceived]);
-  const isParcelada = (installmentTotal ?? 1) > 1;
+  const isParcelada = (installmentTotal ?? 1) > 1 && !allowPartialInstallments;
   const partialEnabled = allowPartial && !isParcelada && (!allowOccurrenceAdjustment || partialMode);
 
   const [accountId, setAccountId] = useState<string>('');
@@ -220,8 +218,8 @@ export function ReceivePaymentModal({
     }
   }, [open, defaultMethod, amount, amountReceived, currentDueDate, timezone]); // eslint-disable-line
 
-  const valorRecebido = useMemo(() => parseDecimal(valorRecebidoStr), [valorRecebidoStr]);
-  const fee = parseDecimal(feeAmount);
+  const valorRecebido = useMemo(() => parseReceiptAmount(valorRecebidoStr), [valorRecebidoStr]);
+  const fee = parseReceiptAmount(feeAmount);
   // No fluxo legado (allowPartial=false): valor recebido = amount inteiro.
   const valorEfetivo = partialEnabled ? valorRecebido : actualAmount;
   const liquid = valorEfetivo - fee;
@@ -229,10 +227,11 @@ export function ReceivePaymentModal({
   const isPartial = partialEnabled && valorEfetivo > 0 && valorEfetivo < restante;
 
   // Validação do valor recebido (só quando parcial habilitado).
-  const valorInvalido = partialEnabled && (valorEfetivo <= 0 || valorEfetivo > restante);
+  const valorInvalido = partialEnabled && (!Number.isFinite(valorEfetivo) || valorEfetivo <= 0 || valorEfetivo > restante);
+  const feeInvalid = !Number.isFinite(fee) || fee < 0 || fee > valorEfetivo;
   let valorErro: string | null = null;
   if (partialEnabled) {
-    if (valorEfetivo <= 0) valorErro = t.validations.amountZero;
+    if (!Number.isFinite(valorEfetivo) || valorEfetivo <= 0) valorErro = t.validations.amountZero;
     else if (valorEfetivo > restante) valorErro = t.validations.amountExceedsRemaining.replace('{amount}', fmt(restante));
   }
 
@@ -243,7 +242,7 @@ export function ReceivePaymentModal({
 
   const handleSubmit = async () => {
     if (!accountId || busy) return;
-    if (valorInvalido || occurrenceInvalid) return;
+    if (valorInvalido || occurrenceInvalid || feeInvalid) return;
     if (novoVencimentoInvalido) return;
     if (paidDateInvalid) return;
 
@@ -256,7 +255,7 @@ export function ReceivePaymentModal({
         fee_amount: fee,
         notes: notes.trim() || undefined,
         // Só envia amount_received se o fluxo parcial estiver habilitado E o valor diferir do restante.
-        // Quando = restante, deixa undefined pro hook usar o caminho de quitação total (UPDATE direto na mãe).
+        // Quando = restante, o hook decide entre baixa única e última filha de um recebimento parcial.
         amount_received: partialEnabled && valorEfetivo < restante ? valorEfetivo : undefined,
         new_due_date: isPartial ? novoVencimento : undefined,
         occurrence_amount: occurrenceChanged ? occurrenceValue : undefined,
@@ -268,17 +267,44 @@ export function ReceivePaymentModal({
   };
 
   const footer = (
+    <div className="w-full space-y-4">
+        {/* Resumo fixo do rodapé — sempre visível quando parcial habilitado */}
+        {partialEnabled && (
+          <div className="space-y-2 border-t pt-4">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">{t.summaryAmountLabel}</span>
+              <span className="font-medium">{fmt(amount)}</span>
+            </div>
+            {amountReceived > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">{t.summaryAlreadyReceivedLabel}</span>
+                <span className="font-medium">{fmt(amountReceived)}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">{t.summaryReceivingNowLabel}</span>
+              <span className="font-medium">{fmt(valorEfetivo)}</span>
+            </div>
+            <div className="flex justify-between text-sm font-semibold pt-1.5 border-t">
+              <span>{t.summaryRemainingLabel}</span>
+              <span className={cn(restanteApos === 0 ? 'text-success' : 'text-primary')}>
+                {fmt(restanteApos)}
+              </span>
+            </div>
+          </div>
+        )}
     <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-      <Button className="w-full sm:w-auto" variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
+      <Button className="w-full hover:border-destructive hover:bg-destructive hover:text-white sm:w-auto" variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
         {t.cancelLabel}
       </Button>
       <Button
         onClick={handleSubmit}
-        disabled={!accountId || busy || valorInvalido || occurrenceInvalid || novoVencimentoInvalido || paidDateInvalid}
-        className="w-full bg-success text-white hover:bg-success/90 sm:w-auto"
+        disabled={!accountId || busy || valorInvalido || occurrenceInvalid || feeInvalid || novoVencimentoInvalido || paidDateInvalid}
+        className="w-full sm:w-auto"
       >
         {busy ? t.confirmingLabel : t.confirmLabel}
       </Button>
+    </div>
     </div>
   );
 
@@ -292,6 +318,7 @@ export function ReceivePaymentModal({
       footer={footer}
     >
       <div className="space-y-4">
+        {errorMessage && <NoticeBanner variant="warning">{errorMessage}</NoticeBanner>}
         {/* Cobrança online em aberto nesta conta: o aviso vem ANTES de qualquer
             campo, porque muda o que o operador vai fazer em seguida. */}
         {liveCharge && (
@@ -323,8 +350,9 @@ export function ReceivePaymentModal({
         {/* Valor recebido — primeiro campo lógico, só renderiza quando parcial habilitado */}
         {partialEnabled && (
           <div>
-            <Label>{t.partialReceivedLabel}</Label>
+            <Label htmlFor={amountInputId}>{t.partialReceivedLabel}</Label>
             <Input
+              id={amountInputId}
               type="text"
               inputMode="decimal"
               placeholder={t.partialReceivedPlaceholder}
@@ -417,6 +445,7 @@ export function ReceivePaymentModal({
           <p className="text-xs text-muted-foreground mt-1">
             {t.feeHint}
           </p>
+          {feeInvalid && <p role="alert" className="mt-1 text-xs text-destructive">Informe uma tarifa válida, entre zero e o valor recebido.</p>}
         </div>
 
         {/* Novo vencimento do saldo restante — só quando há saldo restante após este recebimento */}
@@ -435,7 +464,7 @@ export function ReceivePaymentModal({
         )}
 
         {fee > 0 && (
-          <Card className="p-3 bg-muted/30 border-warning/30">
+          <div className="space-y-2 border-t pt-4">
             <div className="flex justify-between text-sm">
               <span>{t.grossLabel}</span><span className="font-medium">{fmt(valorEfetivo)}</span>
             </div>
@@ -445,7 +474,7 @@ export function ReceivePaymentModal({
             <div className="flex justify-between text-sm font-semibold pt-1 border-t mt-1">
               <span>{t.liquidLabel}</span><span className="text-success">{fmt(liquid)}</span>
             </div>
-          </Card>
+          </div>
         )}
 
         <div>
@@ -453,31 +482,7 @@ export function ReceivePaymentModal({
           <Textarea rows={2} value={notes} onChange={e => setNotes(e.target.value)} />
         </div>
 
-        {/* Resumo fixo do rodapé — sempre visível quando parcial habilitado */}
-        {partialEnabled && (
-          <Card className="p-3 bg-muted/40 border-border space-y-1.5">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">{t.summaryAmountLabel}</span>
-              <span className="font-medium">{fmt(amount)}</span>
-            </div>
-            {amountReceived > 0 && (
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">{t.summaryAlreadyReceivedLabel}</span>
-                <span className="font-medium">{fmt(amountReceived)}</span>
-              </div>
-            )}
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">{t.summaryReceivingNowLabel}</span>
-              <span className="font-medium">{fmt(valorEfetivo)}</span>
-            </div>
-            <div className="flex justify-between text-sm font-semibold pt-1.5 border-t">
-              <span>{t.summaryRemainingLabel}</span>
-              <span className={cn(restanteApos === 0 ? 'text-success' : 'text-primary')}>
-                {fmt(restanteApos)}
-              </span>
-            </div>
-          </Card>
-        )}
+
 
       </div>
     </ResponsiveModal>

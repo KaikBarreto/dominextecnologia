@@ -1,3 +1,5 @@
+import { PaymentReceiptButton } from './PaymentReceiptButton';
+import { canDownloadPaymentReceipt } from '@/hooks/usePaymentReceipt';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -113,7 +115,7 @@ function formatDate(value?: string | null) {
 
 function DetailItem({ label, value, icon: Icon }: { label: string; value: React.ReactNode; icon?: React.ElementType }) {
   return (
-    <div className="min-w-0 rounded-xl bg-background/70 px-3 py-2.5">
+    <div className="min-w-0 py-2.5">
       <div className="mb-1 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
         {Icon && <Icon className="h-3.5 w-3.5" />}
         {label}
@@ -133,7 +135,7 @@ export function FinancialTransactionDetailsPanel({
 }: FinancialTransactionDetailsPanelProps) {
   const { data: attachments = [], isLoading: loadingAttachments } = useTransactionAttachments(transaction.id);
   const { payments, isLoading: loadingPayments } = useReceivablePayments(
-    transaction.transaction_type === 'entrada' ? transaction.id : undefined,
+    transaction.transaction_type === 'entrada' && !transaction.cancelled_at ? transaction.id : undefined,
   );
   const [openingAttachmentId, setOpeningAttachmentId] = useState<string | null>(null);
   const { toast } = useToast();
@@ -163,8 +165,37 @@ export function FinancialTransactionDetailsPanel({
   };
 
   return (
-    <div className={cn('bg-muted/35 px-3 py-4 sm:px-5', className)} onClick={(event) => event.stopPropagation()}>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+    <div className={cn('px-3 py-4 sm:px-5', className)} onClick={(event) => event.stopPropagation()}>
+      <div className="mb-4 border-b pb-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <WalletCards className="h-4 w-4" />
+              {transaction.transaction_type === 'entrada' ? 'Detalhes de recebimento' : 'Detalhes de pagamento'}
+            </div>
+            {onViewPartialHistory && payments.length > 0 && (
+              <Button type="button" variant="ghost" size="sm" onClick={onViewPartialHistory}>Gerenciar histórico</Button>
+            )}
+          </div>
+          <div className="mt-2 space-y-1.5">
+            {loadingPayments ? (
+              <span className="inline-flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" />Carregando pagamentos...</span>
+            ) : payments.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                {transaction.is_paid
+                  ? (transaction.transaction_type === 'entrada' ? (transaction.parent_transaction_id ? 'Pagamento parcial confirmado.' : 'Recebimento confirmado.') : 'Pagamento realizado integralmente.')
+                  : (transaction.transaction_type === 'entrada' ? 'Nenhum recebimento parcial registrado.' : 'Pagamento ainda não realizado.')}
+              </p>
+            ) : payments.map((payment) => (
+              <div key={payment.id} className="flex flex-wrap items-center justify-between gap-3 border-t py-3 text-xs">
+                <span className="font-medium">{money(payment.amount)}</span>
+                <span className="text-muted-foreground">{formatDate(payment.paid_date)} · {payment.account?.name || 'Conta não informada'} · {PAYMENT_METHODS[payment.payment_method || ''] || payment.payment_method || 'Forma não informada'}</span>
+                <PaymentReceiptButton id={payment.id} />
+              </div>
+            ))}
+          </div>
+        </div>
+      {canDownloadPaymentReceipt(transaction) && <div className="mb-4"><PaymentReceiptButton id={transaction.id} /></div>}
+      <div className="grid grid-cols-2 gap-x-4 gap-y-2 xl:grid-cols-4">
         <DetailItem
           label="Situação"
           icon={CheckCircle2}
@@ -236,13 +267,13 @@ export function FinancialTransactionDetailsPanel({
         <DetailItem label="Última atualização" value={transaction.updated_at ? new Date(transaction.updated_at).toLocaleString('pt-BR') : 'Não informado'} />
       </div>
 
-      <div className="mt-3 rounded-xl bg-background/70 px-3 py-2.5">
+      <div className="mt-3 border-t py-3">
         <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Observações</p>
         <p className="mt-1 whitespace-pre-wrap text-sm">{transaction.cancelled_reason || transaction.notes || 'Nenhuma observação informada.'}</p>
       </div>
 
-      <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <div className="rounded-xl bg-background/70 p-3">
+      <div className="mt-3">
+        <div className="border-t pt-4">
           <div className="flex items-center gap-2 text-sm font-semibold">
             <Paperclip className="h-4 w-4" /> Anexos e comprovantes
           </div>
@@ -277,33 +308,7 @@ export function FinancialTransactionDetailsPanel({
           </div>
         </div>
 
-        <div className="rounded-xl bg-background/70 p-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              <WalletCards className="h-4 w-4" />
-              {transaction.transaction_type === 'entrada' ? 'Detalhes de recebimento' : 'Detalhes de pagamento'}
-            </div>
-            {onViewPartialHistory && payments.length > 0 && (
-              <Button type="button" variant="ghost" size="sm" onClick={onViewPartialHistory}>Gerenciar histórico</Button>
-            )}
-          </div>
-          <div className="mt-2 space-y-1.5">
-            {loadingPayments ? (
-              <span className="inline-flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" />Carregando pagamentos...</span>
-            ) : payments.length === 0 ? (
-              <p className="text-xs text-muted-foreground">
-                {transaction.is_paid
-                  ? (transaction.transaction_type === 'entrada' ? 'Recebimento realizado integralmente.' : 'Pagamento realizado integralmente.')
-                  : (transaction.transaction_type === 'entrada' ? 'Nenhum recebimento parcial registrado.' : 'Pagamento ainda não realizado.')}
-              </p>
-            ) : payments.map((payment) => (
-              <div key={payment.id} className="flex flex-col gap-0.5 rounded-lg bg-muted/50 px-2.5 py-2 text-xs sm:flex-row sm:items-center sm:justify-between">
-                <span className="font-medium">{money(payment.amount)}</span>
-                <span className="text-muted-foreground">{formatDate(payment.paid_date)} · {payment.account?.name || 'Conta não informada'} · {PAYMENT_METHODS[payment.payment_method || ''] || payment.payment_method || 'Forma não informada'}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+
       </div>
     </div>
   );

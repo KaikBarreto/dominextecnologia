@@ -451,6 +451,8 @@ async function handleRequest(req: Request): Promise<Response> {
     }, 400);
   }
 
+  let commercialReservationId: string | null = null;
+  let gatewaySubmitted = false;
   try {
     // 0) Dedupe por ORIGEM (idempotência da Onda D, estendida à parcela de
     //    contrato). Se ESTA origem já tem uma cobrança viva (não cancelada/
@@ -630,30 +632,15 @@ async function handleRequest(req: Request): Promise<Response> {
       //   retentativa (ou uma segunda cobrança legítima depois de um
       //   cancelamento) veria o recebível da própria cobrança e se recusaria a
       //   prosseguir para sempre.
-      const { data: manualRevenue, error: revenueErr } = await supabase
-        .from("financial_transactions")
-        .select("id")
-        .eq("company_id", companyId)
-        .eq("service_order_id", sourceId)
-        .eq("transaction_type", "entrada")
-        .is("cancelled_at", null)
-        .is("tenant_charge_id", null) // receita MANUAL, não o espelho de cobrança
-        .limit(1)
-        .maybeSingle();
-
+      const { data: canCharge, error: revenueErr } = await supabase.rpc('validate_os_charge_origin', {
+        p_company_id: companyId, p_os_id: sourceId,
+      });
       if (revenueErr) {
-        console.error(
-          "[create-charge] leitura da receita da ordem de serviço falhou:",
-          revenueErr.message,
-        );
-        return jsonResponse(req, {
-          error: "Não foi possível verificar o faturamento da ordem de serviço. Tente novamente.",
-        }, 500);
+        return jsonResponse(req, { error: "Não foi possível verificar o faturamento da OS. Tente novamente." }, 500);
       }
-      if (manualRevenue) {
+      if (canCharge !== true) {
         return jsonResponse(req, {
-          error:
-            "Esta ordem de serviço já tem uma receita lançada. Cancele a receita antes de gerar uma cobrança.",
+          error: "Esta OS ou seu orçamento já tem faturamento. Use a conta existente em Contas a Receber para cobrar o saldo.",
         }, 400);
       }
     }
@@ -837,6 +824,19 @@ async function handleRequest(req: Request): Promise<Response> {
     }
 
     // 3) Cria a cobrança. externalReference = company_id (resolução multi-tenant §9.3).
+    if (sourceId && ["quote", "service_order", "receivable"].includes(sourceType)) {
+      const requestId = crypto.randomUUID();
+      const { data: reserved, error: reservationError } = await supabase.rpc('reserve_commercial_charge', {
+        p_company_id: companyId, p_source_type: sourceType, p_source_id: sourceId, p_request_id: requestId,
+      });
+      if (reservationError || reserved !== true) {
+        return jsonResponse(req, {
+          error: "Já existe faturamento ou uma emissão em conferência para esta origem. Confira o Financeiro antes de tentar novamente.",
+        }, 409);
+      }
+      commercialReservationId = requestId;
+    }
+    gatewaySubmitted = true;
     const payment = await asaas.post<any>("/payments", {
       customer: asaasCustomerId,
       billingType,
@@ -971,6 +971,10 @@ async function handleRequest(req: Request): Promise<Response> {
           status: payment?.status ?? "PENDING",
         },
       }, 207);
+    }
+    if (commercialReservationId) {
+      await supabase.rpc('release_commercial_charge', { p_company_id: companyId, p_request_id: commercialReservationId });
+      commercialReservationId = null;
     }
     const finalShortCode = saved?.public_short_code ?? shortCode;
 
@@ -1157,6 +1161,11 @@ async function handleRequest(req: Request): Promise<Response> {
       finance_warning: financeWarning,
     }, 200);
   } catch (e) {
+    // Resposta perdida/5xx pode ter criado a cobrança: preservar reserva.
+    // Somente recusa definitiva anterior à criação permite nova tentativa.
+    if (commercialReservationId && (!gatewaySubmitted || (e instanceof AsaasApiError && e.status >= 400 && e.status < 500))) {
+      await supabase.rpc('release_commercial_charge', { p_company_id: companyId, p_request_id: commercialReservationId });
+    }
     const status = e instanceof AsaasApiError ? e.status : 500;
     console.error("[create-charge] erro:", (e as Error).message);
     return jsonResponse(req, {

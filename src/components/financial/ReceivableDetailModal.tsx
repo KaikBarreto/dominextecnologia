@@ -1,3 +1,5 @@
+import { PaymentReceiptButton } from './PaymentReceiptButton';
+import { canDownloadPaymentReceipt } from '@/hooks/usePaymentReceipt';
 import { useState } from 'react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
@@ -100,6 +102,8 @@ export function ReceivableDetailModal({ open, onOpenChange, transaction }: Recei
             )}
           </div>
 
+          {canDownloadPaymentReceipt(transaction) && <PaymentReceiptButton id={transaction.id} />}
+
           {/* Histórico de recebimentos — só renderiza se houve algum */}
           {payments.length > 0 && (
             <div className="space-y-2">
@@ -108,9 +112,9 @@ export function ReceivableDetailModal({ open, onOpenChange, transaction }: Recei
                 <h3 className="font-semibold text-sm">{rd.historyTitle}</h3>
                 <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{payments.length}</Badge>
               </div>
-              <div className="rounded-xl border divide-y bg-card">
+              <div className="divide-y border-y">
                 {payments.map((p) => (
-                  <div key={p.id} className="flex items-start justify-between gap-3 p-3">
+                  <div key={p.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
                     <div className="min-w-0 flex-1 space-y-1">
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-semibold text-success text-sm">{formatCurrency(Number(p.amount))}</span>
@@ -131,6 +135,7 @@ export function ReceivableDetailModal({ open, onOpenChange, transaction }: Recei
                         )}
                       </div>
                     </div>
+                    <PaymentReceiptButton id={p.id} />
                     {canDeleteFinance && (
                       <Button
                         variant="ghost"

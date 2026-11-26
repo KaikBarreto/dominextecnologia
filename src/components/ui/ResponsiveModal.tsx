@@ -120,37 +120,19 @@ export function ResponsiveModal({
             onPointerDownOutside={(e) => e.preventDefault()}
             onInteractOutside={(e) => e.preventDefault()}
           >
-            {/* Header com título centralizado e botão FECHAR absoluto.
-                O título usa padding horizontal simétrico (px-14) para que o texto
-                nunca passe por baixo do botão FECHAR, mesmo em títulos longos.
-                O botão fica absolute para não ocupar o fluxo e desalinhar o centro. */}
-            {/* pt-7 dá folga do handle de arraste (que fica no topo do drawer) pro
-                botão FECHAR não encostar no topo. O padding horizontal reserva espaço
-                pro botão rotulado — título centralizado quebra em 2 linhas antes de
-                colidir.
-
-                ⚠️ A reserva TEM que ser >= a pegada real do botão, medida da borda
-                da tela: `right-3` (12px) + largura do botão rotulado (~89px com
-                "FECHAR"/"CLOSE"/"CERRAR"/"FERMER") = ~102px. Estava `px-20` = 80px,
-                ou seja 22px A MENOS que o botão, e o título passava POR BAIXO dele.
-                Medido no QA de 15/10/2026 a 390px: título ocupando x 93..297 contra
-                o botão em x 288..377 — colidia até com título CURTO, em qualquer
-                drawer do app, não só no que estava sendo testado.
-                `px-28` = 112px deixa 10px de folga pra variação de fonte/idioma. */}
             <DrawerHeader className={cn(
-              'relative shrink-0 px-28',
-              density === 'compact' ? 'pb-2 pt-6' : 'pb-3 pt-7',
+              'shrink-0 px-4',
+              density === 'compact' ? 'pb-2 pt-2' : 'pb-3 pt-2',
             )}>
-              <DrawerTitle className="text-center">{title}</DrawerTitle>
+              <div className="mb-2 flex min-h-8 justify-end">
+                <ModalCloseButton onClick={() => onOpenChange(false)} />
+              </div>
+              <DrawerTitle className="w-full break-words text-center text-xl leading-tight">{title}</DrawerTitle>
               {description ? (
-                <DrawerDescription className={cn('text-center', density === 'compact' ? 'mt-0.5 text-xs' : 'mt-1')}>
+                <DrawerDescription className={cn('mx-auto mt-2 w-full max-w-xl text-center leading-relaxed', density === 'compact' ? 'text-xs' : 'text-sm')}>
                   {description}
                 </DrawerDescription>
               ) : null}
-              <ModalCloseButton
-                className="absolute right-3 top-4"
-                onClick={() => onOpenChange(false)}
-              />
             </DrawerHeader>
             <div className={cn(
               'min-h-0 flex-1 overflow-y-auto px-4',

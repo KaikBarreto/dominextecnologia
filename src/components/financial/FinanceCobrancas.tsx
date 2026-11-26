@@ -1,3 +1,5 @@
+import { usePaymentReceipt } from '@/hooks/usePaymentReceipt';
+import { FileDown } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
@@ -435,6 +437,7 @@ export function FinanceCobrancas() {
     }
   };
 
+  const paymentReceipt = usePaymentReceipt();
   const renderChargeActions = (charge: TenantCharge) => {
     const isPaid = canRefundCharge(charge);
     const canManage = canManageCharge(charge.status);
@@ -453,6 +456,7 @@ export function FinanceCobrancas() {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52">
+          {classifyTenantChargeStatus(charge.status) === 'paid' && <DropdownMenuItem disabled={!!paymentReceipt.downloading} onSelect={() => void paymentReceipt.download(charge.id, 'charge')}><FileDown className="mr-2 h-4 w-4" />Gerar recibo</DropdownMenuItem>}
           <DropdownMenuItem onSelect={() => void handleCopyLink(charge)}>
             <Copy className="mr-2 h-4 w-4" />
             {t.actions.copyLink}

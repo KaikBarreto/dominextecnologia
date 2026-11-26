@@ -63,7 +63,7 @@ import {
 import { PortalFormsSection } from '@/components/portal/PortalFormsSection';
 import { ImagePreviewModal } from '@/components/ui/ImagePreviewModal';
 import { EmptyState } from '@/components/mobile/EmptyState';
-import { PortalChargesSection } from '@/components/portal/PortalChargesSection';
+import { CustomerPortalFinanceSection } from '@/components/portal/CustomerPortalFinanceSection';
 import { formatOSNumber } from '@/lib/osNumber';
 import { PortalDocumentsSection, type PortalDocumentItem } from '@/components/portal/PortalDocumentsSection';
 import { PortalUnlockCard } from '@/components/portal/PortalUnlockCard';
@@ -1419,7 +1419,7 @@ function CustomerPortalContent({
       ? [{ value: 'contratos', label: t.sectionContracts, icon: sectionIcon('contracts', <FileText className="h-4 w-4 shrink-0" />) }]
       : []),
     // Aba Cobranças: mesma regra (so com cobranca, ou protegida)
-    ...(permissions.charges && (charges.length > 0 || lockedSet.has('charges'))
+    ...(permissions.charges && (permissions.charges || lockedSet.has('charges'))
       ? [{ value: 'cobrancas', label: t.sectionCharges, icon: sectionIcon('charges', <CreditCard className="h-4 w-4 shrink-0" />) }]
       : []),
     ...(permissions.invoices
@@ -1530,7 +1530,9 @@ function CustomerPortalContent({
       {!activeIsLocked && permissions.equipment && activeTab === 'equipamentos' && eqTabContent}
       {!activeIsLocked && permissions.contracts && activeTab === 'contratos' && contractsTabContent}
       {!activeIsLocked && permissions.charges && activeTab === 'cobrancas' && (
-        <PortalChargesSection
+        <CustomerPortalFinanceSection
+          token={token}
+          sessionToken={sessionToken}
           charges={charges}
           t={{
             chargesEmpty: t.chargesEmpty,

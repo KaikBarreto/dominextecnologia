@@ -150,3 +150,16 @@ it('editar lançamento financeiro também invalida relatórios e caixa v2', asyn
   keys.forEach(key => expect(client.getQueryState(key)?.isInvalidated).toBe(true));
   view.unmount(); client.clear();
 });
+
+describe('quitação depois de recebimentos parciais', () => {
+  it('registra os últimos 700 na filha, preservando o livro de recebimentos e futuros estornos', async () => {
+    state.respond = (call) => {
+      if (call.op === 'select') return { data: { id: 'parent-a', company_id: 'company-a', amount: 3300, amount_received: 2600, transaction_type: 'entrada' }, error: null };
+      return { data: { id: 'last-payment', transaction_type: 'entrada' }, error: null };
+    };
+    const { result } = renderHook(() => useFinancial({ loadData: false }), { wrapper });
+    await result.current.markAsPaid.mutateAsync({ id: 'parent-a', account_id: 'bank-a', payment_method: 'pix', paid_date: '2026-11-26' });
+    expect(writes()).toHaveLength(1);
+    expect(writes()[0]).toMatchObject({ op: 'insert', values: { parent_transaction_id: 'parent-a', amount: 700, category: 'Recebimento parcial', is_paid: true } });
+  });
+});

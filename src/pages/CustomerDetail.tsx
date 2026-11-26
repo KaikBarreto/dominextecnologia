@@ -1,3 +1,5 @@
+import { FileDown } from 'lucide-react';
+import { canDownloadPaymentReceipt, usePaymentReceipt } from '@/hooks/usePaymentReceipt';
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, Phone, Mail, MapPin, Calendar, ClipboardList, DollarSign, Package, ExternalLink, Plus, Edit, Trash2, UserCircle, Copy, FileText, CheckSquare, CheckCircle2, ChevronDown, Pencil, Eye, Wallet, RotateCcw, Handshake } from 'lucide-react';
@@ -298,6 +300,7 @@ export function CustomerDetailContent() {
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [financeSubTab, setFinanceSubTab] = useState<FinanceSubTab>('tudo');
+  const paymentReceipt = usePaymentReceipt();
   const [viewingTxn, setViewingTxn] = useState<FinancialTransaction | null>(null);
   const [chargeDialogOpen, setChargeDialogOpen] = useState(false);
   const [whatsappRecipientPicker, setWhatsappRecipientPicker] = useState<{
@@ -611,17 +614,17 @@ export function CustomerDetailContent() {
 
   /** Mesmas ações, no formato do menu de tabela (desktop). */
   const chargeMenuActions = (charge: TenantCharge) =>
-    chargeRowActions(charge).map((a) => ({
+    [...(classifyTenantChargeStatus(charge.status) === 'paid' ? [{ label: 'Gerar recibo', icon: FileDown, onClick: () => void paymentReceipt.download(charge.id, 'charge') }] : []), ...chargeRowActions(charge).map((a) => ({
       label: a.label,
       icon: CHARGE_ACTION_ICONS[a.key],
       variant: a.variant,
       onClick: a.onClick,
-    }));
+    }))];
 
   /** Mesmas ações, no formato do card mobile (swipe + menu). */
   const chargeItemActions = (charge: TenantCharge): ItemAction[] => {
     const Icon = (key: ChargeRowActionKey) => CHARGE_ACTION_ICONS[key];
-    return chargeRowActions(charge).map((a) => {
+    return [...(classifyTenantChargeStatus(charge.status) === 'paid' ? [{ key: 'receipt', label: 'Gerar recibo', icon: <FileDown className="h-4 w-4" />, onClick: () => void paymentReceipt.download(charge.id, 'charge') }] : []), ...chargeRowActions(charge).map((a) => {
       const ActionIcon = Icon(a.key);
       return {
         key: a.key,
@@ -630,7 +633,7 @@ export function CustomerDetailContent() {
         variant: a.variant === 'delete' ? ('destructive' as const) : a.variant,
         onClick: a.onClick,
       };
-    });
+    })];
   };
 
   // Linha única da aba Financeiro: lançamento, cobrança ou gasto custeado pelo
@@ -1855,6 +1858,7 @@ export function CustomerDetailContent() {
                               <RowActionsMenu
                                 actions={[
                                   { label: t.viewDetails, icon: Eye, onClick: () => setViewingTxn(row.txn!) },
+                                  { label: 'Gerar recibo', icon: FileDown, onClick: () => void paymentReceipt.download(row.txn!.id), hidden: !canDownloadPaymentReceipt(row.txn!) },
                                   { label: tCustomers.edit, icon: Edit, variant: 'edit', onClick: () => { setEditingTransaction(row.txn!); setTxnFormOpen(true); } },
                                   { label: tCustomers.delete, icon: Trash2, variant: 'delete', onClick: () => requestDeleteTxn(row.txn!), hidden: !canDeleteFinance },
                                 ]}

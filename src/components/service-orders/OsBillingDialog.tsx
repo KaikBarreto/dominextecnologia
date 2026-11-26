@@ -1,13 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
+import { fetchOsCommercialDocument } from '@/hooks/useOsCommercial';
+import { OsReceiptDialog } from './OsReceiptDialog';
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
+import { OsManualBillingDialog } from './OsManualBillingDialog';
+import { OS_COMMERCIAL_KEY } from '@/hooks/useOsCommercial';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { TrendingUp, CreditCard, ArrowRight } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { NoticeBanner } from '@/components/ui/NoticeBanner';
-import { TransactionFormDialog } from '@/components/financial/TransactionFormDialog';
 import { ChargeDialog } from '@/components/financial/ChargeDialog';
-import { useFinancial } from '@/hooks/useFinancial';
-import { useToast } from '@/hooks/use-toast';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney, formatDate } from '@/lib/format';
@@ -19,12 +21,11 @@ import { useOsBillingState, OS_BILLING_STATE_KEY } from '@/hooks/useOsBillingSta
 import { OS_BILLING_FLAGS_KEY } from '@/hooks/useOsBillingFlags';
 import { OS_REVENUE_SUMMARY_KEY } from '@/hooks/useOsRevenueSummary';
 import type { OsRevenueContext } from '@/hooks/useOsFinishRevenuePrompt';
-import { buildOsRevenueDescription, buildOsRevenuePrefill } from '@/lib/os-revenue';
+import { buildOsRevenueDescription } from '@/lib/os-revenue';
 import {
   getOsBillingStatus,
   getRevenueOptionDecision,
   getChargeOptionDecision,
-  isOsRevenueBlockedByChargeError,
   type OsBillingBlockReason,
 } from '@/lib/os-billing';
 
@@ -37,6 +38,7 @@ export interface OsBillingDialogProps {
    * MESMA fonte de `suggestedAmount`, nome do cliente e número da OS.
    */
   context: OsRevenueContext | null;
+  onRevenueCreated?: () => void | Promise<void>;
 }
 
 /**
@@ -52,11 +54,21 @@ export interface OsBillingDialogProps {
  * intacto — só a fórmula de pré-preenchimento é compartilhada
  * (`src/lib/os-revenue.ts`), nunca o fluxo.
  */
-export function OsBillingDialog({ open, onOpenChange, context }: OsBillingDialogProps) {
+export function OsBillingDialog({ open, onOpenChange, context, onRevenueCreated }: OsBillingDialogProps) {
   // Mesmo atraso de desmontagem do OsFinishRevenueDialog: o drawer do mobile
   // termina a animação de saída antes do conteúdo (e dos hooks pesados do
   // Financeiro) sumirem.
   const [mounted, setMounted] = useState(open);
+  const [receiptOsId, setReceiptOsId] = useState<string | null>(null);
+  const afterReceived = async () => {
+    if (!context) return;
+    try {
+      const document = await fetchOsCommercialDocument(context.serviceOrderId, false);
+      if (document?.receipt) setReceiptOsId(context.serviceOrderId);
+    } catch { /* A baixa já foi confirmada; a consulta pode ser repetida no relatório. */ }
+    void onRevenueCreated?.();
+  };
+  const [receiptOpen, setReceiptOpen] = useState(false);
   useEffect(() => {
     if (open) {
       setMounted(true);
@@ -66,15 +78,20 @@ export function OsBillingDialog({ open, onOpenChange, context }: OsBillingDialog
     return () => clearTimeout(timer);
   }, [open]);
 
-  if (!mounted || !context) return null;
-
-  return <OsBillingFlow open={open} onOpenChange={onOpenChange} context={context} />;
+  return <>
+    {mounted && context && <OsBillingFlow open={open} onOpenChange={onOpenChange} context={context} onRevenueCreated={afterReceived} />}
+    {receiptOsId && <OsReceiptDialog osId={receiptOsId} publicMode={false} open={receiptOpen} onOpenChange={next => { setReceiptOpen(next); if (!next) setReceiptOsId(null); }} />}
+    <AlertDialog open={!!receiptOsId && !receiptOpen} onOpenChange={() => {}}>
+      <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Recebimento confirmado</AlertDialogTitle><AlertDialogDescription>Deseja baixar o recibo dos valores já recebidos nesta OS?</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel onClick={() => setReceiptOsId(null)}>Agora não</AlertDialogCancel><AlertDialogAction onClick={() => setReceiptOpen(true)}>Baixar recibo</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+    </AlertDialog>
+  </>;
 }
 
 interface FlowProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   context: OsRevenueContext;
+  onRevenueCreated?: () => void | Promise<void>;
 }
 
 type OsBillingStep = 'choice' | 'revenue' | 'charge';
@@ -91,12 +108,13 @@ export function invalidateOsBillingQueries(
   queryClient: Pick<QueryClient, 'invalidateQueries'>,
   serviceOrderId: string,
 ) {
+  queryClient.invalidateQueries({ queryKey: [OS_COMMERCIAL_KEY, serviceOrderId] });
   queryClient.invalidateQueries({ queryKey: [OS_REVENUE_SUMMARY_KEY] });
   queryClient.invalidateQueries({ queryKey: [OS_BILLING_STATE_KEY, serviceOrderId] });
   queryClient.invalidateQueries({ queryKey: [OS_BILLING_FLAGS_KEY] });
 }
 
-function OsBillingFlow({ open, onOpenChange, context }: FlowProps) {
+function OsBillingFlow({ open, onOpenChange, context, onRevenueCreated }: FlowProps) {
   const { locale, currency, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.finance.osBilling;
   // A descrição do lançamento/cobrança segue a MESMA convenção de copy do
@@ -104,11 +122,9 @@ function OsBillingFlow({ open, onOpenChange, context }: FlowProps) {
   const tRevenueDesc = MESSAGES[locale].app.finance.osRevenue;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { toast } = useToast();
-  const { createTransaction } = useFinancial();
   const { hasModule } = useCompanyModules();
   const { isActive: isPaymentActive } = useTenantPaymentAccount();
-  const { snapshot } = useOsBillingState(context.serviceOrderId);
+  const { snapshot, isError: billingStateError } = useOsBillingState(context.serviceOrderId);
 
   const [step, setStep] = useState<OsBillingStep>('choice');
   // Fechou (por qualquer caminho): a próxima abertura recomeça na escolha.
@@ -124,6 +140,7 @@ function OsBillingFlow({ open, onOpenChange, context }: FlowProps) {
 
   const status = getOsBillingStatus(snapshot);
   const revenueDecision = getRevenueOptionDecision(snapshot);
+  const canOpenRevenue = !!snapshot && (!snapshot.hasCharge || snapshot.hasRevenue);
   const chargeDecision = getChargeOptionDecision(snapshot, { hasCustomer });
 
   /**
@@ -135,7 +152,7 @@ function OsBillingFlow({ open, onOpenChange, context }: FlowProps) {
   const blockedReasons = Array.from(
     new Set(
       [
-        revenueDecision.enabled ? null : revenueDecision.reason,
+        !canOpenRevenue && revenueDecision.reason === 'hasCharge' ? revenueDecision.reason : null,
         canOfferCharge && !chargeDecision.enabled ? chargeDecision.reason : null,
       ].filter((r): r is OsBillingBlockReason => !!r),
     ),
@@ -153,37 +170,7 @@ function OsBillingFlow({ open, onOpenChange, context }: FlowProps) {
     navigate(localizeAppPath(path, locale));
   };
 
-  // ── Opção "Lançar receita" — reaproveita o FORMULÁRIO do Financeiro
-  //    (`TransactionFormDialog`), com o MESMO pré-preenchimento do prompt
-  //    automático (`src/lib/os-revenue.ts`). Não há passo de pergunta aqui:
-  //    escolher o card JÁ é a confirmação. ──────────────────────────────────
-  const prefill = useMemo(
-    () => buildOsRevenuePrefill(tRevenueDesc, context),
-    [tRevenueDesc, context],
-  );
 
-  const handleRevenueSubmit = async (payload: any) => {
-    try {
-      const result = await createTransaction.mutateAsync(payload);
-      invalidateBillingQueries();
-      return result;
-    } catch (err) {
-      // Rede de segurança: a tela já desabilita esta opção quando há cobrança
-      // viva (`revenueDecision`), então isto só dispara numa corrida real
-      // (cobrança criada em outra aba entre abrir o diálogo e salvar). Mapeado
-      // pelo CÓDIGO (23001) — a mensagem do trigger só existe em PT-BR, a
-      // nossa vale nos 4 idiomas.
-      if (isOsRevenueBlockedByChargeError(err)) {
-        invalidateBillingQueries();
-        toast({
-          variant: 'destructive',
-          title: t.errors.revenueBlockedByChargeTitle,
-          description: t.errors.revenueBlockedByChargeDescription,
-        });
-      }
-      throw err;
-    }
-  };
 
   // ── Opção "Gerar cobrança" — reaproveita o `ChargeDialog` inteiro (PIX,
   //    boleto, cartão, multa/juros, lançar ou não no Financeiro). Mesma
@@ -193,6 +180,7 @@ function OsBillingFlow({ open, onOpenChange, context }: FlowProps) {
   const content =
     step === 'choice' ? (
       <div className="space-y-4">
+        {billingStateError && <NoticeBanner variant="warning">Não foi possível conferir o faturamento. Reabra este menu com internet para tentar novamente.</NoticeBanner>}
         {status.kind !== 'none' && (
           <NoticeBanner
             variant="info"
@@ -222,25 +210,25 @@ function OsBillingFlow({ open, onOpenChange, context }: FlowProps) {
           </NoticeBanner>
         )}
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="divide-y divide-border border-y border-border">
           {/* Lançar receita — ícone branco direto no fundo saturado (régua
               visual): sem círculo dessaturado atrás. */}
           <button
             type="button"
-            disabled={!revenueDecision.enabled}
+            disabled={!canOpenRevenue}
             onClick={() => setStep('revenue')}
             className={cn(
-              'flex flex-col items-start gap-2 rounded-xl border p-4 text-left transition-colors',
-              revenueDecision.enabled
-                ? 'border-border hover:border-success/50 hover:bg-success/5 active:scale-[0.99]'
-                : 'cursor-not-allowed border-border bg-muted/40 opacity-60',
+              'flex w-full items-start gap-3 py-4 text-left transition-colors',
+              canOpenRevenue
+                ? 'hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring'
+                : 'cursor-not-allowed opacity-60',
             )}
           >
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-success">
               <TrendingUp className="h-5 w-5 text-white" />
             </span>
-            <span className="text-sm font-semibold text-foreground">{t.option.revenueTitle}</span>
-            <span className="text-xs text-muted-foreground">{t.option.revenueDescription}</span>
+            <span className="space-y-1"><span className="block text-sm font-semibold text-foreground">{snapshot?.hasRevenue ? 'Receber saldo da OS' : 'Faturar e receber'}</span>
+            <span className="block text-sm text-muted-foreground">Puxe o orçamento da OS, registre um recebimento total ou parcial e acompanhe o saldo.</span></span><ArrowRight className="ml-auto mt-2 h-4 w-4 shrink-0" />
           </button>
 
           {/* Gerar cobrança — NEM aparece sem módulo/conta ativa (3.3): opção
@@ -251,10 +239,10 @@ function OsBillingFlow({ open, onOpenChange, context }: FlowProps) {
               disabled={!chargeDecision.enabled}
               onClick={() => setStep('charge')}
               className={cn(
-                'flex flex-col items-start gap-2 rounded-xl border p-4 text-left transition-colors',
+                'flex w-full items-start gap-3 py-4 text-left transition-colors',
                 chargeDecision.enabled
-                  ? 'border-border hover:border-primary/50 hover:bg-primary/5 active:scale-[0.99]'
-                  : 'cursor-not-allowed border-border bg-muted/40 opacity-60',
+                  ? 'hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring'
+                  : 'cursor-not-allowed opacity-60',
               )}
             >
               {/* `text-primary-foreground`, NUNCA `text-white` cravado: `bg-primary`
@@ -266,8 +254,8 @@ function OsBillingFlow({ open, onOpenChange, context }: FlowProps) {
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary">
                 <CreditCard className="h-5 w-5 text-primary-foreground" />
               </span>
-              <span className="text-sm font-semibold text-foreground">{t.option.chargeTitle}</span>
-              <span className="text-xs text-muted-foreground">{t.option.chargeDescription}</span>
+              <span className="space-y-1"><span className="block text-sm font-semibold text-foreground">{t.option.chargeTitle}</span>
+              <span className="block text-sm text-muted-foreground">{t.option.chargeDescription}</span></span><ArrowRight className="ml-auto mt-2 h-4 w-4 shrink-0" />
             </button>
           )}
         </div>
@@ -296,25 +284,15 @@ function OsBillingFlow({ open, onOpenChange, context }: FlowProps) {
       <ResponsiveModal
         open={open && step === 'choice'}
         onOpenChange={onOpenChange}
-        title={t.dialogTitle}
+        title="Faturar OS"
         description={osNumberLabel ? `${osNumberLabel} · ${t.hint}` : t.hint}
         className="sm:max-w-[560px]"
       >
         {content}
       </ResponsiveModal>
 
-      {/* Passo "Lançar receita" — formulário inteiro do Financeiro, igual ao
-          do prompt automático. */}
-      <TransactionFormDialog
-        open={open && step === 'revenue'}
-        onOpenChange={(next) => {
-          if (!next) onOpenChange(false);
-        }}
-        onSubmit={handleRevenueSubmit}
-        isLoading={createTransaction.isPending}
-        defaultType="entrada"
-        prefill={prefill}
-      />
+      {/* Orçamento canônico, conta a receber e baixas totais/parciais da mesma OS. */}
+      <OsManualBillingDialog open={open && step === 'revenue'} onOpenChange={onOpenChange} context={context} onReceived={onRevenueCreated} />
 
       {/* Passo "Gerar cobrança" — `ChargeDialog` inteiro, com a origem
           `service_order` (banco/edge já reconhecem; dedupe automático). */}

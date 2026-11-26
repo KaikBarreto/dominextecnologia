@@ -1,5 +1,7 @@
+import { useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import type { Json } from '@/integrations/supabase/types';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Quote } from '@/hooks/useQuotes';
@@ -12,8 +14,9 @@ import { MESSAGES } from '@/lib/i18n/messages';
 import { resolveSystemCategoryNameFresh } from '@/hooks/useFinancialCategories';
 import { SERVICE_ORDER_BUDGET_KEY, SERVICE_ORDER_SERVICE_TYPES_KEY } from '@/hooks/useServiceOrderBudget';
 import { SERVICE_ORDER_OPTIONS_KEY } from '@/hooks/useServiceOrderOptions';
-import type { QuoteEquipmentServiceAssignment } from '@/lib/quoteServiceDistribution';
+import type { QuoteExecutionAssignment } from '@/lib/quoteServiceDistribution';
 import { getQuoteCommercialTotal } from '@/lib/quote-commercial-total';
+import { osBillingError } from '@/lib/osCommercial';
 import { assertRowsAffected } from '@/lib/supabaseMutation';
 
 interface ApproveQuoteParams {
@@ -52,7 +55,7 @@ export function buildQuoteReceivableRows(args: {
   createdBy: string;
   companyId: string;
   groupId: string | null;
-}): Record<string, any>[] {
+}): Record<string, unknown>[] {
   const { plan, quoteNumber, revenueCategory, createdBy, companyId, groupId } = args;
   const isParcelado = plan.length > 1;
   return plan.map(({ number, date, amount }) => normalizeOptionalForeignKeys(
@@ -82,7 +85,7 @@ export function buildQuoteReceivableRows(args: {
       installment_group_id: groupId,
       installment_number: isParcelado ? number : null,
       installment_total: isParcelado ? plan.length : null,
-    } as any,
+    },
     ['customer_id', 'account_id', 'cost_center_id']
   ));
 }
@@ -100,7 +103,7 @@ export function buildQuoteRevenueRow(args: {
   notes?: string | null;
   createdBy: string;
   companyId: string;
-}): Record<string, any> {
+}): Record<string, unknown> {
   return normalizeOptionalForeignKeys(
     {
       transaction_type: 'entrada',
@@ -117,7 +120,7 @@ export function buildQuoteRevenueRow(args: {
       notes: args.notes,
       created_by: args.createdBy,
       company_id: args.companyId,
-    } as any,
+    },
     ['customer_id', 'account_id', 'cost_center_id']
   );
 }
@@ -135,7 +138,7 @@ export function buildQuoteFeeRow(args: {
   createdBy: string;
   companyId: string;
   revenueId: string;
-}): Record<string, any> {
+}): Record<string, unknown> {
   return normalizeOptionalForeignKeys(
     {
       transaction_type: 'saida',
@@ -153,7 +156,7 @@ export function buildQuoteFeeRow(args: {
       created_by: args.createdBy,
       company_id: args.companyId,
       parent_transaction_id: args.revenueId,
-    } as any,
+    },
     ['customer_id', 'account_id', 'cost_center_id']
   );
 }
@@ -165,28 +168,37 @@ export function useQuoteConversion() {
   const { locale } = useAppLocaleContext();
   const tq = MESSAGES[locale].app.finance.approveQuote.toast;
 
+  const pendingApproval = useRef<{ signature: string; id: string; args: { p_quote_id: string; p_mode: string; p_rows: Json; p_fee: number; p_fee_category: string | null } } | null>(null);
+
   const invalidateAll = () => {
+    for (const key of ['os-commercial-document', 'os-billing-state', 'os-billing-flags', 'os-revenue-summary', 'nfse-auto-readiness']) {
+      queryClient.invalidateQueries({ queryKey: [key] });
+    }
     queryClient.invalidateQueries({ queryKey: ['quotes'] });
     queryClient.invalidateQueries({ queryKey: ['service-orders'] });
     queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_OPTIONS_KEY] });
     queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
     queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
+      void queryClient.invalidateQueries({ queryKey: ['portal-payments'] });
     queryClient.invalidateQueries({ queryKey: ['account-balances'] });
   };
 
   const convertToServiceOrder = useMutation({
     mutationFn: async ({
       quote,
-      equipmentServices,
+      execution,
+      showValues = false,
     }: {
       quote: Quote;
-      equipmentServices: QuoteEquipmentServiceAssignment[];
+      execution: QuoteExecutionAssignment[];
+      showValues?: boolean;
     }) => {
       if (!user?.id) throw new Error('Usuário não autenticado');
       if (quote.converted_to_os_id) throw new Error('Orçamento já foi convertido');
-      const { data, error } = await supabase.rpc('generate_service_order_from_quote', {
+      const { data, error } = await supabase.rpc('generate_service_order_from_quote_prepared', {
         p_quote_id: quote.id,
-        p_equipment_services: equipmentServices as any,
+        p_show_values: showValues,
+        p_execution: execution as unknown as Json,
       });
       if (error) throw error;
       return data;
@@ -195,10 +207,10 @@ export function useQuoteConversion() {
       invalidateAll();
       queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_BUDGET_KEY] });
       queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_SERVICE_TYPES_KEY] });
-      toast({ title: 'OS gerada com sucesso!', description: 'Serviços, equipamentos, checklists, materiais e valores foram copiados.' });
+      toast({ title: 'OS gerada com sucesso!', description: 'Serviços e valores foram copiados. A execução segue os equipamentos e checklists escolhidos.' });
     },
-    onError: (e: any) => {
-      toast({ variant: 'destructive', title: 'Não foi possível gerar a OS', description: getErrorMessage(e) });
+    onError: (e: unknown) => {
+      toast({ variant: 'destructive', title: 'Não foi possível gerar a OS', description: (e as { code?: string })?.code === 'OSC03' ? 'Confira os equipamentos e checklists escolhidos. Eles precisam estar disponíveis nesta empresa e pertencer ao cliente.' : 'Não foi possível gerar a OS. Confira seu acesso e se o orçamento continua aprovado antes de tentar novamente.' });
     },
   });
 
@@ -223,7 +235,7 @@ export function useQuoteConversion() {
   const approveQuoteFinancial = useMutation({
     mutationFn: async ({ quote, approval }: ApproveQuoteParams): Promise<ApproveQuoteOutcome> => {
       if (!user?.id) throw new Error('Usuário não autenticado');
-      if (quote.financial_generated_at) {
+      if (quote.financial_generated_at && pendingApproval.current?.args.p_quote_id !== quote.id) {
         throw new Error('Lançamentos financeiros já foram gerados para este orçamento');
       }
 
@@ -255,164 +267,40 @@ export function useQuoteConversion() {
       const company_id = await getCurrentUserCompanyId();
 
       const grossAmount = getQuoteCommercialTotal(quote);
-
-      // ═══════════════════════ MODO "VOU RECEBER DEPOIS" ═══════════════════════
-      if (approval.mode === 'a_receber') {
-        const installments = Math.min(60, Math.max(1, Math.floor(approval.installments ?? 1)));
-        const firstDueDate = approval.first_due_date;
-        if (!firstDueDate) throw new Error('Informe o primeiro vencimento');
-
-        // Datas com clamp de fim de mês + rateio com a sobra na última parcela.
-        // Mesmo motor do preview do modal e do parcelamento manual — as três
-        // superfícies precisam mostrar/gravar exatamente os mesmos números.
-        const plan = buildInstallmentPlan(firstDueDate, grossAmount, installments);
-        const isParcelado = plan.length > 1;
-        // Nome ATUAL da categoria de receita de serviço desta empresa.
-        // Resolvido por papel (is_system + type + dre_group), nunca pelo
-        // literal: se o cliente renomeou a categoria, a parcela nasce com o
-        // nome novo e continua dentro do grupo certo do DRE.
-        const revenueCategory = await resolveSystemCategoryNameFresh(
-          queryClient, company_id, 'service_revenue',
-        );
-        // Só parcelado ganha grupo. À vista, os três campos ficam NULL — é como
-        // o lançamento manual nasce, e o badge "x/y" da listagem só aparece
-        // quando `installment_number` existe: um "1/1" denunciaria a origem.
-        const groupId = isParcelado ? crypto.randomUUID() : null;
-
-        const rows = buildQuoteReceivableRows({
-          plan,
-          quoteNumber: quote.quote_number,
-          revenueCategory,
-          customerId: quote.customer_id,
-          expectedAccountId: approval.expected_account_id ?? null,
-          costCenterId: approval.cost_center_id ?? null,
-          notes: approval.notes,
-          createdBy: user.id,
-          companyId: company_id,
-          groupId,
-        });
-
-        const { data: inserted, error: insErr } = await supabase
-          .from('financial_transactions')
-          .insert(rows as any)
-          .select('id, installment_number');
-        if (insErr) throw insErr;
-
-        const ordered = ((inserted ?? []) as Array<{ id: string; installment_number: number | null }>)
-          .slice()
-          .sort((a, b) => (a.installment_number ?? 0) - (b.installment_number ?? 0));
-        const primaryId = ordered[0]?.id;
-        if (!primaryId) throw new Error('Nenhuma parcela foi criada');
-
-        assertRowsAffected(
-          await supabase
-            .from('quotes')
-            .update({
-              status: 'aprovado',
-              financial_generated_at: new Date().toISOString(),
-              financial_transaction_id: primaryId,
-              receivable_installments: plan.length,
-              receivable_first_due_date: firstDueDate,
-            } as any, { count: 'exact' })
-            .eq('id', quote.id),
-          'update',
-        );
-
-        return { mode: 'a_receber', count: plan.length, primaryId };
+      const category = await resolveSystemCategoryNameFresh(queryClient, company_id, 'service_revenue');
+      const fee = approval.mode === 'recebido' ? approval.fee_amount ?? 0 : 0;
+      const feeCategory = fee > 0
+        ? await resolveSystemCategoryNameFresh(queryClient, company_id, 'receipt_fee') : null;
+      const signature = JSON.stringify([company_id, user.id, quote.id, grossAmount, approval]);
+      if (pendingApproval.current?.signature !== signature) {
+        let rows: Record<string, unknown>[];
+        if (approval.mode === 'a_receber') {
+          if (!approval.first_due_date) throw new Error('Informe o primeiro vencimento');
+          const plan = buildInstallmentPlan(approval.first_due_date, grossAmount,
+            Math.min(60, Math.max(1, Math.floor(approval.installments ?? 1))));
+          rows = buildQuoteReceivableRows({ plan, quoteNumber: quote.quote_number, revenueCategory: category,
+            customerId: quote.customer_id, expectedAccountId: approval.expected_account_id,
+            costCenterId: approval.cost_center_id, notes: approval.notes, createdBy: user.id, companyId: company_id,
+            groupId: null });
+        } else {
+          rows = [buildQuoteRevenueRow({ quoteNumber: quote.quote_number, amount: grossAmount,
+            revenueCategory: category, customerId: quote.customer_id, accountId: approval.account_id,
+            costCenterId: approval.cost_center_id, paymentMethod: approval.payment_method,
+            paidDate: approval.paid_date!, notes: approval.notes, createdBy: user.id, companyId: company_id })];
+        }
+        pendingApproval.current = { signature, id: crypto.randomUUID(), args: {
+          p_quote_id: quote.id, p_mode: approval.mode, p_rows: rows as unknown as Json, p_fee: fee, p_fee_category: feeCategory,
+        } };
       }
-
-      // ═══════════════════════════ MODO "JÁ RECEBI" ════════════════════════════
-      // 1. Revenue (entrada) — categoria pelo PAPEL, com o nome que a empresa
-      //    usa hoje (pode ter sido renomeada na tela de Categorias).
-      const revenueCategoryPaid = await resolveSystemCategoryNameFresh(
-        queryClient, company_id, 'service_revenue',
-      );
-      const revenuePayload = buildQuoteRevenueRow({
-        quoteNumber: quote.quote_number,
-        amount: grossAmount,
-        revenueCategory: revenueCategoryPaid,
-        customerId: quote.customer_id,
-        accountId: approval.account_id,
-        costCenterId: approval.cost_center_id ?? null,
-        paymentMethod: approval.payment_method,
-        paidDate: approval.paid_date,
-        notes: approval.notes,
-        createdBy: user.id,
-        companyId: company_id,
+      const { data, error } = await supabase.rpc('approve_quote_financial_atomic', {
+        ...pendingApproval.current.args, p_request_id: pendingApproval.current.id,
       });
-
-      const { data: revenue, error: revErr } = await supabase
-        .from('financial_transactions')
-        .insert(revenuePayload as any)
-        .select()
-        .single();
-      if (revErr) throw revErr;
-
-      // 2. Custo do orçamento NÃO vira lançamento financeiro.
-      //
-      // Regra de produto (CEO, set/2026): o custo que aparece no orçamento é
-      // DEMONSTRATIVO: serve pra calcular margem/BDI na hora de precificar, e
-      // não é fato financeiro. O fato financeiro é a COMPRA do material (ou o
-      // pagamento da diária), que o usuário lança à mão como despesa normal,
-      // com conta, no momento em que o dinheiro realmente sai do banco.
-      //
-      // Por isso a aprovação não gera mais CMV de materiais nem mão de obra
-      // avulsa. Antes elas nasciam como linha filha da receita e, desde a
-      // 1.24.5, já vinham com `account_id: null` pra não debitar o saldo duas
-      // vezes (provado contra extrato real do Mercado Pago: 8 de 8 fechamentos
-      // diários batendo ao centavo sem elas). Inertes desse jeito, só apareciam
-      // no diálogo de transações relacionadas e confundiam quem ia excluir a
-      // receita.
-      //
-      // A margem/lucratividade do orçamento NÃO depende destas linhas: ela sai
-      // de `quote_items` (`unit_total_cost` / `unit_labor_cost`) em
-      // `QuoteFormDialog` via `useBDICalculator`. Não reintroduza sem o PM.
-      //
-      // A RECEITA (item 1) e a TARIFA do recebimento (item 3) continuam com
-      // `approval.account_id`: essas duas são movimento de caixa de verdade.
-      const expensesToInsert: any[] = [];
-
-      // 3. Tarifa do recebimento — categoria do papel "tarifa", nome atual.
-      if ((approval.fee_amount ?? 0) > 0) {
-        const feeCategory = await resolveSystemCategoryNameFresh(
-          queryClient, company_id, 'receipt_fee',
-        );
-        expensesToInsert.push(buildQuoteFeeRow({
-          quoteNumber: quote.quote_number,
-          feeAmount: approval.fee_amount as number,
-          feeCategory,
-          customerId: quote.customer_id,
-          accountId: approval.account_id,
-          costCenterId: approval.cost_center_id ?? null,
-          paymentMethod: approval.payment_method,
-          paidDate: approval.paid_date,
-          createdBy: user.id,
-          companyId: company_id,
-          revenueId: revenue.id,
-        }));
+      if (error) {
+        if (/^[A-Z0-9]{5}$/.test(error.code ?? '')) pendingApproval.current = null;
+        throw error;
       }
-
-      if (expensesToInsert.length > 0) {
-        const { error: expErr } = await supabase
-          .from('financial_transactions')
-          .insert(expensesToInsert as any);
-        if (expErr) throw expErr;
-      }
-
-      // 4. Update quote status + link
-      assertRowsAffected(
-        await supabase
-          .from('quotes')
-          .update({
-            status: 'aprovado',
-            financial_generated_at: new Date().toISOString(),
-            financial_transaction_id: revenue.id,
-          } as any, { count: 'exact' })
-          .eq('id', quote.id),
-        'update',
-      );
-
-      return { mode: 'recebido', count: 1, primaryId: revenue.id };
+      pendingApproval.current = null;
+      return data as unknown as ApproveQuoteOutcome;
     },
     onSuccess: (outcome) => {
       invalidateAll();
@@ -425,8 +313,8 @@ export function useQuoteConversion() {
             : tq.receivableSingle;
       toast({ title: tq.approvedTitle, description });
     },
-    onError: (e: any) => {
-      toast({ variant: 'destructive', title: tq.errorTitle, description: getErrorMessage(e) });
+    onError: (e: unknown) => {
+      toast({ variant: 'destructive', title: tq.errorTitle, description: osBillingError(e) });
     },
   });
 

@@ -1,3 +1,4 @@
+import { OsCustomerValuesToggle } from './OsCustomerValuesToggle';
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { StateCitySelector } from '@/components/StateCitySelector';
 import { AddressAutocomplete } from '@/components/AddressAutocomplete';
@@ -207,6 +208,7 @@ export function ServiceOrderFormDialog({
   const [selectedServiceTypeIds, setSelectedServiceTypeIds] = useState<string[]>(
     serviceOrder?.service_type_id ? [serviceOrder.service_type_id] : [],
   );
+  const [showValuesToCustomer, setShowValuesToCustomer] = useState(false);
   const [budgetItems, setBudgetItems] = useState<ServiceOrderBudgetItem[]>([]);
   const [budgetPricing, setBudgetPricing] = useState<ServiceOrderBudgetPricing>(DEFAULT_SERVICE_ORDER_BUDGET_PRICING);
   const budgetPricingTouchedRef = useRef(false);
@@ -444,6 +446,7 @@ export function ServiceOrderFormDialog({
     _numberReservationId?: string;
     _selectedCustomerId?: string;
     _selectedServiceTypeIds?: string[];
+    _showValuesToCustomer?: boolean;
     _budgetItems?: ServiceOrderBudgetItem[];
     _budgetPricing?: ServiceOrderBudgetPricing;
     _requireTechSignature?: boolean;
@@ -484,6 +487,7 @@ export function ServiceOrderFormDialog({
         _numberReservationId: numberSession.requestId,
         _selectedCustomerId: selectedCustomerId,
         _selectedServiceTypeIds: selectedServiceTypeIds,
+        _showValuesToCustomer: showValuesToCustomer,
         _budgetItems: budgetItems,
         _budgetPricing: budgetPricing,
         _requireTechSignature: requireTechSignature,
@@ -491,7 +495,7 @@ export function ServiceOrderFormDialog({
         _generateNpsSurvey: generateNpsSurvey,
       });
     }
-  }, [watchedValues, selectedCustomerId, selectedServiceTypeIds, budgetItems, budgetPricing, requireTechSignature, requireClientSignature, generateNpsSurvey, open, isEditing, draft.showResumePrompt, requiresNumber, numberSession, numberScope]);
+  }, [watchedValues, selectedCustomerId, selectedServiceTypeIds, budgetItems, budgetPricing, showValuesToCustomer, requireTechSignature, requireClientSignature, generateNpsSurvey, open, isEditing, draft.showResumePrompt, requiresNumber, numberSession, numberScope]);
 
   // Load existing equipment items when editing
   const loadExistingEquipmentItems = async (osId: string) => {
@@ -568,6 +572,7 @@ export function ServiceOrderFormDialog({
       setStep(0);
       setMaxStepReached(0);
       setBudgetItems([]);
+      setShowValuesToCustomer(so?.show_values_to_customer === true);
       loadedBudgetSigRef.current = null;
       budgetPricingTouchedRef.current = false;
       const initialTaxRate = Number(so?.tax_rate ?? DEFAULT_SERVICE_ORDER_BUDGET_PRICING.tax_rate);
@@ -915,6 +920,7 @@ export function ServiceOrderFormDialog({
         form_template_id: formTemplateId || null,
         require_tech_signature: requireTechSignature,
         require_client_signature: requireClientSignature,
+        show_values_to_customer: showValuesToCustomer,
         generate_nps_survey: generateNpsSurvey,
         // Quando criada via "+" de coluna do kanban, defaultStatus respeita aquela coluna.
         status: defaultStatus ?? 'pendente',
@@ -997,6 +1003,7 @@ export function ServiceOrderFormDialog({
       team_id: teamId,
       service_type_id: data.service_type_id === 'none' ? undefined : (data.service_type_id || undefined),
       service_type_ids: selectedServiceTypeIds,
+      show_values_to_customer: showValuesToCustomer,
       budget_items: budgetItems,
       budget_pricing: budgetPricing,
       scheduled_date: data.scheduled_date || undefined,
@@ -1118,6 +1125,7 @@ export function ServiceOrderFormDialog({
         && JSON.stringify(selectedServiceTypeIds) !== loadedServiceTypesSigRef.current
           ? selectedServiceTypeIds
           : undefined,
+      show_values_to_customer: showValuesToCustomer,
       budget_items: (
         loadedBudgetSigRef.current !== null
         && (
@@ -2603,6 +2611,7 @@ export function ServiceOrderFormDialog({
                     <Plus className="h-4 w-4" />Orçar serviços selecionados
                   </Button>
                 )}
+                <OsCustomerValuesToggle checked={showValuesToCustomer} onChange={setShowValuesToCustomer} />
                 <ServiceOrderBudgetSection
                   items={budgetItems}
                   onChange={handleBudgetItemsChange}
@@ -2818,6 +2827,7 @@ export function ServiceOrderFormDialog({
               _numberReservationId,
               _selectedCustomerId,
               _selectedServiceTypeIds,
+              _showValuesToCustomer,
               _budgetItems,
               _budgetPricing,
               _requireTechSignature,
@@ -2834,6 +2844,7 @@ export function ServiceOrderFormDialog({
               setSelectedServiceTypeIds(_selectedServiceTypeIds);
               form.setValue('service_type_id', _selectedServiceTypeIds[0] ?? '');
             }
+            setShowValuesToCustomer(_showValuesToCustomer === true);
             if (_budgetItems) setBudgetItems(_budgetItems);
             if (_budgetPricing) {
               budgetPricingTouchedRef.current = true;
@@ -3123,6 +3134,7 @@ export function ServiceOrderFormDialog({
                     <Plus className="h-4 w-4" />Orçar serviços selecionados
                   </Button>
                 )}
+                <OsCustomerValuesToggle checked={showValuesToCustomer} onChange={setShowValuesToCustomer} />
                 <ServiceOrderBudgetSection
                   items={budgetItems}
                   onChange={handleBudgetItemsChange}

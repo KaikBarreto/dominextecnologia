@@ -80,7 +80,7 @@ export function useOsFinishRevenuePrompt(): UseOsFinishRevenuePromptResult {
         // `null` = a consulta FALHOU. Na dúvida, não abre: melhor não perguntar
         // do que arriscar uma receita duplicada numa OS que já tinha uma.
         if (!totals) return;
-        if (totals.count > 0) return;
+        if (totals.count > 0 || totals.hasCharge) return;
 
         setContext({
           ...ctx,

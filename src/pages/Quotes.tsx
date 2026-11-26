@@ -1143,10 +1143,10 @@ function QuotesList({
         quote={distributingQuote}
         loading={isConverting}
         onOpenChange={(value) => { if (!value && !isConverting) setDistributingQuote(null); }}
-        onConfirm={(equipmentServices) => {
+        onConfirm={(execution, showValues) => {
           if (!distributingQuote) return;
           convertToServiceOrder.mutate(
-            { quote: distributingQuote, equipmentServices },
+            { quote: distributingQuote, execution, showValues },
             { onSuccess: () => setDistributingQuote(null) },
           );
         }}

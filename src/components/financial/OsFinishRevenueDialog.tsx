@@ -1,16 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 import { TrendingUp } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
-import { TransactionFormDialog } from '@/components/financial/TransactionFormDialog';
-import { useFinancial } from '@/hooks/useFinancial';
-import { OS_REVENUE_SUMMARY_KEY } from '@/hooks/useOsRevenueSummary';
+import { OsBillingDialog } from '@/components/service-orders/OsBillingDialog';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
 import type { OsRevenueContext } from '@/hooks/useOsFinishRevenuePrompt';
-import { buildOsRevenuePrefill, resolveOsRevenueSuggestedAmount } from '@/lib/os-revenue';
+import { resolveOsRevenueSuggestedAmount } from '@/lib/os-revenue';
 
 export interface OsFinishRevenueDialogProps {
   open: boolean;
@@ -18,17 +15,7 @@ export interface OsFinishRevenueDialogProps {
   context: OsRevenueContext | null;
 }
 
-/**
- * Receita ao finalizar a Ordem de Serviço.
- *
- * Passo 1: a pergunta. Passo 2 (só no "Sim"): o formulário de receita do
- * Financeiro, pré-preenchido e vinculado à OS.
- *
- * O que este componente NÃO faz, e não pode passar a fazer: parcelamento,
- * cartão, tarifa, escolha de conta/categoria, regime caixa/competência,
- * `paid_date`. Tudo isso é regra do `TransactionFormDialog` e fica lá. Aqui só
- * se pré-preenche e se vincula.
- */
+/** O prompt é configurável; a confirmação abre o faturamento canônico da OS. */
 export function OsFinishRevenueDialog({ open, onOpenChange, context }: OsFinishRevenueDialogProps) {
   // Monta o conteúdo (e os hooks pesados do Financeiro, incluindo o
   // `useFinancial`, que pagina TODAS as transações da empresa) SÓ enquanto o
@@ -61,8 +48,6 @@ interface FlowProps {
 function OsFinishRevenueFlow({ open, onOpenChange, context }: FlowProps) {
   const { locale, currency } = useAppLocaleContext();
   const t = MESSAGES[locale].app.finance.osRevenue;
-  const queryClient = useQueryClient();
-  const { createTransaction } = useFinancial();
 
   const [step, setStep] = useState<'ask' | 'form'>('ask');
 
@@ -72,25 +57,6 @@ function OsFinishRevenueFlow({ open, onOpenChange, context }: FlowProps) {
   }, [open]);
 
   const suggestedAmount = resolveOsRevenueSuggestedAmount(context);
-
-  /**
-   * Pré-preenchimento do formulário. Memoizado porque `TransactionFormDialog`
-   * usa o conteúdo do prefill pra montar os valores iniciais — objeto novo a
-   * cada render seria trabalho repetido sem motivo.
-   *
-   * Fórmula compartilhada com a ação manual "Faturar OS"
-   * (`OsBillingDialog`) — ver `src/lib/os-revenue.ts`.
-   */
-  const prefill = useMemo(() => buildOsRevenuePrefill(t, context), [t, context]);
-
-  const handleTransactionSubmit = async (payload: any) => {
-    const result = await createTransaction.mutateAsync(payload);
-    // O toast de sucesso e as invalidações do Financeiro já saem do
-    // `createTransaction`. Falta só o resumo de receita POR OS, que é query
-    // desta feature e o hook do Financeiro não conhece.
-    queryClient.invalidateQueries({ queryKey: [OS_REVENUE_SUMMARY_KEY] });
-    return result;
-  };
 
   const osNumberLabel = context.osNumber != null ? `#${context.osNumber}` : null;
   const customerName = context.customerName?.trim() || null;
@@ -102,7 +68,6 @@ function OsFinishRevenueFlow({ open, onOpenChange, context }: FlowProps) {
       </Button>
       <Button
         type="button"
-        className="bg-success text-white hover:bg-success/90"
         onClick={() => setStep('form')}
       >
         {t.yesLabel}
@@ -161,18 +126,10 @@ function OsFinishRevenueFlow({ open, onOpenChange, context }: FlowProps) {
         </div>
       </ResponsiveModal>
 
-      {/* Passo 2 — o formulário de receita do Financeiro, inteiro. `prefill` é
-          modo CRIAÇÃO com campos semeados: `transaction` fica vazio de
-          propósito (passar um objeto lá colocaria o form em modo EDIÇÃO). */}
-      <TransactionFormDialog
+      <OsBillingDialog
         open={open && step === 'form'}
-        onOpenChange={(next) => {
-          if (!next) onOpenChange(false);
-        }}
-        onSubmit={handleTransactionSubmit}
-        isLoading={createTransaction.isPending}
-        defaultType="entrada"
-        prefill={prefill}
+        onOpenChange={onOpenChange}
+        context={context}
       />
     </>
   );

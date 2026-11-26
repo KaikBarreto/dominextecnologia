@@ -154,6 +154,8 @@ export interface ServiceOrder {
   labor_value?: number;
   parts_value?: number;
   total_value?: number;
+  show_values_to_customer?: boolean;
+  commercial_revision?: number;
   /** Snapshot da metodologia comercial usada no orçamento desta OS. */
   use_bdi?: boolean;
   tax_rate?: number;

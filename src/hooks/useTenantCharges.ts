@@ -1,3 +1,4 @@
+import { OS_COMMERCIAL_KEY } from '@/hooks/useOsCommercial';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserCompany } from '@/hooks/useUserCompany';
@@ -456,7 +457,9 @@ export function useTenantCharges(options?: UseTenantChargesOptions) {
       queryClient.invalidateQueries({ queryKey: listKey });
       queryClient.invalidateQueries({ queryKey: ['tenant-charges', companyId] });
       queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
+      queryClient.invalidateQueries({ queryKey: [OS_COMMERCIAL_KEY] });
       queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
+      void queryClient.invalidateQueries({ queryKey: ['portal-payments'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
     },
     // Espelha o tratamento de erro de `create`: lê a mensagem da edge via
@@ -503,7 +506,9 @@ export function useTenantCharges(options?: UseTenantChargesOptions) {
       queryClient.invalidateQueries({ queryKey: listKey });
       queryClient.invalidateQueries({ queryKey: ['tenant-charges', companyId] });
       queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
+      queryClient.invalidateQueries({ queryKey: [OS_COMMERCIAL_KEY] });
       queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
+      void queryClient.invalidateQueries({ queryKey: ['portal-payments'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
     },
   });
@@ -531,7 +536,9 @@ export function useTenantCharges(options?: UseTenantChargesOptions) {
       queryClient.invalidateQueries({ queryKey: listKey });
       queryClient.invalidateQueries({ queryKey: ['tenant-charges', companyId] });
       queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
+      queryClient.invalidateQueries({ queryKey: [OS_COMMERCIAL_KEY] });
       queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
+      void queryClient.invalidateQueries({ queryKey: ['portal-payments'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
     },
   });
@@ -625,7 +632,9 @@ export function useTenantCharges(options?: UseTenantChargesOptions) {
       // Invalida os agregados do Financeiro para que o card "A RECEBER" e as
       // "Últimas movimentações" reflitam a nova transação sem reload de página.
       queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
+      queryClient.invalidateQueries({ queryKey: [OS_COMMERCIAL_KEY] });
       queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
+      void queryClient.invalidateQueries({ queryKey: ['portal-payments'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       // Ao cobrar um orcamento, a lista precisa bloquear sua aprovacao
       // financeira imediatamente. A invalidacao por prefixo cobre qualquer
@@ -669,7 +678,9 @@ export function useTenantCharges(options?: UseTenantChargesOptions) {
       queryClient.invalidateQueries({ queryKey: listKey });
       queryClient.invalidateQueries({ queryKey: ['tenant-charges', companyId] });
       queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
+      queryClient.invalidateQueries({ queryKey: [OS_COMMERCIAL_KEY] });
       queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
+      void queryClient.invalidateQueries({ queryKey: ['portal-payments'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
     },
   });

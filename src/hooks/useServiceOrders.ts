@@ -117,6 +117,7 @@ export interface ServiceOrderInput extends ScheduleBookingOverride {
   /** Relação completa; service_type_id continua espelhando o primeiro. */
   service_type_ids?: string[];
   /** Itens comerciais previstos. Não representam consumo real de estoque. */
+  show_values_to_customer?: boolean;
   budget_items?: ServiceOrderBudgetItem[];
   /** Metodologia comercial da OS; sincronizada atomicamente com os itens. */
   budget_pricing?: ServiceOrderBudgetPricing;
@@ -439,6 +440,7 @@ export function useServiceOrders(options: { enabled?: boolean } = {}) {
     },
     onSuccess: (created: any) => {
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['os-commercial-document'] });
       queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_OPTIONS_KEY] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_BUDGET_KEY] });
@@ -750,6 +752,7 @@ export function useServiceOrders(options: { enabled?: boolean } = {}) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['os-commercial-document'] });
       queryClient.invalidateQueries({ queryKey: ['contract-detail'] });
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
       queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_OPTIONS_KEY] });
@@ -788,6 +791,7 @@ export function useServiceOrders(options: { enabled?: boolean } = {}) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['os-commercial-document'] });
       queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_OPTIONS_KEY] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       toast({ title: 'OS excluída com sucesso!' });
@@ -813,6 +817,7 @@ export function useServiceOrders(options: { enabled?: boolean } = {}) {
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['os-commercial-document'] });
       queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_OPTIONS_KEY] });
       queryClient.invalidateQueries({ queryKey: ['paused-orders'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
@@ -838,6 +843,7 @@ export function useServiceOrders(options: { enabled?: boolean } = {}) {
       bookServiceOrderSchedule({ ...input, timezone }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['os-commercial-document'] });
       queryClient.invalidateQueries({ queryKey: [SERVICE_ORDER_OPTIONS_KEY] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       toast({ title: 'OS reagendada com sucesso!' });

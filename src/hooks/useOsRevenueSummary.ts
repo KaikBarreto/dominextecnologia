@@ -4,9 +4,9 @@ import { supabase } from '@/integrations/supabase/client';
 /**
  * Quanto de RECEITA já foi lançado contra uma Ordem de Serviço.
  *
- * Fonte: `financial_transactions.service_order_id`. É o mesmo vínculo que o
- * fluxo "receita ao finalizar a OS" grava, então a tela da OS e a pergunta do
- * fechamento leem exatamente o mesmo número.
+ * Fonte: RPC `os_billing_state`, com as raízes da OS e de seu orçamento.
+ * As filhas de recebimento não somam outra receita; cobrança sem espelho
+ * também impede que o prompt de conclusão proponha outro faturamento.
  *
  * Fora do escopo de propósito: DESPESA da OS (material, deslocamento). Aqui só
  * entra `transaction_type = 'entrada'`.
@@ -14,7 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 export interface OsRevenueSummary {
   /** Soma das receitas não canceladas vinculadas à OS. 0 quando não há nenhuma. */
   total: number;
-  /** Quantas linhas de receita não cancelada existem. 0 quando não há nenhuma. */
+  /** Quantas raízes de receita não cancelada existem. 0 quando não há nenhuma. */
   count: number;
   isLoading: boolean;
 }
@@ -33,7 +33,7 @@ export const OS_REVENUE_SUMMARY_KEY = 'os-revenue-summary';
  */
 export async function fetchOsRevenueTotals(
   serviceOrderId: string,
-): Promise<{ total: number; count: number } | null> {
+): Promise<{ total: number; count: number; hasCharge?: boolean } | null> {
   try {
     // Defense-in-depth: filtra pela própria empresa no client também. A RLS
     // continua sendo a segurança de verdade (regra-lei nº1).
@@ -41,22 +41,10 @@ export async function fetchOsRevenueTotals(
     const companyId = await getCurrentUserCompanyId();
     if (!companyId) return null;
 
-    const { data, error } = await supabase
-      .from('financial_transactions')
-      .select('amount')
-      .eq('company_id', companyId)
-      .eq('service_order_id', serviceOrderId)
-      .eq('transaction_type', 'entrada')
-      // Receita cancelada não conta: a OS volta a poder receber lançamento.
-      .is('cancelled_at', null);
-
-    if (error) return null;
-
-    const rows = (data ?? []) as Array<{ amount: number | string | null }>;
-    return {
-      total: rows.reduce((sum, row) => sum + Number(row.amount ?? 0), 0),
-      count: rows.length,
-    };
+    const { data, error } = await supabase.rpc('os_billing_state', { _service_order_id: serviceOrderId });
+    if (error || !data) return null;
+    const row = data as { revenue_total?: number; revenue_count?: number; has_charge?: boolean };
+    return { total: Number(row.revenue_total ?? 0), count: Number(row.revenue_count ?? 0), hasCharge: !!row.has_charge };
   } catch {
     return null;
   }

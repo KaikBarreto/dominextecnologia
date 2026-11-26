@@ -199,6 +199,13 @@ describe('useOsFinishRevenuePrompt — gates, valor e idempotência', () => {
     expect(result.current.dialogProps.context).toBeNull();
   });
 
+  it('não oferece outra receita quando a cobrança ainda está sem espelho financeiro', async () => {
+    fetchOsRevenueTotals.mockResolvedValue({ total: 0, count: 0, hasCharge: true });
+    const { result } = renderHook(() => useOsFinishRevenuePrompt());
+    await act(async () => { await result.current.maybeOpen(BASE_CONTEXT); });
+    expect(result.current.dialogProps.open).toBe(false);
+  });
+
   it('continua sem abrir quando a OS já possui receita', async () => {
     fetchOsRevenueTotals.mockResolvedValue({ total: 875.4, count: 1 });
     const { result } = renderHook(() => useOsFinishRevenuePrompt());

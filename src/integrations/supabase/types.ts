@@ -20,7 +20,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-
       graphql: {
         Args: {
           extensions?: Json
@@ -40,6 +39,90 @@ export type Database = {
   }
   public: {
     Tables: {
+      os_commercial_requests: {
+        Row: {
+          request_id: string
+          service_order_id: string
+          user_id: string
+          payload: Json
+          result: Json
+          created_at: string
+        }
+        Insert: {
+          request_id: string
+          service_order_id: string
+          user_id: string
+          payload: Json
+          result: Json
+          created_at?: string
+        }
+        Update: {
+          request_id?: string
+          service_order_id?: string
+          user_id?: string
+          payload?: Json
+          result?: Json
+          created_at?: string
+        }
+        Relationships: []
+      }
+
+      quote_financial_requests: {
+        Row: {
+          request_id: string
+          quote_id: string
+          user_id: string
+          payload: Json
+          result: Json
+          created_at: string
+        }
+        Insert: {
+          request_id: string
+          quote_id: string
+          user_id: string
+          payload: Json
+          result: Json
+          created_at?: string
+        }
+        Update: {
+          request_id?: string
+          quote_id?: string
+          user_id?: string
+          payload?: Json
+          result?: Json
+          created_at?: string
+        }
+        Relationships: []
+      }
+
+      os_charge_reservations: {
+        Row: {
+          origin_id: string
+          company_id: string
+          request_id: string
+          source_type: string
+          source_id: string
+          created_at: string
+        }
+        Insert: {
+          origin_id: string
+          company_id: string
+          request_id: string
+          source_type: string
+          source_id: string
+          created_at?: string
+        }
+        Update: {
+          origin_id?: string
+          company_id?: string
+          request_id?: string
+          source_type?: string
+          source_id?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+
       catalog_model_favorites: {
         Row: { user_id: string; company_id: string; model_id: string; is_favorite: boolean; revision: number; last_operation_id: string; updated_at: string }
         Insert: { user_id: string; company_id: string; model_id: string; is_favorite: boolean; revision: number; last_operation_id: string; updated_at?: string }
@@ -15339,6 +15422,8 @@ export type Database = {
           tech_signed_location: Json | null
           technician_id: string | null
           total_cost: number
+          show_values_to_customer: boolean
+          commercial_revision: number
           total_value: number | null
           updated_at: string
           use_bdi: boolean
@@ -15433,6 +15518,8 @@ export type Database = {
           tech_signed_location?: Json | null
           technician_id?: string | null
           total_cost?: number
+          show_values_to_customer?: boolean
+          commercial_revision?: number
           total_value?: number | null
           updated_at?: string
           use_bdi?: boolean
@@ -15527,6 +15614,8 @@ export type Database = {
           tech_signed_location?: Json | null
           technician_id?: string | null
           total_cost?: number
+          show_values_to_customer?: boolean
+          commercial_revision?: number
           total_value?: number | null
           updated_at?: string
           use_bdi?: boolean
@@ -18987,6 +19076,59 @@ export type Database = {
       }
     }
     Functions: {
+      generate_service_order_from_quote_prepared: {
+        Args: { p_quote_id: string; p_execution?: Json; p_show_values?: boolean }
+        Returns: Database["public"]["Tables"]["service_orders"]["Row"]
+      }
+      get_charge_payment_receipt: {
+        Args: { p_charge_id: string }
+        Returns: Json
+      }
+      get_customer_portal_payments: {
+        Args: { p_token: string; p_session_token?: string }
+        Returns: Json
+      }
+      get_customer_portal_payment_receipt: {
+        Args: { p_token: string; p_session_token: string; p_kind: string; p_id: string }
+        Returns: Json
+      }
+      get_financial_payment_receipt: {
+        Args: { p_transaction_id: string }
+        Returns: Json
+      }
+      generate_service_order_from_quote_with_values: {
+        Args: { p_quote_id: string; p_equipment_services?: Json; p_show_values?: boolean }
+        Returns: Database["public"]["Tables"]["service_orders"]["Row"]
+      }
+      get_os_commercial_document: {
+        Args: { p_os_id: string; p_public?: boolean }
+        Returns: Json
+      }
+      os_commercial_is_billed: { Args: { p_os_id: string }; Returns: boolean }
+      get_os_manual_receivables: { Args: { p_os_id: string }; Returns: Json }
+      approve_quote_financial_atomic: {
+        Args: { p_quote_id: string; p_request_id: string; p_mode: string; p_rows: Json; p_fee?: number; p_fee_category?: string | null }
+        Returns: Json
+      }
+      reserve_commercial_charge: {
+        Args: { p_company_id: string; p_source_type: string; p_source_id: string; p_request_id: string }
+        Returns: boolean
+      }
+      release_commercial_charge: { Args: { p_company_id: string; p_request_id: string }; Returns: undefined }
+      validate_os_charge_origin: { Args: { p_company_id: string; p_os_id: string }; Returns: boolean }
+      get_os_field_budget: {
+        Args: { p_os_id: string }
+        Returns: Json
+      }
+      save_os_field_budget: {
+        Args: { p_os_id: string; p_revision: number; p_request_id: string; p_items: Json; p_show_values: boolean }
+        Returns: Json
+      }
+      bill_os_receive_payment: {
+        Args: { p_os_id: string; p_request_id: string; p_transaction_id?: string; p_total?: number; p_received?: number; p_expected_received?: number; p_account_id?: string; p_method?: string; p_paid_date?: string; p_due_date?: string; p_category?: string; p_fee?: number; p_fee_category?: string; p_notes?: string }
+        Returns: Json
+      }
+
       create_registration_core_offer_v1: {
         Args: { p_business_core: string; p_configuration?: Json }
         Returns: Json

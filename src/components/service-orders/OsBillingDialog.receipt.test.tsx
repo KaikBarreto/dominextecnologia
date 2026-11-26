@@ -1,0 +1,30 @@
+import { MemoryRouter } from 'react-router-dom';
+import { useState, type ReactNode } from 'react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { describe, expect, it, vi } from 'vitest';
+const mocks = vi.hoisted(() => ({ fetch: vi.fn(), download: vi.fn() }));
+vi.mock('@/hooks/useOsCommercial', () => ({ OS_COMMERCIAL_KEY: 'os-commercial-document', fetchOsCommercialDocument: mocks.fetch }));
+vi.mock('@/utils/osReceiptPdf', () => ({ downloadOsReceipt: mocks.download, paymentMethodLabel: () => 'Pix' }));
+vi.mock('@/hooks/useOsBillingState', () => ({ OS_BILLING_STATE_KEY: 'os-billing-state', useOsBillingState: () => ({ snapshot: { hasRevenue:false, hasCharge:false },isError:false }) }));
+vi.mock('@/hooks/useTenantPaymentAccount', () => ({ useTenantPaymentAccount: () => ({ isActive:false }) }));
+vi.mock('@/hooks/useCompanyModules', () => ({ useCompanyModules: () => ({ hasModule: () => false }) }));
+vi.mock('@/contexts/AppLocaleContext', () => ({ useAppLocaleContext: () => ({ locale:'pt-br',currency:'BRL',timezone:'America/Sao_Paulo' }) }));
+vi.mock('@/components/ui/ResponsiveModal', () => ({ ResponsiveModal: ({open,children,footer}: {open:boolean;children:ReactNode;footer:ReactNode}) => open ? <div>{children}{footer}</div> : null }));
+vi.mock('@/components/financial/ChargeDialog', () => ({ ChargeDialog: () => null }));
+vi.mock('./OsManualBillingDialog', () => ({ OsManualBillingDialog: ({open,onOpenChange,onReceived}: {open:boolean;onOpenChange:(next:boolean)=>void;onReceived:()=>void}) => open ? <button onClick={() => { onOpenChange(false); onReceived(); }}>Confirmar recebimento de teste</button> : null }));
+import { OsBillingDialog } from './OsBillingDialog';
+it('mantém a oferta de recibo depois que o formulário de faturamento fecha', async () => {
+  const receipt={order_number:123,received:2600,payments:[{reference:'example',amount:2600,paid_date:'2026-11-26'}],company:{name:'Empresa fictícia'},customer:{name:'Cliente fictício'}};
+  mocks.fetch.mockResolvedValue({receipt,summary:null});mocks.download.mockResolvedValue(undefined);
+  function App(){const [open,setOpen]=useState(true);return <OsBillingDialog open={open} onOpenChange={setOpen} context={{serviceOrderId:'os-example',osNumber:123}}/>}
+  render(<QueryClientProvider client={new QueryClient()}><MemoryRouter><App/></MemoryRouter></QueryClientProvider>);
+  fireEvent.click(screen.getByRole('button',{name:/Faturar e receber/}));
+  fireEvent.click(screen.getByRole('button',{name:'Confirmar recebimento de teste'}));
+  await screen.findByRole('heading',{name:'Recebimento confirmado'});
+  await new Promise(resolve=>setTimeout(resolve,350));
+  fireEvent.click(screen.getByRole('button',{name:'Baixar recibo'}));
+  await screen.findByLabelText('Pagamentos no recibo');
+  fireEvent.click(screen.getByRole('button',{name:'Baixar recibo'}));
+  await waitFor(()=>expect(mocks.download).toHaveBeenCalledWith(receipt));
+});

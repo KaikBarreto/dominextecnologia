@@ -1,3 +1,4 @@
+import { OS_COMMERCIAL_KEY } from '@/hooks/useOsCommercial';
 import { assertRowsAffected, NoRowsAffectedError } from '@/lib/supabaseMutation';
 import { useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -330,6 +331,7 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
     // não fecha liberando uma exportação com o snapshot anterior à baixa.
     const transactionsRefetch = queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
     void queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
+      void queryClient.invalidateQueries({ queryKey: ['portal-payments'] });
     void queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
     void queryClient.invalidateQueries({ queryKey: ['contract-transactions'] });
     void queryClient.invalidateQueries({ queryKey: ['nfse-auto-readiness'] });
@@ -341,6 +343,7 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
     void queryClient.invalidateQueries({ queryKey: [OS_REVENUE_SUMMARY_KEY] });
     void queryClient.invalidateQueries({ queryKey: [OS_BILLING_STATE_KEY] });
     void queryClient.invalidateQueries({ queryKey: [OS_BILLING_FLAGS_KEY] });
+    void queryClient.invalidateQueries({ queryKey: [OS_COMMERCIAL_KEY] });
     // O Caixa inclui lançamentos financeiros avulsos no turno e o saldo do
     // cofre. Qualquer mutation financeira precisa deixá-los stale também — ao
     // voltar de outra tela, o operador não pode ver o fechamento antigo.
@@ -1052,10 +1055,11 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
       const alreadyReceived = Number((parent as any).amount_received ?? 0);
       const remaining = Number((totalAmount - alreadyReceived).toFixed(2));
       // Tolerância de 1 centavo pra diferenças de arredondamento (Math vs Postgres numeric).
-      const isPartial =
-        typeof cfg.amountReceived === 'number' &&
-        cfg.amountReceived > 0 &&
-        cfg.amountReceived < remaining - 0.005;
+      const receivingNow = cfg.amountReceived ?? remaining;
+      // Uma mãe já fatiada continua tendo todas as baixas no livro de filhas,
+      // inclusive a última. Cancelar uma baixa depois preserva as demais.
+      const isPartial = parent.transaction_type === 'entrada' && receivingNow > 0 &&
+        (alreadyReceived > 0 || receivingNow < remaining - 0.005);
 
       let dataRow: any;
 
@@ -1064,7 +1068,7 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
         // 1) Insere filha 'Recebimento parcial' (entrada, is_paid=true).
         const childPayload = buildPartialReceiptRow({
           parent: parent as any,
-          cfg,
+          cfg: { ...cfg, amountReceived: receivingNow },
           paidDate,
           createdBy: user?.id,
         });

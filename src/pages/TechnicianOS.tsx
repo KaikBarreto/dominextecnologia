@@ -1,3 +1,5 @@
+import { useOsFieldBudget } from '@/hooks/useOsCommercial';
+import { OsFieldBudgetEditor } from '@/components/service-orders/OsFieldBudgetEditor';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { 
@@ -810,6 +812,8 @@ function TechnicianOSInner() {
   const [desktopActionsOpen, setDesktopActionsOpen] = useState(false);
   // "Editar OS em campo": drawer de gestão de equipamentos/checklists da OS.
   const [editScopeOpen, setEditScopeOpen] = useState(false);
+  const [budgetEditorOpen, setBudgetEditorOpen] = useState(false);
+  const fieldBudget = useOsFieldBudget(isAuthenticated === true && !forceReadOnly ? resolvedOsId : null);
   // Guarda online (v1 só edita escopo com internet). Reativo ao online/offline.
   const [isOnline, setIsOnline] = useState(
     typeof navigator !== 'undefined' ? navigator.onLine : true,
@@ -1987,6 +1991,12 @@ function TechnicianOSInner() {
   // Conclusão efetiva da OS (após validações e, quando aplicável, a decisão do
   // modal de checklist em branco). Isolada pra ser reusada pelo modal.
   const proceedFinishOS = async () => {
+    if (fieldBudget.draft) {
+      setBudgetEditorOpen(true);
+      toast({ variant: 'destructive', title: 'Confira os serviços e valores', description: 'Há alterações guardadas neste aparelho. Salve antes de finalizar a OS.' });
+      return;
+    }
+
     setFinishing(true);
     try {
       const rawLocation = await getCurrentLocation();
@@ -4566,6 +4576,9 @@ function TechnicianOSInner() {
                   )}
                 />
                 <div className="absolute bottom-full right-0 z-50 mb-4 flex flex-col gap-2.5 items-end">
+                  {fieldBudget.data && <button type="button" className={OS_ACTION_CHIP_CLASS} onClick={() => { closeDesktopActions(); setBudgetEditorOpen(true); }}>
+                    <span className={OS_ACTION_CHIP_ICON_CLASS}><Pencil className="h-4 w-4" /></span><span className={OS_ACTION_CHIP_LABEL_CLASS}>Serviços e valores{fieldBudget.draft ? ' • pendente' : ''}</span>
+                  </button>}
                   {showEditScopeAction && (
                     <button
                       type="button"
@@ -4686,6 +4699,9 @@ function TechnicianOSInner() {
             className="fixed right-3 z-50 lg:hidden flex flex-col gap-2.5 items-end"
             style={{ bottom: 'calc(env(safe-area-inset-bottom) + 4.5rem)' }}
           >
+            {fieldBudget.data && <button type="button" className={OS_ACTION_CHIP_CLASS} onClick={() => { closeMobileActions(); setBudgetEditorOpen(true); }}>
+              <span className={OS_ACTION_CHIP_ICON_CLASS}><Pencil className="h-4 w-4" /></span><span className={OS_ACTION_CHIP_LABEL_CLASS}>Serviços e valores{fieldBudget.draft ? ' • pendente' : ''}</span>
+            </button>}
             {showEditScopeAction && (
               <button
                 type="button"
@@ -4901,6 +4917,8 @@ function TechnicianOSInner() {
         currentIndex={galleryIndex}
         onNavigate={(i) => { setGalleryIndex(i); setPreviewPhoto(galleryImages[i]); }}
       />
+
+      <OsFieldBudgetEditor open={budgetEditorOpen} onOpenChange={setBudgetEditorOpen} budget={fieldBudget} />
 
       {/* Modal: OS PMOC com itens do checklist sem resposta ao finalizar.
           Mobile vira drawer de baixo (ResponsiveModal). Voltar = não finaliza;

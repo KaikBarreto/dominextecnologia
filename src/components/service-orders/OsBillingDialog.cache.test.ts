@@ -16,6 +16,6 @@ describe('invalidateOsBillingQueries', () => {
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: [OS_REVENUE_SUMMARY_KEY] });
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: [OS_BILLING_STATE_KEY, 'os-123'] });
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: [OS_BILLING_FLAGS_KEY] });
-    expect(invalidateQueries).toHaveBeenCalledTimes(3);
+    expect(invalidateQueries).toHaveBeenCalledTimes(4);
   });
 });

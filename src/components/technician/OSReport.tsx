@@ -1,6 +1,11 @@
+import { useOsCommercialDocument } from '@/hooks/useOsCommercial';
+import { OsCommercialSummary } from './OsCommercialSummary';
+import { useOsBillingAction } from '@/hooks/useOsBillingAction';
+import { OsBillingDialog } from '@/components/service-orders/OsBillingDialog';
+import { OsReceiptDialog } from '@/components/service-orders/OsReceiptDialog';
 import { useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Download, Printer, User, Wrench, Clock, MapPin, Camera, FileSignature, Check, X, Minus, PenTool, Link2, Link as LinkIcon, Star, Menu, AlertTriangle, Video, Files } from 'lucide-react';
+import { Download, Printer, User, Wrench, Clock, MapPin, Camera, FileSignature, Check, X, Minus, PenTool, Link2, Link as LinkIcon, Star, Menu, AlertTriangle, Video, Files, Receipt, CreditCard } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -212,6 +217,16 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
   const printRestoreRef = useRef<string | null>(null);
   const printRestoreSetRef = useRef<boolean>(false);
   const { toast } = useToast();
+  const commercial = useOsCommercialDocument(serviceOrder.id, forceReadOnly);
+  const billing = useOsBillingAction();
+  const [receiptOpen, setReceiptOpen] = useState(false);
+  const handleReceipt = () => setReceiptOpen(true);
+  const onRevenueCreated = async () => { await commercial.refetch(); };
+  const commercialButtons = <>
+    {commercial.data?.receipt && <Button variant="outline" onClick={() => void handleReceipt()} ><Receipt className="mr-2 h-4 w-4" />Baixar recibo</Button>}
+    {!forceReadOnly && billing.canBill && <Button variant="outline" onClick={() => void billing.open(serviceOrder)}><CreditCard className="mr-2 h-4 w-4" />Faturar OS</Button>}
+  </>;
+
   const { settings: companySettings } = useCompanySettings();
   const canGeneratePmocDocs = !forceReadOnly && canGenerateOsPmocDocuments(
     serviceOrder,
@@ -831,6 +846,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
   };
 
   const handlePrint = () => {
+    if (commercial.isPending || commercial.isError) return;
     // Força todos os accordions (PMOC + personalizados) abertos pra impressão.
     // O beforeprint também faz isso, mas abrir aqui evita corrida com o render.
     if (!printRestoreSetRef.current) {
@@ -842,7 +858,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
   };
 
   const handleDownloadPDF = async () => {
-    if (!reportRef.current) return;
+    if (!reportRef.current || commercial.isPending || commercial.isError) return;
     setGenerating(true);
 
     // Abre TODOS os accordions (PMOC + personalizados) pro conteúdo entrar no
@@ -1531,6 +1547,10 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
             </div>
           )}
 
+          {commercial.isPending && <p role="status" className="text-sm text-slate-500 print:hidden">Conferindo valores e recibo…</p>}
+          {commercial.isError && <p role="alert" className="text-sm text-slate-600 print:hidden">Não foi possível carregar os valores. <button className="underline" onClick={() => void commercial.refetch()}>Tentar novamente</button></p>}
+          {commercial.data?.summary && <OsCommercialSummary document summary={commercial.data.summary} />}
+
           {/* Footer */}
           <div data-pdf-section className="text-center text-xs text-slate-400 pt-4 border-t border-slate-200">
             <p>{tR.footerGeneratedAt.replace('{datetime}', formatDateTime(new Date(), locale, timezone))}</p>
@@ -1562,11 +1582,11 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
           aqui evita duplicar). */}
       {!desktopActionFooter && (
         <div className="flex flex-col sm:flex-row gap-2 print:hidden">
-          <Button onClick={handleDownloadPDF} disabled={generating} className="flex-1">
+          <Button onClick={handleDownloadPDF} disabled={generating || commercial.isPending || commercial.isError} className="flex-1">
             <Download className="h-4 w-4 mr-2" />
             {generating ? tR.btnGeneratingPdf : tR.btnDownloadPdf}
           </Button>
-          <Button variant="outline" onClick={handlePrint}>
+          <Button variant="outline" onClick={handlePrint} disabled={commercial.isPending || commercial.isError}>
             <Printer className="h-4 w-4 mr-2" />
             {tR.btnPrint}
           </Button>
@@ -1576,6 +1596,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
               {tR.btnCopyLink}
             </Button>
           )}
+          {commercialButtons}
           {canGeneratePmocDocs && (
             <Button variant="outline" onClick={() => setPmocDocumentsOpen(true)}>
               <Files className="h-4 w-4 mr-2" />
@@ -1600,7 +1621,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
               className="flex-1 bg-success hover:bg-success/90 text-success-foreground"
               size="lg"
               onClick={handleDownloadPDF}
-              disabled={generating}
+              disabled={generating || commercial.isPending || commercial.isError}
             >
               <Download className="h-4 w-4 mr-2" />
               {generating ? tR.btnGeneratingPdf : tR.btnDownloadPdf}
@@ -1629,6 +1650,8 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
                   <Printer className="h-4 w-4 mr-2" />
                   {tR.btnPrint}
                 </DropdownMenuItem>
+                {commercial.data?.receipt && <DropdownMenuItem  onClick={() => void handleReceipt()}><Receipt className="mr-2 h-4 w-4" />Baixar recibo</DropdownMenuItem>}
+                {!forceReadOnly && billing.canBill && <DropdownMenuItem onClick={() => void billing.open(serviceOrder)}><CreditCard className="mr-2 h-4 w-4" />Faturar OS</DropdownMenuItem>}
                 {canGeneratePmocDocs && (
                   <DropdownMenuItem onClick={() => setPmocDocumentsOpen(true)}>
                     <Files className="h-4 w-4 mr-2" />
@@ -1645,11 +1668,11 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
       {/* Rodapé de ações fixo (desktop) — MESMOS handlers, sem duplicar lógica. */}
       {desktopActionFooter && (
         <OsActionFooter>
-          <Button onClick={handleDownloadPDF} disabled={generating} className="flex-1">
+          <Button onClick={handleDownloadPDF} disabled={generating || commercial.isPending || commercial.isError} className="flex-1">
             <Download className="h-4 w-4 mr-2" />
             {generating ? tR.btnGeneratingPdf : tR.btnDownloadPdf}
           </Button>
-          <Button variant="outline" onClick={handlePrint} className="flex-1">
+          <Button variant="outline" onClick={handlePrint} disabled={commercial.isPending || commercial.isError} className="flex-1">
             <Printer className="h-4 w-4 mr-2" />
             {tR.btnPrint}
           </Button>
@@ -1659,6 +1682,7 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
               {tR.btnCopyLink}
             </Button>
           )}
+          {commercialButtons}
           {canGeneratePmocDocs && (
             <Button variant="outline" onClick={() => setPmocDocumentsOpen(true)} className="flex-1">
               <Files className="h-4 w-4 mr-2" />
@@ -1677,6 +1701,8 @@ export function OSReport({ serviceOrder: rawServiceOrder, photos, forceReadOnly 
       )}
     </div>
 
+    <OsReceiptDialog osId={serviceOrder.id} publicMode={forceReadOnly} open={receiptOpen} onOpenChange={setReceiptOpen} />
+      {!forceReadOnly && <OsBillingDialog open={billing.isOpen} onOpenChange={billing.setOpen} context={billing.context} onRevenueCreated={onRevenueCreated} />}
       <OsPmocDocumentsDialog
         open={pmocDocumentsOpen}
         onOpenChange={setPmocDocumentsOpen}

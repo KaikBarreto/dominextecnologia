@@ -45,6 +45,8 @@ export function useReceivablePayments(parentId: string | null | undefined) {
         .eq('parent_transaction_id', parentId!)
         .eq('category', 'Recebimento parcial')
         .eq('transaction_type', 'entrada')
+        .eq('is_paid', true)
+        .is('cancelled_at', null)
         .order('paid_date', { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as ReceivablePayment[];
@@ -91,7 +93,11 @@ export function useReceivablePayments(parentId: string | null | undefined) {
       queryClient.invalidateQueries({ queryKey: ['receivable-payments', parentId] });
       queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
       queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
+      void queryClient.invalidateQueries({ queryKey: ['portal-payments'] });
       queryClient.invalidateQueries({ queryKey: ['account-balances'] });
+      queryClient.invalidateQueries({ queryKey: ['os-commercial-document'] });
+      queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['os-revenue-summary'] });
       void queryClient.invalidateQueries({ queryKey: ['pdv-cash-sessions-v2'] });
       void invalidatePdvReportCaches(queryClient);
       toast({ title: 'Recebimento estornado', description: 'O valor voltou a ficar pendente nesta conta.' });

@@ -1,3 +1,5 @@
+import { PaymentReceiptButton } from './PaymentReceiptButton';
+import { canDownloadPaymentReceipt, usePaymentReceipt } from '@/hooks/usePaymentReceipt';
 import { Fragment, useState, useMemo, useEffect, useRef, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { Search, Plus, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown, FileDown, Paperclip, CreditCard, FileText, FileSpreadsheet, ChevronDown, ChevronRight, ArrowLeftRight, ArrowDownUp, Layers, Undo2 } from 'lucide-react';
@@ -359,6 +361,7 @@ export function TransactionListPanel({
   const { enabled: whiteLabelEnabled } = useWhiteLabel();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const paymentReceipt = usePaymentReceipt();
   // Fronteira do Supabase pro "desfazer lote" (RPC `undo_payment_group`).
   // Mesma query já em cache do react-query: não dispara busca nova.
   const { undoPaymentGroup } = useFinancial();
@@ -1270,6 +1273,7 @@ export function TransactionListPanel({
                         {childIn ? '+' : '-'} {fmt(c.amount)}
                       </span>
                     </button>
+                    {canDownloadPaymentReceipt(c) && <div className="pb-3 pl-14 pr-4"><PaymentReceiptButton id={c.id} /></div>}
                     {childDetailsExpanded && (
                       <FinancialTransactionDetailsPanel
                         transaction={c}
@@ -1303,6 +1307,7 @@ export function TransactionListPanel({
                   onClick: () => setUndoTarget(group),
                 }] : []),
               ] : [
+                ...(canDownloadPaymentReceipt(t) ? [{ key: 'receipt', label: 'Gerar recibo', icon: <FileDown className="h-4 w-4" />, onClick: () => void paymentReceipt.download(t.id) }] : []),
                 ...(canManageFinanceTransactions ? [{
                   key: 'edit',
                   label: fin.transactionList.rowActions.edit,
@@ -1550,6 +1555,7 @@ export function TransactionListPanel({
                                 {childIn ? '+' : '-'} {fmt(c.amount)}
                               </span>
                             </button>
+                            {canDownloadPaymentReceipt(c) && <div className="mt-2 flex justify-end"><PaymentReceiptButton id={c.id} /></div>}
                           </TableCell>
                         </TableRow>
                         {childDetailsExpanded && (
@@ -1730,6 +1736,7 @@ export function TransactionListPanel({
                               onClick: () => setUndoTarget(group),
                             }] : []),
                           ] : [
+                            { label: 'Gerar recibo', icon: FileDown, onClick: () => void paymentReceipt.download(t.id), hidden: !canDownloadPaymentReceipt(t) },
                             { label: fin.transactionList.rowActions.edit, icon: Pencil, variant: 'edit', onClick: () => onEdit(t), hidden: !canManageFinanceTransactions },
                             { label: fin.transactionList.rowActions.delete, icon: Trash2, variant: 'delete', onClick: () => requestDelete(t.id), hidden: !canDeleteFinance },
                           ]) satisfies RowAction[]}
