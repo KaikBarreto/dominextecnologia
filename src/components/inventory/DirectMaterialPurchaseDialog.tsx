@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { PackagePlus, Plus, Trash2 } from 'lucide-react';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 import { Button } from '@/components/ui/button';
@@ -27,10 +27,43 @@ import { MESSAGES } from '@/lib/i18n/messages';
 import { formatMoney } from '@/lib/format';
 import { usePartyLabels } from '@/hooks/usePartyLabels';
 import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
+import { onlyDigits } from '@/lib/utils';
+import type { NfeImportFiscalData } from '@/hooks/useNfeImport';
+import { findSafeNfeInventoryMatch } from '@/lib/nfeInventoryMatching';
+
+export interface DirectMaterialPurchasePrefill {
+  key: string;
+  supplierDocument: string | null;
+  description: string;
+  purchaseDate: string | null;
+  dueDate?: string | null;
+  notes?: string | null;
+  /** Soma dos vProd do XML, antes de frete, impostos, descontos e outros ajustes. */
+  itemsTotal?: number | null;
+  /** Total oficial vNF, usado como valor canônico do financeiro. */
+  documentTotal?: number | null;
+  items: Array<{
+    name: string;
+    quantity: number;
+    unitPrice: number;
+    fiscal?: NfeImportFiscalData;
+  }>;
+}
+
+export interface DirectMaterialPurchaseResult {
+  compra_id?: string;
+  ordem_id?: string;
+  financial_transaction_id?: string;
+  total_amount?: number;
+}
 
 interface DirectMaterialPurchaseDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  prefill?: DirectMaterialPurchasePrefill | null;
+  onSuccess?: (result: DirectMaterialPurchaseResult) => void | Promise<void>;
+  /** NF-e recebida que originou a compra; habilita a trava anti-duplicidade. */
+  inboundNfeId?: string | null;
 }
 
 interface ItemDraft {
@@ -38,6 +71,8 @@ interface ItemDraft {
   inventoryId: string;
   quantityText: string;
   unitPriceText: string;
+  sourceName?: string;
+  fiscal?: NfeImportFiscalData;
 }
 
 type PaymentStatus = 'pending' | 'paid';
@@ -64,15 +99,18 @@ const numberFromText = (value: string): number => {
 export function DirectMaterialPurchaseDialog({
   open,
   onOpenChange,
+  prefill = null,
+  onSuccess,
+  inboundNfeId = null,
 }: DirectMaterialPurchaseDialogProps) {
   const { locale, currency, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory.directPurchase;
   const tf = MESSAGES[locale].app.finance.transactionForm;
   const { toast } = useToast();
   const { stocks, defaultStock } = useStocks();
-  const { suppliers } = useSuppliers();
+  const { suppliers, isLoading: suppliersLoading } = useSuppliers();
   const { labelsFor } = usePartyLabels();
-  const { items: inventory } = useInventory();
+  const { items: inventory, isLoading: inventoryLoading } = useInventory();
   const { accounts } = useFinancialAccounts();
   const { categories } = useFinancialCategories();
   const { registerPurchase } = useDirectMaterialPurchase();
@@ -91,6 +129,7 @@ export function DirectMaterialPurchaseDialog({
   const [dueDate, setDueDate] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
   const [notes, setNotes] = useState('');
+  const appliedPrefillRef = useRef<string | null>(null);
 
   const eligibleAccounts = useMemo(
     () => accounts.filter((account) => account.is_active && account.type !== 'cartao'),
@@ -137,6 +176,40 @@ export function DirectMaterialPurchaseDialog({
     }
   }, [open, stockId, defaultStock, accountId, eligibleAccounts, categoryId, expenseCategories]);
 
+  useEffect(() => {
+    if (
+      !open
+      || !prefill
+      || suppliersLoading
+      || inventoryLoading
+      || appliedPrefillRef.current === prefill.key
+    ) return;
+    appliedPrefillRef.current = prefill.key;
+    const supplier = prefill.supplierDocument
+      ? suppliers.find((candidate) => onlyDigits(candidate.cpf_cnpj) === onlyDigits(prefill.supplierDocument))
+      : null;
+    setDescription(prefill.description);
+    setSupplierId(supplier?.id ?? '');
+    if (prefill.purchaseDate) setPurchaseDate(prefill.purchaseDate.slice(0, 10));
+    setPaymentStatus('pending');
+    setDueDate((prefill.dueDate || prefill.purchaseDate || today).slice(0, 10));
+    setNotes(prefill.notes ?? '');
+    setRows(prefill.items.map((source) => {
+      const match = findSafeNfeInventoryMatch(
+        { name: source.name, gtin: source.fiscal?.gtin },
+        inventory,
+      );
+      return {
+        key: newKey(),
+        inventoryId: match?.id ?? '',
+        quantityText: String(source.quantity).replace('.', ','),
+        unitPriceText: String(source.unitPrice).replace('.', ','),
+        sourceName: source.name,
+        fiscal: source.fiscal,
+      };
+    }));
+  }, [open, prefill, suppliers, inventory, today, suppliersLoading, inventoryLoading]);
+
   const reset = () => {
     const now = todayInTz(timezone);
     setRequestId(newKey());
@@ -152,6 +225,7 @@ export function DirectMaterialPurchaseDialog({
     setDueDate('');
     setPaymentMethod('');
     setNotes('');
+    appliedPrefillRef.current = null;
   };
 
   const handleOpenChange = (next: boolean) => {
@@ -167,11 +241,21 @@ export function DirectMaterialPurchaseDialog({
     inventory_id: row.inventoryId,
     quantity: numberFromText(row.quantityText),
     unit_price: numberFromText(row.unitPriceText),
+    ...(row.fiscal ? {
+      fiscal_ncm: row.fiscal.ncm,
+      fiscal_cest: row.fiscal.cest,
+      fiscal_gtin: row.fiscal.gtin,
+      fiscal_origin: row.fiscal.origin,
+    } : {}),
   }));
   const total = parsedItems.reduce(
     (sum, item) => sum + item.quantity * item.unit_price,
     0,
   );
+  const documentTotal = inboundNfeId && prefill?.documentTotal != null
+    ? prefill.documentTotal
+    : total;
+  const acquisitionCharges = documentTotal - total;
 
   const submit = async () => {
     const duplicateMaterial = parsedItems.some((item, index) =>
@@ -186,7 +270,7 @@ export function DirectMaterialPurchaseDialog({
     if (!supplierId) validationMessage = t.validation.supplier;
     else if (!stockId) validationMessage = t.validation.stock;
     else if (!purchaseDate) validationMessage = t.validation.purchaseDate;
-    else if (invalidItem || total <= 0) validationMessage = t.validation.items;
+    else if (invalidItem || total <= 0 || documentTotal <= 0) validationMessage = t.validation.items;
     else if (duplicateMaterial) validationMessage = t.validation.duplicateMaterial;
     else if (!categoryId) validationMessage = t.validation.category;
     else if (!accountId) validationMessage = t.validation.account;
@@ -199,7 +283,7 @@ export function DirectMaterialPurchaseDialog({
       return;
     }
 
-    await registerPurchase.mutateAsync({
+    const result = await registerPurchase.mutateAsync({
       clientRequestId: requestId,
       stockId,
       supplierId,
@@ -213,7 +297,12 @@ export function DirectMaterialPurchaseDialog({
       paymentMethod: paymentStatus === 'paid' ? paymentMethod : null,
       description: description.trim() || null,
       notes: notes.trim() || null,
+      inboundNfeId,
+      financialTotal: inboundNfeId ? documentTotal : null,
     });
+    if (onSuccess) {
+      await onSuccess((result && typeof result === 'object' ? result : {}) as DirectMaterialPurchaseResult);
+    }
     reset();
     onOpenChange(false);
   };
@@ -250,6 +339,13 @@ export function DirectMaterialPurchaseDialog({
       footer={footer}
     >
       <div className="space-y-5 py-1">
+        {inboundNfeId && (
+          <NoticeBanner variant="info" title="Compra e entrada em uma única confirmação">
+            Ao confirmar, o sistema cria a compra, o lançamento financeiro e a entrada no
+            estoque. A mesma nota não poderá gerar outra entrada avulsa. Os dados fiscais do
+            XML completam somente NCM, CEST, GTIN e origem que estiverem vazios nos materiais escolhidos.
+          </NoticeBanner>
+        )}
         <section className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5 sm:col-span-2">
             <Label htmlFor="direct-purchase-description">{t.fields.description}</Label>
@@ -318,6 +414,18 @@ export function DirectMaterialPurchaseDialog({
                       value={row.inventoryId}
                       onValueChange={(inventoryId) => updateRow(row.key, { inventoryId })}
                     />
+                    {row.sourceName && (
+                      <p className="text-[11px] text-muted-foreground">No XML: {row.sourceName}</p>
+                    )}
+                    {row.fiscal && (row.fiscal.ncm || row.fiscal.cest || row.fiscal.icmsCode) && (
+                      <p className="text-[11px] text-muted-foreground">
+                        {[
+                          row.fiscal.ncm ? `NCM ${row.fiscal.ncm}` : null,
+                          row.fiscal.cest ? `CEST ${row.fiscal.cest}` : null,
+                          row.fiscal.icmsCode ? `ICMS no XML ${row.fiscal.icmsCode}` : null,
+                        ].filter(Boolean).join(' • ')}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-1.5">
                     <Label>{t.items.quantity}</Label>
@@ -334,7 +442,7 @@ export function DirectMaterialPurchaseDialog({
                     <Label>{t.items.unitPrice}</Label>
                     <NumericInput
                       decimal
-                      maxDecimals={2}
+                      maxDecimals={inboundNfeId ? 10 : 2}
                       value={row.unitPriceText}
                       onValueChange={(unitPriceText) => updateRow(row.key, { unitPriceText })}
                       placeholder="0,00"
@@ -358,10 +466,31 @@ export function DirectMaterialPurchaseDialog({
             })}
           </div>
 
-          <div className="flex items-center justify-between rounded-lg bg-muted px-3 py-2">
-            <span className="text-sm font-medium">{t.items.total}</span>
-            <span className="text-lg font-bold">{formatMoney(total, currency, locale)}</span>
-          </div>
+          {inboundNfeId && prefill?.documentTotal != null ? (
+            <div className="space-y-1 rounded-lg bg-muted px-3 py-2.5">
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <span>Total dos itens</span>
+                <span className="font-medium">{formatMoney(total, currency, locale)}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <span>Encargos e ajustes da nota</span>
+                <span className="font-medium">{formatMoney(acquisitionCharges, currency, locale)}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3 border-t pt-1.5">
+                <span className="text-sm font-semibold">Total da NF-e no financeiro</span>
+                <span className="text-lg font-bold">{formatMoney(documentTotal, currency, locale)}</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                O custo unitário do estoque permanece igual ao XML. Impostos, frete, descontos e outros
+                ajustes entram somente no valor financeiro da nota.
+              </p>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between rounded-lg bg-muted px-3 py-2">
+              <span className="text-sm font-medium">{t.items.total}</span>
+              <span className="text-lg font-bold">{formatMoney(total, currency, locale)}</span>
+            </div>
+          )}
         </section>
 
         <section className="grid gap-3 sm:grid-cols-2">

@@ -35,8 +35,27 @@ const CASH_PURCHASE_ERROR_MESSAGES: Record<string, string> = {
 
 export function getDirectMaterialPurchaseErrorMessage(error: unknown): string {
   if (error && typeof error === 'object') {
+    const message = 'message' in error && typeof error.message === 'string' ? error.message : '';
     const details = 'details' in error && typeof error.details === 'string' ? error.details : '';
-    const code = Object.keys(CASH_PURCHASE_ERROR_MESSAGES).find((candidate) => details.includes(candidate));
+    const hint = 'hint' in error && typeof error.hint === 'string' ? error.hint : '';
+    const diagnostic = `${message} ${details} ${hint}`;
+    if (diagnostic.includes('inbound_nfe_inventory_already_imported')) {
+      return 'Esta nota já gerou uma entrada no estoque. O saldo não foi alterado novamente.';
+    }
+    if (diagnostic.includes('inbound_nfe_financial_already_linked')) {
+      return 'Esta nota já possui um lançamento financeiro. Use a entrada avulsa se ainda precisar movimentar o estoque.';
+    }
+    if (diagnostic.includes('inbound_nfe_invalid_fiscal_data')) {
+      return 'O XML possui NCM, CEST, GTIN ou origem inválidos. Revise o arquivo antes de importar.';
+    }
+    if (diagnostic.includes('inbound_nfe_financial_total_invalid')) {
+      return 'O total informado não corresponde ao valor oficial da NF-e. Reabra a nota e tente novamente.';
+    }
+    if (diagnostic.includes('inbound_nfe_financial_total_not_applied')
+        || diagnostic.includes('inbound_nfe_financial_missing')) {
+      return 'Não foi possível reconciliar o valor financeiro da NF-e. Nenhuma entrada foi concluída.';
+    }
+    const code = Object.keys(CASH_PURCHASE_ERROR_MESSAGES).find((candidate) => diagnostic.includes(candidate));
     if (code) return CASH_PURCHASE_ERROR_MESSAGES[code];
   }
   return getErrorMessage(error);
@@ -46,6 +65,10 @@ export interface DirectMaterialPurchaseItemInput {
   inventory_id: string;
   quantity: number;
   unit_price: number;
+  fiscal_ncm?: string | null;
+  fiscal_cest?: string | null;
+  fiscal_gtin?: string | null;
+  fiscal_origin?: string | null;
 }
 
 export interface DirectMaterialPurchaseInput {
@@ -64,6 +87,10 @@ export interface DirectMaterialPurchaseInput {
   notes?: string | null;
   cashContext?: PdvPurchaseCashContext | null;
   supplierCreditAmount?: number;
+  /** NF-e recebida que originou o fluxo; ativa a trava transacional anti-duplicidade. */
+  inboundNfeId?: string | null;
+  /** Total oficial vNF. Aceito somente no fluxo vinculado a uma NF-e recebida. */
+  financialTotal?: number | null;
 }
 
 type GenericRpcResult = { data: unknown; error: unknown | null };
@@ -153,7 +180,13 @@ export function useDirectMaterialPurchase() {
         p_description: input.description ?? null,
         p_notes: input.notes ?? null,
       };
-      const result = (input.supplierCreditAmount ?? 0) > 0
+      const result = input.inboundNfeId
+        ? await callRpc('registrar_compra_material_direta_from_inbound_nfe', {
+            p_inbound_nfe_id: input.inboundNfeId,
+            p_financial_total: input.financialTotal,
+            ...args,
+          })
+        : (input.supplierCreditAmount ?? 0) > 0
         ? await callRpc('pdv_register_direct_purchase_mixed_v4', {
             p_cash_session_id: input.cashContext?.sessionId ?? null,
             p_terminal_id: input.cashContext?.terminalId ?? null,
@@ -206,6 +239,7 @@ export function useDirectMaterialPurchase() {
       queryClient.invalidateQueries({ queryKey: ['pdv-cash-purchase-context'] });
       queryClient.invalidateQueries({ queryKey: ['pdv-supplier-credit'] });
       queryClient.invalidateQueries({ queryKey: ['party-account-v2'] });
+      queryClient.invalidateQueries({ queryKey: ['inbound-nfe'] });
       // Invalidação imediata; refetch de relatório não deve segurar a confirmação da compra.
       void Promise.allSettled([invalidatePdvReportCaches(queryClient), invalidatePdvCatalogCaches(queryClient)]);
       toast({ title: t.successTitle, description: t.successDescription });

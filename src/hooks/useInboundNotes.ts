@@ -76,6 +76,10 @@ export interface InboundNfe {
   resumo: boolean;
   financial_transaction_id: string | null;
   supplier_id: string | null;
+  inventory_imported_at: string | null;
+  inventory_import_source: 'xml' | 'purchase' | null;
+  inventory_import_request_id: string | null;
+  inventory_import_item_count: number | null;
   created_at: string;
 }
 
@@ -142,8 +146,14 @@ export interface DfeManifestarResult {
   message?: string;
 }
 
+export interface InboundXmlImportResult {
+  ok: true;
+  tipo: 'nfe' | 'nfse';
+  nova?: boolean;
+}
+
 const NFE_COLS =
-  'id, company_id, chave, origem, numero, serie, emitente_cnpj, emitente_nome, valor, data_emissao, natureza, cfop_principal, fin_nfe, ref_nfe_key, situacao_sefaz, manifestacao, manifestacao_data, manifestacao_pendente, manifestacao_pendente_em, manifestacao_erro, resumo, financial_transaction_id, supplier_id, created_at';
+  'id, company_id, chave, origem, numero, serie, emitente_cnpj, emitente_nome, valor, data_emissao, natureza, cfop_principal, fin_nfe, ref_nfe_key, situacao_sefaz, manifestacao, manifestacao_data, manifestacao_pendente, manifestacao_pendente_em, manifestacao_erro, resumo, financial_transaction_id, supplier_id, inventory_imported_at, inventory_import_source, inventory_import_request_id, inventory_import_item_count, created_at';
 // `xml_content` NÃO entra aqui: pode ser um XML grande, e esta é a query da
 // LISTA (todas as notas). Buscamos sob demanda em `fetchInboundNfeXml`, só
 // quando o usuário abre "Lançar como despesa" pra uma nota específica.
@@ -175,6 +185,44 @@ async function invokeDfeFunction<T>(
   }
   if (data?.error) throw new Error(data.message || data.error || fallbackMessage);
   return data as T;
+}
+
+/** Importa uma nota recebida a partir do XML, sempre no tenant da sessão. */
+export function useInboundXmlImport() {
+  const { companyId } = useUserCompany();
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: async (xml: string): Promise<InboundXmlImportResult> =>
+      invokeDfeFunction<InboundXmlImportResult>(
+        'inbound-xml-import',
+        { xml },
+        'Não foi possível importar a nota agora. Tente novamente em instantes.',
+      ),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: [result.tipo === 'nfe' ? 'inbound-nfe' : 'inbound-nfse', companyId] });
+    },
+  });
+
+  return { importXml: mutation.mutateAsync, isImporting: mutation.isPending };
+}
+
+/** XML completo de uma nota, carregado somente quando uma ação precisa dele. */
+export function useInboundNoteXml() {
+  const mutation = useMutation({
+    mutationFn: async (input: { tipo: 'nfe' | 'nfse'; id: string }): Promise<string> => {
+      const table = input.tipo === 'nfe' ? 'inbound_nfe' : 'inbound_nfse';
+      const { data, error } = await supabase
+        .from(table as any)
+        .select('xml_content')
+        .eq('id', input.id)
+        .maybeSingle();
+      if (error) throw error;
+      const xml = (data as unknown as { xml_content?: string | null } | null)?.xml_content;
+      if (!xml) throw new Error('O XML completo desta nota ainda não está disponível.');
+      return xml;
+    },
+  });
+  return { fetchXml: mutation.mutateAsync, isLoading: mutation.isPending };
 }
 
 /** NF-e RECEBIDAS (produto, emitidas CONTRA o CNPJ do cliente). */

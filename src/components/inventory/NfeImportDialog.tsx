@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   FileUp,
   Building2,
@@ -24,6 +24,7 @@ import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import {
   Select,
   SelectContent,
@@ -32,9 +33,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { useInventory, type InventoryItem } from '@/hooks/useInventory';
+import { useInventory } from '@/hooks/useInventory';
+import { useStocks } from '@/hooks/useStocks';
 import { useSuppliers } from '@/hooks/useSuppliers';
-import { useNfeImport, type NfeImportLine } from '@/hooks/useNfeImport';
+import {
+  useNfeImport,
+  type NfeImportFiscalData,
+  type NfeImportLine,
+} from '@/hooks/useNfeImport';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
 import { useLocaleFormatters } from '@/lib/format/hooks';
@@ -44,13 +50,7 @@ import {
   type NfeParseResult,
 } from '@/lib/nfeParser';
 import { cpfCnpjMask } from '@/utils/masks';
-import { fuzzyIncludes } from '@/lib/utils';
-
-/** Sugere o melhor item de estoque para casar com um nome de produto. */
-function suggestMatch(name: string, items: InventoryItem[]): string | null {
-  const hit = items.find((i) => fuzzyIncludes(i.name, name) || fuzzyIncludes(name, i.name));
-  return hit?.id ?? null;
-}
+import { findSafeNfeInventoryMatch } from '@/lib/nfeInventoryMatching';
 
 /** Número salvo → texto do campo. Vazio quando 0/nulo (nunca "0" travado) e vírgula como separador. */
 const toNumericText = (n?: number | null) => (!n ? '' : String(n).replace('.', ','));
@@ -69,27 +69,46 @@ interface ReviewLine {
   include: boolean;
   /** '' = criar novo; senão = id do item de estoque. */
   matchId: string;
+  fiscal: NfeImportFiscalData;
 }
 
 interface NfeImportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialXml?: { key: string; xml: string } | null;
+  /** Preenchido somente quando o XML veio de Notas recebidas. */
+  inboundNfeId?: string | null;
 }
 
-export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
+const newRequestId = () => (
+  typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `nfe-stock-${Date.now()}-${Math.random().toString(36).slice(2)}`
+);
+
+export function NfeImportDialog({
+  open,
+  onOpenChange,
+  initialXml = null,
+  inboundNfeId = null,
+}: NfeImportDialogProps) {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.inventory.nfeImport;
   const { money, dateTime } = useLocaleFormatters();
   const { toast } = useToast();
-  const { items } = useInventory();
+  const { items, isLoading: inventoryLoading } = useInventory();
+  const { stocks, defaultStock, isLoading: stocksLoading } = useStocks();
   const { suppliers } = useSuppliers();
-  const { checkDuplicate, runImport, importing } = useNfeImport();
+  const { checkDuplicate, runImport, runInboundImport, importing } = useNfeImport();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   // Guard síncrono contra duplo-clique: o `disabled` do botão depende do estado
   // assíncrono e não fecha a corrida entre dois cliques rápidos.
   const submittingRef = useRef(false);
+  const initialXmlRef = useRef<string | null>(null);
+  const requestIdRef = useRef(newRequestId());
   const [parsed, setParsed] = useState<NfeParseResult | null>(null);
+  const [stockId, setStockId] = useState('');
   const [lines, setLines] = useState<ReviewLine[]>([]);
   // Texto CRU da quantidade, por linha (chave = ReviewLine.key). O número em
   // lines.quantity segue sendo o que vai pro import; este espelho existe porque
@@ -123,11 +142,14 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
 
   const resetState = () => {
     setParsed(null);
+    setStockId('');
     setLines([]);
     setQtyText({});
     setUnitCostText({});
     setDupConfirm(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
+    initialXmlRef.current = null;
+    requestIdRef.current = newRequestId();
   };
 
   const handleClose = (next: boolean) => {
@@ -138,7 +160,10 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
   const buildReview = (result: NfeParseResult) => {
     setParsed(result);
     const reviewLines = result.items.map((it, idx) => {
-      const matchId = suggestMatch(it.name, items) ?? '';
+      const matchId = findSafeNfeInventoryMatch(
+        { name: it.name, gtin: it.ean },
+        items,
+      )?.id ?? '';
       return {
         key: String(idx),
         cProd: it.cProd,
@@ -150,6 +175,20 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
         total: it.total,
         include: true,
         matchId,
+        fiscal: {
+          ncm: it.ncm,
+          cest: it.cest,
+          gtin: it.ean,
+          origin: it.origem,
+          icmsCode: it.csosn ?? it.cst,
+          icmsRate: it.icms.rate,
+          pisCst: it.pis.cst,
+          pisRate: it.pis.rate,
+          cofinsCst: it.cofins.cst,
+          cofinsRate: it.cofins.rate,
+          ipiCst: it.ipi.cst,
+          ipiRate: it.ipi.rate,
+        },
       };
     });
     setLines(reviewLines);
@@ -159,17 +198,9 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
     setUnitCostText(Object.fromEntries(reviewLines.map((l) => [l.key, toNumericText(l.unitCost)])));
   };
 
-  const handleFile = async (file: File) => {
+  const processXml = async (text: string) => {
     let result: NfeParseResult;
     try {
-      // Detecta o encoding pela declaração do XML (muitas NF-e vêm em ISO-8859-1).
-      // Ler como UTF-8 fixo corromperia os acentos (mojibake) no nome do produto.
-      const buf = await file.arrayBuffer();
-      const head = new TextDecoder('ascii').decode(buf.slice(0, 256)).toLowerCase();
-      const enc = /encoding=["']?\s*(iso-8859-1|latin1|windows-1252)/.test(head)
-        ? 'iso-8859-1'
-        : 'utf-8';
-      const text = new TextDecoder(enc).decode(buf);
       result = parseNfeXml(text);
     } catch (err) {
       const msg =
@@ -191,6 +222,30 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
     }
     buildReview(result);
   };
+
+  const handleFile = async (file: File) => {
+    // Detecta o encoding pela declaração do XML (muitas NF-e vêm em ISO-8859-1).
+    // Ler como UTF-8 fixo corromperia os acentos (mojibake) no nome do produto.
+    const buf = await file.arrayBuffer();
+    const head = new TextDecoder('ascii').decode(buf.slice(0, 256)).toLowerCase();
+    const enc = /encoding=["']?\s*(iso-8859-1|latin1|windows-1252)/.test(head)
+      ? 'iso-8859-1'
+      : 'utf-8';
+    await processXml(new TextDecoder(enc).decode(buf));
+  };
+
+  useEffect(() => {
+    if (!open || !initialXml || inventoryLoading || initialXmlRef.current === initialXml.key) return;
+    initialXmlRef.current = initialXml.key;
+    void processXml(initialXml.xml);
+    // O conteúdo é identificado por uma chave estável; o parser não deve
+    // reiniciar quando as queries de estoque/fornecedor atualizam.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialXml?.key, inventoryLoading]);
+
+  useEffect(() => {
+    if (open && !stocksLoading && !stockId && defaultStock) setStockId(defaultStock.id);
+  }, [open, stocksLoading, stockId, defaultStock]);
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -239,6 +294,14 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
 
   const handleConfirm = async () => {
     if (!parsed || includedLines.length === 0) return;
+    if (!stockId) {
+      toast({
+        title: 'Selecione o local de estoque',
+        description: 'Informe em qual depósito os itens da nota devem entrar.',
+        variant: 'destructive',
+      });
+      return;
+    }
     // Guard síncrono: ignora o 2º clique antes do estado propagar (evita import duplicado).
     if (submittingRef.current) return;
 
@@ -263,16 +326,21 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
       quantity: l.quantity,
       unitCost: l.unitCost,
       matchInventoryId: l.matchId || null,
+      fiscal: l.fiscal,
     }));
 
     try {
-      const res = await runImport({
+      const payload = {
         accessKey: parsed.accessKey,
         supplier: parsed.supplier,
         matchedSupplierId: matchedSupplier?.id ?? null,
         total: parsed.total,
+        stockId,
         lines: importLines,
-      });
+      };
+      const res = inboundNfeId
+        ? await runInboundImport(inboundNfeId, requestIdRef.current, payload)
+        : await runImport(payload);
 
       const parts: string[] = [
         res.imported === 1
@@ -317,7 +385,7 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
               </div>
               <Button
                 onClick={handleConfirm}
-                disabled={importing || includedLines.length === 0}
+                disabled={importing || includedLines.length === 0 || !stockId}
                 className="min-h-11 rounded-xl gap-2"
               >
                 <Check className="h-4 w-4" />
@@ -357,6 +425,33 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
         ) : (
           /* ETAPA 2: revisão. */
           <div className="space-y-4">
+            {inboundNfeId && (
+              <NoticeBanner variant="info" title="Entrada avulsa no estoque">
+                Este caminho movimenta somente o estoque. Para também criar a compra e o
+                lançamento financeiro, feche esta tela e use “Gerar compra + entrada”.
+              </NoticeBanner>
+            )}
+            <NoticeBanner variant="info" title="Dados fiscais aproveitados do XML">
+              {inboundNfeId
+                ? 'NCM, CEST, GTIN e origem completam somente campos vazios do material. CST, CSOSN e alíquotas ficam disponíveis para conferência, sem substituir a tributação definida pela contabilidade.'
+                : 'Materiais novos recebem NCM, CEST, GTIN e origem da nota. CST, CSOSN e alíquotas ficam somente para conferência.'}
+            </NoticeBanner>
+            <div className="space-y-1.5 rounded-xl border bg-card p-3">
+              <Label htmlFor="nfe-import-stock">Local de estoque *</Label>
+              <Select value={stockId} onValueChange={setStockId} disabled={stocksLoading}>
+                <SelectTrigger id="nfe-import-stock">
+                  <SelectValue placeholder={stocksLoading ? 'Carregando locais…' : 'Selecione o depósito'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {stocks.map((stock) => (
+                    <SelectItem key={stock.id} value={stock.id}>{stock.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Todos os itens selecionados serão registrados neste local.
+              </p>
+            </div>
             {/* Fornecedor */}
             <div className="rounded-xl border bg-card p-3">
               <div className="flex items-start gap-3">
@@ -446,6 +541,15 @@ export function NfeImportDialog({ open, onOpenChange }: NfeImportDialogProps) {
                             {line.cProd && `cód ${line.cProd}`}
                             {line.cProd && line.ean && ' • '}
                             {line.ean && `EAN ${line.ean}`}
+                          </p>
+                        )}
+                        {(line.fiscal.ncm || line.fiscal.cest || line.fiscal.icmsCode) && (
+                          <p className="text-[11px] text-muted-foreground">
+                            {[
+                              line.fiscal.ncm ? `NCM ${line.fiscal.ncm}` : null,
+                              line.fiscal.cest ? `CEST ${line.fiscal.cest}` : null,
+                              line.fiscal.icmsCode ? `ICMS no XML ${line.fiscal.icmsCode}` : null,
+                            ].filter(Boolean).join(' • ')}
                           </p>
                         )}
                       </div>

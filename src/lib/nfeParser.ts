@@ -23,6 +23,23 @@ export interface NfeParsedItem {
   unitCost: number;
   /** Total do item (vProd). */
   total: number;
+  ncm: string | null;
+  cfop: string | null;
+  cest: string | null;
+  cst: string | null;
+  csosn: string | null;
+  origem: string | null;
+  icms: NfeParsedTax;
+  ipi: NfeParsedTax;
+  pis: NfeParsedTax;
+  cofins: NfeParsedTax;
+}
+
+export interface NfeParsedTax {
+  cst: string | null;
+  base: number | null;
+  rate: number | null;
+  amount: number | null;
 }
 
 export interface NfeParsedSupplier {
@@ -31,6 +48,8 @@ export interface NfeParsedSupplier {
   /** Razão social / nome do emitente (xNome). */
   name: string | null;
 }
+
+export type NfeParsedParty = NfeParsedSupplier;
 
 /**
  * Uma parcela da cobrança (`<cobr><dup>`). É o que o fornecedor combinou de
@@ -50,6 +69,7 @@ export interface NfeParseResult {
   /** Chave de acesso de 44 dígitos. */
   accessKey: string | null;
   supplier: NfeParsedSupplier;
+  recipient: NfeParsedParty;
   items: NfeParsedItem[];
   /** Valor total da nota (vNF), quando disponível. */
   total: number | null;
@@ -59,6 +79,12 @@ export interface NfeParseResult {
    * comportamento antigo de semear o vencimento com a data de emissão.
    */
   duplicatas: NfeParsedDuplicata[];
+  number: string | null;
+  series: string | null;
+  issueDate: string | null;
+  nature: string | null;
+  protocol: string | null;
+  authorizationDate: string | null;
 }
 
 export class NfeParseError extends Error {
@@ -92,6 +118,21 @@ function toNumber(raw: string | null | undefined): number {
 /** Só os dígitos (CNPJ/CPF/chave). */
 function onlyDigits(raw: string | null | undefined): string {
   return (raw ?? '').replace(/\D/g, '');
+}
+
+function nullableNumber(raw: string | null | undefined): number | null {
+  if (!raw?.trim()) return null;
+  const value = toNumber(raw);
+  return Number.isFinite(value) ? value : null;
+}
+
+function parsedTax(scope: Element | null): NfeParsedTax {
+  return {
+    cst: scope ? tagText(scope, 'CST') : null,
+    base: scope ? nullableNumber(tagText(scope, 'vBC')) : null,
+    rate: scope ? nullableNumber(tagText(scope, 'pICMS') ?? tagText(scope, 'pIPI') ?? tagText(scope, 'pPIS') ?? tagText(scope, 'pCOFINS')) : null,
+    amount: scope ? nullableNumber(tagText(scope, 'vICMS') ?? tagText(scope, 'vIPI') ?? tagText(scope, 'vPIS') ?? tagText(scope, 'vCOFINS')) : null,
+  };
 }
 
 /**
@@ -149,6 +190,11 @@ export function parseNfeXml(text: string): NfeParseResult {
     cnpj: emit ? onlyDigits(tagText(emit, 'CNPJ') ?? tagText(emit, 'CPF')) || null : null,
     name: emit ? tagText(emit, 'xNome') : null,
   };
+  const dest = firstTag(doc, 'dest');
+  const recipient: NfeParsedParty = {
+    cnpj: dest ? onlyDigits(tagText(dest, 'CNPJ') ?? tagText(dest, 'CPF')) || null : null,
+    name: dest ? tagText(dest, 'xNome') : null,
+  };
 
   // --- Produtos: cada <det> tem um <prod>.
   const dets = Array.from(doc.getElementsByTagName('det'));
@@ -160,6 +206,11 @@ export function parseNfeXml(text: string): NfeParseResult {
     if (!name) continue; // linha sem descrição não vira item de estoque
     const eanRaw = tagText(prod, 'cEAN');
     const ean = eanRaw && eanRaw.toUpperCase() !== 'SEM GTIN' ? eanRaw : null;
+    const imposto = firstTag(det, 'imposto');
+    const icms = imposto ? firstTag(imposto, 'ICMS') : null;
+    const ipi = imposto ? firstTag(imposto, 'IPI') : null;
+    const pis = imposto ? firstTag(imposto, 'PIS') : null;
+    const cofins = imposto ? firstTag(imposto, 'COFINS') : null;
     items.push({
       cProd: tagText(prod, 'cProd') ?? '',
       ean,
@@ -168,6 +219,16 @@ export function parseNfeXml(text: string): NfeParseResult {
       quantity: toNumber(tagText(prod, 'qCom')),
       unitCost: toNumber(tagText(prod, 'vUnCom')),
       total: toNumber(tagText(prod, 'vProd')),
+      ncm: tagText(prod, 'NCM'),
+      cfop: tagText(prod, 'CFOP'),
+      cest: tagText(prod, 'CEST'),
+      cst: icms ? tagText(icms, 'CST') : null,
+      csosn: icms ? tagText(icms, 'CSOSN') : null,
+      origem: icms ? tagText(icms, 'orig') : null,
+      icms: parsedTax(icms),
+      ipi: parsedTax(ipi),
+      pis: parsedTax(pis),
+      cofins: parsedTax(cofins),
     });
   }
 
@@ -195,5 +256,20 @@ export function parseNfeXml(text: string): NfeParseResult {
   // ordenado, e a 1ª parcela é o que semeia o vencimento quando há só uma.
   duplicatas.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
 
-  return { accessKey, supplier, items, total, duplicatas };
+  const ide = firstTag(infNFe, 'ide');
+  const protNFe = firstTag(doc, 'protNFe');
+  return {
+    accessKey,
+    supplier,
+    recipient,
+    items,
+    total,
+    duplicatas,
+    number: ide ? tagText(ide, 'nNF') : null,
+    series: ide ? tagText(ide, 'serie') : null,
+    issueDate: ide ? tagText(ide, 'dhEmi') ?? tagText(ide, 'dEmi') : null,
+    nature: ide ? tagText(ide, 'natOp') : null,
+    protocol: protNFe ? tagText(protNFe, 'nProt') : null,
+    authorizationDate: protNFe ? tagText(protNFe, 'dhRecbto') : null,
+  };
 }

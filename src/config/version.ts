@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.42.2";
+export const APP_VERSION = "1.42.3";
 
 export const VERSION_NOTES =
-  "Recebimentos parciais pela OS e por Contas a Receber mantêm a mesma conta, atualizam o saldo em aberto e protegem contra confirmações repetidas.";
+  "Importe NF-e e NFS-e recebidas pelo XML, consulte os dados fiscais e aproveite a NF-e em compras e no estoque sem duplicar lançamentos.";

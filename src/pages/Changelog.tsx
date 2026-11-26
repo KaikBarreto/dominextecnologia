@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.42.3',
+    date: '26 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Importe notas recebidas pelo XML',
+        category: 'recurso',
+        description: 'Em Notas Recebidas, use Importar XML para trazer uma NF-e ou NFS-e emitida para a sua empresa. O sistema confere o destinatário e a autorização da nota antes de salvar, mostra os dados fiscais e permite baixar o XML ou abrir a DANFE.',
+      },
+      {
+        title: 'Aproveite a NF-e na compra e no estoque sem duplicar',
+        category: 'melhoria',
+        description: 'Depois de importar uma NF-e, lance a compra, vincule ou cadastre os materiais e registre a entrada no estoque. A mesma nota não gera a compra nem o movimento de estoque duas vezes, e o financeiro usa o valor total autorizado da nota.',
+      },
+    ],
+  },
+  {
     version: '1.42.2',
     date: '26 de novembro de 2026',
     type: 'patch',

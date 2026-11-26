@@ -399,6 +399,11 @@ verify_jwt = false
 # exigem sessão (verify_jwt = true, o padrão), além do gate de módulo 'nfe' e
 # de can_manage_system em `_shared/fiscal-auth.ts`.
 
+# Importação manual de XML: o handler revalida JWT, empresa, módulo, permissão
+# fiscal e o CNPJ destinatário/tomador antes de escrever com service_role.
+[functions.inbound-xml-import]
+verify_jwt = false
+
 # collect-db-health: coletor do histórico de saúde da plataforma
 # (db_health_history). Chamado SÓ por pg_cron via pg_net a cada 2 min com
 # `Authorization: Bearer <CRON_SECRET>` — o segredo do Vault é texto cru, não

@@ -1,4 +1,4 @@
-import { FileText, MoreVertical, Stamp, Receipt, ExternalLink } from 'lucide-react';
+import { Download, Eye, FileDown, FileText, MoreVertical, PackagePlus, ShoppingCart, Stamp, Receipt, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -18,10 +18,15 @@ interface InboundNfeCardProps {
   onManifestar: (nota: InboundNfe) => void;
   onLancarDespesa: (nota: InboundNfe) => void;
   onVerLancamento: (nota: InboundNfe) => void;
+  onViewFiscal: (nota: InboundNfe) => void;
+  onDownloadXml: (nota: InboundNfe) => void;
+  onGenerateDanfe: (nota: InboundNfe) => void;
+  onImportStock: (nota: InboundNfe) => void;
+  onGeneratePurchase: (nota: InboundNfe) => void;
 }
 
 /** Linha de uma NF-e recebida (produto). Mobile-first: card em qualquer largura. */
-export function InboundNfeCard({ nota, onManifestar, onLancarDespesa, onVerLancamento }: InboundNfeCardProps) {
+export function InboundNfeCard({ nota, onManifestar, onLancarDespesa, onVerLancamento, onViewFiscal, onDownloadXml, onGenerateDanfe, onImportStock, onGeneratePurchase }: InboundNfeCardProps) {
   const { locale, currency, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.nfse.recebidas;
 
@@ -30,6 +35,7 @@ export function InboundNfeCard({ nota, onManifestar, onLancarDespesa, onVerLanca
   // não existe (é a mercadoria voltando, não uma compra nova).
   const isDevolucao = nota.fin_nfe === 4;
   const canManifest = nota.situacao_sefaz !== 'cancelada' && nota.situacao_sefaz !== 'denegada';
+  const hasInventoryEntry = !!nota.inventory_imported_at;
 
   return (
     <div className="flex items-start gap-3 px-4 py-3.5">
@@ -59,6 +65,11 @@ export function InboundNfeCard({ nota, onManifestar, onLancarDespesa, onVerLanca
           <ManifestacaoBadge manifestacao={nota.manifestacao} pendente={nota.manifestacao_pendente} />
           {nota.resumo && <ResumoBadge />}
           {nota.financial_transaction_id && <LancadaBadge />}
+          {hasInventoryEntry && (
+            <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[11px] font-semibold text-white">
+              {nota.inventory_import_source === 'purchase' ? 'Compra e entrada registradas' : 'Entrada registrada'}
+            </span>
+          )}
           {isDevolucao && (
             <span className="text-xs text-muted-foreground">{t.devolucaoHint}</span>
           )}
@@ -72,6 +83,32 @@ export function InboundNfeCard({ nota, onManifestar, onLancarDespesa, onVerLanca
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuItem onClick={() => onViewFiscal(nota)}>
+            <Eye className="mr-2 h-4 w-4" />
+            Ver dados fiscais
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onDownloadXml(nota)}>
+            <Download className="mr-2 h-4 w-4" />
+            Baixar XML
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onGenerateDanfe(nota)}>
+            <FileDown className="mr-2 h-4 w-4" />
+            Gerar DANFE
+          </DropdownMenuItem>
+          {!isDevolucao && (
+            <>
+              <DropdownMenuItem disabled={hasInventoryEntry} onClick={() => onImportStock(nota)}>
+                <PackagePlus className="mr-2 h-4 w-4" />
+                {hasInventoryEntry ? 'Entrada já registrada' : 'Entrada avulsa no estoque'}
+              </DropdownMenuItem>
+              {!nota.financial_transaction_id && !hasInventoryEntry && (
+                <DropdownMenuItem onClick={() => onGeneratePurchase(nota)}>
+                  <ShoppingCart className="mr-2 h-4 w-4" />
+                  Gerar compra + entrada
+                </DropdownMenuItem>
+              )}
+            </>
+          )}
           {canManifest && (
             <DropdownMenuItem onClick={() => onManifestar(nota)}>
               <Stamp className="mr-2 h-4 w-4" />

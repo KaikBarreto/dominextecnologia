@@ -15,6 +15,21 @@ export interface NfeDupCheck {
 }
 
 /** Uma linha de produto pronta para import (já revisada pelo usuário). */
+export interface NfeImportFiscalData {
+  ncm: string | null;
+  cest: string | null;
+  gtin: string | null;
+  origin: string | null;
+  icmsCode: string | null;
+  icmsRate: number | null;
+  pisCst: string | null;
+  pisRate: number | null;
+  cofinsCst: string | null;
+  cofinsRate: number | null;
+  ipiCst: string | null;
+  ipiRate: number | null;
+}
+
 export interface NfeImportLine {
   /** Nome do produto (editável). */
   name: string;
@@ -25,6 +40,8 @@ export interface NfeImportLine {
    * Item de estoque a casar. Se null, cria item novo.
    */
   matchInventoryId: string | null;
+  /** Classificação fiscal observada no XML; nunca é inventada pelo cliente. */
+  fiscal: NfeImportFiscalData;
 }
 
 export interface NfeImportPayload {
@@ -33,6 +50,8 @@ export interface NfeImportPayload {
   /** Id do fornecedor já existente (casado por CNPJ), se houver. */
   matchedSupplierId: string | null;
   total: number | null;
+  /** Local geral que receberá os materiais. */
+  stockId: string;
   lines: NfeImportLine[];
 }
 
@@ -40,6 +59,24 @@ export interface NfeImportResult {
   imported: number;
   created: number;
   failed: number;
+}
+
+type GenericRpcResult = { data: unknown; error: unknown | null };
+type GenericRpc = (name: string, args: Record<string, unknown>) => Promise<GenericRpcResult>;
+const callRpc = supabase.rpc.bind(supabase) as unknown as GenericRpc;
+
+function getInboundImportErrorMessage(error: unknown): string {
+  const candidate = error && typeof error === 'object' ? error as Record<string, unknown> : {};
+  const diagnostic = [candidate.message, candidate.details, candidate.hint]
+    .filter((value): value is string => typeof value === 'string')
+    .join(' ');
+  if (diagnostic.includes('inbound_nfe_inventory_already_imported')) {
+    return 'Esta nota já gerou uma entrada no estoque. O saldo não foi alterado novamente.';
+  }
+  if (diagnostic.includes('inbound_nfe_invalid_fiscal_data')) {
+    return 'O XML possui NCM, CEST, GTIN ou origem inválidos. Revise o arquivo antes de importar.';
+  }
+  return getErrorMessage(error);
 }
 
 export function useNfeImport() {
@@ -137,6 +174,10 @@ export function useNfeImport() {
                 quantity: 0,
                 supplier: supplierName,
                 company_id: companyId,
+                fiscal_ncm: line.fiscal.ncm,
+                fiscal_cest: line.fiscal.cest,
+                fiscal_gtin: line.fiscal.gtin,
+                fiscal_origin: line.fiscal.origin,
               })
               .select('id')
               .single();
@@ -145,13 +186,14 @@ export function useNfeImport() {
             createdItemId = newItem.id;
           }
 
-          const { error: rpcErr } = await supabase.rpc('register_inventory_movement', {
+          const { error: rpcErr } = await supabase.rpc('inventory_register_manual_movement_v3', {
             p_inventory_id: inventoryId,
             p_movement_type: 'entrada',
             p_quantity: line.quantity, // delta positivo = entrada
             p_supplier_id: supplierId ?? undefined,
             p_unit_cost: line.unitCost,
             p_notes: notes,
+            p_stock_id: payload.stockId,
           });
           if (rpcErr) throw rpcErr;
 
@@ -208,5 +250,61 @@ export function useNfeImport() {
     }
   };
 
-  return { checkDuplicate, runImport, importing };
+  /**
+   * Entrada originada na tela de Notas recebidas. Diferente do import genérico,
+   * toda a operação roda em uma RPC transacional que trava a própria NF-e:
+   * duas pessoas (ou os fluxos avulso/compra) não conseguem duplicar o saldo.
+   */
+  const runInboundImport = async (
+    inboundNfeId: string,
+    clientRequestId: string,
+    payload: NfeImportPayload,
+  ): Promise<NfeImportResult> => {
+    setImporting(true);
+    try {
+      const { data, error } = await callRpc('import_inbound_nfe_inventory', {
+        p_inbound_nfe_id: inboundNfeId,
+        p_client_request_id: clientRequestId,
+        p_stock_id: payload.stockId,
+        p_items: payload.lines.map((line) => ({
+          inventory_id: line.matchInventoryId,
+          name: line.name,
+          unit: line.unit,
+          quantity: line.quantity,
+          unit_cost: line.unitCost,
+          fiscal_ncm: line.fiscal.ncm,
+          fiscal_cest: line.fiscal.cest,
+          fiscal_gtin: line.fiscal.gtin,
+          fiscal_origin: line.fiscal.origin,
+        })),
+      });
+      if (error) throw error;
+      const result = (data && typeof data === 'object' ? data : {}) as Partial<NfeImportResult>;
+      const normalized = {
+        imported: Number(result.imported ?? 0),
+        created: Number(result.created ?? 0),
+        failed: Number(result.failed ?? 0),
+      };
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['inventory'] }),
+        queryClient.invalidateQueries({ queryKey: ['inventory-stock-levels'] }),
+        queryClient.invalidateQueries({ queryKey: ['inventory-movements'] }),
+        queryClient.invalidateQueries({ queryKey: ['suppliers'] }),
+        queryClient.invalidateQueries({ queryKey: ['nfe_imports'] }),
+        queryClient.invalidateQueries({ queryKey: ['inbound-nfe', companyId] }),
+      ]);
+      return normalized;
+    } catch (error) {
+      toast({
+        title: 'Não foi possível registrar a entrada',
+        description: getInboundImportErrorMessage(error),
+        variant: 'destructive',
+      });
+      throw error;
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  return { checkDuplicate, runImport, runInboundImport, importing };
 }

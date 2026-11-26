@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, RefreshCw, Search, ShieldCheck, FileText } from 'lucide-react';
+import { Loader2, RefreshCw, Search, ShieldCheck, FileText, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NoticeBanner } from '@/components/ui/NoticeBanner';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { EmptyState } from '@/components/mobile/EmptyState';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -16,6 +17,8 @@ import {
   useDfeOptIn,
   useInboundNfe,
   useInboundNfse,
+  useInboundXmlImport,
+  useInboundNoteXml,
   type InboundNfe,
   type InboundNfse,
   type ManifestacaoAcaoTipo,
@@ -24,6 +27,14 @@ import { InboundNfeCard } from './InboundNfeCard';
 import { InboundNfseCard } from './InboundNfseCard';
 import { ManifestarDialog } from './ManifestarDialog';
 import { LancarNotaDespesaDialog, type LancarNotaDespesaSource } from './LancarNotaDespesaDialog';
+import { NfeFiscalDetailsDialog } from './NfeFiscalDetailsDialog';
+import { NfeImportDialog } from '@/components/inventory/NfeImportDialog';
+import {
+  DirectMaterialPurchaseDialog,
+  type DirectMaterialPurchasePrefill,
+} from '@/components/inventory/DirectMaterialPurchaseDialog';
+import { parseNfeXml, type NfeParseResult } from '@/lib/nfeParser';
+import { downloadNfeXml, generateNfeDanfe } from '@/utils/nfeDocumentExport';
 
 type Subtab = 'nfe' | 'nfse';
 
@@ -48,6 +59,9 @@ export function NotasRecebidasTab() {
 
   const [subtab, setSubtab] = useState<Subtab>('nfe');
   const [search, setSearch] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const xmlImport = useInboundXmlImport();
+  const noteXml = useInboundNoteXml();
 
   const { settings: fiscalSettings } = useFiscalSettings();
   // Recebimento não exige cobertura municipal, mas exige A1 próprio dentro da
@@ -86,6 +100,90 @@ export function NotasRecebidasTab() {
   const [despesaSource, setDespesaSource] = useState<{ subtab: Subtab; source: LancarNotaDespesaSource } | null>(
     null,
   );
+  const [fiscalDetails, setFiscalDetails] = useState<NfeParseResult | null>(null);
+  const [stockImport, setStockImport] = useState<{ nota: InboundNfe; key: string; xml: string } | null>(null);
+  const [purchaseSource, setPurchaseSource] = useState<{
+    nota: InboundNfe;
+    prefill: DirectMaterialPurchasePrefill;
+  } | null>(null);
+
+  const loadNfeXml = async (nota: InboundNfe) => {
+    const xml = await noteXml.fetchXml({ tipo: 'nfe', id: nota.id });
+    return { xml, parsed: parseNfeXml(xml) };
+  };
+
+  const handleNfeXmlAction = async (
+    nota: InboundNfe,
+    action: 'details' | 'download' | 'danfe' | 'stock' | 'purchase',
+  ) => {
+    try {
+      if ((action === 'stock' || action === 'purchase') && nota.inventory_imported_at) {
+        toast({
+          title: 'Entrada já registrada',
+          description: 'Esta nota já movimentou o estoque e não pode gerar uma segunda entrada.',
+        });
+        return;
+      }
+      const { xml, parsed } = await loadNfeXml(nota);
+      if (action === 'details') setFiscalDetails(parsed);
+      if (action === 'download') downloadNfeXml(xml, parsed.accessKey);
+      if (action === 'danfe') await generateNfeDanfe(parsed);
+      if (action === 'stock') setStockImport({ nota, key: nota.id, xml });
+      if (action === 'purchase') {
+        setPurchaseSource({
+          nota,
+          prefill: {
+            key: nota.id,
+            supplierDocument: parsed.supplier.cnpj,
+            description: `Compra da NF-e ${parsed.number || nota.numero || ''}`.trim(),
+            purchaseDate: parsed.issueDate ?? nota.data_emissao,
+            dueDate: parsed.duplicatas[0]?.dueDate ?? null,
+            notes: parsed.accessKey ? `Origem: NF-e ${parsed.accessKey}` : 'Origem: NF-e recebida',
+            itemsTotal: parsed.items.reduce((sum, item) => sum + item.total, 0),
+            documentTotal: parsed.total ?? nota.valor,
+            items: parsed.items.map((item) => ({
+              name: item.name,
+              quantity: item.quantity,
+              unitPrice: item.unitCost,
+              fiscal: {
+                ncm: item.ncm,
+                cest: item.cest,
+                gtin: item.ean,
+                origin: item.origem,
+                icmsCode: item.csosn ?? item.cst,
+                icmsRate: item.icms.rate,
+                pisCst: item.pis.cst,
+                pisRate: item.pis.rate,
+                cofinsCst: item.cofins.cst,
+                cofinsRate: item.cofins.rate,
+                ipiCst: item.ipi.cst,
+                ipiRate: item.ipi.rate,
+              },
+            })),
+          },
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Não foi possível abrir o XML da nota.',
+        description: error instanceof Error ? error.message : undefined,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleNfseDownload = async (nota: InboundNfse) => {
+    try {
+      const xml = await noteXml.fetchXml({ tipo: 'nfse', id: nota.id });
+      downloadNfeXml(xml, nota.chave_acesso || nota.chave_natural);
+    } catch (error) {
+      toast({
+        title: 'Não foi possível baixar o XML da nota.',
+        description: error instanceof Error ? error.message : undefined,
+        variant: 'destructive',
+      });
+    }
+  };
 
   const handleSync = async () => {
     try {
@@ -117,6 +215,27 @@ export function NotasRecebidasTab() {
       toast({ title: t.optIn.toastSuccess });
     } catch (e: unknown) {
       toast({ title: t.optIn.toastError, description: e instanceof Error ? e.message : undefined, variant: 'destructive' });
+    }
+  };
+
+  const handleXmlFile = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      if (file.size > 2 * 1024 * 1024) throw new Error('O XML deve ter no máximo 2 MB.');
+      const result = await xmlImport.importXml(await file.text());
+      setSubtab(result.tipo);
+      toast({
+        title: result.nova === false ? 'Nota atualizada com o XML completo.' : 'Nota importada com sucesso.',
+        description: result.tipo === 'nfe' ? 'A NF-e já está disponível em Notas recebidas.' : 'A NFS-e já está disponível em Notas recebidas.',
+      });
+    } catch (e: unknown) {
+      toast({
+        title: 'Não foi possível importar o XML.',
+        description: e instanceof Error ? e.message : undefined,
+        variant: 'destructive',
+      });
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -178,48 +297,6 @@ export function NotasRecebidasTab() {
     : t.sync.neverSynced;
 
   const renderBody = () => {
-    if (!hasCertificate) {
-      return (
-        <EmptyState
-          icon={<ShieldCheck className="h-10 w-10" />}
-          title={t.emptyNoCertificate.title}
-          description={t.emptyNoCertificate.description}
-          action={{ label: t.emptyNoCertificate.action, onClick: () => navigate('/notas-fiscais/configuracoes') }}
-        />
-      );
-    }
-
-    if (!activeOptIn) {
-      return (
-        <div className="space-y-3 rounded-lg border border-border bg-card p-5">
-          <div className="flex items-start gap-3">
-            {/* Ícone branco direto no fundo saturado (régua visual): sem círculo dessaturado atrás. */}
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary">
-              <FileText className="h-5 w-5 text-white" />
-            </span>
-            <div className="min-w-0">
-              <p className="text-base font-semibold leading-snug">
-                {subtab === 'nfe' ? t.optIn.titleNfe : t.optIn.titleNfse}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {subtab === 'nfe' ? t.optIn.descriptionNfe : t.optIn.descriptionNfse}
-              </p>
-            </div>
-          </div>
-          <Button onClick={handleActivate} disabled={isActivating}>
-            {isActivating ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {t.optIn.activating}
-              </>
-            ) : (
-              t.optIn.action
-            )}
-          </Button>
-        </div>
-      );
-    }
-
     if (active.isLoading) {
       return (
         <div className="flex items-center justify-center py-16">
@@ -252,6 +329,11 @@ export function NotasRecebidasTab() {
                 onManifestar={setManifestarNota}
                 onLancarDespesa={openLancarNfe}
                 onVerLancamento={(n) => verLancamento(n.financial_transaction_id)}
+                onViewFiscal={(n) => void handleNfeXmlAction(n, 'details')}
+                onDownloadXml={(n) => void handleNfeXmlAction(n, 'download')}
+                onGenerateDanfe={(n) => void handleNfeXmlAction(n, 'danfe')}
+                onImportStock={(n) => void handleNfeXmlAction(n, 'stock')}
+                onGeneratePurchase={(n) => void handleNfeXmlAction(n, 'purchase')}
               />
             ))
           : filteredNfse.map((nota) => (
@@ -260,6 +342,7 @@ export function NotasRecebidasTab() {
                 nota={nota}
                 onLancarDespesa={openLancarNfse}
                 onVerLancamento={(n) => verLancamento(n.financial_transaction_id)}
+                onDownloadXml={(n) => void handleNfseDownload(n)}
               />
             ))}
       </div>
@@ -268,19 +351,61 @@ export function NotasRecebidasTab() {
 
   return (
     <div className="space-y-4">
-      <SegmentedControl<Subtab>
-        options={[
-          { value: 'nfe', label: t.nfeSubtab },
-          { value: 'nfse', label: t.nfseSubtab },
-        ]}
-        value={subtab}
-        onValueChange={setSubtab}
-        aria-label={`${t.nfeSubtab} / ${t.nfseSubtab}`}
-      />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <SegmentedControl<Subtab>
+          options={[
+            { value: 'nfe', label: t.nfeSubtab },
+            { value: 'nfse', label: t.nfseSubtab },
+          ]}
+          value={subtab}
+          onValueChange={setSubtab}
+          aria-label={`${t.nfeSubtab} / ${t.nfseSubtab}`}
+        />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".xml,text/xml,application/xml"
+          className="sr-only"
+          onChange={(event) => void handleXmlFile(event.target.files?.[0])}
+        />
+        <Button
+          variant="outline"
+          className="gap-2"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={xmlImport.isImporting}
+        >
+          {xmlImport.isImporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+          {xmlImport.isImporting ? 'Importando…' : 'Importar XML'}
+        </Button>
+      </div>
 
-      {hasCertificate && activeOptIn && (
-        <>
-          <div className="relative">
+      {!hasCertificate && (
+        <NoticeBanner variant="warning" title={t.emptyNoCertificate.title}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span>{t.emptyNoCertificate.description}</span>
+            <Button variant="outline" size="sm" onClick={() => navigate('/notas-fiscais/configuracoes')}>
+              <ShieldCheck className="mr-2 h-4 w-4" /> {t.emptyNoCertificate.action}
+            </Button>
+          </div>
+        </NoticeBanner>
+      )}
+
+      {hasCertificate && !activeOptIn && (
+        <NoticeBanner
+          variant="info"
+          title={subtab === 'nfe' ? t.optIn.titleNfe : t.optIn.titleNfse}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span>{subtab === 'nfe' ? t.optIn.descriptionNfe : t.optIn.descriptionNfse}</span>
+            <Button size="sm" onClick={handleActivate} disabled={isActivating}>
+              {isActivating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
+              {isActivating ? t.optIn.activating : t.optIn.action}
+            </Button>
+          </div>
+        </NoticeBanner>
+      )}
+
+      <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder={t.searchPlaceholder}
@@ -288,8 +413,9 @@ export function NotasRecebidasTab() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-          </div>
+      </div>
 
+      {hasCertificate && activeOptIn && (
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-xs text-muted-foreground">{lastSyncLabel}</span>
             <Button variant="outline" size="sm" className="gap-2" onClick={handleSync} disabled={active.isSyncing}>
@@ -297,7 +423,6 @@ export function NotasRecebidasTab() {
               {active.isSyncing ? t.sync.syncing : t.sync.button}
             </Button>
           </div>
-        </>
       )}
 
       {renderBody()}
@@ -315,6 +440,27 @@ export function NotasRecebidasTab() {
         onOpenChange={(v) => !v && setDespesaSource(null)}
         source={despesaSource?.source ?? null}
         linkTransaction={despesaSource?.subtab === 'nfe' ? nfe.linkTransaction : nfse.linkTransaction}
+      />
+
+      <NfeFiscalDetailsDialog
+        open={!!fiscalDetails}
+        onOpenChange={(open) => !open && setFiscalDetails(null)}
+        note={fiscalDetails}
+      />
+
+      <NfeImportDialog
+        open={!!stockImport}
+        onOpenChange={(open) => !open && setStockImport(null)}
+        initialXml={stockImport}
+        inboundNfeId={stockImport?.nota.id}
+      />
+
+      <DirectMaterialPurchaseDialog
+        open={!!purchaseSource}
+        onOpenChange={(open) => !open && setPurchaseSource(null)}
+        prefill={purchaseSource?.prefill}
+        inboundNfeId={purchaseSource?.nota.id}
+        onSuccess={() => setPurchaseSource(null)}
       />
     </div>
   );

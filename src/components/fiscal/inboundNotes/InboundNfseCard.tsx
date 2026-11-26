@@ -1,4 +1,4 @@
-import { FileText, MoreVertical, Receipt, ExternalLink } from 'lucide-react';
+import { Download, FileText, MoreVertical, Receipt, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -17,10 +17,11 @@ interface InboundNfseCardProps {
   nota: InboundNfse;
   onLancarDespesa: (nota: InboundNfse) => void;
   onVerLancamento: (nota: InboundNfse) => void;
+  onDownloadXml: (nota: InboundNfse) => void;
 }
 
 /** Linha de uma NFS-e recebida (serviço tomado). Sem manifestação — NFS-e não tem. */
-export function InboundNfseCard({ nota, onLancarDespesa, onVerLancamento }: InboundNfseCardProps) {
+export function InboundNfseCard({ nota, onLancarDespesa, onVerLancamento, onDownloadXml }: InboundNfseCardProps) {
   const { locale, currency, timezone } = useAppLocaleContext();
   const t = MESSAGES[locale].app.nfse.recebidas;
 
@@ -72,6 +73,10 @@ export function InboundNfseCard({ nota, onLancarDespesa, onVerLancamento }: Inbo
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuItem onClick={() => onDownloadXml(nota)}>
+            <Download className="mr-2 h-4 w-4" />
+            Baixar XML
+          </DropdownMenuItem>
           {nota.financial_transaction_id ? (
             <DropdownMenuItem onClick={() => onVerLancamento(nota)}>
               <ExternalLink className="mr-2 h-4 w-4" />
