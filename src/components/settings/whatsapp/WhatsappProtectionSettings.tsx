@@ -318,7 +318,7 @@ function WindowEditor({
                   'shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors',
                   'disabled:cursor-not-allowed disabled:opacity-60',
                   active
-                    ? 'border-emerald-600 bg-emerald-600 text-white'
+                    ? 'border-primary bg-primary text-primary-foreground'
                     : 'border-border bg-background hover:bg-muted',
                 )}
               >

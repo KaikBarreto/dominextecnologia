@@ -176,7 +176,7 @@ export function SettingsIntegrationContent() {
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 [--primary:0_0%_10%] [--primary-foreground:0_0%_100%] [--ring:0_0%_10%] dark:[--primary:0_0%_88%] dark:[--primary-foreground:0_0%_8%] dark:[--ring:0_0%_70%]">
       <MobilePillTabs
         variant="underline"
         tabs={subTabs}

@@ -63,6 +63,9 @@ describe('WhatsappProtectionSettings', () => {
 
     // OS nasce nos 7 dias: o cliente chama técnico no domingo também.
     expect(day(OS, 'Dom')?.getAttribute('aria-pressed')).toBe('true');
+    expect(day(OS, 'Dom')?.className).toContain('bg-primary');
+    expect(day(OS, 'Dom')?.className).toContain('text-primary-foreground');
+    expect(day(OS, 'Dom')?.className).not.toContain('bg-emerald');
     // Cobrança nasce sem domingo.
     expect(day(LEMBRETES, 'Dom')?.getAttribute('aria-pressed')).toBe('false');
     expect(day(LEMBRETES, 'Sáb')?.getAttribute('aria-pressed')).toBe('true');

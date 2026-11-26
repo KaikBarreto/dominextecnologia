@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.89";
+export const APP_VERSION = "1.41.90";
 
 export const VERSION_NOTES =
-  "Nas configurações do WhatsApp, todas as áreas podem ser consultadas antes da conexão, e prévias de e-mail e janelas de edição receberam ajustes visuais.";
+  "Os destaques visuais das configurações do WhatsApp e das prévias de e-mail agora seguem o padrão preto e branco da plataforma.";

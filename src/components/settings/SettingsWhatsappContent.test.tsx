@@ -221,4 +221,17 @@ describe('SettingsIntegrationContent', () => {
     expect(container.textContent).toContain('Configuração da conta Asaas');
     expect(container.textContent).not.toContain('Configuração do canal de e-mail');
   });
+
+  it('usa o accent canônico preto nas integrações', () => {
+    act(() => {
+      root.render(
+        <MemoryRouter initialEntries={['/configuracoes?tab=integracoes&integration=email']}>
+          <SettingsIntegrationContent />
+        </MemoryRouter>,
+      );
+    });
+
+    expect(container.firstElementChild?.className).toContain('[--primary:0_0%_10%]');
+    expect(container.firstElementChild?.className).toContain('[--primary-foreground:0_0%_100%]');
+  });
 });

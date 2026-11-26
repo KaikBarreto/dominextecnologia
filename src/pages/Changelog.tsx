@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.90',
+    date: '26 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Destaques visuais no padrão da plataforma',
+        category: 'correcao',
+        description: 'Botões, seleções e indicadores nas configurações do WhatsApp e nas prévias de e-mail agora usam o padrão preto com texto e ícones brancos no tema claro, mantendo o contraste correto no tema escuro.',
+      },
+    ],
+  },
+  {
     version: '1.41.89',
     date: '26 de novembro de 2026',
     type: 'patch',

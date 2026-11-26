@@ -40,6 +40,8 @@ describe("CustomerBillingEmailTemplateGallery", () => {
     expect(container.textContent).toContain("Marca clara");
     expect(container.textContent).toContain("Premium escuro");
     expect(container.textContent).toContain("Bento grafite");
+    expect(container.firstElementChild?.className).toContain("[--primary:0_0%_10%]");
+    expect(container.firstElementChild?.className).toContain("[--primary-foreground:0_0%_100%]");
 
     const radios = Array.from(
       container.querySelectorAll<HTMLButtonElement>('[role="radio"]'),

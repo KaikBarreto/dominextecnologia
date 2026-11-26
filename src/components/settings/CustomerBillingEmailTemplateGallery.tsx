@@ -357,7 +357,7 @@ export function CustomerBillingEmailTemplateGallery({
   const previewTemplate = TEMPLATES.find((item) => item.id === preview);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 [--primary:0_0%_10%] [--primary-foreground:0_0%_100%] [--ring:0_0%_10%] dark:[--primary:0_0%_88%] dark:[--primary-foreground:0_0%_8%] dark:[--ring:0_0%_70%]">
       <div>
         <p className="text-xs font-semibold">Aparência do e-mail</p>
         <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
