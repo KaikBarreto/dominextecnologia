@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.82',
+    date: '26 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Links compartilhados com o nome e a arte da sua empresa',
+        category: 'melhoria',
+        description: 'Ao enviar pelo WhatsApp um link de cobrança, assinatura, orçamento, proposta, portal do cliente, contrato, formulário de cadastro, ponto ou avaliação, a prévia passa a mostrar o nome da sua empresa. Com o White Label ativo, a prévia usa também a sua imagem de compartilhamento, que antes valia só para o link da ordem de serviço. Essa imagem é configurada em Configurações, na identidade visual, agora com o nome "Imagem ao compartilhar links". Links já enviados podem levar um tempo para atualizar a prévia.',
+      },
+    ],
+  },
+  {
     version: '1.41.81',
     date: '25 de novembro de 2026',
     type: 'patch',
