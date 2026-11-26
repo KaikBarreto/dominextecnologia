@@ -120,6 +120,7 @@ import { toPdvCustomerRecord } from '@/lib/pdv/catalogCustomer';
 import { completeDurablePdvDirectSale, isDurablePdvDirectSaleAttempt, PDV_DIRECT_SALE_REVIEW_MESSAGE, PDV_DIRECT_SALE_SCOPE_MESSAGE } from '@/lib/pdv/directSaleRecovery';
 import {
   canonicalizePdvDirectSalePayments,
+  PdvDirectSaleV2Error,
   shouldUseLegacyPdvRoute,
   usePdvDirectSaleV2,
   type PdvCompleteDirectSaleV2Result,
@@ -1520,6 +1521,13 @@ function PdvSaleWorkspace({
           if (!isScopeCurrent()) return { server: 'scope_changed', localSaved: false };
           attemptByDraftRef.current.set(draftId, attempt);
           return persistDraftNow(draftId, draft => ({ ...draft, attempt }));
+        },
+        // Venda recusada pelo servidor não deixa identidade para conferir:
+        // o operador corrige o carrinho ou o pagamento e envia outra tentativa.
+        isDefinitiveRejection: error => error instanceof PdvDirectSaleV2Error && error.rejectedByServer,
+        release: (attempt) => {
+          if (attemptByDraftRef.current.get(draftId)?.clientRequestId === attempt.clientRequestId) attemptByDraftRef.current.delete(draftId);
+          return persistDraftNow(draftId, draft => draft.attempt?.clientRequestId === attempt.clientRequestId ? { ...draft, attempt: null } : draft);
         },
         complete: attempt => {
           if (!isScopeCurrent()) throw new Error(PDV_DIRECT_SALE_SCOPE_MESSAGE);

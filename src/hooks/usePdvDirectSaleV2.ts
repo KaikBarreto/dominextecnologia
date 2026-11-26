@@ -57,7 +57,17 @@ export interface PdvCompleteDirectSaleV2Result {
 export interface PdvDirectSaleAttemptV2 { signature: string; id: string }
 
 export class PdvDirectSaleV2Error extends Error {
-  constructor(message: string, public readonly domainCode: string) { super(message); }
+  constructor(
+    message: string,
+    public readonly domainCode: string,
+    /**
+     * O banco respondeu recusando por um motivo conhecido: a transação foi
+     * desfeita e esta requisição não gravou pedido nem chave idempotente.
+     * Falha sem resposta, erro sem motivo e venda já em processamento ficam
+     * de fora, porque nesses casos pode existir pedido.
+     */
+    public readonly rejectedByServer = false,
+  ) { super(message); }
 }
 
 const text = (value: unknown) => typeof value === 'string' ? value : null;
@@ -72,7 +82,9 @@ function detailCode(error: RpcError): string {
 
 export function mapPdvDirectSaleV2Error(error: RpcError): PdvDirectSaleV2Error {
   const code = detailCode(error);
-  if (code.startsWith('pdv_coupon_')) return new PdvDirectSaleV2Error(safePdvCouponError(error).message, code);
+  const rejectedByServer = /^[0-9A-Z]{5}$/.test(error.code ?? '')
+    && code !== 'pdv_direct_sale_unknown' && code !== 'pdv_direct_sale_in_progress';
+  if (code.startsWith('pdv_coupon_')) return new PdvDirectSaleV2Error(safePdvCouponError(error).message, code, rejectedByServer);
   const messages: Record<string, string> = {
     pdv_fiado_due_date_invalid: 'Revise o vencimento do fiado.',
     pdv_fiado_installments_due_required: 'Informe o primeiro vencimento para parcelar o fiado.',
@@ -111,7 +123,7 @@ export function mapPdvDirectSaleV2Error(error: RpcError): PdvDirectSaleV2Error {
     pdv_direct_sale_backdate_forbidden: 'Você não tem permissão para alterar a data da venda.',
   };
   return new PdvDirectSaleV2Error(
-    messages[code] ?? 'Não foi possível concluir a venda. Revise os dados e tente novamente.', code,
+    messages[code] ?? 'Não foi possível concluir a venda. Revise os dados e tente novamente.', code, rejectedByServer,
   );
 }
 

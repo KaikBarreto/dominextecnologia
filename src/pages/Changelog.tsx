@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.85',
+    date: '26 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Venda recusada no PDV pode ser corrigida e finalizada',
+        category: 'correcao',
+        description: 'Quando o sistema recusava uma venda, por exemplo por limite de fiado insuficiente ou falta de permissão, o atendimento ficava preso e pedia conferência em Pedidos ao trocar a forma de pagamento ou ajustar os itens. Agora basta corrigir o que foi apontado e finalizar de novo. A conferência em Pedidos continua sendo pedida somente quando o envio fica sem resposta, para evitar venda em duplicidade.',
+      },
+    ],
+  },
+  {
     version: '1.41.84',
     date: '26 de novembro de 2026',
     type: 'patch',

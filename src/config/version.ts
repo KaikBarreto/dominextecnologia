@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.84";
+export const APP_VERSION = "1.41.85";
 
 export const VERSION_NOTES =
-  "Na cobrança por cartão, agora você pode deixar o cliente escolher em quantas vezes pagar, até o limite que você definir. Também corrigimos a atualização automática dos pagamentos em vendas parceladas no cartão.";
+  "No PDV, uma venda recusada pelo sistema, por exemplo por limite de fiado, pode ser corrigida e finalizada no mesmo atendimento, sem ficar presa pedindo conferência em Pedidos.";

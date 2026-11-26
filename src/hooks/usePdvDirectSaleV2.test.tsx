@@ -31,6 +31,17 @@ describe('usePdvDirectSaleV2', () => {
     expect(mapPdvDirectSaleV2Error({ details: 'code=pdv_direct_sale_session_invalid' }).message).toBe('O caixa selecionado não está disponível. Confira se está aberto e se você tem permissão para operá-lo.');
   });
 
+  it('só trata como recusa definitiva a resposta do banco com motivo conhecido', () => {
+    expect(mapPdvDirectSaleV2Error({ code: '23514', details: 'code=pdv_direct_sale_credit_limit_exceeded' }).rejectedByServer).toBe(true);
+    expect(mapPdvDirectSaleV2Error({ code: '42501', details: 'code=pdv_direct_sale_bank_forbidden' }).rejectedByServer).toBe(true);
+    // Sem resposta do servidor: o pedido pode ter sido criado.
+    expect(mapPdvDirectSaleV2Error({ code: '', message: 'TypeError: Failed to fetch', details: 'at fetch code=pdv_direct_sale_credit_limit_exceeded' }).rejectedByServer).toBe(false);
+    expect(mapPdvDirectSaleV2Error({ message: 'Bad Gateway' }).rejectedByServer).toBe(false);
+    // A chave já existe no servidor: há (ou pode haver) um pedido com ela.
+    expect(mapPdvDirectSaleV2Error({ code: '55000', details: 'code=pdv_direct_sale_in_progress' }).rejectedByServer).toBe(false);
+    expect(mapPdvDirectSaleV2Error({ code: '22023', message: 'A chave idempotente ja foi usada com outro conteudo.' }).rejectedByServer).toBe(false);
+  });
+
   beforeEach(() => { vi.clearAllMocks(); authScope.companyId = 'company-a'; authScope.permissions = ['screen:pdv']; });
 
   it('preserva payload histórico sem cupom e separa desconto promocional de pagamentos', () => {

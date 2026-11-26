@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { usePdvSaleDraftWorkspace } from './usePdvSaleDraftWorkspace';
-import { createDurablePdvDirectSaleAttempt } from '@/lib/pdv/directSaleRecovery';
+import { completeDurablePdvDirectSale, createDurablePdvDirectSaleAttempt } from '@/lib/pdv/directSaleRecovery';
 import { pdvSaleDraftStorageKey, type PdvSaleDraft } from '@/lib/pdv/sale-drafts';
 
 const { rpc } = vi.hoisted(() => ({ rpc: vi.fn() }));
@@ -176,3 +176,42 @@ describe('reabrir o PDV não transforma o mesmo atendimento em versões diferent
     expect(rows.get(draftId)!.revision).toBe(2);
   });
 });
+
+describe('venda recusada pelo servidor libera o atendimento para correção', () => {
+  beforeEach(() => { vi.clearAllMocks(); localStorage.clear(); });
+  afterEach(() => vi.restoreAllMocks());
+
+  it('remove a tentativa do atendimento neste dispositivo e na conta, e a venda corrigida segue com outra identidade', async () => {
+    const rows = fakeAccount();
+    const { result } = renderHook(() => usePdvSaleDraftWorkspace(options));
+    await waitFor(() => expect(result.current.serverReady).toBe(true));
+    const draftId = result.current.activeDraft.id;
+    act(() => result.current.updateActiveDraft(addLine));
+    const refusal = new Error('O limite disponível do cliente não cobre esta venda.');
+    const persist = (attempt: NonNullable<PdvSaleDraft['attempt']>) => result.current.persistDraftNow(draftId, draft => ({ ...draft, attempt }));
+    const release = (attempt: NonNullable<PdvSaleDraft['attempt']>) => result.current.persistDraftNow(draftId, draft =>
+      draft.attempt?.clientRequestId === attempt.clientRequestId ? { ...draft, attempt: null } : draft);
+    let refusedKey: string | undefined;
+
+    await act(async () => {
+      await expect(completeDurablePdvDirectSale({ attempt: result.current.activeDraft.attempt, signature: 'fiado', persist,
+        complete: async attempt => { refusedKey = attempt.idempotencyKey; throw refusal; },
+        onConfirmed: vi.fn(), isDefinitiveRejection: error => error === refusal, release })).rejects.toBe(refusal);
+    });
+    expect(refusedKey).toMatch(/^direct-sale-v3-/);
+    expect(result.current.activeDraft.attempt).toBeNull();
+    expect((rows.get(draftId)!.payload as { attempt: unknown }).attempt).toBeNull();
+    expect(result.current.draftConflicts).toEqual([]);
+
+    // O operador troca a forma de pagamento: a assinatura muda e a venda segue.
+    const complete = vi.fn(async (_attempt: NonNullable<PdvSaleDraft['attempt']>) => ({ orderId: 'order', orderNumber: 23, deliveryId: 'delivery', subtotal: 1800, discountAmount: 0, total: 1800, idempotent: false }));
+    await act(async () => {
+      await completeDurablePdvDirectSale({ attempt: result.current.activeDraft.attempt, signature: 'dinheiro', persist,
+        complete, onConfirmed: vi.fn(), isDefinitiveRejection: error => error === refusal, release });
+    });
+    expect(complete).toHaveBeenCalledOnce();
+    expect(complete.mock.calls[0][0].idempotencyKey).not.toBe(refusedKey);
+    expect(result.current.activeDraft.attempt?.confirmedSale?.orderNumber).toBe(23);
+  });
+});
+
