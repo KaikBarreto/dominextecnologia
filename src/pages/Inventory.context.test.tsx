@@ -22,7 +22,7 @@ vi.mock('@/components/mobile/StatCarousel',()=>({StatCarousel:({items}:{items:{k
 vi.mock('@/components/inventory/StockLocationNavigator',()=>({StockLocationNavigator:({items,onSelect,generalId,generalLabel}:{items:{id:string;name:string}[];onSelect:(id:string)=>void;generalId:string;generalLabel:string})=><nav aria-label="Locais disponíveis"><button onClick={()=>onSelect(generalId)}>{generalLabel}</button>{items.map(item=><button key={item.id} onClick={()=>onSelect(item.id)}>{item.name}</button>)}</nav>}));
 vi.mock('@/components/inventory/StockLocationsTab',()=>({StockLocationsTab:({stocks}:{stocks:Stock[]})=><section aria-label="Gestão de locais">{stocks.map(stock=><p key={stock.id}>{stock.name}</p>)}</section>}));
 vi.mock('@/components/inventory/StockConfiguratorDialog',()=>({StockConfiguratorDialog:()=>null}));
-vi.mock('@/components/inventory/InventoryFormDialog',()=>({InventoryFormDialog:({open,activeStockId}:{open:boolean;activeStockId:string|null})=>open?<section aria-label="Cadastro de material">{activeStockId}</section>:null}));
+vi.mock('@/components/inventory/InventoryFormDialog',()=>({InventoryFormDialog:({open,activeStockId,item}:{open:boolean;activeStockId:string|null;item:InventoryItem|null})=>open?<section aria-label="Cadastro de material">{item?.name} · {activeStockId ?? 'geral'}</section>:null}));
 vi.mock('@/components/inventory/StockTransferDialog',()=>({StockTransferDialog:()=>null}));
 vi.mock('@/components/inventory/InventorySettingsDialog',()=>({InventorySettingsDialog:()=>null}));
 vi.mock('@/components/inventory/InlineMovementDialog',()=>({InlineMovementDialog:()=>null}));
@@ -74,6 +74,15 @@ describe('Inventory compartilhado no contexto da loja',()=>{
   render(<App context='general' entry='/estoque?local=oficina'/>);
   expect(screen.getAllByRole('tab')).toHaveLength(7);expect(screen.getByText('Material exclusivo oficina')).toBeInTheDocument();
   expect(screen.getByLabelText('Resumo cost')).toHaveTextContent(/^1400$/);
+ });
+ it('abre a edição do cadastro pela visão geral sem vincular a quantidade a um local',()=>{
+  render(<App context='general' entry='/estoque'/>);
+  const row=screen.getByRole('row',{name:/Material da loja/});
+  const trigger=within(row).getByRole('button',{name:'Ações'});
+  trigger.focus();
+  fireEvent.keyDown(trigger,{key:'Enter'});
+  fireEvent.click(screen.getByRole('menuitem',{name:'Editar'}));
+  expect(screen.getByRole('region',{name:'Cadastro de material'})).toHaveTextContent('Material da loja · geral');
  });
  it('mascara conteúdo e cadastros ao perder o último local autorizado',()=>{
   const app=render(<App entry='/pdv/estoque?local=loja'/>);expect(screen.getByText('Material da loja')).toBeInTheDocument();

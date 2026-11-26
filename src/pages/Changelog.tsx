@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.87',
+    date: '26 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Edição de materiais no Estoque geral',
+        category: 'correcao',
+        description: 'Ao usar a visão Estoque geral, a ação Editar volta a abrir normalmente o cadastro do material. A quantidade de cada item continua sendo controlada separadamente em cada local de estoque.',
+      },
+    ],
+  },
+  {
     version: '1.41.86',
     date: '26 de novembro de 2026',
     type: 'patch',
