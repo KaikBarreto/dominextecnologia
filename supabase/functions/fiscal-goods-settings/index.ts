@@ -45,7 +45,9 @@ async function saveDocumentSettings(auth: FiscalAuth, body: JsonObject) {
   const [nfeResult, nfceResult] = await Promise.all([
     auth.supabase.from('company_nfe_settings').upsert({
       company_id: auth.companyId,
-      enabled: nfe.enabled === true,
+      // NF-e não possui mais rollout manual: toda empresa com o módulo fica
+      // habilitada. A autorização fiscal ainda valida entitlement e cadastro.
+      enabled: true,
       series: exitSeries?.series ?? nfeSeries,
       default_exit_series_id: defaultExitSeriesId,
       default_entry_series_id: defaultEntrySeriesId,

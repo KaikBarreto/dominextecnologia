@@ -22,7 +22,7 @@ Deno.env.set('FISCAL_SERVICE_URL','https://engine.example.invalid');
 Deno.env.set('FISCAL_SERVICE_TOKEN','fictitious-motor-test-key');
 let moduleAllowed=true, issuerAllowed=true, sourceAllowed=true, existingStatus='draft', environment='homologacao';
 let hasCertificate=false; let expiresAt='2099-01-01';
-let nfeHomologationApproved=true;let nfeProductionApproved=false;
+let nfeHomologationApproved=true;let nfeProductionApproved=false;let nfeSettingsMissing=false;
 let seriesAllowed=true, seriesActive=true, seriesDirection='saida';
 let carrierAllowed=true, carrierActive=true;
 let completeMode=false;let faultStage='';let storedStatus='draft';let claimCompared=false;let rowExtra:Record<string,unknown>={};let transmitCompared=false;let rowVersion=0;const patches:Record<string,unknown>[]=[];
@@ -33,7 +33,7 @@ let reservationArgs:Record<string,unknown>|null=null;
 const storedArtifacts=new Map<string,string>();
 const json = (value:unknown) => new Response(JSON.stringify(value),{status:200,headers:{'content-type':'application/json'}});
 function setup() {
- moduleAllowed=true;issuerAllowed=true;sourceAllowed=true;existingStatus='draft';environment='homologacao';hasCertificate=false;expiresAt='2099-01-01';nfeHomologationApproved=true;nfeProductionApproved=false;seriesAllowed=true;seriesActive=true;seriesDirection='saida';carrierAllowed=true;carrierActive=true;completeMode=false;faultStage='';storedStatus='draft';claimCompared=false;rowExtra={};transmitCompared=false;rowVersion=0;reservationArgs=null;storedArtifacts.clear();patches.length=0;paths.length=0;documentWrites.length=0;motorBodies.length=0;
+ moduleAllowed=true;issuerAllowed=true;sourceAllowed=true;existingStatus='draft';environment='homologacao';hasCertificate=false;expiresAt='2099-01-01';nfeHomologationApproved=true;nfeProductionApproved=false;nfeSettingsMissing=false;seriesAllowed=true;seriesActive=true;seriesDirection='saida';carrierAllowed=true;carrierActive=true;completeMode=false;faultStage='';storedStatus='draft';claimCompared=false;rowExtra={};transmitCompared=false;rowVersion=0;reservationArgs=null;storedArtifacts.clear();patches.length=0;paths.length=0;documentWrites.length=0;motorBodies.length=0;
  globalThis.fetch = ((input:RequestInfo|URL, init?:RequestInit) => {
   const url=new URL(typeof input==='string'?input:input instanceof URL?input.href:input.url);
   assert(['backend.example.invalid','engine.example.invalid'].includes(url.hostname),'Tentativa de rede externa durante teste fiscal');
@@ -67,7 +67,7 @@ function setup() {
   if(name==='can_access_stock')return Promise.resolve(json(true));
   if(name==='stocks')return Promise.resolve(json({id:stock}));
   if(name==='company_nfce_settings')return Promise.resolve(json({uf:'RJ',series:1,enabled:true,homologation_approved:true,production_approved:true,...(completeMode?{qr_base_url_homologation:'https://sefaz.example.gov.br/qrcode',access_url_homologation:'https://sefaz.example.gov.br/consulta'}:{})}));
-  if(name==='company_nfe_settings')return Promise.resolve(json({enabled:true,homologation_approved:nfeHomologationApproved,production_approved:nfeProductionApproved,default_operation_nature:'VENDA DE MERCADORIA'}));
+  if(name==='company_nfe_settings')return Promise.resolve(json(nfeSettingsMissing?null:{enabled:true,homologation_approved:nfeHomologationApproved,production_approved:nfeProductionApproved,default_operation_nature:'VENDA DE MERCADORIA'}));
   if(name==='nfe_series')return Promise.resolve(json(seriesAllowed?{id:seriesId,direction:seriesDirection,active:seriesActive}:null));
   if(name==='fiscal_goods_carriers')return Promise.resolve(json(carrierAllowed?{id:carrierId,active:carrierActive}:null));
   if(name==='nfce_documents'||name==='nfe_documents'){
@@ -207,12 +207,21 @@ Deno.test('NF-e usa homologação escolhida na nota mesmo quando o ambiente glob
  }finally{globalThis.fetch=originalFetch;}
 });
 
-Deno.test('NF-e bloqueia produção escolhida na nota sem aprovação, antes de reservar número',async()=>{
+Deno.test('NF-e emite para empresa com o módulo mesmo sem linha de configuração da NF-e',async()=>{
+ setup();completeMode=true;hasCertificate=true;nfeSettingsMissing=true;try{
+  const response=await handler(request({action:'emit',draft:{...completeNfeDraft}}));
+  assertEquals(response.status,201);
+  assertEquals(reservationArgs,{p_company_id:company,p_model:55,p_series_id:seriesId,p_direction:'saida'});
+  assert(paths.includes('MOTOR:/v1/nfe/autorizar'));
+ }finally{globalThis.fetch=originalFetch;}
+});
+
+Deno.test('NF-e permite produção escolhida na nota sem aprovação manual de rollout',async()=>{
  setup();completeMode=true;hasCertificate=true;environment='homologacao';try{
   const response=await handler(request({action:'emit',draft:{...completeNfeDraft,environment:'producao'}}));
-  assertEquals(response.status,422);
-  assertEquals((await response.json()).error,'production_not_approved');
-  assert(!paths.some(path=>path.includes('reserve_goods_fiscal_number')||path.startsWith('MOTOR:')));
+  assertEquals(response.status,201);
+  assertEquals(reservationArgs,{p_company_id:company,p_model:55,p_series_id:seriesId,p_direction:'saida'});
+  assert(paths.includes('MOTOR:/v1/nfe/preparar'));assert(paths.includes('MOTOR:/v1/nfe/autorizar'));
  }finally{globalThis.fetch=originalFetch;}
 });
 

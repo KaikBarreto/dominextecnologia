@@ -8,11 +8,14 @@ export function goodsReadinessIssues(model: 55 | 65, company: Row, fiscal: Row, 
   const add = (code: string, message: string, section: GoodsReadinessIssue['section']) => issues.push({code,message,section});
   const expiry = new Date(text(fiscal.certificate_expires_at)).getTime();
   if (!fiscal.certificado_ref || !Number.isFinite(expiry) || expiry <= now) add('certificate_required','Envie um certificado A1 válido nas Configurações Fiscais antes de emitir.','certificado');
-  if (config.enabled !== true) add('document_disabled',`Ative a ${model === 55 ? 'NF-e' : 'NFC-e'} nas Configurações Fiscais.`,'mercadorias');
+  // NF-e é liberada para toda empresa com entitlement do módulo. O authorize
+  // da Edge continua falhando fechado sem assinatura, módulo e permissão.
+  // NFC-e mantém o rollout separado e todos os gates manuais atuais.
+  if (model === 65 && config.enabled !== true) add('document_disabled','Ative a NFC-e nas Configurações Fiscais.','mercadorias');
   const production = fiscal.fiscal_ambiente === 'producao';
   if (model === 65 && production && !productionEnabled) add('production_blocked','A emissão de NFC-e em produção está bloqueada.','mercadorias');
-  if (production && config.production_approved !== true) add('production_not_approved','A emissão em produção ainda não foi liberada para esta empresa. Conclua a homologação primeiro.','mercadorias');
-  if (!production && config.homologation_approved !== true) add('homologation_not_approved','A homologação deste documento ainda não foi aprovada para esta empresa.','mercadorias');
+  if (model === 65 && production && config.production_approved !== true) add('production_not_approved','A emissão em produção ainda não foi liberada para esta empresa. Conclua a homologação primeiro.','mercadorias');
+  if (model === 65 && !production && config.homologation_approved !== true) add('homologation_not_approved','A homologação deste documento ainda não foi aprovada para esta empresa.','mercadorias');
   const missing: string[] = [];
   if (digits(company.document).length !== 14) missing.push('CNPJ');
   if (!text(company.name)) missing.push('nome da empresa');
