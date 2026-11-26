@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.42.1',
+    date: '26 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Fature a diferença de uma OS com recebimento anterior',
+        category: 'correcao',
+        description: 'Se um lançamento antigo já foi quitado por um valor menor que o total da OS, a tela identifica a diferença e permite lançar somente o que falta a receber. O pagamento anterior fica preservado, com proteção contra complementos repetidos.',
+      },
+      {
+        title: 'Recibo e histórico acessíveis no faturamento',
+        category: 'melhoria',
+        description: 'Consulte os recibos dos pagamentos confirmados e abra o Financeiro mesmo quando as contas existentes já estão quitadas. Internamente, o recibo também pode ser emitido antes da conclusão do atendimento.',
+      },
+    ],
+  },
+  {
     version: '1.42.0',
     date: '26 de novembro de 2026',
     type: 'minor',

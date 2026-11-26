@@ -19118,6 +19118,10 @@ export type Database = {
       }
       os_commercial_is_billed: { Args: { p_os_id: string }; Returns: boolean }
       get_os_manual_receivables: { Args: { p_os_id: string }; Returns: Json }
+      complement_os_manual_billing: {
+        Args: { p_os_id: string; p_request_id: string; p_expected_total: number; p_expected_billed: number; p_due_date: string; p_category: string }
+        Returns: Json
+      }
       approve_quote_financial_atomic: {
         Args: { p_quote_id: string; p_request_id: string; p_mode: string; p_rows: Json; p_fee?: number; p_fee_category?: string | null }
         Returns: Json

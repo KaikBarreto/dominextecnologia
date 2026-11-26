@@ -6,20 +6,44 @@ import { useAuth } from '@/contexts/AuthContext';
 import { resolveSystemCategoryNameFresh } from '@/hooks/useFinancialCategories';
 import type { ReceivePaymentResult } from '@/components/financial/ReceivePaymentModal';
 import { OS_COMMERCIAL_KEY } from './useOsCommercial';
-
-interface OsReceivable { has_live_charge?: boolean; id: string; amount: number; amount_received: number; is_paid: boolean; due_date: string | null; installment_total: number | null }
+import type { OsReceivable } from '@/lib/osCommercial';
 
 export function useOsManualBilling(osId: string, enabled: boolean) {
   const { companyId } = useUserCompany();
   const { user } = useAuth();
   const client = useQueryClient();
   const request = useRef<{ signature: string; id: string; args: Record<string, unknown> } | null>(null);
+  const complementRequest = useRef<{ signature: string; id: string; args: Record<string, unknown> } | null>(null);
   const query = useQuery({ queryKey: ['service-orders', 'receivables', companyId, user?.id, osId], enabled: enabled && !!companyId && !!user,
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_os_manual_receivables', { p_os_id: osId });
       if (error) throw error;
       return data as unknown as OsReceivable[];
     } });
+  const invalidate = () => Promise.all([
+    ['quotes'], ['service-orders'], ['service-order-budget'], [OS_COMMERCIAL_KEY, osId],
+    ['financial-transactions'], ['financial-summary'], ['portal-payments'], ['account-balances'], ['dashboard-stats'],
+    ['os-billing-state'], ['os-billing-flags'], ['os-revenue-summary'],
+    ['pdv-cofre-balance'], ['pdv-cash-session-detail'], ['pdv-cash-sessions-v2'], ['nfse-auto-readiness'],
+  ].map(queryKey => client.invalidateQueries({ queryKey })));
+  const complement = async (total: number, billed: number, dueDate: string) => {
+    if (!companyId || !user) throw new Error('Sessão indisponível.');
+    const category = await resolveSystemCategoryNameFresh(client, companyId, 'service_revenue');
+    const signature = JSON.stringify([companyId, user.id, osId, total, billed, dueDate]);
+    if (complementRequest.current?.signature !== signature) complementRequest.current = {
+      signature, id: crypto.randomUUID(), args: { p_os_id: osId, p_expected_total: total, p_expected_billed: billed, p_due_date: dueDate, p_category: category },
+    };
+    const { data, error } = await supabase.rpc('complement_os_manual_billing', {
+      ...complementRequest.current.args, p_request_id: complementRequest.current.id,
+    } as { p_os_id: string; p_request_id: string; p_expected_total: number; p_expected_billed: number; p_due_date: string; p_category: string });
+    if (error) {
+      if (/^[A-Z0-9]{5}$/.test(error.code ?? '')) complementRequest.current = null;
+      throw error;
+    }
+    complementRequest.current = null;
+    await invalidate();
+    return data;
+  };
   const receive = async (total: number, payment: ReceivePaymentResult | null, dueDate: string, parent?: NonNullable<typeof query.data>[number]) => {
     if (!companyId || !user) throw new Error('Sessão indisponível.');
     const [category, feeCategory] = await Promise.all([
@@ -44,13 +68,8 @@ export function useOsManualBilling(osId: string, enabled: boolean) {
       throw error;
     }
     request.current = null;
-    await Promise.all([
-      ['quotes'], ['service-orders'], ['service-order-budget'], [OS_COMMERCIAL_KEY, osId],
-      ['financial-transactions'], ['financial-summary'], ['portal-payments'], ['account-balances'], ['dashboard-stats'],
-      ['os-billing-state'], ['os-billing-flags'], ['os-revenue-summary'],
-      ['pdv-cofre-balance'], ['pdv-cash-session-detail'], ['pdv-cash-sessions-v2'], ['nfse-auto-readiness'],
-    ].map(queryKey => client.invalidateQueries({ queryKey })));
+    await invalidate();
     return data;
   };
-  return { ...query, receive };
+  return { ...query, receive, complement };
 }

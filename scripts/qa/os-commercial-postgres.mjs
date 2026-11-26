@@ -981,5 +981,7 @@ async function testConcurrency() {
   }
 }
 
-await testFlow();
-if (!process.exitCode) await testConcurrency();
+if (import.meta.main) {
+  await testFlow();
+  if (!process.exitCode) await testConcurrency();
+}

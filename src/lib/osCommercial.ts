@@ -45,6 +45,32 @@ export interface OsFieldDraft {
   items: OsCommercialItem[];
   show_values: boolean;
 }
+export interface OsReceivable {
+  id: string;
+  amount: number;
+  amount_received: number;
+  is_paid: boolean;
+  due_date: string | null;
+  installment_total?: number | null;
+  has_live_charge?: boolean;
+  can_complement?: boolean;
+}
+
+/** Distingue saldo das contas existentes da parte da OS ainda não faturada. */
+export function getOsBillingTotals(total: number, rows: OsReceivable[]) {
+  const cents = (value: number) => Math.round(value * 100);
+  const billed = rows.reduce((sum, row) => sum + cents(row.amount), 0);
+  const received = rows.reduce((sum, row) => sum + cents(row.is_paid ? row.amount : row.amount_received), 0);
+  const commercial = cents(total);
+  return {
+    billed: billed / 100,
+    received: received / 100,
+    open: Math.max(0, billed - received) / 100,
+    unbilled: Math.max(0, commercial - billed) / 100,
+    overbilled: Math.max(0, billed - commercial) / 100,
+    remaining: Math.max(0, commercial - received) / 100,
+  };
+}
 export const osCommercialLineTotal = (item: OsCommercialItem) => Math.round(item.quantity * Math.round(item.unit_price * 100)) / 100;
 export function osCommercialError(error: unknown) {
   const code = (error as { code?: string })?.code;
@@ -66,6 +92,7 @@ export function osBillingError(error: unknown) {
   const code = (error as { code?: string })?.code;
   if (code === 'OSC01') return 'O saldo ou o orçamento mudou. Confira os pagamentos atualizados antes de tentar novamente.';
   if (code === 'OSC02') return 'Esta OS já tem uma cobrança ou está cancelada. Confira a situação no Financeiro.';
+  if (code === 'OSC04') return 'Confira esta diferença no Financeiro. Parcelas e cobranças vinculadas precisam ser revisadas antes de complementar a OS.';
   if (code === '42501') return 'Você não tem permissão para faturar ou receber nesta conta. Peça ao responsável para revisar seu acesso.';
   if (code === 'OSC03' || code?.startsWith('22') || code?.startsWith('23')) return 'Confira o valor, a categoria, a conta, a forma de pagamento e a data do recebimento.';
   return 'Não foi possível confirmar o recebimento. Confira os pagamentos atualizados. Ao tentar novamente com os mesmos dados, o sistema verifica o pedido anterior.';

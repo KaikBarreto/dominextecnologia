@@ -10,7 +10,25 @@ vi.mock('@/hooks/useFinancialCategories', () => ({ resolveSystemCategoryNameFres
 vi.mock('./useOsCommercial', () => ({ OS_COMMERCIAL_KEY: 'os-commercial-document' }));
 import { useOsManualBilling } from './useOsManualBilling';
 describe('recebimento parcial da OS', () => {
+  it('reenvia o mesmo complemento após timeout e invalida todas as leituras financeiras', async () => {
+    mocks.rpc.mockReset();
+    const client = new QueryClient();
+    const invalidate = vi.spyOn(client,'invalidateQueries');
+    const wrapper = ({ children }: PropsWithChildren) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+    const hook = renderHook(() => useOsManualBilling('os-a', false), { wrapper });
+    mocks.rpc.mockResolvedValueOnce({ error: { message: 'Failed to fetch' } });
+    await expect(hook.result.current.complement(3300,2600,'2026-12-26')).rejects.toMatchObject({message:'Failed to fetch'});
+    mocks.rpc.mockResolvedValueOnce({data:{amount:700},error:null});
+    await hook.result.current.complement(3300,2600,'2026-12-26');
+    expect(mocks.rpc.mock.calls[0]).toEqual(mocks.rpc.mock.calls[1]);
+    expect(mocks.rpc.mock.calls[1]).toEqual(['complement_os_manual_billing',expect.objectContaining({p_expected_total:3300,p_expected_billed:2600})]);
+    for (const root of ['service-orders','financial-transactions','financial-summary','os-billing-state','os-billing-flags','os-revenue-summary','portal-payments']) {
+      expect(invalidate).toHaveBeenCalledWith({queryKey:[root]});
+    }
+    client.clear();
+  });
   it('reenvia a mesma baixa após timeout mesmo que o refetch já mostre o saldo atualizado', async () => {
+    mocks.rpc.mockReset();
     const client = new QueryClient();
     const wrapper = ({ children }: PropsWithChildren) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
     const hook = renderHook(() => useOsManualBilling('os-a', false), { wrapper });
