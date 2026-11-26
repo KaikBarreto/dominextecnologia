@@ -398,7 +398,7 @@ export const nfseEngine: NfseEngine = {
     ctx: NfseProviderCtx,
     input: NfseEmitirInput,
   ): Promise<NfseResultado> {
-    const { dps, tomador, intermediario, servico, valores } = input;
+    const { dps, tomador, intermediario, servico, valores, ibsCbs } = input;
     // Fallback no rótulo histórico: só a emissão automática manda contexto
     // próprio (`emitir_nfse_auto:<job_id>`), pro rastro de decifra do
     // certificado dizer QUAL job usou a chave privada de QUAL CNPJ.
@@ -518,6 +518,15 @@ export const nfseEngine: NfseEngine = {
         documentoReferencia: clean(servico.documentoReferencia) || undefined,
         informacoesComplementares: clean(servico.informacoesComplementares) || undefined,
       },
+      ibsCbs: ibsCbs
+        ? {
+          codigoIndicadorOperacao: ibsCbs.codigoIndicadorOperacao,
+          cst: ibsCbs.cst,
+          classificacaoTributaria: ibsCbs.classificacaoTributaria,
+          consumidorFinal: ibsCbs.consumidorFinal,
+          destinatarioDiferente: ibsCbs.destinatarioDiferente,
+        }
+        : undefined,
       valores: valoresPayload,
     });
 

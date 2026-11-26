@@ -231,6 +231,12 @@ const COLUNAS_TOLERANTES = [
   "documento_responsabilidade_tecnica",
   "documento_referencia",
   "informacoes_complementares",
+  "ibscbs_ativo",
+  "ibscbs_cindop",
+  "ibscbs_cst",
+  "ibscbs_cclasstrib",
+  "ibscbs_indfinal",
+  "ibscbs_inddest",
 ];
 
 // ⚠️ Assimetria PROPOSITAL com `save-draft.ts`, onde as colunas do avulso NÃO
@@ -546,6 +552,14 @@ export interface EmitBody {
     percentualTotalTributosSimplesNacional?: number | string;
     // Alias do front pro mesmo campo acima. Mesma precedência.
     percentualTribSn?: number | string;
+  };
+  ibsCbs?: {
+    ativo?: boolean;
+    codigoIndicadorOperacao?: string;
+    cst?: string;
+    classificacaoTributaria?: string;
+    consumidorFinal?: string;
+    destinatarioDiferente?: string;
   };
   dataCompetencia?: string;
   idempotencyKey?: string;
@@ -1277,6 +1291,51 @@ export async function emitirNfseAutorizada(
       );
     }
 
+    // IBS/CBS da NFS-e: precedência nota → rascunho → default da empresa.
+    // O Portal Nacional calcula os valores; enviamos somente a classificação.
+    const ibsCbsAtivo = typeof body?.ibsCbs?.ativo === "boolean"
+      ? body.ibsCbs.ativo
+      : (draft?.ibscbs_ativo ?? fiscal.nfse_ibscbs_ativo) === true;
+    const ibsCbs = ibsCbsAtivo
+      ? {
+        codigoIndicadorOperacao: clean(firstNonEmpty(
+          body?.ibsCbs?.codigoIndicadorOperacao,
+          draft?.ibscbs_cindop,
+          fiscal.nfse_ibscbs_cindop,
+        )),
+        cst: clean(firstNonEmpty(body?.ibsCbs?.cst, draft?.ibscbs_cst, fiscal.nfse_ibscbs_cst)),
+        classificacaoTributaria: clean(firstNonEmpty(
+          body?.ibsCbs?.classificacaoTributaria,
+          draft?.ibscbs_cclasstrib,
+          fiscal.nfse_ibscbs_cclasstrib,
+        )),
+        consumidorFinal: clean(firstNonEmpty(
+          body?.ibsCbs?.consumidorFinal,
+          draft?.ibscbs_indfinal,
+          fiscal.nfse_ibscbs_indfinal,
+          "0",
+        )),
+        destinatarioDiferente: clean(firstNonEmpty(
+          body?.ibsCbs?.destinatarioDiferente,
+          draft?.ibscbs_inddest,
+          fiscal.nfse_ibscbs_inddest,
+          "0",
+        )),
+      }
+      : null;
+    if (ibsCbs && (
+      !/^\d{6}$/.test(ibsCbs.codigoIndicadorOperacao)
+      || !/^\d{3}$/.test(ibsCbs.cst)
+      || !/^\d{6}$/.test(ibsCbs.classificacaoTributaria)
+      || !/^[01]$/.test(ibsCbs.consumidorFinal)
+      || !/^[01]$/.test(ibsCbs.destinatarioDiferente)
+    )) {
+      return jsonResponse({
+        error: "invalid_ibscbs",
+        message: "Revise a classificação IBS/CBS da NFS-e: cIndOp (6 dígitos), CST (3) e cClassTrib (6).",
+      }, 422);
+    }
+
     if (missing.length > 0) {
       return jsonResponse(
         {
@@ -1684,6 +1743,12 @@ export async function emitirNfseAutorizada(
       documento_responsabilidade_tecnica: documentoResponsabilidadeTecnica || null,
       documento_referencia: documentoReferencia || null,
       informacoes_complementares: informacoesComplementares || null,
+      ibscbs_ativo: !!ibsCbs,
+      ibscbs_cindop: ibsCbs?.codigoIndicadorOperacao ?? null,
+      ibscbs_cst: ibsCbs?.cst ?? null,
+      ibscbs_cclasstrib: ibsCbs?.classificacaoTributaria ?? null,
+      ibscbs_indfinal: ibsCbs?.consumidorFinal ?? "0",
+      ibscbs_inddest: ibsCbs?.destinatarioDiferente ?? "0",
       // Registra o cTribMun EFETIVAMENTE enviado (pode ter vindo da herança do
       // tipo de serviço) — a linha tem que espelhar o que foi à prefeitura.
       [COL_CTRIBMUN]: codigoTributacaoMunicipal || null,
@@ -1862,6 +1927,13 @@ export async function emitirNfseAutorizada(
           informacoesComplementares: informacoesComplementares || undefined,
         },
         valores,
+        ibsCbs: ibsCbs
+          ? {
+            ...ibsCbs,
+            consumidorFinal: ibsCbs.consumidorFinal as "0" | "1",
+            destinatarioDiferente: ibsCbs.destinatarioDiferente as "0" | "1",
+          }
+          : undefined,
       });
     } catch (err) {
       // Recusa da prefeitura / falha do motor: a TENTATIVA não pode sumir.

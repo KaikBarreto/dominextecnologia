@@ -19,7 +19,8 @@ import { Receipt, Globe, ShieldCheck, Ban, Plus, BookmarkPlus } from 'lucide-rea
 import { toast } from 'sonner';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n/messages';
-import type { NfseServicoState, NfseValoresState, TribIssqn } from './types';
+import type { NfseIbsCbsState, NfseServicoState, NfseValoresState, TribIssqn } from './types';
+import { NfseIbsCbsFields } from './NfseIbsCbsFields';
 
 interface ServicoStepProps {
   servico: NfseServicoState;
@@ -47,6 +48,8 @@ interface ServicoStepProps {
   defaultCodigoNbs?: string | null;
   defaultMunicipioIbge?: string | null;
   errors: string[];
+  ibsCbs: NfseIbsCbsState;
+  onIbsCbsChange: (patch: Partial<NfseIbsCbsState>) => void;
 }
 
 const TRIB_ISSQN_OPTIONS: { value: TribIssqn; label: string; Icon: typeof Receipt }[] = [
@@ -66,6 +69,8 @@ export function ServicoStep({
   defaultCodigoServico,
   defaultCodigoNbs,
   errors,
+  ibsCbs,
+  onIbsCbsChange,
 }: ServicoStepProps) {
   const { locale } = useAppLocaleContext();
   const s = MESSAGES[locale].app.nfse.stepper;
@@ -500,6 +505,10 @@ export function ServicoStep({
           <p className="text-sm text-destructive">{s.servico.discriminacao.required}</p>
         )}
       </div>
+
+      <Separator />
+
+      <NfseIbsCbsFields value={ibsCbs} onChange={onIbsCbsChange} compact />
 
       <Separator />
 

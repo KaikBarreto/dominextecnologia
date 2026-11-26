@@ -221,6 +221,13 @@ export interface NfseEmitirInput {
   intermediario?: NfseTomador;
   servico: NfseServico;
   valores: NfseValores;
+  ibsCbs?: {
+    codigoIndicadorOperacao: string;
+    cst: string;
+    classificacaoTributaria: string;
+    consumidorFinal: "0" | "1";
+    destinatarioDiferente: "0" | "1";
+  };
 }
 
 // -----------------------------------------------------------------------------

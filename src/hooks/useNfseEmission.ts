@@ -19,6 +19,12 @@ export type NfseEmissionFull = Tables<'nfse_emissions'> & {
    * vazio (os códigos ficam congelados nas colunas da própria nota).
    */
   service_type_id?: string | null;
+  ibscbs_ativo?: boolean;
+  ibscbs_cindop?: string | null;
+  ibscbs_cst?: string | null;
+  ibscbs_cclasstrib?: string | null;
+  ibscbs_indfinal?: string | null;
+  ibscbs_inddest?: string | null;
 };
 
 export function useNfseEmission(id: string | null) {

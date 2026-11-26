@@ -284,6 +284,14 @@ export function NfseListTab({ canEmit, dateStart, dateEnd }: NfseListTabProps) {
         descontoIncondicionado: draftEmission.desconto_incondicionado ?? 0,
         percentualTribSn: draftEmission.percentual_trib_sn ?? 0,
       },
+      ibsCbs: {
+        ativo: draftEmission.ibscbs_ativo === true,
+        codigoIndicadorOperacao: draftEmission.ibscbs_cindop ?? '',
+        cst: draftEmission.ibscbs_cst ?? '',
+        classificacaoTributaria: draftEmission.ibscbs_cclasstrib ?? '',
+        consumidorFinal: draftEmission.ibscbs_indfinal === '1' ? '1' : '0',
+        destinatarioDiferente: draftEmission.ibscbs_inddest === '1' ? '1' : '0',
+      },
     };
     setDraftInitial(draft);
     setDraftToOpen(null);
