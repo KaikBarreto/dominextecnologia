@@ -18,9 +18,7 @@
     <b>O portal não precisa ser criado.</b> Todo cliente cadastrado ganha um portal automaticamente, no momento em que o cadastro é salvo, com um endereço próprio e único. Você não vai achar botão de "criar portal" em lugar nenhum, porque ele já existe. O que você faz é copiar o link e decidir se ele é público ou restrito.
   </div>
 
-  <div class="perigo">
-    <b>Não existe login com senha para o cliente final no Portal.</b> O cliente não cria conta, não escolhe senha, não usa e-mail e senha, e não entra com Google nem com Microsoft. O acesso é <b>por link</b>: cada cliente tem um endereço com um código longo e aleatório, e quem tem esse endereço entra. Se alguém perguntar "como faço a senha do meu cliente", a resposta é que não existe senha, o que existe é o link.
-  </div>
+  <div class="regra"><b>O acesso é por link e pode ter proteção adicional por senha.</b> O cliente não precisa criar uma conta de usuário da empresa. Quando a proteção está habilitada, a senha libera as seções configuradas; seções deixadas públicas continuam acessíveis conforme as permissões do portal.</div>
 
   <!-- INCERTO: não encontrei, na ficha do cliente, nenhuma ação de trocar/regenerar o código do portal do CLIENTE (o botão "Regenerar token" existe só no contrato). Confirmar se existe algum caminho de suporte para invalidar um link de portal de cliente que vazou. -->
   <h3>O que acontece se o link vazar</h3>
@@ -465,4 +463,9 @@
   <div class="glossario">
     <b>Palavras que o cliente usa pra isso:</b> portal do cliente, área do cliente, link do cliente, acompanhamento, o cliente ver a OS, abrir chamado, chamado do portal, pesquisa de satisfação, avaliação, nota, estrelinhas, NPS, detrator, promotor, avaliar no Google, review, reputação, QR da máquina
   </div>
+
+  <h3>Recibos no portal: cobranças e recebimentos parciais</h3>
+  <p>Com a seção financeira autorizada, o cliente encontra <span class="ui">Gerar recibo</span> nas cobranças pagas e em <span class="ui">Recebimentos e recibos</span>. Cada pagamento confirmado pode ter seu próprio comprovante; pendência, cancelamento e estorno não liberam recibo. O botão <span class="ui">Atualizar</span> consulta os pagamentos novamente.</p>
+  <p>Os recibos seguem as permissões da seção financeira e a proteção por senha do portal, quando configurada. O link de um cliente não permite acessar recibos de outro cliente.</p>
+  <figure><img src="img/t12-recibos-cliente.png" alt="Portal fictício com ação de gerar recibo na cobrança paga e no recebimento parcial"><figcaption>Cobranças pagas e recebimentos parciais podem ser comprovados no próprio portal. Dados fictícios.</figcaption></figure>
 </section>

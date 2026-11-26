@@ -12,6 +12,33 @@ export function goodsOutcome(result: Record<string, unknown>) {
   if (official === 'autorizada' || outcome === 'authorized') return { status: 'authorized', official: 'autorizada' };
   return { status: 'uncertain', official: official || 'aguardando_confirmacao' };
 }
+/**
+ * cStat 539 ("duplicidade com diferença na chave"): a SEFAZ recusou o envio porque
+ * o NÚMERO já pertence a outra nota. Sozinho ele não prova nada sobre a nossa chave,
+ * então só vira rejeição definitiva quando a consulta DESTA chave responde que ela
+ * não existe. Sem essa regra a nota ficava "consultando" para sempre: a consulta
+ * nunca acha uma chave que a SEFAZ recusou.
+ */
+export function goodsNumberCollision(transmissionCstat: unknown, consultedOfficial: unknown): boolean {
+  return String(transmissionCstat ?? '') === '539' && String(consultedOfficial ?? '') === 'nao_localizada';
+}
+/** Carência antes de tratar "chave não localizada" como "o envio nunca chegou à SEFAZ". */
+export const GOODS_RESEND_GRACE_MS = 120_000;
+/**
+ * A SEFAZ respondeu que não conhece a chave. Logo depois de um envio isso ainda
+ * pode ser só atraso; passada a carência, o envio não chegou e o MESMO XML assinado
+ * pode ser retransmitido (mesma chave e mesmo número, então não há como duplicar:
+ * se a primeira tentativa tiver chegado, a SEFAZ devolve a nota já autorizada).
+ */
+export function goodsTransmissionNeverArrived(lastAttemptAt: unknown, now: number): boolean {
+  const attemptedAt = new Date(String(lastAttemptAt ?? '')).getTime();
+  return Number.isFinite(attemptedAt) && now - attemptedAt >= GOODS_RESEND_GRACE_MS;
+}
+export function goodsRejectionMessage(cstat: unknown): string {
+  return String(cstat ?? '') === '539'
+    ? 'A SEFAZ recusou a nota porque este número já foi usado em outra nota da empresa. Ajuste a numeração da série e emita novamente.'
+    : 'Documento rejeitado pela SEFAZ. Revise o cadastro fiscal.';
+}
 /** Rateio em centavos por maior resto; a ordem original desempata. Nunca deixa item negativo. */
 export function canonicalGoodsSourceTotals(items: Record<string, unknown>[], orderTotal: number): number[] | null {
   const cents = (value: unknown) => Math.round(Number(value) * 100);

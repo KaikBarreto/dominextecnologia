@@ -45,7 +45,9 @@ async function saveDocumentSettings(auth: FiscalAuth, body: JsonObject) {
   const [nfeResult, nfceResult] = await Promise.all([
     auth.supabase.from('company_nfe_settings').upsert({
       company_id: auth.companyId,
-      enabled: nfe.enabled === true,
+      // NF-e não possui mais rollout manual: toda empresa com o módulo fica
+      // habilitada. A autorização fiscal ainda valida entitlement e cadastro.
+      enabled: true,
       series: exitSeries?.series ?? nfeSeries,
       default_exit_series_id: defaultExitSeriesId,
       default_entry_series_id: defaultEntrySeriesId,
@@ -67,7 +69,19 @@ async function upsertSeries(auth: FiscalAuth, raw: unknown) {
   if (!text(record.label, 80) || series < 0 || series > 889 || !['entrada', 'saida', 'ambos'].includes(direction)) throw new SettingsError('invalid_series', 'Revise nome, número e direção da série.');
   const lastNumberUsed = integer(record.lastNumberUsed, record.lastNumberUsed == null ? 0 : -1);
   if (!id && (lastNumberUsed < 0 || lastNumberUsed > 999_999_998)) throw new SettingsError('invalid_last_number', 'A última numeração utilizada precisa estar entre 0 e 999.999.998.');
-  const values = { company_id: auth.companyId, label: text(record.label, 80), series, direction, active: record.active !== false };
+  const values: JsonObject = { company_id: auth.companyId, label: text(record.label, 80), series, direction, active: record.active !== false };
+  // Avanço explícito do contador de uma série existente: cobre quem continuou a
+  // numeração em outro emissor. Só anda para frente; editar a série sem este campo
+  // nunca toca no contador.
+  if (id && record.advanceLastNumberUsed != null) {
+    const advanceTo = integer(record.advanceLastNumberUsed, -1);
+    if (advanceTo < 0 || advanceTo > 999_999_998) throw new SettingsError('invalid_last_number', 'A última numeração utilizada precisa estar entre 0 e 999.999.998.');
+    const current = await auth.supabase.from('nfe_series').select('next_number').eq('id', id).eq('company_id', auth.companyId).maybeSingle();
+    const currentNext = Number(object(current.data).next_number);
+    if (current.error || !Number.isInteger(currentNext)) throw new SettingsError('series_save_failed', 'Não foi possível conferir a numeração atual da série. Tente novamente.', 409);
+    if (advanceTo + 1 < currentNext) throw new SettingsError('series_number_backwards', `A numeração só pode avançar. A próxima nota desta série já é a nº ${currentNext}.`, 409);
+    if (advanceTo + 1 > currentNext) values.next_number = advanceTo + 1;
+  }
   const query = id
     ? auth.supabase.from('nfe_series').update(values).eq('id', id).eq('company_id', auth.companyId).select('id').maybeSingle()
     : auth.supabase.from('nfe_series').insert({ ...values, next_number: lastNumberUsed + 1 }).select('id').single();

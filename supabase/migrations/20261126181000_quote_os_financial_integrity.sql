@@ -164,7 +164,9 @@ GRANT ALL ON public.quote_financial_requests TO service_role;
 
 -- Linhas enviadas pelo hook são somente intenção. Posse, cliente, total,
 -- agrupamento, estado financeiro e permissões são reconciliados no servidor.
-CREATE FUNCTION public.approve_quote_financial_atomic(
+-- Identificador entre aspas preserva compatibilidade com o splitter de CLIs
+-- anteriores, que interpretava o sufixo atomic como o início de BEGIN ATOMIC.
+CREATE FUNCTION public."approve_quote_financial_atomic"(
  p_quote_id uuid,p_request_id uuid,p_mode text,p_rows jsonb,p_fee numeric DEFAULT 0,p_fee_category text DEFAULT NULL
 ) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
 DECLARE v_q public.quotes%ROWTYPE; v_previous public.quote_financial_requests%ROWTYPE;
@@ -263,8 +265,8 @@ BEGIN
  RETURN v_result;
 END;
 $$;
-REVOKE ALL ON FUNCTION public.approve_quote_financial_atomic(uuid,uuid,text,jsonb,numeric,text) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.approve_quote_financial_atomic(uuid,uuid,text,jsonb,numeric,text) TO authenticated;
+REVOKE ALL ON FUNCTION public."approve_quote_financial_atomic"(uuid,uuid,text,jsonb,numeric,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public."approve_quote_financial_atomic"(uuid,uuid,text,jsonb,numeric,text) TO authenticated;
 
 -- Preflight da edge usa a mesma origem do relatório, incluindo orçamento.
 CREATE FUNCTION public.validate_os_charge_origin(p_company_id uuid,p_os_id uuid) RETURNS boolean

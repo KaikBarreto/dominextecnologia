@@ -1275,7 +1275,7 @@ function InventoryContent({ context }: { context: 'general' | 'store' }) {
 
       {/* Form Dialog (criar/editar material) */}
       <InventoryFormDialog
-        open={dialogOpen && canWrite && !!resolvedStockId}
+        open={dialogOpen && canWrite && (!!editingItem || !!resolvedStockId)}
         onOpenChange={handleDialogClose}
         item={editingItem}
         activeStockId={resolvedStockId}

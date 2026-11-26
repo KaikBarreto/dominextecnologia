@@ -31,6 +31,244 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.42.0',
+    date: '26 de novembro de 2026',
+    type: 'minor',
+    changes: [
+      {
+        title: 'Valores e itens no relatório da OS',
+        category: 'recurso',
+        description: 'Escolha em cada OS se o cliente pode ver serviços, produtos, quantidades, preços e total no relatório, no PDF e no link do atendimento. A exibição dos valores começa desligada.',
+      },
+      {
+        title: 'Receba a OS em partes e acompanhe o saldo',
+        category: 'recurso',
+        description: 'Ao faturar, aproveite o orçamento da OS ou informe seus itens e valores. Registre o total ou apenas uma parte recebida e acompanhe o restante na mesma conta, evitando faturar a mesma OS duas vezes.',
+      },
+      {
+        title: 'Recibos de cada pagamento para sua empresa e seu cliente',
+        category: 'recurso',
+        description: 'Gere um recibo dos valores confirmados, com identificação de pagamentos parciais e detalhes da contratação. O recibo fica disponível no relatório da OS, nos recebimentos do Financeiro, na ficha e no portal autorizado do cliente.',
+      },
+      {
+        title: 'Orçamento em campo e execução independente',
+        category: 'melhoria',
+        description: 'Ajuste serviços, produtos e quantidades durante o atendimento; mudar preço exige permissão. Ao gerar a OS de um orçamento, escolha se deseja preparar equipamentos e checklists naquele momento: os serviços definem o preço e os checklists definem a execução.',
+      },
+      {
+        title: 'Modais mais legíveis no celular',
+        category: 'melhoria',
+        description: 'Títulos e orientações aproveitam melhor a largura da tela, com o botão Fechar separado para evitar que o texto fique espremido.',
+      },
+    ],
+  },
+  {
+    version: '1.41.90',
+    date: '26 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Destaques visuais no padrão da plataforma',
+        category: 'correcao',
+        description: 'Botões, seleções e indicadores nas configurações do WhatsApp e nas prévias de e-mail agora usam o padrão preto com texto e ícones brancos no tema claro, mantendo o contraste correto no tema escuro.',
+      },
+    ],
+  },
+  {
+    version: '1.41.89',
+    date: '26 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Conheça as áreas do WhatsApp antes de conectar',
+        category: 'melhoria',
+        description: 'A aba Conexão agora aparece primeiro, seguida de Automações, Atendimento, Modelos, Campanhas e Histórico. Você pode navegar por todas elas antes de conectar o número; enquanto estiver desconectado, a tela avisa que configurações, salvamentos e envios continuam desativados.',
+      },
+      {
+        title: 'Logo da Dominex nas prévias de e-mail',
+        category: 'correcao',
+        description: 'As prévias ampliadas dos modelos de e-mail voltam a mostrar o logo oficial da Dominex no rodapé, com contraste correto sobre o fundo escuro.',
+      },
+      {
+        title: 'Janelas de edição sem contorno indevido',
+        category: 'correcao',
+        description: 'Ao abrir uma aba dentro de uma janela de edição, o conteúdo não recebe mais uma borda preta ao redor de toda a área. O destaque de foco continua nos controles de navegação e nos campos.',
+      },
+    ],
+  },
+  {
+    version: '1.41.88',
+    date: '26 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Venda cancelada no PDV não aparece mais como conta a receber',
+        category: 'correcao',
+        description: 'Quando uma venda no fiado era cancelada no PDV, as contas dela continuavam aparecendo em Contas a Receber como pendentes ou vencidas. Agora elas saem da lista, dos totais, da busca e do calendário.',
+      },
+      {
+        title: 'Baixa de fiado do PDV pelo Financeiro',
+        category: 'correcao',
+        description: 'Ao marcar como recebida uma conta de fiado que veio do PDV, o Financeiro mostrava "Registro não encontrado". Agora ele abre a conta do cliente, onde você informa como recebeu e o saldo dele é atualizado. Editar essas contas continua sendo feito pela venda, e o menu passa a explicar isso.',
+      },
+    ],
+  },
+  {
+    version: '1.41.87',
+    date: '26 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Edição de materiais no Estoque geral',
+        category: 'correcao',
+        description: 'Ao usar a visão Estoque geral, a ação Editar volta a abrir normalmente o cadastro do material. A quantidade de cada item continua sendo controlada separadamente em cada local de estoque.',
+      },
+    ],
+  },
+  {
+    version: '1.41.86',
+    date: '26 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Nome da sua empresa na aba do navegador',
+        category: 'correcao',
+        description: 'Nos links públicos da sua empresa, como cobrança, orçamento, portal do cliente, contrato, formulário de cadastro, ponto e ordem de serviço, o título da aba do navegador passa a mostrar o tipo do link e o nome da empresa. Antes, depois que a página carregava, o título voltava a citar a plataforma.',
+      },
+    ],
+  },
+  {
+    version: '1.41.85',
+    date: '26 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Venda recusada no PDV pode ser corrigida e finalizada',
+        category: 'correcao',
+        description: 'Quando o sistema recusava uma venda, por exemplo por limite de fiado insuficiente ou falta de permissão, o atendimento ficava preso e pedia conferência em Pedidos ao trocar a forma de pagamento ou ajustar os itens. Agora basta corrigir o que foi apontado e finalizar de novo. A conferência em Pedidos continua sendo pedida somente quando o envio fica sem resposta, para evitar venda em duplicidade.',
+      },
+    ],
+  },
+  {
+    version: '1.41.84',
+    date: '26 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cliente escolhe as parcelas no link de pagamento',
+        category: 'recurso',
+        description: 'Ao gerar uma cobrança no cartão, você pode marcar "Cliente escolhe" e definir só o máximo de parcelas, por exemplo até 10x. No link de pagamento, o cliente vê as opções e escolhe em quantas vezes quer pagar. Quando a taxa do cartão fica por conta da sua empresa, as opções aparecem como sem juros; quando a taxa é repassada ao cliente, cada opção mostra o total a pagar. O resumo do recebimento mostra quanto você recebe se o cliente pagar à vista e se usar o máximo de parcelas.',
+      },
+      {
+        title: 'Atualização de pagamentos em vendas parceladas no cartão',
+        category: 'correcao',
+        description: 'Em vendas parceladas no cartão, o aviso de crédito de uma parcela que já estava lançada podia ser recusado, o que interrompia a atualização automática dos pagamentos da empresa. Agora esse aviso é reconhecido e os pagamentos voltam a ser atualizados normalmente.',
+      },
+    ],
+  },
+  {
+    version: '1.41.83',
+    date: '26 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Venda do PDV não trava mais ao sair e voltar para a tela',
+        category: 'correcao',
+        description: 'Em alguns casos, ao sair da tela de venda e voltar, ou ao recarregar a página, o PDV avisava que havia versões diferentes do mesmo atendimento e não deixava finalizar. Isso foi corrigido: a venda continua de onde parou e pode ser finalizada normalmente. Atendimentos que ficaram bloqueados por esse aviso voltam a funcionar sozinhos ao abrir o PDV.',
+      },
+      {
+        title: 'Preço por unidade com desconto no carrinho do PDV',
+        category: 'melhoria',
+        description: 'Ao dar desconto em um item, o preço original por unidade, quilo ou metro aparece riscado e, ao lado, o valor realmente cobrado. Assim fica claro quanto o cliente está pagando em cada unidade.',
+      },
+    ],
+  },
+  {
+    version: '1.41.82',
+    date: '26 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Links compartilhados com o nome e a arte da sua empresa',
+        category: 'melhoria',
+        description: 'Ao enviar pelo WhatsApp um link de cobrança, assinatura, orçamento, proposta, portal do cliente, contrato, formulário de cadastro, ponto ou avaliação, a prévia passa a mostrar o nome da sua empresa. Com o White Label ativo, a prévia usa também a sua imagem de compartilhamento, que antes valia só para o link da ordem de serviço. Essa imagem é configurada em Configurações, na identidade visual, agora com o nome "Imagem ao compartilhar links". Links já enviados podem levar um tempo para atualizar a prévia.',
+      },
+    ],
+  },
+  {
+    version: '1.41.81',
+    date: '25 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Notas e documentos reunidos na ficha do cliente',
+        category: 'recurso',
+        description: 'A aba Documentos da ficha do cliente passa a mostrar sozinha as notas emitidas para ele (NF-e, NFC-e e NFS-e), os anexos e documentos dos contratos e atalhos para orçamentos, ordens de serviço e contratos, com busca, filtro e menu de ações em cada linha.',
+      },
+      {
+        title: 'Notas de produto no portal do cliente',
+        category: 'recurso',
+        description: 'As NF-e e NFC-e autorizadas aparecem no portal do cliente junto das notas de serviço, com PDF e XML para baixar, busca e filtro por tipo. Elas seguem a mesma liberação da seção de notas fiscais do portal.',
+      },
+      {
+        title: 'Notas fiscais na ficha do fornecedor',
+        category: 'recurso',
+        description: 'A ficha do fornecedor ganhou uma seção com as notas de entrada emitidas para ele e as notas recebidas dele.',
+      },
+    ],
+  },
+  {
+    version: '1.41.80',
+    date: '25 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Logomarca da empresa no DANFE',
+        category: 'correcao',
+        description: 'O DANFE da NF-e agora sai com a logomarca cadastrada nas configurações da empresa. Para atualizar o PDF de uma nota já autorizada, use "Consultar SEFAZ" na própria nota.',
+      },
+      {
+        title: 'DANFE com títulos em destaque',
+        category: 'melhoria',
+        description: 'Os títulos das seções do DANFE passam a aparecer em faixa escura com texto branco, o que facilita a leitura do documento impresso.',
+      },
+    ],
+  },
+  {
+    version: '1.41.79',
+    date: '25 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Reenvio de nota que não chegou à SEFAZ',
+        category: 'correcao',
+        description: 'Quando a SEFAZ confirma que não recebeu uma NF-e ou NFC-e, a nota passa a aparecer como "Envio pendente" e pode ser reenviada com o mesmo número, em vez de ficar aguardando indefinidamente.',
+      },
+    ],
+  },
+  {
+    version: '1.41.78',
+    date: '25 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Nota recusada por número já utilizado',
+        category: 'correcao',
+        description: 'Quando a SEFAZ recusa uma NF-e ou NFC-e porque o número já foi usado em outra nota da empresa, ela agora aparece como rejeitada, com o motivo explicado e o caminho para corrigir. Antes, a nota ficava aguardando uma confirmação que nunca chegava.',
+      },
+      {
+        title: 'Numeração de série pode ser avançada',
+        category: 'melhoria',
+        description: 'Quem já emitia notas em outro sistema pode informar o último número utilizado ao editar uma série, para continuar a sequência de onde parou. A numeração só avança, nunca volta.',
+      },
+      {
+        title: 'Tela de NF-e e NFC-e reorganizada',
+        category: 'melhoria',
+        description: 'A lista de notas de produto ganhou busca, filtros por situação e tipo, ordenação, detalhes ao clicar na nota e um menu de ações para consultar, baixar o DANFE e o XML ou cancelar. No celular, as notas aparecem em cartões.',
+      },
+    ],
+  },
+  {
     version: '1.41.77',
     date: '25 de novembro de 2026',
     type: 'patch',

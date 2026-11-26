@@ -1168,6 +1168,75 @@ async function ensureBatchChargeGatewayLink(
 }
 
 /**
+ * Janela da corrida com a troca do "cliente escolhe as parcelas": a venda
+ * parcelada nova aprovou e o evento de pagamento chegou ANTES da RPC
+ * replace_tenant_charge_gateway_payment gravar o agrupamento. Dentro dela (e
+ * SÓ nesse caso, ver isPendingCustomerInstallmentSwap) respondemos 5xx e a
+ * Asaas reentrega (tentativas em 0, 30s, 1min30...). 2 min cobre as 3
+ * primeiras. Depois disso o evento cai no comportamento antigo e quem completa
+ * a baixa é a recuperação do pay-charge-card ou o reconcile.
+ *
+ * Por que tão curta: na Asaas, 15 falhas CONSECUTIVAS interrompem a fila do
+ * webhook do tenant (só volta com reativação manual) e, em fila sequencial, um
+ * evento falhando segura os seguintes.
+ */
+const INSTALLMENT_SWAP_RACE_WINDOW_MS = 2 * 60 * 1000;
+
+/**
+ * O evento é de uma venda parcelada do "cliente escolhe" cuja troca AINDA NÃO
+ * foi gravada? Critério estrito (qualquer dúvida → false → comportamento
+ * antigo): externalReference = id de uma tenant_charges desta empresa, em modo
+ * cliente-escolhe, ainda não paga, e cujo asaas_installment_id ainda não é o
+ * agrupamento deste evento. Erro de leitura → false (não arriscar a fila).
+ */
+async function isPendingCustomerInstallmentSwap(
+  supabase: any,
+  payment: any,
+  companyId: string,
+): Promise<boolean> {
+  const ext = typeof payment?.externalReference === "string" ? payment.externalReference : "";
+  const installment = typeof payment?.installment === "string" ? payment.installment : "";
+  if (!ext || !installment) return false;
+  // tenant_charges.id é uuid; company_id (cobrança histórica) também, mas não
+  // casa com uma tenant_charges.id, então a consulta abaixo já separa.
+  if (!/^[0-9a-f-]{36}$/i.test(ext)) return false;
+  const { data, error } = await supabase
+    .from("tenant_charges")
+    .select("customer_max_installments, payment_date, status, asaas_installment_id")
+    .eq("id", ext)
+    .eq("company_id", companyId)
+    .maybeSingle();
+  if (error || !data) return false;
+  if (data.customer_max_installments == null) return false;
+  if (data.payment_date) return false;
+  const st = String(data.status ?? "").toUpperCase();
+  if (st !== "PENDING" && st !== "OVERDUE") return false;
+  return data.asaas_installment_id !== installment;
+}
+
+/** Eventos em que dinheiro ENTROU (os que dão baixa). */
+function isMoneyInEvent(event: string): boolean {
+  return event === "PAYMENT_RECEIVED" ||
+    event === "PAYMENT_CONFIRMED" ||
+    event === "PAYMENT_RECEIVED_IN_CASH";
+}
+
+/** Quando a Asaas mandou este evento pela 1ª vez (dedupe). null = não sabemos. */
+async function firstReceivedAt(
+  supabase: any,
+  eventId: string,
+): Promise<number | null> {
+  const { data, error } = await supabase
+    .from("tenant_payment_webhook_events")
+    .select("received_at")
+    .eq("event_id", eventId)
+    .maybeSingle();
+  if (error || !data?.received_at) return null;
+  const t = new Date(String(data.received_at)).getTime();
+  return Number.isFinite(t) ? t : null;
+}
+
+/**
  * Processa o evento. Retorna true se concluiu (marcou 'processed'), false se falhou
  * (marcou 'error'). O caller usa o boolean pra decidir ACK 200 vs 500 (re-entrega).
  */
@@ -1180,6 +1249,62 @@ async function processEvent(
 ): Promise<boolean> {
   try {
     const status = String(payment?.status || "").toUpperCase();
+
+    // ── Cobrança 1x SUBSTITUÍDA pela venda parcelada ("cliente escolhe") ──
+    // Depois da troca, o id antigo só existe em superseded_asaas_payment_ids.
+    // Nenhum evento dele pode mexer na cobrança nem no espelho financeiro.
+    //   • PAYMENT_DELETED / eventos não financeiros → ignorado (200).
+    //   • PAGAMENTO no id antigo = o pagador pagou a 1x porque o DELETE dela
+    //     falhou: dinheiro em dobro. Nada de baixa dupla, mas também nada de
+    //     silêncio: o evento fica marcado como erro, com o motivo, no log de
+    //     eventos do webhook (e ACK 200, reentregar não resolve).
+    // Erro na consulta → segue o fluxo normal (fail-open), só com log. Este
+    // webhook atende TODAS as empresas: falhar aqui devolveria 5xx em todo
+    // evento de pagamento, e 15 falhas seguidas interrompem a fila da empresa
+    // na Asaas. Seguir é seguro: depois da troca o id antigo não está mais em
+    // tenant_charges.asaas_payment_id, então as RPCs de baixa/estorno/limpeza
+    // respondem charge_not_found e nada é alterado. O que se perde num erro
+    // é só o alerta de "1x antiga foi paga", que fica no log abaixo.
+    const { data: superseded, error: supersededErr } = await supabase.rpc(
+      "tenant_charge_is_superseded_payment",
+      { p_asaas_payment_id: payment.id },
+    );
+    if (supersededErr) {
+      console.error(
+        `[tenant-webhook] consulta de cobrança substituída falhou (${payment.id}); seguindo o fluxo normal: ${supersededErr.message}`,
+      );
+    }
+    if (superseded === true) {
+      const paidOld = isMoneyInEvent(event) &&
+        (status === "RECEIVED" || status === "CONFIRMED" || status === "RECEIVED_IN_CASH");
+      if (paidOld) {
+        const msg =
+          `PAGAMENTO EM COBRANÇA SUBSTITUÍDA: ${payment.id} foi trocada por uma venda parcelada e mesmo assim foi paga. ` +
+          "Sem baixa (seria em dobro). Estorne este pagamento na Asaas.";
+        console.error(`[tenant-webhook] GRAVE ${msg}`);
+        // 'failed' (aceito pelo CHECK) + last_error = alerta visível no log
+        // de eventos. ACK 200: reentregar não resolve, precisa de gente.
+        const { error: alertErr } = await supabase
+          .from("tenant_payment_webhook_events")
+          .update({ status: "failed", last_error: msg })
+          .eq("event_id", eventId);
+        if (alertErr) {
+          console.error(`[tenant-webhook] GRAVE não consegui registrar o alerta de ${eventId}: ${alertErr.message}`);
+        }
+        return true;
+      }
+      console.log(`[tenant-webhook] ${event} de cobrança substituída (${payment.id}) ignorado`);
+      // 'skipped' (aceito pelo CHECK): reentrega reprocessa e cai aqui de
+      // novo, sem efeito (idempotente).
+      const { error: skipErr } = await supabase
+        .from("tenant_payment_webhook_events")
+        .update({ status: "skipped", last_error: "ignorado: cobrança substituída por venda parcelada" })
+        .eq("event_id", eventId);
+      if (skipErr) {
+        console.error(`[tenant-webhook] não consegui marcar ${eventId} como skipped: ${skipErr.message}`);
+      }
+      return true;
+    }
 
     // Precisa vir antes de qualquer RPC/update por payment.id. Um PAYMENT_*
     // pode chegar durante o POST da edge de criação, antes de hydrateCharge.
@@ -1231,6 +1356,26 @@ async function processEvent(
           },
         );
         if (error) throw new Error(error.message);
+        // Corrida com a troca do "cliente escolhe as parcelas": a venda nova
+        // aprovou e o evento chegou antes de a cobrança local apontar pro
+        // agrupamento. Marcar 'processed' aqui perderia a baixa pra sempre.
+        // Dentro da janela, falha → 5xx → a Asaas reentrega.
+        // SÓ no caso desta feature (isPendingCustomerInstallmentSwap); todo
+        // outro charge_not_found segue exatamente como antes.
+        if (
+          (data as { result?: string } | null)?.result === "charge_not_found" &&
+          await isPendingCustomerInstallmentSwap(supabase, payment, companyId)
+        ) {
+          const firstSeen = await firstReceivedAt(supabase, eventId);
+          if (firstSeen !== null && Date.now() - firstSeen < INSTALLMENT_SWAP_RACE_WINDOW_MS) {
+            throw new Error(
+              `parcela ${payment.id} antes da troca do parcelamento (agrupamento ${payment.installment}); reentregar`,
+            );
+          }
+          console.warn(
+            `[tenant-webhook] parcela ${payment.id} chegou antes da troca e a janela passou; a recuperação/reconcile completa a baixa`,
+          );
+        }
         warnOnUnsettledCharge(
           "apply_tenant_charge_installment_payment",
           payment.id,
@@ -1444,10 +1589,21 @@ async function processEvent(
         if (typeof payment?.status === "string" && payment.status) {
           patch.status = payment.status;
         }
-        if (payment?.value != null && Number.isFinite(Number(payment.value))) {
+        // Venda PARCELADA no cartão: este payment é só a 1ª parcela (a única
+        // cujo id fica em tenant_charges). O value/netValue dele são de UMA
+        // parcela, e a cobrança guarda o total da venda — copiar aqui trocaria
+        // R$ 597,00 por R$ 59,70. Em venda parcelada o valor só muda pela
+        // troca atômica (replace_tenant_charge_gateway_payment).
+        const isInstallmentParcel = isInstallmentPaymentEvent(payment);
+        if (
+          !isInstallmentParcel &&
+          payment?.value != null && Number.isFinite(Number(payment.value))
+        ) {
           patch.value = Number(payment.value);
         }
-        if (payment?.netValue != null) patch.net_value = payment.netValue;
+        if (!isInstallmentParcel && payment?.netValue != null) {
+          patch.net_value = payment.netValue;
+        }
         if (typeof payment?.dueDate === "string" && payment.dueDate) {
           patch.due_date = payment.dueDate;
         }

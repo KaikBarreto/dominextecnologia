@@ -69,6 +69,15 @@ type IntegrationSubTab = 'whatsapp' | 'email' | 'asaas' | 'printer' | 'api' | 'd
 type AsaasSection = 'settings' | 'simulator';
 type WhatsappSection = 'automations' | 'inbox' | 'templates' | 'campaigns' | 'history' | 'connection';
 
+const WHATSAPP_SECTION_ORDER: WhatsappSection[] = [
+  'connection',
+  'automations',
+  'inbox',
+  'templates',
+  'campaigns',
+  'history',
+];
+
 const SHELL_COPY: Record<LocaleCode, {
   preparationTitle: string;
   preparationDescription: string;
@@ -91,8 +100,8 @@ const SHELL_COPY: Record<LocaleCode, {
   sections: Record<WhatsappSection, string>;
 }> = {
   'pt-br': {
-    preparationTitle: 'Conecte o WhatsApp para liberar as configurações',
-    preparationDescription: 'As automações ficam disponíveis após conectar o número da empresa por QR Code. Atendimento e campanhas continuam como etapas futuras.',
+    preparationTitle: 'Recursos desativados enquanto o WhatsApp não estiver conectado',
+    preparationDescription: 'Você pode conhecer esta área e conferir como ela funciona. Para configurar, salvar ou enviar mensagens, conecte primeiro o número da empresa na aba Conexão.',
     noModuleTitle: 'Prévia do módulo de WhatsApp',
     noModuleDescription: 'Você pode conhecer toda a estrutura. Para salvar e ativar as automações, contrate o módulo de WhatsApp.',
     readOnlyTitle: 'Configuração somente para leitura',
@@ -167,7 +176,7 @@ export function SettingsIntegrationContent() {
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 [--primary:0_0%_10%] [--primary-foreground:0_0%_100%] [--ring:0_0%_10%] dark:[--primary:0_0%_88%] dark:[--primary-foreground:0_0%_8%] dark:[--ring:0_0%_70%]">
       <MobilePillTabs
         variant="underline"
         tabs={subTabs}
@@ -251,7 +260,6 @@ function WhatsappContent() {
     ...(hasModule('cobrancas') ? ['billing' as const] : []),
     ...(moduleActive ? ['birthday' as const] : []),
   ];
-  const readOnly = !moduleActive || !canManage;
   const activeConnection = whatsappConnections.connections.find(
     (connection) => connection.id === settings?.active_connection_id,
   );
@@ -260,7 +268,8 @@ function WhatsappContent() {
       && connection.status === 'connected'
       && Boolean(connection.risk_accepted_at),
   );
-  const activeSection = isConnected ? (requestedSection ?? 'automations') : 'connection';
+  const activeSection = requestedSection ?? (isConnected ? 'automations' : 'connection');
+  const readOnly = !moduleActive || !canManage || !isConnected;
 
   const handleSave = async () => {
     try {
@@ -312,23 +321,19 @@ function WhatsappContent() {
         <NoticeBanner variant="neutral" icon={Lock} title={copy.readOnlyTitle}>
           {copy.readOnlyDescription}
         </NoticeBanner>
-      ) : !isConnected && activeSection !== 'connection' ? (
-        /* Só faz sentido para quem AINDA não conectou. Ficava na tela mesmo com
-           o número já pareado, mandando conectar o que já estava conectado.
-           E na aba de Conexão ele repetia, a 60px de distância, exatamente o que
-           o cartão logo abaixo já diz. */
-        <NoticeBanner variant="info" title={copy.preparationTitle}>
-          {copy.preparationDescription}
-        </NoticeBanner>
       ) : null}
 
       <WhatsappSectionNav
         active={activeSection}
-        isConnected={isConnected}
-        lockedLabel={copy.lockedSection}
         onChange={setRequestedSection}
         labels={copy.sections}
       />
+
+      {moduleActive && canManage && !isConnected && activeSection !== 'connection' && (
+        <NoticeBanner variant="info" icon={Unplug} title={copy.preparationTitle}>
+          {copy.preparationDescription}
+        </NoticeBanner>
+      )}
 
       {activeSection === 'automations' && (
         <>
@@ -390,50 +395,24 @@ const SECTION_ICONS: Record<WhatsappSection, LucideIcon> = {
 
 export function WhatsappSectionNav({
   active,
-  isConnected,
-  lockedLabel,
   onChange,
   labels,
 }: {
   active: WhatsappSection;
-  isConnected: boolean;
-  lockedLabel: string;
   onChange: (section: WhatsappSection) => void;
   labels: Record<WhatsappSection, string>;
 }) {
-  const sections = Object.keys(labels) as WhatsappSection[];
-  const isLocked = (section: WhatsappSection) =>
-    section === 'inbox' || section === 'campaigns'
-    || (section !== 'connection' && !isConnected);
   return (
     /* Terceiro nível dentro de Configurações > Integrações > WhatsApp: controle
        segmentado, não outra barra underline. Assim cada profundidade mantém uma
        forma própria e duas barras iguais nunca ficam coladas. */
     <MobilePillTabs
-      tabs={sections.map((section) => {
+      tabs={WHATSAPP_SECTION_ORDER.map((section) => {
         const Icon = SECTION_ICONS[section];
         return { value: section, label: labels[section], icon: <Icon className="h-4 w-4 shrink-0" /> };
       })}
       activeTab={active}
-      onTabChange={(value) => {
-        const section = value as WhatsappSection;
-        // Aba bloqueada não navega. O MobilePillTabs não tem estado desabilitado,
-        // então o guarda fica aqui, e o cadeado ao lado do rótulo avisa por quê.
-        if (isLocked(section)) return;
-        onChange(section);
-      }}
-      renderSuffix={(tab) =>
-        isLocked(tab.value as WhatsappSection)
-          ? (
-            <span
-              className="ml-1 inline-flex items-center text-muted-foreground/70"
-              title={tab.value === 'inbox' || tab.value === 'campaigns' ? 'Etapa futura' : lockedLabel}
-            >
-              <Lock className="h-3 w-3" aria-hidden="true" />
-            </span>
-          )
-          : null
-      }
+      onTabChange={(value) => onChange(value as WhatsappSection)}
     />
   );
 }

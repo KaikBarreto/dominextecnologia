@@ -282,7 +282,7 @@ export function useGoodsFiscalDocuments(model: GoodsModel, sourceId?: string | n
       type Builder = { eq: (column: string, value: string) => Builder; order: (column: string, options: { ascending: boolean }) => Builder; limit: (count: number) => Promise<RpcResult> };
       const client = supabase as unknown as { from: (name: string) => { select: (fields: string) => Builder } };
       let builder = client.from(model === 55 ? 'nfe_documents' : 'nfce_documents')
-        .select(`id,status,official_status,environment,series,number,access_key,protocol,draft_payload,stock_id,source_type,source_id,processed_xml_path,${model === 55 ? 'danfe_pdf_path' : 'danfce_pdf_path'},last_error_code,last_error_message,created_at,updated_at`)
+        .select(`id,status,official_status,environment,series,number,access_key,protocol,draft_payload,stock_id,source_type,source_id,processed_xml_path,${model === 55 ? 'danfe_pdf_path' : 'danfce_pdf_path'},last_error_code,last_error_message,official_checked_at,authorized_at,cancelled_at,created_at,updated_at`)
         .eq('company_id', access.companyId!);
       if (sourceId) builder = builder.eq('source_type', 'pdv_sale').eq('source_id', sourceId);
       const { data, error } = await builder.order('created_at', { ascending: false }).limit(sourceId ? 1 : 100);
@@ -291,6 +291,58 @@ export function useGoodsFiscalDocuments(model: GoodsModel, sourceId?: string | n
     }, refetchInterval: (q) => Array.isArray(q.state.data) && q.state.data.some((d) => ['queued','preparing','signed','transmitting','uncertain','cancellation_pending'].includes(String(d.status))) ? 5000 : false,
   });
   return { ...query, data: access.allowed ? query.data : undefined };
+}
+
+const RECONCILABLE_GOODS_STATUSES = new Set(['uncertain', 'cancellation_pending']);
+/** Teto de consultas automáticas por nota enquanto a tela está aberta. */
+const MAX_AUTO_CONSULTS = 6;
+
+/**
+ * Consulta sozinha, na SEFAZ, a nota cujo envio ficou sem resposta final.
+ *
+ * Recarregar a lista só relê o banco; é esta consulta que traz a situação
+ * oficial e os arquivos, sem iniciar uma emissão nova. Vai uma nota por vez, com
+ * intervalo crescente (10 s até 5 min) e no máximo 6 tentativas por nota, para
+ * não martelar a SEFAZ. Depois disso continua valendo o "Consultar SEFAZ" manual.
+ */
+export function useGoodsFiscalAutoReconciliation(
+  model: GoodsModel,
+  documents: Record<string, unknown>[] | undefined,
+) {
+  const access = useGoodsFiscalAccess();
+  const client = useQueryClient();
+  const inFlight = useRef(false);
+  const attempts = useRef(new Map<string, { count: number; nextAt: number }>());
+
+  useEffect(() => {
+    if (!access.allowed || !documents?.length || inFlight.current) return;
+
+    const now = Date.now();
+    const document = documents.find((candidate) => {
+      const id = text(candidate.id);
+      const state = attempts.current.get(id);
+      return Boolean(
+        id &&
+          /^\d{44}$/.test(text(candidate.access_key)) &&
+          RECONCILABLE_GOODS_STATUSES.has(text(candidate.status)) &&
+          (!state || (state.count < MAX_AUTO_CONSULTS && state.nextAt <= now)),
+      );
+    });
+    if (!document) return;
+
+    const id = text(document.id);
+    const previous = attempts.current.get(id)?.count ?? 0;
+    const delay = Math.min(300_000, 10_000 * 2 ** previous);
+    attempts.current.set(id, { count: previous + 1, nextAt: now + delay });
+    inFlight.current = true;
+
+    void invokeGoods({ model, documentId: id, action: 'consult' })
+      .catch(() => undefined)
+      .finally(() => {
+        inFlight.current = false;
+        void client.invalidateQueries({ queryKey: GOODS_FISCAL_ROOT });
+      });
+  }, [access.allowed, client, documents, model]);
 }
 
 async function invokeGoods(body: unknown) {

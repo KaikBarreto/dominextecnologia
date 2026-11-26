@@ -103,6 +103,12 @@ export interface FiscalSettings {
    * por nota). Coluna `percentual_trib_sn numeric(7,4)` em `company_fiscal_settings`.
    */
   percentual_trib_sn: number | null;
+  nfse_ibscbs_ativo: boolean;
+  nfse_ibscbs_cindop: string | null;
+  nfse_ibscbs_cst: string | null;
+  nfse_ibscbs_cclasstrib: string | null;
+  nfse_ibscbs_indfinal: '0' | '1';
+  nfse_ibscbs_inddest: '0' | '1';
   // Read-only (backend)
   /** Ponteiro opaco para o A1 cifrado sob custódia própria. */
   certificado_ref: string | null;
@@ -124,6 +130,12 @@ export type FiscalSettingsEditable = Pick<
   | 'fiscal_ambiente'
   | 'reg_ap_trib_sn'
   | 'percentual_trib_sn'
+  | 'nfse_ibscbs_ativo'
+  | 'nfse_ibscbs_cindop'
+  | 'nfse_ibscbs_cst'
+  | 'nfse_ibscbs_cclasstrib'
+  | 'nfse_ibscbs_indfinal'
+  | 'nfse_ibscbs_inddest'
 >;
 
 const EMPTY: FiscalSettings = {
@@ -138,13 +150,19 @@ const EMPTY: FiscalSettings = {
   fiscal_ambiente: 'producao',
   reg_ap_trib_sn: '1',
   percentual_trib_sn: null,
+  nfse_ibscbs_ativo: false,
+  nfse_ibscbs_cindop: null,
+  nfse_ibscbs_cst: null,
+  nfse_ibscbs_cclasstrib: null,
+  nfse_ibscbs_indfinal: '0',
+  nfse_ibscbs_inddest: '0',
   certificado_ref: null,
   certificate_expires_at: null,
   pode_emitir: false,
 };
 
 const SELECT_COLS =
-  'regime_tributario, inscricao_municipal, inscricao_estadual, codigo_servico_default, codigo_nbs_default, item_lc116, iss_aliquota, municipio_ibge, fiscal_ambiente, reg_ap_trib_sn, percentual_trib_sn, certificado_ref, certificate_expires_at, pode_emitir';
+  'regime_tributario, inscricao_municipal, inscricao_estadual, codigo_servico_default, codigo_nbs_default, item_lc116, iss_aliquota, municipio_ibge, fiscal_ambiente, reg_ap_trib_sn, percentual_trib_sn, nfse_ibscbs_ativo, nfse_ibscbs_cindop, nfse_ibscbs_cst, nfse_ibscbs_cclasstrib, nfse_ibscbs_indfinal, nfse_ibscbs_inddest, certificado_ref, certificate_expires_at, pode_emitir';
 
 export function useFiscalSettings() {
   const { companyId } = useUserCompany();

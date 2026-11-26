@@ -113,6 +113,14 @@ interface DraftBody {
     descontoIncondicionado?: number | string;
     percentualTribSn?: number | string;
   };
+  ibsCbs?: {
+    ativo?: boolean;
+    codigoIndicadorOperacao?: string;
+    cst?: string;
+    classificacaoTributaria?: string;
+    consumidorFinal?: string;
+    destinatarioDiferente?: string;
+  };
 }
 
 /** Resultado do mapeamento do body: colunas a gravar OU erro PT-BR de 400. */
@@ -284,6 +292,17 @@ function mapBodyToColumns(body: DraftBody): Mapeamento {
     }
   }
 
+  const ibsCbs = body.ibsCbs;
+  if (ibsCbs && typeof ibsCbs === "object") {
+    const ativo = ibsCbs.ativo === true;
+    cols.ibscbs_ativo = ativo;
+    cols.ibscbs_cindop = ativo ? clean(ibsCbs.codigoIndicadorOperacao) || null : null;
+    cols.ibscbs_cst = ativo ? clean(ibsCbs.cst) || null : null;
+    cols.ibscbs_cclasstrib = ativo ? clean(ibsCbs.classificacaoTributaria) || null : null;
+    cols.ibscbs_indfinal = clean(ibsCbs.consumidorFinal) === "1" ? "1" : "0";
+    cols.ibscbs_inddest = clean(ibsCbs.destinatarioDiferente) === "1" ? "1" : "0";
+  }
+
   return { cols };
 }
 
@@ -304,6 +323,12 @@ const COLUNAS_OPCIONAIS = [
   "documento_responsabilidade_tecnica",
   "documento_referencia",
   "informacoes_complementares",
+  "ibscbs_ativo",
+  "ibscbs_cindop",
+  "ibscbs_cst",
+  "ibscbs_cclasstrib",
+  "ibscbs_indfinal",
+  "ibscbs_inddest",
 ];
 
 // ⚠️ `tomador_avulso` / `intermediario_avulso` NÃO entram na lista acima de

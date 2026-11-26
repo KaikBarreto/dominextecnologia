@@ -22,7 +22,7 @@ Deno.env.set('FISCAL_SERVICE_URL','https://engine.example.invalid');
 Deno.env.set('FISCAL_SERVICE_TOKEN','fictitious-motor-test-key');
 let moduleAllowed=true, issuerAllowed=true, sourceAllowed=true, existingStatus='draft', environment='homologacao';
 let hasCertificate=false; let expiresAt='2099-01-01';
-let nfeHomologationApproved=true;let nfeProductionApproved=false;
+let nfeHomologationApproved=true;let nfeProductionApproved=false;let nfeSettingsMissing=false;
 let seriesAllowed=true, seriesActive=true, seriesDirection='saida';
 let carrierAllowed=true, carrierActive=true;
 let completeMode=false;let faultStage='';let storedStatus='draft';let claimCompared=false;let rowExtra:Record<string,unknown>={};let transmitCompared=false;let rowVersion=0;const patches:Record<string,unknown>[]=[];
@@ -33,7 +33,7 @@ let reservationArgs:Record<string,unknown>|null=null;
 const storedArtifacts=new Map<string,string>();
 const json = (value:unknown) => new Response(JSON.stringify(value),{status:200,headers:{'content-type':'application/json'}});
 function setup() {
- moduleAllowed=true;issuerAllowed=true;sourceAllowed=true;existingStatus='draft';environment='homologacao';hasCertificate=false;expiresAt='2099-01-01';nfeHomologationApproved=true;nfeProductionApproved=false;seriesAllowed=true;seriesActive=true;seriesDirection='saida';carrierAllowed=true;carrierActive=true;completeMode=false;faultStage='';storedStatus='draft';claimCompared=false;rowExtra={};transmitCompared=false;rowVersion=0;reservationArgs=null;storedArtifacts.clear();patches.length=0;paths.length=0;documentWrites.length=0;motorBodies.length=0;
+ moduleAllowed=true;issuerAllowed=true;sourceAllowed=true;existingStatus='draft';environment='homologacao';hasCertificate=false;expiresAt='2099-01-01';nfeHomologationApproved=true;nfeProductionApproved=false;nfeSettingsMissing=false;seriesAllowed=true;seriesActive=true;seriesDirection='saida';carrierAllowed=true;carrierActive=true;completeMode=false;faultStage='';storedStatus='draft';claimCompared=false;rowExtra={};transmitCompared=false;rowVersion=0;reservationArgs=null;storedArtifacts.clear();patches.length=0;paths.length=0;documentWrites.length=0;motorBodies.length=0;
  globalThis.fetch = ((input:RequestInfo|URL, init?:RequestInit) => {
   const url=new URL(typeof input==='string'?input:input instanceof URL?input.href:input.url);
   assert(['backend.example.invalid','engine.example.invalid'].includes(url.hostname),'Tentativa de rede externa durante teste fiscal');
@@ -67,7 +67,7 @@ function setup() {
   if(name==='can_access_stock')return Promise.resolve(json(true));
   if(name==='stocks')return Promise.resolve(json({id:stock}));
   if(name==='company_nfce_settings')return Promise.resolve(json({uf:'RJ',series:1,enabled:true,homologation_approved:true,production_approved:true,...(completeMode?{qr_base_url_homologation:'https://sefaz.example.gov.br/qrcode',access_url_homologation:'https://sefaz.example.gov.br/consulta'}:{})}));
-  if(name==='company_nfe_settings')return Promise.resolve(json({enabled:true,homologation_approved:nfeHomologationApproved,production_approved:nfeProductionApproved,default_operation_nature:'VENDA DE MERCADORIA'}));
+  if(name==='company_nfe_settings')return Promise.resolve(json(nfeSettingsMissing?null:{enabled:true,homologation_approved:nfeHomologationApproved,production_approved:nfeProductionApproved,default_operation_nature:'VENDA DE MERCADORIA'}));
   if(name==='nfe_series')return Promise.resolve(json(seriesAllowed?{id:seriesId,direction:seriesDirection,active:seriesActive}:null));
   if(name==='fiscal_goods_carriers')return Promise.resolve(json(carrierAllowed?{id:carrierId,active:carrierActive}:null));
   if(name==='nfce_documents'||name==='nfe_documents'){
@@ -207,12 +207,21 @@ Deno.test('NF-e usa homologação escolhida na nota mesmo quando o ambiente glob
  }finally{globalThis.fetch=originalFetch;}
 });
 
-Deno.test('NF-e bloqueia produção escolhida na nota sem aprovação, antes de reservar número',async()=>{
+Deno.test('NF-e emite para empresa com o módulo mesmo sem linha de configuração da NF-e',async()=>{
+ setup();completeMode=true;hasCertificate=true;nfeSettingsMissing=true;try{
+  const response=await handler(request({action:'emit',draft:{...completeNfeDraft}}));
+  assertEquals(response.status,201);
+  assertEquals(reservationArgs,{p_company_id:company,p_model:55,p_series_id:seriesId,p_direction:'saida'});
+  assert(paths.includes('MOTOR:/v1/nfe/autorizar'));
+ }finally{globalThis.fetch=originalFetch;}
+});
+
+Deno.test('NF-e permite produção escolhida na nota sem aprovação manual de rollout',async()=>{
  setup();completeMode=true;hasCertificate=true;environment='homologacao';try{
   const response=await handler(request({action:'emit',draft:{...completeNfeDraft,environment:'producao'}}));
-  assertEquals(response.status,422);
-  assertEquals((await response.json()).error,'production_not_approved');
-  assert(!paths.some(path=>path.includes('reserve_goods_fiscal_number')||path.startsWith('MOTOR:')));
+  assertEquals(response.status,201);
+  assertEquals(reservationArgs,{p_company_id:company,p_model:55,p_series_id:seriesId,p_direction:'saida'});
+  assert(paths.includes('MOTOR:/v1/nfe/preparar'));assert(paths.includes('MOTOR:/v1/nfe/autorizar'));
  }finally{globalThis.fetch=originalFetch;}
 });
 
@@ -298,6 +307,67 @@ Deno.test('consulta inconclusiva não rebaixa autorização já persistida',asyn
 Deno.test('consulta inconclusiva não rebaixa rejeição já persistida',async()=>{
  await setupSigned();storedStatus='rejected';const baseFetch=globalThis.fetch;globalThis.fetch=(async(input,init)=>routeUrl(input).pathname.endsWith('/consultar')?json({outcome:'uncertain',situacaoOficial:'nao_localizada'}):baseFetch(input,init))as typeof fetch;
  try{const response=await handler(request({model:65,documentId:doc,action:'consult'}));assertEquals(response.status,202);assertEquals((await response.json()).status,'rejected');assertEquals(storedStatus,'rejected');assertEquals(patches.length,0);}finally{globalThis.fetch=originalFetch;}
+});
+
+// Número já usado em outro emissor (cStat 539): rejeição definitiva, nunca "consultando" eterno.
+function collisionFetch(consult:unknown,priorCstat:string|null,attemptedAt:string|null=null){const baseFetch=globalThis.fetch;globalThis.fetch=(async(input,init)=>{const url=routeUrl(input);
+ if(url.hostname==='engine.example.invalid'&&url.pathname.endsWith('/autorizar')){paths.push(`MOTOR:${url.pathname}`);return json({outcome:'uncertain',recovered:false,resposta:{cstat:'539'}});}
+ if(url.hostname==='engine.example.invalid'&&url.pathname.endsWith('/consultar')){paths.push(`MOTOR:${url.pathname}`);return consult===null?new Response('{}',{status:503}):json(consult);}
+ if(url.pathname.endsWith('_events')&&(init?.method??'GET')==='GET')return json(priorCstat||attemptedAt?{cstat:priorCstat,created_at:attemptedAt??new Date().toISOString()}:null);
+ return baseFetch(input,init);})as typeof fetch;}
+const keyNotFound={situacaoOficial:'nao_localizada',resposta:{cstat:'217'}};
+Deno.test('número já usado em outra nota (539) vira rejeição definitiva quando a chave não existe na SEFAZ',async()=>{
+ await setupSigned();collisionFetch(keyNotFound,null);
+ try{const response=await handler(request({model:65,documentId:doc,action:'resume'}));assertEquals(response.status,202);const result=await response.json();assertEquals(result.status,'rejected');assertEquals(result.rejectionCode,'sefaz_539');assertEquals(storedStatus,'rejected');assert(patches.some(p=>p.status==='rejected'&&p.last_error_code==='sefaz_539'&&p.next_action===null));assert(paths.includes('MOTOR:/v1/nfce/consultar'));}finally{globalThis.fetch=originalFetch;}
+});
+Deno.test('539 sem confirmação da consulta mantém a nota incerta, sem concluir rejeição',async()=>{
+ for(const consult of [null,{outcome:'uncertain',situacaoOficial:'aguardando_confirmacao'}]){await setupSigned();collisionFetch(consult,null);
+  try{const response=await handler(request({model:65,documentId:doc,action:'resume'}));assertEquals(response.status,202);assertEquals((await response.json()).status,'uncertain');assertEquals(storedStatus,'uncertain');assert(!patches.some(p=>p.status==='rejected'));}finally{globalThis.fetch=originalFetch;}}
+});
+Deno.test('consulta conclui a rejeição da nota incerta cujo envio foi recusado por número já usado',async()=>{
+ await setupSigned();storedStatus='uncertain';collisionFetch(keyNotFound,'539');
+ try{const response=await handler(request({model:65,documentId:doc,action:'consult'}));assertEquals(response.status,200);assertEquals((await response.json()).status,'rejected');assertEquals(storedStatus,'rejected');assert(patches.some(p=>p.last_error_code==='sefaz_539'&&typeof p.last_error_message==='string'&&p.last_error_message.includes('número')));}finally{globalThis.fetch=originalFetch;}
+});
+Deno.test('chave não localizada sem recusa por numeração continua incerta',async()=>{
+ await setupSigned();storedStatus='uncertain';collisionFetch(keyNotFound,null);
+ try{const response=await handler(request({model:65,documentId:doc,action:'consult'}));assertEquals(response.status,200);assertEquals((await response.json()).status,'uncertain');assertEquals(storedStatus,'uncertain');assert(!patches.some(p=>p.status==='rejected'));}finally{globalThis.fetch=originalFetch;}
+});
+
+// Logomarca do emitente no DANFE: só o arquivo da própria empresa no bucket de logos, PNG ou JPEG.
+function logoFetch(logoUrl:string,bytes:Uint8Array){const baseFetch=globalThis.fetch;globalThis.fetch=(async(input,init)=>{const url=routeUrl(input);
+ if(url.pathname.endsWith('/company_settings')&&url.searchParams.get('select')==='logo_url')return json({logo_url:logoUrl});
+ if(url.pathname.startsWith('/storage/v1/object/company-logos/'))return new Response(bytes,{status:200,headers:{'content-type':'image/png'}});
+ return baseFetch(input,init);})as typeof fetch;}
+const pngBytes=new Uint8Array([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a,1,2,3,4]);
+const ownLogo='https://backend.example.invalid/storage/v1/object/public/company-logos/logo_1.png';
+Deno.test('consulta de NF-e envia a logomarca da empresa ao motor para o DANFE',async()=>{
+ await setupSigned();storedStatus='authorized';logoFetch(ownLogo,pngBytes);
+ try{const response=await handler(request({model:55,documentId:doc,action:'consult'}));assertEquals(response.status,200);const sent=motorBodies.at(-1)!;assertEquals(sent.logoBase64,btoa(String.fromCharCode(...pngBytes)));}finally{globalThis.fetch=originalFetch;}
+});
+Deno.test('logomarca fora do bucket da plataforma ou em formato não aceito não é enviada',async()=>{
+ for(const [logoUrl,bytes] of [['https://attacker.example.invalid/storage/v1/object/public/company-logos/logo_1.png',pngBytes],[ownLogo,new TextEncoder().encode('<svg onload="x"/>')],['',pngBytes]] as [string,Uint8Array][]){
+  await setupSigned();storedStatus='authorized';logoFetch(logoUrl,bytes);
+  try{const response=await handler(request({model:55,documentId:doc,action:'consult'}));assertEquals(response.status,200);assert(!('logoBase64' in motorBodies.at(-1)!));}finally{globalThis.fetch=originalFetch;}}
+});
+Deno.test('NFC-e não envia logomarca',async()=>{
+ await setupSigned();storedStatus='authorized';logoFetch(ownLogo,pngBytes);
+ try{const response=await handler(request({model:65,documentId:doc,action:'consult'}));assertEquals(response.status,200);assert(!('logoBase64' in motorBodies.at(-1)!));}finally{globalThis.fetch=originalFetch;}
+});
+
+// Envio que nunca chegou à SEFAZ: a nota volta a "assinada" e o MESMO XML pode ser retransmitido.
+Deno.test('nota que a SEFAZ não recebeu volta a assinada, sem transmitir nada na consulta',async()=>{
+ await setupSigned();storedStatus='uncertain';collisionFetch(keyNotFound,null,new Date(Date.now()-10*60_000).toISOString());
+ try{const response=await handler(request({model:65,documentId:doc,action:'consult'}));assertEquals(response.status,200);const result=await response.json();assertEquals(result.status,'signed');assertEquals(result.notTransmitted,true);assertEquals(storedStatus,'signed');assert(patches.some(p=>p.status==='signed'&&p.official_status==='nao_localizada'));assert(!paths.includes('MOTOR:/v1/nfce/autorizar'));assert(!paths.some(p=>p.includes('reserve_goods_fiscal_number')));}finally{globalThis.fetch=originalFetch;}
+});
+Deno.test('envio recente ainda não localizado continua incerto durante a carência',async()=>{
+ await setupSigned();storedStatus='uncertain';collisionFetch(keyNotFound,null,new Date(Date.now()-20_000).toISOString());
+ try{const response=await handler(request({model:65,documentId:doc,action:'consult'}));assertEquals(response.status,200);assertEquals((await response.json()).status,'uncertain');assertEquals(storedStatus,'uncertain');assert(!patches.some(p=>p.status==='signed'));}finally{globalThis.fetch=originalFetch;}
+});
+Deno.test('depois de voltar a assinada, a retomada reenvia o mesmo documento sem novo número',async()=>{
+ await setupSigned();storedStatus='uncertain';const base=globalThis.fetch;collisionFetch(keyNotFound,null,new Date(Date.now()-10*60_000).toISOString());
+ try{assertEquals((await (await handler(request({model:65,documentId:doc,action:'consult'}))).json()).status,'signed');
+  globalThis.fetch=base;paths.length=0;
+  const response=await handler(request({model:65,documentId:doc,action:'resume'}));assertEquals(response.status,201);assertEquals((await response.json()).status,'authorized');assert(paths.includes('MOTOR:/v1/nfce/autorizar'));assert(!paths.includes('MOTOR:/v1/nfce/preparar'));assert(!paths.some(p=>p.includes('reserve_goods_fiscal_number')));}finally{globalThis.fetch=originalFetch;}
 });
 
 Deno.test('consulta com status igual também exige a revisão updated_at capturada',async()=>{

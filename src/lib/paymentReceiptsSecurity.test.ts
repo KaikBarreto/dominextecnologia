@@ -14,7 +14,7 @@ describe('fronteiras dos recibos', () => {
   expect(document).not.toContain('public.tenant_subscription_allows_access(so.company_id)');
  });
  it('não publica helpers internos nem RPC de leitura financeira para anônimos', () => {
-  for (const signature of ['_financial_receipt_customer(uuid)', '_financial_payment_receipt(uuid)', '_charge_payment_receipt(uuid)', '_os_receipt_context(uuid)', '_os_confirmed_payments(uuid)', '_can_read_payment_receipt(uuid)', '_portal_receipt_customer(text,text)']) {
+  for (const signature of ['_is_confirmed_installment_payment(uuid)', '_financial_receipt_customer(uuid)', '_financial_payment_receipt(uuid)', '_charge_payment_receipt(uuid)', '_os_receipt_context(uuid)', '_os_confirmed_payments(uuid)', '_can_read_payment_receipt(uuid)', '_portal_receipt_customer(text,text)']) {
    expect(sql).toContain(`REVOKE ALL ON FUNCTION public.${signature} FROM PUBLIC,anon,authenticated;`);
   }
   expect(sql).toContain('REVOKE ALL ON FUNCTION public.get_financial_payment_receipt(uuid) FROM PUBLIC,anon');

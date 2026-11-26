@@ -16902,13 +16902,16 @@ export type Database = {
         Row: {
           asaas_installment_id: string | null
           asaas_payment_id: string | null
+          base_value: number | null
           batch_id: string | null
           billing_type: string | null
           boleto_url: string | null
+          card_fee_payer: string | null
           company_id: string
           created_at: string
           created_by: string | null
           customer_id: string | null
+          customer_max_installments: number | null
           description: string | null
           due_date: string | null
           finance_sync_checked_at: string | null
@@ -16929,19 +16932,23 @@ export type Database = {
           source_type: string
           status: string
           subscription_id: string | null
+          superseded_asaas_payment_ids: string[]
           updated_at: string
           value: number
         }
         Insert: {
           asaas_installment_id?: string | null
           asaas_payment_id?: string | null
+          base_value?: number | null
           batch_id?: string | null
           billing_type?: string | null
           boleto_url?: string | null
+          card_fee_payer?: string | null
           company_id: string
           created_at?: string
           created_by?: string | null
           customer_id?: string | null
+          customer_max_installments?: number | null
           description?: string | null
           due_date?: string | null
           finance_sync_checked_at?: string | null
@@ -16962,19 +16969,23 @@ export type Database = {
           source_type?: string
           status?: string
           subscription_id?: string | null
+          superseded_asaas_payment_ids?: string[]
           updated_at?: string
           value: number
         }
         Update: {
           asaas_installment_id?: string | null
           asaas_payment_id?: string | null
+          base_value?: number | null
           batch_id?: string | null
           billing_type?: string | null
           boleto_url?: string | null
+          card_fee_payer?: string | null
           company_id?: string
           created_at?: string
           created_by?: string | null
           customer_id?: string | null
+          customer_max_installments?: number | null
           description?: string | null
           due_date?: string | null
           finance_sync_checked_at?: string | null
@@ -16995,6 +17006,7 @@ export type Database = {
           source_type?: string
           status?: string
           subscription_id?: string | null
+          superseded_asaas_payment_ids?: string[]
           updated_at?: string
           value?: number
         }
@@ -22556,6 +22568,19 @@ export type Database = {
         }
         Returns: number
       }
+      replace_tenant_charge_gateway_payment: {
+        Args: {
+          p_billed_value: number
+          p_charge_id: string
+          p_expected_payment_id: string
+          p_installment_count: number
+          p_net_value: number | null
+          p_new_installment_id: string | null
+          p_new_invoice_url?: string | null
+          p_new_payment_id: string
+        }
+        Returns: Json
+      }
       reserve_pmoc_certificate_validation: {
         Args: {
           p_company_id: string
@@ -22936,6 +22961,10 @@ export type Database = {
           r_receivable: boolean
           transaction_type: string
         }[]
+      }
+      tenant_charge_is_superseded_payment: {
+        Args: { p_asaas_payment_id: string }
+        Returns: boolean
       }
       tenant_charges_without_receivable: {
         Args: { p_company_id: string }

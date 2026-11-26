@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   EMPTY_CART,
   addItem,
+  cartLineNetUnitPrice,
   clearCart,
   computeItemDiscountTotal,
   computeSubtotal,
@@ -273,5 +274,27 @@ describe('cliente e limpeza do carrinho', () => {
     expect(cleared.lines).toHaveLength(0);
     expect(cleared.discount).toBe(0);
     expect(cleared.customerId).toBe('cust-1');
+  });
+});
+
+describe('preço unitário efetivo da linha com desconto', () => {
+  it('sem desconto não há outro preço para mostrar', () => {
+    expect(cartLineNetUnitPrice({ quantity: 5, unitPrice: 8, discountAmount: 0 })).toBeNull();
+  });
+
+  it('distribui o desconto da linha pela quantidade vendida', () => {
+    // 5 un x R$ 8,00 com R$ 6,00 de desconto: R$ 34,00 / 5 = R$ 6,80 por unidade.
+    expect(cartLineNetUnitPrice({ quantity: 5, unitPrice: 8, discountAmount: 6 })).toBeCloseTo(6.8, 10);
+  });
+
+  it('vale para quantidade fracionada vendida por peso ou metro', () => {
+    // 8,6 kg x R$ 45,00 com R$ 42,00 de desconto: R$ 345,00 / 8,6 kg.
+    expect(cartLineNetUnitPrice({ quantity: 8.6, unitPrice: 45, discountAmount: 42 })).toBeCloseTo(345 / 8.6, 10);
+  });
+
+  it('limita o desconto ao valor bruto da linha e ignora quantidade zerada', () => {
+    expect(cartLineNetUnitPrice({ quantity: 2, unitPrice: 10, discountAmount: 50 })).toBe(0);
+    expect(cartLineNetUnitPrice({ quantity: 0, unitPrice: 10, discountAmount: 5 })).toBeNull();
+    expect(cartLineNetUnitPrice({ quantity: 2, unitPrice: 10, discountAmount: -3 })).toBeNull();
   });
 });

@@ -75,14 +75,12 @@ describe('WhatsappSectionNav', () => {
     container.remove();
   });
 
-  it('mostra as seis áreas e não navega para nenhuma bloqueada antes da conexão', () => {
+  it('mostra as seis áreas na ordem definida e permite navegar sem conexão', () => {
     const onChange = vi.fn();
     act(() => {
       root.render(
         <WhatsappSectionNav
           active="connection"
-          isConnected={false}
-          lockedLabel="Conecte o WhatsApp para liberar esta área"
           onChange={onChange}
           labels={labels}
         />,
@@ -91,27 +89,33 @@ describe('WhatsappSectionNav', () => {
 
     const buttons = [...container.querySelectorAll('button')];
     expect(buttons).toHaveLength(6);
+    expect(buttons.map((button) => button.textContent)).toEqual([
+      'Conexão',
+      'Automações',
+      'Atendimento',
+      'Modelos',
+      'Campanhas',
+      'Histórico',
+    ]);
 
-    // Sem conexão, só Conexão navega. As abas underline não têm estado
-    // desabilitado: o bloqueio é o guarda no onTabChange, então o teste
-    // verifica o efeito, não o atributo.
     for (const label of ['Automações', 'Atendimento', 'Modelos', 'Campanhas', 'Histórico']) {
       act(() => buttons.find((b) => b.textContent?.includes(label))?.click());
     }
-    expect(onChange).not.toHaveBeenCalled();
-
-    act(() => buttons.find((b) => b.textContent?.includes('Conexão'))?.click());
-    expect(onChange).toHaveBeenCalledWith('connection');
+    expect(onChange.mock.calls.map(([section]) => section)).toEqual([
+      'automations',
+      'inbox',
+      'templates',
+      'campaigns',
+      'history',
+    ]);
   });
 
-  it('libera automações, modelos e histórico, mantendo atendimento e campanhas futuros', () => {
+  it('permite navegar por qualquer área quando conectado', () => {
     const onChange = vi.fn();
     act(() => {
       root.render(
         <WhatsappSectionNav
           active="automations"
-          isConnected
-          lockedLabel="Conecte o WhatsApp para liberar esta área"
           onChange={onChange}
           labels={labels}
         />,
@@ -122,15 +126,16 @@ describe('WhatsappSectionNav', () => {
     const clicar = (label: string) =>
       act(() => buttons.find((b) => b.textContent?.includes(label))?.click());
 
-    // Etapas futuras seguem bloqueadas mesmo com o WhatsApp conectado.
     clicar('Atendimento');
     clicar('Campanhas');
-    expect(onChange).not.toHaveBeenCalled();
-
     clicar('Histórico');
-    expect(onChange).toHaveBeenCalledWith('history');
     clicar('Modelos');
-    expect(onChange).toHaveBeenCalledWith('templates');
+    expect(onChange.mock.calls.map(([section]) => section)).toEqual([
+      'inbox',
+      'campaigns',
+      'history',
+      'templates',
+    ]);
   });
 });
 
@@ -215,5 +220,18 @@ describe('SettingsIntegrationContent', () => {
 
     expect(container.textContent).toContain('Configuração da conta Asaas');
     expect(container.textContent).not.toContain('Configuração do canal de e-mail');
+  });
+
+  it('usa o accent canônico preto nas integrações', () => {
+    act(() => {
+      root.render(
+        <MemoryRouter initialEntries={['/configuracoes?tab=integracoes&integration=email']}>
+          <SettingsIntegrationContent />
+        </MemoryRouter>,
+      );
+    });
+
+    expect(container.firstElementChild?.className).toContain('[--primary:0_0%_10%]');
+    expect(container.firstElementChild?.className).toContain('[--primary-foreground:0_0%_100%]');
   });
 });

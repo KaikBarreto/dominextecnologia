@@ -128,6 +128,15 @@ export interface NfseValoresState {
   percentualTribSn: number;
 }
 
+export interface NfseIbsCbsState {
+  ativo: boolean;
+  codigoIndicadorOperacao: string;
+  cst: string;
+  classificacaoTributaria: string;
+  consumidorFinal: '0' | '1';
+  destinatarioDiferente: '0' | '1';
+}
+
 /** Resultado do cálculo de impostos da nota. */
 export interface NfseTaxResult {
   /** valorServico − deduções − desconto incondicionado. */
@@ -151,4 +160,5 @@ export interface NfseInitialDraft {
   regimeApuracao?: string | null;
   servico?: Partial<NfseServicoState>;
   valores?: Partial<NfseValoresState>;
+  ibsCbs?: Partial<NfseIbsCbsState>;
 }

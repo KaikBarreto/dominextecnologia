@@ -121,6 +121,7 @@ function PdvNfceSaleContext({ orderId, confirmed = true, promptAfterPayment = fa
       {readiness.data && !readiness.data.ready && <div role="status" className="space-y-2"><p className="font-semibold">Antes de emitir, confira:</p><ul className="list-disc space-y-1 pl-5">{readiness.data.issues.map((issue,index) => <li key={`${issue.code}:${index}`}>{issue.message}</li>)}</ul><Link className="inline-flex font-semibold underline underline-offset-4" to={localizeAppPath('/notas-fiscais/configuracoes',locale)}>Abrir configurações fiscais</Link></div>}
     </div>}
     {status === 'uncertain' && <p role="status" className="text-sm text-muted-foreground">A confirmação não voltou. Consulte esta mesma nota antes de tentar novamente.</p>}
+    {status === 'signed' && document?.official_status === 'nao_localizada' && <p role="status" className="text-sm text-muted-foreground">A SEFAZ confirmou que não recebeu esta nota. Use "Continuar emissão" para enviar o mesmo documento de novo. A venda permanece concluída.</p>}
     {status === 'rejected' && <p role="alert" className="text-sm text-destructive">{goodsRejectionGuidance(document?.last_error_code)} A venda permanece concluída.</p>}
     {!settings.nfce.enabled && !settingsLoading && <p className="text-sm text-muted-foreground">Ative a NFC-e nas Configurações Fiscais para emitir.</p>}
   </div>;

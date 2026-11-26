@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.77";
+export const APP_VERSION = "1.42.0";
 
 export const VERSION_NOTES =
-  "Falhas transitórias ao abrir uma tela agora são recuperadas automaticamente, sem exibir avisos antes da hora.";
+  "Orçamento, OS e financeiro conectados: mostre valores no relatório, receba em partes e gere recibos de cada pagamento, inclusive no portal do cliente.";

@@ -54,6 +54,11 @@ import {
 import { asaasFor, AsaasApiError } from "../_shared/asaas-tenant-client.ts";
 import { isValidDocument, unmaskDoc } from "../_shared/document-validation.ts";
 import { resolveTenantCardFees, grossUpForCustomer } from "../_shared/asaas-card-fees.ts";
+import {
+  effectiveCustomerMaxInstallments,
+  MAX_CUSTOMER_MAX_INSTALLMENTS,
+  MIN_CUSTOMER_MAX_INSTALLMENTS,
+} from "../_shared/customer-installments.ts";
 
 /** Quem paga a taxa do cartão nesta cobrança. */
 type CardFeePayer = "company" | "customer";
@@ -221,6 +226,12 @@ interface CreateChargeInput {
   discount_percent?: number;
   discount_days?: number;
   installment_count?: number;
+  // "Cliente escolhe as parcelas" (só cartão): teto de parcelas que o PAGADOR
+  // pode escolher no checkout (2..12). Presente → a cobrança nasce 1x na Asaas
+  // e `installment_count` é IGNORADO; o checkout oferece 1..teto e o
+  // tenant-asaas-pay-charge-card troca a 1x por uma venda parcelada nova se o
+  // pagador escolher N ≥ 2. Ausente (frontend antigo) → fluxo de sempre.
+  customer_max_installments?: number;
   // Quem paga a taxa do cartão. Ausente → default da conta (card_fee_payer).
   fee_payer?: CardFeePayer;
   // Categoria (nome) do recebível no Financeiro. Ausente → default da conta
@@ -449,6 +460,36 @@ async function handleRequest(req: Request): Promise<Response> {
             ? "Informe a conta a receber que será cobrada."
             : "Informe a parcela do contrato que será cobrada.",
     }, 400);
+  }
+
+  // "Cliente escolhe as parcelas": validado AQUI, antes de tocar a Asaas.
+  //   • só cartão (o modo troca a cobrança por uma venda parcelada no cartão);
+  //   • nunca em origem que LIGA a um lançamento que já existe (parcela de
+  //     contrato / conta a receber): o espelho ali é a própria linha da origem,
+  //     e trocar a cobrança por outra de total diferente mexeria no valor dela.
+  const rawCustomerMax = input.customer_max_installments;
+  const customerChoosesInstallments = rawCustomerMax !== undefined && rawCustomerMax !== null;
+  if (customerChoosesInstallments) {
+    const n = Number(rawCustomerMax);
+    if (
+      !Number.isInteger(n) ||
+      n < MIN_CUSTOMER_MAX_INSTALLMENTS ||
+      n > MAX_CUSTOMER_MAX_INSTALLMENTS
+    ) {
+      return jsonResponse(req, {
+        error: `Escolha um limite de parcelas entre ${MIN_CUSTOMER_MAX_INSTALLMENTS}x e ${MAX_CUSTOMER_MAX_INSTALLMENTS}x.`,
+      }, 400);
+    }
+    if (billingType !== "CREDIT_CARD") {
+      return jsonResponse(req, {
+        error: "O cliente só escolhe as parcelas em cobrança no cartão.",
+      }, 400);
+    }
+    if (sourceType === "contract_installment" || sourceType === "receivable") {
+      return jsonResponse(req, {
+        error: "Nesta cobrança o parcelamento precisa ser definido por você.",
+      }, 400);
+    }
   }
 
   let commercialReservationId: string | null = null;
@@ -788,10 +829,25 @@ async function handleRequest(req: Request): Promise<Response> {
       ? Math.floor(rawDiscountDays)
       : 0;
 
+    // "Cliente escolhe as parcelas": teto EFETIVO = menor entre o pedido e o
+    // limite da conta (default_max_installments). Conta limitada a 1x → o modo
+    // não existe e a cobrança é recusada (antes de criar nada na Asaas).
+    const customerMaxInstallments = customerChoosesInstallments
+      ? effectiveCustomerMaxInstallments(rawCustomerMax, account.default_max_installments)
+      : null;
+    if (customerChoosesInstallments && customerMaxInstallments === null) {
+      return jsonResponse(req, {
+        error: "Sua conta de recebimento está limitada a 1x no cartão. Aumente o limite de parcelas nas configurações de Cobranças.",
+      }, 400);
+    }
+
     // Parcelamento: só no cartão E quando pedido > 1. Asaas parcela o totalValue.
+    // No modo "cliente escolhe" a cobrança nasce SEMPRE 1x: quem decide as
+    // parcelas é o pagador, no checkout (installment_count é ignorado).
     const rawInstallments = Number(input.installment_count ?? 1);
     const installmentCount =
-      billingType === "CREDIT_CARD" && Number.isFinite(rawInstallments) && rawInstallments > 1
+      !customerChoosesInstallments &&
+        billingType === "CREDIT_CARD" && Number.isFinite(rawInstallments) && rawInstallments > 1
         ? Math.floor(rawInstallments)
         : 1;
 
@@ -942,6 +998,18 @@ async function handleRequest(req: Request): Promise<Response> {
       pix_copy_paste: pixCopyPaste,
       boleto_url: boletoUrl,
       created_by: userId,
+      // Cartão: guardamos a "receita" do valor para quem precisar recalcular o
+      // total depois (o checkout e o pay-charge-card, no modo "cliente escolhe"):
+      //   base_value     = o que a empresa pediu, ANTES do gross-up;
+      //   card_fee_payer = quem paga a taxa nesta cobrança.
+      // Só no cartão: os outros meios seguem gravando exatamente o de sempre.
+      ...(billingType === "CREDIT_CARD"
+        ? {
+          base_value: chargeValue,
+          card_fee_payer: feePayer,
+          customer_max_installments: customerMaxInstallments,
+        }
+        : {}),
     };
     const { data: saved, error: insertErr } = await supabase
       .from("tenant_charges")

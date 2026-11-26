@@ -57,6 +57,10 @@ export interface CreateChargeInput {
   discount_percent?: number;
   discount_days?: number;
   installment_count?: number;
+  /** "Cliente escolhe as parcelas" (só cartão): teto de parcelas (2..12) que o
+   *  pagador escolhe no checkout. Presente → a cobrança nasce 1x e
+   *  `installment_count` não deve ser enviado. */
+  customer_max_installments?: number;
   /** Quem paga a taxa do cartão nesta cobrança: 'company' (empresa absorve) ou
    *  'customer' (repasse ao cliente via gross-up). Ausente → default da conta. */
   fee_payer?: 'company' | 'customer';
@@ -568,6 +572,7 @@ export function useTenantCharges(options?: UseTenantChargesOptions) {
       if (input.discount_percent !== undefined) body.discount_percent = input.discount_percent;
       if (input.discount_days !== undefined) body.discount_days = input.discount_days;
       if (input.installment_count !== undefined) body.installment_count = input.installment_count;
+      if (input.customer_max_installments !== undefined) body.customer_max_installments = input.customer_max_installments;
       if (input.fee_payer !== undefined) body.fee_payer = input.fee_payer;
       // Repassa origem da cobrança ao edge (source_type + source_id).
       // Default do edge é 'avulso'; 'quote' ativa o dedupe pelo source_id.

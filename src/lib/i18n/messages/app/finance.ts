@@ -10,6 +10,13 @@ export const finance = {
       system: 'Baixa registrada em {when}',
       inlineBy: 'por {name}',
     },
+    pdvAccount: {
+      receiveTitle: 'Receber conta do PDV',
+      receiveIntro: 'Esta conta veio de uma venda do PDV. Para dar baixa, use Receber na conta do cliente abaixo. Assim o caixa e o saldo do cliente ficam corretos.',
+      unavailable: 'Esta conta veio do PDV e não recebe baixa por aqui. Confira a venda em PDV, Pedidos.',
+      editBlocked: 'Editar: cancele e refaça a venda no PDV',
+      close: 'Fechar',
+    },
     pdvUndo: {
       titleSale: 'Excluir lançamento da venda nº {number} do PDV?',
       titleOther: 'Excluir lançamento do PDV?',
@@ -2100,6 +2107,13 @@ export const finance = {
       system: 'Marked as paid on {when}',
       inlineBy: 'by {name}',
     },
+    pdvAccount: {
+      receiveTitle: 'Receive POS account',
+      receiveIntro: 'This account came from a POS sale. To settle it, use Receive in the customer account below. That keeps the cash register and the customer balance correct.',
+      unavailable: 'This account came from the POS and cannot be settled here. Check the sale under POS, Orders.',
+      editBlocked: 'Edit: cancel and redo the sale in the POS',
+      close: 'Close',
+    },
     pdvUndo: {
       titleSale: 'Delete the entry from POS sale #{number}?',
       titleOther: 'Delete this POS entry?',
@@ -4084,6 +4098,13 @@ export const finance = {
       by: 'Marcado como pagado por {name} el {when}',
       system: 'Marcado como pagado el {when}',
       inlineBy: 'por {name}',
+    },
+    pdvAccount: {
+      receiveTitle: 'Cobrar cuenta del PDV',
+      receiveIntro: 'Esta cuenta vino de una venta del PDV. Para registrar el cobro, usa Recibir en la cuenta del cliente de abajo. Así la caja y el saldo del cliente quedan correctos.',
+      unavailable: 'Esta cuenta vino del PDV y no se puede cobrar desde aquí. Revisa la venta en PDV, Pedidos.',
+      editBlocked: 'Editar: cancela y rehaz la venta en el PDV',
+      close: 'Cerrar',
     },
     pdvUndo: {
       titleSale: '¿Eliminar el registro de la venta nº {number} del PDV?',
@@ -6070,6 +6091,13 @@ export const finance = {
       by: 'Marqué comme payé par {name} le {when}',
       system: 'Marqué comme payé le {when}',
       inlineBy: 'par {name}',
+    },
+    pdvAccount: {
+      receiveTitle: `Encaisser un compte du point de vente`,
+      receiveIntro: `Ce compte provient d'une vente du point de vente. Pour l'encaisser, utilisez Recevoir dans le compte du client ci-dessous. Ainsi la caisse et le solde du client restent corrects.`,
+      unavailable: `Ce compte provient du point de vente et ne peut pas être encaissé ici. Vérifiez la vente dans Point de vente, Commandes.`,
+      editBlocked: `Modifier : annulez et refaites la vente au point de vente`,
+      close: `Fermer`,
     },
     pdvUndo: {
       titleSale: `Supprimer l'écriture de la vente n° {number} du point de vente ?`,

@@ -8,7 +8,21 @@ const UUID_RE =
 const TOKEN_RE = /^[0-9a-f]{64}$/i;
 const SIGNED_URL_TTL_SECONDS = 300;
 
-type DocumentSource = "manual" | "contract_attachment" | "dominex_nfse";
+type DocumentSource =
+  | "manual"
+  | "contract_attachment"
+  | "dominex_nfse"
+  | "dominex_nfe"
+  | "dominex_nfce";
+type GoodsFormat = "pdf" | "xml";
+
+const SOURCES: DocumentSource[] = [
+  "manual",
+  "contract_attachment",
+  "dominex_nfse",
+  "dominex_nfe",
+  "dominex_nfce",
+];
 
 interface PortalItem {
   id?: string;
@@ -49,6 +63,7 @@ Deno.serve(async (req) => {
     sessionToken?: string | null;
     documentId?: string;
     source?: DocumentSource;
+    format?: string | null;
   };
   try {
     body = await req.json();
@@ -64,9 +79,16 @@ Deno.serve(async (req) => {
   if (!TOKEN_RE.test(portalToken) || !UUID_RE.test(documentId)) {
     return json(req, { error: "not_found" }, 404);
   }
-  if (!["manual", "contract_attachment", "dominex_nfse"].includes(source)) {
+  if (!SOURCES.includes(source)) {
     return json(req, { error: "invalid_source" }, 400);
   }
+  const isGoods = source === "dominex_nfe" || source === "dominex_nfce";
+  // `format` so vale para NF-e/NFC-e; nas fontes antigas e ignorado.
+  const rawFormat = body.format == null ? "" : clean(body.format);
+  if (isGoods && rawFormat && rawFormat !== "pdf" && rawFormat !== "xml") {
+    return json(req, { error: "invalid_format" }, 400);
+  }
+  const format: GoodsFormat = rawFormat === "xml" ? "xml" : "pdf";
 
   // Usa a identidade do chamador quando houver JWT autenticado. Em portal
   // anonimo o Authorization recebido e a chave anon; a RPC valida token/sessao.
@@ -109,6 +131,76 @@ Deno.serve(async (req) => {
     (item) => item.id === documentId && item.source === source,
   );
   if (!isReleased) return json(req, { error: "not_found" }, 404);
+
+  if (isGoods) {
+    // NF-e (55) / NFC-e (65) autorizada em producao. companyId/customerId vem
+    // do payload do portal do proprio visitante, nunca do corpo da requisicao.
+    const model = source === "dominex_nfe" ? 55 : 65;
+    const pdfField = model === 55 ? "danfe_pdf_path" : "danfce_pdf_path";
+    let query = service
+      .from(model === 55 ? "nfe_documents" : "nfce_documents")
+      .select(
+        model === 55
+          ? `number, ${pdfField}, processed_xml_path`
+          : `number, ${pdfField}, processed_xml_path, customer_id, order_id`,
+      )
+      .eq("id", documentId)
+      .eq("company_id", companyId)
+      .eq("status", "authorized")
+      .eq("environment", 1);
+    // NF-e: o cliente fica gravado na propria nota. NFC-e do PDV pode nascer
+    // so com order_id; o dono e COALESCE(nfce.customer_id, pdv_orders.customer_id).
+    if (model === 55) {
+      query = query.eq("customer_id", customerId).eq("direction", "saida");
+    }
+    const { data: row } = await query.maybeSingle();
+    if (!row) return json(req, { error: "not_found" }, 404);
+
+    const record = row as unknown as Record<string, unknown>;
+    if (model === 65) {
+      const directCustomer = clean(record.customer_id);
+      const orderId = clean(record.order_id);
+      if (directCustomer) {
+        if (directCustomer !== customerId) {
+          return json(req, { error: "not_found" }, 404);
+        }
+      } else if (UUID_RE.test(orderId)) {
+        const { data: order } = await service
+          .from("pdv_orders")
+          .select("customer_id")
+          .eq("id", orderId)
+          .eq("company_id", companyId)
+          .maybeSingle();
+        if (!order || clean(order.customer_id) !== customerId) {
+          return json(req, { error: "not_found" }, 404);
+        }
+      } else {
+        return json(req, { error: "not_found" }, 404);
+      }
+    }
+    const path = clean(record[format === "xml" ? "processed_xml_path" : pdfField]);
+    if (
+      !path ||
+      !path.startsWith(`${companyId}/${model}/${documentId}/`) ||
+      path.split("/").includes("..")
+    ) {
+      return json(req, { error: "not_found" }, 404);
+    }
+
+    const number = record.number == null ? "" : String(record.number).trim();
+    const prefix = model === 55 ? "NF-e" : "NFC-e";
+    const fileName = `${prefix}${number ? `-${number}` : ""}.${format}`;
+    const { data: signed, error } = await service.storage
+      .from("fiscal-artifacts")
+      .createSignedUrl(path, SIGNED_URL_TTL_SECONDS, { download: fileName });
+    if (error || !signed?.signedUrl) {
+      return json(req, { error: "download_unavailable" }, 503);
+    }
+    return json(req, {
+      url: signed.signedUrl,
+      expires_in: SIGNED_URL_TTL_SECONDS,
+    });
+  }
 
   if (source === "manual") {
     const { data: document } = await service

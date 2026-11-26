@@ -1,6 +1,7 @@
 import { ShoppingCart, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PdvProductName } from '@/components/pdv/PdvProductName';
+import { PdvLineUnitPrice } from '@/components/pdv/PdvLineUnitPrice';
 import { PdvQuantityStepper } from '@/components/pdv/PdvQuantityStepper';
 import { PdvScrollFadeContainer } from '@/components/pdv/PdvScrollFadeContainer';
 import { PdvProductImagePreview } from '@/components/pdv/PdvProductImagePreview';
@@ -221,7 +222,7 @@ export function PdvCartItemsTable({
                       </div>
                     </td>
                     <td className="px-2 py-2 text-right tabular-nums text-muted-foreground">
-                      {formatCurrency(line.unitPrice)}/{line.unit?.trim() || 'un'}
+                      <PdvLineUnitPrice line={line} formatCurrency={formatCurrency} />/{line.unit?.trim() || 'un'}
                     </td>
                     <td className="px-2 py-2 text-right font-bold tabular-nums">
                       {lineDiscount > 0 && (

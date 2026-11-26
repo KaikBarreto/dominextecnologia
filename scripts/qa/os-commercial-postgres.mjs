@@ -362,6 +362,80 @@ async function testFlow() {
     console.log(
       "PASS cobrança e espelho contam uma vez; estorno bloqueia recibo mesmo com espelho desatualizado",
     );
+    await db.query("RESET ROLE");
+    const cardOs = randomUUID(),
+      cardCharge = randomUUID(),
+      cardRoot = randomUUID();
+    const cardFirst = randomUUID(), cardLast = randomUUID();
+    await db.query(
+      "INSERT INTO service_orders(id,company_id,customer_id,status,total_value,show_values_to_customer) VALUES($1,$2,$3,'concluida',3300,true)",
+      [cardOs, x.company, x.customer],
+    );
+    await db.query(
+      "INSERT INTO tenant_charges(id,company_id,customer_id,source_type,source_id,value,status,billing_type,asaas_installment_id) VALUES($1,$2,$3,'service_order',$4,3300,'PENDING','CREDIT_CARD',$5)",
+      [cardCharge, x.company, x.customer, cardOs, "qa-" + cardCharge],
+    );
+    await db.query(
+      "INSERT INTO financial_transactions(id,company_id,customer_id,service_order_id,tenant_charge_id,transaction_type,amount,description,transaction_date,is_paid) VALUES($1,$2,$3,$4,$5,'entrada',3300,'Cartão QA',current_date,false)",
+      [cardRoot, x.company, x.customer, cardOs, cardCharge],
+    );
+    await db.query(
+      "INSERT INTO financial_transactions(id,company_id,parent_transaction_id,tenant_charge_id,asaas_payment_id,transaction_type,amount,description,category,transaction_date,paid_date,is_paid) VALUES($1,$2,$3,$4,$5,'entrada',1100,'Parcela QA','Recebimento parcial',current_date,current_date,true)",
+      [cardFirst, x.company, cardRoot, cardCharge, "qa-" + cardFirst],
+    );
+    await actor(db, x.admin);
+    const firstInstallment =
+      (await db.query("SELECT get_financial_payment_receipt($1) result", [
+        cardFirst,
+      ])).rows[0].result;
+    assert.equal(firstInstallment.received, 1100);
+    assert.equal(firstInstallment.is_partial, true);
+    assert.equal(
+      (await db.query("SELECT get_os_commercial_document($1,true) result", [
+        cardOs,
+      ])).rows[0].result.receipt.received,
+      1100,
+    );
+    await expectCode(
+      db,
+      () => db.query("SELECT get_charge_payment_receipt($1)", [cardCharge]),
+      "ORC01",
+    );
+    await db.query("RESET ROLE");
+    await db.query(
+      "INSERT INTO financial_transactions(id,company_id,parent_transaction_id,tenant_charge_id,asaas_payment_id,transaction_type,amount,description,category,transaction_date,paid_date,is_paid) VALUES($1,$2,$3,$4,$5,'entrada',2200,'Parcela QA','Recebimento parcial',current_date,current_date,true)",
+      [cardLast, x.company, cardRoot, cardCharge, "qa-" + cardLast],
+    );
+    await db.query(
+      "UPDATE tenant_charges SET status='CONFIRMED',payment_date=now() WHERE id=$1",
+      [cardCharge],
+    );
+    await actor(db, x.admin);
+    const allInstallments =
+      (await db.query("SELECT get_os_commercial_document($1,true) result", [
+        cardOs,
+      ])).rows[0].result.receipt;
+    assert.equal(allInstallments.received, 3300);
+    assert.equal(allInstallments.payments.length, 2);
+    const cardReceipt =
+      (await db.query("SELECT get_charge_payment_receipt($1) result", [
+        cardCharge,
+      ])).rows[0].result;
+    assert.equal(cardReceipt.received, 3300);
+    assert.equal(cardReceipt.payments.length, 2);
+    await db.query("RESET ROLE");
+    await db.query("UPDATE tenant_charges SET status='REFUNDED' WHERE id=$1", [
+      cardCharge,
+    ]);
+    await actor(db, x.admin);
+    await expectCode(
+      db,
+      () => db.query("SELECT get_financial_payment_receipt($1)", [cardFirst]),
+      "ORC01",
+    );
+    console.log(
+      "PASS parcelas de cartão têm recibo individual antes da quitação, sem duplicar a cobrança-mãe",
+    );
     await actor(db, null, "service_role");
     await db.query("RESET ROLE");
     await db.query("INSERT INTO user_roles(user_id,role) VALUES($1,'admin')", [

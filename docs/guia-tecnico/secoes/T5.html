@@ -450,7 +450,7 @@
 
   <p>A ação <span class="ui">Faturar OS</span> (ícone de recibo) existe no menu de ações da tabela, na lista do celular, no card do kanban e no painel de detalhe da Agenda. Ela só aparece para quem tem a tela <span class="ui">Financeiro</span> liberada e a permissão fina de lançar receita de OS; sem isso, nenhum botão novo aparece em lugar nenhum.</p>
 
-  <p>Abrindo a ação, a janela oferece duas escolhas: <span class="ui">Lançar receita</span> ("Dinheiro que já entrou por este serviço.") ou <span class="ui">Gerar cobrança</span> ("PIX, boleto ou link de pagamento pelo Asaas, com vencimento."). É a mesma escolha que já existia no aviso automático ao finalizar a OS, só que disponível a qualquer momento e em qualquer OS, não só no instante de finalizar.</p>
+  <p>Abrindo a ação, a janela oferece duas escolhas: <span class="ui">Lançar receita</span> ("Dinheiro que já entrou por este serviço.") ou <span class="ui">Gerar cobrança</span> ("PIX, boleto ou link de pagamento pelo Asaas, com vencimento."). O lançamento permite registrar o total ou uma parte recebida, ou deixar a conta a receber. A pergunta ao finalizar a OS continua dependendo da configuração da empresa.</p>
 
   <p>Depois de faturada, um selo aparece ao lado do código da OS em toda tela que lista a OS (tabela, lista do celular, card do kanban, painel da Agenda): <span class="ui">Faturada</span> (verde, com o valor lançado) quando há receita, ou <span class="ui">Cobrança enviada</span> (azul) quando existe uma cobrança viva. Cobrança viva tem prioridade sobre receita no selo, porque é a informação mais específica no momento.</p>
 
@@ -628,4 +628,12 @@
   <div class="glossario">
     <b>Palavras que o cliente usa para isso:</b> OS, ordem, chamado, atendimento, serviço, ficha de serviço, abrir chamado, quadro de OS, kanban, painel de serviços, número da OS, relatório de atendimento, link do cliente
   </div>
+
+  <h3>Receber a OS em partes e gerar recibo</h3>
+  <p>Em <span class="ui">Faturar OS</span>, aproveite os serviços e produtos do orçamento da OS ou informe seus itens e valores. É possível deixar o total a receber ou registrar quanto entrou agora. Por exemplo: para uma OS de R$ 3.300, receber R$ 2.600 mantém R$ 700 pendentes na mesma conta. Os próximos recebimentos usam esse saldo, sem criar outra dívida para a mesma OS.</p>
+  <p>Depois de confirmar um recebimento, o sistema oferece o recibo. Você pode comprovar todos os pagamentos da OS ou escolher um pagamento específico. O recibo individual continua identificado como parcial mesmo quando esse último pagamento já quitou o saldo. Faturar sem receber não libera recibo.</p>
+  <figure><img src="img/t5-recebimento-parcial.png" alt="Exemplo fictício de recebimento de R$ 2.600 em uma OS de R$ 3.300, com saldo de R$ 700"><figcaption>Informe o que entrou agora e confira o saldo antes de confirmar. Dados fictícios.</figcaption></figure>
+  <h3>Escolher se os valores aparecem para o cliente</h3>
+  <p>A opção <span class="ui">Mostrar valores para o cliente</span> pertence a cada OS e começa desligada. Quando ligada, o relatório final, seu PDF e o link do cliente mostram serviços, produtos, quantidades, preços e total. Custos e margens continuam internos. A emissão de recibos comprova somente pagamentos confirmados.</p>
+  <figure><img src="img/t5-recibo-parcial.png" alt="Recibo fictício de R$ 700 identificado como pagamento parcial, com itens da contratação e pagamentos"><figcaption>O valor comprovado fica separado do total contratado e do saldo atual. Dados fictícios.</figcaption></figure>
 </section>

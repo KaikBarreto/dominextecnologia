@@ -152,3 +152,97 @@ describe('fronteira de recuperação da venda usada em Pdv.tsx', () => {
     expect(complete).toHaveBeenCalledOnce();
   });
 });
+
+describe('venda recusada pelo servidor não prende o atendimento', () => {
+  const saved = async (_attempt: PdvSaleAttempt) => ({ server: 'saved' as const, localSaved: true });
+  const refusal = new Error('O limite disponível do cliente não cobre esta venda.');
+  const noAnswer = new Error('Failed to fetch');
+  const isDefinitiveRejection = (error: unknown) => error === refusal;
+
+  it('libera a tentativa criada agora quando o servidor responde recusando', async () => {
+    const release = vi.fn(async () => undefined);
+    const persist = vi.fn(saved);
+    await expect(completeDurablePdvDirectSale({ attempt: null, signature: 'intent', persist,
+      complete: async () => { throw refusal; }, onConfirmed: vi.fn(), isDefinitiveRejection, release })).rejects.toBe(refusal);
+    expect(release).toHaveBeenCalledOnce();
+    expect(release).toHaveBeenCalledWith(persist.mock.calls[0][0]);
+  });
+
+  it('mantém a tentativa quando o envio fica sem resposta do servidor', async () => {
+    const release = vi.fn();
+    await expect(completeDurablePdvDirectSale({ attempt: null, signature: 'intent', persist: saved,
+      complete: async () => { throw noAnswer; }, onConfirmed: vi.fn(), isDefinitiveRejection, release })).rejects.toBe(noAnswer);
+    expect(release).not.toHaveBeenCalled();
+  });
+
+  it('nunca libera uma tentativa recuperada do navegador, mesmo com recusa', async () => {
+    const release = vi.fn();
+    const restored = createDurablePdvDirectSaleAttempt('intent', 'restored-after-reload');
+    await expect(completeDurablePdvDirectSale({ attempt: restored, signature: 'intent', persist: saved,
+      complete: async () => { throw refusal; }, onConfirmed: vi.fn(), isDefinitiveRejection, release })).rejects.toBe(refusal);
+    expect(release).not.toHaveBeenCalled();
+  });
+
+  it('recusa depois de um envio sem resposta não libera: o primeiro envio pode ter criado o pedido', async () => {
+    const release = vi.fn();
+    const persist = vi.fn(saved);
+    await expect(completeDurablePdvDirectSale({ attempt: null, signature: 'intent', persist,
+      complete: async () => { throw noAnswer; }, onConfirmed: vi.fn(), isDefinitiveRejection, release })).rejects.toBe(noAnswer);
+    const attempt = persist.mock.calls[0][0];
+    await expect(completeDurablePdvDirectSale({ attempt, signature: 'intent', persist,
+      complete: async () => { throw refusal; }, onConfirmed: vi.fn(), isDefinitiveRejection, release })).rejects.toBe(refusal);
+    expect(release).not.toHaveBeenCalled();
+  });
+
+  it('dois envios simultâneos da mesma tentativa nunca a liberam', async () => {
+    const release = vi.fn();
+    const persist = vi.fn(saved);
+    let failFirst!: (error: Error) => void;
+    const first = completeDurablePdvDirectSale({ attempt: null, signature: 'intent', persist,
+      complete: () => new Promise((_, reject) => { failFirst = reject; }), onConfirmed: vi.fn(), isDefinitiveRejection, release });
+    await vi.waitFor(() => expect(failFirst).toBeTypeOf('function'));
+    const attempt = persist.mock.calls[0][0];
+    await expect(completeDurablePdvDirectSale({ attempt, signature: 'intent', persist,
+      complete: async () => { throw refusal; }, onConfirmed: vi.fn(), isDefinitiveRejection, release })).rejects.toBe(refusal);
+    failFirst(refusal);
+    await expect(first).rejects.toBe(refusal);
+    expect(release).not.toHaveBeenCalled();
+  });
+
+  it('libera quando a barreira falhou antes de qualquer envio e o envio seguinte foi recusado', async () => {
+    const release = vi.fn(async () => undefined);
+    const complete = vi.fn(async () => { throw refusal; });
+    const persist = vi.fn<(attempt: PdvSaleAttempt) => Promise<{ server: 'saved' | 'unavailable'; localSaved: boolean }>>()
+      .mockResolvedValueOnce({ server: 'unavailable', localSaved: true }).mockResolvedValue({ server: 'saved', localSaved: true });
+    await expect(completeDurablePdvDirectSale({ attempt: null, signature: 'intent', persist, complete,
+      onConfirmed: vi.fn(), isDefinitiveRejection, release })).rejects.toThrow('A venda não foi enviada');
+    expect(complete).not.toHaveBeenCalled();
+    const attempt = persist.mock.calls[0][0];
+    await expect(completeDurablePdvDirectSale({ attempt, signature: 'intent', persist, complete,
+      onConfirmed: vi.fn(), isDefinitiveRejection, release })).rejects.toBe(refusal);
+    expect(release).toHaveBeenCalledOnce();
+  });
+
+  it('depois de liberada, a tentativa não volta a ser liberável se reaparecer', async () => {
+    const release = vi.fn(async () => undefined);
+    const persist = vi.fn(saved);
+    await expect(completeDurablePdvDirectSale({ attempt: null, signature: 'intent', persist,
+      complete: async () => { throw refusal; }, onConfirmed: vi.fn(), isDefinitiveRejection, release })).rejects.toBe(refusal);
+    const attempt = persist.mock.calls[0][0];
+    await expect(completeDurablePdvDirectSale({ attempt, signature: 'intent', persist,
+      complete: async () => { throw refusal; }, onConfirmed: vi.fn(), isDefinitiveRejection, release })).rejects.toBe(refusal);
+    expect(release).toHaveBeenCalledOnce();
+  });
+
+  it('falha ao liberar não esconde o motivo da recusa nem troca de contexto libera outro caixa', async () => {
+    await expect(completeDurablePdvDirectSale({ attempt: null, signature: 'intent', persist: saved,
+      complete: async () => { throw refusal; }, onConfirmed: vi.fn(), isDefinitiveRejection,
+      release: async () => { throw new Error('storage cheio'); } })).rejects.toBe(refusal);
+    let current = true;
+    const release = vi.fn();
+    await expect(completeDurablePdvDirectSale({ attempt: null, signature: 'intent', persist: saved,
+      complete: async () => { current = false; throw refusal; }, onConfirmed: vi.fn(), isDefinitiveRejection, release,
+      isScopeCurrent: () => current })).rejects.toBe(refusal);
+    expect(release).not.toHaveBeenCalled();
+  });
+});

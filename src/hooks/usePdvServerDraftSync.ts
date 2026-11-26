@@ -46,6 +46,31 @@ function asJson(value: unknown): Json {
   return JSON.parse(JSON.stringify(value)) as Json;
 }
 
+function sortKeys(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortKeys);
+  if (!value || typeof value !== 'object') return value;
+  const source = value as Record<string, unknown>;
+  const sorted: Record<string, unknown> = {};
+  for (const key of Object.keys(source).sort()) sorted[key] = sortKeys(source[key]);
+  return sorted;
+}
+
+/**
+ * Identidade de conteúdo de um rascunho. O mesmo atendimento chega em três
+ * ordens de chave: como nasceu na memória, como o parser o reconstrói a
+ * partir do cache e como o `jsonb` do servidor o devolve (chaves reordenadas).
+ * Comparar o texto cru tratava essas três formas como versões diferentes.
+ */
+export function pdvDraftContentKey(value: unknown): string {
+  return JSON.stringify(sortKeys(asJson(value)));
+}
+
+/** Metadado gravado por versões anteriores usava o texto cru do rascunho. */
+function storedContentKey(serialized: string): string {
+  try { return pdvDraftContentKey(JSON.parse(serialized)); }
+  catch { return serialized; }
+}
+
 interface PdvServerDraftRow {
   id: string;
   revision: number | string;
@@ -240,14 +265,14 @@ export function usePdvServerDraftSync<
     const requestKey = storageKey;
     // O placeholder sem cache só pode ceder enquanto continuar intocado
     // desde a primeira leitura, inclusive quando essa leitura for repetida.
-    initialDraftsRef.current ??= new Map(workspaceRef.current.drafts.map(draft => [draft.id, JSON.stringify(draft)]));
+    initialDraftsRef.current ??= new Map(workspaceRef.current.drafts.map(draft => [draft.id, pdvDraftContentKey(draft)]));
     const initialDrafts = initialDraftsRef.current;
     try {
       const bases: unknown = JSON.parse(window.localStorage.getItem(`${requestKey}:server-bases`) ?? '[]');
       if (Array.isArray(bases)) for (const entry of bases) {
         if (Array.isArray(entry) && typeof entry[0] === 'string' && entry[1]
           && Number.isFinite(entry[1].revision) && typeof entry[1].serialized === 'string') {
-          if (!basesRef.current.has(entry[0])) basesRef.current.set(entry[0], entry[1]);
+          if (!basesRef.current.has(entry[0])) basesRef.current.set(entry[0], { revision: entry[1].revision, serialized: storedContentKey(entry[1].serialized) });
         }
       }
       const rawConflicts: unknown = JSON.parse(window.localStorage.getItem(`${requestKey}:server-conflicts`) ?? '[]');
@@ -257,7 +282,7 @@ export function usePdvServerDraftSync<
       if (Array.isArray(conflicts)) for (const entry of conflicts) {
         if (Array.isArray(entry) && typeof entry[0] === 'string' && Array.isArray(entry[1])) {
           const copies = conflictsRef.current.get(entry[0]) ?? new Set<string>();
-          for (const copy of entry[1]) if (typeof copy === 'string') copies.add(copy);
+          for (const copy of entry[1]) if (typeof copy === 'string') copies.add(storedContentKey(copy));
           conflictsRef.current.set(entry[0], copies);
           if (!envelope) blockedRef.current.add(entry[0]);
         }
@@ -280,7 +305,7 @@ export function usePdvServerDraftSync<
       if (!stockId) return false;
       // A restauração não pode apagar atendimento digitado enquanto a rede responde.
       // Comparamos o conteúdo enviado à leitura, sem depender do relógio do dispositivo.
-      const requestDrafts = new Map(workspaceRef.current.drafts.map(draft => [draft.id, JSON.stringify(draft)]));
+      const requestDrafts = new Map(workspaceRef.current.drafts.map(draft => [draft.id, pdvDraftContentKey(draft)]));
       const { data, error } = await draftRpc('pdv_list_order_drafts_v2', {
         p_draft_type: draftType,
         p_cash_session_id: cashSessionId,
@@ -316,13 +341,29 @@ export function usePdvServerDraftSync<
         revisionsRef.current.set(row.id, Number(row.revision));
       }
       for (const draft of remoteDrafts) {
-        serverPayloadRef.current.set(draft.id, JSON.stringify(draft));
+        serverPayloadRef.current.set(draft.id, pdvDraftContentKey(draft));
       }
 
       setWorkspace((local) => {
+        // Bloqueio herdado de uma comparação por texto cru: se a conta ainda
+        // guarda exatamente a base confirmada por este dispositivo e nenhuma
+        // cópia preservada tem outro conteúdo, nunca houve versão diferente.
+        let released = false;
+        for (const id of [...blockedRef.current]) {
+          const account = serverPayloadRef.current.get(id);
+          const current = local.drafts.find(draft => draft.id === id);
+          if (!account || !current || tombstonesRef.current.has(id)) continue;
+          const mine = pdvDraftContentKey(current);
+          if (mine !== account && basesRef.current.get(id)?.serialized !== account) continue;
+          if ([...(conflictsRef.current.get(id) ?? [])].some(copy => copy !== account && copy !== mine)) continue;
+          blockedRef.current.delete(id);
+          conflictsRef.current.delete(id);
+          released = true;
+        }
+        if (released) { persistConflicts(requestKey); refreshConflicts(version => version + 1); }
         const merged = new Map<string, TDraft>();
         for (const draft of remoteDrafts) {
-          const serialized = JSON.stringify(draft);
+          const serialized = pdvDraftContentKey(draft);
           const revision = revisionsRef.current.get(draft.id)!;
           if (tombstonesRef.current.has(draft.id)) {
             const base = basesRef.current.get(draft.id);
@@ -335,15 +376,15 @@ export function usePdvServerDraftSync<
         }
         for (const draft of local.drafts) {
           if (tombstonesRef.current.has(draft.id)) continue;
-          const serialized = JSON.stringify(draft);
+          const serialized = pdvDraftContentKey(draft);
           const editedDuringRequest = requestDrafts.get(draft.id) !== serialized;
           // O placeholder inicial sem cache cede ao servidor; conteúdo que o
           // operador editou/criou durante a consulta precisa continuar no balcão.
           if (visibleRows.length > 0 && !localCacheFound && initialDrafts.get(draft.id) === serialized) continue;
           const remote = merged.get(draft.id);
           const base = basesRef.current.get(draft.id);
-          if (remote && serialized !== JSON.stringify(remote)) {
-            const remoteSerialized = JSON.stringify(remote);
+          if (remote && serialized !== pdvDraftContentKey(remote)) {
+            const remoteSerialized = pdvDraftContentKey(remote);
             if (!editedDuringRequest && base?.serialized === serialized) continue;
             // Só editar sobre a base conhecida permite usar a revisão lida.
             if (base?.serialized !== remoteSerialized && requestDrafts.get(draft.id) !== remoteSerialized) {
@@ -361,7 +402,7 @@ export function usePdvServerDraftSync<
         for (const remote of remoteDrafts) {
           if (blockedRef.current.has(remote.id) || tombstonesRef.current.has(remote.id)) continue;
           basesRef.current.set(remote.id, {
-            revision: revisionsRef.current.get(remote.id)!, serialized: JSON.stringify(remote),
+            revision: revisionsRef.current.get(remote.id)!, serialized: pdvDraftContentKey(remote),
           });
         }
         persistBases(requestKey);
@@ -413,7 +454,7 @@ export function usePdvServerDraftSync<
       hydration.finish(false);
       if (hydrationRef.current === hydration) hydrationRef.current = null;
     };
-  }, [cashSessionId, draftType, hydratedStorageKey, localCacheFound, parseWorkspace, persistBases, persistTombstones, preserveConflict, setWorkspace, stockId, storageKey, syncAttempt, terminalId]);
+  }, [cashSessionId, draftType, hydratedStorageKey, localCacheFound, parseWorkspace, persistBases, persistConflicts, persistTombstones, preserveConflict, setWorkspace, stockId, storageKey, syncAttempt, terminalId]);
 
   // Só libera a barreira depois do render que aplicou a reconciliação. Assim
   // uma resposta de leitura não autoriza salvar sobre um conflito ainda na fila.
@@ -446,9 +487,9 @@ export function usePdvServerDraftSync<
           if (!incomingIds.has(draft.id)) continue;
           if (tombstonesRef.current.has(draft.id)) continue;
           const current = merged.get(draft.id);
-          if (current && JSON.stringify(current) !== JSON.stringify(draft)) {
-            preserveConflict(requestKey, draft.id, JSON.stringify(draft));
-            preserveConflict(requestKey, draft.id, JSON.stringify(current));
+          if (current && pdvDraftContentKey(current) !== pdvDraftContentKey(draft)) {
+            preserveConflict(requestKey, draft.id, pdvDraftContentKey(draft));
+            preserveConflict(requestKey, draft.id, pdvDraftContentKey(current));
           } else if (!current) merged.set(draft.id, draft);
         }
         if (blockedRef.current.size > 0 || merged.size > 20) setSyncIssue('conflict');
@@ -467,8 +508,8 @@ export function usePdvServerDraftSync<
     if (blockedRef.current.has(draft.id)) return 'conflict';
     if (tombstonesRef.current.has(draft.id)) return 'not_found';
     const latest = workspaceRef.current.drafts.find(item => item.id === draft.id);
-    const serialized = JSON.stringify(draft);
-    if (!latest || JSON.stringify(latest) !== serialized) return 'conflict';
+    const serialized = pdvDraftContentKey(draft);
+    if (!latest || pdvDraftContentKey(latest) !== serialized) return 'conflict';
     if (serverPayloadRef.current.get(draft.id) === serialized) return 'saved';
     const previousPending = pendingSaveRef.current.get(draft.id);
     const pending = previousPending?.serialized === serialized ? previousPending : {
@@ -540,7 +581,7 @@ export function usePdvServerDraftSync<
           // Snapshots anteriores podem estar na fila quando uma barreira
           // explícita já instalou uma tentativa ou confirmação mais nova.
           const latest = workspaceRef.current.drafts.find(item => item.id === draft.id);
-          if (!latest || JSON.stringify(latest) !== JSON.stringify(draft)) continue;
+          if (!latest || pdvDraftContentKey(latest) !== pdvDraftContentKey(draft)) continue;
           const saved = await saveDraftSnapshot(draft, requestKey, generation);
           if (saved === 'scope_changed') return;
           if (saved === 'conflict' || (saved === 'unavailable' && issueDuringRun == null)) issueDuringRun = saved;
@@ -632,7 +673,7 @@ export function usePdvServerDraftSync<
       const row = (data ?? []).filter(isServerDraftRow).find(candidate => candidate.id === id);
       const remote = row ? parseDraft(JSON.stringify(row.payload)) : null;
       if (row && !remote) return 'unavailable';
-      const serialized = remote ? JSON.stringify(remote) : undefined;
+      const serialized = remote ? pdvDraftContentKey(remote) : undefined;
       const shownRevision = revisionsRef.current.get(id);
       const shownPayload = serverPayloadRef.current.get(id);
       if (shownRevision !== (row ? Number(row.revision) : undefined) || shownPayload !== serialized) {
@@ -655,12 +696,12 @@ export function usePdvServerDraftSync<
       if (!chosen) return 'not_found';
       const versions = new Map<string, TDraft>();
       for (const candidate of [local, remote, ...[...(conflictsRef.current.get(id) ?? [])].map(copy => parseDraft(copy))]) {
-        if (candidate) versions.set(JSON.stringify(candidate), candidate);
+        if (candidate) versions.set(pdvDraftContentKey(candidate), candidate);
       }
       if ([...versions.values()].some(candidate => existingOrderId(candidate) || hasDurableFinancialIdentity(candidate))) return 'review_order';
 
       const expectedLocal = JSON.stringify(workspaceRef.current.drafts.find(draft => draft.id === id) ?? null);
-      const otherVersions = [...versions].filter(([copy]) => copy !== JSON.stringify(chosen)).map(([, draft]) => draft);
+      const otherVersions = [...versions].filter(([copy]) => copy !== pdvDraftContentKey(chosen)).map(([, draft]) => draft);
       let sequence = workspaceRef.current.nextSequence;
       const copies = otherVersions.map(draft => createConflictCopy(JSON.parse(JSON.stringify(draft)) as TDraft, crypto.randomUUID(), sequence++));
       // Se a linha já foi fechada no servidor, uma recuperação nunca a revive.
@@ -683,7 +724,7 @@ export function usePdvServerDraftSync<
           persistBases(requestKey);
           persistTombstones(requestKey, tombstonesRef.current);
           setSyncIssue(blockedRef.current.size > 0 || drafts.length > 20 ? 'conflict' : null);
-          const localIndex = local ? otherVersions.findIndex(draft => JSON.stringify(draft) === JSON.stringify(local)) : -1;
+          const localIndex = local ? otherVersions.findIndex(draft => pdvDraftContentKey(draft) === pdvDraftContentKey(local)) : -1;
           setLastResolution({ id, choice, localCopyId: !remote && choice === 'local' ? selected.id
             : localIndex >= 0 ? copies[localIndex].id : null });
           resolve(true);

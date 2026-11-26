@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { ArrowLeft, Building2, CheckCircle2, AlertCircle, AlertTriangle, Info, Landmark, Loader2, MapPin, RefreshCw, Shield, Wrench, ReceiptText } from 'lucide-react';
+import { ArrowLeft, Building2, CheckCircle2, AlertCircle, AlertTriangle, Info, Landmark, Loader2, MapPin, RefreshCw, Shield, Wrench, ReceiptText, Receipt } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
@@ -38,15 +38,16 @@ import { ServicosSection } from '@/components/fiscal/ServicosSection';
 import { automaticCoverageCheckKey } from '@/lib/fiscal/automaticCoverage';
 import { GoodsSettingsSection } from '@/components/fiscal/GoodsSettingsSection';
 import { resolveAppSlug } from '@/lib/i18n/appRouteSlugs';
+import { NfseIbsCbsFields } from '@/components/fiscal/nova-nota/NfseIbsCbsFields';
 
 export { FISCAL_SCREEN_PERMISSION };
 
 /** Seções da tela de Configurações fiscais. */
-export type FiscalSettingsSection = 'empresa' | 'certificado' | 'mercadorias' | 'impostos' | 'servicos';
+export type FiscalSettingsSection = 'empresa' | 'certificado' | 'mercadorias' | 'impostos' | 'ibscbs' | 'servicos';
 
 function normalizeSection(raw: string | null, scenariosPage: boolean): FiscalSettingsSection {
   if (scenariosPage) return raw === 'impostos' ? 'impostos' : 'mercadorias';
-  return raw === 'certificado' || raw === 'mercadorias' || raw === 'servicos' ? raw : 'empresa';
+  return raw === 'certificado' || raw === 'mercadorias' || raw === 'ibscbs' || raw === 'servicos' ? raw : 'empresa';
 }
 
 /** Form local — strings cruas pra inputs controlados (evita o "0" preso). */
@@ -58,6 +59,12 @@ interface FiscalForm {
   fiscal_ambiente: FiscalAmbiente;
   reg_ap_trib_sn: RegApTribSN;
   percentual_trib_sn: string;
+  nfse_ibscbs_ativo: boolean;
+  nfse_ibscbs_cindop: string;
+  nfse_ibscbs_cst: string;
+  nfse_ibscbs_cclasstrib: string;
+  nfse_ibscbs_indfinal: '0' | '1';
+  nfse_ibscbs_inddest: '0' | '1';
   // Identidade/endereço da empresa — salvos em company_settings (espelhados
   // pra `companies` por trigger server-side).
   razao_social: string;
@@ -80,6 +87,12 @@ const EMPTY_FORM: FiscalForm = {
   fiscal_ambiente: 'producao',
   reg_ap_trib_sn: '1',
   percentual_trib_sn: '',
+  nfse_ibscbs_ativo: false,
+  nfse_ibscbs_cindop: '',
+  nfse_ibscbs_cst: '',
+  nfse_ibscbs_cclasstrib: '',
+  nfse_ibscbs_indfinal: '0',
+  nfse_ibscbs_inddest: '0',
   razao_social: '',
   cnpj: '',
   cep: '',
@@ -229,6 +242,12 @@ export default function FiscalSettings() {
         reg_ap_trib_sn: normalizeRegApTribSN(settings.reg_ap_trib_sn),
         percentual_trib_sn:
           settings.percentual_trib_sn != null ? String(settings.percentual_trib_sn).replace('.', ',') : '',
+        nfse_ibscbs_ativo: settings.nfse_ibscbs_ativo,
+        nfse_ibscbs_cindop: settings.nfse_ibscbs_cindop || '',
+        nfse_ibscbs_cst: settings.nfse_ibscbs_cst || '',
+        nfse_ibscbs_cclasstrib: settings.nfse_ibscbs_cclasstrib || '',
+        nfse_ibscbs_indfinal: settings.nfse_ibscbs_indfinal === '1' ? '1' : '0',
+        nfse_ibscbs_inddest: settings.nfse_ibscbs_inddest === '1' ? '1' : '0',
       }));
     }
   }, [isLoading, settings]);
@@ -365,6 +384,15 @@ export default function FiscalSettings() {
 
   // Salva tributação / ambiente (company_fiscal_settings via useFiscalSettings).
   const handleSave = async () => {
+    if (form.nfse_ibscbs_ativo && (
+      !/^\d{6}$/.test(form.nfse_ibscbs_cindop)
+      || !/^\d{3}$/.test(form.nfse_ibscbs_cst)
+      || !/^\d{6}$/.test(form.nfse_ibscbs_cclasstrib)
+    )) {
+      toast.error('Complete a classificação IBS/CBS: cIndOp (6 dígitos), CST (3) e cClassTrib (6).');
+      setSection('ibscbs');
+      return;
+    }
     const payload: Partial<FiscalSettingsEditable> = {
       regime_tributario: form.regime_tributario || null,
       inscricao_municipal: form.inscricao_municipal.trim() || null,
@@ -373,6 +401,12 @@ export default function FiscalSettings() {
       fiscal_ambiente: form.fiscal_ambiente,
       reg_ap_trib_sn: isSimples ? form.reg_ap_trib_sn : '1',
       percentual_trib_sn: percentualTribSnFromDisplay(form.percentual_trib_sn),
+      nfse_ibscbs_ativo: form.nfse_ibscbs_ativo,
+      nfse_ibscbs_cindop: form.nfse_ibscbs_ativo ? form.nfse_ibscbs_cindop : null,
+      nfse_ibscbs_cst: form.nfse_ibscbs_ativo ? form.nfse_ibscbs_cst : null,
+      nfse_ibscbs_cclasstrib: form.nfse_ibscbs_ativo ? form.nfse_ibscbs_cclasstrib : null,
+      nfse_ibscbs_indfinal: form.nfse_ibscbs_indfinal,
+      nfse_ibscbs_inddest: form.nfse_ibscbs_inddest,
     };
     try {
       await save(payload);
@@ -681,6 +715,7 @@ export default function FiscalSettings() {
         { value: 'empresa', label: t.settings.sections.empresa, icon: Building2 },
         { value: 'certificado', label: t.settings.sections.certificado, icon: Shield },
         { value: 'mercadorias', label: 'NF-e e NFC-e', icon: ReceiptText },
+        { value: 'ibscbs', label: 'NFS-e · IBS/CBS', icon: Receipt },
         { value: 'servicos', label: t.settings.sections.servicos, icon: Wrench },
       ];
 
@@ -867,6 +902,36 @@ export default function FiscalSettings() {
                 regimeHint={regimeHint}
                 onUseSuggestedRegime={handleUseSuggestedRegime}
               />
+            )}
+
+            {section === 'ibscbs' && (
+              <div className="mx-auto w-full max-w-4xl space-y-8 py-2">
+                <NfseIbsCbsFields
+                  value={{
+                    ativo: form.nfse_ibscbs_ativo,
+                    codigoIndicadorOperacao: form.nfse_ibscbs_cindop,
+                    cst: form.nfse_ibscbs_cst,
+                    classificacaoTributaria: form.nfse_ibscbs_cclasstrib,
+                    consumidorFinal: form.nfse_ibscbs_indfinal,
+                    destinatarioDiferente: form.nfse_ibscbs_inddest,
+                  }}
+                  onChange={(patch) => setForm((prev) => ({
+                    ...prev,
+                    ...(patch.ativo !== undefined ? { nfse_ibscbs_ativo: patch.ativo } : {}),
+                    ...(patch.codigoIndicadorOperacao !== undefined ? { nfse_ibscbs_cindop: patch.codigoIndicadorOperacao } : {}),
+                    ...(patch.cst !== undefined ? { nfse_ibscbs_cst: patch.cst } : {}),
+                    ...(patch.classificacaoTributaria !== undefined ? { nfse_ibscbs_cclasstrib: patch.classificacaoTributaria } : {}),
+                    ...(patch.consumidorFinal !== undefined ? { nfse_ibscbs_indfinal: patch.consumidorFinal } : {}),
+                    ...(patch.destinatarioDiferente !== undefined ? { nfse_ibscbs_inddest: patch.destinatarioDiferente } : {}),
+                  }))}
+                />
+                <div className="flex justify-end border-t border-border pt-5">
+                  <Button type="button" onClick={handleSave} disabled={isSaving} className="min-w-40">
+                    {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Salvar configuração
+                  </Button>
+                </div>
+              </div>
             )}
 
             {section === 'servicos' && <ServicosSection t={t} />}

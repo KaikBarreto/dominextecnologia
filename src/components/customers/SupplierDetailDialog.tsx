@@ -21,6 +21,7 @@ import { usePartyLabels } from '@/hooks/usePartyLabels';
 import { formatPartyFieldValue, usePartyFieldConfig } from '@/hooks/usePartyFieldConfig';
 import { PartyLabelBadges } from '@/components/customers/PartyLabelBadge';
 import { PartyAccountPanel } from '@/components/customers/PartyAccountPanel';
+import { SupplierFiscalNotes } from '@/components/customers/SupplierFiscalNotes';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyModules } from '@/hooks/useCompanyModules';
 
@@ -203,6 +204,8 @@ export function SupplierDetailContent({ supplier }: { supplier: Supplier }) {
             </>
           )}
         </div>
+
+        <SupplierFiscalNotes supplierId={supplier.id} />
       </div>
   );
 }

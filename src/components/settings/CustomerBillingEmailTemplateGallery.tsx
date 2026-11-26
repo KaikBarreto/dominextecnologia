@@ -5,9 +5,9 @@ import {
   Copy,
   CreditCard,
   Eye,
-  MailCheck,
   ReceiptText,
 } from "lucide-react";
+import dominexLogoWhite from "@/assets/logo-white-horizontal.png";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -101,7 +101,7 @@ function TemplateCanvas({
           template === "premium_dark" &&
             "bg-gradient-to-br from-zinc-950 to-zinc-800",
           isBento && "bg-zinc-800",
-          isBrand && "bg-emerald-600 text-white",
+          isBrand && "bg-zinc-950 text-white",
         )}
       >
         <CompanyMark surface={isDark} inverse={isBrand} />
@@ -328,10 +328,11 @@ function TemplateCanvas({
 
       {!compact && (
         <div className="border-t border-slate-700 bg-zinc-950 px-8 py-5 text-center">
-          <div className="flex items-center justify-center gap-2 text-emerald-500">
-            <MailCheck className="h-4 w-4" aria-hidden="true" />
-            <span className="text-xs font-bold">DOMINEX</span>
-          </div>
+          <img
+            src={dominexLogoWhite}
+            alt="Dominex"
+            className="mx-auto h-5 w-auto max-w-[112px] object-contain"
+          />
           <p className="mt-1 text-[10px] text-slate-400">www.dominex.app</p>
         </div>
       )}
@@ -356,7 +357,7 @@ export function CustomerBillingEmailTemplateGallery({
   const previewTemplate = TEMPLATES.find((item) => item.id === preview);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 [--primary:0_0%_10%] [--primary-foreground:0_0%_100%] [--ring:0_0%_10%] dark:[--primary:0_0%_88%] dark:[--primary-foreground:0_0%_8%] dark:[--ring:0_0%_70%]">
       <div>
         <p className="text-xs font-semibold">Aparência do e-mail</p>
         <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">

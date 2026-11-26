@@ -1218,6 +1218,10 @@ Cada plano permite um número de usuários ativos. Usuário desativado não cont
 
 Palavras que o cliente usa pra isso: usuário, login, acesso, senha, permissão, cargo, perfil, liberar, bloquear, tirar do sistema, desativar, dar baixa, vaga, limite de usuários, técnico, administrador, master, gerenciar CRM, gerenciar tarefas, ver as tarefas de todo mundo, ver o funil inteiro, permissão de projetos, quem vê as obras
 
+#### Permissão para alterar preços durante a OS
+
+O técnico pode trabalhar nos itens e nas quantidades do orçamento durante o atendimento. Alterar o preço exige a permissão Alterar preços da OS; sem ela, o sistema preserva o preço negociado ou usa o preço cadastrado do item. Conceder acesso ao checklist não concede automaticamente autorização para mudar preços.
+
 ---
 
 # T3 · Clientes e Equipamentos
@@ -1730,6 +1734,10 @@ Duas seções. Ordens de Serviço Relacionadas lista todas as OS que citaram aqu
 **R:** Na ficha dele, aba Histórico. Para um aparelho específico, abra o equipamento e vá em Histórico / Tarefas.
 
 Palavras que o cliente usa pra isso: ficha do cliente, cadastro de cliente, base de clientes, aparelho, máquina, equipamento, ativo, TAG, plaquinha, etiqueta, QR do aparelho, de onde veio o cliente, formulário de cadastro, link da bio, contato do local, responsável da obra, zelador
+
+#### Recibo de um recebimento na ficha do cliente
+
+Na parte financeira da ficha do cliente, abra um lançamento recebido ou seu histórico de pagamentos e use Gerar recibo. Cada pagamento parcial tem seu próprio comprovante. Um lançamento pendente, cancelado ou estornado não comprova recebimento.
 
 ---
 
@@ -2489,7 +2497,7 @@ Confirmando, a janela pergunta "Resetar OS #N?" com o aviso "A OS voltará para 
 
 A ação Faturar OS (ícone de recibo) existe no menu de ações da tabela, na lista do celular, no card do kanban e no painel de detalhe da Agenda. Ela só aparece para quem tem a tela Financeiro liberada e a permissão fina de lançar receita de OS; sem isso, nenhum botão novo aparece em lugar nenhum.
 
-Abrindo a ação, a janela oferece duas escolhas: Lançar receita ("Dinheiro que já entrou por este serviço.") ou Gerar cobrança ("PIX, boleto ou link de pagamento pelo Asaas, com vencimento."). É a mesma escolha que já existia no aviso automático ao finalizar a OS, só que disponível a qualquer momento e em qualquer OS, não só no instante de finalizar.
+Abrindo a ação, a janela oferece duas escolhas: Lançar receita ("Dinheiro que já entrou por este serviço.") ou Gerar cobrança ("PIX, boleto ou link de pagamento pelo Asaas, com vencimento."). O lançamento permite registrar o total ou uma parte recebida, ou deixar a conta a receber. A pergunta ao finalizar a OS continua dependendo da configuração da empresa.
 
 Depois de faturada, um selo aparece ao lado do código da OS em toda tela que lista a OS (tabela, lista do celular, card do kanban, painel da Agenda): Faturada (verde, com o valor lançado) quando há receita, ou Cobrança enviada (azul) quando existe uma cobrança viva. Cobrança viva tem prioridade sobre receita no selo, porque é a informação mais específica no momento.
 
@@ -2612,6 +2620,24 @@ O botão Configurações dentro da aba abre Configurações de NPS, onde você d
 **R:** Pode, e é um dos usos mais úteis da tela. Em Configurações crie o status, dê uma cor bem distinta e arraste para a posição certa na sequência. Ele vira coluna no kanban e opção no filtro na hora.
 
 Palavras que o cliente usa para isso: OS, ordem, chamado, atendimento, serviço, ficha de serviço, abrir chamado, quadro de OS, kanban, painel de serviços, número da OS, relatório de atendimento, link do cliente
+
+#### Receber a OS em partes e gerar recibo
+
+Em Faturar OS, aproveite os serviços e produtos do orçamento da OS ou informe seus itens e valores. É possível deixar o total a receber ou registrar quanto entrou agora. Por exemplo: para uma OS de R$ 3.300, receber R$ 2.600 mantém R$ 700 pendentes na mesma conta. Os próximos recebimentos usam esse saldo, sem criar outra dívida para a mesma OS.
+
+Depois de confirmar um recebimento, o sistema oferece o recibo. Você pode comprovar todos os pagamentos da OS ou escolher um pagamento específico. O recibo individual continua identificado como parcial mesmo quando esse último pagamento já quitou o saldo. Faturar sem receber não libera recibo.
+
+[Print da tela: Exemplo fictício de recebimento de R$ 2.600 em uma OS de R$ 3.300, com saldo de R$ 700]
+
+Informe o que entrou agora e confira o saldo antes de confirmar. Dados fictícios.
+
+#### Escolher se os valores aparecem para o cliente
+
+A opção Mostrar valores para o cliente pertence a cada OS e começa desligada. Quando ligada, o relatório final, seu PDF e o link do cliente mostram serviços, produtos, quantidades, preços e total. Custos e margens continuam internos. A emissão de recibos comprova somente pagamentos confirmados.
+
+[Print da tela: Recibo fictício de R$ 700 identificado como pagamento parcial, com itens da contratação e pagamentos]
+
+O valor comprovado fica separado do total contratado e do saldo atual. Dados fictícios.
 
 ---
 
@@ -3431,6 +3457,12 @@ Seletor de nicho em Instalações Elétricas: as ferramentas daquele segmento ap
 **R:** Dá. O botão flutuante abre as ferramentas por cima da OS e o botão Voltar para OS devolve exatamente onde ele estava.
 
 Palavras que o cliente usa para isso: app do técnico, tela do celular, link da OS, checklist de campo, ordem no celular, bater ponto na OS, check-in, dar baixa na OS, fechar a OS, assinar no celular, calculadora do técnico, ferramentas
+
+#### Orçamento durante o atendimento
+
+No preenchimento da OS, a equipe autorizada pode ajustar serviços, produtos e quantidades. Mudar preços exige a permissão específica de preços da OS. Se houver alteração em outro dispositivo, confira a versão atual antes de tentar salvar novamente. Depois de faturar, alterações de itens e valores ficam bloqueadas até o financeiro ser ajustado.
+
+No relatório, o cliente vê preços somente quando Mostrar valores para o cliente está ligado naquela OS. O menu do relatório também permite baixar os recibos dos pagamentos confirmados. Usuários com permissão podem abrir o faturamento pelo relatório.
 
 ---
 
@@ -4392,9 +4424,7 @@ A ação Converter em OS só aparece em orçamento Aprovado ainda não convertid
 
 Ao terminar aparece Orçamento convertido! com OS criada com sucesso., e o orçamento passa ao status Convertido.
 
-É aqui que o estoque baixa por causa do orçamento. Na conversão, cada material escolhido do estoque gera uma saída na quantidade do orçamento, com a observação Consumo do Orçamento # seguida do número. Material digitado na mão não mexe em estoque. Por padrão, concluir a OS não dá baixa em estoque: fora desta conversão, a baixa só acontece nos ajustes e inventário da tela de Estoque. A exceção é quando a empresa liga, em Configurações → Usabilidade → Ordens de Serviço, o recurso opcional Consumo de estoque na OS: aí o técnico pode anotar material durante o atendimento e a baixa desse consumo é confirmada num resumo ao finalizar a OS, sem relação nenhuma com o material do orçamento.
-
-A baixa não checa se há saldo. Se o material não tem estoque suficiente, o saldo daquele item fica negativo e a movimentação é registrada assim mesmo. Confira a Posição de Estoque depois de converter orçamentos grandes.
+Orçamento comercial e consumo de estoque são registros diferentes. Copiar materiais para o orçamento da OS não comprova uma saída física. Registre a movimentação pelo Estoque ou pelo recurso opcional Consumo de estoque na OS, quando habilitado.
 
 A conversão acontece uma vez só: tentando de novo, o sistema recusa com Orçamento já foi convertido. Falhas aparecem como Erro na conversão com o motivo.
 
@@ -4463,6 +4493,16 @@ Não existe conversão de orçamento em contrato (contrato é sempre montado do 
 **R:** Só o link. Sem login, sem senha e sem aplicativo para instalar. Funciona no navegador do celular. Mandando para duas pessoas, vale a primeira resposta: a segunda vê Esta proposta já foi respondida.
 
 Palavras que o cliente usa pra isso: orçamento, orçar, proposta, proposta comercial, cotação, valor do serviço, mandar o preço, link da proposta, proposta em PDF, fechou o orçamento, cliente aprovou, virou serviço, BDI, margem, markup, preço de venda, custo por hora, hora homem, custo do veículo, brinde, desconto à vista, parcelado no cartão
+
+#### Gerar OS: preço e execução são escolhas separadas
+
+Ao converter o orçamento aprovado, a janela Gerar OS copia o comercial e permite escolher se os valores serão mostrados para o cliente. A opção Definir equipamentos e checklists agora começa desligada. Ative-a se quiser escolher a execução naquele momento; também é possível prepará-la depois na OS.
+
+Os serviços e produtos definem os valores da contratação. Os checklists definem o que será executado em cada equipamento e não precisam corresponder aos serviços que formaram o preço. Se o orçamento já gerou contas a receber, a OS passa a usar essas mesmas contas.
+
+[Print da tela: Janela Gerar OS com opções independentes para mostrar valores ao cliente e definir equipamentos e checklists]
+
+Execução opcional e separada dos preços do orçamento. Dados fictícios.
 
 ---
 
@@ -5827,7 +5867,7 @@ O Portal do Cliente é uma página na internet, com a marca da sua empresa, onde
 
 O portal não precisa ser criado. Todo cliente cadastrado ganha um portal automaticamente, no momento em que o cadastro é salvo, com um endereço próprio e único. Você não vai achar botão de "criar portal" em lugar nenhum, porque ele já existe. O que você faz é copiar o link e decidir se ele é público ou restrito.
 
-Não existe login com senha para o cliente final no Portal. O cliente não cria conta, não escolhe senha, não usa e-mail e senha, e não entra com Google nem com Microsoft. O acesso é por link: cada cliente tem um endereço com um código longo e aleatório, e quem tem esse endereço entra. Se alguém perguntar "como faço a senha do meu cliente", a resposta é que não existe senha, o que existe é o link.
+O acesso é por link e pode ter proteção adicional por senha. O cliente não precisa criar uma conta de usuário da empresa. Quando a proteção está habilitada, a senha libera as seções configuradas; seções deixadas públicas continuam acessíveis conforme as permissões do portal.
 
 #### O que acontece se o link vazar
 
@@ -6189,6 +6229,16 @@ No fim do painel fica o Feed de Feedbacks, com todas as avaliações do período
 **R:** Para o cálculo do NPS, nota 8 é neutra e não conta nem a favor nem contra. Só 9 e 10 são promotores, e de 0 a 6 são detratores.
 
 Palavras que o cliente usa pra isso: portal do cliente, área do cliente, link do cliente, acompanhamento, o cliente ver a OS, abrir chamado, chamado do portal, pesquisa de satisfação, avaliação, nota, estrelinhas, NPS, detrator, promotor, avaliar no Google, review, reputação, QR da máquina
+
+#### Recibos no portal: cobranças e recebimentos parciais
+
+Com a seção financeira autorizada, o cliente encontra Gerar recibo nas cobranças pagas e em Recebimentos e recibos. Cada pagamento confirmado pode ter seu próprio comprovante; pendência, cancelamento e estorno não liberam recibo. O botão Atualizar consulta os pagamentos novamente.
+
+Os recibos seguem as permissões da seção financeira e a proteção por senha do portal, quando configurada. O link de um cliente não permite acessar recibos de outro cliente.
+
+[Print da tela: Portal fictício com ação de gerar recibo na cobrança paga e no recebimento parcial]
+
+Cobranças pagas e recebimentos parciais podem ser comprovados no próprio portal. Dados fictícios.
 
 ---
 
@@ -7132,6 +7182,12 @@ A Margem da Visão Geral é o resultado dividido pelo faturamento: de cada R$ 10
 **R:** Existe uma data de início da DRE nas configurações da empresa. Preenchida, nada anterior a ela entra no resultado, e o rodapé da DRE passa a exibir "DRE contabilizado a partir de DD/MM/AAAA".
 
 Palavras que o cliente usa pra isso: financeiro, caixa, fluxo de caixa, contas a pagar, contas a receber, extrato, conciliação, fatura do cartão, limite do cartão, DRE, resultado, lucro, faturamento, regime de caixa, regime de competência, categoria de despesa, transferência, baixa, dar baixa, recebimento parcial, boleto, Pix, link de pagamento
+
+#### Gerar recibo de cada pagamento recebido
+
+Em Movimentações, nos detalhes da conta a receber e nas cobranças pagas, use Gerar recibo para comprovar o pagamento confirmado. Se o recebimento foi parcial, abra seu histórico para emitir o recibo daquela baixa. Em um lote, selecione a conta paga correspondente; o agrupamento do lote não cria outro recebimento.
+
+O recibo discrimina a contratação quando essa referência está disponível e separa o valor comprovado do total contratado. Nos recebimentos da OS, respeita a escolha de exibir os valores comerciais. O documento não substitui nota fiscal.
 
 ---
 

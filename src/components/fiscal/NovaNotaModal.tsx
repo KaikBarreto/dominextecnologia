@@ -40,6 +40,7 @@ import { ValoresStep } from './nova-nota/ValoresStep';
 import { EmitirStep } from './nova-nota/EmitirStep';
 import type {
   NfseCustomer,
+  NfseIbsCbsState,
   NfseServicoState,
   NfseValoresState,
   NfseInitialDraft,
@@ -112,6 +113,17 @@ const emptyValores = (): NfseValoresState => ({
   descontoCondicionado: 0,
   descontoIncondicionado: 0,
   percentualTribSn: 0,
+});
+
+const ibsCbsFromSettings = (
+  settings: ReturnType<typeof useFiscalSettings>['settings'],
+): NfseIbsCbsState => ({
+  ativo: settings.nfse_ibscbs_ativo,
+  codigoIndicadorOperacao: settings.nfse_ibscbs_cindop || '',
+  cst: settings.nfse_ibscbs_cst || '',
+  classificacaoTributaria: settings.nfse_ibscbs_cclasstrib || '',
+  consumidorFinal: settings.nfse_ibscbs_indfinal === '1' ? '1' : '0',
+  destinatarioDiferente: settings.nfse_ibscbs_inddest === '1' ? '1' : '0',
 });
 
 /**
@@ -219,6 +231,7 @@ export function NovaNotaModal({
   const [intermediario, setIntermediario] = useState<NfseCustomer | null>(null);
   const [servico, setServico] = useState<NfseServicoState>(emptyServico());
   const [valores, setValores] = useState<NfseValoresState>(emptyValores());
+  const [ibsCbs, setIbsCbs] = useState<NfseIbsCbsState>(() => ibsCbsFromSettings(settings));
 
   /**
    * Serviços cujo convite de "completar o cadastro" já foi resolvido nesta
@@ -277,6 +290,7 @@ export function NovaNotaModal({
         percentualTribSn: settings.percentual_trib_sn ?? 0,
       }));
     }
+    setIbsCbs(ibsCbsFromSettings(settings));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, settings]);
 
@@ -291,6 +305,9 @@ export function NovaNotaModal({
     }
     if (initialDraft.valores) {
       setValores((prev) => ({ ...prev, ...initialDraft.valores }));
+    }
+    if (initialDraft.ibsCbs) {
+      setIbsCbs((prev) => ({ ...prev, ...initialDraft.ibsCbs }));
     }
     // Tomador/intermediário: resolve da lista de customers pelo id
     if (initialDraft.customerId && customers.length) {
@@ -308,6 +325,8 @@ export function NovaNotaModal({
     setServico((prev) => ({ ...prev, ...patch }));
   const patchValores = (patch: Partial<NfseValoresState>) =>
     setValores((prev) => ({ ...prev, ...patch }));
+  const patchIbsCbs = (patch: Partial<NfseIbsCbsState>) =>
+    setIbsCbs((prev) => ({ ...prev, ...patch }));
 
   // ---- Cálculo em tempo real (função pura, fonte única) ----
   const taxes = useMemo(
@@ -395,8 +414,13 @@ export function NovaNotaModal({
     if (cTribMun && cTribMun.length !== 3) {
       e.push(s.servico.codigos.codigoTributacaoMunicipal.invalid);
     }
+    if (ibsCbs.ativo) {
+      if (!/^\d{6}$/.test(ibsCbs.codigoIndicadorOperacao)) e.push('Informe o cIndOp IBS/CBS com 6 dígitos.');
+      if (!/^\d{3}$/.test(ibsCbs.cst)) e.push('Informe o CST IBS/CBS com 3 dígitos.');
+      if (!/^\d{6}$/.test(ibsCbs.classificacaoTributaria)) e.push('Informe o cClassTrib IBS/CBS com 6 dígitos.');
+    }
     return e;
-  }, [servico, s, settings.codigo_servico_default, settings.codigo_nbs_default]);
+  }, [servico, ibsCbs, s, settings.codigo_servico_default, settings.codigo_nbs_default]);
 
   const valoresErrors = useMemo(() => {
     const e: string[] = [];
@@ -503,9 +527,10 @@ export function NovaNotaModal({
     setIntermediario(null);
     setServico(emptyServico());
     setValores(emptyValores());
+    setIbsCbs(ibsCbsFromSettings(settings));
     setDraftId(null);
     setGapFillResolved([]);
-  }, []);
+  }, [settings]);
 
   const hasUnsavedData =
     !!tomador ||
@@ -571,7 +596,15 @@ export function NovaNotaModal({
       descontoIncondicionado: valores.descontoIncondicionado || undefined,
       percentualTribSn: valores.percentualTribSn || undefined,
     },
-  }), [draftId, tomador, intermediario, dataCompetencia, isSimples, regimeApuracao, servico, valores]);
+    ibsCbs: {
+      ativo: ibsCbs.ativo,
+      codigoIndicadorOperacao: ibsCbs.codigoIndicadorOperacao,
+      cst: ibsCbs.cst,
+      classificacaoTributaria: ibsCbs.classificacaoTributaria,
+      consumidorFinal: ibsCbs.consumidorFinal,
+      destinatarioDiferente: ibsCbs.destinatarioDiferente,
+    },
+  }), [draftId, tomador, intermediario, dataCompetencia, isSimples, regimeApuracao, servico, valores, ibsCbs]);
 
   // ---- Trava anti-duplo-toque ----
   const submittingRef = useRef(false);
@@ -676,6 +709,7 @@ export function NovaNotaModal({
                 ? { percentualTotalTributosSimplesNacional: valores.percentualTribSn }
                 : {}),
             },
+            ibsCbs,
           };
 
       const emitRes = await invokeNfse<{ emission?: NfseEmission }>('nfse-emit', emitBody);
@@ -852,6 +886,8 @@ export function NovaNotaModal({
           defaultCodigoNbs={settings.codigo_nbs_default}
           defaultMunicipioIbge={settings.municipio_ibge}
           errors={servicoErrors}
+          ibsCbs={ibsCbs}
+          onIbsCbsChange={patchIbsCbs}
         />
       )}
 

@@ -231,6 +231,11 @@ export const charges = {
         feePayerCustomer: 'Cliente',
         feePayerCompanyHint: 'A empresa absorve a taxa; o cliente paga o valor cheio parcelado.',
         feePayerCustomerHint: 'A taxa é repassada ao cliente; a empresa recebe o valor cheio.',
+        modeLabel: 'Parcelamento',
+        modeFixed: 'Definido por mim',
+        modeCustomer: 'Cliente escolhe',
+        upToLabel: 'Até',
+        customerModeHint: 'O cliente escolhe as parcelas na hora de pagar',
         feePayerLoading: 'Consultando a taxa do seu Asaas…',
         feePayerCustomerSummary: (n: number, installment: string, total: string, fee: string) =>
           `Cliente paga ${total} em ${n}x de ${installment} — você recebe o valor cheio (taxa repassada: ${fee}).`,
@@ -312,6 +317,10 @@ export const charges = {
         net: 'Você recebe',
         netAtOnce: 'Você recebe de uma vez',
         installmentLine: (n: number, value: string) => `Em ${n}x de ${value} no cartão do cliente`,
+        rangeCash: 'Se pagar à vista',
+        rangeMax: (n: number) => `Se pagar em ${n}x`,
+        rangeAny: 'Em qualquer número de parcelas',
+        rangeCompact: (min: string, max: string) => `${min} a ${max}`,
         settlementToday: 'O dinheiro cai na conta na hora',
         settlementDays: (d: number, date: string) =>
           d === 1
@@ -459,6 +468,9 @@ export const charges = {
         // Cobrança avulsa: NÃO existe recorrência. A copy tem que deixar isso claro.
         notice: 'Cobrança única. Seu cartão será cobrado uma só vez, no valor acima.',
         secureBadge: 'Seus dados trafegam criptografados (SSL) e são processados pela Asaas. Não guardamos o número do seu cartão.',
+        // {count} = nº de parcelas escolhido; {installment} = valor da parcela formatado.
+        noticeInstallments: 'Compra parcelada em {count}x no cartão. Cada parcela aparece numa fatura do seu cartão.',
+        installmentsSummary: 'em {count}x de {installment}',
         approvedTitle: 'Pagamento aprovado!',
         approvedDescription: 'Estamos confirmando com o banco. Esta página atualiza sozinha em instantes.',
         processingTitle: 'Pagamento em análise',
@@ -957,6 +969,11 @@ export const charges = {
         feePayerCustomer: 'Customer',
         feePayerCompanyHint: 'The business absorbs the fee; the customer pays the full amount in installments.',
         feePayerCustomerHint: 'The fee is passed on to the customer; the business receives the full amount.',
+        modeLabel: 'Installments',
+        modeFixed: 'Set by me',
+        modeCustomer: 'Customer chooses',
+        upToLabel: 'Up to',
+        customerModeHint: 'The customer chooses the installments at checkout',
         feePayerLoading: 'Checking your Asaas fee…',
         feePayerCustomerSummary: (n: number, installment: string, total: string, fee: string) =>
           `Customer pays ${total} in ${n}x of ${installment} — you receive the full amount (fee passed on: ${fee}).`,
@@ -1029,6 +1046,10 @@ export const charges = {
         net: 'You receive',
         netAtOnce: 'You receive it all at once',
         installmentLine: (n: number, value: string) => `In ${n}x of ${value} on the customer card`,
+        rangeCash: 'If paid upfront',
+        rangeMax: (n: number) => `If paid in ${n}x`,
+        rangeAny: 'With any number of installments',
+        rangeCompact: (min: string, max: string) => `${min} to ${max}`,
         settlementToday: 'The money lands in your account instantly',
         settlementDays: (d: number, date: string) =>
           d === 1
@@ -1161,6 +1182,8 @@ export const charges = {
         submit: 'Pay {amount}',
         notice: 'One-time charge. Your card will be charged only once, for the amount above.',
         secureBadge: 'Your data is sent over SSL encryption and processed by Asaas. We never store your card number.',
+        noticeInstallments: 'Card purchase in {count} installments. Each installment appears on a separate card statement.',
+        installmentsSummary: 'in {count}x of {installment}',
         approvedTitle: 'Payment approved!',
         approvedDescription: 'We are confirming it with your bank. This page updates automatically in a moment.',
         processingTitle: 'Payment under review',
@@ -1645,6 +1668,11 @@ export const charges = {
         feePayerCustomer: 'Cliente',
         feePayerCompanyHint: 'El negocio absorbe la tarifa; el cliente paga el importe completo en cuotas.',
         feePayerCustomerHint: 'La tarifa se traslada al cliente; el negocio recibe el importe completo.',
+        modeLabel: 'Cuotas',
+        modeFixed: 'Definido por mí',
+        modeCustomer: 'El cliente elige',
+        upToLabel: 'Hasta',
+        customerModeHint: 'El cliente elige las cuotas al pagar',
         feePayerLoading: 'Consultando la tarifa de tu Asaas…',
         feePayerCustomerSummary: (n: number, installment: string, total: string, fee: string) =>
           `El cliente paga ${total} en ${n}x de ${installment} — tú recibes el importe completo (tarifa trasladada: ${fee}).`,
@@ -1716,6 +1744,10 @@ export const charges = {
         net: 'Recibes',
         netAtOnce: 'Recibes todo de una vez',
         installmentLine: (n: number, value: string) => `En ${n}x de ${value} en la tarjeta del cliente`,
+        rangeCash: 'Si paga al contado',
+        rangeMax: (n: number) => `Si paga en ${n}x`,
+        rangeAny: 'Con cualquier número de cuotas',
+        rangeCompact: (min: string, max: string) => `${min} a ${max}`,
         settlementToday: 'El dinero entra en la cuenta al instante',
         settlementDays: (d: number, date: string) =>
           d === 1
@@ -1848,6 +1880,8 @@ export const charges = {
         submit: 'Pagar {amount}',
         notice: 'Cobro único. Tu tarjeta será cobrada una sola vez, por el importe de arriba.',
         secureBadge: 'Tus datos viajan cifrados (SSL) y son procesados por Asaas. No guardamos el número de tu tarjeta.',
+        noticeInstallments: 'Compra en {count} cuotas con tarjeta. Cada cuota aparece en un resumen de tu tarjeta.',
+        installmentsSummary: 'en {count}x de {installment}',
         approvedTitle: '¡Pago aprobado!',
         approvedDescription: 'Estamos confirmando con el banco. Esta página se actualiza sola en unos instantes.',
         processingTitle: 'Pago en análisis',
@@ -2332,6 +2366,11 @@ export const charges = {
         feePayerCustomer: 'Client',
         feePayerCompanyHint: `L'entreprise absorbe les frais ; le client paie le montant total en plusieurs fois.`,
         feePayerCustomerHint: `Les frais sont répercutés sur le client ; l'entreprise reçoit le montant total.`,
+        modeLabel: 'Paiement échelonné',
+        modeFixed: 'Défini par moi',
+        modeCustomer: 'Le client choisit',
+        upToLabel: `Jusqu'à`,
+        customerModeHint: 'Le client choisit le nombre de mensualités au moment de payer',
         feePayerLoading: 'Consultation des frais de votre Asaas…',
         feePayerCustomerSummary: (n: number, installment: string, total: string, fee: string) =>
           `Le client paie ${total} en ${n}x de ${installment} — vous recevez le montant total (frais répercutés : ${fee}).`,
@@ -2403,6 +2442,10 @@ export const charges = {
         net: 'Vous recevez',
         netAtOnce: 'Vous recevez tout en une fois',
         installmentLine: (n: number, value: string) => `En ${n}x de ${value} sur la carte du client`,
+        rangeCash: 'Si paiement comptant',
+        rangeMax: (n: number) => `Si paiement en ${n}x`,
+        rangeAny: 'Quel que soit le nombre de mensualités',
+        rangeCompact: (min: string, max: string) => `${min} à ${max}`,
         settlementToday: `L'argent arrive sur le compte tout de suite`,
         settlementDays: (d: number, date: string) =>
           d === 1
@@ -2535,6 +2578,8 @@ export const charges = {
         submit: 'Payer {amount}',
         notice: `Paiement unique. Votre carte sera débitée une seule fois, du montant ci-dessus.`,
         secureBadge: `Vos données sont chiffrées (SSL) et traitées par Asaas. Nous ne conservons jamais votre numéro de carte.`,
+        noticeInstallments: 'Achat en {count} mensualités par carte. Chaque mensualité apparaît sur un relevé de votre carte.',
+        installmentsSummary: 'en {count}x de {installment}',
         approvedTitle: 'Paiement approuvé !',
         approvedDescription: `Nous confirmons auprès de votre banque. Cette page se met à jour toute seule dans un instant.`,
         processingTitle: `Paiement en cours d'analyse`,

@@ -46,6 +46,32 @@
 //   seria no-op calado. O freio escalonado depende de tabela nova
 //   (`tenant_charge_payment_attempts`, contrato no relatório da entrega, com o
 //   dev-database) e não é feito aqui.
+//
+// "CLIENTE ESCOLHE AS PARCELAS" (cobrança criada com customer_max_installments)
+//   A Asaas NÃO deixa parcelar uma cobrança que já existe (payWithCreditCard e
+//   PUT /payments não aceitam parcelas). Então, quando o pagador escolhe N ≥ 2:
+//     a) POST /payments NOVO, já parcelado, com o cartão (captura na hora;
+//        recusado = HTTP 400 e nada é criado). externalReference =
+//        tenant_charges.id (mesmo padrão do lote): o webhook resolve a empresa
+//        por ele e a RECUPERAÇÃO acha exatamente as vendas desta cobrança,
+//        mesmo sem a resposta do POST. Evento de pagamento que chegar ANTES da
+//        troca recebe 5xx do webhook por até 2 min (a Asaas reentrega);
+//     b) troca ATÔMICA na tenant_charges (RPC replace_tenant_charge_gateway_
+//        payment, compare-and-swap pelo id da cobrança 1x);
+//     c) só depois da troca, DELETE da cobrança 1x antiga (best-effort; o id
+//        fica em superseded_asaas_payment_ids e o webhook ignora eventos dele);
+//     d) troca recusada com o cartão JÁ capturado → estorno da venda nova.
+//   Regra 2 continua valendo: o TOTAL é recalculado aqui (base_value + quem
+//   paga a taxa + tabela de taxa da conta), com a mesma régua do checkout
+//   (_shared/customer-installments.ts). Do client só vem o NÚMERO de parcelas,
+//   validado contra o teto da cobrança. `expected_total` (opcional) é só trava
+//   de coerência: se o total mudou desde que a página abriu, recusamos em vez
+//   de cobrar um valor que o pagador não viu.
+//   RECUPERAÇÃO: antes de qualquer cobrança numa cobrança deste modo, listamos
+//   GET /payments?externalReference=<tenant_charges.id>. Se uma tentativa
+//   anterior CAPTUROU e não trocou (timeout, isolate morto entre a e b),
+//   terminamos a troca com ela (e damos a baixa das parcelas) em vez de cobrar
+//   o cartão de novo. O reconcile (cron) faz o mesmo como rede de segurança.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -53,6 +79,24 @@ import { getCorsHeaders, handleCors } from "../_shared/cors.ts";
 import { vaultReadSecret } from "../_shared/payments-auth.ts";
 import { asaasFor, AsaasApiError } from "../_shared/asaas-tenant-client.ts";
 import { isValidDocument, unmaskDoc } from "../_shared/document-validation.ts";
+import { resolveTenantCardFees } from "../_shared/asaas-card-fees.ts";
+import {
+  applyCapturedInstallmentPayments,
+  type AsaasPaymentLite,
+  CAPTURED_STATUSES,
+  type CapturedInstallment,
+  deleteSupersededPayment,
+  findCapturedInstallmentSale,
+  swapToInstallmentSale,
+  undoCapturedInstallment,
+} from "../_shared/customer-installment-swap.ts";
+import {
+  effectiveCustomerMaxInstallments,
+  installmentMeetsMinimum,
+  MAX_CUSTOMER_MAX_INSTALLMENTS,
+  normalizeFeePayer,
+  totalForInstallments,
+} from "../_shared/customer-installments.ts";
 
 // ── Parâmetros de proteção ───────────────────────────────────────────────────
 /** Janela do single-flight durável (segundos) — 2 cliques dentro dela: só o 1º passa. */
@@ -81,6 +125,26 @@ const DEAD_STATUSES = new Set([
 
 /** Resultado normalizado devolvido ao checkout (nunca o status cru da Asaas). */
 type PayStatus = "approved" | "processing" | "already_paid" | "declined" | "not_payable";
+
+/** Intervalo do "estou vivo" do single-flight enquanto o POST parcelado roda. */
+const HEARTBEAT_MS = 8_000;
+
+const round2 = (v: number) => Math.round(v * 100) / 100;
+
+/** Data de hoje no fuso da Asaas (BRT), YYYY-MM-DD. UTC viraria "amanhã" à noite. */
+function todayBrt(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+/** Só manda remoteIp se parecer IP de verdade (a Asaas exige o IP do PAGADOR). */
+function looksLikeIp(ip: string): boolean {
+  return /^\d{1,3}(\.\d{1,3}){3}$/.test(ip) || /^[0-9a-f:]+$/i.test(ip) && ip.includes(":");
+}
 
 function json(req: Request, body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -301,6 +365,86 @@ function friendlyCardError(err: unknown): string {
   return GENERIC;
 }
 
+// ── Venda parcelada: troca e desfazer (peças em _shared/customer-installment-swap)
+
+/**
+ * Troca a cobrança 1x pela venda parcelada já capturada e, só depois, remove a
+ * 1x antiga na Asaas. Se a troca for RECUSADA (outra aba pagou, cobrança
+ * cancelada), desfaz a venda nova: dinheiro capturado sem cobrança local não
+ * pode ficar parado em silêncio.
+ *
+ * `recovered` = a venda veio da RECUPERAÇÃO (tentativa anterior): os eventos
+ * das parcelas podem já ter passado pelo webhook antes da troca, então damos a
+ * baixa por parcela aqui mesmo (idempotente por parcela).
+ */
+async function completeInstallmentSwap(
+  req: Request,
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  asaas: ReturnType<typeof asaasFor>,
+  args: {
+    shortCode: string;
+    chargeId: string;
+    oldPaymentId: string;
+    captured: CapturedInstallment;
+    recovered: boolean;
+  },
+): Promise<Response> {
+  const { shortCode, chargeId, oldPaymentId, captured, recovered } = args;
+
+  // b) troca atômica, IMEDIATAMENTE após a aprovação.
+  const swap = await swapToInstallmentSale(supabase, chargeId, oldPaymentId, captured);
+
+  if (swap.outcome === "swapped") {
+    // c) a 1x antiga sai da Asaas. Best-effort: se falhar, o id já está em
+    //    superseded_asaas_payment_ids (gravado pela RPC) e o reconcile limpa.
+    if (!(await deleteSupersededPayment(asaas, oldPaymentId))) {
+      console.error(`[pay-card] cobrança 1x substituída não foi removida na Asaas (code=${shortCode}); fica para a limpeza`);
+    }
+    if (recovered) {
+      try {
+        const r = await applyCapturedInstallmentPayments(supabase, asaas, captured.installmentId);
+        if (r.errors > 0) {
+          console.error(`[pay-card] baixa por parcela da recuperação com ${r.errors} erro(s) (code=${shortCode}); o reconcile repete`);
+        }
+      } catch {
+        console.error(`[pay-card] baixa por parcela da recuperação falhou (code=${shortCode}); o reconcile repete`);
+      }
+    }
+    console.log(`[pay-card] venda parcelada trocada (code=${shortCode}, status=${captured.status})`);
+    if (captured.status === "AWAITING_RISK_ANALYSIS") {
+      return json(req, {
+        status: "processing" as PayStatus,
+        message: "Pagamento em análise pela operadora. Você receberá a confirmação em instantes.",
+      }, 200);
+    }
+    return json(req, { status: "approved" as PayStatus, message: "Pagamento aprovado." }, 200);
+  }
+
+  if (swap.outcome === "uncertain") {
+    // Não deu pra saber se trocou (banco indisponível). NÃO desfazemos às
+    // cegas: a próxima tentativa (ou o reconcile) passa pela recuperação e
+    // termina a troca com esta mesma venda.
+    console.error(`[pay-card] GRAVE: cartão capturado e troca sem confirmação (code=${shortCode})`);
+    return json(req, {
+      status: "processing" as PayStatus,
+      message: "Pagamento recebido. Estamos confirmando com o sistema; não pague de novo. Esta página atualiza sozinha.",
+    }, 200);
+  }
+
+  // d) troca recusada com o cartão capturado: desfaz a venda nova inteira.
+  const undone = await undoCapturedInstallment(asaas, captured.installmentId, captured.status);
+  console.error(
+    `[pay-card] GRAVE: troca recusada com cartão capturado (code=${shortCode}, motivo=${swap.reason}, desfeito=${undone ? "ok" : "FALHOU"})`,
+  );
+  return json(req, {
+    status: "not_payable" as PayStatus,
+    error: undone
+      ? "Esta cobrança não estava mais disponível para pagamento. O valor cobrado no seu cartão foi estornado."
+      : "Esta cobrança não estava mais disponível para pagamento. Fale com quem a enviou para receber o estorno do cartão.",
+  }, 409);
+}
+
 Deno.serve(async (req) => {
   const cors = handleCors(req);
   if (cors) return cors;
@@ -339,6 +483,23 @@ Deno.serve(async (req) => {
     return json(req, { error: parsed.error }, 400);
   }
 
+  // Número de parcelas escolhido no checkout (opcional). Ausente ou 1 → fluxo
+  // de sempre (payWithCreditCard na cobrança 1x). Só o NÚMERO vem do client;
+  // o valor é recalculado no servidor.
+  let requestedInstallments = 1;
+  const rawInstallments = body.installment_count;
+  if (rawInstallments !== undefined && rawInstallments !== null && rawInstallments !== "") {
+    const n = Number(rawInstallments);
+    if (!Number.isInteger(n) || n < 1 || n > MAX_CUSTOMER_MAX_INSTALLMENTS) {
+      return json(req, { error: "Número de parcelas inválido. Escolha uma das opções da lista." }, 400);
+    }
+    requestedInstallments = n;
+  }
+  const rawExpectedTotal = Number(body.expected_total);
+  const expectedTotal = Number.isFinite(rawExpectedTotal) && rawExpectedTotal > 0
+    ? round2(rawExpectedTotal)
+    : null;
+
   try {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -349,7 +510,9 @@ Deno.serve(async (req) => {
     // ---- 1) Cobrança pelo short_code (SELECT explícito; company_id vem daqui) --
     const { data: charge } = await supabase
       .from("tenant_charges")
-      .select("id, company_id, asaas_payment_id, status, payment_date")
+      .select(
+        "id, company_id, asaas_payment_id, status, payment_date, value, billing_type, description, customer_max_installments, card_fee_payer, base_value, batch_id, subscription_id",
+      )
       .eq("public_short_code", shortCode)
       .maybeSingle();
 
@@ -375,6 +538,32 @@ Deno.serve(async (req) => {
       }, 400);
     }
 
+    // Parcelas pedidas: só em cobrança do modo "cliente escolhe" e até o teto
+    // DELA. Barrado ANTES do lock (não gasta a janela do single-flight).
+    const inCustomerMode = charge.customer_max_installments != null;
+    if (requestedInstallments > 1) {
+      const chargeMax = Number(charge.customer_max_installments);
+      const baseValue = Number(charge.base_value);
+      // Mesmas condições que a RPC de troca exige (charge_not_open,
+      // charge_not_eligible, not_customer_installments_mode): conferidas AQUI,
+      // antes de cobrar, pra troca recusada depois da captura ser exceção.
+      if (
+        !inCustomerMode ||
+        String(charge.billing_type ?? "") !== "CREDIT_CARD" ||
+        charge.batch_id != null ||
+        charge.subscription_id != null ||
+        !PAYABLE_STATUSES.has(localStatus) ||
+        !Number.isFinite(baseValue) || baseValue <= 0
+      ) {
+        return json(req, { error: "Esta cobrança não pode ser parcelada no cartão." }, 400);
+      }
+      if (!Number.isFinite(chargeMax) || requestedInstallments > chargeMax) {
+        return json(req, {
+          error: `Esta cobrança pode ser parcelada em até ${chargeMax}x. Escolha uma das opções da lista.`,
+        }, 400);
+      }
+    }
+
     // ---- 2) Single-flight DURÁVEL (atômico no Postgres, cross-isolate) -------
     // Só segue quem conseguir "marcar" a linha: UPDATE condicionado a
     // updated_at antigo. Dois cliques simultâneos → um único vencedor.
@@ -396,11 +585,21 @@ Deno.serve(async (req) => {
     // ---- 3) Conta Asaas do tenant (chave BYO no Vault) ----------------------
     const { data: accountData } = await supabase
       .from("tenant_payment_accounts")
-      .select("status, vault_secret_name, allow_card")
+      .select(
+        "status, vault_secret_name, allow_card, default_max_installments, card_fee_override, card_fees_cache, card_fees_synced_at",
+      )
       .eq("company_id", charge.company_id)
       .maybeSingle();
     const account = accountData as
-      | { status?: string; vault_secret_name?: string; allow_card?: boolean }
+      | {
+        status?: string;
+        vault_secret_name?: string;
+        allow_card?: boolean;
+        default_max_installments?: number | null;
+        card_fee_override?: unknown;
+        card_fees_cache?: unknown;
+        card_fees_synced_at?: string | null;
+      }
       | null;
 
     if (!account || account.status !== "active" || !account.vault_secret_name) {
@@ -428,9 +627,11 @@ Deno.serve(async (req) => {
     // A doc diz explicitamente pra NÃO tratar payWithCreditCard como idempotente:
     // consultamos o estado atual pra nunca cobrar duas vezes a mesma cobrança.
     let remoteStatus = "";
+    let remoteCustomer = "";
     try {
-      const remote = await asaas.get<{ status?: string }>(`/payments/${paymentId}`);
+      const remote = await asaas.get<{ status?: string; customer?: string }>(`/payments/${paymentId}`);
       remoteStatus = String(remote?.status ?? "").toUpperCase();
+      remoteCustomer = typeof remote?.customer === "string" ? remote.customer : "";
     } catch (e) {
       console.error(`[pay-card] falha ao consultar a cobrança (code=${shortCode}):`,
         e instanceof AsaasApiError ? `asaas ${e.status}` : "erro");
@@ -450,6 +651,212 @@ Deno.serve(async (req) => {
         status: "not_payable" as PayStatus,
         error: "Esta cobrança não está mais disponível para pagamento. Fale com quem a enviou.",
       }, 400);
+    }
+
+    // ---- 4.1) Recuperação (só no modo "cliente escolhe") ---------------------
+    // Uma tentativa parcelada anterior pode ter CAPTURADO o cartão e morrido
+    // antes da troca (timeout, isolate encerrado). Cobrar de novo aqui seria
+    // cobrar duas vezes: terminamos a troca com a venda que já existe.
+    // Tabela de taxa (só no modo): total da recuperação e da venda nova saem
+    // da MESMA régua do checkout.
+    const feePayer = normalizeFeePayer(charge.card_fee_payer);
+    let totalFor: ((count: number) => number) | null = null;
+    if (inCustomerMode) {
+      const { fees } = await resolveTenantCardFees({
+        account,
+        asaas,
+        nowMs: Date.now(),
+        persistCache: async (table) => {
+          await supabase
+            .from("tenant_payment_accounts")
+            .update({ card_fees_cache: table, card_fees_synced_at: new Date().toISOString() })
+            .eq("company_id", charge.company_id);
+        },
+      });
+      totalFor = (count: number) =>
+        totalForInstallments({
+          baseValue: Number(charge.base_value),
+          oneTimeValue: Number(charge.value),
+          count,
+          feePayer,
+          fees,
+        });
+    }
+
+    if (inCustomerMode) {
+      let leftover: CapturedInstallment | null = null;
+      try {
+        leftover = await findCapturedInstallmentSale(asaas, String(charge.id), paymentId);
+      } catch (e) {
+        console.error(`[pay-card] falha ao conferir tentativas anteriores (code=${shortCode}):`,
+          e instanceof AsaasApiError ? `asaas ${e.status}` : "erro");
+        return json(req, {
+          error: "Não foi possível conferir a cobrança agora. Tente novamente em instantes.",
+        }, 502);
+      }
+      if (leftover) {
+        console.warn(`[pay-card] recuperando venda parcelada já capturada (code=${shortCode})`);
+        return await completeInstallmentSwap(req, supabase, asaas, {
+          shortCode,
+          chargeId: String(charge.id),
+          oldPaymentId: paymentId,
+          captured: leftover,
+          recovered: true,
+        });
+      }
+    }
+
+    // ---- 4.2) Venda PARCELADA escolhida pelo pagador -------------------------
+    if (requestedInstallments > 1) {
+      const customerMax = effectiveCustomerMaxInstallments(
+        charge.customer_max_installments,
+        account.default_max_installments,
+      );
+      if (customerMax === null || requestedInstallments > customerMax) {
+        return json(req, {
+          error: "Este número de parcelas não está mais disponível. Atualize a página e escolha outra opção.",
+        }, 400);
+      }
+      if (!remoteCustomer || !totalFor) {
+        return json(req, {
+          error: "Não foi possível conferir a cobrança agora. Tente novamente em instantes.",
+        }, 502);
+      }
+
+      // TOTAL AUTORITATIVO (nunca do client): mesma régua do checkout.
+      const totalValue = totalFor(requestedInstallments);
+      // billed_below_base da RPC: o repasse nunca deixa o total abaixo do pedido.
+      if (totalValue < Number(charge.base_value) - 0.01) {
+        return json(req, { error: "Esta cobrança não pode ser parcelada no cartão." }, 400);
+      }
+      if (!installmentMeetsMinimum(totalValue, requestedInstallments)) {
+        return json(req, {
+          error: "Cada parcela precisa ser de pelo menos R$ 5,00. Escolha menos parcelas.",
+        }, 400);
+      }
+      if (expectedTotal !== null && Math.abs(expectedTotal - totalValue) > 0.01) {
+        return json(req, {
+          error: "O valor do parcelamento foi atualizado. Recarregue a página para ver o valor certo antes de pagar.",
+        }, 409);
+      }
+
+      // Single-flight "vivo": o POST com cartão pode levar dezenas de segundos
+      // (a Asaas recomenda timeout ≥ 60s). Sem isto, um 2º clique depois de
+      // SINGLE_FLIGHT_SECONDS passaria pelo lock com o 1º ainda em voo e as
+      // duas tentativas capturariam o cartão.
+      const heartbeat = setInterval(() => {
+        supabase
+          .from("tenant_charges")
+          .update({ updated_at: new Date().toISOString() })
+          .eq("id", charge.id)
+          .then(() => {}, () => {});
+      }, HEARTBEAT_MS);
+
+      let created: AsaasPaymentLite | null = null;
+      let outcomeUnknown = false;
+      try {
+        created = await asaas.post<AsaasPaymentLite>("/payments", {
+          customer: remoteCustomer,
+          billingType: "CREDIT_CARD",
+          installmentCount: requestedInstallments,
+          totalValue,
+          dueDate: todayBrt(),
+          description: typeof charge.description === "string" && charge.description
+            ? String(charge.description).slice(0, 500)
+            : undefined,
+          // = tenant_charges.id (padrão do lote): o webhook resolve a empresa
+          // por aqui e a recuperação acha esta venda mesmo sem a resposta do
+          // POST. Nenhuma cobrança fora do lote usa ensureBatchChargeGatewayLink.
+          externalReference: String(charge.id),
+          creditCard: {
+            holderName: parsed.card.holderName,
+            number: parsed.card.number,
+            expiryMonth: parsed.card.expiryMonth,
+            expiryYear: parsed.card.expiryYear,
+            ccv: parsed.card.ccv,
+          },
+          creditCardHolderInfo: {
+            name: parsed.holder.name,
+            email: parsed.holder.email,
+            cpfCnpj: parsed.holder.cpfCnpj,
+            postalCode: parsed.holder.postalCode,
+            addressNumber: parsed.holder.addressNumber,
+            ...(parsed.holder.addressComplement
+              ? { addressComplement: parsed.holder.addressComplement }
+              : {}),
+            phone: parsed.holder.phone,
+          },
+          ...(looksLikeIp(ip) ? { remoteIp: ip } : {}),
+        });
+      } catch (e) {
+        // 4xx = a Asaas respondeu e recusou: NADA foi criado (doc oficial).
+        // Qualquer outra coisa (rede, timeout, 5xx) = desfecho DESCONHECIDO.
+        if (e instanceof AsaasApiError && e.status >= 400 && e.status < 500) {
+          clearInterval(heartbeat);
+          console.error(`[pay-card] parcelado recusado (code=${shortCode}): asaas ${e.status}`);
+          return json(req, { status: "declined" as PayStatus, error: friendlyCardError(e) }, 400);
+        }
+        outcomeUnknown = true;
+        console.error(`[pay-card] parcelado sem resposta (code=${shortCode}):`,
+          e instanceof AsaasApiError ? `asaas ${e.status}` : "erro de rede");
+      } finally {
+        clearInterval(heartbeat);
+      }
+
+      // Desfecho desconhecido: a doc manda CONFERIR antes de qualquer coisa.
+      let captured: CapturedInstallment | null = null;
+      if (outcomeUnknown) {
+        try {
+          captured = await findCapturedInstallmentSale(asaas, String(charge.id), paymentId);
+        } catch {
+          captured = null;
+        }
+        if (!captured) {
+          // Não achamos captura AGORA. Pode aparecer daqui a pouco: a próxima
+          // tentativa passa pela recuperação (4.1) e não cobra duas vezes.
+          return json(req, {
+            error: "Não conseguimos confirmar o pagamento com a operadora. Aguarde 1 minuto e atualize a página antes de tentar de novo.",
+          }, 502);
+        }
+      } else {
+        const status = String(created?.status ?? "").toUpperCase();
+        const installmentId = typeof created?.installment === "string" ? created.installment : "";
+        if (!created?.id || !installmentId || !CAPTURED_STATUSES.has(status)) {
+          // Criou mas não capturou (status inesperado): não deixa venda
+          // pendurada na conta do tenant.
+          console.error(`[pay-card] parcelado criado sem captura (code=${shortCode}, status=${status || "?"})`);
+          if (installmentId) {
+            await asaas.delete(`/installments/${installmentId}`).catch(() => {});
+          } else if (created?.id) {
+            await asaas.delete(`/payments/${created.id}`).catch(() => {});
+          }
+          return json(req, {
+            status: "declined" as PayStatus,
+            error: "Pagamento não autorizado pelo banco emissor do cartão. Tente outro cartão ou pague com Pix.",
+          }, 400);
+        }
+        captured = {
+          paymentId: created.id,
+          installmentId,
+          installmentCount: requestedInstallments,
+          billedValue: totalValue,
+          netValue: created.netValue != null && Number.isFinite(Number(created.netValue))
+            ? Number(created.netValue)
+            : null,
+          status,
+          invoiceUrl: typeof created.invoiceUrl === "string" ? created.invoiceUrl : null,
+        };
+      }
+
+      return await completeInstallmentSwap(req, supabase, asaas, {
+        shortCode,
+        chargeId: String(charge.id),
+        oldPaymentId: paymentId,
+        captured,
+        // Desfecho desconhecido = venda achada pela consulta: mesma regra da
+        // recuperação (eventos podem ter passado antes da troca).
+        recovered: outcomeUnknown,
+      });
     }
 
     // ---- 5) Pagamento -------------------------------------------------------

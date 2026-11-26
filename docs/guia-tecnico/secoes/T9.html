@@ -379,9 +379,9 @@
   </ul>
   <p>Ao terminar aparece <span class="ui">Orçamento convertido!</span> com <span class="ui">OS criada com sucesso.</span>, e o orçamento passa ao status Convertido.</p>
 
-  <div class="regra"><b>É aqui que o estoque baixa por causa do orçamento.</b> Na conversão, cada material escolhido <b>do estoque</b> gera uma saída na quantidade do orçamento, com a observação <span class="ui">Consumo do Orçamento #</span> seguida do número. Material digitado na mão não mexe em estoque. Por padrão, <b>concluir a OS não dá baixa em estoque</b>: fora desta conversão, a baixa só acontece nos ajustes e inventário da tela de Estoque. A exceção é quando a empresa liga, em Configurações → Usabilidade → Ordens de Serviço, o recurso opcional <span class="ui">Consumo de estoque na OS</span>: aí o técnico pode anotar material durante o atendimento e a baixa desse consumo é confirmada num resumo ao finalizar a OS, sem relação nenhuma com o material do orçamento.</div>
+  <div class="regra"><b>Orçamento comercial e consumo de estoque são registros diferentes.</b> Copiar materiais para o orçamento da OS não comprova uma saída física. Registre a movimentação pelo Estoque ou pelo recurso opcional <span class="ui">Consumo de estoque na OS</span>, quando habilitado.</div>
 
-  <div class="aviso">A baixa não checa se há saldo. Se o material não tem estoque suficiente, o saldo daquele item fica negativo e a movimentação é registrada assim mesmo. Confira a Posição de Estoque depois de converter orçamentos grandes.</div>
+
 
   <p>A conversão acontece uma vez só: tentando de novo, o sistema recusa com <span class="ui">Orçamento já foi convertido</span>. Falhas aparecem como <span class="ui">Erro na conversão</span> com o motivo.</p>
 
@@ -515,4 +515,9 @@
   <div class="glossario">
     <b>Palavras que o cliente usa pra isso:</b> orçamento, orçar, proposta, proposta comercial, cotação, valor do serviço, mandar o preço, link da proposta, proposta em PDF, fechou o orçamento, cliente aprovou, virou serviço, BDI, margem, markup, preço de venda, custo por hora, hora homem, custo do veículo, brinde, desconto à vista, parcelado no cartão
   </div>
+
+  <h3>Gerar OS: preço e execução são escolhas separadas</h3>
+  <p>Ao converter o orçamento aprovado, a janela <span class="ui">Gerar OS</span> copia o comercial e permite escolher se os valores serão mostrados para o cliente. A opção <span class="ui">Definir equipamentos e checklists agora</span> começa desligada. Ative-a se quiser escolher a execução naquele momento; também é possível prepará-la depois na OS.</p>
+  <p>Os serviços e produtos definem os valores da contratação. Os checklists definem o que será executado em cada equipamento e não precisam corresponder aos serviços que formaram o preço. Se o orçamento já gerou contas a receber, a OS passa a usar essas mesmas contas.</p>
+  <figure><img src="img/t9-gerar-os-execucao.png" alt="Janela Gerar OS com opções independentes para mostrar valores ao cliente e definir equipamentos e checklists"><figcaption>Execução opcional e separada dos preços do orçamento. Dados fictícios.</figcaption></figure>
 </section>

@@ -279,6 +279,10 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
   // Quem paga a taxa do cartão: 'company' (empresa absorve) ou 'customer'
   // (repasse ao cliente — o total é inflado no servidor pela taxa real do Asaas).
   const [feePayer, setFeePayer] = useState<'company' | 'customer'>('company');
+  // Parcelamento no cartão: 'fixed' = a empresa define o nº de parcelas (o de
+  // sempre); 'customer' = a empresa define só o TETO e o pagador escolhe no
+  // checkout. No modo 'customer', `installmentCount` guarda o teto.
+  const [installmentMode, setInstallmentMode] = useState<'fixed' | 'customer'>('fixed');
 
   // ── Abas do modal (reorganização de rolagem única em 4 grupos) ─────────────
   const TAB_COBRANCA = 'cobranca';
@@ -451,6 +455,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
       setCostCenterId(null);
       setPostToFinance(autoPostToFinance);
       setFeePayer(feePayerDefault === 'customer' ? 'customer' : 'company');
+      setInstallmentMode('fixed');
       if (presetAmount != null && presetAmount > 0) {
         setAmount(presetAmount);
       }
@@ -529,6 +534,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
     setPostToFinance(autoPostToFinance);
     setMethod(methodOptions[0]?.value ?? 'UNDEFINED');
     setInstallmentCount(1);
+    setInstallmentMode('fixed');
     setFeePayer(feePayerDefault === 'customer' ? 'customer' : 'company');
     setAnticipate(false);
     setShowSchedule(false);
@@ -600,12 +606,23 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
   const simulatorMethod: SimulatorMethod | null =
     method === 'UNDEFINED' ? null : METHOD_TO_SIMULATOR[method];
 
+  // "Cliente escolhe as parcelas": só no cartão, com mais de 1 parcela
+  // liberada na conta, e nunca quando a cobrança LIGA a um lançamento que já
+  // existe (parcela de contrato / conta a receber) — a edge recusa esses.
+  const cardMaxInstallments = Math.max(1, defaultMaxInstallments ?? 1);
+  const canOfferCustomerInstallments =
+    method === 'CREDIT_CARD' && cardMaxInstallments > 1 && !isLinkedToExistingEntry;
+  const customerChoosesInstallments =
+    canOfferCustomerInstallments && installmentMode === 'customer';
+
   const simulation = useMemo<SimulationResult | null>(() => {
     if (!simulatorMethod || !tenantFees || amount <= 0) return null;
     return simulateNetAmount({
       amount,
       method: simulatorMethod,
-      installments: simulatorMethod === 'card' ? installmentCount : 1,
+      // No "cliente escolhe" a cobrança nasce à vista: o detalhe é o do 1x e
+      // a faixa até o teto aparece em `simulationAtMax`.
+      installments: simulatorMethod === 'card' && !customerChoosesInstallments ? installmentCount : 1,
       // Repasse ao cliente só existe no cartão (é o que o edge faz); nos demais
       // meios a empresa sempre absorve a taxa.
       feePayer: simulatorMethod === 'card' ? feePayer : 'company',
@@ -613,7 +630,32 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
       anticipate,
       dueDays,
     });
-  }, [simulatorMethod, tenantFees, amount, installmentCount, feePayer, anticipate, dueDays]);
+  }, [simulatorMethod, tenantFees, amount, installmentCount, feePayer, anticipate, dueDays, customerChoosesInstallments]);
+
+  // Faixa do "cliente escolhe": quanto a empresa recebe se o pagador usar o
+  // MÁXIMO de parcelas (o à vista é a `simulation` acima).
+  const simulationAtMax = useMemo<SimulationResult | null>(() => {
+    if (!customerChoosesInstallments || !tenantFees || amount <= 0) return null;
+    return simulateNetAmount({
+      amount,
+      method: 'card',
+      installments: installmentCount,
+      feePayer,
+      fees: tenantFees,
+      anticipate,
+      dueDays,
+    });
+  }, [customerChoosesInstallments, tenantFees, amount, installmentCount, feePayer, anticipate, dueDays]);
+  // Com o cliente pagando a taxa o líquido é ~o mesmo em toda opção: 1 linha.
+  const netRange = simulation && simulationAtMax
+    ? {
+        min: Math.min(simulation.netAfterAnticipation, simulationAtMax.netAfterAnticipation),
+        max: Math.max(simulation.netAfterAnticipation, simulationAtMax.netAfterAnticipation),
+        cash: simulation.netAfterAnticipation,
+        atMax: simulationAtMax.netAfterAnticipation,
+        collapsed: Math.abs(simulation.netAfterAnticipation - simulationAtMax.netAfterAnticipation) < 0.05,
+      }
+    : null;
 
   // Antecipação efetivamente aplicada nesta simulação (toggle ligado E o
   // simulador conseguiu calcular um custo). Muda o rótulo/prazo/expander do
@@ -750,8 +792,10 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
     const max = method === 'CREDIT_CARD'
       ? Math.max(1, defaultMaxInstallments ?? 1)
       : 12;
-    return Array.from({ length: max }, (_, i) => i + 1);
-  }, [defaultMaxInstallments, method]);
+    const all = Array.from({ length: max }, (_, i) => i + 1);
+    // "Cliente escolhe": o select é o TETO, de 2x até o limite da conta.
+    return customerChoosesInstallments ? all.filter((n) => n >= 2) : all;
+  }, [defaultMaxInstallments, method, customerChoosesInstallments]);
 
   const canCreateInstallmentBatch = !source && !osVinculada && method !== 'CREDIT_CARD';
   const isInstallmentBatch = canCreateInstallmentBatch && installmentCount > 1;
@@ -891,7 +935,12 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
         interest_percent: isNaN(parsedInterest) ? undefined : parsedInterest,
         discount_percent: isNaN(parsedDiscount) ? undefined : parsedDiscount,
         discount_days: isNaN(parsedDiscountDays) ? undefined : parsedDiscountDays,
-        installment_count: method === 'CREDIT_CARD' && installmentCount > 1 ? installmentCount : undefined,
+        // "Cliente escolhe": manda só o teto; installment_count NÃO vai
+        // (a cobrança nasce 1x e o pagador escolhe no checkout).
+        installment_count: !customerChoosesInstallments && method === 'CREDIT_CARD' && installmentCount > 1
+          ? installmentCount
+          : undefined,
+        customer_max_installments: customerChoosesInstallments ? installmentCount : undefined,
         // Quem paga a taxa — só faz sentido no cartão; o edge ignora nos demais.
         fee_payer: method === 'CREDIT_CARD' ? feePayer : undefined,
         // Origem da cobrança: ativa o dedupe no edge (orçamento ou parcela).
@@ -1117,7 +1166,11 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                   <span className="truncate">{t.net.title}</span>
                 </span>
                 <span className="flex shrink-0 items-center gap-2">
-                  {simulation ? (
+                  {netRange && !netRange.collapsed ? (
+                    <span className="text-sm font-bold tabular-nums text-success">
+                      {t.net.rangeCompact(money(netRange.min), money(netRange.max))}
+                    </span>
+                  ) : simulation ? (
                     <span className="text-sm font-bold tabular-nums text-success">
                       {money(simulation.netAfterAnticipation)}
                     </span>
@@ -1138,6 +1191,30 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                       e o usuário precisa saber disso antes de confiar nele. */}
                   {feesAreReference && (
                     <NoticeBanner variant="warning">{t.net.fallbackWarning}</NoticeBanner>
+                  )}
+
+                  {/* "Cliente escolhe": a faixa do que a empresa recebe, do
+                      à vista ao máximo de parcelas. O detalhe abaixo é o 1x. */}
+                  {netRange && (
+                    <dl className="space-y-1.5 border-b border-border pb-2.5 text-sm">
+                      {netRange.collapsed ? (
+                        <div className="flex items-baseline justify-between gap-3">
+                          <dt className="text-muted-foreground">{t.net.rangeAny}</dt>
+                          <dd className="font-bold tabular-nums text-success">{money(netRange.cash)}</dd>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-baseline justify-between gap-3">
+                            <dt className="text-muted-foreground">{t.net.rangeCash}</dt>
+                            <dd className="font-bold tabular-nums text-success">{money(netRange.cash)}</dd>
+                          </div>
+                          <div className="flex items-baseline justify-between gap-3">
+                            <dt className="text-muted-foreground">{t.net.rangeMax(installmentCount)}</dt>
+                            <dd className="font-bold tabular-nums text-success">{money(netRange.atMax)}</dd>
+                          </div>
+                        </>
+                      )}
+                    </dl>
                   )}
 
                   {simulation && (
@@ -1669,6 +1746,7 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
                   onValueChange={(v) => {
                     setMethod(v as BillingMethod);
                     setInstallmentCount(1);
+                    setInstallmentMode('fixed');
                   }}
                 >
                   <SelectTrigger id="charge-method">
@@ -1692,12 +1770,36 @@ export function ChargeDialog({ open, onOpenChange, presetCustomerId, lockCustome
 
               {/* Cartão usa o parcelamento do próprio pagamento. Nos outros
                   meios, somente a cobrança avulsa gera N cobranças mensais. */}
-              {((method === 'CREDIT_CARD' && installmentOptions.length > 1) || canCreateInstallmentBatch) && (
+              {/* Cartão: quem decide as parcelas. "Cliente escolhe" troca o
+                  select abaixo pelo TETO (de 2x ao limite da conta). */}
+              {canOfferCustomerInstallments && (
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">{t.installments.modeLabel}</Label>
+                  <SegmentedControl
+                    options={[
+                      { value: 'fixed' as const, label: t.installments.modeFixed },
+                      { value: 'customer' as const, label: t.installments.modeCustomer },
+                    ]}
+                    value={installmentMode}
+                    onValueChange={(v) => {
+                      setInstallmentMode(v);
+                      setInstallmentCount(v === 'customer' ? cardMaxInstallments : 1);
+                    }}
+                    aria-label={t.installments.modeLabel}
+                  />
+                </div>
+              )}
+
+              {((method === 'CREDIT_CARD' && (customerChoosesInstallments || installmentOptions.length > 1)) || canCreateInstallmentBatch) && (
                 <div className="space-y-2">
                   <div className="flex items-baseline justify-between gap-2">
-                    <Label htmlFor="charge-installments" className="text-sm font-medium">{t.installments.label}</Label>
+                    <Label htmlFor="charge-installments" className="text-sm font-medium">
+                      {customerChoosesInstallments ? t.installments.upToLabel : t.installments.label}
+                    </Label>
                     <span className="text-right text-xs text-muted-foreground">
-                      {method === 'CREDIT_CARD' ? t.installments.cardHint : t.installments.batchHint}
+                      {customerChoosesInstallments
+                        ? t.installments.customerModeHint
+                        : method === 'CREDIT_CARD' ? t.installments.cardHint : t.installments.batchHint}
                     </span>
                   </div>
                   <Select

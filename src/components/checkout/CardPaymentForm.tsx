@@ -20,6 +20,14 @@ import { toast } from "sonner";
 import { CreditCardPreview } from "./CreditCardPreview";
 import { useAppLocaleContext } from "@/contexts/AppLocaleContext";
 import { MESSAGES } from "@/lib/i18n/messages";
+import { formatMoney } from "@/lib/format";
+
+/** Opção de parcelamento calculada FORA do formulário (servidor). */
+export interface CardInstallmentOption {
+  count: number;
+  installmentValue: number;
+  totalValue: number;
+}
 
 interface CardPaymentFormProps {
   amount: number;
@@ -55,6 +63,18 @@ interface CardPaymentFormProps {
    * cobrança recorrente da assinatura. `null` esconde o aviso.
    */
   billingNotice?: string | null;
+  /**
+   * ADITIVO (opcional) — opções de parcelamento prontas (checkout de cobrança
+   * no modo "cliente escolhe as parcelas"). Presente → SUBSTITUI a lista
+   * interna de 12x da assinatura e o select aparece mesmo sem
+   * `allowInstallments`. O `onSubmit` entrega `installmentCount` e o
+   * `totalAmount` da opção escolhida. Ausente = comportamento antigo.
+   */
+  installmentOptions?: CardInstallmentOption[];
+  /** true = todas as opções são sem juros (a empresa paga a taxa). */
+  interestFree?: boolean;
+  /** Avisa o pai a cada troca de parcelas (resumo e botão refletem o total). */
+  onInstallmentChange?: (count: number) => void;
   initialData?: {
     holderEmail?: string;
     holderPhone?: string;
@@ -99,8 +119,12 @@ export function CardPaymentForm({
   initialData,
   submitLabel,
   billingNotice,
+  installmentOptions: externalOptions,
+  interestFree = false,
+  onInstallmentChange,
 }: CardPaymentFormProps) {
-  const { locale } = useAppLocaleContext();
+  const { locale, currency } = useAppLocaleContext();
+  const hasExternalOptions = !!externalOptions && externalOptions.length > 0;
   const t = MESSAGES[locale].app.common.cardForm;
 
   const [formData, setFormData] = useState({
@@ -114,7 +138,8 @@ export function CardPaymentForm({
     holderPhone: "",
     holderPostalCode: "",
     holderAddressNumber: "",
-    installmentCount: allowInstallments ? 12 : 1,
+    // Opções do servidor começam à vista (o pagador escolhe parcelar).
+    installmentCount: externalOptions && externalOptions.length > 0 ? 1 : allowInstallments ? 12 : 1,
   });
 
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -251,6 +276,11 @@ export function CardPaymentForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
+    if (hasExternalOptions) {
+      const chosen = externalOptions!.find((o) => o.count === formData.installmentCount) ?? externalOptions![0];
+      onSubmit({ ...formData, installmentCount: chosen.count, totalAmount: chosen.totalValue });
+      return;
+    }
     onSubmit({ ...formData, totalAmount: amount });
   };
 
@@ -261,8 +291,29 @@ export function CardPaymentForm({
   const months = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0"));
   const years = Array.from({ length: 15 }, (_, i) => String(new Date().getFullYear() + i).slice(-2));
 
+  // Parcelas vindas do servidor (cobrança "cliente escolhe"): rótulo com o
+  // valor da parcela e, quando o cliente paga a taxa, o total de cada opção
+  // (nunca "sem juros" nesse caso).
+  const money = (v: number) => formatMoney(v, currency, locale);
+  const externalSelectOptions = hasExternalOptions
+    ? externalOptions!.map((o) => {
+        const template = o.count === 1
+          ? t.installmentOptionCash
+          : interestFree
+            ? t.installmentOptionInterestFree
+            : t.installmentOptionWithTotal;
+        const label = template
+          .replace("{count}", String(o.count))
+          .replace("{installment}", money(o.installmentValue))
+          .replace("{total}", money(o.totalValue));
+        return { value: o.count, label };
+      })
+    : [];
+
   // Parcelas: anual no cartão pode parcelar até 12x SEM juros (mensal×12).
-  const installmentOptions = allowInstallments
+  const installmentOptions = hasExternalOptions
+    ? externalSelectOptions
+    : allowInstallments
     ? Array.from({ length: 12 }, (_, i) => {
         const count = i + 1;
         const perInstallment = amount / count;
@@ -382,12 +433,16 @@ export function CardPaymentForm({
             className={cn(validationErrors.holderName && "border-destructive")}
           />
 
-          {allowInstallments && (
+          {(allowInstallments || hasExternalOptions) && (
             <Select
               value={String(formData.installmentCount)}
-              onValueChange={(v) => setFormData((prev) => ({ ...prev, installmentCount: Number(v) }))}
+              onValueChange={(v) => {
+                const count = Number(v);
+                setFormData((prev) => ({ ...prev, installmentCount: count }));
+                onInstallmentChange?.(count);
+              }}
             >
-              <SelectTrigger>
+              <SelectTrigger id="cc-installments" aria-label={t.installments}>
                 <SelectValue placeholder={t.installments} />
               </SelectTrigger>
               <SelectContent>

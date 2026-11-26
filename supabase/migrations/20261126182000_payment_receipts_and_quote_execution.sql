@@ -241,13 +241,32 @@ RETURNS SETOF public.tenant_charges LANGUAGE sql STABLE SECURITY DEFINER SET sea
 $$;
 REVOKE ALL ON FUNCTION public._os_related_charges(uuid) FROM PUBLIC,anon,authenticated;
 
+-- Venda de cartão parcelada: cada filha confirmada é um recebimento próprio.
+-- A cobrança-mãe só confirma no fim e não pode antecipar o total no recibo.
+CREATE FUNCTION public._is_confirmed_installment_payment(p_transaction_id uuid) RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
+ SELECT EXISTS(SELECT 1 FROM public.financial_transactions f
+  JOIN public.financial_transactions parent ON parent.id=f.parent_transaction_id AND parent.company_id=f.company_id
+  JOIN public.tenant_charges c ON c.id=f.tenant_charge_id AND c.company_id=f.company_id
+  WHERE f.id=p_transaction_id AND f.transaction_type='entrada' AND f.category='Recebimento parcial'
+   AND f.is_paid AND f.paid_date IS NOT NULL AND f.amount>0 AND f.cancelled_at IS NULL AND f.transfer_pair_id IS NULL
+   AND parent.cancelled_at IS NULL AND parent.transaction_type='entrada' AND parent.tenant_charge_id=c.id
+   AND c.asaas_installment_id IS NOT NULL AND upper(btrim(c.status)) IN ('PENDING','OVERDUE','RECEIVED','CONFIRMED','RECEIVED_IN_CASH'));
+$$;
+REVOKE ALL ON FUNCTION public._is_confirmed_installment_payment(uuid) FROM PUBLIC,anon,authenticated;
+
 CREATE FUNCTION public._os_confirmed_payments(p_os_id uuid)
 RETURNS TABLE(reference text,amount numeric,paid_date date,method text)
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
  WITH roots AS (SELECT * FROM public._os_financial_roots(p_os_id)), charges AS (SELECT * FROM public._os_related_charges(p_os_id)),
+ installments AS (SELECT f.* FROM public.financial_transactions f JOIN roots parent ON parent.id=f.parent_transaction_id AND parent.company_id=f.company_id
+  WHERE public._is_confirmed_installment_payment(f.id)),
  settings AS (SELECT COALESCE(cs.timezone,'America/Sao_Paulo') tz FROM public.service_orders so LEFT JOIN public.company_settings cs ON cs.company_id=so.company_id WHERE so.id=p_os_id)
  SELECT c.id::text,c.value,(c.payment_date AT TIME ZONE settings.tz)::date,c.billing_type FROM charges c CROSS JOIN settings
   WHERE upper(btrim(c.status)) IN ('RECEIVED','CONFIRMED','RECEIVED_IN_CASH') AND c.payment_date IS NOT NULL AND c.value>0
+   AND NOT EXISTS(SELECT 1 FROM installments f WHERE f.tenant_charge_id=c.id)
+ UNION ALL
+ SELECT f.id::text,f.amount,f.paid_date,c.billing_type FROM installments f JOIN charges c ON c.id=f.tenant_charge_id
  UNION ALL
  SELECT f.id::text,GREATEST(0,f.amount-COALESCE(f.amount_received,0)),f.paid_date,f.payment_method FROM roots f
   WHERE f.is_paid AND f.paid_date IS NOT NULL AND f.transfer_pair_id IS NULL AND f.tenant_charge_id IS NULL AND f.asaas_payment_id IS NULL
@@ -296,7 +315,7 @@ REVOKE ALL ON FUNCTION public._financial_receipt_customer(uuid) FROM PUBLIC,anon
 CREATE FUNCTION public._financial_payment_receipt(p_transaction_id uuid) RETURNS jsonb
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=public AS $$
 DECLARE f public.financial_transactions%ROWTYPE; parent public.financial_transactions%ROWTYPE; c public.tenant_charges%ROWTYPE;
- so public.service_orders%ROWTYPE; v_quote public.quotes%ROWTYPE; payment jsonb; context jsonb; amount numeric; total numeric; received numeric; tz text; ref text; v_customer uuid;
+ so public.service_orders%ROWTYPE; v_quote public.quotes%ROWTYPE; payment jsonb; context jsonb; amount numeric; total numeric; received numeric; tz text; ref text; v_customer uuid; v_installment boolean;
 BEGIN
  SELECT * INTO f FROM public.financial_transactions WHERE id=p_transaction_id;
  IF NOT FOUND THEN RAISE EXCEPTION 'Recebimento indisponível.' USING ERRCODE='ORC01'; END IF;
@@ -308,13 +327,14 @@ BEGIN
    RAISE EXCEPTION 'Selecione o recebimento original.' USING ERRCODE='ORC01'; END IF;
  ELSE parent:=f; END IF;
  v_customer:=public._financial_receipt_customer(f.id);
+ v_installment:=public._is_confirmed_installment_payment(f.id);
  SELECT * INTO c FROM public.tenant_charges WHERE company_id=f.company_id AND
   (id=f.tenant_charge_id OR (f.asaas_payment_id IS NOT NULL AND asaas_payment_id=f.asaas_payment_id)) ORDER BY (id=f.tenant_charge_id) DESC NULLS LAST LIMIT 1;
- IF (f.tenant_charge_id IS NOT NULL OR f.asaas_payment_id IS NOT NULL) AND (c.id IS NULL OR upper(btrim(c.status)) NOT IN ('RECEIVED','CONFIRMED','RECEIVED_IN_CASH') OR c.payment_date IS NULL) THEN
+ IF NOT v_installment AND (f.tenant_charge_id IS NOT NULL OR f.asaas_payment_id IS NOT NULL) AND (c.id IS NULL OR upper(btrim(c.status)) NOT IN ('RECEIVED','CONFIRMED','RECEIVED_IN_CASH') OR c.payment_date IS NULL) THEN
   RAISE EXCEPTION 'A cobrança não tem recebimento confirmado.' USING ERRCODE='ORC01'; END IF;
  IF c.customer_id IS NOT NULL AND v_customer IS NOT NULL AND c.customer_id IS DISTINCT FROM v_customer THEN
   RAISE EXCEPTION 'Confira o cliente do recebimento original.' USING ERRCODE='ORC01'; END IF;
- ref:=COALESCE(c.id,f.id)::text;
+ ref:=CASE WHEN v_installment THEN f.id ELSE COALESCE(c.id,f.id) END::text;
  SELECT s.* INTO so FROM public.service_orders s WHERE s.company_id=f.company_id AND s.customer_id=v_customer AND (s.id=COALESCE(f.service_order_id,parent.service_order_id)
   OR (c.source_type='service_order' AND s.id=c.source_id)
   OR EXISTS(SELECT 1 FROM public.quotes q JOIN public.financial_transactions anchor ON anchor.id=q.financial_transaction_id AND anchor.company_id=q.company_id
@@ -333,7 +353,7 @@ BEGIN
   OR EXISTS(SELECT 1 FROM public.pdv_party_credit_entries WHERE target_financial_transaction_id=parent.id) THEN
   RAISE EXCEPTION 'Consulte os recebimentos desta venda no PDV.' USING ERRCODE='ORC01'; END IF;
  SELECT COALESCE(timezone,'America/Sao_Paulo') INTO tz FROM public.company_settings WHERE company_id=f.company_id;
- amount:=CASE WHEN c.id IS NOT NULL THEN c.value ELSE GREATEST(0,f.amount-COALESCE(f.amount_received,0)) END;
+ amount:=CASE WHEN v_installment THEN f.amount WHEN c.id IS NOT NULL THEN c.value ELSE GREATEST(0,f.amount-COALESCE(f.amount_received,0)) END;
  IF amount<=0 THEN RAISE EXCEPTION 'Selecione um pagamento no histórico de recebimentos.' USING ERRCODE='ORC01'; END IF;
  SELECT quote.* INTO v_quote FROM public.quotes quote JOIN public.financial_transactions anchor ON anchor.id=quote.financial_transaction_id AND anchor.company_id=quote.company_id
   WHERE quote.company_id=f.company_id AND quote.customer_id=v_customer
@@ -345,7 +365,7 @@ BEGIN
  RETURN jsonb_build_object('source_description',parent.description,'items',jsonb_build_array(jsonb_build_object('description',parent.description,'quantity',1)))||context||jsonb_build_object('scope','payment','source_total',total,
   'received',amount,'received_total',CASE WHEN COALESCE(parent.installment_total,1)=1 THEN received END,'remaining',CASE WHEN COALESCE(parent.installment_total,1)=1 THEN GREATEST(0,total-received) END,'is_partial',amount<total,
   'payments',jsonb_build_array(jsonb_build_object('reference',ref,'amount',amount,
-   'paid_date',CASE WHEN c.id IS NOT NULL THEN (c.payment_date AT TIME ZONE COALESCE(tz,'America/Sao_Paulo'))::date ELSE f.paid_date END,
+   'paid_date',CASE WHEN c.id IS NOT NULL AND NOT v_installment THEN (c.payment_date AT TIME ZONE COALESCE(tz,'America/Sao_Paulo'))::date ELSE f.paid_date END,
    'method',COALESCE(c.billing_type,f.payment_method))));
 END;
 $$;
@@ -355,7 +375,7 @@ REVOKE ALL ON FUNCTION public._financial_payment_receipt(uuid) FROM PUBLIC,anon,
 CREATE FUNCTION public._charge_payment_receipt(p_charge_id uuid) RETURNS jsonb
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=public AS $$
 DECLARE c public.tenant_charges%ROWTYPE; so public.service_orders%ROWTYPE; q public.quotes%ROWTYPE;
- parent public.financial_transactions%ROWTYPE; context jsonb; payment jsonb; received numeric; total numeric; tz text;
+ parent public.financial_transactions%ROWTYPE; context jsonb; payment jsonb; received numeric; total numeric; tz text; payments jsonb;
 BEGIN
  SELECT * INTO c FROM public.tenant_charges WHERE id=p_charge_id;
  IF NOT FOUND OR upper(btrim(c.status)) NOT IN ('RECEIVED','CONFIRMED','RECEIVED_IN_CASH') OR c.payment_date IS NULL OR c.value<=0 THEN
@@ -363,9 +383,10 @@ BEGIN
  SELECT s.* INTO so FROM public.service_orders s WHERE s.company_id=c.company_id AND s.customer_id=c.customer_id AND EXISTS(
   SELECT 1 FROM public._os_related_charges(s.id) linked WHERE linked.id=c.id) ORDER BY s.id LIMIT 1;
  IF so.id IS NOT NULL THEN
-  SELECT to_jsonb(p) INTO payment FROM public._os_confirmed_payments(so.id) p WHERE p.reference=c.id::text;
+  SELECT COALESCE(jsonb_agg(to_jsonb(p) ORDER BY p.paid_date,p.reference),'[]') INTO payments FROM public._os_confirmed_payments(so.id) p
+   WHERE p.reference=c.id::text OR EXISTS(SELECT 1 FROM public.financial_transactions f WHERE f.id::text=p.reference AND f.tenant_charge_id=c.id AND f.company_id=c.company_id);
   SELECT COALESCE(sum(p.amount),0) INTO received FROM public._os_confirmed_payments(so.id) p;
-  RETURN public._os_receipt_context(so.id)||jsonb_build_object('scope','payment','payments',jsonb_build_array(payment),'received',c.value,
+  RETURN public._os_receipt_context(so.id)||jsonb_build_object('scope','payment','payments',payments,'received',c.value,
    'received_total',received,'remaining',CASE WHEN so.show_values_to_customer THEN GREATEST(0,so.total_value-received) END,'is_partial',c.value<so.total_value);
  END IF;
  IF c.source_type='quote' THEN SELECT * INTO q FROM public.quotes WHERE id=c.source_id AND company_id=c.company_id AND customer_id=c.customer_id; END IF;
@@ -447,11 +468,12 @@ BEGIN
    FROM public.tenant_charges c LEFT JOIN public.company_settings cs ON cs.company_id=c.company_id
    WHERE c.company_id=company AND c.customer_id=customer AND upper(btrim(c.status)) IN ('RECEIVED','CONFIRMED','RECEIVED_IN_CASH') AND c.payment_date IS NOT NULL AND c.value>0
   UNION ALL
-  SELECT f.id,'transaction',COALESCE(parent.description,f.description),GREATEST(0,f.amount-COALESCE(f.amount_received,0)),f.paid_date,f.payment_method,NULL::text
+  SELECT f.id,'transaction',COALESCE(parent.description,f.description),GREATEST(0,f.amount-COALESCE(f.amount_received,0)),f.paid_date,COALESCE(f.payment_method,receipt_charge.billing_type),NULL::text
    FROM public.financial_transactions f LEFT JOIN public.financial_transactions parent ON parent.id=f.parent_transaction_id AND parent.company_id=f.company_id
+   LEFT JOIN public.tenant_charges receipt_charge ON receipt_charge.id=f.tenant_charge_id AND receipt_charge.company_id=f.company_id
    WHERE f.company_id=company AND public._financial_receipt_customer(f.id)=customer
     AND f.transaction_type='entrada' AND f.is_paid AND f.paid_date IS NOT NULL AND f.cancelled_at IS NULL
-    AND f.transfer_pair_id IS NULL AND f.tenant_charge_id IS NULL AND f.asaas_payment_id IS NULL AND f.amount>COALESCE(f.amount_received,0)
+    AND f.transfer_pair_id IS NULL AND ((f.tenant_charge_id IS NULL AND f.asaas_payment_id IS NULL) OR public._is_confirmed_installment_payment(f.id)) AND f.amount>COALESCE(f.amount_received,0)
     AND (f.parent_transaction_id IS NULL OR (parent.cancelled_at IS NULL AND parent.transaction_type='entrada' AND f.category='Recebimento parcial'))
     AND NOT EXISTS(SELECT 1 FROM public.pdv_receivable_settlement_allocations WHERE receivable_transaction_id=COALESCE(parent.id,f.id))
     AND NOT EXISTS(SELECT 1 FROM public.pdv_party_credit_entries WHERE target_financial_transaction_id=COALESCE(parent.id,f.id))
