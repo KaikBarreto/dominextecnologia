@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.82";
+export const APP_VERSION = "1.41.83";
 
 export const VERSION_NOTES =
-  "Os links que a empresa compartilha (cobrança, orçamento, portal, formulários e ponto) agora aparecem no WhatsApp com o nome dela, e com a arte dela quando o White Label está ativo.";
+  "No PDV, sair da tela de venda e voltar não bloqueia mais a finalização com o aviso de versões diferentes, e o item com desconto mostra o preço original riscado ao lado do valor cobrado por unidade.";

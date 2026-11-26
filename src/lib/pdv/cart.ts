@@ -281,6 +281,20 @@ export function computeItemDiscountTotal(cart: CartState): number {
   return cart.lines.reduce((sum, line) => sum + clamp(Math.round((line.discountAmount ?? 0) * 100), 0, Math.max(0, cartLineGrossCents(line))), 0) / 100;
 }
 
+/**
+ * Preço efetivo por unidade de venda (un, kg, m...) de uma linha com desconto,
+ * ou `null` quando o preço de tabela já é o que o cliente paga. O desconto é
+ * do total da linha: exibir só o preço de tabela faz o operador ler um valor
+ * por unidade que não é o cobrado.
+ */
+export function cartLineNetUnitPrice(line: Pick<CartLine, 'quantity' | 'unitPrice' | 'discountAmount'>): number | null {
+  if (!(line.quantity > 0)) return null;
+  const grossCents = Math.max(0, cartLineGrossCents(line));
+  const discountCents = clamp(Math.round((line.discountAmount ?? 0) * 100), 0, grossCents);
+  if (discountCents <= 0) return null;
+  return (grossCents - discountCents) / 100 / line.quantity;
+}
+
 /** Total nunca fica negativo, mesmo com desconto maior que o subtotal. */
 export function couponCartSignature(cart: CartState): string {
   return JSON.stringify([cart.customerId, cart.discount, cart.lines.map(line => [line.inventoryId, line.quantity, line.unitPrice, line.discountAmount]).sort((a, b) => String(a[0]).localeCompare(String(b[0])))]);

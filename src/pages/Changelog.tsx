@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.83',
+    date: '26 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Venda do PDV não trava mais ao sair e voltar para a tela',
+        category: 'correcao',
+        description: 'Em alguns casos, ao sair da tela de venda e voltar, ou ao recarregar a página, o PDV avisava que havia versões diferentes do mesmo atendimento e não deixava finalizar. Isso foi corrigido: a venda continua de onde parou e pode ser finalizada normalmente. Atendimentos que ficaram bloqueados por esse aviso voltam a funcionar sozinhos ao abrir o PDV.',
+      },
+      {
+        title: 'Preço por unidade com desconto no carrinho do PDV',
+        category: 'melhoria',
+        description: 'Ao dar desconto em um item, o preço original por unidade, quilo ou metro aparece riscado e, ao lado, o valor realmente cobrado. Assim fica claro quanto o cliente está pagando em cada unidade.',
+      },
+    ],
+  },
+  {
     version: '1.41.82',
     date: '26 de novembro de 2026',
     type: 'patch',
