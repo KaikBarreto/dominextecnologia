@@ -19,6 +19,22 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCors } from "../_shared/cors.ts";
+import { vaultReadSecret } from "../_shared/payments-auth.ts";
+import { asaasFor } from "../_shared/asaas-tenant-client.ts";
+import {
+  type CardFeeTable,
+  FALLBACK_CARD_FEES,
+  resolveTenantCardFees,
+} from "../_shared/asaas-card-fees.ts";
+import {
+  buildCustomerInstallmentOptions,
+  type CustomerInstallmentOption,
+  effectiveCustomerMaxInstallments,
+  normalizeFeePayer,
+} from "../_shared/customer-installments.ts";
+
+/** Status em que a cobrança ainda pode ser paga (só aí oferecemos parcelas). */
+const PAYABLE_LOCAL_STATUSES = new Set(["PENDING", "OVERDUE"]);
 
 // Nome do EMISSOR: em cobrança, quem aparece é SEMPRE o tenant (decisão do CEO,
 // 2026-09-07). A Dominex é a PLATAFORMA — pode aparecer no rodapé/selo, nunca
@@ -76,7 +92,7 @@ Deno.serve(async (req) => {
     const { data: charge } = await supabase
       .from("tenant_charges")
       .select(
-        "company_id, value, due_date, description, status, billing_type, invoice_url, pix_copy_paste, boleto_url, public_short_code",
+        "company_id, value, due_date, description, status, billing_type, invoice_url, pix_copy_paste, boleto_url, public_short_code, payment_date, customer_max_installments, card_fee_payer, base_value",
       )
       .eq("public_short_code", shortCode)
       .maybeSingle();
@@ -96,11 +112,78 @@ Deno.serve(async (req) => {
     // in-house (o link hospedado segue como fallback).
     const { data: payAccount } = await supabase
       .from("tenant_payment_accounts")
-      .select("status, allow_card")
+      .select(
+        "status, allow_card, vault_secret_name, default_max_installments, card_fee_override, card_fees_cache, card_fees_synced_at",
+      )
       .eq("company_id", charge.company_id)
       .maybeSingle();
     const cardInHouseEnabled =
       payAccount?.status === "active" && payAccount?.allow_card !== false;
+
+    // ── "Cliente escolhe as parcelas" ────────────────────────────────────────
+    // Opções 1..teto calculadas AQUI, com a MESMA régua que o
+    // tenant-asaas-pay-charge-card usa para cobrar (customer-installments.ts +
+    // gross-up de asaas-card-fees.ts). Sai só count/parcela/total por opção e
+    // um booleano "sem juros". Taxa, líquido, base_value e quem paga a taxa
+    // NUNCA saem desta rota anônima.
+    let installmentOptions: CustomerInstallmentOption[] | null = null;
+    let installmentsInterestFree: boolean | null = null;
+    const localStatus = String(charge.status ?? "").toUpperCase();
+    const customerMax = effectiveCustomerMaxInstallments(
+      charge.customer_max_installments,
+      payAccount?.default_max_installments,
+    );
+    const baseValue = Number(charge.base_value);
+    if (
+      cardInHouseEnabled &&
+      String(charge.billing_type ?? "").toUpperCase() === "CREDIT_CARD" &&
+      customerMax !== null &&
+      !charge.payment_date &&
+      PAYABLE_LOCAL_STATUSES.has(localStatus) &&
+      Number.isFinite(baseValue) && baseValue > 0
+    ) {
+      try {
+        const feePayer = normalizeFeePayer(charge.card_fee_payer);
+        // A tabela de taxa só importa quando o CLIENTE paga a taxa. Com a
+        // empresa pagando, o total é base_value em toda opção (sem juros) e a
+        // tabela não entra na conta: nem lemos o Vault.
+        let fees: CardFeeTable | null = feePayer === "company" ? FALLBACK_CARD_FEES : null;
+        if (!fees) {
+          const apiKey = payAccount?.vault_secret_name
+            ? await vaultReadSecret(supabase, payAccount.vault_secret_name)
+            : null;
+          if (apiKey) {
+            fees = (await resolveTenantCardFees({
+              account: payAccount as Record<string, unknown>,
+              asaas: asaasFor(apiKey),
+              nowMs: Date.now(),
+              persistCache: async (table) => {
+                await supabase
+                  .from("tenant_payment_accounts")
+                  .update({ card_fees_cache: table, card_fees_synced_at: new Date().toISOString() })
+                  .eq("company_id", charge.company_id);
+              },
+            })).fees;
+          }
+        }
+        if (fees) {
+          installmentOptions = buildCustomerInstallmentOptions({
+            baseValue,
+            oneTimeValue: Number(charge.value),
+            maxInstallments: customerMax,
+            feePayer,
+            fees,
+          });
+          installmentsInterestFree = feePayer === "company";
+        }
+      } catch (e) {
+        // Sem opções = o checkout cai no 1x de sempre (a cobrança continua
+        // pagável). Nunca derruba a página por causa do parcelamento.
+        console.error("[checkout] opções de parcelamento indisponíveis:", (e as Error).message);
+        installmentOptions = null;
+        installmentsInterestFree = null;
+      }
+    }
 
     // Marca do tenant (só se white_label_enabled) — senão Dominex fixo.
     // Também trazemos os dados de IDENTIFICAÇÃO DO EMISSOR (endereço/telefone/
@@ -188,6 +271,11 @@ Deno.serve(async (req) => {
         // true → checkout de cartão PRÓPRIO (formulário na nossa página).
         // false → cai no fallback do link hospedado da Asaas (invoice_url).
         allow_card: cardInHouseEnabled,
+        // "Cliente escolhe as parcelas": null fora do modo (ou quando a
+        // cobrança já não é pagável). Cada opção: { count, installment_value,
+        // total_value }. `installments_interest_free` = a empresa paga a taxa.
+        installment_options: installmentOptions,
+        installments_interest_free: installmentsInterestFree,
       },
     }, 200);
   } catch (e) {

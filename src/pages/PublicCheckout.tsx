@@ -316,6 +316,9 @@ function CheckoutInner({
   const [cardErrorSection, setCardErrorSection] = useState<'card' | 'holder' | 'address' | null>(null);
   const [payResult, setPayResult] = useState<CardPayResult | null>(null);
   const [confirmSlow, setConfirmSlow] = useState(false);
+  // Parcelas escolhidas no cartão ("cliente escolhe as parcelas"). 1 = à vista.
+  // Só guarda o NÚMERO; o total de cada opção vem do servidor.
+  const [cardInstallments, setCardInstallments] = useState(1);
   const timeoutRef = useRef<number | null>(null);
   // Âncoras de rolagem: no mobile o botão de pagar fica no fim do formulário, e
   // tanto o erro quanto a confirmação aparecem LÁ EM CIMA. Sem rolar, o pagador
@@ -401,6 +404,11 @@ function CheckoutInner({
             holderPhone: cardData.holderPhone,
             holderPostalCode: cardData.holderPostalCode,
             holderAddressNumber: cardData.holderAddressNumber,
+            // Só o NÚMERO de parcelas + o total exibido (trava de coerência).
+            // O valor cobrado é recalculado na edge.
+            ...(cardData.installmentCount && cardData.installmentCount > 1
+              ? { installmentCount: cardData.installmentCount, expectedTotal: cardData.totalAmount }
+              : {}),
           },
           MESSAGES[locale].app.charges.checkout.card.genericError,
         );
@@ -456,7 +464,24 @@ function CheckoutInner({
   const isOverdue = OVERDUE_STATUSES.has(charge.status);
   const isCancelled = CANCELLED_STATUSES.has(charge.status);
   const isRefunded = REFUNDED_STATUSES.has(charge.status);
-  const amountLabel = formatMoney(charge.value, currency, locale);
+  // "Cliente escolhe as parcelas": opções prontas do servidor. Com o cartão
+  // aberto, o resumo e o botão mostram o TOTAL da opção escolhida.
+  const installmentOptions = (charge.installment_options ?? []).map((o) => ({
+    count: o.count,
+    installmentValue: o.installment_value,
+    totalValue: o.total_value,
+  }));
+  const hasInstallmentChoice = installmentOptions.length > 1;
+  const chosenInstallment = method === 'card' && hasInstallmentChoice
+    ? installmentOptions.find((o) => o.count === cardInstallments) ?? null
+    : null;
+  const payableValue = chosenInstallment?.totalValue ?? charge.value;
+  const amountLabel = formatMoney(payableValue, currency, locale);
+  const installmentSummary = chosenInstallment && chosenInstallment.count > 1
+    ? t.card.installmentsSummary
+        .replace('{count}', String(chosenInstallment.count))
+        .replace('{installment}', formatMoney(chosenInstallment.installmentValue, currency, locale))
+    : null;
 
   const handleCopyPix = async () => {
     if (!charge.pix_copy_paste) return;
@@ -472,6 +497,7 @@ function CheckoutInner({
 
   const selectMethod = (next: PayMethod) => {
     setMethod(next);
+    setCardInstallments(1);
     setCardError(null);
     setCardErrorSection(null);
   };
@@ -480,6 +506,7 @@ function CheckoutInner({
   // (senão o banner de erro reapareceria ao abrir o formulário de novo).
   const clearMethod = () => {
     setMethod(null);
+    setCardInstallments(1);
     setCardError(null);
     setCardErrorSection(null);
   };
@@ -506,6 +533,9 @@ function CheckoutInner({
           {t.amountLabel}
         </p>
         <p className="text-4xl lg:text-5xl font-bold tabular-nums leading-none">{amountLabel}</p>
+        {installmentSummary && (
+          <p className="text-sm font-medium tabular-nums text-white/80">{installmentSummary}</p>
+        )}
         {charge.description && (
           <p className="text-sm text-white/70 leading-snug pt-1">{charge.description}</p>
         )}
@@ -776,11 +806,19 @@ function CheckoutInner({
                     onBack={clearMethod}
                     errorMessage={cardError}
                     errorSection={cardErrorSection}
-                    // Parcelamento não se aplica: a Asaas paga a cobrança JÁ criada,
-                    // e o endpoint de pagamento não aceita número de parcelas.
+                    // Parcelamento da ASSINATURA (12x fixas) não se aplica aqui.
+                    // No modo "cliente escolhe as parcelas" as opções vêm prontas
+                    // do servidor; fora dele o select nem aparece.
                     allowInstallments={false}
+                    installmentOptions={hasInstallmentChoice ? installmentOptions : undefined}
+                    interestFree={charge.installments_interest_free === true}
+                    onInstallmentChange={setCardInstallments}
                     submitLabel={t.card.submit.replace('{amount}', amountLabel)}
-                    billingNotice={t.card.notice}
+                    billingNotice={
+                      chosenInstallment && chosenInstallment.count > 1
+                        ? t.card.noticeInstallments.replace('{count}', String(chosenInstallment.count))
+                        : t.card.notice
+                    }
                   />
                 </div>
               )}

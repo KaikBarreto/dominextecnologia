@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.84',
+    date: '26 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Cliente escolhe as parcelas no link de pagamento',
+        category: 'recurso',
+        description: 'Ao gerar uma cobrança no cartão, você pode marcar "Cliente escolhe" e definir só o máximo de parcelas, por exemplo até 10x. No link de pagamento, o cliente vê as opções e escolhe em quantas vezes quer pagar. Quando a taxa do cartão fica por conta da sua empresa, as opções aparecem como sem juros; quando a taxa é repassada ao cliente, cada opção mostra o total a pagar. O resumo do recebimento mostra quanto você recebe se o cliente pagar à vista e se usar o máximo de parcelas.',
+      },
+      {
+        title: 'Atualização de pagamentos em vendas parceladas no cartão',
+        category: 'correcao',
+        description: 'Em vendas parceladas no cartão, o aviso de crédito de uma parcela que já estava lançada podia ser recusado, o que interrompia a atualização automática dos pagamentos da empresa. Agora esse aviso é reconhecido e os pagamentos voltam a ser atualizados normalmente.',
+      },
+    ],
+  },
+  {
     version: '1.41.83',
     date: '26 de novembro de 2026',
     type: 'patch',

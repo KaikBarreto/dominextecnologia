@@ -45,6 +45,17 @@ export interface CheckoutCharge {
   /** true → o cartão é processado no NOSSO checkout (formulário nesta página).
    *  false/ausente → só o link hospedado da Asaas (fallback). Decidido server-side. */
   allow_card?: boolean;
+  /** "Cliente escolhe as parcelas": opções calculadas no SERVIDOR (mesma régua
+   *  da cobrança). null/ausente = cobrança fora do modo (só 1x). */
+  installment_options?: CheckoutInstallmentOption[] | null;
+  /** true = a empresa paga a taxa (todas as opções sem juros). */
+  installments_interest_free?: boolean | null;
+}
+
+export interface CheckoutInstallmentOption {
+  count: number;
+  installment_value: number;
+  total_value: number;
 }
 
 export interface CheckoutPayload {
@@ -118,7 +129,9 @@ export function useTenantPaymentCheckout(
 //     local do submit — não vão pra estado do hook, cache do react-query,
 //     localStorage nem log. Nada de console.log aqui.
 //   • O VALOR não é enviado: quem define quanto é cobrado é a cobrança já criada
-//     na Asaas, resolvida no servidor pelo short_code.
+//     na Asaas, resolvida no servidor pelo short_code. No modo "cliente escolhe
+//     as parcelas" vai só o NÚMERO de parcelas (+ o total exibido, como trava
+//     de coerência); o total cobrado é recalculado na edge.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Resultado normalizado da tentativa (espelha a allowlist da edge). */
@@ -136,6 +149,11 @@ export interface CheckoutCardInput {
   holderPhone: string;
   holderPostalCode: string;
   holderAddressNumber: string;
+  /** Parcelas escolhidas (só no modo "cliente escolhe"). Ausente/1 = à vista. */
+  installmentCount?: number;
+  /** Total que o pagador VIU na opção escolhida. Não define o valor (quem
+   *  define é o servidor); só faz a edge recusar se o total tiver mudado. */
+  expectedTotal?: number;
 }
 
 export interface CardPayResult {
@@ -192,6 +210,9 @@ export function usePayTenantChargeWithCard(shortCode: string | undefined) {
                 postal_code: card.holderPostalCode,
                 address_number: card.holderAddressNumber,
               },
+              ...(card.installmentCount && card.installmentCount > 1
+                ? { installment_count: card.installmentCount, expected_total: card.expectedTotal }
+                : {}),
             },
           },
         );

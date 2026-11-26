@@ -773,6 +773,120 @@ describe('ChargeDialog — parcelamento avulso em cobranças mensais', () => {
     }));
   });
 
+  // ── "Cliente escolhe as parcelas" (cartão) ─────────────────────────────────
+  function modeButton(label: string) {
+    return Array.from(document.querySelectorAll('button[role="radio"]')).find(
+      (b) => b.textContent?.trim() === label,
+    );
+  }
+
+  it('cliente escolhe: manda só o teto (customer_max_installments), sem installment_count', async () => {
+    createMutateAsync.mockResolvedValue({
+      orphan: false,
+      charge: { financeWarning: null, public_short_code: 'card-upto', value: 1000 },
+    });
+    mount();
+    selectValue(q('[data-testid="customer-select"]') as HTMLSelectElement, CUSTOMER_OK.id);
+    setInputValue(q('#charge-amount') as HTMLInputElement, '100000');
+    click(pillByLabel('Pagamento'));
+    chooseRadixOption('#charge-method', 'Cartão de crédito');
+
+    // Padrão é o comportamento de sempre.
+    expect(modeButton('Definido por mim')?.getAttribute('aria-checked')).toBe('true');
+    click(modeButton('Cliente escolhe'));
+    expect(text()).toContain('Até');
+    expect(text()).toContain('O cliente escolhe as parcelas na hora de pagar');
+
+    // Teto vai de 2x até o limite da conta (12x no mock); começa no máximo.
+    act(() => (q('#charge-installments') as HTMLButtonElement).click());
+    const labels = Array.from(document.querySelectorAll('[role="option"]')).map((o) => o.textContent?.trim());
+    expect(labels).not.toContain('1x (à vista)');
+    expect(labels[0]).toBe('2x');
+    expect(labels[labels.length - 1]).toBe('12x');
+    const option10 = Array.from(document.querySelectorAll('[role="option"]'))
+      .find((o) => o.textContent?.trim() === '10x') as HTMLElement;
+    act(() => option10.click());
+
+    await act(async () => {
+      buttonByText('Gerar agora')!.click();
+      await Promise.resolve();
+    });
+
+    const payload = createMutateAsync.mock.calls[0][0];
+    expect(payload).toEqual(expect.objectContaining({
+      billing_type: 'CREDIT_CARD',
+      customer_max_installments: 10,
+    }));
+    expect(payload.installment_count).toBeUndefined();
+  });
+
+  it('definido por mim: payload idêntico ao de sempre (sem customer_max_installments)', async () => {
+    createMutateAsync.mockResolvedValue({
+      orphan: false,
+      charge: { financeWarning: null, public_short_code: 'card-fixed', value: 1000 },
+    });
+    mount();
+    selectValue(q('[data-testid="customer-select"]') as HTMLSelectElement, CUSTOMER_OK.id);
+    setInputValue(q('#charge-amount') as HTMLInputElement, '100000');
+    click(pillByLabel('Pagamento'));
+    chooseRadixOption('#charge-method', 'Cartão de crédito');
+    // Vai e volta: voltar para "Definido por mim" restaura o 1x.
+    click(modeButton('Cliente escolhe'));
+    click(modeButton('Definido por mim'));
+    chooseRadixOption('#charge-installments', '3x');
+
+    await act(async () => {
+      buttonByText('Gerar agora')!.click();
+      await Promise.resolve();
+    });
+
+    const payload = createMutateAsync.mock.calls[0][0];
+    expect(payload.installment_count).toBe(3);
+    expect(payload.customer_max_installments).toBeUndefined();
+  });
+
+  it('cliente escolhe: o resumo mostra a faixa do à vista ao máximo', () => {
+    mount();
+    selectValue(q('[data-testid="customer-select"]') as HTMLSelectElement, CUSTOMER_OK.id);
+    setInputValue(q('#charge-amount') as HTMLInputElement, '100000');
+    click(pillByLabel('Pagamento'));
+    chooseRadixOption('#charge-method', 'Cartão de crédito');
+    click(modeButton('Cliente escolhe'));
+    expandNetSummary();
+    expect(text()).toContain('Se pagar à vista');
+    expect(text()).toContain('Se pagar em 12x');
+  });
+
+  it('cliente escolhe: com o cliente pagando a taxa, uma linha só', () => {
+    mount();
+    selectValue(q('[data-testid="customer-select"]') as HTMLSelectElement, CUSTOMER_OK.id);
+    setInputValue(q('#charge-amount') as HTMLInputElement, '100000');
+    click(pillByLabel('Pagamento'));
+    chooseRadixOption('#charge-method', 'Cartão de crédito');
+    click(modeButton('Cliente escolhe'));
+    click(Array.from(document.querySelectorAll('button[role="radio"]')).find(
+      (b) => b.textContent?.trim() === 'Cliente' ,
+    ));
+    expandNetSummary();
+    expect(text()).toContain('Em qualquer número de parcelas');
+    expect(text()).not.toContain('Se pagar à vista');
+  });
+
+  it.each(['contract_installment', 'receivable'] as const)(
+    'não oferece "cliente escolhe" quando a cobrança liga a %s',
+    (sourceType) => {
+      mount({
+        presetCustomerId: CUSTOMER_OK.id,
+        presetAmount: 100,
+        source: { type: sourceType, id: 'source-1' },
+      });
+      click(pillByLabel('Pagamento'));
+      chooseRadixOption('#charge-method', 'Cartão de crédito');
+      expect(modeButton('Cliente escolhe')).toBeUndefined();
+      expect(q('#charge-installments')).not.toBeNull();
+    },
+  );
+
   it.each(['quote', 'contract_installment', 'service_order', 'receivable'] as const)(
     'não oferece lote quando a cobrança vem de %s',
     (sourceType) => {
