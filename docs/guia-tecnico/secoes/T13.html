@@ -390,10 +390,10 @@
     <li><span class="ui">Forma de pagamento</span>, <span class="ui">Data do recebimento</span> e <span class="ui">Caixa / Conta bancária</span>: todos obrigatórios.</li>
     <li><span class="ui">Tarifa de máquina/gateway (R$)</span>: opcional. "Será lançado como despesa em 'Tarifas e Taxas' (deduzida da receita líquida no DRE)." O resumo mostra valor bruto, tarifa e líquido na conta.</li>
     <li>Validações: "Informe um valor maior que zero." e "Valor não pode ser maior que o restante (R$ X)."</li>
-    <li>Conta <b>parcelada</b> não aceita recebimento parcial. A tela avisa: "Conta parcelada, recebimento parcial não está disponível."</li>
+    <li>Parcelas vinculadas a uma <b>OS</b> aceitam recebimento parcial pela OS e por Contas a Receber. Outros parcelamentos mantêm a regra de recebimento integral da parcela.</li>
     <li>A confirmação é "Recebimento confirmado!". A conta passa a mostrar <span class="ui">Parcial</span>, com "Recebido R$ X de R$ Y".</li>
   </ul>
-  <p>Em <span class="ui">Ver histórico</span> aparecem todos os recebimentos daquela conta, com a opção de <span class="ui">Estornar</span> um deles: "O valor de R$ X voltará a ficar pendente nesta conta. Esta ação não pode ser desfeita." Estornar exige a mesma permissão de excluir lançamento financeiro.</p>
+  <p>Uma conta de R$ 700 que recebeu R$ 300 continua com R$ 400 em aberto, tanto na linha quanto no resumo. Outro pagamento de R$ 300 deixa R$ 100 pendentes. O valor contratado continua em R$ 700. Em <span class="ui">Ver histórico</span> aparecem todos os recebimentos daquela conta, mesmo depois de quitada, com recibo individual de cada pagamento e com a opção de <span class="ui">Estornar</span> um deles: "O valor de R$ X voltará a ficar pendente nesta conta. Esta ação não pode ser desfeita." Estornar exige a mesma permissão de excluir lançamento financeiro.</p>
 
   <h3>Faturas de cartão dentro de Contas a Pagar</h3>
   <p>As despesas de cartão não aparecem uma a uma aqui. Elas aparecem agrupadas numa seção própria, <span class="ui">Faturas de Cartão</span>, com uma linha por fatura. A tela explica: "Faturas de cartão ficam fora do filtro por categoria (e dos totais acima): uma fatura junta despesas de várias categorias."</p>

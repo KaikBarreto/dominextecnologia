@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.42.1";
+export const APP_VERSION = "1.42.2";
 
 export const VERSION_NOTES =
-  "Faturamento da OS reconhece valores antigos já recebidos, permite lançar somente a diferença e mantém recibos e histórico acessíveis.";
+  "Recebimentos parciais pela OS e por Contas a Receber mantêm a mesma conta, atualizam o saldo em aberto e protegem contra confirmações repetidas.";

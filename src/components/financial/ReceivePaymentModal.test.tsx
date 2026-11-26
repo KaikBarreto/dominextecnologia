@@ -114,3 +114,20 @@ describe('ReceivePaymentModal — "Como foi recebido?" nunca lista cartão de cr
     expect(labels).not.toContain('Cartão PF Matheus');
   });
 });
+
+describe('ReceivePaymentModal — pagamentos sucessivos na mesma conta', () => {
+  it('mantém 700 como valor contratado e recebe 300, 300 e os 100 finais', async () => {
+    const { fireEvent, screen, waitFor } = await import('@testing-library/react');
+    const onConfirm = vi.fn().mockResolvedValue(undefined);
+    for (const [received, now, remaining] of [[0, 300, 400], [300, 300, 100], [600, 100, 0]]) {
+      act(() => root.render(<ReceivePaymentModal open={false} onOpenChange={() => {}} amount={700} onConfirm={onConfirm} />));
+      act(() => root.render(<ReceivePaymentModal open onOpenChange={() => {}} amount={700} amountReceived={received}
+        allowPartial allowPartialInstallments installmentTotal={2} currentDueDate="2026-12-26" onConfirm={onConfirm} />));
+      fireEvent.change(screen.getByLabelText(t.partialReceivedLabel), { target: { value: `${now},00` } });
+      expect(screen.getByText(t.summaryRemainingLabel).parentElement).toHaveTextContent(`${remaining},00`);
+      fireEvent.click(screen.getByRole('button', { name: t.confirmLabel }));
+      await waitFor(() => expect(onConfirm).toHaveBeenCalledTimes(received === 0 ? 1 : received === 300 ? 2 : 3));
+      expect(onConfirm).toHaveBeenLastCalledWith(expect.objectContaining({ amount_received: remaining > 0 ? now : undefined }));
+    }
+  });
+});

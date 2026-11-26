@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.42.2',
+    date: '26 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Receba o saldo da OS em quantos pagamentos precisar',
+        category: 'correcao',
+        description: 'Uma conta de R$ 700 pode receber R$ 300, depois R$ 300 e por fim R$ 100. A OS e Contas a Receber usam a mesma conta, mantêm somente o restante em aberto e atualizam os resumos sem somar pagamentos duas vezes. Cada recebimento mantém seu recibo, com proteção contra confirmações repetidas.',
+      },
+    ],
+  },
+  {
     version: '1.42.1',
     date: '26 de novembro de 2026',
     type: 'patch',

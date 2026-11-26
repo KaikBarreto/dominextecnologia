@@ -89,6 +89,7 @@ import { todayInTz } from '@/lib/timezone';
 import { isPaidDateAllowedInTz } from '@/lib/dre-regime';
 import { buildAccountOptions } from '@/components/financial/accountSelectOptions';
 import { buildReceiptBreakdowns } from '@/lib/financial-transaction-display';
+import { financialOutstandingAmount, selectFinancialCashSources } from '@/lib/financial-summary';
 import { PARTIAL_RECEIPT_CATEGORY } from '@/lib/finance-constants';
 import {
   getBatchPayIneligibility,
@@ -603,35 +604,35 @@ export function FinanceContas({
         })
       : [];
 
-    const pendenteTxn = txnUniverse.filter((t) => !t.is_paid).reduce((s, t) => s + Number(t.amount), 0);
+    const pendenteTxn = txnUniverse.filter((t) => !t.is_paid).reduce((s, t) => s + financialOutstandingAmount(t), 0);
     const pendenteBill = billUniverse
       .filter((b) => b.status !== 'paid')
       .reduce((s, b) => s + Math.max(0, (b.total_amount ?? 0) - Number(b.amount_paid ?? 0)), 0);
 
     const aPagarTxn = txnUniverse
       .filter((t) => t.transaction_type === 'saida' && !t.is_paid)
-      .reduce((s, t) => s + Number(t.amount), 0);
+      .reduce((s, t) => s + financialOutstandingAmount(t), 0);
     const aReceberTxn = txnUniverse
       .filter((t) => t.transaction_type === 'entrada' && !t.is_paid)
-      .reduce((s, t) => s + Number(t.amount), 0);
+      .reduce((s, t) => s + financialOutstandingAmount(t), 0);
 
     const vencidoTxn = txnUniverse
       .filter((t) => !t.is_paid && t.due_date && isBefore(parseLocalDate(t.due_date), today))
-      .reduce((s, t) => s + Number(t.amount), 0);
+      .reduce((s, t) => s + financialOutstandingAmount(t), 0);
     const vencidoBill = billUniverse
       .filter((b) => b.status !== 'paid' && isBefore(parseLocalDate(b.due_date), today))
       .reduce((s, b) => s + Math.max(0, (b.total_amount ?? 0) - Number(b.amount_paid ?? 0)), 0);
 
     const prox7Txn = txnUniverse
       .filter((t) => !t.is_paid && t.due_date && !isBefore(parseLocalDate(t.due_date), today) && isBefore(parseLocalDate(t.due_date), next7Days))
-      .reduce((s, t) => s + Number(t.amount), 0);
+      .reduce((s, t) => s + financialOutstandingAmount(t), 0);
     const prox7Bill = billUniverse
       .filter((b) => b.status !== 'paid' && !isBefore(parseLocalDate(b.due_date), today) && isBefore(parseLocalDate(b.due_date), next7Days))
       .reduce((s, b) => s + Math.max(0, (b.total_amount ?? 0) - Number(b.amount_paid ?? 0)), 0);
 
     const dias8a30Txn = txnUniverse
       .filter((t) => !t.is_paid && t.due_date && !isBefore(parseLocalDate(t.due_date), next8Days) && isBefore(parseLocalDate(t.due_date), next30Days))
-      .reduce((s, t) => s + Number(t.amount), 0);
+      .reduce((s, t) => s + financialOutstandingAmount(t), 0);
     const dias8a30Bill = billUniverse
       .filter((b) => b.status !== 'paid' && !isBefore(parseLocalDate(b.due_date), next8Days) && isBefore(parseLocalDate(b.due_date), next30Days))
       .reduce((s, b) => s + Math.max(0, (b.total_amount ?? 0) - Number(b.amount_paid ?? 0)), 0);
@@ -648,7 +649,7 @@ export function FinanceContas({
     //     100% pago, 'caixa' e 'caixa-misto' dariam o mesmo resultado — 'caixa' é o
     //     mais semântico ("caixa realizado, sempre pela data do movimento").
     //   - dateRange vazio (sem período) inclui todos os pagos.
-    const pagoPool = (allTransactions ?? transactions).filter((t) => {
+    const pagoPool = selectFinancialCashSources(transactionAuditTrail ?? allTransactions ?? transactions).filter((t) => {
       const correctType = subTab === 'todas'
         || (subTab === 'pagar' ? t.transaction_type === 'saida' : t.transaction_type === 'entrada');
       if (!correctType) return false;
@@ -669,7 +670,7 @@ export function FinanceContas({
       aPagar: aPagarTxn + pendenteBill,
       aReceber: aReceberTxn,
     };
-  }, [transactions, allTransactions, allBills, cardAccountMap, subTab, today, next7Days, next8Days, next30Days, dateRange, categoryFilter, costCenterFilter]);
+  }, [transactions, allTransactions, transactionAuditTrail, allBills, cardAccountMap, subTab, today, next7Days, next8Days, next30Days, dateRange, categoryFilter, costCenterFilter]);
 
   // Lista de categorias presentes nas transações atuais (baseFiltered, antes do
   // filtro de categoria) pra popular o <Select> de filtro. Ordena alfabeticamente.
@@ -744,7 +745,7 @@ export function FinanceContas({
     return sortFinancialAccountsByPriority(filtered, todayIso).map(t => ({
       ...t,
       _due_ts: t.due_date ? parseLocalDate(t.due_date).getTime() : 0,
-      _amount_num: Number(t.amount),
+      _amount_num: t.is_paid ? Number(t.amount) : financialOutstandingAmount(t),
       _status_order: getFinancialAccountPriority(t, todayIso),
     }));
   }, [filtered, todayIso]);
@@ -953,9 +954,12 @@ export function FinanceContas({
   const isOverdue = (t: FinancialTransaction) =>
     !t.is_paid && t.due_date && isBefore(parseLocalDate(t.due_date), today);
 
+  const hasReceiptHistory = (t: FinancialTransaction) =>
+    t.transaction_type === 'entrada' && Number(t.amount_received ?? 0) > 0;
+
   /** Conta a receber que tem pelo menos 1 recebimento parcial registrado, mas ainda não foi quitada. */
   const isPartial = (t: FinancialTransaction) =>
-    t.transaction_type === 'entrada' && !t.is_paid && Number(t.amount_received ?? 0) > 0;
+    !t.is_paid && hasReceiptHistory(t);
 
   /** Status mutuamente exclusivo: paga > vencida > parcial > pendente. */
   type RowStatus = 'paga' | 'vencida' | 'parcial' | 'pendente';
@@ -1123,7 +1127,7 @@ export function FinanceContas({
         category: category.name,
         categoryColor: category.color,
         account: allAccounts.find((account) => account.id === t.account_id)?.name ?? '',
-        amount: Number(t.amount),
+        amount: t.is_paid ? Number(t.amount) : financialOutstandingAmount(t),
         isPaid: !!t.is_paid,
       };
     }),
@@ -1194,7 +1198,7 @@ export function FinanceContas({
       id: t.id,
       title: t.description,
       date: t.due_date as string,
-      amount: Number(t.amount),
+      amount: t.is_paid ? Number(t.amount) : financialOutstandingAmount(t),
       direction: t.transaction_type === 'entrada' ? 'entrada' as const : 'saida' as const,
       status: getStatus(t),
       subtitle: t.customer?.name ?? t.supplier?.name ?? t.employee?.name,
@@ -1569,7 +1573,7 @@ export function FinanceContas({
                   disabled: chargeAction.disabled,
                   onClick: () => receivableCharge.start(chargeRow),
                 }] : []),
-                ...(partial ? [{
+                ...(hasReceiptHistory(t) ? [{
                   key: 'view-details',
                   label: fin.accounts.actions.viewHistory,
                   icon: <Receipt className="h-4 w-4" />,
@@ -1659,7 +1663,7 @@ export function FinanceContas({
                         {isExpanded ? <ChevronDown className="mt-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : <ChevronRight className="mt-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
                         <span className="min-w-0 flex-1 whitespace-normal break-words leading-snug line-clamp-2">{t.description}</span>
                         <span className={cn('shrink-0 whitespace-nowrap text-sm font-semibold tabular-nums', t.transaction_type === 'entrada' ? 'text-success' : 'text-destructive')}>
-                          {fmt(receiptBreakdown ? receiptBreakdown.net : Number(t.amount))}
+                          {fmt(receiptBreakdown ? receiptBreakdown.net : t.is_paid ? Number(t.amount) : financialOutstandingAmount(t))}
                         </span>
                       </div>
                     }
@@ -1709,7 +1713,7 @@ export function FinanceContas({
                         transaction={t}
                         category={categoryDisplay.category}
                         costCenter={t.cost_center_id ? costCentersById.get(t.cost_center_id) : null}
-                        onViewPartialHistory={partial ? () => setViewingTxn(t) : undefined}
+                        onViewPartialHistory={hasReceiptHistory(t) ? () => setViewingTxn(t) : undefined}
                         onlineCharge={chargeBadge}
                       />
                       {chargeAction?.reason && (
@@ -1844,7 +1848,7 @@ export function FinanceContas({
                             </>
                           ) : (
                             <span className={`font-medium tabular-nums ${t.transaction_type === 'entrada' ? 'text-success' : 'text-destructive'}`}>
-                              {fmt(t.amount)}
+                              {fmt(t.is_paid ? Number(t.amount) : financialOutstandingAmount(t))}
                             </span>
                           )}
                           {partial && (
@@ -1880,7 +1884,7 @@ export function FinanceContas({
                               label: fin.accounts.actions.viewHistory,
                               icon: Eye,
                               onClick: () => setViewingTxn(t),
-                              hidden: !partial,
+                              hidden: !hasReceiptHistory(t),
                             },
                             {
                               // Bloqueada: desabilitada e com o motivo no lugar
@@ -1917,7 +1921,7 @@ export function FinanceContas({
                             transaction={t}
                             category={categoryDisplay.category}
                             costCenter={t.cost_center_id ? costCentersById.get(t.cost_center_id) : null}
-                            onViewPartialHistory={partial ? () => setViewingTxn(t) : undefined}
+                            onViewPartialHistory={hasReceiptHistory(t) ? () => setViewingTxn(t) : undefined}
                             onlineCharge={chargeBadge}
                           />
                           {chargeAction?.reason && (
@@ -2078,7 +2082,7 @@ export function FinanceContas({
       <ReceivableDetailModal
         open={!!viewingTxn}
         onOpenChange={(v) => { if (!v) setViewingTxn(null); }}
-        transaction={viewingTxn}
+        transaction={viewingTxn ? (allTransactions ?? transactions).find(row => row.id === viewingTxn.id) ?? null : null}
       />
 
       <ReceivePaymentModal
@@ -2087,6 +2091,7 @@ export function FinanceContas({
         amount={Number(receivingTxn?.amount ?? 0)}
         amountReceived={Number((receivingTxn as any)?.amount_received ?? 0)}
         allowPartial
+        allowPartialInstallments={!!receivingTxn?.service_order_id}
         allowOccurrenceAdjustment={canAdjustManualOccurrence(receivingTxn) && !receivingLiveCharge}
         hasRecurringSeries={!!receivingTxn?.installment_group_id}
         installmentTotal={receivingTxn?.installment_total ?? 1}
@@ -2114,7 +2119,8 @@ export function FinanceContas({
             fee_amount: payment.fee_amount,
             notes: payment.notes,
             customer_id: (receivingTxn as any).customer_id,
-            amountReceived: payment.amount_received,
+            amountReceived: payment.occurrence_amount === undefined ? receivedNow : undefined,
+            expectedReceived: amountReceivedBefore,
             newDueDate: payment.new_due_date,
             occurrenceAmount: payment.occurrence_amount,
             expectedOccurrenceAmount: Number(receivingTxn.amount),

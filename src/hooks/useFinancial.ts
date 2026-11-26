@@ -1,3 +1,4 @@
+import { osBillingError } from '@/lib/osCommercial';
 import { OS_COMMERCIAL_KEY } from '@/hooks/useOsCommercial';
 import { assertRowsAffected, NoRowsAffectedError } from '@/lib/supabaseMutation';
 import { useMemo, useRef } from 'react';
@@ -321,6 +322,7 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
   currentRead.current = readIdentity;
   const canRead = loadData && scope.ready;
   const queryClient = useQueryClient();
+  const osReceiptRequest = useRef<{ signature: string; args: Database['public']['Functions']['bill_os_receive_payment']['Args'] } | null>(null);
   // Fuso DA EMPRESA (company_settings.timezone). É ele que define o "hoje" das
   // datas financeiras, nunca o fuso do aparelho nem Brasília chumbado.
   const { timezone } = useAppLocaleContext();
@@ -344,6 +346,8 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
     void queryClient.invalidateQueries({ queryKey: [OS_BILLING_STATE_KEY] });
     void queryClient.invalidateQueries({ queryKey: [OS_BILLING_FLAGS_KEY] });
     void queryClient.invalidateQueries({ queryKey: [OS_COMMERCIAL_KEY] });
+    void queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+    void queryClient.invalidateQueries({ queryKey: ['receivable-payments'] });
     // O Caixa inclui lançamentos financeiros avulsos no turno e o saldo do
     // cofre. Qualquer mutation financeira precisa deixá-los stale também — ao
     // voltar de outra tela, o operador não pode ver o fechamento antigo.
@@ -436,7 +440,7 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
           .from('financial_transactions')
           // `transfer_pair_id` é obrigatório no select: sem ele o filtro de
           // movimento interno abaixo vira no-op silencioso.
-          .select('transaction_type, amount, is_paid, transfer_pair_id, pdv_financial_role, amount_received')
+          .select('transaction_type, amount, is_paid, transfer_pair_id, pdv_financial_role, amount_received, parent_transaction_id, category, cancelled_at')
       );
       if (signal.aborted || currentRead.current !== readIdentity) throw new Error('Consulta encerrada.');
       
@@ -998,6 +1002,8 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
     amountReceived?: number;
     /** Novo vencimento do saldo restante (YYYY-MM-DD). Só usado em recebimento parcial. */
     newDueDate?: string;
+    /** Saldo recebido mostrado ao abrir o modal; recusa baixa com base desatualizada. */
+    expectedReceived?: number;
     occurrenceAmount?: number;
     expectedOccurrenceAmount?: number;
     updateFutureOccurrences?: boolean;
@@ -1040,13 +1046,28 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
         return data;
       }
 
+      const receiptSignature = JSON.stringify([scope.key, cfg]);
+      const submitOsReceipt = async () => {
+        const pending = osReceiptRequest.current!;
+        const { data, error } = await supabase.rpc('bill_os_receive_payment', pending.args);
+        if (error) {
+          // SQLSTATE confirma rollback; timeout preserva os mesmos valores e UUID.
+          if (/^[A-Z0-9]{5}$/.test(error.code ?? '')) osReceiptRequest.current = null;
+          throw error;
+        }
+        osReceiptRequest.current = null;
+        return data;
+      };
+      // Reconciliar primeiro: o banco pode ter gravado e a resposta ter se perdido.
+      if (osReceiptRequest.current?.signature === receiptSignature) return submitOsReceipt();
+
       // Buscar a mãe pra calcular se é parcial e usar dados (company_id, due_date, customer_id, amount).
       const { data: parent, error: parentErr } = await supabase
         .from('financial_transactions')
         // `cost_center_id` PRECISA vir aqui: as filhas (recebimento parcial e
         // tarifa) herdam dele. Campo fora do select chega `undefined` e a
         // herança falha em silêncio, sem erro nenhum.
-        .select('id, company_id, amount, amount_received, due_date, description, customer_id, transaction_type, cost_center_id')
+        .select('id, company_id, amount, amount_received, due_date, description, customer_id, transaction_type, cost_center_id, service_order_id')
         .eq('id', cfg.id)
         .single();
       if (parentErr) throw parentErr;
@@ -1058,6 +1079,18 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
       const receivingNow = cfg.amountReceived ?? remaining;
       // Uma mãe já fatiada continua tendo todas as baixas no livro de filhas,
       // inclusive a última. Cancelar uma baixa depois preserva as demais.
+      if (parent.transaction_type === 'entrada' && parent.service_order_id) {
+        const feeCategory = cfg.fee_amount > 0
+          ? await resolveSystemCategoryNameFresh(queryClient, parent.company_id, 'receipt_fee') : undefined;
+        osReceiptRequest.current = { signature: receiptSignature, args: {
+          p_os_id: parent.service_order_id, p_request_id: crypto.randomUUID(), p_transaction_id: parent.id,
+          p_expected_received: cfg.expectedReceived ?? alreadyReceived, p_received: receivingNow,
+          p_account_id: cfg.account_id, p_method: cfg.payment_method, p_paid_date: paidDate,
+          p_due_date: cfg.newDueDate, p_fee: cfg.fee_amount ?? 0, p_fee_category: feeCategory,
+          p_notes: cfg.notes, p_from_finance: true,
+        } };
+        return submitOsReceipt();
+      }
       const isPartial = parent.transaction_type === 'entrada' && receivingNow > 0 &&
         (alreadyReceived > 0 || receivingNow < remaining - 0.005);
 
@@ -1148,8 +1181,8 @@ export function useFinancial({ loadData = true }: UseFinancialOptions = {}) {
     onError: (error: Error, params: string | MarkAsPaidParams) => {
       // Vencimento barrado depois do recebimento parcial gravado: a lista
       // precisa mostrar o recebimento mesmo com o aviso de erro.
-      if (error instanceof NoRowsAffectedError) void invalidateAll();
-      let description = getErrorMessage(error);
+      if (error instanceof NoRowsAffectedError || (error as { code?: string }).code === 'OSC01') void invalidateAll();
+      let description = (error as { code?: string }).code?.startsWith('OSC') ? osBillingError(error) : getErrorMessage(error);
       if (typeof params !== 'string' && params.occurrenceAmount !== undefined) {
         const message = getRpcErrorMessage(error);
         description = /\b[a-z0-9]+_[a-z0-9_]+\b/i.test(message)

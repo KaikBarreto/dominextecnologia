@@ -22,7 +22,7 @@ export function useOsManualBilling(osId: string, enabled: boolean) {
     } });
   const invalidate = () => Promise.all([
     ['quotes'], ['service-orders'], ['service-order-budget'], [OS_COMMERCIAL_KEY, osId],
-    ['financial-transactions'], ['financial-summary'], ['portal-payments'], ['account-balances'], ['dashboard-stats'],
+    ['receivable-payments'], ['financial-transactions'], ['financial-summary'], ['portal-payments'], ['account-balances'], ['dashboard-stats'],
     ['os-billing-state'], ['os-billing-flags'], ['os-revenue-summary'],
     ['pdv-cofre-balance'], ['pdv-cash-session-detail'], ['pdv-cash-sessions-v2'], ['nfse-auto-readiness'],
   ].map(queryKey => client.invalidateQueries({ queryKey })));

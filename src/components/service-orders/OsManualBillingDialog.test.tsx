@@ -29,12 +29,12 @@ describe('faturar e receber pela OS', () => {
     mocks.rows=[{ id:'parent-a',amount:3300,amount_received:2600,is_paid:false,due_date:'2026-12-26' }];
     render(<OsManualBillingDialog open context={context} onOpenChange={mocks.onOpenChange} />);
     expect(screen.getByText(/Saldo desta conta R\$/)).toHaveTextContent('700,00');
-    fireEvent.click(screen.getByRole('button',{ name:'Receber pagamento' }));
+    fireEvent.click(screen.getByRole('button',{ name:'Receber total ou parcial' }));
     expect(mocks.paymentProps).toMatchObject({ amount:3300,amountReceived:2600,allowPartial:true });
   });  it('mantém a base da baixa aberta depois de um refetch, sem transformar uma tentativa em outro pagamento', () => {
     mocks.rows=[{ id:'parent-a',amount:3300,amount_received:0,is_paid:false,due_date:'2026-12-26' }];
     const view=render(<OsManualBillingDialog open context={context} onOpenChange={mocks.onOpenChange} />);
-    fireEvent.click(screen.getByRole('button',{name:'Receber pagamento'}));
+    fireEvent.click(screen.getByRole('button',{name:'Receber total ou parcial'}));
     mocks.rows=[{ ...mocks.rows[0], amount_received:2600 }];
     view.rerender(<OsManualBillingDialog open context={context} onOpenChange={mocks.onOpenChange} />);
     expect(mocks.paymentProps).toMatchObject({ amount:3300,amountReceived:0 });
@@ -44,15 +44,15 @@ describe('faturar e receber pela OS', () => {
     mocks.rows=[{id:'legacy',amount:2600,amount_received:0,is_paid:true,due_date:'2026-11-26',can_complement:true}];
     const view=render(<OsManualBillingDialog open context={context} onOpenChange={mocks.onOpenChange} />);
     expect(screen.getByText(/ainda não foram faturados/)).toHaveTextContent('700,00');
-    expect(screen.queryByRole('button',{name:'Receber pagamento'})).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button',{name:/Lançar diferença de R\$\s+700,00 a receber/}));
+    expect(screen.queryByRole('button',{name:'Receber total ou parcial'})).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button',{name:/Criar conta de R\$\s+700,00 a receber/}));
     await waitFor(()=>expect(mocks.complement).toHaveBeenCalledWith(3300,2600,expect.any(String)));
     expect(mocks.receive).not.toHaveBeenCalled();
     expect(mocks.onOpenChange).not.toHaveBeenCalled();
     mocks.rows=[mocks.rows[0],{id:'difference',amount:700,amount_received:0,is_paid:false,due_date:'2026-12-26'}];
     view.rerender(<OsManualBillingDialog open context={context} onOpenChange={mocks.onOpenChange} />);
-    expect(screen.queryByRole('button',{name:/Lançar diferença/})).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button',{name:'Receber pagamento'}));
+    expect(screen.queryByRole('button',{name:/Criar conta/})).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button',{name:'Receber total ou parcial'}));
     expect(mocks.paymentProps).toMatchObject({amount:700,amountReceived:0,allowPartial:true});
   });
 
@@ -69,7 +69,7 @@ describe('faturar e receber pela OS', () => {
     mocks.rows=[{id:'charge',amount:2600,amount_received:0,is_paid:true,due_date:'2026-11-26',can_complement:false,has_live_charge:true}];
     render(<OsManualBillingDialog open context={context} onOpenChange={mocks.onOpenChange} />);
     expect(screen.getByText(/Confira as parcelas e cobranças vinculadas/)).toBeInTheDocument();
-    expect(screen.queryByRole('button',{name:/Lançar diferença/})).not.toBeInTheDocument();
+    expect(screen.queryByRole('button',{name:/Criar conta/})).not.toBeInTheDocument();
     expect(screen.getByRole('link',{name:'Conferir no Financeiro'})).toBeInTheDocument();
   });
 
@@ -77,16 +77,16 @@ describe('faturar e receber pela OS', () => {
     mocks.rows=[{id:'paid',amount:3500,amount_received:0,is_paid:true,due_date:'2026-11-26'}];
     render(<OsManualBillingDialog open context={context} onOpenChange={mocks.onOpenChange} />);
     expect(screen.getByText(/acima do valor atual/)).toHaveTextContent('200,00');
-    expect(screen.queryByRole('button',{name:/Lançar diferença/})).not.toBeInTheDocument();
+    expect(screen.queryByRole('button',{name:/Criar conta/})).not.toBeInTheDocument();
   });
 
   it('mantém o complemento disponível em erro de transporte sem anunciar recebimento', async () => {
     mocks.rows=[{id:'legacy',amount:2600,amount_received:0,is_paid:true,due_date:'2026-11-26',can_complement:true}];
     mocks.complement.mockRejectedValue(new Error('Failed to fetch'));
     render(<OsManualBillingDialog open context={context} onOpenChange={mocks.onOpenChange} />);
-    fireEvent.click(screen.getByRole('button',{name:/Lançar diferença/}));
+    fireEvent.click(screen.getByRole('button',{name:/Criar conta/}));
     await screen.findByText(/Não foi possível confirmar o recebimento/);
-    expect(screen.getByRole('button',{name:/Lançar diferença/})).toBeEnabled();
+    expect(screen.getByRole('button',{name:/Criar conta/})).toBeEnabled();
     expect(mocks.onReceived).not.toHaveBeenCalled();
   });
 

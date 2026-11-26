@@ -2505,7 +2505,7 @@ Depois de faturada, um selo aparece ao lado do código da OS em toda tela que li
 
 Em Faturar OS, aproveite os serviços e produtos do orçamento da OS ou informe seus itens e valores. É possível deixar o total a receber ou registrar quanto entrou agora. Por exemplo: para uma OS de R$ 3.300, receber R$ 2.600 mantém R$ 700 pendentes na mesma conta. Os próximos recebimentos usam esse saldo, sem criar outra dívida para a mesma OS.
 
-Faturamento antigo menor que o total da OS: uma conta de R$ 2.600 marcada como paga não quita uma OS de R$ 3.300. A tela separa o saldo da conta do que falta receber na OS e oferece Lançar diferença de R$ 700,00 a receber. Esse complemento preserva o lançamento e o recibo anteriores; depois, use Receber pagamento na nova diferença. Não é necessário concluir a OS para realizar esse ajuste. Com parcelas, cobrança online ou outro vínculo financeiro, confira o Financeiro antes de complementar.
+Faturamento antigo menor que o total da OS: uma conta de R$ 2.600 marcada como paga não quita uma OS de R$ 3.300. A tela separa o saldo da conta do que falta receber na OS e oferece Criar conta de R$ 700,00 a receber. A conta de R$ 700 pode receber R$ 300 e continuar com R$ 400 em aberto, receber mais R$ 300 e ficar com R$ 100 pendentes, até a quitação. Cada pagamento tem seu recibo parcial. Esse complemento preserva o lançamento e o recibo anteriores; depois, use Receber total ou parcial na nova conta. Não é necessário concluir a OS para realizar esse ajuste. Com parcelas, cobrança online ou outro vínculo financeiro, confira o Financeiro antes de complementar.
 
 [Print da tela: Exemplo fictício de OS de R$ 3.300 com R$ 2.600 já recebidos e ação para lançar a diferença de R$ 700]
 
@@ -2620,7 +2620,7 @@ O botão Configurações dentro da aba abre Configurações de NPS, onde você d
 ### Perguntas frequentes
 
 **P:** A OS foi concluída, mas Faturar OS só mostra uma conta quitada e não deixa receber o restante. O que fazer?
-**R:** Compare o Total da OS com o total já faturado. Uma conta antiga de R$ 2.600 quitada pode representar apenas parte de uma OS de R$ 3.300. Use Receber saldo da OS e Lançar diferença de R$ 700,00 a receber; depois, registre o pagamento no complemento. O lançamento e o recibo antigos permanecem preservados. Finalizar a OS não cria nem recebe essa diferença automaticamente. Se houver parcelas ou cobrança online, use Conferir no Financeiro para revisar os vínculos antes de complementar.
+**R:** Compare o Total da OS com o total já faturado. Uma conta antiga de R$ 2.600 quitada pode representar apenas parte de uma OS de R$ 3.300. Use Receber saldo da OS e Criar conta de R$ 700,00 a receber; depois, registre cada pagamento no complemento, pela OS ou em Contas a Receber. O lançamento e o recibo antigos permanecem preservados. Finalizar a OS não cria nem recebe essa diferença automaticamente. Se houver parcelas ou cobrança online, use Conferir no Financeiro para revisar os vínculos antes de complementar.
 
 **P:** Dá para exigir que o cliente assine antes de finalizar a OS?
 **R:** Não existe uma chave de "exigir assinatura" na criação da OS. A exigência de assinatura do técnico é ligada sozinha nas OS geradas por contrato. Para pedir a assinatura do cliente numa OS avulsa, coloque uma pergunta do tipo Assinatura no checklist e marque como campo obrigatório: aí o técnico não fecha a OS sem colher.
@@ -6725,11 +6725,11 @@ Em A Receber, a ação é Marcar recebido, que abre o modal Como foi recebido?:
 
 - Validações: "Informe um valor maior que zero." e "Valor não pode ser maior que o restante (R$ X)."
 
-- Conta parcelada não aceita recebimento parcial. A tela avisa: "Conta parcelada, recebimento parcial não está disponível."
+- Parcelas vinculadas a uma OS aceitam recebimento parcial pela OS e por Contas a Receber. Outros parcelamentos mantêm a regra de recebimento integral da parcela.
 
 - A confirmação é "Recebimento confirmado!". A conta passa a mostrar Parcial, com "Recebido R$ X de R$ Y".
 
-Em Ver histórico aparecem todos os recebimentos daquela conta, com a opção de Estornar um deles: "O valor de R$ X voltará a ficar pendente nesta conta. Esta ação não pode ser desfeita." Estornar exige a mesma permissão de excluir lançamento financeiro.
+Uma conta de R$ 700 que recebeu R$ 300 continua com R$ 400 em aberto, tanto na linha quanto no resumo. Outro pagamento de R$ 300 deixa R$ 100 pendentes. O valor contratado continua em R$ 700. Em Ver histórico aparecem todos os recebimentos daquela conta, mesmo depois de quitada, com recibo individual de cada pagamento e com a opção de Estornar um deles: "O valor de R$ X voltará a ficar pendente nesta conta. Esta ação não pode ser desfeita." Estornar exige a mesma permissão de excluir lançamento financeiro.
 
 #### Faturas de cartão dentro de Contas a Pagar
 

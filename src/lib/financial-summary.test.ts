@@ -46,3 +46,25 @@ describe('fontes de valor na compra com crédito do fornecedor', () => {
     expect(rows.filter(row => !isPdvRoleExcludedFromDre(row.pdv_financial_role, 'competencia')).reduce((sum, row) => sum + Number(row.amount), 0)).toBe(100);
   });
 });
+
+describe('conta recebida em partes', () => {
+  const parent = { id: 'conta', transaction_type: 'entrada', amount: 700, amount_received: 0, is_paid: false, transfer_pair_id: null };
+  it.each([[300, 400], [600, 100], [700, 0]])('preserva dívida de 700, recebido %s e pendente %s sem dupla contagem', (received, open) => {
+    const root = { ...parent, amount_received: received, is_paid: open === 0 };
+    const payments = (received === 300 ? [300] : received === 600 ? [300, 300] : [300, 300, 100])
+      .map((amount, i) => ({ ...parent, id: `pagamento-${i}`, parent_transaction_id: root.id, category: 'Recebimento parcial', is_paid: true, amount, amount_received: 0 }));
+    const selected = selectFinancialOverviewSources([root, ...payments]);
+    expect(selected).toHaveLength(payments.length + 1);
+    expect(summarizeFinancialTransactions(selected)).toMatchObject({ totalEntradas: received, aReceber: open, saldo: received });
+    expect(summarizeFinancialTransactions([root, ...payments])).toMatchObject({ totalEntradas: received, aReceber: open });
+    const fee = { ...parent, id: 'fee', parent_transaction_id: payments[0].id, transaction_type: 'saida', amount: 5, is_paid: true, description: 'Tarifa do recebimento — OS #123' };
+    expect(summarizeFinancialTransactions(selectFinancialOverviewSources([root, ...payments, fee])))
+      .toMatchObject({ totalEntradas: received, totalSaidas: 5, saldo: received - 5, aReceber: open });
+  });
+  it('estornar uma baixa reabre só esse saldo e exclui o pagamento cancelado', () => {
+    const root = { ...parent, amount_received: 300 };
+    const partial = { ...parent, amount: 300, is_paid: true, parent_transaction_id: 'conta' };
+    expect(summarizeFinancialTransactions([root, partial, { ...partial, cancelled_at: '2026-11-26' }]))
+      .toMatchObject({ totalEntradas: 300, aReceber: 400 });
+  });
+});

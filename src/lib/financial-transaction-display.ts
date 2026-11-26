@@ -59,7 +59,7 @@ const toCents = (value: number | string): number => {
  * tenant. O prefixo da descricao e o contrato estavel dos builders/RPCs que
  * criam essas linhas.
  */
-function isReceiptFee(transaction: ReceiptBreakdownTransaction): boolean {
+export function isReceiptFee(transaction: { transaction_type: string; is_paid?: boolean; description?: string | null }): boolean {
   if (transaction.transaction_type !== 'saida' || transaction.is_paid === false) return false;
   const description = (transaction.description ?? '')
     .normalize('NFD')

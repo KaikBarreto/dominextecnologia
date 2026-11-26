@@ -19141,7 +19141,7 @@ export type Database = {
         Returns: Json
       }
       bill_os_receive_payment: {
-        Args: { p_os_id: string; p_request_id: string; p_transaction_id?: string; p_total?: number; p_received?: number; p_expected_received?: number; p_account_id?: string; p_method?: string; p_paid_date?: string; p_due_date?: string; p_category?: string; p_fee?: number; p_fee_category?: string; p_notes?: string }
+        Args: { p_os_id: string; p_request_id: string; p_transaction_id?: string; p_total?: number; p_received?: number; p_expected_received?: number; p_account_id?: string; p_method?: string; p_paid_date?: string; p_due_date?: string; p_category?: string; p_fee?: number; p_fee_category?: string; p_notes?: string; p_from_finance?: boolean }
         Returns: Json
       }
 

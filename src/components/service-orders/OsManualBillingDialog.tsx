@@ -74,9 +74,9 @@ export function OsManualBillingDialog({ open, onOpenChange, context, onReceived 
             {totals.unbilled > 0 && <div className="space-y-3">
               <NoticeBanner variant="warning">{money(totals.unbilled)} do valor da OS ainda não foram faturados. O faturamento anterior de {money(totals.billed)} e seus recebimentos serão preservados.</NoticeBanner>
               {canComplement ? <>
-                <div className="space-y-2"><Label htmlFor="os-complement-due-date">Vencimento da diferença</Label><DatePicker id="os-complement-due-date" value={dueDate} onValueChange={setDueDate} /></div>
-                <Button className="h-auto min-h-12 w-full whitespace-normal sm:w-auto" disabled={saving} onClick={() => void complement()}>{saving ? 'Salvando…' : `Lançar diferença de ${money(totals.unbilled)} a receber`}</Button>
-                <p className="text-sm text-muted-foreground">Depois de lançar, registre o pagamento da diferença aqui. Nenhum pagamento será marcado como recebido automaticamente.</p>
+                <div className="space-y-2"><Label htmlFor="os-complement-due-date">Vencimento do saldo</Label><DatePicker id="os-complement-due-date" value={dueDate} onValueChange={setDueDate} /></div>
+                <Button className="h-auto min-h-12 w-full whitespace-normal sm:w-auto" disabled={saving} onClick={() => void complement()}>{saving ? 'Salvando…' : `Criar conta de ${money(totals.unbilled)} a receber`}</Button>
+                <p className="text-sm text-muted-foreground">A conta ficará em aberto no Financeiro. Depois, informe quanto recebeu em cada pagamento, aqui ou em Contas a Receber. O saldo restante continua pendente.</p>
               </> : <p className="text-sm text-muted-foreground">Confira as parcelas e cobranças vinculadas no Financeiro antes de lançar a diferença.</p>}
             </div>}
             {totals.overbilled > 0 && <NoticeBanner variant="warning">O faturamento está {money(totals.overbilled)} acima do valor atual da OS. Confira os lançamentos no Financeiro antes de alterar os valores.</NoticeBanner>}
@@ -88,7 +88,7 @@ export function OsManualBillingDialog({ open, onOpenChange, context, onReceived 
           </>}
           {billing.data.map(row => <div key={row.id} className="space-y-3 border-t py-3"><div className="flex flex-wrap justify-between gap-3"><span>Lançamento {money(row.amount)}</span><span>Recebido {money(row.is_paid ? row.amount : row.amount_received)}</span><strong>Saldo desta conta {money(row.is_paid ? 0 : row.amount - row.amount_received)}</strong></div>
             {row.has_live_charge && !row.is_paid && <p className="text-sm text-muted-foreground">Esta parcela tem cobrança online. Confira o recebimento no Financeiro.</p>}
-            {!row.is_paid && !row.has_live_charge && <Button disabled={!ready || saving} onClick={() => { setParent(row); setPaymentTotal(total); setReceiving(true); }}>Receber pagamento</Button>}
+            {!row.is_paid && !row.has_live_charge && <Button disabled={!ready || saving} onClick={() => { setParent(row); setPaymentTotal(total); setReceiving(true); }}>Receber total ou parcial</Button>}
           </div>)}
         </section> : ready && <>
           <div className="space-y-2"><Label htmlFor="os-billing-due-date">Vencimento do saldo</Label><DatePicker id="os-billing-due-date" value={dueDate} onValueChange={setDueDate} /></div>
