@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.41.88',
+    date: '26 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Venda cancelada no PDV não aparece mais como conta a receber',
+        category: 'correcao',
+        description: 'Quando uma venda no fiado era cancelada no PDV, as contas dela continuavam aparecendo em Contas a Receber como pendentes ou vencidas. Agora elas saem da lista, dos totais, da busca e do calendário.',
+      },
+      {
+        title: 'Baixa de fiado do PDV pelo Financeiro',
+        category: 'correcao',
+        description: 'Ao marcar como recebida uma conta de fiado que veio do PDV, o Financeiro mostrava "Registro não encontrado". Agora ele abre a conta do cliente, onde você informa como recebeu e o saldo dele é atualizado. Editar essas contas continua sendo feito pela venda, e o menu passa a explicar isso.',
+      },
+    ],
+  },
+  {
     version: '1.41.87',
     date: '26 de novembro de 2026',
     type: 'patch',

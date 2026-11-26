@@ -43,14 +43,7 @@ export interface PdvUndoResult {
 }
 
 /** Linha do financeiro que precisa passar pelo desfazer do PDV, e não pelo DELETE comum. */
-export function isPdvFinancialRow(row: unknown): boolean {
-  if (!row || typeof row !== 'object') return false;
-  const r = row as Record<string, unknown>;
-  return r.origin === 'pdv'
-    || r.pdv_financial_role != null
-    || r.pdv_settlement_group_id != null
-    || r.pdv_cash_session_id != null;
-}
+export { isPdvFinancialRow } from '@/lib/finance-pdv-rows';
 
 /**
  * As recusas do servidor já vêm em PT-BR legível ao cliente final, marcadas com

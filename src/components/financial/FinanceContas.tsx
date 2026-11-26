@@ -50,7 +50,8 @@ import { filterByCostCenters, NO_COST_CENTER } from '@/lib/cost-center-breakdown
 import { CreditCardInvoiceRow } from './CreditCardInvoiceRow';
 import { FinancePdvUndoDialog } from './FinancePdvUndoDialog';
 import { PaidMarker } from './PaidMarker';
-import { isPdvFinancialRow } from '@/hooks/useFinancePdvUndo';
+import { accountSettlementRoute, isPdvFinancialRow, withoutCancelledAccounts } from '@/lib/finance-pdv-rows';
+import { PartyAccountPanel } from '@/components/customers/PartyAccountPanel';
 
 function canAdjustManualOccurrence(transaction: FinancialTransaction | null): boolean {
   if (!transaction) return false;
@@ -173,13 +174,17 @@ interface FinanceContasProps {
 }
 
 export function FinanceContas({
-  transactions,
-  allTransactions,
+  transactions: periodTransactions,
+  allTransactions: everyTransaction,
   transactionAuditTrail,
   isLoading,
   onMarkAsPaid,
   dateRange,
 }: FinanceContasProps) {
+  // Conta de lançamento cancelado (venda do PDV cancelada, por exemplo) não é
+  // dívida: sai da lista, dos totais, da busca e do calendário desta tela.
+  const transactions = useMemo(() => withoutCancelledAccounts(periodTransactions), [periodTransactions]);
+  const allTransactions = useMemo(() => withoutCancelledAccounts(everyTransaction), [everyTransaction]);
   const [subTab, setSubTab] = useState<FinanceAccountsSubTab>(DEFAULT_FINANCE_ACCOUNTS_SUBTAB);
   const [filter, setFilter] = useState<FilterStatus>('todas');
   const [view, setView] = useState<AccountsView>('list');
@@ -200,6 +205,8 @@ export function FinanceContas({
   // Lançamento que veio do PDV não passa pelo DELETE comum: excluir desfaz a
   // origem inteira (venda cancelada, estoque e gaveta de volta).
   const [pdvUndoId, setPdvUndoId] = useState<string | null>(null);
+  // Fiado do PDV recebe baixa pela conta do cliente, nunca por edição direta.
+  const [pdvReceivable, setPdvReceivable] = useState<PayrollTxn | null>(null);
   const [receivingTxn, setReceivingTxn] = useState<PayrollTxn | null>(null);
   const [payingDespesaTxn, setPayingDespesaTxn] = useState<FinancialTransaction | null>(null);
   const [payrollTxn, setPayrollTxn] = useState<PayrollTxn | null>(null);
@@ -307,6 +314,10 @@ export function FinanceContas({
     if (!canManageFinanceTransactions) return;
     if (isPayrollSalaryRow(t)) {
       setPayrollTxn(t);
+      return;
+    }
+    if (accountSettlementRoute(t).kind !== 'finance') {
+      setPdvReceivable(t);
       return;
     }
     if (t.transaction_type === 'entrada') {
@@ -964,6 +975,8 @@ export function FinanceContas({
 
   const handleEdit = (t: FinancialTransaction) => {
     if (!canManageFinanceTransactions) return;
+    // Lançamento do PDV só muda pela venda: o banco recusa a edição direta.
+    if (isPdvFinancialRow(t)) return;
     if (t.installment_group_id && canAdjustManualOccurrence(t)) {
       setSeriesAction({ transaction: t, action: 'edit' });
       return;
@@ -1564,9 +1577,11 @@ export function FinanceContas({
                 }] : []),
                 ...(canManageFinanceTransactions ? [{
                   key: 'edit',
-                  label: fin.accounts.actions.edit,
+                  // Bloqueada: desabilitada e com o motivo no lugar do rótulo.
+                  label: isPdvFinancialRow(t) ? fin.pdvAccount.editBlocked : fin.accounts.actions.edit,
                   icon: <Pencil className="h-4 w-4" />,
                   variant: 'edit' as const,
+                  disabled: isPdvFinancialRow(t),
                   onClick: () => handleEdit(t),
                 }] : []),
                 ...(canDeleteFinance ? [{
@@ -1877,10 +1892,11 @@ export function FinanceContas({
                               hidden: !chargeAction,
                             },
                             {
-                              label: fin.accounts.actions.edit,
+                              label: isPdvFinancialRow(t) ? fin.pdvAccount.editBlocked : fin.accounts.actions.edit,
                               icon: Pencil,
                               variant: 'edit',
                               onClick: () => handleEdit(t),
+                              disabled: isPdvFinancialRow(t),
                               hidden: !canManageFinanceTransactions,
                             },
                             {
@@ -2006,6 +2022,28 @@ export function FinanceContas({
       </AlertDialog>
 
       <FinancePdvUndoDialog transactionId={pdvUndoId} onClose={() => setPdvUndoId(null)} />
+
+      {/* Baixa de fiado do PDV: a conta do cliente registra o recebimento no
+          caixa certo e atualiza o saldo dele; o Financeiro só leva até lá. */}
+      <ResponsiveModal
+        open={!!pdvReceivable}
+        onOpenChange={(v) => { if (!v) setPdvReceivable(null); }}
+        title={fin.pdvAccount.receiveTitle}
+        description={pdvReceivable ? `${pdvReceivable.description} · ${fmt(Number(pdvReceivable.amount))}` : undefined}
+        className="sm:max-w-3xl"
+        footer={<Button type="button" variant="outline" onClick={() => setPdvReceivable(null)}>{fin.pdvAccount.close}</Button>}
+      >
+        {pdvReceivable && (() => {
+          const route = accountSettlementRoute(pdvReceivable);
+          if (route.kind !== 'pdv_customer_account') return <NoticeBanner variant="warning">{fin.pdvAccount.unavailable}</NoticeBanner>;
+          return (
+            <div className="space-y-4">
+              <NoticeBanner variant="info">{fin.pdvAccount.receiveIntro}</NoticeBanner>
+              <PartyAccountPanel partyType="customer" partyId={route.customerId} />
+            </div>
+          );
+        })()}
+      </ResponsiveModal>
 
       <AlertDialog open={!!deletingId} onOpenChange={() => setDeletingId(null)}>
         <AlertDialogContent>

@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.41.87";
+export const APP_VERSION = "1.41.88";
 
 export const VERSION_NOTES =
-  "Na visão Estoque geral, a ação Editar volta a abrir normalmente o cadastro do material.";
+  "Em Contas a Receber, a conta de uma venda cancelada no PDV deixa de aparecer, e a baixa de um fiado do PDV abre a conta do cliente em vez de mostrar erro.";
