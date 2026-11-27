@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.42.4";
+export const APP_VERSION = "1.42.5";
 
 export const VERSION_NOTES =
-  "Altere a quantidade do material escolhendo o local na própria edição. O menu de ações do estoque continua visível durante a rolagem lateral.";
+  "Nomes de materiais em até duas linhas, com nome completo ao passar o mouse ou focar pelo teclado. A estrela do estoque principal acompanha o nome sem se deslocar.";

@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.42.5',
+    date: '27 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Nomes dos materiais mais legíveis no estoque',
+        category: 'melhoria',
+        description: 'Nomes longos ocupam até duas linhas antes das reticências, e o nome completo aparece ao lado ao passar o mouse ou navegar pelo teclado. A estrela do estoque principal fica junto do nome, inclusive quando ele quebra de linha.',
+      },
+    ],
+  },
+  {
     version: '1.42.4',
     date: '27 de novembro de 2026',
     type: 'patch',

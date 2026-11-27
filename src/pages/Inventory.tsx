@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Portal as TooltipPortal } from '@radix-ui/react-tooltip';
 import { fuzzyIncludes, cn } from '@/lib/utils';
 import { useIsMobile, useMediaBreakpoint } from '@/hooks/use-mobile';
 import {
@@ -1015,8 +1016,8 @@ function InventoryContent({ context }: { context: 'general' | 'store' }) {
                               />
                             }
                             title={
-                              <div className="flex items-center gap-2 min-w-0">
-                                <span className="truncate">{item.name}</span>
+                              <div className="flex min-w-0 items-start gap-2 whitespace-normal">
+                                <span className="min-w-0 line-clamp-2 leading-5" title={item.name}>{item.name}</span>
                                 {item.sku && (
                                   <span className="font-mono text-[11px] text-muted-foreground shrink-0">
                                     {item.sku}
@@ -1120,7 +1121,8 @@ function InventoryContent({ context }: { context: 'general' | 'store' }) {
                     />
                   ) : (
                     <>
-                      <div className="overflow-x-auto">
+                      <div className="overflow-x-auto [container-type:inline-size]">
+                        <TooltipProvider delayDuration={250}>
                         <Table>
                           <TableHeader>
                             <TableRow>
@@ -1149,23 +1151,32 @@ function InventoryContent({ context }: { context: 'general' | 'store' }) {
                               return (
                                 <TableRow key={item.id}>
                                   <TableCell className="font-medium">
-                                    <div className="flex min-w-0 items-center gap-2.5">
+                                    <div className="flex min-h-10 w-[clamp(8rem,25cqw,20rem)] items-center gap-2.5">
                                       <InventoryItemThumbnail
                                         name={item.name}
                                         imageUrl={item.image_url}
                                         accentColor={itemGroup?.color}
                                         className="h-9 w-9"
                                       />
-                                      <div className="flex min-w-0 items-center gap-1.5">
+                                      <div className="flex min-w-0 flex-1 items-center gap-1.5">
                                         <LowStockIcon item={item} />
-                                        <span className="min-w-0 break-words">{item.name}</span>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <span tabIndex={0} className="min-w-0 flex-1 line-clamp-2 cursor-help break-words rounded-sm leading-5 outline-none focus-visible:ring-1 focus-visible:ring-ring">{item.name}</span>
+                                          </TooltipTrigger>
+                                          <TooltipPortal>
+                                            <TooltipContent side="right" align="center" sideOffset={10} collisionPadding={16} className="max-w-[min(24rem,calc(100vw-2rem))] whitespace-normal break-words [overflow-wrap:anywhere]">
+                                              {item.name}
+                                            </TooltipContent>
+                                          </TooltipPortal>
+                                        </Tooltip>
                                         {item.archived_at && (
                                           <Badge className="bg-foreground text-background">{archiveUi.archived}</Badge>
                                         )}
                                       </div>
                                     </div>
                                   </TableCell>
-                                  <TableCell className="text-muted-foreground">{item.sku || '-'}</TableCell>
+                                  <TableCell className="whitespace-nowrap text-muted-foreground">{item.sku || '-'}</TableCell>
                                   <TableCell>
                                     {itemGroup ? (
                                       <div className="flex items-center gap-1.5">
@@ -1223,6 +1234,7 @@ function InventoryContent({ context }: { context: 'general' | 'store' }) {
                             })}
                           </TableBody>
                         </Table>
+                        </TooltipProvider>
                       </div>
                       <DataTablePagination
                         page={pagination.page}

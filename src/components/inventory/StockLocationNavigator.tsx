@@ -128,6 +128,8 @@ export function StockLocationNavigator({
               {group.items.map((item) => {
                 const selected = selectedId === item.id;
                 const LocationIcon = item.purpose === 'pdv' ? ShoppingCart : Package;
+                const name = item.name.trimEnd();
+                const lastWordStart = name.lastIndexOf(' ') + 1;
                 return (
                   <div
                     key={item.id}
@@ -151,17 +153,20 @@ export function StockLocationNavigator({
                         <LocationIcon className="h-4 w-4" aria-hidden="true" />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="flex min-w-0 items-start gap-1.5">
-                          <span className="min-w-0 break-words text-sm font-medium leading-5">{item.name}</span>
-                          {item.isDefault && (
-                            <Star
-                              className={cn(
-                                'mt-0.5 h-3.5 w-3.5 shrink-0 fill-current',
-                                selected ? 'text-primary-foreground' : 'text-warning',
-                              )}
-                              aria-hidden="true"
-                            />
-                          )}
+                        <span className="block min-w-0 break-words text-sm font-medium leading-5">
+                          {item.isDefault ? <>
+                            {name.slice(0, lastWordStart)}
+                            <span className="inline-flex max-w-full items-center gap-1 align-bottom">
+                              <span className="min-w-0 break-words">{name.slice(lastWordStart)}</span>
+                              <Star
+                                className={cn(
+                                  'h-3.5 w-3.5 shrink-0 fill-current',
+                                  selected ? 'text-primary-foreground' : 'text-warning',
+                                )}
+                                aria-hidden="true"
+                              />
+                            </span>
+                          </> : item.name}
                         </span>
                         {renderSummary(item.itemCount, item.lowStockCount, selected)}
                       </span>
