@@ -165,7 +165,7 @@ const Sidebar = React.forwardRef<
     variant?: "sidebar" | "floating" | "inset";
     collapsible?: "offcanvas" | "icon" | "none";
   }
->(({ side = "left", variant = "sidebar", collapsible = "offcanvas", className, children, ...props }, ref) => {
+>(({ side = "left", variant = "sidebar", collapsible = "offcanvas", className, style, children, ...props }, ref) => {
   const { isMobile, state, transientOpen, openMobile, setOpenMobile } = useSidebar();
 
   if (collapsible === "none") {
@@ -200,6 +200,21 @@ const Sidebar = React.forwardRef<
     );
   }
 
+  const compactGapWidth =
+    collapsible === "offcanvas"
+      ? "0px"
+      : variant === "floating" || variant === "inset"
+        ? "calc(var(--sidebar-width-icon) + 1rem)"
+        : "var(--sidebar-width-icon)";
+  const compactPanelWidth =
+    collapsible === "offcanvas"
+      ? "var(--sidebar-width)"
+      : variant === "floating" || variant === "inset"
+        ? "calc(var(--sidebar-width-icon) + 1rem + 2px)"
+        : "var(--sidebar-width-icon)";
+  const gapWidth = state === "collapsed" || transientOpen ? compactGapWidth : "var(--sidebar-width)";
+  const panelWidth = state === "collapsed" ? compactPanelWidth : "var(--sidebar-width)";
+
   return (
     <div
       ref={ref}
@@ -212,6 +227,8 @@ const Sidebar = React.forwardRef<
     >
       {/* This is what handles the sidebar gap on desktop */}
       <div
+        data-sidebar="gap"
+        style={{ width: gapWidth }}
         className={cn(
           "relative h-svh w-[--sidebar-width] bg-transparent transition-[width] duration-300 ease-out motion-reduce:transition-none",
           "group-data-[transient-open=true]:w-[--sidebar-width-icon]",
@@ -223,6 +240,8 @@ const Sidebar = React.forwardRef<
         )}
       />
       <div
+        data-sidebar="desktop-panel"
+        style={{ ...style, width: panelWidth }}
         className={cn(
           "fixed inset-y-0 z-30 hidden h-svh w-[--sidebar-width] transition-[left,right,width] duration-300 ease-out motion-reduce:transition-none lg:flex",
           "group-data-[transient-open=true]:shadow-[10px_0_24px_-14px_rgba(15,23,42,0.55)] group-data-[side=right]:group-data-[transient-open=true]:shadow-[-10px_0_24px_-14px_rgba(15,23,42,0.55)]",

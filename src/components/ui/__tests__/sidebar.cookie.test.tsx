@@ -56,12 +56,20 @@ describe('SidebarProvider', () => {
     );
 
     const root = container.querySelector<HTMLElement>("[data-side='left']");
+    const gap = container.querySelector<HTMLElement>("[data-sidebar='gap']");
+    const panel = container.querySelector<HTMLElement>("[data-sidebar='desktop-panel']");
+
+    expect(gap).toHaveStyle({ width: 'var(--sidebar-width-icon)' });
+    expect(panel).toHaveStyle({ width: 'var(--sidebar-width-icon)' });
+
     fireEvent.click(screen.getByText('hover'));
 
     expect(root).toHaveAttribute('data-state', 'expanded');
     expect(root).toHaveAttribute('data-transient-open', 'true');
     expect(screen.getByTestId('transient')).toHaveTextContent('true');
     expect(root?.children[0]).toHaveClass('group-data-[transient-open=true]:w-[--sidebar-width-icon]');
+    expect(gap).toHaveStyle({ width: 'var(--sidebar-width-icon)' });
+    expect(panel).toHaveStyle({ width: 'var(--sidebar-width)' });
   });
 
   it('mantém aberto quando fixado e recolhe ao desligar a fixação', () => {
@@ -95,13 +103,36 @@ describe('SidebarProvider', () => {
     const gap = root?.children[0] as HTMLElement;
     const panel = root?.children[1] as HTMLElement;
 
+    expect(gap).toHaveStyle({ width: 'var(--sidebar-width-icon)' });
+    expect(panel).toHaveStyle({ width: 'var(--sidebar-width-icon)' });
+
     for (const element of [gap, panel]) {
       expect(element).toHaveClass('duration-300', 'ease-out', 'motion-reduce:transition-none');
     }
 
     fireEvent.click(screen.getByText('toggle'));
     expect(root).toHaveAttribute('data-state', 'expanded');
+    expect(gap).toHaveStyle({ width: 'var(--sidebar-width)' });
+    expect(panel).toHaveStyle({ width: 'var(--sidebar-width)' });
     fireEvent.click(screen.getByText('toggle'));
     expect(root).toHaveAttribute('data-state', 'collapsed');
+    expect(gap).toHaveStyle({ width: 'var(--sidebar-width-icon)' });
+    expect(panel).toHaveStyle({ width: 'var(--sidebar-width-icon)' });
+  });
+
+  it('preserva estilos recebidos sem permitir divergência na largura crítica', () => {
+    const { container } = render(
+      <SidebarProvider>
+        <Sidebar collapsible="icon" style={{ backgroundColor: 'rgb(1, 2, 3)', width: '99rem' }}>
+          menu
+        </Sidebar>
+      </SidebarProvider>,
+    );
+
+    const panel = container.querySelector<HTMLElement>("[data-sidebar='desktop-panel']");
+    expect(panel).toHaveStyle({
+      backgroundColor: 'rgb(1, 2, 3)',
+      width: 'var(--sidebar-width-icon)',
+    });
   });
 });
