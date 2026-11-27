@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.42.4',
+    date: '27 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Altere a quantidade do material sem sair da edição',
+        category: 'correcao',
+        description: 'Ao editar pela visão geral do estoque, escolha o local e informe a quantidade final desejada. A diferença fica registrada no histórico, e alterar somente cadastro ou preço mantém o saldo. O menu de três pontos permanece visível mesmo quando a tabela exige rolagem lateral.',
+      },
+    ],
+  },
+  {
     version: '1.42.3',
     date: '26 de novembro de 2026',
     type: 'patch',

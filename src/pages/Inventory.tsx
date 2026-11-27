@@ -659,38 +659,36 @@ function InventoryContent({ context }: { context: 'general' | 'store' }) {
     <>
       {/* Filtro de estoque baixo */}
       <div className="space-y-2">
-        <button
-          type="button"
+        <label
+          htmlFor="inventory-low-stock-only"
           className="flex items-center gap-2.5 cursor-pointer w-full text-left"
-          onClick={() => setLowStockOnly((v) => !v)}
         >
           <Checkbox
+            id="inventory-low-stock-only"
             checked={lowStockOnly}
             onCheckedChange={(v) => setLowStockOnly(!!v)}
-            className="pointer-events-none"
           />
           <span className="text-sm font-medium flex items-center gap-1.5">
             <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
             {t.filters.lowStockOnly}
           </span>
-        </button>
+        </label>
       </div>
       <div className="space-y-2">
-        <button
-          type="button"
+        <label
+          htmlFor="inventory-show-archived"
           className="flex w-full cursor-pointer items-center gap-2.5 text-left"
-          onClick={() => setShowArchived((value) => !value)}
         >
           <Checkbox
+            id="inventory-show-archived"
             checked={showArchived}
             onCheckedChange={(value) => setShowArchived(!!value)}
-            className="pointer-events-none"
           />
           <span className="flex items-center gap-1.5 text-sm font-medium">
             <Archive className="h-3.5 w-3.5" />
             {archiveUi.show}
           </span>
-        </button>
+        </label>
       </div>
       {groups.length > 0 && (
         <FilterCheckboxGroup
@@ -1139,7 +1137,7 @@ function InventoryContent({ context }: { context: 'general' | 'store' }) {
                               </SortableTableHead>
                               <TableHead className="text-right">{t.table.minQty}</TableHead>
                               <SortableTableHead sortKey="cost_price" sortConfig={sortConfig} onSort={handleSort} className="text-right">{t.table.costUnit}</SortableTableHead>
-                              <TableHead className="w-[100px]">{t.table.actions}</TableHead>
+                              <TableHead className="sticky right-0 z-10 w-[100px] bg-card text-right">{t.table.actions}</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -1197,7 +1195,7 @@ function InventoryContent({ context }: { context: 'general' | 'store' }) {
                                   <TableCell className="text-right">
                                     {item.cost_price ? formatCurrency(item.cost_price) : '-'}
                                   </TableCell>
-                                  <TableCell>
+                                  <TableCell className="sticky right-0 bg-card text-right">
                                     <RowActionsMenu
                                       actions={!canWrite ? [] : [
                                         ...(!item.archived_at && canWrite
@@ -1279,6 +1277,7 @@ function InventoryContent({ context }: { context: 'general' | 'store' }) {
         onOpenChange={handleDialogClose}
         item={editingItem}
         activeStockId={resolvedStockId}
+        quantityStockIds={stocks.map(stock => stock.id)}
         onOpenTransfer={handleTransferFromBlockedStock}
       />
 

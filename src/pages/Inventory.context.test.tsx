@@ -84,6 +84,30 @@ describe('Inventory compartilhado no contexto da loja',()=>{
   fireEvent.click(screen.getByRole('menuitem',{name:'Editar'}));
   expect(screen.getByRole('region',{name:'Cadastro de material'})).toHaveTextContent('Material da loja · geral');
  });
+ it('mantém Editar somente no menu de três pontos da linha',()=>{
+  render(<App context='general' entry='/estoque'/>);
+  const row=screen.getByRole('row',{name:/Material da loja/});
+  expect(within(row).queryByRole('button',{name:'Editar'})).not.toBeInTheDocument();
+  const trigger=within(row).getByRole('button',{name:'Ações'});
+  trigger.focus(); fireEvent.keyDown(trigger,{key:'Enter'});
+  fireEvent.click(screen.getByRole('menuitem',{name:'Editar'}));
+  expect(screen.getByRole('region',{name:'Cadastro de material'})).toHaveTextContent('Material da loja · geral');
+ });
+ it('mantém edição oculta para consulta e para materiais arquivados',()=>{
+  state.canManage=false;
+  const app=render(<App context='general' entry='/estoque'/>);
+  expect(screen.queryByRole('button',{name:'Ações'})).not.toBeInTheDocument();
+  state.canManage=true; state.items[0].archived_at='2026-11-27';
+  app.rerender(<App context='general' entry='/estoque'/>);
+  fireEvent.click(screen.getByRole('button',{name:'Filtros'}));
+  fireEvent.click(screen.getByRole('checkbox',{name:'Mostrar arquivados'}));
+  fireEvent.keyDown(screen.getByRole('dialog'),{key:'Escape'});
+  const row=screen.getByRole('row',{name:/Material da loja/});
+  const trigger=within(row).getByRole('button',{name:'Ações'});
+  trigger.focus(); fireEvent.keyDown(trigger,{key:'Enter'});
+  expect(screen.queryByRole('menuitem',{name:'Editar'})).not.toBeInTheDocument();
+  expect(screen.getByRole('menuitem',{name:'Desarquivar'})).toBeInTheDocument();
+ });
  it('mascara conteúdo e cadastros ao perder o último local autorizado',()=>{
   const app=render(<App entry='/pdv/estoque?local=loja'/>);expect(screen.getByText('Material da loja')).toBeInTheDocument();
   state.stocks=[];app.rerender(<App entry='/pdv/estoque?local=loja'/>);

@@ -62,6 +62,8 @@ interface InventoryFormDialogProps {
   item?: InventoryItem | null;
   /** ID do local ativo na tela — usado para ajuste de qty no local correto. */
   activeStockId?: string | null;
+  /** Limita a escolha de saldo aos locais visíveis no contexto da tela. */
+  quantityStockIds?: readonly string[];
   /** Chamado quando o RPC bloqueia por presença com saldo. Recebe o item salvo e
    *  o stockId do primeiro local bloqueado, para que o pai abra a transferência
    *  com a origem correta já pré-selecionada. */
@@ -103,13 +105,24 @@ const FORM_COPY = {
   fr: { titleNew: 'Ajouter un matériel', titleEdit: 'Modifier le matériel', basic: 'Données générales', basicShort: 'Général', stock: 'Stock et prix', stockShort: 'Stock', codes: 'Codes et étiquettes', codesShort: 'Codes', primaryCode: 'Code principal', primaryPdvHint: `Utilisez le code de l'emballage unitaire pour retrouver ce matériel en caisse.`, primaryOptionalHint: `Optionnel pour le lecteur, la caméra, l'inventaire ou l'impression d'étiquettes.`, saveForCodes: `Enregistrez le matériel pour générer son code interne, ajouter des emballages et des QR Codes, puis imprimer des étiquettes.`, pmocDisabled: `Activez cette option uniquement pour les produits qui doivent figurer dans les documents PMOC.` },
 } as const;
 
-export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, onOpenTransfer }: InventoryFormDialogProps) {
+const QUANTITY_COPY = {
+  'pt-br': { location: 'Local para alterar a quantidade', balance: 'Quantidade final em {name}. Ao salvar, a diferença fica registrada como ajuste no histórico.', initial: 'Quantidade inicial em {name}. Cadastro e preços valem para todos os locais.', choose: 'Selecione um local', hint: 'Escolha o local acima para informar a quantidade final. O ajuste fica registrado no histórico. Cadastro e preços valem para todos os locais.' },
+  en: { location: 'Location to update quantity', balance: 'Final quantity at {name}. Saving records the difference as an adjustment in history.', initial: 'Initial quantity at {name}. Details and prices apply to all locations.', choose: 'Select a location', hint: 'Choose a location above to enter its final quantity. The adjustment is recorded in history. Details and prices apply to all locations.' },
+  es: { location: 'Ubicación para cambiar la cantidad', balance: 'Cantidad final en {name}. Al guardar, la diferencia se registra como ajuste en el historial.', initial: 'Cantidad inicial en {name}. Los datos y precios se aplican a todas las ubicaciones.', choose: 'Selecciona una ubicación', hint: 'Selecciona la ubicación para indicar su cantidad final. El ajuste queda registrado en el historial. Los datos y precios se aplican a todas las ubicaciones.' },
+  fr: { location: 'Emplacement pour modifier la quantité', balance: 'Quantité finale à {name}. La différence est enregistrée comme ajustement dans l’historique.', initial: 'Quantité initiale à {name}. Les données et prix concernent tous les emplacements.', choose: 'Sélectionnez un emplacement', hint: 'Choisissez un emplacement pour saisir sa quantité finale. Le mouvement est conservé dans l’historique. Les données et prix concernent tous les emplacements.' },
+} as const;
+
+export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, quantityStockIds, onOpenTransfer }: InventoryFormDialogProps) {
   const { locale } = useAppLocaleContext();
   const ui = FORM_COPY[locale];
+  const quantityUi = QUANTITY_COPY[locale];
   const t = MESSAGES[locale].app.inventory.formDialog;
   const { toast } = useToast();
   const { createItem, updateItem, getMinQuantityForStock, getQuantityForStock, updateStockLevelMinQuantity, getPresenceForStock, setInventoryPresence, stockLevelsLoaded } = useInventory();
   const { stocks, isLoading: stocksLoading } = useStocks();
+  const [selectedQuantityStockId, setSelectedQuantityStockId] = useState('');
+  const quantityStocks = stocks.filter(stock => !quantityStockIds || quantityStockIds.includes(stock.id));
+  const quantityStockId = quantityStocks.some(stock => stock.id === selectedQuantityStockId) ? selectedQuantityStockId : null;
   const { suppliers } = useSuppliers();
   const { groups, createGroup } = useMaterialGroups();
   const { hasModule, isLoading: modulesLoading } = useCompanyModules();
@@ -322,6 +335,7 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
   useEffect(() => {
     hydratedRef.current = false;
     quantityChangedRef.current = false;
+    setSelectedQuantityStockId(activeStockId ?? '');
     setStocksHydrated(false);
   }, [open, item, activeStockId]);
 
@@ -350,6 +364,16 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
     // hydratedRef travando a segunda execução.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, stocksSectionReady, item, activeStockId]);
+
+  const selectQuantityStock = (stockId: string) => {
+    if (!stocksHydrated || !quantityStocks.some(stock => stock.id === stockId)) return;
+    const quantity = item ? getQuantityForStock(item.id, stockId) : 0;
+    setSelectedQuantityStockId(stockId);
+    quantityBaseRef.current = quantity;
+    quantityChangedRef.current = false;
+    setFormData(previous => ({ ...previous, quantity }));
+    setNumericText(previous => ({ ...previous, quantity: toNumericText(quantity) }));
+  };
 
   const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
@@ -423,10 +447,10 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
       await updateItem.mutateAsync({
         id: item.id,
         ...catalogFields,
-        ...(activeStockId && quantityChangedRef.current ? {
+        ...(quantityStockId && quantityChangedRef.current ? {
           quantity,
           previousQuantity: quantityBaseRef.current,
-          activeStockId,
+          activeStockId: quantityStockId,
         } : {}),
       });
       savedItemId = item.id;
@@ -701,13 +725,23 @@ export function InventoryFormDialog({ open, onOpenChange, item, activeStockId, o
               </div>
             )}
 
+            {isEditing && !activeStockId && (
+              <div className="space-y-2">
+                <Label htmlFor="inventory-quantity-stock">{quantityUi.location}</Label>
+                <Select value={quantityStockId ?? ''} onValueChange={selectQuantityStock} disabled={!stocksHydrated || isPending}>
+                  <SelectTrigger id="inventory-quantity-stock"><SelectValue placeholder={quantityUi.choose} /></SelectTrigger>
+                  <SelectContent>{quantityStocks.map(stock => <SelectItem key={stock.id} value={stock.id}>{stock.name}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="inventory-local-quantity">{t.fields.quantity}</Label>
-                <NumericInput id="inventory-local-quantity" decimal value={numericText.quantity} disabled={!activeStockId || !stocksHydrated} onValueChange={(v) => { quantityChangedRef.current = true; handleNumericChange('quantity', v); }} />
-                <p className="text-xs text-muted-foreground">{activeStockId
-                  ? `Saldo em ${stocks.find((stock) => stock.id === activeStockId)?.name ?? 'local selecionado'}. Preços e cadastro valem para todos os locais.`
-                  : 'Cadastro e preços valem para todos os locais. Para alterar quantidades, use Registrar entrada ou Registrar saída e escolha o local.'}</p>
+                <NumericInput id="inventory-local-quantity" decimal value={numericText.quantity} disabled={!quantityStockId || !stocksHydrated || isPending} onValueChange={(v) => { quantityChangedRef.current = true; handleNumericChange('quantity', v); }} />
+                <p className="text-xs text-muted-foreground">{quantityStockId
+                  ? (isEditing ? quantityUi.balance : quantityUi.initial).replace('{name}', quantityStocks.find((stock) => stock.id === quantityStockId)?.name ?? '')
+                  : quantityUi.hint}</p>
               </div>
               <div className="space-y-2">
                 <Label>{t.fields.unit}</Label>
