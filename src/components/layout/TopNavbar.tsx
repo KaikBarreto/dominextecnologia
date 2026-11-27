@@ -183,7 +183,7 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
  * - Itens com submenu viram DropdownMenu na barra (hover-open).
  * - Logo full à esquerda, perfil + menu de conta à direita.
  * - O AccountSwitcher (multi-conta) aparece dentro do dropdown do perfil (não inline na barra).
- * - Visível só em xl: (≥1280px). Abaixo disso, o header mobile/tablet entra em ação.
+ * - Visível em lg: (≥1024px). Abaixo disso, o header mobile entra em ação.
  */
 export const TopNavbar = memo(() => {
   const { user, profile, roles, hasScreenAccess, hasAdminScreenAccess, isAdminUser, linkedAffiliateId, signOut } = useAuth();
@@ -273,7 +273,7 @@ export const TopNavbar = memo(() => {
         <header
           data-nav-surface
           data-tenant-logo-surface={logoSurfaceTone}
-          className="tenant-logo-surface hidden xl:flex h-14 items-center justify-between border-b border-border bg-background px-4 text-foreground transition-colors duration-300"
+          className="tenant-logo-surface hidden lg:flex h-14 items-center justify-between border-b border-border bg-background px-4 text-foreground transition-colors duration-300"
         >
           <div className="flex items-center gap-6 min-w-0 flex-1">
             {logoLoading ? (
