@@ -35,6 +35,7 @@ interface UserPreferencesData {
   schedule_view_mode_desktop: string | null;
   schedule_entry_type_filter: string[] | null;
   finance_movements_include_card_purchases: boolean | null;
+  sidebar_pinned_open: boolean | null;
 }
 
 /**
@@ -60,7 +61,7 @@ export function useUserPreferences() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('user_preferences')
-        .select('schedule_view_mode_mobile, schedule_view_mode_desktop, schedule_entry_type_filter, finance_movements_include_card_purchases')
+        .select('schedule_view_mode_mobile, schedule_view_mode_desktop, schedule_entry_type_filter, finance_movements_include_card_purchases, sidebar_pinned_open')
         .eq('user_id', user!.id)
         .maybeSingle();
 
@@ -115,6 +116,7 @@ export function useUserPreferences() {
         schedule_entry_type_filter: old?.schedule_entry_type_filter ?? null,
         finance_movements_include_card_purchases:
           old?.finance_movements_include_card_purchases ?? null,
+        sidebar_pinned_open: old?.sidebar_pinned_open ?? null,
         [column]: mode,
       }));
 
@@ -165,6 +167,7 @@ export function useUserPreferences() {
         schedule_entry_type_filter: normalizeScheduleEntryTypeFilter(values),
         finance_movements_include_card_purchases:
           old?.finance_movements_include_card_purchases ?? null,
+        sidebar_pinned_open: old?.sidebar_pinned_open ?? null,
       }));
 
       return { previous };
@@ -212,6 +215,7 @@ export function useUserPreferences() {
         schedule_view_mode_desktop: old?.schedule_view_mode_desktop ?? null,
         schedule_entry_type_filter: old?.schedule_entry_type_filter ?? null,
         finance_movements_include_card_purchases: value,
+        sidebar_pinned_open: old?.sidebar_pinned_open ?? null,
       }));
 
       return { previous };
@@ -230,6 +234,51 @@ export function useUserPreferences() {
     includeCardPurchasesMutation.mutate(value);
   };
 
+  const sidebarPinnedOpen = prefsQuery.data?.sidebar_pinned_open ?? false;
+
+  const sidebarPinnedOpenMutation = useMutation({
+    mutationFn: async (value: boolean) => {
+      if (!user?.id) throw new Error('Usuário não autenticado.');
+      const { error } = await supabase.from('user_preferences').upsert(
+        {
+          user_id: user.id,
+          sidebar_pinned_open: value,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id' },
+      );
+
+      if (error) throw error;
+    },
+    onMutate: async (value) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<UserPreferencesData | null>(queryKey);
+
+      queryClient.setQueryData<UserPreferencesData | null>(queryKey, (old) => ({
+        schedule_view_mode_mobile: old?.schedule_view_mode_mobile ?? null,
+        schedule_view_mode_desktop: old?.schedule_view_mode_desktop ?? null,
+        schedule_entry_type_filter: old?.schedule_entry_type_filter ?? null,
+        finance_movements_include_card_purchases:
+          old?.finance_movements_include_card_purchases ?? null,
+        sidebar_pinned_open: value,
+      }));
+
+      return { previous };
+    },
+    onError: (_err, _value, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(queryKey, context.previous);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
+
+  const setSidebarPinnedOpen = (value: boolean) => {
+    sidebarPinnedOpenMutation.mutate(value);
+  };
+
   return {
     scheduleViewMode,
     scheduleEntryTypeFilter,
@@ -238,5 +287,8 @@ export function useUserPreferences() {
     setScheduleEntryTypeFilter,
     includeCardPurchasesInMovements,
     setIncludeCardPurchasesInMovements,
+    sidebarPinnedOpen,
+    setSidebarPinnedOpen,
+    isUpdatingSidebarPinnedOpen: sidebarPinnedOpenMutation.isPending,
   };
 }

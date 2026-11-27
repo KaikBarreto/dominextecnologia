@@ -14,6 +14,7 @@ import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
 import { localizeAppPath, resolveAppSlug } from '@/lib/i18n/appRouteSlugs';
 import { useNavigationPreference } from '@/hooks/useNavigationPreference';
+import { useUserPreferences } from '@/hooks/useUserPreferences';
 import { useNavThemePreference } from '@/hooks/useNavThemePreference';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useLogoInk } from '@/hooks/useLogoInk';
@@ -86,6 +87,7 @@ function DomiflixIntroGateFallback() {
  */
 export function AppLayout() {
   const { navigationStyle } = useNavigationPreference();
+  const { sidebarPinnedOpen } = useUserPreferences();
   // Menu escuro por padrão (Fase 2). Mantém `data-nav-theme` no <html> em sync
   // com a preferência do usuário (localStorage) enquanto o shell está montado.
   useNavThemePreference();
@@ -165,6 +167,7 @@ export function AppLayout() {
         isCompactViewport={isCompactViewport}
         useTopbar={useTopbar}
         isAdminUser={isAdminUser}
+        sidebarPinnedOpen={sidebarPinnedOpen}
         ownerKey={`${user?.id ?? 'anonymous'}:${profile?.company_id ?? 'no-company'}`}
       />
     </>
@@ -244,8 +247,8 @@ function DesktopSidebarHeader() {
 }
 
 // O conteúdo permanece montado ao alternar tamanho de tela ou estilo de menu.
-function ResponsiveAppShell({ isCompactViewport, useTopbar, isAdminUser, ownerKey }: {
-  isCompactViewport: boolean; useTopbar: boolean; isAdminUser: boolean; ownerKey: string;
+function ResponsiveAppShell({ isCompactViewport, useTopbar, isAdminUser, sidebarPinnedOpen, ownerKey }: {
+  isCompactViewport: boolean; useTopbar: boolean; isAdminUser: boolean; sidebarPinnedOpen: boolean; ownerKey: string;
 }) {
   const location = useLocation();
   const { locale } = useAppLocaleContext();
@@ -264,6 +267,7 @@ function ResponsiveAppShell({ isCompactViewport, useTopbar, isAdminUser, ownerKe
     : localizeAppPath('/dashboard', locale);
   return <AppViewport
     mode={mode}
+    sidebarPinnedOpen={sidebarPinnedOpen}
     sidebar={<Sidebar />}
     header={isCompactViewport ? <MobileTabletHeader isAdminUser={isAdminUser} scrolled={scrolled} /> : useTopbar ? <TopNavbar /> : <DesktopSidebarHeader />}
     subscriptionNotice={<SubscriptionRenewalBanner />}

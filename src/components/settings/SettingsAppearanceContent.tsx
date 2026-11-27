@@ -2,17 +2,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Switch } from '@/components/ui/switch';
 import { PanelLeft, PanelTop, Sun, Moon, Palette, MoonStar, Contrast } from 'lucide-react';
 import { useNavigationPreference, NavigationStyle } from '@/hooks/useNavigationPreference';
 import { useNavThemePreference, NavTheme } from '@/hooks/useNavThemePreference';
 import { useState } from 'react';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
 import { MESSAGES } from '@/lib/i18n';
+import { useUserPreferences } from '@/hooks/useUserPreferences';
 
 export function SettingsAppearanceContent() {
   const { locale } = useAppLocaleContext();
   const t = MESSAGES[locale].app.settings.appearance;
   const { navigationStyle, setNavigationStyle } = useNavigationPreference();
+  const {
+    sidebarPinnedOpen,
+    setSidebarPinnedOpen,
+    isUpdatingSidebarPinnedOpen,
+  } = useUserPreferences();
   const { navTheme, setNavTheme } = useNavThemePreference();
   const [darkMode, setDarkMode] = useState(() => document.documentElement.classList.contains('dark'));
 
@@ -93,6 +100,26 @@ export function SettingsAppearanceContent() {
             </div>
           </Label>
         </RadioGroup>
+
+        <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-4">
+          <div className="space-y-1">
+            <Label htmlFor="sidebar-pinned-open" className="text-sm font-medium">
+              {t.navigationStyle.pinnedLabel}
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              {navigationStyle === 'sidebar'
+                ? t.navigationStyle.pinnedDescription
+                : t.navigationStyle.pinnedUnavailable}
+            </p>
+          </div>
+          <Switch
+            id="sidebar-pinned-open"
+            checked={sidebarPinnedOpen}
+            onCheckedChange={setSidebarPinnedOpen}
+            disabled={navigationStyle !== 'sidebar' || isUpdatingSidebarPinnedOpen}
+            aria-label={t.navigationStyle.pinnedLabel}
+          />
+        </div>
 
         <Separator className="my-6" />
 

@@ -360,6 +360,9 @@ export const settings = {
         sidebarDescription: 'Sidebar tradicional à esquerda',
         topbar: 'Menu Superior',
         topbarDescription: 'Barra horizontal no topo',
+        pinnedLabel: 'Manter menu lateral sempre aberto',
+        pinnedDescription: 'Fixa o menu expandido neste e nos outros aparelhos em que você entrar.',
+        pinnedUnavailable: 'Escolha Menu Lateral para ativar esta opção.',
       },
       theme: {
         sectionTitle: 'Tema do Sistema',
@@ -2126,6 +2129,9 @@ export const settings = {
         sidebarDescription: 'Traditional left-side sidebar',
         topbar: 'Top Bar',
         topbarDescription: 'Horizontal bar at the top',
+        pinnedLabel: 'Keep sidebar always open',
+        pinnedDescription: 'Keeps the menu expanded on this and other devices where you sign in.',
+        pinnedUnavailable: 'Choose Sidebar to enable this option.',
       },
       theme: {
         sectionTitle: 'System Theme',
@@ -3835,6 +3841,9 @@ export const settings = {
         sidebarDescription: 'Barra lateral tradicional a la izquierda',
         topbar: 'Menú superior',
         topbarDescription: 'Barra horizontal en la parte superior',
+        pinnedLabel: 'Mantener el menú lateral siempre abierto',
+        pinnedDescription: 'Mantiene el menú expandido en este y otros dispositivos donde inicies sesión.',
+        pinnedUnavailable: 'Elige Menú lateral para activar esta opción.',
       },
       theme: {
         sectionTitle: 'Tema del Sistema',
@@ -5544,6 +5553,9 @@ export const settings = {
         sidebarDescription: 'Barre latérale traditionnelle à gauche',
         topbar: 'Barre supérieure',
         topbarDescription: 'Barre horizontale en haut',
+        pinnedLabel: 'Garder le menu latéral toujours ouvert',
+        pinnedDescription: 'Maintient le menu ouvert sur cet appareil et les autres où vous vous connectez.',
+        pinnedUnavailable: 'Choisissez Menu latéral pour activer cette option.',
       },
       theme: {
         sectionTitle: 'Thème du système',

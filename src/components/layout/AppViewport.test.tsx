@@ -29,9 +29,10 @@ function SidebarControl() {
   const sidebar = useSidebar();
   return <button onClick={() => sidebar.setOpen(false)}>Forçar recolhimento</button>;
 }
-function Tree({ mode, owner = 'user-1:company-1' }: { mode: AppViewportMode; owner?: string }) {
+function Tree({ mode, owner = 'user-1:company-1', sidebarPinnedOpen = false }: { mode: AppViewportMode; owner?: string; sidebarPinnedOpen?: boolean }) {
   return <MemoryRouter initialEntries={['/clientes']}><AppViewport
     mode={mode}
+    sidebarPinnedOpen={sidebarPinnedOpen}
     sidebar={<SidebarState />}
     header={<header>{mode === 'compact' ? 'Cabeçalho móvel' : mode === 'topbar' ? 'Menu superior' : 'Cabeçalho desktop'}<SidebarControl /></header>}
     subscriptionNotice={<p>Vigência da assinatura</p>}
@@ -105,7 +106,7 @@ describe('AppViewport — conteúdo estável na mudança de apresentação', () 
     const desktop = new KeyboardEvent('keydown', { key: 'b', ctrlKey: true, cancelable: true });
     act(() => window.dispatchEvent(desktop));
     expect(desktop.defaultPrevented).toBe(true);
-    expect(screen.getByText('Menu recolhido')).toBeInTheDocument();
+    expect(screen.getByText('Menu expandido')).toBeInTheDocument();
     for (const mode of ['compact', 'topbar'] as const) {
       state.compact = mode === 'compact'; rerender(<Tree mode={mode} />);
       const event = new KeyboardEvent('keydown', { key: 'b', ctrlKey: true, cancelable: true });
@@ -113,20 +114,20 @@ describe('AppViewport — conteúdo estável na mudança de apresentação', () 
       expect(event.defaultPrevented).toBe(false);
     }
     state.compact = false; rerender(<Tree mode="sidebar" />);
-    expect(screen.getByText('Menu recolhido')).toBeInTheDocument();
+    expect(screen.getByText('Menu expandido')).toBeInTheDocument();
   });
 
-  it('ignora alterações e persistência do menu desktop disparadas enquanto outro shell está visível', () => {
-    document.cookie = 'sidebar:state=true';
+  it('mantém recolhido por padrão e só aplica a fixação no shell lateral', () => {
     const { rerender } = render(<Tree mode="sidebar" />);
+    expect(screen.getByText('Menu recolhido')).toBeInTheDocument();
+    rerender(<Tree mode="sidebar" sidebarPinnedOpen />);
+    expect(screen.getByText('Menu expandido')).toBeInTheDocument();
     state.compact = true; rerender(<Tree mode="compact" />);
     fireEvent.click(screen.getByRole('button', { name: 'Forçar recolhimento' }));
-    expect(document.cookie).toContain('sidebar:state=true');
     state.compact = false; rerender(<Tree mode="topbar" />);
     fireEvent.click(screen.getByRole('button', { name: 'Forçar recolhimento' }));
-    expect(document.cookie).toContain('sidebar:state=true');
     rerender(<Tree mode="sidebar" />);
-    expect(screen.getByText('Menu expandido')).toBeInTheDocument();
+    expect(screen.getByText('Menu recolhido')).toBeInTheDocument();
   });
 
   it('não cria containing block por transform no desktop', () => {

@@ -18157,6 +18157,7 @@ export type Database = {
           schedule_entry_type_filter: string[]
           schedule_view_mode_desktop: string
           schedule_view_mode_mobile: string
+          sidebar_pinned_open: boolean
           updated_at: string
           user_id: string
         }
@@ -18166,6 +18167,7 @@ export type Database = {
           schedule_entry_type_filter?: string[]
           schedule_view_mode_desktop?: string
           schedule_view_mode_mobile?: string
+          sidebar_pinned_open?: boolean
           updated_at?: string
           user_id: string
         }
@@ -18175,6 +18177,7 @@ export type Database = {
           schedule_entry_type_filter?: string[]
           schedule_view_mode_desktop?: string
           schedule_view_mode_mobile?: string
+          sidebar_pinned_open?: boolean
           updated_at?: string
           user_id?: string
         }

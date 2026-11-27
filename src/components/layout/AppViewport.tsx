@@ -7,8 +7,9 @@ export type AppViewportMode = 'sidebar' | 'topbar' | 'compact';
 const ignoreSidebarChange = () => {};
 
 /** Navegação pode mudar; o caminho React do conteúdo permanece o mesmo. */
-export function AppViewport({ mode, sidebar, header, subscriptionNotice, notices, desktopFooter, mobileFooter, bottomNavigation, onRefresh, onScroll, scrollResetKey, children }: {
+export function AppViewport({ mode, sidebarPinnedOpen, sidebar, header, subscriptionNotice, notices, desktopFooter, mobileFooter, bottomNavigation, onRefresh, onScroll, scrollResetKey, children }: {
   mode: AppViewportMode;
+  sidebarPinnedOpen: boolean;
   sidebar: ReactNode;
   header: ReactNode;
   subscriptionNotice?: ReactNode;
@@ -41,7 +42,7 @@ export function AppViewport({ mode, sidebar, header, subscriptionNotice, notices
     open={showSidebar ? undefined : true}
     onOpenChange={showSidebar ? undefined : ignoreSidebarChange}
     keyboardShortcutEnabled={showSidebar}
-    persistOpenState={showSidebar}
+    pinnedOpen={showSidebar && sidebarPinnedOpen}
     className="h-[100dvh] min-h-0"
   >
     <div data-app-layout-mode={mode} className="flex h-[100dvh] w-full min-w-0 max-w-full">

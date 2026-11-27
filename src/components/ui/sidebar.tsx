@@ -12,8 +12,6 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-const SIDEBAR_COOKIE_NAME = "sidebar:state";
-const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 const SIDEBAR_WIDTH = "16rem";
 const SIDEBAR_WIDTH_MOBILE = "18rem";
 const SIDEBAR_WIDTH_ICON = "4rem";
@@ -22,7 +20,12 @@ const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 type SidebarContext = {
   state: "expanded" | "collapsed";
   open: boolean;
-  setOpen: (open: boolean) => void;
+  transientOpen: boolean;
+  pinnedOpen: boolean;
+  setOpen: (
+    value: boolean | ((value: boolean) => boolean),
+    options?: { transient?: boolean },
+  ) => void;
   openMobile: boolean;
   setOpenMobile: (open: boolean) => void;
   isMobile: boolean;
@@ -55,30 +58,44 @@ const SidebarProvider = React.forwardRef<
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
     keyboardShortcutEnabled?: boolean;
-    persistOpenState?: boolean;
+    pinnedOpen?: boolean;
   }
->(({ defaultOpen = true, open: openProp, onOpenChange: setOpenProp, keyboardShortcutEnabled = true, persistOpenState = true, className, style, children, ...props }, ref) => {
+>(({ defaultOpen = false, open: openProp, onOpenChange: setOpenProp, keyboardShortcutEnabled = true, pinnedOpen = false, className, style, children, ...props }, ref) => {
   const isMobile = useIsMobile();
   const [openMobile, setOpenMobile] = React.useState(false);
+  const [transientOpen, setTransientOpen] = React.useState(false);
+  const wasPinnedOpen = React.useRef(pinnedOpen);
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
   const [_open, _setOpen] = React.useState(defaultOpen);
-  const open = openProp ?? _open;
+  const requestedOpen = openProp ?? _open;
+  const open = pinnedOpen || requestedOpen;
   const setOpen = React.useCallback(
-    (value: boolean | ((value: boolean) => boolean)) => {
+    (value: boolean | ((value: boolean) => boolean), options?: { transient?: boolean }) => {
       const openState = typeof value === "function" ? value(open) : value;
+
+      if (pinnedOpen && !isMobile && !openState) return;
+
+      setTransientOpen(Boolean(options?.transient && openState));
       if (setOpenProp) {
         setOpenProp(openState);
       } else {
         _setOpen(openState);
       }
-
-      // This sets the cookie to keep the sidebar state.
-      if (persistOpenState) document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
     },
-    [setOpenProp, open, persistOpenState],
+    [isMobile, open, pinnedOpen, setOpenProp],
   );
+
+  React.useEffect(() => {
+    if (pinnedOpen) setTransientOpen(false);
+    if (wasPinnedOpen.current && !pinnedOpen) {
+      setTransientOpen(false);
+      if (setOpenProp) setOpenProp(defaultOpen);
+      else _setOpen(defaultOpen);
+    }
+    wasPinnedOpen.current = pinnedOpen;
+  }, [defaultOpen, pinnedOpen, setOpenProp]);
 
   // Helper to toggle the sidebar.
   const toggleSidebar = React.useCallback(() => {
@@ -107,13 +124,15 @@ const SidebarProvider = React.forwardRef<
     () => ({
       state,
       open,
+      transientOpen,
+      pinnedOpen,
       setOpen,
       isMobile,
       openMobile,
       setOpenMobile,
       toggleSidebar,
     }),
-    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar],
+    [state, open, transientOpen, pinnedOpen, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar],
   );
 
   return (
@@ -147,7 +166,7 @@ const Sidebar = React.forwardRef<
     collapsible?: "offcanvas" | "icon" | "none";
   }
 >(({ side = "left", variant = "sidebar", collapsible = "offcanvas", className, children, ...props }, ref) => {
-  const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
+  const { isMobile, state, transientOpen, openMobile, setOpenMobile } = useSidebar();
 
   if (collapsible === "none") {
     return (
@@ -187,13 +206,15 @@ const Sidebar = React.forwardRef<
       className="group peer hidden text-sidebar-foreground lg:block"
       data-state={state}
       data-collapsible={state === "collapsed" ? collapsible : ""}
+      data-transient-open={transientOpen ? "true" : "false"}
       data-variant={variant}
       data-side={side}
     >
       {/* This is what handles the sidebar gap on desktop */}
       <div
         className={cn(
-          "relative h-svh w-[--sidebar-width] bg-transparent transition-[width] duration-500 ease-out",
+          "relative h-svh w-[--sidebar-width] bg-transparent transition-[width] duration-300 ease-out motion-reduce:transition-none",
+          "group-data-[transient-open=true]:w-[--sidebar-width-icon]",
           "group-data-[collapsible=offcanvas]:w-0",
           "group-data-[side=right]:rotate-180",
           variant === "floating" || variant === "inset"
@@ -203,7 +224,8 @@ const Sidebar = React.forwardRef<
       />
       <div
         className={cn(
-          "fixed inset-y-0 z-10 hidden h-svh w-[--sidebar-width] transition-[left,right,width] duration-500 ease-out lg:flex",
+          "fixed inset-y-0 z-30 hidden h-svh w-[--sidebar-width] transition-[left,right,width] duration-300 ease-out motion-reduce:transition-none lg:flex",
+          "group-data-[transient-open=true]:shadow-[10px_0_24px_-14px_rgba(15,23,42,0.55)] group-data-[side=right]:group-data-[transient-open=true]:shadow-[-10px_0_24px_-14px_rgba(15,23,42,0.55)]",
           side === "left"
             ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
             : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",

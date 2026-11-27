@@ -25,7 +25,7 @@ function Form() {
 }
 function Tree({ mode, owner = 'user-1:company-1' }: { mode: AppViewportMode; owner?: string }) {
   return <MemoryRouter initialEntries={['/pdv/orcamentos']}><SwipeBackProvider><AppViewport
-    mode={mode} sidebar={null} header={null} notices={null} desktopFooter={null} mobileFooter={null}
+    mode={mode} sidebarPinnedOpen={false} sidebar={null} header={null} notices={null} desktopFooter={null} mobileFooter={null}
     bottomNavigation={null} onRefresh={() => {}} scrollResetKey={owner}
   ><AppRouteTransition ownerKey={owner}><Form /></AppRouteTransition></AppViewport></SwipeBackProvider></MemoryRouter>;
 }

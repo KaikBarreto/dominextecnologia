@@ -17,14 +17,9 @@ import { SidebarMenuContent } from './SidebarMenuContent';
  * - Não engatilha em mobile (sheet é separado, ver `MobileSidebar`).
  */
 export const Sidebar = memo(() => {
-  const { open, setOpen, isMobile } = useSidebar();
+  const { open, pinnedOpen, setOpen, isMobile } = useSidebar();
   const isHoverOpenRef = useRef(false);
-  const persistedOpenRef = useRef(open);
   const hoverLeaveTimerRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (!isHoverOpenRef.current) persistedOpenRef.current = open;
-  }, [open]);
 
   useEffect(() => {
     return () => {
@@ -33,23 +28,23 @@ export const Sidebar = memo(() => {
   }, []);
 
   const handleMouseEnter = useCallback(() => {
-    if (isMobile) return;
+    if (isMobile || pinnedOpen) return;
     if (hoverLeaveTimerRef.current) {
       window.clearTimeout(hoverLeaveTimerRef.current);
       hoverLeaveTimerRef.current = null;
     }
-    if (!persistedOpenRef.current && !open) {
+    if (!open) {
       isHoverOpenRef.current = true;
-      setOpen(true);
+      setOpen(true, { transient: true });
     }
-  }, [isMobile, open, setOpen]);
+  }, [isMobile, open, pinnedOpen, setOpen]);
 
   const handleMouseLeave = useCallback(() => {
     if (isMobile) return;
     if (!isHoverOpenRef.current) return;
     hoverLeaveTimerRef.current = window.setTimeout(() => {
       isHoverOpenRef.current = false;
-      setOpen(false);
+      setOpen(false, { transient: true });
     }, 500);
   }, [isMobile, setOpen]);
 
