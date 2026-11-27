@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.42.6',
+    date: '27 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Sidebar recolhida sem botão extra no cabeçalho',
+        category: 'melhoria',
+        description: 'A sidebar continua recolhida por padrão e abre temporariamente ao passar o mouse. Para mantê-la sempre aberta, ative a opção em Configurações → Aparência.',
+      },
+    ],
+  },
+  {
     version: '1.42.5',
     date: '27 de novembro de 2026',
     type: 'patch',

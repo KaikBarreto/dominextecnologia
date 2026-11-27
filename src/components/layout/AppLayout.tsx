@@ -3,7 +3,6 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useResolvedRouteTitle } from '@/hooks/usePageTitle';
 import { LogOut, ArrowLeft } from 'lucide-react';
-import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppLocaleContext } from '@/contexts/AppLocaleContext';
@@ -172,12 +171,12 @@ function LayoutSystemFooter({ mobile = false }: { mobile?: boolean }) {
  * **todo** desktop, espelhando o pattern do EcoSistema.
  *
  * Layout (altura ~64px):
- * - Esquerda: `SidebarTrigger` (colapsa/expande sidebar).
  * - Direita: `NotificationsBell` + Perfil + Sair (com tooltips). O dropdown
  *   completo de conta continua dentro do Sidebar; aqui só os atalhos rápidos.
+ * - A preferência persistente de manter a sidebar aberta fica exclusivamente
+ *   em Configurações → Aparência.
  */
 function DesktopSidebarHeader() {
-  const navigate = useNavigate();
   const { user, isAdminUser, signOut } = useAuth();
   const { settings } = useCompanySettings();
   const { locale } = useAppLocaleContext();
@@ -187,11 +186,7 @@ function DesktopSidebarHeader() {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-border bg-background px-4 shrink-0">
-        <div className="flex items-center gap-2 min-w-0">
-          <SidebarTrigger className="h-9 w-9" />
-        </div>
-
+      <header className="sticky top-0 z-20 flex h-16 items-center justify-end border-b border-border bg-background px-4 shrink-0">
         <div className="flex items-center gap-1 shrink-0">
           <HeaderClock />
           {/* Seletor de idioma pessoal — SÓ no header desktop (no mobile a troca
