@@ -2,9 +2,12 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PageRecoveryBoundary } from "./PageRecoveryBoundary";
+import { clearCachesAndReload } from "@/lib/pwa";
 
 vi.mock("@/lib/pwa", () => ({
   autoHealStaleBundleIfNeeded: vi.fn(() => false),
+  clearCachesAndReload: vi.fn(async () => undefined),
+  isStaleBundleError: (message: string) => /reading 'default'|dynamically imported module/.test(message),
 }));
 
 function RecoverableContent(): React.ReactNode {
@@ -91,5 +94,45 @@ describe("PageRecoveryBoundary", () => {
     await vi.advanceTimersByTimeAsync(1_800);
     fireEvent.click(screen.getByRole("button", { name: "Ir para o início" }));
     expect(screen.getByText("Início carregado")).toBeInTheDocument();
+  });
+
+  it("bundle antigo: 'Tentar novamente' atualiza o aplicativo em vez de só redesenhar", async () => {
+    // React.lazy guarda para sempre o resultado de um chunk que não veio;
+    // redesenhar a mesma tela repete o mesmo erro. Só buscar a versão nova resolve.
+    function StaleBundleContent(): React.ReactNode {
+      throw new TypeError("Cannot read properties of undefined (reading 'default')");
+    }
+
+    render(
+      <MemoryRouter initialEntries={["/orcamentos"]}>
+        <PageRecoveryBoundary homePath="/dashboard" resetKey="/orcamentos">
+          <StaleBundleContent />
+        </PageRecoveryBoundary>
+      </MemoryRouter>,
+    );
+
+    await vi.advanceTimersByTimeAsync(300);
+    await vi.advanceTimersByTimeAsync(900);
+    await vi.advanceTimersByTimeAsync(1_800);
+    expect(clearCachesAndReload).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
+    expect(clearCachesAndReload).toHaveBeenCalledTimes(1);
+  });
+
+  it("erro comum: 'Tentar novamente' continua só redesenhando a tela", async () => {
+    render(
+      <MemoryRouter initialEntries={["/agenda"]}>
+        <PageRecoveryBoundary homePath="/dashboard" resetKey="/agenda">
+          <RecoverableContent />
+        </PageRecoveryBoundary>
+      </MemoryRouter>,
+    );
+
+    await vi.advanceTimersByTimeAsync(300);
+    await vi.advanceTimersByTimeAsync(900);
+    await vi.advanceTimersByTimeAsync(1_800);
+    fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
+    expect(clearCachesAndReload).not.toHaveBeenCalled();
   });
 });

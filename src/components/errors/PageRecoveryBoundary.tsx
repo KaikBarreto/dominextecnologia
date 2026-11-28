@@ -2,7 +2,11 @@ import React from "react";
 import { House, RefreshCw, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { autoHealStaleBundleIfNeeded } from "@/lib/pwa";
+import {
+  autoHealStaleBundleIfNeeded,
+  clearCachesAndReload,
+  isStaleBundleError,
+} from "@/lib/pwa";
 import { getSanitizedErrorDiagnostic } from "@/utils/errorMessages";
 
 interface PageRecoveryBoundaryProps {
@@ -15,6 +19,7 @@ interface PageRecoveryBoundaryState {
   error: Error | null;
   resetKey: string;
   automaticRetries: number;
+  refreshingApp: boolean;
 }
 
 // Backoff curto o bastante para não segurar um erro real por muito tempo, mas
@@ -30,6 +35,7 @@ class PageRecoveryBoundaryCore extends React.Component<
     error: null,
     resetKey: this.props.resetKey,
     automaticRetries: 0,
+    refreshingApp: false,
   };
 
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
@@ -43,7 +49,7 @@ class PageRecoveryBoundaryCore extends React.Component<
     state: PageRecoveryBoundaryState,
   ): Partial<PageRecoveryBoundaryState> | null {
     if (props.resetKey === state.resetKey) return null;
-    return { error: null, resetKey: props.resetKey, automaticRetries: 0 };
+    return { error: null, resetKey: props.resetKey, automaticRetries: 0, refreshingApp: false };
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
@@ -76,10 +82,26 @@ class PageRecoveryBoundaryCore extends React.Component<
   }
 
   componentWillUnmount() {
+    this.unmounted = true;
     if (this.retryTimer) clearTimeout(this.retryTimer);
   }
 
+  private unmounted = false;
+
   private retry = () => {
+    // Bundle antigo após um deploy: o React.lazy guarda para sempre o chunk que
+    // não veio, então redesenhar repete o MESMO erro e o botão não fazia nada.
+    // Só buscar a versão nova resolve — mesma limpeza forte do ErrorBoundary
+    // raiz. Se o host não responder, a função desiste sem recarregar e o botão
+    // volta a ficar disponível.
+    if (this.state.error && isStaleBundleError(this.state.error.message)) {
+      if (this.state.refreshingApp) return;
+      this.setState({ refreshingApp: true });
+      void clearCachesAndReload().finally(() => {
+        if (!this.unmounted) this.setState({ refreshingApp: false });
+      });
+      return;
+    }
     this.setState({ error: null });
   };
 
@@ -121,8 +143,15 @@ class PageRecoveryBoundaryCore extends React.Component<
             volte ao início para seguir trabalhando.
           </p>
           <div className="mx-auto mt-6 flex max-w-sm flex-col gap-3 sm:flex-row sm:justify-center">
-            <Button className="min-h-11 flex-1 font-bold" onClick={this.retry}>
-              <RefreshCw aria-hidden="true" />
+            <Button
+              className="min-h-11 flex-1 font-bold"
+              onClick={this.retry}
+              disabled={this.state.refreshingApp}
+            >
+              <RefreshCw
+                aria-hidden="true"
+                className={this.state.refreshingApp ? "animate-spin" : undefined}
+              />
               Tentar novamente
             </Button>
             <Button

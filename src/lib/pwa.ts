@@ -30,10 +30,18 @@ let reloadingForUpdate = false;
 // Decisão CEO: reload SILENCIOSO-ADIADO — se há modal aberto, não recarrega
 // agora; espera o usuário fechar. Sem banner novo.
 //
-// Detecção de "modal aberto": Radix e vaul (drawer) marcam data-state="open" no
-// overlay/content enquanto abertos. Mesmo seletor usado no SwipeBackProvider.
+// Detecção de "modal aberto": o conteúdo de Dialog/AlertDialog do Radix e do
+// drawer (vaul) carrega role="dialog"/"alertdialog" + data-state="open".
+//
+// NÃO usar `[data-state="open"]` sozinho: o Radix põe esse mesmo atributo em
+// Collapsible e Accordion. Bastava um grupo do menu lateral expandido para a
+// recarga de atualização ficar adiada PARA SEMPRE — e, como reloadingForUpdate
+// já estava true, a recuperação de chunk e o auto-heal também se calavam. A
+// aba seguia no bundle antigo e toda tela ainda não visitada quebrava
+// (incidente KGIE, 2026-11-28, tela de Orçamentos).
 
-const MODAL_OPEN_SELECTOR = '[data-state="open"]';
+const MODAL_OPEN_SELECTOR =
+  '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]';
 // Enquanto um reload está adiado, verificamos periodicamente se o modal fechou
 // e se a rede voltou. Cinco segundos evita bombardear o host durante incidentes.
 const RELOAD_POLL_INTERVAL_MS = 5_000;
@@ -43,10 +51,12 @@ const RELOAD_PROBE_PARAM = "__dominex_reload_probe";
 let pendingReloadTimer: ReturnType<typeof setInterval> | null = null;
 let reloadProbeInFlight = false;
 
-function hasOpenModal(): boolean {
+export function hasBlockingModalOpen(): boolean {
   if (typeof document === "undefined") return false;
   return document.querySelector(MODAL_OPEN_SELECTOR) !== null;
 }
+
+const hasOpenModal = hasBlockingModalOpen;
 
 type FetchLike = (
   input: RequestInfo | URL,
@@ -353,10 +363,11 @@ export function setupChunkErrorRecovery() {
 // CHUNK_ERROR_RE existente MAIS essas assinaturas de render, e um auto-heal
 // que dispara clearCachesAndReload() (limpeza FORTE do CacheStorage + nova
 // verificação do SW). Como a limpeza é pesada, o teto é de 1
-// tentativa automática por sessão: se o deploy estiver GENUINAMENTE quebrado
-// (não é cliente velho), um segundo auto-heal só viraria loop de limpar+
-// recarregar pra TODO usuário. Após o teto, deixamos a tela de erro aparecer
-// com o botão manual (que sempre executa a limpeza forte no clique).
+// tentativa automática por janela de 5 min: se o deploy estiver GENUINAMENTE
+// quebrado (não é cliente velho), um segundo auto-heal em seguida só viraria
+// loop de limpar+recarregar pra TODO usuário. Após o teto, deixamos a tela de
+// erro aparecer com o botão manual, que executa a limpeza forte no clique —
+// tanto no ErrorBoundary raiz quanto no PageRecoveryBoundary de cada tela.
 
 // Assinaturas do erro de RENDER (React.lazy lendo `.default` de undefined) e de
 // falha de carregamento de chunk que NÃO são cobertas pelo CHUNK_ERROR_RE de
@@ -374,16 +385,24 @@ export function isStaleBundleError(message: string): boolean {
 }
 
 // Trava anti-loop dedicada ao auto-heal (chaves próprias, separadas do
-// chunk-reload de fetch). Máximo 1 tentativa automática por sessão porque o
+// chunk-reload de fetch). Máximo 1 tentativa automática por JANELA porque o
 // auto-heal é PESADO (clearCachesAndReload limpa todo o CacheStorage): num deploy
-// genuinamente quebrado, um segundo auto-heal viraria loop infinito de
-// limpar+recarregar. Reusa o mesmo intervalo mínimo do chunk-reload pra não
+// genuinamente quebrado, um segundo auto-heal em seguida viraria loop infinito
+// de limpar+recarregar. Reusa o mesmo intervalo mínimo do chunk-reload pra não
 // disparar dois em cima.
+//
+// A janela expira: o sessionStorage vive enquanto a aba vive (dias, e o Chrome
+// ainda o restaura ao reabrir), e saem vários deploys por dia. Com o contador
+// eterno, a aba só se curava sozinha UMA vez na vida; do segundo deploy em
+// diante o cliente ficava preso na tela de recuperação. Cinco minutos mantêm a
+// proteção contra loop (no pior caso, uma limpeza a cada 5 min) e devolvem a
+// auto-recuperação ao deploy seguinte.
 const STALE_HEAL_TS = "stale-heal-ts";
 const STALE_HEAL_COUNT = "stale-heal-count";
 const STALE_HEAL_MAX_ATTEMPTS = 1;
+const STALE_HEAL_RESET_AFTER_MS = 5 * 60_000;
 
-// Espelha shouldReloadForChunkError, mas com teto de 1 e chaves próprias.
+// Espelha shouldReloadForChunkError, mas com teto de 1 por janela e chaves próprias.
 // Recebe now/storage por injeção pra ser testável sem disparar reload.
 // Quando retorna true, JÁ persistiu timestamp/contador.
 export function shouldAutoHealStaleBundle(
@@ -391,13 +410,15 @@ export function shouldAutoHealStaleBundle(
   now: number,
 ): boolean {
   const last = Number(storage.getItem(STALE_HEAL_TS) || 0);
-  const count = Number(storage.getItem(STALE_HEAL_COUNT) || 0);
+  const storedCount = Number(storage.getItem(STALE_HEAL_COUNT) || 0);
+  // Tentativa antiga não conta mais: é outro deploy, não o mesmo ciclo de falha.
+  const count = now - last >= STALE_HEAL_RESET_AFTER_MS ? 0 : storedCount;
 
   // Acabou de limpar+recarregar: não dispara um segundo em cima.
   if (now - last < CHUNK_RELOAD_MIN_INTERVAL_MS) return false;
 
-  // Já gastou a única tentativa desta sessão → desiste (deixa a tela de erro
-  // com o botão manual). Evita loop num deploy realmente quebrado.
+  // Já gastou a tentativa desta janela → desiste (deixa a tela de erro com o
+  // botão manual). Evita loop num deploy realmente quebrado.
   if (count >= STALE_HEAL_MAX_ATTEMPTS) return false;
 
   storage.setItem(STALE_HEAL_TS, String(now));

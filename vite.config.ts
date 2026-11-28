@@ -4,6 +4,7 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 import { APP_VERSION } from "./src/config/version";
+import { buildAssetCacheGuard } from "./src/lib/pwaAssetCacheGuard";
 
 // https://vitejs.dev/config/
 // Páginas estáticas servidas fora da SPA: cada uma é um public/<pasta>/index.html
@@ -109,6 +110,9 @@ export default defineConfig(({ mode }) => ({
                 maxEntries: 300,
                 maxAgeSeconds: 60 * 60 * 24 * 30,
               },
+              // O host devolve o index.html (200) para chunk que já saiu do ar.
+              // Sem este guarda, o HTML ficava salvo como se fosse o chunk.
+              plugins: [buildAssetCacheGuard],
             },
           },
           // Arquivos públicos não têm hash. StaleWhileRevalidate acelera o uso

@@ -5,6 +5,7 @@ import {
   resetChunkErrorGuard,
   isStaleBundleError,
   shouldAutoHealStaleBundle,
+  hasBlockingModalOpen,
 } from "@/lib/pwa";
 
 describe("canReachAppShell (proteção antes do reload)", () => {
@@ -237,5 +238,52 @@ describe("shouldAutoHealStaleBundle (teto de 1 tentativa por sessão)", () => {
   it("NÃO dispara um 2º dentro de 10s (evita heal duplo em cima)", () => {
     expect(shouldAutoHealStaleBundle(storage, 1_000_000)).toBe(true);
     expect(shouldAutoHealStaleBundle(storage, 1_005_000)).toBe(false);
+  });
+
+  it("volta a liberar depois de 5 min: aba aberta há dias não fica sem auto-heal", () => {
+    expect(shouldAutoHealStaleBundle(storage, 1_000_000)).toBe(true);
+    // Mesma aba, outro deploy mais tarde. Antes o contador nunca zerava e o
+    // cliente ficava preso na tela de recuperação a partir do 2º deploy.
+    expect(shouldAutoHealStaleBundle(storage, 1_000_000 + 5 * 60_000)).toBe(true);
+    expect(storage.data.get("stale-heal-count")).toBe("1");
+    // E a trava anti-loop continua valendo logo em seguida.
+    expect(shouldAutoHealStaleBundle(storage, 1_000_000 + 5 * 60_000 + 30_000)).toBe(false);
+  });
+});
+
+describe("hasBlockingModalOpen (o que adia a recarga de atualização)", () => {
+  const mount = (html: string) => {
+    const host = document.createElement("div");
+    host.innerHTML = html;
+    document.body.appendChild(host);
+    return () => host.remove();
+  };
+
+  it("NÃO trata grupo expandido da sidebar, accordion ou aba como modal", () => {
+    const unmount = mount(`
+      <div data-state="open"><button data-state="open" aria-expanded="true">CRM e Projetos</button>
+        <div data-state="open">Orçamentos</div></div>
+      <div role="tabpanel" data-state="active">Aba</div>`);
+    // Era o que deixava a atualização adiada para sempre: bastava um grupo do
+    // menu lateral aberto para o app achar que havia um formulário em uso.
+    expect(hasBlockingModalOpen()).toBe(false);
+    unmount();
+  });
+
+  it("adia com diálogo, alerta ou drawer realmente aberto", () => {
+    for (const html of [
+      '<div role="dialog" data-state="open">Nova OS</div>',
+      '<div role="alertdialog" data-state="open">Excluir?</div>',
+    ]) {
+      const unmount = mount(html);
+      expect(hasBlockingModalOpen()).toBe(true);
+      unmount();
+    }
+  });
+
+  it("não adia com diálogo já fechado", () => {
+    const unmount = mount('<div role="dialog" data-state="closed">Nova OS</div>');
+    expect(hasBlockingModalOpen()).toBe(false);
+    unmount();
   });
 });

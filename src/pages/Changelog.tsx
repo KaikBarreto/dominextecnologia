@@ -31,6 +31,18 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.42.8',
+    date: '28 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Telas voltam a abrir depois de uma atualização do sistema',
+        category: 'correcao',
+        description: 'Quando saía uma atualização, algumas telas podiam ficar presas no aviso "Vamos retomar daqui" até a página ser recarregada à mão. Agora o sistema se atualiza sozinho e o botão "Tentar novamente" abre a tela de verdade.',
+      },
+    ],
+  },
+  {
     version: '1.42.7',
     date: '28 de novembro de 2026',
     type: 'patch',
