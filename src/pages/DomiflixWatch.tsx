@@ -985,6 +985,11 @@ export function NetflixPlayer({
   const [showHud, setShowHud] = useState(true);
   const [hudLocked, setHudLocked] = useState(false);
   const [seeking, setSeeking] = useState(false);
+  // Ponto mais avançado já assistido. No modo travado (aula inicial) dá para
+  // voltar e rever, mas não para avançar além do que já foi visto.
+  const maxWatchedRef = useRef(startSeconds);
+  const startSecondsRef = useRef(startSeconds);
+  startSecondsRef.current = startSeconds;
   const [activeSubtitleId, setActiveSubtitleId] = useState<string | null | undefined>(undefined);
   const [showSubtitleMenu, setShowSubtitleMenu] = useState(false);
   const [subtitlePreferences, setSubtitlePreferences] = useState(loadSubtitlePreferences);
@@ -1026,6 +1031,7 @@ export function NetflixPlayer({
     setCurrentTime(0);
     setDuration(0);
     setSeeking(false);
+    maxWatchedRef.current = startSecondsRef.current;
     setYtBlocked(false);
     playStartedRef.current = false;
   }, [videoId]);
@@ -1152,7 +1158,8 @@ export function NetflixPlayer({
   }, [isYouTube]);
 
   const seekTo = useCallback(
-    (t: number) => {
+    (requested: number) => {
+      const t = locked ? Math.min(requested, maxWatchedRef.current) : requested;
       if (isYouTube) {
         ytPlayerRef.current?.seekTo(t, true);
       } else if (videoElRef.current) {
@@ -1160,7 +1167,7 @@ export function NetflixPlayer({
       }
       setCurrentTime(t);
     },
-    [isYouTube]
+    [isYouTube, locked]
   );
 
   const skip = useCallback(
@@ -1257,7 +1264,7 @@ export function NetflixPlayer({
           break;
         case "ArrowLeft":
           e.preventDefault();
-          if (!locked) skip(-10);
+          skip(-10);
           break;
         case "ArrowRight":
           e.preventDefault();
@@ -1430,6 +1437,7 @@ export function NetflixPlayer({
         }
         if (!seeking) setCurrentTime(t);
         if (d > 0) setDuration(d);
+        if (t > maxWatchedRef.current) maxWatchedRef.current = t;
         onProgressRef.current?.(t, d);
       } catch {
         // ignore
@@ -1976,7 +1984,7 @@ export function NetflixPlayer({
         <div className="px-4 md:px-10 relative">
           <div className="flex items-center gap-3">
             <div
-              className={cn("group relative flex-1 h-[6px] bg-white/25 rounded-full transition-all", locked ? "cursor-default" : "cursor-pointer hover:h-[8px]")}
+              className="group relative flex-1 h-[6px] bg-white/25 rounded-full transition-all cursor-pointer hover:h-[8px]"
               onMouseMove={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
                 const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
@@ -1985,7 +1993,6 @@ export function NetflixPlayer({
               }}
               onMouseLeave={() => setHoverPct(null)}
               onMouseDown={(e) => {
-                if (locked) return;
                 setSeeking(true);
                 const rect = e.currentTarget.getBoundingClientRect();
                 const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
@@ -2069,12 +2076,13 @@ export function NetflixPlayer({
               )}
             </button>
 
-            {!locked && <button
+            <button
               onClick={() => skip(-10)}
+              aria-label="Voltar 10 segundos"
               className="text-white hover:scale-110 transition-transform p-1 hidden sm:block"
             >
               <SkipBack10Icon className="w-7 h-7 md:w-8 md:h-8" />
-            </button>}
+            </button>
 
             {!locked && <button
               onClick={() => skip(10)}
@@ -2317,14 +2325,14 @@ export function NetflixPlayer({
       {/* ── Mobile center cluster: skip-back / play-pause / skip-forward ── */}
       {ready && showHud && !showEpisodes && (
         <div className="player-controls md:hidden absolute inset-0 z-20 flex items-center justify-center gap-10 pointer-events-none">
-          {!locked && <button
+          <button
             onPointerDown={(e) => { e.stopPropagation(); }}
             onClick={(e) => { e.stopPropagation(); skip(-10); }}
             className="pointer-events-auto text-white p-3 -m-1"
             aria-label="Voltar 10 segundos"
           >
             <SkipBack10Icon className="w-10 h-10" />
-          </button>}
+          </button>
           <button
             onPointerDown={(e) => { e.stopPropagation(); }}
             onClick={(e) => { e.stopPropagation(); togglePlay(); }}
@@ -2337,7 +2345,9 @@ export function NetflixPlayer({
               <PlayIcon className="w-12 h-12 ml-1" />
             )}
           </button>
-          {!locked && <button
+          {locked ? (
+            <span aria-hidden="true" className="p-3 -m-1"><span className="block w-10 h-10" /></span>
+          ) : <button
             onPointerDown={(e) => { e.stopPropagation(); }}
             onClick={(e) => { e.stopPropagation(); skip(10); }}
             className="pointer-events-auto text-white p-3 -m-1"

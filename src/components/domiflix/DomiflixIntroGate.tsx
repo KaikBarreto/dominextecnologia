@@ -21,18 +21,22 @@ import {
 } from "@/contexts/OverlayCoordinatorContext";
 import { useAuth } from "@/contexts/AuthContext";
 
-function getSavedTrialProgress(key: string | null) {
-  if (!key || typeof window === "undefined") return 0;
-  const saved = window.localStorage.getItem(key);
-  if (!saved || saved === "1") return 0;
-  try {
-    const parsed = JSON.parse(saved) as { progressSeconds?: number };
-    return Number.isFinite(parsed.progressSeconds)
-      ? Math.max(0, parsed.progressSeconds ?? 0)
-      : 0;
-  } catch {
-    return 0;
-  }
+function getSavedIntroProgress(keys: Array<string | null>) {
+  if (typeof window === "undefined") return 0;
+
+  return keys.reduce((highestProgress, key) => {
+    if (!key) return highestProgress;
+    const saved = window.localStorage.getItem(key);
+    if (!saved || saved === "1") return highestProgress;
+    try {
+      const parsed = JSON.parse(saved) as { progressSeconds?: number };
+      return Number.isFinite(parsed.progressSeconds)
+        ? Math.max(highestProgress, parsed.progressSeconds ?? 0)
+        : highestProgress;
+    } catch {
+      return highestProgress;
+    }
+  }, 0);
 }
 
 export function DomiflixIntroGate() {
@@ -56,26 +60,33 @@ export function DomiflixIntroGate() {
   const dialogRef = useRef<HTMLDivElement>(null);
   const [videoCompleted, setVideoCompleted] = useState(false);
   const [understood, setUnderstood] = useState(false);
-  const [skippedTrialKey, setSkippedTrialKey] = useState<string | null>(null);
+  const [skippedIntroKey, setSkippedIntroKey] = useState<string | null>(null);
   const usePortraitVideo = isMobile && Boolean(media?.mobile_video_id);
-  const isTrial = status?.user.accountStage === "trial";
   const hasCompletedVideo = videoCompleted || Boolean(lesson?.completed);
-  const trialSkipKey =
+  const introSkipKey =
+    user?.id && lesson?.episodeId
+      ? `domiflix:intro-skipped:${user.id}:${lesson.episodeId}`
+      : null;
+  const legacyTrialSkipKey =
     user?.id && lesson?.episodeId
       ? `domiflix:intro-trial-skipped:${user.id}:${lesson.episodeId}`
       : null;
-  const savedTrialProgress = getSavedTrialProgress(trialSkipKey);
-  const trialSkipped = Boolean(
-    isTrial &&
-    trialSkipKey &&
-    (skippedTrialKey === trialSkipKey ||
+  const savedIntroProgress = getSavedIntroProgress([
+    introSkipKey,
+    legacyTrialSkipKey,
+  ]);
+  const introSkipped = Boolean(
+    introSkipKey &&
+    (skippedIntroKey === introSkipKey ||
       (typeof window !== "undefined" &&
-        window.localStorage.getItem(trialSkipKey) !== null)),
+        (window.localStorage.getItem(introSkipKey) !== null ||
+          (legacyTrialSkipKey &&
+            window.localStorage.getItem(legacyTrialSkipKey) !== null)))),
   );
   const gateOpen =
     isLoading ||
     isError ||
-    (Boolean(status?.introGate.required) && !trialSkipped);
+    (Boolean(status?.introGate.required) && !introSkipped);
   const canRender = useOverlaySlot(gateOpen, {
     id: "domiflix-intro-gate",
     priority: OVERLAY_PRIORITY.critical,
@@ -147,7 +158,9 @@ export function DomiflixIntroGate() {
     if (!lesson || !hasCompletedVideo || !understood) return;
     try {
       await acknowledge.mutateAsync(lesson.episodeId);
-      if (trialSkipKey) window.localStorage.removeItem(trialSkipKey);
+      if (introSkipKey) window.localStorage.removeItem(introSkipKey);
+      if (legacyTrialSkipKey)
+        window.localStorage.removeItem(legacyTrialSkipKey);
       const refreshed = await refetch();
       if (refreshed.data)
         navigate(getDomiflixContinueUrl(refreshed.data), { replace: true });
@@ -155,16 +168,17 @@ export function DomiflixIntroGate() {
       toast.error("Não foi possível salvar sua confirmação. Tente novamente.");
     }
   }
-  async function skipDuringTrial() {
-    if (!isTrial || !lesson || !trialSkipKey) return;
+  async function skipIntro() {
+    if (!lesson || !introSkipKey) return;
     const { current, total } = progressRef.current;
     const progressSeconds = Math.max(current, lesson.progressSeconds);
     const durationSeconds = Math.max(total, lesson.durationSeconds);
     window.localStorage.setItem(
-      trialSkipKey,
+      introSkipKey,
       JSON.stringify({ progressSeconds, durationSeconds }),
     );
-    setSkippedTrialKey(trialSkipKey);
+    if (legacyTrialSkipKey) window.localStorage.removeItem(legacyTrialSkipKey);
+    setSkippedIntroKey(introSkipKey);
 
     if (progressSeconds <= lesson.progressSeconds) return;
     try {
@@ -176,7 +190,7 @@ export function DomiflixIntroGate() {
         completed: false,
       });
     } catch {
-      // O ponto local já foi salvo; o pulo do teste não deve bloquear o usuário.
+      // O ponto local já foi salvo; pular a introdução não deve bloquear o usuário.
     }
   }
   if (isLoading)
@@ -213,9 +227,7 @@ export function DomiflixIntroGate() {
       style={{ WebkitOverflowScrolling: "touch" }}
       role="dialog"
       aria-modal="true"
-      aria-label={
-        isTrial ? "Introdução do primeiro acesso" : "Introdução obrigatória"
-      }
+      aria-label="Aula inicial recomendada"
       tabIndex={-1}
     >
       <div className="flex min-h-[100dvh] flex-col">
@@ -245,7 +257,7 @@ export function DomiflixIntroGate() {
                 startSeconds={Math.max(
                   0,
                   Math.floor(
-                    Math.max(lesson.progressSeconds, savedTrialProgress),
+                    Math.max(lesson.progressSeconds, savedIntroProgress),
                   ),
                 )}
                 onBack={() => undefined}
@@ -271,24 +283,20 @@ export function DomiflixIntroGate() {
             </h1>
             <p className="mt-3 text-sm leading-6 text-stone-400">
               Este vídeo explica os combinados importantes da nossa parceria e
-              mostra como aproveitar os tutoriais.{" "}
-              {isTrial
-                ? "Você pode assistir agora ou pular por enquanto durante o teste."
-                : "Assista até o final para continuar."}
+              mostra como aproveitar os tutoriais. Recomendamos assistir agora,
+              mas você pode pular e começar a usar o sistema.
             </p>
             <div className="mt-5 rounded-sm bg-white/[0.045] p-4">
               <div className="flex gap-3">
                 <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-red-500" />
                 <div>
                   <p className="text-sm font-medium">
-                    {isTrial
-                      ? "Você pode pular durante o teste"
-                      : "Falta concluir suas boas-vindas"}
+                    Aula inicial recomendada
                   </p>
                   <p className="mt-1 text-xs leading-5 text-stone-500">
-                    {isTrial
-                      ? "Seu progresso fica salvo. Se contratar sem concluir, este vídeo volta como etapa obrigatória."
-                      : "Depois de concluir, esta etapa não será exibida novamente."}
+                    Seu progresso fica salvo e você pode retomar depois.
+                    Enquanto a aula estiver pendente, continuaremos lembrando
+                    você no sistema.
                   </p>
                 </div>
               </div>
@@ -327,18 +335,18 @@ export function DomiflixIntroGate() {
                 ? "Confirmar e começar a primeira aula"
                 : "Assista até o final para confirmar"}
             </Button>
-            {isTrial && !hasCompletedVideo && (
+            {!hasCompletedVideo && (
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => void skipDuringTrial()}
+                onClick={() => void skipIntro()}
                 disabled={markWatched.isPending}
                 className="mt-3 h-11 w-full border-white/20 bg-transparent font-semibold text-white hover:bg-white/[0.08] hover:text-white"
               >
                 {markWatched.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : null}
-                Pular por agora
+                Pular e começar a usar
               </Button>
             )}
           </section>

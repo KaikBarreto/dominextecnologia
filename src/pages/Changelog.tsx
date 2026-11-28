@@ -31,6 +31,23 @@ const CATEGORY_ICONS: Record<ChangeCategory, LucideIcon> = {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '1.42.7',
+    date: '28 de novembro de 2026',
+    type: 'patch',
+    changes: [
+      {
+        title: 'Aula inicial da Domiflix pode ser pulada',
+        category: 'melhoria',
+        description: 'No primeiro acesso, a aula de boas-vindas passa a ser recomendada: você pode assistir na hora ou tocar em "Pular e começar a usar". O ponto assistido fica salvo e o sistema continua lembrando até você concluir.',
+      },
+      {
+        title: 'Dá para voltar o vídeo na aula inicial',
+        category: 'melhoria',
+        description: 'Na aula de boas-vindas agora é possível voltar 10 segundos ou clicar na barra para rever um trecho que você já assistiu.',
+      },
+    ],
+  },
+  {
     version: '1.42.6',
     date: '27 de novembro de 2026',
     type: 'patch',

@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.42.6";
+export const APP_VERSION = "1.42.7";
 
 export const VERSION_NOTES =
-  "A sidebar continua recolhida por padrão e abre temporariamente ao passar o mouse. Para mantê-la sempre aberta, ative a opção em Configurações → Aparência.";
+  "A aula inicial da Domiflix agora é recomendada, não obrigatória: você pode pular e começar a usar o sistema. E dá para voltar o vídeo para rever um trecho.";
